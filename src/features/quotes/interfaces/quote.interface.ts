@@ -50,7 +50,12 @@ export interface Quote {
   oc: string;
   uso_cfdi: string;
   gran_total: string;
-  importe_sin_iva: string;
+  /**
+   * Importe sin IVA. Llega como NÚMERO (`SerializerMethodField` con un
+   * `Decimal`), aunque el schema de OpenAPI lo declare `string`; igual que en
+   * `OperationsQuote`.
+   */
+  importe_sin_iva: number;
   /** IVA en importe, texto con 2 decimales (`gran_total - importe_sin_iva`). Solo lectura (EC-571). */
   importe_iva: string;
   piezas: number;

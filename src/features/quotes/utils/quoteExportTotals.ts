@@ -1,6 +1,5 @@
 import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
 import { isZeroAmount, sumByCurrency, type CurrencyTotal } from "@/src/utils/currencyTotals";
-import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { Quote } from "../interfaces/quote.interface";
 
 /** Columna de importe que suma el total de la exportación: la que muestra la tabla. */
@@ -22,8 +21,7 @@ export const getQuoteExportTotals = (
   sumByCurrency(
     quotes,
     (quote) => quote.moneda_codigo || null,
-    // `importe_sin_iva` llega como número aunque el tipo y el schema digan texto.
-    (quote) => safeParseAmount(String(quote.importe_sin_iva)),
+    (quote) => (Number.isFinite(quote.importe_sin_iva) ? quote.importe_sin_iva : 0),
   ).filter((entry) => entry.moneda !== null || !isZeroAmount(entry.total));
 
 /** El mismo total como texto ("$1,200.00 MXN y $300.00 USD"). */
