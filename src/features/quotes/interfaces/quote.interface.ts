@@ -60,6 +60,13 @@ export interface Quote {
   updated_at: string;
   pedido_id: number | null;
   pedido_folio: string | null;
+  /** PK de la moneda; `null` en un borrador sin moneda elegida (EC-617). */
+  moneda: number | null;
+  /**
+   * Código ISO de la moneda (`moneda.codigo_iso`), `null` sin moneda. La llave
+   * siempre viene en el listado (EC-617).
+   */
+  moneda_codigo: string | null;
 }
 
 /**

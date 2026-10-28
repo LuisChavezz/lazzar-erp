@@ -98,6 +98,10 @@ export interface OperationsQuote {
   pedido_id: number | null;
   pedido_folio: string | null;
   piezas: number;
+  /**
+   * Importe sin IVA. Llega como NÚMERO (`SerializerMethodField` con un
+   * `Decimal`), aunque el schema de OpenAPI lo declare `string`.
+   */
   importe_sin_iva: number;
   /** IVA en importe, texto con 2 decimales. Solo lectura (EC-571). */
   importe_iva: string;
@@ -151,7 +155,13 @@ export interface OperationsQuote {
   sucursal: number;
   cliente: number;
   oportunidad: number | null;
-  moneda: number;
+  /** PK de la moneda; `null` en un borrador sin moneda elegida (EC-617). */
+  moneda: number | null;
+  /**
+   * Código ISO de la moneda (`moneda.codigo_iso`), `null` sin moneda. La llave
+   * siempre viene en el listado (EC-617).
+   */
+  moneda_codigo: string | null;
 }
 
 /**
