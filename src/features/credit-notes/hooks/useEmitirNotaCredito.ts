@@ -41,9 +41,10 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  *
  * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
  * (`invalidateCreditNoteQueries`): emitir baja el saldo de la cuenta por cobrar
- * de la factura, puede marcarla `Pagada` y, desde el PR #607, timbra el CFDI de
- * egreso antes de guardar. Un rechazo del timbrado llega bajo `cfdi` y
- * `parseNotaCreditoError` lo lee primero.
+ * de la factura, puede marcarla `Pagada` y, ya guardada, intenta timbrar su CFDI
+ * de egreso. Un fallo del timbrado llega bajo `cfdi` (`parseNotaCreditoError` lo
+ * lee primero y lo marca `stampFailed`) con la nota ya escrita: el refresco
+ * también vale ante un error.
  */
 export const useEmitirNotaCredito = () => {
   const queryClient = useQueryClient();

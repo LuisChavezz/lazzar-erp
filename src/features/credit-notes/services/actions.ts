@@ -42,7 +42,9 @@ export const getNotaCredito = async (id: number): Promise<NotaCredito> => {
  *
  * Si `estatus` es `"Emitida"`, el backend aplica el crédito a la cuenta por
  * cobrar de la factura DENTRO de la misma transacción: un rechazo (factura sin
- * CxC, total mayor al saldo) significa que NO se creó nada.
+ * CxC, total mayor al saldo) significa que NO se creó nada. El timbrado corre
+ * DESPUÉS, fuera de esa transacción: un `400` con `cfdi` llega con la nota ya
+ * guardada (cancelada, emitida sin CFDI o con el timbrado pendiente).
  */
 export const createNotaCredito = async (
   payload: CreateNotaCreditoPayload,

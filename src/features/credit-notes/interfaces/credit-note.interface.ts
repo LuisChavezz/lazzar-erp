@@ -24,7 +24,8 @@
  *
  * A diferencia de `Pago` —cuya UI nunca produce `Borrador`—, aquí los tres son
  * alcanzables desde esta pantalla: el alta ofrece `Borrador` y `Emitida`, y
- * `Cancelada` la produce la acción `/cancelar/`. `Borrador` es además el ÚNICO
+ * `Cancelada` la produce la acción `/cancelar/` o el backend cuando Facturama
+ * rechaza el timbrado al emitir. `Borrador` es además el ÚNICO
  * estatus desde el que la nota se puede editar o eliminar.
  */
 export type NotaCreditoEstatus = "Borrador" | "Emitida" | "Cancelada";
@@ -96,8 +97,8 @@ export interface NotaCredito {
   updated_at: string | null;
   /**
    * Folio fiscal del CFDI de egreso; `null` mientras no se timbre. Solo lectura
-   * en la API: lo escribe la emisión (desde el PR #607 el backend timbra ANTES
-   * de guardar una nota `Emitida`) o `POST /finanzas/notas-credito/{id}/timbrar/`.
+   * en la API: lo escribe la emisión (el backend guarda la nota `Emitida` y
+   * después la timbra) o `POST /finanzas/notas-credito/{id}/timbrar/`.
    * Viene en el listado y en el retrieve (mismo serializer).
    */
   cfdi_uuid: string | null;
@@ -106,9 +107,10 @@ export interface NotaCredito {
   /** Fecha y hora del timbrado (ISO con zona); `null` mientras no se timbre. */
   cfdi_fecha_timbrado: string | null;
   /**
-   * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado de `timbrar/`
-   * (timeout, red, 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras
-   * siga en `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca.
+   * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado de la emisión o de
+   * `timbrar/` (timeout, red, 5xx o respuesta sin UUID) y pudo generarse un
+   * CFDI. Mientras siga en `true`, `timbrar/` lo rechaza; solo un administrador
+   * lo desmarca.
    */
   cfdi_pendiente: boolean;
   /** Líneas anidadas. Puede venir vacío — el backend no exige ninguna. */
