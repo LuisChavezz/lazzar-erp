@@ -51,7 +51,9 @@ export const QuoteStats = () => {
     },
     {
       label: "Total de cotizaciones",
-      value: formatCurrency(metrics.totalOrdersAmount),
+      // Sin símbolo: suma cotizaciones de cualquier moneda (EC-606); se
+      // reemplazará por un KPI del backend.
+      value: formatCurrency(metrics.totalOrdersAmount, null),
       icon: FacturacionIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",

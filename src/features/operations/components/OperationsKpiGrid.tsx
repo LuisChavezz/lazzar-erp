@@ -78,7 +78,9 @@ export const OperationsKpiGrid = () => {
     },
     {
       label: "Importe Autorizado",
-      value: formatCurrency(stats.totalApprovedAmount),
+      // Sin símbolo: suma cotizaciones de cualquier moneda (EC-606); se
+      // reemplazará por un KPI del backend.
+      value: formatCurrency(stats.totalApprovedAmount, null),
       icon: TrendingUpIcon,
       iconBgClass: "bg-violet-50 dark:bg-violet-500/10",
       iconClass: "text-violet-500",

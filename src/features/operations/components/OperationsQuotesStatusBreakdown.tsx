@@ -34,6 +34,8 @@ const COLOR_MAP: Record<number, { dot: string; bar: string; text: string }> = {
   },
 };
 
+// Importes sin símbolo: suman cotizaciones de cualquier moneda (EC-606); se
+// reemplazarán por KPIs del backend.
 export const OperationsQuotesStatusBreakdown = () => {
   const { operationsQuotes, isLoading } = useOperationsQuotes();
 
@@ -105,7 +107,7 @@ export const OperationsQuotesStatusBreakdown = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                      {formatCurrency(row.amount)}
+                      {formatCurrency(row.amount, null)}
                     </span>
                     <span className={`font-bold tabular-nums ${colors.text}`}>
                       {row.count}
@@ -145,7 +147,7 @@ export const OperationsQuotesStatusBreakdown = () => {
               Importe total
             </span>
             <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
-              {formatCurrency(totalAmount)}
+              {formatCurrency(totalAmount, null)}
             </span>
           </div>
         </div>
