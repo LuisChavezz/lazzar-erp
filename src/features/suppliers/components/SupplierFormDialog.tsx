@@ -1,6 +1,7 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import SupplierForm from "./SupplierForm";
 import { Supplier } from "../interfaces/supplier.interface";
 
@@ -17,6 +18,11 @@ interface SupplierFormDialogProps {
  * (`SupplierList`, alta y edición) y la página de detalle
  * (`SupplierDetailContent`, solo edición), para que ambos abran exactamente el
  * mismo formulario.
+ *
+ * Trabaja con la copia tomada al ABRIR (`useDialogSession`): el listado pone su
+ * proveedor en `null` al cerrar, y sin la copia el diálogo pasaría a "Nuevo
+ * Proveedor" durante la animación de salida. Cada apertura monta un formulario
+ * nuevo (`key`).
  */
 export default function SupplierFormDialog({
   open,
@@ -24,7 +30,8 @@ export default function SupplierFormDialog({
   supplierToEdit,
   onSuccess,
 }: SupplierFormDialogProps) {
-  const isEditing = Boolean(supplierToEdit?.id);
+  const session = useDialogSession(open, supplierToEdit);
+  const isEditing = Boolean(session.snapshot?.id);
 
   return (
     <MainDialog
@@ -50,7 +57,7 @@ export default function SupplierFormDialog({
         </div>
       }
     >
-      <SupplierForm onSuccess={onSuccess} supplierToEdit={supplierToEdit} />
+      <SupplierForm key={session.id} onSuccess={onSuccess} supplierToEdit={session.snapshot} />
     </MainDialog>
   );
 }
