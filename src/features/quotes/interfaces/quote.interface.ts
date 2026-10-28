@@ -264,7 +264,8 @@ export interface QuoteById {
   importe_iva?: string;
   empresa: number;
   vendedor: number;
-  sucursal: number;
+  /** Nullable en el backend (`Cotizacion.sucursal`, `null=True`). */
+  sucursal: number | null;
   cliente: number;
   oportunidad: number | null;
   moneda: number;

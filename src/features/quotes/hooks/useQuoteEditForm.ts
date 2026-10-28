@@ -29,6 +29,8 @@ import { deriveTiposServicio } from "../utils/deriveTiposServicio";
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
+import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
+import { getQuoteSinSucursalMessage, resolveQuoteSucursal } from "../utils/quoteSucursal";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
@@ -192,6 +194,13 @@ export function useQuoteEditForm(quoteId: number) {
   const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
   const { data: satInfo } = useSatInfo();
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
+  // Respaldo de la sucursal solo para una cotización que no la trae (ver
+  // `resolveQuoteSucursal`). Su carga entra en el gate del formulario.
+  const {
+    branchId: workspaceBranchId,
+    isLoading: isWorkspaceBranchLoading,
+    isError: isWorkspaceBranchError,
+  } = useValidWorkspaceBranchId();
 
   // Consulta de la cotización a editar
   const {
@@ -385,6 +394,14 @@ export function useQuoteEditForm(quoteId: number) {
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
 
+      const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
+      if (sucursal === null) {
+        toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
+          id: "quote-sin-sucursal",
+        });
+        return;
+      }
+
       setErrorTree({});
       const normalizedItems = (parsed.data.items ?? []).map(normalizeItem);
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.importe, 0);
@@ -508,7 +525,7 @@ export function useQuoteEditForm(quoteId: number) {
       const quoteUpdatePayload: QuoteCreate = {
         pedido: {
           empresa: quoteData?.empresa ?? 1,
-          sucursal: quoteData?.sucursal ?? 1,
+          sucursal,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1,
           persona_pagos: parsed.data.persona_pagos ?? "",
@@ -1161,7 +1178,7 @@ export function useQuoteEditForm(quoteId: number) {
     matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading: isOnboardingLoading || isQuoteLoading,
+    isOnboardingLoading: isOnboardingLoading || isQuoteLoading || isWorkspaceBranchLoading,
     isSizesLoading,
     isErrorSizes,
     showForm,
