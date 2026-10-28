@@ -129,7 +129,7 @@ export type QuotePdfModel = {
  * Arma el modelo completo listo para ser consumido por QuotePdfDocument.
  *
  * `monedaCodigo` es el código ISO de la moneda de la cotización
- * (`resolveQuoteMonedaCodigo`); con `null` los importes van sin símbolo, nunca
+ * (`loadQuoteForDocument`); con `null` los importes van sin símbolo, nunca
  * en MXN.
  */
 export const buildQuotePdfModel = (

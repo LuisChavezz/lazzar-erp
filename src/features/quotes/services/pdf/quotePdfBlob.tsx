@@ -3,7 +3,7 @@
  * Utiliza dynamic import de @react-pdf/renderer para evitar problemas en SSR.
  *
  * `monedaCodigo`: código ISO de la moneda de la cotización
- * (`resolveQuoteMonedaCodigo`); `null` pinta los importes sin símbolo.
+ * (`loadQuoteForDocument`); `null` pinta los importes sin símbolo.
  */
 import React from "react";
 import type { QuoteById } from "../../interfaces/quote.interface";

@@ -3,10 +3,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "../services/actions";
-import { getQuoteById } from "@/src/features/quotes/services/actions";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePdfBlob";
-import { resolveQuoteMonedaCodigo } from "@/src/features/quotes/utils/resolveQuoteMonedaCodigo";
+import { loadQuoteForDocument } from "@/src/features/quotes/utils/loadQuoteForDocument";
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
 import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
 import type { GoogleEmailPayload } from "../interfaces/google.interface";
@@ -48,7 +47,8 @@ export const sendQuoteEmailMutationKey = ["google", "send-quote-email"] as const
 /**
  * Paso 1: obtiene la cotización y renderiza el correo, SIN enviarlo.
  *
- * 1. getQuoteById()      — v1_api GET, cookies + interceptor de refresh ✓
+ * 1. loadQuoteForDocument() — cotización (v1_api GET, cookies + refresh) y
+ *    código de su moneda, en paralelo; aborta si el catálogo no carga ✓
  * 2. renderEmailContent() — API Route Next.js, valida sesión y renderiza el
  *    HTML en Node.js ✓
  *
@@ -64,8 +64,8 @@ export const usePrepareQuoteEmail = () => {
   return useMutation<PreparedQuoteEmail, unknown, number>({
     mutationKey: prepareQuoteEmailMutationKey,
     mutationFn: async (quoteId: number): Promise<PreparedQuoteEmail> => {
-      const quote = await getQuoteById(quoteId);
-      const monedaCodigo = await resolveQuoteMonedaCodigo(queryClient, quote);
+      // Si el catálogo de monedas no carga, se aborta: no se prepara ni se envía nada.
+      const { quote, monedaCodigo } = await loadQuoteForDocument(queryClient, quoteId);
       const attachmentName = `cotizacion-${quote.id}.pdf`;
       const recipients = parseEmailRecipients(quote.correo_facturas);
       if (recipients.length === 0) {
