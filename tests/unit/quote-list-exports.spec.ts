@@ -3,6 +3,8 @@ import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
 import { compareQuoteAmounts } from "@/src/features/quotes/utils/quoteAmountSorting";
+import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
+import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
   buildQuoteCurrencyFilterOptions,
   matchesQuoteCurrencyFilter,
@@ -112,5 +114,27 @@ test.describe("orden por importe", () => {
     expect([...rows].sort(compareQuoteAmounts).map((r) => r.importe_sin_iva)).toEqual(
       [...amounts].sort((a, b) => a - b),
     );
+  });
+});
+
+test.describe("importe por fila", () => {
+  const plain = (text: string) => text.replace(/[  ]/g, " ");
+
+  test("en la moneda de la fila; sin moneda, sin símbolo; un 0 real es 0.00", () => {
+    expect(plain(formatQuoteAmountOrDash(1227, "USD"))).toBe("USD 1,227.00");
+    expect(plain(formatQuoteAmountOrDash("1423.32", "MXN"))).toBe("MXN 1,423.32");
+    expect(plain(formatQuoteAmountOrDash(1227, null))).toBe("1,227.00");
+    expect(plain(formatQuoteAmountOrDash(0, "MXN"))).toBe("MXN 0.00");
+  });
+
+  test("un importe ausente o malformado es \"-\", no 0.00", () => {
+    for (const value of [null, undefined, "", "1,000.00", Number.NaN]) {
+      expect(formatQuoteAmountOrDash(value, "MXN")).toBe("-");
+    }
+  });
+
+  test("siempre 2 decimales, también en monedas con otros decimales ISO", () => {
+    expect(plain(formatQuoteAmount(1234.5, "JPY"))).toBe("JPY 1,234.50");
+    expect(plain(formatQuoteAmount(1234.5, "USD"))).toBe("USD 1,234.50");
   });
 });
