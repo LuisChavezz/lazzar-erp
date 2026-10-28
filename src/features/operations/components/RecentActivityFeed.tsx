@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
 import { capitalize } from "@/src/utils/capitalize";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { HistoryIcon, ChevronRightIcon } from "@/src/components/Icons";
@@ -136,7 +136,7 @@ export const RecentActivityFeed = () => {
                     {/* Importe */}
                     <td className="px-6 py-3.5 text-right">
                       <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
-                        {formatCurrency(Number(operationsQuote.gran_total) || 0)}
+                        {formatQuoteAmount(Number(operationsQuote.gran_total) || 0, operationsQuote.moneda_codigo)}
                       </span>
                     </td>
 

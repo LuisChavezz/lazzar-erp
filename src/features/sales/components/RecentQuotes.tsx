@@ -6,7 +6,7 @@ import Link from "next/link";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { OrderStatusPathIcon } from "@/src/components/Icons";
-import { formatCurrency } from "@/src/utils/formatCurrency";
+import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
 import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
@@ -156,7 +156,7 @@ export const RecentQuotes = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-                    {formatCurrency(Number(quote.gran_total) || 0)}
+                    {formatQuoteAmount(Number(quote.gran_total) || 0, quote.moneda_codigo)}
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium mt-1 ${statusClassName}`}>
                     {capitalize(quote.estatus_label)}

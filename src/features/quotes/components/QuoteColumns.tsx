@@ -2,7 +2,7 @@
 
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { Quote } from "../interfaces/quote.interface";
-import { formatCurrency } from "../../../utils/formatCurrency";
+import { formatQuoteAmount } from "@/src/features/quotes/utils/formatQuoteAmount";
 import { formatQuoteDateTime } from "../utils/quoteDetailsFormatters";
 import { capitalize } from "@/src/utils/capitalize";
 import { ChevronRightIcon } from "@/src/components/Icons";
@@ -150,7 +150,7 @@ export const quoteColumns: ColumnDef<Quote>[] = [
     meta: { align: "right" },
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
-        {formatCurrency(Number(row.original.importe_sin_iva) || 0)}
+        {formatQuoteAmount(Number(row.original.importe_sin_iva) || 0, row.original.moneda_codigo)}
       </span>
     ),
   },
