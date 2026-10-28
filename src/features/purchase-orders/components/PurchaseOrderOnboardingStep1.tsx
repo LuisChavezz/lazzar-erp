@@ -3,6 +3,7 @@
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormSubmitButton } from "@/src/components/FormButtons";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import type { PurchaseOrderEncabezados, PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
 import { usePurchaseOrderStep1Form } from "../hooks/usePurchaseOrderStep1Form";
@@ -10,12 +11,6 @@ import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
 import type { TipoCompra } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
-
-/**
- * Campos más bajos que el default de `FormInput`/`FormSelect` (py-3): el
- * encabezado son 8 campos cortos en dos columnas y debe caber sin scroll.
- */
-const COMPACT_FIELD_CLS = "py-2!";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,

@@ -6,7 +6,7 @@ import { FormInput } from "../../../components/FormInput";
 import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { Loader } from "../../../components/Loader";
-import { READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
 import { useVerifyRfc } from "../../facturama/hooks/useVerifyRfc";
@@ -17,12 +17,6 @@ interface SupplierFormProps {
 }
 
 const RFC_MIN_LENGTH = 12;
-
-/**
- * Campos más bajos que el default de `FormInput`/`FormSelect` (py-3): son 13
- * campos y el formulario debe leerse de un vistazo, sin scroll largo.
- */
-const COMPACT_FIELD_CLS = "py-2!";
 
 /** Grupo de campos con un encabezado ligero (sin tarjeta), para ordenar el alta sin recargarla. */
 function FormSection({

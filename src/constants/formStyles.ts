@@ -5,3 +5,10 @@
  */
 export const READ_ONLY_INPUT_CLS =
   "cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400 focus:bg-slate-100 dark:focus:bg-zinc-800 focus:ring-0 focus:border-slate-200 dark:focus:border-zinc-700";
+
+/**
+ * Campos más bajos que el default de `FormInput`/`FormSelect` (py-3), para
+ * formularios con muchos campos que deben leerse de un vistazo, sin scroll
+ * largo. Se pasa por `className`.
+ */
+export const COMPACT_FIELD_CLS = "py-2!";
