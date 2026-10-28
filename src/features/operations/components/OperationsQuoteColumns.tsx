@@ -24,6 +24,10 @@ import {
   ViewIcon,
 } from "@/src/components/Icons";
 import { capitalize } from "@/src/utils/capitalize";
+import {
+  buildQuoteCurrencyFilterOptions,
+  matchesQuoteCurrencyFilter,
+} from "@/src/features/quotes/utils/quoteCurrencyFilter";
 import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
   canAcceptQuoteChanges as canAcceptOperationsQuoteChangesStatus,
@@ -60,13 +64,14 @@ const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue)
 
 // ─── Filtros de encabezado de las demás columnas ──────────────────────────────
 // La lista completa vive en memoria, así que las opciones de razón social,
-// mes y C.P. salen de sus filas (`buildOperationsQuoteFilterOptions`); piezas
-// e importe usan rangos fijos.
+// mes, C.P. y moneda salen de sus filas (`buildOperationsQuoteFilterOptions`);
+// piezas e importe usan rangos fijos.
 
 export interface OperationsQuoteFilterOptions {
   razonesSociales: ColumnFilterOption[];
   meses: ColumnFilterOption[];
   codigosPostales: ColumnFilterOption[];
+  monedas: ColumnFilterOption[];
 }
 
 export function buildOperationsQuoteFilterOptions(
@@ -86,6 +91,8 @@ export function buildOperationsQuoteFilterOptions(
       ALL_FILTER_OPTION,
       ...buildDistinctFilterOptions(quotes, (q) => q.codigo_postal),
     ],
+    // Las monedas presentes en el listado y, si alguna fila no tiene, "Sin moneda".
+    monedas: [ALL_FILTER_OPTION, ...buildQuoteCurrencyFilterOptions(quotes)],
   };
 }
 
@@ -95,10 +102,12 @@ const PIEZAS_RANGES: RangeFilterOption[] = [
   { value: "mas-500", label: "Más de 500 piezas", min: 501 },
 ];
 
+// Sin "$": el listado mezcla monedas y el rango solo compara el número. Para
+// acotar a una moneda está el filtro de la columna "Moneda".
 const IMPORTE_RANGES: RangeFilterOption[] = [
-  { value: "hasta-10k", label: "Hasta $10,000", max: 10_000 },
-  { value: "10k-100k", label: "$10,000 – $100,000", min: 10_000, max: 100_000 },
-  { value: "mas-100k", label: "Más de $100,000", min: 100_000 },
+  { value: "hasta-10k", label: "Hasta 10,000", max: 10_000 },
+  { value: "10k-100k", label: "10,000 – 100,000", min: 10_000, max: 100_000 },
+  { value: "mas-100k", label: "Más de 100,000", min: 100_000 },
 ];
 
 const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
@@ -110,6 +119,7 @@ const EMPTY_FILTER_OPTIONS: OperationsQuoteFilterOptions = {
   razonesSociales: [ALL_FILTER_OPTION],
   meses: [ALL_FILTER_OPTION],
   codigosPostales: [ALL_FILTER_OPTION],
+  monedas: [ALL_FILTER_OPTION],
 };
 
 // ─── Acciones de fila: los diálogos los posee la VISTA, no la celda ───────────
@@ -380,6 +390,24 @@ export const getOperationsQuoteColumns = (
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}
+      </span>
+    ),
+  },
+  {
+    // Mismo `?? ""` que el resto de columnas nullable: un `null` en la primera
+    // fila sacaría la columna de la búsqueda global en todas las filas.
+    id: "moneda_codigo",
+    accessorFn: (operationsQuote) => operationsQuote.moneda_codigo ?? "",
+    meta: { label: "Moneda" },
+    size: 100,
+    header: ({ column }) => (
+      <FilterHeader title="Moneda" column={column} options={filterOptions.monedas} label="moneda" />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      matchesQuoteCurrencyFilter(row.original.moneda_codigo, filterValue),
+    cell: ({ row }) => (
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.original.moneda_codigo || "—"}
       </span>
     ),
   },

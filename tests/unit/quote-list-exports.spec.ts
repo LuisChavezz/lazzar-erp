@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
+import {
+  buildQuoteCurrencyFilterOptions,
+  matchesQuoteCurrencyFilter,
+  SIN_MONEDA_FILTER_VALUE,
+} from "@/src/features/quotes/utils/quoteCurrencyFilter";
 
 /**
  * Pruebas unitarias de EC-618 sobre las exportaciones del listado de
@@ -59,5 +64,27 @@ test.describe("CSV del listado de cotizaciones", () => {
   test("sin columna de importe visible, la Moneda va al final", () => {
     const csv = buildQuotesCsv([quote({ id: 9, moneda_codigo: "USD" })], [COLUMNS[0], COLUMNS[2]]);
     expect(csv.split("\n")).toEqual(["Cotización,Razón social,Moneda", "9,CLIENTE,USD"]);
+  });
+});
+
+test.describe("filtro de moneda de Mesa de Control", () => {
+  test("opciones: las monedas presentes y \"Sin moneda\" solo si alguna fila no tiene", () => {
+    const rows = (codes: (string | null)[]) => codes.map((moneda_codigo) => ({ moneda_codigo }));
+    expect(buildQuoteCurrencyFilterOptions(rows(["USD", "MXN", "MXN"]))).toEqual([
+      { value: "MXN", label: "MXN" },
+      { value: "USD", label: "USD" },
+    ]);
+    expect(buildQuoteCurrencyFilterOptions(rows(["MXN", null]))).toEqual([
+      { value: "MXN", label: "MXN" },
+      { value: SIN_MONEDA_FILTER_VALUE, label: "Sin moneda" },
+    ]);
+  });
+
+  test("filtra por código, y \"Sin moneda\" solo deja las filas sin moneda", () => {
+    expect(matchesQuoteCurrencyFilter("USD", undefined)).toBe(true);
+    expect(matchesQuoteCurrencyFilter("USD", "USD")).toBe(true);
+    expect(matchesQuoteCurrencyFilter("MXN", "USD")).toBe(false);
+    expect(matchesQuoteCurrencyFilter(null, SIN_MONEDA_FILTER_VALUE)).toBe(true);
+    expect(matchesQuoteCurrencyFilter("MXN", SIN_MONEDA_FILTER_VALUE)).toBe(false);
   });
 });
