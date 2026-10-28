@@ -35,6 +35,8 @@ import {
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
+import { getQuoteSinSucursalMessage, resolveQuoteSucursal } from "../utils/quoteSucursal";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -170,9 +172,16 @@ export function useQuoteForm() {
   // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
   // alarga la espera que el formulario ya hacía por las otras consultas.
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
-  const { selectedCompany, selectedBranch } = useWorkspaceStore();
+  const { selectedCompany } = useWorkspaceStore();
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
-  const selectedBranchId = selectedBranch?.id || 1; // Fallback
+  // Sucursal del payload: la del workspace, solo si es válida (ver
+  // `resolveQuoteSucursal`). Su carga entra en el gate del formulario para no
+  // bloquear ni enviar con la lista todavía sin resolver.
+  const {
+    branchId: workspaceBranchId,
+    isLoading: isWorkspaceBranchLoading,
+    isError: isWorkspaceBranchError,
+  } = useValidWorkspaceBranchId();
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -277,6 +286,14 @@ export function useQuoteForm() {
       }
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
+
+      const sucursal = resolveQuoteSucursal(undefined, workspaceBranchId);
+      if (sucursal === null) {
+        toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
+          id: "quote-sin-sucursal",
+        });
+        return;
+      }
 
       setErrorTree({});
 
@@ -408,7 +425,7 @@ export function useQuoteForm() {
       const quoteCreatePayload: QuoteCreate = {
         pedido: {
           empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
-          sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
+          sucursal,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
           persona_pagos: parsed.data.persona_pagos ?? "",
@@ -1078,7 +1095,7 @@ export function useQuoteForm() {
     matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading,
+    isOnboardingLoading: isOnboardingLoading || isWorkspaceBranchLoading,
     isSizesLoading,
     isErrorSizes,
     showForm,
