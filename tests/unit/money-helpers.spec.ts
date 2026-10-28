@@ -45,6 +45,7 @@ test.describe("helpers de dinero con moneda obligatoria", () => {
     expect(plain(formatCurrency(-3, null, { signDisplay: "exceptZero" }))).toBe("-3.00");
     // Un objeto de tipo más amplio es asignable a `MoneyFormatOverrides`: su
     // `currency`/`style` se descartan en tiempo de ejecución.
+    // eslint-disable-next-line no-restricted-syntax -- a propósito: prueba que un MXN colado en overrides se descarta.
     const wide: Intl.NumberFormatOptions = { style: "currency", currency: "MXN" };
     expect(plain(formatCurrency(1234.5, null, wide as MoneyFormatOverrides))).toBe("1,234.50");
     expect(plain(formatCurrency(1234.5, "USD", wide as MoneyFormatOverrides))).toBe("USD 1,234.50");

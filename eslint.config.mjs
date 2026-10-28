@@ -7,18 +7,21 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     // EC-606: el dinero se formatea con los helpers de `src/utils/formatCurrency`
-    // (moneda obligatoria) y el MXN legítimo con `formatMxn`. Un formateador
-    // local con `currency: "MXN"` literal reintroduce el peso por defecto.
+    // (moneda obligatoria) y el MXN legítimo con `formatMxn`. Un `currency:
+    // "MXN"` literal —inline en un `Intl.NumberFormat`/`toLocaleString` o en un
+    // objeto de opciones guardado en una variable— reintroduce el peso por
+    // defecto, así que se marca en CUALQUIER objeto. Un dato que no es formato
+    // (p. ej. un mock con `currency: "MXN"`) lleva su `eslint-disable-next-line`
+    // comentado.
     files: ["**/*.{ts,tsx,js,jsx,mjs}"],
     rules: {
       "no-restricted-syntax": [
         "error",
         ...[
-          "NewExpression[callee.object.name='Intl'][callee.property.name='NumberFormat']",
-          "CallExpression[callee.object.name='Intl'][callee.property.name='NumberFormat']",
-          "CallExpression[callee.property.name='toLocaleString']",
-        ].map((call) => ({
-          selector: `${call} Property:matches([key.name='currency'], [key.value='currency'])[value.value='MXN']`,
+          "[value.value='MXN']",
+          "[value.type='TemplateLiteral'][value.expressions.length=0][value.quasis.0.value.cooked='MXN']",
+        ].map((value) => ({
+          selector: `Property:matches([key.name='currency'], [key.value='currency'])${value}`,
           message:
             'No formatees dinero con `currency: "MXN"` literal: usa `formatMxn` para importes en pesos o `formatCurrency`/`formatMoneyValue` con la moneda del registro (EC-606).',
         })),

@@ -2,6 +2,9 @@ import { DataTable } from "@/src/components/DataTable";
 import { priceListColumns } from "./PriceListColumns";
 import { PriceListItem } from "../interfaces/price-list.interface";
 
+// `currency` es un DATO de la maqueta (la moneda de cada lista, que la tabla
+// muestra como texto), no una opción de formato de `Intl` (EC-606).
+/* eslint-disable no-restricted-syntax */
 const PRICE_LIST_DATA: PriceListItem[] = [
   {
     id: "PL-001",
@@ -54,6 +57,7 @@ const PRICE_LIST_DATA: PriceListItem[] = [
     lastUpdate: "20 Dic 2025",
   },
 ];
+/* eslint-enable no-restricted-syntax */
 
 export const PriceListList = () => {
   return (
