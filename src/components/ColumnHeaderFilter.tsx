@@ -4,14 +4,9 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
 import { DataTableModeContext } from './DataTableModeContext';
+import type { ColumnFilterOption } from '@/src/utils/columnFilterOptions';
 
-export interface ColumnFilterOption {
-  /** `undefined` limpia el filtro de la columna (opción "Todos"). */
-  value: string | undefined;
-  label: string;
-  /** Punto de color opcional, para columnas tipo badge/estado. */
-  dotClassName?: string;
-}
+export type { ColumnFilterOption };
 
 interface ColumnHeaderFilterProps<TData> {
   column: Column<TData, unknown>;

@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { parseLocalDate } from "./formatDate";
-import type { ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 
 /**
  * Opciones y comparadores para los filtros de encabezado (estilo Excel) de
@@ -12,6 +11,15 @@ import type { ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
  * datos, el más reciente primero) y las cantidades por RANGOS fijos que define
  * cada tabla.
  */
+
+/** Opción de un filtro de encabezado (`ColumnHeaderFilter`). */
+export interface ColumnFilterOption {
+  /** `undefined` limpia el filtro de la columna (opción "Todos"). */
+  value: string | undefined;
+  label: string;
+  /** Punto de color opcional, para columnas tipo badge/estado. */
+  dotClassName?: string;
+}
 
 /** Valor de filtro de las filas sin fecha. */
 export const NO_DATE_FILTER_VALUE = "__sin_fecha__";
