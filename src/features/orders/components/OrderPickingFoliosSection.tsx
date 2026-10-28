@@ -1,4 +1,6 @@
-import { EmptyLines, Section, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { SheetSection } from "./OrderSheetPrimitives";
+import { OrdenesIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingStatus";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
@@ -41,7 +43,11 @@ export function OrderPickingFoliosSection({
   });
 
   return (
-    <Section title={`Folios de surtido (${folios.length})`}>
+    <SheetSection
+      icon={<OrdenesIcon className="w-5 h-5" />}
+      title={`Folios de surtido (${folios.length})`}
+      subtitle="Cada surtido del pedido, con su estado y ubicación."
+    >
       {folios.length === 0 ? (
         <EmptyLines>Este pedido todavía no tiene surtidos.</EmptyLines>
       ) : (
@@ -111,6 +117,6 @@ export function OrderPickingFoliosSection({
           </table>
         </div>
       )}
-    </Section>
+    </SheetSection>
   );
 }

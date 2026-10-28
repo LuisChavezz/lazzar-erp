@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { EmptyLines, Section, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { SheetSection } from "./OrderSheetPrimitives";
+import { CheckIcon, ChevronRightIcon, FacturacionIcon } from "@/src/components/Icons";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { ORIGIN_BADGE_CLASS } from "../constants/pedidoStatus";
@@ -14,7 +16,15 @@ import {
 } from "./orderDocumentDialogs";
 
 const DOC_LINK_CLASS =
-  "text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors";
+  "group inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-semibold text-left transition-colors";
+
+/** ">" del enlace a un documento: dice que se puede abrir su detalle. */
+const DocChevron = () => (
+  <ChevronRightIcon
+    className="w-3.5 h-3.5 shrink-0 text-sky-400 group-hover:translate-x-0.5 transition-transform"
+    aria-hidden="true"
+  />
+);
 
 /**
  * Tipos stub: sus `folio` y `fecha` son el PK crudo (`str(id)`), no datos
@@ -66,12 +76,46 @@ function docSortTime(doc: PedidoDocumento): number | null {
 }
 
 /** Badge neutro para el estatus del documento (sin mapa de color por tipo). */
+/**
+ * Tono del estatus de un documento. El backend lo manda como texto libre (cada
+ * tipo con su vocabulario: "AUTORIZADA", "Pendiente"…), así que se clasifica
+ * por palabra clave; lo que no encaja queda neutro, como antes.
+ */
+const docEstatusTone = (estatus: string): "ok" | "bad" | "wait" | "neutral" => {
+  const value = estatus.toLowerCase();
+  if (/(cancel|rechaz)/.test(value)) return "bad";
+  if (/(autoriz|complet|entregad|emitid|timbrad|recibid|finaliz|cerrad|pagad|surtid|aplicad)/.test(value)) return "ok";
+  if (/(pendiente|borrador|proceso|parcial|revisi)/.test(value)) return "wait";
+  return "neutral";
+};
+
+/** Texto del estatus en tipo oración ("AUTORIZADA" → "Autorizada"). */
+const sentenceCase = (value: string) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : value;
+
 function DocEstatusBadge({ estatus }: { estatus: string }) {
+  const tone = docEstatusTone(estatus);
+  if (tone === "ok") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+        <span className="grid place-items-center w-3.5 h-3.5 rounded-full bg-emerald-500 text-white">
+          <CheckIcon className="w-2.5 h-2.5" aria-hidden="true" />
+        </span>
+        {sentenceCase(estatus)}
+      </span>
+    );
+  }
+  const cls =
+    tone === "bad"
+      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+      : tone === "wait"
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+        : ORIGIN_BADGE_CLASS;
+  const dot = tone === "bad" ? "bg-rose-500" : tone === "wait" ? "bg-amber-500" : "bg-slate-400";
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${ORIGIN_BADGE_CLASS}`}
-    >
-      {estatus}
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden="true" />
+      {sentenceCase(estatus)}
     </span>
   );
 }
@@ -118,7 +162,11 @@ export function OrderDocumentsSection({
   });
 
   return (
-    <Section title="Documentos relacionados">
+    <SheetSection
+      icon={<FacturacionIcon className="w-5 h-5" />}
+      title="Documentos relacionados"
+      subtitle="Embarques, movimientos y demás documentos ligados."
+    >
       {ordenados.length === 0 ? (
         // Vacía solo porque sus `picking` ya están en Folios de surtido: se dice
         // dónde están, en vez de afirmar que el pedido no tiene documentos.
@@ -157,12 +205,13 @@ export function OrderDocumentsSection({
                 return (
                   <tr
                     key={`${doc.tipo}-${doc.id}`}
-                    className="border-t border-slate-100 dark:border-white/10 align-top"
+                    className="border-t border-slate-100 dark:border-white/10 align-middle hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
                   >
                     <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
                       {href ? (
                         <Link href={href} className={DOC_LINK_CLASS} title={`Ver detalle: ${label}`}>
                           {label}
+                          <DocChevron />
                         </Link>
                       ) : hasDialog ? (
                         <button
@@ -172,6 +221,7 @@ export function OrderDocumentsSection({
                           title={`Ver detalle: ${label}`}
                         >
                           {label}
+                          <DocChevron />
                         </button>
                       ) : (
                         label
@@ -197,6 +247,6 @@ export function OrderDocumentsSection({
           </table>
         </div>
       )}
-    </Section>
+    </SheetSection>
   );
 }
