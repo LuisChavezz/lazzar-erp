@@ -25,6 +25,7 @@ import {
   EXPENSE_REQUEST_STATUS_LABELS,
   TIPO_GASTO_LABELS,
 } from "../interfaces/expense-purchase-request.interface";
+import { formatMxn } from "@/src/utils/formatCurrency";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -258,7 +259,7 @@ function ResumenPanel({ request }: { request: ExpensePurchaseRequest }) {
       label: 'Monto',
       value: (
         <span className="font-bold font-mono">
-          {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(request.monto)}
+          {formatMxn(request.monto)}
           <span className="ml-1 text-[10px] font-normal text-slate-400">MXN</span>
         </span>
       ),

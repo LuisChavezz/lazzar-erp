@@ -24,6 +24,7 @@ import {
   PQ_ORDER_STATUS_LABELS,
   CATEGORIA_INSUMO_LABELS,
 } from "../interfaces/pq-order.interface";
+import { formatMxn } from "@/src/utils/formatCurrency";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -271,7 +272,7 @@ function ResumenPanel({ pedido }: { pedido: PQOrder }) {
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Monto Estimado</p>
           <p className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200 mt-0.5">
-            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(pedido.monto_estimado)}
+            {formatMxn(pedido.monto_estimado)}
           </p>
         </div>
         <div>

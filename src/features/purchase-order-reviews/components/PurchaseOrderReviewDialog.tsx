@@ -21,6 +21,7 @@ import {
   REVIEW_STATUS_LABELS,
   TIPO_COMPRA_LABELS,
 } from "../interfaces/purchase-order-review.interface";
+import { formatMxn } from "@/src/utils/formatCurrency";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -221,10 +222,7 @@ function ResumenPanel({ review }: { review: PurchaseOrderReview }) {
   const { estatus } = review;
   const cfg = ESTATUS_CFG[estatus];
 
-  const montoFmt = new Intl.NumberFormat('es-MX', {
-    style:    'currency',
-    currency: 'MXN',
-  }).format(review.monto_total);
+  const montoFmt = formatMxn(review.monto_total);
 
   return (
     <div className="grid grid-cols-2 gap-3 text-xs">
@@ -278,7 +276,7 @@ function ResumenPanel({ review }: { review: PurchaseOrderReview }) {
         <div className="col-span-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-0.5">Nota de crédito aplicada</p>
           <p className="font-bold font-mono text-amber-700 dark:text-amber-300">
-            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(review.nota_credito_monto)}
+            {formatMxn(review.nota_credito_monto)}
           </p>
         </div>
       )}
