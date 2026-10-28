@@ -19,7 +19,7 @@ import {
 import { CustomerCartera } from "@/src/features/customers/components/CustomerCartera";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
-import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   ESTADO_OPORTUNIDAD_CFG,
@@ -435,7 +435,7 @@ function OpportunityDetailBody({
           {/* Sin símbolo de moneda: las oportunidades no tienen moneda. */}
           <InfoField label="Monto estimado">
             <span className="tabular-nums">
-              {formatCurrency(safeParseAmount(opportunity.monto_estimado), NO_CURRENCY_FORMAT)}
+              {formatCurrency(safeParseAmount(opportunity.monto_estimado), null)}
             </span>
           </InfoField>
           <InfoField label="Etapa">{textOrDash(opportunity.etapa)}</InfoField>

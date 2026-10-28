@@ -2,7 +2,7 @@ import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ChevronRightIcon, DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { CXP_ESTATUS_CONFIG } from "../constants/cxpEstatus";
 import {
@@ -190,7 +190,7 @@ export const getColumns = ({
         <div className="tabular-nums text-slate-600 dark:text-slate-300">
           {formatMoneyValueOrDash(
             info.getValue(),
-            moneyFormatFor(info.row.original.moneda_codigo),
+            info.row.original.moneda_codigo,
           )}
         </div>
       ),
@@ -202,7 +202,7 @@ export const getColumns = ({
         <div className="tabular-nums font-semibold text-slate-800 dark:text-white">
           {formatMoneyValueOrDash(
             info.getValue(),
-            moneyFormatFor(info.row.original.moneda_codigo),
+            info.row.original.moneda_codigo,
           )}
         </div>
       ),

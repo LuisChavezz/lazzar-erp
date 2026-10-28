@@ -10,7 +10,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CxpIcon, InfoIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   CXP_ESTATUS_CONFIG,
@@ -47,7 +47,7 @@ export function AccountsPayableDetailDialog({
   onOpenChange,
 }: AccountsPayableDetailDialogProps) {
   const money = (value: string) =>
-    formatMoneyValueOrDash(value, moneyFormatFor(cuenta.moneda_codigo));
+    formatMoneyValueOrDash(value, cuenta.moneda_codigo);
   const vencida = isCuentaPorPagarVencida(cuenta, today);
 
   return (

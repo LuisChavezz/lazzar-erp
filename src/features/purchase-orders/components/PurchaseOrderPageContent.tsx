@@ -22,7 +22,6 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
-  moneyFormatFor,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate, formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
@@ -108,7 +107,7 @@ const LineasTable = ({
 
   const showAmounts = hasLineAmounts(detalles);
   const money = (value: string | undefined) =>
-    formatMoneyValueOrDash(value, moneyFormatFor(monedaCodigo));
+    formatMoneyValueOrDash(value, monedaCodigo);
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
@@ -637,7 +636,7 @@ export function PurchaseOrderPageContent({
   const data = purchaseOrder;
   const showAmounts = canSeeAmounts(data);
   const money = (value: string | undefined) =>
-    formatMoneyValueOrDash(value, moneyFormatFor(data.moneda_codigo));
+    formatMoneyValueOrDash(value, data.moneda_codigo);
 
   return (
     <div className="w-full space-y-6">

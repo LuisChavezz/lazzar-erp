@@ -358,10 +358,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
                               </span>
                               {/* En la moneda de LA ORDEN, y "—" si no es visible */}
                               <span className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums shrink-0">
-                                {formatMoneyValueOrDash(order.total, {
-                                  currency: order.moneda_codigo,
-                                  maximumFractionDigits: 0,
-                                })}
+                                {formatMoneyValueOrDash(order.total, order.moneda_codigo, { maximumFractionDigits: 0 })}
                               </span>
                             </div>
                             <div className="mt-1 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500/70">

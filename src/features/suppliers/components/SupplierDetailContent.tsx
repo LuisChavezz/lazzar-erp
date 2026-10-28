@@ -14,7 +14,7 @@ import {
   Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
@@ -153,7 +153,7 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   // defecto de `formatCurrency` mentiría sobre un proveedor en otra moneda.
   const limiteCredito = formatMoneyValueOrDash(
     data.limite_credito,
-    moneyFormatFor(currency?.codigo_iso),
+    currency?.codigo_iso ?? null,
   );
 
   return (

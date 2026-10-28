@@ -13,7 +13,7 @@
  * aparición y no usa este helper.
  */
 
-import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatCurrency, type MoneyFormatOverrides } from "@/src/utils/formatCurrency";
 
 export interface CurrencyTotal {
   moneda: string | null;
@@ -98,14 +98,14 @@ export const sumByCurrency = <T>(
 
 /**
  * Importe en SU moneda; sin moneda conocida, sin símbolo (EC-600). La regla es
- * la de `moneyFormatFor`, con `options` (p. ej. `maximumFractionDigits`)
+ * la de `formatCurrency`, con `options` (p. ej. `maximumFractionDigits`)
  * encima.
  */
 export const formatInCurrency = (
   value: number,
   moneda: string | null,
-  options?: Intl.NumberFormatOptions,
-): string => formatCurrency(value, moneyFormatFor(moneda, options));
+  options?: MoneyFormatOverrides,
+): string => formatCurrency(value, moneda, options);
 
 /** Agrupa elementos por moneda conservando su orden dentro de cada grupo. */
 export const groupByCurrency = <T>(

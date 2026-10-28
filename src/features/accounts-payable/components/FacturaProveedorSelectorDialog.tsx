@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useFacturasProveedor } from "../hooks/useFacturasProveedor";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
@@ -118,7 +118,7 @@ function FacturaProveedorSelectorContent({
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
             <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-              {formatMoneyValueOrDash(factura.total, moneyFormatFor(factura.moneda_codigo))}
+              {formatMoneyValueOrDash(factura.total, factura.moneda_codigo)}
             </p>
           </div>
         </div>

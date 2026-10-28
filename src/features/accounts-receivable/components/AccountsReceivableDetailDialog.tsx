@@ -7,7 +7,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatCurrency, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBackendToday } from "@/src/hooks/useBackendToday";
@@ -136,7 +136,7 @@ function DetailDialogContent({
                 Cuenta vencida hace {diasDeAtraso} {diasDeAtraso === 1 ? "día" : "días"}
                 , con un saldo de{" "}
                 <span className="font-semibold tabular-nums">
-                  {formatCurrency(safeParseAmount(cuenta.saldo), moneyFormatFor(cuenta.moneda_codigo))}
+                  {formatCurrency(safeParseAmount(cuenta.saldo), cuenta.moneda_codigo)}
                 </span>
                 .
               </p>
@@ -181,7 +181,7 @@ function DetailDialogContent({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
               <InfoField label="Total">
                 <span className="tabular-nums">
-                  {formatCurrency(safeParseAmount(cuenta.total), moneyFormatFor(cuenta.moneda_codigo))}
+                  {formatCurrency(safeParseAmount(cuenta.total), cuenta.moneda_codigo)}
                 </span>
               </InfoField>
               {/* `total_pagado` lo calcula el BACKEND (`total − saldo`). Se
@@ -189,12 +189,12 @@ function DetailDialogContent({
                   servidor que podría divergir sin que nos enteremos. */}
               <InfoField label="Total pagado">
                 <span className="tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">
-                  {formatCurrency(safeParseAmount(cuenta.total_pagado), moneyFormatFor(cuenta.moneda_codigo))}
+                  {formatCurrency(safeParseAmount(cuenta.total_pagado), cuenta.moneda_codigo)}
                 </span>
               </InfoField>
               <InfoField label="Saldo">
                 <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatCurrency(safeParseAmount(cuenta.saldo), moneyFormatFor(cuenta.moneda_codigo))}
+                  {formatCurrency(safeParseAmount(cuenta.saldo), cuenta.moneda_codigo)}
                 </span>
               </InfoField>
               <InfoField label="Último pago">

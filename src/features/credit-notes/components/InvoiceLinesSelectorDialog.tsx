@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { useInvoiceDetail } from "@/src/features/invoicing/hooks/useInvoiceDetail";
 import type { InvoiceDetail } from "@/src/features/invoicing/interfaces/invoice.interface";
 
@@ -53,7 +53,6 @@ function InvoiceLinesSelectorContent({
 }) {
   const { data: factura, isLoading, isError } = useInvoiceDetail(facturaId);
 
-  const monedaFormato = moneyFormatFor(monedaCodigo);
 
   const disponibles = (factura?.factura_detalles ?? []).filter(
     (detalle) => !alreadySelectedIds.includes(detalle.id),
@@ -90,13 +89,13 @@ function InvoiceLinesSelectorContent({
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               {formatQuantityValue(detalle.cantidad)} ×{" "}
-              {formatMoneyValueOrDash(detalle.precio_unitario, monedaFormato)}
+              {formatMoneyValueOrDash(detalle.precio_unitario, monedaCodigo)}
             </p>
           </div>
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">Total</p>
             <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
-              {formatMoneyValueOrDash(detalle.total, monedaFormato)}
+              {formatMoneyValueOrDash(detalle.total, monedaCodigo)}
             </p>
           </div>
         </div>

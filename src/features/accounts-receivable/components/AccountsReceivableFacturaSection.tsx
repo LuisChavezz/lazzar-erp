@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCurrency, formatQuantityValue, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, formatQuantityValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import type { CuentaPorCobrarFactura } from "../interfaces/accounts-receivable-detail.interface";
 import {
   EmptyLines,
@@ -73,16 +73,16 @@ export const AccountsReceivableFacturaSection = ({
                 {formatQuantityValue(concepto.cantidad)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {formatCurrency(safeParseAmount(concepto.precio_unitario), moneyFormatFor(monedaCodigo))}
+                {formatCurrency(safeParseAmount(concepto.precio_unitario), monedaCodigo)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {formatCurrency(safeParseAmount(concepto.descuento), moneyFormatFor(monedaCodigo))}
+                {formatCurrency(safeParseAmount(concepto.descuento), monedaCodigo)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {formatCurrency(safeParseAmount(concepto.impuesto), moneyFormatFor(monedaCodigo))}
+                {formatCurrency(safeParseAmount(concepto.impuesto), monedaCodigo)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                {formatCurrency(safeParseAmount(concepto.total), moneyFormatFor(monedaCodigo))}
+                {formatCurrency(safeParseAmount(concepto.total), monedaCodigo)}
               </td>
             </tr>
           ))}

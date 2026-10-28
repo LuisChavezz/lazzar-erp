@@ -8,7 +8,7 @@ import {
   visibleCurrencyEntries,
 } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline, showsCurrencyCodes } from "@/src/components/CurrencyTotalsValue";
-import { currencyHasOwnSymbol, formatCurrency, moneyFormatFor, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { currencyHasOwnSymbol, formatCurrency } from "@/src/utils/formatCurrency";
 import { formatKpiTaggedCurrencyAmount, formatKpiTaggedSignedCurrencyAmount } from "@/src/utils/kpiFormat";
 import {
   computeAgingBuckets,
@@ -195,21 +195,13 @@ test.describe("currencyTotals", () => {
     ).toBe("$10 MXN y $0 USD");
   });
 
-  test("moneyFormatFor sin overrides no cambia", () => {
-    expect(moneyFormatFor("MXN")).toEqual({ currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    expect(moneyFormatFor(null)).toBe(NO_CURRENCY_FORMAT);
-    expect(moneyFormatFor("MXN", { maximumFractionDigits: 0 })).toEqual({
-      currency: "MXN",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+  test("formatCurrency: 2 decimales por defecto; los overrides ajustan decimales", () => {
+    // EC-606: la moneda pasó de `moneyFormatFor(...)` a parámetro del helper; mismas reglas.
+    expect(plain(formatCurrency(1234.5, "MXN"))).toBe("$1,234.50");
+    expect(plain(formatCurrency(1234.5, null))).toBe("1,234.50");
+    expect(plain(formatCurrency(1234.5, "MXN", { maximumFractionDigits: 0 }))).toBe("$1,235");
     // Un mínimo mayor a 2 sube el máximo en vez de recortarse.
-    expect(moneyFormatFor("MXN", { minimumFractionDigits: 4 })).toEqual({
-      currency: "MXN",
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    });
-    expect(plain(formatCurrency(1, moneyFormatFor("MXN", { minimumFractionDigits: 4 })))).toBe("$1.0000");
+    expect(plain(formatCurrency(1, "MXN", { minimumFractionDigits: 4 }))).toBe("$1.0000");
   });
 });
 

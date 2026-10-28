@@ -4,7 +4,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
@@ -115,7 +115,7 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
         {formatMoneyValue(
           info.getValue(),
           // Cada cuenta en la moneda de SU factura.
-          moneyFormatFor(info.row.original.moneda_codigo),
+          info.row.original.moneda_codigo,
         )}
       </span>
     ),
@@ -127,7 +127,7 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       <span className="text-slate-800 dark:text-white font-semibold tabular-nums">
         {formatMoneyValue(
           info.getValue(),
-          moneyFormatFor(info.row.original.moneda_codigo),
+          info.row.original.moneda_codigo,
         )}
       </span>
     ),

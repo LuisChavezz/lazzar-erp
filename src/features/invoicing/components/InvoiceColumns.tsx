@@ -5,7 +5,7 @@ import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { BanIcon, ChevronRightIcon, ClockIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { formatCurrency, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
@@ -210,7 +210,7 @@ export const invoiceColumns: ColumnDef<InvoiceListRow>[] = [
       <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
         {formatCurrency(
           safeParseAmount(row.original.total),
-          moneyFormatFor(row.original.moneda_nombre),
+          row.original.moneda_nombre,
         )}
       </div>
     ),

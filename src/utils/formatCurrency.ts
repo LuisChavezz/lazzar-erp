@@ -1,76 +1,83 @@
-export const formatCurrency = (
-  value: number,
-  options?: Intl.NumberFormatOptions,
-) => {
-  const merged: Intl.NumberFormatOptions = {
-    style: "currency",
-    currency: "MXN",
-    ...options,
-  };
-  try {
-    return new Intl.NumberFormat("es-MX", merged).format(value);
-  } catch {
-    // `currency` puede venir de un campo que en realidad es un nombre de
-    // moneda (p.ej. "Peso Mexicano") en vez de un código ISO 4217 válido;
-    // Intl.NumberFormat lanza en ese caso. Mostramos el número sin símbolo
-    // de moneda en vez de romper el render; las opciones de decimales de quien
-    // llama se conservan y, si no fijó ninguna, se usan 2 (como un importe).
-    const rest: Intl.NumberFormatOptions = { ...merged };
-    delete rest.currency;
-    delete rest.style;
-    if (rest.minimumFractionDigits === undefined && rest.maximumFractionDigits === undefined) {
-      rest.minimumFractionDigits = 2;
-      rest.maximumFractionDigits = 2;
-    }
-    return new Intl.NumberFormat("es-MX", rest).format(value);
-  }
-};
+/**
+ * Opciones que quien llama puede ajustar sobre el formato de un importe:
+ * decimales, `currencyDisplay`, `signDisplay`… Nunca `currency` ni `style`: la
+ * moneda es el parámetro `monedaCodigo`, así no hay forma de colar una por
+ * defecto (EC-606).
+ */
+export type MoneyFormatOverrides = Omit<Intl.NumberFormatOptions, "currency" | "style">;
 
 /**
- * Opciones para un importe de moneda DESCONOCIDA: número con 2 decimales y sin
- * símbolo. Se pasa como `options` a `formatMoneyValue`/`formatMoneyValueOrDash`
- * cuando no hay moneda que afirmar — un "$" sobre un importe en otra moneda (o
- * en varias mezcladas) diría algo falso.
+ * Formato de un importe de moneda DESCONOCIDA: número con 2 decimales y sin
+ * símbolo — un "$" sobre un importe en otra moneda (o en varias mezcladas)
+ * diría algo falso.
  */
-export const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
+const NO_CURRENCY_FORMAT: Intl.NumberFormatOptions = {
   style: "decimal",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 };
 
 /**
- * Opciones de formato para un importe en la moneda `monedaCodigo` (código ISO
+ * Opciones de `Intl` para un importe en la moneda `monedaCodigo` (código ISO
  * del registro), SIEMPRE con 2 decimales: el backend manda los importes con 2, y
  * los decimales ISO por defecto de `Intl` redondearían, p. ej., un JPY a enteros.
- * Sin código, sin símbolo (`NO_CURRENCY_FORMAT`): caer al MXN por defecto de
- * `formatCurrency` pintaría un importe en USD con signo de pesos. Un código que
- * `Intl` no reconozca cae en el `catch` de `formatCurrency`: sin símbolo, pero
- * con los mismos 2 decimales.
+ * Sin código, sin símbolo (`NO_CURRENCY_FORMAT`).
  *
- * `overrides` (opcional) se aplica encima, con o sin moneda — p. ej.
+ * `overrides` se aplica encima, con o sin moneda — p. ej.
  * `{ maximumFractionDigits: 0 }` para las tarjetas compactas o
  * `currencyDisplay` —. Un mínimo sin máximo sube el máximo a ese mínimo; un
  * máximo por debajo de 2 baja el mínimo a ese máximo.
- * Sin `overrides` devuelve exactamente lo mismo que siempre.
  */
-export const moneyFormatFor = (
-  monedaCodigo: string | null | undefined,
-  overrides?: Intl.NumberFormatOptions,
+const moneyFormatOptions = (
+  monedaCodigo: string | null,
+  overrides?: MoneyFormatOverrides,
 ): Intl.NumberFormatOptions => {
   const base: Intl.NumberFormatOptions = monedaCodigo
-    ? { currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }
+    ? { style: "currency", currency: monedaCodigo, minimumFractionDigits: 2, maximumFractionDigits: 2 }
     : NO_CURRENCY_FORMAT;
   if (!overrides) return base;
+  // Un objeto de tipo más amplio (`Intl.NumberFormatOptions`) es asignable a
+  // `MoneyFormatOverrides`: se descartan `currency` y `style` también en tiempo
+  // de ejecución para que ningún override reintroduzca una moneda.
+  const safe: Intl.NumberFormatOptions = { ...overrides };
+  delete safe.currency;
+  delete safe.style;
   // Un mínimo pedido por encima de 2 sube el máximo (no se recorta en silencio);
   // un máximo pedido por debajo de 2 baja el mínimo.
   const maximumFractionDigits =
     overrides.maximumFractionDigits ?? Math.max(2, overrides.minimumFractionDigits ?? 2);
   return {
     ...base,
-    ...overrides,
+    ...safe,
     minimumFractionDigits: Math.min(overrides.minimumFractionDigits ?? 2, maximumFractionDigits),
     maximumFractionDigits,
   };
+};
+
+/**
+ * Importe en la moneda `monedaCodigo` (código ISO del registro, p. ej. "USD"),
+ * con 2 decimales. La moneda es OBLIGATORIA (EC-606): `null` es la elección
+ * explícita de "sin símbolo" para un importe cuya moneda no se conoce, nunca
+ * pesos por defecto. Para un importe que legítimamente es MXN, `formatMxn`.
+ *
+ * Un código que `Intl` no reconozca (p. ej. un nombre de moneda, "Peso
+ * Mexicano") se pinta sin símbolo, con los decimales pedidos, en vez de romper
+ * el render.
+ */
+export const formatCurrency = (
+  value: number,
+  monedaCodigo: string | null,
+  overrides?: MoneyFormatOverrides,
+): string => {
+  const options = moneyFormatOptions(monedaCodigo, overrides);
+  try {
+    return new Intl.NumberFormat("es-MX", options).format(value);
+  } catch {
+    const rest: Intl.NumberFormatOptions = { ...options };
+    delete rest.currency;
+    delete rest.style;
+    return new Intl.NumberFormat("es-MX", rest).format(value);
+  }
 };
 
 /**
@@ -119,39 +126,45 @@ export const safeParseAmount = (value: string | null | undefined): number => {
 
 /**
  * Combina `safeParseAmount` + `formatCurrency` para los campos financieros
- * del backend, que llegan como string (o, en algunos renglones, number).
- * Usado por los documentos PDF y las plantillas de correo (cotización y
- * orden de compra).
- *
- * `options` se pasa tal cual a `formatCurrency`; su uso habitual es
- * `{ currency: <código ISO del registro> }` cuando el importe NO está en la
- * moneda por defecto (MXN) — p. ej. una orden de compra en USD, que expone su
- * `moneda_codigo`. Sin `options` se comporta igual que antes.
+ * del backend, que llegan como string (o, en algunos renglones, number). Misma
+ * regla de moneda: `monedaCodigo` obligatorio, `null` = sin símbolo.
  */
 export const formatMoneyValue = (
   value: string | number,
-  options?: Intl.NumberFormatOptions,
-): string => formatCurrency(safeParseAmount(String(value)), options);
+  monedaCodigo: string | null,
+  overrides?: MoneyFormatOverrides,
+): string => formatCurrency(safeParseAmount(String(value)), monedaCodigo, overrides);
 
 /**
  * Como `formatMoneyValue` pero devuelve "—" cuando el valor es `null`/
- * `undefined`, en vez de un engañoso "$0.00". Para los campos financieros que
+ * `undefined`, en vez de un engañoso "0.00". Para los campos financieros que
  * el backend ELIMINA de la respuesta (filtro de contabilidad de pedidos y de
  * órdenes de compra) según el rol del usuario: un importe ausente no es cero,
  * es "no visible".
  */
 export const formatMoneyValueOrDash = (
   value: string | number | null | undefined,
-  options?: Intl.NumberFormatOptions,
-): string => (value == null ? "—" : formatMoneyValue(value, options));
+  monedaCodigo: string | null,
+  overrides?: MoneyFormatOverrides,
+): string => (value == null ? "—" : formatMoneyValue(value, monedaCodigo, overrides));
 
 /**
- * Importe de moneda DESCONOCIDA (`NO_CURRENCY_FORMAT`): 2 decimales, sin símbolo, y
- * "—" si el valor falta. Único punto de esa regla para quien no tiene código de
- * moneda que pasar; con código, `formatMoneyValue(value, moneyFormatFor(codigo))`.
+ * Importe de moneda DESCONOCIDA: 2 decimales, sin símbolo, y "—" si el valor
+ * falta. Atajo de `formatMoneyValueOrDash(value, null)`.
  */
 export const formatAmountNoCurrency = (value: string | number | null | undefined): string =>
-  formatMoneyValueOrDash(value, NO_CURRENCY_FORMAT);
+  formatMoneyValueOrDash(value, null);
+
+/**
+ * Importe que legítimamente es PESOS MEXICANOS ("$1,234.50"), p. ej. los de RH
+ * (la LFT, art. 101, exige pagar el salario en moneda de curso legal). Único
+ * punto donde el código acepta MXN sin leerlo de un registro: así cada uso
+ * queda a la vista. "—" si el valor falta.
+ */
+export const formatMxn = (
+  value: string | number | null | undefined,
+  overrides?: MoneyFormatOverrides,
+): string => formatMoneyValueOrDash(value, "MXN", overrides);
 
 /**
  * Formatea una CANTIDAD (no dinero) como número plano es-MX, hasta 2 decimales,

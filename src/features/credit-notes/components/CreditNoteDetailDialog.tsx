@@ -17,7 +17,6 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
-  moneyFormatFor,
 } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
@@ -210,19 +209,18 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
         ? { status: "loaded", invoice: factura }
         : { status: "unavailable" };
 
-  const monedaFormato = moneyFormatFor(factura?.moneda_nombre);
+  const monedaCodigo = factura?.moneda_nombre ?? null;
 
   /**
    * Formatea un importe SIN comprometerse con una moneda que todavía no se
    * conoce.
    *
-   * Sin `currency`, `formatCurrency` cae a su MXN por defecto: mientras la
-   * factura carga —y PARA SIEMPRE si su consulta falla— una nota sobre una
-   * factura en USD se pintaría con símbolo de pesos, y nada en la pantalla
-   * delataría el error. `moneyFormatFor` pinta entonces el número con dos
-   * decimales y sin símbolo, igual que con un código que `Intl` no reconozca.
+   * Mientras la factura carga —y PARA SIEMPRE si su consulta falla— no hay
+   * código: una nota sobre una factura en USD no puede pintarse con símbolo de
+   * pesos. Con `null` el helper pinta el número con dos decimales y sin
+   * símbolo, igual que con un código que `Intl` no reconozca.
    */
-  const money = (value: string) => formatMoneyValueOrDash(value, monedaFormato);
+  const money = (value: string) => formatMoneyValueOrDash(value, monedaCodigo);
 
   /** Concepto de la factura al que apunta una línea, si la factura ya cargó. */
   const conceptoDe = (facturaDetalleId: number) =>

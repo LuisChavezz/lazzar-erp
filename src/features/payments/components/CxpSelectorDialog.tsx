@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import type { CuentaPorPagar } from "@/src/features/accounts-payable/interfaces/accounts-payable.interface";
@@ -140,7 +140,7 @@ function CxpSelectorContent({
                   venir en otra divisa); sin ella, sin símbolo. */}
               {formatMoneyValueOrDash(
                 cuenta.saldo,
-                moneyFormatFor(cuenta.moneda_codigo),
+                cuenta.moneda_codigo,
               )}
             </p>
           </div>

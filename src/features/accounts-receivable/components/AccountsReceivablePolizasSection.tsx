@@ -90,7 +90,7 @@ const PolizaDetallesTable = ({
                   : "font-semibold text-slate-800 dark:text-white"
               }`}
             >
-              {formatCurrency(safeParseAmount(detalle.cargo), { currency: monedaCodigo })}
+              {formatCurrency(safeParseAmount(detalle.cargo), monedaCodigo)}
             </td>
             <td
               className={`px-3 py-2 text-right tabular-nums ${
@@ -99,7 +99,7 @@ const PolizaDetallesTable = ({
                   : "font-semibold text-slate-800 dark:text-white"
               }`}
             >
-              {formatCurrency(safeParseAmount(detalle.abono), { currency: monedaCodigo })}
+              {formatCurrency(safeParseAmount(detalle.abono), monedaCodigo)}
             </td>
             {/* Referencia y observaciones se colapsan en una columna: son los dos
                 textos largos del renglón y por separado desbordan el diálogo. El
@@ -151,12 +151,12 @@ const PolizaCard = ({
           sería duplicar una regla contable del servidor. */}
       <InfoField label="Total cargos">
         <span className="tabular-nums">
-          {formatCurrency(safeParseAmount(poliza.total_cargos), { currency: monedaCodigo })}
+          {formatCurrency(safeParseAmount(poliza.total_cargos), monedaCodigo)}
         </span>
       </InfoField>
       <InfoField label="Total abonos">
         <span className="tabular-nums">
-          {formatCurrency(safeParseAmount(poliza.total_abonos), { currency: monedaCodigo })}
+          {formatCurrency(safeParseAmount(poliza.total_abonos), monedaCodigo)}
         </span>
       </InfoField>
       <InfoField label="Concepto" className="col-span-2 sm:col-span-3">

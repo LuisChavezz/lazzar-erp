@@ -1,7 +1,7 @@
 "use client";
 
 import { InfoField, InfoGrid, Section } from "@/src/components/DetailDialogPrimitives";
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { plural } from "@/src/utils/kpiFormat";
 import type { Customer } from "../interfaces/customer.interface";
 
@@ -26,7 +26,7 @@ export const CustomerCredito = ({
       </InfoField>
       <InfoField label="Límite de crédito (informativo, sin moneda)">
         <span className="tabular-nums">
-          {formatMoneyValue(customer.limite_credito, NO_CURRENCY_FORMAT)}
+          {formatMoneyValue(customer.limite_credito, null)}
         </span>
       </InfoField>
     </InfoGrid>

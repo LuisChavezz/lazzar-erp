@@ -7,7 +7,7 @@ import {
   TraspasosIcon,
   ViewIcon,
 } from "@/src/components/Icons";
-import { formatCurrency, NO_CURRENCY_FORMAT, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
@@ -164,7 +164,7 @@ export const opportunityColumns = [
     meta: { align: "right", serverSort: "monto_estimado" },
     cell: (info) => (
       <span className="text-slate-700 dark:text-slate-200 font-medium tabular-nums">
-        {formatCurrency(safeParseAmount(info.getValue()), NO_CURRENCY_FORMAT)}
+        {formatCurrency(safeParseAmount(info.getValue()), null)}
       </span>
     ),
   }),

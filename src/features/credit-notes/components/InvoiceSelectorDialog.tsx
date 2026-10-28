@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
@@ -88,14 +88,14 @@ function InvoiceSelectorContent({
               {/* En la moneda de la FACTURA; sin ella, sin símbolo. */}
               {formatMoneyValueOrDash(
                 cuenta.saldo,
-                moneyFormatFor(cuenta.moneda_codigo),
+                cuenta.moneda_codigo,
               )}
             </p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
               de{" "}
               {formatMoneyValueOrDash(
                 cuenta.total,
-                moneyFormatFor(cuenta.moneda_codigo),
+                cuenta.moneda_codigo,
               )}
             </p>
           </div>

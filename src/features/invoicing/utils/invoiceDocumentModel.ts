@@ -21,7 +21,6 @@
 import type { Invoice } from "../interfaces/invoice.interface";
 import {
   formatCurrency,
-  moneyFormatFor,
   formatQuantityValue,
   safeParseAmount,
 } from "@/src/utils/formatCurrency";
@@ -79,7 +78,7 @@ export const buildInvoiceDocumentModel = (invoice: Invoice): InvoiceDocumentMode
   // (`moneda.codigo_iso` en el serializer); sin él, o con un código que `Intl`
   // no reconozca, el importe va sin símbolo.
   const money = (value: string | number): string =>
-    formatCurrency(safeParseAmount(String(value)), moneyFormatFor(invoice.moneda_nombre));
+    formatCurrency(safeParseAmount(String(value)), invoice.moneda_nombre);
 
   // El listado puede no hidratar los conceptos; `?? []` evita romper el render
   // con un valor ausente.

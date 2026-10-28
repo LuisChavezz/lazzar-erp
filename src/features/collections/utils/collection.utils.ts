@@ -1,6 +1,6 @@
 import type { CuentaBancaria } from "@/src/features/bank-accounts/interfaces/bank-account.interface";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
-import { formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { Cobro } from "../interfaces/collection.interface";
 
@@ -99,4 +99,4 @@ export const findMismatchedMonedas = (
  * que los indicadores), o sin símbolo si es `null`.
  */
 export const formatCobroAmount = (value: string, moneda: string | null): string =>
-  moneda === null ? formatMoneyValue(value, NO_CURRENCY_FORMAT) : formatKpiCurrencyAmount(value, moneda);
+  moneda === null ? formatMoneyValue(value, null) : formatKpiCurrencyAmount(value, moneda);

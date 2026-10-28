@@ -7,7 +7,7 @@ import {
   Section,
 } from "@/src/components/DetailDialogPrimitives";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
-import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import type { ResumenComercial } from "../interfaces/customer.interface";
 import { buildPedidoEstatusChips } from "../utils/customer-detail";
@@ -78,7 +78,7 @@ export const CustomerResumenPedidos = ({ resumen }: { resumen: ResumenComercial 
                     <EstatusPill label={estatus.label} className={estatus.className} />
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
-                    {formatMoneyValue(pedido.gran_total, moneyFormatFor(pedido.moneda))}
+                    {formatMoneyValue(pedido.gran_total, pedido.moneda)}
                   </td>
                 </tr>
               );

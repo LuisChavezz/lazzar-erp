@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import type { Currency } from "@/src/features/currency/interfaces/currency.interface";
 import { findCurrency, getCurrencyLabel } from "@/src/features/currency/utils/currencyLookup";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 
 /**
  * Moneda REAL del pedido para formatear sus importes.
@@ -43,11 +43,11 @@ export function OrderCurrencyProvider({
 
 export function useOrderMoney() {
   const { currency } = useContext(OrderCurrencyContext);
-  const options = moneyFormatFor(currency?.codigo_iso);
+  const monedaCodigo = currency?.codigo_iso ?? null;
   return {
     /** Importe del backend formateado en la moneda del pedido; "—" si falta. */
     formatMoney: (value: string | number | null | undefined) =>
-      formatMoneyValueOrDash(value, options),
+      formatMoneyValueOrDash(value, monedaCodigo),
     /** "MXN - Peso mexicano", o `null` mientras no se conozca. */
     currencyLabel: currency ? getCurrencyLabel(currency) : null,
   };

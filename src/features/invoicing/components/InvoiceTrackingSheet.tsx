@@ -10,7 +10,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { MetricCard } from "@/src/components/ProgressPrimitives";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatCurrency } from "@/src/utils/formatCurrency";
 import { clampPercentage } from "@/src/utils/percentage";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import {
@@ -57,7 +57,7 @@ interface InvoiceTrackingSheetProps {
 export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSheetProps) {
   const [openCxcId, setOpenCxcId] = useState<number | null>(null);
   const [openNotaId, setOpenNotaId] = useState<number | null>(null);
-  const money = (value: number) => formatCurrency(value, moneyFormatFor(data.moneda.codigo_iso));
+  const money = (value: number) => formatCurrency(value, data.moneda.codigo_iso);
 
   const { avance_pedido: avance, pedido } = data;
   const canOpenPedido = pedido !== null && canOpen(`/orders/${pedido.id}`);

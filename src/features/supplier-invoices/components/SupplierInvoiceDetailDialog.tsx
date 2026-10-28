@@ -18,7 +18,7 @@ import {
   FacturaProveedorIcon,
   UploadIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
@@ -147,8 +147,7 @@ export function SupplierInvoiceDetailDialog({
     proveedor: factura.proveedor,
   });
   const canOpenOc = canAccessRoute(ocHref.split("?")[0], session?.user);
-  const moneda = moneyFormatFor(factura.moneda_codigo);
-  const money = (value: string) => formatMoneyValueOrDash(value, moneda);
+  const money = (value: string) => formatMoneyValueOrDash(value, factura.moneda_codigo);
 
   return (
     <MainDialog

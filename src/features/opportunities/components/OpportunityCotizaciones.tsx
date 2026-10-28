@@ -12,7 +12,7 @@ import {
   quoteEditPath,
 } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { canEditQuote } from "@/src/features/quotes/utils/quoteStatusRules";
-import { formatMoneyValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { OPPORTUNITY_LIST_PARAM } from "../constants/opportunityRoutes";
@@ -173,7 +173,7 @@ export const OpportunityCotizaciones = ({
                 <td className={TD_CLASS}>{formatShortDate(cotizacion.autorizada_at)}</td>
                 <td className={TD_CLASS}>{pedido}</td>
                 <td className={`${TD_CLASS} text-right tabular-nums`}>
-                  {formatMoneyValue(cotizacion.gran_total, moneyFormatFor(cotizacion.moneda))}
+                  {formatMoneyValue(cotizacion.gran_total, cotizacion.moneda)}
                 </td>
                 <td className={`${TD_CLASS} text-center`}>
                   {isCotizacionAutorizada(cotizacion) ? (

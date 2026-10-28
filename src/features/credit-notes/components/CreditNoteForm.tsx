@@ -13,7 +13,7 @@ import {
   RejectIcon,
   DeleteIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, formatQuantityValue, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import {
   centavosAMoneda,
@@ -67,7 +67,6 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   // así que sirve para poner la etiqueta de pendiente en el botón correcto.
   const estatusIntent = useStore(form.store, (state) => state.values.estatus);
 
-  const monedaFormato = moneyFormatFor(monedaCodigo);
   const selectedDetalleIds = lines.map((line) => line.factura_detalle);
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún
@@ -139,7 +138,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                       Saldo por cobrar
                     </p>
                     <p className="text-base font-bold tabular-nums text-slate-800 dark:text-white">
-                      {formatMoneyValueOrDash(cxcSaldo, monedaFormato)}
+                      {formatMoneyValueOrDash(cxcSaldo, monedaCodigo)}
                     </p>
                   </div>
                 </div>
@@ -338,7 +337,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                                     {formatQuantityValue(line.cantidad_facturada)} ·{" "}
                                     {formatMoneyValueOrDash(
                                       line.total_facturado,
-                                      monedaFormato,
+                                      monedaCodigo,
                                     )}
                                   </p>
                                 </div>
@@ -402,7 +401,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                           Suma de los conceptos
                         </span>
                         <span className="tabular-nums font-semibold text-slate-600 dark:text-slate-300">
-                          {formatMoneyValueOrDash(sumaLineas, monedaFormato)}
+                          {formatMoneyValueOrDash(sumaLineas, monedaCodigo)}
                         </span>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { currencyHasOwnSymbol, formatMoneyValue, NO_CURRENCY_FORMAT } from "@/src/utils/formatCurrency";
+import { currencyHasOwnSymbol, formatMoneyValue } from "@/src/utils/formatCurrency";
 import { parseLocalDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
@@ -17,14 +17,14 @@ import { formatPercentageNumber } from "@/src/utils/percentage";
  * símbolo (`formatCurrency`).
  */
 export const formatKpiCurrencyAmount = (value: string | number, moneda: string): string =>
-  formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol" });
+  formatMoneyValue(value, moneda, { currencyDisplay: "narrowSymbol" });
 
 /**
  * Como `formatKpiCurrencyAmount`, con signo explícito ("+$1,250.00" /
  * "-$80.00" / "$0.00"): para diferencias por moneda, donde el signo ES el dato.
  */
 export const formatKpiSignedCurrencyAmount = (value: string | number, moneda: string): string =>
-  formatMoneyValue(value, { currency: moneda, currencyDisplay: "narrowSymbol", signDisplay: "exceptZero" });
+  formatMoneyValue(value, moneda, { currencyDisplay: "narrowSymbol", signDisplay: "exceptZero" });
 
 /**
  * Como `formatKpiCurrencyAmount`, para donde la UI YA muestra el código al lado
@@ -35,13 +35,13 @@ export const formatKpiSignedCurrencyAmount = (value: string | number, moneda: st
 export const formatKpiTaggedCurrencyAmount = (value: string | number, moneda: string): string =>
   currencyHasOwnSymbol(moneda)
     ? formatKpiCurrencyAmount(value, moneda)
-    : formatMoneyValue(value, NO_CURRENCY_FORMAT);
+    : formatMoneyValue(value, null);
 
 /** Como `formatKpiSignedCurrencyAmount`, con el mismo criterio que `formatKpiTaggedCurrencyAmount`. */
 export const formatKpiTaggedSignedCurrencyAmount = (value: string | number, moneda: string): string =>
   currencyHasOwnSymbol(moneda)
     ? formatKpiSignedCurrencyAmount(value, moneda)
-    : formatMoneyValue(value, { ...NO_CURRENCY_FORMAT, signDisplay: "exceptZero" });
+    : formatMoneyValue(value, null, { signDisplay: "exceptZero" });
 
 /** Porcentaje del backend (0–100, 1 decimal) como "25.0%": siempre con su decimal. */
 export const formatKpiPct = (value: number): string => `${formatPercentageNumber(value, 1)}%`;

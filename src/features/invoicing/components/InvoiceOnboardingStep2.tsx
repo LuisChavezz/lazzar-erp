@@ -5,7 +5,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { FormSecondaryButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
-import { formatCurrency, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
 import type { Invoice } from "../interfaces/invoice.interface";
@@ -168,7 +168,7 @@ function EstimateField({ label, value, strong = false }: { label: string; value:
 /** Resultado: folio e importes REALES de la factura creada (respuesta del POST). */
 function InvoiceCreatedSummary({ invoice }: { invoice: Invoice }) {
   const money = (value: string) =>
-    formatCurrency(safeParseAmount(value), moneyFormatFor(invoice.moneda_nombre));
+    formatCurrency(safeParseAmount(value), invoice.moneda_nombre);
   const piezas = invoice.factura_detalles.reduce(
     (sum, detalle) => sum + safeParseAmount(detalle.cantidad),
     0,

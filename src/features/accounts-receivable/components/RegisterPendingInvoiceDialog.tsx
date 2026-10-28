@@ -23,7 +23,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import { formatCurrency, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatCurrency } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
@@ -445,7 +445,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
                 Total esperado:{" "}
                 {formatCurrency(
                   expectedTotalCents / 100,
-                  moneyFormatFor(monedaCodigo),
+                  monedaCodigo,
                 )}
               </span>
               {!totalMatches && expectedTotalSubmittable && (

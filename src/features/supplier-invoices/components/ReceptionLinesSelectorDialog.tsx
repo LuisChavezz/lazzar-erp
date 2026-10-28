@@ -2,7 +2,7 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { formatExactQuantityValue, formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue, formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { usePurchaseOrder } from "@/src/features/purchase-orders/hooks/usePurchaseOrder";
 import { unitsToQty } from "../schemas/supplier-invoice.schema";
 import {
@@ -77,7 +77,6 @@ function ReceptionLinesSelectorContent({
     (option) => !alreadySelectedIds.includes(option.recepcionDetalle.id),
   );
 
-  const moneda = moneyFormatFor(monedaCodigo);
 
   const avisos: string[] = [];
   if (opciones.agotadas > 0) {
@@ -150,7 +149,7 @@ function ReceptionLinesSelectorContent({
             <p className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
               {/* Sin `precio` la llave no llega (rol sin visibilidad financiera). */}
               {option.ocDetalle.precio !== undefined
-                ? `${formatMoneyValueOrDash(option.ocDetalle.precio, moneda)} c/u`
+                ? `${formatMoneyValueOrDash(option.ocDetalle.precio, monedaCodigo)} c/u`
                 : "Precio no visible"}
             </p>
           </div>

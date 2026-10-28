@@ -11,7 +11,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { CxpIcon, InfoIcon, RefreshIcon, RejectIcon } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, moneyFormatFor } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { useAccountPayableForm } from "../hooks/useAccountPayableForm";
 import { FacturaProveedorSelectorDialog } from "./FacturaProveedorSelectorDialog";
 
@@ -210,7 +210,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                 name="total"
                 readOnly
                 placeholder="Se toma de la factura"
-                value={total ? formatMoneyValueOrDash(total, moneyFormatFor(monedaCodigo)) : ""}
+                value={total ? formatMoneyValueOrDash(total, monedaCodigo) : ""}
                 error={totalError}
               />
 

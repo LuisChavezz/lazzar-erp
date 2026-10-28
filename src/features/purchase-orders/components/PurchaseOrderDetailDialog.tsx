@@ -18,7 +18,6 @@ import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receipt
 import {
   formatMoneyValueOrDash,
   formatQuantityValue,
-  moneyFormatFor,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import {
@@ -85,7 +84,7 @@ const DetalleTable = ({
 
   const showAmounts = hasLineAmounts(detalles);
   const money = (value: string | undefined) =>
-    formatMoneyValueOrDash(value, moneyFormatFor(monedaCodigo));
+    formatMoneyValueOrDash(value, monedaCodigo);
 
   return (
     <LineItemsTable
@@ -333,7 +332,7 @@ export function PurchaseOrderDetailDialog({
   const showAmounts = purchaseOrder ? canSeeAmounts(purchaseOrder) : false;
   const money = (value: string | undefined) =>
     // Solo se invoca dentro del bloque con `purchaseOrder` ya resuelto.
-    formatMoneyValueOrDash(value, moneyFormatFor(purchaseOrder?.moneda_codigo));
+    formatMoneyValueOrDash(value, purchaseOrder?.moneda_codigo ?? null);
 
   return (
     <>

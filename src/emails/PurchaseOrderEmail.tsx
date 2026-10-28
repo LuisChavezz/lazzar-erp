@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { formatMoneyValueOrDash, moneyFormatFor, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
 type PurchaseOrderEmailProps = {
@@ -26,7 +26,7 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
   const folioLabel = order.folio ?? `#${order.id}`;
   // Importes en la MONEDA DE LA ORDEN.
   const money = (value: string | number | null | undefined) =>
-    formatMoneyValueOrDash(value, moneyFormatFor(order.moneda_codigo));
+    formatMoneyValueOrDash(value, order.moneda_codigo);
 
   // ── Visibilidad de importes ────────────────────────────────────────────────
   // El backend ELIMINA los campos financieros de la respuesta cuando quien

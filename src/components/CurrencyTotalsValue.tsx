@@ -1,6 +1,6 @@
 import { KpiTaggedBlocks } from "@/src/components/KpiCurrency";
 import { formatInCurrency, visibleCurrencyEntries, type CurrencyTotal } from "@/src/utils/currencyTotals";
-import { currencyHasOwnSymbol } from "@/src/utils/formatCurrency";
+import { currencyHasOwnSymbol, type MoneyFormatOverrides } from "@/src/utils/formatCurrency";
 
 /**
  * Totales que el frontend suma POR MONEDA (EC-601, `currencyTotals`) dentro del
@@ -24,7 +24,7 @@ const tagOf = (entry: CurrencyTotal): string =>
  */
 const formatBlockAmount = (
   { moneda, total }: CurrencyTotal,
-  options?: Intl.NumberFormatOptions,
+  options?: MoneyFormatOverrides,
 ): string =>
   moneda && currencyHasOwnSymbol(moneda)
     ? formatInCurrency(total, moneda, { currencyDisplay: "narrowSymbol", ...options })
@@ -45,7 +45,7 @@ export function CurrencyTotalsValue({
   options,
 }: {
   totals: CurrencyTotal[];
-  options?: Intl.NumberFormatOptions;
+  options?: MoneyFormatOverrides;
 }) {
   const { visibles: totals, showCodes } = visibleCurrencyEntries(allTotals, (entry) => entry.total);
   if (!showCodes || totals.length === 0) {
@@ -83,7 +83,7 @@ const LIST_FORMAT = new Intl.ListFormat("es", { style: "long", type: "conjunctio
  */
 export const formatCurrencyTotalsInline = (
   allTotals: CurrencyTotal[],
-  options?: Intl.NumberFormatOptions,
+  options?: MoneyFormatOverrides,
 ): string => {
   const { visibles: totals, showCodes } = visibleCurrencyEntries(allTotals, (entry) => entry.total);
   if (!showCodes || totals.length === 0) {

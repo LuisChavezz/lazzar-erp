@@ -18,7 +18,7 @@
  * campo desde el cual derivarla (a diferencia de la nota de crédito, que al menos
  * puede leerla de su factura). Por eso TODOS los importes de este módulo se
  * pintan como decimal de 2 posiciones SIN símbolo: poner "$" afirmaría una
- * moneda que el documento no declara. Misma resolución (`NO_CURRENCY_FORMAT`)
+ * moneda que el documento no declara. Misma resolución (moneda `null`)
  * que `CreditNoteDetailDialog` mientras no conoce la moneda, aquí aplicada en
  * todas las vistas porque no existe ninguna consulta que pudiera resolverla.
  */
