@@ -2,19 +2,16 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ScissorsIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
-  HeaderStat,
-  HeaderStatRow,
-  InfoField,
-  InfoGrid,
-  Section,
-  SectionTitle,
-  textOrDash,
-} from "@/src/components/DetailDialogPrimitives";
+  OrderChip,
+  SheetPanel,
+  SheetSection,
+} from "@/src/features/orders/components/OrderSheetPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
@@ -188,204 +185,194 @@ export function EmbroideryOrderDetailContent({
   // pueda quedar editable por olvidar una de las dos condiciones.
   const isReadOnly = isTerminal || !canEditOb;
 
+  // Mismo lenguaje visual que el detalle del pedido y el de OP ("hoja
+  // impresa"): barra fija con "Volver" y secciones blancas con paneles grises.
   return (
     <div className="w-full space-y-6">
-      {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
+      {/* ── Barra superior fija con "Volver" ─────────────────────────────── */}
+      <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
+        {BackLink}
+        {isTerminal && <OrderChip>Orden cerrada · solo lectura</OrderChip>}
+      </div>
 
-      {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <h1 className="text-[22px] font-medium text-slate-900 dark:text-white font-mono mr-auto min-w-0 truncate">
-            {data.folio_bordado || `Orden #${data.id}`}
-          </h1>
-
-          <HeaderStatRow>
-            <HeaderStat label="Alta">{formatShortDate(data.fecha_inicio)}</HeaderStat>
-            {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) —
-                `formatShortDate` ya lo resuelve al guion largo del proyecto. */}
-            <HeaderStat label="Fin">{formatShortDate(data.fecha_fin)}</HeaderStat>
+      {/* ── 1. La orden ─────────────────────────────────────────────────── */}
+      <SheetSection
+        icon={<ScissorsIcon className="w-5 h-5" />}
+        title="Orden de Bordado"
+        subtitle="Datos de la orden, su origen y quién la trabaja."
+        badges={
+          <>
+            <StatusBadge
+              status={String(data.cobertura_completa)}
+              config={EMBROIDERY_COVERAGE_CONFIG}
+            />
             {/* `cantidad_cubierta` y NO la suma cruda de `detalles[].cantidad`:
-                son el mismo concepto —piezas que programa ESTA orden— pero el
-                backend publica la suya con PISO deliberado
-                (`math.floor(cubierto + EPS_CANTIDAD)`, para no sobre-reportar
-                cobertura), y `OrdenBordadoDetalle.cantidad` es un `FloatField`
-                que el pipeline de picking puede dejar fraccionario. Sumar en
-                crudo pintaría "9.6" aquí y "9 de 10 · 90%" en el bloque de
-                cobertura de abajo: dos cifras del mismo dato en la misma
-                pantalla. Se toma la del backend, que es la única que ve el
-                cliente en el resto del módulo. */}
-            <HeaderStat label="Piezas" bold>
-              {formatQuantityValue(data.cantidad_cubierta)}
-            </HeaderStat>
-            <HeaderStat label="Cobertura">
-              <StatusBadge
-                status={String(data.cobertura_completa)}
-                config={EMBROIDERY_COVERAGE_CONFIG}
-              />
-            </HeaderStat>
-          </HeaderStatRow>
+                el backend la publica con PISO deliberado para no sobre-reportar
+                cobertura, y es la cifra que ve el resto del módulo. */}
+            <OrderChip>
+              {formatQuantityValue(data.cantidad_cubierta)}{" "}
+              {pluralForQuantity(data.cantidad_cubierta, "pieza", "piezas")}
+            </OrderChip>
+          </>
+        }
+      >
+        <div className="flex flex-col xl:flex-row gap-6">
+          <SheetPanel title="Orden" className="shrink-0 w-full xl:w-80">
+            {/* El folio es el único <h1> de la página. */}
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6 break-all">
+              {data.folio_bordado || `Orden #${data.id}`}
+            </h1>
+            <div className="space-y-4 text-xs">
+              <InfoField label="Estatus">
+                <EmbroideryStatusSelect
+                  currentStatus={data.estatus_bordado}
+                  statusDisplay={data.estatus_bordado_display}
+                  onStatusChange={(next) => updateOrder.mutate({ estatus_bordado: next })}
+                  isPending={updateOrder.isPending}
+                  // El caso terminal lo resuelve el propio selector (se queda
+                  // sin transiciones); aquí solo se le añade el de permisos.
+                  readOnly={!canEditOb}
+                />
+              </InfoField>
+              <InfoField label="Alta">{formatShortDate(data.fecha_inicio)}</InfoField>
+              {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija). */}
+              <InfoField label="Fin">{formatShortDate(data.fecha_fin)}</InfoField>
+              {/* Máquina, observaciones, operador y proveedor degradan a su
+                  lectura simple con `isReadOnly`: estatus terminal o falta de
+                  `E-PRODUCCION-OB`. */}
+              <InfoField label="Máquina asignada">
+                {isReadOnly ? (
+                  textOrDash(data.maquina_asignada)
+                ) : (
+                  <EmbroideryMachineField
+                    value={data.maquina_asignada}
+                    onSave={(maquina) => updateOrder.mutateAsync({ maquina_asignada: maquina })}
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+            </div>
+          </SheetPanel>
+
+          {/* Empresa / sucursal / operador / proveedor con el NOMBRE ya resuelto
+              que manda el backend. Empresa y sucursal no se editan nunca; el
+              operador y el proveedor sí, salvo en solo lectura. */}
+          <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
+            <InfoGrid>
+              <InfoField label="Pedido">
+                <PedidoVinculadoFolio
+                  pedidoVinculado={data.pedido_vinculado}
+                  pedidoFolio={data.pedido_folio}
+                  from="embroidery"
+                />
+              </InfoField>
+              <InfoField label="Operador asignado">
+                {isReadOnly ? (
+                  textOrDash(data.usuario_nombre)
+                ) : (
+                  <EmbroideryOperatorSelect
+                    usuarioNombre={data.usuario_nombre}
+                    onOperatorChange={(usuarioId) =>
+                      updateOrder.mutate({ usuario_asignado: usuarioId })
+                    }
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+              {/* Proveedor: dónde se borda. Sin proveedor NO es un dato que
+                  falte —se borda en casa—, así que se rotula "Bordado interno". */}
+              <InfoField label="Proveedor">
+                {isReadOnly ? (
+                  (data.proveedor_nombre?.trim() ?? "") || (
+                    <span className="text-slate-500 dark:text-slate-400">Bordado interno</span>
+                  )
+                ) : (
+                  <EmbroideryProveedorSelect
+                    proveedorNombre={data.proveedor_nombre}
+                    proveedorId={data.proveedor}
+                    onProveedorChange={(proveedorId) =>
+                      updateOrder.mutate({ proveedor: proveedorId })
+                    }
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+              <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
+              <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+              <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+                {isReadOnly ? (
+                  textOrDash(data.observaciones)
+                ) : (
+                  <EmbroideryObservationsField
+                    value={data.observaciones}
+                    onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+            </InfoGrid>
+          </SheetPanel>
         </div>
-      </section>
+      </SheetSection>
 
-      {/* `items-start` evita el `stretch` por defecto del grid: sin él, ambas
-          tarjetas se estiran a la altura de la más alta y "Origen" —que tiene
-          tres campos— quedaba con un hueco vacío al fondo por culpa de
-          "Información general". Cada una mide ahora según su propio contenido. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* ── 2. Información general ────────────────────────────────────── */}
-        <Section title="Información general">
-          <InfoGrid>
-            <InfoField label="Pedido">
-              <PedidoVinculadoFolio
-                pedidoVinculado={data.pedido_vinculado}
-                pedidoFolio={data.pedido_folio}
-                from="embroidery"
-              />
-            </InfoField>
-            <InfoField label="Estatus">
-              <EmbroideryStatusSelect
-                currentStatus={data.estatus_bordado}
-                statusDisplay={data.estatus_bordado_display}
-                onStatusChange={(next) =>
-                  updateOrder.mutate({ estatus_bordado: next })
-                }
-                isPending={updateOrder.isPending}
-                // El caso terminal lo resuelve el propio selector (se queda sin
-                // transiciones); aquí solo se le añade el de permisos.
-                readOnly={!canEditOb}
-              />
-            </InfoField>
-            {/* Los dos campos editables de abajo degradan a su lectura simple
-                con `isReadOnly`: estatus TERMINAL (una orden finalizada o
-                cancelada ya no se toca) o falta de `E-PRODUCCION-OB`. El
-                selector de estatus resuelve su propio caso terminal —se queda
-                sin transiciones y se pinta como badge—,
-                así que no necesita el mismo ternario. */}
-            <InfoField label="Máquina asignada">
-              {isReadOnly ? (
-                textOrDash(data.maquina_asignada)
-              ) : (
-                <EmbroideryMachineField
-                  value={data.maquina_asignada}
-                  onSave={(maquina) =>
-                    updateOrder.mutateAsync({ maquina_asignada: maquina })
-                  }
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
-            {/* `md:col-span-3` desde que se quitó "Prioridad": con tres campos
-                sueltos la rejilla de 3 columnas cierra su primera fila exacta
-                (Pedido + Estatus + Máquina) y Observaciones ocupa la segunda
-                entera, sin la celda vacía que dejaría un `col-span-2`. En base
-                (2 columnas) se conserva el `col-span-2` —Observaciones es el
-                campo más largo y partirlo a media columna en móvil se lee peor
-                que el hueco que queda junto a "Máquina asignada". */}
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {isReadOnly ? (
-                textOrDash(data.observaciones)
-              ) : (
-                <EmbroideryObservationsField
-                  value={data.observaciones}
-                  onSave={(observaciones) =>
-                    updateOrder.mutateAsync({ observaciones })
-                  }
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-
-        {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        {/* Empresa / sucursal / usuario / proveedor con el NOMBRE ya resuelto
-            que el backend devuelve (`*_nombre`, vía `source=` +
-            `select_related`); los ids crudos no se pintan porque no le dicen
-            nada al usuario. Empresa y sucursal son `read_only` en el serializer
-            y no se editan nunca; el operador y el proveedor sí, salvo en un
-            estatus terminal. */}
-        <Section title="Origen">
-          <InfoGrid>
-            <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
-            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
-            <InfoField label="Operador asignado">
-              {isReadOnly ? (
-                textOrDash(data.usuario_nombre)
-              ) : (
-                <EmbroideryOperatorSelect
-                  usuarioNombre={data.usuario_nombre}
-                  onOperatorChange={(usuarioId) =>
-                    updateOrder.mutate({ usuario_asignado: usuarioId })
-                  }
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
-            {/* Proveedor: dónde se borda. Sin proveedor NO es un dato que
-                falte —significa que se borda en casa—, así que el caso vacío se
-                rotula "Bordado interno" en lugar del guion largo de
-                `textOrDash`, también en solo lectura. */}
-            <InfoField label="Proveedor">
-              {isReadOnly ? (
-                (data.proveedor_nombre?.trim() ?? "") || (
-                  <span className="text-slate-500 dark:text-slate-400">
-                    Bordado interno
-                  </span>
-                )
-              ) : (
-                <EmbroideryProveedorSelect
-                  proveedorNombre={data.proveedor_nombre}
-                  proveedorId={data.proveedor}
-                  onProveedorChange={(proveedorId) =>
-                    updateOrder.mutate({ proveedor: proveedorId })
-                  }
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
-          </InfoGrid>
-
-          {/* ── Cobertura del pedido ─────────────────────────────────────
-              Vive DENTRO de "Origen" —y no en una sección propia— porque habla
-              del mismo eje: de dónde viene la orden y cuánto del pedido madre
-              cubre. Se separa con un filete y su propio subtítulo, igual que el
-              bloque de órdenes hermanas que cierra el bloque. */}
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-            <SectionTitle>Cobertura del pedido</SectionTitle>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-              <StatusBadge
-                status={String(data.cobertura_completa)}
-                config={EMBROIDERY_COVERAGE_CONFIG}
-              />
-              <span className="tabular-nums text-slate-700 dark:text-slate-200">
-                <span className="font-semibold">
+      {/* ── 2. Cobertura del pedido ──────────────────────────────────────── */}
+      <SheetSection
+        icon={<TrendingUpIcon className="w-5 h-5" />}
+        title="Cobertura del pedido"
+        subtitle="Cuánto de lo contratado por el pedido programa esta orden."
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SheetPanel className="lg:col-span-2 p-5!">
+            <div className="flex flex-wrap items-baseline justify-between gap-3 mb-3">
+              <p className="text-sm text-slate-600 dark:text-slate-300 tabular-nums">
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">
                   {formatQuantityValue(data.cantidad_cubierta)}
                 </span>{" "}
                 de {formatQuantityValue(data.cantidad_contratada)}{" "}
-                {pluralForQuantity(data.cantidad_contratada, "pieza contratada", "piezas contratadas")}{" "}
-                por el pedido
-                {porcentaje !== null && ` · ${porcentaje}%`}
-              </span>
-              {!data.cobertura_completa && (
-                <span className="text-slate-500 dark:text-slate-400">
-                  El resto puede programarse en otras órdenes de bordado.
+                {pluralForQuantity(data.cantidad_contratada, "pieza contratada", "piezas contratadas")}
+              </p>
+              {porcentaje !== null && (
+                <span
+                  className={`text-lg font-bold tabular-nums ${
+                    data.cobertura_completa
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {porcentaje}%
                 </span>
               )}
             </div>
-
-            {/* Otras OB del mismo pedido — solo si las hay. */}
-            {data.otras_ordenes_del_pedido.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-                <SectionTitle>
-                  Otras órdenes de este pedido ({data.otras_ordenes_del_pedido.length})
-                </SectionTitle>
-                <SiblingOrders items={data.otras_ordenes_del_pedido} />
-              </div>
+            <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  data.cobertura_completa ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+                style={{ width: `${Math.min(100, porcentaje ?? 0)}%` }}
+              />
+            </div>
+            {!data.cobertura_completa && (
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                El resto puede programarse en otras órdenes de bordado.
+              </p>
             )}
-          </div>
-        </Section>
-      </div>
+          </SheetPanel>
+
+          {/* Otras OB del mismo pedido: cada una enlaza a su propia página. */}
+          <SheetPanel
+            title={`Otras órdenes del pedido (${data.otras_ordenes_del_pedido.length})`}
+            className="p-5!"
+          >
+            {data.otras_ordenes_del_pedido.length > 0 ? (
+              <SiblingOrders items={data.otras_ordenes_del_pedido} />
+            ) : (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Es la única orden de bordado de este pedido.
+              </p>
+            )}
+          </SheetPanel>
+        </div>
+      </SheetSection>
 
       {/* ── 4. Resumen de avance ────────────────────────────────────────── */}
       <EmbroideryProgressSummary resumenAvance={data.resumen_avance} />

@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { EmbroideryOrderDetailContent } from "@/src/features/embroidery/components/EmbroideryOrderDetailContent";
+
+export const metadata: Metadata = {
+  title: "Orden de Bordado | Producción | ERP",
+};
 
 /**
  * Detalle de una orden de bordado — `GET /produccion/orden-bordado/{id}/`.

@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import {
-  EmptyLines,
-  Section,
-  textOrDash,
-} from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
+import { ClockIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, PlusIcon } from "@/src/components/Icons";
@@ -77,7 +75,17 @@ export function EmbroideryAvancesHistory({
   ) : undefined;
 
   return (
-    <Section title={`Historial de avances (${avances.length})`} action={registerButton}>
+    <SheetSection
+      icon={<ClockIcon className="w-5 h-5" />}
+      title="Historial de avances"
+      subtitle="Cada registro de piezas bordadas, del más reciente al más antiguo."
+      badges={
+        <OrderChip>
+          {avances.length} {avances.length === 1 ? "registro" : "registros"}
+        </OrderChip>
+      }
+      action={registerButton}
+    >
       {avances.length === 0 ? (
         <EmptyLines>Sin avances registrados.</EmptyLines>
       ) : (
@@ -176,6 +184,6 @@ export function EmbroideryAvancesHistory({
           setAvanceToDelete(null);
         }}
       />
-    </Section>
+    </SheetSection>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Section } from "@/src/components/DetailDialogPrimitives";
+import { CheckCircleIcon } from "@/src/components/Icons";
+import { SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { MetricCard } from "@/src/components/ProgressPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { clampPercentage } from "@/src/utils/percentage";
@@ -31,7 +32,11 @@ export function EmbroideryProgressSummary({
   const pctWidth = hasProgrammed ? clampPercentage(resumenAvance.porcentaje_avance) : 0;
 
   return (
-    <Section title="Resumen de avance">
+    <SheetSection
+      icon={<CheckCircleIcon className="w-5 h-5" />}
+      title="Resumen de avance"
+      subtitle="Piezas bordadas contra las programadas en esta orden."
+    >
       <MetricCard
         label="Piezas bordadas"
         done={formatQuantityValue(resumenAvance.cantidad_bordada_total)}
@@ -46,13 +51,13 @@ export function EmbroideryProgressSummary({
             {hasProgrammed ? `${formatQuantityValue(resumenAvance.porcentaje_avance)}%` : "—"}
           </span>
         </div>
-        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+        <div className="h-2.5 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
             style={{ width: `${pctWidth}%` }}
           />
         </div>
       </div>
-    </Section>
+    </SheetSection>
   );
 }
