@@ -17,7 +17,7 @@ import {
   useCreateNotaCredito,
   type ParsedNotaCreditoError,
 } from "./useCreateNotaCredito";
-import { creditNoteCreateStampFailedMessage } from "../utils/creditNoteErrors";
+import { creditNoteStampFailedMessage } from "../utils/creditNoteErrors";
 
 const LINE_ERROR_PREFIX = "nota_credito_detalles";
 
@@ -149,7 +149,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     // El timbrado corre DESPUÉS de guardar y aplicar la nota: no se dice qué
     // quedó, se pide revisar el listado y se bloquea el reenvío.
     if (parsed.stampFailed) {
-      setServerBanner(creditNoteCreateStampFailedMessage(detail));
+      setServerBanner(creditNoteStampFailedMessage("alta", detail));
       setIsLockedAfterStampFailure(true);
       return;
     }

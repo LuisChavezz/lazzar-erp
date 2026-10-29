@@ -40,20 +40,38 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
   "No se pudo confirmar la emisión: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; la nota pudo emitirse y timbrarse.";
 
 /**
- * Alta `Emitida` cuyo timbrado falló (`400` con `cfdi`). El backend guarda y
- * aplica la nota ANTES de timbrarla, así que el fallo no dice qué quedó: según
- * el caso la nota queda cancelada, emitida sin CFDI o con el timbrado pendiente.
- * No se afirma ninguno: se pide revisar el listado en vez de recapturarla.
+ * Cómo se enuncia el fallo del timbrado en cada camino de emisión: el alta
+ * `Emitida` (sujeto "la nota") y la emisión de un borrador desde el listado
+ * (sujeto "el borrador").
  */
-export const creditNoteCreateStampFailedMessage = (detail: string): string =>
-  `Falló el timbrado, pero la nota pudo quedar registrada: cancelada, emitida sin CFDI o con el timbrado pendiente de confirmación. Revisa el listado antes de capturarla de nuevo. Motivo: ${detail}`;
+const STAMP_FAILED_COPY = {
+  alta: {
+    intro: "Falló el timbrado, pero la nota pudo quedar registrada:",
+    femenino: true,
+    closing: ". Revisa el listado antes de capturarla de nuevo.",
+  },
+  emision: {
+    intro: "Falló el timbrado de la nota. El borrador pudo quedar",
+    femenino: false,
+    closing: ": revisa el listado antes de volver a intentarlo.",
+  },
+} as const;
 
 /**
- * Emisión de un borrador cuyo timbrado falló (`400` con `cfdi`): igual que en el
- * alta, la emisión ya pudo aplicarse, y el borrador pudo quedar cancelado.
+ * Emisión cuyo timbrado falló (`400` con `cfdi`). El backend guarda y aplica la
+ * nota ANTES de timbrarla, así que el fallo no dice qué quedó: según el caso la
+ * nota queda cancelada, emitida sin CFDI o con el timbrado pendiente. No se
+ * afirma ninguno: se pide revisar el listado en vez de recapturarla. La lista de
+ * resultados vive aquí una sola vez para los dos caminos.
  */
-export const creditNoteEmitStampFailedMessage = (detail: string): string =>
-  `Falló el timbrado de la nota. El borrador pudo quedar cancelado, emitido sin CFDI o con el timbrado pendiente de confirmación: revisa el listado antes de volver a intentarlo. Motivo: ${detail}`;
+export const creditNoteStampFailedMessage = (
+  camino: keyof typeof STAMP_FAILED_COPY,
+  detail: string,
+): string => {
+  const { intro, femenino, closing } = STAMP_FAILED_COPY[camino];
+  const resultados = femenino ? "cancelada, emitida" : "cancelado, emitido";
+  return `${intro} ${resultados} sin CFDI o con el timbrado pendiente de confirmación${closing} Motivo: ${detail}`;
+};
 
 /**
  * Mensaje de un fallo de `timbrar/`, igual que `stampInvoiceErrorMessage`: el
