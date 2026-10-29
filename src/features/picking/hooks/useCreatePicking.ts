@@ -4,6 +4,7 @@ import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateSto
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createPicking } from "../services/actions";
+import { PICKING_ONBOARDING_LIST_KEY } from "./usePickingOnboarding";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Campos del encabezado que el backend puede señalar en un `400`. */
@@ -271,6 +272,12 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     },
     onError: (error) => {
       const parsed = parsePickingError(error);
+      // Un rechazo con clave `pedido` (ya no está programado, cancelado, ajeno)
+      // dice que el pedido ya no debe ofrecerse: se invalida el catálogo del
+      // Paso 1 para que al "Regresar" llegue sin él.
+      if (parsed.fieldErrors.pedido) {
+        void queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
+      }
       onServerError?.(parsed);
 
       if (parsed.staleData) {
