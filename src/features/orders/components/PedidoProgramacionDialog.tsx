@@ -1,6 +1,5 @@
 "use client";
 
-import { AxiosError } from "axios";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -10,20 +9,28 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
 import { CalendarDaysIcon, DeleteIcon, PlusIcon } from "@/src/components/Icons";
+import { SectionTitle } from "@/src/components/DetailDialogPrimitives";
 import { plural } from "@/src/utils/plural";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   getPedidoProgramacionDestinoLabel,
   isPedidoProgramacionDestino,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
   type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
-import { usePedidoDetail } from "../hooks/usePedidoDetail";
+import { usePedidoProgramarContexto } from "../hooks/usePedidoProgramarContexto";
 import { usePedidoProgramacionForm } from "../hooks/usePedidoProgramacionForm";
+import {
+  isMesaControlPermisoError,
+  PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
+} from "../utils/pedidoProgramarErrors";
+import { PedidoProgramarTallasTable } from "./PedidoProgramarTallasTable";
 import {
   countCodePoints,
   PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
 } from "../schemas/pedido-programacion.schema";
-import type { PedidoDetail, PedidoListItem } from "../interfaces/order.interface";
+import type { PedidoListItem } from "../interfaces/order.interface";
+import type { PedidoProgramarContexto } from "../interfaces/pedido-programacion.interface";
 
 /**
  * Opciones del select de UN renglón: solo los `destinos_aplicables` del pedido.
@@ -59,11 +66,11 @@ const getDestinoOptions = (
 const sanitizeIntegerInput = (raw: string) => raw.replace(/\D/g, "");
 
 interface PedidoProgramacionFormProps {
-  pedido: PedidoDetail;
+  contexto: PedidoProgramarContexto;
   onClose: () => void;
 }
 
-function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps) {
+function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormProps) {
   const {
     form,
     rowKeys,
@@ -80,17 +87,25 @@ function PedidoProgramacionForm({ pedido, onClose }: PedidoProgramacionFormProps
     addRow,
     removeRow,
     handleFormSubmit,
-  } = usePedidoProgramacionForm({ pedido, onSuccess: onClose });
+  } = usePedidoProgramacionForm({ contexto, onSuccess: onClose });
 
   const listError = getError("programaciones");
 
   return (
     <form onSubmit={handleFormSubmit} noValidate>
       <fieldset disabled={isPending} className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Al guardar, esta lista reemplaza por completo la programación vigente.
-          </p>
+        <PedidoProgramarTallasTable
+          renglones={contexto.renglones}
+          almacenSurtido={contexto.almacen_surtido}
+        />
+
+        <div className="flex items-end justify-between gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
+          <div>
+            <SectionTitle>Parcialidades</SectionTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Al guardar, esta lista reemplaza por completo la programación vigente.
+            </p>
+          </div>
           <Button type="button" variant="secondary" rounded="full" onClick={addRow}>
             <span className="inline-flex items-center gap-1.5">
               <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
@@ -262,22 +277,19 @@ interface PedidoProgramacionDialogProps {
 }
 
 /**
- * "Programar pedido" desde la Mesa de Control.
+ * "Programar pedido" desde la Mesa de Control: UNA pantalla con las tallas del
+ * pedido (servicios, stock disponible y faltante) y, debajo, sus parcialidades
+ * de entrega por destino. Sustituye a los antiguos "Programar" y "Revisar
+ * inventario".
  *
- * El renglón del listado (`PedidoListItem`) trae `programacion_conf` pero no
- * `detalles` (el total de piezas) ni `destinos_aplicables`, así que el diálogo
- * lee el detalle al abrirse (`usePedidoDetail`), con los estados de carga/error de
- * `PickingOrderDetailDialog`.
- *
- * `refetchOnMount: "always"` + esperar a `isFetchedAfterMount`: el guardado
- * REEMPLAZA la lista entera, así que el formulario solo se monta con datos
- * leídos en esta apertura, nunca con la caché (compartida con el detalle 360°)
- * de hace minutos.
+ * Todo sale de `GET /ventas/pedidos/{id}/programar/`
+ * (`usePedidoProgramarContexto`), que se relee en cada apertura: el formulario
+ * solo se monta con datos de ESTA apertura (`isFetchedAfterMount`) porque el
+ * guardado reemplaza la lista entera.
  */
 export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoProgramacionDialogProps) {
-  const { data, isError, error, isFetchedAfterMount } = usePedidoDetail(order.id, {
-    refetchOnMount: "always",
-  });
+  const { data, isInitialError, isNotFound, error, isFetchedAfterMount } =
+    usePedidoProgramarContexto(order.id);
 
   const close = () => onOpenChange(false);
 
@@ -285,7 +297,7 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="640px"
+      maxWidth="900px"
       showCloseButton={false}
       title={
         <span className="flex items-center gap-2">
@@ -295,20 +307,27 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
       }
       description={`${order.folio ?? `Pedido #${order.id}`} · ${order.cliente_razon_social ?? "—"}`}
     >
-      {isError ? (
+      {isNotFound ? (
+        // El endpoint acota por empresa: un pedido ajeno o dado de baja responde 404.
         <ErrorState
-          title="Error al cargar el pedido"
+          title="Pedido no disponible"
+          message="El pedido no existe o no pertenece a tu empresa."
+        />
+      ) : isInitialError ? (
+        <ErrorState
+          title={
+            isMesaControlPermisoError(error) ? "Sin permiso" : "Error al cargar el pedido"
+          }
           message={
-            // `get_object` acota por empresa: un pedido ajeno responde 404.
-            error instanceof AxiosError && error.response?.status === 404
-              ? "El pedido no existe o no pertenece a tu empresa."
-              : (error as Error)?.message
+            isMesaControlPermisoError(error)
+              ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
+              : extractErrorMessage(error, "No se pudo cargar la programación del pedido.")
           }
         />
       ) : !isFetchedAfterMount || !data ? (
         <Loader title="Cargando programación del pedido..." className="py-12" />
       ) : (
-        <PedidoProgramacionForm pedido={data} onClose={close} />
+        <PedidoProgramacionForm contexto={data} onClose={close} />
       )}
     </MainDialog>
   );

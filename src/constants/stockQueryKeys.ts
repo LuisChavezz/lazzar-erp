@@ -25,5 +25,8 @@ export const STOCK_MOVEMENT_DETAIL_QUERY_KEY = ["stock-movement-detail"] as cons
 /** Pipeline de existencias, producción y compras (`useInventoryPipeline`). */
 export const INVENTORY_PIPELINE_QUERY_KEY = ["inventory-pipeline"] as const;
 
-/** "Revisar inventario" de un pedido (`useOrderStockDetail`). */
-export const ORDER_STOCK_DETAIL_QUERY_KEY = ["order-stock-detail"] as const;
+/**
+ * "Programar pedido" (`usePedidoProgramarContexto`): trae el stock disponible
+ * de cada talla del pedido, así que se relee con el resto de las existencias.
+ */
+export const PEDIDO_PROGRAMAR_QUERY_KEY = ["pedido-programar"] as const;

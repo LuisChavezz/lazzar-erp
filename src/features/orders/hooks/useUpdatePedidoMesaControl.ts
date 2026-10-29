@@ -13,6 +13,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import type {
   PedidoMesaControlUpdate,
@@ -122,6 +123,8 @@ export const useUpdatePedidoMesaControl = (
     mutationFn: ({ pedidoId, payload }) => updatePedidoMesaControl(pedidoId, payload),
     onSuccess: (_, { pedidoId, cotizacionId }) => {
       queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
+      // Tallas, cantidades y servicios de "Programar pedido".
+      queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) });
       // Las líneas reescritas cambian las piezas de cada paso de la trazabilidad.
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });

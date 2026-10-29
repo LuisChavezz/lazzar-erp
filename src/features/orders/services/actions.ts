@@ -6,6 +6,7 @@ import type {
 } from "../interfaces/pedido-mesa-control.interface";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import type {
+  PedidoProgramarContexto,
   PedidoProgramarPayload,
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
@@ -19,7 +20,6 @@ import type {
   VincularSkuMuestraResponse,
 } from "../interfaces/pedido-sku-muestra.interface";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
-import type { OrderStockDetail } from "../interfaces/order-stock-detail.interface";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
 import type { PedidoKpis } from "../interfaces/pedido-kpis.interface";
 
@@ -69,19 +69,6 @@ export const getPedidoKpis = async (): Promise<PedidoKpis> => {
 };
 
 /**
- * Existencia vs cantidad pedida por línea y talla
- * (`GET /ventas/pedidos/{id}/stock-detalle/`).
- *
- * Un solo argumento y SIN objeto de config a propósito: el backend deja pasar
- * los filtros del listado (`mis_pedidos`, `q`, `folio`) a esta ruta de detalle
- * y cualquiera de ellos puede producir un 404 falso. Nunca agregar `params`.
- */
-export const getOrderStockDetail = async (id: number): Promise<OrderStockDetail[]> => {
-  const response = await v1_api.get<OrderStockDetail[]>(`/ventas/pedidos/${id}/stock-detalle/`);
-  return response.data;
-};
-
-/**
  * Edición parcial de la cabecera de un pedido (`PATCH /ventas/pedidos/{id}/`).
  * Manda SOLO las claves recibidas (ver `PedidoHeaderUpdate`).
  *
@@ -125,6 +112,22 @@ export const getPedidoMesaControlContexto = async (
   const response = await v1_api.get<PedidoMesaControlContexto>(
     `/ventas/pedidos/${id}/editar-mesa-control-contexto/`,
   );
+  return response.data;
+};
+
+/**
+ * Pantalla de "Programar pedido" (`GET /ventas/pedidos/{id}/programar/`): las
+ * tallas del pedido con sus servicios y el stock disponible en el almacén de
+ * surtido, los destinos aplicables y la programación vigente, en una lectura.
+ *
+ * Mismo permiso que el PATCH: sin rol de mesa de control responde 400 con
+ * `{ permiso }` (no 403); 404 si el pedido no es visible para la empresa.
+ * Sin `params`, igual que el resto de las rutas de detalle de pedidos.
+ */
+export const getPedidoProgramarContexto = async (
+  id: number,
+): Promise<PedidoProgramarContexto> => {
+  const response = await v1_api.get<PedidoProgramarContexto>(`/ventas/pedidos/${id}/programar/`);
   return response.data;
 };
 

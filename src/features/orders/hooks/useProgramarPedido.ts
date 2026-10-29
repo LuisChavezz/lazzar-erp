@@ -15,7 +15,12 @@ import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/h
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
 import { programarPedido } from "../services/actions";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import {
+  isMesaControlPermisoError,
+  PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
+} from "../utils/pedidoProgramarErrors";
 import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
@@ -26,7 +31,8 @@ import type {
  * y por eso van al toast. Mismo criterio que `useUpdatePedidoMesaControl`:
  *
  * - `permiso`: `_require_mesa_control` — HTTP 400 con el mensaje plano bajo la
- *   clave, no un 403.
+ *   clave, no un 403. Se muestra `PEDIDO_PROGRAMAR_PERMISO_MESSAGE` en su lugar
+ *   (ver `onError`); queda en la lista como respaldo.
  * - `detail`: `APIException` genéricos de DRF.
  *
  * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
@@ -78,6 +84,7 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
     mutationFn: ({ pedidoId, payload }) => programarPedido(pedidoId, payload),
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
+      queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) });
       // Paso "Programado" de la trazabilidad.
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -101,7 +108,9 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
             hasFieldIssues = true;
             onValidationError?.(issues);
           }
-          message = extractRejectionMessage(data);
+          message = isMesaControlPermisoError(error)
+            ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
+            : extractRejectionMessage(data);
         }
         // `get_object` acota por empresa: un pedido ajeno responde 404.
         if (statusCode === 404) {

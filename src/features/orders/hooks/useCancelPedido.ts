@@ -13,9 +13,9 @@ import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { ordersQueryKey } from "./useOrders";
-import { orderStockDetailQueryKey } from "./useOrderStockDetail";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import { pedidoCancelSummary } from "../utils/pedidoCancelSummary";
 
@@ -43,7 +43,7 @@ export const cancelPedidoMutationKey = (pedidoId: number) =>
 const pedidoRecordQueryKeys = (pedidoId: number): QueryKey[] => [
   pedidoDetailQueryKey(pedidoId),
   pedidoTrazabilidadQueryKey(pedidoId),
-  orderStockDetailQueryKey(pedidoId),
+  pedidoProgramarQueryKey(pedidoId),
   pedidoMesaControlContextoQueryKey(pedidoId),
 ];
 
@@ -77,7 +77,7 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  *
  * Al cancelarse, el pedido queda con `activo = false`: deja de listarse y su
  * detalle responde 404. Por eso sus consultas propias (detalle, trazabilidad,
- * existencias, contexto de edición) se CANCELAN y se sacan de la caché en vez
+ * programación, contexto de edición) se CANCELAN y se sacan de la caché en vez
  * de invalidarse (`dropQueriesWhenUnobserved`: un observador montado las
  * volvería a pedir). Se invalidan las existencias (`invalidateStockQueries`), los listados
  * (`["orders"]` por prefijo: Mesa de Control, Programados, Mis pedidos y los
@@ -119,7 +119,7 @@ export const useCancelPedido = (pedidoId: number) => {
     );
     // Inventario: un pedido autorizado antes del #704 del backend aún puede
     // devolver existencias al cancelarse. Fuera las consultas de ESTE pedido
-    // (su "Revisar inventario" ya salió arriba y releerlo daría 404).
+    // (su "Programar pedido" ya salió arriba y releerlo daría 404).
     void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
     void queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
     void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });

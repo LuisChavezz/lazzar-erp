@@ -66,3 +66,30 @@ export const getPedidoProgramacionDestinoLabel = (destino: string): string =>
   isPedidoProgramacionDestino(destino)
     ? PEDIDO_PROGRAMACION_DESTINO_LABELS[destino]
     : `Desconocido (${destino})`;
+
+/**
+ * Servicios que puede llevar una talla en `GET /ventas/pedidos/{id}/programar/`
+ * (`renglones[].servicios`). Réplica de los que arma `_programar_contexto` del
+ * backend. `CAMBIO_TALLA` se informa pero NO es destino programable.
+ */
+export const PEDIDO_PROGRAMAR_SERVICIOS = [
+  "BORDADO",
+  "REFLEJANTE",
+  "CORTE_MANGA",
+  "CAMBIO_TALLA",
+] as const;
+
+export type PedidoProgramarServicio = (typeof PEDIDO_PROGRAMAR_SERVICIOS)[number];
+
+export const PEDIDO_PROGRAMAR_SERVICIO_LABELS: Record<PedidoProgramarServicio, string> = {
+  BORDADO: "Bordado",
+  REFLEJANTE: "Reflejante",
+  CORTE_MANGA: "Corte de manga",
+  CAMBIO_TALLA: "Cambio de talla",
+};
+
+/** Etiqueta del servicio; un código desconocido se muestra tal cual. */
+export const getPedidoProgramarServicioLabel = (servicio: string): string =>
+  Object.hasOwn(PEDIDO_PROGRAMAR_SERVICIO_LABELS, servicio)
+    ? PEDIDO_PROGRAMAR_SERVICIO_LABELS[servicio as PedidoProgramarServicio]
+    : servicio;
