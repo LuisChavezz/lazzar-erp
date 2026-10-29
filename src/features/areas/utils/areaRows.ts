@@ -19,7 +19,7 @@ export const buildAreaRows = (
   }));
 
 /** Avisos del diálogo de desactivar que se cerró por un cambio externo. */
-export const AREA_STALE_MESSAGES: StaleRowDialogMessages = {
+export const AREA_STALE_MESSAGES: Required<StaleRowDialogMessages> = {
   gone: "El área ya no existe. Se actualizó el listado.",
   activoChanged: (activo) =>
     `El área cambió de estatus: ya está ${activo ? "activa" : "inactiva"}. Se actualizó el listado.`,
