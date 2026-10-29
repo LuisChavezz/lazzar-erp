@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import {
   ABSENCE_HEADER_FILTERS,
   getColumns,
@@ -68,10 +67,9 @@ const matching = (id: string, value: string | undefined) =>
   rows.filter((original) => (column(id).filterFn as unknown as FilterFn)({ original }, id, value)).map((r) => r.id);
 
 const headerProps = (id: string) => {
-  const header = column(id).header as (context: { column: unknown }) => {
-    props: { options: ColumnFilterOption[]; label: string; title: string };
-  };
-  return header({ column: {} }).props;
+  const headerFilter = column(id).meta?.headerFilter;
+  if (!headerFilter) throw new Error(`sin filtro de encabezado ${id}`);
+  return headerFilter;
 };
 
 test.describe("ausencias › filtro de estatus", () => {

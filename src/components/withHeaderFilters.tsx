@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, HeaderContext } from "@tanstack/react-table";
 import { FilterHeader, type ColumnFilterOption } from "./ColumnHeaderFilter";
 import {
   ALL_FILTER_OPTION,
@@ -126,6 +126,20 @@ function matches<T>(spec: HeaderFilterSpec<T>, row: T, filterValue: string | und
   }
 }
 
+/**
+ * Encabezado de toda columna con filtro de `withHeaderFilters`. Es un
+ * componente de MÓDULO, con identidad estable: `flexRender` monta el `header`
+ * como componente, así que una función nueva en cada llamada remontaría el
+ * filtro (menú abierto, búsqueda tecleada) con cada cambio de filas. Lee
+ * título y opciones —ya calculadas con las filas vigentes— de
+ * `meta.headerFilter` de la columna, que se renueva en cada llamada.
+ */
+function HeaderFilterCell<T>({ column }: HeaderContext<T, unknown>) {
+  const headerFilter = column.columnDef.meta?.headerFilter;
+  if (!headerFilter) return null;
+  return <FilterHeader column={column} {...headerFilter} />;
+}
+
 /** Id con el que TanStack identificará la columna (`id` o, si no, `accessorKey`). */
 const columnKey = <T,>(column: ColumnDef<T, unknown>): string | undefined =>
   column.id ?? (column as { accessorKey?: string }).accessorKey;
@@ -133,7 +147,8 @@ const columnKey = <T,>(column: ColumnDef<T, unknown>): string | undefined =>
 /**
  * Agrega un filtro de encabezado a las columnas de una tabla en modo cliente:
  * a cada columna nombrada en `specs` (por su `id` o `accessorKey`) le pone
- * título + embudo (`FilterHeader`), su `filterFn` y `meta.label`. Las opciones
+ * título + embudo (`HeaderFilterCell`, con su configuración en
+ * `meta.headerFilter`), su `filterFn` y `meta.label`. Las opciones
  * se construyen con `rows` —la lista completa, que en modo cliente ya está en
  * memoria—. Las columnas que no aparecen en `specs` no cambian.
  *
@@ -162,17 +177,18 @@ export function withHeaderFilters<T>(
         ...(spec.filterLabel && {
           filterLabel: spec.filterLabel.charAt(0).toUpperCase() + spec.filterLabel.slice(1),
         }),
+        headerFilter: {
+          title,
+          options,
+          label: spec.filterLabel || title.toLowerCase(),
+          searchable:
+            spec.type === "distinct" && spec.searchable
+              ? { placeholder: `Buscar ${title.toLowerCase()}…` }
+              : false,
+          menuAlign: column.meta?.align === "right" ? "end" : "start",
+        },
       },
-      header: ({ column: tableColumn }) => (
-        <FilterHeader
-          title={title}
-          column={tableColumn}
-          options={options}
-          label={spec.filterLabel || title.toLowerCase()}
-          searchable={spec.type === "distinct" && spec.searchable ? { placeholder: `Buscar ${title.toLowerCase()}…` } : false}
-          menuAlign={column.meta?.align === "right" ? "end" : "start"}
-        />
-      ),
+      header: HeaderFilterCell<T>,
       filterFn: (row, _columnId, filterValue) =>
         matches(spec, row.original, filterValue as string | undefined),
     } as ColumnDef<T, unknown>;

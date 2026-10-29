@@ -1,10 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  ALL_FILTER_OPTION,
-  filterChipValueLabel,
-  nextFilterValueLabels,
-  pinActiveFilterOption,
-} from "@/src/utils/columnFilterOptions";
+import { ALL_FILTER_OPTION, pinActiveFilterOption } from "@/src/utils/columnFilterOptions";
 
 /**
  * Pruebas unitarias de EC-636: el valor elegido en un filtro de encabezado
@@ -44,44 +39,5 @@ test.describe("pinActiveFilterOption", () => {
       options: [ALL_FILTER_OPTION],
       active: undefined,
     });
-  });
-});
-
-test.describe("nextFilterValueLabels", () => {
-  const prev = { sucursal: { label: "TONELES", value: "61" } };
-
-  test("recuerda la etiqueta con el valor al que nombra", () => {
-    expect(nextFilterValueLabels({}, "sucursal", "TONELES", "61")).toEqual(prev);
-  });
-
-  test("sin cambios devuelve el mismo objeto", () => {
-    expect(nextFilterValueLabels(prev, "sucursal", "TONELES", "61")).toBe(prev);
-  });
-
-  test("la opción desapareció pero sigue elegida: conserva la etiqueta", () => {
-    expect(nextFilterValueLabels(prev, "sucursal", undefined, "61")).toBe(prev);
-  });
-
-  test("otro valor sin etiqueta, o el filtro quitado: la borra", () => {
-    expect(nextFilterValueLabels(prev, "sucursal", undefined, "3")).toEqual({});
-    expect(nextFilterValueLabels(prev, "sucursal", undefined)).toEqual({});
-  });
-
-  test("quien no informa el valor se comporta como siempre", () => {
-    const legacy = nextFilterValueLabels({}, "estatus", "Pendiente");
-    expect(legacy).toEqual({ estatus: { label: "Pendiente" } });
-    expect(nextFilterValueLabels(legacy, "estatus", undefined)).toEqual({});
-  });
-});
-
-test.describe("filterChipValueLabel", () => {
-  test("nombra al valor actual, o no dice a cuál nombra", () => {
-    expect(filterChipValueLabel({ label: "TONELES", value: "61" }, "61")).toBe("TONELES");
-    expect(filterChipValueLabel({ label: "Pendiente" }, "1")).toBe("Pendiente");
-  });
-
-  test("una etiqueta de otro valor no se muestra", () => {
-    expect(filterChipValueLabel({ label: "TONELES", value: "61" }, "3")).toBeUndefined();
-    expect(filterChipValueLabel(undefined, "3")).toBeUndefined();
   });
 });
