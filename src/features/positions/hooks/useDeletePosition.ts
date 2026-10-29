@@ -3,10 +3,17 @@ import { deletePosition } from "../services/actions";
 import toast from "react-hot-toast";
 import { Position } from "../interfaces/position.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una baja en vuelo (ver `usePendingPositionIds`).
+ */
+export const deactivatePositionMutationKey = ["deactivate-position"] as const;
+
 export const useDeletePosition = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deactivatePositionMutationKey,
     mutationFn: deletePosition,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["positions"] });

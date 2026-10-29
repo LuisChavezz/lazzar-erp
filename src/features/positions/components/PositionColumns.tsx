@@ -1,12 +1,12 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { useState } from "react";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, BanIcon } from "@/src/components/Icons";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { formatMxn } from "@/src/utils/formatCurrency";
 import { Position } from "../interfaces/position.interface";
-import { useDeletePosition } from "../hooks/useDeletePosition";
+import { usePositionRowActionsContext } from "../hooks/usePositionRowActions";
+import { SIN_AREA_FILTER_VALUE } from "../utils/positionRows";
 
 /**
  * Fila de la tabla: el puesto tal como llega del backend más el nombre de su
@@ -19,98 +19,73 @@ import { useDeletePosition } from "../hooks/useDeletePosition";
  * se congelaba con el ID crudo — en pantalla, en la búsqueda global y en el
  * orden. Al construir las filas en `PositionList` a partir de puestos + áreas,
  * la llegada del catálogo produce un `data` nuevo y TanStack recalcula todo.
- * Mismo arreglo que `ContractRow` y `CalendarRow`.
+ * Mismo arreglo que `EmployeeRow`.
  *
- * `null` = sin área asignada, o el área no aparece en el catálogo (o todavía
- * no llega).
+ * `null` = sin área asignada. Un área que no aparece en el catálogo (o cuyo
+ * catálogo todavía no llega) se rotula `Área #N` (`buildPositionRows`): ese
+ * mismo texto lo leen la celda, la opción del filtro y su ficha.
  */
 export type PositionRow = Position & { area_nombre: string | null };
 
 const columnHelper = createColumnHelper<PositionRow>();
 
-const ActionsCell = ({
-  row,
-  onEdit,
-  canEdit,
-  canDelete,
-}: {
-  row: Row<PositionRow>;
-  onEdit: (position: Position) => void;
+interface PositionColumnPermissions {
   canEdit: boolean;
   canDelete: boolean;
+}
+
+/**
+ * El nombre ES el menú de la fila y lleva el punto de `activo`: sin columnas
+ * aparte de "Estatus" ni "Acciones". Los callbacks y el "en vuelo" llegan por
+ * contexto; el diálogo vive en `PositionList`. Sin "Ver detalle": los puestos
+ * no tienen vista de detalle.
+ */
+const PositionNameCell = ({
+  position,
+  permissions,
+}: {
+  position: PositionRow;
+  permissions: PositionColumnPermissions;
 }) => {
-  const { mutate: deletePosition, isPending } = useDeletePosition();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const { onEdit, onDeactivate, busyIds } = usePositionRowActionsContext();
 
   // El DELETE del backend es una baja lógica: pone `activo` en false, no borra
   // el registro. Por eso la acción se ofrece solo sobre puestos activos — sobre
   // uno inactivo sería un no-op.
-  const canDeactivate = canDelete && row.original.activo;
-
-  const menuItems: ActionMenuItem[] = [];
-  if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    });
-  }
-  if (canDeactivate) {
-    menuItems.push({
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(position), visible: permissions.canEdit },
+    {
       label: "Desactivar",
       icon: BanIcon,
-      onSelect: () => setIsDeleteOpen(true),
-      disabled: isPending,
-    });
-  }
+      onSelect: () => onDeactivate(position),
+      disabled: busyIds.includes(position.id),
+      visible: permissions.canDelete && position.activo,
+    },
+  ];
 
-  return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} />
-      {canDeactivate && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Desactivar Puesto"
-          description="¿Deseas desactivar este puesto? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
-          confirmText={isPending ? "Desactivando..." : "Desactivar"}
-          onConfirm={() => {
-            deletePosition(row.original.id);
-            setIsDeleteOpen(false);
-          }}
-          confirmColor="amber"
-        />
-      )}
-    </div>
-  );
+  return <FolioActionMenu name={position.nombre} items={items} active={position.activo} />;
 };
 
-export const getColumns = (
-  onEdit: (position: Position) => void,
-  permissions: { canEdit: boolean; canDelete: boolean }
-) => {
+/**
+ * Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+ * `PositionRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getColumns = (permissions: PositionColumnPermissions) => {
   const columns = [
     columnHelper.accessor("nombre", {
       header: "Nombre",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 font-medium">
-          {info.getValue()}
-        </span>
-      ),
+      size: 260,
+      cell: ({ row }) => <PositionNameCell position={row.original} permissions={permissions} />,
     }),
     // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
-    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
-    // `null` que excluiría la columna de la búsqueda (ver DataTable).
-    columnHelper.accessor(
-      (row) => (row.area == null ? "—" : row.area_nombre ?? String(row.area)),
-      {
-        id: "area",
-        header: "Área",
-        cell: (info) => (
-          <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
-        ),
-      }
-    ),
+    // los tres ven el nombre resuelto (o su respaldo `#N`, ver `PositionRow`).
+    columnHelper.accessor((row) => row.area_nombre ?? "—", {
+      id: "area",
+      header: "Área",
+      cell: (info) => (
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+      ),
+    }),
     columnHelper.accessor("salario_base", {
       header: "Salario Base",
       meta: { align: "right" },
@@ -120,34 +95,23 @@ export const getColumns = (
         </span>
       ),
     }),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
   ] as ColumnDef<PositionRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => (
-          <ActionsCell
-            row={row}
-            onEdit={onEdit}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<PositionRow>
-    );
-  }
-
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * El nombre filtra por `activo` (su punto). El área compara contra el FK crudo,
+ * rotulado con su nombre resuelto; los puestos sin área tienen su propia
+ * opción ("Sin área"), porque el FK es opcional. El salario no lleva filtro:
+ * es un importe libre, lo cubren el orden y la búsqueda.
+ */
+export const POSITION_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<PositionRow>>> = {
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  area: {
+    type: "distinct",
+    get: (r) => r.area ?? SIN_AREA_FILTER_VALUE,
+    label: (r) => r.area_nombre ?? "Sin área",
+  },
 };
