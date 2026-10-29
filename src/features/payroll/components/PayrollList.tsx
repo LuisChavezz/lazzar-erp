@@ -55,6 +55,8 @@ export default function PayrollList() {
   const [payTargetId, setPayTargetId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  // Guarda de red del diálogo de pagar en curso (la reporta el diálogo).
+  const [isPayChecking, setIsPayChecking] = useState(false);
   const checkingRef = useRef(false);
   const queryClient = useQueryClient();
   // Aviso del diálogo de fila que se cerró porque su nómina cambió por fuera,
@@ -122,13 +124,13 @@ export default function PayrollList() {
   if (detailTargetId !== null && listSettled && detailTarget === null) setDetailTargetId(null);
 
   // Vía rápida contra la caché, con el mismo aviso que la guarda de red: pagar
-  // y cancelar esperan una pendiente, y no se tocan mientras su guarda o su
-  // escritura están en vuelo.
+  // y cancelar esperan una pendiente, y no se tocan mientras su guarda (la de
+  // pagar vive en su diálogo) o su escritura están en vuelo.
   const stalePay = listSettled
     ? getPayrollStaleNotice(
         payTargetId,
         payTarget,
-        payTargetId !== null && busyIds.includes(payTargetId)
+        isPayChecking || (payTargetId !== null && busyIds.includes(payTargetId))
       )
     : null;
   if (stalePay) {
@@ -307,6 +309,7 @@ export default function PayrollList() {
           payroll={paySession.snapshot}
           open={payTargetId !== null}
           onClose={() => setPayTargetId(null)}
+          onCheckingChange={setIsPayChecking}
         />
       )}
 

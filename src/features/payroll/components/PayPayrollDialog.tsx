@@ -39,6 +39,12 @@ interface PayPayrollDialogProps {
   /** Lo controla el id del padre: al cerrarse anima su salida con esta copia. */
   open: boolean;
   onClose: () => void;
+  /**
+   * Avisa al padre cuando arranca y termina la guarda de red previa al PATCH:
+   * mientras corre, la vía rápida de `PayrollList` no debe cerrar el diálogo
+   * (la guarda ya avisa si la nómina cambió; serían dos avisos).
+   */
+  onCheckingChange?: (isChecking: boolean) => void;
 }
 
 /**
@@ -49,11 +55,20 @@ interface PayPayrollDialogProps {
  * `estado` y la celda se desmontaría a media operación. El padre lo monta con
  * `key` por apertura (`useDialogSession`). Mismo esqueleto que `VacationRejectDialog`.
  */
-export function PayPayrollDialog({ payroll, open, onClose }: PayPayrollDialogProps) {
+export function PayPayrollDialog({
+  payroll,
+  open,
+  onClose,
+  onCheckingChange,
+}: PayPayrollDialogProps) {
   const queryClient = useQueryClient();
   const [fechaPago, setFechaPago] = useState(() => getMexicoTodayDate());
   const [fechaError, setFechaError] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isChecking, setIsCheckingState] = useState(false);
+  const setIsChecking = (next: boolean) => {
+    setIsCheckingState(next);
+    onCheckingChange?.(next);
+  };
   const submittingRef = useRef(false);
 
   const { mutateAsync, isPending: isPaying } = usePayPayroll({ onFechaPagoError: setFechaError });
