@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useMemo, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, type FormEvent } from "react";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import type {
   PurchaseOrderEncabezados,
@@ -11,6 +11,7 @@ import {
   PurchaseOrderEncabezadosSchema,
   type PurchaseOrderEncabezadosFormValues,
 } from "../schemas/purchase-order-onboarding.schema";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import { DEFAULT_TIPO_COMPRA } from "../constants/purchaseOrderTipoCompra";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 
@@ -47,21 +48,18 @@ export type Step1FieldPath =
 
 type Step1ErrorMap = Partial<Record<Step1FieldPath, string>>;
 
-/** Sucursal que una orden NUEVA trae preseleccionada (se compara sin acentos ni mayúsculas). */
-const DEFAULT_SUCURSAL_NOMBRE = "toneles";
-
-const foldText = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .toLowerCase();
-
-/** Id de la sucursal por defecto, o `0` ("Seleccionar sucursal…") si el catálogo no la trae. */
-const findDefaultSucursalId = (onboardingData: PurchaseOrderOnboardingData): number =>
-  onboardingData.catalogos.sucursales.find(
-    (s) => foldText(s.nombre) === DEFAULT_SUCURSAL_NOMBRE,
-  )?.id_sucursal ?? 0;
+/**
+ * Sucursal que una orden NUEVA trae preseleccionada: la del workspace, si el
+ * catálogo la trae, o `0` ("Seleccionar sucursal…"). El catálogo sale de la
+ * empresa del usuario en el backend, no de la del workspace, así que la
+ * sucursal del workspace puede no estar en él.
+ */
+const findDefaultSucursalId = (
+  onboardingData: PurchaseOrderOnboardingData,
+  workspaceBranchId: number | null,
+): number =>
+  onboardingData.catalogos.sucursales.find((s) => s.id_sucursal === workspaceBranchId)
+    ?.id_sucursal ?? 0;
 
 export function usePurchaseOrderStep1Form({
   onboardingData,
@@ -89,9 +87,13 @@ export function usePurchaseOrderStep1Form({
   // ── Default values ──────────────────────────────────────────────────────
   // Si ya hay un encabezado capturado (regreso desde el Step 2), se siembra
   // desde él para no perder lo capturado; en la primera visita, en blanco
-  // salvo la sucursal, que arranca en Toneles (sigue siendo editable).
+  // salvo la sucursal, que arranca en la del workspace (sigue siendo
+  // editable). Sin sucursal válida queda vacía y el schema no deja avanzar
+  // hasta elegir una. Si la lista de sucursales termina de cargar después de
+  // montar, la coloca el efecto de más abajo.
   // `fecha_vencimiento` validada es `null` cuando no hay fecha; el input la
   // necesita como `""`.
+  const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
   const defaultValues = useMemo<PurchaseOrderEncabezadosFormValues>(
     () =>
       initialValues
@@ -103,7 +105,7 @@ export function usePurchaseOrderStep1Form({
           }
         : {
             orden_compra: {
-              sucursal: findDefaultSucursalId(onboardingData),
+              sucursal: findDefaultSucursalId(onboardingData, workspaceBranchId),
               proveedor: 0,
               moneda: 0,
               fecha_vencimiento: "",
@@ -113,7 +115,7 @@ export function usePurchaseOrderStep1Form({
               pedidos: [],
             },
           },
-    [initialValues, onboardingData],
+    [initialValues, onboardingData, workspaceBranchId],
   );
 
   // ── Selector options derived from onboarding data ───────────────────────
@@ -218,6 +220,28 @@ export function usePurchaseOrderStep1Form({
       onSuccess(parsed.data);
     },
   });
+
+  // ── Sucursal del workspace que llega tarde ─────────────────────────────
+  // Si la lista de sucursales resuelve después de montar y el usuario ya tocó
+  // otros campos, `useForm` no re-siembra los valores por defecto. Se coloca la
+  // sucursal del workspace solo si el campo sigue en `0` (nadie eligió una):
+  // nunca pisa una elección del usuario ni lo capturado antes de "Volver".
+  // Una sola vez por sucursal: si el usuario vuelve a "Seleccionar sucursal…"
+  // a propósito, no se le impone otra vez.
+  const lateDefaultSucursalId = initialValues
+    ? 0
+    : findDefaultSucursalId(onboardingData, workspaceBranchId);
+  const appliedDefaultSucursalIdRef = useRef(0);
+  useEffect(() => {
+    if (!lateDefaultSucursalId) return;
+    if (appliedDefaultSucursalIdRef.current === lateDefaultSucursalId) return;
+    appliedDefaultSucursalIdRef.current = lateDefaultSucursalId;
+    if (form.getFieldValue("orden_compra.sucursal") !== 0) return;
+    form.setFieldValue("orden_compra.sucursal", lateDefaultSucursalId, {
+      dontUpdateMeta: true,
+    });
+    clearClientFieldError("orden_compra.sucursal");
+  }, [lateDefaultSucursalId, form, clearClientFieldError]);
 
   // ── Form submit handler ────────────────────────────────────────────────
 

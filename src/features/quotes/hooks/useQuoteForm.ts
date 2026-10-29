@@ -35,6 +35,11 @@ import {
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
+import {
+  getQuoteSinSucursalMessage,
+  QUOTE_SUCURSAL_LOADING_MESSAGE,
+} from "../utils/quoteSucursal";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -170,9 +175,25 @@ export function useQuoteForm() {
   // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
   // alarga la espera que el formulario ya hacía por las otras consultas.
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
-  const { selectedCompany, selectedBranch } = useWorkspaceStore();
+  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const selectedCompanyId = selectedCompany?.id || 1; // Fallback
-  const selectedBranchId = selectedBranch?.id || 1; // Fallback
+  // Sucursal del payload: la del workspace, solo si es válida (ver
+  // `useValidWorkspaceBranchId`).
+  const {
+    branchId: workspaceBranchId,
+    isLoading: isWorkspaceBranchLoading,
+    isError: isWorkspaceBranchError,
+  } = useValidWorkspaceBranchId();
+  // La lista de sucursales solo cuenta para la carga INICIAL del formulario.
+  // Una recarga posterior (el usuario elige sucursal o cambia de empresa en el
+  // encabezado a mitad de la captura) no debe cambiar el formulario por el
+  // Loader: desmontaría diálogos abiertos y estado local. Mientras recarga, el
+  // guardado se bloquea en el submit. Ajuste de estado derivado en render, el
+  // mismo patrón que `hydrationPedido` en la edición de Mesa de Control.
+  const [isBranchListSettled, setIsBranchListSettled] = useState(!isWorkspaceBranchLoading);
+  if (!isBranchListSettled && !isWorkspaceBranchLoading) {
+    setIsBranchListSettled(true);
+  }
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
@@ -248,6 +269,20 @@ export function useQuoteForm() {
   const form = useForm({
     defaultValues: emptyValues,
     onSubmit: async ({ value }) => {
+      // La sucursal sale del contexto, no de un campo: se revisa ANTES que el
+      // resto para no hacer corregir todo el formulario y bloquear al final.
+      if (isWorkspaceBranchLoading) {
+        toast.error(QUOTE_SUCURSAL_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        return;
+      }
+      const sucursal = workspaceBranchId;
+      if (sucursal === null) {
+        toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
+          id: "quote-sin-sucursal",
+        });
+        return;
+      }
+
       // Con "Usar el mismo teléfono" se validan y envían los teléfonos derivados.
       const parsed = quoteSubmitSchema.safeParse({
         ...withMirroredShippingPhones(value),
@@ -408,7 +443,7 @@ export function useQuoteForm() {
       const quoteCreatePayload: QuoteCreate = {
         pedido: {
           empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
-          sucursal: selectedBranchId || 1, // Fallback safe si no hay sucursal
+          sucursal,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
           persona_pagos: parsed.data.persona_pagos ?? "",
@@ -1078,7 +1113,7 @@ export function useQuoteForm() {
     matrizCompatibilidad: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
     isCustomersLoading,
     isCurrenciesLoading,
-    isOnboardingLoading,
+    isOnboardingLoading: isOnboardingLoading || !isBranchListSettled,
     isSizesLoading,
     isErrorSizes,
     showForm,

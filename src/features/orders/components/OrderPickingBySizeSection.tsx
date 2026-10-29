@@ -1,4 +1,6 @@
-import { EmptyLines, Section } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
+import { SheetSection } from "./OrderSheetPrimitives";
+import { SpecialOrdersIcon } from "@/src/components/Icons";
 import { RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { formatExactQuantityValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import { parsePercentageValue } from "@/src/utils/percentage";
@@ -54,7 +56,11 @@ function LinePickingTracker({ tracker }: { tracker: PedidoDetalleLinea["tracker_
  */
 export function OrderPickingBySizeSection({ detalles }: { detalles: PedidoDetalleLinea[] }) {
   return (
-    <Section title={`Surtido por producto y talla (${detalles.length})`}>
+    <SheetSection
+      icon={<SpecialOrdersIcon className="w-5 h-5" />}
+      title={`Surtido por producto y talla (${detalles.length})`}
+      subtitle="Avance de surtido de cada producto, talla por talla."
+    >
       {detalles.length === 0 ? (
         <EmptyLines>Este pedido no tiene líneas de producto.</EmptyLines>
       ) : (
@@ -162,6 +168,6 @@ export function OrderPickingBySizeSection({ detalles }: { detalles: PedidoDetall
           ))}
         </div>
       )}
-    </Section>
+    </SheetSection>
   );
 }

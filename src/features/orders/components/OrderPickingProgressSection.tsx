@@ -1,4 +1,5 @@
-import { Section } from "@/src/components/DetailDialogPrimitives";
+import { SheetSection } from "./OrderSheetPrimitives";
+import { PackingIcon } from "@/src/components/Icons";
 import { MetricCard } from "@/src/components/ProgressPrimitives";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { parsePercentageValue } from "@/src/utils/percentage";
@@ -68,7 +69,11 @@ export function OrderPickingProgressSection({ tracker }: { tracker?: PedidoTrack
   const totalPrendas = formatExactQuantityValue(tracker.total_prendas_pedido);
 
   return (
-    <Section title="Avance de surtido">
+    <SheetSection
+      icon={<PackingIcon className="w-5 h-5" />}
+      title="Avance de surtido"
+      subtitle="Prendas asignadas y surtidas contra lo pedido."
+    >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard label="Prendas del pedido" done={totalPrendas} />
         <MetricCard
@@ -86,6 +91,6 @@ export function OrderPickingProgressSection({ tracker }: { tracker?: PedidoTrack
         <TrackerBar label="Avance asignado" value={tracker.pct_asignado_pedido} tone="sky" />
         <TrackerBar label="Avance surtido" value={tracker.pct_surtido_pedido} tone="emerald" />
       </div>
-    </Section>
+    </SheetSection>
   );
 }

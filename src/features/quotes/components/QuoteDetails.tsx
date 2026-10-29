@@ -16,6 +16,49 @@ import {
   toDisplayValue,
 } from "../utils/quoteDetailsFormatters";
 
+/**
+ * Grupo de datos con estilo de "lista agrupada" (como Ajustes de iOS): un
+ * rótulo pequeño encima y una tarjeta con renglones separados por un filete.
+ */
+function DetailGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="min-w-0">
+      <h3 className="mb-1.5 ml-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        {title}
+      </h3>
+      <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Renglón etiqueta / valor de un `DetailGroup`. */
+function DetailRow({
+  label,
+  children,
+  strong = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 px-4 py-2.5">
+      <span className="shrink-0 text-[13px] text-slate-500 dark:text-slate-400">{label}</span>
+      <span
+        className={`min-w-0 text-right text-[13px] break-words ${
+          strong
+            ? "font-bold text-slate-900 dark:text-white"
+            : "font-medium text-slate-800 dark:text-slate-100"
+        }`}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
 interface QuoteDetailsProps {
   quoteId: number;
   /**
@@ -80,34 +123,38 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Estatus</p>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClassName}`}>
-              {quote.estatus_label}
-            </span>
-            {quote.recompra && <RecompraBadge />}
+    <div className="space-y-5">
+      {/* ── Tarjeta principal: cliente, estatus y total ──────────────────── */}
+      <div className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-linear-to-b from-slate-50 to-white dark:from-white/5 dark:to-transparent p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Cotización #{toDisplayValue(quote.id)}
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusClassName}`}>
+                {quote.estatus_label}
+              </span>
+              {quote.recompra && <RecompraBadge />}
+            </div>
+            <p className="mt-1.5 text-xl font-bold text-slate-900 dark:text-white truncate">
+              {toDisplayValue(quote.cliente_nombre || quote.cliente_razon_social)}
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+              {toDisplayValue(quote.cliente_razon_social)}
+            </p>
           </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Total</p>
-          <p className="text-sm font-semibold text-slate-800 dark:text-white mt-2">
-            {formatAmount(quote.gran_total)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Piezas</p>
-          <p className="text-sm font-semibold text-slate-800 dark:text-white mt-2">
-            {piezas}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Fecha</p>
-          <p className="text-sm font-semibold text-slate-800 dark:text-white mt-2">
-            {formatQuoteDateTime(quote.created_at)}
-          </p>
+          <div className="text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total
+            </p>
+            <p className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+              {formatAmount(quote.gran_total)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+              {piezas} {piezas === 1 ? "pieza" : "piezas"} · {formatQuoteDateTime(quote.created_at)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -118,7 +165,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
         <div
           role="note"
           aria-label="Motivo del rechazo"
-          className="flex gap-3 rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4"
+          className="flex gap-3 rounded-2xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4"
         >
           <RejectIcon className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden="true" />
           <div className="min-w-0">
@@ -134,223 +181,108 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
 
       <QuoteComentariosHistory query={comentariosQuery} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-4 xl:col-span-2 bg-white dark:bg-white/5">
-          <div>
-            <p className="text-xs uppercase text-slate-400 font-semibold">Cliente</p>
-            <p className="text-sm font-semibold text-slate-800 dark:text-white">
-              {toDisplayValue(quote.cliente_nombre || quote.cliente_razon_social)}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {toDisplayValue(quote.cliente_razon_social)}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Cotización ID</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.id)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">ID cliente</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.cliente)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Uso CFDI</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.uso_cfdi)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Orden Compra</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.oc)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Persona pagos</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.persona_pagos)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Correo facturas</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 break-all">
-                {toDisplayValue(quote.correo_facturas)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Teléfono pagos</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.telefono_pagos)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Forma de pago</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.forma_pago)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Método de pago</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.metodo_pago)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Moneda</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(currencyLabel)}
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* ── Datos en listas agrupadas, en dos columnas ───────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <div className="space-y-5 min-w-0">
+          <DetailGroup title="Facturación y pagos">
+            <DetailRow label="Uso CFDI">{toDisplayValue(quote.uso_cfdi)}</DetailRow>
+            <DetailRow label="Forma de pago">{toDisplayValue(quote.forma_pago)}</DetailRow>
+            <DetailRow label="Método de pago">{toDisplayValue(quote.metodo_pago)}</DetailRow>
+            <DetailRow label="Moneda">{toDisplayValue(currencyLabel)}</DetailRow>
+            <DetailRow label="Orden de compra">{toDisplayValue(quote.oc)}</DetailRow>
+            <DetailRow label="Persona de pagos">{toDisplayValue(quote.persona_pagos)}</DetailRow>
+            <DetailRow label="Correo de facturas">
+              <span className="break-all">{toDisplayValue(quote.correo_facturas)}</span>
+            </DetailRow>
+            <DetailRow label="Teléfono de pagos">{toDisplayValue(quote.telefono_pagos)}</DetailRow>
+            <DetailRow label="ID cliente">{toDisplayValue(quote.cliente)}</DetailRow>
+          </DetailGroup>
 
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-3 bg-white dark:bg-white/5">
-          <div>
-            <p className="text-xs uppercase text-slate-400 font-semibold">Totales</p>
-            <p className="text-sm font-semibold text-slate-800 dark:text-white">
-              {formatAmount(quote.gran_total)}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-3">
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Autorizada</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(formatQuoteDateTime(quote.autorizada_at))}
-              </p>
-            </div>
-            {/* <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Cambios solicitados</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(formatQuoteDateTime(quote.cambios_solicitados_at))}
-              </p>
-            </div> */}
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Subtotal</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {formatAmount(quote.subtotal)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">IVA</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {toDisplayValue(quote.iva)}%
-                {/* Sin `importe_iva` (oculto o no enviado) queda solo la tasa. */}
-                {quote.importe_iva && (
-                  <> · {formatAmount(quote.importe_iva)}</>
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Anticipo</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {formatAmount(quote.anticipo)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-          <p className="text-xs uppercase text-slate-400 font-semibold mb-3">Condición de pago</p>
-          <div className="flex flex-wrap gap-2">
-            {condiciones.map((condicion) => (
-              <span
-                key={condicion}
-                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-slate-200/70 text-slate-700 dark:bg-white/10 dark:text-slate-200"
-              >
-                {condicion}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-            Monto: <span className="font-medium text-slate-700 dark:text-slate-300">{formatAmount(quote.monto)}</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5 space-y-3">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Datos de envío</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Destinatario</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.destinatario)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Empresa</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.empresa_envio)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Teléfono</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.telefono_envio)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Celular</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.celular_envio)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Colonia</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.colonia_envio)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Código postal</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.codigo_postal)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Ciudad</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.ciudad_envio)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-slate-400 font-semibold">Estado</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.estado_envio)}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-xs uppercase text-slate-400 font-semibold">Dirección</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.direccion_envio)}</p>
-            </div>
-            <div className="sm:col-span-3">
-              <p className="text-xs uppercase text-slate-400 font-semibold">Referencias</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{toDisplayValue(quote.referencias)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5 space-y-3">
-          <p className="text-xs uppercase text-slate-400 font-semibold">Servicios y cargos</p>
-          {quote.servicios_extras.length > 0 ? (
-            <div className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
-              {quote.servicios_extras.map((servicio) => {
+          <DetailGroup title="Servicios y cargos">
+            {quote.servicios_extras.length > 0 ? (
+              quote.servicios_extras.map((servicio) => {
                 const total = Number(servicio.cantidad) * Number(servicio.monto);
                 return (
-                  <div key={servicio.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <p className="text-slate-700 dark:text-slate-300 min-w-0 truncate">{servicio.nombre}</p>
+                  <div key={servicio.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                    <p className="text-[13px] font-medium text-slate-800 dark:text-slate-100 min-w-0 truncate">
+                      {servicio.nombre}
+                    </p>
                     <div className="flex items-center gap-2 shrink-0 text-right">
-                      <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                      <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap tabular-nums">
                         {servicio.cantidad} × {formatAmount(servicio.monto)}
                       </span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                      <span className="text-[13px] font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
                         {formatAmount(total)}
                       </span>
                     </div>
                   </div>
                 );
-              })}
+              })
+            ) : (
+              <p className="px-4 py-2.5 text-[13px] text-slate-400 dark:text-slate-500">Sin servicios extras</p>
+            )}
+          </DetailGroup>
+        </div>
+
+        <div className="space-y-5 min-w-0">
+          <DetailGroup title="Importes">
+            <DetailRow label="Subtotal">
+              <span className="tabular-nums">{formatAmount(quote.subtotal)}</span>
+            </DetailRow>
+            <DetailRow label={`IVA ${toDisplayValue(quote.iva)}%`}>
+              {/* Sin `importe_iva` (oculto o no enviado) queda solo la tasa. */}
+              <span className="tabular-nums">{quote.importe_iva ? formatAmount(quote.importe_iva) : "—"}</span>
+            </DetailRow>
+            <DetailRow label="Anticipo">
+              <span className="tabular-nums">{formatAmount(quote.anticipo)}</span>
+            </DetailRow>
+            <DetailRow label="Total" strong>
+              <span className="tabular-nums">{formatAmount(quote.gran_total)}</span>
+            </DetailRow>
+            <DetailRow label="Autorizada">{toDisplayValue(formatQuoteDateTime(quote.autorizada_at))}</DetailRow>
+            <div className="px-4 py-2.5">
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-2">Condición de pago</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {condiciones.map((condicion) => (
+                  <span
+                    key={condicion}
+                    className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300"
+                  >
+                    {condicion}
+                  </span>
+                ))}
+                <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                  Monto{" "}
+                  <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                    {formatAmount(quote.monto)}
+                  </span>
+                </span>
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-slate-400 dark:text-slate-500">Sin servicios extras</p>
-          )}
+          </DetailGroup>
+
+          <DetailGroup title="Envío">
+            <DetailRow label="Destinatario">{toDisplayValue(quote.destinatario)}</DetailRow>
+            <DetailRow label="Empresa">{toDisplayValue(quote.empresa_envio)}</DetailRow>
+            <DetailRow label="Teléfono">{toDisplayValue(quote.telefono_envio)}</DetailRow>
+            <DetailRow label="Celular">{toDisplayValue(quote.celular_envio)}</DetailRow>
+            <DetailRow label="Dirección">{toDisplayValue(quote.direccion_envio)}</DetailRow>
+            <DetailRow label="Colonia">{toDisplayValue(quote.colonia_envio)}</DetailRow>
+            <DetailRow label="C.P.">{toDisplayValue(quote.codigo_postal)}</DetailRow>
+            <DetailRow label="Ciudad / Estado">
+              {[quote.ciudad_envio, quote.estado_envio].filter(Boolean).join(", ") || "—"}
+            </DetailRow>
+            <DetailRow label="Referencias">{toDisplayValue(quote.referencias)}</DetailRow>
+          </DetailGroup>
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-white dark:bg-white/5">
-        <p className="text-xs uppercase text-slate-400 font-semibold mb-3">Detalle de productos</p>
-        <QuoteDetailsProducts details={quote.detalles} formatAmount={formatAmount} />
-      </div>
+      {/* ── Productos ────────────────────────────────────────────────────── */}
+      <DetailGroup title="Detalle de productos">
+        <div className="p-4">
+          <QuoteDetailsProducts details={quote.detalles} formatAmount={formatAmount} />
+        </div>
+      </DetailGroup>
     </div>
   );
 };
