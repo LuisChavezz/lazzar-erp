@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
+import { EMPTY_VALUE_FILTER_VALUE, type ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import { AREA_HEADER_FILTERS, getColumns as getAreaColumns, type AreaRow } from "@/src/features/areas/components/AreaColumns";
 import { buildAreaRows } from "@/src/features/areas/utils/areaRows";
 import {
@@ -9,14 +9,14 @@ import {
   getColumns as getPositionColumns,
   type PositionRow,
 } from "@/src/features/positions/components/PositionColumns";
-import { buildPositionRows, SIN_AREA_FILTER_VALUE } from "@/src/features/positions/utils/positionRows";
+import { buildPositionRows } from "@/src/features/positions/utils/positionRows";
 import { SHIFT_HEADER_FILTERS, getColumns as getShiftColumns } from "@/src/features/shifts/components/ShiftColumns";
 import {
   CALENDAR_HEADER_FILTERS,
   getColumns as getCalendarColumns,
   type CalendarRow,
 } from "@/src/features/calendars/components/CalendarColumns";
-import { buildCalendarRows, SIN_TIPO_FILTER_VALUE } from "@/src/features/calendars/utils/calendarRows";
+import { buildCalendarRows } from "@/src/features/calendars/utils/calendarRows";
 import type { Area } from "@/src/features/areas/interfaces/area.interface";
 import type { Position } from "@/src/features/positions/interfaces/position.interface";
 import type { Shift } from "@/src/features/shifts/interfaces/shift.interface";
@@ -102,9 +102,9 @@ test.describe("puestos", () => {
     expect(t.options("area").find((o) => o.value === "42")?.label).toBe(t.cellText("area", rows[2]));
   });
 
-  test("los puestos sin área tienen su propia opción y su filtro los encuentra", () => {
-    expect(t.options("area").find((o) => o.value === SIN_AREA_FILTER_VALUE)?.label).toBe("Sin área");
-    expect(t.matching("area", SIN_AREA_FILTER_VALUE).map((r) => r.id)).toEqual([2]);
+  test("los puestos sin área tienen su propia opción, fijada primero, y su filtro los encuentra", () => {
+    expect(t.options("area")[1]).toEqual({ value: EMPTY_VALUE_FILTER_VALUE, label: "Sin área" });
+    expect(t.matching("area", EMPTY_VALUE_FILTER_VALUE).map((r) => r.id)).toEqual([2]);
   });
 });
 
@@ -123,7 +123,17 @@ test.describe("turnos", () => {
   });
 
   test("los días filtran por la cadena guardada: un valor heredado es otra opción", () => {
-    expect(t.options("dias_laborales").map((o) => o.value)).toEqual([undefined, "L,M,M,J,V", "L,M,X,J,V"]);
+    expect(t.options("dias_laborales").map((o) => o.value)).toEqual([
+      undefined,
+      EMPTY_VALUE_FILTER_VALUE,
+      "L,M,M,J,V",
+      "L,M,X,J,V",
+    ]);
+  });
+
+  test("\"Sin días\" va fijada primero y encuentra los turnos sin días", () => {
+    expect(t.options("dias_laborales")[1].label).toBe("Sin días");
+    expect(t.matching("dias_laborales", EMPTY_VALUE_FILTER_VALUE).map((r) => r.id)).toEqual([3]);
   });
 });
 
@@ -150,7 +160,7 @@ test.describe("calendarios", () => {
   test("tipo: catálogo completo con \"Sin tipo\" y al final el código desconocido, crudo como su celda", () => {
     expect(t.options("tipo").map((o) => [o.value, o.label])).toEqual([
       [undefined, "Todos"],
-      [SIN_TIPO_FILTER_VALUE, "Sin tipo"],
+      [EMPTY_VALUE_FILTER_VALUE, "Sin tipo"],
       ["laborable", "Laborable"],
       ["descanso", "Descanso"],
       ["festivo", "Festivo"],
@@ -161,7 +171,7 @@ test.describe("calendarios", () => {
   });
 
   test("\"Sin tipo\" encuentra los días con tipo vacío o nulo", () => {
-    expect(t.matching("tipo", SIN_TIPO_FILTER_VALUE).map((r) => r.id)).toEqual([2, 4]);
+    expect(t.matching("tipo", EMPTY_VALUE_FILTER_VALUE).map((r) => r.id)).toEqual([2, 4]);
     expect(t.cellText("tipo", rows[3])).toBe("—");
   });
 

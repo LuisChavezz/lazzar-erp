@@ -6,7 +6,6 @@ import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { formatMxn } from "@/src/utils/formatCurrency";
 import { Position } from "../interfaces/position.interface";
 import { usePositionRowActionsContext } from "../hooks/usePositionRowActions";
-import { SIN_AREA_FILTER_VALUE } from "../utils/positionRows";
 
 /**
  * Fila de la tabla: el puesto tal como llega del backend más el nombre de su
@@ -104,14 +103,10 @@ export const getColumns = (permissions: PositionColumnPermissions) => {
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
  * El nombre filtra por `activo` (su punto). El área compara contra el FK crudo,
  * rotulado con su nombre resuelto; los puestos sin área tienen su propia
- * opción ("Sin área"), porque el FK es opcional. El salario no lleva filtro:
+ * opción ("Sin área", fijada primero), porque el FK es opcional. El salario no lleva filtro:
  * es un importe libre, lo cubren el orden y la búsqueda.
  */
 export const POSITION_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<PositionRow>>> = {
   nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
-  area: {
-    type: "distinct",
-    get: (r) => r.area ?? SIN_AREA_FILTER_VALUE,
-    label: (r) => r.area_nombre ?? "Sin área",
-  },
+  area: { type: "distinct", get: (r) => r.area, label: (r) => r.area_nombre, emptyOption: "Sin área" },
 };

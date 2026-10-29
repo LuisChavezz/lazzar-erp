@@ -5,12 +5,6 @@ import type { CalendarRow } from "../components/CalendarColumns";
 import { getTipoLabel, TIPO_OPTIONS } from "../constants/tipoCalendario";
 
 /**
- * Valor del filtro de tipo para los días SIN tipo. El "sin tipo" del catálogo
- * es la cadena vacía, que el filtro no puede usar: vacío es "Todos".
- */
-export const SIN_TIPO_FILTER_VALUE = "sin_tipo";
-
-/**
  * Filas de la tabla: cada día con el nombre de su turno resuelto. Un FK que no
  * está en el catálogo (o cuyo catálogo no ha llegado) se rotula `Turno #N`, una
  * sola vez: la celda y el filtro de encabezado leen ese mismo texto (ver
@@ -25,18 +19,18 @@ export const buildCalendarRows = (
     turno_nombre: shiftNameById.get(calendar.turno) ?? `Turno #${calendar.turno}`,
   }));
 
-/** Valor crudo de `tipo` tal como lo compara el filtro de encabezado. */
-export const getCalendarTipoFilterValue = (tipo: string | null): string => tipo || SIN_TIPO_FILTER_VALUE;
-
 /**
- * Opciones del filtro de tipo: el catálogo completo en su orden, con el "sin
- * tipo" mapeado a `SIN_TIPO_FILTER_VALUE`. Un código que el catálogo no conoce
- * lo agrega `withHeaderFilters` al final, con el valor crudo como etiqueta.
+ * Opciones del filtro de tipo: el catálogo en su orden, SIN el "sin tipo" (la
+ * cadena vacía), que va como `emptyOption` del filtro, fijado primero. Un
+ * código que el catálogo no conoce lo agrega `withHeaderFilters` al final, con
+ * el valor crudo como etiqueta.
  */
-export const CALENDAR_TIPO_FILTER_OPTIONS: ColumnFilterOption[] = TIPO_OPTIONS.map((option) => ({
-  value: getCalendarTipoFilterValue(option.value),
-  label: option.label,
-}));
+export const CALENDAR_TIPO_FILTER_OPTIONS: ColumnFilterOption[] = TIPO_OPTIONS.filter(
+  (option) => option.value !== "",
+);
+
+/** Etiqueta del "sin tipo" del catálogo, para la `emptyOption` del filtro. */
+export const SIN_TIPO_LABEL = TIPO_OPTIONS.find((option) => option.value === "")?.label ?? "Sin tipo";
 
 /**
  * Texto del tipo en la celda: la etiqueta del catálogo; "—" sin tipo; y un

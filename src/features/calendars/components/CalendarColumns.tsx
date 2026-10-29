@@ -8,8 +8,8 @@ import { Calendar } from "../interfaces/calendar.interface";
 import { useCalendarRowActionsContext } from "../hooks/useCalendarRowActions";
 import {
   CALENDAR_TIPO_FILTER_OPTIONS,
-  getCalendarTipoFilterValue,
   getCalendarTipoText,
+  SIN_TIPO_LABEL,
 } from "../utils/calendarRows";
 
 /**
@@ -110,17 +110,13 @@ export const getColumns = (permissions: CalendarColumnPermissions) => {
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * La fecha filtra por mes. El tipo ofrece el catálogo completo (con "Sin
- * tipo") aunque ninguna fila lo use, y al final cada código desconocido de las
- * filas, crudo. El turno compara contra el FK crudo, rotulado con su nombre
+ * La fecha filtra por mes. El tipo ofrece "Sin tipo" fijado primero, luego el
+ * catálogo completo aunque ninguna fila lo use, y al final cada código
+ * desconocido de las filas, crudo. El turno compara contra el FK crudo, rotulado con su nombre
  * resuelto.
  */
 export const CALENDAR_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CalendarRow>>> = {
   fecha: { type: "month", get: (r) => r.fecha },
-  tipo: {
-    type: "options",
-    get: (r) => getCalendarTipoFilterValue(r.tipo),
-    options: CALENDAR_TIPO_FILTER_OPTIONS,
-  },
+  tipo: { type: "options", get: (r) => r.tipo, options: CALENDAR_TIPO_FILTER_OPTIONS, emptyOption: SIN_TIPO_LABEL },
   turno: { type: "distinct", get: (r) => r.turno, label: (r) => r.turno_nombre },
 };

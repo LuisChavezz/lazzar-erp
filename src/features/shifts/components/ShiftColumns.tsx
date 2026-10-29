@@ -84,11 +84,12 @@ export const getColumns = (permissions: ShiftColumnPermissions) => {
  * día, y unos cuantos turnos comparten pocas horas, así que la lista es corta
  * y en orden (`"07:00"` < `"14:00"` también como texto). Los días filtran por
  * la cadena guardada tal cual: el backend la compara completa, y un valor
- * heredado ("L,M,M,J,V") es otro valor distinto, igual que en su filtro.
+ * heredado ("L,M,M,J,V") es otro valor distinto, igual que en su filtro. Los
+ * turnos sin días (celda "—") tienen su opción, "Sin días", fijada primero.
  */
 export const SHIFT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Shift>>> = {
   nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
   hora_entrada: { type: "distinct", get: (r) => trimTimeToHHMM(r.hora_entrada) },
   hora_salida: { type: "distinct", get: (r) => trimTimeToHHMM(r.hora_salida) },
-  dias_laborales: { type: "distinct", get: (r) => r.dias_laborales },
+  dias_laborales: { type: "distinct", get: (r) => r.dias_laborales, emptyOption: "Sin días" },
 };
