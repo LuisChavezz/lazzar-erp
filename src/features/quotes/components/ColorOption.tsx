@@ -9,6 +9,11 @@ export interface ColorOptionProps {
   color: Color;
   isSelected: boolean;
   onSelect: () => void;
+  /**
+   * Deshabilita la opción y explica por qué en `title` (p. ej. un color que no
+   * tiene todas las tallas de la partida, EC-641). Sin él, la de siempre.
+   */
+  disabledReason?: string;
 }
 
 /**
@@ -16,17 +21,25 @@ export interface ColorOptionProps {
  * Chip de color con swatch visual y nombre. Selección indicada únicamente con
  * borde de acento, sin ícono superpuesto ni ring secundario.
  */
-export function ColorOption({ color, isSelected, onSelect }: ColorOptionProps) {
+export function ColorOption({ color, isSelected, onSelect, disabledReason }: ColorOptionProps) {
+  const disabled = Boolean(disabledReason);
   return (
     <button
       type="button"
       role="radio"
       aria-checked={isSelected}
-      aria-label={`Seleccionar color ${color.nombre}`}
+      aria-label={
+        disabled
+          ? `Color ${color.nombre} no disponible: ${disabledReason}`
+          : `Seleccionar color ${color.nombre}`
+      }
+      title={disabledReason}
+      disabled={disabled}
       onClick={onSelect}
       className={`
         w-16 flex flex-col items-center gap-2 p-2.5 rounded-xl border-2
-        transition-all duration-150 cursor-pointer select-none
+        transition-all duration-150 select-none
+        ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500
         focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900
         ${
