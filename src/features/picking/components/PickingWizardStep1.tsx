@@ -15,9 +15,13 @@ import {
   PickingHeaderSchema,
   type PickingHeaderValues,
 } from "../schemas/picking.schema";
-import { PRODUCTO_TERMINADO_ALMACEN_ID } from "../constants/pickingAlmacen";
 import { usePickingOnboarding } from "../hooks/usePickingOnboarding";
+import {
+  getAlmacenSugeridoPreseleccionable,
+  getDestinoOptions,
+} from "../utils/pickingDestino";
 import { PickingOrderDetailDialog } from "./PickingOrderDetailDialog";
+import { PickingProgramacionesHint } from "./PickingProgramacionesHint";
 
 const PRIORIDAD_LABELS: Record<(typeof PICKING_PRIORIDADES)[number], string> = {
   BAJA: "Baja",
@@ -102,36 +106,37 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   const selectedPedido = pedidos.find((p) => p.id === selectedPedidoId) ?? null;
 
   /**
-   * Destinos que el backend de verdad aceptaría para ESTE pedido. `almacenes_destino`
-   * ya viene filtrado por `permite_entrada`, pero el `POST` valida dos cosas más
-   * que ese subconjunto no garantiza, y ofrecer opciones que fallan seguro solo
-   * cambia un error evitable por un 400:
-   *
-   *  - el destino debe ser de la SUCURSAL DEL PEDIDO (la lista viene acotada a
-   *    las sucursales del USUARIO, que pueden ser varias), y
-   *  - debe ser DISTINTO del origen (que aquí es fijo).
-   *
-   * El almacén SIN sucursal (`sucursal: null`, posible porque el campo es
-   * nullable en el catálogo) pasa el filtro a propósito: el backend lo acepta
-   * para cualquier pedido —solo compara cuando hay sucursal
-   * (`if almacen_destino.sucursal_id and ... != pedido.sucursal_id`)—, así que
-   * descartarlo escondería un destino válido. Llega sobre todo a usuarios
-   * superusuario o admin de empresa, para los que el backend no acota el
-   * catálogo por sucursal.
-   *
-   * Mientras no haya pedido elegido no se puede aplicar el filtro de sucursal,
-   * así que se muestran todos los destinos menos el origen; al elegir pedido la
-   * lista se acota y el efecto de abajo descarta una selección que ya no aplique.
+   * Destinos que el backend de verdad aceptaría para ESTE pedido (ver
+   * `getDestinoOptions`). Al elegir pedido la lista se acota y el efecto de
+   * abajo descarta una selección que ya no aplique.
    */
-  const destinoOptions = useMemo(() => {
-    const sinOrigen = almacenesDestino.filter(
-      (a) => a.id !== PRODUCTO_TERMINADO_ALMACEN_ID,
+  const destinoOptions = useMemo(
+    () => getDestinoOptions(almacenesDestino, selectedPedido),
+    [almacenesDestino, selectedPedido],
+  );
+
+  /**
+   * Al ELEGIR o CAMBIAR de pedido, preselecciona el almacén que sugiere su
+   * programación (si es uno solo y está entre las opciones de ese pedido; ver
+   * `getAlmacenSugeridoPreseleccionable`). Vive en el `onChange` del pedido y
+   * no en un efecto a propósito: así solo actúa en ese momento y nunca pisa un
+   * destino que el usuario elija a mano después, ni el que se conserva al
+   * "Regresar" del Paso 2. Si no aplica, el campo queda como estaba y el
+   * efecto de abajo lo reconcilia (limpia una opción que dejó de valer o
+   * preselecciona la única).
+   */
+  const preseleccionarDestinoSugerido = (pedidoId: number) => {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) return;
+    const sugeridoId = getAlmacenSugeridoPreseleccionable(
+      pedido.programaciones,
+      getDestinoOptions(almacenesDestino, pedido),
     );
-    if (!selectedPedido) return sinOrigen;
-    return sinOrigen.filter(
-      (a) => a.sucursal === null || a.sucursal === selectedPedido.sucursal,
-    );
-  }, [almacenesDestino, selectedPedido]);
+    if (sugeridoId !== null) {
+      form.setFieldValue("almacen_destino", sugeridoId);
+      clearError("almacen_destino");
+    }
+  };
 
   /**
    * Mantiene `almacen_destino` coherente con las opciones vigentes:
@@ -290,6 +295,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         const nextId = Number.isNaN(next) ? 0 : next;
                         field.handleChange(nextId);
                         clearError("pedido");
+                        preseleccionarDestinoSugerido(nextId);
                       }}
                       onBlur={field.handleBlur}
                       error={getError("pedido")}
@@ -395,6 +401,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                       ? "No hay almacenes de entrada en la sucursal de este pedido."
                       : "No hay almacenes de entrada distintos del almacén de origen."}
                   </p>
+                )}
+                {selectedPedido && (
+                  <PickingProgramacionesHint programaciones={selectedPedido.programaciones} />
                 )}
               </div>
 
