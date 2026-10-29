@@ -83,3 +83,20 @@ test.describe("withHeaderFilters › spec options", () => {
     expect(props.title).toBe("Folio");
   });
 });
+
+test.describe("withHeaderFilters › nombre del chip 'Filtrado por' (EC-623)", () => {
+  test("con `filterLabel`, el chip lo usa (capitalizado) en `meta.filterLabel`", () => {
+    expect(column.meta?.filterLabel).toBe("Estatus");
+    expect(column.meta?.label).toBe("Folio");
+  });
+
+  test("sin `filterLabel`, la columna no trae `meta.filterLabel` y el chip sigue con su etiqueta", () => {
+    const [plain] = withHeaderFilters<Row>(
+      [{ accessorKey: "folio", header: "Folio" } as ColumnDef<Row, unknown>],
+      rows,
+      { folio: { type: "distinct", get: (r) => r.folio } },
+    );
+    expect(plain.meta?.filterLabel).toBeUndefined();
+    expect(plain.meta?.label).toBe("Folio");
+  });
+});

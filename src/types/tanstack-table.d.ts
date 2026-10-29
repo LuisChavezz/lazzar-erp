@@ -48,5 +48,13 @@ declare module "@tanstack/react-table" {
      * `ColumnHeaderFilter` no se pinta en modo servidor.
      */
     serverFilter?: string;
+    /**
+     * SOLO modo cliente. Qué filtra el filtro de encabezado de esta columna,
+     * cuando no es la columna misma (el nombre que filtra por estatus): nombra
+     * su chip "Filtrado por" en vez de `label`. Lo pone `withHeaderFilters` a
+     * partir del `filterLabel` del spec; sin él, el chip usa la etiqueta de la
+     * columna como siempre.
+     */
+    filterLabel?: string;
   }
 }
