@@ -5,10 +5,17 @@ import toast from "react-hot-toast";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { Employee } from "../interfaces/employee.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una acción en vuelo (ver `usePendingEmployeeIds`).
+ */
+export const deactivateEmployeeMutationKey = ["deactivate-employee"] as const;
+
 export const useDeleteEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deactivateEmployeeMutationKey,
     mutationFn: deleteEmployee,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["employees"] });
