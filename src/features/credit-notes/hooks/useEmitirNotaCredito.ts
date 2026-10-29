@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
-import { parseNotaCreditoError } from "./useCreateNotaCredito";
+import { parseNotaCreditoError, stampFailureDetail } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
@@ -78,7 +78,7 @@ export const useEmitirNotaCredito = () => {
       // diálogo ya se cerró) y trae el motivo largo de Facturama: dura lo
       // suficiente para leerlo, con id por nota para no apilar repeticiones.
       if (parsed.stampFailed) {
-        toast.error(creditNoteStampFailedMessage("emision", parsed.formError ?? ""), {
+        toast.error(creditNoteStampFailedMessage("emision", stampFailureDetail(parsed)), {
           id: `emitir-nota-credito-timbrado-${id}`,
           duration: STAMP_FAILED_TOAST_DURATION_MS,
         });
