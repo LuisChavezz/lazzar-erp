@@ -29,9 +29,8 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { plural } from "@/src/utils/plural";
 import { useQuoteForm } from "../hooks/useQuoteForm";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
-import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
-import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { getQuoteSinSucursalMessage } from "../utils/quoteSucursal";
+import { WorkspaceBranchNotice } from "../../workspace/components/WorkspaceBranchNotice";
+import { QUOTE_SUCURSAL_DOCUMENT } from "../utils/quoteSucursal";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { AddProductDialog } from "./AddProductDialog";
 import type { AddProductVariant } from "../types";
@@ -2306,20 +2305,12 @@ export default function QuoteForm() {
   const selectedCompanyId = useWorkspaceStore((state) => state.selectedCompany?.id);
   // Sin sucursal válida el guardado se bloquea (`useQuoteForm`); se avisa desde
   // el principio y no solo al pulsar Guardar. Misma consulta en caché que el hook.
-  const workspaceBranch = useValidWorkspaceBranchId();
-  const sinSucursalNotice =
-    workspaceBranch.branchId === null && !workspaceBranch.isLoading ? (
-      <SectionErrorNotice
-        title="No se puede guardar sin sucursal"
-        message={getQuoteSinSucursalMessage(workspaceBranch.isError)}
-      />
-    ) : null;
   return (
     <QuoteFormContent
       {...hookResult}
       capabilities={QUOTE_FORM_CAPABILITIES.createQuote}
       muestraCompanyId={selectedCompanyId}
-      topNotice={sinSucursalNotice}
+      topNotice={<WorkspaceBranchNotice documento={QUOTE_SUCURSAL_DOCUMENT} />}
     />
   );
 }

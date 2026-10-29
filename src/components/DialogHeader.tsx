@@ -1,14 +1,21 @@
+import type { ComponentType, SVGProps } from "react";
 
 interface DialogHeaderProps {
   title: string;
   subtitle: string;
   statusColor?: "sky" | "emerald" | "amber" | "rose" | "indigo" | "violet" | "orange";
+  /**
+   * Ícono del formulario o detalle, en una insignia a la izquierda del título.
+   * Sin él, el encabezado queda exactamente como antes.
+   */
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-export const DialogHeader = ({ 
-  title, 
-  subtitle, 
-  statusColor = "sky" 
+export const DialogHeader = ({
+  title,
+  subtitle,
+  statusColor = "sky",
+  icon: Icon,
 }: DialogHeaderProps) => {
   const colorMap = {
     sky: { bg: "bg-sky-500", ping: "bg-sky-400" },
@@ -24,6 +31,11 @@ export const DialogHeader = ({
 
   return (
     <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+      {Icon && (
+        <span className="grid place-items-center w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
+          <Icon className="w-5 h-5" aria-hidden="true" />
+        </span>
+      )}
       <div>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
           {title}

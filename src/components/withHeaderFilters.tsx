@@ -58,8 +58,11 @@ export type HeaderFilterSpec<T> =
   | { type: "range"; get: (row: T) => number | string | null | undefined; ranges: RangeFilterOption[] }
   /** "Con / sin": hay dato (texto no vacío, número > 0) o no. */
   | { type: "presence"; get: (row: T) => unknown; con: string; sin: string }
-  /** Un booleano, con su etiqueta para cada lado. */
-  | { type: "boolean"; get: (row: T) => boolean | null | undefined; yes: string; no: string };
+  /**
+   * Un booleano, con su etiqueta para cada lado. `filterLabel` como en
+   * `distinct`: p. ej. el nombre que filtra por `activo`.
+   */
+  | { type: "boolean"; get: (row: T) => boolean | null | undefined; yes: string; no: string; filterLabel?: string };
 
 const hasValue = (value: unknown) =>
   typeof value === "number" ? value > 0 : typeof value === "string" ? value.trim() !== "" : Boolean(value);
@@ -133,7 +136,10 @@ export function withHeaderFilters<T>(
           title={title}
           column={tableColumn}
           options={options}
-          label={((spec.type === "distinct" || spec.type === "options") && spec.filterLabel) || title.toLowerCase()}
+          label={
+            ((spec.type === "distinct" || spec.type === "options" || spec.type === "boolean") && spec.filterLabel) ||
+            title.toLowerCase()
+          }
           searchable={spec.type === "distinct" && spec.searchable ? { placeholder: `Buscar ${title.toLowerCase()}…` } : false}
           menuAlign={column.meta?.align === "right" ? "end" : "start"}
         />

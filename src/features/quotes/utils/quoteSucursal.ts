@@ -1,3 +1,9 @@
+import {
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+  type WorkspaceBranchDocument,
+} from "@/src/features/workspace/utils/workspaceBranchMessages";
+
 /**
  * Sucursal de una cotización (EC-622). No es un campo del formulario: sale del
  * contexto. Al crear, la del workspace; al editar, la que ya trae el registro y,
@@ -12,15 +18,14 @@ export const resolveQuoteSucursal = (
 ): number | null => recordSucursal || workspaceBranchId || null;
 
 /** Guardado bloqueado porque la lista de sucursales todavía se está cargando. */
-export const QUOTE_SUCURSAL_LOADING_MESSAGE =
-  "Aún se están cargando tus sucursales. Intenta guardar de nuevo en un momento.";
+export const QUOTE_SUCURSAL_LOADING_MESSAGE = WORKSPACE_BRANCH_LOADING_MESSAGE;
 
-/**
- * Por qué se bloqueó el guardado. Si la lista de sucursales no cargó, el
- * usuario puede sí tener una sucursal válida: pedirle que la elija lo
- * confundiría.
- */
+/** La cotización en los textos del aviso compartido de sucursal. */
+export const QUOTE_SUCURSAL_DOCUMENT: WorkspaceBranchDocument = {
+  asignarA: "a la cotización",
+  guardar: "la cotización",
+};
+
+/** Por qué se bloqueó el guardado (ver `getSinSucursalMessage`). */
 export const getQuoteSinSucursalMessage = (isBranchesError: boolean): string =>
-  isBranchesError
-    ? "No se pudieron cargar tus sucursales para asignarla a la cotización. Recarga la página e inténtalo de nuevo."
-    : "Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para guardar la cotización.";
+  getSinSucursalMessage(isBranchesError, QUOTE_SUCURSAL_DOCUMENT);
