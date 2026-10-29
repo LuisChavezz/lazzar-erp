@@ -4,27 +4,29 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { AbsenceIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
-import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
-import { AbsenceRow, formatAbsenceRange, getColumns } from "./AbsenceColumns";
+import { ABSENCE_HEADER_FILTERS, formatAbsenceRange, getColumns } from "./AbsenceColumns";
 import { Absence } from "../interfaces/absence.interface";
 import {
   ESTADO_APROBADO,
-  ESTADO_AUSENCIA_FILTER_OPTIONS,
   ESTADO_PENDIENTE,
   ESTADO_RECHAZADO,
   getAusenciaVocabulary,
   getTipoAusenciaLabel,
-  TIPO_AUSENCIA_OPTIONS,
   TIPO_FALTA_INJUSTIFICADA,
   type EstadoAusencia,
 } from "../constants/absenceChoices";
@@ -35,27 +37,14 @@ import { useAbsences } from "../hooks/useAbsences";
 import { useDeleteAbsence } from "../hooks/useDeleteAbsence";
 import { useApproveAbsence } from "../hooks/useApproveAbsence";
 import { AbsenceRowActionsProvider, usePendingAbsenceIds } from "../hooks/useAbsenceRowActions";
-import { ABSENCE_GONE_MESSAGE, absenceEstadoChangedMessage } from "../hooks/absenceErrorMessages";
 import { verifyAbsenceEstado } from "../hooks/verifyAbsenceEstado";
+import { buildAbsenceRows, getAbsenceStaleNotice } from "../utils/absenceRows";
 
 /**
  * Permiso de aprobar/confirmar y rechazar/descartar: `D-RH`, igual que en
  * vacaciones (no hay código de aprobación propio de RH en el catálogo).
  */
 const APPROVE_PERMISSION = "D-RH";
-
-// `con_goce_sueldo` se compara como `String(boolean)` (DataTable filtra por el
-// valor CRUDO de la fila).
-const GOCE_FILTER_OPTIONS = [
-  { value: "true", label: "Con goce" },
-  { value: "false", label: "Sin goce" },
-];
-
-const FILTER_CONFIG: DataTableFilterConfig[] = [
-  { id: "tipo", label: "Tipo", options: TIPO_AUSENCIA_OPTIONS },
-  { id: "estado", label: "Estado", options: ESTADO_AUSENCIA_FILTER_OPTIONS },
-  { id: "con_goce_sueldo", label: "Goce de sueldo", options: GOCE_FILTER_OPTIONS },
-];
 
 export default function AbsenceList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -74,8 +63,9 @@ export default function AbsenceList() {
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const checkingDeleteRef = useRef(false);
   const queryClient = useQueryClient();
-  // Aviso pendiente de la vía rápida (ver `closeStale`), mostrado desde un efecto.
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  // Aviso del diálogo de fila que se cerró porque su registro cambió por
+  // fuera, mostrado desde un efecto.
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla.
   const busyIds = usePendingAbsenceIds();
 
@@ -104,15 +94,15 @@ export default function AbsenceList() {
   );
   const usersById = users ? new Map(users.map((user) => [user.id, user])) : null;
 
-  const rows: AbsenceRow[] = absences.map((absence) => ({
-    ...absence,
-    empleado_nombre: employeeNameById.get(absence.empleado) ?? `Empleado #${absence.empleado}`,
-    solicitado_por_nombre: resolveUserName(absence.solicitado_por, usersById, isUsersError),
-    autorizado_por_nombre: resolveUserName(absence.autorizado_por, usersById, isUsersError),
-    rechazado_por_nombre: resolveUserName(absence.rechazado_por, usersById, isUsersError),
-  }));
+  const rows = buildAbsenceRows(absences, employeeNameById, usersById, isUsersError);
 
-  const columns = getColumns({ canEdit: canEditHr, canApprove: canApproveHr, canDelete: canDeleteHr });
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `AbsenceRowActionsProvider`, así una acción no remonta las celdas.
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canApprove: canApproveHr, canDelete: canDeleteHr }),
+    rows,
+    ABSENCE_HEADER_FILTERS
+  );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────
   const findRow = (id: number | null) =>
@@ -123,40 +113,42 @@ export default function AbsenceList() {
   const rejectTarget = findRow(rejectTargetId);
   const deleteTarget = findRow(deleteRequest?.id ?? null);
 
-  /** Vía rápida contra la caché: mismo aviso que la guarda de red. */
-  const closeStale = (id: number, target: AbsenceRow | null) =>
-    setStaleNotice({
-      key: `absence-stale-${id}-${target?.estado ?? "gone"}`,
-      message: target ? absenceEstadoChangedMessage(target.tipo, target.estado) : ABSENCE_GONE_MESSAGE,
-    });
+  const isApproveBusy =
+    approveTargetId !== null && (isApproving || busyIds.includes(approveTargetId));
+  const isRejectBusy = rejectTargetId !== null && busyIds.includes(rejectTargetId);
 
-  // Ajustes en RENDER (no en efecto). Aprobar, rechazar y borrar no se tocan
-  // mientras su propia acción está en vuelo. Mismo criterio que vacaciones.
+  // Ajustes en RENDER (no en efecto). Un detalle cuyo registro desapareció se
+  // cierra sin aviso.
   if (detailTargetId !== null && detailTarget === null) setDetailTargetId(null);
-  if (
-    approveTargetId !== null &&
-    approveTarget?.estado !== ESTADO_PENDIENTE &&
-    !isApproving &&
-    !busyIds.includes(approveTargetId)
-  ) {
+
+  // Vía rápida contra la caché, con el mismo aviso que la guarda de red:
+  // resolver espera un pendiente; el borrado, el estado de apertura. Ninguno
+  // se toca mientras su propia acción está en vuelo. Mismo criterio que
+  // vacaciones.
+  const staleApprove = getAbsenceStaleNotice(
+    approveTargetId,
+    approveTarget,
+    ESTADO_PENDIENTE,
+    isApproveBusy
+  );
+  if (staleApprove) {
     setApproveTargetId(null);
-    closeStale(approveTargetId, approveTarget);
+    setStaleNotice(staleApprove);
   }
-  if (
-    rejectTargetId !== null &&
-    rejectTarget?.estado !== ESTADO_PENDIENTE &&
-    !busyIds.includes(rejectTargetId)
-  ) {
+  const staleReject = getAbsenceStaleNotice(rejectTargetId, rejectTarget, ESTADO_PENDIENTE, isRejectBusy);
+  if (staleReject) {
     setRejectTargetId(null);
-    closeStale(rejectTargetId, rejectTarget);
+    setStaleNotice(staleReject);
   }
-  if (
-    deleteRequest !== null &&
-    !isCheckingDelete &&
-    (deleteTarget === null || deleteTarget.estado !== deleteRequest.estado)
-  ) {
+  const staleDelete = getAbsenceStaleNotice(
+    deleteRequest?.id ?? null,
+    deleteTarget,
+    deleteRequest?.estado ?? ESTADO_PENDIENTE,
+    isCheckingDelete
+  );
+  if (staleDelete) {
     setDeleteRequest(null);
-    closeStale(deleteRequest.id, deleteTarget);
+    setStaleNotice(staleDelete);
   }
 
   useEffect(() => {
@@ -165,8 +157,15 @@ export default function AbsenceList() {
     }
   }, [staleNotice]);
 
+  // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
+  // a la animación de salida cuando el id vuelve a `null`.
+  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const approveSession = useDialogSession(approveTargetId !== null, approveTarget);
+  const rejectSession = useDialogSession(rejectTargetId !== null, rejectTarget);
+  const deleteSession = useDialogSession(deleteRequest !== null, deleteTarget);
+
   // La confirmación FUERTE depende del estado de APERTURA, no del de la caché.
-  const isApprovedDelete = deleteRequest?.estado === ESTADO_APROBADO;
+  const isApprovedDelete = deleteSession.snapshot?.estado === ESTADO_APROBADO;
 
   /**
    * Borrado (pendiente) o anulación (aprobado) con guarda previa: se lee el
@@ -191,12 +190,14 @@ export default function AbsenceList() {
     }
   };
 
-  const approveVocabulary = approveTarget ? getAusenciaVocabulary(approveTarget.tipo) : null;
-  const deleteTipoLabel = deleteTarget
-    ? (getTipoAusenciaLabel(deleteTarget.tipo) ?? "registro").toLowerCase()
+  const approveSnapshot = approveSession.snapshot;
+  const approveVocabulary = approveSnapshot ? getAusenciaVocabulary(approveSnapshot.tipo) : null;
+  const deleteSnapshot = deleteSession.snapshot;
+  const deleteTipoLabel = deleteSnapshot
+    ? (getTipoAusenciaLabel(deleteSnapshot.tipo) ?? "registro").toLowerCase()
     : "";
-  const deleteEstadoLabel = deleteTarget
-    ? getAusenciaVocabulary(deleteTarget.tipo).estadoLabel.aprobado.toLowerCase()
+  const deleteEstadoLabel = deleteSnapshot
+    ? getAusenciaVocabulary(deleteSnapshot.tipo).estadoLabel.aprobado.toLowerCase()
     : "";
 
   return (
@@ -215,7 +216,6 @@ export default function AbsenceList() {
         data={rows}
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar permiso o ausencia..."
-        filterConfig={FILTER_CONFIG}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar permisos y ausencias"
@@ -229,11 +229,12 @@ export default function AbsenceList() {
                   title={selectedAbsence ? "Editar Permiso o Ausencia" : "Alta de Permiso o Ausencia"}
                   subtitle={selectedAbsence ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="amber"
+                  icon={AbsenceIcon}
                 />
               }
               open={isFormOpen}
               onOpenChange={setIsFormOpen}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -251,10 +252,16 @@ export default function AbsenceList() {
         }
       />
 
-      {detailTarget && (
+      {/*
+        Montados mientras haya una copia: `open` sale del id, así que al
+        cerrarse animan su salida con los datos de la apertura.
+      */}
+      {detailSession.snapshot && (
         <AbsenceDetailDialog
-          absence={detailTarget}
-          open
+          key={`detail-${detailSession.id}`}
+          // El detalle sí sigue a los refetch mientras su registro exista.
+          absence={detailTarget ?? detailSession.snapshot}
+          open={detailTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDetailTargetId(null);
           }}
@@ -262,63 +269,61 @@ export default function AbsenceList() {
       )}
 
       {/* Sin optimista: queda abierto y bloqueado hasta que responde el servidor. */}
-      {canApproveHr &&
-        approveTarget &&
-        approveVocabulary &&
-        (approveTarget.estado === ESTADO_PENDIENTE || isApproving) && (
-          <ConfirmDialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setApproveTargetId(null);
-            }}
-            title={
-              approveTarget.tipo === TIPO_FALTA_INJUSTIFICADA
-                ? "Confirmar Falta Injustificada"
-                : `Aprobar ${getTipoAusenciaLabel(approveTarget.tipo) ?? "Registro"}`
-            }
-            description={
-              approveTarget.tipo === TIPO_FALTA_INJUSTIFICADA
-                ? `¿Confirmar la falta injustificada de ${approveTarget.empleado_nombre} (${formatAbsenceRange(
-                    approveTarget
-                  )})? Quedará registrado quién la confirmó y cuándo.`
-                : `¿Aprobar el registro de ${(
-                    getTipoAusenciaLabel(approveTarget.tipo) ?? ""
-                  ).toLowerCase()} de ${approveTarget.empleado_nombre} (${formatAbsenceRange(
-                    approveTarget
-                  )})? Quedará registrado quién lo aprobó y cuándo.`
-            }
-            confirmText={isApproving ? "Procesando…" : approveVocabulary.approveAction}
-            confirmColor="green"
-            closeOnConfirm={false}
-            busy={isApproving}
-            onConfirm={() =>
-              approveAbsence(
-                { id: approveTarget.id, tipo: approveTarget.tipo },
-                { onSettled: () => setApproveTargetId(null) }
-              )
-            }
-          />
-        )}
+      {canApproveHr && approveSnapshot && approveVocabulary && (
+        <ConfirmDialog
+          key={`approve-${approveSession.id}`}
+          open={approveTargetId !== null}
+          onOpenChange={(open) => {
+            if (!open) setApproveTargetId(null);
+          }}
+          title={
+            approveSnapshot.tipo === TIPO_FALTA_INJUSTIFICADA
+              ? "Confirmar Falta Injustificada"
+              : `Aprobar ${getTipoAusenciaLabel(approveSnapshot.tipo) ?? "Registro"}`
+          }
+          description={
+            approveSnapshot.tipo === TIPO_FALTA_INJUSTIFICADA
+              ? `¿Confirmar la falta injustificada de ${approveSnapshot.empleado_nombre} (${formatAbsenceRange(
+                  approveSnapshot
+                )})? Quedará registrado quién la confirmó y cuándo.`
+              : `¿Aprobar el registro de ${(
+                  getTipoAusenciaLabel(approveSnapshot.tipo) ?? ""
+                ).toLowerCase()} de ${approveSnapshot.empleado_nombre} (${formatAbsenceRange(
+                  approveSnapshot
+                )})? Quedará registrado quién lo aprobó y cuándo.`
+          }
+          confirmText={isApproveBusy ? "Procesando…" : approveVocabulary.approveAction}
+          confirmColor="green"
+          closeOnConfirm={false}
+          busy={isApproveBusy}
+          onConfirm={() =>
+            approveAbsence(
+              { id: approveSnapshot.id, tipo: approveSnapshot.tipo },
+              { onSettled: () => setApproveTargetId(null) }
+            )
+          }
+        />
+      )}
 
-      {/* Sigue montado mientras su rechazo está en vuelo (ver vacaciones). */}
-      {canApproveHr &&
-        rejectTarget &&
-        (rejectTarget.estado === ESTADO_PENDIENTE || busyIds.includes(rejectTarget.id)) && (
-          <AbsenceRejectDialog
-            key={rejectTarget.id}
-            absence={rejectTarget}
-            onClose={() => setRejectTargetId(null)}
-          />
-        )}
+      {/* Mientras su rechazo está en vuelo la vía rápida no lo toca (ver vacaciones). */}
+      {canApproveHr && rejectSession.snapshot && (
+        <AbsenceRejectDialog
+          key={`reject-${rejectSession.id}`}
+          absence={rejectSession.snapshot}
+          open={rejectTargetId !== null}
+          onClose={() => setRejectTargetId(null)}
+        />
+      )}
 
       {/*
         Pendiente: confirmación normal. Aprobado: confirmación FUERTE (es la
         única forma de anularlo y borra su registro de aprobación). Un
         rechazado nunca llega aquí.
       */}
-      {canDeleteHr && deleteRequest && deleteTarget && deleteRequest.estado !== ESTADO_RECHAZADO && (
+      {canDeleteHr && deleteSnapshot && deleteSnapshot.estado !== ESTADO_RECHAZADO && (
         <ConfirmDialog
-          open
+          key={`delete-${deleteSession.id}`}
+          open={deleteRequest !== null}
           onOpenChange={(open) => {
             if (!open && !isCheckingDelete) setDeleteRequest(null);
           }}
@@ -328,8 +333,8 @@ export default function AbsenceList() {
           title={isApprovedDelete ? "Anular Registro Resuelto" : "Eliminar Registro de Ausencia"}
           description={
             isApprovedDelete
-              ? `Vas a ELIMINAR DEFINITIVAMENTE el registro de ${deleteTipoLabel} (${deleteEstadoLabel}) de ${deleteTarget.empleado_nombre} (${formatAbsenceRange(
-                  deleteTarget
+              ? `Vas a ELIMINAR DEFINITIVAMENTE el registro de ${deleteTipoLabel} (${deleteEstadoLabel}) de ${deleteSnapshot.empleado_nombre} (${formatAbsenceRange(
+                  deleteSnapshot
                 )}). Es la única forma de anularlo: el registro y su trazabilidad (quién lo resolvió y cuándo) se borran y no se pueden recuperar. Esta acción es irreversible.`
               : "¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer."
           }
