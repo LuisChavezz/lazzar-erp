@@ -3,10 +3,17 @@ import { deleteArea } from "../services/actions";
 import toast from "react-hot-toast";
 import { Area } from "../interfaces/area.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una baja en vuelo (ver `usePendingAreaIds`).
+ */
+export const deactivateAreaMutationKey = ["deactivate-area"] as const;
+
 export const useDeleteArea = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deactivateAreaMutationKey,
     mutationFn: deleteArea,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["areas"] });

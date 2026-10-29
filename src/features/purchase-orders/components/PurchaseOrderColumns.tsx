@@ -61,7 +61,7 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
  * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
- * Mismo reparto que `AreaColumns` y el resto de los catálogos. Enviar correo y
+ * Enviar correo y
  * Descargar PDF no abren nada — son `mutate(id)` directos.
  */
 const FolioCell = ({
@@ -441,7 +441,7 @@ const CANTIDAD_FILTER_OPTIONS: DataTableFilterOption[] = CANTIDAD_RANGES.map(
  * Fábrica —no un arreglo estático— porque la acción "Ver Detalles" navega a la
  * página de detalle, y "Editar"/"Cancelar" abren diálogos que viven en
  * `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
- * `CorteMangaOrderColumns` (navegación) y `AreaColumns` (edición).
+ * `CorteMangaOrderColumns` (navegación).
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
  * de acciones de la fila, ver abajo), Proveedor, Tipo de compra, Fecha de

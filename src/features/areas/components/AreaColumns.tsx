@@ -1,11 +1,10 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { useState } from "react";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, BanIcon } from "@/src/components/Icons";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { Area } from "../interfaces/area.interface";
-import { useDeleteArea } from "../hooks/useDeleteArea";
+import { useAreaRowActionsContext } from "../hooks/useAreaRowActions";
 
 /**
  * Fila de la tabla: el área tal como llega del backend más el nombre de su
@@ -18,83 +17,58 @@ import { useDeleteArea } from "../hooks/useDeleteArea";
  * accessor se congelaba con el ID crudo — en pantalla, en la búsqueda global y
  * en el orden. Al construir las filas en `AreaList` a partir de áreas +
  * departamentos, la llegada del catálogo produce un `data` nuevo y TanStack
- * recalcula todo. Mismo arreglo que `ContractRow` y `CalendarRow`.
+ * recalcula todo. Mismo arreglo que `EmployeeRow`.
  *
- * `null` = el departamento no aparece en el catálogo (o todavía no llega).
+ * Un departamento que no aparece en el catálogo (o cuyo catálogo todavía no
+ * llega) se rotula `Departamento #N` (`buildAreaRows`): ese mismo texto lo
+ * leen la celda, la opción del filtro de encabezado y su ficha de filtro
+ * activo.
  */
-export type AreaRow = Area & { departamento_nombre: string | null };
+export type AreaRow = Area & { departamento_nombre: string };
 
 const columnHelper = createColumnHelper<AreaRow>();
 
-const ActionsCell = ({
-  row,
-  onEdit,
-  canEdit,
-  canDelete,
-}: {
-  row: Row<AreaRow>;
-  onEdit: (area: Area) => void;
+interface AreaColumnPermissions {
   canEdit: boolean;
   canDelete: boolean;
-}) => {
-  const { mutate: deleteArea, isPending } = useDeleteArea();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+}
+
+/**
+ * El nombre ES el menú de la fila y lleva el punto de `activo`: sin columnas
+ * aparte de "Estatus" ni "Acciones". Los callbacks y el "en vuelo" llegan por
+ * contexto; el diálogo vive en `AreaList`. Sin "Ver detalle": las áreas no
+ * tienen vista de detalle.
+ */
+const AreaNameCell = ({ area, permissions }: { area: AreaRow; permissions: AreaColumnPermissions }) => {
+  const { onEdit, onDeactivate, busyIds } = useAreaRowActionsContext();
 
   // El DELETE del backend es una baja lógica: pone `activo` en false, no borra
   // el registro. Por eso la acción se ofrece solo sobre áreas activas — sobre
   // una inactiva sería un no-op.
-  const canDeactivate = canDelete && row.original.activo;
-
-  const menuItems: ActionMenuItem[] = [];
-  if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    });
-  }
-  if (canDeactivate) {
-    menuItems.push({
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(area), visible: permissions.canEdit },
+    {
       label: "Desactivar",
       icon: BanIcon,
-      onSelect: () => setIsDeleteOpen(true),
-      disabled: isPending,
-    });
-  }
+      onSelect: () => onDeactivate(area),
+      disabled: busyIds.includes(area.id),
+      visible: permissions.canDelete && area.activo,
+    },
+  ];
 
-  return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} />
-      {canDeactivate && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Desactivar Área"
-          description="¿Deseas desactivar esta área? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
-          confirmText={isPending ? "Desactivando..." : "Desactivar"}
-          onConfirm={() => {
-            deleteArea(row.original.id);
-            setIsDeleteOpen(false);
-          }}
-          confirmColor="amber"
-        />
-      )}
-    </div>
-  );
+  return <FolioActionMenu name={area.nombre} items={items} active={area.activo} />;
 };
 
-export const getColumns = (
-  onEdit: (area: Area) => void,
-  permissions: { canEdit: boolean; canDelete: boolean }
-) => {
+/**
+ * Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+ * `AreaRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getColumns = (permissions: AreaColumnPermissions) => {
   const columns = [
     columnHelper.accessor("nombre", {
       header: "Nombre",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 font-medium">
-          {info.getValue()}
-        </span>
-      ),
+      size: 260,
+      cell: ({ row }) => <AreaNameCell area={row.original} permissions={permissions} />,
     }),
     columnHelper.accessor("codigo", {
       header: "Código",
@@ -105,46 +79,27 @@ export const getColumns = (
       ),
     }),
     // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
-    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
-    // `null` que excluiría la columna de la búsqueda (ver DataTable).
-    columnHelper.accessor(
-      (row) => row.departamento_nombre ?? String(row.departamento),
-      {
-        id: "departamento",
-        header: "Departamento",
-        cell: (info) => (
-          <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
-        ),
-      }
-    ),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
+    // los tres ven el nombre resuelto (o su respaldo `#N`, ver `AreaRow`).
+    columnHelper.accessor((row) => row.departamento_nombre, {
+      id: "departamento",
+      header: "Departamento",
       cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
   ] as ColumnDef<AreaRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => (
-          <ActionsCell
-            row={row}
-            onEdit={onEdit}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<AreaRow>
-    );
-  }
-
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * El nombre filtra por `activo` (su punto). El departamento compara contra el
+ * FK crudo, rotulado con su nombre resuelto: dos departamentos homónimos no se
+ * mezclan. El código no lleva filtro: es casi único por fila, lo cubre la
+ * búsqueda.
+ */
+export const AREA_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<AreaRow>>> = {
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  departamento: { type: "distinct", get: (r) => r.departamento, label: (r) => r.departamento_nombre },
 };
