@@ -22,9 +22,10 @@ export const pedidoProgramarQueryKey = (pedidoId: number) =>
  *
  * `refetchOnMount: "always"` + `gcTime: 0` + `isFetchedAfterMount`: el
  * guardado REEMPLAZA la lista entera, así que el diálogo solo monta el
- * formulario con datos leídos en ESTA apertura. Sin caché que sobreviva al cierre, una lectura fallida al reabrir
- * es un error INICIAL (estado de error), nunca "datos anteriores" de otra
- * apertura (borraría en silencio lo que otro usuario programó mientras tanto).
+ * formulario con datos leídos en ESTA apertura. Sin caché que sobreviva al
+ * cierre, una lectura fallida al reabrir es un error INICIAL (estado de
+ * error), nunca "datos anteriores" de otra apertura (borraría en silencio lo
+ * que otro usuario programó mientras tanto).
  *
  * El 404 (pedido dado de baja o de otra empresa) es definitivo. El 400 de
  * permiso tampoco se reintenta (`retryUnlessClientError`) y llega como

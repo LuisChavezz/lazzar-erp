@@ -89,6 +89,11 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
   } = usePedidoProgramacionForm({ contexto, onSuccess: onClose });
 
   const listError = getError("programaciones");
+  // `total_piezas` del backend excluye las líneas de muestra; la tabla sí las
+  // lista, así que se avisa cuántas piezas quedan fuera de la programación.
+  const piezasMuestra = contexto.renglones
+    .filter((renglon) => renglon.es_muestra)
+    .reduce((sum, renglon) => sum + renglon.cantidad, 0);
   const faltan = Math.max(0, totalPiezas - sumaProgramada);
   const pct = totalPiezas > 0 ? Math.min(100, Math.round((sumaProgramada / totalPiezas) * 100)) : 0;
   const completo = totalPiezas > 0 && sumaProgramada === totalPiezas;
@@ -154,6 +159,12 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
               style={{ width: `${excedeTotal ? 100 : pct}%` }}
             />
           </div>
+          {piezasMuestra > 0 && (
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {piezasMuestra} {plural(piezasMuestra, "pieza", "piezas")} de muestra no{" "}
+              {plural(piezasMuestra, "cuenta", "cuentan")} para la programación.
+            </p>
+          )}
         </div>
 
         <form.Field name="programaciones" mode="array">

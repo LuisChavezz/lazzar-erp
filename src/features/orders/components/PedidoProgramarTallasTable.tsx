@@ -41,8 +41,8 @@ export function PedidoProgramarTallasTable({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-2">
         <SectionTitle>Tallas del pedido</SectionTitle>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Stock disponible en <span className="font-semibold">{almacenSurtido}</span>{" "}
-          (Producto terminado), descontando lo reservado por otros pedidos.
+          Stock disponible en <span className="font-semibold">{almacenSurtido}</span>,
+          descontando lo reservado por otros pedidos.
         </p>
       </div>
 
