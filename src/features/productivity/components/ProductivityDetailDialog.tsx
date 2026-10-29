@@ -2,8 +2,17 @@
 
 import { ProductivityIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { InfoField, InfoGrid, SectionTitle, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import {
+  InfoField,
+  InfoGrid,
+  InfoTile,
+  InfoTileGrid,
+  SectionTitle,
+  textOrDash,
+} from "@/src/components/DetailDialogPrimitives";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { ESTADO_CONFIRMADO, ESTADO_PRODUCTIVIDAD_CFG } from "../constants/productivityChoices";
@@ -47,31 +56,30 @@ export function ProductivityDetailDialog({ record, open, onOpenChange }: Product
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="720px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <ProductivityIcon className="w-5 h-5 text-violet-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de productividad
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {record.empleado_nombre} · {formatLocalDate(record.fecha)}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de productividad"
+          subtitle={`${record.empleado_nombre} · ${formatLocalDate(record.fecha)}`}
+          statusColor="violet"
+          icon={ProductivityIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Empleado">{record.empleado_nombre}</InfoField>
-          <InfoField label="Departamento">{record.departamento_nombre}</InfoField>
-          <InfoField label="Fecha">{formatLocalDate(record.fecha)}</InfoField>
-          <InfoField label="Estado">
+        {/* Encabezado: lo que se busca primero al abrir el registro. */}
+        <InfoTileGrid>
+          <InfoTile label="Empleado">{record.empleado_nombre}</InfoTile>
+          <InfoTile label="Departamento">{record.departamento_nombre}</InfoTile>
+          <InfoTile label="Fecha">{formatLocalDate(record.fecha)}</InfoTile>
+          <InfoTile label="Estado">
             <StatusBadge status={record.estado} config={ESTADO_PRODUCTIVIDAD_CFG} />
-          </InfoField>
-          <InfoField label="Descripción" className="col-span-2">
+          </InfoTile>
+        </InfoTileGrid>
+
+        <div className="text-xs px-1">
+          <InfoField label="Descripción">
             <span className="whitespace-pre-line">{textOrDash(record.descripcion)}</span>
           </InfoField>
         </div>

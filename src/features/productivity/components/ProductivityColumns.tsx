@@ -1,13 +1,10 @@
 import { ColumnDef, createColumnHelper, type SortingFn } from "@tanstack/react-table";
-import {
-  CheckCircleIcon,
-  DeleteIcon,
-  EditIcon,
-  ReopenIcon,
-  ViewIcon,
-} from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { CheckCircleIcon, DeleteIcon, EditIcon, ReopenIcon } from "@/src/components/Icons";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { Productivity } from "../interfaces/productivity.interface";
@@ -25,7 +22,7 @@ import { useProductivityRowActionsContext } from "../hooks/useProductivityRowAct
  * sus FK y el cumplimiento ya resueltos. Es un modelo de vista, no un tipo del
  * backend. Los nombres viajan EN LA FILA (no en el accessor) para que un
  * catálogo que llega tarde recalcule celda, búsqueda y orden. Mismo arreglo
- * que `EvaluationRow`.
+ * que `ContractRow` (ver `buildProductivityRows`).
  */
 export type ProductivityRow = Productivity & {
   empleado_nombre: string;
@@ -53,86 +50,83 @@ const numericSort: SortingFn<ProductivityRow> = (rowA, rowB, columnId) =>
   Number(rowA.getValue(columnId)) - Number(rowB.getValue(columnId));
 
 /**
- * Menú de acciones de UNA fila, según su estado:
+ * El nombre del empleado ES el menú de la fila ("Ver detalle" primero): sin
+ * columna aparte de "Acciones". El `estado` va en su propia columna, con su
+ * badge y su filtro (esquema de Contratos).
+ * Acciones según el estado:
  *
- * - borrador: ver detalle, editar y confirmar (`E-RH`), eliminar (`D-RH`).
- * - confirmado: solo lectura; ver detalle y devolver a borrador (`D-RH`).
+ * - borrador: editar y confirmar (`E-RH`), eliminar (`D-RH`).
+ * - confirmado: solo lectura; devolver a borrador (`D-RH`).
  *
- * Es solo presentacional: los diálogos viven en `ProductivityList`.
+ * Los callbacks y el "en vuelo" llegan por contexto; los diálogos viven en
+ * `ProductivityList`.
  */
-function ProductivityRowActionsMenu({
+function ProductivityNameCell({
   record,
   permissions,
 }: {
-  record: Productivity;
+  record: ProductivityRow;
   permissions: ProductivityColumnPermissions;
 }) {
   const { onView, onEdit, onConfirm, onReopen, onDelete, busyIds } =
     useProductivityRowActionsContext();
   const isBusy = busyIds.includes(record.id);
+  const isBorrador = record.estado === ESTADO_BORRADOR;
 
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onView(record) },
-  ];
-
-  if (record.estado === ESTADO_BORRADOR) {
-    if (permissions.canEdit) {
-      menuItems.push(
-        { label: "Editar", icon: EditIcon, onSelect: () => onEdit(record), disabled: isBusy },
-        {
-          label: "Confirmar",
-          icon: CheckCircleIcon,
-          onSelect: () => onConfirm(record),
-          disabled: isBusy,
-        }
-      );
-    }
-    if (permissions.canDelete) {
-      menuItems.push({
-        label: "Eliminar",
-        icon: DeleteIcon,
-        onSelect: () => onDelete(record),
-        disabled: isBusy,
-      });
-    }
-  } else if (record.estado === ESTADO_CONFIRMADO && permissions.canDelete) {
-    menuItems.push({
+  const items: ActionMenuItem[] = [
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(record),
+      disabled: isBusy,
+      visible: isBorrador && permissions.canEdit,
+    },
+    {
+      label: "Confirmar",
+      icon: CheckCircleIcon,
+      onSelect: () => onConfirm(record),
+      disabled: isBusy,
+      visible: isBorrador && permissions.canEdit,
+    },
+    {
+      label: "Eliminar",
+      icon: DeleteIcon,
+      onSelect: () => onDelete(record),
+      disabled: isBusy,
+      visible: isBorrador && permissions.canDelete,
+    },
+    {
       label: "Devolver a borrador",
       icon: ReopenIcon,
       onSelect: () => onReopen(record),
       disabled: isBusy,
-    });
-  }
+      visible: record.estado === ESTADO_CONFIRMADO && permissions.canDelete,
+    },
+  ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones del registro" />
-    </div>
-  );
-}
-
-/** Nombre del empleado como disparador del detalle (mismo callback que "Ver detalle"). */
-function EmployeeDetailTrigger({ row, name }: { row: ProductivityRow; name: string }) {
-  const { onView } = useProductivityRowActionsContext();
-  return (
-    <button
-      type="button"
-      onClick={() => onView(row)}
-      title="Ver detalle"
-      className="text-left font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-    >
-      {name}
-    </button>
+    <FolioActionMenu
+      name={record.empleado_nombre}
+      detail={{ onSelect: () => onView(record) }}
+      items={items}
+    />
   );
 }
 
 /**
  * Columnas de la tabla. Solo dependen de los permisos: callbacks y "en vuelo"
- * llegan al menú por contexto. La columna de acciones existe siempre porque
- * "Ver detalle" es para todos.
+ * llegan al menú por contexto.
  */
 export const getColumns = (permissions: ProductivityColumnPermissions) =>
   [
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `ProductivityRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
+      header: "Empleado",
+      size: 260,
+      cell: ({ row }) => <ProductivityNameCell record={row.original} permissions={permissions} />,
+    }),
     // Fecha YA formateada para la búsqueda; el orden va sobre el ISO crudo.
     columnHelper.accessor((row) => formatLocalDate(row.fecha), {
       id: "fecha",
@@ -143,11 +137,6 @@ export const getColumns = (permissions: ProductivityColumnPermissions) =>
           {info.getValue()}
         </span>
       ),
-    }),
-    columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
-      header: "Empleado",
-      cell: ({ row, getValue }) => <EmployeeDetailTrigger row={row.original} name={getValue()} />,
     }),
     columnHelper.accessor("departamento_nombre", {
       id: "departamento_nombre",
@@ -222,19 +211,43 @@ export const getColumns = (permissions: ProductivityColumnPermissions) =>
         </span>
       ),
     }),
-    columnHelper.accessor((row) => getEstadoProductividadLabel(row.estado) ?? "—", {
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su badge y su filtro).
+    columnHelper.accessor((row) => getEstadoProductividadLabel(row.estado) ?? row.estado, {
       id: "estado",
       header: "Estado",
       cell: ({ row }) => (
         <StatusBadge status={row.original.estado} config={ESTADO_PRODUCTIVIDAD_CFG} />
       ),
     }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <ProductivityRowActionsMenu record={row.original} permissions={permissions} />
-      ),
-    }),
   ] as ColumnDef<ProductivityRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * El estado, con ficha "Estatus: …", ofrece el catálogo completo y al final
+ * cada código desconocido, crudo. Empleado (con buscador), departamento y
+ * unidad comparan contra el FK crudo, rotulado con el nombre resuelto de la
+ * fila (o su respaldo `#N`, el mismo texto que la celda): sus opciones salen
+ * de las filas. La fecha filtra por mes. Descripción, meta, resultado y
+ * cumplimiento no llevan filtro: son libres, los cubren el orden y la
+ * búsqueda.
+ */
+export const PRODUCTIVITY_HEADER_FILTERS: Partial<
+  Record<string, HeaderFilterSpec<ProductivityRow>>
+> = {
+  empleado: {
+    type: "distinct",
+    get: (r) => r.empleado,
+    label: (r) => r.empleado_nombre,
+    searchable: true,
+  },
+  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_PRODUCTIVIDAD_CFG) },
+  fecha: { type: "month", get: (r) => r.fecha },
+  departamento_nombre: {
+    type: "distinct",
+    get: (r) => r.departamento,
+    label: (r) => r.departamento_nombre,
+  },
+  unidad_nombre: { type: "distinct", get: (r) => r.meta_unidad, label: (r) => r.unidad_nombre },
+};
