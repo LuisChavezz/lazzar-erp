@@ -37,6 +37,23 @@ const LINE_MONEY_FIELDS = [
   { key: "total", label: "Total" },
 ] as const;
 
+/**
+ * Paleta del banner del backend: rojo para un error que no dejó nada registrado
+ * (descartable) y ámbar cuando la nota pudo quedar registrada (fijo).
+ */
+const BANNER_TONES = {
+  error: {
+    box: "border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20",
+    icon: "text-red-500",
+    text: "text-red-700 dark:text-red-300",
+  },
+  aviso: {
+    box: "border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20",
+    icon: "text-amber-500",
+    text: "text-amber-800 dark:text-amber-300",
+  },
+} as const;
+
 export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   const {
     form,
@@ -77,6 +94,8 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   // lo que escribió, no para imponerlo.
   const sumaLineas = centavosAMoneda(sumTotalesDeLineasEnCentavos(lines));
 
+  const bannerTone = BANNER_TONES[isSubmissionLocked ? "aviso" : "error"];
+
   return (
     <>
       <form onSubmit={handleFormSubmit} className="w-full">
@@ -87,27 +106,23 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
               registrado (el guardado es atómico); un fallo del timbrado, sin
               confirmación o un 409 al emitir sí pudo dejar la nota, y entonces
               el aviso es ámbar y no se descarta. */}
-          {serverBanner && isSubmissionLocked && (
+          {serverBanner && (
             <div
               role="alert"
-              className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
+              className={`mb-6 flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone.box}`}
             >
-              <InfoIcon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
-              <p className="flex-1 text-sm text-amber-800 dark:text-amber-300">{serverBanner}</p>
-            </div>
-          )}
-          {serverBanner && !isSubmissionLocked && (
-            <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
-              <InfoIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
-              <p className="flex-1 text-sm text-red-700 dark:text-red-300">{serverBanner}</p>
-              <button
-                type="button"
-                onClick={dismissBanner}
-                aria-label="Descartar aviso"
-                className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
-              >
-                <RejectIcon className="w-4 h-4" aria-hidden="true" />
-              </button>
+              <InfoIcon className={`w-5 h-5 shrink-0 mt-0.5 ${bannerTone.icon}`} aria-hidden="true" />
+              <p className={`flex-1 text-sm ${bannerTone.text}`}>{serverBanner}</p>
+              {!isSubmissionLocked && (
+                <button
+                  type="button"
+                  onClick={dismissBanner}
+                  aria-label="Descartar aviso"
+                  className="p-1 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
+                >
+                  <RejectIcon className="w-4 h-4" aria-hidden="true" />
+                </button>
+              )}
             </div>
           )}
 
