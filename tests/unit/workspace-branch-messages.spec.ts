@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   getSinSucursalMessage,
+  getSinSucursalTitle,
   WORKSPACE_BRANCH_LOADING_MESSAGE,
 } from "@/src/features/workspace/utils/workspaceBranchMessages";
 import { QUOTE_SUCURSAL_DOCUMENT } from "@/src/features/quotes/utils/quoteSucursal";
@@ -26,5 +27,20 @@ test.describe("getSinSucursalMessage", () => {
     const documento = { asignarA: "al empleado", guardar: "el empleado" };
     expect(getSinSucursalMessage(false, documento)).toContain("para guardar el empleado.");
     expect(getSinSucursalMessage(true, documento)).toContain("para asignarla al empleado.");
+  });
+});
+
+/** EC-636: la generación de nómina nombra su propia acción bloqueada. */
+test.describe("verbo de la acción bloqueada", () => {
+  test("sin verbo, los textos de siempre", () => {
+    expect(getSinSucursalTitle()).toBe("No se puede guardar sin sucursal");
+  });
+
+  test("con verbo, título y mensaje dicen esa acción", () => {
+    const documento = { asignarA: "a la quincena", guardar: "la quincena" };
+    expect(getSinSucursalTitle("generar")).toBe("No se puede generar sin sucursal");
+    expect(getSinSucursalMessage(false, documento, "generar")).toBe(
+      "Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para generar la quincena.",
+    );
   });
 });
