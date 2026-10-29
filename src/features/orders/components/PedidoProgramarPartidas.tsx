@@ -51,7 +51,7 @@ const COVERAGE_STYLES: Record<PartidaCoverage, CoverageStyle> = {
     card: "border-rose-200/70 bg-rose-50/40 dark:border-rose-500/20 dark:bg-rose-900/10",
     row: "bg-rose-50/40 dark:bg-rose-900/10",
     badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-    label: "Sin existencia",
+    label: "Sin disponible",
     icon: "text-rose-500",
   },
   unmeasured: {
