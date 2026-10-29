@@ -51,10 +51,9 @@ const matching = (value: string | undefined) =>
   rows.filter((original) => filterFn({ original }, "folio", value)).map((r) => r.folio);
 
 const headerProps = () => {
-  const header = column.header as (context: { column: unknown }) => {
-    props: { options: ColumnFilterOption[]; label: string; title: string };
-  };
-  return header({ column: {} }).props;
+  const headerFilter = column.meta?.headerFilter;
+  if (!headerFilter) throw new Error("sin filtro de encabezado folio");
+  return headerFilter;
 };
 
 test.describe("withHeaderFilters › spec options", () => {
@@ -122,10 +121,9 @@ test.describe("withHeaderFilters › `emptyOption` (EC-635)", () => {
       items,
       { area: spec },
     );
-    const header = col.header as (context: { column: unknown }) => { props: { options: ColumnFilterOption[] } };
     const filterFn = col.filterFn as unknown as (row: { original: Item }, id: string, value: unknown) => boolean;
     return {
-      options: header({ column: {} }).props.options,
+      options: col.meta?.headerFilter?.options ?? [],
       matching: (value: string) => items.filter((original) => filterFn({ original }, "area", value)).map((i) => i.id),
     };
   };
@@ -156,5 +154,22 @@ test.describe("withHeaderFilters › `emptyOption` (EC-635)", () => {
   test("sin `emptyOption` nada cambia: las filas vacías no tienen opción", () => {
     const t = build({ type: "distinct", get: (r) => r.area, label: (r) => r.area_nombre });
     expect(t.options.map((o) => o.value)).toEqual([undefined, "1", "2"]);
+  });
+});
+
+test.describe("withHeaderFilters › encabezado estable", () => {
+  const spec = { folio: { type: "distinct", get: (r: Row) => r.folio } } as const;
+  const build = (data: Row[]) =>
+    withHeaderFilters<Row>([{ accessorKey: "folio", header: "Folio" } as ColumnDef<Row, unknown>], data, spec)[0];
+
+  test("el mismo componente de encabezado con filas distintas: no se remonta", () => {
+    expect(build(rows).header).toBe(build(rows.slice(0, 1)).header);
+  });
+
+  test("las opciones se renuevan con las filas, en `meta.headerFilter`", () => {
+    expect(build(rows.slice(0, 1)).meta?.headerFilter?.options.map((o) => o.label)).toEqual([
+      "Todos",
+      rows[0].folio,
+    ]);
   });
 });

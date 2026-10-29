@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { EMPTY_VALUE_FILTER_VALUE, type ColumnFilterOption } from "@/src/utils/columnFilterOptions";
+import { EMPTY_VALUE_FILTER_VALUE } from "@/src/utils/columnFilterOptions";
 import { AREA_HEADER_FILTERS, getColumns as getAreaColumns, type AreaRow } from "@/src/features/areas/components/AreaColumns";
 import { buildAreaRows } from "@/src/features/areas/utils/areaRows";
 import {
@@ -42,10 +42,7 @@ function harness<T>(columns: ColumnDef<T, unknown>[], rows: T[]) {
   };
   return {
     column,
-    options: (id: string) => {
-      const header = column(id).header as (context: { column: unknown }) => { props: { options: ColumnFilterOption[] } };
-      return header({ column: {} }).props.options;
-    },
+    options: (id: string) => column(id).meta?.headerFilter?.options ?? [],
     matching: (id: string, value: string) =>
       rows.filter((original) =>
         (column(id).filterFn as unknown as (row: { original: T }, columnId: string, value: unknown) => boolean)(

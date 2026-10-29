@@ -48,11 +48,6 @@ import {
   type DataTableModeContextValue,
   type DataTableServerFilters,
 } from "./DataTableModeContext";
-import {
-  filterChipValueLabel,
-  nextFilterValueLabels,
-  type FilterValueLabel,
-} from "@/src/utils/columnFilterOptions";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -454,17 +449,16 @@ export function DataTable<TData, TValue>({
   // Etiqueta legible del valor de cada filtro de columna activo, que reporta
   // su `ColumnHeaderFilter` (la tabla solo conoce el valor crudo). Alimenta los
   // chips "Filtrado por" de abajo del toolbar.
-  // Con el valor al que nombra, sobrevive a que la opción desaparezca de las
-  // filas mientras sigue elegida (ver `nextFilterValueLabels`).
-  const [filterValueLabels, setFilterValueLabels] = useState<
-    Readonly<Record<string, FilterValueLabel>>
-  >({});
-  const reportFilterValueLabel = useCallback(
-    (columnId: string, label: string | undefined, value?: string) => {
-      setFilterValueLabels((prev) => nextFilterValueLabels(prev, columnId, label, value));
-    },
-    []
-  );
+  const [filterValueLabels, setFilterValueLabels] = useState<Record<string, string>>({});
+  const reportFilterValueLabel = useCallback((columnId: string, label: string | undefined) => {
+    setFilterValueLabels((prev) => {
+      if (prev[columnId] === label) return prev;
+      const next = { ...prev };
+      if (label === undefined) delete next[columnId];
+      else next[columnId] = label;
+      return next;
+    });
+  }, []);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: defaultPageSize,
@@ -725,15 +719,8 @@ export function DataTable<TData, TValue>({
         ? { mode: "server", filters: serverFilters }
         : isServerPaginated
         ? SERVER_PAGINATION_TABLE_MODE
-        : { mode: "client", columnFilters, reportFilterValueLabel, filterValueLabels },
-    [
-      isServerMode,
-      isServerPaginated,
-      serverFilters,
-      columnFilters,
-      reportFilterValueLabel,
-      filterValueLabels,
-    ]
+        : { mode: "client", columnFilters, reportFilterValueLabel },
+    [isServerMode, isServerPaginated, serverFilters, columnFilters, reportFilterValueLabel]
   );
   // Solo en desarrollo: una clave de `meta.serverSort` / `meta.serverFilter`
   // que la lista no conoce se ignora (la columna no ordena, o su filtro no
@@ -1432,7 +1419,7 @@ export function DataTable<TData, TValue>({
             const columnName = column
               ? (column.columnDef.meta?.filterLabel ?? getColumnLabel(column))
               : filter.id;
-            const valueLabel = filterChipValueLabel(filterValueLabels[filter.id], filter.value);
+            const valueLabel = filterValueLabels[filter.id];
             return (
               <span
                 key={filter.id}

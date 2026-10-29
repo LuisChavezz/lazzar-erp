@@ -110,17 +110,23 @@ export function ColumnHeaderFilter<TData>({
 
   // La opción elegida sigue a la vista aunque ya no esté entre las opciones
   // (las que salen de las filas cambian con un parámetro de servidor, p. ej.
-  // `?quincena=`): `DataTable` recuerda la última etiqueta reportada para el
-  // valor activo y `pinActiveFilterOption` la fija en el menú. El recuerdo vive
-  // en la tabla y no aquí porque este encabezado se vuelve a montar cada vez
-  // que se reconstruyen las columnas (`withHeaderFilters` crea su `header`).
-  const remembered =
-    tableMode.mode === 'client' ? tableMode.filterValueLabels?.[column.id] : undefined;
+  // `?quincena=`): se recuerda la última opción vista con el valor activo y
+  // `pinActiveFilterOption` la fija en el menú. Como la etiqueta reportada es
+  // la de esa opción, el chip de `DataTable` también la conserva. Requiere que
+  // el encabezado NO se remonte con las filas (ver `HeaderFilterCell` en
+  // `withHeaderFilters`).
+  const [rememberedOption, setRememberedOption] = useState<ColumnFilterOption>();
   const { options, active: activeOption } = pinActiveFilterOption(
     optionsProp,
     activeValue,
-    remembered?.value !== undefined ? { value: remembered.value, label: remembered.label } : undefined,
+    rememberedOption,
   );
+  if (
+    activeOption &&
+    (rememberedOption?.value !== activeOption.value || rememberedOption?.label !== activeOption.label)
+  ) {
+    setRememberedOption(activeOption);
+  }
 
   // Etiqueta del valor activo para el chip "Filtrado por" de `DataTable`
   // (modo cliente). Sin opción que coincida ni recuerdo de ella (catálogo aún
@@ -129,8 +135,8 @@ export function ColumnHeaderFilter<TData>({
     tableMode.mode === 'client' ? tableMode.reportFilterValueLabel : undefined;
   const activeLabel = activeOption?.label;
   useEffect(() => {
-    reportFilterValueLabel?.(column.id, activeLabel, activeValue);
-  }, [reportFilterValueLabel, column.id, activeLabel, activeValue]);
+    reportFilterValueLabel?.(column.id, activeLabel);
+  }, [reportFilterValueLabel, column.id, activeLabel]);
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 

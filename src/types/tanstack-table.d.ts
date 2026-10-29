@@ -1,5 +1,6 @@
 import "@tanstack/react-table";
 import type { RowData } from "@tanstack/react-table";
+import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 
 /**
  * Claves de `meta` que `DataTable` lee en cada `ColumnDef`. Tiparlas aquí (en
@@ -56,5 +57,18 @@ declare module "@tanstack/react-table" {
      * columna como siempre.
      */
     filterLabel?: string;
+    /**
+     * SOLO modo cliente; lo pone `withHeaderFilters`. Configuración del filtro
+     * de encabezado que pinta su `header` (un componente estable que la lee de
+     * aquí): título, opciones ya calculadas con las filas vigentes, qué se
+     * filtra, buscador y alineación del menú.
+     */
+    headerFilter?: {
+      title: string;
+      options: ColumnFilterOption[];
+      label: string;
+      searchable: boolean | { placeholder?: string };
+      menuAlign: "start" | "end";
+    };
   }
 }
