@@ -25,7 +25,9 @@ import { DocumentActionWithDialog } from "@/src/features/invoicing/components/Do
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
+  CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
+  canEmitCreditNote,
   CREDIT_NOTE_STAMP_PENDING_HINT,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
@@ -124,7 +126,13 @@ function CreditNoteEmitPanel({
   onEmitir: () => void;
   isEmitting: boolean;
 }) {
+  const { data: session } = useSession();
+  const canEmit = canEmitCreditNote(session?.user);
   const rejectionId = `credit-note-${notaId}-emit-rejection`;
+  const blockedNoteId = `credit-note-${notaId}-emit-blocked`;
+  const describedBy = [rejection ? rejectionId : null, canEmit ? null : blockedNoteId]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="mb-5 space-y-3">
       {rejection && (
@@ -137,17 +145,26 @@ function CreditNoteEmitPanel({
           <p className="flex-1 text-sm text-red-700 dark:text-red-300">{rejection}</p>
         </div>
       )}
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-2">
+        {/* Sin permiso: BLOQUEADO pero enfocable (`aria-disabled`, como
+            `DocumentActionWithDialog`), descrito por su motivo. */}
         <Button
           type="button"
           variant="secondary"
-          onClick={onEmitir}
+          onClick={canEmit ? onEmitir : undefined}
           disabled={isEmitting}
-          aria-describedby={rejection ? rejectionId : undefined}
+          aria-disabled={!canEmit || undefined}
+          aria-describedby={describedBy || undefined}
+          className="aria-disabled:opacity-60 aria-disabled:cursor-not-allowed!"
         >
           <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
           {isEmitting ? "Emitiendo..." : rejection ? "Volver a emitir" : "Emitir nota"}
         </Button>
+        {!canEmit && (
+          <p id={blockedNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs text-right">
+            {CREDIT_NOTE_EMIT_PERMISSION_REASON}
+          </p>
+        )}
       </div>
     </div>
   );

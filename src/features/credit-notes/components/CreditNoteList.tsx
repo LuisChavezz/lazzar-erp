@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -24,7 +25,9 @@ import {
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
 import {
+  CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
+  canEmitCreditNote,
   getCreditNoteCancelBlockReason,
 } from "../utils/creditNoteStamping";
 
@@ -76,6 +79,8 @@ export default function CreditNoteList() {
   // corren para la ÚLTIMA llamada del observer, así que con dos notas en vuelo el
   // `onSettled` de la primera se perdería y su candado no se soltaría nunca.
   const { mutateAsync: emitirNotaAsync } = useEmitirNotaCredito();
+  const { data: session } = useSession();
+  const canEmit = canEmitCreditNote(session?.user);
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
@@ -162,6 +167,12 @@ export default function CreditNoteList() {
    */
   const handleEmitir = useCallback(
     (id: number) => {
+      // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
+      // la sesión cambió entre pintarlos y seleccionar.
+      if (!canEmit) {
+        toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
+        return;
+      }
       const nota = notasCredito.find((item) => item.id === id);
       if (nota && !totalEsAcreditable(nota.total)) {
         toast.error(TOTAL_CERO_MESSAGE);
@@ -169,7 +180,7 @@ export default function CreditNoteList() {
       }
       setEmitTargetId(id);
     },
-    [notasCredito],
+    [notasCredito, canEmit],
   );
   // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
@@ -194,8 +205,8 @@ export default function CreditNoteList() {
   );
 
   const columns = useMemo(
-    () => getColumns(handleViewDetail, handleEmitir, handleCancel, handleDelete),
-    [handleViewDetail, handleEmitir, handleCancel, handleDelete],
+    () => getColumns(handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit),
+    [handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit],
   );
 
   // La nota cuyo detalle está abierto se busca contra el arreglo que esta vista
