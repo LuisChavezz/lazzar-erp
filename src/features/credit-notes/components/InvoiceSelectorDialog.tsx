@@ -4,7 +4,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { InfoIcon } from "@/src/components/Icons";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
@@ -49,21 +49,31 @@ function InvoiceSelectorContent({
   // facturas, que sí lo trae (`cfdi_cancelado`, `cfdi_cancelacion_solicitada`).
   // Una factura cancelada antes de que el receptor acepte su cancelación sigue
   // `Emitida` y con saldo, y el backend rechaza emitir notas sobre ella.
+  //
+  // Se vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede
+  // tener hasta 15 minutos. Mientras ese refresco viaja, con datos en caché, se
+  // decide con ellos; el precheck previo al alta `Emitida` tiene la última
+  // palabra.
   const {
     invoices,
     hasLoaded: hasLoadedInvoices,
-    isLoading: isLoadingInvoices,
     isError: isErrorInvoices,
-  } = useInvoices();
+    isFetching: isFetchingInvoices,
+    refetch: refetchInvoices,
+  } = useInvoices({ refetchOnMount: "always" });
   const invoicesById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+  // Sin datos, mientras no haya fallado o haya una petición en vuelo —la carga
+  // inicial, o el reintento de una que falló, que deja la consulta en `error`
+  // mientras viaja— las filas esperan deshabilitadas.
+  const isCheckingInvoices = !hasLoadedInvoices && (isFetchingInvoices || !isErrorInvoices);
   // Sin el listado no se sabe qué factura admite notas. Las filas quedan
   // seleccionables como antes: el precheck previo al alta `Emitida` y el
   // backend siguen protegiendo la emisión.
   const isInvoiceStateUnavailable = isErrorInvoices && !hasLoadedInvoices;
 
   const getDisabledReason = (cuenta: CuentaPorCobrar): string | null => {
+    if (isCheckingInvoices) return INVOICE_STATE_LOADING_REASON;
     if (isInvoiceStateUnavailable) return null;
-    if (isLoadingInvoices) return INVOICE_STATE_LOADING_REASON;
     return getInvoiceNotCreditableReason(
       cuenta.factura_folio,
       invoicesById.get(cuenta.factura_id),
@@ -73,16 +83,13 @@ function InvoiceSelectorContent({
   return (
     <>
       {isInvoiceStateUnavailable && (
-        <div
-          role="status"
-          className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3"
-        >
-          <InfoIcon className="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-          <p className="text-sm text-amber-800 dark:text-amber-300">
-            No se pudo consultar el estado de las facturas: la lista puede incluir
-            facturas canceladas o con su cancelación pendiente. Al emitir la nota
-            se vuelve a comprobar.
-          </p>
+        <div className="mb-4">
+          <SectionErrorNotice
+            title="No se pudo consultar el estado de las facturas"
+            message="La lista puede incluir facturas canceladas o con su cancelación pendiente. Al emitir la nota se vuelve a comprobar."
+            onRetry={() => void refetchInvoices()}
+            isRetrying={isFetchingInvoices}
+          />
         </div>
       )}
       <SingleSelectPickerDialogContent<CuentaPorCobrar>
