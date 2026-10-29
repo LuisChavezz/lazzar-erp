@@ -1,16 +1,9 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { useMutationState } from "@tanstack/react-query";
-import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { Contract } from "../interfaces/contract.interface";
 import { deactivateContractMutationKey } from "./useDeleteContract";
-
-// ─── Contexto para el menú de fila ────────────────────────────────────────────
-// Los callbacks llegan al menú (`ContractNameCell`) por contexto, NO por la
-// factoría de columnas: si el "en vuelo" viajara dentro de `getColumns(...)`,
-// cada inicio y fin de una acción crearía funciones `cell` nuevas y React
-// remontaría TODAS las celdas. Mismo patrón que `useEmployeeRowActions`.
 
 export interface ContractRowActionsContextValue {
   onEdit: (contract: Contract) => void;
@@ -19,29 +12,14 @@ export interface ContractRowActionsContextValue {
   busyIds: number[];
 }
 
-const ContractRowActionsContext = createContext<ContractRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } = createRowActionsContext<ContractRowActionsContextValue>(
+  "ContractNameCell",
+  "ContractList"
+);
 
-export const ContractRowActionsProvider = ContractRowActionsContext.Provider;
+/** Callbacks y "en vuelo" del menú de fila (`ContractNameCell`); ver `createRowActionsContext`. */
+export const ContractRowActionsProvider = Provider;
+export const useContractRowActionsContext = useRowActionsContext;
 
-/** Para `ContractNameCell`: exige estar bajo un `ContractRowActionsProvider`. */
-export function useContractRowActionsContext(): ContractRowActionsContextValue {
-  const value = useContext(ContractRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "ContractNameCell debe renderizarse dentro de un ContractRowActionsProvider (ver ContractList)."
-    );
-  }
-  return value;
-}
-
-/**
- * Ids de contrato con una desactivación EN CURSO, leídos de la `MutationCache`
- * y no del `useMutation`, que solo recuerda su ÚLTIMA llamada. Una sola
- * suscripción, en `ContractList`; llega a cada menú por el contexto.
- */
-export function usePendingContractIds(): number[] {
-  return useMutationState({
-    filters: { status: "pending", mutationKey: deactivateContractMutationKey },
-    select: selectMutationRecordId,
-  });
-}
+/** Ids de contrato con una desactivación en curso. Una sola suscripción, en `ContractList`. */
+export const usePendingContractIds = () => usePendingRecordIds(deactivateContractMutationKey);
