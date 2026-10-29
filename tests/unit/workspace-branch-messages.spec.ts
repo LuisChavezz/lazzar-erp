@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  getSinSucursalLoadingMessage,
   getSinSucursalMessage,
   getSinSucursalTitle,
   WORKSPACE_BRANCH_LOADING_MESSAGE,
@@ -41,6 +42,21 @@ test.describe("verbo de la acción bloqueada", () => {
     expect(getSinSucursalTitle("generar")).toBe("No se puede generar sin sucursal");
     expect(getSinSucursalMessage(false, documento, "generar")).toBe(
       "Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para generar la quincena.",
+    );
+  });
+});
+
+test.describe("getSinSucursalLoadingMessage", () => {
+  test("por defecto es el texto de siempre", () => {
+    expect(getSinSucursalLoadingMessage()).toBe(WORKSPACE_BRANCH_LOADING_MESSAGE);
+    expect(getSinSucursalLoadingMessage()).toBe(
+      "Aún se están cargando tus sucursales. Intenta guardar de nuevo en un momento.",
+    );
+  });
+
+  test("nombra la acción bloqueada", () => {
+    expect(getSinSucursalLoadingMessage("generar")).toBe(
+      "Aún se están cargando tus sucursales. Intenta generar de nuevo en un momento.",
     );
   });
 });

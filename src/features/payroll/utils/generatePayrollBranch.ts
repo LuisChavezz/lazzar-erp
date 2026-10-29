@@ -1,6 +1,6 @@
 import {
+  getSinSucursalLoadingMessage,
   getSinSucursalMessage,
-  WORKSPACE_BRANCH_LOADING_MESSAGE,
   type WorkspaceBranchDocument,
 } from "@/src/features/workspace/utils/workspaceBranchMessages";
 
@@ -43,7 +43,7 @@ export const getGenerateBranchGate = ({
   if (isLoading) {
     return {
       status: "loading",
-      message: WORKSPACE_BRANCH_LOADING_MESSAGE.replace("guardar", GENERATE_PAYROLL_BLOCKED_VERB),
+      message: getSinSucursalLoadingMessage(GENERATE_PAYROLL_BLOCKED_VERB),
     };
   }
   return {
