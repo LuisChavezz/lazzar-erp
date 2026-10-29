@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStore } from "@tanstack/react-form";
+import { useSession } from "next-auth/react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
@@ -23,7 +24,9 @@ import { useCreditNoteForm } from "../hooks/useCreditNoteForm";
 import { InvoiceSelectorDialog } from "./InvoiceSelectorDialog";
 import { InvoiceLinesSelectorDialog } from "./InvoiceLinesSelectorDialog";
 import {
+  CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
+  canEmitCreditNote,
   getRelatedInvoiceEmitBlockReason,
 } from "../utils/creditNoteStamping";
 import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
@@ -100,7 +103,14 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   // que un refetch fallido no avisa aquí (el selector sí, al abrirse).
   const { invoices } = useInvoices({ silent: true });
   const facturaRow = factura > 0 ? invoices.find((invoice) => invoice.id === factura) : undefined;
-  const emitBlockReason = facturaRow ? getRelatedInvoiceEmitBlockReason(facturaRow) : null;
+  // Sin el permiso de timbrado, "Emitir nota" queda deshabilitado con su motivo
+  // (el backend respondería 403); guardar como borrador sigue disponible.
+  const { data: session } = useSession();
+  const emitBlockReason = !canEmitCreditNote(session?.user)
+    ? CREDIT_NOTE_EMIT_PERMISSION_REASON
+    : facturaRow
+      ? getRelatedInvoiceEmitBlockReason(facturaRow)
+      : null;
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún
   // campo del payload. El importe que se acredita es el `total` capturado abajo

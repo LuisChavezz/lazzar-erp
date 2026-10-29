@@ -12,7 +12,10 @@ import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
-import { getCreditNoteCancelBlockReason } from "../utils/creditNoteStamping";
+import {
+  CREDIT_NOTE_EMIT_PERMISSION_REASON,
+  getCreditNoteCancelBlockReason,
+} from "../utils/creditNoteStamping";
 
 const columnHelper = createColumnHelper<NotaCredito>();
 
@@ -43,12 +46,17 @@ const estatusFilterFn: FilterFn<NotaCredito> = (row, _columnId, filterValue) => 
  * desmonta al ordenar, filtrar o paginar —y las tres mutaciones cambian el
  * `estatus`, que es justo uno de los filtros—, así que un diálogo montado en la
  * celda desaparecería a media interacción.
+ *
+ * `canEmit` (`canEmitCreditNote`) solo cambia cuando carga la sesión: no es
+ * estado por fila, así que pasarlo por la factoría no remonta celdas a media
+ * interacción.
  */
 export const getColumns = (
   onViewDetail: (id: number) => void,
   onEmitir: (id: number) => void,
   onCancel: (id: number) => void,
   onDelete: (id: number) => void,
+  canEmit: boolean,
 ) => {
   const columns = [
     columnHelper.accessor("folio", {
@@ -72,12 +80,15 @@ export const getColumns = (
 
         // Emitir y eliminar SOLO sobre borradores: son las dos salidas de un
         // documento que todavía no tiene efecto contable. El backend impone lo
-        // mismo (un DELETE sobre una `Emitida` responde 400).
+        // mismo (un DELETE sobre una `Emitida` responde 400). Sin el permiso de
+        // timbrado, "Emitir" se muestra deshabilitado con su motivo.
         if (estatus === "Borrador") {
           menuItems.push({
             label: "Emitir nota",
             icon: CheckCircleIcon,
             onSelect: () => onEmitir(id),
+            disabled: !canEmit,
+            description: canEmit ? undefined : CREDIT_NOTE_EMIT_PERMISSION_REASON,
           });
         }
 

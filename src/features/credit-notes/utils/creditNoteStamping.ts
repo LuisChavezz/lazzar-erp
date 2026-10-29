@@ -43,6 +43,21 @@ export const canStampCreditNote = (
   user: PermissionContext | null | undefined,
 ): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
 
+/**
+ * ¿Puede ESTE usuario emitir notas de crédito? Emitir timbra el CFDI de egreso,
+ * y el backend le exige el mismo permiso que a `timbrar/` (`E-FIN-FACTURAS`,
+ * #725): sin él responde `403` sin guardar nada. Misma regla que
+ * `canStampCreditNote`, rol "admin" incluido. El backend solo lo exige en la
+ * empresa dueña de la cuenta de Facturama, que el front no conoce: en otra
+ * empresa esto bloquea de más, igual que "Timbrar".
+ */
+export const canEmitCreditNote = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(INVOICE_STAMP_PERMISSION, user);
+
+/** Por qué "Emitir" está bloqueado cuando `canEmitCreditNote` es `false`. */
+export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
+  "No tienes permiso para emitir notas de crédito: emitir timbra su CFDI y requiere el permiso de facturación.";
+
 const relatedInvoiceLabel = (folio: string | null): string =>
   folio ? `La factura ${folio}` : "La factura relacionada";
 
