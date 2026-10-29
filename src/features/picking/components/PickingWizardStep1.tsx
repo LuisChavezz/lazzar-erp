@@ -231,7 +231,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   }
 
   const missingItems: string[] = [];
-  if (pedidos.length === 0) missingItems.push("Al menos un pedido autorizado o en proceso");
+  if (pedidos.length === 0) {
+    missingItems.push("Al menos un pedido programado por Mesa de Control (autorizado o en proceso)");
+  }
   if (operadores.length === 0) missingItems.push("Al menos un operador disponible");
   // Se evalúa contra la lista CRUDA, no contra `destinoOptions`: sin almacenes
   // de entrada falta configuración del catálogo (esta pantalla), mientras que
