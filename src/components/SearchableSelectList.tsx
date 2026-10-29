@@ -26,6 +26,13 @@ interface SearchableSelectListProps<T> {
    * Sin la prop la lista se comporta exactamente igual que siempre.
    */
   pinSelected?: boolean;
+  /**
+   * OPCIONAL (apagado por defecto). Motivo por el que `item` NO se puede elegir,
+   * o `null` si se puede. Con motivo, la fila queda deshabilitada (no dispara
+   * `onSelect`) y el motivo se muestra bajo su contenido. Sin la prop todas las
+   * filas se pueden elegir, igual que siempre.
+   */
+  getItemDisabledReason?: (item: T) => string | null;
 }
 
 /**
@@ -47,6 +54,7 @@ export function SearchableSelectList<T>({
   emptyMessage,
   noResultsMessage,
   pinSelected = false,
+  getItemDisabledReason,
 }: SearchableSelectListProps<T>) {
   const [search, setSearch] = useState("");
 
@@ -73,20 +81,31 @@ export function SearchableSelectList<T>({
         ) : (
           filteredItems.map((item) => {
             const selected = isSelected(item);
+            const disabledReason = getItemDisabledReason?.(item) ?? null;
             return (
               <button
                 key={getKey(item)}
                 type="button"
                 onClick={() => onSelect(item)}
+                disabled={disabledReason !== null}
                 aria-pressed={selected}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
-                  selected
-                    ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-                    : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10"
+                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
+                  disabledReason !== null
+                    ? "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/2 opacity-60 cursor-not-allowed"
+                    : selected
+                      ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20 cursor-pointer"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
                 }`}
               >
                 {renderIndicator(selected)}
-                <div className="min-w-0 flex-1">{renderContent(item)}</div>
+                <div className="min-w-0 flex-1">
+                  {renderContent(item)}
+                  {disabledReason !== null && (
+                    <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      {disabledReason}
+                    </p>
+                  )}
+                </div>
               </button>
             );
           })
