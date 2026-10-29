@@ -6,8 +6,13 @@ import { createNotaCredito } from "../services/actions";
 import type { CreateNotaCreditoPayload } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE,
+  creditNoteCreateRejectedMessage,
   creditNoteStampFailedMessage,
+  creditNoteStampPendingMessage,
   isUnconfirmedFailure,
+  readStampFailedNota,
+  STAMP_FAILED_TOAST_DURATION_MS,
+  type StampFailedNota,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import { getInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
@@ -38,9 +43,12 @@ export type NotaCreditoHeaderErrorField =
  * `messages` es la lista plana para el toast.
  * `unconfirmed`: el backend no confirmó el resultado (sin respuesta o 5xx; ver
  * `isUnconfirmedFailure`). NO se puede afirmar que no se guardó nada.
- * `stampFailed`: el `400` trae `cfdi`, el timbrado falló. Emitir guarda y aplica
- * la nota ANTES de timbrarla, así que tampoco se puede afirmar que no se guardó
- * nada; `formError` es entonces el motivo del backend, sin más.
+ * `stampFailed`: el `400` trae `cfdi`, el timbrado falló; `formError` es el
+ * motivo del backend, sin más.
+ * `notaCredito`: la nota que la emisión dejó guardada, cuando el `400` con
+ * `cfdi` la reporta (`readStampFailedNota`). Es lo ÚNICO que dice con certeza
+ * en qué quedó: sin ella no se afirma nada, porque el backend tiene caminos que
+ * responden con `cfdi` (o sin él) con la nota ya emitida.
  * `conflict`: `409` de concurrencia. Puede salir del timbrado, que bloquea la
  * nota DESPUÉS de guardarla, así que en una emisión tampoco prueba nada.
  */
@@ -48,6 +56,7 @@ export interface ParsedNotaCreditoError {
   formError?: string;
   unconfirmed?: boolean;
   stampFailed?: boolean;
+  notaCredito?: StampFailedNota;
   conflict?: boolean;
   fieldErrors: Partial<Record<NotaCreditoHeaderErrorField, string>>;
   lineErrors: Record<number, Record<string, string>>;
@@ -79,8 +88,8 @@ const HEADER_FIELDS: NotaCreditoHeaderErrorField[] = [
  * porque el guardado es ATÓMICO (`transaction.atomic` en `perform_create`): un
  * error de validación significa que NO se creó nada — ni cabecera huérfana, ni
  * saldo de CxC tocado. La excepción es `cfdi`: el timbrado de una nota `Emitida`
- * corre DESPUÉS de ese guardado, así que su fallo llega con la nota ya escrita
- * (`stampFailed`).
+ * corre DESPUÉS de ese guardado, así que su fallo puede llegar con la nota ya
+ * escrita (`stampFailed`, y `notaCredito` cuando el backend dice cuál).
  *
  * ─── LA DIFERENCIA CON PAGOS: `factura_detalle` ───────────────────────────
  *
@@ -159,16 +168,17 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   const record = data as Record<string, unknown>;
 
   // ── Errores a nivel operación ────────────────────────────────────────────
-  // Todos menos `cfdi` son "todo o nada": nada quedó guardado. `cfdi` llega
-  // DESPUÉS de guardar la nota (`stampFailed`).
+  // Todos menos `cfdi` son "todo o nada": nada quedó guardado. `cfdi` puede
+  // llegar DESPUÉS de guardar la nota (`stampFailed`).
   // `cfdi` primero: al emitir (y en `timbrar/`), el motivo del rechazo de
   // Facturama o de los datos fiscales llega en esa llave. Se muestra tal cual,
-  // sin interpretar su texto: el mismo `cfdi` cubre resultados distintos (nota
-  // cancelada, emitida sin CFDI, timbrado pendiente) y el texto no es contrato.
+  // sin interpretar su texto: el texto no es contrato. Lo que sí es contrato es
+  // `nota_credito`, que solo se lee junto a `cfdi`.
   // Le sigue `estatus` (campo de cabecera, más abajo) y luego el resto.
   const cfdi = firstDrfMessage(record.cfdi);
   if (cfdi) {
     result.stampFailed = true;
+    result.notaCredito = readStampFailedNota(record.nota_credito);
     result.formError = cfdi;
     result.messages.push(cfdi);
   }
@@ -259,6 +269,7 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   if (result.stampFailed) {
     const leidas = new Set<string>([
       "cfdi",
+      "nota_credito",
       "detail",
       "non_field_errors",
       "factura_detalle",
@@ -308,21 +319,53 @@ export const stampFailureDetail = (parsed: ParsedNotaCreditoError): string =>
   parsed.messages.length > 0 ? parsed.messages.join(" ") : (parsed.formError ?? "");
 
 /**
- * Aviso para un alta cuya nota PUDO quedar registrada, o `null` si el error
- * prueba que no se guardó nada. Un `cfdi` siempre (el timbrado corre después
- * de guardar). Sin confirmación (sin respuesta, timeout, 5xx) o un `409`, solo
- * en un alta `Emitida`: esos fallos pueden ocurrir ya guardada y aplicada la
- * nota, mientras que un borrador repetido no mueve ningún saldo.
+ * Qué hace el formulario con un alta fallida que NO es un simple error de
+ * validación:
+ *
+ * - `locked`: la nota PUDO quedar registrada y no se sabe cómo. El formulario se
+ *   bloquea: reenviarlo podría crear otra nota y rebajar el saldo dos veces.
+ * - `cancelled`: Facturama rechazó el timbrado y el backend reporta la nota
+ *   `Cancelada`, con el saldo restituido. El formulario se desbloquea con lo
+ *   capturado para corregir y reenviar (crea una nota nueva).
+ * - `pending`: Facturama no confirmó y el backend reporta la nota `Emitida` con
+ *   el timbrado pendiente. El alta sí ocurrió: el formulario se cierra.
  */
-export const getCreateMayBeSavedMessage = (
+export type CreateFailureOutcome =
+  | { kind: "locked"; message: string }
+  | { kind: "cancelled"; message: string }
+  | { kind: "pending"; message: string };
+
+/**
+ * Desenlace de un alta fallida (ver `CreateFailureOutcome`), o `null` si el
+ * error prueba que no se guardó nada.
+ *
+ * Solo un `cfdi` acompañado de `nota_credito` dice en qué quedó la nota; es la
+ * única puerta a `cancelled` y `pending`. Cualquier otro `cfdi` —sin
+ * `nota_credito`, o con un estatus que un alta no produce— queda `locked`: el
+ * backend tiene caminos que responden sin `nota_credito` con la nota ya emitida.
+ * Sin confirmación (sin respuesta, timeout, 5xx) o un `409` también quedan
+ * `locked`, solo en un alta `Emitida`: un borrador repetido no mueve ningún saldo.
+ */
+export const getCreateFailureOutcome = (
   parsed: ParsedNotaCreditoError,
-  estatus: CreateNotaCreditoPayload["estatus"],
-): string | null => {
+  payload: Pick<CreateNotaCreditoPayload, "estatus" | "folio">,
+): CreateFailureOutcome | null => {
   if (parsed.stampFailed) {
-    return creditNoteStampFailedMessage("alta", stampFailureDetail(parsed));
+    const detail = stampFailureDetail(parsed);
+    const nota = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
+    if (nota) {
+      const label = payload.folio?.trim() || `#${nota.id}`;
+      if (nota.estatus === "Cancelada") {
+        return { kind: "cancelled", message: creditNoteCreateRejectedMessage(label, detail) };
+      }
+      if (nota.estatus === "Emitida") {
+        return { kind: "pending", message: creditNoteStampPendingMessage(label, detail) };
+      }
+    }
+    return { kind: "locked", message: creditNoteStampFailedMessage("alta", detail) };
   }
-  if (estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
-    return CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE;
+  if (payload.estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
+    return { kind: "locked", message: CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE };
   }
   return null;
 };
@@ -330,8 +373,8 @@ export const getCreateMayBeSavedMessage = (
 /**
  * Mutación de alta de nota de crédito. `onServerError` recibe el error ya
  * normalizado para que el formulario lo reparta entre el banner, los campos de
- * cabecera y las líneas, junto con el aviso de `getCreateMayBeSavedMessage`
- * cuando la nota pudo quedar registrada.
+ * cabecera y las líneas, junto con el desenlace de `getCreateFailureOutcome`
+ * cuando no es un simple error de validación.
  *
  * Refresca en `onSettled` (`invalidateCreditNoteQueries`) según lo enviado: una
  * nota EMITIDA baja el saldo de la cuenta por cobrar de su factura y puede
@@ -350,7 +393,7 @@ export const getCreateMayBeSavedMessage = (
 export const useCreateNotaCredito = (
   onServerError?: (
     parsed: ParsedNotaCreditoError,
-    mayBeSavedMessage: string | null,
+    outcome: CreateFailureOutcome | null,
   ) => void,
 ) => {
   const queryClient = useQueryClient();
@@ -381,15 +424,21 @@ export const useCreateNotaCredito = (
         return;
       }
       const parsed = parseNotaCreditoError(error);
-      const mayBeSavedMessage = getCreateMayBeSavedMessage(parsed, payload.estatus);
-      onServerError?.(parsed, mayBeSavedMessage);
+      const outcome = getCreateFailureOutcome(parsed, payload);
+      onServerError?.(parsed, outcome);
 
-      const toastMessage = mayBeSavedMessage
-        ? mayBeSavedMessage
-        : parsed.messages.length > 0
+      if (outcome) {
+        // Con `pending` el formulario se cierra y el toast es el único aviso; los
+        // tres traen el motivo largo de Facturama, así que duran lo suficiente
+        // para leerlo.
+        toast.error(outcome.message, { duration: STAMP_FAILED_TOAST_DURATION_MS });
+        return;
+      }
+      toast.error(
+        parsed.messages.length > 0
           ? parsed.messages.join("\n")
-          : parsed.formError ?? "Error al registrar la nota de crédito";
-      toast.error(toastMessage);
+          : parsed.formError ?? "Error al registrar la nota de crédito",
+      );
     },
     // También ante un error: un alta emitida guarda la nota antes de timbrarla,
     // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.

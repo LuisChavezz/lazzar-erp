@@ -15,6 +15,7 @@ import {
 import { buildNotaCreditoPayload } from "../utils/buildNotaCreditoPayload";
 import {
   useCreateNotaCredito,
+  type CreateFailureOutcome,
   type ParsedNotaCreditoError,
 } from "./useCreateNotaCredito";
 
@@ -61,8 +62,11 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   /**
-   * Un alta `Emitida` falló de forma que la nota pudo quedar registrada (`400`
-   * con `cfdi`, sin confirmación o `409`; ver `getCreateMayBeSavedMessage`).
+   * Un alta `Emitida` falló de forma que la nota pudo quedar registrada sin
+   * saberse cómo (`locked` en `getCreateFailureOutcome`: `cfdi` sin
+   * `nota_credito`, sin confirmación o `409`). Un rechazo de Facturama que el
+   * backend reporta como nota `Cancelada` NO bloquea: el saldo se restituyó y
+   * reenviar crea una nota nueva, que es lo que se quiere.
    * Bloquea el formulario para siempre: reenviar lo mismo
    * crearía OTRA nota y volvería a rebajar el saldo de la cuenta por cobrar. El
    * formulario sigue a la vista para cotejarlo con el listado, y la única salida
@@ -118,7 +122,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   // ── Reparto del error del backend ────────────────────────────────────────
   const handleServerError = (
     parsed: ParsedNotaCreditoError,
-    mayBeSavedMessage: string | null,
+    outcome: CreateFailureOutcome | null,
   ) => {
     const next: Record<string, string> = {};
 
@@ -143,11 +147,24 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     const detail =
       parsed.formError ??
       (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
-    // La nota pudo quedar guardada (`getCreateMayBeSavedMessage`): no se dice qué
-    // quedó, se pide revisar el listado y se bloquea el reenvío.
-    if (mayBeSavedMessage) {
-      setServerBanner(mayBeSavedMessage);
+    // La nota pudo quedar guardada sin saberse cómo: no se dice qué quedó, se
+    // pide revisar el listado y se bloquea el reenvío.
+    if (outcome?.kind === "locked") {
+      setServerBanner(outcome.message);
       setIsSubmissionLocked(true);
+      return;
+    }
+    // Facturama rechazó y la nota quedó `Cancelada` con el saldo restituido: se
+    // conserva lo capturado para corregirlo y volver a emitir.
+    if (outcome?.kind === "cancelled") {
+      setServerBanner(outcome.message);
+      return;
+    }
+    // La nota quedó emitida con el timbrado pendiente: el alta sí ocurrió, así
+    // que el formulario se cierra como en un éxito; el toast de la mutación
+    // explica el pendiente y el listado ya se refresca en su `onSettled`.
+    if (outcome?.kind === "pending") {
+      onSuccess?.();
       return;
     }
     // Sin confirmación del backend al guardar un BORRADOR: el mensaje ya pide
