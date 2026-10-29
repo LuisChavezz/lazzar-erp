@@ -300,26 +300,42 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
               </span>
             </p>
           </div>
-          <div
-            className={`rounded-2xl border px-4 py-3 ${
-              resumen.piezasFaltantes > 0
-                ? "border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10"
-                : "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10"
-            }`}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Piezas faltantes
-            </p>
-            <p
-              className={`text-2xl font-bold tabular-nums ${
+          {/* Sin ninguna talla medida no hay faltante que afirmar: un "0" en
+              verde diría que no falta nada. */}
+          {resumen.percent === null ? (
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Piezas faltantes
+              </p>
+              <p
+                className="text-2xl font-bold text-slate-400 dark:text-slate-500"
+                title="Ninguna talla tiene existencia que medir"
+              >
+                —
+              </p>
+            </div>
+          ) : (
+            <div
+              className={`rounded-2xl border px-4 py-3 ${
                 resumen.piezasFaltantes > 0
-                  ? "text-rose-600 dark:text-rose-400"
-                  : "text-emerald-600 dark:text-emerald-400"
+                  ? "border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10"
+                  : "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10"
               }`}
             >
-              {formatQuantityValue(resumen.piezasFaltantes)}
-            </p>
-          </div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Piezas faltantes
+              </p>
+              <p
+                className={`text-2xl font-bold tabular-nums ${
+                  resumen.piezasFaltantes > 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                {formatQuantityValue(resumen.piezasFaltantes)}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
