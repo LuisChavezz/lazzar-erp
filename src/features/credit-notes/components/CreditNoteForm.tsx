@@ -96,9 +96,10 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
 
   // Estado de la factura elegida según el listado de facturas (el mismo que
   // cruza el selector, misma caché). Con su timbrado sin confirmar
-  // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir: la nota se
-  // aplicaría, fallaría al timbrarse y quedaría `Cancelada`. Sin el listado no
-  // se bloquea aquí; el precheck previo al alta `Emitida` lo vuelve a comprobar.
+  // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir: el backend
+  // rechazaría el CFDI con un `cfdi` que bloquea este formulario
+  // (`getRelatedInvoiceEmitBlockReason`). Sin el listado no se bloquea aquí; el
+  // backend rechaza igual, sin guardar nada.
   // `silent`: el formulario lee el listado solo como señal y no lo muestra, así
   // que un refetch fallido no avisa aquí (el selector sí, al abrirse).
   const { invoices } = useInvoices({ silent: true });
@@ -128,9 +129,11 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             lectura y la salida es el "Cerrar" del diálogo (ver `isSubmissionLocked`). */}
         <fieldset disabled={isPending || isSubmissionLocked}>
           {/* Banner del error del backend. Un error de validación no dejó nada
-              registrado (el guardado es atómico); un fallo del timbrado, sin
-              confirmación o un 409 al emitir sí pudo dejar la nota, y entonces
-              el aviso es ámbar y no se descarta. */}
+              registrado (el guardado es atómico), y un rechazo de Facturama
+              con la nota reportada `Cancelada` tampoco movió el saldo: rojo y
+              descartable. Un fallo del timbrado sin `nota_credito`, sin
+              confirmación o un 409 al emitir pudo dejar la nota, y entonces el
+              aviso es ámbar y no se descarta. */}
           {serverBanner && (
             <div
               role="alert"

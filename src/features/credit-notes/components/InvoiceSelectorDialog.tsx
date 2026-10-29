@@ -52,8 +52,8 @@ function InvoiceSelectorContent({
   //
   // Se vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede
   // tener hasta 15 minutos. Mientras ese refresco viaja, con datos en caché, se
-  // decide con ellos; el precheck previo al alta `Emitida` tiene la última
-  // palabra.
+  // decide con ellos; el backend tiene la última palabra (rechaza emitir sobre
+  // una factura cancelada o en cancelación sin guardar nada).
   const {
     invoices,
     hasLoaded: hasLoadedInvoices,
@@ -67,8 +67,7 @@ function InvoiceSelectorContent({
   // mientras viaja— las filas esperan deshabilitadas.
   const isCheckingInvoices = !hasLoadedInvoices && (isFetchingInvoices || !isErrorInvoices);
   // Sin el listado no se sabe qué factura admite notas. Las filas quedan
-  // seleccionables como antes: el precheck previo al alta `Emitida` y el
-  // backend siguen protegiendo la emisión.
+  // seleccionables como antes: el backend sigue protegiendo la emisión.
   const isInvoiceStateUnavailable = isErrorInvoices && !hasLoadedInvoices;
 
   const getDisabledReason = (cuenta: CuentaPorCobrar): string | null => {
