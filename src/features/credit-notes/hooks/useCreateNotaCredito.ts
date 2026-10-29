@@ -393,10 +393,18 @@ export const useCreateNotaCredito = (
     },
     // También ante un error: un alta emitida guarda la nota antes de timbrarla,
     // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.
-    onSettled: (_nota, _error, payload) =>
-      invalidateCreditNoteQueries(
+    // Un precheck que abortó no envió nada: solo se refresca el listado de
+    // facturas, del que el formulario y el selector leen el estado del CFDI, y
+    // sin esperarlo, para que el botón se libere enseguida.
+    onSettled: (_nota, error, payload) => {
+      if (error instanceof PrecheckError) {
+        void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+        return;
+      }
+      return invalidateCreditNoteQueries(
         queryClient,
         payload.estatus === "Emitida" ? "balances" : "document",
-      ),
+      );
+    },
   });
 };
