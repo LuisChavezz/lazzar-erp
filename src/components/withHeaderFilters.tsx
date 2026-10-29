@@ -72,6 +72,36 @@ export type HeaderFilterSpec<T> = {
   | { type: "boolean"; get: (row: T) => boolean | null | undefined; yes: string; no: string }
 );
 
+/**
+ * Filtro del EMPLEADO de un registro de RH (vacaciones, ausencias, nóminas…):
+ * compara contra el FK crudo `empleado` y rotula cada opción con
+ * `empleado_nombre`, que la fila ya trae resuelto (con su respaldo
+ * `Empleado #N`, el mismo texto que la celda). Con buscador: la lista de
+ * empleados puede ser larga.
+ */
+export const employeeHeaderFilter = <
+  T extends { empleado: number; empleado_nombre: string },
+>(): HeaderFilterSpec<T> => ({
+  type: "distinct",
+  get: (r) => r.empleado,
+  label: (r) => r.empleado_nombre,
+  searchable: true,
+});
+
+/**
+ * Filtro del `estado` de negocio de un registro, con ficha "Estatus: …": el
+ * catálogo `options` completo, en su orden, y al final cada código de las
+ * filas que el catálogo no cubre, crudo (igual que su badge).
+ */
+export const estadoHeaderFilter = <T extends { estado: string }>(
+  options: ColumnFilterOption[],
+): HeaderFilterSpec<T> => ({
+  type: "options",
+  filterLabel: "estatus",
+  get: (r) => r.estado,
+  options,
+});
+
 const hasValue = (value: unknown) =>
   typeof value === "number" ? value > 0 : typeof value === "string" ? value.trim() !== "" : Boolean(value);
 

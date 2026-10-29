@@ -3,7 +3,11 @@ import { CheckCircleIcon, DeleteIcon, EditIcon, ReopenIcon } from "@/src/compone
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -236,13 +240,8 @@ export const getColumns = (permissions: ProductivityColumnPermissions) =>
 export const PRODUCTIVITY_HEADER_FILTERS: Partial<
   Record<string, HeaderFilterSpec<ProductivityRow>>
 > = {
-  empleado: {
-    type: "distinct",
-    get: (r) => r.empleado,
-    label: (r) => r.empleado_nombre,
-    searchable: true,
-  },
-  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_PRODUCTIVIDAD_CFG) },
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter(optionsFromConfig(ESTADO_PRODUCTIVIDAD_CFG)),
   fecha: { type: "month", get: (r) => r.fecha },
   departamento_nombre: {
     type: "distinct",

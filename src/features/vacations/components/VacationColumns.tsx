@@ -3,7 +3,11 @@ import { CheckCircleIcon, DeleteIcon, EditIcon, RejectIcon } from "@/src/compone
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDateRange, formatShortDate } from "@/src/utils/formatDate";
 import { Vacation } from "../interfaces/vacation.interface";
@@ -183,13 +187,8 @@ export const getColumns = (permissions: VacationColumnPermissions) =>
  * mes. Los días no llevan filtro: es un número libre.
  */
 export const VACATION_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<VacationRow>>> = {
-  empleado: {
-    type: "distinct",
-    get: (r) => r.empleado,
-    label: (r) => r.empleado_nombre,
-    searchable: true,
-  },
-  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_VACACION_CFG) },
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter(optionsFromConfig(ESTADO_VACACION_CFG)),
   periodo: { type: "month", get: (r) => r.fecha_inicio },
   fecha_solicitud: { type: "month", get: (r) => r.fecha_solicitud },
 };
