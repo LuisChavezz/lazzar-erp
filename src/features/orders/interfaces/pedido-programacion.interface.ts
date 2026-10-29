@@ -69,12 +69,16 @@ export interface PedidoProgramarResponse {
 
 /**
  * Un renglón de `GET /ventas/pedidos/{id}/programar/`: UNA talla del pedido
- * (`PedidoDetalleTalla`), no una línea producto+color.
+ * (`PedidoDetalleTalla`), no una línea producto+color. `pedido_detalle_id` es
+ * su partida (`PedidoDetalle`, el mismo `detalles[].id` del detalle del
+ * pedido); el backend las ordena por partida, así que llegan contiguas.
  *
  * `stock_disponible` es la existencia en el almacén `almacen_surtido` (hoy
  * ALM-00, PRODUCTO TERMINADO) menos las reservas activas de OTROS pedidos, ya
- * calculada por el backend; `faltante` es `max(cantidad - stock_disponible, 0)`.
- * Ambos son `null` cuando la talla no tiene variante o su línea es de muestra.
+ * calculada por el backend: por variante o, si el producto no tiene ninguna
+ * variante, por producto. `faltante` es `max(cantidad - stock_disponible, 0)`.
+ * Ambos son `null` cuando la línea es de muestra, no tiene producto, o la talla
+ * no tiene variante pero su producto sí tiene variantes (talla sin resolver).
  *
  * `servicios` se tipa como `string[]` (no como `PedidoProgramarServicio[]`):
  * el backend podría sumar uno nuevo; la etiqueta lo resuelve
@@ -82,6 +86,7 @@ export interface PedidoProgramarResponse {
  */
 export interface PedidoProgramarRenglon {
   pedido_detalle_talla_id: number;
+  pedido_detalle_id: number;
   producto: string | null;
   color: string | null;
   talla: string;
