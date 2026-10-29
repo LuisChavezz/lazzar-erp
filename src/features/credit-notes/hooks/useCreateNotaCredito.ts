@@ -15,9 +15,6 @@ import {
   type StampFailedNota,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
-import { getInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
-import { PrecheckError } from "@/src/hooks/useMutationLock";
-import { fetchFreshRelatedInvoice } from "./fetchFreshRelatedInvoice";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
 export type NotaCreditoHeaderErrorField =
@@ -383,12 +380,10 @@ export const getCreateFailureOutcome = (
  * el pedido (`balances`); un borrador solo cambia las notas de la factura
  * (`document`).
  *
- * Un alta `Emitida` pide antes la factura FRESCA y se detiene con
- * `PrecheckError`, sin POST, si ya no admite notas —incluido un `404`— o tiene
- * su timbrado sin confirmar (`getInvoiceEmitBlockReason`): pudo cambiar después
- * de elegirla en el selector. El precheck se
- * reporta como un error de validación (nada se registró). Un borrador no lo
- * necesita: no mueve saldos ni timbra.
+ * La factura no se vuelve a consultar antes del POST: el backend rechaza una
+ * factura cancelada o en cancelación (`400` en `factura`) y valida el CFDI
+ * dentro de la misma transacción que aplica la nota, así que esos rechazos no
+ * dejan nada guardado y llegan como errores de validación.
  */
 export const useCreateNotaCredito = (
   onServerError?: (
@@ -399,14 +394,7 @@ export const useCreateNotaCredito = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: CreateNotaCreditoPayload) => {
-      if (payload.estatus === "Emitida") {
-        const factura = await fetchFreshRelatedInvoice(queryClient, payload.factura);
-        const blockReason = getInvoiceEmitBlockReason(factura?.folio ?? null, factura);
-        if (blockReason) throw new PrecheckError(blockReason);
-      }
-      return createNotaCredito(payload);
-    },
+    mutationFn: createNotaCredito,
     onSuccess: (nota) => {
       toast.success(
         nota.estatus === "Emitida"
@@ -415,14 +403,6 @@ export const useCreateNotaCredito = (
       );
     },
     onError: (error, payload) => {
-      if (error instanceof PrecheckError) {
-        onServerError?.(
-          { formError: error.message, fieldErrors: {}, lineErrors: {}, messages: [error.message] },
-          null,
-        );
-        toast.error(error.message);
-        return;
-      }
       const parsed = parseNotaCreditoError(error);
       const outcome = getCreateFailureOutcome(parsed, payload);
       onServerError?.(parsed, outcome);
@@ -442,18 +422,10 @@ export const useCreateNotaCredito = (
     },
     // También ante un error: un alta emitida guarda la nota antes de timbrarla,
     // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.
-    // Un precheck que abortó no envió nada: solo se refresca el listado de
-    // facturas, del que el formulario y el selector leen el estado del CFDI, y
-    // sin esperarlo, para que el botón se libere enseguida.
-    onSettled: (_nota, error, payload) => {
-      if (error instanceof PrecheckError) {
-        void queryClient.invalidateQueries({ queryKey: ["invoices"] });
-        return;
-      }
-      return invalidateCreditNoteQueries(
+    onSettled: (_nota, _error, payload) =>
+      invalidateCreditNoteQueries(
         queryClient,
         payload.estatus === "Emitida" ? "balances" : "document",
-      );
-    },
+      ),
   });
 };

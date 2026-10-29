@@ -13,10 +13,8 @@ import {
   STAMP_FAILED_TOAST_DURATION_MS,
   type StampFailedNota,
 } from "../utils/creditNoteErrors";
-import { getInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
-import { fetchFreshRelatedInvoice } from "./fetchFreshRelatedInvoice";
 
 /** Qué nota se emite: su id y cómo nombrarla en los avisos (folio o `#id`). */
 export interface EmitirNotaCreditoVariables {
@@ -64,12 +62,14 @@ export const getEmitRejectedDraftDetail = (error: unknown, id: number): string |
  * sabe desenvolver, dejando al usuario con un "Request failed with status code
  * 400" en vez del motivo real.
  *
- * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
- * `PrecheckError`, sin PATCH, si la nota ya no es `Borrador` o la factura está
- * `Cancelada`, eliminada o inexistente (`404`), con su CFDI cancelado, con su
- * cancelación pendiente de aceptar o con su timbrado sin confirmar
- * (`getInvoiceEmitBlockReason`, la misma regla del alta `Emitida`). El
- * candado contra el doble envío es el de la fila en `CreditNoteList`.
+ * Antes del PATCH pide la nota FRESCA y se detiene con `PrecheckError`, sin
+ * PATCH, si ya no es `Borrador`: un `PATCH` a `Emitida` sobre una nota que otra
+ * sesión ya emitió responde `200` sin hacer nada, y se avisaría "emitida
+ * correctamente" de algo que esta sesión no hizo. La FACTURA no se consulta: el
+ * backend rechaza una factura cancelada o en cancelación (`400` en `factura`) y
+ * valida el CFDI (factura sin timbrar, datos fiscales) dentro de la misma
+ * transacción que aplica la nota, así que esos rechazos no dejan nada guardado.
+ * El candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
  * Un fallo del timbrado llega bajo `cfdi` y, cuando el backend sabe en qué
  * quedó la nota, con `nota_credito`:
@@ -91,18 +91,12 @@ export const useEmitirNotaCredito = () => {
 
   return useMutation({
     mutationFn: async ({ id }: EmitirNotaCreditoVariables) => {
-      // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): la
-      // factura pudo cancelarse después de crear el borrador; el backend la
-      // rechaza (#614) y así se avisa sin intentar el PATCH. Con su timbrado
-      // sin confirmar el backend no la rechaza, pero la nota fallaría al
-      // timbrarse y quedaría `Cancelada`.
+      // Nota FRESCA antes del PATCH (`fetchFresh`, staleTime 0): otra sesión
+      // pudo emitirla o cancelarla desde que se pintó el listado.
       const nota = await fetchFreshNotaCredito(queryClient, id);
       if (nota.estatus !== "Borrador") {
         throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);
       }
-      const factura = await fetchFreshRelatedInvoice(queryClient, nota.factura);
-      const blockReason = getInvoiceEmitBlockReason(nota.factura_folio, factura);
-      if (blockReason) throw new PrecheckError(blockReason);
       return emitirNotaCredito(id);
     },
     onSuccess: () => {
