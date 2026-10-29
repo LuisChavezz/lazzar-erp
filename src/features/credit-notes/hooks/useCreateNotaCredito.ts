@@ -4,7 +4,7 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
 import {
-  creditNoteCreateStampFailedMessage,
+  creditNoteStampFailedMessage,
   isUnconfirmedFailure,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
@@ -300,7 +300,7 @@ export const useCreateNotaCredito = (
       onServerError?.(parsed);
 
       const toastMessage = parsed.stampFailed
-        ? creditNoteCreateStampFailedMessage(parsed.formError ?? "")
+        ? creditNoteStampFailedMessage("alta", parsed.formError ?? "")
         : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al registrar la nota de crédito";

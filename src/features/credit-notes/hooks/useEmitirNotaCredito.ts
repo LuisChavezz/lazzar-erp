@@ -5,7 +5,7 @@ import { parseNotaCreditoError } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
-  creditNoteEmitStampFailedMessage,
+  creditNoteStampFailedMessage,
   logUnexpectedError,
 } from "../utils/creditNoteErrors";
 import { getRelatedInvoiceCancelledReason } from "../utils/creditNoteStamping";
@@ -79,7 +79,7 @@ export const useEmitirNotaCredito = () => {
       const message = parsed.unconfirmed
         ? CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE
         : parsed.stampFailed
-          ? creditNoteEmitStampFailedMessage(parsed.formError ?? "")
+          ? creditNoteStampFailedMessage("emision", parsed.formError ?? "")
           : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al emitir la nota de crédito";
