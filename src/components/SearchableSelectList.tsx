@@ -29,8 +29,11 @@ interface SearchableSelectListProps<T> {
   /**
    * OPCIONAL (apagado por defecto). Motivo por el que `item` NO se puede elegir,
    * o `null` si se puede. Con motivo, la fila queda deshabilitada (no dispara
-   * `onSelect`) y el motivo se muestra bajo su contenido. Sin la prop todas las
-   * filas se pueden elegir, igual que siempre.
+   * `onSelect`) y el motivo se muestra bajo su contenido. Se marca con
+   * `aria-disabled`, no con `disabled`: sigue en el orden de tabulación para que
+   * el teclado y el lector de pantalla lleguen a ella y a su motivo, y el clic,
+   * Enter y Espacio no hacen nada. Sin la prop todas las filas se pueden
+   * elegir, igual que siempre.
    */
   getItemDisabledReason?: (item: T) => string | null;
 }
@@ -86,8 +89,12 @@ export function SearchableSelectList<T>({
               <button
                 key={getKey(item)}
                 type="button"
-                onClick={() => onSelect(item)}
-                disabled={disabledReason !== null}
+                // Enter y Espacio sobre un `<button>` disparan `click`: con esta
+                // guarda tampoco eligen una fila deshabilitada.
+                onClick={() => {
+                  if (disabledReason === null) onSelect(item);
+                }}
+                aria-disabled={disabledReason !== null ? true : undefined}
                 aria-pressed={selected}
                 className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
                   disabledReason !== null
