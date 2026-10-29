@@ -31,7 +31,7 @@ export const tieneStock = (renglon: PedidoProgramarRenglon): renglon is RenglonC
 const esSinMedir = (renglon: PedidoProgramarRenglon) =>
   !renglon.es_muestra && !tieneStock(renglon);
 
-/** Cubierta si el stock alcanza, sin existencia si es 0, parcial en otro caso. */
+/** Cubierta si el stock alcanza, sin disponible si es 0, parcial en otro caso. */
 export const getTallaCoverage = (renglon: RenglonConStock): TallaCoverage => {
   if (renglon.stock_disponible >= renglon.cantidad) return "full";
   if (renglon.stock_disponible <= 0) return "none";
@@ -64,7 +64,7 @@ export interface ProgramarPartida {
 /**
  * Cobertura de una partida de catálogo: "Sin medir" si alguna talla no trae
  * stock (nunca cuenta como cubierta), y si no, cubierta si todas lo están, sin
- * existencia si ninguna tiene, parcial en otro caso.
+ * disponible si ninguna tiene, parcial en otro caso.
  */
 const getPartidaCoverage = (renglones: PedidoProgramarRenglon[]): PartidaCoverage => {
   const coverages: TallaCoverage[] = [];
