@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import {
+  buildProductByIdMap,
   getAssignableColors,
   getMissingColorLines,
   getMissingColorState,
 } from "@/src/features/quotes/utils/requiredColor";
+import { getVariantSizes } from "@/src/features/quotes/utils/variantSizes";
 import { extractQuoteValidationIssues } from "@/src/features/quotes/utils/quoteValidationErrors";
 
 /**
@@ -16,16 +18,16 @@ const ch = { id: 10, nombre: "CH" };
 const m = { id: 11, nombre: "M" };
 const g = { id: 12, nombre: "G" };
 
-const products = [
+const products = buildProductByIdMap([
   {
     id: 100,
     variantes: [
-      { sku: "A", color: gris, talla: ch },
-      { sku: "B", color: gris, talla: m },
-      { sku: "C", color: azul, talla: ch },
+      { color: gris, talla: ch },
+      { color: gris, talla: m },
+      { color: azul, talla: ch },
     ],
   },
-];
+]);
 
 test.describe("getMissingColorLines", () => {
   test("marca la partida de catálogo sin color cuyo producto tiene variantes", () => {
@@ -47,10 +49,17 @@ test.describe("getMissingColorLines", () => {
     ).toEqual([]);
   });
 
-  test("un producto fuera del catálogo queda como no asignable", () => {
-    expect(getMissingColorState({ tipo: "catalogo", productoId: 999 }, products)).toBe(
-      "unavailable",
-    );
+  test("un producto fuera del catálogo es desconocido, no un error", () => {
+    expect(getMissingColorState({ tipo: "catalogo", productoId: 999 }, products)).toBe("unknown");
+  });
+
+  test("un catálogo vacío (o que no cargó) no exige color a nadie", () => {
+    expect(
+      getMissingColorLines(
+        [{ tipo: "catalogo", productoId: 100, colorId: null }],
+        buildProductByIdMap([]),
+      ),
+    ).toEqual([{ index: 0, state: "unknown" }]);
   });
 
   test("conserva el índice de cada partida", () => {
@@ -95,6 +104,27 @@ test.describe("getAssignableColors", () => {
   });
 });
 
+test.describe("getVariantSizes", () => {
+  const variantes = [
+    { color: gris, talla: ch },
+    { color: gris, talla: m },
+    { color: azul, talla: ch },
+    { color: gris, talla: m },
+  ];
+
+  test("con color: solo sus tallas, sin duplicados y en el orden de las variantes", () => {
+    expect(getVariantSizes(variantes, gris.id)).toEqual([ch, m]);
+  });
+
+  test("sin color: las tallas de todos los colores", () => {
+    expect(getVariantSizes(variantes, null)).toEqual([ch, m]);
+  });
+
+  test("un color sin variantes no tiene tallas", () => {
+    expect(getVariantSizes(variantes, 99)).toEqual([]);
+  });
+});
+
 test.describe("extractQuoteValidationIssues con `color`", () => {
   test("acepta la lista que manda DRF y el string suelto, con la ruta `color`", () => {
     const message = "Elige el color de: Playera.";
@@ -103,6 +133,40 @@ test.describe("extractQuoteValidationIssues con `color`", () => {
     ]);
     expect(extractQuoteValidationIssues({ color: message })).toEqual([
       { path: "color", message },
+    ]);
+  });
+});
+
+test.describe("extractQuoteValidationIssues con strings de primer nivel", () => {
+  test("un error de campo como string suelto llega con su ruta del formulario", () => {
+    expect(extractQuoteValidationIssues({ cliente_rfc: "RFC inválido." })).toEqual([
+      { path: "rfc", message: "RFC inválido." },
+    ]);
+  });
+
+  test("las claves de rechazo como string no se vuelven errores de campo", () => {
+    expect(
+      extractQuoteValidationIssues({
+        detail: "x",
+        non_field_errors: "x",
+        detalle: "Partida 1: tope",
+        permiso: "x",
+        cotizacion: "x",
+        pedido: "x",
+        compatibilidad_proceso: "x",
+      }),
+    ).toEqual([]);
+  });
+
+  test("`pedido` y `detalle` anidados se siguen recorriendo", () => {
+    expect(
+      extractQuoteValidationIssues({
+        pedido: { persona_pagos: ["Requerido"] },
+        detalle: [{ precio_unitario: ["Debe ser positivo"] }],
+      }),
+    ).toEqual([
+      { path: "persona_pagos", message: "Requerido" },
+      { path: "items.0.precio", message: "Debe ser positivo" },
     ]);
   });
 });

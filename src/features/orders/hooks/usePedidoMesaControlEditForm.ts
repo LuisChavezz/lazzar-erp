@@ -48,7 +48,9 @@ import {
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { scrollToFirstValidationError } from "@/src/features/quotes/utils/scrollToFirstValidationError";
+import { getVariantSizes } from "@/src/features/quotes/utils/variantSizes";
 import {
+  buildProductByIdMap,
   getMissingColorLines,
   MISSING_COLOR_MESSAGE,
   UNAVAILABLE_COLOR_MESSAGE,
@@ -295,16 +297,7 @@ const mapLineaToQuoteItem = (
       if (!products?.length || linea.producto == null) return undefined;
       const product = products.find((p) => p.id === linea.producto);
       if (!product?.variantes?.length) return undefined;
-      const colorId = linea.color ?? null;
-      const seen = new Set<number>();
-      const sizesList: Array<{ id: number; nombre: string }> = [];
-      for (const variant of product.variantes) {
-        if (colorId !== null && variant.color.id !== colorId) continue;
-        if (!seen.has(variant.talla.id)) {
-          seen.add(variant.talla.id);
-          sizesList.push(variant.talla);
-        }
-      }
+      const sizesList = getVariantSizes(product.variantes, linea.color ?? null);
       return sizesList.length > 0 ? sizesList : undefined;
     })(),
     tallas: linea.tallas.map((talla) => ({
@@ -1145,10 +1138,10 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const submittedItemsRef = useRef<QuoteItem[]>([]);
 
   const applyServerValidationIssues = useCallback((rawIssues: QuoteValidationIssue[]) => {
-    const products = onboardingData?.busqueda.productos ?? [];
+    const productsById = buildProductByIdMap(onboardingData?.busqueda.productos ?? []);
     const issues = rawIssues.flatMap((issue) =>
       issue.path === REQUIRED_COLOR_KEY
-        ? getMissingColorLines(submittedItemsRef.current, products).map((line) => ({
+        ? getMissingColorLines(submittedItemsRef.current, productsById).map((line) => ({
             path: `items.${line.index}.colorId`,
             message:
               line.state === "assignable" ? MISSING_COLOR_MESSAGE : UNAVAILABLE_COLOR_MESSAGE,
@@ -1276,12 +1269,16 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
       /* Color obligatorio con variantes (EC-641): `editar-mesa-control` lo
        * rechaza con 400 aunque la edición solo toque la cabecera. Se corta aquí
        * SOLO en las partidas cuyo producto está en el catálogo, que son las que
-       * se pueden arreglar con "Asignar color". Las que no están en el catálogo
-       * no se bloquean: puede que su producto no tenga variantes y el backend
-       * las acepte; si no, el 400 las marca (ver `applyServerValidationIssues`).
+       * se pueden arreglar con "Asignar color". Las que no están (o un catálogo
+       * que no cargó) no se bloquean: puede que su producto no tenga variantes y
+       * el backend las acepte; si no, el 400 las marca (ver
+       * `applyServerValidationIssues`).
        * Solo en este flujo: un borrador de cotización se guarda incompleto. */
       submitIssues.push(
-        ...getMissingColorLines(value.items ?? [], onboardingData?.busqueda.productos ?? [])
+        ...getMissingColorLines(
+          value.items ?? [],
+          buildProductByIdMap(onboardingData?.busqueda.productos ?? []),
+        )
           .filter((line) => line.state === "assignable")
           .map((line) => ({
             path: ["items", line.index, "colorId"],

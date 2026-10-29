@@ -10,17 +10,20 @@
  * regla, nunca leyendo los nombres del mensaje.
  *
  * Limitación de los datos: el catálogo del onboarding (`busqueda.productos`)
- * solo trae productos con variantes ACTIVAS y solo esas variantes. Un producto
- * que no aparece ahí puede no tener variantes (el backend lo acepta sin color)
- * o tenerlas todas inactivas (el backend exige un color que no se puede
- * ofrecer). Por eso hay dos estados:
+ * solo trae productos ACTIVOS con al menos una variante ACTIVA, y solo esas
+ * variantes. Un producto sin variantes, uno con todas sus variantes inactivas y
+ * uno inactivo quedan igual de AUSENTES, y un catálogo que no cargó llega vacío.
+ * Así que de una partida sin color solo se sabe algo cuando su producto ESTÁ en
+ * el catálogo:
  *
- * - `assignable`: el producto está en el catálogo, así que tiene variantes y el
- *   color se puede elegir entre ellas.
- * - `unavailable`: el producto no está en el catálogo; no hay colores que
- *   ofrecer y no se sabe si el backend lo exigirá.
+ * - `assignable`: el producto tiene variantes; el color es obligatorio y se
+ *   puede elegir entre ellas.
+ * - `unknown`: el producto no está en el catálogo. Puede no tener variantes (y
+ *   el backend la acepta sin color): no se marca ni se bloquea por eso. Solo un
+ *   400 real del backend la señala.
  */
 import type { Color } from "../../colors/interfaces/color.interface";
+import { getVariantSizes } from "./variantSizes";
 
 interface VariantLike {
   color: Color;
@@ -39,7 +42,20 @@ export interface RequiredColorItem {
   tallas?: readonly { tallaId: number; nombre: string }[];
 }
 
-export type MissingColorState = "assignable" | "unavailable";
+export type MissingColorState = "assignable" | "unknown";
+
+/** Catálogo indexado por id, para no recorrerlo por cada partida. */
+export type RequiredColorProductsById = ReadonlyMap<number, RequiredColorProduct>;
+
+export const buildProductByIdMap = (
+  products: readonly RequiredColorProduct[],
+): RequiredColorProductsById => {
+  const map = new Map<number, RequiredColorProduct>();
+  for (const product of products) {
+    if (product.id != null) map.set(product.id, product);
+  }
+  return map;
+};
 
 export interface MissingColorLine {
   index: number;
@@ -49,14 +65,12 @@ export interface MissingColorLine {
 /** Mensaje de la partida que puede recibir un color del catálogo. */
 export const MISSING_COLOR_MESSAGE = "Elige un color para esta partida";
 
-/** Mensaje de la partida cuyo producto no ofrece colores en el catálogo. */
+/**
+ * Mensaje de la partida que un 400 `color` señala y cuyo producto no ofrece
+ * colores en el catálogo.
+ */
 export const UNAVAILABLE_COLOR_MESSAGE =
   "Sin color y sin colores disponibles: el producto no tiene variantes activas en el catálogo";
-
-const findProduct = (
-  products: readonly RequiredColorProduct[],
-  productoId: number,
-): RequiredColorProduct | undefined => products.find((product) => product.id === productoId);
 
 /**
  * Partidas de catálogo sin color. Una muestra (`tipo: "muestra"`) nunca cuenta:
@@ -64,23 +78,24 @@ const findProduct = (
  */
 export const getMissingColorLines = (
   items: readonly RequiredColorItem[],
-  products: readonly RequiredColorProduct[],
+  productsById: RequiredColorProductsById,
 ): MissingColorLine[] =>
   items.flatMap((item, index) => {
     if (item.tipo === "muestra") return [];
     if (!item.productoId || item.productoId < 1) return [];
     if (item.colorId && item.colorId > 0) return [];
-    const product = findProduct(products, item.productoId);
-    const state: MissingColorState = product?.variantes?.length ? "assignable" : "unavailable";
+    const state: MissingColorState = productsById.get(item.productoId)?.variantes?.length
+      ? "assignable"
+      : "unknown";
     return [{ index, state }];
   });
 
 /** Estado de UNA partida, o `null` si no le falta color. */
 export const getMissingColorState = (
   item: RequiredColorItem | undefined,
-  products: readonly RequiredColorProduct[],
+  productsById: RequiredColorProductsById,
 ): MissingColorState | null =>
-  item ? (getMissingColorLines([item], products)[0]?.state ?? null) : null;
+  item ? (getMissingColorLines([item], productsById)[0]?.state ?? null) : null;
 
 export interface ColorChoice {
   color: Color;
@@ -102,28 +117,21 @@ export interface ColorChoice {
  */
 export const getAssignableColors = (
   item: RequiredColorItem,
-  products: readonly RequiredColorProduct[],
+  productsById: RequiredColorProductsById,
 ): ColorChoice[] => {
   if (!item.productoId) return [];
-  const product = findProduct(products, item.productoId);
-  const byColor = new Map<number, ColorChoice>();
-  for (const variant of product?.variantes ?? []) {
-    const choice = byColor.get(variant.color.id) ?? {
-      color: variant.color,
-      sizes: [],
-      missingSizes: [],
-    };
-    if (!choice.sizes.some((size) => size.id === variant.talla.id)) {
-      choice.sizes.push({ id: variant.talla.id, nombre: variant.talla.nombre });
-    }
-    byColor.set(variant.color.id, choice);
+  const variantes = productsById.get(item.productoId)?.variantes ?? [];
+  const colors = new Map<number, Color>();
+  for (const variant of variantes) {
+    if (!colors.has(variant.color.id)) colors.set(variant.color.id, variant.color);
   }
   const lineSizes = item.tallas ?? [];
-  return [...byColor.values()].map((choice) => {
-    const available = new Set(choice.sizes.map((size) => size.id));
+  return [...colors.values()].map((color) => {
+    const sizes = getVariantSizes(variantes, color.id);
+    const available = new Set(sizes.map((size) => size.id));
     const missing = lineSizes
       .filter((size) => !available.has(size.tallaId))
       .map((size) => size.nombre);
-    return { ...choice, missingSizes: [...new Set(missing)] };
+    return { color, sizes, missingSizes: [...new Set(missing)] };
   });
 };

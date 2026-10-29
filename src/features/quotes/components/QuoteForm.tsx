@@ -46,7 +46,7 @@ import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
 import { AssignColorDialog } from "./AssignColorDialog";
-import { getMissingColorState, UNAVAILABLE_COLOR_MESSAGE } from "../utils/requiredColor";
+import { buildProductByIdMap, getMissingColorState } from "../utils/requiredColor";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 
@@ -251,6 +251,9 @@ export function QuoteFormContent({
 }: QuoteFormContentProps) {
   // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
   const productCategoryById = buildProductCategoryMap(products);
+  // Catálogo por id una vez por render: el color obligatorio (EC-641) se
+  // consulta por fila y no debe recorrer el catálogo en cada una.
+  const productsById = buildProductByIdMap(products);
   /** Lo que admite la categoría de la partida `index` (CO-04 / CO-05). */
   const rulesForIndex = (index: number | null) => {
     const item = index !== null ? watchedItems?.[index] : undefined;
@@ -1445,13 +1448,15 @@ export function QuoteFormContent({
         />
 
         <AssignColorDialog
-          key={colorAssignIndex ?? "assign-color"}
           open={colorAssignIndex !== null}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) setColorAssignIndex(null);
           }}
-          item={colorAssignIndex !== null ? (watchedItems?.[colorAssignIndex] ?? null) : null}
-          products={products}
+          item={(() => {
+            const target = colorAssignIndex !== null ? watchedItems?.[colorAssignIndex] : undefined;
+            return target?.tipo === "catalogo" ? target : null;
+          })()}
+          productsById={productsById}
           onSave={(updatedItem) => {
             if (colorAssignIndex === null) return;
             update(colorAssignIndex, updatedItem);
@@ -1555,7 +1560,7 @@ export function QuoteFormContent({
                   const colorIdError = getFieldError(getError(`items.${index}.colorId`));
 
                   const currentItem = watchedItems?.[index];
-                  const missingColorState = getMissingColorState(currentItem, products);
+                  const missingColorState = getMissingColorState(currentItem, productsById);
                   const tallasLabel =
                     currentItem?.tallas && currentItem.tallas.length > 0
                       ? currentItem.tallas
@@ -1677,11 +1682,11 @@ export function QuoteFormContent({
                               {colorIdError?.message ?? "Requiere color"}
                             </p>
                           </div>
-                        ) : missingColorState === "unavailable" ? (
-                          <p
-                            className={`text-[10px] max-w-32 ${colorIdError ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"}`}
-                          >
-                            {colorIdError?.message ?? UNAVAILABLE_COLOR_MESSAGE}
+                        ) : colorIdError ? (
+                          // Producto fuera del catálogo: solo se marca si un 400
+                          // real del backend lo señaló (ver `requiredColor`).
+                          <p className="text-[10px] max-w-32 text-rose-600 dark:text-rose-400">
+                            {colorIdError.message}
                           </p>
                         ) : (
                           <span className="text-xs text-slate-400 dark:text-slate-600">—</span>
