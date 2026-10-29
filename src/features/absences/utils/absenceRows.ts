@@ -4,11 +4,9 @@ import {
   getStaleRowDialogNotice,
   type StaleRowDialogNotice,
 } from "@/src/utils/staleRowDialogNotice";
-import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import type { Absence } from "../interfaces/absence.interface";
 import type { AbsenceRow } from "../components/AbsenceColumns";
 import {
-  ESTADO_AUSENCIA_FILTER_OPTIONS,
   getTipoAusenciaLabel,
   type EstadoAusencia,
 } from "../constants/absenceChoices";
@@ -41,15 +39,6 @@ export const buildAbsenceRows = (
  */
 export const getAbsenceTipoText = (tipo: string | null | undefined): string =>
   getTipoAusenciaLabel(tipo) ?? (tipo || "—");
-
-/**
- * Opciones del filtro de estatus. El listado mezcla tipos y la etiqueta de un
- * estado depende del tipo ("Aprobado" / "Falta confirmada"), así que se usa
- * `ESTADO_AUSENCIA_FILTER_OPTIONS` tal cual, que nombra las dos variantes
- * ("Aprobado / falta confirmada"), y NO la etiqueta del badge de una fila.
- * Un código fuera del catálogo lo agrega `withHeaderFilters` al final, crudo.
- */
-export const ABSENCE_ESTADO_FILTER_OPTIONS: ColumnFilterOption[] = ESTADO_AUSENCIA_FILTER_OPTIONS;
 
 /**
  * ¿El diálogo de fila (aprobar/confirmar, rechazar/descartar, eliminar) ya no

@@ -8,6 +8,7 @@ import { formatLocalDateRange, formatShortDate } from "@/src/utils/formatDate";
 import { Absence } from "../interfaces/absence.interface";
 import {
   ESTADO_APROBADO,
+  ESTADO_AUSENCIA_FILTER_OPTIONS,
   ESTADO_PENDIENTE,
   getAusenciaVocabulary,
   getEstadoAusenciaCfg,
@@ -15,7 +16,7 @@ import {
   TIPO_AUSENCIA_OPTIONS,
 } from "../constants/absenceChoices";
 import { useAbsenceRowActionsContext } from "../hooks/useAbsenceRowActions";
-import { ABSENCE_ESTADO_FILTER_OPTIONS, getAbsenceTipoText } from "../utils/absenceRows";
+import { getAbsenceTipoText } from "../utils/absenceRows";
 
 /**
  * Fila de la tabla: el registro tal como llega del backend más los nombres de
@@ -170,9 +171,12 @@ export const getColumns = (permissions: AbsenceColumnPermissions) =>
  *
  * El empleado compara contra el FK crudo, rotulado con el nombre resuelto de
  * la fila (o su respaldo `#N`, el mismo texto que la celda), con buscador. El
- * estado, con ficha "Estatus: …", usa las opciones de
- * `ABSENCE_ESTADO_FILTER_OPTIONS` (nombran las dos variantes del tipo). El goce de sueldo es un segundo atributo, independiente del estado:
- * su columna lleva su propio filtro booleano. Tipo ofrece su catálogo completo
+ * estado, con ficha "Estatus: …", usa `ESTADO_AUSENCIA_FILTER_OPTIONS` tal
+ * cual: el listado mezcla tipos y la etiqueta de un estado depende del tipo,
+ * así que sus opciones nombran las dos variantes ("Aprobado / falta
+ * confirmada"), no la etiqueta del badge de una fila. El goce de sueldo es un
+ * segundo atributo, independiente del estado: su columna lleva su propio
+ * filtro booleano. Tipo ofrece su catálogo completo
  * y al final cada código desconocido, crudo (igual que su celda). Periodo y
  * registro filtran por mes.
  */
@@ -183,7 +187,7 @@ export const ABSENCE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Abs
     label: (r) => r.empleado_nombre,
     searchable: true,
   },
-  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: ABSENCE_ESTADO_FILTER_OPTIONS },
+  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: ESTADO_AUSENCIA_FILTER_OPTIONS },
   tipo: { type: "options", get: (r) => r.tipo, options: TIPO_AUSENCIA_OPTIONS },
   periodo: { type: "month", get: (r) => r.fecha_inicio },
   con_goce_sueldo: {
