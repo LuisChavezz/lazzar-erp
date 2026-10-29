@@ -2,18 +2,22 @@ import { expect, test } from "@playwright/test";
 import type { PedidoProgramarRenglon } from "@/src/features/orders/interfaces/pedido-programacion.interface";
 import {
   getProgramarStockResumen,
+  getProgramarTallasExcluidas,
   getTallaCoverage,
   getTallaDiferencia,
+  groupRenglonesPorPartida,
   tieneStock,
 } from "@/src/features/orders/utils/pedidoProgramarStock";
 
 /**
- * Pruebas unitarias de EC-629: cobertura de existencia de "Programar pedido",
- * calculada solo con `GET /ventas/pedidos/{id}/programar/`.
+ * Pruebas unitarias de EC-629/EC-631: cobertura de existencia de "Programar
+ * pedido" por talla y por partida, calculada solo con
+ * `GET /ventas/pedidos/{id}/programar/`.
  */
 let nextId = 1;
 const renglon = (overrides: Partial<PedidoProgramarRenglon>): PedidoProgramarRenglon => ({
   pedido_detalle_talla_id: nextId++,
+  pedido_detalle_id: 1,
   producto: "BATA",
   color: "BLANCO",
   talla: "M",
@@ -27,12 +31,35 @@ const renglon = (overrides: Partial<PedidoProgramarRenglon>): PedidoProgramarRen
   ...overrides,
 });
 
-const conStock = (cantidad: number, stock: number) =>
-  renglon({ cantidad, stock_disponible: stock, faltante: Math.max(cantidad - stock, 0) });
-const muestra = (cantidad: number) =>
-  renglon({ es_muestra: true, sku: null, variante_id: null, cantidad, stock_disponible: null, faltante: null });
-const sinSku = (cantidad: number) =>
-  renglon({ sku: null, variante_id: null, cantidad, stock_disponible: null, faltante: null });
+const conStock = (cantidad: number, stock: number, partida = 1) =>
+  renglon({
+    pedido_detalle_id: partida,
+    cantidad,
+    stock_disponible: stock,
+    faltante: Math.max(cantidad - stock, 0),
+  });
+const muestra = (cantidad: number, partida = 1) =>
+  renglon({
+    pedido_detalle_id: partida,
+    es_muestra: true,
+    sku: null,
+    variante_id: null,
+    cantidad,
+    stock_disponible: null,
+    faltante: null,
+  });
+const sinMedir = (cantidad: number, partida = 1) =>
+  renglon({
+    pedido_detalle_id: partida,
+    sku: null,
+    variante_id: null,
+    cantidad,
+    stock_disponible: null,
+    faltante: null,
+  });
+
+const resumenDe = (renglones: PedidoProgramarRenglon[]) =>
+  getProgramarStockResumen(groupRenglonesPorPartida(renglones));
 
 test.describe("getTallaCoverage", () => {
   const coverage = (cantidad: number, stock: number) => {
@@ -64,43 +91,134 @@ test("getTallaDiferencia es stock menos lo pedido, con signo", () => {
   expect(getTallaDiferencia(falta)).toBe(-6);
 });
 
+test.describe("groupRenglonesPorPartida", () => {
+  test("agrupa por pedido_detalle_id respetando el orden del GET", () => {
+    const a1 = conStock(1, 5, 20);
+    const b1 = conStock(1, 5, 10);
+    const a2 = conStock(1, 5, 20);
+    const partidas = groupRenglonesPorPartida([a1, b1, a2]);
+    expect(partidas.map((partida) => partida.id)).toEqual([20, 10]);
+    expect(partidas[0].renglones).toEqual([a1, a2]);
+  });
+
+  test("toma producto y color de la primera talla", () => {
+    const [partida] = groupRenglonesPorPartida([
+      renglon({ producto: "FILIPINA", color: null }),
+      renglon({ producto: "OTRO", color: "ROJO" }),
+    ]);
+    expect(partida.producto).toBe("FILIPINA");
+    expect(partida.color).toBeNull();
+  });
+
+  test("estado: cubierta, parcial y sin existencia", () => {
+    const [cubierta, parcial, mixta, sinExistencia] = groupRenglonesPorPartida([
+      conStock(2, 2, 1),
+      conStock(3, 5, 1),
+      conStock(5, 2, 2),
+      conStock(5, 2, 3),
+      conStock(5, 5, 3),
+      conStock(4, 0, 4),
+      conStock(1, 0, 4),
+    ]);
+    expect(cubierta.coverage).toBe("full");
+    expect(parcial.coverage).toBe("partial");
+    expect(mixta.coverage).toBe("partial");
+    expect(sinExistencia.coverage).toBe("none");
+  });
+
+  test("una talla sin stock deja la partida 'Sin medir' aunque las demás estén cubiertas", () => {
+    const [partida] = groupRenglonesPorPartida([conStock(2, 10), sinMedir(1), conStock(3, 0)]);
+    expect(partida.coverage).toBe("unmeasured");
+    // Faltan solo de las tallas medidas.
+    expect(partida.faltan).toBe(3);
+  });
+
+  test("Faltan N suma el faltante del backend de sus tallas", () => {
+    const [partida] = groupRenglonesPorPartida([conStock(10, 15), conStock(10, 5), conStock(10, 0)]);
+    expect(partida.faltan).toBe(15);
+  });
+
+  test("las partidas de muestra no tienen estado ni faltantes", () => {
+    const [partida] = groupRenglonesPorPartida([muestra(4), muestra(2)]);
+    expect(partida.esMuestra).toBe(true);
+    expect(partida.coverage).toBeNull();
+    expect(partida.faltan).toBe(0);
+  });
+});
+
 test.describe("getProgramarStockResumen", () => {
-  test("null sin tallas o sin ninguna talla con stock", () => {
-    expect(getProgramarStockResumen([])).toBeNull();
-    expect(getProgramarStockResumen([muestra(3), sinSku(2)])).toBeNull();
+  test("null sin partidas o con solo partidas de muestra", () => {
+    expect(resumenDe([])).toBeNull();
+    expect(resumenDe([muestra(3, 1), muestra(2, 2)])).toBeNull();
   });
 
   test("el % se redondea hacia abajo y se mide por piezas", () => {
     // Cubiertas: 2 + 4 + 0 = 6 de 17 → 35.29 % → 35.
-    const resumen = getProgramarStockResumen([conStock(2, 1942), conStock(10, 4), conStock(5, 0)]);
+    const resumen = resumenDe([conStock(2, 1942, 1), conStock(10, 4, 2), conStock(5, 0, 3)]);
     expect(resumen?.percent).toBe(35);
-    expect(resumen?.fullyCovered).toBe(false);
-    expect(resumen?.tallasCubiertas).toBe(1);
-    expect(resumen?.tallasMedidas).toBe(3);
+    expect(resumen?.partidasCubiertas).toBe(1);
+    expect(resumen?.partidasTotal).toBe(3);
     expect(resumen?.piezasFaltantes).toBe(11);
+    expect(resumen?.pedidoCubierto).toBe(false);
   });
 
   test("nunca muestra 100 % con faltantes", () => {
     // 399 de 400 → 99.75 % → 99.
-    const resumen = getProgramarStockResumen([conStock(399, 399), conStock(1, 0)]);
+    const resumen = resumenDe([conStock(399, 399, 1), conStock(1, 0, 2)]);
     expect(resumen?.percent).toBe(99);
-    expect(resumen?.fullyCovered).toBe(false);
+    expect(resumen?.pedidoCubierto).toBe(false);
   });
 
-  test("las tallas de muestra quedan fuera de la cuenta y no impiden el pedido cubierto", () => {
-    const resumen = getProgramarStockResumen([conStock(2, 10), muestra(4)]);
+  test("cuenta partidas, no tallas", () => {
+    // Partida 1 cubierta (2 tallas), partida 2 parcial (una talla falta).
+    const resumen = resumenDe([
+      conStock(1, 5, 1),
+      conStock(1, 5, 1),
+      conStock(1, 5, 2),
+      conStock(4, 1, 2),
+    ]);
+    expect(resumen?.partidasCubiertas).toBe(1);
+    expect(resumen?.partidasTotal).toBe(2);
+  });
+
+  test("el reparto del backend (pool 15, tres tallas de 10) da una partida parcial", () => {
+    // EC-644: CH 15/0, M 5/5, G 0/10.
+    const resumen = resumenDe([conStock(10, 15), conStock(10, 5), conStock(10, 0)]);
+    expect(resumen?.partidasCubiertas).toBe(0);
+    expect(resumen?.partidasTotal).toBe(1);
+    expect(resumen?.piezasFaltantes).toBe(15);
+    expect(resumen?.percent).toBe(50);
+  });
+
+  test("las partidas de muestra quedan fuera del total y no impiden el pedido cubierto", () => {
+    const resumen = resumenDe([conStock(2, 10, 1), muestra(4, 2)]);
     expect(resumen?.percent).toBe(100);
-    expect(resumen?.tallasMedidas).toBe(1);
-    expect(resumen?.tallasMuestra).toBe(1);
-    expect(resumen?.tallasSinSku).toBe(0);
-    expect(resumen?.fullyCovered).toBe(true);
+    expect(resumen?.partidasCubiertas).toBe(1);
+    expect(resumen?.partidasTotal).toBe(1);
     expect(resumen?.pedidoCubierto).toBe(true);
   });
 
-  test("una talla de catálogo sin SKU impide afirmar que el pedido está cubierto", () => {
-    const resumen = getProgramarStockResumen([conStock(2, 10), sinSku(3), sinSku(1)]);
-    expect(resumen?.fullyCovered).toBe(true);
-    expect(resumen?.tallasSinSku).toBe(2);
+  test("una partida 'Sin medir' cuenta en el total pero nunca como cubierta", () => {
+    const resumen = resumenDe([conStock(2, 10, 1), sinMedir(3, 2)]);
+    expect(resumen?.partidasCubiertas).toBe(1);
+    expect(resumen?.partidasTotal).toBe(2);
+    expect(resumen?.percent).toBe(100);
     expect(resumen?.pedidoCubierto).toBe(false);
   });
+
+  test("sin ninguna talla medida no hay %, pero sí partidas", () => {
+    const resumen = resumenDe([sinMedir(1, 1), sinMedir(1, 1), muestra(2, 2)]);
+    expect(resumen?.percent).toBeNull();
+    expect(resumen?.partidasCubiertas).toBe(0);
+    expect(resumen?.partidasTotal).toBe(1);
+    expect(resumen?.piezasFaltantes).toBe(0);
+    expect(resumen?.pedidoCubierto).toBe(false);
+  });
+});
+
+test("getProgramarTallasExcluidas cuenta tallas de muestra y sin medir", () => {
+  expect(
+    getProgramarTallasExcluidas([conStock(1, 1), muestra(2), muestra(1), sinMedir(1)]),
+  ).toEqual({ muestra: 2, sinMedir: 1 });
+  expect(getProgramarTallasExcluidas([conStock(1, 1)])).toEqual({ muestra: 0, sinMedir: 0 });
 });
