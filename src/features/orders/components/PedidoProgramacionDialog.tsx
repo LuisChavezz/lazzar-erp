@@ -24,7 +24,7 @@ import {
   isMesaControlPermisoError,
   PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
 } from "../utils/pedidoProgramarErrors";
-import { PedidoProgramarTallasTable } from "./PedidoProgramarTallasTable";
+import { PedidoProgramarPartidas } from "./PedidoProgramarPartidas";
 import {
   countCodePoints,
   PEDIDO_PROGRAMACION_COMENTARIOS_MAX,
@@ -119,7 +119,7 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
   return (
     <form onSubmit={handleFormSubmit} noValidate>
       <fieldset disabled={isPending} className="space-y-4">
-        <PedidoProgramarTallasTable
+        <PedidoProgramarPartidas
           renglones={contexto.renglones}
           almacenSurtido={contexto.almacen_surtido}
         />
@@ -327,8 +327,8 @@ interface PedidoProgramacionDialogProps {
 }
 
 /**
- * "Programar pedido" desde la Mesa de Control: UNA pantalla con las tallas del
- * pedido (servicios, stock disponible y faltante) y, debajo, sus parcialidades
+ * "Programar pedido" desde la Mesa de Control: UNA pantalla con las partidas del
+ * pedido (sus tallas con servicios, stock disponible y faltante) y, debajo, sus parcialidades
  * de entrega por destino. Sustituye a los antiguos "Programar" y "Revisar
  * inventario".
  *
