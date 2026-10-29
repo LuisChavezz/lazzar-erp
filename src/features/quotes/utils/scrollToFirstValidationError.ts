@@ -18,18 +18,72 @@ const SECTION_ANCHORS = [
   "items",
 ] as const;
 
-const matchesPath = (issuePaths: string[], field: string) =>
-  issuePaths.some((path) => path === field || path.startsWith(`${field}.`));
+const matchesPath = (path: string, field: string) =>
+  path === field || path.startsWith(`${field}.`);
 
+interface ErrorTarget {
+  element: HTMLElement;
+  /** Qué enfocar al llegar: el control mismo o el primer botón de la celda. */
+  focusable: HTMLElement | null;
+}
+
+/**
+ * Destino de UN error: su control con `name`; si no tiene, su celda propia
+ * (`data-error-field`, p. ej. el color de una partida, EC-641); si tampoco, el
+ * ancla de su sección.
+ */
+const resolveTarget = (
+  formElement: HTMLFormElement,
+  controls: HTMLElement[],
+  path: string
+): ErrorTarget | null => {
+  const control = controls.find((element) => {
+    const name = (element as HTMLInputElement).name;
+    return path === name || path.startsWith(`${name}.`) || name.startsWith(`${path}.`);
+  });
+  if (control) {
+    return { element: control, focusable: control };
+  }
+
+  const fieldCell = Array.from(
+    formElement.querySelectorAll<HTMLElement>("[data-error-field]")
+  ).find((element) => element.dataset.errorField === path);
+  if (fieldCell) {
+    return {
+      element: fieldCell,
+      focusable: fieldCell.querySelector<HTMLElement>("button:not([disabled])"),
+    };
+  }
+
+  // Solo cuenta un ancla que EXISTA en el DOM: un error cuya sección no esté
+  // renderizada no debe abortar la búsqueda de las demás.
+  for (const anchor of SECTION_ANCHORS) {
+    if (!matchesPath(path, anchor)) {
+      continue;
+    }
+    const element = formElement.querySelector<HTMLElement>(`[data-error-anchor="${anchor}"]`);
+    if (element) {
+      return { element, focusable: null };
+    }
+  }
+  return null;
+};
+
+/**
+ * Cada error se resuelve a su destino y se va al que esté MÁS ARRIBA en el
+ * documento, que es el orden en que el usuario lee el formulario. Antes se
+ * probaban por tipo (controles, luego celdas, luego secciones), así que un
+ * control al final del formulario ganaba a una celda o sección de más arriba.
+ */
 export const scrollToFirstValidationError = (
   formElement: HTMLFormElement,
   issuePaths: string[]
 ) => {
-  if (issuePaths.length === 0) {
+  const normalizedIssuePaths = issuePaths.filter(Boolean);
+  if (normalizedIssuePaths.length === 0) {
     return;
   }
 
-  const normalizedIssuePaths = issuePaths.filter(Boolean);
   const controls = Array.from(
     formElement.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
       "input, select, textarea"
@@ -41,47 +95,21 @@ export const scrollToFirstValidationError = (
       !(element instanceof HTMLInputElement && element.type === "hidden")
   );
 
-  const firstInvalidControl = controls.find((control) =>
-    normalizedIssuePaths.some(
-      (path) =>
-        path === control.name ||
-        path.startsWith(`${control.name}.`) ||
-        control.name.startsWith(`${path}.`)
-    )
-  );
-
-  if (firstInvalidControl) {
-    firstInvalidControl.scrollIntoView({ behavior: "smooth", block: "center" });
-    firstInvalidControl.focus({ preventScroll: true });
-    return;
-  }
-
-  // Campo sin control con `name` pero con su propia celda en la fila (p. ej. el
-  // color de una partida, EC-641): se busca por `data-error-field` antes de caer
-  // a la sección entera, y se enfoca el primer botón que tenga dentro.
-  const fieldCell = Array.from(
-    formElement.querySelectorAll<HTMLElement>("[data-error-field]")
-  ).find((element) => normalizedIssuePaths.includes(element.dataset.errorField ?? ""));
-  if (fieldCell) {
-    fieldCell.scrollIntoView({ behavior: "smooth", block: "center" });
-    fieldCell.querySelector<HTMLElement>("button:not([disabled])")?.focus({ preventScroll: true });
-    return;
-  }
-
-  // Se recorren todas las anclas candidatas y solo se detiene en una que EXISTA
-  // en el DOM. Antes cada rama hacía `return` incondicional, así que un error
-  // cuya sección no estuviera renderizada abortaba la búsqueda: el submit
-  // fallaba sin mover la vista ni señalar nada.
-  for (const anchor of SECTION_ANCHORS) {
-    if (!matchesPath(normalizedIssuePaths, anchor)) {
-      continue;
-    }
-    const element = formElement.querySelector<HTMLElement>(
-      `[data-error-anchor="${anchor}"]`
+  const first = normalizedIssuePaths
+    .map((path) => resolveTarget(formElement, controls, path))
+    .filter((target): target is ErrorTarget => target !== null)
+    .reduce<ErrorTarget | null>(
+      (best, target) =>
+        !best ||
+        best.element.compareDocumentPosition(target.element) & Node.DOCUMENT_POSITION_PRECEDING
+          ? target
+          : best,
+      null
     );
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+
+  if (!first) {
+    return;
   }
+  first.element.scrollIntoView({ behavior: "smooth", block: "center" });
+  first.focusable?.focus({ preventScroll: true });
 };
