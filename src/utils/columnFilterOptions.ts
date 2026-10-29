@@ -24,6 +24,13 @@ export interface ColumnFilterOption {
 /** Valor de filtro de las filas sin fecha. */
 export const NO_DATE_FILTER_VALUE = "__sin_fecha__";
 
+/**
+ * Valor de filtro de las filas SIN valor (`null`, `undefined` o `""`) en un
+ * spec `distinct`/`options` con `emptyOption` de `withHeaderFilters`. Un valor
+ * vacío no sirve como filtro: vacío es "Todos".
+ */
+export const EMPTY_VALUE_FILTER_VALUE = "__sin_valor__";
+
 /** Mes de una fecha como `"yyyy-MM"`, o `NO_DATE_FILTER_VALUE` si no hay fecha válida. */
 export const monthFilterKey = (value: string | null | undefined): string => {
   const date = parseLocalDate(value);
