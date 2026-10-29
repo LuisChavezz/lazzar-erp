@@ -1,5 +1,7 @@
 "use client";
 
+import { format, isValid } from "date-fns";
+import { es } from "date-fns/locale";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -59,6 +61,12 @@ const getDestinoOptions = (
     ? `${PEDIDO_PROGRAMACION_DESTINO_LABELS[destino]} (no aplica)`
     : getPedidoProgramacionDestinoLabel(destino);
   return [...options, { value: destino, label }];
+};
+
+/** Fecha de alta del pedido ("5 de octubre 2026"), o `null` si no es válida. */
+const formatPedidoCreatedAt = (createdAt: string | null): string | null => {
+  const date = createdAt ? new Date(createdAt) : null;
+  return date && isValid(date) ? format(date, "d 'de' MMMM yyyy", { locale: es }) : null;
 };
 
 /** Solo dígitos: `cantidad` es un entero positivo. */
@@ -355,7 +363,13 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
           Programar pedido
         </span>
       }
-      description={`${order.folio ?? `Pedido #${order.id}`} · ${order.cliente_razon_social ?? "—"}`}
+      description={[
+        order.folio ?? `Pedido #${order.id}`,
+        order.cliente_razon_social ?? "—",
+        formatPedidoCreatedAt(order.created_at),
+      ]
+        .filter(Boolean)
+        .join(" · ")}
     >
       {isNotFound ? (
         // El endpoint acota por empresa: un pedido ajeno o dado de baja responde 404.
