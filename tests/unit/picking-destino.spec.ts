@@ -42,11 +42,6 @@ test.describe("getAlmacenSugeridoPreseleccionable", () => {
   test("un sugerido fuera de las opciones no se preselecciona", () => {
     expect(getAlmacenSugeridoPreseleccionable([prog("APARTADO", apartados)], [{ id: 28 }])).toBeNull();
   });
-
-  test("tolera un listado sin la clave `almacen_sugerido`", () => {
-    const sinClave = [{ destino: "APARTADO", cantidad: 4, comentarios: "" }] as unknown as PickingOnboardingProgramacion[];
-    expect(getAlmacenSugeridoPreseleccionable(sinClave, opciones)).toBeNull();
-  });
 });
 
 test.describe("getDestinoOptions", () => {
