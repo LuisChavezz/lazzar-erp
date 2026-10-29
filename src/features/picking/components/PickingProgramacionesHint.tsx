@@ -8,8 +8,7 @@ interface PickingProgramacionesHintProps {
 /**
  * Pista bajo "Almacén destino": hacia dónde programó Mesa de Control cada
  * parcialidad del pedido, p. ej. "Programado: Apartado · 4 pzs → APARTADOS".
- * Sin almacén sugerido (destino sin almacén propio, o un listado que todavía
- * no lo trae) se omite la flecha. Es solo informativa: el destino lo sigue
+ * Sin almacén sugerido (destino sin almacén propio) se omite la flecha. Es solo informativa: el destino lo sigue
  * eligiendo el usuario en el selector.
  */
 export function PickingProgramacionesHint({ programaciones }: PickingProgramacionesHintProps) {
@@ -18,9 +17,8 @@ export function PickingProgramacionesHint({ programaciones }: PickingProgramacio
   return (
     <ul aria-label="Programación del pedido" className="mt-1.5 ml-1 space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
       {programaciones.map((programacion, index) => {
-        // `?.`: el listado de un backend anterior a EC-645 no trae la clave.
         const almacenNombre = programacion.almacen_sugerido?.nombre;
-        const comentarios = programacion.comentarios?.trim();
+        const comentarios = programacion.comentarios.trim();
         return (
           // Sin id propio: el orden lo fija Mesa de Control y la lista solo se lee.
           <li key={index}>

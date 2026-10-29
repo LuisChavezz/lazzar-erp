@@ -27,11 +27,10 @@ export const getAlmacenSugeridoPreseleccionable = (
   programaciones: readonly PickingOnboardingProgramacion[],
   opciones: readonly Pick<PickingOnboardingAlmacen, "id">[],
 ): number | null => {
-  // `?.`: el listado de un backend anterior a EC-645 no trae la clave.
   const ids = new Set(
-    programaciones
-      .map((programacion) => programacion.almacen_sugerido?.id)
-      .filter((id): id is number => typeof id === "number"),
+    programaciones.flatMap((programacion) =>
+      programacion.almacen_sugerido ? [programacion.almacen_sugerido.id] : [],
+    ),
   );
   if (ids.size !== 1) return null;
   const [id] = ids;
