@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import { MainDialog } from "@/src/components/MainDialog";
-import { FormSelect } from "@/src/components/FormSelect";
+import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { ExclamationTriangleIcon } from "@/src/components/Icons";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
 import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
 import {
   formatQuincena,
@@ -17,6 +18,7 @@ import {
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
+import { WorkspaceBranchNotice } from "@/src/features/workspace/components/WorkspaceBranchNotice";
 import { getEmployees } from "@/src/features/employees/services/actions";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import type { Employee } from "@/src/features/employees/interfaces/employee.interface";
@@ -24,9 +26,12 @@ import { getPayrolls } from "../services/actions";
 import type { Payroll } from "../interfaces/payroll.interface";
 import { ESTADO_CANCELADA } from "../constants/payrollChoices";
 import { useGeneratePayrollPeriod } from "../hooks/useGeneratePayrollPeriod";
+import {
+  GENERATE_PAYROLL_BLOCKED_VERB,
+  GENERATE_PAYROLL_SUCURSAL_DOCUMENT,
+  getGenerateBranchGate,
+} from "../utils/generatePayrollBranch";
 import { QuincenaPicker } from "./QuincenaPicker";
-
-const OPTION_CLASS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
 /**
  * Empleados que harían fallar `generar_periodo/` (nombres, ordenados). Espejo
@@ -77,6 +82,11 @@ interface GeneratePayrollDialogProps {
  * "Generar quincena" (`generar_periodo/`): una nómina por empleado ACTIVO de
  * la sucursal, con su renglón de salario base.
  *
+ * La sucursal es SIEMPRE la del workspace (`useValidWorkspaceBranchId`), de
+ * solo lectura: no se elige. Sin una válida, el aviso persistente lo explica
+ * desde que se abre y el botón queda bloqueado (`getGenerateBranchGate`). La
+ * nómina individual no pasa por aquí: deriva la sucursal de su empleado.
+ *
  * Antes del POST se consultan EN EL SERVIDOR las nóminas de la quincena y los
  * empleados, y se aplica la misma regla que el backend (ver
  * `findGenerationBlockers`): si algún empleado activo de la sucursal ya tiene
@@ -90,14 +100,13 @@ export function GeneratePayrollDialog({
   onGenerated,
 }: GeneratePayrollDialogProps) {
   const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const { branches, isLoading: isLoadingBranches, isInitialError: isErrorBranches } =
-    useCompanyBranches(selectedCompany.id);
-  const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
+  // Misma consulta (en caché) que `useValidWorkspaceBranchId`: solo para
+  // rotular la sucursal.
+  const { branches } = useCompanyBranches(selectedCompany.id);
+  const gate = getGenerateBranchGate(useValidWorkspaceBranchId());
+  const sucursalValue = gate.status === "ready" ? gate.branchId : 0;
 
   const [quincena, setQuincena] = useState<Quincena>(defaultQuincena);
-  // La del workspace por defecto, si el usuario la tiene entre sus sucursales.
-  const [sucursal, setSucursal] = useState<number>(0);
-  const sucursalValue = sucursal || (workspaceBranchId ?? 0);
   const [message, setMessage] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const submittingRef = useRef(false);
@@ -107,6 +116,7 @@ export function GeneratePayrollDialog({
 
   const sucursalNombre =
     branches.find((branch) => branch.id === sucursalValue)?.nombre ?? `Sucursal #${sucursalValue}`;
+  const sucursalLabel = gate.status === "ready" ? sucursalNombre : "";
 
   const handleOpenChange = (next: boolean) => {
     if (!next && !isBusy) onClose();
@@ -115,8 +125,9 @@ export function GeneratePayrollDialog({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submittingRef.current) return;
-    if (!sucursalValue) {
-      setMessage("Selecciona la sucursal.");
+    // El botón ya está bloqueado; esto cubre un Enter con la lista a medias.
+    if (gate.status !== "ready") {
+      setMessage(gate.message);
       return;
     }
 
@@ -188,14 +199,6 @@ export function GeneratePayrollDialog({
     }
   };
 
-  const sucursalPlaceholder = isLoadingBranches
-    ? "Cargando sucursales..."
-    : isErrorBranches
-      ? "No se pudieron cargar las sucursales"
-      : branches.length === 0
-        ? "No tienes sucursales asignadas"
-        : "Seleccionar...";
-
   return (
     <MainDialog
       open
@@ -219,25 +222,22 @@ export function GeneratePayrollDialog({
           Periodo: {formatQuincena(quincena)}
         </p>
 
-        <FormSelect
+        {/* Desde que se abre, no solo al pulsar "Generar". */}
+        <WorkspaceBranchNotice
+          documento={GENERATE_PAYROLL_SUCURSAL_DOCUMENT}
+          verbo={GENERATE_PAYROLL_BLOCKED_VERB}
+        />
+
+        {/* Solo lectura: la del workspace, nunca se elige aquí. */}
+        <FormInput
+          id="generar-sucursal"
           label="Sucursal"
-          name="sucursal_id"
-          value={String(sucursalValue)}
-          disabled={isBusy || isLoadingBranches || isErrorBranches}
-          onChange={(event) => {
-            setSucursal(Number(event.target.value));
-            setMessage(null);
-          }}
-        >
-          <option value="0" disabled>
-            {sucursalPlaceholder}
-          </option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id} className={OPTION_CLASS}>
-              {branch.nombre}
-            </option>
-          ))}
-        </FormSelect>
+          value={sucursalLabel}
+          placeholder={gate.status === "loading" ? "Cargando sucursales..." : "Sin sucursal"}
+          readOnly
+          tabIndex={-1}
+          className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
+        />
 
         {message && (
           <div
@@ -253,6 +253,7 @@ export function GeneratePayrollDialog({
           <FormCancelButton label="Volver" onClick={() => handleOpenChange(false)} disabled={isBusy} />
           <FormSubmitButton
             isPending={isBusy}
+            disabled={gate.status !== "ready"}
             loadingLabel={isChecking ? "Verificando…" : "Generando…"}
           >
             Generar quincena
