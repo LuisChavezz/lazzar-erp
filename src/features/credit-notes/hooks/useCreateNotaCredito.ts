@@ -248,6 +248,25 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
     });
   }
 
+  // Junto a `cfdi` el backend puede mandar otras llaves (p. ej. `tipo_cambio`,
+  // EC-592) que ningún bloque de arriba lee: se suman al motivo en vez de
+  // perderse, porque con `cfdi` ya hay mensajes y el fallback no correría.
+  if (result.stampFailed) {
+    const leidas = new Set<string>([
+      "cfdi",
+      "detail",
+      "non_field_errors",
+      "factura_detalle",
+      "nota_credito_detalles",
+      ...HEADER_FIELDS,
+    ]);
+    Object.entries(record).forEach(([key, value]) => {
+      if (leidas.has(key)) return;
+      const message = firstDrfMessage(value);
+      if (message) result.messages.push(message);
+    });
+  }
+
   // Fallback: cualquier otra clave desconocida contribuye al toast.
   if (result.messages.length === 0) {
     Object.entries(record).forEach(([key, value]) => {
@@ -276,6 +295,14 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
 }
 
 /**
+ * Motivo de un fallo del timbrado: el `cfdi` (siempre el primero en `messages`)
+ * seguido de cualquier otra llave que el backend mande junto a él (p. ej.
+ * `tipo_cambio`, EC-592), para no descartarla en silencio.
+ */
+export const stampFailureDetail = (parsed: ParsedNotaCreditoError): string =>
+  parsed.messages.length > 0 ? parsed.messages.join(" ") : (parsed.formError ?? "");
+
+/**
  * Aviso para un alta cuya nota PUDO quedar registrada, o `null` si el error
  * prueba que no se guardó nada. Un `cfdi` siempre (el timbrado corre después
  * de guardar). Sin confirmación (sin respuesta, timeout, 5xx) o un `409`, solo
@@ -287,7 +314,7 @@ export const getCreateMayBeSavedMessage = (
   estatus: CreateNotaCreditoPayload["estatus"],
 ): string | null => {
   if (parsed.stampFailed) {
-    return creditNoteStampFailedMessage("alta", parsed.formError ?? "");
+    return creditNoteStampFailedMessage("alta", stampFailureDetail(parsed));
   }
   if (estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
     return CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE;
