@@ -4,7 +4,7 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 import { DropdownMenu } from "@radix-ui/themes";
 import { useSession } from "next-auth/react";
 import { DotsVerticalIcon } from "./Icons";
-import { hasPermission } from "@/src/utils/permissions";
+import { getVisibleActionItems } from "@/src/utils/actionMenuVisibility";
 import Link from "next/link";
 
 const ITEM_CLASS =
@@ -67,6 +67,12 @@ interface ActionMenuProps {
    * de puntos verticales de siempre.
    */
   trigger?: ReactNode;
+  /**
+   * Qué pintar cuando ningún item queda visible (`getVisibleActionItems`):
+   * p. ej. el nombre de la fila como texto plano, para que un usuario de solo
+   * lectura no lo pierda junto con el menú. Por defecto, nada.
+   */
+  renderWhenEmpty?: ReactNode;
 }
 
 export const ActionMenu = ({
@@ -74,16 +80,13 @@ export const ActionMenu = ({
   ariaLabel = "Abrir menú de acciones",
   align = "end",
   trigger,
+  renderWhenEmpty = null,
 }: ActionMenuProps) => {
   const { data: session } = useSession();
-  const visibleItems = items.filter(
-    (item) =>
-      (item.visible ?? true) &&
-      (!item.permission || hasPermission(item.permission, session?.user))
-  );
+  const visibleItems = getVisibleActionItems(items, session?.user);
 
   if (visibleItems.length === 0) {
-    return null;
+    return renderWhenEmpty;
   }
 
   return (
