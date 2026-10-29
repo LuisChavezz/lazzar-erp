@@ -6,6 +6,12 @@ import { reactivateEmployee } from "../services/actions";
 import { Employee } from "../interfaces/employee.interface";
 
 /**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una acción en vuelo (ver `usePendingEmployeeIds`).
+ */
+export const reactivateEmployeeMutationKey = ["reactivate-employee"] as const;
+
+/**
  * Reactiva un empleado dado de baja (PATCH `activo: true`).
  *
  * Espejo de `useDeleteEmployee` en el sentido contrario: mismo patrón de
@@ -16,6 +22,7 @@ export const useReactivateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: reactivateEmployeeMutationKey,
     mutationFn: reactivateEmployee,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["employees"] });
