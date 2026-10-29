@@ -252,8 +252,10 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
   const partidas = groupRenglonesPorPartida(renglones);
   const resumen = getProgramarStockResumen(partidas);
   const excluidas = getProgramarTallasExcluidas(renglones);
+  // Verde solo si el pedido entero está cubierto: un 100 % de las tallas medidas
+  // con alguna partida "Sin medir" no lo está.
   const coverageTone =
-    resumen?.percent === 100
+    resumen?.pedidoCubierto
       ? { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" }
       : (resumen?.percent ?? 0) >= 50
         ? { bar: "bg-amber-400", text: "text-amber-600 dark:text-amber-400" }
