@@ -304,7 +304,10 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                     <FormSelect
                       label="Pedido"
                       name={field.name}
-                      value={field.state.value}
+                      // Un id que ya no está en el catálogo cae al placeholder:
+                      // el `<select>` nativo mostraría en su lugar la primera
+                      // opción, como si ese otro pedido estuviera elegido.
+                      value={selectedPedido ? field.state.value : 0}
                       onChange={(event) => {
                         const next = Number(event.target.value);
                         const nextId = Number.isNaN(next) ? 0 : next;
