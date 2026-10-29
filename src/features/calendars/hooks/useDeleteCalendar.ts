@@ -4,10 +4,17 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { deleteCalendar } from "../services/actions";
 import { Calendar } from "../interfaces/calendar.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen un borrado en vuelo (ver `usePendingCalendarIds`).
+ */
+export const deleteCalendarMutationKey = ["delete-calendar"] as const;
+
 export const useDeleteCalendar = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deleteCalendarMutationKey,
     mutationFn: deleteCalendar,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["calendars"] });
