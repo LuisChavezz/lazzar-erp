@@ -2,15 +2,19 @@
 
 import { PayrollIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
   InfoGrid,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
@@ -55,41 +59,40 @@ export function PayrollDetailDialog({ payroll, open, onOpenChange }: PayrollDeta
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="820px"
+      maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <PayrollIcon className="w-5 h-5 text-emerald-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de nómina
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {payroll.empleado_nombre} · {payroll.periodo_label}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de nómina"
+          subtitle={`${payroll.empleado_nombre} · ${payroll.periodo_label}`}
+          statusColor="emerald"
+          icon={PayrollIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Empleado">{payroll.empleado_nombre}</InfoField>
-          <InfoField label="Sucursal">{payroll.sucursal_nombre}</InfoField>
-          <InfoField label="Estado">
+        {/* Encabezado: lo que se busca primero al abrir la nómina. */}
+        <InfoTileGrid>
+          <InfoTile label="Empleado">{payroll.empleado_nombre}</InfoTile>
+          <InfoTile label="Sucursal">{payroll.sucursal_nombre}</InfoTile>
+          <InfoTile label="Estado">
             <StatusBadge status={payroll.estado} config={ESTADO_NOMINA_CFG} />
-          </InfoField>
-          <InfoField label="Periodo">{payroll.periodo_label}</InfoField>
-          <InfoField label="Fecha de pago">
+          </InfoTile>
+          <InfoTile label="Periodo">{payroll.periodo_label}</InfoTile>
+          <InfoTile label="Fecha de pago">
             {payroll.fecha_pago ? formatLocalDate(payroll.fecha_pago) : "—"}
-          </InfoField>
-          <InfoField label="Salario base mensual">
+          </InfoTile>
+          <InfoTile label="Salario base mensual">
             <span className="tabular-nums">{formatMoneyOrDash(payroll.salario_base)}</span>
-          </InfoField>
-          <InfoField label="Días pagados">{payroll.dias_pagados}</InfoField>
-          <InfoField label="Horas extra pagadas">
+          </InfoTile>
+          <InfoTile label="Días pagados">{payroll.dias_pagados}</InfoTile>
+          <InfoTile label="Horas extra pagadas">
             {formatQuantityValue(payroll.horas_extra_pagadas)}
-          </InfoField>
-          <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
+          </InfoTile>
+        </InfoTileGrid>
+
+        <div className="text-xs px-1">
+          <InfoField label="Observaciones">
             <span className="whitespace-pre-line">{textOrDash(payroll.observaciones)}</span>
           </InfoField>
         </div>

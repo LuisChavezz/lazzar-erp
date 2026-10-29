@@ -34,7 +34,10 @@ export const getPayBlockReason = (payroll: Pick<Payroll, "detalles" | "neto">): 
 };
 
 interface PayPayrollDialogProps {
+  /** Copia de la nómina al ABRIR (`useDialogSession` en `PayrollList`). */
   payroll: PayrollRow;
+  /** Lo controla el id del padre: al cerrarse anima su salida con esta copia. */
+  open: boolean;
   onClose: () => void;
 }
 
@@ -44,9 +47,9 @@ interface PayPayrollDialogProps {
  *
  * Se monta en `PayrollList`, NO en la celda: al pagar, el refetch cambia
  * `estado` y la celda se desmontaría a media operación. El padre lo monta con
- * `key` por nómina. Mismo esqueleto que `VacationRejectDialog`.
+ * `key` por apertura (`useDialogSession`). Mismo esqueleto que `VacationRejectDialog`.
  */
-export function PayPayrollDialog({ payroll, onClose }: PayPayrollDialogProps) {
+export function PayPayrollDialog({ payroll, open, onClose }: PayPayrollDialogProps) {
   const queryClient = useQueryClient();
   const [fechaPago, setFechaPago] = useState(() => getMexicoTodayDate());
   const [fechaError, setFechaError] = useState<string | null>(null);
@@ -128,7 +131,7 @@ export function PayPayrollDialog({ payroll, onClose }: PayPayrollDialogProps) {
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="480px"
       showCloseButton={false}

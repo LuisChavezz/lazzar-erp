@@ -1,24 +1,23 @@
 import { ColumnDef, createColumnHelper, type SortingFn } from "@tanstack/react-table";
-import { CheckCircleIcon, EditIcon, ViewIcon, XIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { CheckCircleIcon, EditIcon, XIcon } from "@/src/components/Icons";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate, formatLocalDateRange } from "@/src/utils/formatDate";
 import { centsToMoney, moneyToCents } from "@/src/utils/moneyCents";
 import { formatMxn } from "@/src/utils/formatCurrency";
 import { formatQuincena, quincenaFromRange } from "@/src/utils/quincena";
 import type { Payroll } from "../interfaces/payroll.interface";
-import {
-  ESTADO_NOMINA_CFG,
-  ESTADO_PENDIENTE,
-  getEstadoNominaLabel,
-} from "../constants/payrollChoices";
+import { ESTADO_NOMINA_CFG, ESTADO_PENDIENTE, getEstadoNominaLabel } from "../constants/payrollChoices";
 import { usePayrollRowActionsContext } from "../hooks/usePayrollRowActions";
 
 /**
  * Fila de la tabla: la nómina tal como llega del backend más los nombres de
  * sus FK y el periodo ya resueltos. Modelo de vista, no tipo del backend. Los
  * nombres viajan EN LA FILA para que un catálogo que llega tarde recalcule
- * celda, búsqueda y orden.
+ * celda, búsqueda y orden (ver `buildPayrollRows`).
  */
 export type PayrollRow = Payroll & {
   empleado_nombre: string;
@@ -63,73 +62,58 @@ const moneySort: SortingFn<PayrollRow> = (rowA, rowB, columnId) =>
 const centsOrUndefined = (value: string | null) => moneyToCents(value) ?? undefined;
 
 /**
- * Menú de acciones de UNA fila, según su estado:
+ * El nombre del empleado ES el menú de la fila ("Ver detalle" primero): sin
+ * columna aparte de "Acciones". El `estado` va en su propia columna, con su
+ * badge y su filtro (esquema de Contratos).
+ * Acciones según el estado:
  *
- * - pendiente: ver detalle, editar (`E-RH`), marcar como pagada y cancelar (`D-RH`).
+ * - pendiente: editar (`E-RH`), marcar como pagada y cancelar (`D-RH`).
  * - pagada / cancelada: solo lectura; solo "Ver detalle".
  *
- * Es solo presentacional: los diálogos viven en `PayrollList`.
+ * Los callbacks y el "en vuelo" llegan por contexto; los diálogos viven en
+ * `PayrollList`.
  */
-function PayrollRowActionsMenu({
+function PayrollNameCell({
   payroll,
   permissions,
 }: {
-  payroll: Payroll;
+  payroll: PayrollRow;
   permissions: PayrollColumnPermissions;
 }) {
   const { onView, onEdit, onPay, onCancel, busyIds } = usePayrollRowActionsContext();
   const isBusy = busyIds.includes(payroll.id);
+  const isPending = payroll.estado === ESTADO_PENDIENTE;
 
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onView(payroll) },
+  const items: ActionMenuItem[] = [
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(payroll),
+      disabled: isBusy,
+      visible: isPending && permissions.canEdit,
+    },
+    {
+      label: "Marcar como pagada",
+      icon: CheckCircleIcon,
+      onSelect: () => onPay(payroll),
+      disabled: isBusy,
+      visible: isPending && permissions.canPayOrCancel,
+    },
+    {
+      label: "Cancelar",
+      icon: XIcon,
+      onSelect: () => onCancel(payroll),
+      disabled: isBusy,
+      visible: isPending && permissions.canPayOrCancel,
+    },
   ];
 
-  if (payroll.estado === ESTADO_PENDIENTE) {
-    if (permissions.canEdit) {
-      menuItems.push({
-        label: "Editar",
-        icon: EditIcon,
-        onSelect: () => onEdit(payroll),
-        disabled: isBusy,
-      });
-    }
-    if (permissions.canPayOrCancel) {
-      menuItems.push(
-        {
-          label: "Marcar como pagada",
-          icon: CheckCircleIcon,
-          onSelect: () => onPay(payroll),
-          disabled: isBusy,
-        },
-        {
-          label: "Cancelar",
-          icon: XIcon,
-          onSelect: () => onCancel(payroll),
-          disabled: isBusy,
-        }
-      );
-    }
-  }
-
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de la nómina" />
-    </div>
-  );
-}
-
-/** Nombre del empleado como disparador del detalle (mismo callback que "Ver detalle"). */
-function EmployeeDetailTrigger({ row, name }: { row: PayrollRow; name: string }) {
-  const { onView } = usePayrollRowActionsContext();
-  return (
-    <button
-      type="button"
-      onClick={() => onView(row)}
-      title="Ver detalle"
-      className="text-left font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-    >
-      {name}
-    </button>
+    <FolioActionMenu
+      name={payroll.empleado_nombre}
+      detail={{ onSelect: () => onView(payroll) }}
+      items={items}
+    />
   );
 }
 
@@ -151,15 +135,17 @@ function MoneyCell({ value, strong = false }: { value: string | null; strong?: b
 
 /**
  * Columnas de la tabla. Solo dependen de los permisos: callbacks y "en vuelo"
- * llegan al menú por contexto. La columna de acciones existe siempre porque
- * "Ver detalle" es para todos.
+ * llegan al menú por contexto.
  */
 export const getColumns = (permissions: PayrollColumnPermissions) =>
   [
-    columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `PayrollRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
       header: "Empleado",
-      cell: ({ row, getValue }) => <EmployeeDetailTrigger row={row.original} name={getValue()} />,
+      size: 260,
+      cell: ({ row }) => <PayrollNameCell payroll={row.original} permissions={permissions} />,
     }),
     columnHelper.accessor("sucursal_nombre", {
       id: "sucursal_nombre",
@@ -191,6 +177,13 @@ export const getColumns = (permissions: PayrollColumnPermissions) =>
         </span>
       ),
     }),
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su badge y su filtro).
+    columnHelper.accessor((row) => getEstadoNominaLabel(row.estado) ?? row.estado, {
+      id: "estado",
+      header: "Estado",
+      cell: ({ row }) => <StatusBadge status={row.original.estado} config={ESTADO_NOMINA_CFG} />,
+    }),
     columnHelper.accessor((row) => centsOrUndefined(row.total_percepciones), {
       id: "total_percepciones",
       header: "Percepciones",
@@ -218,20 +211,28 @@ export const getColumns = (permissions: PayrollColumnPermissions) =>
       enableGlobalFilter: false,
       cell: ({ row }) => <MoneyCell value={row.original.neto} strong />,
     }),
-    columnHelper.accessor((row) => getEstadoNominaLabel(row.estado) ?? "—", {
-      id: "estado_label",
-      header: "Estado",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <div className="flex justify-center">
-          <StatusBadge status={row.original.estado} config={ESTADO_NOMINA_CFG} />
-        </div>
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => <PayrollRowActionsMenu payroll={row.original} permissions={permissions} />,
-    }),
   ] as ColumnDef<PayrollRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Son de cliente, sobre la quincena que ya trajo el servidor: la quincena
+ * misma es un parámetro de servidor (`?quincena=`) que vive fuera de la tabla.
+ *
+ * El estado, con ficha "Estatus: …", ofrece el catálogo completo y al final
+ * cada código desconocido, crudo. Empleado (con buscador) y sucursal comparan
+ * contra el FK crudo, rotulado con el nombre resuelto de la fila (o su
+ * respaldo `#N`, el mismo texto que la celda). La fecha de pago filtra por mes
+ * y agrupa aparte las nóminas sin pagar. El periodo no lleva filtro (el
+ * listado ya es una quincena) ni los importes (libres; los cubre el orden).
+ */
+export const PAYROLL_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<PayrollRow>>> = {
+  empleado: {
+    type: "distinct",
+    get: (r) => r.empleado,
+    label: (r) => r.empleado_nombre,
+    searchable: true,
+  },
+  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_NOMINA_CFG) },
+  sucursal_nombre: { type: "distinct", get: (r) => r.sucursal, label: (r) => r.sucursal_nombre },
+  fecha_pago: { type: "month", get: (r) => r.fecha_pago, emptyLabel: "Sin fecha de pago" },
+};
