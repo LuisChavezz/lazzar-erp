@@ -30,15 +30,15 @@ import type {
  * Claves de RECHAZO: motivos que no corresponden a ningún campo del formulario
  * y por eso van al toast. Mismo criterio que `useUpdatePedidoMesaControl`:
  *
- * - `permiso`: `_require_mesa_control` — HTTP 400 con el mensaje plano bajo la
- *   clave, no un 403. Se muestra `PEDIDO_PROGRAMAR_PERMISO_MESSAGE` en su lugar
- *   (ver `onError`); queda en la lista como respaldo.
  * - `detail`: `APIException` genéricos de DRF.
+ *
+ * El 400 de `permiso` (`_require_mesa_control`, no un 403) no pasa por aquí:
+ * `onError` lo traduce antes con `isMesaControlPermisoError`.
  *
  * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
  * muestra completa.
  */
-const REJECTION_KEYS = ["permiso", "detail"] as const;
+const REJECTION_KEYS = ["detail"] as const;
 
 const extractRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ?? firstRejectionMessage(data, REJECTION_KEYS);

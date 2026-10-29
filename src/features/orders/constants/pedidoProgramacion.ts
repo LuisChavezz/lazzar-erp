@@ -72,21 +72,14 @@ export const getPedidoProgramacionDestinoLabel = (destino: string): string =>
  * (`renglones[].servicios`). Réplica de los que arma `_programar_contexto` del
  * backend. `CAMBIO_TALLA` se informa pero NO es destino programable.
  */
-export const PEDIDO_PROGRAMAR_SERVICIOS = [
-  "BORDADO",
-  "REFLEJANTE",
-  "CORTE_MANGA",
-  "CAMBIO_TALLA",
-] as const;
-
-export type PedidoProgramarServicio = (typeof PEDIDO_PROGRAMAR_SERVICIOS)[number];
-
-export const PEDIDO_PROGRAMAR_SERVICIO_LABELS: Record<PedidoProgramarServicio, string> = {
+export const PEDIDO_PROGRAMAR_SERVICIO_LABELS = {
   BORDADO: "Bordado",
   REFLEJANTE: "Reflejante",
   CORTE_MANGA: "Corte de manga",
   CAMBIO_TALLA: "Cambio de talla",
-};
+} as const satisfies Record<string, string>;
+
+export type PedidoProgramarServicio = keyof typeof PEDIDO_PROGRAMAR_SERVICIO_LABELS;
 
 /** Etiqueta del servicio; un código desconocido se muestra tal cual. */
 export const getPedidoProgramarServicioLabel = (servicio: string): string =>

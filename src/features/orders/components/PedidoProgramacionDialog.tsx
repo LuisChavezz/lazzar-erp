@@ -290,6 +290,7 @@ interface PedidoProgramacionDialogProps {
 export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoProgramacionDialogProps) {
   const { data, isInitialError, isNotFound, error, isFetchedAfterMount } =
     usePedidoProgramarContexto(order.id);
+  const sinPermiso = isMesaControlPermisoError(error);
 
   const close = () => onOpenChange(false);
 
@@ -315,11 +316,9 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
         />
       ) : isInitialError ? (
         <ErrorState
-          title={
-            isMesaControlPermisoError(error) ? "Sin permiso" : "Error al cargar el pedido"
-          }
+          title={sinPermiso ? "Sin permiso" : "Error al cargar el pedido"}
           message={
-            isMesaControlPermisoError(error)
+            sinPermiso
               ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
               : extractErrorMessage(error, "No se pudo cargar la programación del pedido.")
           }
