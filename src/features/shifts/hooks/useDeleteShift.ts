@@ -4,10 +4,17 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { deleteShift } from "../services/actions";
 import { Shift } from "../interfaces/shift.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una baja en vuelo (ver `usePendingShiftIds`).
+ */
+export const deactivateShiftMutationKey = ["deactivate-shift"] as const;
+
 export const useDeleteShift = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deactivateShiftMutationKey,
     mutationFn: deleteShift,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["shifts"] });
