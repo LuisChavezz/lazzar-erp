@@ -7,9 +7,10 @@
  *  - SIN `?pedido` → devuelve solo los selectores para armar el encabezado
  *    (`pedidos`/`operadores`/`almacenes`), con `pedido: null` y
  *    `picking_detalle: []`. Los `pedidos` ya vienen filtrados por el backend a
- *    `activo=True` y `estatus ∈ [3, 4]` (AUTORIZADA / EN PROCESO), acotados a
- *    la empresa y sucursales del usuario — por eso el frontend NO replica ese
- *    filtro de estatus (no existe mapeo de esos códigos en este repo).
+ *    `activo=True`, `estatus ∈ [3, 4]` (AUTORIZADA / EN PROCESO) y con al menos
+ *    una programación de Mesa de Control, acotados a la empresa y sucursales
+ *    del usuario — por eso el frontend NO replica esos filtros (no existe
+ *    mapeo de esos códigos de estatus en este repo).
  *
  *  - CON `?pedido={id}` → los mismos selectores MÁS `pedido` (el elegido) y
  *    `picking_detalle`: una fila POR TALLA del pedido con el pendiente real
@@ -23,6 +24,43 @@
  * español tal cual el API.
  */
 
+/**
+ * Almacén hacia el que el backend sugiere surtir una programación. Lo resuelve
+ * él a partir del `destino` (hoy APARTADO → APARTADOS y BORDADO → BORDADOS, en
+ * la empresa y sucursal del pedido); el frontend nunca lo deduce por nombre.
+ */
+export interface PickingOnboardingAlmacenSugerido {
+  id: number;
+  nombre: string;
+}
+
+/**
+ * Una parcialidad que Mesa de Control programó para el pedido
+ * (`programacion_conf.programaciones` del backend), en la forma de SOLO
+ * LECTURA que expone el onboarding: sin el sello `fecha`/`usuario_*`.
+ *
+ * Se tipa aparte de `PedidoProgramacion` (orders) a propósito: ese tipo
+ * describe lo que guarda Mesa de Control y no lleva `almacen_sugerido`, que es
+ * una sugerencia de este endpoint.
+ */
+export interface PickingOnboardingProgramacion {
+  /**
+   * Código del destino (BORDADO, REFLEJANTE, CORTE_MANGA, EMBARQUE, APARTADO).
+   * Se tipa `string` porque se guarda en un `JSONField`: puede traer un código
+   * que el frontend no conoce.
+   */
+  destino: string;
+  /** Piezas programadas (entero ≥ 1). Es lo PLANEADO, no lo pendiente de surtir. */
+  cantidad: number;
+  /** Nota de Mesa de Control; siempre string (`""` cuando no hay). */
+  comentarios: string;
+  /**
+   * `null` cuando el destino no tiene almacén propio (EMBARQUE, REFLEJANTE,
+   * CORTE_MANGA) o la sucursal del pedido no tiene uno utilizable.
+   */
+  almacen_sugerido: PickingOnboardingAlmacenSugerido | null;
+}
+
 /** Pedido candidato a surtir (o el pedido elegido). */
 export interface PickingOnboardingPedido {
   id: number;
@@ -31,6 +69,8 @@ export interface PickingOnboardingPedido {
   cliente_nombre: string | null;
   sucursal: number;
   sucursal_nombre: string | null;
+  /** Parcialidades programadas; nunca vacío en el listado (solo trae programados). */
+  programaciones: PickingOnboardingProgramacion[];
 }
 
 /**
