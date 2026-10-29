@@ -2,7 +2,7 @@
  * Color obligatorio en partidas de catálogo cuyo producto tiene variantes (EC-641).
  *
  * El backend (`exigir_color_si_hay_variantes`, nucleo-erp #731) rechaza con
- * `400 {"color": ["Elige el color de: A, B."]}` enviar a revisión, autorizar,
+ * `400 {"color": "Elige el color de: A, B."}` enviar a revisión, autorizar,
  * aceptar cambios y editar en mesa de control cuando una línea con `producto`,
  * sin `color` y que no es muestra apunta a un producto con al menos una
  * variante (activa o no). El mensaje solo trae NOMBRES de producto, sin índice

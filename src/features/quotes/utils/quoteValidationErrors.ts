@@ -134,8 +134,10 @@ export const extractQuoteValidationIssues = (
 
 /**
  * Color obligatorio con variantes (EC-641, `exigir_color_si_hay_variantes`):
- * `400 {"color": ["Elige el color de: A, B."]}` en enviar a revisión,
- * autorizar, aceptar cambios y editar en mesa de control. Llega en el PRIMER
+ * `400 {"color": "Elige el color de: A, B."}` en enviar a revisión,
+ * autorizar, aceptar cambios y editar en mesa de control. El backend
+ * desplegado lo manda como string suelto (verificado en vivo el 2026-10-29),
+ * aunque el test del PR lo lea como lista: se aceptan las dos. Llega en el PRIMER
  * nivel, sin índice de partida —solo nombres de producto—, así que
  * `extractQuoteValidationIssues` lo entrega con la ruta `color` tal cual y es el
  * formulario quien la traduce a las partidas culpables, calculadas con
