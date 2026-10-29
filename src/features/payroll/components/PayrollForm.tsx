@@ -5,13 +5,10 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormSection } from "@/src/components/FormSection";
 import { Button } from "@/src/components/Button";
-import {
-  ExclamationTriangleIcon,
-  PayrollIcon,
-  PlusIcon,
-  XIcon,
-} from "@/src/components/Icons";
+import { ExclamationTriangleIcon, PlusIcon, XIcon } from "@/src/components/Icons";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { centsToMoney } from "@/src/utils/moneyCents";
 import { formatMxn } from "@/src/utils/formatCurrency";
@@ -48,11 +45,10 @@ const SALARY_SOURCE_HINT = {
   none: "El empleado no tiene salario en su contrato vigente ni en su puesto.",
 } as const;
 
-const SECTION_CLASS =
-  "bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden mb-6";
-const SECTION_HEADER_CLASS =
-  "px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2";
-
+/**
+ * Dos bloques en `FormSection` (ver `DIALOG_WIDTH_SECTIONED_FORM`): la
+ * cabecera de la nómina y sus renglones, más la vista previa de totales.
+ */
 export default function PayrollForm({
   onSuccess,
   payrollToEdit,
@@ -108,36 +104,26 @@ export default function PayrollForm({
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-      <fieldset disabled={isPending} className="min-w-0">
+      <fieldset disabled={isPending} className="min-w-0 space-y-5">
         {/* ── Cabecera ─────────────────────────────────────────────────── */}
-        <section className={SECTION_CLASS}>
-          <div className={SECTION_HEADER_CLASS}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-                <PayrollIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Nómina
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {isEditing
-                    ? "El empleado y la quincena no se pueden cambiar"
-                    : "Empleado, quincena y salario de referencia"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <FormSection
+          title="Nómina"
+          description={
+            isEditing
+              ? "El empleado y la quincena no se pueden cambiar"
+              : "Empleado, quincena y salario de referencia"
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
             {/* `empleado` define también `sucursal` y `empresa`: ninguna se captura. */}
             <div>
               {isEditing ? (
-                <FormInput label="Empleado" name="empleado" value={editingEmployeeName} readOnly disabled />
+                <FormInput className={COMPACT_FIELD_CLS} label="Empleado" name="empleado" value={editingEmployeeName} readOnly disabled />
               ) : (
                 <form.Field name="empleado">
                   {(field) => (
                     <FormSelect
+                      className={COMPACT_FIELD_CLS}
                       label="Empleado"
                       name={field.name}
                       value={String(field.state.value)}
@@ -172,13 +158,14 @@ export default function PayrollForm({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormInput label="Sucursal" name="sucursal" value={sucursalLabel} readOnly disabled />
-              <FormInput label="Empresa" name="empresa" value={empresaLabel} readOnly disabled />
+              <FormInput className={COMPACT_FIELD_CLS} label="Sucursal" name="sucursal" value={sucursalLabel} readOnly disabled />
+              <FormInput className={COMPACT_FIELD_CLS} label="Empresa" name="empresa" value={empresaLabel} readOnly disabled />
             </div>
 
             <div className="md:col-span-2">
               {isEditing ? (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Periodo"
                   name="periodo"
                   value={payrollToEdit ? formatPayrollPeriod(payrollToEdit) : ""}
@@ -216,6 +203,7 @@ export default function PayrollForm({
               <form.Field name="salario_base">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Salario base mensual (opcional)"
                     inputMode="decimal"
                     placeholder="0.00"
@@ -260,30 +248,18 @@ export default function PayrollForm({
               </form.Field>
             </div>
           </div>
-        </section>
+        </FormSection>
 
         {/* ── Renglones ────────────────────────────────────────────────── */}
-        <section className={SECTION_CLASS}>
-          <div className={SECTION_HEADER_CLASS}>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Percepciones y deducciones
-              </h3>
-              <p className="text-xs text-slate-500">
-                {isEditing
-                  ? "Al guardar, esta lista reemplaza todos los renglones de la nómina"
-                  : "Un renglón por concepto"}
-              </p>
-            </div>
-            <Button type="button" variant="secondary" rounded="full" onClick={addLine}>
-              <span className="inline-flex items-center gap-1.5">
-                <PlusIcon className="w-3.5 h-3.5" />
-                Agregar renglón
-              </span>
-            </Button>
-          </div>
-
-          <div className="p-6 sm:p-8">
+        <FormSection
+          title="Percepciones y deducciones"
+          description={
+            isEditing
+              ? "Al guardar, esta lista reemplaza todos los renglones de la nómina"
+              : "Un renglón por concepto"
+          }
+        >
+          <div>
             {getError("detalles") && (
               <p className="mb-4 text-sm font-medium text-rose-600 dark:text-rose-400">
                 {getError("detalles")?.message}
@@ -298,13 +274,13 @@ export default function PayrollForm({
                     poder marcarla como pagada.
                   </p>
                 ) : (
-                  <div className="space-y-3">
+                  <div>
                     {arrayField.state.value.map((_, index) => {
                       const lineFormError = getError(`detalles.${index}._form`);
                       return (
                         <div
                           key={lineKeys[index] ?? index}
-                          className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4"
+                          className="py-3 border-b border-slate-100 dark:border-white/10 last:border-b-0"
                         >
                           <div className="flex items-start gap-3">
                             <span className="mt-6 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 px-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
@@ -314,6 +290,7 @@ export default function PayrollForm({
                               <form.Field name={`detalles[${index}].tipo`}>
                                 {(field) => (
                                   <FormSelect
+                                    className={COMPACT_FIELD_CLS}
                                     label="Tipo"
                                     name={field.name}
                                     value={field.state.value}
@@ -335,6 +312,7 @@ export default function PayrollForm({
                               <form.Field name={`detalles[${index}].codigo`}>
                                 {(field) => (
                                   <FormInput
+                                    className={COMPACT_FIELD_CLS}
                                     label="Código (opcional)"
                                     forceUppercase
                                     maxLength={CODIGO_MAX_LENGTH}
@@ -352,6 +330,7 @@ export default function PayrollForm({
                               <form.Field name={`detalles[${index}].concepto`}>
                                 {(field) => (
                                   <FormInput
+                                    className={COMPACT_FIELD_CLS}
                                     label="Concepto"
                                     forceUppercase
                                     maxLength={CONCEPTO_MAX_LENGTH}
@@ -373,7 +352,7 @@ export default function PayrollForm({
                                     label="Monto"
                                     inputMode="decimal"
                                     placeholder="0.00"
-                                    className="text-right tabular-nums"
+                                    className={`${COMPACT_FIELD_CLS} text-right tabular-nums`}
                                     name={field.name}
                                     value={field.state.value}
                                     onChange={(event) => {
@@ -408,18 +387,27 @@ export default function PayrollForm({
                 )
               }
             </form.Field>
+
+            <div className="mt-3 flex justify-end">
+              <Button type="button" variant="secondary" rounded="full" onClick={addLine}>
+                <span className="inline-flex items-center gap-1.5">
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  Agregar renglón
+                </span>
+              </Button>
+            </div>
           </div>
-        </section>
+        </FormSection>
 
         {/* ── Totales (vista previa) ───────────────────────────────────── */}
-        <section
-          className={`rounded-3xl border overflow-hidden mb-6 ${
+        <div
+          className={`border-t pt-4 ${
             totals.neto < 0
-              ? "border-rose-200 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5"
-              : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+              ? "border-rose-200 dark:border-rose-500/20"
+              : "border-slate-100 dark:border-white/10"
           }`}
         >
-          <div className="p-5 sm:p-6 flex flex-wrap items-center justify-between gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="flex items-start gap-3 min-w-0 max-w-md">
               {totals.neto < 0 && (
                 <ExclamationTriangleIcon className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
@@ -476,9 +464,9 @@ export default function PayrollForm({
               </div>
             </dl>
           </div>
-        </section>
+        </div>
 
-        <div className="flex justify-end gap-3 pb-6">
+        <div className="flex justify-end gap-3 pt-1">
           <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
             {isEditing ? "Actualizar Nómina" : "Crear Nómina"}

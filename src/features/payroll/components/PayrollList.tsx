@@ -4,21 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { PayrollIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import { buildEmployeeOptions } from "@/src/utils/employeeOptions";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { formatQuincena, getQuincenaRange } from "@/src/utils/quincena";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import type { Payroll } from "../interfaces/payroll.interface";
-import { ESTADO_NOMINA_OPTIONS, ESTADO_PENDIENTE } from "../constants/payrollChoices";
+
 import { usePayrolls } from "../hooks/usePayrolls";
 import { usePayrollSearchParams } from "../hooks/usePayrollSearchParams";
 import { useCancelPayroll } from "../hooks/useCancelPayroll";
@@ -26,12 +30,9 @@ import {
   PayrollRowActionsProvider,
   usePendingPayrollIds,
 } from "../hooks/usePayrollRowActions";
-import {
-  PAYROLL_GONE_MESSAGE,
-  payrollEstadoChangedMessage,
-} from "../hooks/payrollErrorMessages";
 import { verifyPayrollPendiente } from "../hooks/verifyPayrollPendiente";
-import { formatPayrollPeriod, getColumns, type PayrollRow } from "./PayrollColumns";
+import { buildPayrollRows, getPayrollStaleNotice } from "../utils/payrollRows";
+import { getColumns, PAYROLL_HEADER_FILTERS } from "./PayrollColumns";
 import PayrollForm from "./PayrollForm";
 import { PayrollDetailDialog } from "./PayrollDetailDialog";
 import { PayPayrollDialog } from "./PayPayrollDialog";
@@ -56,8 +57,9 @@ export default function PayrollList() {
   const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
   const queryClient = useQueryClient();
-  // Aviso pendiente de la vía rápida (ver `closeStale`), mostrado desde un efecto.
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  // Aviso del diálogo de fila que se cerró porque su nómina cambió por fuera,
+  // mostrado desde un efecto.
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla.
   const busyIds = usePendingPayrollIds();
 
@@ -93,33 +95,16 @@ export default function PayrollList() {
 
   // Los nombres se incorporan a la FILA, no al accessor: la llegada tardía de
   // un catálogo produce un `data` nuevo y TanStack recalcula todo.
-  const rows: PayrollRow[] = payrolls.map((payroll) => ({
-    ...payroll,
-    empleado_nombre: employeeNameById.get(payroll.empleado) ?? `Empleado #${payroll.empleado}`,
-    sucursal_nombre: branchNameById.get(payroll.sucursal) ?? `Sucursal #${payroll.sucursal}`,
-    periodo_label: formatPayrollPeriod(payroll),
-  }));
+  const rows = buildPayrollRows(payrolls, employeeNameById, branchNameById);
 
-  // Filtros en memoria sobre el valor CRUDO de la fila. Las opciones salen de
-  // los catálogos COMPLETOS, no de las filas visibles.
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estado", options: ESTADO_NOMINA_OPTIONS },
-    {
-      id: "sucursal",
-      label: "Sucursal",
-      options: branches.map((branch) => ({ value: String(branch.id), label: branch.nombre })),
-    },
-    {
-      id: "empleado",
-      label: "Empleado",
-      options: buildEmployeeOptions(employees).map((option) => ({
-        value: String(option.id),
-        label: option.label,
-      })),
-    },
-  ];
-
-  const columns = getColumns({ canEdit: canEditHr, canPayOrCancel });
+  // Filtros de encabezado en memoria, sobre la quincena ya cargada. Solo
+  // dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `PayrollRowActionsProvider`, así una acción no remonta las celdas.
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canPayOrCancel }),
+    rows,
+    PAYROLL_HEADER_FILTERS
+  );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────
   const findRow = (id: number | null) =>
@@ -129,36 +114,37 @@ export default function PayrollList() {
   const payTarget = findRow(payTargetId);
   const cancelTarget = findRow(cancelTargetId);
 
-  /** Vía rápida contra la caché: mismo aviso que la guarda de red. */
-  const closeStale = (id: number, target: PayrollRow | null) =>
-    setStaleNotice({
-      key: `payroll-stale-${id}-${target?.estado ?? "gone"}`,
-      message: target ? payrollEstadoChangedMessage(target.estado) : PAYROLL_GONE_MESSAGE,
-    });
-
   // Ajustes en RENDER (no en efecto). Solo con el listado asentado (no a mitad
-  // de un cambio de quincena) y nunca mientras su guarda o su escritura están
-  // en vuelo.
+  // de un cambio de quincena, cuando las filas aún son las de la anterior): esa
+  // espera queda fuera de la regla. Un detalle cuya nómina desapareció se
+  // cierra sin aviso.
   const listSettled = hasLoaded && !isPlaceholderData;
   if (detailTargetId !== null && listSettled && detailTarget === null) setDetailTargetId(null);
-  if (
-    payTargetId !== null &&
-    listSettled &&
-    !busyIds.includes(payTargetId) &&
-    payTarget?.estado !== ESTADO_PENDIENTE
-  ) {
+
+  // Vía rápida contra la caché, con el mismo aviso que la guarda de red: pagar
+  // y cancelar esperan una pendiente, y no se tocan mientras su guarda o su
+  // escritura están en vuelo.
+  const stalePay = listSettled
+    ? getPayrollStaleNotice(
+        payTargetId,
+        payTarget,
+        payTargetId !== null && busyIds.includes(payTargetId)
+      )
+    : null;
+  if (stalePay) {
     setPayTargetId(null);
-    closeStale(payTargetId, payTarget);
+    setStaleNotice(stalePay);
   }
-  if (
-    cancelTargetId !== null &&
-    listSettled &&
-    !isChecking &&
-    !busyIds.includes(cancelTargetId) &&
-    cancelTarget?.estado !== ESTADO_PENDIENTE
-  ) {
+  const staleCancel = listSettled
+    ? getPayrollStaleNotice(
+        cancelTargetId,
+        cancelTarget,
+        isChecking || (cancelTargetId !== null && busyIds.includes(cancelTargetId))
+      )
+    : null;
+  if (staleCancel) {
     setCancelTargetId(null);
-    closeStale(cancelTargetId, cancelTarget);
+    setStaleNotice(staleCancel);
   }
 
   useEffect(() => {
@@ -187,6 +173,12 @@ export default function PayrollList() {
       setIsChecking(false);
     }
   };
+
+  // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
+  // a la animación de salida cuando el id vuelve a `null`.
+  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const paySession = useDialogSession(payTargetId !== null, payTarget);
+  const cancelSession = useDialogSession(cancelTargetId !== null, cancelTarget);
 
   const isCancelBusy = isChecking || isCancelling;
   const isSwitchingQuincena = isFetching && isPlaceholderData;
@@ -218,7 +210,6 @@ export default function PayrollList() {
         // Ata la identidad de la fila al id de la nómina y no a su índice.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar nómina..."
-        filterConfig={filterConfig}
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage={`No hay nóminas del ${formatQuincena(quincena)}.`}
@@ -265,6 +256,7 @@ export default function PayrollList() {
               title={selectedPayroll ? "Editar Nómina" : "Alta de Nómina"}
               subtitle={selectedPayroll ? "Nómina pendiente" : "Nómina individual"}
               statusColor="emerald"
+              icon={PayrollIcon}
             />
           }
           open={isFormOpen}
@@ -274,7 +266,7 @@ export default function PayrollList() {
             if (!open && isFormBusy) return;
             setIsFormOpen(open);
           }}
-          maxWidth="1080px"
+          maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
         >
           <PayrollForm
             onSuccess={() => setIsFormOpen(false)}
@@ -293,32 +285,40 @@ export default function PayrollList() {
         />
       )}
 
-      {detailTarget && (
+      {/*
+        Montados mientras haya una copia: `open` sale del id, así que al
+        cerrarse animan su salida con los datos de la apertura.
+      */}
+      {detailSession.snapshot && (
         <PayrollDetailDialog
-          payroll={detailTarget}
-          open
+          key={`detail-${detailSession.id}`}
+          // El detalle sí sigue a los refetch mientras su nómina exista.
+          payroll={detailTarget ?? detailSession.snapshot}
+          open={detailTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDetailTargetId(null);
           }}
         />
       )}
 
-      {canPayOrCancel && payTarget && payTarget.estado === ESTADO_PENDIENTE && (
+      {canPayOrCancel && paySession.snapshot && (
         <PayPayrollDialog
-          key={payTarget.id}
-          payroll={payTarget}
+          key={`pay-${paySession.id}`}
+          payroll={paySession.snapshot}
+          open={payTargetId !== null}
           onClose={() => setPayTargetId(null)}
         />
       )}
 
-      {canPayOrCancel && cancelTarget && cancelTarget.estado === ESTADO_PENDIENTE && (
+      {canPayOrCancel && cancelSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`cancel-${cancelSession.id}`}
+          open={cancelTargetId !== null}
           onOpenChange={(open) => {
             if (!open && !isCancelBusy) setCancelTargetId(null);
           }}
           title="Cancelar Nómina"
-          description={`¿Cancelar la nómina de ${cancelTarget.empleado_nombre} (${cancelTarget.periodo_label})? Quedará como cancelada y de solo lectura; no se puede deshacer.`}
+          description={`¿Cancelar la nómina de ${cancelSession.snapshot.empleado_nombre} (${cancelSession.snapshot.periodo_label})? Quedará como cancelada y de solo lectura; no se puede deshacer.`}
           confirmText={isChecking ? "Verificando…" : isCancelling ? "Cancelando…" : "Cancelar nómina"}
           cancelText="Volver"
           confirmColor="red"
