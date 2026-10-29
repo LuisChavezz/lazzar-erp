@@ -56,6 +56,18 @@ export const scrollToFirstValidationError = (
     return;
   }
 
+  // Campo sin control con `name` pero con su propia celda en la fila (p. ej. el
+  // color de una partida, EC-641): se busca por `data-error-field` antes de caer
+  // a la sección entera, y se enfoca el primer botón que tenga dentro.
+  const fieldCell = Array.from(
+    formElement.querySelectorAll<HTMLElement>("[data-error-field]")
+  ).find((element) => normalizedIssuePaths.includes(element.dataset.errorField ?? ""));
+  if (fieldCell) {
+    fieldCell.scrollIntoView({ behavior: "smooth", block: "center" });
+    fieldCell.querySelector<HTMLElement>("button:not([disabled])")?.focus({ preventScroll: true });
+    return;
+  }
+
   // Se recorren todas las anclas candidatas y solo se detiene en una que EXISTA
   // en el DOM. Antes cada rama hacía `return` incondicional, así que un error
   // cuya sección no estuviera renderizada abortaba la búsqueda: el submit
