@@ -7,6 +7,7 @@ import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
   creditNoteStampFailedMessage,
   logUnexpectedError,
+  STAMP_FAILED_TOAST_DURATION_MS,
 } from "../utils/creditNoteErrors";
 import { getRelatedInvoiceCancelledReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
@@ -66,21 +67,27 @@ export const useEmitirNotaCredito = () => {
     onSuccess: () => {
       toast.success("Nota de crédito emitida correctamente");
     },
-    onError: (error) => {
+    onError: (error, id) => {
       logUnexpectedError(error);
       if (error instanceof PrecheckError) {
         toast.error(error.message);
         return;
       }
       const parsed = parseNotaCreditoError(error);
+      // Es la ÚNICA explicación de por qué la fila pasó a `Cancelada` (el
+      // diálogo ya se cerró) y trae el motivo largo de Facturama: dura lo
+      // suficiente para leerlo, con id por nota para no apilar repeticiones.
+      if (parsed.stampFailed) {
+        toast.error(creditNoteStampFailedMessage("emision", parsed.formError ?? ""), {
+          id: `emitir-nota-credito-timbrado-${id}`,
+          duration: STAMP_FAILED_TOAST_DURATION_MS,
+        });
+        return;
+      }
       // Sin confirmación del backend la nota pudo emitirse y timbrarse.
-      // Con `cfdi` el timbrado falló DESPUÉS de emitir: el motivo del backend va
-      // con el aviso de que el borrador pudo quedar cancelado o emitido.
       const message = parsed.unconfirmed
         ? CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE
-        : parsed.stampFailed
-          ? creditNoteStampFailedMessage("emision", parsed.formError ?? "")
-          : parsed.messages.length > 0
+        : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al emitir la nota de crédito";
       toast.error(message);

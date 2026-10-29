@@ -74,6 +74,13 @@ export const creditNoteStampFailedMessage = (
 };
 
 /**
+ * Duración del toast de un timbrado fallido al emitir desde el listado: el
+ * mensaje ronda los 300 caracteres con el motivo de Facturama, y los 4 s por
+ * defecto del `<Toaster>` no alcanzan para leerlo.
+ */
+export const STAMP_FAILED_TOAST_DURATION_MS = 20_000;
+
+/**
  * Alta `Emitida` sin confirmación del backend (sin respuesta, timeout, 5xx) o
  * con un `409` de concurrencia, que también puede salir del timbrado, DESPUÉS
  * de guardar. No se afirma qué quedó registrado.
