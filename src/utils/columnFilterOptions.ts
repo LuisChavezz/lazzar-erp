@@ -174,3 +174,68 @@ export function buildCatalogFilterOptions<T>(
   }
   return [...options, ...extra];
 }
+
+/**
+ * Opciones del menú con el valor activo SIEMPRE visible. Si el valor elegido
+ * sigue entre las opciones, devuelve `options` tal cual. Si ya no está (las
+ * opciones salen de las filas y cambiaron, p. ej. al cambiar de quincena) y
+ * `remembered` es la última opción vista con ese valor, la fija justo después
+ * de "Todos", para que el chip y el menú sigan nombrándola. Sin recuerdo para
+ * ese valor (catálogo aún cargando), no inventa nada.
+ */
+export function pinActiveFilterOption(
+  options: ColumnFilterOption[],
+  activeValue: string | undefined,
+  remembered: ColumnFilterOption | undefined,
+): { options: ColumnFilterOption[]; active: ColumnFilterOption | undefined } {
+  if (activeValue === undefined) return { options, active: undefined };
+  const present = options.find((opt) => opt.value === activeValue);
+  if (present) return { options, active: present };
+  if (remembered?.value !== activeValue) return { options, active: undefined };
+  const allIndex = options.findIndex((opt) => opt.value === undefined);
+  return {
+    options: [...options.slice(0, allIndex + 1), remembered, ...options.slice(allIndex + 1)],
+    active: remembered,
+  };
+}
+
+/** Etiqueta del valor elegido en un filtro de encabezado; `value` es el valor al que nombra, si se conoce. */
+export interface FilterValueLabel {
+  label: string;
+  value?: string;
+}
+
+/**
+ * Siguiente estado de las etiquetas de los chips de `DataTable` cuando el
+ * encabezado de `columnId` reporta la de su valor activo. Devuelve `prev` si
+ * nada cambia. Una etiqueta `undefined` borra la de la columna salvo que
+ * `value` sea el mismo valor ya recordado: la opción desapareció de las filas,
+ * pero sigue elegida, y el chip debe seguir nombrándola. Sin `value` (quien no
+ * lo informa), `undefined` borra como siempre.
+ */
+export function nextFilterValueLabels(
+  prev: Readonly<Record<string, FilterValueLabel>>,
+  columnId: string,
+  label: string | undefined,
+  value?: string,
+): Readonly<Record<string, FilterValueLabel>> {
+  const current = prev[columnId];
+  if (label === undefined) {
+    if (!current || (value !== undefined && current.value === value)) return prev;
+    const next = { ...prev };
+    delete next[columnId];
+    return next;
+  }
+  if (current?.label === label && current.value === value) return prev;
+  return { ...prev, [columnId]: value === undefined ? { label } : { label, value } };
+}
+
+/**
+ * Etiqueta que muestra el chip de un filtro activo: la recordada, si nombra al
+ * valor actual (o no dice a cuál nombra, como hasta ahora).
+ */
+export const filterChipValueLabel = (
+  entry: FilterValueLabel | undefined,
+  filterValue: unknown,
+): string | undefined =>
+  entry && (entry.value === undefined || entry.value === filterValue) ? entry.label : undefined;

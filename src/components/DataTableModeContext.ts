@@ -2,6 +2,7 @@
 
 import { createContext } from "react";
 import type { ColumnFiltersState } from "@tanstack/react-table";
+import type { FilterValueLabel } from "@/src/utils/columnFilterOptions";
 
 /**
  * Filtros de servidor que `DataTable` publica a sus encabezados cuando está en
@@ -41,9 +42,18 @@ export type DataTableModeContextValue =
       /**
        * El encabezado avisa aquí la ETIQUETA del valor elegido en su filtro
        * (`undefined` al quitarlo): `DataTable` solo conoce el valor crudo y la
-       * necesita para el chip de "Filtrado por" sobre la tabla.
+       * necesita para el chip de "Filtrado por" sobre la tabla. Con `value`,
+       * una etiqueta `undefined` para el MISMO valor ya recordado no la borra
+       * (la opción desapareció de las filas, pero sigue elegida); sin él, se
+       * comporta como siempre.
        */
-      reportFilterValueLabel?: (columnId: string, label: string | undefined) => void;
+      reportFilterValueLabel?: (
+        columnId: string,
+        label: string | undefined,
+        value?: string,
+      ) => void;
+      /** Última etiqueta reportada por columna, con el valor al que nombra. */
+      filterValueLabels?: Readonly<Record<string, FilterValueLabel>>;
     }
   | { mode: "server-pagination" }
   | { mode: "server"; filters: DataTableServerFilters | undefined };
