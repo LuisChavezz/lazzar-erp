@@ -26,11 +26,8 @@ import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
 import { useReactivateEmployee } from "../hooks/useReactivateEmployee";
 import { EmployeeRowActionsProvider, usePendingEmployeeIds } from "../hooks/useEmployeeRowActions";
 import { getEmployeeFullName } from "../utils/employeeName";
-import {
-  buildEmployeeRows,
-  getStaleEmployeeDialogNotice,
-  type StaleEmployeeDialogNotice,
-} from "../utils/employeeRows";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import { buildEmployeeRows, getStaleEmployeeDialogNotice } from "../utils/employeeRows";
 
 export default function EmployeeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -47,7 +44,7 @@ export default function EmployeeList() {
   // Aviso de un diálogo de fila que se cerró porque su empleado cambió por
   // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
   // otro componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<StaleEmployeeDialogNotice | null>(null);
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
 
   // Catálogos para resolver los FK de las columnas. Las sucursales ya están en
   // el workspace (no dispara otra petición), igual que en `WarehouseList`.
