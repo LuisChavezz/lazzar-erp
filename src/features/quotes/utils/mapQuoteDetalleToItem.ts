@@ -1,3 +1,4 @@
+import { getVariantSizes } from "./variantSizes";
 import type {
   QuoteById,
   QuoteItem,
@@ -53,16 +54,7 @@ export const mapQuoteDetalleToItem = (
       if (esMuestra || !products?.length) return undefined;
       const product = products.find((p) => p.id === detalle.producto);
       if (!product?.variantes?.length) return undefined;
-      const colorId = detalle.color ?? null;
-      const seen = new Set<number>();
-      const sizesList: Array<{ id: number; nombre: string }> = [];
-      for (const variant of product.variantes) {
-        if (colorId !== null && variant.color.id !== colorId) continue;
-        if (!seen.has(variant.talla.id)) {
-          seen.add(variant.talla.id);
-          sizesList.push(variant.talla);
-        }
-      }
+      const sizesList = getVariantSizes(product.variantes, detalle.color ?? null);
       return sizesList.length > 0 ? sizesList : undefined;
     })(),
     tallas: detalle.tallas.map((t) => ({
