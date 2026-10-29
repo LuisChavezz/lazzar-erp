@@ -78,6 +78,22 @@ export const normalizeQuoteValidationPath = (rawPath: string): string => {
 };
 
 /**
+ * Claves de primer nivel que, como string suelto, son un RECHAZO del documento
+ * y no un error de campo: las leen `extractQuoteRejectionMessage` y el
+ * `extractRejectionMessage` de la edición de pedido para el toast.
+ * `detalle` y `pedido` solo son rechazo como string; como lista u objeto son
+ * los errores por renglón o de la cabecera y se recorren como siempre.
+ */
+const TOP_LEVEL_REJECTION_KEYS: ReadonlySet<string> = new Set([
+  "detail",
+  "non_field_errors",
+  "detalle",
+  "permiso",
+  "cotizacion",
+  "pedido",
+]);
+
+/**
  * Recorre recursivamente el objeto de errores del backend y extrae todos
  * los mensajes como una lista plana de `QuoteValidationIssue`.
  *
@@ -96,10 +112,13 @@ export const extractQuoteValidationIssues = (
     return Object.entries(source as Record<string, unknown>)
       .filter(([key]) => key !== PROCESS_COMPATIBILITY_KEY)
       .flatMap(([key, value]) =>
-        // `color` de primer nivel (EC-641) se acepta también como string suelto;
-        // el resto de las claves conserva su manejo de siempre.
-        key === REQUIRED_COLOR_KEY && typeof value === "string" && value
-          ? [{ path: REQUIRED_COLOR_KEY, message: value }]
+        // El backend desplegado manda los errores de campo de primer nivel como
+        // string suelto (`{"color": "..."}`), no como lista: se aceptan igual.
+        // Las claves de RECHAZO quedan fuera: esas van al toast, no a un campo.
+        typeof value === "string"
+          ? value && !TOP_LEVEL_REJECTION_KEYS.has(key)
+            ? [{ path: normalizeQuoteValidationPath(key), message: value }]
+            : []
           : extractQuoteValidationIssues(value, [key])
       );
   }
