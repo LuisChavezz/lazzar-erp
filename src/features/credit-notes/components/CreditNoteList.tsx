@@ -17,7 +17,10 @@ import { getColumns } from "./CreditNoteColumns";
 import { CreditNoteDetailDialog } from "./CreditNoteDetailDialog";
 import CreditNoteForm from "./CreditNoteForm";
 import { useNotasCredito } from "../hooks/useNotasCredito";
-import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
+import {
+  getEmitRejectedDraftDetail,
+  useEmitirNotaCredito,
+} from "../hooks/useEmitirNotaCredito";
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
 import {
@@ -84,6 +87,17 @@ export default function CreditNoteList() {
   // optimista corre y un diálogo montado en la celda se cerraría solo a media
   // confirmación.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
+  /**
+   * Motivo del último rechazo de Facturama al emitir un borrador, y de qué nota.
+   * Cuando el backend reporta la nota de vuelta en `Borrador`
+   * (`getEmitRejectedDraftDetail`), se abre su detalle con el motivo y "Emitir"
+   * para reintentar. Vive aquí, junto a `openDetailId`, por la misma razón que
+   * el resto de los diálogos: el detalle se resuelve contra `notasCredito`
+   * completo, así que sobrevive al refetch y a cualquier filtro de la tabla.
+   */
+  const [emitRejection, setEmitRejection] = useState<{ id: number; message: string } | null>(
+    null,
+  );
   const [emitTargetId, setEmitTargetId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
   /**
@@ -126,6 +140,10 @@ export default function CreditNoteList() {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   const handleViewDetail = useCallback((id: number) => setOpenDetailId(id), []);
+  const closeDetail = () => {
+    setOpenDetailId(null);
+    setEmitRejection(null);
+  };
 
   /**
    * Emitir un borrador ya guardado — el ÚNICO camino de emisión que no pasa por
@@ -195,7 +213,7 @@ export default function CreditNoteList() {
   // ajusta en RENDER (patrón de estado derivado de React: re-render inmediato
   // sin pintar) y no en un efecto, que dispararía `react-hooks/set-state-in-effect`.
   if (openDetailId !== null && detailNota === null) {
-    setOpenDetailId(null);
+    closeDetail();
   }
 
   // Los objetivos de emitir y cancelar SÍ sobreviven a que la fila salga de la
@@ -285,8 +303,11 @@ export default function CreditNoteList() {
           nota={detailNota}
           open={true}
           onOpenChange={(open) => {
-            if (!open) setOpenDetailId(null);
+            if (!open) closeDetail();
           }}
+          emitRejection={emitRejection?.id === detailNota.id ? emitRejection.message : null}
+          onEmitir={() => handleEmitir(detailNota.id)}
+          isEmitting={emitLock.isPending(detailNota.id)}
         />
       )}
 
@@ -317,10 +338,19 @@ export default function CreditNoteList() {
           onConfirm={() => {
             const id = emitTargetId;
             if (!emitLock.acquire(id)) return;
-            emitirNotaAsync(id)
-              // El hook ya avisó del error con su toast; aquí solo se evita el
-              // rechazo no manejado de la promesa.
-              .catch(() => {})
+            emitirNotaAsync({ id, label: etiqueta(id) })
+              .then(() => {
+                setEmitRejection((current) => (current?.id === id ? null : current));
+              })
+              // El hook ya avisó del error con su toast. Si Facturama rechazó y la
+              // nota volvió a borrador, se abre su detalle con el motivo; el
+              // resto de los errores solo evita el rechazo no manejado.
+              .catch((error: unknown) => {
+                const rejection = getEmitRejectedDraftDetail(error, id);
+                if (rejection === null) return;
+                setEmitRejection({ id, message: rejection });
+                setOpenDetailId(id);
+              })
               .finally(() => {
                 emitLock.release(id);
                 // Solo se cierra SU diálogo: si mientras tanto el usuario abrió

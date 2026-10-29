@@ -11,7 +11,8 @@ import {
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
-import { NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
+import { CheckCircleIcon, InfoIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
@@ -42,6 +43,20 @@ interface CreditNoteDetailDialogProps {
   nota: NotaCredito;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Motivo con que Facturama rechazó la última emisión de este borrador desde el
+   * listado (`getEmitRejectedDraftDetail`), o `null`. Solo se pinta mientras la
+   * nota siga en `Borrador`.
+   */
+  emitRejection?: string | null;
+  /**
+   * "Emitir nota" desde el detalle, para reintentar tras un rechazo. Solo lo
+   * pasa el listado, que es dueño de la confirmación y del candado por fila; sin
+   * él (detalle por id) no se ofrece.
+   */
+  onEmitir?: () => void;
+  /** La emisión de esta nota está en vuelo (candado por fila del listado). */
+  isEmitting?: boolean;
 }
 
 /** Título del diálogo: icono, rótulo y folio (o `#id`). */
@@ -65,7 +80,11 @@ export function CreditNoteDetailDialog({
   nota,
   open,
   onOpenChange,
+  emitRejection = null,
+  onEmitir,
+  isEmitting = false,
 }: CreditNoteDetailDialogProps) {
+  const isDraft = nota.estatus === "Borrador";
   return (
     <MainDialog
       open={open}
@@ -74,8 +93,63 @@ export function CreditNoteDetailDialog({
       showCloseButton={true}
       title={<CreditNoteDialogTitle label={nota.folio || `#${nota.id}`} />}
     >
+      {isDraft && onEmitir && (
+        <CreditNoteEmitPanel
+          notaId={nota.id}
+          rejection={emitRejection}
+          onEmitir={onEmitir}
+          isEmitting={isEmitting}
+        />
+      )}
       <CreditNoteDetailBody nota={nota} />
     </MainDialog>
+  );
+}
+
+/**
+ * Emisión de un borrador desde su detalle: el motivo del último rechazo de
+ * Facturama (si lo hubo) y "Emitir nota" para reintentar. No hay editor de
+ * borradores: si el rechazo está en los importes de la nota, la corrección es
+ * eliminar el borrador y capturarla de nuevo; si está en los datos fiscales de
+ * la factura o del cliente, se corrigen allá y se reintenta aquí.
+ */
+function CreditNoteEmitPanel({
+  notaId,
+  rejection,
+  onEmitir,
+  isEmitting,
+}: {
+  notaId: number;
+  rejection: string | null;
+  onEmitir: () => void;
+  isEmitting: boolean;
+}) {
+  const rejectionId = `credit-note-${notaId}-emit-rejection`;
+  return (
+    <div className="mb-5 space-y-3">
+      {rejection && (
+        <div
+          id={rejectionId}
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
+        >
+          <InfoIcon className="w-5 h-5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
+          <p className="flex-1 text-sm text-red-700 dark:text-red-300">{rejection}</p>
+        </div>
+      )}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onEmitir}
+          disabled={isEmitting}
+          aria-describedby={rejection ? rejectionId : undefined}
+        >
+          <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+          {isEmitting ? "Emitiendo..." : rejection ? "Volver a emitir" : "Emitir nota"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
