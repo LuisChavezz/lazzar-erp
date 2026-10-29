@@ -93,7 +93,6 @@ export const EmployeeFormSchema = z.object({
     .string()
     .min(1, "El número de empleado es requerido")
     .max(20, "El número de empleado no puede exceder 20 caracteres"),
-  sucursal: z.number().int("La sucursal es inválida").positive("La sucursal es requerida"),
   departamento: z
     .number()
     .int("El departamento es inválido")
@@ -107,3 +106,10 @@ export const EmployeeFormSchema = z.object({
 });
 
 export type EmployeeFormValues = z.infer<typeof EmployeeFormSchema>;
+
+/**
+ * Campos que puede señalar un 400 del backend: los del formulario más
+ * `sucursal`, que no se captura (sale del workspace al crear y del propio
+ * empleado al editar, ver `useEmployeeForm`) pero se muestra en solo lectura.
+ */
+export type EmployeeServerErrorField = keyof EmployeeFormValues | "sucursal";

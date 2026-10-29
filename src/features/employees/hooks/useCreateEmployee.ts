@@ -4,10 +4,10 @@ import { AxiosError } from "axios";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { createEmployee } from "../services/actions";
 import { EmployeeCreate } from "../interfaces/employee.interface";
-import { EmployeeFormValues } from "../schemas/employee.schema";
+import { EmployeeServerErrorField } from "../schemas/employee.schema";
 
 type SetEmployeeError = (
-  field: keyof EmployeeFormValues,
+  field: EmployeeServerErrorField,
   error: { type?: string; message?: string }
 ) => void;
 
@@ -34,7 +34,7 @@ export const useCreateEmployee = (setError?: SetEmployeeError) => {
           const validationErrors = data as Record<string, string[]>;
 
           Object.keys(validationErrors).forEach((key) => {
-            const fieldKey = key as keyof EmployeeFormValues;
+            const fieldKey = key as EmployeeServerErrorField;
             const errorMessages = validationErrors[key];
 
             if (Array.isArray(errorMessages) && errorMessages.length > 0) {

@@ -4,19 +4,15 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import {
-  BancosIcon,
-  BuildingIcon,
-  HeartIcon,
-  InfoIcon,
-  MapPinIcon,
-  ShieldCheckIcon,
-  UserIcon,
-} from "@/src/components/Icons";
+import { FormSection } from "@/src/components/FormSection";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { WorkspaceBranchNotice } from "@/src/features/workspace/components/WorkspaceBranchNotice";
 import { ESTADO_CIVIL_OPTIONS, SEXO_OPTIONS } from "../constants/employeeChoices";
 import { Employee } from "../interfaces/employee.interface";
-import { useEmployeeForm } from "../hooks/useEmployeeForm";
-import { FormSection } from "./FormSection";
+import { EMPLOYEE_SUCURSAL_DOCUMENT, useEmployeeForm } from "../hooks/useEmployeeForm";
+
+/** Rejilla de cada sección: campos cortos de tres en tres. */
+const SECTION_GRID_CLS = "grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3";
 
 interface EmployeeFormProps {
   onSuccess: () => void;
@@ -29,9 +25,9 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
     formRef,
     formKey,
     isPending,
-    branches,
-    isLoadingBranches,
-    isErrorBranches,
+    isEditing,
+    sucursalLabel,
+    isSucursalMissing,
     departments,
     isLoadingDepartments,
     isErrorDepartments,
@@ -64,21 +60,19 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
       noValidate
       className="w-full"
     >
-      <fieldset disabled={isPending} className="group-disabled:opacity-50">
-        <FormSection
-          title="Datos Personales"
-          subtitle="Identidad y contacto del empleado"
-          icon={UserIcon}
-        >
-          <div className="group/field md:col-span-2">
+      <fieldset disabled={isPending} className="space-y-5 group-disabled:opacity-50">
+        {/* Alta sin sucursal válida en el workspace: aviso persistente y guardado bloqueado. */}
+        {!isEditing && <WorkspaceBranchNotice documento={EMPLOYEE_SUCURSAL_DOCUMENT} />}
+        <FormSection title="Datos Personales" description="Identidad y contacto del empleado">
+          <div className={SECTION_GRID_CLS}>
+          <div className="group/field">
             <form.Field name="nombre">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Nombre(s)"
                   placeholder="Ej. Juan Carlos"
                   forceUppercase
-                  variant="ghost"
-                  className="text-3xl font-bold"
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
@@ -99,6 +93,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="apellido_paterno">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Apellido Paterno"
                   placeholder="Ej. Pérez"
                   forceUppercase
@@ -122,6 +117,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="apellido_materno">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Apellido Materno"
                   placeholder="Opcional"
                   forceUppercase
@@ -145,6 +141,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="fecha_nacimiento">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Fecha de Nacimiento"
                   type="date"
                   name={field.name}
@@ -167,6 +164,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="sexo">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Sexo"
                   name={field.name}
                   value={field.state.value}
@@ -189,6 +187,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="estado_civil">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Estado Civil"
                   name={field.name}
                   value={field.state.value}
@@ -211,6 +210,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="nacionalidad">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Nacionalidad"
                   placeholder="Ej. MEXICANA"
                   forceUppercase
@@ -234,6 +234,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="lugar_nacimiento">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Lugar de Nacimiento"
                   placeholder="Opcional"
                   forceUppercase
@@ -257,6 +258,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="telefono">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Teléfono"
                   placeholder="Ej. 5512345678"
                   name={field.name}
@@ -279,6 +281,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="email">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Correo Electrónico"
                   type="email"
                   placeholder="empleado@empresa.com"
@@ -297,17 +300,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <FormSection
-          title="Identificación Fiscal y Legal"
-          subtitle="CURP, RFC y claves de seguridad social"
-          icon={ShieldCheckIcon}
-        >
+        <FormSection title="Identificación Fiscal y Legal" description="CURP, RFC y claves de seguridad social">
+          <div className={SECTION_GRID_CLS}>
           <div className="group/field">
             <form.Field name="curp">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="CURP"
                   placeholder="18 caracteres"
                   forceUppercase
@@ -331,6 +333,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="rfc">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="RFC"
                   placeholder="12 o 13 caracteres"
                   forceUppercase
@@ -354,6 +357,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="nss">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="NSS"
                   placeholder="11 dígitos"
                   inputMode="numeric"
@@ -377,6 +381,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="infonavit">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="INFONAVIT"
                   placeholder="Opcional"
                   forceUppercase
@@ -395,13 +400,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <FormSection title="Domicilio" subtitle="Dirección particular del empleado" icon={MapPinIcon}>
+        <FormSection title="Domicilio" description="Dirección particular del empleado">
+          <div className={SECTION_GRID_CLS}>
           <div className="group/field md:col-span-2">
             <form.Field name="calle">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Calle"
                   placeholder="Opcional"
                   forceUppercase
@@ -425,6 +433,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="numero_exterior">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Número Exterior"
                   placeholder="Opcional"
                   forceUppercase
@@ -448,6 +457,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="numero_interior">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Número Interior"
                   placeholder="Opcional"
                   forceUppercase
@@ -471,6 +481,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="colonia">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Colonia"
                   placeholder="Opcional"
                   forceUppercase
@@ -494,6 +505,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="codigo_postal">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Código Postal"
                   placeholder="5 dígitos"
                   inputMode="numeric"
@@ -517,6 +529,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="ciudad">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Ciudad"
                   placeholder="Opcional"
                   forceUppercase
@@ -540,6 +553,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="estado">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Estado (entidad federativa)"
                   placeholder="Opcional"
                   forceUppercase
@@ -558,17 +572,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <FormSection
-          title="Datos Laborales"
-          subtitle="Adscripción, puesto y fechas de la relación"
-          icon={BuildingIcon}
-        >
+        <FormSection title="Datos Laborales" description="Adscripción, puesto y fechas de la relación">
+          <div className={SECTION_GRID_CLS}>
           <div className="group/field">
             <form.Field name="numero_empleado">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Número de Empleado"
                   placeholder="Ej. EMP-001"
                   forceUppercase
@@ -588,55 +601,29 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             </form.Field>
           </div>
 
+          {/*
+            La sucursal no se captura: al crear es la del workspace y al editar
+            se conserva la del empleado (ver `useEmployeeForm`). Sin sucursal
+            válida el aviso de arriba explica por qué no se puede guardar.
+          */}
           <div className="group/field">
-            <form.Field name="sucursal">
-              {(field) => (
-                <FormSelect
-                  label="Sucursal"
-                  name={field.name}
-                  value={String(field.state.value)}
-                  onChange={(event) => {
-                    field.handleChange(Number(event.target.value));
-                    clearFieldErrors("sucursal");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("sucursal", field.state.value);
-                  }}
-                  error={getError("sucursal")}
-                >
-                  <option value="0" disabled>
-                    {isLoadingBranches
-                      ? "Cargando sucursales..."
-                      : isErrorBranches
-                        ? "No se pudo cargar el catálogo de sucursales"
-                        : "Seleccionar..."}
-                  </option>
-                  {branches.map((branch) => (
-                    <option
-                      key={branch.id}
-                      value={branch.id}
-                      className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                    >
-                      {branch.nombre}
-                    </option>
-                  ))}
-                </FormSelect>
-              )}
-            </form.Field>
-            {/* Un catálogo caído NO se pinta como catálogo vacío (mismo criterio que `ContractForm`). */}
-            {isErrorBranches && (
-              <p className="mt-1 ml-1 text-[11px] text-red-600 dark:text-red-400">
-                No se pudo cargar el catálogo de sucursales. Revisa tu conexión e intenta abrir el
-                diálogo de nuevo.
-              </p>
-            )}
+            <FormInput
+              id="empleado-sucursal"
+              label="Sucursal"
+              value={sucursalLabel}
+              placeholder="Sin sucursal"
+              readOnly
+              tabIndex={-1}
+              className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
+              error={getError("sucursal")}
+            />
           </div>
 
           <div className="group/field">
             <form.Field name="departamento">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Departamento"
                   name={field.name}
                   value={String(field.state.value)}
@@ -687,6 +674,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="puesto">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Puesto"
                   name={field.name}
                   value={String(field.state.value)}
@@ -737,6 +725,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="turno">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Turno"
                   name={field.name}
                   value={String(field.state.value)}
@@ -781,6 +770,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="fecha_ingreso">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Fecha de Ingreso"
                   type="date"
                   name={field.name}
@@ -810,6 +800,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               <form.Field name="fecha_baja">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Fecha de Baja"
                     type="date"
                     name={field.name}
@@ -828,17 +819,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               </form.Field>
             </div>
           )}
+          </div>
         </FormSection>
 
-        <FormSection
-          title="Datos Bancarios"
-          subtitle="Cuenta donde se deposita la nómina"
-          icon={BancosIcon}
-        >
+        <FormSection title="Datos Bancarios" description="Cuenta donde se deposita la nómina">
+          <div className={SECTION_GRID_CLS}>
           <div className="group/field">
             <form.Field name="banco">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Banco"
                   placeholder="Opcional"
                   forceUppercase
@@ -862,6 +852,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="cuenta_bancaria">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Cuenta Bancaria"
                   placeholder="Opcional"
                   inputMode="numeric"
@@ -885,6 +876,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="clabe">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="CLABE"
                   placeholder="18 dígitos"
                   inputMode="numeric"
@@ -908,6 +900,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="moneda_pago">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Moneda de Pago"
                   placeholder="Ej. MXN"
                   forceUppercase
@@ -926,17 +919,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <FormSection
-          title="Contacto de Emergencia y Salud"
-          subtitle="A quién avisar y qué tener en cuenta"
-          icon={HeartIcon}
-        >
+        <FormSection title="Contacto de Emergencia y Salud" description="A quién avisar y qué tener en cuenta">
+          <div className={SECTION_GRID_CLS}>
           <div className="group/field">
             <form.Field name="nombre_emergencia">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Nombre del Contacto"
                   placeholder="Opcional"
                   forceUppercase
@@ -960,6 +952,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="parentesco_emergencia">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Parentesco"
                   placeholder="Ej. MADRE"
                   forceUppercase
@@ -983,6 +976,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="telefono_emergencia">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Teléfono de Emergencia"
                   placeholder="Ej. 5512345678"
                   name={field.name}
@@ -1005,6 +999,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="email_emergencia">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Correo de Emergencia"
                   type="email"
                   placeholder="contacto@ejemplo.com"
@@ -1028,6 +1023,7 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             <form.Field name="tipo_sangre">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Tipo de Sangre"
                   placeholder="Ej. O+"
                   forceUppercase
@@ -1047,13 +1043,14 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             </form.Field>
           </div>
 
-          <div className="group/field md:col-span-2">
+          <div className="group/field md:col-span-3">
             <form.Field name="alergias">
               {(field) => (
                 <FormTextarea
+                  className={COMPACT_FIELD_CLS}
                   label="Alergias"
                   placeholder="Opcional"
-                  rows={3}
+                  rows={2}
                   forceUppercase
                   name={field.name}
                   value={field.state.value}
@@ -1071,13 +1068,14 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             </form.Field>
           </div>
 
-          <div className="group/field md:col-span-2">
+          <div className="group/field md:col-span-3">
             <form.Field name="enfermedades_cronicas">
               {(field) => (
                 <FormTextarea
+                  className={COMPACT_FIELD_CLS}
                   label="Enfermedades Crónicas"
                   placeholder="Opcional"
-                  rows={3}
+                  rows={2}
                   forceUppercase
                   name={field.name}
                   value={field.state.value}
@@ -1094,13 +1092,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <FormSection title="Otros" subtitle="Fotografía y notas internas" icon={InfoIcon}>
-          <div className="group/field md:col-span-2">
+        <FormSection title="Otros" description="Fotografía y notas internas">
+          <div className={SECTION_GRID_CLS}>
+          <div className="group/field md:col-span-3">
             <form.Field name="foto_url">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="URL de la Fotografía"
                   type="url"
                   placeholder="https://..."
@@ -1120,13 +1121,14 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
             </form.Field>
           </div>
 
-          <div className="group/field md:col-span-2">
+          <div className="group/field md:col-span-3">
             <form.Field name="observaciones">
               {(field) => (
                 <FormTextarea
+                  className={COMPACT_FIELD_CLS}
                   label="Observaciones"
                   placeholder="Opcional"
-                  rows={4}
+                  rows={2}
                   forceUppercase
                   name={field.name}
                   value={field.state.value}
@@ -1143,11 +1145,16 @@ export default function EmployeeForm({ onSuccess, employeeToEdit }: EmployeeForm
               )}
             </form.Field>
           </div>
+          </div>
         </FormSection>
 
-        <div className="flex justify-end gap-3 pb-8 mt-8">
+        <div className="flex justify-end gap-3 pt-1">
           <FormCancelButton onClick={handleReset} disabled={isPending} />
-          <FormSubmitButton isPending={isPending} loadingLabel="Guardando...">
+          <FormSubmitButton
+            isPending={isPending}
+            disabled={isSucursalMissing}
+            loadingLabel="Guardando..."
+          >
             {employeeToEdit ? "Actualizar Empleado" : "Registrar Empleado"}
           </FormSubmitButton>
         </div>

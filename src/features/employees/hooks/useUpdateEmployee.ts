@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { updateEmployee } from "../services/actions";
 import { EmployeePayload } from "../interfaces/employee.interface";
-import { EmployeeFormValues } from "../schemas/employee.schema";
+import { EmployeeServerErrorField } from "../schemas/employee.schema";
 
 // En edición la empresa viaja tal cual la trae el registro: no debe
 // reasignarse por el workspace activo del usuario.
@@ -12,7 +12,7 @@ interface UpdateEmployeePayload extends EmployeePayload {
 }
 
 type SetEmployeeError = (
-  field: keyof EmployeeFormValues,
+  field: EmployeeServerErrorField,
   error: { type?: string; message?: string }
 ) => void;
 
@@ -35,7 +35,7 @@ export const useUpdateEmployee = (setError?: SetEmployeeError) => {
           const validationErrors = data as Record<string, string[]>;
 
           Object.keys(validationErrors).forEach((key) => {
-            const fieldKey = key as keyof EmployeeFormValues;
+            const fieldKey = key as EmployeeServerErrorField;
             const errorMessages = validationErrors[key];
 
             if (Array.isArray(errorMessages) && errorMessages.length > 0) {
