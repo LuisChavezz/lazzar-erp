@@ -2,6 +2,8 @@ import { AxiosError } from "axios";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import type { NotaCreditoEstatus } from "../interfaces/credit-note.interface";
 
 /**
  * ¿El backend NO confirmó el resultado? Sin respuesta (red, timeout, o un 504
@@ -40,43 +42,88 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
   "No se pudo confirmar la emisión: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; la nota pudo emitirse y timbrarse.";
 
 /**
- * Cómo se enuncia el fallo del timbrado en cada camino de emisión: el alta
- * `Emitida` (sujeto "la nota") y la emisión de un borrador desde el listado
- * (sujeto "el borrador").
+ * Nota que una emisión dejó guardada aunque su timbrado falló, tal como la
+ * reporta el `400` del backend junto a `cfdi`: `nota_credito: {id, estatus}`
+ * (nucleo-erp #724/#732). Solo ese par dice con certeza en qué quedó:
+ *
+ * - `Cancelada`: Facturama rechazó un alta `Emitida` (`POST`). La nota se
+ *   canceló y la cuenta por cobrar quedó como estaba.
+ * - `Borrador`: Facturama rechazó la emisión de un borrador (`PATCH`). Volvió a
+ *   borrador y la cuenta por cobrar quedó como estaba.
+ * - `Emitida`: Facturama no confirmó (timeout, 5xx, 408, sin UUID). La nota
+ *   quedó emitida y aplicada, con el timbrado pendiente de confirmación.
  */
-const STAMP_FAILED_COPY = {
-  alta: {
-    intro: "Falló el timbrado, pero la nota pudo quedar registrada:",
-    femenino: true,
-    closing: ". Revisa el listado antes de capturarla de nuevo.",
-  },
-  emision: {
-    intro: "Falló el timbrado de la nota. El borrador pudo quedar",
-    femenino: false,
-    closing: ": revisa el listado antes de volver a intentarlo.",
-  },
-} as const;
+export interface StampFailedNota {
+  id: number;
+  estatus: NotaCreditoEstatus;
+}
+
+const NOTA_CREDITO_ESTATUSES: readonly NotaCreditoEstatus[] = ["Borrador", "Emitida", "Cancelada"];
 
 /**
- * Emisión cuyo timbrado falló (`400` con `cfdi`). El backend guarda y aplica la
- * nota ANTES de timbrarla, así que el fallo no dice qué quedó: según el caso la
- * nota queda cancelada, emitida sin CFDI o con el timbrado pendiente. No se
- * afirma ninguno: se pide revisar el listado en vez de recapturarla. La lista de
- * resultados vive aquí una sola vez para los dos caminos.
+ * Lee `nota_credito` del cuerpo de un `400`, o `undefined` si falta o no tiene
+ * la forma esperada. DRF convierte en texto cada valor de un `ValidationError`
+ * anidado, así que `id` llega como `"15"`: se acepta string o número y se
+ * normaliza con `Number()`. Un `estatus` desconocido se descarta: no se adivina
+ * qué quedó.
  */
-export const creditNoteStampFailedMessage = (
-  camino: keyof typeof STAMP_FAILED_COPY,
-  detail: string,
-): string => {
-  const { intro, femenino, closing } = STAMP_FAILED_COPY[camino];
-  const resultados = femenino ? "cancelada, emitida" : "cancelado, emitido";
-  return `${intro} ${resultados} sin CFDI o con el timbrado pendiente de confirmación${closing} Motivo: ${detail}`;
+export const readStampFailedNota = (value: unknown): StampFailedNota | undefined => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const rawId = record.id;
+  const id =
+    typeof rawId === "number" || (typeof rawId === "string" && rawId.trim() !== "")
+      ? Number(rawId)
+      : NaN;
+  const estatus = firstDrfMessage(record.estatus);
+  if (!Number.isSafeInteger(id) || id <= 0) return undefined;
+  if (!NOTA_CREDITO_ESTATUSES.includes(estatus as NotaCreditoEstatus)) return undefined;
+  return { id, estatus: estatus as NotaCreditoEstatus };
 };
 
 /**
- * Duración del toast de un timbrado fallido al emitir desde el listado: el
- * mensaje ronda los 300 caracteres con el motivo de Facturama, y los 4 s por
- * defecto del `<Toaster>` no alcanzan para leerlo.
+ * Timbrado fallido SIN `nota_credito` (o con uno que no corresponde al camino).
+ * Normalmente no se guardó nada —el CFDI se valida dentro de la misma
+ * transacción que aplica la nota—, pero el backend tiene caminos que responden
+ * así con la nota ya emitida (la póliza o una carrera tras timbrar). No se
+ * afirma nada: se pide revisar el listado.
+ */
+const STAMP_FAILED_UNKNOWN_COPY = {
+  alta: "Falló el timbrado y no se pudo confirmar si la nota quedó registrada. Revisa el listado antes de capturarla de nuevo.",
+  emision:
+    "Falló el timbrado y no se pudo confirmar en qué estado quedó la nota. Revisa el listado antes de volver a intentarlo.",
+} as const;
+
+export const creditNoteStampFailedMessage = (
+  camino: keyof typeof STAMP_FAILED_UNKNOWN_COPY,
+  detail: string,
+): string => `${STAMP_FAILED_UNKNOWN_COPY[camino]} Motivo: ${detail}`;
+
+/** Alta `Emitida` rechazada por Facturama: la nota quedó `Cancelada`. */
+export const creditNoteCreateRejectedMessage = (label: string, detail: string): string =>
+  `Facturama rechazó el timbrado: la nota ${label} quedó cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
+
+/** Emisión de un borrador rechazada por Facturama: la nota sigue en `Borrador`. */
+export const creditNoteEmitRejectedMessage = (label: string): string =>
+  `Facturama rechazó el timbrado: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+
+/** Motivo del rechazo, en el detalle del borrador que se abre tras el rechazo. */
+export const creditNoteEmitRejectedDetail = (detail: string): string =>
+  `Facturama rechazó el timbrado y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
+
+/**
+ * Emisión que Facturama no confirmó: la nota quedó `Emitida` y aplicada con el
+ * timbrado pendiente. `timbrar/` rechaza una nota con `cfdi_pendiente` (solo un
+ * administrador lo desmarca tras revisar Facturama), así que no se ofrece
+ * reintentar con "Timbrar".
+ */
+export const creditNoteStampPendingMessage = (label: string, detail: string): string =>
+  `La nota ${label} se emitió y descontó su total del saldo por cobrar, pero Facturama no confirmó el timbrado: quedó pendiente de confirmación. Contacta a un administrador para revisarlo. Motivo: ${detail}`;
+
+/**
+ * Duración del toast de un timbrado fallido al emitir: el mensaje ronda los 300
+ * caracteres con el motivo de Facturama, y los 4 s por defecto del
+ * `<Toaster>` no alcanzan para leerlo.
  */
 export const STAMP_FAILED_TOAST_DURATION_MS = 20_000;
 
