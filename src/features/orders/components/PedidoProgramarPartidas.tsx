@@ -83,6 +83,13 @@ const PARTIDA_ICONS: Record<PartidaCoverage, React.ComponentType<{ className?: s
 const TH = "py-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 const DASH = <span className="text-slate-300 dark:text-slate-600">—</span>;
 
+/** Cifra de una tarjeta del resumen cuando ninguna talla tiene existencia que medir. */
+const SIN_MEDIDA = (
+  <p className="text-2xl font-bold" title="Ninguna talla tiene existencia que medir">
+    {DASH}
+  </p>
+);
+
 /**
  * `numero` es la posición de la partida en el orden del GET: con el mismo
  * producto y color en varias partidas, es lo único que las distingue.
@@ -279,12 +286,7 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
               Cobertura
             </p>
             {resumen.percent === null ? (
-              <p
-                className="text-2xl font-bold text-slate-400 dark:text-slate-500"
-                title="Ninguna talla tiene existencia que medir"
-              >
-                —
-              </p>
+              SIN_MEDIDA
             ) : (
               <>
                 <p className={`text-2xl font-bold tabular-nums ${coverageTone.text}`}>
@@ -322,12 +324,7 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Piezas faltantes
               </p>
-              <p
-                className="text-2xl font-bold text-slate-400 dark:text-slate-500"
-                title="Ninguna talla tiene existencia que medir"
-              >
-                —
-              </p>
+              {SIN_MEDIDA}
             </div>
           ) : (
             <div
