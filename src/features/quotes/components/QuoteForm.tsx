@@ -45,6 +45,8 @@ import {
 import { EditEmbroideryDialog } from "./EditEmbroideryDialog";
 import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
+import { AssignColorDialog } from "./AssignColorDialog";
+import { getMissingColorState, UNAVAILABLE_COLOR_MESSAGE } from "../utils/requiredColor";
 import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 
@@ -267,6 +269,12 @@ export function QuoteFormContent({
    * `useQuoteEditForm` a declararlo también, por el tipo de props compartido.
    */
   const [dialogVariant, setDialogVariant] = useState<AddProductVariant>("catalogo");
+  /**
+   * Partida a la que se le está asignando el color que le falta (EC-641). Estado
+   * EFÍMERO de UI, como `dialogVariant`: el guardado pasa por `update`, que ya
+   * exponen los tres hooks y limpia el error de la fila.
+   */
+  const [colorAssignIndex, setColorAssignIndex] = useState<number | null>(null);
   // Etiqueta y color de la partida de muestra: MISMA fuente que el badge de la
   // columna "Tipo" del listado (`getTipoPedidoConfig`), no un estilo nuevo.
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
@@ -1436,6 +1444,21 @@ export function QuoteFormContent({
           monedaCodigo={monedaCodigo}
         />
 
+        <AssignColorDialog
+          key={colorAssignIndex ?? "assign-color"}
+          open={colorAssignIndex !== null}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setColorAssignIndex(null);
+          }}
+          item={colorAssignIndex !== null ? (watchedItems?.[colorAssignIndex] ?? null) : null}
+          products={products}
+          onSave={(updatedItem) => {
+            if (colorAssignIndex === null) return;
+            update(colorAssignIndex, updatedItem);
+            setColorAssignIndex(null);
+          }}
+        />
+
         <AddProductDialog
           key={`${editIndex ?? "new"}-${dialogVariant}`}
           monedaCodigo={monedaCodigo}
@@ -1529,8 +1552,10 @@ export function QuoteFormContent({
                   const precioError = getFieldError(getError(`items.${index}.precio`));
                   const descuentoError = getFieldError(getError(`items.${index}.descuento`));
                   const importeError = getFieldError(getError(`items.${index}.importe`));
+                  const colorIdError = getFieldError(getError(`items.${index}.colorId`));
 
                   const currentItem = watchedItems?.[index];
+                  const missingColorState = getMissingColorState(currentItem, products);
                   const tallasLabel =
                     currentItem?.tallas && currentItem.tallas.length > 0
                       ? currentItem.tallas
@@ -1611,8 +1636,12 @@ export function QuoteFormContent({
                           )}
                         </div>
                       </td>
-                      {/* Columna Color */}
-                      <td className="p-2">
+                      {/* Columna Color. Una partida de catálogo sin color cuyo
+                          producto tiene variantes la exige el backend al enviar
+                          a revisión, autorizar y editar en mesa de control
+                          (EC-641): se marca aquí y se ofrece asignarla. Un color
+                          ya elegido no se cambia desde esta celda. */}
+                      <td className="p-2" data-error-field={`items.${index}.colorId`}>
                         {currentItem?.colorNombre ? (
                           <div className="inline-flex items-center gap-1.5">
                             <span
@@ -1624,6 +1653,36 @@ export function QuoteFormContent({
                               {currentItem.colorNombre}
                             </span>
                           </div>
+                        ) : missingColorState === "assignable" ? (
+                          <div className="space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => setColorAssignIndex(index)}
+                              aria-label={`Asignar color a la partida ${index + 1}`}
+                              className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium cursor-pointer transition-colors ${
+                                colorIdError
+                                  ? "border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-900/20"
+                                  : "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full border-2 border-dashed border-current"
+                                aria-hidden="true"
+                              />
+                              Asignar color
+                            </button>
+                            <p
+                              className={`text-[10px] ${colorIdError ? "text-rose-600 dark:text-rose-400" : "text-amber-700 dark:text-amber-400"}`}
+                            >
+                              {colorIdError?.message ?? "Requiere color"}
+                            </p>
+                          </div>
+                        ) : missingColorState === "unavailable" ? (
+                          <p
+                            className={`text-[10px] max-w-32 ${colorIdError ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"}`}
+                          >
+                            {colorIdError?.message ?? UNAVAILABLE_COLOR_MESSAGE}
+                          </p>
                         ) : (
                           <span className="text-xs text-slate-400 dark:text-slate-600">—</span>
                         )}
