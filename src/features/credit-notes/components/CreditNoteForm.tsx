@@ -96,7 +96,9 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir: la nota se
   // aplicaría, fallaría al timbrarse y quedaría `Cancelada`. Sin el listado no
   // se bloquea aquí; el precheck previo al alta `Emitida` lo vuelve a comprobar.
-  const { invoices } = useInvoices();
+  // `silent`: el formulario lee el listado solo como señal y no lo muestra, así
+  // que un refetch fallido no avisa aquí (el selector sí, al abrirse).
+  const { invoices } = useInvoices({ silent: true });
   const facturaRow = factura > 0 ? invoices.find((invoice) => invoice.id === factura) : undefined;
   const emitBlockReason = facturaRow ? getRelatedInvoiceEmitBlockReason(facturaRow) : null;
 
