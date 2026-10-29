@@ -7,10 +7,20 @@ import {
   buildCatalogFilterOptions,
   buildDistinctFilterOptions,
   buildMonthFilterOptions,
+  EMPTY_VALUE_FILTER_VALUE,
   matchesMonthFilter,
   matchesRangeFilter,
   type RangeFilterOption,
 } from "@/src/utils/columnFilterOptions";
+
+/**
+ * Opción para las filas SIN valor (`null`, `undefined` o `""`, que las
+ * opciones de `distinct`/`options` omiten): con `emptyOption` ("Sin área",
+ * "Sin tipo"…) va SIEMPRE fijada en primer lugar, antes de las opciones del
+ * catálogo o de las filas, y filtra exactamente esas filas. Sin ella, las filas
+ * vacías no tienen opción, como hasta ahora.
+ */
+type EmptyOptionSpec = { emptyOption?: string };
 
 /**
  * Cómo se filtra una columna desde su encabezado (estilo Excel). Cada `get`
@@ -26,21 +36,21 @@ export type HeaderFilterSpec<T> = {
   filterLabel?: string;
 } & (
   /** Un valor por opción, tomado de las filas (estatus, cliente, operador…). */
-  | {
+  | ({
       type: "distinct";
       get: (row: T) => string | number | null | undefined;
       /** Etiqueta visible de cada valor; por defecto, el valor mismo. */
       label?: (row: T) => string | null | undefined;
       /** Con buscador, para catálogos largos. */
       searchable?: boolean;
-    }
+    } & EmptyOptionSpec)
   /**
    * Un valor por opción, tomado de un catálogo del front (estatus, prioridad,
    * clasificación): todas las opciones del catálogo en su orden, aunque ninguna
    * fila las tenga, más al final los valores de las filas que el catálogo no
    * cubre. Compara como `distinct`, contra el valor crudo.
    */
-  | {
+  | ({
       type: "options";
       get: (row: T) => string | number | null | undefined;
       /** Opciones del catálogo (`optionsFromConfig`, o un arreglo `{ value, label }[]`). */
@@ -51,7 +61,7 @@ export type HeaderFilterSpec<T> = {
        * opciones del catálogo.
        */
       label?: (row: T) => string | null | undefined;
-    }
+    } & EmptyOptionSpec)
   /** Un mes por opción, del más reciente al más antiguo. */
   | { type: "month"; get: (row: T) => string | null | undefined; emptyLabel?: string }
   /** Rangos fijos de cantidad o importe. */
@@ -65,12 +75,24 @@ export type HeaderFilterSpec<T> = {
 const hasValue = (value: unknown) =>
   typeof value === "number" ? value > 0 : typeof value === "string" ? value.trim() !== "" : Boolean(value);
 
+/** La opción de `emptyOption`, si el spec la pide: va justo después de "Todos". */
+const emptyOptions = (emptyOption: string | undefined): ColumnFilterOption[] =>
+  emptyOption ? [{ value: EMPTY_VALUE_FILTER_VALUE, label: emptyOption }] : [];
+
 function buildOptions<T>(spec: HeaderFilterSpec<T>, rows: T[]): ColumnFilterOption[] {
   switch (spec.type) {
     case "distinct":
-      return [ALL_FILTER_OPTION, ...buildDistinctFilterOptions(rows, spec.get, spec.label)];
+      return [
+        ALL_FILTER_OPTION,
+        ...emptyOptions(spec.emptyOption),
+        ...buildDistinctFilterOptions(rows, spec.get, spec.label),
+      ];
     case "options":
-      return [ALL_FILTER_OPTION, ...buildCatalogFilterOptions(rows, spec.get, spec.options, spec.label)];
+      return [
+        ALL_FILTER_OPTION,
+        ...emptyOptions(spec.emptyOption),
+        ...buildCatalogFilterOptions(rows, spec.get, spec.options, spec.label),
+      ];
     case "month":
       return [ALL_FILTER_OPTION, ...buildMonthFilterOptions(rows.map(spec.get), spec.emptyLabel)];
     case "range":
@@ -86,8 +108,13 @@ function matches<T>(spec: HeaderFilterSpec<T>, row: T, filterValue: string | und
   if (!filterValue) return true;
   switch (spec.type) {
     case "distinct":
-    case "options":
-      return String(spec.get(row) ?? "") === filterValue;
+    case "options": {
+      const value = spec.get(row);
+      if (spec.emptyOption && filterValue === EMPTY_VALUE_FILTER_VALUE) {
+        return value === null || value === undefined || value === "";
+      }
+      return String(value ?? "") === filterValue;
+    }
     case "month":
       return matchesMonthFilter(spec.get(row), filterValue);
     case "range":
