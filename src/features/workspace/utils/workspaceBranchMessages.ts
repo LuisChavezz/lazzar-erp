@@ -4,10 +4,6 @@
  * sucursal sale del workspace (cotización, empleado, generación de nómina).
  */
 
-/** Guardado bloqueado porque la lista de sucursales todavía se está cargando. */
-export const WORKSPACE_BRANCH_LOADING_MESSAGE =
-  "Aún se están cargando tus sucursales. Intenta guardar de nuevo en un momento.";
-
 /** El documento, en las dos formas que piden las frases del aviso. */
 export interface WorkspaceBranchDocument {
   /** A qué se asigna la sucursal, con preposición: "a la cotización", "al empleado". */
@@ -21,6 +17,13 @@ export interface WorkspaceBranchDocument {
  * alta de un formulario); la generación de nómina dice "generar".
  */
 export const DEFAULT_BLOCKED_VERB = "guardar";
+
+/** Acción bloqueada porque la lista de sucursales todavía se está cargando. */
+export const getSinSucursalLoadingMessage = (verbo: string = DEFAULT_BLOCKED_VERB): string =>
+  `Aún se están cargando tus sucursales. Intenta ${verbo} de nuevo en un momento.`;
+
+/** Guardado bloqueado porque la lista de sucursales todavía se está cargando. */
+export const WORKSPACE_BRANCH_LOADING_MESSAGE = getSinSucursalLoadingMessage();
 
 /** Título del aviso: "No se puede guardar sin sucursal". */
 export const getSinSucursalTitle = (verbo: string = DEFAULT_BLOCKED_VERB): string =>
