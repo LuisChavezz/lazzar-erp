@@ -1414,7 +1414,11 @@ export function DataTable<TData, TValue>({
           </span>
           {columnFilters.map((filter) => {
             const column = table.getColumn(filter.id);
-            const columnName = column ? getColumnLabel(column) : filter.id;
+            // Lo que filtra el encabezado (`meta.filterLabel`, p. ej. el
+            // nombre que filtra por estatus) o, si no lo dice, la columna.
+            const columnName = column
+              ? (column.columnDef.meta?.filterLabel ?? getColumnLabel(column))
+              : filter.id;
             const valueLabel = filterValueLabels[filter.id];
             return (
               <span

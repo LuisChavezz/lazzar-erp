@@ -128,7 +128,14 @@ export function withHeaderFilters<T>(
     const options = buildOptions(spec, rows);
     return {
       ...column,
-      meta: { ...column.meta, label: column.meta?.label ?? title },
+      meta: {
+        ...column.meta,
+        label: column.meta?.label ?? title,
+        // Nombre del chip "Filtrado por" de `DataTable` (ver `ColumnMeta.filterLabel`).
+        ...(spec.filterLabel && {
+          filterLabel: spec.filterLabel.charAt(0).toUpperCase() + spec.filterLabel.slice(1),
+        }),
+      },
       header: ({ column: tableColumn }) => (
         <FilterHeader
           title={title}
