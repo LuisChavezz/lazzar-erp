@@ -43,8 +43,16 @@ import { nonNegativeAmount } from "@/src/features/quotes/utils/quoteAmounts";
 import { withMirroredShippingPhones } from "@/src/features/quotes/utils/shippingPhones";
 import { EMPTY_MATRIZ } from "@/src/features/quotes/utils/processCompatibility";
 import { deriveTiposServicio } from "@/src/features/quotes/utils/deriveTiposServicio";
-import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
+import {
+  REQUIRED_COLOR_KEY,
+  type QuoteValidationIssue,
+} from "@/src/features/quotes/utils/quoteValidationErrors";
 import { scrollToFirstValidationError } from "@/src/features/quotes/utils/scrollToFirstValidationError";
+import {
+  getMissingColorLines,
+  MISSING_COLOR_MESSAGE,
+  UNAVAILABLE_COLOR_MESSAGE,
+} from "@/src/features/quotes/utils/requiredColor";
 import {
   getPathValue,
   normalizeItem,
@@ -1129,7 +1137,24 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     !isOnboardingLoading &&
     !isCurrenciesLoading;
 
-  const applyServerValidationIssues = useCallback((issues: QuoteValidationIssue[]) => {
+  /**
+   * Partidas que viajaron en el último Guardar. El 400 `color` (EC-641) no dice
+   * qué partida falló —solo nombres de producto—, así que se recalculan sobre
+   * lo que se ENVIÓ, no sobre lo que el usuario haya tocado desde entonces.
+   */
+  const submittedItemsRef = useRef<QuoteItem[]>([]);
+
+  const applyServerValidationIssues = useCallback((rawIssues: QuoteValidationIssue[]) => {
+    const products = onboardingData?.busqueda.productos ?? [];
+    const issues = rawIssues.flatMap((issue) =>
+      issue.path === REQUIRED_COLOR_KEY
+        ? getMissingColorLines(submittedItemsRef.current, products).map((line) => ({
+            path: `items.${line.index}.colorId`,
+            message:
+              line.state === "assignable" ? MISSING_COLOR_MESSAGE : UNAVAILABLE_COLOR_MESSAGE,
+          }))
+        : [issue],
+    );
     const nextErrors: ErrorNode = {};
     issues.forEach((issue) => {
       setErrorByPath(nextErrors, issue.path.split(".").filter(Boolean), issue.message);
@@ -1142,7 +1167,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         scrollToFirstValidationError(formRef.current, issuePaths);
       });
     }
-  }, []);
+  }, [onboardingData]);
 
   /**
    * Bloqueo aparecido DESPUÉS de abrir la pantalla: el 409 del guardado. Se
@@ -1247,6 +1272,21 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           matriz: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
           products: onboardingData?.busqueda.productos ?? [],
         },
+      );
+      /* Color obligatorio con variantes (EC-641): `editar-mesa-control` lo
+       * rechaza con 400 aunque la edición solo toque la cabecera. Se corta aquí
+       * SOLO en las partidas cuyo producto está en el catálogo, que son las que
+       * se pueden arreglar con "Asignar color". Las que no están en el catálogo
+       * no se bloquean: puede que su producto no tenga variantes y el backend
+       * las acepte; si no, el 400 las marca (ver `applyServerValidationIssues`).
+       * Solo en este flujo: un borrador de cotización se guarda incompleto. */
+      submitIssues.push(
+        ...getMissingColorLines(value.items ?? [], onboardingData?.busqueda.productos ?? [])
+          .filter((line) => line.state === "assignable")
+          .map((line) => ({
+            path: ["items", line.index, "colorId"],
+            message: MISSING_COLOR_MESSAGE,
+          })),
       );
       if (submitIssues.length > 0) {
         const nextErrors: ErrorNode = {};
@@ -1426,6 +1466,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
           })),
       };
 
+      submittedItemsRef.current = value.items ?? [];
       try {
         await updatePedidoMutation({
           pedidoId,
