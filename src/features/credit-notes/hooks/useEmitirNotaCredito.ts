@@ -9,7 +9,7 @@ import {
   logUnexpectedError,
   STAMP_FAILED_TOAST_DURATION_MS,
 } from "../utils/creditNoteErrors";
-import { getRelatedInvoiceCancelledReason } from "../utils/creditNoteStamping";
+import { getRelatedInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
@@ -36,8 +36,8 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  *
  * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
  * `PrecheckError`, sin PATCH, si la nota ya no es `Borrador` o la factura está
- * `Cancelada`, con su CFDI cancelado o con su cancelación pendiente de aceptar
- * (`getRelatedInvoiceCancelledReason`). El
+ * `Cancelada`, con su CFDI cancelado, con su cancelación pendiente de aceptar
+ * o con su timbrado sin confirmar (`getRelatedInvoiceEmitBlockReason`). El
  * candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
  * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
@@ -54,14 +54,16 @@ export const useEmitirNotaCredito = () => {
     mutationFn: async (id: number) => {
       // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): la
       // factura pudo cancelarse después de crear el borrador; el backend la
-      // rechaza (#614) y así se avisa sin intentar el PATCH.
+      // rechaza (#614) y así se avisa sin intentar el PATCH. Con su timbrado
+      // sin confirmar el backend no la rechaza, pero la nota fallaría al
+      // timbrarse y quedaría `Cancelada`.
       const nota = await fetchFreshNotaCredito(queryClient, id);
       if (nota.estatus !== "Borrador") {
         throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);
       }
       const factura = await fetchFreshInvoice(queryClient, nota.factura);
-      const cancelledReason = getRelatedInvoiceCancelledReason(factura);
-      if (cancelledReason) throw new PrecheckError(cancelledReason);
+      const blockReason = getRelatedInvoiceEmitBlockReason(factura);
+      if (blockReason) throw new PrecheckError(blockReason);
       return emitirNotaCredito(id);
     },
     onSuccess: () => {
