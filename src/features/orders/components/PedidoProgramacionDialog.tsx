@@ -1,7 +1,5 @@
 "use client";
 
-import { format, isValid } from "date-fns";
-import { es } from "date-fns/locale";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -13,6 +11,7 @@ import { CalendarDaysIcon, DeleteIcon, PlusIcon } from "@/src/components/Icons";
 import { SectionTitle } from "@/src/components/DetailDialogPrimitives";
 import { plural } from "@/src/utils/plural";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { formatQuoteDateTime } from "@/src/features/quotes/utils/quoteDetailsFormatters";
 import {
   getPedidoProgramacionDestinoLabel,
   isPedidoProgramacionDestino,
@@ -61,12 +60,6 @@ const getDestinoOptions = (
     ? `${PEDIDO_PROGRAMACION_DESTINO_LABELS[destino]} (no aplica)`
     : getPedidoProgramacionDestinoLabel(destino);
   return [...options, { value: destino, label }];
-};
-
-/** Fecha de alta del pedido ("5 de octubre 2026"), o `null` si no es válida. */
-const formatPedidoCreatedAt = (createdAt: string | null): string | null => {
-  const date = createdAt ? new Date(createdAt) : null;
-  return date && isValid(date) ? format(date, "d 'de' MMMM yyyy", { locale: es }) : null;
 };
 
 /** Solo dígitos: `cantidad` es un entero positivo. */
@@ -366,9 +359,10 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
       description={[
         order.folio ?? `Pedido #${order.id}`,
         order.cliente_razon_social ?? "—",
-        formatPedidoCreatedAt(order.created_at),
+        // Mismo formateador que el detalle de pedido/cotización; "-" = sin fecha.
+        formatQuoteDateTime(order.created_at, "d 'de' MMMM yyyy"),
       ]
-        .filter(Boolean)
+        .filter((part) => part !== "-")
         .join(" · ")}
     >
       {isNotFound ? (

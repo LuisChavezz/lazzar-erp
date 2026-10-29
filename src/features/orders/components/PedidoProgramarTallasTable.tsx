@@ -7,6 +7,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { FactoryIcon, WarehouseIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { plural } from "@/src/utils/plural";
 import { getPedidoProgramarServicioLabel } from "../constants/pedidoProgramacion";
 import type { PedidoProgramarRenglon } from "../interfaces/pedido-programacion.interface";
 import {
@@ -63,7 +64,6 @@ export function PedidoProgramarTallasTable({
   almacenSurtido,
 }: PedidoProgramarTallasTableProps) {
   const resumen = getProgramarStockResumen(renglones);
-  const tallasSinMedir = renglones.length - (resumen?.tallasMedidas ?? 0);
   const coverageTone = resumen?.fullyCovered
     ? { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" }
     : (resumen?.percent ?? 0) >= 50
@@ -121,7 +121,7 @@ export function PedidoProgramarTallasTable({
                   : "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10"
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Piezas faltantes
                 </p>
@@ -134,7 +134,7 @@ export function PedidoProgramarTallasTable({
                     className="inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   >
                     <FactoryIcon className="w-3 h-3" aria-hidden="true" />
-                    Próximamente
+                    Solicitar producción · Próximamente
                   </button>
                 )}
               </div>
@@ -149,11 +149,18 @@ export function PedidoProgramarTallasTable({
               </p>
             </div>
           </div>
-          {tallasSinMedir > 0 && (
+          {(resumen.tallasSinSku > 0 || resumen.tallasMuestra > 0) && (
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {tallasSinMedir === 1
-                ? "1 talla de muestra o sin SKU no entra en el resumen."
-                : `${tallasSinMedir} tallas de muestra o sin SKU no entran en el resumen.`}
+              Fuera del resumen:{" "}
+              {[
+                resumen.tallasSinSku > 0 &&
+                  `${resumen.tallasSinSku} ${plural(resumen.tallasSinSku, "talla", "tallas")} sin SKU, sin existencia que medir (no se sabe si ${plural(resumen.tallasSinSku, "está cubierta", "están cubiertas")})`,
+                resumen.tallasMuestra > 0 &&
+                  `${resumen.tallasMuestra} ${plural(resumen.tallasMuestra, "talla", "tallas")} de muestra`,
+              ]
+                .filter(Boolean)
+                .join(" y ")}
+              .
             </p>
           )}
         </div>
@@ -281,7 +288,9 @@ export function PedidoProgramarTallasTable({
               );
             })}
           </LineItemsTable>
-          {resumen?.fullyCovered && (
+          {/* Afirmación de TODO el pedido: solo si no queda ninguna talla de
+              catálogo sin medir (las sin SKU no se pueden comprobar). */}
+          {resumen?.pedidoCubierto && (
             <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2.5 border border-emerald-200/60 dark:border-emerald-700/30 leading-relaxed">
               Todas las tallas con SKU tienen existencia suficiente en {almacenSurtido}. No es
               necesario solicitar producción para este pedido.

@@ -35,8 +35,18 @@ export interface ProgramarStockResumen {
   percent: number;
   /** Todas las piezas medidas están cubiertas (sale de la suma, no del %). */
   fullyCovered: boolean;
+  /**
+   * El pedido entero está cubierto: todas las tallas de catálogo se midieron
+   * y están cubiertas. Una talla sin SKU (no muestra) no se puede medir, así
+   * que con alguna así no se puede afirmar para todo el pedido.
+   */
+  pedidoCubierto: boolean;
   tallasCubiertas: number;
   tallasMedidas: number;
+  /** Tallas de muestra: no se surten del almacén, fuera de la cuenta. */
+  tallasMuestra: number;
+  /** Tallas de catálogo sin SKU (no muestra): sin existencia que consultar. */
+  tallasSinSku: number;
   /** Suma de `faltante` del backend. */
   piezasFaltantes: number;
 }
@@ -52,11 +62,18 @@ export const getProgramarStockResumen = (
     (sum, renglon) => sum + Math.min(renglon.stock_disponible, renglon.cantidad),
     0,
   );
+  const tallasMuestra = renglones.filter((renglon) => renglon.es_muestra).length;
+  const tallasSinSku = renglones.filter(
+    (renglon) => !renglon.es_muestra && !tieneStock(renglon),
+  ).length;
   return {
     percent: Math.floor((covered / requested) * 100),
     fullyCovered: covered === requested,
+    pedidoCubierto: covered === requested && tallasSinSku === 0,
     tallasCubiertas: medidas.filter((renglon) => getTallaCoverage(renglon) === "full").length,
     tallasMedidas: medidas.length,
+    tallasMuestra,
+    tallasSinSku,
     piezasFaltantes: medidas.reduce((sum, renglon) => sum + (renglon.faltante ?? 0), 0),
   };
 };
