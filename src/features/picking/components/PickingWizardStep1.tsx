@@ -116,26 +116,50 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   );
 
   /**
-   * Al ELEGIR o CAMBIAR de pedido, preselecciona el almacén que sugiere su
-   * programación (si es uno solo y está entre las opciones de ese pedido; ver
-   * `getAlmacenSugeridoPreseleccionable`). Vive en el `onChange` del pedido y
-   * no en un efecto a propósito: así solo actúa en ese momento y nunca pisa un
-   * destino que el usuario elija a mano después, ni el que se conserva al
-   * "Regresar" del Paso 2. Si no aplica, el campo queda como estaba y el
-   * efecto de abajo lo reconcilia (limpia una opción que dejó de valer o
-   * preselecciona la única).
+   * Quién puso el `almacen_destino` actual:
+   *
+   *  - `"auto"`: la sugerencia de la programación o la regla de opción única;
+   *  - `"manual"`: el usuario, con un pedido ya elegido. El que se conserva al
+   *    "Regresar" del Paso 2 cuenta como manual: el usuario lo confirmó al
+   *    avanzar;
+   *  - `"previo"`: el usuario, antes de elegir pedido.
+   *
+   * Solo se lee en manejadores y efectos (nunca al renderizar), por eso es un ref.
    */
-  const preseleccionarDestinoSugerido = (pedidoId: number) => {
+  const destinoOrigen = useRef<"auto" | "manual" | "previo">(
+    initialValues.pedido > 0 && initialValues.almacen_destino > 0 ? "manual" : "previo",
+  );
+
+  /**
+   * Al ELEGIR o CAMBIAR de pedido, recalcula el destino salvo que el usuario lo
+   * haya elegido a mano para un pedido (eso nunca se pisa):
+   *
+   *  - si la programación sugiere un solo almacén y está entre las opciones del
+   *    pedido, se preselecciona (ver `getAlmacenSugeridoPreseleccionable`);
+   *  - si no, un destino puesto en automático para el pedido ANTERIOR no se
+   *    hereda: se recalcula desde cero (la única opción, o vacío);
+   *  - un destino elegido antes de cualquier pedido se deja, y el efecto de
+   *    abajo lo limpia si no es opción de este pedido.
+   *
+   * Vive en el `onChange` del pedido y no en un efecto a propósito: así solo
+   * actúa en ese momento.
+   */
+  const recalcularDestino = (pedidoId: number) => {
+    if (destinoOrigen.current === "manual") return;
     const pedido = pedidos.find((p) => p.id === pedidoId);
     if (!pedido) return;
-    const sugeridoId = getAlmacenSugeridoPreseleccionable(
-      pedido.programaciones,
-      getDestinoOptions(almacenesDestino, pedido),
-    );
+    const opciones = getDestinoOptions(almacenesDestino, pedido);
+    const sugeridoId = getAlmacenSugeridoPreseleccionable(pedido.programaciones, opciones);
+    let siguiente: number | null = null;
     if (sugeridoId !== null) {
-      form.setFieldValue("almacen_destino", sugeridoId);
-      clearError("almacen_destino");
+      siguiente = sugeridoId;
+    } else if (destinoOrigen.current === "auto") {
+      siguiente = opciones.length === 1 ? opciones[0].id : 0;
     }
+    if (siguiente === null) return;
+    form.setFieldValue("almacen_destino", siguiente);
+    destinoOrigen.current = "auto";
+    clearError("almacen_destino");
   };
 
   /**
@@ -175,10 +199,12 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     const current = form.getFieldValue("almacen_destino");
     if (current > 0 && !destinoOptions.some((a) => a.id === current)) {
       form.setFieldValue("almacen_destino", 0);
+      destinoOrigen.current = "auto";
       return;
     }
     if (current === 0 && destinoOptions.length === 1) {
       form.setFieldValue("almacen_destino", destinoOptions[0].id);
+      destinoOrigen.current = "auto";
     }
   }, [almacenesDestino, destinoOptions, form]);
 
@@ -313,7 +339,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         const nextId = Number.isNaN(next) ? 0 : next;
                         field.handleChange(nextId);
                         clearError("pedido");
-                        preseleccionarDestinoSugerido(nextId);
+                        recalcularDestino(nextId);
                       }}
                       onBlur={field.handleBlur}
                       error={pedidoError}
@@ -389,6 +415,8 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                       onChange={(event) => {
                         const next = Number(event.target.value);
                         field.handleChange(Number.isNaN(next) ? 0 : next);
+                        destinoOrigen.current =
+                          form.getFieldValue("pedido") > 0 ? "manual" : "previo";
                         clearError("almacen_destino");
                       }}
                       onBlur={field.handleBlur}
