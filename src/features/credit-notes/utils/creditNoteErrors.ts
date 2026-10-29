@@ -74,6 +74,14 @@ export const creditNoteStampFailedMessage = (
 };
 
 /**
+ * Alta `Emitida` sin confirmación del backend (sin respuesta, timeout, 5xx) o
+ * con un `409` de concurrencia, que también puede salir del timbrado, DESPUÉS
+ * de guardar. No se afirma qué quedó registrado.
+ */
+export const CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE =
+  "No se pudo confirmar el resultado de la emisión: la nota pudo quedar registrada. Revisa el listado antes de capturarla de nuevo.";
+
+/**
  * Mensaje de un fallo de `timbrar/`, igual que `stampInvoiceErrorMessage`: el
  * motivo del backend tal cual bajo `cfdi` o `estatus`, luego cualquier campo, y
  * al final el extractor genérico. Un fallo sin confirmar no muestra el cuerpo.

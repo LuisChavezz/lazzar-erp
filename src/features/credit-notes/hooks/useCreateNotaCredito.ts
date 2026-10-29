@@ -3,7 +3,9 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
+import type { CreateNotaCreditoPayload } from "../interfaces/credit-note.interface";
 import {
+  CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE,
   creditNoteStampFailedMessage,
   isUnconfirmedFailure,
 } from "../utils/creditNoteErrors";
@@ -36,11 +38,14 @@ export type NotaCreditoHeaderErrorField =
  * `stampFailed`: el `400` trae `cfdi`, el timbrado falló. Emitir guarda y aplica
  * la nota ANTES de timbrarla, así que tampoco se puede afirmar que no se guardó
  * nada; `formError` es entonces el motivo del backend, sin más.
+ * `conflict`: `409` de concurrencia. Puede salir del timbrado, que bloquea la
+ * nota DESPUÉS de guardarla, así que en una emisión tampoco prueba nada.
  */
 export interface ParsedNotaCreditoError {
   formError?: string;
   unconfirmed?: boolean;
   stampFailed?: boolean;
+  conflict?: boolean;
   fieldErrors: Partial<Record<NotaCreditoHeaderErrorField, string>>;
   lineErrors: Record<number, Record<string, string>>;
   messages: string[];
@@ -117,6 +122,7 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
     return result;
   }
 
+  result.conflict = error.response?.status === 409;
   const data = error.response?.data;
 
   // Respuesta 4xx en texto plano.
@@ -270,9 +276,30 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
 }
 
 /**
+ * Aviso para un alta cuya nota PUDO quedar registrada, o `null` si el error
+ * prueba que no se guardó nada. Un `cfdi` siempre (el timbrado corre después
+ * de guardar). Sin confirmación (sin respuesta, timeout, 5xx) o un `409`, solo
+ * en un alta `Emitida`: esos fallos pueden ocurrir ya guardada y aplicada la
+ * nota, mientras que un borrador repetido no mueve ningún saldo.
+ */
+export const getCreateMayBeSavedMessage = (
+  parsed: ParsedNotaCreditoError,
+  estatus: CreateNotaCreditoPayload["estatus"],
+): string | null => {
+  if (parsed.stampFailed) {
+    return creditNoteStampFailedMessage("alta", parsed.formError ?? "");
+  }
+  if (estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
+    return CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE;
+  }
+  return null;
+};
+
+/**
  * Mutación de alta de nota de crédito. `onServerError` recibe el error ya
- * normalizado para que el formulario lo reparta entre el banner de "todo o
- * nada", los campos de cabecera y las líneas.
+ * normalizado para que el formulario lo reparta entre el banner, los campos de
+ * cabecera y las líneas, junto con el aviso de `getCreateMayBeSavedMessage`
+ * cuando la nota pudo quedar registrada.
  *
  * Refresca en `onSettled` (`invalidateCreditNoteQueries`) según lo enviado: una
  * nota EMITIDA baja el saldo de la cuenta por cobrar de su factura y puede
@@ -282,7 +309,10 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
  * (`document`).
  */
 export const useCreateNotaCredito = (
-  onServerError?: (parsed: ParsedNotaCreditoError) => void,
+  onServerError?: (
+    parsed: ParsedNotaCreditoError,
+    mayBeSavedMessage: string | null,
+  ) => void,
 ) => {
   const queryClient = useQueryClient();
 
@@ -295,12 +325,13 @@ export const useCreateNotaCredito = (
           : "Borrador de nota de crédito guardado",
       );
     },
-    onError: (error) => {
+    onError: (error, payload) => {
       const parsed = parseNotaCreditoError(error);
-      onServerError?.(parsed);
+      const mayBeSavedMessage = getCreateMayBeSavedMessage(parsed, payload.estatus);
+      onServerError?.(parsed, mayBeSavedMessage);
 
-      const toastMessage = parsed.stampFailed
-        ? creditNoteStampFailedMessage("alta", parsed.formError ?? "")
+      const toastMessage = mayBeSavedMessage
+        ? mayBeSavedMessage
         : parsed.messages.length > 0
           ? parsed.messages.join("\n")
           : parsed.formError ?? "Error al registrar la nota de crédito";
