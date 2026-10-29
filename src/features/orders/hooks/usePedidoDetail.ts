@@ -21,9 +21,8 @@ import type { PedidoDetail } from "../interfaces/order.interface";
 interface UsePedidoDetailOptions {
   /**
    * `"always"` fuerza la lectura al montar aunque la caché siga fresca
-   * (`staleTime` global de 15 min). Lo usa "Programar pedido": su guardado
-   * REEMPLAZA la lista entera, así que precargarla de una caché vieja borraría
-   * en silencio lo que otro usuario programó mientras tanto.
+   * (`staleTime` global de 15 min). Lo usa la página del detalle 360°
+   * (`usePedidoDetailPage`).
    */
   refetchOnMount?: boolean | "always";
 }
@@ -52,7 +51,7 @@ export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}
  * estado de error.
  *
  * Es un hook aparte y no un cambio en `usePedidoDetail` porque sus otros
- * consumidores (Programar pedido, edición de Mesa de Control, el detalle desde
+ * consumidores (edición de Mesa de Control, el detalle desde
  * picking) exigen datos leídos en ESA apertura y pintan su propio error en
  * línea: un toast compartido les duplicaría el aviso.
  *

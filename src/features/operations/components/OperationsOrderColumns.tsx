@@ -23,7 +23,6 @@ import {
   ChevronRightIcon,
   EditIcon,
   EyeIcon,
-  WarehouseIcon,
 } from "@/src/components/Icons";
 import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
@@ -49,7 +48,6 @@ export interface OperationsOrderColumnCallbacks {
   onViewDetail: (order: PedidoListItem) => void;
   onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
-  onReviewStock: (order: PedidoListItem) => void;
   onCancel: (order: PedidoListItem) => void;
 }
 
@@ -131,7 +129,6 @@ const FolioCell = ({
   onViewDetail,
   onEditMesaControl,
   onProgramar,
-  onReviewStock,
   onCancel,
 }: {
   order: PedidoListItem;
@@ -148,18 +145,13 @@ const FolioCell = ({
       permission: "E-MESACONTROL-PEDIDOS",
       visible: canEditPedidoMesaControl(order.estatus),
     },
+    // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
+    // "Revisar inventario".
     {
       label: "Programar",
       icon: CalendarDaysIcon,
       onSelect: () => onProgramar(order),
       permission: "E-MESACONTROL-PEDIDOS",
-      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
-    },
-    {
-      label: "Revisar inventario",
-      icon: WarehouseIcon,
-      onSelect: () => onReviewStock(order),
-      permission: "R-MESACONTROL-PEDIDOS",
       visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
     },
     // Un CANCELADO legado (`activo = true`, de antes de `/cancelar/`) sigue

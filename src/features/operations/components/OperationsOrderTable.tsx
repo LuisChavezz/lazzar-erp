@@ -24,7 +24,6 @@ export function OperationsOrderTable({
   onViewDetail,
   onEditMesaControl,
   onProgramar,
-  onReviewStock,
   onCancel,
   onRefetch,
   isRefetching,
@@ -37,10 +36,10 @@ export function OperationsOrderTable({
   const columns = useMemo(
     () =>
       buildOperationsOrderColumns(
-        { onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel },
+        { onViewDetail, onEditMesaControl, onProgramar, onCancel },
         buildOperationsOrderFilterOptions(orders),
       ),
-    [onViewDetail, onEditMesaControl, onProgramar, onReviewStock, onCancel, orders],
+    [onViewDetail, onEditMesaControl, onProgramar, onCancel, orders],
   );
 
   return (

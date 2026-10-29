@@ -17,6 +17,7 @@ import { sampleSkuLineSummary } from "../utils/orderLines";
 import { vincularSkuMuestra } from "../services/actions";
 import type { VincularSkuMuestraResponse } from "../interfaces/pedido-sku-muestra.interface";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 
 type LinkSampleSkuVariables = {
   pedidoId: number;
@@ -151,6 +152,8 @@ const refetchAfterLink = (
 ) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) }),
+    // El SKU de la talla en "Programar pedido".
+    queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) }),
     ...(cotizacionId
       ? [queryClient.invalidateQueries({ queryKey: ["quote", cotizacionId] })]
       : []),

@@ -15,7 +15,12 @@ import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/h
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
 import { programarPedido } from "../services/actions";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import {
+  isMesaControlPermisoError,
+  PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
+} from "../utils/pedidoProgramarErrors";
 import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
@@ -25,14 +30,15 @@ import type {
  * Claves de RECHAZO: motivos que no corresponden a ningún campo del formulario
  * y por eso van al toast. Mismo criterio que `useUpdatePedidoMesaControl`:
  *
- * - `permiso`: `_require_mesa_control` — HTTP 400 con el mensaje plano bajo la
- *   clave, no un 403.
  * - `detail`: `APIException` genéricos de DRF.
+ *
+ * El 400 de `permiso` (`_require_mesa_control`, no un 403) no pasa por aquí:
+ * `onError` lo traduce antes con `isMesaControlPermisoError`.
  *
  * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
  * muestra completa.
  */
-const REJECTION_KEYS = ["permiso", "detail"] as const;
+const REJECTION_KEYS = ["detail"] as const;
 
 const extractRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ?? firstRejectionMessage(data, REJECTION_KEYS);
@@ -78,6 +84,7 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
     mutationFn: ({ pedidoId, payload }) => programarPedido(pedidoId, payload),
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
+      queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) });
       // Paso "Programado" de la trazabilidad.
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -101,7 +108,9 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
             hasFieldIssues = true;
             onValidationError?.(issues);
           }
-          message = extractRejectionMessage(data);
+          message = isMesaControlPermisoError(error)
+            ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
+            : extractRejectionMessage(data);
         }
         // `get_object` acota por empresa: un pedido ajeno responde 404.
         if (statusCode === 404) {

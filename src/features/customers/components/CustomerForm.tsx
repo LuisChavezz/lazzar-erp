@@ -23,8 +23,11 @@ interface CustomerFormProps {
   invalidateOrderOnboarding?: boolean;
   /**
    * Muestra (y envía) la sección de Crédito. Solo la activa el formulario del
-   * módulo de clientes: las altas rápidas (cotización, accesos rápidos) no
-   * capturan condiciones de crédito.
+   * módulo de clientes, y solo para superusuario, admin de empresa o quien
+   * tiene `E-CRM-CLIENTES-CREDITO` (la regla de `tiene_permiso`; los dos
+   * primeros llegan con la lista de permisos vacía): las altas rápidas
+   * (cotización, accesos rápidos) no capturan condiciones de crédito.
+   * Apagada, alta y edición omiten `dias_credito`/`limite_credito`.
    */
   showCreditFields?: boolean;
 }

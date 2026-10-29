@@ -56,11 +56,56 @@ export interface PedidoProgramarPayload {
 
 /**
  * Respuesta del PATCH. `total_piezas` es el total AUTORITATIVO del servidor
- * (suma de `PedidoDetalleTalla.cantidad`) y `programacion_conf` lo releído de
- * base de datos, ya con el sello de fecha/usuario.
+ * (suma de `PedidoDetalleTalla.cantidad` sin líneas de muestra) y
+ * `programacion_conf` lo releído de base de datos, ya con el sello de
+ * fecha/usuario.
  */
 export interface PedidoProgramarResponse {
   pedido_id: number;
   total_piezas: number;
+  total_parcialidades: number;
   programacion_conf: PedidoProgramacionConf;
+}
+
+/**
+ * Un renglón de `GET /ventas/pedidos/{id}/programar/`: UNA talla del pedido
+ * (`PedidoDetalleTalla`), no una línea producto+color.
+ *
+ * `stock_disponible` es la existencia en el almacén `almacen_surtido` (hoy
+ * ALM-00, PRODUCTO TERMINADO) menos las reservas activas de OTROS pedidos, ya
+ * calculada por el backend; `faltante` es `max(cantidad - stock_disponible, 0)`.
+ * Ambos son `null` cuando la talla no tiene variante o su línea es de muestra.
+ *
+ * `servicios` se tipa como `string[]` (no como `PedidoProgramarServicio[]`):
+ * el backend podría sumar uno nuevo; la etiqueta lo resuelve
+ * `getPedidoProgramarServicioLabel`.
+ */
+export interface PedidoProgramarRenglon {
+  pedido_detalle_talla_id: number;
+  producto: string | null;
+  color: string | null;
+  talla: string;
+  sku: string | null;
+  variante_id: number | null;
+  es_muestra: boolean;
+  cantidad: number;
+  servicios: string[];
+  stock_disponible: number | null;
+  faltante: number | null;
+}
+
+/**
+ * `GET /ventas/pedidos/{id}/programar/`: todo lo que pinta "Programar pedido"
+ * en una sola lectura. `programacion_conf` nunca es `null` (el backend manda
+ * `{ programaciones: [] }` si no hay nada), pero viene de un `JSONField`, así
+ * que se lee con `getProgramacionesValidas`.
+ */
+export interface PedidoProgramarContexto {
+  pedido_id: number;
+  folio: string | null;
+  almacen_surtido: string;
+  total_piezas: number;
+  destinos_aplicables: string[];
+  programacion_conf: PedidoProgramacionConf;
+  renglones: PedidoProgramarRenglon[];
 }

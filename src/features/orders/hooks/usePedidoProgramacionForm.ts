@@ -6,11 +6,10 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
-import type { PedidoDetail } from "../interfaces/order.interface";
+import type { PedidoProgramarContexto } from "../interfaces/pedido-programacion.interface";
 import {
   createPedidoProgramacionFormValues,
   createPedidoProgramacionSchema,
-  getPedidoTotalPiezas,
   sumProgramacionCantidades,
 } from "../schemas/pedido-programacion.schema";
 import {
@@ -18,8 +17,8 @@ import {
   getDestinoNoAplicableMessage,
   getPedidoDestinosAplicables,
 } from "../constants/pedidoProgramacion";
-import { getPedidoDetail } from "../services/actions";
-import { pedidoDetailQueryKey } from "./usePedidoDetail";
+import { getPedidoProgramarContexto } from "../services/actions";
+import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { useProgramarPedido } from "./useProgramarPedido";
 
 const LIST_ERROR_KEY = "programaciones";
@@ -32,24 +31,27 @@ const ROW_FIELD_PATH_RE = /^programaciones\.(\d+)\./;
  * errores indexados por ruta, claves estables por renglón, `safeParse` en el
  * submit y `mutateAsync` con `try/catch` (el toast sale de la mutación).
  *
- * Recibe el pedido YA CARGADO: el diálogo solo monta el formulario con el
- * detalle fresco, así que los valores iniciales se calculan una vez.
+ * Recibe el contexto YA CARGADO (`GET .../programar/`): el diálogo solo monta
+ * el formulario con datos de esta apertura, así que los valores iniciales se
+ * calculan una vez. El techo de piezas es `total_piezas` del backend (sin
+ * líneas de muestra), el mismo con el que valida el PATCH.
  */
 export function usePedidoProgramacionForm({
-  pedido,
+  contexto,
   onSuccess,
 }: {
-  pedido: PedidoDetail;
+  contexto: PedidoProgramarContexto;
   onSuccess?: () => void;
 }) {
-  const totalPiezas = getPedidoTotalPiezas(pedido);
-  const destinosAplicables = getPedidoDestinosAplicables(pedido.destinos_aplicables);
+  const pedidoId = contexto.pedido_id;
+  const totalPiezas = contexto.total_piezas;
+  const destinosAplicables = getPedidoDestinosAplicables(contexto.destinos_aplicables);
 
   const queryClient = useQueryClient();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [initialValues] = useState(() => createPedidoProgramacionFormValues(pedido));
+  const [initialValues] = useState(() => createPedidoProgramacionFormValues(contexto.programacion_conf));
   const rowKeyCounter = useRef(initialValues.programaciones.length);
   const [rowKeys, setRowKeys] = useState<number[]>(() =>
     initialValues.programaciones.map((_, index) => index),
@@ -85,25 +87,33 @@ export function usePedidoProgramacionForm({
   };
 
   /**
-   * Relee el detalle para recalcular `destinos_aplicables` cuando el backend
+   * Relee el contexto para recalcular `destinos_aplicables` cuando el backend
    * rechaza la LISTA: el pedido pudo cambiar de servicios con el diálogo
    * abierto y la regla en vivo marcará el renglón afectado. No se interpreta el
    * texto del 400: cualquier error de lista relee.
    *
    * Por qué NO resetea el formulario: los valores iniciales viven en un
    * `useState` (misma referencia para siempre), así que `useForm` no ve cambiar
-   * `defaultValues`; el nuevo detalle solo cambia `pedido`, del que se derivan
-   * `destinosAplicables` y `totalPiezas`. Se lee con la acción directa y se
+   * `defaultValues`; el contexto nuevo solo cambia `contexto`, del que se derivan
+   * `destinosAplicables`, `totalPiezas` y la tabla de tallas. Se lee con la acción directa y se
    * escribe con `setQueryData`, no con `refetch`: un refetch FALLIDO pondría la
    * query en error y el diálogo cambiaría el formulario por su `ErrorState`,
-   * perdiendo lo capturado. Si la relectura falla, se conserva el detalle actual.
+   * perdiendo lo capturado. Si la relectura falla, se conserva el contexto actual.
    */
-  const refreshPedidoDetail = async () => {
+  const refreshContexto = async () => {
     try {
-      const fresh = await getPedidoDetail(pedido.id);
-      queryClient.setQueryData(pedidoDetailQueryKey(pedido.id), fresh);
+      const fresh = await getPedidoProgramarContexto(pedidoId);
+      // Solo con el diálogo aún abierto: escribir tras el cierre crearía la
+      // entrada con el `gcTime` por defecto y la próxima apertura podría
+      // montar el formulario con estos datos (ver `usePedidoProgramarContexto`).
+      const query = queryClient
+        .getQueryCache()
+        .find({ queryKey: pedidoProgramarQueryKey(pedidoId), exact: true });
+      if (query && query.getObserversCount() > 0) {
+        queryClient.setQueryData(pedidoProgramarQueryKey(pedidoId), fresh);
+      }
     } catch {
-      // El 400 original ya se mostró; sin detalle nuevo no hay nada que recalcular.
+      // El 400 original ya se mostró; sin contexto nuevo no hay nada que recalcular.
     }
   };
 
@@ -116,7 +126,7 @@ export function usePedidoProgramacionForm({
       return next;
     });
     if (issues.some((issue) => issue.path === LIST_ERROR_KEY)) {
-      void refreshPedidoDetail();
+      void refreshContexto();
     }
   };
 
@@ -145,7 +155,7 @@ export function usePedidoProgramacionForm({
         // Lista COMPLETA (reemplazo total) con destino, cantidad y comentarios
         // (`null` si está vacío). La fecha y el usuario los sella el servidor.
         await programarMutation({
-          pedidoId: pedido.id,
+          pedidoId,
           payload: {
             programaciones: parsed.data.programaciones.map(
               ({ destino, cantidad, comentarios }) => ({ destino, cantidad, comentarios }),

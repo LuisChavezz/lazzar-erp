@@ -10,7 +10,7 @@ import {
   PEDIDO_PROGRAMACION_DESTINOS,
   type PedidoProgramacionDestino,
 } from "../constants/pedidoProgramacion";
-import type { PedidoDetail } from "../interfaces/order.interface";
+import type { PedidoProgramacionConf } from "../interfaces/pedido-programacion.interface";
 import { getProgramacionesValidas } from "../utils/pedidoProgramacion";
 
 /**
@@ -56,16 +56,6 @@ const pedidoProgramacionRowSchema = z.object({
     )
     .transform((value) => (value === "" ? null : value)),
 });
-
-/**
- * Suma de piezas del pedido: `detalles[].cantidad_total`, que el backend
- * calcula como la suma de las cantidades de las tallas de la línea
- * (`PedidoDetalleReadSerializer.get_cantidad_total`). Sumado sobre todas las
- * líneas es el mismo agregado con el que `programar` valida
- * (`PedidoDetalleTalla.cantidad`). NO se usa `tracker_picking.total_prendas_pedido`.
- */
-export const getPedidoTotalPiezas = (pedido: PedidoDetail): number =>
-  (pedido.detalles ?? []).reduce((sum, linea) => sum + (Number(linea.cantidad_total) || 0), 0);
 
 /** Cantidad capturada como entero, o `0` si el texto aún no es un entero. */
 export const parseProgramacionCantidad = (cantidad: string): number =>
@@ -123,9 +113,9 @@ export const createPedidoProgramacionSchema = (
  * programados" para que el diálogo y la tabla cuenten los mismos renglones.
  */
 export const createPedidoProgramacionFormValues = (
-  pedido: PedidoDetail,
+  programacionConf: PedidoProgramacionConf | null | undefined,
 ): PedidoProgramacionFormValues => ({
-  programaciones: getProgramacionesValidas(pedido.programacion_conf).map((programacion) => ({
+  programaciones: getProgramacionesValidas(programacionConf).map((programacion) => ({
     destino: typeof programacion.destino === "string" ? programacion.destino : "",
     cantidad: String(programacion.cantidad ?? ""),
     comentarios: programacion.comentarios,
