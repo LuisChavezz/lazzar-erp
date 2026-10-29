@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, EditIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, EditIcon, UserIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Button } from "@/src/components/Button";
@@ -13,9 +13,12 @@ import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import {
   InfoField,
   InfoGrid,
+  InfoTile,
+  InfoTileGrid,
   Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -103,9 +106,6 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
               config={ACTIVO_INACTIVO_CFG}
             />
           </div>
-          <p className="font-mono text-sm text-slate-500 dark:text-slate-400">
-            {employee.numero_empleado}
-          </p>
         </div>
 
         {canEditHr && (
@@ -115,11 +115,12 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
                 title="Editar Empleado"
                 subtitle="Edición de registro"
                 statusColor="emerald"
+                icon={UserIcon}
               />
             }
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
-            maxWidth="1000px"
+            maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
             trigger={
               <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
                 <span className="flex items-center gap-2">
@@ -133,6 +134,25 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
           </MainDialog>
         )}
       </div>
+
+      {/*
+        Datos de la relación laboral como mosaicos de encabezado: lo que se
+        busca primero al abrir un expediente. La fecha de baja solo existe en
+        un empleado inactivo.
+      */}
+      <InfoTileGrid>
+        <InfoTile label="Número de empleado">
+          <span className="font-mono">{employee.numero_empleado}</span>
+        </InfoTile>
+        <InfoTile label="Puesto">{textOrDash(positionName)}</InfoTile>
+        <InfoTile label="Departamento">{textOrDash(departmentName)}</InfoTile>
+        <InfoTile label="Sucursal">{textOrDash(branchName)}</InfoTile>
+        <InfoTile label="Turno">{textOrDash(shiftName)}</InfoTile>
+        <InfoTile label="Fecha de ingreso">{formatLocalDate(employee.fecha_ingreso)}</InfoTile>
+        {!employee.activo && (
+          <InfoTile label="Fecha de baja">{formatLocalDate(employee.fecha_baja)}</InfoTile>
+        )}
+      </InfoTileGrid>
 
       <Section title="Datos personales">
         <InfoGrid>
@@ -174,26 +194,6 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
           <InfoField label="Ciudad">{textOrDash(employee.ciudad)}</InfoField>
           <InfoField label="Estado (entidad federativa)">
             {textOrDash(employee.estado)}
-          </InfoField>
-        </InfoGrid>
-      </Section>
-
-      <Section title="Datos laborales">
-        <InfoGrid>
-          <InfoField label="Número de empleado">
-            <span className="font-mono">{employee.numero_empleado}</span>
-          </InfoField>
-          <InfoField label="Puesto">{textOrDash(positionName)}</InfoField>
-          <InfoField label="Departamento">{textOrDash(departmentName)}</InfoField>
-          <InfoField label="Sucursal">{textOrDash(branchName)}</InfoField>
-          <InfoField label="Turno">{textOrDash(shiftName)}</InfoField>
-          <InfoField label="Fecha de ingreso">{formatLocalDate(employee.fecha_ingreso)}</InfoField>
-          <InfoField label="Fecha de baja">{formatLocalDate(employee.fecha_baja)}</InfoField>
-          <InfoField label="Estatus">
-            <StatusBadge
-              status={employee.activo ? "activo" : "inactivo"}
-              config={ACTIVO_INACTIVO_CFG}
-            />
           </InfoField>
         </InfoGrid>
       </Section>
