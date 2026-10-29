@@ -10,6 +10,7 @@ import {
 } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { useIsCompanyAdmin } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
@@ -53,7 +54,13 @@ export const CustomerList = () => {
   // Días y límite de crédito: el backend rechaza (400) cambiarlos sin
   // `E-CRM-CLIENTES-CREDITO`. Sin él la sección no se muestra ni en alta ni en
   // edición, y `useCustomerForm` deja esos campos fuera del payload.
-  const canEditCredit = hasPermission("E-CRM-CLIENTES-CREDITO", session?.user);
+  // Misma regla que `tiene_permiso` del backend: superusuario o admin de
+  // empresa (`useIsCompanyAdmin`), o el código en la lista. NO `hasPermission`:
+  // su atajo de `role === "admin"` también cubre `is_staff`, que el backend no
+  // exime.
+  const isCompanyAdmin = useIsCompanyAdmin();
+  const canEditCredit =
+    isCompanyAdmin || (session?.user?.permissions ?? []).includes("E-CRM-CLIENTES-CREDITO");
 
   const isEditing = Boolean(customerToEdit?.id);
 
