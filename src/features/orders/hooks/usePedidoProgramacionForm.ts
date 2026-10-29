@@ -103,7 +103,15 @@ export function usePedidoProgramacionForm({
   const refreshContexto = async () => {
     try {
       const fresh = await getPedidoProgramarContexto(pedidoId);
-      queryClient.setQueryData(pedidoProgramarQueryKey(pedidoId), fresh);
+      // Solo con el diálogo aún abierto: escribir tras el cierre crearía la
+      // entrada con el `gcTime` por defecto y la próxima apertura podría
+      // montar el formulario con estos datos (ver `usePedidoProgramarContexto`).
+      const query = queryClient
+        .getQueryCache()
+        .find({ queryKey: pedidoProgramarQueryKey(pedidoId), exact: true });
+      if (query && query.getObserversCount() > 0) {
+        queryClient.setQueryData(pedidoProgramarQueryKey(pedidoId), fresh);
+      }
     } catch {
       // El 400 original ya se mostró; sin contexto nuevo no hay nada que recalcular.
     }
