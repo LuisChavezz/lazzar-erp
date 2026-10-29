@@ -27,8 +27,8 @@ export type NotaCreditoHeaderErrorField =
 /**
  * Error de alta de nota de crédito, normalizado desde el contrato del backend a
  * una forma que el formulario puede pintar de tres maneras:
- *  - `formError`   → banner de "todo o nada" (detail / non_field_errors / el
- *                    error de parentesco de línea, que NO viene indexado).
+ *  - `formError`   → banner del formulario (`cfdi` / detail / non_field_errors /
+ *                    el error de parentesco de línea, que NO viene indexado).
  *  - `fieldErrors` → error bajo un campo de cabecera.
  *  - `lineErrors`  → error por línea, indexado por posición; la clave `_form`
  *                    guarda un error a nivel de línea no atribuible a un campo.
@@ -92,7 +92,7 @@ const HEADER_FIELDS: NotaCreditoHeaderErrorField[] = [
  * pudiera pintarse.
  *
  * Siempre devuelve un objeto (nunca `null`): ante un error inesperado deja un
- * `formError` genérico para que el banner de "todo o nada" siempre aparezca.
+ * `formError` genérico para que el banner siempre aparezca.
  */
 export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   const result: ParsedNotaCreditoError = {
@@ -155,7 +155,9 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
 
   const record = data as Record<string, unknown>;
 
-  // ── Errores a nivel operación (todo o nada) ──────────────────────────────
+  // ── Errores a nivel operación ────────────────────────────────────────────
+  // Todos menos `cfdi` son "todo o nada": nada quedó guardado. `cfdi` llega
+  // DESPUÉS de guardar la nota (`stampFailed`).
   // `cfdi` primero: al emitir (y en `timbrar/`), el motivo del rechazo de
   // Facturama o de los datos fiscales llega en esa llave. Se muestra tal cual,
   // sin interpretar su texto: el mismo `cfdi` cubre resultados distintos (nota
