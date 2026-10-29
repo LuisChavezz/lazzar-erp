@@ -18,7 +18,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
-import { getColumns, EmployeeRow, EMPLOYEE_HEADER_FILTERS } from "./EmployeeColumns";
+import { getColumns, EMPLOYEE_HEADER_FILTERS } from "./EmployeeColumns";
 import { Employee } from "../interfaces/employee.interface";
 import EmployeeForm from "./EmployeeForm";
 import { useEmployees } from "../hooks/useEmployees";
@@ -26,7 +26,11 @@ import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
 import { useReactivateEmployee } from "../hooks/useReactivateEmployee";
 import { EmployeeRowActionsProvider, usePendingEmployeeIds } from "../hooks/useEmployeeRowActions";
 import { getEmployeeFullName } from "../utils/employeeName";
-import { EMPLOYEE_GONE_MESSAGE, employeeActivoChangedMessage } from "../hooks/employeeStaleMessages";
+import {
+  buildEmployeeRows,
+  getStaleEmployeeDialogNotice,
+  type StaleEmployeeDialogNotice,
+} from "../utils/employeeRows";
 
 export default function EmployeeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +47,7 @@ export default function EmployeeList() {
   // Aviso de un diálogo de fila que se cerró porque su empleado cambió por
   // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
   // otro componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  const [staleNotice, setStaleNotice] = useState<StaleEmployeeDialogNotice | null>(null);
 
   // Catálogos para resolver los FK de las columnas. Las sucursales ya están en
   // el workspace (no dispara otra petición), igual que en `WarehouseList`.
@@ -86,13 +90,11 @@ export default function EmployeeList() {
   // Los nombres se incorporan a la FILA, no al accessor: así la llegada tardía
   // de su catálogo produce un `data` nuevo y TanStack recalcula celda,
   // búsqueda, orden y opciones de filtro. Ver `EmployeeRow`.
-  const rows: EmployeeRow[] = employees.map((employee) => ({
-    ...employee,
-    puesto_nombre: positionNameById.get(employee.puesto) ?? `Puesto #${employee.puesto}`,
-    departamento_nombre:
-      departmentNameById.get(employee.departamento) ?? `Departamento #${employee.departamento}`,
-    sucursal_nombre: branchNameById.get(employee.sucursal) ?? `Sucursal #${employee.sucursal}`,
-  }));
+  const rows = buildEmployeeRows(employees, {
+    positionNameById,
+    departmentNameById,
+    branchNameById,
+  });
 
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `EmployeeRowActionsProvider`, así una acción no remonta las celdas.
@@ -114,32 +116,30 @@ export default function EmployeeList() {
   const isReactivating =
     reactivateTargetId !== null && (busyIds.includes(reactivateTargetId) || isReactivatePending);
 
-  /**
-   * Vía rápida contra la caché: un refetch mostró que el empleado de un
-   * diálogo abierto ya no existe o cambió de `activo`. Se avisa, para que el
-   * diálogo no desaparezca sin explicación. Mismo patrón que `VacationList`.
-   */
-  const closeStale = (id: number, target: EmployeeRow | null) =>
-    setStaleNotice({
-      key: `employee-stale-${id}-${target ? String(target.activo) : "gone"}`,
-      message: target ? employeeActivoChangedMessage(target.activo) : EMPLOYEE_GONE_MESSAGE,
-    });
-
-  // Un id que ya no aplica no queda colgado (un refetch posterior reabriría el
-  // diálogo solo). Mientras SU acción está en vuelo no se toca: el optimista
-  // invierte `activo` al arrancar y el diálogo lo cierra el `onSettled` de la
-  // mutación, sin aviso. Ajuste en render, no en un efecto.
-  if (deactivateTargetId !== null && !isDeactivating && !deactivateTarget?.activo) {
+  // Vía rápida contra la caché: un refetch mostró que el empleado de un
+  // diálogo abierto ya no existe o cambió de `activo` por fuera. Se cierra con
+  // un aviso, para que no desaparezca sin explicación (mismo patrón que
+  // `VacationList`); la regla vive en `getStaleEmployeeDialogNotice`. Ajuste
+  // en render, no en un efecto.
+  const staleDeactivate = getStaleEmployeeDialogNotice({
+    targetId: deactivateTargetId,
+    target: deactivateTarget,
+    expectedActivo: true,
+    isBusy: isDeactivating,
+  });
+  if (staleDeactivate) {
     setDeactivateTargetId(null);
-    closeStale(deactivateTargetId, deactivateTarget);
+    setStaleNotice(staleDeactivate);
   }
-  if (
-    reactivateTargetId !== null &&
-    !isReactivating &&
-    (reactivateTarget === null || reactivateTarget.activo)
-  ) {
+  const staleReactivate = getStaleEmployeeDialogNotice({
+    targetId: reactivateTargetId,
+    target: reactivateTarget,
+    expectedActivo: false,
+    isBusy: isReactivating,
+  });
+  if (staleReactivate) {
     setReactivateTargetId(null);
-    closeStale(reactivateTargetId, reactivateTarget);
+    setStaleNotice(staleReactivate);
   }
 
   useEffect(() => {
