@@ -6,6 +6,7 @@ import {
   HelpIcon,
   PackageCheckIcon,
   PackageXIcon,
+  SpecialOrdersIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -82,20 +83,31 @@ const PARTIDA_ICONS: Record<PartidaCoverage, React.ComponentType<{ className?: s
 const TH = "py-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 const DASH = <span className="text-slate-300 dark:text-slate-600">—</span>;
 
-function PartidaCard({ partida }: { partida: ProgramarPartida }) {
+/**
+ * `numero` es la posición de la partida en el orden del GET: con el mismo
+ * producto y color en varias partidas, es lo único que las distingue.
+ */
+function PartidaCard({ partida, numero }: { partida: ProgramarPartida; numero: number }) {
   const styles = partida.coverage ? COVERAGE_STYLES[partida.coverage] : MUESTRA_STYLE;
-  const ItemIcon = partida.coverage ? PARTIDA_ICONS[partida.coverage] : HelpIcon;
+  // La muestra lleva el ícono de pedidos especiales; `HelpIcon` queda para "Sin medir".
+  const ItemIcon = partida.coverage ? PARTIDA_ICONS[partida.coverage] : SpecialOrdersIcon;
   const producto = textOrDash(partida.producto);
+  const partidaLabel = [`Partida ${numero}`, producto, partida.color].filter(Boolean).join(" · ");
 
   return (
     <section
       className={`rounded-2xl border overflow-hidden ${styles.card}`}
-      aria-label={`Partida ${producto}`}
+      aria-label={partidaLabel}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         <ItemIcon className={`w-4 h-4 shrink-0 ${styles.icon}`} aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{producto}</p>
+          <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
+            <span className="mr-1.5 text-slate-400 dark:text-slate-500 tabular-nums">
+              Partida {numero}
+            </span>
+            {producto}
+          </p>
           {partida.color && (
             <p className="text-[11px] text-slate-500 dark:text-slate-400">Color {partida.color}</p>
           )}
@@ -121,6 +133,7 @@ function PartidaCard({ partida }: { partida: ProgramarPartida }) {
               checked={false}
               disabled
               readOnly
+              aria-label={`Solicitar producción, ${partidaLabel} (próximamente)`}
               className="w-3.5 h-3.5 rounded border-slate-300 cursor-not-allowed"
             />
             Solicitar producción · Próximamente
@@ -129,7 +142,7 @@ function PartidaCard({ partida }: { partida: ProgramarPartida }) {
       </div>
 
       <div className="border-t border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-black/10 overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-xs" aria-label={`Tallas de ${producto}`}>
+        <table className="w-full min-w-[36rem] text-xs" aria-label={`Tallas de ${partidaLabel}`}>
           <thead>
             <tr className="bg-slate-50/80 dark:bg-white/5 border-b border-slate-200/70 dark:border-white/10">
               <th className={`${TH} text-left`}>Talla</th>
@@ -366,8 +379,8 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
         </div>
       ) : (
         <div className="space-y-2.5">
-          {partidas.map((partida) => (
-            <PartidaCard key={partida.id} partida={partida} />
+          {partidas.map((partida, index) => (
+            <PartidaCard key={partida.id} partida={partida} numero={index + 1} />
           ))}
           {/* Afirmación de TODO el pedido: solo si todas las partidas de
               catálogo están cubiertas (una "Sin medir" no se puede comprobar). */}
