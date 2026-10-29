@@ -23,10 +23,11 @@ export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente
 
 /**
  * ¿Se ofrece "Timbrar" para esta nota? Solo una `Emitida` sin CFDI y sin
- * timbrado pendiente. Emitir ya intenta timbrar, así que esto es el camino de
- * recuperación para las `Emitida` que quedaron sin timbre (p. ej. emitidas
- * sobre una factura que aún no estaba timbrada). Un `Borrador` no se ofrece: se
- * timbra al emitirlo.
+ * timbrado pendiente. Emitir ya timbra (y desde nucleo-erp #732 ya no deja una
+ * nota emitida sin CFDI por una factura sin timbrar: lo rechaza sin guardar),
+ * así que esto es el camino de recuperación para las `Emitida` sin timbre que
+ * quedaron de antes o cuyo timbrado pendiente un administrador liberó. Un
+ * `Borrador` no se ofrece: se timbra al emitirlo.
  */
 export const isCreditNoteStampable = (
   nota: Pick<NotaCredito, "estatus" | "cfdi_uuid" | "cfdi_pendiente">,
@@ -92,8 +93,9 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
  * Motivo por el que NO se puede EMITIR una nota sobre esta factura —alta como
  * `Emitida` o "Emitir" de un borrador—, o `null`. Suma a
  * `getRelatedInvoiceCancelledReason` el timbrado sin confirmar de la factura
- * (`cfdi_pendiente`): `validar_factura` no lo rechaza, así que la nota se
- * guardaría y aplicaría, fallaría al timbrarse y quedaría `Cancelada`. Un
+ * (`cfdi_pendiente`): sin UUID, el backend rechaza el CFDI de la nota con un
+ * `400` en `cfdi` SIN `nota_credito`, que el formulario de alta trata como
+ * "pudo quedar registrada" y bloquea. Decirlo antes evita ese bloqueo. Un
  * borrador sí se puede guardar sobre ella.
  */
 export const getRelatedInvoiceEmitBlockReason = (
@@ -192,11 +194,12 @@ export const getCreditNoteCancelBlockReason = (
 };
 
 /**
- * Aviso de la emisión. El backend guarda la nota `Emitida`, la aplica a la
- * cuenta por cobrar y DESPUÉS intenta timbrar su CFDI de egreso. Si el timbrado
- * falla, la nota puede quedar cancelada, emitida sin CFDI o con el timbrado
- * pendiente; sobre una factura sin timbrar se emite sin CFDI. Los resultados se
- * enuncian como posibles ("puede"), sin atarse a cuál ocurre en cada caso.
+ * Aviso de la emisión, según nucleo-erp #732. El backend valida el CFDI dentro
+ * de la transacción que aplica la nota a la cuenta por cobrar (factura sin
+ * timbrar o datos fiscales faltantes: no se guarda nada) y DESPUÉS timbra. Si
+ * Facturama rechaza, la emisión se revierte con el saldo intacto (un alta queda
+ * `Cancelada`, un borrador vuelve a `Borrador`); si no confirma, la nota queda
+ * emitida con el timbrado pendiente.
  */
 export const CREDIT_NOTE_EMIT_STAMP_WARNING =
-  "Al emitirla se intentará timbrar su CFDI de egreso ante el SAT. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si el timbrado falla, la nota puede quedar cancelada, emitida sin CFDI o con el timbrado pendiente de confirmación. Si la factura aún no está timbrada, la nota puede emitirse sin CFDI y timbrarse después con \"Timbrar\".";
+  "Al emitirla se timbrará su CFDI de egreso ante el SAT, así que la factura debe estar timbrada. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si Facturama rechaza el timbrado, la emisión se revierte y el saldo por cobrar no cambia. Si Facturama no lo confirma, la nota queda emitida con el timbrado pendiente de confirmación.";

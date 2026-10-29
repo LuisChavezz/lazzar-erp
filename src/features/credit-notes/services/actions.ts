@@ -41,10 +41,13 @@ export const getNotaCredito = async (id: number): Promise<NotaCredito> => {
  * líneas y banner.
  *
  * Si `estatus` es `"Emitida"`, el backend aplica el crédito a la cuenta por
- * cobrar de la factura DENTRO de la misma transacción: un rechazo (factura sin
- * CxC, total mayor al saldo) significa que NO se creó nada. El timbrado corre
- * DESPUÉS, fuera de esa transacción: un `400` con `cfdi` llega con la nota ya
- * guardada (cancelada, emitida sin CFDI o con el timbrado pendiente).
+ * cobrar de la factura y valida su CFDI DENTRO de la misma transacción: un
+ * rechazo (factura sin CxC, cancelada o sin timbrar, total mayor al saldo, datos
+ * fiscales) significa que NO se creó nada. El timbrado corre DESPUÉS, fuera de
+ * esa transacción: si falla, el `400` trae `cfdi` y `nota_credito: {id, estatus}`
+ * con la nota ya guardada (`Cancelada` si Facturama rechazó, `Emitida` con el
+ * timbrado pendiente si no confirmó). Exige `E-FIN-FACTURAS` en la empresa de
+ * Facturama (`403` sin guardar nada).
  */
 export const createNotaCredito = async (
   payload: CreateNotaCreditoPayload,
@@ -66,9 +69,10 @@ export const createNotaCredito = async (
  * `nota_credito_detalles` en el cuerpo se ignoraría en silencio; por eso no se
  * manda.
  *
- * `perform_update` aplica el crédito cuando el estatus PASA a `Emitida` desde
- * otro valor, con las mismas validaciones que el alta emitida (factura con CxC,
- * total menor o igual al saldo).
+ * `perform_update` aplica el crédito y timbra cuando el estatus PASA a
+ * `Emitida` desde otro valor, con las mismas validaciones y el mismo permiso que
+ * el alta emitida. Si Facturama rechaza, la nota vuelve a `Borrador` con el
+ * saldo intacto y el `400` lo dice en `nota_credito`.
  */
 export const emitirNotaCredito = async (id: number): Promise<NotaCredito> => {
   const payload: EmitirNotaCreditoPayload = { estatus: "Emitida" };
