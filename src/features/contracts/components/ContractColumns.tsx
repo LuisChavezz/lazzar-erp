@@ -155,7 +155,7 @@ export const getColumns = (permissions: ContractColumnPermissions) => {
 export const CONTRACT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ContractRow>>> = {
   empleado: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
   tipo: { type: "options", get: (r) => r.tipo, options: TIPO_CONTRATO_OPTIONS },
-  estado: { type: "options", filterLabel: "estado", get: (r) => r.estado, options: optionsFromConfig(ESTADO_CONTRATO_CFG) },
+  estado: { type: "options", get: (r) => r.estado, options: optionsFromConfig(ESTADO_CONTRATO_CFG) },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
   fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha de fin" },
 };

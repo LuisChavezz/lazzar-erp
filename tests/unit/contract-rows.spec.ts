@@ -108,9 +108,10 @@ test.describe("contratos › filtro de `estado` (negocio) en su columna", () => 
     expect(matching("estado", "suspendido")).toEqual([4]);
   });
 
-  test("su ficha se titula \"Estado\": las dos fichas \"Activo\" se distinguen", () => {
-    expect(column("estado").meta?.filterLabel).toBe("Estado");
-    expect(column("estado").meta?.filterLabel).not.toBe(column("empleado").meta?.filterLabel);
+  test("su ficha se titula con la columna (\"Estado\"): las dos fichas \"Activo\" se distinguen", () => {
+    expect(column("estado").meta?.filterLabel).toBeUndefined();
+    expect(column("estado").meta?.label).toBe("Estado");
+    expect(column("estado").meta?.label).not.toBe(column("empleado").meta?.filterLabel);
   });
 
   test("el catálogo completo en su orden (con su punto) y al final el código desconocido, crudo", () => {
