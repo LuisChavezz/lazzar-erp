@@ -22,7 +22,11 @@ import {
 import { useCreditNoteForm } from "../hooks/useCreditNoteForm";
 import { InvoiceSelectorDialog } from "./InvoiceSelectorDialog";
 import { InvoiceLinesSelectorDialog } from "./InvoiceLinesSelectorDialog";
-import { CREDIT_NOTE_EMIT_STAMP_WARNING } from "../utils/creditNoteStamping";
+import {
+  CREDIT_NOTE_EMIT_STAMP_WARNING,
+  getRelatedInvoiceEmitBlockReason,
+} from "../utils/creditNoteStamping";
+import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
 
 interface CreditNoteFormProps {
   onSuccess: () => void;
@@ -86,6 +90,15 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   const estatusIntent = useStore(form.store, (state) => state.values.estatus);
 
   const selectedDetalleIds = lines.map((line) => line.factura_detalle);
+
+  // Estado de la factura elegida según el listado de facturas (el mismo que
+  // cruza el selector, misma caché). Con su timbrado sin confirmar
+  // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir: la nota se
+  // aplicaría, fallaría al timbrarse y quedaría `Cancelada`. Sin el listado no
+  // se bloquea aquí; el precheck previo al alta `Emitida` lo vuelve a comprobar.
+  const { invoices } = useInvoices();
+  const facturaRow = factura > 0 ? invoices.find((invoice) => invoice.id === factura) : undefined;
+  const emitBlockReason = facturaRow ? getRelatedInvoiceEmitBlockReason(facturaRow) : null;
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún
   // campo del payload. El importe que se acredita es el `total` capturado abajo
@@ -484,12 +497,22 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             <>
               {/* El alta con "Emitir nota" no pasa por una confirmación: el aviso del
                   timbrado va visible junto a los botones, descrito por "Emitir nota". */}
-              <p
-                id="credit-note-emit-stamp-warning"
-                className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
-              >
-                {CREDIT_NOTE_EMIT_STAMP_WARNING}
-              </p>
+              {emitBlockReason ? (
+                <p
+                  id="credit-note-emit-block-reason"
+                  role="status"
+                  className="mb-3 text-xs font-medium text-amber-700 dark:text-amber-400 text-right"
+                >
+                  {emitBlockReason}
+                </p>
+              ) : (
+                <p
+                  id="credit-note-emit-stamp-warning"
+                  className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
+                >
+                  {CREDIT_NOTE_EMIT_STAMP_WARNING}
+                </p>
+              )}
               <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
                 <FormCancelButton onClick={handleReset} disabled={isPending} />
                 {/* Dos salidas explícitas. Guardar como borrador NO toca la cuenta
@@ -508,7 +531,12 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                 <FormSubmitButton
                   type="button"
                   onClick={() => submitAs("Emitida")}
-                  aria-describedby="credit-note-emit-stamp-warning"
+                  disabled={emitBlockReason !== null}
+                  aria-describedby={
+                    emitBlockReason
+                      ? "credit-note-emit-block-reason"
+                      : "credit-note-emit-stamp-warning"
+                  }
                   isPending={isPending && estatusIntent === "Emitida"}
                   loadingLabel="Emitiendo..."
                   className="bg-amber-600! hover:bg-amber-700! focus:ring-amber-500!"

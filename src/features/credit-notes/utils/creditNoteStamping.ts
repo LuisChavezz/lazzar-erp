@@ -74,6 +74,25 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
 };
 
 /**
+ * Motivo por el que NO se puede EMITIR una nota sobre esta factura —alta como
+ * `Emitida` o "Emitir" de un borrador—, o `null`. Suma a
+ * `getRelatedInvoiceCancelledReason` el timbrado sin confirmar de la factura
+ * (`cfdi_pendiente`): `validar_factura` no lo rechaza, así que la nota se
+ * guardaría y aplicaría, fallaría al timbrarse y quedaría `Cancelada`. Un
+ * borrador sí se puede guardar sobre ella.
+ */
+export const getRelatedInvoiceEmitBlockReason = (
+  invoice: Parameters<typeof getRelatedInvoiceCancelledReason>[0] & { cfdi_pendiente?: boolean },
+): string | null => {
+  const cancelledReason = getRelatedInvoiceCancelledReason(invoice);
+  if (cancelledReason) return cancelledReason;
+  if (invoice.cfdi_pendiente === true) {
+    return `${relatedInvoiceLabel(invoice.folio)} tiene un timbrado pendiente de confirmación: guarda la nota como borrador y emítela cuando se confirme.`;
+  }
+  return null;
+};
+
+/**
  * Motivo por el que una factura NO admite notas de crédito nuevas, ni siquiera
  * como borrador, o `null`. `invoice` es la factura tal como la devuelve el
  * listado o el retrieve; `undefined` si no figura en el listado. Sin ella, o
