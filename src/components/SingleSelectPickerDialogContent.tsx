@@ -37,6 +37,13 @@ interface SingleSelectPickerDialogContentProps<T> {
    * `SearchableSelectList.pinSelected`, issue #262).
    */
   pinSelected?: boolean;
+  /**
+   * OPCIONAL (apagado por defecto): motivo por el que un ítem no se puede
+   * elegir, o `null` (ver `SearchableSelectList.getItemDisabledReason`). Si la
+   * selección con que se abre cae en un ítem deshabilitado, "Confirmar
+   * selección" queda deshabilitado hasta elegir otro.
+   */
+  getItemDisabledReason?: (item: T) => string | null;
 }
 
 /**
@@ -73,15 +80,18 @@ export function SingleSelectPickerDialogContent<T>({
   onConfirm,
   onCancel,
   pinSelected = false,
+  getItemDisabledReason,
 }: SingleSelectPickerDialogContentProps<T>) {
   // Selección tentativa: no se propaga al formulario hasta confirmar.
   const [tentativeKey, setTentativeKey] = useState<string | number | null>(selectedKey);
-  const isConfirmDisabled = tentativeKey === null || isLoading || isError;
+  const tentativeItem = items.find((i) => getKey(i) === tentativeKey);
+  const isTentativeDisabled =
+    tentativeItem !== undefined && (getItemDisabledReason?.(tentativeItem) ?? null) !== null;
+  const isConfirmDisabled = tentativeKey === null || isLoading || isError || isTentativeDisabled;
 
   const handleConfirm = () => {
-    const item = items.find((i) => getKey(i) === tentativeKey);
-    if (!item) return;
-    onConfirm(item);
+    if (!tentativeItem || isTentativeDisabled) return;
+    onConfirm(tentativeItem);
   };
 
   return (
@@ -107,6 +117,7 @@ export function SingleSelectPickerDialogContent<T>({
           renderIndicator={renderRadioIndicator}
           renderContent={renderContent}
           pinSelected={pinSelected}
+          getItemDisabledReason={getItemDisabledReason}
         />
       )}
 
