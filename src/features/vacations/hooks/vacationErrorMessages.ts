@@ -54,3 +54,9 @@ export const VACATION_OVERLAP_CHECK_FAILED_MESSAGE =
 /** Error de una acción sobre una solicitud: ver `drfActionErrorMessage`. */
 export const vacationActionErrorMessage = (error: unknown, fallback: string): string =>
   drfActionErrorMessage(error, fallback, VACATION_GONE_MESSAGE);
+
+/** Avisos de un diálogo de fila que se cerró por un cambio externo (`getStaleRowDialogNotice`). */
+export const VACATION_STALE_MESSAGES = {
+  gone: VACATION_GONE_MESSAGE,
+  estadoChanged: vacationEstadoChangedMessage,
+};
