@@ -3,7 +3,11 @@ import { CheckCircleIcon, DeleteIcon, EditIcon, RejectIcon } from "@/src/compone
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
 import { formatLocalDateRange, formatShortDate } from "@/src/utils/formatDate";
 import { Absence } from "../interfaces/absence.interface";
 import {
@@ -181,13 +185,8 @@ export const getColumns = (permissions: AbsenceColumnPermissions) =>
  * registro filtran por mes.
  */
 export const ABSENCE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<AbsenceRow>>> = {
-  empleado: {
-    type: "distinct",
-    get: (r) => r.empleado,
-    label: (r) => r.empleado_nombre,
-    searchable: true,
-  },
-  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: ESTADO_AUSENCIA_FILTER_OPTIONS },
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter(ESTADO_AUSENCIA_FILTER_OPTIONS),
   tipo: { type: "options", get: (r) => r.tipo, options: TIPO_AUSENCIA_OPTIONS },
   periodo: { type: "month", get: (r) => r.fecha_inicio },
   con_goce_sueldo: {

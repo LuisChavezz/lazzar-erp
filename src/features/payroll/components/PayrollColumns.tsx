@@ -3,7 +3,11 @@ import { CheckCircleIcon, EditIcon, XIcon } from "@/src/components/Icons";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate, formatLocalDateRange } from "@/src/utils/formatDate";
 import { centsToMoney, moneyToCents } from "@/src/utils/moneyCents";
@@ -226,13 +230,8 @@ export const getColumns = (permissions: PayrollColumnPermissions) =>
  * listado ya es una quincena) ni los importes (libres; los cubre el orden).
  */
 export const PAYROLL_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<PayrollRow>>> = {
-  empleado: {
-    type: "distinct",
-    get: (r) => r.empleado,
-    label: (r) => r.empleado_nombre,
-    searchable: true,
-  },
-  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_NOMINA_CFG) },
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter(optionsFromConfig(ESTADO_NOMINA_CFG)),
   sucursal_nombre: { type: "distinct", get: (r) => r.sucursal, label: (r) => r.sucursal_nombre },
   fecha_pago: { type: "month", get: (r) => r.fecha_pago, emptyLabel: "Sin fecha de pago" },
 };

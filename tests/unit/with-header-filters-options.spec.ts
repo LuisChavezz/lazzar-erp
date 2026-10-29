@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
-import { withHeaderFilters, type HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  withHeaderFilters,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
 import {
   ALL_FILTER_OPTION,
   EMPTY_VALUE_FILTER_VALUE,
@@ -171,5 +176,44 @@ test.describe("withHeaderFilters › encabezado estable", () => {
       "Todos",
       rows[0].folio,
     ]);
+  });
+});
+
+test.describe("employeeHeaderFilter / estadoHeaderFilter", () => {
+  type Rec = { id: number; empleado: number; empleado_nombre: string; estado: string };
+  const recs: Rec[] = [
+    { id: 1, empleado: 7, empleado_nombre: "ANA", estado: "pendiente" },
+    { id: 2, empleado: 9, empleado_nombre: "Empleado #9", estado: "rara" },
+  ];
+  const [emp, est] = withHeaderFilters<Rec>(
+    [
+      { id: "empleado", header: "Empleado" } as ColumnDef<Rec, unknown>,
+      { id: "estado", header: "Estado" } as ColumnDef<Rec, unknown>,
+    ],
+    recs,
+    {
+      empleado: employeeHeaderFilter(),
+      estado: estadoHeaderFilter([{ value: "pendiente", label: "Pendiente" }]),
+    },
+  );
+  type Fn = (row: { original: Rec }, columnId: string, value: unknown) => boolean;
+  const ids = (col: typeof emp, value: string) =>
+    recs.filter((original) => (col.filterFn as unknown as Fn)({ original }, "", value)).map((r) => r.id);
+
+  test("empleado: por FK, rotulado con el nombre (o su `#N`), con buscador", () => {
+    expect(emp.meta?.headerFilter?.options.map((o) => [o.value, o.label])).toEqual([
+      [undefined, "Todos"],
+      ["7", "ANA"],
+      ["9", "Empleado #9"],
+    ]);
+    expect(emp.meta?.headerFilter?.searchable).toEqual({ placeholder: "Buscar empleado…" });
+    expect(emp.meta?.filterLabel).toBeUndefined();
+    expect(ids(emp, "9")).toEqual([2]);
+  });
+
+  test("estado: catálogo y el código desconocido al final, con ficha «Estatus»", () => {
+    expect(est.meta?.headerFilter?.options.map((o) => o.label)).toEqual(["Todos", "Pendiente", "rara"]);
+    expect(est.meta?.filterLabel).toBe("Estatus");
+    expect(ids(est, "pendiente")).toEqual([1]);
   });
 });
