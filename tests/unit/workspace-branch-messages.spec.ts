@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { getSinSucursalMessage } from "@/src/features/workspace/utils/workspaceBranchMessages";
 import {
-  getQuoteSinSucursalMessage,
-  QUOTE_SUCURSAL_LOADING_MESSAGE,
-} from "@/src/features/quotes/utils/quoteSucursal";
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+} from "@/src/features/workspace/utils/workspaceBranchMessages";
+import { QUOTE_SUCURSAL_DOCUMENT } from "@/src/features/quotes/utils/quoteSucursal";
 
 /**
  * Pruebas unitarias de EC-623: el aviso de alta sin sucursal es compartido. La
@@ -11,13 +11,13 @@ import {
  */
 test.describe("getSinSucursalMessage", () => {
   test("la cotización conserva sus textos", () => {
-    expect(getQuoteSinSucursalMessage(false)).toBe(
+    expect(getSinSucursalMessage(false, QUOTE_SUCURSAL_DOCUMENT)).toBe(
       "Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para guardar la cotización.",
     );
-    expect(getQuoteSinSucursalMessage(true)).toBe(
+    expect(getSinSucursalMessage(true, QUOTE_SUCURSAL_DOCUMENT)).toBe(
       "No se pudieron cargar tus sucursales para asignarla a la cotización. Recarga la página e inténtalo de nuevo.",
     );
-    expect(QUOTE_SUCURSAL_LOADING_MESSAGE).toBe(
+    expect(WORKSPACE_BRANCH_LOADING_MESSAGE).toBe(
       "Aún se están cargando tus sucursales. Intenta guardar de nuevo en un momento.",
     );
   });

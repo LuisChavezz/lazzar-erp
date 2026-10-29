@@ -31,10 +31,10 @@ import { IVA_TASA_FIJA } from "../constants/iva";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
 import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
 import {
-  getQuoteSinSucursalMessage,
-  QUOTE_SUCURSAL_LOADING_MESSAGE,
-  resolveQuoteSucursal,
-} from "../utils/quoteSucursal";
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+} from "../../workspace/utils/workspaceBranchMessages";
+import { QUOTE_SUCURSAL_DOCUMENT, resolveQuoteSucursal } from "../utils/quoteSucursal";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
@@ -400,12 +400,12 @@ export function useQuoteEditForm(quoteId: number) {
       if (!parsed.success) return;
 
       if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
-        toast.error(QUOTE_SUCURSAL_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
         return;
       }
       const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
       if (sucursal === null) {
-        toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
+        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
           id: "quote-sin-sucursal",
         });
         return;

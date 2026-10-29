@@ -37,9 +37,10 @@ import { IVA_TASA_FIJA } from "../constants/iva";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
 import {
-  getQuoteSinSucursalMessage,
-  QUOTE_SUCURSAL_LOADING_MESSAGE,
-} from "../utils/quoteSucursal";
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+} from "../../workspace/utils/workspaceBranchMessages";
+import { QUOTE_SUCURSAL_DOCUMENT } from "../utils/quoteSucursal";
 import { useCreateQuote, type QuoteValidationIssue } from "./useCreateQuote";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { useQuoteOnboardingData } from "./useQuoteOnboardingData";
@@ -272,12 +273,12 @@ export function useQuoteForm() {
       // La sucursal sale del contexto, no de un campo: se revisa ANTES que el
       // resto para no hacer corregir todo el formulario y bloquear al final.
       if (isWorkspaceBranchLoading) {
-        toast.error(QUOTE_SUCURSAL_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
         return;
       }
       const sucursal = workspaceBranchId;
       if (sucursal === null) {
-        toast.error(getQuoteSinSucursalMessage(isWorkspaceBranchError), {
+        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
           id: "quote-sin-sucursal",
         });
         return;
