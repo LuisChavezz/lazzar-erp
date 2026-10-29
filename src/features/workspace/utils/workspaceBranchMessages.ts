@@ -12,9 +12,19 @@ export const WORKSPACE_BRANCH_LOADING_MESSAGE =
 export interface WorkspaceBranchDocument {
   /** A qué se asigna la sucursal, con preposición: "a la cotización", "al empleado". */
   asignarA: string;
-  /** Qué se guarda, con artículo: "la cotización", "el empleado". */
+  /** Qué se guarda (o genera), con artículo: "la cotización", "el empleado". */
   guardar: string;
 }
+
+/**
+ * Acción que el aviso dice bloqueada, en infinitivo. Por defecto "guardar" (el
+ * alta de un formulario); la generación de nómina dice "generar".
+ */
+export const DEFAULT_BLOCKED_VERB = "guardar";
+
+/** Título del aviso: "No se puede guardar sin sucursal". */
+export const getSinSucursalTitle = (verbo: string = DEFAULT_BLOCKED_VERB): string =>
+  `No se puede ${verbo} sin sucursal`;
 
 /**
  * Por qué se bloqueó el guardado. Si la lista de sucursales no cargó, el
@@ -24,7 +34,8 @@ export interface WorkspaceBranchDocument {
 export const getSinSucursalMessage = (
   isBranchesError: boolean,
   documento: WorkspaceBranchDocument,
+  verbo: string = DEFAULT_BLOCKED_VERB,
 ): string =>
   isBranchesError
     ? `No se pudieron cargar tus sucursales para asignarla ${documento.asignarA}. Recarga la página e inténtalo de nuevo.`
-    : `Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para guardar ${documento.guardar}.`;
+    : `Tu espacio de trabajo no tiene una sucursal válida. Selecciona una sucursal en el encabezado para ${verbo} ${documento.guardar}.`;

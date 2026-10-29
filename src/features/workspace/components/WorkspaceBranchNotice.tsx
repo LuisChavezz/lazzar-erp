@@ -2,7 +2,11 @@
 
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useValidWorkspaceBranchId } from "../hooks/useValidWorkspaceBranchId";
-import { getSinSucursalMessage, type WorkspaceBranchDocument } from "../utils/workspaceBranchMessages";
+import {
+  getSinSucursalMessage,
+  getSinSucursalTitle,
+  type WorkspaceBranchDocument,
+} from "../utils/workspaceBranchMessages";
 
 /**
  * Aviso persistente de un alta que no se puede guardar porque el workspace no
@@ -12,14 +16,23 @@ import { getSinSucursalMessage, type WorkspaceBranchDocument } from "../utils/wo
  *
  * Mientras la lista carga no avisa nada: `branchId` es `null` sin que falte la
  * sucursal.
+ *
+ * `verbo` es la acción bloqueada que nombran el título y el mensaje; sin él,
+ * "guardar" (los textos de siempre).
  */
-export function WorkspaceBranchNotice({ documento }: { documento: WorkspaceBranchDocument }) {
+export function WorkspaceBranchNotice({
+  documento,
+  verbo,
+}: {
+  documento: WorkspaceBranchDocument;
+  verbo?: string;
+}) {
   const { branchId, isLoading, isError } = useValidWorkspaceBranchId();
   if (branchId !== null || isLoading) return null;
   return (
     <SectionErrorNotice
-      title="No se puede guardar sin sucursal"
-      message={getSinSucursalMessage(isError, documento)}
+      title={getSinSucursalTitle(verbo)}
+      message={getSinSucursalMessage(isError, documento, verbo)}
     />
   );
 }
