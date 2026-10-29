@@ -17,7 +17,6 @@ import {
   useCreateNotaCredito,
   type ParsedNotaCreditoError,
 } from "./useCreateNotaCredito";
-import { creditNoteStampFailedMessage } from "../utils/creditNoteErrors";
 
 const LINE_ERROR_PREFIX = "nota_credito_detalles";
 
@@ -62,14 +61,15 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   /**
-   * El timbrado de un alta `Emitida` falló (`400` con `cfdi`) y la nota pudo
-   * quedar registrada. Bloquea el formulario para siempre: reenviar lo mismo
+   * Un alta `Emitida` falló de forma que la nota pudo quedar registrada (`400`
+   * con `cfdi`, sin confirmación o `409`; ver `getCreateMayBeSavedMessage`).
+   * Bloquea el formulario para siempre: reenviar lo mismo
    * crearía OTRA nota y volvería a rebajar el saldo de la cuenta por cobrar. El
    * formulario sigue a la vista para cotejarlo con el listado, y la única salida
    * es cerrar el diálogo, que lo desmonta (`CreditNoteList` lo monta solo
    * mientras está abierto): una nota nueva arranca de un formulario limpio.
    */
-  const [isLockedAfterStampFailure, setIsLockedAfterStampFailure] = useState(false);
+  const [isSubmissionLocked, setIsSubmissionLocked] = useState(false);
 
   // Claves estables por línea, para que borrar una línea intermedia no reutilice
   // el estado local de otra. Arranca vacío: las líneas las siembra el selector.
@@ -116,7 +116,10 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   };
 
   // ── Reparto del error del backend ────────────────────────────────────────
-  const handleServerError = (parsed: ParsedNotaCreditoError) => {
+  const handleServerError = (
+    parsed: ParsedNotaCreditoError,
+    mayBeSavedMessage: string | null,
+  ) => {
     const next: Record<string, string> = {};
 
     (Object.keys(parsed.fieldErrors) as (keyof typeof parsed.fieldErrors)[]).forEach(
@@ -140,24 +143,24 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     const detail =
       parsed.formError ??
       (hasFieldOrLine ? "Revisa los campos marcados." : "Intenta de nuevo.");
-    // Sin confirmación del backend no se puede afirmar que no se guardó nada:
-    // el mensaje ya pide revisar el listado.
+    // La nota pudo quedar guardada (`getCreateMayBeSavedMessage`): no se dice qué
+    // quedó, se pide revisar el listado y se bloquea el reenvío.
+    if (mayBeSavedMessage) {
+      setServerBanner(mayBeSavedMessage);
+      setIsSubmissionLocked(true);
+      return;
+    }
+    // Sin confirmación del backend al guardar un BORRADOR: el mensaje ya pide
+    // revisar el listado, y un borrador repetido no mueve ningún saldo.
     if (parsed.unconfirmed) {
       setServerBanner(detail);
       return;
     }
-    // El timbrado corre DESPUÉS de guardar y aplicar la nota: no se dice qué
-    // quedó, se pide revisar el listado y se bloquea el reenvío.
-    if (parsed.stampFailed) {
-      setServerBanner(creditNoteStampFailedMessage("alta", detail));
-      setIsLockedAfterStampFailure(true);
-      return;
-    }
-    // Sin `cfdi` el error es de validación y el guardado es atómico: se le dice
-    // al usuario explícitamente que NADA quedó registrado, para que no busque
-    // una nota a medias ni reintente creyendo que duplicará algo. Cuando la nota
-    // iba a emitirse, eso incluye el saldo de la cuenta por cobrar, que tampoco
-    // se movió.
+    // Error de validación (`total`, `factura`, campos) y guardado atómico: se le
+    // dice al usuario explícitamente que NADA quedó registrado, para que no
+    // busque una nota a medias ni reintente creyendo que duplicará algo. Cuando
+    // la nota iba a emitirse, eso incluye el saldo de la cuenta por cobrar, que
+    // tampoco se movió.
     setServerBanner(`No se registró ninguna nota de crédito. ${detail}`);
   };
 
@@ -175,7 +178,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
     onSubmit: async ({ value }) => {
       // El `fieldset` bloqueado ya deshabilita los botones; esto cubre cualquier
       // otro disparo del envío.
-      if (isLockedAfterStampFailure) return;
+      if (isSubmissionLocked) return;
       setServerBanner(null);
 
       const parsed = NotaCreditoFormSchema.safeParse(value);
@@ -316,7 +319,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   return {
     form,
     isPending,
-    isLockedAfterStampFailure,
+    isSubmissionLocked,
     lineKeys,
     serverBanner,
     dismissBanner: () => setServerBanner(null),

@@ -41,7 +41,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   const {
     form,
     isPending,
-    isLockedAfterStampFailure,
+    isSubmissionLocked,
     lineKeys,
     serverBanner,
     dismissBanner,
@@ -80,13 +80,14 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   return (
     <>
       <form onSubmit={handleFormSubmit} className="w-full">
-        {/* Bloqueado tras un fallo del timbrado: todo queda de solo lectura y la
-            salida es el "Cerrar" del diálogo (ver `isLockedAfterStampFailure`). */}
-        <fieldset disabled={isPending || isLockedAfterStampFailure}>
+        {/* Bloqueado cuando la nota pudo quedar registrada: todo queda de solo
+            lectura y la salida es el "Cerrar" del diálogo (ver `isSubmissionLocked`). */}
+        <fieldset disabled={isPending || isSubmissionLocked}>
           {/* Banner del error del backend. Un error de validación no dejó nada
-              registrado (el guardado es atómico); un fallo del timbrado sí pudo
-              dejar la nota, y entonces el aviso es ámbar y no se descarta. */}
-          {serverBanner && isLockedAfterStampFailure && (
+              registrado (el guardado es atómico); un fallo del timbrado, sin
+              confirmación o un 409 al emitir sí pudo dejar la nota, y entonces
+              el aviso es ámbar y no se descarta. */}
+          {serverBanner && isSubmissionLocked && (
             <div
               role="alert"
               className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
@@ -95,7 +96,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
               <p className="flex-1 text-sm text-amber-800 dark:text-amber-300">{serverBanner}</p>
             </div>
           )}
-          {serverBanner && !isLockedAfterStampFailure && (
+          {serverBanner && !isSubmissionLocked && (
             <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
               <InfoIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
               <p className="flex-1 text-sm text-red-700 dark:text-red-300">{serverBanner}</p>
@@ -460,7 +461,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
             </div>
           </section>
 
-          {isLockedAfterStampFailure ? (
+          {isSubmissionLocked ? (
             <p className="pb-4 text-sm text-slate-500 dark:text-slate-400 text-right">
               Este formulario ya no puede enviarse. Ciérralo y revisa el listado.
             </p>
