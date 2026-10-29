@@ -43,6 +43,9 @@ export const canStampCreditNote = (
   user: PermissionContext | null | undefined,
 ): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
 
+const relatedInvoiceLabel = (folio: string | null): string =>
+  folio ? `La factura ${folio}` : "La factura relacionada";
+
 /**
  * Motivo por el que NO se puede emitir ni timbrar una nota sobre esta factura,
  * o `null`. Una factura `Cancelada`, con su CFDI ya cancelado ante el SAT
@@ -57,7 +60,7 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
   cfdi_cancelado?: boolean;
   cfdi_cancelacion_solicitada?: boolean;
 }): string | null => {
-  const label = invoice.folio ? `La factura ${invoice.folio}` : "La factura relacionada";
+  const label = relatedInvoiceLabel(invoice.folio);
   if (invoice.estatus === INVOICE_STATUS.CANCELADA) {
     return `${label} está cancelada: no admite notas de crédito.`;
   }
@@ -68,6 +71,23 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
     return `${label} tiene la cancelación de su CFDI pendiente de que el receptor la acepte: no admite notas de crédito.`;
   }
   return null;
+};
+
+/**
+ * Motivo por el que una factura NO admite notas de crédito nuevas, ni siquiera
+ * como borrador, o `null`. `invoice` es la factura tal como la devuelve el
+ * listado o el retrieve; `undefined` si no figura en el listado. Sin ella, o
+ * eliminada (`activo` distinto de `true`), no se puede confirmar su estado y
+ * se trata como no acreditable; si no, aplica `getRelatedInvoiceCancelledReason`.
+ */
+export const getInvoiceNotCreditableReason = (
+  folio: string | null,
+  invoice: (Parameters<typeof getRelatedInvoiceCancelledReason>[0] & { activo?: boolean }) | undefined,
+): string | null => {
+  if (!invoice || invoice.activo !== true) {
+    return `${relatedInvoiceLabel(folio)} no está disponible: no admite notas de crédito.`;
+  }
+  return getRelatedInvoiceCancelledReason(invoice);
 };
 
 /** Estado de la factura relacionada, tal como lo conoce el detalle de la nota. */
@@ -102,9 +122,7 @@ export const getCreditNoteStampBlockReason = (invoice: RelatedInvoiceStampState)
   const cancelledReason = getRelatedInvoiceCancelledReason(invoice.invoice);
   if (cancelledReason) return cancelledReason;
   if (!invoice.invoice.cfdi_uuid) {
-    const { folio } = invoice.invoice;
-    const label = folio ? `La factura ${folio}` : "La factura relacionada";
-    return `${label} no está timbrada. Timbra primero la factura para poder timbrar esta nota.`;
+    return `${relatedInvoiceLabel(invoice.invoice.folio)} no está timbrada. Timbra primero la factura para poder timbrar esta nota.`;
   }
   return null;
 };
