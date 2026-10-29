@@ -4,6 +4,7 @@ import {
   getMissingColorLines,
   getMissingColorState,
 } from "@/src/features/quotes/utils/requiredColor";
+import { extractQuoteValidationIssues } from "@/src/features/quotes/utils/quoteValidationErrors";
 
 /**
  * Pruebas unitarias de EC-641: qué partidas exigen color (misma regla que
@@ -91,5 +92,17 @@ test.describe("getAssignableColors", () => {
       products,
     );
     expect(choices.every((choice) => choice.missingSizes.length > 0)).toBe(true);
+  });
+});
+
+test.describe("extractQuoteValidationIssues con `color`", () => {
+  test("acepta la lista que manda DRF y el string suelto, con la ruta `color`", () => {
+    const message = "Elige el color de: Playera.";
+    expect(extractQuoteValidationIssues({ color: [message] })).toEqual([
+      { path: "color", message },
+    ]);
+    expect(extractQuoteValidationIssues({ color: message })).toEqual([
+      { path: "color", message },
+    ]);
   });
 });
