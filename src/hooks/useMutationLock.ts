@@ -25,10 +25,13 @@ export class PrecheckError extends Error {}
 /**
  * `PrecheckError` a partir del fallo de la lectura previa. El motivo sale del
  * cuerpo DRF (`detail` de un 404/403, o el primer campo con mensaje) antes que
- * del `error.message` de Axios ("Request failed with status code 404").
+ * del `error.message` de Axios ("Request failed with status code 404"). El
+ * error original queda en `cause`, para quien deba distinguir un 404.
  */
 export const toPrecheckError = (error: unknown, fallback: string): PrecheckError =>
-  new PrecheckError(firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback));
+  new PrecheckError(firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback), {
+    cause: error,
+  });
 
 /**
  * Retrieve FRESCO de un registro antes de una acción irreversible. Llama al

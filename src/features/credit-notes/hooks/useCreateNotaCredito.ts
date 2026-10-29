@@ -10,12 +10,9 @@ import {
   isUnconfirmedFailure,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
-import {
-  getInvoiceNotCreditableReason,
-  getRelatedInvoiceEmitBlockReason,
-} from "../utils/creditNoteStamping";
+import { getInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
-import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
+import { fetchFreshRelatedInvoice } from "./fetchFreshRelatedInvoice";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
 export type NotaCreditoHeaderErrorField =
@@ -344,8 +341,9 @@ export const getCreateMayBeSavedMessage = (
  * (`document`).
  *
  * Un alta `Emitida` pide antes la factura FRESCA y se detiene con
- * `PrecheckError`, sin POST, si ya no admite notas o tiene su timbrado sin
- * confirmar: pudo cambiar después de elegirla en el selector. El precheck se
+ * `PrecheckError`, sin POST, si ya no admite notas —incluido un `404`— o tiene
+ * su timbrado sin confirmar (`getInvoiceEmitBlockReason`): pudo cambiar después
+ * de elegirla en el selector. El precheck se
  * reporta como un error de validación (nada se registró). Un borrador no lo
  * necesita: no mueve saldos ni timbra.
  */
@@ -360,10 +358,8 @@ export const useCreateNotaCredito = (
   return useMutation({
     mutationFn: async (payload: CreateNotaCreditoPayload) => {
       if (payload.estatus === "Emitida") {
-        const factura = await fetchFreshInvoice(queryClient, payload.factura);
-        const blockReason =
-          getInvoiceNotCreditableReason(factura.folio, factura) ??
-          getRelatedInvoiceEmitBlockReason(factura);
+        const factura = await fetchFreshRelatedInvoice(queryClient, payload.factura);
+        const blockReason = getInvoiceEmitBlockReason(factura?.folio ?? null, factura);
         if (blockReason) throw new PrecheckError(blockReason);
       }
       return createNotaCredito(payload);
