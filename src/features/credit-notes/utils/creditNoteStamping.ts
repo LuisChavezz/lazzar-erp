@@ -124,23 +124,6 @@ export const getInvoiceNotCreditableReason = (
   return getRelatedInvoiceCancelledReason(invoice);
 };
 
-/**
- * Regla ÚNICA de "se puede emitir sobre esta factura" que usan los dos caminos
- * de emisión (alta `Emitida` y "Emitir" de un borrador), con la factura FRESCA:
- * `undefined` (`404`) o eliminada la trata como no disponible
- * (`getInvoiceNotCreditableReason`); si no, `getRelatedInvoiceEmitBlockReason`.
- * `folio` es el que conoce el llamador, para nombrarla cuando no llegó.
- */
-export const getInvoiceEmitBlockReason = (
-  folio: string | null,
-  invoice:
-    | (Parameters<typeof getRelatedInvoiceEmitBlockReason>[0] & { activo?: boolean })
-    | undefined,
-): string | null =>
-  !invoice || invoice.activo !== true
-    ? getInvoiceNotCreditableReason(folio, invoice)
-    : getRelatedInvoiceEmitBlockReason(invoice);
-
 /** Estado de la factura relacionada, tal como lo conoce el detalle de la nota. */
 export type RelatedInvoiceStampState =
   | { status: "loading" }
