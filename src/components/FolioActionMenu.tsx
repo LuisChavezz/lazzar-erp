@@ -57,25 +57,13 @@ export function FolioActionMenu(props: FolioModeProps | NameModeProps) {
     // Folio arriba y estatus debajo: siempre en dos líneas, para que el folio
     // (largo, tipo `2026-CM-00006`) nunca empuje ni recorte la etiqueta.
     <div className="flex flex-col items-start gap-1 min-w-0">
-      <ActionMenu
+      <RowMenuTrigger
+        label={folio}
         items={items}
-        ariaLabel={`Acciones de ${folio}`}
-        align="start"
-        trigger={
-          <button
-            type="button"
-            aria-label={`Ver acciones de ${folio}`}
-            title="Ver acciones"
-            className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
-          >
-            {folio || "—"}
-            <ChevronRightIcon
-              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-              aria-hidden="true"
-            />
-          </button>
-        }
-      />
+        className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
+      >
+        {folio || "—"}
+      </RowMenuTrigger>
       {status}
     </div>
   );
@@ -97,27 +85,59 @@ function NameActionMenu({ name, detail, items, active, status }: NameModeProps) 
             title={activeLabel}
           />
         )}
-        <ActionMenu
+        <RowMenuTrigger
+          label={name}
           items={menuItems}
-          ariaLabel={`Acciones de ${name}`}
-          align="start"
-          trigger={
-            <button
-              type="button"
-              aria-label={`Ver acciones de ${name}`}
-              title="Ver acciones"
-              className="group inline-flex items-center gap-1 min-w-0 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer text-left"
-            >
-              <span className="truncate">{name || "—"}</span>
-              <ChevronRightIcon
-                className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                aria-hidden="true"
-              />
-            </button>
-          }
-        />
+          className="group inline-flex items-center gap-1 min-w-0 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer text-left"
+          chevronExtraClassName=" shrink-0"
+        >
+          <span className="truncate">{name || "—"}</span>
+        </RowMenuTrigger>
       </div>
       {status}
     </div>
+  );
+}
+
+/**
+ * El disparador común de los dos modos: el `ActionMenu` con el texto de la
+ * fila y el ">" que lo marca como algo que se abre. Cada modo pone su
+ * tipografía (`className`) y su contenido; el nombre accesible, el tooltip y
+ * el chevron son los mismos.
+ */
+function RowMenuTrigger({
+  label,
+  items,
+  className,
+  chevronExtraClassName = "",
+  children,
+}: {
+  /** Folio o nombre: nombra el menú y el botón para lectores de pantalla. */
+  label: string;
+  items: ActionMenuItem[];
+  className: string;
+  chevronExtraClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <ActionMenu
+      items={items}
+      ariaLabel={`Acciones de ${label}`}
+      align="start"
+      trigger={
+        <button
+          type="button"
+          aria-label={`Ver acciones de ${label}`}
+          title="Ver acciones"
+          className={className}
+        >
+          {children}
+          <ChevronRightIcon
+            className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all${chevronExtraClassName}`}
+            aria-hidden="true"
+          />
+        </button>
+      }
+    />
   );
 }

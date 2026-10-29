@@ -17,7 +17,14 @@ import {
  * lee el dato CRUDO de la fila (un id, una fecha ISO, un número), no lo que
  * pinta la celda.
  */
-export type HeaderFilterSpec<T> =
+export type HeaderFilterSpec<T> = {
+  /**
+   * Qué se filtra, para el `aria-label`/`title` del embudo, cuando no es la
+   * columna misma (p. ej. el folio que filtra por estatus, o el nombre que
+   * filtra por `activo`). Sin él, el título de la columna.
+   */
+  filterLabel?: string;
+} & (
   /** Un valor por opción, tomado de las filas (estatus, cliente, operador…). */
   | {
       type: "distinct";
@@ -26,11 +33,6 @@ export type HeaderFilterSpec<T> =
       label?: (row: T) => string | null | undefined;
       /** Con buscador, para catálogos largos. */
       searchable?: boolean;
-      /**
-       * Qué se filtra, para el `aria-label`/`title` del embudo, cuando no es la
-       * columna misma (p. ej. el folio que filtra por estatus).
-       */
-      filterLabel?: string;
     }
   /**
    * Un valor por opción, tomado de un catálogo del front (estatus, prioridad,
@@ -49,8 +51,6 @@ export type HeaderFilterSpec<T> =
        * opciones del catálogo.
        */
       label?: (row: T) => string | null | undefined;
-      /** Como en `distinct`: qué se filtra, cuando no es la columna misma. */
-      filterLabel?: string;
     }
   /** Un mes por opción, del más reciente al más antiguo. */
   | { type: "month"; get: (row: T) => string | null | undefined; emptyLabel?: string }
@@ -58,11 +58,9 @@ export type HeaderFilterSpec<T> =
   | { type: "range"; get: (row: T) => number | string | null | undefined; ranges: RangeFilterOption[] }
   /** "Con / sin": hay dato (texto no vacío, número > 0) o no. */
   | { type: "presence"; get: (row: T) => unknown; con: string; sin: string }
-  /**
-   * Un booleano, con su etiqueta para cada lado. `filterLabel` como en
-   * `distinct`: p. ej. el nombre que filtra por `activo`.
-   */
-  | { type: "boolean"; get: (row: T) => boolean | null | undefined; yes: string; no: string; filterLabel?: string };
+  /** Un booleano, con su etiqueta para cada lado. */
+  | { type: "boolean"; get: (row: T) => boolean | null | undefined; yes: string; no: string }
+);
 
 const hasValue = (value: unknown) =>
   typeof value === "number" ? value > 0 : typeof value === "string" ? value.trim() !== "" : Boolean(value);
@@ -136,10 +134,7 @@ export function withHeaderFilters<T>(
           title={title}
           column={tableColumn}
           options={options}
-          label={
-            ((spec.type === "distinct" || spec.type === "options" || spec.type === "boolean") && spec.filterLabel) ||
-            title.toLowerCase()
-          }
+          label={spec.filterLabel || title.toLowerCase()}
           searchable={spec.type === "distinct" && spec.searchable ? { placeholder: `Buscar ${title.toLowerCase()}…` } : false}
           menuAlign={column.meta?.align === "right" ? "end" : "start"}
         />
