@@ -37,6 +37,26 @@ interface StaleGoneRowDialogArgs extends StaleRowDialogBase {
   messages: StaleRowDialogMessages;
 }
 
+/** Textos de un registro con estado de negocio (vacaciones, nóminas…). */
+export interface StaleEstadoRowDialogMessages<E extends string> {
+  /** El registro ya no está en el listado. */
+  gone: string;
+  /** El registro cambió de `estado` mientras su diálogo estaba abierto. */
+  estadoChanged: (estado: E) => string;
+}
+
+/**
+ * Sin baja lógica pero con `estado` de negocio (aprobaciones, pagos): la
+ * acción espera un estado concreto (`"pendiente"` para aprobar, o el estado
+ * con que se abrió la confirmación).
+ */
+interface StaleEstadoRowDialogArgs<E extends string> extends StaleRowDialogBase {
+  target: { estado: E } | null;
+  expectedEstado: E;
+  expectedActivo?: undefined;
+  messages: StaleEstadoRowDialogMessages<E>;
+}
+
 /**
  * ¿El diálogo de fila de `targetId` ya no aplica? Lo decide la vía rápida
  * contra la caché del listado: si el registro ya no está, o su `activo` ya no
@@ -47,29 +67,41 @@ interface StaleGoneRowDialogArgs extends StaleRowDialogBase {
  * optimista cambia el registro al arrancar y el diálogo lo cierra el
  * `onSettled` de la mutación, sin aviso. `null` = el diálogo sigue.
  *
- * Dos firmas: con `expectedActivo`, la fila debe tipar `activo: boolean` y los
+ * Tres firmas: con `expectedActivo`, la fila debe tipar `activo: boolean` y los
  * textos traer `activoChanged`, así que un `activo` renombrado o ausente no
- * apaga el aviso en silencio — falla el typecheck.
+ * apaga el aviso en silencio — falla el typecheck. Con `expectedEstado` (un
+ * registro sin `activo` cuyo diálogo depende de su `estado`, como una
+ * aprobación), lo mismo con `estado` y `estadoChanged`.
  */
 export function getStaleRowDialogNotice(args: StaleActivoRowDialogArgs): StaleRowDialogNotice | null;
 export function getStaleRowDialogNotice(args: StaleGoneRowDialogArgs): StaleRowDialogNotice | null;
-export function getStaleRowDialogNotice({
-  resource,
-  targetId,
-  target,
-  expectedActivo,
-  isBusy,
-  messages,
-}: StaleActivoRowDialogArgs | StaleGoneRowDialogArgs): StaleRowDialogNotice | null {
+export function getStaleRowDialogNotice<E extends string>(
+  args: StaleEstadoRowDialogArgs<E>
+): StaleRowDialogNotice | null;
+export function getStaleRowDialogNotice(
+  args: StaleActivoRowDialogArgs | StaleGoneRowDialogArgs | StaleEstadoRowDialogArgs<string>
+): StaleRowDialogNotice | null {
+  const { resource, targetId, target, isBusy, messages } = args;
   if (targetId === null || isBusy) return null;
   if (target === null) {
     return { key: `${resource}-stale-${targetId}-gone`, message: messages.gone };
   }
+  if ("expectedEstado" in args && args.expectedEstado !== undefined) {
+    const { estado } = target as { estado: string };
+    if (estado === args.expectedEstado) return null;
+    return {
+      key: `${resource}-stale-${targetId}-${estado}`,
+      message: args.messages.estadoChanged(estado),
+    };
+  }
+  const { expectedActivo, messages: activoMessages } = args as
+    | StaleActivoRowDialogArgs
+    | StaleGoneRowDialogArgs;
   if (expectedActivo === undefined) return null;
   const { activo } = target as { activo: boolean };
-  if (activo === expectedActivo || !messages.activoChanged) return null;
+  if (activo === expectedActivo || !activoMessages.activoChanged) return null;
   return {
     key: `${resource}-stale-${targetId}-${String(activo)}`,
-    message: messages.activoChanged(activo),
+    message: activoMessages.activoChanged(activo),
   };
 }
