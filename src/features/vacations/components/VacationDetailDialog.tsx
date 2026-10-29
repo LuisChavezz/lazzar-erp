@@ -2,8 +2,17 @@
 
 import { VacationIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { InfoField, InfoGrid, SectionTitle, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import {
+  InfoField,
+  InfoGrid,
+  InfoTile,
+  InfoTileGrid,
+  SectionTitle,
+  textOrDash,
+} from "@/src/components/DetailDialogPrimitives";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   ESTADO_APROBADO,
@@ -66,39 +75,37 @@ export function VacationDetailDialog({ vacation, open, onOpenChange }: VacationD
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="720px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <VacationIcon className="w-5 h-5 text-cyan-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Vacaciones
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {vacation.empleado_nombre}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de Vacaciones"
+          subtitle={vacation.empleado_nombre}
+          statusColor="sky"
+          icon={VacationIcon}
+        />
       }
     >
       <div className="space-y-5">
-        {/* Resumen */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Empleado">{vacation.empleado_nombre}</InfoField>
-          <InfoField label="Estado">
+        {/* Encabezado: lo que se busca primero al abrir la solicitud. */}
+        <InfoTileGrid>
+          <InfoTile label="Empleado">{vacation.empleado_nombre}</InfoTile>
+          <InfoTile label="Estado">
             <StatusBadge status={vacation.estado} config={ESTADO_VACACION_CFG} />
-          </InfoField>
-          <InfoField label="Periodo">
+          </InfoTile>
+          <InfoTile label="Periodo">
             <span className="tabular-nums">{formatVacationRange(vacation)}</span>
-          </InfoField>
-          <InfoField label="Días solicitados">
+          </InfoTile>
+          <InfoTile label="Días solicitados">
             <span className="tabular-nums">{vacation.dias_solicitados}</span>
-          </InfoField>
-          <InfoField label="Días calendario">
+          </InfoTile>
+          <InfoTile label="Días calendario">
             <span className="tabular-nums">{calendarDays ?? "—"}</span>
-          </InfoField>
-          <InfoField label="Motivo" className="col-span-2 sm:col-span-3">
+          </InfoTile>
+        </InfoTileGrid>
+
+        <div className="text-xs px-1">
+          <InfoField label="Motivo">
             <span className="whitespace-pre-line">{textOrDash(vacation.motivo)}</span>
           </InfoField>
         </div>

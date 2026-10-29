@@ -4,24 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { VacationIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
-import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
-import { formatVacationRange, getColumns, VacationRow } from "./VacationColumns";
+import { formatVacationRange, getColumns, VACATION_HEADER_FILTERS } from "./VacationColumns";
 import { Vacation } from "../interfaces/vacation.interface";
 import {
   ESTADO_APROBADO,
   ESTADO_PENDIENTE,
   ESTADO_RECHAZADO,
-  ESTADO_VACACION_OPTIONS,
   type EstadoVacacion,
 } from "../constants/vacationChoices";
 import VacationForm from "./VacationForm";
@@ -34,12 +37,9 @@ import {
   usePendingVacationIds,
   VacationRowActionsProvider,
 } from "../hooks/useVacationRowActions";
-import {
-  VACATION_GONE_MESSAGE,
-  vacationEstadoChangedMessage,
-} from "../hooks/vacationErrorMessages";
 import { verifyVacationEstado } from "../hooks/verifyVacationEstado";
 import { diasLabel } from "../utils/diasLabel";
+import { buildVacationRows, getVacationStaleNotice } from "../utils/vacationRows";
 
 /**
  * Permiso de aprobar y rechazar (D2). El catálogo de permisos no tiene un
@@ -69,9 +69,10 @@ export default function VacationList() {
   // el siguiente render.
   const checkingDeleteRef = useRef(false);
   const queryClient = useQueryClient();
-  // Aviso pendiente de la vía rápida (ver `closeStale`). Se muestra desde un
-  // efecto: un toast en pleno render actualizaría otro componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  // Aviso del diálogo de fila que se cerró porque su solicitud cambió por
+  // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
+  // otro componente (el Toaster).
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla; llega a los
   // menús por contexto y a las guardas de abajo.
   const busyIds = usePendingVacationIds();
@@ -110,97 +111,75 @@ export default function VacationList() {
 
   // Los nombres se incorporan a la FILA, no al accessor: así la llegada tardía
   // de un catálogo produce un `data` nuevo y TanStack recalcula todo.
-  const rows: VacationRow[] = vacations.map((vacation) => ({
-    ...vacation,
-    empleado_nombre:
-      employeeNameById.get(vacation.empleado) ?? `Empleado #${vacation.empleado}`,
-    solicitado_por_nombre: resolveUserName(vacation.solicitado_por, usersById, isUsersError),
-    autorizado_por_nombre: resolveUserName(vacation.autorizado_por, usersById, isUsersError),
-    rechazado_por_nombre: resolveUserName(vacation.rechazado_por, usersById, isUsersError),
-  }));
-
-  // Filtros en memoria sobre el valor CRUDO de la fila (`row.estado`,
-  // `row.empleado`). Las opciones de empleado salen del catálogo COMPLETO y la
-  // config existe siempre: si salieran de las filas, borrar la última solicitud
-  // de un empleado dejaría su filtro activo sin opción. Mismo criterio que
-  // evaluaciones.
-  const empleadoFilterOptions = employees
-    .map((employee) => ({
-      value: String(employee.id),
-      label: employee.activo
-        ? getEmployeeFullName(employee)
-        : `${getEmployeeFullName(employee)} (inactivo)`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estado", options: ESTADO_VACACION_OPTIONS },
-    { id: "empleado", label: "Empleado", options: empleadoFilterOptions },
-  ];
+  const rows = buildVacationRows(vacations, employeeNameById, usersById, isUsersError);
 
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `VacationRowActionsProvider`, así una acción no remonta las celdas.
-  const columns = getColumns({
-    canEdit: canEditHr,
-    canApprove: canApproveHr,
-    canDelete: canDeleteHr,
-  });
+  const columns = withHeaderFilters(
+    getColumns({
+      canEdit: canEditHr,
+      canApprove: canApproveHr,
+      canDelete: canDeleteHr,
+    }),
+    rows,
+    VACATION_HEADER_FILTERS
+  );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────
   const findRow = (id: number | null) =>
     id !== null ? (rows.find((row) => row.id === id) ?? null) : null;
 
   const detailTarget = findRow(detailTargetId);
-  // Aprobar y rechazar solo tienen sentido sobre una pendiente: si cambió de
-  // estado mientras el diálogo estaba abierto (refetch, otra pestaña), el
-  // diálogo deja de ofrecerse.
   const approveTarget = findRow(approveTargetId);
   const rejectTarget = findRow(rejectTargetId);
   const deleteTarget = findRow(deleteRequest?.id ?? null);
 
-  /**
-   * Vía rápida contra la caché: un refetch mostró que la solicitud de un
-   * diálogo abierto cambió de estado o ya no existe. Se deja el mismo aviso que
-   * da la guarda de red, para que el diálogo no desaparezca sin explicación.
-   */
-  const closeStale = (id: number, target: VacationRow | null) =>
-    setStaleNotice({
-      key: `vacation-stale-${id}-${target?.estado ?? "gone"}`,
-      message: target ? vacationEstadoChangedMessage(target.estado) : VACATION_GONE_MESSAGE,
-    });
+  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
+  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
+  const isApproveBusy =
+    approveTargetId !== null && (isApproving || busyIds.includes(approveTargetId));
+  const isRejectBusy = rejectTargetId !== null && busyIds.includes(rejectTargetId);
 
-  // Un id que ya no aplica no puede quedar colgado (un refetch posterior
-  // reabriría el diálogo solo). Ajuste en RENDER, no en un efecto
-  // (`react-hooks/set-state-in-effect`). Aprobar, rechazar y borrar no se tocan
-  // mientras su acción está en vuelo (`busyIds`, `isApproving`,
-  // `isCheckingDelete`): el cambio de estado es el suyo y lo cierra su propio
-  // flujo, sin aviso.
+  // Un detalle cuya solicitud desapareció se cierra sin aviso: no había nada
+  // en curso. Ajuste en RENDER, no en un efecto
+  // (`react-hooks/set-state-in-effect`), igual que los de abajo.
   if (detailTargetId !== null && detailTarget === null) setDetailTargetId(null);
-  if (
-    approveTargetId !== null &&
-    approveTarget?.estado !== ESTADO_PENDIENTE &&
-    !isApproving &&
-    !busyIds.includes(approveTargetId)
-  ) {
+
+  // Vía rápida contra la caché: un refetch mostró que la solicitud de un
+  // diálogo abierto cambió de estado o ya no existe. Se cierra con el mismo
+  // aviso que da la guarda de red (`verifyVacationEstado`), para que el
+  // diálogo no desaparezca sin explicación. Aprobar y rechazar esperan una
+  // pendiente; el borrado, el estado con que se abrió (mientras se verifica no
+  // se toca: el resultado lo decide `handleConfirmDelete`).
+  const staleApprove = getVacationStaleNotice(
+    approveTargetId,
+    approveTarget,
+    ESTADO_PENDIENTE,
+    isApproveBusy
+  );
+  if (staleApprove) {
     setApproveTargetId(null);
-    closeStale(approveTargetId, approveTarget);
+    setStaleNotice(staleApprove);
   }
-  if (
-    rejectTargetId !== null &&
-    rejectTarget?.estado !== ESTADO_PENDIENTE &&
-    !busyIds.includes(rejectTargetId)
-  ) {
+  const staleReject = getVacationStaleNotice(
+    rejectTargetId,
+    rejectTarget,
+    ESTADO_PENDIENTE,
+    isRejectBusy
+  );
+  if (staleReject) {
     setRejectTargetId(null);
-    closeStale(rejectTargetId, rejectTarget);
+    setStaleNotice(staleReject);
   }
-  // En el borrado se compara contra el estado de APERTURA. Mientras se verifica
-  // no se toca: el resultado lo decide `handleConfirmDelete`.
-  if (
-    deleteRequest !== null &&
-    !isCheckingDelete &&
-    (deleteTarget === null || deleteTarget.estado !== deleteRequest.estado)
-  ) {
+  const staleDelete = getVacationStaleNotice(
+    deleteRequest?.id ?? null,
+    deleteTarget,
+    deleteRequest?.estado ?? ESTADO_PENDIENTE,
+    isCheckingDelete
+  );
+  if (staleDelete) {
     setDeleteRequest(null);
-    closeStale(deleteRequest.id, deleteTarget);
+    setStaleNotice(staleDelete);
   }
 
   useEffect(() => {
@@ -210,8 +189,15 @@ export default function VacationList() {
     }
   }, [staleNotice]);
 
+  // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
+  // a la animación de salida cuando el id vuelve a `null`.
+  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const approveSession = useDialogSession(approveTargetId !== null, approveTarget);
+  const rejectSession = useDialogSession(rejectTargetId !== null, rejectTarget);
+  const deleteSession = useDialogSession(deleteRequest !== null, deleteTarget);
+
   // La confirmación FUERTE depende del estado de APERTURA, no del de la caché.
-  const isApprovedDelete = deleteRequest?.estado === ESTADO_APROBADO;
+  const isApprovedDelete = deleteSession.snapshot?.estado === ESTADO_APROBADO;
 
   /**
    * Borrado (pendiente) o anulación (aprobada) con guarda previa: el backend
@@ -256,7 +242,6 @@ export default function VacationList() {
         // aprobar/rechazar mueve filas entre filtros y borrar las recorre.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar solicitud..."
-        filterConfig={filterConfig}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar vacaciones"
@@ -270,11 +255,12 @@ export default function VacationList() {
                   title={selectedVacation ? "Editar Solicitud de Vacaciones" : "Alta de Vacaciones"}
                   subtitle={selectedVacation ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="sky"
+                  icon={VacationIcon}
                 />
               }
               open={isFormOpen}
               onOpenChange={setIsFormOpen}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -295,10 +281,16 @@ export default function VacationList() {
         }
       />
 
-      {detailTarget && (
+      {/*
+        Montados mientras haya una copia: `open` sale del id, así que al
+        cerrarse animan su salida con los datos de la apertura.
+      */}
+      {detailSession.snapshot && (
         <VacationDetailDialog
-          vacation={detailTarget}
-          open
+          key={`detail-${detailSession.id}`}
+          // El detalle sí sigue a los refetch mientras su solicitud exista.
+          vacation={detailTarget ?? detailSession.snapshot}
+          open={detailTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDetailTargetId(null);
           }}
@@ -309,39 +301,40 @@ export default function VacationList() {
         Sin optimista: queda abierto y bloqueado (`busy`) hasta que el servidor
         responde y el listado se refresca; entonces se cierra.
       */}
-      {canApproveHr && approveTarget && (approveTarget.estado === ESTADO_PENDIENTE || isApproving) && (
+      {canApproveHr && approveSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`approve-${approveSession.id}`}
+          open={approveTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setApproveTargetId(null);
           }}
           title="Aprobar Vacaciones"
-          description={`¿Aprobar la solicitud de ${approveTarget.empleado_nombre} (${formatVacationRange(
-            approveTarget
-          )}, ${diasLabel(approveTarget.dias_solicitados)})? Quedará registrado quién la aprobó y cuándo.`}
-          confirmText={isApproving ? "Aprobando…" : "Aprobar"}
+          description={`¿Aprobar la solicitud de ${approveSession.snapshot.empleado_nombre} (${formatVacationRange(
+            approveSession.snapshot
+          )}, ${diasLabel(approveSession.snapshot.dias_solicitados)})? Quedará registrado quién la aprobó y cuándo.`}
+          confirmText={isApproveBusy ? "Aprobando…" : "Aprobar"}
           confirmColor="green"
           closeOnConfirm={false}
-          busy={isApproving}
-          onConfirm={() =>
-            approveVacation(approveTarget.id, {
+          busy={isApproveBusy}
+          onConfirm={() => {
+            const id = approveSession.snapshot?.id;
+            if (id === undefined) return;
+            approveVacation(id, {
               onSettled: () => setApproveTargetId(null),
-            })
-          }
+            });
+          }}
         />
       )}
 
       {/*
-        Sigue montado mientras su rechazo está en vuelo, aunque el refetch ya lo
-        muestre rechazado: así su propio `onClose` limpia el id y la vía rápida
-        no lo confunde con un cambio ajeno.
+        Mientras su rechazo está en vuelo la vía rápida no lo toca, aunque el
+        refetch ya lo muestre rechazado: su propio `onClose` limpia el id.
       */}
-      {canApproveHr &&
-        rejectTarget &&
-        (rejectTarget.estado === ESTADO_PENDIENTE || busyIds.includes(rejectTarget.id)) && (
+      {canApproveHr && rejectSession.snapshot && (
         <VacationRejectDialog
-          key={rejectTarget.id}
-          vacation={rejectTarget}
+          key={`reject-${rejectSession.id}`}
+          vacation={rejectSession.snapshot}
+          open={rejectTargetId !== null}
           onClose={() => setRejectTargetId(null)}
         />
       )}
@@ -352,34 +345,37 @@ export default function VacationList() {
         de aprobación. Una rechazada nunca llega aquí. Queda abierta y
         bloqueada (`busy`) mientras se verifica el estado en el servidor.
       */}
-      {canDeleteHr && deleteRequest && deleteTarget && deleteRequest.estado !== ESTADO_RECHAZADO && (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open && !isCheckingDelete) setDeleteRequest(null);
-          }}
-          closeOnConfirm={false}
-          busy={isCheckingDelete}
-          maxWidth={isApprovedDelete ? "520px" : undefined}
-          title={isApprovedDelete ? "Anular Vacaciones Aprobadas" : "Eliminar Solicitud de Vacaciones"}
-          description={
-            isApprovedDelete
-              ? `Vas a ELIMINAR DEFINITIVAMENTE las vacaciones aprobadas de ${deleteTarget.empleado_nombre} (${formatVacationRange(
-                  deleteTarget
-                )}). Es la única forma de anularlas: la solicitud y todo su registro de aprobación (quién la aprobó y cuándo) se borran y no se pueden recuperar. Esta acción es irreversible.`
-              : "¿Estás seguro de que deseas eliminar esta solicitud de vacaciones? Esta acción no se puede deshacer."
-          }
-          confirmText={
-            isCheckingDelete
-              ? "Verificando…"
-              : isApprovedDelete
-                ? "Sí, eliminar definitivamente"
-                : "Eliminar"
-          }
-          onConfirm={() => void handleConfirmDelete()}
-          confirmColor="red"
-        />
-      )}
+      {canDeleteHr &&
+        deleteSession.snapshot &&
+        deleteSession.snapshot.estado !== ESTADO_RECHAZADO && (
+          <ConfirmDialog
+            key={`delete-${deleteSession.id}`}
+            open={deleteRequest !== null}
+            onOpenChange={(open) => {
+              if (!open && !isCheckingDelete) setDeleteRequest(null);
+            }}
+            closeOnConfirm={false}
+            busy={isCheckingDelete}
+            maxWidth={isApprovedDelete ? "520px" : undefined}
+            title={isApprovedDelete ? "Anular Vacaciones Aprobadas" : "Eliminar Solicitud de Vacaciones"}
+            description={
+              isApprovedDelete
+                ? `Vas a ELIMINAR DEFINITIVAMENTE las vacaciones aprobadas de ${deleteSession.snapshot.empleado_nombre} (${formatVacationRange(
+                    deleteSession.snapshot
+                  )}). Es la única forma de anularlas: la solicitud y todo su registro de aprobación (quién la aprobó y cuándo) se borran y no se pueden recuperar. Esta acción es irreversible.`
+                : "¿Estás seguro de que deseas eliminar esta solicitud de vacaciones? Esta acción no se puede deshacer."
+            }
+            confirmText={
+              isCheckingDelete
+                ? "Verificando…"
+                : isApprovedDelete
+                  ? "Sí, eliminar definitivamente"
+                  : "Eliminar"
+            }
+            onConfirm={() => void handleConfirmDelete()}
+            confirmColor="red"
+          />
+        )}
     </VacationRowActionsProvider>
   );
 }

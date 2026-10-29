@@ -11,7 +11,10 @@ import { VacationRejectSchema } from "../schemas/vacation.schema";
 import { formatVacationRange, type VacationRow } from "./VacationColumns";
 
 interface VacationRejectDialogProps {
+  /** Copia de la solicitud al ABRIR (`useDialogSession` en `VacationList`). */
   vacation: VacationRow;
+  /** Lo controla el id del padre: al cerrarse anima su salida con esta copia. */
+  open: boolean;
   onClose: () => void;
 }
 
@@ -22,14 +25,14 @@ interface VacationRejectDialogProps {
  * Se monta en `VacationList`, NO en la celda: al rechazar, el refetch cambia
  * `estado` y puede sacar la fila de una vista filtrada, y la celda —con su
  * diálogo— se desmontaría a media operación. El padre lo monta con `key` por
- * solicitud, así que el borrador no se arrastra a otra.
+ * apertura (`useDialogSession`), así que el borrador no se arrastra a otra.
  *
  * Input controlado + `safeParse` al enviar y guarda síncrona contra el doble
  * envío (el esqueleto que tenía `PurchaseOrderCancelDialog` antes de pasar a
  * TanStack Form). Pensado para
  * que `permisos-ausencias`, con el mismo flujo, lo tome como molde.
  */
-export function VacationRejectDialog({ vacation, onClose }: VacationRejectDialogProps) {
+export function VacationRejectDialog({ vacation, open, onClose }: VacationRejectDialogProps) {
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState<string | null>(null);
 
@@ -77,7 +80,7 @@ export function VacationRejectDialog({ vacation, onClose }: VacationRejectDialog
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="480px"
       showCloseButton={false}

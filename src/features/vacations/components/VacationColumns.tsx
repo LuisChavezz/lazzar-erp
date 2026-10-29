@@ -1,13 +1,10 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import {
-  CheckCircleIcon,
-  DeleteIcon,
-  EditIcon,
-  RejectIcon,
-  ViewIcon,
-} from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { CheckCircleIcon, DeleteIcon, EditIcon, RejectIcon } from "@/src/components/Icons";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDateRange, formatShortDate } from "@/src/utils/formatDate";
 import { Vacation } from "../interfaces/vacation.interface";
 import {
@@ -26,7 +23,7 @@ import { useVacationRowActionsContext } from "../hooks/useVacationRowActions";
  * Los nombres viajan EN LA FILA y no se resuelven dentro del accessor: TanStack
  * guarda en caché el valor del accessor por fila y solo lo recalcula cuando
  * cambia `data`, así que un catálogo que llega tarde dejaría congelado el
- * respaldo. Mismo arreglo que `EvaluationRow`.
+ * respaldo. Mismo arreglo que `ContractRow` (ver `buildVacationRows`).
  *
  * `empleado_nombre` es SIEMPRE string (con respaldo "Empleado #N") para que la
  * columna nunca quede fuera de la búsqueda global. Los de usuario son `null`
@@ -52,76 +49,66 @@ export interface VacationColumnPermissions {
 }
 
 /**
- * Menú de acciones de UNA fila, según su estado (D4):
+ * El nombre del empleado ES el menú de la fila ("Ver detalle" primero): sin
+ * columna aparte de "Acciones". El `estado` va en su propia columna, con su
+ * badge y su filtro (esquema de Contratos).
+ * Acciones según el estado (D4):
  *
  * - pendiente: editar, aprobar, rechazar y eliminar.
  * - aprobada: solo lectura; eliminarla es la única forma de anularla.
  * - rechazada: solo lectura, sin eliminar.
  *
- * "Ver detalle" está siempre, sin permiso extra. Lee los callbacks por
- * contexto y el "en vuelo" de la `MutationCache`; es solo presentacional: los
- * diálogos viven en `VacationList`.
+ * Los callbacks y el "en vuelo" llegan por contexto; los diálogos viven en
+ * `VacationList`.
  */
-function VacationRowActionsMenu({
+function VacationNameCell({
   vacation,
   permissions,
 }: {
-  vacation: Vacation;
+  vacation: VacationRow;
   permissions: VacationColumnPermissions;
 }) {
   const { onView, onEdit, onApprove, onReject, onDelete, busyIds } = useVacationRowActionsContext();
   const isBusy = busyIds.includes(vacation.id);
+  const isPending = vacation.estado === ESTADO_PENDIENTE;
 
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onView(vacation) },
-  ];
-
-  if (vacation.estado === ESTADO_PENDIENTE) {
-    if (permissions.canEdit) {
-      menuItems.push({
-        label: "Editar",
-        icon: EditIcon,
-        onSelect: () => onEdit(vacation),
-        disabled: isBusy,
-      });
-    }
-    if (permissions.canApprove) {
-      menuItems.push(
-        {
-          label: "Aprobar",
-          icon: CheckCircleIcon,
-          onSelect: () => onApprove(vacation),
-          disabled: isBusy,
-        },
-        {
-          label: "Rechazar",
-          icon: RejectIcon,
-          onSelect: () => onReject(vacation),
-          disabled: isBusy,
-        }
-      );
-    }
-    if (permissions.canDelete) {
-      menuItems.push({
-        label: "Eliminar",
-        icon: DeleteIcon,
-        onSelect: () => onDelete(vacation),
-        disabled: isBusy,
-      });
-    }
-  } else if (vacation.estado === ESTADO_APROBADO && permissions.canDelete) {
-    menuItems.push({
-      label: "Anular (eliminar)",
+  const items: ActionMenuItem[] = [
+    {
+      label: "Editar",
+      icon: EditIcon,
+      onSelect: () => onEdit(vacation),
+      disabled: isBusy,
+      visible: isPending && permissions.canEdit,
+    },
+    {
+      label: "Aprobar",
+      icon: CheckCircleIcon,
+      onSelect: () => onApprove(vacation),
+      disabled: isBusy,
+      visible: isPending && permissions.canApprove,
+    },
+    {
+      label: "Rechazar",
+      icon: RejectIcon,
+      onSelect: () => onReject(vacation),
+      disabled: isBusy,
+      visible: isPending && permissions.canApprove,
+    },
+    {
+      label: isPending ? "Eliminar" : "Anular (eliminar)",
       icon: DeleteIcon,
       onSelect: () => onDelete(vacation),
       disabled: isBusy,
-    });
-  }
+      visible: permissions.canDelete && (isPending || vacation.estado === ESTADO_APROBADO),
+    },
+  ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de la solicitud" />
-    </div>
+    <FolioActionMenu
+      name={vacation.empleado_nombre}
+      detail={{ onSelect: () => onView(vacation) }}
+      items={items}
+    />
   );
 }
 
@@ -131,11 +118,13 @@ function VacationRowActionsMenu({
  */
 export const getColumns = (permissions: VacationColumnPermissions) =>
   [
-    // El nombre abre el detalle, igual que un folio en el resto de tablas.
-    columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `VacationRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
       header: "Empleado",
-      cell: ({ row, getValue }) => <EmployeeDetailTrigger row={row.original} name={getValue()} />,
+      size: 260,
+      cell: ({ row }) => <VacationNameCell vacation={row.original} permissions={permissions} />,
     }),
     // El accessor devuelve el rango YA formateado para que la búsqueda global
     // encuentre lo que se ve; el orden va sobre las fechas ISO crudas.
@@ -163,7 +152,9 @@ export const getColumns = (permissions: VacationColumnPermissions) =>
         </span>
       ),
     }),
-    columnHelper.accessor((row) => getEstadoVacacionLabel(row.estado) ?? "—", {
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su badge y su filtro).
+    columnHelper.accessor((row) => getEstadoVacacionLabel(row.estado) ?? row.estado, {
       id: "estado",
       header: "Estado",
       cell: ({ row }) => <StatusBadge status={row.original.estado} config={ESTADO_VACACION_CFG} />,
@@ -179,27 +170,26 @@ export const getColumns = (permissions: VacationColumnPermissions) =>
         </span>
       ),
     }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => (
-        <VacationRowActionsMenu vacation={row.original} permissions={permissions} />
-      ),
-    }),
   ] as ColumnDef<VacationRow>[];
 
-/** Nombre del empleado como disparador del detalle (mismo callback que "Ver detalle"). */
-function EmployeeDetailTrigger({ row, name }: { row: VacationRow; name: string }) {
-  const { onView } = useVacationRowActionsContext();
-  return (
-    <button
-      type="button"
-      onClick={() => onView(row)}
-      title="Ver detalle"
-      className="text-left font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
-    >
-      {name}
-    </button>
-  );
-}
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * El empleado compara contra el FK crudo, rotulado con el nombre resuelto de
+ * la fila (o su respaldo `#N`, el mismo texto que la celda), con buscador. El
+ * estado, con ficha "Estatus: …", ofrece el catálogo completo aunque ninguna
+ * fila lo use, y al final cada código desconocido de las filas, crudo (igual
+ * que su badge). El periodo filtra por su mes de inicio y la solicitud por su
+ * mes. Los días no llevan filtro: es un número libre.
+ */
+export const VACATION_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<VacationRow>>> = {
+  empleado: {
+    type: "distinct",
+    get: (r) => r.empleado,
+    label: (r) => r.empleado_nombre,
+    searchable: true,
+  },
+  estado: { type: "options", filterLabel: "estatus", get: (r) => r.estado, options: optionsFromConfig(ESTADO_VACACION_CFG) },
+  periodo: { type: "month", get: (r) => r.fecha_inicio },
+  fecha_solicitud: { type: "month", get: (r) => r.fecha_solicitud },
+};
