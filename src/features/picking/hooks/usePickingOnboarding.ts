@@ -2,13 +2,24 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import { getPickingOnboarding } from "../services/actions";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
 import { parsePickingError } from "../utils/parsePickingError";
-import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+import { isAxiosError } from "axios";
 
 /**
  * Prefijo de la llamada SIN pedido (el catálogo del Paso 1): coincide con
  * `["picking-onboarding", null, <almacén>]` y con ninguna llamada por pedido.
  */
 export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const;
+
+/**
+ * Sin reintento solo ante un rechazo DEFINITIVO del backend (400/403/404: el
+ * pedido dejó de estar programado, no es accesible o no existe). Un 408/429 u
+ * otro fallo pasajero conserva el `retry: 1` global de `Provider.tsx`.
+ */
+const retryUnlessDefinitiveRejection = (failureCount: number, error: unknown) => {
+  const status = isAxiosError(error) ? error.response?.status : undefined;
+  if (status === 400 || status === 403 || status === 404) return false;
+  return failureCount < 1;
+};
 
 /**
  * Regla ÚNICA para un rechazo del backend al PEDIDO (clave `pedido`: ya no
@@ -53,8 +64,9 @@ export const invalidateIfPedidoRejected = (
  * Paso 2) no tiene ningún beneficio de frescura y solo agrega una petición.
  * La excepción es un rechazo del pedido (`invalidateIfPedidoRejected`).
  *
- * Un 4xx no se reintenta (`retryUnlessClientError`): el 400 de un pedido que
- * dejó de estar programado es definitivo y reintentarlo solo retrasa el error.
+ * Un 400/403/404 no se reintenta (`retryUnlessDefinitiveRejection`): el 400 de
+ * un pedido que dejó de estar programado es definitivo y reintentarlo solo
+ * retrasa el error.
  */
 export const usePickingOnboarding = (
   pedidoId?: number | null,
@@ -78,7 +90,7 @@ export const usePickingOnboarding = (
         throw error;
       }
     },
-    retry: retryUnlessClientError,
+    retry: retryUnlessDefinitiveRejection,
     ...(isPedidoScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
       : {}),
