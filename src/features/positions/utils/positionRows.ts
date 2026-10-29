@@ -22,7 +22,7 @@ export const buildPositionRows = (
   }));
 
 /** Avisos del diálogo de desactivar que se cerró por un cambio externo. */
-export const POSITION_STALE_MESSAGES: StaleRowDialogMessages = {
+export const POSITION_STALE_MESSAGES: Required<StaleRowDialogMessages> = {
   gone: "El puesto ya no existe. Se actualizó el listado.",
   activoChanged: (activo) =>
     `El puesto cambió de estatus: ya está ${activo ? "activo" : "inactivo"}. Se actualizó el listado.`,

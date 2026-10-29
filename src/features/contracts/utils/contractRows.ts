@@ -36,7 +36,7 @@ export const getContractEstadoText = (estado: string | null | undefined): string
   getEstadoContratoLabel(estado) ?? (estado || "—");
 
 /** Avisos del diálogo de desactivar que se cerró por un cambio externo. */
-export const CONTRACT_STALE_MESSAGES: StaleRowDialogMessages = {
+export const CONTRACT_STALE_MESSAGES: Required<StaleRowDialogMessages> = {
   gone: "El contrato ya no existe. Se actualizó el listado.",
   activoChanged: (activo) =>
     `El registro del contrato cambió: ya está ${activo ? "activo" : "inactivo"}. Se actualizó el listado.`,
