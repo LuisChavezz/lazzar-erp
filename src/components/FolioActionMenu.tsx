@@ -1,8 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
 import { ActionMenu, type ActionMenuItem } from "./ActionMenu";
 import { ChevronRightIcon, ViewIcon } from "./Icons";
 
@@ -76,14 +74,6 @@ function NameActionMenu({ name, detail, items, active, status }: NameModeProps) 
     ? [{ label: "Ver detalle", icon: ViewIcon, ...detail }, ...items]
     : items;
   const activeLabel = active ? "Activo" : "Inactivo";
-  // `ActionMenu` no pinta nada si ninguna acción queda visible (mismo filtro
-  // que el suyo). Un catálogo sin "Ver detalle" se quedaría sin nombre para un
-  // usuario de solo lectura: ahí el nombre va como texto plano, sin menú.
-  const { data: session } = useSession();
-  const hasVisibleItems = menuItems.some(
-    (item) =>
-      (item.visible ?? true) && (!item.permission || hasPermission(item.permission, session?.user))
-  );
   return (
     <div className="flex flex-col items-start gap-1 min-w-0">
       <div className="flex items-center gap-2 min-w-0 max-w-full">
@@ -95,20 +85,22 @@ function NameActionMenu({ name, detail, items, active, status }: NameModeProps) 
             title={activeLabel}
           />
         )}
-        {hasVisibleItems ? (
-          <RowMenuTrigger
-            label={name}
-            items={menuItems}
-            className="group inline-flex items-center gap-1 min-w-0 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer text-left"
-            chevronExtraClassName=" shrink-0"
-          >
-            <span className="truncate">{name || "—"}</span>
-          </RowMenuTrigger>
-        ) : (
-          <span className="truncate font-medium text-slate-700 dark:text-slate-200">
-            {name || "—"}
-          </span>
-        )}
+        <RowMenuTrigger
+          label={name}
+          items={menuItems}
+          className="group inline-flex items-center gap-1 min-w-0 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer text-left"
+          chevronExtraClassName=" shrink-0"
+          // Sin ninguna acción visible (un catálogo sin "Ver detalle" ante un
+          // usuario de solo lectura) el menú no se pinta: el nombre queda
+          // como texto plano en vez de desaparecer.
+          renderWhenEmpty={
+            <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+              {name || "—"}
+            </span>
+          }
+        >
+          <span className="truncate">{name || "—"}</span>
+        </RowMenuTrigger>
       </div>
       {status}
     </div>
@@ -126,6 +118,7 @@ function RowMenuTrigger({
   items,
   className,
   chevronExtraClassName = "",
+  renderWhenEmpty,
   children,
 }: {
   /** Folio o nombre: nombra el menú y el botón para lectores de pantalla. */
@@ -133,11 +126,14 @@ function RowMenuTrigger({
   items: ActionMenuItem[];
   className: string;
   chevronExtraClassName?: string;
+  /** Ver `ActionMenu.renderWhenEmpty`; el modo folio no lo usa. */
+  renderWhenEmpty?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <ActionMenu
       items={items}
+      renderWhenEmpty={renderWhenEmpty}
       ariaLabel={`Acciones de ${label}`}
       align="start"
       trigger={
