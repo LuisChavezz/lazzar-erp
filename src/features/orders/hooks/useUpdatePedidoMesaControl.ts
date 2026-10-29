@@ -7,6 +7,7 @@ import {
   extractPlainDetalleMessage,
   extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
+  REQUIRED_COLOR_KEY,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -41,8 +42,10 @@ import type {
  * el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
  * prenda/proceso, lista completa) y `detalle` cuando llega como mensaje plano
  * (p. ej. el tope de reflejante «Del inventario»): no los pinta ningún campo.
+ * `color` (EC-641) va a los DOS lados: el toast muestra el mensaje del backend
+ * con los nombres de producto, y `onValidationError` marca las partidas.
  */
-const REJECTION_KEYS = ["permiso", "cotizacion", "detail"] as const;
+const REJECTION_KEYS = ["permiso", "cotizacion", "detail", REQUIRED_COLOR_KEY] as const;
 
 /**
  * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es de

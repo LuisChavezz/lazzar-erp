@@ -95,7 +95,13 @@ export const extractQuoteValidationIssues = (
   if (path.length === 0 && source && typeof source === "object" && !Array.isArray(source)) {
     return Object.entries(source as Record<string, unknown>)
       .filter(([key]) => key !== PROCESS_COMPATIBILITY_KEY)
-      .flatMap(([key, value]) => extractQuoteValidationIssues(value, [key]));
+      .flatMap(([key, value]) =>
+        // `color` de primer nivel (EC-641) se acepta también como string suelto;
+        // el resto de las claves conserva su manejo de siempre.
+        key === REQUIRED_COLOR_KEY && typeof value === "string" && value
+          ? [{ path: REQUIRED_COLOR_KEY, message: value }]
+          : extractQuoteValidationIssues(value, [key])
+      );
   }
 
   if (Array.isArray(source)) {
@@ -125,6 +131,17 @@ export const extractQuoteValidationIssues = (
 };
 
 // ─── Mensaje de rechazo ────────────────────────────────────────────────────────
+
+/**
+ * Color obligatorio con variantes (EC-641, `exigir_color_si_hay_variantes`):
+ * `400 {"color": ["Elige el color de: A, B."]}` en enviar a revisión,
+ * autorizar, aceptar cambios y editar en mesa de control. Llega en el PRIMER
+ * nivel, sin índice de partida —solo nombres de producto—, así que
+ * `extractQuoteValidationIssues` lo entrega con la ruta `color` tal cual y es el
+ * formulario quien la traduce a las partidas culpables, calculadas con
+ * `getMissingColorLines` y nunca leyendo los nombres del mensaje.
+ */
+export const REQUIRED_COLOR_KEY = "color";
 
 /**
  * Rechazo de la matriz prenda/proceso (EC-575): una LISTA de mensajes, uno por
