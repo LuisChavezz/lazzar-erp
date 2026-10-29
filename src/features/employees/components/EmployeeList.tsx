@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -10,6 +11,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { UserIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
@@ -24,6 +26,7 @@ import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
 import { useReactivateEmployee } from "../hooks/useReactivateEmployee";
 import { EmployeeRowActionsProvider, usePendingEmployeeIds } from "../hooks/useEmployeeRowActions";
 import { getEmployeeFullName } from "../utils/employeeName";
+import { EMPLOYEE_GONE_MESSAGE, employeeActivoChangedMessage } from "../hooks/employeeStaleMessages";
 
 export default function EmployeeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,9 +37,13 @@ export default function EmployeeList() {
   const [reactivateTargetId, setReactivateTargetId] = useState<number | null>(null);
   const { employees, isLoading, isInitialError, error } = useEmployees();
   const queryClient = useQueryClient();
-  const { mutate: deactivateEmployee } = useDeleteEmployee();
-  const { mutate: reactivateEmployee } = useReactivateEmployee();
+  const { mutate: deactivateEmployee, isPending: isDeactivatePending } = useDeleteEmployee();
+  const { mutate: reactivateEmployee, isPending: isReactivatePending } = useReactivateEmployee();
   const busyIds = usePendingEmployeeIds();
+  // Aviso de un diálogo de fila que se cerró porque su empleado cambió por
+  // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
+  // otro componente (el Toaster).
+  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
 
   // Catálogos para resolver los FK de las columnas. Las sucursales ya están en
   // el workspace (no dispara otra petición), igual que en `WarehouseList`.
@@ -100,15 +107,31 @@ export default function EmployeeList() {
     id !== null ? (rows.find((row) => row.id === id) ?? null) : null;
   const deactivateTarget = findRow(deactivateTargetId);
   const reactivateTarget = findRow(reactivateTargetId);
-  const isDeactivating = deactivateTargetId !== null && busyIds.includes(deactivateTargetId);
-  const isReactivating = reactivateTargetId !== null && busyIds.includes(reactivateTargetId);
+  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
+  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
+  const isDeactivating =
+    deactivateTargetId !== null && (busyIds.includes(deactivateTargetId) || isDeactivatePending);
+  const isReactivating =
+    reactivateTargetId !== null && (busyIds.includes(reactivateTargetId) || isReactivatePending);
 
-  // Un id que ya no aplica no queda colgado: el empleado desapareció o cambió
-  // de `activo` por fuera (refetch, otra pestaña). Mientras SU acción está en
-  // vuelo no se toca: el optimista invierte `activo` al arrancar y el diálogo
-  // lo cierra el `onSettled` de la mutación. Ajuste en render, no en un efecto.
+  /**
+   * Vía rápida contra la caché: un refetch mostró que el empleado de un
+   * diálogo abierto ya no existe o cambió de `activo`. Se avisa, para que el
+   * diálogo no desaparezca sin explicación. Mismo patrón que `VacationList`.
+   */
+  const closeStale = (id: number, target: EmployeeRow | null) =>
+    setStaleNotice({
+      key: `employee-stale-${id}-${target ? String(target.activo) : "gone"}`,
+      message: target ? employeeActivoChangedMessage(target.activo) : EMPLOYEE_GONE_MESSAGE,
+    });
+
+  // Un id que ya no aplica no queda colgado (un refetch posterior reabriría el
+  // diálogo solo). Mientras SU acción está en vuelo no se toca: el optimista
+  // invierte `activo` al arrancar y el diálogo lo cierra el `onSettled` de la
+  // mutación, sin aviso. Ajuste en render, no en un efecto.
   if (deactivateTargetId !== null && !isDeactivating && !deactivateTarget?.activo) {
     setDeactivateTargetId(null);
+    closeStale(deactivateTargetId, deactivateTarget);
   }
   if (
     reactivateTargetId !== null &&
@@ -116,7 +139,20 @@ export default function EmployeeList() {
     (reactivateTarget === null || reactivateTarget.activo)
   ) {
     setReactivateTargetId(null);
+    closeStale(reactivateTargetId, reactivateTarget);
   }
+
+  useEffect(() => {
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key });
+    }
+  }, [staleNotice]);
+
+  // Copia del empleado al ABRIR cada confirmación: el texto no sigue a los
+  // refetch y sobrevive a la animación de salida cuando el id vuelve a `null`.
+  const deactivateSession = useDialogSession(deactivateTargetId !== null, deactivateTarget);
+  const reactivateSession = useDialogSession(reactivateTargetId !== null, reactivateTarget);
 
   return (
     <EmployeeRowActionsProvider
@@ -174,41 +210,51 @@ export default function EmployeeList() {
         }
       />
 
-      {canDeleteHr && deactivateTarget && (
+      {/*
+        Montados mientras haya una copia: `open` sale del id, así que al
+        cerrarse animan su salida con el nombre de la apertura.
+      */}
+      {canDeleteHr && deactivateSession.snapshot && (
         <ConfirmDialog
-          open
+          key={deactivateSession.id}
+          open={deactivateTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDeactivateTargetId(null);
           }}
           title="Desactivar Empleado"
-          description={`¿Deseas desactivar a ${getEmployeeFullName(deactivateTarget)}? Su información se conserva y seguirá visible en el listado con estatus Inactivo.`}
+          description={`¿Deseas desactivar a ${getEmployeeFullName(deactivateSession.snapshot)}? Su información se conserva y seguirá visible en el listado con estatus Inactivo.`}
           confirmText={isDeactivating ? "Desactivando..." : "Desactivar"}
           closeOnConfirm={false}
           busy={isDeactivating}
-          onConfirm={() =>
-            deactivateEmployee(deactivateTarget.id, {
+          onConfirm={() => {
+            const id = deactivateSession.snapshot?.id;
+            if (id === undefined) return;
+            deactivateEmployee(id, {
               onSettled: () => setDeactivateTargetId(null),
-            })
-          }
+            });
+          }}
           confirmColor="amber"
         />
       )}
-      {canDeleteHr && reactivateTarget && (
+      {canDeleteHr && reactivateSession.snapshot && (
         <ConfirmDialog
-          open
+          key={reactivateSession.id}
+          open={reactivateTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setReactivateTargetId(null);
           }}
           title="Reactivar Empleado"
-          description={`¿Deseas reactivar a ${getEmployeeFullName(reactivateTarget)}? Volverá a aparecer con estatus Activo y se limpiará su fecha de baja.`}
+          description={`¿Deseas reactivar a ${getEmployeeFullName(reactivateSession.snapshot)}? Volverá a aparecer con estatus Activo y se limpiará su fecha de baja.`}
           confirmText={isReactivating ? "Reactivando..." : "Reactivar"}
           closeOnConfirm={false}
           busy={isReactivating}
-          onConfirm={() =>
-            reactivateEmployee(reactivateTarget.id, {
+          onConfirm={() => {
+            const id = reactivateSession.snapshot?.id;
+            if (id === undefined) return;
+            reactivateEmployee(id, {
               onSettled: () => setReactivateTargetId(null),
-            })
-          }
+            });
+          }}
           confirmColor="green"
         />
       )}
