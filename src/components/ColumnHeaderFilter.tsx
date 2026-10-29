@@ -4,7 +4,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
 import { DataTableModeContext } from './DataTableModeContext';
-import type { ColumnFilterOption } from '@/src/utils/columnFilterOptions';
+import { pinActiveFilterOption, type ColumnFilterOption } from '@/src/utils/columnFilterOptions';
 
 export type { ColumnFilterOption };
 
@@ -72,7 +72,7 @@ const STATUS_LINE_CLS = 'px-3 py-2 text-xs text-slate-400 dark:text-slate-500';
  */
 export function ColumnHeaderFilter<TData>({
   column,
-  options,
+  options: optionsProp,
   label,
   searchable = false,
   isLoading = false,
@@ -108,18 +108,29 @@ export function ColumnHeaderFilter<TData>({
   const menuAlignCls = menuAlign === 'end' ? 'right-0' : 'left-0';
   const isSearchable = searchable !== false;
 
+  // La opción elegida sigue a la vista aunque ya no esté entre las opciones
+  // (las que salen de las filas cambian con un parámetro de servidor, p. ej.
+  // `?quincena=`): `DataTable` recuerda la última etiqueta reportada para el
+  // valor activo y `pinActiveFilterOption` la fija en el menú. El recuerdo vive
+  // en la tabla y no aquí porque este encabezado se vuelve a montar cada vez
+  // que se reconstruyen las columnas (`withHeaderFilters` crea su `header`).
+  const remembered =
+    tableMode.mode === 'client' ? tableMode.filterValueLabels?.[column.id] : undefined;
+  const { options, active: activeOption } = pinActiveFilterOption(
+    optionsProp,
+    activeValue,
+    remembered?.value !== undefined ? { value: remembered.value, label: remembered.label } : undefined,
+  );
+
   // Etiqueta del valor activo para el chip "Filtrado por" de `DataTable`
-  // (modo cliente). Sin opción que coincida (catálogo aún cargando) no se
-  // reporta nada y el chip muestra solo el nombre de la columna.
+  // (modo cliente). Sin opción que coincida ni recuerdo de ella (catálogo aún
+  // cargando) no se reporta nada y el chip muestra solo el nombre de la columna.
   const reportFilterValueLabel =
     tableMode.mode === 'client' ? tableMode.reportFilterValueLabel : undefined;
-  const activeLabel =
-    activeValue === undefined
-      ? undefined
-      : options.find((opt) => opt.value === activeValue)?.label;
+  const activeLabel = activeOption?.label;
   useEffect(() => {
-    reportFilterValueLabel?.(column.id, activeLabel);
-  }, [reportFilterValueLabel, column.id, activeLabel]);
+    reportFilterValueLabel?.(column.id, activeLabel, activeValue);
+  }, [reportFilterValueLabel, column.id, activeLabel, activeValue]);
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 
