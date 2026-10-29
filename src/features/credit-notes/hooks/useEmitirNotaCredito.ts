@@ -9,10 +9,10 @@ import {
   logUnexpectedError,
   STAMP_FAILED_TOAST_DURATION_MS,
 } from "../utils/creditNoteErrors";
-import { getRelatedInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
+import { getInvoiceEmitBlockReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
-import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
+import { fetchFreshRelatedInvoice } from "./fetchFreshRelatedInvoice";
 
 /**
  * Emite una nota que estaba en borrador
@@ -36,8 +36,9 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  *
  * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
  * `PrecheckError`, sin PATCH, si la nota ya no es `Borrador` o la factura está
- * `Cancelada`, con su CFDI cancelado, con su cancelación pendiente de aceptar
- * o con su timbrado sin confirmar (`getRelatedInvoiceEmitBlockReason`). El
+ * `Cancelada`, eliminada o inexistente (`404`), con su CFDI cancelado, con su
+ * cancelación pendiente de aceptar o con su timbrado sin confirmar
+ * (`getInvoiceEmitBlockReason`, la misma regla del alta `Emitida`). El
  * candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
  * `onSettled` refresca nota, factura, cuenta por cobrar y pedido
@@ -61,8 +62,8 @@ export const useEmitirNotaCredito = () => {
       if (nota.estatus !== "Borrador") {
         throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);
       }
-      const factura = await fetchFreshInvoice(queryClient, nota.factura);
-      const blockReason = getRelatedInvoiceEmitBlockReason(factura);
+      const factura = await fetchFreshRelatedInvoice(queryClient, nota.factura);
+      const blockReason = getInvoiceEmitBlockReason(nota.factura_folio, factura);
       if (blockReason) throw new PrecheckError(blockReason);
       return emitirNotaCredito(id);
     },
