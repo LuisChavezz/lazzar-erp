@@ -8,10 +8,20 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
+import {
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+  type WorkspaceBranchDocument,
+} from "@/src/features/workspace/utils/workspaceBranchMessages";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
-import { EmployeeFormSchema, EmployeeFormValues } from "../schemas/employee.schema";
+import {
+  EmployeeFormSchema,
+  EmployeeFormValues,
+  EmployeeServerErrorField,
+} from "../schemas/employee.schema";
 import { useCreateEmployee } from "./useCreateEmployee";
 import { useUpdateEmployee } from "./useUpdateEmployee";
 import { Employee, EmployeeCreate } from "../interfaces/employee.interface";
@@ -22,6 +32,12 @@ interface UseEmployeeFormParams {
 }
 
 type EmployeeFormField = keyof EmployeeFormValues;
+
+/** El empleado en los textos del aviso compartido de sucursal. */
+export const EMPLOYEE_SUCURSAL_DOCUMENT: WorkspaceBranchDocument = {
+  asignarA: "al empleado",
+  guardar: "el empleado",
+};
 
 /** Campo opcional nullable en backend: vacío viaja como null, no como "". */
 const emptyToNull = (value: string) => {
@@ -36,18 +52,32 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   // Empresa del workspace activo: se exige para dar de alta un empleado.
   const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
 
-  // Catálogos que alimentan los tres selects de FK.
-  // Las sucursales se leen de `mis-sucursales` (useCompanyBranches) y NO de
-  // `/nucleo/sucursales/`: ese endpoint expone la PK como `id_sucursal` y no
-  // trae `id`, mientras que este devuelve `id` = PK y ya viene acotado a las
-  // sucursales que el usuario tiene permitidas en la empresa activa.
+  // La sucursal NO se captura (EC-623). Al crear es la del workspace, solo si
+  // es válida entre las sucursales del usuario (`useValidWorkspaceBranchId`,
+  // sin respaldo a una fija); sin ella el guardado se bloquea. Al editar se
+  // conserva la del empleado.
+  const {
+    branchId: workspaceBranchId,
+    isLoading: isLoadingWorkspaceBranch,
+    isError: isErrorWorkspaceBranch,
+  } = useValidWorkspaceBranchId();
+  const sucursalId = isEditing ? (employeeToEdit?.sucursal ?? null) : workspaceBranchId;
+  // Nombre de la sucursal para el campo de solo lectura. `mis-sucursales` (y
+  // no `/nucleo/sucursales/`, que expone la PK como `id_sucursal`); al editar,
+  // la del empleado puede no estar entre las del usuario: se cae a las del
+  // workspace y, al final, al id.
+  const { branches } = useCompanyBranches(companyId);
+  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  const sucursalLabel =
+    sucursalId === null
+      ? ""
+      : ([...branches, ...availableBranches].find((branch) => branch.id === sucursalId)?.nombre ??
+        `Sucursal #${sucursalId}`);
+  /** Alta sin sucursal válida (ya resuelta): el formulario avisa y no guarda. */
+  const isSucursalMissing = !isEditing && !isLoadingWorkspaceBranch && workspaceBranchId === null;
+
   // Cada catálogo expone su propio `isError`: un catálogo caído se avisa en SU
   // selector, no como catálogo vacío ni con un banner general del formulario.
-  const {
-    branches,
-    isLoading: isLoadingBranches,
-    isInitialError: isErrorBranches,
-  } = useCompanyBranches(companyId);
   const {
     departments,
     isLoading: isLoadingDepartments,
@@ -68,7 +98,9 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
 
   // Separa errores de validación cliente y servidor para cada campo.
   const [clientErrors, setClientErrors] = useState<Partial<Record<EmployeeFormField, string>>>({});
-  const [serverErrors, setServerErrors] = useState<Partial<Record<EmployeeFormField, string>>>({});
+  const [serverErrors, setServerErrors] = useState<
+    Partial<Record<EmployeeServerErrorField, string>>
+  >({});
 
   // Define valores vacíos del formulario. Los FK arrancan en 0 (centinela de
   // "Seleccionar...") y el schema los rechaza mientras sigan así.
@@ -113,7 +145,6 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
       foto_url: "",
       observaciones: "",
       numero_empleado: "",
-      sucursal: 0,
       departamento: 0,
       puesto: 0,
       turno: 0,
@@ -163,7 +194,6 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
             foto_url: employeeToEdit.foto_url ?? "",
             observaciones: employeeToEdit.observaciones ?? "",
             numero_empleado: employeeToEdit.numero_empleado,
-            sucursal: employeeToEdit.sucursal,
             departamento: employeeToEdit.departamento,
             puesto: employeeToEdit.puesto,
             turno: employeeToEdit.turno ?? 0,
@@ -175,7 +205,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   );
 
   // Recibe errores de mutaciones y los asigna al estado de servidor.
-  const setHookError = (field: EmployeeFormField, error: { message?: string }) => {
+  const setHookError = (field: EmployeeServerErrorField, error: { message?: string }) => {
     if (!error.message) {
       return;
     }
@@ -250,8 +280,8 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   };
 
   // Entrega error compatible con componentes visuales actuales.
-  const getError = (field: EmployeeFormField) => {
-    const message = serverErrors[field] ?? clientErrors[field];
+  const getError = (field: EmployeeServerErrorField) => {
+    const message = serverErrors[field] ?? (field === "sucursal" ? undefined : clientErrors[field]);
     return message ? ({ message } as FormFieldError) : undefined;
   };
 
@@ -260,6 +290,19 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     defaultValues: isEditing ? editValues : emptyValues,
     onSubmit: async ({ value }) => {
       setServerErrors({});
+
+      // La sucursal sale del contexto, no de un campo: se revisa ANTES que el
+      // resto para no hacer corregir todo el formulario y bloquear al final.
+      if (!isEditing && isLoadingWorkspaceBranch) {
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "employee-sin-sucursal" });
+        return;
+      }
+      if (sucursalId === null) {
+        toast.error(getSinSucursalMessage(isErrorWorkspaceBranch, EMPLOYEE_SUCURSAL_DOCUMENT), {
+          id: "employee-sin-sucursal",
+        });
+        return;
+      }
 
       const validationResult = validateForm(value);
       if (!validationResult.success) {
@@ -279,7 +322,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
         // `apellido_materno` y `telefono` son blank pero NO null en el modelo:
         // viajan como cadena vacía. El resto de opcionales sí son nullable.
         const payload: EmployeeCreate = {
-          sucursal: value.sucursal,
+          sucursal: sucursalId,
           departamento: value.departamento,
           puesto: value.puesto,
           // El centinela 0 de "Sin turno" no viaja: el backend espera null.
@@ -404,9 +447,8 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
     formKey,
     isPending,
     isEditing,
-    branches,
-    isLoadingBranches,
-    isErrorBranches,
+    sucursalLabel,
+    isSucursalMissing,
     departments,
     isLoadingDepartments,
     isErrorDepartments,
