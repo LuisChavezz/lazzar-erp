@@ -55,3 +55,90 @@ test.describe("getStaleRowDialogNotice", () => {
     ).toEqual({ key: "calendar-stale-3-gone", message: calendarMessages.gone });
   });
 });
+
+/**
+ * EC-636: registros sin `activo` cuyo diálogo depende del `estado` de negocio
+ * (aprobar/rechazar, pagar/cancelar, confirmar/devolver).
+ */
+test.describe("getStaleRowDialogNotice con expectedEstado", () => {
+  type Estado = "pendiente" | "aprobado" | "rechazado";
+  const estadoMessages = {
+    gone: "La solicitud ya no existe. Se actualizó el listado.",
+    estadoChanged: (estado: Estado) => `La solicitud cambió de estado: ya está ${estado}.`,
+  };
+
+  test("sigue en el estado esperado: el diálogo sigue", () => {
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: { estado: "pendiente" },
+        expectedEstado: "pendiente",
+        isBusy: false,
+        messages: estadoMessages,
+      }),
+    ).toBeNull();
+  });
+
+  test("cambió de estado por fuera: aviso con el estado nuevo y key por estado", () => {
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: { estado: "aprobado" },
+        expectedEstado: "pendiente",
+        isBusy: false,
+        messages: estadoMessages,
+      }),
+    ).toEqual({ key: "vacation-stale-4-aprobado", message: "La solicitud cambió de estado: ya está aprobado." });
+  });
+
+  test("el esperado puede ser cualquiera (el estado con que se abrió la confirmación)", () => {
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: { estado: "aprobado" },
+        expectedEstado: "aprobado",
+        isBusy: false,
+        messages: estadoMessages,
+      }),
+    ).toBeNull();
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: { estado: "pendiente" },
+        expectedEstado: "aprobado",
+        isBusy: false,
+        messages: estadoMessages,
+      }),
+    ).toEqual({ key: "vacation-stale-4-pendiente", message: "La solicitud cambió de estado: ya está pendiente." });
+  });
+
+  test("desaparece del listado: aviso de inexistente", () => {
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: null,
+        expectedEstado: "pendiente",
+        isBusy: false,
+        messages: estadoMessages,
+      }),
+    ).toEqual({ key: "vacation-stale-4-gone", message: estadoMessages.gone });
+  });
+
+  test("con la acción propia en vuelo no hay aviso aunque el refetch ya muestre el estado nuevo", () => {
+    expect(
+      getStaleRowDialogNotice<Estado>({
+        resource: "vacation",
+        targetId: 4,
+        target: { estado: "rechazado" },
+        expectedEstado: "pendiente",
+        isBusy: true,
+        messages: estadoMessages,
+      }),
+    ).toBeNull();
+  });
+});
