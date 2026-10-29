@@ -39,7 +39,8 @@ export const getStaleRowDialogNotice = ({
   /** Prefijo de la `key` del toast (`"area"`, `"contract"`…). */
   resource: string;
   targetId: number | null;
-  target: { activo?: boolean } | null;
+  /** La fila resuelta contra el listado; su `activo`, si lo tiene, decide. */
+  target: object | null;
   expectedActivo?: boolean;
   isBusy: boolean;
   messages: StaleRowDialogMessages;
@@ -48,10 +49,11 @@ export const getStaleRowDialogNotice = ({
   if (target === null) {
     return { key: `${resource}-stale-${targetId}-gone`, message: messages.gone };
   }
-  if (expectedActivo === undefined || target.activo === undefined) return null;
-  if (target.activo === expectedActivo || !messages.activoChanged) return null;
+  const activo = (target as { activo?: unknown }).activo;
+  if (expectedActivo === undefined || typeof activo !== "boolean") return null;
+  if (activo === expectedActivo || !messages.activoChanged) return null;
   return {
-    key: `${resource}-stale-${targetId}-${String(target.activo)}`,
-    message: messages.activoChanged(target.activo),
+    key: `${resource}-stale-${targetId}-${String(activo)}`,
+    message: messages.activoChanged(activo),
   };
 };
