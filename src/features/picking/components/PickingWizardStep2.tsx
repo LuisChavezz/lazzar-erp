@@ -39,6 +39,7 @@ export function PickingWizardStep2({
     almacenDestinoNombre,
     isLoading,
     isError,
+    pedidoLoadError,
     quantities,
     observaciones,
     setQuantity,
@@ -70,7 +71,9 @@ export function PickingWizardStep2({
             No se pudieron cargar los pendientes del pedido
           </p>
           <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-            Regresa e intenta seleccionar el pedido de nuevo.
+            {pedidoLoadError
+              ? `${pedidoLoadError} Regresa y elige otro pedido.`
+              : "Regresa e intenta seleccionar el pedido de nuevo."}
           </p>
         </div>
         <div className="flex justify-start">

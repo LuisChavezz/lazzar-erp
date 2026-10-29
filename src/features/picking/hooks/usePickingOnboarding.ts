@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPickingOnboarding } from "../services/actions";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+
+/**
+ * Prefijo de la llamada SIN pedido (el catálogo del Paso 1): coincide con
+ * `["picking-onboarding", null, <almacén>]` y con ninguna llamada por pedido.
+ */
+export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const;
 
 /**
  * Onboarding de picking (`GET /wms/pickings/onboarding/`).
@@ -24,6 +31,11 @@ import type { PickingOnboardingData } from "../interfaces/picking-onboarding.int
  * proyecto—, así que usa el `staleTime` global (15min): forzar un refetch cada
  * vez que se monta el Paso 1 (al abrir el diálogo o al "Regresar" desde el
  * Paso 2) no tiene ningún beneficio de frescura y solo agrega una petición.
+ * La excepción es cuando el backend rechaza un pedido del catálogo (p. ej. ya
+ * no está programado): el Paso 2 invalida `PICKING_ONBOARDING_LIST_KEY`.
+ *
+ * Un 4xx no se reintenta (`retryUnlessClientError`): el 400 de un pedido que
+ * dejó de estar programado es definitivo y reintentarlo solo retrasa el error.
  */
 export const usePickingOnboarding = (
   pedidoId?: number | null,
@@ -39,6 +51,7 @@ export const usePickingOnboarding = (
     // la respuesta, así que dos almacenes distintos no pueden compartir caché.
     queryKey: ["picking-onboarding", normalizedPedidoId, normalizedAlmacenId],
     queryFn: () => getPickingOnboarding(normalizedPedidoId, normalizedAlmacenId),
+    retry: retryUnlessClientError,
     ...(isPedidoScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
       : {}),

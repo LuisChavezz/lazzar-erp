@@ -139,6 +139,19 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   };
 
   /**
+   * El pedido elegido dejó de estar en el catálogo: típicamente al regresar del
+   * Paso 2 después de que el backend lo rechazó por no estar programado (el
+   * Paso 2 invalida el catálogo y aquí llega la lista fresca). El select ya no
+   * lo muestra, así que se dice por qué y no se deja avanzar con él.
+   */
+  const pedidoNoDisponible = Boolean(data) && selectedPedidoId > 0 && !selectedPedido;
+  const pedidoError: FormFieldError | undefined =
+    getError("pedido") ??
+    (pedidoNoDisponible
+      ? { message: "Este pedido ya no está disponible para surtir. Elige otro." }
+      : undefined);
+
+  /**
    * Mantiene `almacen_destino` coherente con las opciones vigentes:
    *
    *  - si solo hay una opción, se preselecciona (no hay elección que hacer), y
@@ -256,7 +269,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   }
 
   const canAdvance =
-    selectedPedidoId > 0 && selectedOperadorId > 0 && selectedDestinoId > 0;
+    selectedPedido !== null && selectedOperadorId > 0 && selectedDestinoId > 0;
 
   return (
     <>
@@ -298,7 +311,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         preseleccionarDestinoSugerido(nextId);
                       }}
                       onBlur={field.handleBlur}
-                      error={getError("pedido")}
+                      error={pedidoError}
                     >
                       <option value="0" disabled>
                         Seleccionar pedido...
