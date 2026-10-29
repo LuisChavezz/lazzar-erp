@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
 import { plural } from "@/src/utils/plural";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
-import { PICKING_ONBOARDING_LIST_KEY, usePickingOnboarding } from "./usePickingOnboarding";
-import { useCreatePicking, type ParsedPickingError } from "./useCreatePicking";
+import { usePickingOnboarding } from "./usePickingOnboarding";
+import { useCreatePicking } from "./useCreatePicking";
+import { parsePickingError, type ParsedPickingError } from "../utils/parsePickingError";
 import { PICKING_MIN_CANTIDAD, type PickingHeaderValues } from "../schemas/picking.schema";
 import type {
   CreatePickingDetalleLine,
@@ -14,18 +12,6 @@ import type {
 } from "../interfaces/picking.interface";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 import { PRODUCTO_TERMINADO_ALMACEN_ID } from "../constants/pickingAlmacen";
-
-/**
- * Mensaje del backend cuando el onboarding por pedido responde `400` con clave
- * `pedido` (llega como string plano o lista de DRF); `undefined` para
- * cualquier otro fallo, que conserva el aviso genérico.
- */
-function getPedidoRejection(error: unknown): string | undefined {
-  if (!isAxiosError(error) || error.response?.status !== 400) return undefined;
-  const data = error.response.data;
-  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
-  return firstDrfMessage((data as Record<string, unknown>).pedido);
-}
 
 interface UsePickingStep2FormParams {
   header: PickingHeaderValues;
@@ -199,16 +185,10 @@ export function usePickingStep2Form({ header, onSuccess }: UsePickingStep2FormPa
    * Rechazo del backend al PEDIDO al cargar sus pendientes: un `400` con clave
    * `pedido` (p. ej. "Pedido no encontrado o sin acceso." cuando Mesa de
    * Control le quitó la programación después de cargar el Paso 1). Se muestra
-   * ese mensaje en lugar del genérico, y se invalida el catálogo del Paso 1
-   * para que al "Regresar" el pedido ya no aparezca.
+   * ese mensaje en lugar del genérico; el catálogo del Paso 1 ya lo invalidó el
+   * `queryFn` de `usePickingOnboarding` al fallar.
    */
-  const pedidoLoadError = getPedidoRejection(error);
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    if (pedidoLoadError) {
-      void queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
-    }
-  }, [pedidoLoadError, queryClient]);
+  const pedidoLoadError = error ? parsePickingError(error).fieldErrors.pedido : undefined;
 
   const rows = useMemo(() => data?.picking_detalle ?? [], [data]);
   const pendingRowsCount = useMemo(

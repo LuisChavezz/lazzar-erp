@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { getPickingOnboarding } from "../services/actions";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
+import { parsePickingError } from "../utils/parsePickingError";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 
 /**
@@ -8,6 +9,25 @@ import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
  * `["picking-onboarding", null, <almacén>]` y con ninguna llamada por pedido.
  */
 export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const;
+
+/**
+ * Regla ÚNICA para un rechazo del backend al PEDIDO (clave `pedido`: ya no
+ * está programado, cancelado, ajeno, "no encontrado o sin acceso"): ese pedido
+ * ya no debe ofrecerse, así que se invalida el catálogo del Paso 1 para que al
+ * "Regresar" llegue sin él. Se llama donde ocurre el error —el `onError` del
+ * alta y el `queryFn` del onboarding por pedido—. Devuelve el mensaje del
+ * backend, o `undefined` si el error no es de ese tipo.
+ */
+export const invalidateIfPedidoRejected = (
+  queryClient: QueryClient,
+  error: unknown,
+): string | undefined => {
+  const message = parsePickingError(error).fieldErrors.pedido;
+  if (message) {
+    void queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
+  }
+  return message;
+};
 
 /**
  * Onboarding de picking (`GET /wms/pickings/onboarding/`).
@@ -31,8 +51,7 @@ export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const
  * proyecto—, así que usa el `staleTime` global (15min): forzar un refetch cada
  * vez que se monta el Paso 1 (al abrir el diálogo o al "Regresar" desde el
  * Paso 2) no tiene ningún beneficio de frescura y solo agrega una petición.
- * La excepción es cuando el backend rechaza un pedido del catálogo (p. ej. ya
- * no está programado): el Paso 2 invalida `PICKING_ONBOARDING_LIST_KEY`.
+ * La excepción es un rechazo del pedido (`invalidateIfPedidoRejected`).
  *
  * Un 4xx no se reintenta (`retryUnlessClientError`): el 400 de un pedido que
  * dejó de estar programado es definitivo y reintentarlo solo retrasa el error.
@@ -45,12 +64,20 @@ export const usePickingOnboarding = (
   const normalizedAlmacenId =
     almacenOrigenId && almacenOrigenId > 0 ? almacenOrigenId : null;
   const isPedidoScoped = normalizedPedidoId !== null;
+  const queryClient = useQueryClient();
 
   const query = useQuery<PickingOnboardingData>({
     // El almacén forma parte de la llave: cambia las existencias por talla de
     // la respuesta, así que dos almacenes distintos no pueden compartir caché.
     queryKey: ["picking-onboarding", normalizedPedidoId, normalizedAlmacenId],
-    queryFn: () => getPickingOnboarding(normalizedPedidoId, normalizedAlmacenId),
+    queryFn: async () => {
+      try {
+        return await getPickingOnboarding(normalizedPedidoId, normalizedAlmacenId);
+      } catch (error) {
+        if (isPedidoScoped) invalidateIfPedidoRejected(queryClient, error);
+        throw error;
+      }
+    },
     retry: retryUnlessClientError,
     ...(isPedidoScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
