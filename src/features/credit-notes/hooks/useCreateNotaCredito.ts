@@ -10,6 +10,12 @@ import {
   isUnconfirmedFailure,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import {
+  getInvoiceNotCreditableReason,
+  getRelatedInvoiceEmitBlockReason,
+} from "../utils/creditNoteStamping";
+import { PrecheckError } from "@/src/hooks/useMutationLock";
+import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
 export type NotaCreditoHeaderErrorField =
@@ -336,6 +342,12 @@ export const getCreateMayBeSavedMessage = (
  * lista que alimenta el selector de facturas de este formulario—, la factura y
  * el pedido (`balances`); un borrador solo cambia las notas de la factura
  * (`document`).
+ *
+ * Un alta `Emitida` pide antes la factura FRESCA y se detiene con
+ * `PrecheckError`, sin POST, si ya no admite notas o tiene su timbrado sin
+ * confirmar: pudo cambiar después de elegirla en el selector. El precheck se
+ * reporta como un error de validación (nada se registró). Un borrador no lo
+ * necesita: no mueve saldos ni timbra.
  */
 export const useCreateNotaCredito = (
   onServerError?: (
@@ -346,7 +358,16 @@ export const useCreateNotaCredito = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: createNotaCredito,
+    mutationFn: async (payload: CreateNotaCreditoPayload) => {
+      if (payload.estatus === "Emitida") {
+        const factura = await fetchFreshInvoice(queryClient, payload.factura);
+        const blockReason =
+          getInvoiceNotCreditableReason(factura.folio, factura) ??
+          getRelatedInvoiceEmitBlockReason(factura);
+        if (blockReason) throw new PrecheckError(blockReason);
+      }
+      return createNotaCredito(payload);
+    },
     onSuccess: (nota) => {
       toast.success(
         nota.estatus === "Emitida"
@@ -355,6 +376,14 @@ export const useCreateNotaCredito = (
       );
     },
     onError: (error, payload) => {
+      if (error instanceof PrecheckError) {
+        onServerError?.(
+          { formError: error.message, fieldErrors: {}, lineErrors: {}, messages: [error.message] },
+          null,
+        );
+        toast.error(error.message);
+        return;
+      }
       const parsed = parseNotaCreditoError(error);
       const mayBeSavedMessage = getCreateMayBeSavedMessage(parsed, payload.estatus);
       onServerError?.(parsed, mayBeSavedMessage);
