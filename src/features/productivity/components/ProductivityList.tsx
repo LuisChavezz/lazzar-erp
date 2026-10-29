@@ -4,27 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { ProductivityIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
-import { getColumns, ProductivityRow } from "./ProductivityColumns";
+import { getColumns, PRODUCTIVITY_HEADER_FILTERS } from "./ProductivityColumns";
 import { Productivity } from "../interfaces/productivity.interface";
 import {
   ESTADO_BORRADOR,
   ESTADO_CONFIRMADO,
-  ESTADO_PRODUCTIVIDAD_OPTIONS,
   type EstadoProductividad,
 } from "../constants/productivityChoices";
-import { getCumplimiento } from "../utils/compliance";
 import ProductivityForm from "./ProductivityForm";
 import { ProductivityDetailDialog } from "./ProductivityDetailDialog";
 import { useProductivity } from "../hooks/useProductivity";
@@ -34,11 +37,8 @@ import {
   ProductivityRowActionsProvider,
   usePendingProductivityIds,
 } from "../hooks/useProductivityRowActions";
-import {
-  PRODUCTIVITY_GONE_MESSAGE,
-  productivityEstadoChangedMessage,
-} from "../hooks/productivityErrorMessages";
 import { verifyProductivityEstado } from "../hooks/verifyProductivityEstado";
+import { buildProductivityRows, getProductivityStaleNotice } from "../utils/productivityRows";
 
 /**
  * Confirmar o devolver a borrador. `from` es el estado con que se abrió el
@@ -67,8 +67,9 @@ export default function ProductivityList() {
   const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
   const queryClient = useQueryClient();
-  // Aviso pendiente de la vía rápida (ver `closeStale`), mostrado desde un efecto.
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  // Aviso del diálogo de fila que se cerró porque su registro cambió por
+  // fuera, mostrado desde un efecto.
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla.
   const busyIds = usePendingProductivityIds();
 
@@ -108,39 +109,15 @@ export default function ProductivityList() {
 
   // Los nombres se incorporan a la FILA, no al accessor: la llegada tardía de
   // un catálogo produce un `data` nuevo y TanStack recalcula todo.
-  const rows: ProductivityRow[] = records.map((record) => ({
-    ...record,
-    empleado_nombre: employeeNameById.get(record.empleado) ?? `Empleado #${record.empleado}`,
-    departamento_nombre:
-      departmentNameById.get(record.departamento) ?? `Departamento #${record.departamento}`,
-    unidad_nombre: unitNameById.get(record.meta_unidad) ?? `Unidad #${record.meta_unidad}`,
-    cumplimiento: getCumplimiento(record.meta, record.resultado),
-  }));
+  const rows = buildProductivityRows(records, employeeNameById, departmentNameById, unitNameById);
 
-  // Filtros en memoria sobre el valor CRUDO de la fila. Las opciones salen de
-  // los catálogos COMPLETOS, no de las filas visibles (mismo criterio que
-  // evaluaciones): la config existe siempre.
-  const empleadoFilterOptions = employees
-    .map((employee) => ({
-      value: String(employee.id),
-      label: employee.activo
-        ? getEmployeeFullName(employee)
-        : `${getEmployeeFullName(employee)} (inactivo)`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-  const departamentoFilterOptions = departments
-    .map((department) => ({
-      value: String(department.id_departamento),
-      label: department.nombre,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estado", options: ESTADO_PRODUCTIVIDAD_OPTIONS },
-    { id: "empleado", label: "Empleado", options: empleadoFilterOptions },
-    { id: "departamento", label: "Departamento", options: departamentoFilterOptions },
-  ];
-
-  const columns = getColumns({ canEdit: canEditHr, canDelete: canDeleteHr });
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `ProductivityRowActionsProvider`, así una acción no remonta las celdas.
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
+    rows,
+    PRODUCTIVITY_HEADER_FILTERS
+  );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────
   const findRow = (id: number | null) =>
@@ -150,33 +127,33 @@ export default function ProductivityList() {
   const estadoTarget = findRow(estadoRequest?.id ?? null);
   const deleteTarget = findRow(deleteTargetId);
 
-  /** Vía rápida contra la caché: mismo aviso que la guarda de red. */
-  const closeStale = (id: number, target: ProductivityRow | null) =>
-    setStaleNotice({
-      key: `productivity-stale-${id}-${target?.estado ?? "gone"}`,
-      message: target ? productivityEstadoChangedMessage(target.estado) : PRODUCTIVITY_GONE_MESSAGE,
-    });
-
-  // Ajustes en RENDER (no en efecto). Ninguno se toca mientras su guarda o su
-  // propia escritura están en vuelo.
+  // Ajustes en RENDER (no en efecto). Un detalle cuyo registro desapareció se
+  // cierra sin aviso.
   if (detailTargetId !== null && detailTarget === null) setDetailTargetId(null);
-  if (
-    estadoRequest !== null &&
-    !estadoRequest.sent &&
-    !isChecking &&
-    estadoTarget?.estado !== estadoRequest.from
-  ) {
+
+  // Vía rápida contra la caché, con el mismo aviso que la guarda de red: el
+  // cambio de estado espera el estado con que se abrió; el borrado, un
+  // borrador. Ninguno se toca mientras su guarda o su propia escritura están
+  // en vuelo (`sent` marca que el PATCH propio ya salió).
+  const staleEstado = getProductivityStaleNotice(
+    estadoRequest?.id ?? null,
+    estadoTarget,
+    estadoRequest?.from ?? ESTADO_BORRADOR,
+    isChecking || (estadoRequest?.sent ?? false)
+  );
+  if (staleEstado) {
     setEstadoRequest(null);
-    closeStale(estadoRequest.id, estadoTarget);
+    setStaleNotice(staleEstado);
   }
-  if (
-    deleteTargetId !== null &&
-    !isChecking &&
-    !busyIds.includes(deleteTargetId) &&
-    deleteTarget?.estado !== ESTADO_BORRADOR
-  ) {
+  const staleDelete = getProductivityStaleNotice(
+    deleteTargetId,
+    deleteTarget,
+    ESTADO_BORRADOR,
+    isChecking || (deleteTargetId !== null && busyIds.includes(deleteTargetId))
+  );
+  if (staleDelete) {
     setDeleteTargetId(null);
-    closeStale(deleteTargetId, deleteTarget);
+    setStaleNotice(staleDelete);
   }
 
   useEffect(() => {
@@ -242,12 +219,24 @@ export default function ProductivityList() {
     );
   };
 
+  // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
+  // a la animación de salida cuando el id vuelve a `null`. El cambio de
+  // estado copia también su petición: el título ("Confirmar" o "Devolver") no
+  // debe voltearse mientras se cierra.
+  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const estadoSession = useDialogSession(
+    estadoRequest !== null,
+    estadoRequest && estadoTarget ? { request: estadoRequest, record: estadoTarget } : null
+  );
+  const deleteSession = useDialogSession(deleteTargetId !== null, deleteTarget);
+
   const isEstadoBusy = isChecking || isChangingEstado;
-  const isConfirming = estadoRequest?.to === ESTADO_CONFIRMADO;
+  const isConfirming = estadoSession.snapshot?.request.to === ESTADO_CONFIRMADO;
   // Confirmar exige `E-RH`; devolver a borrador, `D-RH`.
   const canRunEstadoRequest = isConfirming ? canEditHr : canDeleteHr;
-  const estadoTargetLabel = estadoTarget
-    ? `${estadoTarget.empleado_nombre} del ${formatLocalDate(estadoTarget.fecha)}`
+  const estadoRecord = estadoSession.snapshot?.record;
+  const estadoTargetLabel = estadoRecord
+    ? `${estadoRecord.empleado_nombre} del ${formatLocalDate(estadoRecord.fecha)}`
     : "";
 
   return (
@@ -279,7 +268,6 @@ export default function ProductivityList() {
         // Ata la identidad de la fila al id del registro y no a su índice.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar registro..."
-        filterConfig={filterConfig}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar productividad"
@@ -293,6 +281,7 @@ export default function ProductivityList() {
                   title={selectedRecord ? "Editar Productividad" : "Alta de Productividad"}
                   subtitle={selectedRecord ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="violet"
+                  icon={ProductivityIcon}
                 />
               }
               open={isFormOpen}
@@ -302,7 +291,7 @@ export default function ProductivityList() {
                 if (!open && isFormBusy) return;
                 setIsFormOpen(open);
               }}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -324,19 +313,26 @@ export default function ProductivityList() {
         }
       />
 
-      {detailTarget && (
+      {/*
+        Montados mientras haya una copia: `open` sale del id, así que al
+        cerrarse animan su salida con los datos de la apertura.
+      */}
+      {detailSession.snapshot && (
         <ProductivityDetailDialog
-          record={detailTarget}
-          open
+          key={`detail-${detailSession.id}`}
+          // El detalle sí sigue a los refetch mientras su registro exista.
+          record={detailTarget ?? detailSession.snapshot}
+          open={detailTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDetailTargetId(null);
           }}
         />
       )}
 
-      {canRunEstadoRequest && estadoRequest && estadoTarget && (
+      {canRunEstadoRequest && estadoSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`estado-${estadoSession.id}`}
+          open={estadoRequest !== null}
           onOpenChange={(open) => {
             if (!open && !isEstadoBusy) setEstadoRequest(null);
           }}
@@ -363,9 +359,10 @@ export default function ProductivityList() {
       )}
 
       {/* Solo sobre borradores: un confirmado no se elimina. */}
-      {canDeleteHr && deleteTarget && deleteTarget.estado === ESTADO_BORRADOR && (
+      {canDeleteHr && deleteSession.snapshot && deleteSession.snapshot.estado === ESTADO_BORRADOR && (
         <ConfirmDialog
-          open
+          key={`delete-${deleteSession.id}`}
+          open={deleteTargetId !== null}
           onOpenChange={(open) => {
             if (!open && !isChecking) setDeleteTargetId(null);
           }}
