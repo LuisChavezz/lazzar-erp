@@ -1,15 +1,16 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, BanIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { formatMxn } from "@/src/utils/formatCurrency";
 import { Contract } from "../interfaces/contract.interface";
-import {
-  ESTADO_CONTRATO_CFG,
-  getEstadoContratoLabel,
-  getTipoContratoLabel,
-} from "../constants/contractChoices";
+import { ESTADO_CONTRATO_CFG, TIPO_CONTRATO_OPTIONS } from "../constants/contractChoices";
+import { useContractRowActionsContext } from "../hooks/useContractRowActions";
+import { getContractEstadoText, getContractTipoText } from "../utils/contractRows";
 
 /**
  * Fila de la tabla: el contrato tal como llega del backend más el nombre del
@@ -24,52 +25,76 @@ import {
  * `ContractList` a partir de contratos + empleados, la llegada del catálogo
  * produce un `data` nuevo y TanStack recalcula todo.
  *
- * `null` = el empleado no aparece en el catálogo (o todavía no llega).
+ * Un empleado que no aparece en el catálogo (o cuyo catálogo todavía no llega)
+ * se rotula `Empleado #N` (`buildContractRows`).
  */
-export type ContractRow = Contract & { empleado_nombre: string | null };
+export type ContractRow = Contract & { empleado_nombre: string };
 
 const columnHelper = createColumnHelper<ContractRow>();
 
-interface ContractColumnCallbacks {
-  onEdit: (contract: Contract) => void;
-  onDeactivate: (contract: Contract) => void;
+interface ContractColumnPermissions {
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 /**
- * La celda de acciones es solo presentacional: NO guarda el estado del diálogo
- * de confirmación. Ese estado vive en `ContractList`, porque una celda se
- * desmonta al ordenar, paginar o filtrar, y con ella se perdería el diálogo a
- * media interacción.
+ * El nombre del empleado ES el menú de la fila y lleva el punto de `activo`
+ * (la baja lógica del REGISTRO): sin columnas aparte de "Registro" ni
+ * "Acciones". El `estado` de negocio va en su propia columna con su badge y su
+ * filtro (una columna admite un solo filtro de encabezado). Los callbacks y el
+ * "en vuelo" llegan por contexto; el diálogo vive en `ContractList`. Sin "Ver
+ * detalle": los contratos no tienen vista de detalle.
  */
-export const getColumns = (
-  { onEdit, onDeactivate }: ContractColumnCallbacks,
-  permissions: { canEdit: boolean; canDelete: boolean },
-  deactivatingId: number | null
-) => {
+const ContractNameCell = ({
+  contract,
+  permissions,
+}: {
+  contract: ContractRow;
+  permissions: ContractColumnPermissions;
+}) => {
+  const { onEdit, onDeactivate, busyIds } = useContractRowActionsContext();
+
+  // El DELETE del backend es una baja lógica: sobre un contrato ya inactivo
+  // sería un no-op, así que solo se ofrece sobre activos.
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(contract), visible: permissions.canEdit },
+    {
+      label: "Desactivar",
+      icon: BanIcon,
+      onSelect: () => onDeactivate(contract),
+      disabled: busyIds.includes(contract.id),
+      visible: permissions.canDelete && contract.activo,
+    },
+  ];
+
+  return <FolioActionMenu name={contract.empleado_nombre} items={items} active={contract.activo} />;
+};
+
+/**
+ * Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+ * `ContractRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getColumns = (permissions: ContractColumnPermissions) => {
   const columns = [
-    // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
-    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
-    // `null` que excluiría la columna de la búsqueda (ver DataTable).
-    columnHelper.accessor(
-      (row) => row.empleado_nombre ?? `Empleado #${row.empleado}`,
-      {
-        id: "empleado",
-        header: "Empleado",
-        cell: (info) => (
-          <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
-        ),
-      }
-    ),
-    columnHelper.accessor((row) => getTipoContratoLabel(row.tipo) ?? "—", {
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `ContractRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
+      header: "Empleado",
+      size: 260,
+      cell: ({ row }) => <ContractNameCell contract={row.original} permissions={permissions} />,
+    }),
+    columnHelper.accessor((row) => getContractTipoText(row.tipo), {
       id: "tipo",
       header: "Tipo",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    // "Estado" es el estado de NEGOCIO del contrato; la baja lógica va aparte
-    // en "Registro". Los dos comparten el literal "activo".
-    columnHelper.accessor((row) => getEstadoContratoLabel(row.estado) ?? "—", {
+    // "Estado" es el estado de NEGOCIO del contrato; la baja lógica del
+    // registro es el punto junto al nombre. Los dos comparten el literal
+    // "activo", por eso sus fichas de filtro se titulan distinto.
+    columnHelper.accessor((row) => getContractEstadoText(row.estado), {
       id: "estado",
       header: "Estado",
       cell: ({ row }) => (
@@ -111,54 +136,26 @@ export const getColumns = (
         </span>
       ),
     }),
-    columnHelper.accessor("activo", {
-      header: "Registro",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
   ] as ColumnDef<ContractRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => {
-          const contract = row.original;
-          const menuItems: ActionMenuItem[] = [];
-
-          if (permissions.canEdit) {
-            menuItems.push({
-              label: "Editar",
-              icon: EditIcon,
-              onSelect: () => onEdit(contract),
-            });
-          }
-          // El DELETE del backend es una baja lógica: sobre un contrato ya
-          // inactivo sería un no-op, así que solo se ofrece sobre activos.
-          if (permissions.canDelete && contract.activo) {
-            menuItems.push({
-              label: "Desactivar",
-              icon: BanIcon,
-              onSelect: () => onDeactivate(contract),
-              disabled: deactivatingId === contract.id,
-            });
-          }
-
-          return (
-            <div className="flex justify-center">
-              <ActionMenu items={menuItems} ariaLabel="Acciones de contrato" />
-            </div>
-          );
-        },
-      }) as ColumnDef<ContractRow>
-    );
-  }
-
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * Dos estatus, dos filtros con ficha propia: el nombre filtra por `activo` (su
+ * punto), con ficha "Registro: …"; la columna Estado filtra por el `estado` de
+ * negocio, con ficha "Estado: …". Tipo y estado ofrecen su catálogo completo
+ * aunque ninguna fila lo use, y al final cada código desconocido de las filas,
+ * crudo (igual que su celda). Las fechas filtran por mes; el fin agrupa aparte
+ * los contratos sin fecha de término. El salario no lleva filtro: es un
+ * importe libre, lo cubren el orden y la búsqueda.
+ */
+export const CONTRACT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ContractRow>>> = {
+  empleado: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  tipo: { type: "options", get: (r) => r.tipo, options: TIPO_CONTRATO_OPTIONS },
+  estado: { type: "options", filterLabel: "estado", get: (r) => r.estado, options: optionsFromConfig(ESTADO_CONTRATO_CFG) },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha de fin" },
 };

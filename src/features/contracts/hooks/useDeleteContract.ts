@@ -4,10 +4,17 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { deleteContract } from "../services/actions";
 import { Contract } from "../interfaces/contract.interface";
 
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen una baja en vuelo (ver `usePendingContractIds`).
+ */
+export const deactivateContractMutationKey = ["deactivate-contract"] as const;
+
 export const useDeleteContract = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deactivateContractMutationKey,
     mutationFn: deleteContract,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["contracts"] });
