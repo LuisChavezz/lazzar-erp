@@ -81,9 +81,10 @@ export default function EmployeeList() {
   // búsqueda, orden y opciones de filtro. Ver `EmployeeRow`.
   const rows: EmployeeRow[] = employees.map((employee) => ({
     ...employee,
-    puesto_nombre: positionNameById.get(employee.puesto) ?? null,
-    departamento_nombre: departmentNameById.get(employee.departamento) ?? null,
-    sucursal_nombre: branchNameById.get(employee.sucursal) ?? null,
+    puesto_nombre: positionNameById.get(employee.puesto) ?? `Puesto #${employee.puesto}`,
+    departamento_nombre:
+      departmentNameById.get(employee.departamento) ?? `Departamento #${employee.departamento}`,
+    sucursal_nombre: branchNameById.get(employee.sucursal) ?? `Sucursal #${employee.sucursal}`,
   }));
 
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por

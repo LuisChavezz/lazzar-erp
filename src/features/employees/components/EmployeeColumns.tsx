@@ -24,12 +24,15 @@ import { useEmployeeRowActionsContext } from "../hooks/useEmployeeRowActions";
  * `CalendarRow`. La sucursal también va en la fila: el filtro de encabezado
  * rotula sus opciones con ella.
  *
- * `null` = el FK no aparece en su catálogo (o el catálogo todavía no llega).
+ * Un FK que no aparece en su catálogo (o cuyo catálogo todavía no llega) se
+ * rotula `Puesto #N` / `Departamento #N` / `Sucursal #N`: ese mismo texto lo
+ * leen la celda, la opción del filtro de encabezado y su ficha de filtro
+ * activo, así que el usuario siempre puede emparejarlos.
  */
 export type EmployeeRow = Employee & {
-  puesto_nombre: string | null;
-  departamento_nombre: string | null;
-  sucursal_nombre: string | null;
+  puesto_nombre: string;
+  departamento_nombre: string;
+  sucursal_nombre: string;
 };
 
 const columnHelper = createColumnHelper<EmployeeRow>();
@@ -105,19 +108,18 @@ export const getColumns = (permissions: EmployeeColumnPermissions) => {
       ),
     }),
     // Un solo valor alimenta la celda, la búsqueda global y el orden, así que
-    // los tres ven el nombre resuelto. Siempre es string: el respaldo evita el
-    // `null` que excluiría la columna de la búsqueda (ver DataTable).
-    columnHelper.accessor((row) => row.puesto_nombre ?? String(row.puesto), {
+    // los tres ven el nombre resuelto (o su respaldo `#N`, ver `EmployeeRow`).
+    columnHelper.accessor((row) => row.puesto_nombre, {
       id: "puesto",
       header: "Puesto",
       cell: (info) => <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>,
     }),
-    columnHelper.accessor((row) => row.departamento_nombre ?? String(row.departamento), {
+    columnHelper.accessor((row) => row.departamento_nombre, {
       id: "departamento",
       header: "Departamento",
       cell: (info) => <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>,
     }),
-    columnHelper.accessor((row) => row.sucursal_nombre ?? String(row.sucursal), {
+    columnHelper.accessor((row) => row.sucursal_nombre, {
       id: "sucursal",
       header: "Sucursal",
       cell: (info) => <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>,
@@ -144,12 +146,8 @@ export const getColumns = (permissions: EmployeeColumnPermissions) => {
  */
 export const EMPLOYEE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EmployeeRow>>> = {
   nombre_completo: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
-  puesto: { type: "distinct", get: (r) => r.puesto, label: (r) => r.puesto_nombre ?? `Puesto #${r.puesto}` },
-  departamento: {
-    type: "distinct",
-    get: (r) => r.departamento,
-    label: (r) => r.departamento_nombre ?? `Departamento #${r.departamento}`,
-  },
-  sucursal: { type: "distinct", get: (r) => r.sucursal, label: (r) => r.sucursal_nombre ?? `Sucursal #${r.sucursal}` },
+  puesto: { type: "distinct", get: (r) => r.puesto, label: (r) => r.puesto_nombre },
+  departamento: { type: "distinct", get: (r) => r.departamento, label: (r) => r.departamento_nombre },
+  sucursal: { type: "distinct", get: (r) => r.sucursal, label: (r) => r.sucursal_nombre },
   fecha_ingreso: { type: "month", get: (r) => r.fecha_ingreso },
 };
