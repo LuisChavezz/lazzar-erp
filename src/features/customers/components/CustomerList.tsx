@@ -50,6 +50,10 @@ export const CustomerList = () => {
   // registro del cliente, así que se rigen por su permiso de EDICIÓN — el mismo
   // que gatea "Editar" y "Agregar Dirección" en el menú de fila.
   const canEdit = hasPermission("E-CRM-CLIENTES", session?.user);
+  // Días y límite de crédito: el backend rechaza (400) cambiarlos sin
+  // `E-CRM-CLIENTES-CREDITO`. Sin él la sección no se muestra ni en alta ni en
+  // edición, y `useCustomerForm` deja esos campos fuera del payload.
+  const canEditCredit = hasPermission("E-CRM-CLIENTES-CREDITO", session?.user);
 
   const isEditing = Boolean(customerToEdit?.id);
 
@@ -266,7 +270,7 @@ export const CustomerList = () => {
             >
               <CustomerForm
                 customerToEdit={customerToEdit}
-                showCreditFields
+                showCreditFields={canEditCredit}
                 onSuccess={() => handleDialogOpenChange(false)}
               />
             </MainDialog>
