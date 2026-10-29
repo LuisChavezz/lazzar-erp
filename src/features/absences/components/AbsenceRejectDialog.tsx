@@ -13,6 +13,8 @@ import { formatAbsenceRange, type AbsenceRow } from "./AbsenceColumns";
 
 interface AbsenceRejectDialogProps {
   absence: AbsenceRow;
+  /** Lo controla el id del padre: al cerrarse anima su salida con esta copia. */
+  open: boolean;
   onClose: () => void;
 }
 
@@ -22,7 +24,7 @@ interface AbsenceRejectDialogProps {
  * `AbsenceList` (no en la celda) con `key` por registro, y cierra ante un 400
  * (ya no pendiente) o un 404 (ya no existe).
  */
-export function AbsenceRejectDialog({ absence, onClose }: AbsenceRejectDialogProps) {
+export function AbsenceRejectDialog({ absence, open, onClose }: AbsenceRejectDialogProps) {
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState<string | null>(null);
   const { mutate, isPending } = useRejectAbsence({ onReasonError: setMotivoError });
@@ -63,7 +65,7 @@ export function AbsenceRejectDialog({ absence, onClose }: AbsenceRejectDialogPro
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="480px"
       showCloseButton={false}

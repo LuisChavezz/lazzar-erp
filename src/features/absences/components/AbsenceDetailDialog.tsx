@@ -2,8 +2,17 @@
 
 import { AbsenceIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { InfoField, InfoGrid, SectionTitle, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import {
+  InfoField,
+  InfoGrid,
+  InfoTile,
+  InfoTileGrid,
+  SectionTitle,
+  textOrDash,
+} from "@/src/components/DetailDialogPrimitives";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   ESTADO_APROBADO,
@@ -56,34 +65,33 @@ export function AbsenceDetailDialog({ absence, open, onOpenChange }: AbsenceDeta
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="720px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <AbsenceIcon className="w-5 h-5 text-orange-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de {getTipoAusenciaLabel(absence.tipo) ?? "Ausencia"}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {absence.empleado_nombre}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title={`Detalle de ${getTipoAusenciaLabel(absence.tipo) ?? "Ausencia"}`}
+          subtitle={absence.empleado_nombre}
+          statusColor="orange"
+          icon={AbsenceIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Empleado">{absence.empleado_nombre}</InfoField>
-          <InfoField label="Tipo">{getTipoAusenciaLabel(absence.tipo) ?? absence.tipo}</InfoField>
-          <InfoField label="Estado">
+        {/* Encabezado: lo que se busca primero al abrir el registro. */}
+        <InfoTileGrid>
+          <InfoTile label="Empleado">{absence.empleado_nombre}</InfoTile>
+          <InfoTile label="Tipo">{getTipoAusenciaLabel(absence.tipo) ?? absence.tipo}</InfoTile>
+          <InfoTile label="Estado">
             <StatusBadge status={absence.estado} config={getEstadoAusenciaCfg(absence.tipo)} />
-          </InfoField>
-          <InfoField label="Periodo">
+          </InfoTile>
+          <InfoTile label="Periodo">
             <span className="tabular-nums">{formatAbsenceRange(absence)}</span>
-          </InfoField>
-          <InfoField label="Goce de sueldo">{goceLabel(absence.con_goce_sueldo)}</InfoField>
-          <InfoField label="Motivo" className="col-span-2 sm:col-span-3">
+          </InfoTile>
+          <InfoTile label="Goce de sueldo">{goceLabel(absence.con_goce_sueldo)}</InfoTile>
+        </InfoTileGrid>
+
+        <div className="text-xs px-1">
+          <InfoField label="Motivo">
             <span className="whitespace-pre-line">{textOrDash(absence.motivo)}</span>
           </InfoField>
         </div>
