@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useAltaCatalogoLinea } from "../hooks/useAltaCatalogoLinea";
@@ -26,6 +27,12 @@ export function CatalogAltaConfirmDialog({
   onClose,
 }: CatalogAltaConfirmDialogProps) {
   const session = useDialogSession(open, line);
+  const missingLine = open && !session.snapshot;
+  // Abierto sin línea (un refetch la sacó antes de abrir): se cierra, para que
+  // el próximo clic vuelva a ser una apertura y tome su copia.
+  useEffect(() => {
+    if (missingLine) onClose();
+  }, [missingLine, onClose]);
   if (!session.snapshot) return null;
 
   return (
