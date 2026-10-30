@@ -15,6 +15,7 @@ import {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingPayload,
   PurchaseOrderOnboardingResponse,
+  PurchaseOrderOnboardingVariante,
 } from "../interfaces/purchase-order-onboarding.interface";
 
 export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
@@ -34,6 +35,29 @@ export const getPurchaseOrder = async (
 export const getPurchaseOrderOnboardingData = async (): Promise<PurchaseOrderOnboardingData> => {
   const response = await v1_api.get<PurchaseOrderOnboardingData>("/compras/ordenes/onboarding/");
   return response.data;
+}
+
+/** Tope de variantes por búsqueda: sin `limit` el backend las devuelve todas. */
+const VARIANT_SEARCH_LIMIT = 50;
+
+/**
+ * Búsqueda de variantes (SKU) de producto terminado para los renglones de una
+ * OC de PT (EC-657), sobre el mismo onboarding. `producto_q` busca en SKU y
+ * nombre; vacío devuelve las primeras por SKU. Solo se toma
+ * `busqueda.variantes`: el mismo `producto_q` y el `limit` también recortan
+ * productos y proveedores, que por eso nunca se leen de esta respuesta.
+ */
+export const searchPurchaseOrderVariants = async (
+  productoQ: string,
+): Promise<PurchaseOrderOnboardingVariante[]> => {
+  const response = await v1_api.get<PurchaseOrderOnboardingData>("/compras/ordenes/onboarding/", {
+    params: {
+      tipo_compra: "PT",
+      producto_q: productoQ || undefined,
+      limit: VARIANT_SEARCH_LIMIT,
+    },
+  });
+  return response.data.busqueda.variantes;
 }
 
 export const postPurchaseOrder = async (

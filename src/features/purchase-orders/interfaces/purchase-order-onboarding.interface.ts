@@ -42,9 +42,25 @@ export interface PurchaseOrderOnboardingProducto {
   precio_base: number;
 }
 
+/**
+ * Variante (SKU) de producto terminado del onboarding (EC-657). Solo llega
+ * con `?tipo_compra=PT`; `color` y `talla` son NOMBRES y pueden faltar.
+ */
+export interface PurchaseOrderOnboardingVariante {
+  id: number;
+  sku: string;
+  producto_id: number;
+  producto_nombre: string;
+  color: string | null;
+  talla: string | null;
+  precio_base: number;
+}
+
 export interface PurchaseOrderOnboardingBusqueda {
   proveedores: PurchaseOrderOnboardingProveedor[];
   productos: PurchaseOrderOnboardingProducto[];
+  /** Siempre presente; vacía salvo con `?tipo_compra=PT`. */
+  variantes: PurchaseOrderOnboardingVariante[];
 }
 
 export interface PurchaseOrderOnboardingData {
@@ -78,13 +94,20 @@ export interface PurchaseOrderEncabezados {
   };
 }
 
-/** A single line item in the order detail. */
-export interface PurchaseOrderDetalleItem {
-  producto: number;
+/**
+ * A single line item in the order detail. Lleva `producto` o
+ * `producto_variante`, nunca los dos: con la variante (renglón de producto
+ * terminado capturado por SKU) el backend deduce el producto, y mandar ambos
+ * solo abre la puerta a un 400 por no coincidir.
+ */
+export type PurchaseOrderDetalleItem = {
   cantidad: number;
   precio: string;
   descripcion: string;
-}
+} & (
+  | { producto: number; producto_variante?: never }
+  | { producto_variante: number; producto?: never }
+);
 
 /**
  * Detalles payload — sent in Step 2. NUNCA lleva campos de encabezado: el

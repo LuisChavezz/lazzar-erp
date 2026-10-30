@@ -191,6 +191,13 @@ export interface PurchaseOrderDetalle {
   producto_id: number;
   /** Nombre del producto en el catálogo. `descripcion` es el texto capturado en la orden. */
   producto_nombre: string;
+  /**
+   * Variante (SKU) comprada: solo en renglones de producto terminado capturados
+   * por SKU (EC-657). `null` en materia prima y en los renglones de PT
+   * anteriores a la compra por SKU. El backend no expone su color ni su talla.
+   */
+  producto_variante_id: number | null;
+  producto_variante_sku: string | null;
   descripcion: string;
   cantidad: number;
   piezas: number;
@@ -271,8 +278,8 @@ export type UpdatePurchaseOrderHeader = Pick<
  * Refleja la forma del alta: encabezado editable + arreglo de renglones
  * (`detalles`), de modo que los productos se actualizan junto con el encabezado.
  * Los items reutilizan {@link PurchaseOrderDetalleItem} (la misma forma que el
- * detalle del POST de onboarding: `producto`, `cantidad`, `precio`,
- * `descripcion`).
+ * detalle del POST de onboarding: `producto` o `producto_variante`,
+ * `cantidad`, `precio`, `descripcion`).
  *
  * No existe un `CreatePurchaseOrderBody` equivalente al que aliasar: el alta usa
  * un POST de onboarding en dos partes (`{ orden_compra }` y `{ orden_compra_id,
@@ -317,6 +324,7 @@ export interface UpdatePurchaseOrderResponseDetalle {
   piezas: number;
   orden_compra: number;
   producto: number;
+  producto_variante: number | null;
   solicitud_compra_detalle: number | null;
   requisicion_detalle: number | null;
   sucursal: number;
