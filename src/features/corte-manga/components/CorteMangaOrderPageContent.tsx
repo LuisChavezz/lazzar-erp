@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
-import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
@@ -12,15 +12,18 @@ import {
   Section,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
+import { EmbroideryObservationsField } from "@/src/features/embroidery/components/EmbroideryObservationsField";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import {
-  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  corteMangaOrderPriorityFallback,
-  corteMangaStatusEntry,
-} from "../constants/corteMangaOrderStatus";
+import { isTerminalStatus } from "../constants/corteMangaOrderStatusTransitions";
 import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
+import { useUpdateCorteMangaOrder } from "../hooks/useUpdateCorteMangaOrder";
+import { buildCorteMangaStatusPayload } from "../utils/buildCorteMangaStatusPayload";
+import { CorteMangaOrderStatusSelect } from "./CorteMangaOrderStatusSelect";
+import { CorteMangaOrderPrioritySelect } from "./CorteMangaOrderPrioritySelect";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
 
@@ -142,6 +145,18 @@ export function CorteMangaOrderPageContent({
 }: CorteMangaOrderPageContentProps) {
   const numericId = Number(orderId);
   const { data, isLoading, isError, error } = useCorteMangaOrderDetail(numericId);
+  // Edición de la ficha (estatus, prioridad, observaciones). El hook re-consulta
+  // el detalle al terminar; solo la disparan los controles de abajo, que no se
+  // pintan en los estados de carga/error.
+  const updateOrder = useUpdateCorteMangaOrder(numericId);
+
+  // Se edita con el MISMO código que abre esta ruta, `R-PRODUCCION-CM`: no hay
+  // un código de edición propio de corte de manga. El backend no exige ninguno
+  // (solo `IsAuthenticated`), así que esto es UX, no una frontera de acceso.
+  // Antes de los `return` tempranos porque `useSession` es un hook.
+  // `hasPermission` ya cortocircuita para el rol "admin".
+  const { data: session } = useSession();
+  const canEdit = hasPermission("R-PRODUCCION-CM", session?.user);
 
   const BackLink = (
     <Link
@@ -197,10 +212,19 @@ export function CorteMangaOrderPageContent({
     );
   }
 
+  // Cancelada (`7`): el backend responde `400` a cualquier `PATCH`, así que la
+  // ficha entera pasa a solo lectura. Se suma la falta de permiso en una sola
+  // bandera para que ningún control quede editable por olvidar una condición.
+  const isTerminal = isTerminalStatus(data.estatus_corte);
+  const isReadOnly = isTerminal || !canEdit;
+
   return (
     <div className="w-full space-y-6">
       {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
+      <div className="sticky top-0 z-10 py-2 flex flex-wrap items-center gap-3">
+        {BackLink}
+        {isTerminal && <OrderChip>Orden cancelada · solo lectura</OrderChip>}
+      </div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
@@ -221,9 +245,9 @@ export function CorteMangaOrderPageContent({
                 {formatShortTime(data.fecha_inicio)}
               </span>
             </InfoField>
-            {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) — se
-                muestra igual: `formatShortDate`/`formatShortTime` ya resuelven
-                `null` al guion largo del proyecto. */}
+            {/* `fecha_fin` es de solo lectura: la sella el backend al pasar a
+                Completado y se limpia al salir (`buildCorteMangaStatusPayload`).
+                `formatShortDate`/`formatShortTime` resuelven `null` al guion. */}
             <InfoField label="Fin">
               <span className="tabular-nums">
                 {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
@@ -252,25 +276,36 @@ export function CorteMangaOrderPageContent({
               />
             </InfoField>
             <InfoField label="Estatus">
-              <StatusBadge
-                status={String(data.estatus_corte)}
-                config={{
-                  [data.estatus_corte]: corteMangaStatusEntry(
-                    data.estatus_corte,
-                    data.estatus_corte_display,
-                  ),
-                }}
+              <CorteMangaOrderStatusSelect
+                currentStatus={data.estatus_corte}
+                statusDisplay={data.estatus_corte_display}
+                onStatusChange={(next) =>
+                  updateOrder.mutate(buildCorteMangaStatusPayload(data.estatus_corte, next))
+                }
+                isPending={updateOrder.isPending}
+                // El caso Cancelado lo resuelve el propio selector (se queda sin
+                // destinos); aquí solo se le añade el de permisos.
+                readOnly={!canEdit}
               />
             </InfoField>
             <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-                defaultConfig={corteMangaOrderPriorityFallback(data.prioridad)}
+              <CorteMangaOrderPrioritySelect
+                value={data.prioridad}
+                onChange={(prioridad) => updateOrder.mutate({ prioridad })}
+                isPending={updateOrder.isPending}
+                readOnly={isReadOnly}
               />
             </InfoField>
             <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {textOrDash(data.observaciones)}
+              {isReadOnly ? (
+                textOrDash(data.observaciones)
+              ) : (
+                <EmbroideryObservationsField
+                  value={data.observaciones}
+                  onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
+                  isPending={updateOrder.isPending}
+                />
+              )}
             </InfoField>
           </InfoGrid>
         </Section>
