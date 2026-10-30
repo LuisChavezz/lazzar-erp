@@ -260,8 +260,8 @@ export function SampleSkuOnboardingStep2({
           ))}
         </ul>
         <p className="text-sky-800/80 dark:text-sky-200/80">
-          Los mismos materiales se copian a la lista de materiales de cada SKU. Una vez generados no
-          se pueden volver a generar para esta línea.
+          Los mismos materiales se copian a la lista de materiales de cada SKU. Un SKU ya generado no
+          se vuelve a generar.
         </p>
       </div>
 
