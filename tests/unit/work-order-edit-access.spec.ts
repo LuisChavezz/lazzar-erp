@@ -46,5 +46,8 @@ test.describe("canEditWorkOrder", () => {
   test("una sesión sin las banderas de admin falla cerrado", () => {
     const user = { role: "admin", permissions: [] };
     expect(canEditWorkOrder(user, OR)).toBe(false);
+    // Con una sola bandera tampoco se sabe (misma regla que `useCompanyAdminStatus`).
+    const partial = { role: "admin", permissions: [], is_superuser: true };
+    expect(canEditWorkOrder(partial, CM)).toBe(false);
   });
 });

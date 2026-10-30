@@ -1,11 +1,10 @@
 import { useSession } from "next-auth/react";
+import {
+  getCompanyAdminStatus,
+  type CompanyAdminStatus,
+} from "@/src/features/users/utils/companyAdminStatus";
 
-/**
- * - `admin` / `not-admin`: RESUELTO con los datos de la sesión.
- * - `unknown`: aún no se sabe — la sesión está cargando, o se creó antes de
- *   que guardara estos campos (hasta que el usuario vuelva a iniciar sesión).
- */
-export type CompanyAdminStatus = "admin" | "not-admin" | "unknown";
+export type { CompanyAdminStatus };
 
 /**
  * ¿El usuario de la sesión es administrador de su empresa (o superusuario)?
@@ -17,7 +16,8 @@ export type CompanyAdminStatus = "admin" | "not-admin" | "unknown";
  * como administrador de empresa.
  *
  * Los dos campos viajan en la sesión desde el inicio de sesión
- * (`src/lib/auth.ts`), así que no hace falta ninguna petición.
+ * (`src/lib/auth.ts`), así que no hace falta ninguna petición. La regla vive
+ * en `getCompanyAdminStatus`, para quien ya tiene el usuario en mano.
  *
  * Distingue "resuelto que no" de "todavía no se sabe": quien deba ACTUAR sobre
  * un no (p. ej. quitar un filtro que el usuario no puede usar) solo lo hace
@@ -27,12 +27,7 @@ export type CompanyAdminStatus = "admin" | "not-admin" | "unknown";
  */
 export const useCompanyAdminStatus = (): CompanyAdminStatus => {
   const { data: session } = useSession();
-  const user = session?.user;
-
-  if (typeof user?.is_admin_empresa !== "boolean" || typeof user.is_superuser !== "boolean") {
-    return "unknown";
-  }
-  return user.is_admin_empresa || user.is_superuser ? "admin" : "not-admin";
+  return getCompanyAdminStatus(session?.user);
 };
 
 /**
