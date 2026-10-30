@@ -231,7 +231,10 @@ export function SpecialOrderLines({
               Bajo `sm` el grupo derecho (~240px) no deja columna útil para el
               texto en una tarjeta de teléfono, así que ocupa su propia primera
               fila, pegado a la derecha, y la descripción va debajo a todo el
-              ancho (`flex-col-reverse`: el orden del DOM no cambia). */}
+              ancho (`flex-col-reverse`: el orden del DOM no cambia). Con estado
+              de SKU, alta en catálogo y piezas a la vez el grupo no cabe en un
+              teléfono: se parte en renglones alineados a la derecha
+              (`flex-wrap` + `max-w-full`) en vez de salirse de la tarjeta. */}
           <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:flex-1 min-w-0">
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words">
@@ -253,7 +256,7 @@ export function SpecialOrderLines({
                 {line.categoria_producto?.nombre ?? "Sin categoría de producto"}
               </span>
             </div>
-            <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 max-w-full shrink-0 self-end sm:self-auto">
               <LineSkuStatus
                 line={line}
                 canGenerateSkus={canGenerateSkus}
