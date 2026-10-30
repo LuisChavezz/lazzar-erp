@@ -21,55 +21,75 @@ export interface SampleSkuPreviewRow {
 }
 
 export interface SampleSkuPreview {
-  /** Una por talla con cantidad: son las únicas que el alta genera. */
+  /**
+   * Una por talla con cantidad y SIN SKU de producción: son las únicas que el
+   * alta genera (el backend excluye las que ya tienen variante).
+   */
   rows: SampleSkuPreviewRow[];
-  /** Por qué el alta fallaría con seguridad; `null` si nada lo impide. */
+  /** Qué mostrar en una fila sin SKU. */
+  missingSkuHint: string;
+  /** Por qué no se puede enviar todavía; `null` si nada lo impide. */
   blocker: string | null;
 }
 
-export const CHOSEN_COLOR_WITHOUT_CODE =
-  "El color elegido no tiene código, que forma parte del SKU. Elige otro o complétalo en el catálogo de colores.";
+/**
+ * Color elegido en el asistente (solo cuenta en una línea sin color): `null`
+ * si no se ha elegido, `"loading"` / `"unavailable"` si se eligió pero su
+ * `codigo` aún no se conoce (catálogo cargando o sin ese color), o el color.
+ */
+export type ChosenSampleColor = { codigo: string } | "loading" | "unavailable" | null;
 
+export const CHOOSE_COLOR_HINT = "elige el color en el paso anterior";
+export const CHOSEN_COLOR_LOADING = "Cargando el código del color elegido...";
+export const CHOSEN_COLOR_UNAVAILABLE =
+  "No se pudo leer el código del color elegido. Regresa al paso anterior y vuelve a elegirlo.";
 export const LINE_COLOR_WITHOUT_CODE =
   "El color de la línea no tiene código, que forma parte del SKU. Complétalo en el catálogo de colores para poder generar los SKU.";
 
 /**
- * Vista previa del SKU por talla con cantidad.
+ * Vista previa del SKU por talla que generará el alta.
  *
  * - Si el backend ya lo calculó (`sku_siguiente`), se usa tal cual.
  * - Si la línea no tiene color, `sku_siguiente` llega en `null` y se arma aquí
- *   con el color elegido en el asistente (`chosenColor`; `null` mientras no se
- *   elija o no se conozca).
+ *   con el color elegido. Mientras su `codigo` no se conozca no se deja enviar.
  * - Si la línea SÍ tiene color, un `sku_siguiente` en `null` en una talla sin
  *   SKU de producción solo puede significar que ese color no tiene `codigo`:
  *   el backend rechazaría el alta, así que se bloquea.
  */
 export function getSampleSkuPreview(
   line: SpecialOrderLine,
-  chosenColor: { codigo: string } | null,
+  chosenColor: ChosenSampleColor,
 ): SampleSkuPreview {
   const requiresColor = line.color_nombre === null;
-  // Sin recortar: el backend rechaza solo el código vacío (`if not color.codigo`)
-  // y uno con espacios entra tal cual al SKU.
-  const chosenCode = chosenColor?.codigo ?? "";
+  // Sin recortar: el backend arma el SKU con el código tal cual.
+  const chosenCode =
+    chosenColor !== null && typeof chosenColor === "object" ? chosenColor.codigo : null;
 
   const rows = line.tallas
-    .filter((talla) => Number(talla.cantidad) > 0)
+    .filter((talla) => Number(talla.cantidad) > 0 && !talla.sku_produccion)
     .map((talla) => ({
       talla,
       sku:
         talla.sku_siguiente ??
-        (requiresColor && chosenCode
+        (requiresColor && chosenCode !== null
           ? buildSampleSku(line.sku_prefijo, chosenCode, talla.talla_nombre)
           : null),
     }));
 
-  let blocker: string | null = null;
-  if (requiresColor) {
-    if (chosenColor && !chosenCode) blocker = CHOSEN_COLOR_WITHOUT_CODE;
-  } else if (rows.some((row) => row.sku === null && !row.talla.sku_produccion)) {
-    blocker = LINE_COLOR_WITHOUT_CODE;
+  if (!requiresColor) {
+    const lineColorWithoutCode = rows.some((row) => row.sku === null);
+    return {
+      rows,
+      missingSkuHint: "SKU no disponible",
+      blocker: lineColorWithoutCode ? LINE_COLOR_WITHOUT_CODE : null,
+    };
   }
-
-  return { rows, blocker };
+  if (chosenColor === "loading") {
+    return { rows, missingSkuHint: "cargando el color...", blocker: CHOSEN_COLOR_LOADING };
+  }
+  if (chosenColor === "unavailable") {
+    return { rows, missingSkuHint: "SKU no disponible", blocker: CHOSEN_COLOR_UNAVAILABLE };
+  }
+  // Sin color elegido no hace falta bloquear aquí: el esquema exige `color`.
+  return { rows, missingSkuHint: CHOOSE_COLOR_HINT, blocker: null };
 }

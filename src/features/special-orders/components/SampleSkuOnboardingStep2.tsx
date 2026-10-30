@@ -40,7 +40,6 @@ export function SampleSkuOnboardingStep2({
 }: SampleSkuOnboardingStep2Props) {
   const {
     form,
-    requiresColor,
     skuPreview,
     catalogBlockReason,
     catalogCategoryId,
@@ -254,7 +253,7 @@ export function SampleSkuOnboardingStep2({
                 <span className="font-semibold break-all">{sku}</span>
               ) : (
                 <span className="text-sky-800/70 dark:text-sky-200/70">
-                  {requiresColor ? "elige el color en el paso anterior" : "SKU no disponible"}
+                  {skuPreview.missingSkuHint}
                 </span>
               )}
             </li>
