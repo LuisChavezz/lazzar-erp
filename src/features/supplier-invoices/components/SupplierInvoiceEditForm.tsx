@@ -5,6 +5,8 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { ExclamationTriangleIcon, RejectIcon } from "@/src/components/Icons";
+import { InfoTile, InfoTileGrid } from "@/src/components/DetailDialogPrimitives";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoiceEditForm } from "../hooks/useSupplierInvoiceEditForm";
@@ -51,7 +53,7 @@ export default function SupplierInvoiceEditForm({
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-      <fieldset disabled={isPending} className="space-y-6">
+      <fieldset disabled={isPending} className="space-y-5">
         {serverBanner && (
           <div
             role="alert"
@@ -71,34 +73,20 @@ export default function SupplierInvoiceEditForm({
         )}
 
         {/* Datos fijos: salen de los renglones del alta y ya no cambian. */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
-          <div>
-            <p className="text-slate-400">Proveedor</p>
-            <p className="font-medium text-slate-700 dark:text-slate-200">
-              {factura.proveedor_nombre ?? "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-400">Partidas</p>
-            <p className="font-medium text-slate-700 dark:text-slate-200">
-              {factura.factura_proveedor_detalles.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-400">Moneda</p>
-            <p className="font-medium text-slate-700 dark:text-slate-200">
-              {factura.moneda_codigo ?? "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-400">Total</p>
-            <p className="font-semibold tabular-nums text-slate-800 dark:text-white">
+        <InfoTileGrid>
+          <InfoTile label="Proveedor">{factura.proveedor_nombre ?? "—"}</InfoTile>
+          <InfoTile label="Partidas">
+            <span className="tabular-nums">{factura.factura_proveedor_detalles.length}</span>
+          </InfoTile>
+          <InfoTile label="Moneda">{factura.moneda_codigo ?? "—"}</InfoTile>
+          <InfoTile label="Total">
+            <span className="tabular-nums">
               {formatMoneyValueOrDash(factura.total, factura.moneda_codigo)}
-            </p>
-          </div>
-        </div>
+            </span>
+          </InfoTile>
+        </InfoTileGrid>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
           <form.Field name="folio">
             {(field) => (
               <FormInput
@@ -111,6 +99,7 @@ export default function SupplierInvoiceEditForm({
                   clearError("folio");
                 }}
                 error={getError("folio")}
+                className={COMPACT_FIELD_CLS}
               />
             )}
           </form.Field>
@@ -126,6 +115,7 @@ export default function SupplierInvoiceEditForm({
                   clearError("fecha_vencimiento");
                 }}
                 error={getError("fecha_vencimiento")}
+                className={COMPACT_FIELD_CLS}
               />
             )}
           </form.Field>
@@ -142,6 +132,7 @@ export default function SupplierInvoiceEditForm({
                     clearError("observaciones");
                   }}
                   error={getError("observaciones")}
+                  className={COMPACT_FIELD_CLS}
                 />
               )}
             </form.Field>
