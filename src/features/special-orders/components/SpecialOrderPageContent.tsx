@@ -44,11 +44,12 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
     isValidId ? numericId : null,
   );
 
-  // Visibilidad del alta de SKU y del alta en catálogo: admin de empresa / superusuario (`role ===
-  // "admin"`, que `hasPermission` cortocircuita) o cualquier usuario con
-  // `R-PRODUCCION`. Es UX, no la regla real: el backend exige además el
-  // DEPARTAMENTO Producción, que la sesión no trae, así que un usuario puede ver
-  // la acción y recibir el rechazo al enviar (el diálogo lo explica).
+  // Visibilidad del alta de SKU y del alta en catálogo: admin de empresa /
+  // superusuario (`role === "admin"`, que `hasPermission` cortocircuita) o
+  // cualquier usuario con `R-PRODUCCION`. Es UX, no la regla real: el backend
+  // exige además el DEPARTAMENTO Producción, que la sesión no trae, así que un
+  // usuario puede ver la acción y recibir el rechazo al enviar (el diálogo lo
+  // explica).
   const { data: session } = useSession();
   const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
 
