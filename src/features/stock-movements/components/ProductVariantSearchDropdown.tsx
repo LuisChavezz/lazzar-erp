@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
+import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 
 /**
@@ -64,13 +66,9 @@ export function ProductVariantSearchDropdown({
   // principal cuando hay muchas variantes; se hace sobre el valor debounced.
   const debouncedQuery = useDebounce(searchQuery);
   const filteredVariants = useMemo(() => {
-    const query = debouncedQuery.trim().toLowerCase();
+    const query = debouncedQuery.trim();
     if (!query) return variants;
-    return variants.filter((v) => {
-      const haystack =
-        `${v.sku} ${v.nombre} ${v.cod_proscai ?? ""} ${v.sku_produccion ?? ""}`.toLowerCase();
-      return haystack.includes(query);
-    });
+    return variants.filter((v) => matchesProductVariantSearch(v, query));
   }, [variants, debouncedQuery]);
 
   const showDropdown = isOpen && searchQuery.trim().length > 0;
@@ -239,21 +237,7 @@ export function ProductVariantSearchDropdown({
                     <span className="min-w-0 truncate">
                       {variant.sku} - {variant.nombre}
                     </span>
-                    {/* El código Proscai puede venir vacío: se omite sin placeholder. */}
-                    {variant.cod_proscai && (
-                      <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        {variant.cod_proscai}
-                      </span>
-                    )}
-                    {/* SKU de producción (MP…) de una muestra dada de alta en catálogo. */}
-                    {variant.sku_produccion && (
-                      <span
-                        title="SKU de producción"
-                        className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400"
-                      >
-                        {variant.sku_produccion}
-                      </span>
-                    )}
+                    <ProductVariantCodeBadges variant={variant} />
                   </div>
                 </button>
               ))
