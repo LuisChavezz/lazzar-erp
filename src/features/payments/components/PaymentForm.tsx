@@ -11,7 +11,6 @@ import { Loader } from "@/src/components/Loader";
 import {
   InfoIcon,
   PlusIcon,
-  ReceiptIcon,
   RejectIcon,
   DeleteIcon,
 } from "@/src/components/Icons";
@@ -22,6 +21,8 @@ import { monedaDelPago } from "../schemas/payment.schema";
 import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { usePaymentForm } from "../hooks/usePaymentForm";
 import { CxpSelectorDialog } from "./CxpSelectorDialog";
+import { FormSection } from "@/src/components/FormSection";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 
 interface PaymentFormProps {
   onSuccess: () => void;
@@ -120,11 +121,11 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
   return (
     <>
       <form onSubmit={handleFormSubmit} className="w-full">
-        <fieldset disabled={isPending}>
+        <fieldset disabled={isPending} className="space-y-6">
           {/* Banner de "todo o nada": el alta es atómica, así que ante un error
               del backend NADA quedó registrado. */}
           {serverBanner && (
-            <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+            <div className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
               <InfoIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
               <p className="flex-1 text-sm text-red-700 dark:text-red-300">{serverBanner}</p>
               <button
@@ -139,22 +140,11 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
           )}
 
           {/* ── Cabecera ────────────────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
-                <ReceiptIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Datos del Pago
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Proveedor, cuenta de origen y referencia bancaria
-                </p>
-              </div>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormSection
+            title="Datos del pago"
+            description="Proveedor, cuenta de origen y referencia bancaria"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <form.Field name="proveedor">
                 {(field) => (
                   <FormSelect
@@ -163,6 +153,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                     value={String(field.state.value)}
                     onChange={(event) => handleProveedorChange(Number(event.target.value))}
                     error={getError("proveedor")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     <option value="0" disabled>
                       Seleccionar...
@@ -191,6 +182,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                       clearError("cuenta_bancaria");
                     }}
                     error={getError("cuenta_bancaria")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     <option value="0" disabled>
                       Seleccionar...
@@ -223,6 +215,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                       clearError("fecha_pago");
                     }}
                     error={getError("fecha_pago")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -240,6 +233,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                       clearError("metodo_pago");
                     }}
                     error={getError("metodo_pago")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     {METODO_PAGO_OPTIONS.map((option) => (
                       <option
@@ -273,6 +267,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                       clearError("referencia");
                     }}
                     error={getError("referencia")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -290,6 +285,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                       clearError("referencia_operacion");
                     }}
                     error={getError("referencia_operacion")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -308,26 +304,24 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                         clearError("observaciones");
                       }}
                       error={getError("observaciones")}
+                      className={COMPACT_FIELD_CLS}
                     />
                   )}
                 </form.Field>
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Líneas: CxP aplicadas ───────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Cuentas por Pagar aplicadas
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {proveedor > 0
-                    ? "Elige las facturas que cubre este pago y cuánto se aplica a cada una"
-                    : "Selecciona primero un proveedor"}
-                </p>
-              </div>
+          <FormSection
+            title="Cuentas por pagar aplicadas"
+            description={
+              proveedor > 0
+                ? "Las facturas que cubre este pago y cuánto se aplica a cada una"
+                : "Selecciona primero un proveedor"
+            }
+          >
+            <div className="flex justify-end">
               <Button
                 type="button"
                 variant="secondary"
@@ -342,7 +336,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
               </Button>
             </div>
 
-            <div className="p-8">
+            <div>
               {/* Error a nivel del arreglo (p. ej. "Agrega al menos una cuenta"). */}
               {getError("pago_detalles") && (
                 <p className="mb-3 text-sm font-medium text-rose-600 dark:text-rose-400">
@@ -427,6 +421,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                                     error={getError(
                                       `pago_detalles.${index}.importe_aplicado`,
                                     )}
+                                    className={COMPACT_FIELD_CLS}
                                   />
                                 )}
                               </form.Field>
@@ -447,6 +442,7 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                                     error={getError(
                                       `pago_detalles.${index}.observaciones`,
                                     )}
+                                    className={COMPACT_FIELD_CLS}
                                   />
                                 )}
                               </form.Field>
@@ -477,9 +473,9 @@ export default function PaymentForm({ onSuccess }: PaymentFormProps) {
                 </p>
               )}
             </div>
-          </section>
+          </FormSection>
 
-          <div className="flex items-center justify-end gap-3 pb-4">
+          <div className="flex items-center justify-end gap-3">
             <FormCancelButton onClick={handleReset} disabled={isPending} />
             <FormSubmitButton isPending={isPending} loadingLabel="Registrando...">
               Registrar pago
