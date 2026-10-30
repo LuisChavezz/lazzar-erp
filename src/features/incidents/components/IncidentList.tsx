@@ -1,77 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { IncidentIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
-import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
-import { getColumns, IncidentRow } from "./IncidentColumns";
+import { getColumns, INCIDENT_HEADER_FILTERS } from "./IncidentColumns";
 import { Incident } from "../interfaces/incident.interface";
-import {
-  ESTADO_INCIDENCIA_OPTIONS,
-  GRAVEDAD_INCIDENCIA_OPTIONS,
-  TIPO_INCIDENCIA_OPTIONS,
-} from "../constants/incidentChoices";
 import IncidentForm from "./IncidentForm";
 import { useIncidents } from "../hooks/useIncidents";
 import { useToggleIncidentActivo } from "../hooks/useToggleIncidentActivo";
-import { IncidentRowActionsProvider } from "../hooks/useIncidentRowActions";
-
-// Filtros en memoria sobre el valor CRUDO de la fila (`row.tipo`, `row.activo`,
-// ...), no sobre la etiqueta: las opciones usan los mismos valores del enum, y
-// `activo` se compara como `String(boolean)`.
-const FILTER_CONFIG: DataTableFilterConfig[] = [
-  { id: "tipo", label: "Tipo", options: TIPO_INCIDENCIA_OPTIONS },
-  { id: "gravedad", label: "Gravedad", options: GRAVEDAD_INCIDENCIA_OPTIONS },
-  { id: "estado", label: "Estado", options: ESTADO_INCIDENCIA_OPTIONS },
-  {
-    id: "activo",
-    label: "Estatus",
-    options: [
-      { value: "true", label: "Activo" },
-      { value: "false", label: "Inactivo" },
-    ],
-  },
-];
-
+import { IncidentRowActionsProvider, usePendingIncidentIds } from "../hooks/useIncidentRowActions";
+import { buildIncidentRows, getStaleIncidentToggleNotice } from "../utils/incidentRows";
 
 export default function IncidentList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  // El diálogo de baja/reactivación vive aquí y no en la celda: la celda se
-  // desmonta al ordenar/paginar/filtrar, y el toggle cambia `activo`, que es
-  // justo el filtro "Estatus". Se guarda el ID y se resuelve contra el listado
-  // COMPLETO (ver `toggleIncident`).
-  const [toggleTargetId, setToggleTargetId] = useState<number | null>(null);
+  // Diálogo de fila: el id y el `activo` con que se abrió, resueltos contra el
+  // listado COMPLETO — el toggle cambia `activo`, que es un filtro, y puede
+  // sacar la fila de la vista. El `activo` de apertura decide el sentido
+  // (dar de baja o reactivar) aunque la caché cambie después.
+  const [toggleRequest, setToggleRequest] = useState<{ id: number; activo: boolean } | null>(null);
   const { incidents, isLoading, isInitialError, error } = useIncidents();
   const { employees } = useEmployees();
   // Solo para resolver `reportado_por`. No bloquea ni la tabla ni el
   // formulario: mientras carga la columna dice "…" y si falla cae a
   // "Usuario #N" (ver `resolveUserName`).
   const { data: users, isError: isUsersError } = useUsers();
-  const { mutate: toggleActivo } = useToggleIncidentActivo();
+  const { mutate: toggleActivo, isPending: isTogglePending } = useToggleIncidentActivo();
+  const busyIds = usePendingIncidentIds();
+  // Aviso del diálogo de fila que se cerró porque su incidencia cambió por
+  // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
+  // otro componente (el Toaster).
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
   const canEditHr = hasPermission("E-RH", session?.user);
   const canDeleteHr = hasPermission("D-RH", session?.user);
 
-  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente (ver
-  // CLAUDE.md y `CostCenterList`), así que los handlers, los mapas, las filas y
-  // las columnas conservan su identidad mientras no cambien sus entradas.
+  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente.
   const handleEdit = (incident: Incident) => {
     setSelectedIncident(incident);
     setIsDialogOpen(true);
   };
-
-  const handleToggleActivo = (incident: Incident) => setToggleTargetId(incident.id);
 
   const handleNew = () => {
     setSelectedIncident(null);
@@ -89,46 +73,69 @@ export default function IncidentList() {
 
   // Los nombres se incorporan a la FILA, no al accessor: así la llegada tardía
   // de cualquiera de los dos catálogos produce un `data` nuevo y TanStack
-  // recalcula celda, búsqueda y orden. Ver `IncidentRow`.
-  const rows: IncidentRow[] = incidents.map((incident) => ({
-    ...incident,
-    empleado_nombre: employeeNameById.get(incident.empleado) ?? null,
-    // SIEMPRE string, para que la columna nunca quede fuera de la búsqueda
-    // global: sin reportante (`null`) → "—".
-    reportado_por_nombre:
-      resolveUserName(incident.reportado_por, usersById, isUsersError) ?? "—",
-  }));
+  // recalcula celda, búsqueda, orden y opciones de filtro. Ver `IncidentRow`.
+  const rows = buildIncidentRows(incidents, employeeNameById, usersById, isUsersError);
 
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
-  // `IncidentRowActionsProvider`, así un cambio de estatus no remonta las celdas.
-  const columns = getColumns({ canEdit: canEditHr, canDelete: canDeleteHr });
+  // `IncidentRowActionsProvider`, así una acción no remonta las celdas.
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
+    rows,
+    INCIDENT_HEADER_FILTERS
+  );
 
-  // La confirmación se resuelve contra el arreglo COMPLETO, así sobrevive a que
-  // la fila salga de la vista filtrada —p. ej. dar de baja con el filtro
-  // "Activo" puesto— y muestra el valor nuevo tras el refetch. Mismo criterio
-  // que `CostCenterList`.
-  const toggleIncident =
-    toggleTargetId !== null
-      ? (incidents.find((incident) => incident.id === toggleTargetId) ?? null)
-      : null;
+  // ── Diálogo de fila, resuelto contra el listado COMPLETO ──────────────────
+  const toggleTargetId = toggleRequest?.id ?? null;
+  const toggleTarget =
+    toggleTargetId !== null ? (rows.find((row) => row.id === toggleTargetId) ?? null) : null;
+  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
+  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
+  const isToggling =
+    toggleTargetId !== null && (busyIds.includes(toggleTargetId) || isTogglePending);
 
-  // Si la incidencia desaparece del payload, el id no puede quedar colgado (un
-  // refetch posterior reabriría el diálogo solo). Ajuste en RENDER, no en un
-  // efecto (`react-hooks/set-state-in-effect`).
-  if (toggleTargetId !== null && toggleIncident === null) setToggleTargetId(null);
+  // Vía rápida contra la caché: un refetch mostró que la incidencia del
+  // diálogo abierto ya no existe o que su registro ya cambió de `activo` por
+  // fuera. Se cierra con un aviso (la regla vive en
+  // `getStaleIncidentToggleNotice`). Ajuste en render, no en un efecto.
+  const staleToggle = getStaleIncidentToggleNotice({
+    targetId: toggleTargetId,
+    target: toggleTarget,
+    expectedActivo: toggleRequest?.activo ?? true,
+    isBusy: isToggling,
+  });
+  if (staleToggle) {
+    setToggleRequest(null);
+    setStaleNotice(staleToggle);
+  }
+
+  useEffect(() => {
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key });
+    }
+  }, [staleNotice]);
+
+  // Copia de la incidencia al ABRIR la confirmación: el texto y el sentido no
+  // siguen a los refetch (el optimista invierte `activo` al confirmar) y
+  // sobreviven a la animación de salida cuando el id vuelve a `null`.
+  const toggleSession = useDialogSession(toggleRequest !== null, toggleTarget);
+  const isDeactivate = toggleSession.snapshot?.activo ?? true;
 
   return (
     <IncidentRowActionsProvider
-      value={{ onEdit: handleEdit, onToggleActivo: handleToggleActivo }}
+      value={{
+        onEdit: handleEdit,
+        onToggleActivo: (incident) => setToggleRequest({ id: incident.id, activo: incident.activo }),
+        busyIds,
+      }}
     >
       <DataTable
         columns={columns}
         data={rows}
         // Ata la identidad de la fila al id del registro y no a su índice: el
-        // toggle cambia `activo` y, con el filtro "Estatus", mueve filas.
+        // toggle cambia `activo`, que es un filtro, y mueve filas.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar incidencia..."
-        filterConfig={FILTER_CONFIG}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar incidencias"
@@ -142,11 +149,12 @@ export default function IncidentList() {
                   title={selectedIncident ? "Editar Incidencia" : "Alta de Incidencia"}
                   subtitle={selectedIncident ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="amber"
+                  icon={IncidentIcon}
                 />
               }
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -167,27 +175,46 @@ export default function IncidentList() {
         }
       />
 
-      {canDeleteHr && toggleIncident && (
+      {/*
+        Montado mientras haya una copia: `open` sale de la petición, así que al
+        cerrarse anima su salida con el nombre y el sentido de la apertura.
+        Queda abierto y bloqueado (`busy`) hasta que el servidor responde y el
+        listado se refresca; entonces lo cierra su `onSettled`.
+      */}
+      {canDeleteHr && toggleSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`toggle-${toggleSession.id}`}
+          open={toggleRequest !== null}
           onOpenChange={(open) => {
-            if (!open) {
-              setToggleTargetId(null);
-            }
+            if (!open) setToggleRequest(null);
           }}
-          title={toggleIncident.activo ? "Dar de baja Incidencia" : "Reactivar Incidencia"}
+          title={isDeactivate ? "Dar de baja Incidencia" : "Reactivar Incidencia"}
           description={
-            toggleIncident.activo
-              ? "¿Deseas dar de baja esta incidencia? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
-              : "¿Deseas reactivar esta incidencia? Volverá a aparecer con estatus Activo."
+            isDeactivate
+              ? `¿Deseas dar de baja la incidencia de ${toggleSession.snapshot.empleado_nombre}? Su información se conserva y seguirá visible en el listado con registro Inactivo.`
+              : `¿Deseas reactivar la incidencia de ${toggleSession.snapshot.empleado_nombre}? Volverá a aparecer con registro Activo.`
           }
-          confirmText={toggleIncident.activo ? "Dar de baja" : "Reactivar"}
+          confirmText={
+            isToggling
+              ? isDeactivate
+                ? "Dando de baja..."
+                : "Reactivando..."
+              : isDeactivate
+                ? "Dar de baja"
+                : "Reactivar"
+          }
+          closeOnConfirm={false}
+          busy={isToggling}
           onConfirm={() => {
-            toggleActivo({ id: toggleIncident.id, activo: !toggleIncident.activo });
-            setToggleTargetId(null);
+            const snapshot = toggleSession.snapshot;
+            if (!snapshot) return;
+            toggleActivo(
+              { id: snapshot.id, activo: !snapshot.activo },
+              { onSettled: () => setToggleRequest(null) }
+            );
           }}
           // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
-          confirmColor={toggleIncident.activo ? "amber" : "green"}
+          confirmColor={isDeactivate ? "amber" : "green"}
         />
       )}
     </IncidentRowActionsProvider>
