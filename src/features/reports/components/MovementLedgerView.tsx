@@ -13,7 +13,7 @@ import {
 } from "@/src/features/stock/interfaces/movement-ledger.interface";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
@@ -27,12 +27,11 @@ interface MovementLedgerViewProps {
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
 type MovementLedgerField = "q" | "fecha_inicio" | "fecha_final";
 
-/** Mensaje del backend por campo en un 400 (`{"campo": "mensaje"}`). */
-const fieldErrorOf = (error: unknown, field: MovementLedgerField): string | undefined => {
-  if (!isAxiosError(error) || error.response?.status !== 400) return undefined;
-  const data = error.response.data as Record<string, unknown> | undefined;
-  return data && typeof data === "object" ? firstDrfMessage(data[field]) : undefined;
-};
+/** Mensaje del backend por campo, solo en un 400 (`{"campo": "mensaje"}`). */
+const fieldErrorOf = (error: unknown, field: MovementLedgerField): string | undefined =>
+  isAxiosError(error) && error.response?.status === 400
+    ? drfFieldMessage(error, field)
+    : undefined;
 
 /**
  * Auxiliar de movimientos (kardex de una variante): búsqueda → (opciones) →
