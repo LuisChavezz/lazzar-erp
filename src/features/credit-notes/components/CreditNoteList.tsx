@@ -18,10 +18,7 @@ import { getColumns } from "./CreditNoteColumns";
 import { CreditNoteDetailDialog } from "./CreditNoteDetailDialog";
 import CreditNoteForm from "./CreditNoteForm";
 import { useNotasCredito } from "../hooks/useNotasCredito";
-import {
-  getEmitRejectedDraftDetail,
-  useEmitirNotaCredito,
-} from "../hooks/useEmitirNotaCredito";
+import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
 import {
@@ -78,7 +75,8 @@ export default function CreditNoteList() {
   // llamada (ver `useRowActionLock`). Los callbacks que se pasan a `mutate` solo
   // corren para la ÚLTIMA llamada del observer, así que con dos notas en vuelo el
   // `onSettled` de la primera se perdería y su candado no se soltaría nunca.
-  const { mutateAsync: emitirNotaAsync } = useEmitirNotaCredito();
+  // (La emisión se declara más abajo, tras el estado que su `onRejectedToDraft`
+  // escribe.)
   const { data: session } = useSession();
   const canEmit = canEmitCreditNote(session?.user);
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
@@ -103,6 +101,15 @@ export default function CreditNoteList() {
   const [emitRejection, setEmitRejection] = useState<{ id: number; message: string } | null>(
     null,
   );
+  // Si Facturama rechaza y la nota vuelve a borrador, se abre su detalle con el
+  // motivo y "Emitir" a la mano. Va como opción del hook (no en el `.catch` de
+  // cada llamada) para que el error se normalice una sola vez, en su `onError`.
+  const { mutateAsync: emitirNotaAsync } = useEmitirNotaCredito({
+    onRejectedToDraft: (id, detail) => {
+      setEmitRejection({ id, message: detail });
+      setOpenDetailId(id);
+    },
+  });
   const [emitTargetId, setEmitTargetId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
   /**
@@ -353,15 +360,9 @@ export default function CreditNoteList() {
               .then(() => {
                 setEmitRejection((current) => (current?.id === id ? null : current));
               })
-              // El hook ya avisó del error con su toast. Si Facturama rechazó y la
-              // nota volvió a borrador, se abre su detalle con el motivo; el
-              // resto de los errores solo evita el rechazo no manejado.
-              .catch((error: unknown) => {
-                const rejection = getEmitRejectedDraftDetail(error, id);
-                if (rejection === null) return;
-                setEmitRejection({ id, message: rejection });
-                setOpenDetailId(id);
-              })
+              // El hook ya avisó del error con su toast (y abrió el detalle si la
+              // nota volvió a borrador); aquí solo se evita el rechazo no manejado.
+              .catch(() => {})
               .finally(() => {
                 emitLock.release(id);
                 // Solo se cierra SU diálogo: si mientras tanto el usuario abrió

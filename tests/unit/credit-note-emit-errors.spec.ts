@@ -145,17 +145,23 @@ test.describe("getCreateFailureOutcome (alta)", () => {
 
 test.describe("getEmitRejectedDraftDetail (emitir un borrador)", () => {
   test("rechazo con ESTA nota de vuelta en Borrador devuelve el motivo", () => {
-    const detail = getEmitRejectedDraftDetail(stampFailure({ id: "21", estatus: "Borrador" }), 21);
+    const detail = getEmitRejectedDraftDetail(
+      parseNotaCreditoError(stampFailure({ id: "21", estatus: "Borrador" })),
+      21,
+    );
     expect(detail).toContain("sigue en borrador");
     expect(detail).toContain(RECHAZO);
   });
 
   test("otra nota, otro estatus o sin nota_credito no abren el detalle", () => {
-    expect(getEmitRejectedDraftDetail(stampFailure({ id: "22", estatus: "Borrador" }), 21)).toBeNull();
-    expect(getEmitRejectedDraftDetail(stampFailure({ id: "21", estatus: "Emitida" }), 21)).toBeNull();
-    expect(getEmitRejectedDraftDetail(stampFailure(), 21)).toBeNull();
+    expect(getEmitRejectedDraftDetail(parseNotaCreditoError(stampFailure({ id: "22", estatus: "Borrador" })), 21)).toBeNull();
+    expect(getEmitRejectedDraftDetail(parseNotaCreditoError(stampFailure({ id: "21", estatus: "Emitida" })), 21)).toBeNull();
+    expect(getEmitRejectedDraftDetail(parseNotaCreditoError(stampFailure()), 21)).toBeNull();
     expect(
-      getEmitRejectedDraftDetail(httpError(400, { factura: ["La factura está cancelada."] }), 21),
+      getEmitRejectedDraftDetail(
+        parseNotaCreditoError(httpError(400, { factura: ["La factura está cancelada."] })),
+        21,
+      ),
     ).toBeNull();
   });
 });
