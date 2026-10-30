@@ -33,19 +33,14 @@ export const useCreateSampleSkuOnboarding = (
     mutationKey: SAMPLE_SKU_ONBOARDING_MUTATION_KEY,
     mutationFn: (payload: SampleSkuOnboardingPayload) =>
       createSampleSkuOnboarding(pedidoId, payload),
-    onSuccess: (variants) => {
+    // Sin toast de éxito: el asistente muestra lo creado en su pantalla de resultado.
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["special-order-detail", pedidoId] });
       queryClient.invalidateQueries({ queryKey: ["special-orders"] });
       // El pedido especial ES el pedido de ventas (mismo id) y el alta escribe
       // en su línea cuando le asigna color: el detalle que leen picking,
       // programación y Mesa de Control también cambió.
       queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
-      const total = variants.length;
-      toast.success(
-        total === 1
-          ? "Se generó 1 SKU de producción con su lista de materiales"
-          : `Se generaron ${total} SKU de producción con su lista de materiales`,
-      );
     },
     onError: (error) => {
       const parsed = parseSampleSkuOnboardingError(error);
