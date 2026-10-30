@@ -123,6 +123,7 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
     ? getStaleCheckInNotice({
         kind: checkInRequest.kind,
         empleado: checkInRequest.empleado,
+        fecha,
         row: checkInRow,
         isBusy: isEmployeeDayBusy(pending, checkInRequest.empleado, fecha),
         canResolve: listSettled,

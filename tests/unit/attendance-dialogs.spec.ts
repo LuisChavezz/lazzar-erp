@@ -16,6 +16,7 @@ import {
   type RollCallRow,
 } from "@/src/features/attendance/utils/attendanceRows";
 import {
+  CHECK_IN_GONE_MESSAGE,
   CHECK_IN_STALE_MESSAGE,
   checkInApplies,
   getStaleAttendanceRecordNotice,
@@ -221,22 +222,41 @@ test.describe("asistencia › cierre de la checada con hora", () => {
     // El empleado 3 ("Sin registro") sigue en el pase de lista completo: un
     // filtro de estado en la tabla no lo saca de `rows`.
     expect(
-      getStaleCheckInNotice({ kind: "entrada", empleado: 3, row: byEmpleado(3), isBusy: false, canResolve: true }),
+      getStaleCheckInNotice({ kind: "entrada", fecha: FECHA, empleado: 3, row: byEmpleado(3), isBusy: false, canResolve: true }),
     ).toBeNull();
   });
 
   test("se cierra con aviso si otra persona ya registró la entrada", () => {
     expect(
-      getStaleCheckInNotice({ kind: "entrada", empleado: 1, row: byEmpleado(1), isBusy: false, canResolve: true }),
-    ).toEqual({ key: "attendance-checkin-stale-1-gone", message: CHECK_IN_STALE_MESSAGE });
+      getStaleCheckInNotice({ kind: "entrada", fecha: FECHA, empleado: 1, row: byEmpleado(1), isBusy: false, canResolve: true }),
+    ).toEqual({ key: `attendance-checkin-stale-1-${FECHA}-entrada`, message: CHECK_IN_STALE_MESSAGE });
+  });
+
+  test("salida: se cierra con su propio aviso si otra persona ya registró la salida", () => {
+    const row = byEmpleado(1);
+    const conSalida = row && row.record ? { ...row, record: { ...row.record, hora_salida: "2026-10-29T18:00:00-06:00" } } : null;
+    expect(
+      getStaleCheckInNotice({ kind: "salida", fecha: FECHA, empleado: 1, row: conSalida, isBusy: false, canResolve: true })?.key,
+    ).toBe(`attendance-checkin-stale-1-${FECHA}-salida`);
+  });
+
+  test("si el empleado ya no está en el pase de lista, el aviso es el de «ya no aparece», no el de cambio", () => {
+    expect(
+      getStaleCheckInNotice({ kind: "entrada", fecha: FECHA, empleado: 7, row: null, isBusy: false, canResolve: true }),
+    ).toEqual({ key: `attendance-checkin-stale-7-${FECHA}-gone`, message: CHECK_IN_GONE_MESSAGE });
+  });
+
+  test("la clave lleva el día: el aviso de otro día no reemplaza al visible", () => {
+    const other = getStaleCheckInNotice({ kind: "entrada", fecha: "2026-10-28", empleado: 1, row: byEmpleado(1), isBusy: false, canResolve: true });
+    expect(other?.key).toBe("attendance-checkin-stale-1-2026-10-28-entrada");
   });
 
   test("tras la propia checada (en vuelo) o con el día cargando, no avisa", () => {
     expect(
-      getStaleCheckInNotice({ kind: "entrada", empleado: 1, row: byEmpleado(1), isBusy: true, canResolve: true }),
+      getStaleCheckInNotice({ kind: "entrada", fecha: FECHA, empleado: 1, row: byEmpleado(1), isBusy: true, canResolve: true }),
     ).toBeNull();
     expect(
-      getStaleCheckInNotice({ kind: "entrada", empleado: 1, row: byEmpleado(1), isBusy: false, canResolve: false }),
+      getStaleCheckInNotice({ kind: "entrada", fecha: FECHA, empleado: 1, row: byEmpleado(1), isBusy: false, canResolve: false }),
     ).toBeNull();
   });
 });

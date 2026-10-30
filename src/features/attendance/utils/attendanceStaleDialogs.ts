@@ -76,31 +76,43 @@ export const checkInApplies = (kind: CheckInKind, row: RollCallRow | null): bool
   return row.record !== null && row.record.hora_entrada !== null && row.record.hora_salida === null;
 };
 
-/** Aviso de la checada con hora que se cerró porque el registro del día cambió. */
+/** Aviso de la checada con hora que se cerró porque ya no aplica (el registro del día cambió). */
 export const CHECK_IN_STALE_MESSAGE =
   "El registro del día cambió mientras capturabas la hora. Se actualizó el pase de lista.";
 
+/** Aviso de la checada con hora que se cerró porque el empleado ya no está en el pase de lista. */
+export const CHECK_IN_GONE_MESSAGE =
+  "El empleado ya no aparece en el pase de lista de ese día. Se actualizó el pase de lista.";
+
 /**
  * ¿El diálogo de checada con hora (día pasado) ya no aplica? La fila del pase
- * de lista se identifica por el empleado (puede no tener registro todavía).
- * Se cierra si un refetch muestra que la checada ya no aplica —otra persona
- * registró la entrada o borró el registro, o el empleado ya no está en el
- * pase de lista—: para la regla genérica, la fila "desapareció". Una fila que
- * solo sale de la vista FILTRADA (p. ej. por estado, justo después de checar)
- * sigue en el listado completo y no cuenta. Mientras su propia checada está
- * en vuelo (`isBusy`) no aplica. `null` = el diálogo sigue.
+ * de lista se identifica por el empleado y el día (puede no tener registro
+ * todavía). Dos casos, con su propio aviso:
+ *
+ * - la fila ya no está en el pase de lista completo (`-gone`);
+ * - la fila sigue, pero la checada ya no aplica (`-<kind>`): otra persona
+ *   registró la entrada o la salida, o borró el registro.
+ *
+ * Una fila que solo sale de la vista FILTRADA (p. ej. por estado, justo
+ * después de checar) sigue en el listado completo y no cuenta. Mientras su
+ * propia checada está en vuelo (`isBusy`) no aplica. `key` lleva el empleado
+ * y el día: un aviso de otro día no reemplaza al visible. No usa la regla
+ * genérica (`getStaleRowDialogNotice`): "ya no aplica" no es un cambio de
+ * `activo` ni de un `estado` (una salida pendiente no tiene estado propio).
+ * `null` = el diálogo sigue.
  */
 export const getStaleCheckInNotice = (args: {
   kind: CheckInKind;
   empleado: number | null;
+  fecha: string;
   row: RollCallRow | null;
   isBusy: boolean;
   canResolve: boolean;
-}): StaleRowDialogNotice | null =>
-  getStaleRowDialogNotice({
-    resource: "attendance-checkin",
-    targetId: args.empleado,
-    target: checkInApplies(args.kind, args.row) ? args.row : null,
-    isBusy: args.isBusy || !args.canResolve,
-    messages: { gone: CHECK_IN_STALE_MESSAGE },
-  });
+}): StaleRowDialogNotice | null => {
+  const { kind, empleado, fecha, row } = args;
+  if (empleado === null || args.isBusy || !args.canResolve) return null;
+  const key = `attendance-checkin-stale-${empleado}-${fecha}`;
+  if (row === null) return { key: `${key}-gone`, message: CHECK_IN_GONE_MESSAGE };
+  if (checkInApplies(kind, row)) return null;
+  return { key: `${key}-${kind}`, message: CHECK_IN_STALE_MESSAGE };
+};
