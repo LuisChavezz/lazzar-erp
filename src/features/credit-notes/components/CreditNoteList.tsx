@@ -21,11 +21,14 @@ import { useNotasCredito } from "../hooks/useNotasCredito";
 import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
 import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
 import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
+import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
   canEmitCreditNote,
   getCreditNoteCancelBlockReason,
+  getInvoiceEmitPrecheckReason,
+  getInvoiceUnstampedEmitWarning,
 } from "../utils/creditNoteStamping";
 
 /**
@@ -249,6 +252,19 @@ export default function CreditNoteList() {
   // hace desaparecer la fila, así que la guarda se cumpliría siempre y cerraría
   // el diálogo justo al confirmar. No lo necesita — no consulta la lista para
   // nada (ver `deleteTarget`) y al terminar la petición se cierra igual.
+  // Factura de la nota a emitir, FRESCA mientras su confirmación está abierta,
+  // solo para AVISAR si aún no está timbrada (no bloquea: fuera de la empresa de
+  // Facturama las facturas nunca tienen UUID). Eliminada o con timbrado pendiente
+  // no se avisa aquí: el precheck de `useEmitirNotaCredito` la detiene con su
+  // motivo exacto.
+  const emitTargetNota =
+    emitTargetId !== null ? notasCredito.find((nota) => nota.id === emitTargetId) : undefined;
+  const { data: emitTargetInvoice } = useInvoiceRetrieveFresh(emitTargetNota?.factura ?? null);
+  const emitUnstampedWarning =
+    emitTargetInvoice && getInvoiceEmitPrecheckReason(null, emitTargetInvoice) === null
+      ? getInvoiceUnstampedEmitWarning(emitTargetInvoice)
+      : null;
+
   const existe = (id: number) => notasCredito.some((nota) => nota.id === id);
   if (emitTargetId !== null && !existe(emitTargetId)) setEmitTargetId(null);
   if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
@@ -336,7 +352,7 @@ export default function CreditNoteList() {
             if (!open) setEmitTargetId(null);
           }}
           title="Emitir Nota de Crédito"
-          description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse. ${CREDIT_NOTE_EMIT_STAMP_WARNING}`}
+          description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse. ${CREDIT_NOTE_EMIT_STAMP_WARNING}${emitUnstampedWarning ? ` ${emitUnstampedWarning}` : ""}`}
           confirmText={
             emitLock.isPending(emitTargetId) ? "Emitiendo..." : "Emitir nota"
           }
