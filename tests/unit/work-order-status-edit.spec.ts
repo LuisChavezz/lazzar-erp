@@ -19,34 +19,30 @@ const CANCELADA = "La orden está cancelada: ya no se edita.";
 /**
  * Pruebas unitarias de EC-653: el cuerpo del `PATCH` de estatus de las órdenes
  * de reflejante y corte de manga (nucleo-erp #755) y los destinos que ofrece el
- * selector. La regla de `fecha_fin` es la parte que no se ve en pantalla: al
- * ENTRAR a Completado la clave debe faltar para que el backend la selle, y al
- * SALIR debe viajar `null` en el mismo `PATCH`.
+ * selector. `fecha_fin` es la parte que no se ve en pantalla: la clave debe
+ * faltar siempre, porque el backend solo la sella al entrar a Completado y la
+ * limpia al salir cuando no viene en el cuerpo (nucleo-erp #786).
  */
 
 test.describe("buildReflectiveStatusPayload", () => {
   test("al entrar a Completado no envía fecha_fin, para que el backend la selle", () => {
-    const payload = buildReflectiveStatusPayload(4, 5);
+    const payload = buildReflectiveStatusPayload(5);
     expect(payload).toEqual({ estatus_reflejante: 5 });
     expect("fecha_fin" in payload).toBe(false);
   });
 
-  test("al salir de Completado limpia fecha_fin en el mismo PATCH", () => {
-    expect(buildReflectiveStatusPayload(5, 3)).toEqual({ estatus_reflejante: 3, fecha_fin: null });
-    expect(buildReflectiveStatusPayload(5, 1)).toEqual({ estatus_reflejante: 1, fecha_fin: null });
-  });
-
-  test("entre estatus que no son Completado no toca fecha_fin", () => {
-    expect(buildReflectiveStatusPayload(1, 2)).toEqual({ estatus_reflejante: 2 });
-    expect(buildReflectiveStatusPayload(6, 4)).toEqual({ estatus_reflejante: 4 });
+  test("al salir de Completado tampoco envía fecha_fin: la limpia el backend", () => {
+    const payload = buildReflectiveStatusPayload(3);
+    expect(payload).toEqual({ estatus_reflejante: 3 });
+    expect("fecha_fin" in payload).toBe(false);
+    expect(buildReflectiveStatusPayload(1)).toEqual({ estatus_reflejante: 1 });
   });
 });
 
 test.describe("buildCorteMangaStatusPayload", () => {
-  test("usa la clave estatus_corte y la misma regla de fecha_fin", () => {
-    expect(buildCorteMangaStatusPayload(3, 5)).toEqual({ estatus_corte: 5 });
-    expect(buildCorteMangaStatusPayload(5, 6)).toEqual({ estatus_corte: 6, fecha_fin: null });
-    expect(buildCorteMangaStatusPayload(2, 3)).toEqual({ estatus_corte: 3 });
+  test("usa la clave estatus_corte y tampoco envía fecha_fin", () => {
+    expect(buildCorteMangaStatusPayload(5)).toEqual({ estatus_corte: 5 });
+    expect(buildCorteMangaStatusPayload(6)).toEqual({ estatus_corte: 6 });
   });
 });
 

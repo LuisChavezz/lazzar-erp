@@ -6,10 +6,9 @@ import type {
 
 /**
  * Cuerpo del `PATCH` que cambia el estatus de una orden de corte de manga,
- * bajo `estatus_corte`. La regla de `fecha_fin` vive en
- * `buildWorkOrderStatusPayload`, compartida con reflejante.
+ * bajo `estatus_corte`. Ver `buildWorkOrderStatusPayload`, compartida con
+ * reflejante.
  */
 export const buildCorteMangaStatusPayload = (
-  current: CorteMangaOrderStatus,
   next: CorteMangaOrderStatus,
-): UpdateCorteMangaOrderPayload => buildWorkOrderStatusPayload("estatus_corte", current, next);
+): UpdateCorteMangaOrderPayload => buildWorkOrderStatusPayload("estatus_corte", next);

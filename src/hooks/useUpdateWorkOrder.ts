@@ -54,10 +54,9 @@ export const useUpdateWorkOrder = <P>({
     // Se DEVUELVE la promesa: TanStack Query espera a `onSettled` antes de
     // dar la mutación por terminada, así que `isPending` sigue en `true` hasta
     // que el detalle re-consultado llega. Sin eso los controles se rehabilitaban
-    // con el estatus VIEJO en pantalla, y un segundo cambio armaba la regla de
-    // `fecha_fin` (`buildWorkOrderStatusPayload`) y el menú de destinos sobre
-    // ese valor. `invalidateQueries` no rechaza si el re-fetch falla, así que
-    // un error de red no deja la mutación colgada.
+    // con el estatus VIEJO en pantalla, y un segundo cambio armaba el menú de
+    // destinos sobre ese valor. `invalidateQueries` no rechaza si el re-fetch
+    // falla, así que un error de red no deja la mutación colgada.
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: detailQueryKey }),
