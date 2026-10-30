@@ -1,15 +1,17 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import {
   BanIcon,
   CheckCircleIcon,
-  ChevronRightIcon,
   DownloadIcon,
   EditIcon,
   UploadIcon,
   ViewIcon,
 } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
@@ -23,23 +25,10 @@ const columnHelper = createColumnHelper<FacturaProveedor>();
 /** Fecha-calendario "YYYY-MM-DD" → texto; `timeZone: "UTC"` evita el día anterior. */
 const fecha = (value: string) => (value ? formatShortDate(value, { timeZone: "UTC" }) : "—");
 
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(FACTURA_PROVEEDOR_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<FacturaProveedor> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
-
 /**
- * Celda de Folio: punto de estatus + folio+chevron (disparador del menú) +
- * menú de acciones. Callbacks y "en vuelo" llegan por contexto
+ * Celda de Folio: el folio ES el menú de la fila (`FolioActionMenu`, modo
+ * folio) y debajo va el badge de estatus. "Ver detalle" es siempre la primera
+ * acción. Callbacks y "en vuelo" llegan por contexto
  * (`SupplierInvoiceRowActionsProvider`), no por `getColumns`: así empezar o
  * terminar una subida o descarga solo re-renderiza esta celda, sin remontar
  * las demás ni cerrar el menú abierto de otra fila.
@@ -103,32 +92,12 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
     });
   }
 
-  const statusCfg = FACTURA_PROVEEDOR_ESTATUS_CONFIG[factura.estatus];
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-        title={statusCfg?.label ?? factura.estatus}
-        aria-hidden="true"
-      />
-      <span className="sr-only">{statusCfg?.label ?? factura.estatus}</span>
-      <ActionMenu
-        items={menuItems}
-        ariaLabel={`Acciones de la factura ${folio}`}
-        align="start"
-        trigger={
-          <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-            <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-              {folio}
-            </span>
-            <ChevronRightIcon
-              className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-              aria-hidden="true"
-            />
-          </button>
-        }
-      />
-    </div>
+    <FolioActionMenu
+      folio={folio}
+      items={menuItems}
+      status={<StatusBadge status={factura.estatus} config={FACTURA_PROVEEDOR_ESTATUS_CONFIG} />}
+    />
   );
 }
 
@@ -153,13 +122,8 @@ export const getColumns = () => {
     // TODAS. Mismo criterio que `PolizaColumns` / `CorteMangaOrderColumns`.
     columnHelper.accessor((row) => row.folio ?? "", {
       id: "folio",
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Folio</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
+      header: "Folio",
+      size: 180,
       // `folio` es nullable y no único: se cae al `#id`, que siempre existe.
       cell: (info) => (
         <SupplierInvoiceFolioCell
@@ -234,4 +198,36 @@ export const getColumns = () => {
   ] as ColumnDef<FacturaProveedor>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo aunque ninguna fila lo use y, al final, cada valor
+ *   desconocido de las filas, crudo (igual que su badge).
+ * - OC y recepción son valores libres: sus opciones salen de las filas, con el
+ *   mismo texto que la celda. Con buscador, porque un proveedor puede tener
+ *   muchas.
+ * - Las fechas filtran por mes; el vencimiento agrupa aparte las facturas sin
+ *   fecha (un borrador puede no tenerla).
+ * - Sin filtro de proveedor: el listado ya llega acotado a uno (el selector de
+ *   la barra). El total tampoco lleva: es un importe libre, lo cubre el orden.
+ */
+export const SUPPLIER_INVOICE_HEADER_FILTERS: Partial<
+  Record<string, HeaderFilterSpec<FacturaProveedor>>
+> = {
+  folio: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(FACTURA_PROVEEDOR_ESTATUS_CONFIG),
+  },
+  oc_folio: { type: "distinct", get: (r) => ocFolioLabel(r), searchable: true },
+  recepcion_folio: { type: "distinct", get: (r) => r.recepcion_folio, searchable: true },
+  fecha_emision: { type: "month", get: (r) => r.fecha_emision },
+  fecha_vencimiento: {
+    type: "month",
+    get: (r) => r.fecha_vencimiento,
+    emptyLabel: "Sin vencimiento",
+  },
 };

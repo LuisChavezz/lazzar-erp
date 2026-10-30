@@ -27,9 +27,3 @@ export const FACTURA_PROVEEDOR_ESTATUS_CONFIG: Record<
   },
 };
 
-/** Opciones del filtro de estatus: valores crudos del enum (el filtro compara con `===`). */
-export const FACTURA_PROVEEDOR_ESTATUS_FILTER = [
-  { value: "Borrador", label: "Borrador" },
-  { value: "Registrada", label: "Registrada" },
-  { value: "Cancelada", label: "Cancelada" },
-];
