@@ -2,6 +2,7 @@
 
 import { createContext } from "react";
 import type { ColumnFiltersState } from "@tanstack/react-table";
+import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 
 /**
  * Filtros de servidor que `DataTable` publica a sus encabezados cuando está en
@@ -44,6 +45,16 @@ export type DataTableModeContextValue =
        * necesita para el chip de "Filtrado por" sobre la tabla.
        */
       reportFilterValueLabel?: (columnId: string, label: string | undefined) => void;
+      /**
+       * Última opción vista con el valor elegido en el filtro de cada columna.
+       * La guarda `DataTable` en un ref (no provoca renders ni cambia el valor
+       * del contexto) para que sobreviva a que el encabezado se desmonte: en
+       * modo cliente, `isLoading` reemplaza la tabla entera por el skeleton.
+       * Con ella el encabezado sigue nombrando la opción elegida aunque las
+       * filas nuevas ya no la incluyan.
+       */
+      getRememberedFilterOption?: (columnId: string) => ColumnFilterOption | undefined;
+      rememberFilterOption?: (columnId: string, option: ColumnFilterOption) => void;
     }
   | { mode: "server-pagination" }
   | { mode: "server"; filters: DataTableServerFilters | undefined };

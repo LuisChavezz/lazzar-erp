@@ -112,10 +112,16 @@ export function ColumnHeaderFilter<TData>({
   // (las que salen de las filas cambian con un parámetro de servidor, p. ej.
   // `?quincena=`): se recuerda la última opción vista con el valor activo y
   // `pinActiveFilterOption` la fija en el menú. Como la etiqueta reportada es
-  // la de esa opción, el chip de `DataTable` también la conserva. Requiere que
-  // el encabezado NO se remonte con las filas (ver `HeaderFilterCell` en
-  // `withHeaderFilters`).
-  const [rememberedOption, setRememberedOption] = useState<ColumnFilterOption>();
+  // la de esa opción, el chip de `DataTable` también la conserva. El recuerdo
+  // vive aquí mientras el encabezado está montado (no se remonta con las
+  // filas: ver `HeaderFilterCell` en `withHeaderFilters`) y se respalda en la
+  // tabla, porque `isLoading` sí lo desmonta (skeleton) y al volver arranca
+  // desde ese respaldo.
+  const rememberFilterOption =
+    tableMode.mode === 'client' ? tableMode.rememberFilterOption : undefined;
+  const [rememberedOption, setRememberedOption] = useState<ColumnFilterOption | undefined>(() =>
+    tableMode.mode === 'client' ? tableMode.getRememberedFilterOption?.(column.id) : undefined,
+  );
   const { options, active: activeOption } = pinActiveFilterOption(
     optionsProp,
     activeValue,
@@ -137,6 +143,9 @@ export function ColumnHeaderFilter<TData>({
   useEffect(() => {
     reportFilterValueLabel?.(column.id, activeLabel);
   }, [reportFilterValueLabel, column.id, activeLabel]);
+  useEffect(() => {
+    if (rememberedOption) rememberFilterOption?.(column.id, rememberedOption);
+  }, [rememberFilterOption, column.id, rememberedOption]);
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 
