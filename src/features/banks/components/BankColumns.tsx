@@ -1,125 +1,53 @@
-import { ColumnDef, createColumnHelper, FilterFn, Row } from "@tanstack/react-table";
-import { useState, type ReactNode } from "react";
-import { EditIcon, BanIcon, CheckCircleIcon, ChevronRightIcon } from "@/src/components/Icons";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { EditIcon, BanIcon, CheckCircleIcon } from "@/src/components/Icons";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { Banco } from "../interfaces/bank.interface";
-import { useToggleBankActivo } from "../hooks/useToggleBankActivo";
+import { useBankRowActionsContext } from "../hooks/useBankRowActions";
 
 const columnHelper = createColumnHelper<Banco>();
 
-const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
-  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
-];
+/** Texto con que la fila se nombra: el backend admite un banco sin nombre ni código. */
+export const getBankLabel = (banco: Banco): string =>
+  banco.nombre || banco.codigo || `#${banco.id}`;
 
-const activoFilterFn: FilterFn<Banco> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.activo) === filterValue;
-};
+/**
+ * El nombre ES el menú de la fila y lleva el punto de `activo`: sin columnas
+ * aparte de "Estatus" ni "Acciones". Los callbacks y el "en vuelo" llegan por
+ * contexto; la confirmación vive en `BankList`. Sin "Ver detalle": los bancos
+ * no tienen vista de detalle.
+ *
+ * NO hay acción de eliminar: el DELETE del backend es un borrado FÍSICO, no
+ * una baja lógica. `activo` es el único control de ciclo de vida.
+ */
+const BankNameCell = ({ banco }: { banco: Banco }) => {
+  const { onEdit, onToggleActivo, busyIds } = useBankRowActionsContext();
 
-const ActionsCell = ({
-  row,
-  onEdit,
-  trigger,
-}: {
-  row: Row<Banco>;
-  onEdit: (banco: Banco) => void;
-  trigger: ReactNode;
-}) => {
-  const { mutate: toggleActivo, isPending } = useToggleBankActivo();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
-  const { activo } = row.original;
-  // El destino del cambio: una fila activa se desactiva y viceversa.
-  const nextActivo = !activo;
-
-  // NO hay acción de eliminar: el DELETE del backend es un borrado FÍSICO, no
-  // una baja lógica. `activo` es el único control de ciclo de vida.
-  const menuItems: ActionMenuItem[] = [
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(banco) },
     {
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    },
-    {
-      label: activo ? "Desactivar" : "Activar",
-      icon: activo ? BanIcon : CheckCircleIcon,
-      onSelect: () => setIsConfirmOpen(true),
-      disabled: isPending,
+      label: banco.activo ? "Desactivar" : "Activar",
+      icon: banco.activo ? BanIcon : CheckCircleIcon,
+      onSelect: () => onToggleActivo(banco),
+      disabled: busyIds.includes(banco.id),
     },
   ];
 
-  return (
-    <>
-      <ActionMenu items={menuItems} align="start" trigger={trigger} />
-      <ConfirmDialog
-        open={isConfirmOpen}
-        onOpenChange={setIsConfirmOpen}
-        title={activo ? "Desactivar Banco" : "Activar Banco"}
-        description={
-          activo
-            ? "¿Deseas desactivar este banco? Su información se conserva y seguirá visible en el listado con estatus Inactivo."
-            : "¿Deseas activar este banco? Volverá a estar disponible para su uso."
-        }
-        confirmText={
-          isPending
-            ? activo
-              ? "Desactivando..."
-              : "Activando..."
-            : activo
-              ? "Desactivar"
-              : "Activar"
-        }
-        onConfirm={() => {
-          toggleActivo({ id: row.original.id, activo: nextActivo });
-          setIsConfirmOpen(false);
-        }}
-        // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
-        confirmColor={activo ? "amber" : "green"}
-      />
-    </>
-  );
+  return <FolioActionMenu name={getBankLabel(banco)} items={items} active={banco.activo} />;
 };
 
-export const getColumns = (onEdit: (banco: Banco) => void) => {
+/**
+ * No dependen de nada: callbacks y "en vuelo" llegan al menú por
+ * `BankRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getColumns = () => {
   const columns = [
-    columnHelper.accessor("nombre", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Nombre</span>
-          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: activoFilterFn,
-      cell: (info) => {
-        const banco = info.row.original;
-        const statusCfg = banco.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
-        return (
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
-            <span className="sr-only">{statusCfg.label}</span>
-            <ActionsCell
-              row={info.row}
-              onEdit={onEdit}
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {info.getValue() || "—"}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+    columnHelper.accessor((row) => row.nombre ?? "", {
+      id: "nombre",
+      header: "Nombre",
+      size: 240,
+      cell: ({ row }) => <BankNameCell banco={row.original} />,
     }),
     columnHelper.accessor("codigo", {
       header: "Código",
@@ -155,4 +83,13 @@ export const getColumns = (onEdit: (banco: Banco) => void) => {
   ] as ColumnDef<Banco>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * El nombre filtra por `activo` (su punto), con ficha "Registro: …". Código,
+ * SWIFT y observaciones no llevan filtro: los cubre la búsqueda.
+ */
+export const BANK_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Banco>>> = {
+  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
 };
