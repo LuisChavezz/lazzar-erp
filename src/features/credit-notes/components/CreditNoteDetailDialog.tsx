@@ -12,7 +12,8 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
-import { CheckCircleIcon, InfoIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
+import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
@@ -135,16 +136,7 @@ function CreditNoteEmitPanel({
     .join(" ");
   return (
     <div className="mb-5 space-y-3">
-      {rejection && (
-        <div
-          id={rejectionId}
-          role="alert"
-          className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
-        >
-          <InfoIcon className="w-5 h-5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
-          <p className="flex-1 text-sm text-red-700 dark:text-red-300">{rejection}</p>
-        </div>
-      )}
+      <FormErrorBanner message={rejection} id={rejectionId} />
       <div className="flex flex-col items-end gap-2">
         {/* Sin permiso: BLOQUEADO pero enfocable (`aria-disabled`, como
             `DocumentActionWithDialog`), descrito por su motivo. */}
