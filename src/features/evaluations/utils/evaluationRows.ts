@@ -5,6 +5,7 @@ import {
   getEstadoEvaluacionLabel,
   getPeriodoEvaluacionLabel,
   getTipoEvaluacionLabel,
+  ESTADO_COMPLETADA,
   type EstadoEvaluacion,
 } from "../constants/evaluationChoices";
 import { catalogText } from "@/src/utils/catalogText";
@@ -44,12 +45,22 @@ export const getEvaluationEstadoText = (estado: string | null | undefined): stri
   catalogText(getEstadoEvaluacionLabel(estado), estado);
 
 /**
+ * ¿Se ofrece "Eliminar"? Todo lo que no esté completada (una completada es un
+ * registro cerrado), también un estado fuera de catálogo. Es una regla SOLO
+ * del front: el backend borra en cualquier estado (`EvaluacionViewSet` no la
+ * valida).
+ */
+export const canDeleteEvaluation = (estado: string): boolean => estado !== ESTADO_COMPLETADA;
+
+/**
  * Avisos del diálogo de eliminar que se cerró por un cambio externo: la
- * evaluación ya no existe, o ya no está pendiente (una completada no se
- * elimina).
+ * evaluación ya no existe, o su estado ya no es el de la apertura (una
+ * completada, además, ya no se elimina).
  */
 export const EVALUATION_STALE_MESSAGES: StaleEstadoRowDialogMessages<EstadoEvaluacion> = {
   gone: "La evaluación ya no existe. Se actualizó el listado.",
   estadoChanged: (estado) =>
-    `La evaluación cambió de estado: ya está ${getEvaluationEstadoText(estado).toLowerCase()} y no se puede eliminar. Se actualizó el listado.`,
+    `La evaluación cambió de estado: ya está ${getEvaluationEstadoText(estado).toLowerCase()}${
+      estado === ESTADO_COMPLETADA ? " y no se puede eliminar" : ""
+    }. Se actualizó el listado.`,
 };

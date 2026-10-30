@@ -13,12 +13,12 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { Evaluation } from "../interfaces/evaluation.interface";
 import {
   ESTADO_EVALUACION_CFG,
-  ESTADO_PENDIENTE,
   PERIODO_EVALUACION_OPTIONS,
   TIPO_EVALUACION_OPTIONS,
 } from "../constants/evaluationChoices";
 import { useEvaluationRowActionsContext } from "../hooks/useEvaluationRowActions";
 import {
+  canDeleteEvaluation,
   getEvaluationEstadoText,
   getEvaluationPeriodoText,
   getEvaluationTipoText,
@@ -71,14 +71,13 @@ function EvaluationNameCell({
 
   const items: ActionMenuItem[] = [
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(evaluation), visible: permissions.canEdit },
-    // Borrado FÍSICO y solo sobre evaluaciones pendientes: una completada es un
-    // registro cerrado y no ofrece "Eliminar".
+    // Borrado FÍSICO; quién lo ofrece lo decide `canDeleteEvaluation`.
     {
       label: "Eliminar",
       icon: DeleteIcon,
       onSelect: () => onDelete(evaluation),
       disabled: busyIds.includes(evaluation.id),
-      visible: permissions.canDelete && evaluation.estado === ESTADO_PENDIENTE,
+      visible: permissions.canDelete && canDeleteEvaluation(evaluation.estado),
     },
   ];
 
