@@ -10,6 +10,13 @@ interface UseSizesByCategoryParams {
 }
 
 /**
+ * Llave de las tallas de una categoría. Compartida con las muestras de
+ * cotización (`useMuestraCategorySizes`) para que ambas usen la misma caché.
+ */
+export const sizesByCategoryKey = (categoriaProductoId: number | null) =>
+  ["sizes", "by-category", categoriaProductoId] as const;
+
+/**
  * Tallas permitidas para la categoría del producto elegido. Filtrar aquí evita
  * ofrecer una talla que el backend rechazaría con "Esta talla no esta permitida
  * para la categoria de este producto."
@@ -25,7 +32,7 @@ interface UseSizesByCategoryParams {
 export const useSizesByCategory = ({ categoriaProductoId, enabled }: UseSizesByCategoryParams) => {
   const { data, isLoading, isInitialError, error } = useGuardedQuery<Size[]>(
     {
-      queryKey: ["sizes", "by-category", categoriaProductoId],
+      queryKey: sizesByCategoryKey(categoriaProductoId),
       queryFn: () => getSizesByCategory(categoriaProductoId),
       enabled,
     },
