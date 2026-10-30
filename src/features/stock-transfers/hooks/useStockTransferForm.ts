@@ -8,6 +8,7 @@ import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
 import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
+import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import {
   StockTransferFormSchema,
   createEmptyTransferLine,
@@ -25,10 +26,11 @@ export interface EntityOption {
   label: string;
   sublabel?: string;
   /**
-   * SKU de producción (MP…) de una variante que viene de una muestra dada de
-   * alta en catálogo: se busca y se muestra como insignia junto al SKU.
+   * Variante de origen (solo en las opciones de variante): el selector busca
+   * con `matchesProductVariantSearch` y muestra sus códigos secundarios
+   * (Proscai, SKU de producción), igual que Movimientos y Nueva OP.
    */
-  skuProduccion?: string;
+  variant?: ProductVariant;
 }
 
 const LINE_ERROR_PREFIX = "transferencia_detalle";
@@ -125,7 +127,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
           id: v.id,
           label: `${v.sku} - ${v.nombre}`,
           sublabel: v.sku,
-          skuProduccion: v.sku_produccion || undefined,
+          variant: v,
         })),
     [productVariants],
   );

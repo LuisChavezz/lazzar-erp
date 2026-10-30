@@ -3,6 +3,8 @@
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import type { ItemKind } from "../schemas/stock-transfer.schema";
+import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
+import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
 import type { EntityOption } from "../hooks/useStockTransferForm";
 
 interface StockTransferProductSelectorDialogProps {
@@ -28,7 +30,7 @@ const MODE_COPY: Record<ItemKind, { title: string; subtitle: string; placeholder
   producto_variante: {
     title: "Seleccionar Variante",
     subtitle: "Elige la variante de producto a trasladar en esta línea",
-    placeholder: "Buscar variante por SKU, nombre o SKU de producción...",
+    placeholder: "Buscar variante por SKU, nombre, código Proscai o SKU de producción...",
   },
 };
 
@@ -70,9 +72,9 @@ export function StockTransferProductSelectorDialog({
           items={mode === "producto" ? productOptions : variantOptions}
           searchPlaceholder={copy.placeholder}
           filterPredicate={(option, term) =>
-            `${option.label} ${option.sublabel ?? ""} ${option.skuProduccion ?? ""}`
-              .toLowerCase()
-              .includes(term)
+            option.variant
+              ? matchesProductVariantSearch(option.variant, term)
+              : `${option.label} ${option.sublabel ?? ""}`.toLowerCase().includes(term)
           }
           getKey={(option) => option.id}
           selectedKey={selectedId > 0 ? selectedId : null}
@@ -86,18 +88,13 @@ export function StockTransferProductSelectorDialog({
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                 {option.label}
               </p>
-              {option.sublabel && (
+              {(option.sublabel || option.variant) && (
                 <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                  <span className="min-w-0 truncate">{option.sublabel}</span>
-                  {/* SKU de producción (MP…) de una muestra dada de alta en catálogo. */}
-                  {option.skuProduccion && (
-                    <span
-                      title="SKU de producción"
-                      className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400"
-                    >
-                      {option.skuProduccion}
-                    </span>
+                  {option.sublabel && (
+                    <span className="min-w-0 truncate">{option.sublabel}</span>
                   )}
+                  {/* Las insignias no dependen del sublabel: se muestran aunque falte. */}
+                  {option.variant && <ProductVariantCodeBadges variant={option.variant} />}
                 </p>
               )}
             </>
