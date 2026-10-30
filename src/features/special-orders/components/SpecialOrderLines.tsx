@@ -15,6 +15,7 @@ import type {
 import {
   CATALOG_ALTA_BUTTON_NO_CATEGORY,
   hasPendingCatalogAlta,
+  isTallaPendingCatalogAlta,
 } from "../utils/catalogAlta";
 
 /**
@@ -135,6 +136,20 @@ function CatalogAltaButton({
 }
 
 /**
+ * Celda "SKU catálogo" de una talla: el SKU si ya está en catálogo,
+ * "Pendiente" si tiene SKU de producción sin alta, "—" si no tiene SKU.
+ */
+function TallaCatalogSku({ talla }: { talla: SpecialOrderTalla }) {
+  if (talla.sku_catalogo) {
+    return <span className="font-mono">{talla.sku_catalogo}</span>;
+  }
+  if (isTallaPendingCatalogAlta(talla)) {
+    return <span className="text-amber-700 dark:text-amber-400">Pendiente</span>;
+  }
+  return <span className="text-slate-400 dark:text-slate-500">—</span>;
+}
+
+/**
  * Estado del alta de SKU de la línea, en tres casos:
  *  - Ninguna talla tiene SKU: la acción de alta (si el usuario la ve y hay
  *    tallas con cantidad; sin ellas el backend la rechazaría).
@@ -192,8 +207,8 @@ function LineSkuStatus({
  * Líneas de muestra del pedido: una tarjeta por línea (producto externo +
  * color · total de piezas) con su tabla de tallas. Patrón de `PedidoLineas`,
  * sin precios ni picking — este contrato no los trae. Cada talla muestra su SKU
- * de producción; cada tarjeta, el estado del alta de SKU de la línea y, si hay
- * tallas pendientes, el alta en catálogo.
+ * de producción y el de catálogo; cada tarjeta, el estado del alta de SKU de la
+ * línea y, si hay tallas pendientes, el alta en catálogo.
  */
 export function SpecialOrderLines({
   pedidoId,
@@ -278,6 +293,7 @@ export function SpecialOrderLines({
                     <tr className="text-slate-500 dark:text-slate-400">
                       <th className="px-3 py-2 text-left font-semibold">Talla</th>
                       <th className="px-3 py-2 text-left font-semibold">SKU</th>
+                      <th className="px-3 py-2 text-left font-semibold">SKU catálogo</th>
                       <th className="px-3 py-2 text-left font-semibold">Servicios</th>
                       <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
                     </tr>
@@ -293,6 +309,9 @@ export function SpecialOrderLines({
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap font-mono text-slate-700 dark:text-slate-200">
                           {talla.sku_produccion || "—"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-200">
+                          <TallaCatalogSku talla={talla} />
                         </td>
                         <td className="px-3 py-2">
                           <TallaServices talla={talla} line={line} />
