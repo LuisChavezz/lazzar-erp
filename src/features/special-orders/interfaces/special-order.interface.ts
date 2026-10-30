@@ -68,6 +68,17 @@ export interface SpecialOrderTalla {
    * `codigo`. Llega también en tallas con `cantidad = 0`, que NO se generan.
    */
   sku_siguiente: string | null;
+  /**
+   * La variante de producción de esta talla ya se dio de alta en catálogo. Es
+   * `false` también cuando la talla NO tiene variante (`sku_produccion` en
+   * `null`), así que "pendiente de alta" exige además `sku_produccion`.
+   */
+  aplica_catalogo: boolean;
+  /**
+   * SKU de la `ProductoVariante` de catálogo de esta talla, o `null` (sin
+   * variante, o variante aún sin alta en catálogo).
+   */
+  sku_catalogo: string | null;
   lleva_bordado: boolean;
   bordado_config: SpecialOrderBordadoConfig | null;
   lleva_reflejante: boolean;
@@ -155,9 +166,10 @@ export interface SampleSkuOnboardingPayload {
 }
 
 /**
- * Variante de producción creada (`VarianteProduccionSerializer`). La respuesta
- * `201` es un ARREGLO plano con una por talla con cantidad; no trae el id del
- * BOM.
+ * Variante de producción (`VarianteProduccionSerializer`). Es la respuesta
+ * `201` de `variante-onboarding` (un ARREGLO plano con una por talla con
+ * cantidad; no trae el id del BOM) y de `alta-catalogo` (solo las variantes
+ * dadas de alta en ESA llamada). Las tallas se identifican por `talla_nombre`.
  */
 export interface SampleProductionVariant {
   id: number;

@@ -31,6 +31,8 @@ const talla = (overrides: Partial<SpecialOrderTalla>): SpecialOrderTalla => ({
   cantidad: 1,
   sku_produccion: null,
   sku_siguiente: null,
+  aplica_catalogo: false,
+  sku_catalogo: null,
   lleva_bordado: false,
   bordado_config: null,
   lleva_reflejante: false,
