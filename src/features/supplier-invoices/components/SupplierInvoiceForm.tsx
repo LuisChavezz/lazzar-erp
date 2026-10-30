@@ -509,7 +509,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
           </FormSection>
 
           {/* ── Totales (derivados, no editables) ───────────────────────── */}
-          <FormSection title="Totales" description="Derivados de las partidas, no se capturan">
+          <FormSection title="Totales">
             <div>
               <div className="flex flex-wrap items-start justify-between gap-6">
                 <div className="max-w-md">
