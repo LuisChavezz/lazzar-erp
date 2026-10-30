@@ -50,10 +50,19 @@ export const useUpdateWorkOrder = <P>({
     // También tras un fallo: un `400` por cancelación significa que la ficha
     // en pantalla está vieja (otro usuario la canceló), y releerla la pasa a
     // solo lectura.
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: detailQueryKey });
-      queryClient.invalidateQueries({ queryKey: listQueryKey });
-      void invalidatePedidoProgress(queryClient);
-    },
+    //
+    // Se DEVUELVE la promesa: TanStack Query espera a `onSettled` antes de
+    // dar la mutación por terminada, así que `isPending` sigue en `true` hasta
+    // que el detalle re-consultado llega. Sin eso los controles se rehabilitaban
+    // con el estatus VIEJO en pantalla, y un segundo cambio armaba la regla de
+    // `fecha_fin` (`buildWorkOrderStatusPayload`) y el menú de destinos sobre
+    // ese valor. `invalidateQueries` no rechaza si el re-fetch falla, así que
+    // un error de red no deja la mutación colgada.
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+        invalidatePedidoProgress(queryClient),
+      ]),
   });
 };

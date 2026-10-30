@@ -67,6 +67,13 @@ export const getWorkOrderTransitions = (
  *    aparentar que ya terminó.
  *  - Entre dos estatus que no son `5`, no se toca.
  *
+ * `current` es el estatus que muestra la ficha. La mutación sigue pendiente
+ * hasta que el detalle se re-consulta (ver `useUpdateWorkOrder`), así que dos
+ * cambios seguidos del mismo usuario no parten de un valor viejo. Un cambio de
+ * OTRO usuario mientras la ficha está abierta sí puede dejarlo viejo; eso solo
+ * lo cierra el backend, que es quien debe ser dueño de la regla (nucleo-erp
+ * #777).
+ *
  * Función PURA para poder probar cada caso sin React (ver `tests/unit`).
  */
 export const buildWorkOrderStatusPayload = <F extends string>(
