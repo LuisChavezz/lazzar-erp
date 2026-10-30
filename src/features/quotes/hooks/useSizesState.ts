@@ -14,6 +14,7 @@
 import { useCallback, useState } from "react";
 import type { Size } from "../../sizes/interfaces/size.interface";
 import { MUESTRA_ROW_ID } from "../types";
+import { pruneSizeQuantities } from "../utils/muestraCategorySizes";
 import type { CatalogRow, QuoteItem } from "../types";
 
 /** Cantidades capturadas por producto: productId => { sizeId => texto }. */
@@ -111,6 +112,24 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     []
   );
 
+  /**
+   * Deja en la fila solo las cantidades de `availableSizes` (`pruneSizeQuantities`).
+   * Lo usa la muestra al cambiar de categoría (EC-647): se conservan las tallas
+   * que siguen aplicando, no se borra la fila entera como al cambiar de color.
+   */
+  const pruneProductSizes = useCallback((productId: number, availableSizes: readonly Size[]) => {
+    setSizeQuantitiesPerProduct((prev) => {
+      if (!prev[productId]) return prev;
+      return { ...prev, [productId]: pruneSizeQuantities(prev[productId], availableSizes).kept };
+    });
+    setSizeErrors((prev) => {
+      if (!prev[productId]) return prev;
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  }, []);
+
   const clearProductSizes = useCallback((productId: number) => {
     setSizeQuantitiesPerProduct((prev) => {
       const next = { ...prev };
@@ -177,6 +196,7 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     sizeErrors,
     updateSizeQuantity,
     clearProductSizes,
+    pruneProductSizes,
     validateSelectedRows,
     setSizeError,
     getItemSizes,
