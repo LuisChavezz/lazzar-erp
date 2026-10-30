@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstRejection } from "@/src/utils/firstDrfMessage";
 import { SAMPLE_SKU_ONBOARDING_FORBIDDEN_MESSAGE } from "./parseSampleSkuOnboardingError";
 
 export const CATALOG_ALTA_GENERIC_ERROR = "No se pudo dar de alta la línea en catálogo.";
@@ -75,10 +75,8 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
     const message = firstDrfMessage(data);
     if (message) return { message, staleLine, key: null };
   } else {
-    for (const key of REJECTION_KEYS) {
-      const message = firstDrfMessage(record[key]);
-      if (message) return { message, staleLine, key };
-    }
+    const rejection = firstRejection(record, REJECTION_KEYS);
+    if (rejection) return { ...rejection, staleLine };
   }
 
   if (response?.status === 403) {
