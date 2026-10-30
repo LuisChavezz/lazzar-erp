@@ -1,4 +1,4 @@
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper, sortingFns, type Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "@/src/components/Icons";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
@@ -14,6 +14,7 @@ import { Training } from "../interfaces/training.interface";
 import { ESTADO_CAPACITACION_CFG } from "../constants/trainingChoices";
 import { isHttpUrl } from "../schemas/training.schema";
 import { useTrainingRowActionsContext } from "../hooks/useTrainingRowActions";
+import { getTrainingEstadoText } from "../utils/trainingRows";
 
 /**
  * Fila de la tabla: la capacitación tal como llega del backend más el nombre
@@ -86,6 +87,14 @@ function TrainingNameCell({
  */
 const compareNumeric = (a: unknown, b: unknown) => Number(a) - Number(b);
 
+/** `sortingFns.alphanumeric` de TanStack aplicado a dos textos sueltos. */
+const compareAlphanumericText = (a: string, b: string) =>
+  sortingFns.alphanumeric(
+    { getValue: () => a } as unknown as Row<TrainingRow>,
+    { getValue: () => b } as unknown as Row<TrainingRow>,
+    "nombre"
+  );
+
 /**
  * Columnas de la tabla. Solo dependen de los permisos (estables durante la
  * sesión): los callbacks y el estado "en vuelo" llegan al menú por contexto,
@@ -93,11 +102,17 @@ const compareNumeric = (a: unknown, b: unknown) => Number(a) - Number(b);
  */
 export const getColumns = (permissions: TrainingColumnPermissions) =>
   [
-    // El nombre alimenta el orden y la búsqueda; el estado de su badge se
-    // filtra desde el encabezado de esta misma columna.
-    columnHelper.accessor("nombre", {
+    // La búsqueda global lee el nombre MÁS la etiqueta de su estado (el badge
+    // de la celda): buscar "cancelado" o "en curso" encuentra esas
+    // capacitaciones, como cuando el estado tenía columna propia. El orden
+    // sigue solo por el nombre (`sortingFn`) y la celda no lee este valor.
+    columnHelper.accessor((row) => `${row.nombre} ${getTrainingEstadoText(row.estado)}`, {
+      id: "nombre",
       header: "Capacitación",
       size: 280,
+      // El mismo `alphanumeric` que TanStack elige solo para un texto, sobre
+      // el nombre y no sobre el valor de búsqueda.
+      sortingFn: (rowA, rowB) => compareAlphanumericText(rowA.original.nombre, rowB.original.nombre),
       cell: ({ row }) => <TrainingNameCell training={row.original} permissions={permissions} />,
     }),
     // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto

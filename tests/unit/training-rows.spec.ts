@@ -114,6 +114,25 @@ test.describe("capacitaciones › filtro de estatus en el nombre", () => {
   });
 });
 
+test.describe("capacitaciones › búsqueda y orden del nombre", () => {
+  type Accessor = { accessorFn: (row: TrainingRow, index: number) => unknown };
+  type SortFn = (a: { original: TrainingRow }, b: { original: TrainingRow }, columnId: string) => number;
+
+  test("la búsqueda global lee también la etiqueta del estado (o el código crudo)", () => {
+    const value = (row: TrainingRow) => (column("nombre") as unknown as Accessor).accessorFn(row, 0);
+    expect(value(rows[2])).toBe("Curso 3 Cancelado");
+    expect(value(rows[3])).toBe("Curso 4 pospuesto");
+  });
+
+  test("el orden sigue solo por el nombre, sin importar el estado", () => {
+    const sortingFn = column("nombre").sortingFn as unknown as SortFn;
+    const a = { original: { ...rows[0], nombre: "CURSO 2", estado: "inscrito" as const } };
+    const b = { original: { ...rows[0], nombre: "CURSO 10", estado: "cancelado" as const } };
+    // Alfanumérico: 2 < 10, aunque "Cancelado" < "Inscrito".
+    expect(sortingFn(a, b, "nombre")).toBeLessThan(0);
+  });
+});
+
 test.describe("capacitaciones › otros filtros", () => {
   test("empleado: por el FK, rotulado con el mismo `#N` que la celda, con buscador", () => {
     expect(headerProps("empleado").options.map((o) => o.label)).toEqual(["Todos", "ANA PÉREZ", "Empleado #99", "LUIS GÓMEZ"]);
