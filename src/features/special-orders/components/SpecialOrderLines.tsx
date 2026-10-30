@@ -73,10 +73,9 @@ interface SpecialOrderLinesProps {
  *  - Ninguna talla tiene SKU: la acción de alta (si el usuario la ve y hay
  *    tallas con cantidad; sin ellas el backend la rechazaría).
  *  - Todas las tallas con cantidad tienen SKU: "SKU generados".
- *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos".
- *    Pasa si la talla se agregó (o ganó cantidad) DESPUÉS del alta. El backend
- *    admite un alta incremental para esas tallas, pero aquí no se ofrece: un
- *    reintento con alta en catálogo crearía un segundo producto para la línea.
+ *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos" y,
+ *    junto, la acción de alta. Pasa si la talla se agregó (o ganó cantidad)
+ *    DESPUÉS del alta; el alta es incremental y solo genera esas tallas.
  */
 function LineSkuStatus({
   line,
@@ -87,25 +86,12 @@ function LineSkuStatus({
   canGenerateSkus: boolean;
   onGenerateSkus: (line: SpecialOrderLine) => void;
 }) {
-  const tallasConCantidad = line.tallas.filter((talla) => Number(talla.cantidad) > 0);
+  const tallasSinSku = line.tallas.filter(
+    (talla) => Number(talla.cantidad) > 0 && !talla.sku_produccion,
+  );
+  const hasSku = line.tallas.some((talla) => Boolean(talla.sku_produccion));
 
-  if (line.tallas.some((talla) => Boolean(talla.sku_produccion))) {
-    const tallasSinSku = tallasConCantidad.filter((talla) => !talla.sku_produccion);
-
-    if (tallasSinSku.length > 0) {
-      const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
-      return (
-        <div className="flex flex-col items-end gap-0.5">
-          <span className={skuStatusPillClass("amber")}>
-            SKU incompletos
-          </span>
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
-            Sin SKU ni lista de materiales: {nombres}
-          </p>
-        </div>
-      );
-    }
-
+  if (hasSku && tallasSinSku.length === 0) {
     return (
       <span className={skuStatusPillClass("emerald")}>
         SKU generados
@@ -113,12 +99,28 @@ function LineSkuStatus({
     );
   }
 
-  if (!canGenerateSkus || tallasConCantidad.length === 0) return null;
+  const generateButton =
+    canGenerateSkus && tallasSinSku.length > 0 ? (
+      <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
+        Generar SKU y BOM
+      </Button>
+    ) : null;
 
+  if (!hasSku) return generateButton;
+
+  const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
   return (
-    <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
-      Generar SKU y BOM
-    </Button>
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex flex-col items-end gap-0.5">
+        <span className={skuStatusPillClass("amber")}>
+          SKU incompletos
+        </span>
+        <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
+          Sin SKU ni lista de materiales: {nombres}
+        </p>
+      </div>
+      {generateButton}
+    </div>
   );
 }
 
