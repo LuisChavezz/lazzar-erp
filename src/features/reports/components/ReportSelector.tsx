@@ -2,10 +2,10 @@
 
 import type { ComponentType } from "react";
 import TiltCard from "@/src/components/TiltCard";
-import { ExistenciasIcon, HistoryIcon } from "@/src/components/Icons";
+import { ExistenciasIcon, HistoryIcon, LayersIcon } from "@/src/components/Icons";
 
 /** Identificador de cada reporte disponible. Sumar uno = una entrada más abajo. */
-export type ReportId = "existencias" | "movimientos";
+export type ReportId = "existencias" | "movimientos" | "auxiliar";
 
 interface ReportDefinition {
   id: ReportId;
@@ -19,8 +19,8 @@ interface ReportDefinition {
 }
 
 // La lista de reportes vive como DATOS: agregar un reporte nuevo es una entrada
-// más en este arreglo (no marcado JSX duplicado). Hoy solo existe el de
-// existencias. Mismo patrón que `configGroups` / `homeCards`.
+// más en este arreglo (no marcado JSX duplicado). Mismo patrón que
+// `configGroups` / `homeCards`.
 const REPORTS: ReportDefinition[] = [
   {
     id: "existencias",
@@ -44,6 +44,18 @@ const REPORTS: ReportDefinition[] = [
     accentBgClass: "bg-violet-50 dark:bg-violet-500/10",
     shadowColorClassName:
       "hover:shadow-violet-500/25 dark:hover:shadow-violet-500/25",
+  },
+  {
+    id: "auxiliar",
+    label: "Auxiliar de Movimientos",
+    description:
+      "Consulta el kardex de un SKU: cada movimiento con su saldo corrido.",
+    footerText: "Consultar SKU",
+    icon: LayersIcon,
+    accentClass: "text-emerald-600 dark:text-emerald-400",
+    accentBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+    shadowColorClassName:
+      "hover:shadow-emerald-500/25 dark:hover:shadow-emerald-500/25",
   },
 ];
 
