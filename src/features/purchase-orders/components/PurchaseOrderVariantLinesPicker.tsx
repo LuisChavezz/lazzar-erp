@@ -70,7 +70,9 @@ export function PurchaseOrderVariantLinesPicker({
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
         {lines.count === 0
           ? "Ningún SKU seleccionado"
-          : `${lines.count} renglón${lines.count === 1 ? "" : "es"} seleccionado${lines.count === 1 ? "" : "s"}`}
+          : lines.count === 1
+            ? "1 renglón seleccionado"
+            : `${lines.count} renglones seleccionados`}
       </p>
 
       <div className="max-h-96 overflow-y-auto space-y-1 pr-1">
