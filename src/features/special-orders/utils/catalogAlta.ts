@@ -30,10 +30,16 @@ export const CATALOG_ALTA_WITHOUT_CATEGORY =
 export const CATALOG_ALTA_INHERITED_OFF =
   "Las tallas ya generadas de esta línea no están en catálogo, así que la casilla empieza desmarcada.";
 
-export const CATALOG_ALTA_MIXED = "Esta línea ya tiene tallas con y sin alta en catálogo.";
+/**
+ * Lo que quede fuera de catálogo se completa después con "Dar de alta en
+ * catálogo" de la tarjeta (`alta-catalogo/`), que lo cuelga del mismo producto.
+ */
+const CATALOG_ALTA_LATER =
+  "Las que queden fuera se pueden agregar después con \"Dar de alta en catálogo\" en la tarjeta.";
 
-export const CATALOG_ALTA_DEVIATION =
-  "Con esta elección la línea quedará con unas tallas en catálogo y otras no.";
+export const CATALOG_ALTA_MIXED = `Esta línea ya tiene tallas con y sin alta en catálogo. ${CATALOG_ALTA_LATER}`;
+
+export const CATALOG_ALTA_DEVIATION = `Con esta elección la línea quedará con unas tallas en catálogo y otras no. ${CATALOG_ALTA_LATER}`;
 
 /**
  * Las tallas ya generadas están en catálogo: las nuevas cuelgan del mismo
