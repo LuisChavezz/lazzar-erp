@@ -17,6 +17,7 @@ import {
   hasPendingCatalogAlta,
   isTallaPendingCatalogAlta,
 } from "../utils/catalogAlta";
+import { getLineSkuStatus } from "../utils/lineSkuStatus";
 
 /**
  * Servicios de UNA talla: los chips compartidos con el detalle de pedido
@@ -151,10 +152,9 @@ function TallaCatalogSku({ talla }: { talla: SpecialOrderTalla }) {
  *  - Ninguna talla tiene SKU: la acción de alta (si el usuario la ve y hay
  *    tallas con cantidad; sin ellas el backend la rechazaría).
  *  - Todas las tallas con cantidad tienen SKU: "SKU generados".
- *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos".
- *    Pasa si la talla se agregó (o ganó cantidad) DESPUÉS del alta. El backend
- *    admite un alta incremental para esas tallas, pero aquí todavía no se
- *    ofrece (EC-658).
+ *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos" y,
+ *    junto, la acción de alta. Pasa si la talla se agregó (o ganó cantidad)
+ *    DESPUÉS del alta; el alta es incremental y solo genera esas tallas.
  */
 function LineSkuStatus({
   line,
@@ -165,38 +165,38 @@ function LineSkuStatus({
   canGenerateSkus: boolean;
   onGenerateSkus: (line: SpecialOrderLine) => void;
 }) {
-  const tallasConCantidad = line.tallas.filter((talla) => Number(talla.cantidad) > 0);
+  const status = getLineSkuStatus(line);
 
-  if (line.tallas.some((talla) => Boolean(talla.sku_produccion))) {
-    const tallasSinSku = tallasConCantidad.filter((talla) => !talla.sku_produccion);
-
-    if (tallasSinSku.length > 0) {
-      const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
-      return (
-        <div className="flex flex-col items-end gap-0.5">
-          <span className={skuStatusPillClass("amber")}>
-            SKU incompletos
-          </span>
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
-            Sin SKU ni lista de materiales: {nombres}
-          </p>
-        </div>
-      );
-    }
-
+  if (status.kind === "generated") {
     return (
       <span className={skuStatusPillClass("emerald")}>
         SKU generados
       </span>
     );
   }
+  if (status.kind === "none") return null;
 
-  if (!canGenerateSkus || tallasConCantidad.length === 0) return null;
-
-  return (
+  const generateButton = canGenerateSkus ? (
     <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
       Generar SKU y BOM
     </Button>
+  ) : null;
+
+  if (!status.partial) return generateButton;
+
+  const nombres = status.pendientes.map((talla) => talla.talla_nombre || "—").join(", ");
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex flex-col items-end gap-0.5">
+        <span className={skuStatusPillClass("amber")}>
+          SKU incompletos
+        </span>
+        <p className="text-[11px] text-amber-700 dark:text-amber-400 text-right">
+          Sin SKU ni lista de materiales: {nombres}
+        </p>
+      </div>
+      {generateButton}
+    </div>
   );
 }
 
@@ -231,7 +231,10 @@ export function SpecialOrderLines({
               Bajo `sm` el grupo derecho (~240px) no deja columna útil para el
               texto en una tarjeta de teléfono, así que ocupa su propia primera
               fila, pegado a la derecha, y la descripción va debajo a todo el
-              ancho (`flex-col-reverse`: el orden del DOM no cambia). */}
+              ancho (`flex-col-reverse`: el orden del DOM no cambia). Con estado
+              de SKU, alta en catálogo y piezas a la vez el grupo no cabe en un
+              teléfono: se parte en renglones alineados a la derecha
+              (`flex-wrap` + `max-w-full`) en vez de salirse de la tarjeta. */}
           <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:flex-1 min-w-0">
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words">
@@ -253,7 +256,7 @@ export function SpecialOrderLines({
                 {line.categoria_producto?.nombre ?? "Sin categoría de producto"}
               </span>
             </div>
-            <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 max-w-full shrink-0 self-end sm:self-auto">
               <LineSkuStatus
                 line={line}
                 canGenerateSkus={canGenerateSkus}

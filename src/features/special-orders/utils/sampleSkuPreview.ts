@@ -1,4 +1,5 @@
 import type { SpecialOrderLine, SpecialOrderTalla } from "../interfaces/special-order.interface";
+import { isPendingTalla } from "./lineSkuStatus";
 
 /**
  * SKU de producción de una talla, con la MISMA fórmula que el backend:
@@ -66,7 +67,7 @@ export function getSampleSkuPreview(
     chosenColor !== null && typeof chosenColor === "object" ? chosenColor.codigo : null;
 
   const rows = line.tallas
-    .filter((talla) => Number(talla.cantidad) > 0 && !talla.sku_produccion)
+    .filter(isPendingTalla)
     .map((talla) => ({
       talla,
       sku:

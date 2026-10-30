@@ -13,6 +13,10 @@ import { useNextCatalogProductCode } from "../hooks/useNextCatalogProductCode";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type { SampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
+import { CATALOG_ALTA_DEVIATION, catalogAltaDeviates } from "../utils/catalogAlta";
+
+/** Mismo ámbar que el aviso de "SKU incompletos" de la tarjeta. */
+const CATALOG_WARNING_TEXT = "text-amber-700 dark:text-amber-400";
 
 interface SampleSkuOnboardingStep2Props {
   onboarding: SampleSkuOnboardingForm;
@@ -41,8 +45,7 @@ export function SampleSkuOnboardingStep2({
   const {
     form,
     skuPreview,
-    catalogBlockReason,
-    catalogCategoryId,
+    catalogAlta,
     isSubmitting,
     formError,
     getError,
@@ -204,8 +207,13 @@ export function SampleSkuOnboardingStep2({
 
       <form.Field name="alta_catalogo">
         {(field) => {
-          // Una línea que dejó de admitirlo (refetch) se ve desmarcada y no envía el flag.
-          const checked = field.state.value && catalogBlockReason === null;
+          // Sin categoría se ve desmarcada y fija aunque un refetch la haya
+          // bloqueado después de marcarla: así es como se enviará.
+          const editable = catalogAlta.kind === "editable" ? catalogAlta : null;
+          const checked = editable !== null && field.state.value;
+          const inherited = editable?.inherited ?? null;
+          const deviates = catalogAltaDeviates(catalogAlta, field.state.value);
+          const showCodePreview = editable !== null && checked && !inherited?.hasCatalogProduct;
           return (
             <div>
               <FormToggle
@@ -213,22 +221,37 @@ export function SampleSkuOnboardingStep2({
                 description="Dar de alta en catálogo"
                 name={field.name}
                 checked={checked}
-                disabled={catalogBlockReason !== null || isSubmitting}
-                title={catalogBlockReason ?? undefined}
+                disabled={editable === null || isSubmitting}
+                title={catalogAlta.kind === "blocked" ? catalogAlta.reason : undefined}
                 aria-describedby="sample-sku-catalog-hint"
-                className={catalogBlockReason ? "opacity-60 cursor-not-allowed!" : ""}
+                className={editable === null ? "opacity-60 cursor-not-allowed!" : ""}
                 onChange={(event) => field.handleChange(event.target.checked)}
               />
               <div
                 id="sample-sku-catalog-hint"
-                className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 ml-1"
+                className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 ml-1 space-y-0.5"
               >
-                {catalogBlockReason ? (
-                  catalogBlockReason
-                ) : checked && catalogCategoryId !== null ? (
-                  <CatalogCodePreview categoriaId={catalogCategoryId} />
+                {catalogAlta.kind === "blocked" ? (
+                  <p>{catalogAlta.reason}</p>
+                ) : inherited ? (
+                  <p className={inherited.mixed ? CATALOG_WARNING_TEXT : undefined}>
+                    {inherited.reason}
+                  </p>
+                ) : null}
+                {deviates && <p className={CATALOG_WARNING_TEXT}>{CATALOG_ALTA_DEVIATION}</p>}
+                {showCodePreview ? (
+                  <p>
+                    <CatalogCodePreview categoriaId={editable.categoriaId} />
+                  </p>
                 ) : (
-                  "Crea también el producto y una variante por talla en el catálogo, con la categoría de la línea, para que tenga existencias y se venda como un producto normal."
+                  editable !== null &&
+                  inherited === null && (
+                    <p>
+                      Crea también el producto y una variante por talla en el catálogo, con la
+                      categoría de la línea, para que tenga existencias y se venda como un producto
+                      normal.
+                    </p>
+                  )
                 )}
               </div>
             </div>

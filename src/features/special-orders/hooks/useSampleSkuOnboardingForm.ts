@@ -15,7 +15,11 @@ import {
   type SampleSkuOnboardingFormValues,
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
-import { getCatalogAltaBlockReason } from "../utils/catalogAlta";
+import {
+  getCatalogAltaState,
+  getDefaultAltaCatalogo,
+  resolveAltaCatalogo,
+} from "../utils/catalogAlta";
 import { type ChosenSampleColor, getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
@@ -61,6 +65,11 @@ export function useSampleSkuOnboardingForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // Valor inicial de la casilla de catálogo: el heredado de la línea AL ABRIR.
+  // Fijo en estado para que un refetch no reemplace la elección del usuario.
+  const [initialAltaCatalogo] = useState(() =>
+    getDefaultAltaCatalogo(getCatalogAltaState(line)),
+  );
 
   const { mutateAsync: createOnboarding, isPending } = useCreateSampleSkuOnboarding(
     pedidoId,
@@ -93,7 +102,7 @@ export function useSampleSkuOnboardingForm({
     defaultValues: {
       color: 0,
       materia_prima_detalle: [],
-      alta_catalogo: false,
+      alta_catalogo: initialAltaCatalogo,
     } as SampleSkuOnboardingFormValues,
     onSubmit: async ({ value }) => {
       const parsed = buildSampleSkuOnboardingSchema(requiresColor).safeParse(value);
@@ -126,9 +135,9 @@ export function useSampleSkuOnboardingForm({
         pedido_detalle_id: line.id,
         ...(requiresColor ? { color: parsed.data.color } : {}),
         materia_prima_detalle: parsed.data.materia_prima_detalle,
-        // Solo `true` y solo si la línea lo admite AHORA: un refetch pudo traer
-        // la línea sin categoría después de marcar la casilla.
-        ...(parsed.data.alta_catalogo && getCatalogAltaBlockReason(line) === null
+        // Solo `true`, y con el estado de la línea AHORA: un refetch pudo dejarla
+        // sin categoría después de marcar la casilla.
+        ...(resolveAltaCatalogo(getCatalogAltaState(line), parsed.data.alta_catalogo)
           ? { alta_catalogo: true }
           : {}),
       };
@@ -144,7 +153,7 @@ export function useSampleSkuOnboardingForm({
   // Vista previa del SKU por talla para el render (el envío la recalcula).
   const chosenColorId = useStore(form.store, (state) => state.values.color);
   const skuPreview = getSampleSkuPreview(line, resolveChosenColor(chosenColorId));
-  const catalogBlockReason = getCatalogAltaBlockReason(line);
+  const catalogAlta = getCatalogAltaState(line);
 
   const getError = (path: string): FormFieldError | undefined =>
     errors[path] ? { message: errors[path] } : undefined;
@@ -194,8 +203,7 @@ export function useSampleSkuOnboardingForm({
     form,
     requiresColor,
     skuPreview,
-    catalogBlockReason,
-    catalogCategoryId: line.categoria_producto?.id ?? null,
+    catalogAlta,
     isSubmitting: isPending,
     formError,
     getError,
