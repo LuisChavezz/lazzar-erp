@@ -20,7 +20,7 @@ import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
@@ -245,13 +245,12 @@ export function ReflectiveOrderDetailContent({
   // pintan en los estados de carga/error.
   const updateOrder = useUpdateReflectiveOrder(numericId);
 
-  // Se edita con el MISMO código que abre esta ruta, `R-PRODUCCION-OR`: no hay
-  // un código de edición propio de reflejante. El backend no exige ninguno
-  // (solo `IsAuthenticated`), así que esto es UX, no una frontera de acceso.
+  // Mismo criterio que el backend (`canEditWorkOrder`): superusuario, admin de
+  // empresa o el código de esta ruta, `R-PRODUCCION-OR`. El backend rechaza al
+  // resto con un `400`; esto solo evita ofrecerle controles que van a fallar.
   // Antes de los `return` tempranos porque `useSession` es un hook.
-  // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
-  const canEdit = hasPermission("R-PRODUCCION-OR", session?.user);
+  const canEdit = canEditWorkOrder(session?.user, "R-PRODUCCION-OR");
 
   const BackLink = (
     <Link
