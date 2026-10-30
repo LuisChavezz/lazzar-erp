@@ -7,6 +7,9 @@ import type {
 import {
   buildAltaCatalogoPayload,
   CATALOG_ALTA_INHERITED_OFF,
+  getCatalogAltaButtonState,
+  getCategoriesCoveringLine,
+  getLineSizeNames,
   CATALOG_ALTA_MIXED,
   CATALOG_ALTA_WITHOUT_CATEGORY,
   catalogAltaDeviates,
@@ -324,6 +327,74 @@ test.describe("alta en catálogo por línea (EC-655)", () => {
         line({ tallas: [talla({ sku_produccion: "MP720-100-G", aplica_catalogo: true })] }),
       ),
     ).toBe(false);
+  });
+});
+
+test.describe("getCatalogAltaButtonState (EC-671)", () => {
+  const pendiente = talla({ sku_produccion: "MP720-100-G" });
+
+  test("con categoría y tallas pendientes: confirmación simple", () => {
+    expect(getCatalogAltaButtonState(line({ tallas: [pendiente] }), true)).toBe("confirm");
+  });
+
+  test("sin categoría ya NO se deshabilita: el diálogo pide la categoría", () => {
+    expect(
+      getCatalogAltaButtonState(line({ categoria_producto: null, tallas: [pendiente] }), true),
+    ).toBe("choose-category");
+  });
+
+  test("sin permiso o sin pendientes no se ofrece, tenga o no categoría", () => {
+    for (const categoria_producto of [null, { id: 3, nombre: "Chamarra" }]) {
+      expect(getCatalogAltaButtonState(line({ categoria_producto, tallas: [pendiente] }), false)).toBe(
+        "hidden",
+      );
+      expect(getCatalogAltaButtonState(line({ categoria_producto, tallas: [talla({})] }), true)).toBe(
+        "hidden",
+      );
+    }
+  });
+});
+
+test.describe("cobertura de tallas de la categoría (EC-671)", () => {
+  const sizes = [
+    { id: 4, nombre: "G" },
+    { id: 5, nombre: "XG" },
+    { id: 11, nombre: "UNI" },
+  ];
+  const category = (id: number, tallas: number[]) => ({ id, nombre: `Cat ${id}`, tallas });
+  const sinCategoria = line({
+    categoria_producto: null,
+    tallas: [
+      talla({ id: 1, talla_nombre: "G", sku_produccion: "MP720-100-G" }),
+      talla({ id: 2, talla_nombre: "xg ", cantidad: 3 }),
+      // Sin cantidad ni SKU: no se genera, así que no se exige.
+      talla({ id: 3, talla_nombre: "UNI", cantidad: 0 }),
+    ],
+  });
+
+  test("las tallas exigidas son las que tienen cantidad o SKU, normalizadas y sin repetir", () => {
+    expect(getLineSizeNames(sinCategoria)).toEqual(["G", "XG"]);
+  });
+
+  test("solo quedan las que admiten TODAS las tallas; sin tallas, la categoría no acota", () => {
+    const categorias = [
+      category(1, [4, 5]),
+      category(2, [4]),
+      category(3, [4, 5, 11]),
+      category(4, []),
+      category(5, [11]),
+    ];
+    expect(getCategoriesCoveringLine(categorias, sinCategoria, sizes).map((c) => c.id)).toEqual([
+      1, 3, 4,
+    ]);
+  });
+
+  test("un id de talla que el catálogo no conoce (inactiva) no cubre nada", () => {
+    expect(getCategoriesCoveringLine([category(1, [4, 99])], sinCategoria, sizes)).toEqual([]);
+  });
+
+  test("ninguna la cubre: lista vacía (el diálogo lo explica y no deja confirmar)", () => {
+    expect(getCategoriesCoveringLine([category(2, [4])], sinCategoria, sizes)).toEqual([]);
   });
 });
 
