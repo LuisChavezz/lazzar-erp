@@ -25,7 +25,7 @@ import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVin
 import { useUpdateEmbroideryOrder } from "../hooks/useUpdateEmbroideryOrder";
 import { EmbroideryStatusSelect } from "./EmbroideryStatusSelect";
 import { EmbroideryMachineField } from "./EmbroideryMachineField";
-import { EmbroideryObservationsField } from "./EmbroideryObservationsField";
+import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
 import { EmbroideryProveedorSelect } from "./EmbroideryProveedorSelect";
 import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
@@ -303,7 +303,7 @@ export function EmbroideryOrderDetailContent({
                 {isReadOnly ? (
                   textOrDash(data.observaciones)
                 ) : (
-                  <EmbroideryObservationsField
+                  <InlineObservationsField
                     value={data.observaciones}
                     onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
                     isPending={updateOrder.isPending}

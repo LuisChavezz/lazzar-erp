@@ -13,7 +13,7 @@ import {
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
-import { EmbroideryObservationsField } from "@/src/features/embroidery/components/EmbroideryObservationsField";
+import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -300,7 +300,7 @@ export function CorteMangaOrderPageContent({
               {isReadOnly ? (
                 textOrDash(data.observaciones)
               ) : (
-                <EmbroideryObservationsField
+                <InlineObservationsField
                   value={data.observaciones}
                   onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
                   isPending={updateOrder.isPending}
