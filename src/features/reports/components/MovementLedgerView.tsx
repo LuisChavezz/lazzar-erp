@@ -17,7 +17,7 @@ import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
-import { movementLedgerColumns } from "./MovementLedgerColumns";
+import { getMovementLedgerColumns } from "./MovementLedgerColumns";
 
 interface MovementLedgerViewProps {
   /** Vuelve al menú de reportes. */
@@ -191,7 +191,7 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
           {/* `DataTable` queda montado en carga, error y vacío (alterna solo su
               cuerpo). Filas en el orden del backend: ninguna columna ordena. */}
           <DataTable
-            columns={movementLedgerColumns}
+            columns={getMovementLedgerColumns()}
             data={resolved?.results ?? []}
             searchPlaceholder="Buscar en los movimientos..."
             emptyMessage={emptyMessage}
