@@ -294,10 +294,9 @@ export function ReflectiveOrderDetailDialog({
                 {formatShortTime(order.fecha_inicio)}
               </span>
             </InfoField>
-            {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) — se
-                muestra igual, sin ocultar el campo: `formatShortDate`/
-                `formatShortTime` ya resuelven `null` al guion largo del
-                proyecto, así que no hace falta un `if` especial. */}
+            {/* `fecha_fin` la sella el backend al completar la orden y llega
+                `null` mientras no lo esté: `formatShortDate`/`formatShortTime`
+                ya resuelven `null` al guion largo del proyecto. */}
             <InfoField label="Fin">
               <span className="tabular-nums">
                 {formatShortDate(order.fecha_fin)} · {formatShortTime(order.fecha_fin)}
