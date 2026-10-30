@@ -1,12 +1,14 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { ErrorState } from "@/src/components/ErrorState";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import {
   EmptyLines,
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
@@ -57,43 +59,36 @@ export function PaymentDetailDialog({
       maxWidth="900px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <ReceiptIcon className="w-5 h-5 text-sky-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle del Pago
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {`#${pago.id}`}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle del Pago"
+          subtitle={`#${pago.id}`}
+          statusColor="emerald"
+          icon={ReceiptIcon}
+        />
       }
     >
       <div className="space-y-5">
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Proveedor">{textOrDash(pago.proveedor_nombre)}</InfoField>
-          <InfoField label="Cuenta bancaria">
-            {textOrDash(pago.cuenta_bancaria_alias)}
-          </InfoField>
-          <InfoField label="Fecha de pago">
+        <InfoTileGrid>
+          <InfoTile label="Estatus">
+            <StatusBadge status={pago.estatus} config={PAGO_ESTATUS_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Proveedor">{textOrDash(pago.proveedor_nombre)}</InfoTile>
+          <InfoTile label="Total pagado">
+            <span className="tabular-nums">{money(pago.total_pagado)}</span>
+          </InfoTile>
+          <InfoTile label="Fecha de pago">
             {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". Sin esto un
                 navegador al oeste de Greenwich pinta el día anterior. */}
             {formatShortDate(pago.fecha_pago, { timeZone: "UTC" })}
-          </InfoField>
-          <InfoField label="Método">{pago.metodo_pago}</InfoField>
-          <InfoField label="Referencia">{textOrDash(pago.referencia)}</InfoField>
-          <InfoField label="Referencia de operación">
+          </InfoTile>
+          <InfoTile label="Método">{pago.metodo_pago}</InfoTile>
+          <InfoTile label="Cuenta bancaria">{textOrDash(pago.cuenta_bancaria_alias)}</InfoTile>
+          <InfoTile label="Referencia">{textOrDash(pago.referencia)}</InfoTile>
+          <InfoTile label="Referencia de operación">
             {textOrDash(pago.referencia_operacion)}
-          </InfoField>
-          <InfoField label="Total pagado">
-            <span className="tabular-nums font-semibold">{money(pago.total_pagado)}</span>
-          </InfoField>
-          <InfoField label="Estatus">
-            <StatusBadge status={pago.estatus} config={PAGO_ESTATUS_CONFIG} />
-          </InfoField>
-        </div>
+          </InfoTile>
+        </InfoTileGrid>
 
         {pago.observaciones && (
           <div>
