@@ -41,6 +41,11 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerField): string | unde
  * cuanto hay kardex, cambiar almacén o fechas lo vuelve a pedir por
  * `producto_variante` (la variante ya está elegida; repetir `q` podría
  * resolver otra si el catálogo cambió). Una búsqueda nueva vuelve a `q`.
+ *
+ * La tabla queda montada en cuanto hay una búsqueda (rango a medias, opciones,
+ * carga, error o vacío): así conserva columnas visibles, búsqueda interna y
+ * página. Sus filas y los totales solo se muestran con un kardex vigente de los
+ * filtros elegidos.
  */
 export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const [target, setTarget] = useState<MovementLedgerTarget | null>(null);
@@ -69,8 +74,12 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
         : null,
     );
 
-  const resolved = ledger && isResolvedMovementLedger(ledger) ? ledger : undefined;
-  const options = ledger && !isResolvedMovementLedger(ledger) ? ledger.opciones : undefined;
+  // Ni totales ni filas de un contexto que no es el elegido: con rango a
+  // medias no hay consulta, y tras un error inicial lo que quede en `ledger`
+  // sería de otros filtros.
+  const current = rangeComplete && !isInitialError ? ledger : undefined;
+  const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
+  const options = current && !isResolvedMovementLedger(current) ? current.opciones : undefined;
   const hasOptions = options !== undefined && options.length > 0;
 
   // Ajuste de estado durante el render (no en un efecto): en cuanto la
@@ -124,10 +133,13 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
       ? "Revisa los filtros marcados."
       : extractErrorMessage(error, "No se pudo generar el auxiliar.");
 
-  const emptyMessage =
-    options !== undefined
-      ? `Sin resultados para "${searchedText}".`
-      : "La variante no tiene movimientos con estos filtros.";
+  const emptyMessage = !rangeComplete
+    ? "Completa el rango de fechas para ver los movimientos."
+    : hasOptions
+      ? "Elige una variante para ver sus movimientos."
+      : options !== undefined
+        ? `Sin resultados para "${searchedText}".`
+        : "La variante no tiene movimientos con estos filtros.";
 
   return (
     <div className="w-full space-y-8">
@@ -164,28 +176,32 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
         <p className="text-sm text-slate-400 dark:text-slate-500">
           Busca un SKU para ver su auxiliar de movimientos.
         </p>
-      ) : !rangeComplete ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">
-          Completa las dos fechas del rango, o deja ambas vacías para ver todo el historial.
-        </p>
-      ) : hasOptions ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {`"${searchedText}" coincide con ${options.length} variantes. Elige una para ver su auxiliar.`}
-          </p>
-          <Button variant="primary" onClick={() => setOptionsOpen(true)}>
-            Elegir variante
-          </Button>
-          <MovementLedgerOptionsDialog
-            open={optionsOpen}
-            onOpenChange={setOptionsOpen}
-            query={searchedText}
-            options={options}
-            onConfirm={handleChooseOption}
-          />
-        </div>
       ) : (
         <div className="space-y-6">
+          {!rangeComplete && (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Completa las dos fechas del rango, o deja ambas vacías para ver todo el historial.
+            </p>
+          )}
+
+          {hasOptions && (
+            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {`"${searchedText}" coincide con ${options.length} variantes. Elige una para ver su auxiliar.`}
+              </p>
+              <Button variant="primary" onClick={() => setOptionsOpen(true)}>
+                Elegir variante
+              </Button>
+              <MovementLedgerOptionsDialog
+                open={optionsOpen}
+                onOpenChange={setOptionsOpen}
+                query={searchedText}
+                options={options}
+                onConfirm={handleChooseOption}
+              />
+            </div>
+          )}
+
           {/* Al cambiar almacén o fechas se sigue viendo el kardex anterior de
               la misma variante, atenuado, hasta que llega el nuevo. */}
           {resolved && (
@@ -200,8 +216,8 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
             </div>
           )}
 
-          {/* `DataTable` queda montado en carga, error y vacío (alterna solo su
-              cuerpo). Filas en el orden del backend: ninguna columna ordena. */}
+          {/* `DataTable` queda montado (alterna solo su cuerpo). Filas en el
+              orden del backend: ninguna columna ordena. */}
           <DataTable
             columns={getMovementLedgerColumns()}
             data={resolved?.results ?? []}
@@ -210,10 +226,12 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
             isLoadingOverlay={isPlaceholderData}
             loadingTitle="Actualizando auxiliar"
             loadingMessage="Cargando los movimientos con los filtros elegidos."
-            onRefetch={() => refetch()}
+            // Con rango a medias la consulta está deshabilitada: `refetch()` la
+            // dispararía igual, sin parámetros.
+            onRefetch={rangeComplete ? () => refetch() : undefined}
             isRefetching={isFetching}
-            isLoading={isLoading}
-            isError={isInitialError}
+            isLoading={rangeComplete && isLoading}
+            isError={rangeComplete && isInitialError}
             errorTitle={isNotFound ? "Variante no disponible" : "Error al generar el auxiliar"}
             errorMessage={errorMessage}
             loadingAriaLabel="Generando auxiliar de movimientos"
