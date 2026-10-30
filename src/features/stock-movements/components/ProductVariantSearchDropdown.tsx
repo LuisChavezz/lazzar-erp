@@ -67,7 +67,8 @@ export function ProductVariantSearchDropdown({
     const query = debouncedQuery.trim().toLowerCase();
     if (!query) return variants;
     return variants.filter((v) => {
-      const haystack = `${v.sku} ${v.nombre} ${v.cod_proscai ?? ""}`.toLowerCase();
+      const haystack =
+        `${v.sku} ${v.nombre} ${v.cod_proscai ?? ""} ${v.sku_produccion ?? ""}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [variants, debouncedQuery]);
@@ -200,7 +201,7 @@ export function ProductVariantSearchDropdown({
       <FormInput
         ref={inputRef}
         label="Variante de Producto"
-        placeholder="Buscar producto por SKU, nombre o código Proscai..."
+        placeholder="Buscar producto por SKU, nombre, código Proscai o SKU de producción..."
         variant="default"
         value={searchQuery}
         onChange={handleInputChange}
@@ -242,6 +243,15 @@ export function ProductVariantSearchDropdown({
                     {variant.cod_proscai && (
                       <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
                         {variant.cod_proscai}
+                      </span>
+                    )}
+                    {/* SKU de producción (MP…) de una muestra dada de alta en catálogo. */}
+                    {variant.sku_produccion && (
+                      <span
+                        title="SKU de producción"
+                        className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400"
+                      >
+                        {variant.sku_produccion}
                       </span>
                     )}
                   </div>

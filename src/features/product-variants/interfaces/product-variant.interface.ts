@@ -14,6 +14,12 @@ export interface ProductVariant {
   sku: string;
   /** Código Proscai del producto padre (solo lectura; puede venir vacío). */
   cod_proscai: string;
+  /**
+   * SKU de producción (`MP{linea}-{color}-{talla}`) de una muestra dada de alta
+   * en catálogo (solo lectura). `null` en variantes que no vienen de una muestra
+   * o cuya muestra no tiene alta en catálogo.
+   */
+  sku_produccion?: string | null;
   /** Nombres resueltos del producto, color y talla (solo lectura). */
   producto_nombre: string;
   color_nombre: string;
