@@ -109,9 +109,11 @@ export interface SpecialOrderLine {
   /** `null` cuando la línea no tiene color. El contrato NO expone el id del color. */
   color_nombre: string | null;
   /**
-   * La que capturó ventas en la línea de muestra de la cotización: el pedido no
-   * la guarda, el backend la resuelve al leer (por nombre y color). `null` si
-   * la cotización no la tenía o no se pudo emparejar la línea.
+   * Categoría efectiva de la línea, la misma que usa el alta en catálogo: la
+   * guardada en la línea (`PedidoDetalle.categoria_producto`, que también llena
+   * "Dar de alta en catálogo" cuando falta) o, en pedidos anteriores a ese
+   * campo, la de la línea de muestra de la cotización (por nombre y color).
+   * `null` si no hay ninguna.
    */
   categoria_producto: SpecialOrderCategoria | null;
   /** `"MP{id}"`: prefijo del SKU de producción de cada talla. */
@@ -168,6 +170,19 @@ export interface SampleSkuOnboardingPayload {
    * la categoría de la línea. Solo se envía (`true`) cuando se marca.
    */
   alta_catalogo?: boolean;
+}
+
+/**
+ * Cuerpo de `POST /produccion/pedidos-especiales/{id}/alta-catalogo/`.
+ *
+ * `categoria_producto` solo se envía cuando la línea NO tiene categoría: el
+ * backend la guarda en la línea (en el mismo bloque atómico que el alta, así
+ * que un `400` posterior la deshace). Si la línea ya tiene una, la enviada se
+ * ignora en silencio (`201` con la de la línea), así que se omite.
+ */
+export interface AltaCatalogoPayload {
+  pedido_detalle_id: number;
+  categoria_producto?: number;
 }
 
 /**
