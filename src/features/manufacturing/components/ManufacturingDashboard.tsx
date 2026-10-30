@@ -383,8 +383,8 @@ const statusModuleCounts = (estatuses: number[]) => {
 
 /**
  * Tarjeta de Órdenes de Corte de Manga. Consulta su propio listado y solo se
- * monta con `R-PRODUCCION-CM`. Hoy el backend siempre manda estatus 1
- * (Pendiente), así que lo normal es ver todas como activas.
+ * monta con `R-PRODUCCION-CM`. El estatus se edita en la ficha de detalle;
+ * su mutación invalida este listado, así que los conteos se refrescan.
  */
 function CorteMangaModuleCard() {
   const { orders, hasLoaded } = useCorteMangaOrders();

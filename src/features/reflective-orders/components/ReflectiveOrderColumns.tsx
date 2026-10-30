@@ -60,12 +60,14 @@ const FolioCell = ({
  * Se omiten a propósito varios campos que sí vienen en la respuesta:
  * `empresa`/`sucursal` llegan como ids crudos sin nombre resuelto (un número
  * suelto no le dice nada al usuario), `usuario_asignado` se muestra por su
- * nombre resuelto y no por su id, `fecha_fin` siempre es `null` y `activo`
- * siempre `true` (el queryset filtra `activo=True`). El contenido de `detalles`
- * se resume en una sola columna — su desglose vive en el diálogo de detalle.
+ * nombre resuelto y no por su id, `fecha_fin` no aporta en el listado y
+ * `activo` siempre es `true` (el queryset filtra `activo=True`). El contenido
+ * de `detalles` se resume en una sola columna — su desglose vive en el diálogo
+ * de detalle.
  *
- * Sin edición ni transición de estatus: ninguna tiene endpoint (`PUT`/`PATCH`
- * → 405).
+ * Sin edición en la tabla: estatus, prioridad y observaciones se editan en la
+ * página de detalle (`ReflectiveOrderDetailContent`, `PATCH` de nucleo-erp
+ * #755).
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el error de inferencia ya documentado en `EmbroideryOrderColumns`: con
