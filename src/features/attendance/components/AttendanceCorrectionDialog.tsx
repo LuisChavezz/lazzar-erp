@@ -16,6 +16,12 @@ interface AttendanceCorrectionDialogProps {
   /** Sale de la petición de la vista: al cerrarse, anima su salida con la copia. */
   open: boolean;
   onClose: () => void;
+  /**
+   * Ya terminó de cerrarse (su animación de salida acabó y el contenido se
+   * desmontó): el padre deja de montarlo, para que el formulario y sus
+   * mutaciones no queden vivos con el diálogo cerrado.
+   */
+  onExited: () => void;
   /** La corrección falló y el diálogo sigue abierto (ver `markCorrectionFailed`). */
   onFailed: () => void;
 }
@@ -30,6 +36,7 @@ export function AttendanceCorrectionDialog({
   record,
   open,
   onClose,
+  onExited,
   onFailed,
 }: AttendanceCorrectionDialogProps) {
   const {
@@ -58,6 +65,7 @@ export function AttendanceCorrectionDialog({
     <MainDialog
       open={open}
       onOpenChange={handleOpenChange}
+      onCloseAutoFocus={onExited}
       maxWidth="520px"
       showCloseButton={false}
       title="Corregir Registro de Asistencia"
