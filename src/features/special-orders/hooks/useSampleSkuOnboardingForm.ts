@@ -14,6 +14,7 @@ import {
   type SampleSkuOnboardingFormValues,
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
+import { getCatalogAltaBlockReason } from "../utils/catalogAlta";
 import { getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
@@ -111,6 +112,9 @@ export function useSampleSkuOnboardingForm({
         pedido_detalle_id: line.id,
         ...(requiresColor ? { color: parsed.data.color } : {}),
         materia_prima_detalle: parsed.data.materia_prima_detalle,
+        // Solo `true` y solo si la línea lo admite AHORA: un refetch pudo traer
+        // SKU generados en otra sesión después de marcar la casilla.
+        ...(parsed.data.alta_catalogo && !catalogBlockReason ? { alta_catalogo: true } : {}),
       };
 
       try {
@@ -130,6 +134,7 @@ export function useSampleSkuOnboardingForm({
     ? (colors.find((color) => color.id === chosenColorId) ?? null)
     : null;
   const skuPreview = getSampleSkuPreview(line, chosenColor);
+  const catalogBlockReason = getCatalogAltaBlockReason(line);
 
   const getError = (path: string): FormFieldError | undefined =>
     errors[path] ? { message: errors[path] } : undefined;
@@ -179,6 +184,8 @@ export function useSampleSkuOnboardingForm({
     form,
     requiresColor,
     skuPreview,
+    catalogBlockReason,
+    catalogCategoryId: line.categoria_producto?.id ?? null,
     isSubmitting: isPending,
     formError,
     getError,

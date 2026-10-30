@@ -1,5 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
 import type {
+  NextCatalogProductCode,
   SampleProductionVariant,
   SampleSkuOnboardingPayload,
   SpecialOrderDetail,
@@ -46,6 +47,23 @@ export const createSampleSkuOnboarding = async (
   const response = await v1_api.post<SampleProductionVariant[]>(
     `/produccion/pedidos-especiales/${pedidoId}/variante-onboarding/`,
     payload,
+  );
+  return response.data;
+};
+
+/**
+ * Código que tendría el producto de catálogo creado con `alta_catalogo`
+ * (`GET /catalogo/producto/siguiente-codigo/?categoria_producto=`). Es una
+ * vista previa: el backend NO lo reserva y recalcula el real al crear, así que
+ * puede cambiar si otra alta en la misma categoría llega antes. Una categoría
+ * de otra empresa o inexistente responde `400` en `categoria_producto`.
+ */
+export const getNextCatalogProductCode = async (
+  categoriaProductoId: number,
+): Promise<NextCatalogProductCode> => {
+  const response = await v1_api.get<NextCatalogProductCode>(
+    "/catalogo/producto/siguiente-codigo/",
+    { params: { categoria_producto: categoriaProductoId } },
   );
   return response.data;
 };
