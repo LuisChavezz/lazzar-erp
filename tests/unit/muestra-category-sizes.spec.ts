@@ -60,6 +60,13 @@ test.describe("pruneSizeQuantities", () => {
     });
   });
 
+  test("una talla que ya no aplica con cantidad 0 no cuenta como quitada", () => {
+    expect(pruneSizeQuantities({ 10: "0", 11: "00", 12: "2" }, [g])).toEqual({
+      kept: { 12: "2" },
+      removedSizeIds: [],
+    });
+  });
+
   test("conserva tal cual una cantidad inválida de una talla que aplica", () => {
     expect(pruneSizeQuantities({ 10: "1.5" }, [ch]).kept).toEqual({ 10: "1.5" });
   });
@@ -76,6 +83,10 @@ test.describe("findIncompatibleSizes", () => {
     expect(findIncompatibleSizes({ 99: "1" }, [uni], global)).toEqual([
       { id: 99, nombre: "#99", cantidad: "1" },
     ]);
+  });
+
+  test("una talla fuera de la categoría con cantidad 0 no se marca", () => {
+    expect(findIncompatibleSizes({ 10: "0", 30: "5" }, [uni], global)).toEqual([]);
   });
 
   test("sin cantidades no hay incompatibles", () => {
