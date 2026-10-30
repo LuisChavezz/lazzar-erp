@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import { useMutationState } from "@tanstack/react-query";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import {
   uploadSupplierInvoicePdfMutationKey,
@@ -30,20 +30,15 @@ export interface SupplierInvoiceRowActionsContextValue {
   downloadingIds: number[];
 }
 
-const SupplierInvoiceRowActionsContext =
-  createContext<SupplierInvoiceRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } =
+  createRowActionsContext<SupplierInvoiceRowActionsContextValue>(
+    "SupplierInvoiceFolioCell",
+    "SupplierInvoiceList",
+  );
 
-export const SupplierInvoiceRowActionsProvider = SupplierInvoiceRowActionsContext.Provider;
-
-export function useSupplierInvoiceRowActionsContext(): SupplierInvoiceRowActionsContextValue {
-  const value = useContext(SupplierInvoiceRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "Las acciones de fila de facturas de proveedor deben renderizarse dentro de un SupplierInvoiceRowActionsProvider (ver SupplierInvoiceList).",
-    );
-  }
-  return value;
-}
+/** Callbacks y "en vuelo" del menú de fila (`SupplierInvoiceFolioCell`); ver `createRowActionsContext`. */
+export const SupplierInvoiceRowActionsProvider = Provider;
+export const useSupplierInvoiceRowActionsContext = useRowActionsContext;
 
 type PendingPdfMutation = { kind: "upload" | "download"; id: number };
 

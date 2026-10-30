@@ -11,17 +11,21 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { FacturaProveedorIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
+import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
 import {
   motivoBloqueoRegistro,
   toastIdBloqueoRegistro,
 } from "../schemas/supplier-invoice.schema";
-import type {
-  FacturaProveedor,
-  FacturaProveedorEstatus,
-} from "../interfaces/supplier-invoice.interface";
+import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
 import { supplierInvoicesHref } from "../utils/supplierInvoicesListQuery";
 import {
@@ -36,10 +40,31 @@ import {
 } from "../hooks/useSupplierInvoiceRowActions";
 import { SUPPLIER_INVOICE_PDF_ACCEPT } from "../constants/supplierInvoicePdf";
 import { validateSupplierInvoicePdf } from "../utils/validateSupplierInvoicePdf";
-import { getColumns } from "./SupplierInvoiceColumns";
+import { getColumns, SUPPLIER_INVOICE_HEADER_FILTERS } from "./SupplierInvoiceColumns";
 import { SupplierInvoiceDetailDialog } from "./SupplierInvoiceDetailDialog";
 import SupplierInvoiceForm from "./SupplierInvoiceForm";
 import SupplierInvoiceEditForm from "./SupplierInvoiceEditForm";
+
+/** Etiqueta con que se nombra una factura en los avisos: su folio o `#id`. */
+const facturaEtiqueta = (factura: Pick<FacturaProveedor, "id" | "folio">) =>
+  factura.folio || `#${factura.id}`;
+
+/**
+ * Textos del aviso de una confirmación (registrar, cancelar) que se cerró porque
+ * su factura cambió por fuera: ambas esperan un `Borrador`.
+ */
+const SUPPLIER_INVOICE_STALE_MESSAGES = {
+  gone: "La factura ya no está disponible. Se actualizó el listado.",
+  estadoChanged: (estatus: string) =>
+    `La factura cambió a ${estatus.toLowerCase()} y la acción ya no aplica. Se actualizó el listado.`,
+};
+
+/** Textos del aviso de la EDICIÓN cerrada: nombran la factura y dónde consultarla. */
+const editStaleMessages = (etiqueta: string) => ({
+  gone: `La factura ${etiqueta} ya no está disponible y no se puede editar.`,
+  estadoChanged: (estatus: string) =>
+    `La factura ${etiqueta} cambió a ${estatus.toLowerCase()} y ya no se puede editar. Ábrela con "Ver detalle" para consultarla.`,
+});
 
 export default function SupplierInvoiceList({
   initialProveedorId = 0,
@@ -106,24 +131,17 @@ export default function SupplierInvoiceList({
    */
   const [editTarget, setEditTarget] = useState<FacturaProveedor | null>(null);
   /**
-   * Última edición cerrada porque su fila cambió de estatus (ver el ajuste en
-   * render más abajo). El aviso sale en un EFECTO: disparar el toast durante el
-   * render actualizaría otro componente a media renderización.
+   * Aviso del diálogo de fila que se cerró porque su factura cambió por fuera
+   * (ver los ajustes en render más abajo). Sale en un EFECTO: disparar el toast
+   * durante el render actualizaría otro componente a media renderización.
    */
-  const [edicionCerrada, setEdicionCerrada] = useState<{
-    etiqueta: string;
-    estatus: FacturaProveedorEstatus | null;
-  } | null>(null);
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   useEffect(() => {
-    if (!edicionCerrada) return;
-    const { etiqueta, estatus } = edicionCerrada;
-    toast.error(
-      estatus
-        ? `La factura ${etiqueta} cambió a ${estatus.toLowerCase()} y ya no se puede editar. Ábrela con "Ver detalle" para consultarla.`
-        : `La factura ${etiqueta} ya no está disponible y no se puede editar.`,
-      { id: "edicion-cerrada-por-estatus", duration: 7000 },
-    );
-  }, [edicionCerrada]);
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key, duration: 7000 });
+    }
+  }, [staleNotice]);
 
   // UN candado por fila, COMPARTIDO por registrar y cancelar: una factura tiene
   // como máximo una acción que muta en vuelo. Con un candado por acción, cerrar
@@ -272,7 +290,8 @@ export default function SupplierInvoiceList({
   };
 
   // Columnas estáticas: callbacks y "en vuelo" van por `SupplierInvoiceRowActionsProvider`.
-  const columns = getColumns();
+  // Las opciones de los filtros se arman con el listado completo.
+  const columns = withHeaderFilters(getColumns(), facturas, SUPPLIER_INVOICE_HEADER_FILTERS);
 
   // El detalle se busca contra el arreglo COMPLETO (`facturas` llega sin filtrar;
   // el filtrado ocurre dentro de `DataTable`), así que sobrevive a que la fila
@@ -287,10 +306,43 @@ export default function SupplierInvoiceList({
   // efecto (`react-hooks/set-state-in-effect`). Mismo patrón que `PolizaList`.
   if (openDetailId !== null && detailFactura === null) setOpenDetailId(null);
 
-  const existe = (id: number) => facturas.some((f) => f.id === id);
-  if (registrarTargetId !== null && !existe(registrarTargetId)) setRegistrarTargetId(null);
-  if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
-  if (replacePdfTargetId !== null && !existe(replacePdfTargetId)) setReplacePdfTargetId(null);
+  const findFactura = (id: number | null) =>
+    id !== null ? (facturas.find((f) => f.id === id) ?? null) : null;
+
+  // Registrar y cancelar solo aplican a un `Borrador` (el backend no deja
+  // registrar una cancelada ni cancelar una registrada con CxP viva). Si un
+  // refetch muestra que la factura de una confirmación abierta cambió de
+  // estatus o ya no está, se cierra con aviso. Mientras la acción PROPIA está en
+  // vuelo no se decide: la cierra `runRowAction` al terminar.
+  const staleRegistrar = getStaleRowDialogNotice({
+    resource: "supplier-invoice",
+    targetId: registrarTargetId,
+    target: findFactura(registrarTargetId),
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: registrarTargetId !== null && rowLock.isPending(registrarTargetId),
+    messages: SUPPLIER_INVOICE_STALE_MESSAGES,
+  });
+  if (staleRegistrar) {
+    setRegistrarTargetId(null);
+    setStaleNotice(staleRegistrar);
+  }
+  const staleCancel = getStaleRowDialogNotice({
+    resource: "supplier-invoice",
+    targetId: cancelTargetId,
+    target: findFactura(cancelTargetId),
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: cancelTargetId !== null && rowLock.isPending(cancelTargetId),
+    messages: SUPPLIER_INVOICE_STALE_MESSAGES,
+  });
+  if (staleCancel) {
+    setCancelTargetId(null);
+    setStaleNotice(staleCancel);
+  }
+  if (replacePdfTargetId !== null && findFactura(replacePdfTargetId) === null) {
+    setReplacePdfTargetId(null);
+  }
   const replacePdfTarget =
     replacePdfTargetId !== null ? facturas.find((f) => f.id === replacePdfTargetId) ?? null : null;
 
@@ -316,18 +368,24 @@ export default function SupplierInvoiceList({
         editTarget !== null &&
         (mutation.state.variables as { id?: number } | undefined)?.id === editTarget.id,
     }) > 0;
-  if (editTarget !== null && !editEnVuelo && editVivo?.estatus !== "Borrador") {
+  const staleEdit = getStaleRowDialogNotice({
+    resource: "supplier-invoice-edit",
+    targetId: editTarget?.id ?? null,
+    target: editVivo,
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: editEnVuelo,
+    messages: editStaleMessages(editTarget ? facturaEtiqueta(editTarget) : ""),
+  });
+  if (staleEdit) {
     setEditTarget(null);
-    setEdicionCerrada({
-      etiqueta: editTarget.folio || `#${editTarget.id}`,
-      estatus: editVivo?.estatus ?? null,
-    });
+    setStaleNotice(staleEdit);
   }
 
   const etiqueta = (id: number | null) => {
     if (id === null) return "";
-    const factura = facturas.find((f) => f.id === id);
-    return factura?.folio || `#${id}`;
+    const factura = findFactura(id);
+    return factura ? facturaEtiqueta(factura) : `#${id}`;
   };
 
   /** Ejecuta una acción de fila bajo el candado de la fila y cierra SU diálogo al terminar. */
@@ -423,11 +481,12 @@ export default function SupplierInvoiceList({
                       title="Nueva Factura de Proveedor"
                       subtitle="Factura de mercancía recibida contra una orden de compra"
                       statusColor="indigo"
+                      icon={FacturaProveedorIcon}
                     />
                   }
                   open={isFormOpen}
                   onOpenChange={setIsFormOpen}
-                  maxWidth="1100px"
+                  maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
                   trigger={
                     <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
                       + Nueva factura
@@ -475,15 +534,16 @@ export default function SupplierInvoiceList({
             title={
               <DialogHeader
                 title="Editar Factura de Proveedor"
-                subtitle={`Borrador ${editTarget.folio || `#${editTarget.id}`}: las partidas y los importes ya no se pueden cambiar`}
+                subtitle={`Borrador ${facturaEtiqueta(editTarget)}: las partidas y los importes ya no se pueden cambiar`}
                 statusColor="indigo"
+                icon={FacturaProveedorIcon}
               />
             }
             open={true}
             onOpenChange={(open) => {
               if (!open) setEditTarget(null);
             }}
-            maxWidth="760px"
+            maxWidth={DIALOG_WIDTH_FORM}
           >
             <SupplierInvoiceEditForm factura={editTarget} onSuccess={() => setEditTarget(null)} />
           </MainDialog>
