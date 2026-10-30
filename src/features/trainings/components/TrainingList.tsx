@@ -1,56 +1,55 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { TrainingIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
-import { getColumns, TrainingRow } from "./TrainingColumns";
+import { getColumns, TRAINING_HEADER_FILTERS } from "./TrainingColumns";
 import { Training } from "../interfaces/training.interface";
-import { ESTADO_CAPACITACION_OPTIONS } from "../constants/trainingChoices";
 import TrainingForm from "./TrainingForm";
 import { useTrainings } from "../hooks/useTrainings";
 import { useDeleteTraining } from "../hooks/useDeleteTraining";
-import { TrainingRowActionsProvider } from "../hooks/useTrainingRowActions";
-
-// Filtro en memoria sobre `row.estado` (valor crudo del backend), no sobre la
-// etiqueta: las opciones usan los mismos valores del enum.
-const FILTER_CONFIG: DataTableFilterConfig[] = [
-  { id: "estado", label: "Estado", options: ESTADO_CAPACITACION_OPTIONS },
-];
+import { TrainingRowActionsProvider, usePendingTrainingIds } from "../hooks/useTrainingRowActions";
+import { buildTrainingRows, TRAINING_STALE_MESSAGES } from "../utils/trainingRows";
 
 export default function TrainingList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
-  // El diálogo de borrado vive aquí y no en la celda: la celda se desmonta al
-  // ordenar/paginar/filtrar y se llevaría el diálogo a media confirmación.
-  const [trainingToDelete, setTrainingToDelete] = useState<Training | null>(null);
+  // Diálogo de fila: solo el id, resuelto contra el listado COMPLETO — la
+  // celda se desmonta al ordenar/paginar/filtrar y se llevaría el diálogo a
+  // media confirmación.
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const { trainings, isLoading, isInitialError, error } = useTrainings();
   const { employees } = useEmployees();
-  const { mutate: deleteTraining } = useDeleteTraining();
+  const { mutate: deleteTraining, isPending: isDeletePending } = useDeleteTraining();
+  const busyIds = usePendingTrainingIds();
+  // Aviso del diálogo de fila que se cerró porque su capacitación desapareció.
+  // Se dispara desde un efecto: un toast en pleno render actualizaría otro
+  // componente (el Toaster).
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
   const canEditHr = hasPermission("E-RH", session?.user);
   const canDeleteHr = hasPermission("D-RH", session?.user);
 
-  const handleEdit = useCallback(
-    (training: Training) => {
-      setSelectedTraining(training);
-      setIsDialogOpen(true);
-    },
-    [setSelectedTraining, setIsDialogOpen]
-  );
-
-  const handleDelete = useCallback(
-    (training: Training) => setTrainingToDelete(training),
-    [setTrainingToDelete]
-  );
+  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente.
+  const handleEdit = (training: Training) => {
+    setSelectedTraining(training);
+    setIsDialogOpen(true);
+  };
 
   const handleNew = () => {
     setSelectedTraining(null);
@@ -60,32 +59,67 @@ export default function TrainingList() {
   // El endpoint devuelve el FK como ID crudo; se resuelve el nombre en cliente.
   // Incluye a los empleados inactivos: una capacitación histórica sigue
   // mostrando a quién pertenece.
-  const employeeNameById = useMemo(
-    () => new Map(employees.map((employee) => [employee.id, getEmployeeFullName(employee)])),
-    [employees]
+  const employeeNameById = new Map(
+    employees.map((employee) => [employee.id, getEmployeeFullName(employee)])
   );
 
   // El nombre se incorpora a la FILA, no al accessor: así la llegada tardía del
   // catálogo de empleados produce un `data` nuevo y TanStack recalcula celda,
-  // búsqueda y orden. Ver `TrainingRow`.
-  const rows = useMemo<TrainingRow[]>(
-    () =>
-      trainings.map((training) => ({
-        ...training,
-        empleado_nombre: employeeNameById.get(training.empleado) ?? null,
-      })),
-    [trainings, employeeNameById]
+  // búsqueda, orden y opciones de filtro. Ver `TrainingRow`.
+  const rows = buildTrainingRows(trainings, employeeNameById);
+
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `TrainingRowActionsProvider`, así un borrado no remonta las celdas.
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
+    rows,
+    TRAINING_HEADER_FILTERS
   );
 
-  // Solo dependen de los permisos: callbacks y "en borrado" llegan al menú por
-  // `TrainingRowActionsProvider`, así un borrado en vuelo no remonta las celdas.
-  const columns = useMemo(
-    () => getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
-    [canEditHr, canDeleteHr]
-  );
+  // ── Diálogo de fila, resuelto contra el listado COMPLETO ──────────────────
+  const deleteTarget =
+    deleteTargetId !== null ? (rows.find((row) => row.id === deleteTargetId) ?? null) : null;
+  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
+  // sigue pendiente hasta que su `onSettled` cierra el diálogo. El optimista
+  // saca la fila del listado al confirmar: sin esto se leería como "ya no
+  // existe".
+  const isDeleting =
+    deleteTargetId !== null && (busyIds.includes(deleteTargetId) || isDeletePending);
+
+  // Vía rápida contra la caché: un refetch mostró que la capacitación del
+  // diálogo abierto ya no existe (otra persona la borró). Sin baja lógica,
+  // solo cuenta que desaparezca. Ajuste en render, no en un efecto.
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "training",
+    targetId: deleteTargetId,
+    target: deleteTarget,
+    isBusy: isDeleting,
+    messages: TRAINING_STALE_MESSAGES,
+  });
+  if (staleDelete) {
+    setDeleteTargetId(null);
+    setStaleNotice(staleDelete);
+  }
+
+  useEffect(() => {
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key });
+    }
+  }, [staleNotice]);
+
+  // Copia de la capacitación al ABRIR la confirmación: el texto no sigue a los
+  // refetch y sobrevive a la animación de salida cuando el id vuelve a `null`.
+  const deleteSession = useDialogSession(deleteTargetId !== null, deleteTarget);
 
   return (
-    <TrainingRowActionsProvider value={{ onEdit: handleEdit, onDelete: handleDelete }}>
+    <TrainingRowActionsProvider
+      value={{
+        onEdit: handleEdit,
+        onDelete: (training) => setDeleteTargetId(training.id),
+        busyIds,
+      }}
+    >
       <DataTable
         columns={columns}
         data={rows}
@@ -93,7 +127,6 @@ export default function TrainingList() {
         // borrar, las filas siguientes cambian de posición.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar capacitación..."
-        filterConfig={FILTER_CONFIG}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar capacitaciones"
@@ -107,11 +140,12 @@ export default function TrainingList() {
                   title={selectedTraining ? "Editar Capacitación" : "Alta de Capacitación"}
                   subtitle={selectedTraining ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="emerald"
+                  icon={TrainingIcon}
                 />
               }
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -132,22 +166,30 @@ export default function TrainingList() {
         }
       />
 
-      {canDeleteHr && (
+      {/*
+        Montado mientras haya una copia: `open` sale del id, así que al
+        cerrarse anima su salida con el nombre de la apertura. Queda abierto y
+        bloqueado (`busy`) hasta que el servidor responde y el listado se
+        refresca; entonces lo cierra su `onSettled`.
+      */}
+      {canDeleteHr && deleteSession.snapshot && (
         <ConfirmDialog
-          open={trainingToDelete !== null}
+          key={`delete-${deleteSession.id}`}
+          open={deleteTargetId !== null}
           onOpenChange={(open) => {
-            if (!open) {
-              setTrainingToDelete(null);
-            }
+            if (!open) setDeleteTargetId(null);
           }}
           title="Eliminar Capacitación"
-          description="¿Estás seguro de que deseas eliminar esta capacitación? Esta acción no se puede deshacer."
-          confirmText="Eliminar"
+          description={`¿Estás seguro de que deseas eliminar la capacitación «${deleteSession.snapshot.nombre}» de ${deleteSession.snapshot.empleado_nombre}? Esta acción no se puede deshacer.`}
+          confirmText={isDeleting ? "Eliminando..." : "Eliminar"}
+          closeOnConfirm={false}
+          busy={isDeleting}
           onConfirm={() => {
-            if (trainingToDelete) {
-              deleteTraining(trainingToDelete.id);
-            }
-            setTrainingToDelete(null);
+            const id = deleteSession.snapshot?.id;
+            if (id === undefined) return;
+            deleteTraining(id, {
+              onSettled: () => setDeleteTargetId(null),
+            });
           }}
           confirmColor="red"
         />
