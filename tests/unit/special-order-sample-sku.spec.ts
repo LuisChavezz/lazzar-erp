@@ -5,6 +5,7 @@ import type {
   SpecialOrderTalla,
 } from "@/src/features/special-orders/interfaces/special-order.interface";
 import {
+  buildAltaCatalogoPayload,
   CATALOG_ALTA_INHERITED_OFF,
   CATALOG_ALTA_MIXED,
   CATALOG_ALTA_WITHOUT_CATEGORY,
@@ -19,6 +20,7 @@ import {
 import { getLineSkuStatus } from "@/src/features/special-orders/utils/lineSkuStatus";
 import {
   CATALOG_ALTA_GENERIC_ERROR,
+  isCategoryRejection,
   parseCatalogAltaError,
 } from "@/src/features/special-orders/utils/parseCatalogAltaError";
 import { canActOnSpecialOrderLines } from "@/src/features/special-orders/utils/lineActions";
@@ -325,24 +327,48 @@ test.describe("alta en catálogo por línea (EC-655)", () => {
   });
 });
 
+test.describe("buildAltaCatalogoPayload (EC-671)", () => {
+  test("sin categoría elegida solo manda la línea", () => {
+    expect(buildAltaCatalogoPayload(720)).toStrictEqual({ pedido_detalle_id: 720 });
+  });
+
+  test("con la categoría elegida la agrega con el nombre del backend", () => {
+    expect(buildAltaCatalogoPayload(720, 194)).toStrictEqual({
+      pedido_detalle_id: 720,
+      categoria_producto: 194,
+    });
+  });
+});
+
 test.describe("parseCatalogAltaError", () => {
   for (const key of ["alta_catalogo", "categoria_producto", "permiso"] as const) {
     test(`el 400 \`${key}\` muestra el mensaje del backend`, () => {
       const message = `Mensaje de ${key}.`;
       const parsed = parseCatalogAltaError(httpError(400, { [key]: [message] }));
-      expect(parsed).toEqual({ message, staleLine: false });
+      expect(parsed).toEqual({ message, staleLine: false, key });
     });
   }
+
+  test("`categoria_producto` y `alta_catalogo` son rechazos de la categoría; el resto no", () => {
+    const parse = (body: unknown) => parseCatalogAltaError(httpError(400, body));
+    expect(isCategoryRejection(parse({ categoria_producto: "Categoría no válida." }))).toBe(true);
+    expect(
+      isCategoryRejection(parse({ alta_catalogo: "Tallas que no son de la categoría Vestido: UNI." })),
+    ).toBe(true);
+    expect(isCategoryRejection(parse({ pedido_detalle_id: "Sin pendientes." }))).toBe(false);
+    expect(isCategoryRejection(parse({ permiso: "Solo producción." }))).toBe(false);
+    expect(isCategoryRejection(parseCatalogAltaError(new Error("Network Error")))).toBe(false);
+  });
 
   test("el 400 `pedido_detalle_id` muestra su mensaje y marca la línea obsoleta", () => {
     const message = "La línea no tiene SKU de producción pendientes de alta en catálogo.";
     const parsed = parseCatalogAltaError(httpError(400, { pedido_detalle_id: message }));
-    expect(parsed).toEqual({ message, staleLine: true });
+    expect(parsed).toEqual({ message, staleLine: true, key: "pedido_detalle_id" });
   });
 
   test("un 404 relee el detalle", () => {
     const parsed = parseCatalogAltaError(httpError(404, { detail: "No encontrado." }));
-    expect(parsed).toEqual({ message: "No encontrado.", staleLine: true });
+    expect(parsed).toEqual({ message: "No encontrado.", staleLine: true, key: "detail" });
   });
 
   test("sin cuerpo utilizable, el genérico (nunca el `message` de Axios)", () => {
@@ -357,7 +383,7 @@ test.describe("parseCatalogAltaError con pedido cancelado", () => {
   test("el 400 `pedido` muestra su mensaje y marca la línea obsoleta", () => {
     const message = "El pedido está CANCELADO; no se puede dar de alta en catálogo.";
     const parsed = parseCatalogAltaError(httpError(400, { pedido: message }));
-    expect(parsed).toEqual({ message, staleLine: true });
+    expect(parsed).toEqual({ message, staleLine: true, key: "pedido" });
   });
 });
 

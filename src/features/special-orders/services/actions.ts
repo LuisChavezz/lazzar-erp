@@ -6,6 +6,7 @@ import type {
   SpecialOrderDetail,
   SpecialOrderListItem,
 } from "../interfaces/special-order.interface";
+import { buildAltaCatalogoPayload } from "../utils/catalogAlta";
 
 /**
  * Lista los pedidos especiales (`GET /produccion/pedidos-especiales/`).
@@ -53,19 +54,24 @@ export const createSampleSkuOnboarding = async (
 
 /**
  * Alta en catálogo de los SKU de producción que UNA línea ya tiene
- * (`POST /produccion/pedidos-especiales/{id}/alta-catalogo/`). Solo se lee
- * `pedido_detalle_id`. Es parcial por talla: da de alta las variantes con
- * `aplica_catalogo = false` y, si la línea ya tenía un producto de catálogo,
- * las cuelga de él. Responde `201` SOLO con las variantes de esta llamada; un
- * segundo envío sin pendientes responde `400` en `pedido_detalle_id`.
+ * (`POST /produccion/pedidos-especiales/{id}/alta-catalogo/`). Es parcial por
+ * talla: da de alta las variantes con `aplica_catalogo = false` y, si la línea
+ * ya tenía un producto de catálogo, las cuelga de él. Responde `201` SOLO con
+ * las variantes de esta llamada; un segundo envío sin pendientes responde
+ * `400` en `pedido_detalle_id`.
+ *
+ * `categoriaProductoId` solo para una línea SIN categoría: se guarda en la
+ * línea (ver `AltaCatalogoPayload`). Sin ella, esa línea responde `400` en
+ * `alta_catalogo`.
  */
 export const altaCatalogoLinea = async (
   pedidoId: number,
   pedidoDetalleId: number,
+  categoriaProductoId?: number,
 ): Promise<SampleProductionVariant[]> => {
   const response = await v1_api.post<SampleProductionVariant[]>(
     `/produccion/pedidos-especiales/${pedidoId}/alta-catalogo/`,
-    { pedido_detalle_id: pedidoDetalleId },
+    buildAltaCatalogoPayload(pedidoDetalleId, categoriaProductoId),
   );
   return response.data;
 };

@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { SAMPLE_SKU_ONBOARDING_FORBIDDEN_MESSAGE } from "./parseSampleSkuOnboardingError";
 
 export const CATALOG_ALTA_GENERIC_ERROR = "No se pudo dar de alta la línea en catálogo.";
@@ -19,6 +19,8 @@ const REJECTION_KEYS = [
   "error",
 ] as const;
 
+type CatalogAltaRejectionKey = (typeof REJECTION_KEYS)[number];
+
 export interface ParsedCatalogAltaError {
   /** UNA frase para el toast: el mensaje del backend cuando lo hay. */
   message: string;
@@ -28,6 +30,8 @@ export interface ParsedCatalogAltaError {
    * pedirse.
    */
   staleLine: boolean;
+  /** Llave del `400` de la que salió `message`; `null` sin cuerpo utilizable. */
+  key: CatalogAltaRejectionKey | null;
 }
 
 /**
@@ -45,7 +49,9 @@ export interface ParsedCatalogAltaError {
  *    no le quedan SKU pendientes de alta. Línea obsoleta.
  *  - `{"alta_catalogo": "..."}`: sin categoría, categoría inactiva, tallas
  *    fuera de la categoría o el SKU ya existe en catálogo.
- *  - `{"categoria_producto": "..."}`: se agotaron los códigos de la categoría.
+ *  - `{"categoria_producto": "..."}`: dos sentidos. "Categoría no válida."
+ *    cuando la elegida para una línea sin categoría es de otra empresa o no
+ *    existe; o se agotaron los códigos de la categoría.
  *  - `404` (`detail`): el pedido ya no es visible. También línea obsoleta.
  *
  * Función pura, sin React, como `parseSampleSkuOnboardingError`.
@@ -65,14 +71,27 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
     firstDrfMessage(record.pedido_detalle_id) !== undefined;
 
   // `ValidationError("texto")` sin campo: DRF lo serializa como arreglo raíz.
-  const backendMessage = Array.isArray(data)
-    ? firstDrfMessage(data)
-    : firstRejectionMessage(data, REJECTION_KEYS);
+  if (Array.isArray(data)) {
+    const message = firstDrfMessage(data);
+    if (message) return { message, staleLine, key: null };
+  } else {
+    for (const key of REJECTION_KEYS) {
+      const message = firstDrfMessage(record[key]);
+      if (message) return { message, staleLine, key };
+    }
+  }
 
-  if (backendMessage) return { message: backendMessage, staleLine };
   if (response?.status === 403) {
-    return { message: SAMPLE_SKU_ONBOARDING_FORBIDDEN_MESSAGE, staleLine };
+    return { message: SAMPLE_SKU_ONBOARDING_FORBIDDEN_MESSAGE, staleLine, key: null };
   }
   // Sin nada utilizable (red, 5xx, cuerpo vacío): nunca el `message` crudo de Axios.
-  return { message: CATALOG_ALTA_GENERIC_ERROR, staleLine };
+  return { message: CATALOG_ALTA_GENERIC_ERROR, staleLine, key: null };
 }
+
+/**
+ * Rechazo que depende de la categoría con la que se da de alta (`alta_catalogo`
+ * o `categoria_producto`): al elegirla en el diálogo, se muestra ahí y se puede
+ * elegir otra sin cerrarlo.
+ */
+export const isCategoryRejection = (parsed: ParsedCatalogAltaError): boolean =>
+  parsed.key === "alta_catalogo" || parsed.key === "categoria_producto";

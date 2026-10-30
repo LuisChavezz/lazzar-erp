@@ -1,4 +1,5 @@
 import type {
+  AltaCatalogoPayload,
   SpecialOrderLine,
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
@@ -23,6 +24,18 @@ export const isTallaPendingCatalogAlta = (talla: SpecialOrderTalla): boolean =>
  */
 export const hasPendingCatalogAlta = (line: SpecialOrderLine): boolean =>
   line.tallas.some(isTallaPendingCatalogAlta);
+
+/**
+ * Cuerpo de `alta-catalogo`: `categoria_producto` solo cuando se da, que es
+ * cuando la línea no tiene categoría (con una, el backend la ignoraría).
+ */
+export const buildAltaCatalogoPayload = (
+  pedidoDetalleId: number,
+  categoriaProductoId?: number,
+): AltaCatalogoPayload => ({
+  pedido_detalle_id: pedidoDetalleId,
+  ...(categoriaProductoId !== undefined && { categoria_producto: categoriaProductoId }),
+});
 
 export const CATALOG_ALTA_WITHOUT_CATEGORY =
   "La línea no tiene categoría de producto, así que no se puede dar de alta en catálogo.";
