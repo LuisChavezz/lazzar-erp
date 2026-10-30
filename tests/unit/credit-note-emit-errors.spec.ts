@@ -6,6 +6,12 @@ import {
 } from "@/src/features/credit-notes/hooks/useCreateNotaCredito";
 import { getEmitRejectedDraftDetail } from "@/src/features/credit-notes/hooks/useEmitirNotaCredito";
 import { readStampFailedNota } from "@/src/features/credit-notes/utils/creditNoteErrors";
+import {
+  CREDIT_NOTE_EMIT_STAMP_WARNING,
+  getInvoiceEmitPrecheckReason,
+  getInvoiceUnstampedEmitWarning,
+  getRelatedInvoiceEmitBlockReason,
+} from "@/src/features/credit-notes/utils/creditNoteStamping";
 
 /**
  * Pruebas unitarias de EC-639: cómo se lee el `400` de una emisión de nota de
@@ -163,5 +169,54 @@ test.describe("getEmitRejectedDraftDetail (emitir un borrador)", () => {
         21,
       ),
     ).toBeNull();
+  });
+});
+
+test.describe("factura al emitir (precheck y avisos)", () => {
+  const factura = (overrides: Record<string, unknown> = {}) => ({
+    folio: "F-1",
+    estatus: "Emitida",
+    activo: true,
+    cfdi_pendiente: false,
+    cfdi_uuid: "abc" as string | null,
+    ...overrides,
+  });
+
+  test("el precheck del listado detiene una factura eliminada o inexistente", () => {
+    expect(getInvoiceEmitPrecheckReason("F-1", factura({ activo: false }))).toContain(
+      "no está disponible",
+    );
+    expect(getInvoiceEmitPrecheckReason("F-9", undefined)).toContain("F-9 no está disponible");
+  });
+
+  test("el precheck del listado detiene un timbrado pendiente", () => {
+    expect(getInvoiceEmitPrecheckReason("F-1", factura({ cfdi_pendiente: true }))).toContain(
+      "timbrado pendiente",
+    );
+  });
+
+  test("el precheck del listado deja pasar cancelada (la rechaza el backend) y sin timbrar", () => {
+    expect(getInvoiceEmitPrecheckReason("F-1", factura({ estatus: "Cancelada" }))).toBeNull();
+    expect(getInvoiceEmitPrecheckReason("F-1", factura({ cfdi_uuid: null }))).toBeNull();
+  });
+
+  test("factura sin timbrar: aviso condicionado, no bloqueo", () => {
+    expect(getInvoiceUnstampedEmitWarning(factura({ cfdi_uuid: null }))).toContain(
+      "Si la empresa timbra con Facturama",
+    );
+    expect(getInvoiceUnstampedEmitWarning(factura())).toBeNull();
+  });
+
+  test("el formulario bloquea una factura eliminada solo con activo false explícito", () => {
+    expect(getRelatedInvoiceEmitBlockReason(factura({ activo: false }))).toContain(
+      "no está disponible",
+    );
+    expect(getRelatedInvoiceEmitBlockReason(factura({ activo: undefined }))).toBeNull();
+  });
+
+  test("el aviso de emisión no afirma que siempre se timbra", () => {
+    expect(CREDIT_NOTE_EMIT_STAMP_WARNING.startsWith("Si la empresa timbra con Facturama")).toBe(
+      true,
+    );
   });
 });
