@@ -142,3 +142,87 @@ test.describe("getStaleRowDialogNotice con expectedEstado", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * EC-675: Finanzas guarda su estado de negocio en `estatus`, no en `estado`.
+ * `statusField` nombra el campo; sin él la regla sigue leyendo `estado`.
+ */
+test.describe("getStaleRowDialogNotice con statusField", () => {
+  type Estatus = "Borrador" | "Registrada" | "Cancelada";
+  const estatusMessages = {
+    gone: "La factura ya no existe. Se actualizó el listado.",
+    estadoChanged: (estatus: Estatus) => `La factura cambió de estatus: ya está ${estatus}.`,
+  };
+
+  test("lee `estatus`: sigue en el esperado, el diálogo sigue", () => {
+    expect(
+      getStaleRowDialogNotice({
+        resource: "supplier-invoice",
+        targetId: 9,
+        target: { estatus: "Borrador" as Estatus },
+        statusField: "estatus",
+        expectedEstado: "Borrador",
+        isBusy: false,
+        messages: estatusMessages,
+      }),
+    ).toBeNull();
+  });
+
+  test("`estatus` cambió por fuera: aviso con el nuevo y la misma forma de key", () => {
+    expect(
+      getStaleRowDialogNotice({
+        resource: "supplier-invoice",
+        targetId: 9,
+        target: { estatus: "Registrada" as Estatus, estado: "ignorado" },
+        statusField: "estatus",
+        expectedEstado: "Borrador",
+        isBusy: false,
+        messages: estatusMessages,
+      }),
+    ).toEqual({
+      key: "supplier-invoice-stale-9-Registrada",
+      message: "La factura cambió de estatus: ya está Registrada.",
+    });
+  });
+
+  test("desaparece o está en vuelo: igual que con `estado`", () => {
+    const base = {
+      resource: "supplier-invoice",
+      targetId: 9,
+      statusField: "estatus" as const,
+      expectedEstado: "Borrador" as Estatus,
+      messages: estatusMessages,
+    };
+    expect(getStaleRowDialogNotice({ ...base, target: null, isBusy: false })).toEqual({
+      key: "supplier-invoice-stale-9-gone",
+      message: estatusMessages.gone,
+    });
+    expect(
+      getStaleRowDialogNotice({ ...base, target: { estatus: "Cancelada" as Estatus }, isBusy: true }),
+    ).toBeNull();
+  });
+
+  test("sin `statusField` sigue leyendo `estado` aunque la fila tenga `estatus`", () => {
+    const row: { estado: string; estatus: string } = { estado: "pendiente", estatus: "otro" };
+    expect(
+      getStaleRowDialogNotice({
+        resource: "vacation",
+        targetId: 4,
+        target: row,
+        expectedEstado: "pendiente",
+        isBusy: false,
+        messages: { gone: "x", estadoChanged: (estado: string) => estado },
+      }),
+    ).toBeNull();
+  });
+
+  test("tipos: el campo nombrado debe existir en la fila", () => {
+    // Solo typecheck: una fila sin el campo que nombra `statusField` no compila.
+    // La llamada va en UNA línea para que el error caiga bajo la directiva.
+    const target = { estado: "Borrador" as Estatus };
+    const call = () =>
+      // @ts-expect-error — la fila no tiene `estatus`.
+      getStaleRowDialogNotice({ resource: "supplier-invoice", targetId: 9, target, statusField: "estatus", expectedEstado: "Borrador", isBusy: false, messages: estatusMessages });
+    expect(typeof call).toBe("function");
+  });
+});
