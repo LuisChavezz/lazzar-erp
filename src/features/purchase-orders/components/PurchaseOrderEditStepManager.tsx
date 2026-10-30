@@ -27,7 +27,7 @@
  * Las primitivas compartidas (StepProgressBar, formularios) sí se reutilizan.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import type {
@@ -106,9 +106,12 @@ export function PurchaseOrderEditStepManager({
 
   // Renglones del Step 2, sembrados con los de la foto. Viven aquí (no en el
   // Step 2) para que el Step 1 sepa si hay alguno y pueda descartarlos al
-  // cambiar el tipo de compra; `seedCleared` los saca también de la vista.
+  // cambiar el tipo de compra. `linesResets` cuenta esos descartes: con uno o
+  // más, los guardados salen también de la vista, y como `key` del Step 2 lo
+  // remonta para que no conserve la búsqueda ni la vista "solo seleccionados"
+  // de los renglones descartados.
   const lines = usePurchaseOrderLines();
-  const [seedCleared, setSeedCleared] = useState(false);
+  const [linesResets, setLinesResets] = useState(0);
 
   if (snapshot === null && isDetailFresh && detail) {
     setSnapshot(detail);
@@ -146,16 +149,14 @@ export function PurchaseOrderEditStepManager({
   /** El Step 1 cambió MP↔PT con renglones capturados y el usuario lo confirmó. */
   const handleClearLines = () => {
     lines.clear();
-    setSeedCleared(true);
+    setLinesResets((n) => n + 1);
   };
 
   // Renglones guardados de la orden, conservando `precio`, `descripcion` y la
   // variante reales (ver `lineFromDetalle`). El Step 2 los mantiene a la vista
   // aunque se desmarquen, salvo que se hayan descartado al cambiar el tipo.
-  const seedLines = useMemo(
-    () => (seedCleared ? [] : seedFromDetalles(snapshot?.detalles ?? []).map((s) => s.line)),
-    [snapshot, seedCleared],
-  );
+  const seedLines =
+    linesResets > 0 ? [] : seedFromDetalles(snapshot?.detalles ?? []).map((s) => s.line);
 
   // Hasta que la lectura fresca del detalle termina (con éxito o con error) se
   // muestra el estado de carga, aunque haya una copia en caché.
@@ -261,14 +262,14 @@ export function PurchaseOrderEditStepManager({
         )}
         {/*
           Una vez creado, el Step 2 se queda MONTADO y solo se oculta al volver
-          al Step 1. Al desmontarse, su `quantities` se resembraba desde
-          `initialItems` (solo corre en el inicializador del useState), así que
-          los renglones que el usuario había quitado reaparecían y los que había
-          agregado desaparecían, sin aviso y justo antes de guardar.
+          al Step 1, para no perder su búsqueda ni la vista "solo
+          seleccionados". Solo se remonta (`key`) cuando el Step 1 descarta los
+          renglones al cambiar el tipo de compra.
         */}
         {header !== null && (
           <div className={currentStep === "step-2" ? undefined : "hidden"}>
             <PurchaseOrderEditStep2
+              key={linesResets}
               initialData={initialData}
               header={header}
               isTipoCompraLocked={isTipoCompraLocked}
