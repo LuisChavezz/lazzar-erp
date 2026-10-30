@@ -42,8 +42,16 @@ const MAX_NOTIFIED_PER_TOAST = 10;
  */
 const notifiedFailures = new Map<string, number[]>();
 
-/** Registra el fallo; `false` si ya se había avisado. */
-const markNotified = (toastId: string, errorUpdatedAt: number): boolean => {
+/** Texto por defecto del toast de refetch fallido. */
+export const REFETCH_ERROR_MESSAGE =
+  "No se pudo actualizar la información. Mostrando datos anteriores.";
+
+/**
+ * Registra el fallo; `false` si ya se había avisado. Exportado para el hook que
+ * vigila VARIAS consultas a la vez (`useMuestraCategorySizes`) y no puede
+ * llamar a este hook una vez por consulta.
+ */
+export const markNotified =(toastId: string, errorUpdatedAt: number): boolean => {
   const notified = notifiedFailures.get(toastId) ?? [];
   if (notified.includes(errorUpdatedAt)) return false;
   notified.push(errorUpdatedAt);
@@ -79,7 +87,7 @@ export const useHasLoadedQuery = <T>({
   isError,
   errorUpdatedAt,
   toastId,
-  errorMessage = "No se pudo actualizar la información. Mostrando datos anteriores.",
+  errorMessage = REFETCH_ERROR_MESSAGE,
   silent = false,
 }: UseHasLoadedQueryOptions<T>) => {
   const hasLoaded = data !== undefined;
