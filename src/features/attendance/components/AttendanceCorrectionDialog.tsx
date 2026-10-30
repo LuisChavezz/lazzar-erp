@@ -11,7 +11,10 @@ import type { AttendanceRow } from "../utils/attendanceRows";
 import { openPicker } from "../utils/dateInputs";
 
 interface AttendanceCorrectionDialogProps {
+  /** La copia del registro tomada al ABRIR (`useDialogSession`). */
   record: AttendanceRow;
+  /** Sale de la petición de la vista: al cerrarse, anima su salida con la copia. */
+  open: boolean;
   onClose: () => void;
   /** La corrección falló y el diálogo sigue abierto (ver `markCorrectionFailed`). */
   onFailed: () => void;
@@ -21,10 +24,11 @@ interface AttendanceCorrectionDialogProps {
  * "Corregir" un registro (`E-RH`): horas de entrada y salida sobre la `fecha`
  * del registro, y observaciones. La lógica (solo campos cambiados, nunca
  * `estado`, errores del servidor por campo) vive en
- * `useAttendanceCorrectionForm`. El padre lo monta con `key` por registro.
+ * `useAttendanceCorrectionForm`. El padre lo monta con `key` por apertura.
  */
 export function AttendanceCorrectionDialog({
   record,
+  open,
   onClose,
   onFailed,
 }: AttendanceCorrectionDialogProps) {
@@ -52,7 +56,7 @@ export function AttendanceCorrectionDialog({
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="520px"
       showCloseButton={false}

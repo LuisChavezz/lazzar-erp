@@ -2,9 +2,13 @@
 
 import { useRef } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { getEstadoAsistenciaLabel } from "../constants/attendanceChoices";
-import type { AttendanceRecordDialogsState } from "../hooks/useAttendanceRecordDialogs";
+import {
+  justificationModeFor,
+  type AttendanceRecordDialogsState,
+} from "../hooks/useAttendanceRecordDialogs";
 import type { AttendancePermissions } from "../hooks/useAttendanceRowActions";
 import { useSetJustification } from "../hooks/useSetJustification";
 import { useDeleteAttendance } from "../hooks/useDeleteAttendance";
@@ -26,8 +30,11 @@ const describe = (record: AttendanceRow) =>
  * historial. El ESTADO vive en la vista (`useAttendanceRecordDialogs`); aquí
  * solo se pintan, y cada uno exige su permiso aunque el menú ya lo filtre.
  *
- * Justificar y eliminar no son optimistas: la confirmación queda abierta y
- * bloqueada (`busy`) hasta que el servidor responde y el listado se refresca.
+ * Corregir, justificar y eliminar trabajan con la copia del registro tomada al
+ * ABRIR (`useDialogSession`): el texto no sigue a los refetch y sobrevive a la
+ * animación de salida cuando su petición vuelve a `null`. Justificar y
+ * eliminar no son optimistas: la confirmación queda abierta y bloqueada
+ * (`busy`) hasta que el servidor responde y el listado se refresca.
  */
 export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceRecordDialogsProps) {
   const { mutate: setJustification, isPending: isJustifying } = useSetJustification();
@@ -44,44 +51,53 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
     });
   };
 
-  const { correctTarget, justifyTarget, justifyMode, deleteTarget, breakdownTarget } = dialogs;
-  const isJustify = justifyMode === "justificar";
+  const correctSession = useDialogSession(dialogs.isCorrectOpen, dialogs.correctTarget);
+  const justifySession = useDialogSession(dialogs.isJustifyOpen, dialogs.justifyTarget);
+  const deleteSession = useDialogSession(dialogs.isDeleteOpen, dialogs.deleteTarget);
+
+  const { breakdownTarget } = dialogs;
+  const justifyRecord = justifySession.snapshot;
+  // El sentido sale del estado de APERTURA: si cambia, la vista ya cerró el
+  // diálogo (`getStaleAttendanceRecordNotice`).
+  const isJustify = justifyRecord ? justificationModeFor(justifyRecord.estado) === "justificar" : true;
 
   return (
     <>
       {/* Sin permiso propio: consultar es de quien vea la fila; el diálogo
-          decide qué acciones ofrece. */}
+          decide qué acciones ofrece. Sigue a la asistencia VIGENTE. */}
       {breakdownTarget && (
         <TimeTrackingDialog
-          key={breakdownTarget.id}
+          key={`breakdown-${breakdownTarget.id}`}
           attendance={breakdownTarget}
           permissions={permissions}
           onClose={dialogs.closeBreakdown}
         />
       )}
 
-      {permissions.canCapture && correctTarget && (
+      {permissions.canCapture && correctSession.snapshot && (
         <AttendanceCorrectionDialog
-          key={correctTarget.id}
-          record={correctTarget}
+          key={`correct-${correctSession.id}`}
+          record={correctSession.snapshot}
+          open={dialogs.isCorrectOpen}
           onClose={dialogs.closeCorrect}
           onFailed={dialogs.markCorrectionFailed}
         />
       )}
 
-      {permissions.canManage && justifyTarget && justifyMode && (
+      {permissions.canManage && justifyRecord && justificationModeFor(justifyRecord.estado) && (
         <ConfirmDialog
-          open
+          key={`justify-${justifySession.id}`}
+          open={dialogs.isJustifyOpen}
           onOpenChange={(open) => {
             if (!open && !isJustifying) dialogs.closeJustification();
           }}
           title={isJustify ? "Justificar Asistencia" : "Quitar Justificación"}
           description={
             isJustify
-              ? `El registro de ${describe(justifyTarget)} («${
-                  getEstadoAsistenciaLabel(justifyTarget.estado) ?? justifyTarget.estado
+              ? `El registro de ${describe(justifyRecord)} («${
+                  getEstadoAsistenciaLabel(justifyRecord.estado) ?? justifyRecord.estado
                 }») quedará como «Justificada». Sus horas no cambian, y la justificación se conserva aunque después se corrijan.`
-              : `El registro de ${describe(justifyTarget)} dejará de estar justificado: el sistema volverá a calcular su estado (puntual, retardo o falta) a partir de sus horas.`
+              : `El registro de ${describe(justifyRecord)} dejará de estar justificado: el sistema volverá a calcular su estado (puntual, retardo o falta) a partir de sus horas.`
           }
           confirmText={
             isJustifying ? "Guardando…" : isJustify ? "Justificar" : "Quitar justificación"
@@ -92,7 +108,7 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
           onConfirm={() =>
             runOnce((release) =>
               setJustification(
-                { target: targetOf(justifyTarget), justify: isJustify },
+                { target: targetOf(justifyRecord), justify: isJustify },
                 {
                   onSettled: () => {
                     release();
@@ -105,24 +121,27 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
         />
       )}
 
-      {permissions.canManage && deleteTarget && (
+      {permissions.canManage && deleteSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`delete-${deleteSession.id}`}
+          open={dialogs.isDeleteOpen}
           onOpenChange={(open) => {
             if (!open && !isDeleting) dialogs.closeDelete();
           }}
           title="Eliminar Registro de Asistencia"
           description={`Se eliminará definitivamente el registro de asistencia de ${describe(
-            deleteTarget
+            deleteSession.snapshot
           )}, con sus horas y observaciones. Esta acción no se puede deshacer.`}
           confirmText={isDeleting ? "Eliminando…" : "Eliminar"}
           confirmColor="red"
           closeOnConfirm={false}
           busy={isDeleting}
-          onConfirm={() =>
+          onConfirm={() => {
+            const record = deleteSession.snapshot;
+            if (!record) return;
             runOnce((release) =>
               deleteRecord(
-                { target: targetOf(deleteTarget) },
+                { target: targetOf(record) },
                 {
                   onSettled: () => {
                     release();
@@ -130,8 +149,8 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
                   },
                 }
               )
-            )
-          }
+            );
+          }}
         />
       )}
     </>

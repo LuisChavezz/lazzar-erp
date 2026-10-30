@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
-import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
-import { ESTADO_ASISTENCIA_OPTIONS } from "../constants/attendanceChoices";
 import { useAttendance } from "../hooks/useAttendance";
 import {
   AttendanceRowActionsProvider,
@@ -16,7 +15,7 @@ import {
 import { useAttendanceRecordDialogs } from "../hooks/useAttendanceRecordDialogs";
 import { buildAttendanceRows } from "../utils/attendanceRows";
 import { isPlausibleDateKey } from "../utils/dateInputs";
-import { getHistoryColumns } from "./AttendanceColumns";
+import { getHistoryColumns, HISTORY_HEADER_FILTERS } from "./AttendanceColumns";
 import { DateParamInput } from "./DateParamInput";
 import { AttendanceRecordDialogs } from "./AttendanceRecordDialogs";
 
@@ -32,8 +31,10 @@ interface AttendanceHistoryViewProps {
  * - `desde`/`hasta` van al SERVIDOR (`fecha__gte`/`fecha__lte`) desde inputs
  *   fuera de `DataTable`, en la URL, como en `BankReconciliationView`. Sin
  *   periodo válido no se consulta: el endpoint no pagina.
- * - Empleado y estado se filtran EN MEMORIA (`filterConfig`), igual que la
- *   búsqueda.
+ * - Empleado y estado se filtran EN MEMORIA desde el encabezado de su columna
+ *   (`HISTORY_HEADER_FILTERS`), igual que la búsqueda. Un filtro elegido
+ *   conserva su ficha al cambiar el periodo aunque las filas nuevas ya no
+ *   traigan esa opción (la memoria de opciones de `DataTable`).
  * - Comparte con el pase de lista los diálogos de corregir, justificar y
  *   eliminar; aquí no se checa.
  */
@@ -78,23 +79,10 @@ export function AttendanceHistoryView({ desde, hasta, setParams }: AttendanceHis
   const listSettled = hasLoaded && !isFetching && !isPlaceholderData;
   const dialogs = useAttendanceRecordDialogs(rows, pending, listSettled);
 
-  // Filtros en memoria sobre el valor CRUDO de la fila (`row.empleado`,
-  // `row.estado`). Las opciones de empleado salen del catálogo COMPLETO (con
-  // los inactivos marcados): un registro histórico sigue siendo de alguien.
-  const empleadoFilterOptions = employees
-    .map((employee) => ({
-      value: String(employee.id),
-      label: employee.activo
-        ? getEmployeeFullName(employee)
-        : `${getEmployeeFullName(employee)} (inactivo)`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label, "es-MX"));
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "empleado", label: "Empleado", options: empleadoFilterOptions },
-    { id: "estado", label: "Estado", options: ESTADO_ASISTENCIA_OPTIONS },
-  ];
-
-  const columns = getHistoryColumns(permissions);
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `AttendanceRowActionsProvider`. Las opciones de filtro salen del periodo
+  // completo, no de la página.
+  const columns = withHeaderFilters(getHistoryColumns(permissions), rows, HISTORY_HEADER_FILTERS);
 
   // Contador por campo para remontar su input al vaciarlo (ver el JSX).
   const [clearedNonce, setClearedNonce] = useState({ desde: 0, hasta: 0 });
@@ -151,7 +139,6 @@ export function AttendanceHistoryView({ desde, hasta, setParams }: AttendanceHis
         data={rows}
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar por empleado, estado u observaciones..."
-        filterConfig={filterConfig}
         onRefetch={periodValid ? refetch : undefined}
         isRefetching={isFetching}
         emptyMessage={

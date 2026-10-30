@@ -1,8 +1,15 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { CheckInIcon, CheckOutIcon, MarkAbsenceIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
+import {
+  ESTADO_ASISTENCIA_CFG,
   getEstadoAsistenciaLabel,
   SIN_REGISTRO,
   SIN_REGISTRO_CFG,
@@ -15,8 +22,8 @@ import {
 import type { RollCallRow } from "../utils/attendanceRows";
 import { isEmployeeDayBusy } from "../utils/attendanceRowTarget";
 import {
+  AttendanceNameMenu,
   buildRecordMenuItems,
-  EmployeeCell,
   EstadoBadge,
   HorasCell,
   RetardoCell,
@@ -26,14 +33,14 @@ import {
 export const SIN_TURNO_LABEL = "Sin turno asignado";
 
 /**
- * Menú de UNA fila del pase de lista (decisión 3):
+ * Menú de UNA fila del pase de lista, en el nombre del empleado (decisión 3):
  *
  * - Sin registro: "Registrar entrada" y "Marcar falta" (`E-RH`). Un empleado
  *   sin turno las ve deshabilitadas: la checada y el alta necesitan turno.
  * - Registro con entrada y sin salida: "Registrar salida" (`E-RH`).
  * - Cualquier registro: las acciones de `buildRecordMenuItems`.
  */
-function RollCallRowActionsMenu({
+function RollCallNameCell({
   row,
   permissions,
 }: {
@@ -74,11 +81,7 @@ function RollCallRowActionsMenu({
     items.push(...buildRecordMenuItems(row.record, permissions, recordActions, isBusy));
   }
 
-  return (
-    <div className="flex justify-center">
-      <ActionMenu items={items} ariaLabel={`Acciones de ${row.empleado_nombre}`} />
-    </div>
-  );
+  return <AttendanceNameMenu nombre={row.empleado_nombre} numero={row.numero_empleado} items={items} />;
 }
 
 const columnHelper = createColumnHelper<RollCallRow>();
@@ -89,12 +92,13 @@ const columnHelper = createColumnHelper<RollCallRow>();
  */
 export const getRollCallColumns = (permissions: AttendancePermissions) =>
   [
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo, ver `RollCallRow`).
     columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
+      id: "empleado",
       header: "Empleado",
-      cell: ({ row }) => (
-        <EmployeeCell nombre={row.original.empleado_nombre} numero={row.original.numero_empleado} />
-      ),
+      size: 260,
+      cell: ({ row }) => <RollCallNameCell row={row.original} permissions={permissions} />,
     }),
     columnHelper.accessor((row) => row.turno_nombre ?? SIN_TURNO_LABEL, {
       id: "turno_nombre",
@@ -118,7 +122,7 @@ export const getRollCallColumns = (permissions: AttendancePermissions) =>
           ? SIN_REGISTRO_LABEL
           : (getEstadoAsistenciaLabel(row.estado) ?? row.estado),
       {
-        id: "estado_label",
+        id: "estado",
         header: "Estado",
         cell: ({ row }) =>
           row.original.record ? (
@@ -161,10 +165,23 @@ export const getRollCallColumns = (permissions: AttendancePermissions) =>
       enableGlobalFilter: false,
       cell: ({ row }) => <HorasCell value={row.original.record?.horas_extra ?? null} />,
     }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => <RollCallRowActionsMenu row={row.original} permissions={permissions} />,
-    }),
   ] as ColumnDef<RollCallRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) del PASE DE LISTA, para
+ * `withHeaderFilters`. Filtran EN MEMORIA el día ya consultado (`?fecha=` y
+ * `?todos=` van fuera de la tabla). El empleado compara contra el FK crudo,
+ * rotulado con el nombre de la fila, con buscador. El estado, con ficha
+ * "Estatus: …", ofrece primero "Sin registro" (el pseudo-estado de quien aún
+ * no checa) y luego el catálogo completo, y al final cada código desconocido
+ * de las filas, crudo (igual que su badge). Un empleado que checa con el
+ * filtro "Sin registro" puesto sale de la vista: sus diálogos se resuelven
+ * contra el pase de lista completo, así que no se cierran por eso.
+ */
+export const ROLL_CALL_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<RollCallRow>>> = {
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter([
+    ...optionsFromConfig(SIN_REGISTRO_CFG),
+    ...optionsFromConfig(ESTADO_ASISTENCIA_CFG),
+  ]),
+};
