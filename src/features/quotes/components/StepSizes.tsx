@@ -13,6 +13,12 @@ import {
 import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
+import {
+  MUESTRA_SIZES_ERROR_MESSAGE,
+  MUESTRA_SIZES_LOADING_MESSAGE,
+  type IncompatibleSize,
+  type MuestraSizesStatus,
+} from "../utils/muestraCategorySizes";
 
 interface StepSizesProps {
   selectedRows: CatalogRow[];
@@ -38,7 +44,25 @@ interface StepSizesProps {
    * se muestran en ella (EC-606). `null` sin moneda elegida: sin símbolo.
    */
   monedaCodigo: string | null;
+  /**
+   * Filas de MUESTRA cuya lista de tallas por categoría aún no está lista
+   * (EC-647): en vez de las tallas se muestra el aviso. Opcional; catálogo no
+   * la pasa.
+   */
+  sizesStatusPerProduct?: Record<number, MuestraSizesStatus>;
+  /**
+   * Tallas capturadas que no son de la categoría de la muestra (datos guardados
+   * antes de EC-647). Se listan marcadas, con su cantidad, para quitarlas a
+   * mano: nunca se descartan en silencio. Opcional; catálogo no la pasa.
+   */
+  incompatibleSizesPerProduct?: Record<number, IncompatibleSize[]>;
+  onRemoveIncompatibleSize?: (productId: number, sizeId: number) => void;
 }
+
+const SIZES_STATUS_MESSAGES: Record<MuestraSizesStatus, string> = {
+  loading: MUESTRA_SIZES_LOADING_MESSAGE,
+  error: MUESTRA_SIZES_ERROR_MESSAGE,
+};
 
 export const StepSizes = memo(function StepSizes({
   selectedRows,
@@ -50,6 +74,9 @@ export const StepSizes = memo(function StepSizes({
   onToggleProduct,
   sizeErrors,
   monedaCodigo,
+  sizesStatusPerProduct,
+  incompatibleSizesPerProduct,
+  onRemoveIncompatibleSize,
 }: StepSizesProps) {
   return (
     <div className="space-y-3 mt-2">
@@ -81,6 +108,8 @@ export const StepSizes = memo(function StepSizes({
               ? openProductIds.has(row.id)
               : openProductId === row.id;
             const hasError = Boolean(sizeErrors[row.id]);
+            const sizesStatus = sizesStatusPerProduct?.[row.id];
+            const incompatibleSizes = incompatibleSizesPerProduct?.[row.id] ?? [];
 
             return (
               <div
@@ -133,7 +162,49 @@ export const StepSizes = memo(function StepSizes({
                   <div className="overflow-hidden">
                     <div className="px-4 pb-4 border-t border-slate-200 dark:border-white/10">
                       <div className="pt-3 space-y-3">
-                        {sizesForProduct.length === 0 ? (
+                        {incompatibleSizes.length > 0 && (
+                          <div className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/60 dark:bg-rose-900/10 px-3 py-2 space-y-2">
+                            <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+                              Estas tallas no son de la categoría de la muestra. Quítalas para continuar.
+                            </p>
+                            <ul className="space-y-1">
+                              {incompatibleSizes.map((size) => (
+                                <li
+                                  key={size.id}
+                                  className="flex items-center justify-between gap-3 text-sm text-rose-700 dark:text-rose-300"
+                                >
+                                  <span>
+                                    <span className="font-semibold">{size.nombre}</span>
+                                    {" · "}
+                                    {size.cantidad} pzas
+                                  </span>
+                                  {onRemoveIncompatibleSize && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onRemoveIncompatibleSize(row.id, size.id)}
+                                      aria-label={`Quitar talla ${size.nombre} de ${row.nombre}`}
+                                      className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                                    >
+                                      Quitar
+                                    </button>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {sizesStatus ? (
+                          <p
+                            role={sizesStatus === "error" ? "alert" : "status"}
+                            className={`text-sm ${
+                              sizesStatus === "error"
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-slate-500 dark:text-slate-400"
+                            }`}
+                          >
+                            {SIZES_STATUS_MESSAGES[sizesStatus]}
+                          </p>
+                        ) : sizesForProduct.length === 0 ? (
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             No hay tallas disponibles.
                           </p>
