@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { harness } from "./support/headerFilterHarness";
 import {
   BANK_HEADER_FILTERS,
   getColumns as getBankColumns,
@@ -33,29 +34,6 @@ import type { AccountingCustomer } from "@/src/features/accounting-customers/int
  * opciones y fichas de cada filtro de encabezado. Se leen el `filterFn`, el
  * accessor y las props del `FilterHeader`, sin renderizar nada.
  */
-
-type Accessor<T> = { id?: string; accessorFn: (row: T, index: number) => unknown };
-
-function harness<T>(columns: ColumnDef<T, unknown>[], rows: T[]) {
-  const column = (id: string) => {
-    const found = columns.find((c) => c.id === id || (c as { accessorKey?: string }).accessorKey === id);
-    if (!found) throw new Error(`sin columna ${id}`);
-    return found;
-  };
-  return {
-    column,
-    options: (id: string) => column(id).meta?.headerFilter?.options ?? [],
-    matching: (id: string, value: string) =>
-      rows.filter((original) =>
-        (column(id).filterFn as unknown as (row: { original: T }, columnId: string, value: unknown) => boolean)(
-          { original },
-          id,
-          value,
-        ),
-      ),
-    cellText: (id: string, row: T) => (column(id) as unknown as Accessor<T>).accessorFn(row, 0),
-  };
-}
 
 const labels = (options: { label: string }[]) => options.map((o) => o.label);
 

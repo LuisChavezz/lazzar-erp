@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { harness } from "./support/headerFilterHarness";
 import { EMPTY_VALUE_FILTER_VALUE } from "@/src/utils/columnFilterOptions";
 import { AREA_HEADER_FILTERS, getColumns as getAreaColumns, type AreaRow } from "@/src/features/areas/components/AreaColumns";
 import { buildAreaRows } from "@/src/features/areas/utils/areaRows";
@@ -31,29 +32,6 @@ import type { Calendar } from "@/src/features/calendars/interfaces/calendar.inte
  */
 
 const NO_PERMISSIONS = { canEdit: false, canDelete: false };
-
-type Accessor<T> = { id?: string; accessorFn: (row: T, index: number) => unknown };
-
-function harness<T>(columns: ColumnDef<T, unknown>[], rows: T[]) {
-  const column = (id: string) => {
-    const found = columns.find((c) => c.id === id || (c as { accessorKey?: string }).accessorKey === id);
-    if (!found) throw new Error(`sin columna ${id}`);
-    return found;
-  };
-  return {
-    column,
-    options: (id: string) => column(id).meta?.headerFilter?.options ?? [],
-    matching: (id: string, value: string) =>
-      rows.filter((original) =>
-        (column(id).filterFn as unknown as (row: { original: T }, columnId: string, value: unknown) => boolean)(
-          { original },
-          id,
-          value,
-        ),
-      ),
-    cellText: (id: string, row: T) => (column(id) as unknown as Accessor<T>).accessorFn(row, 0),
-  };
-}
 
 test.describe("áreas", () => {
   const rows = buildAreaRows(
