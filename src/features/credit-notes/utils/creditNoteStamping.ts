@@ -124,7 +124,7 @@ const invoiceStampPendingReason = (folio: string | null): string =>
  * - Eliminada (`activo` distinto de `true`) o inexistente: `validar_factura` no
  *   mira `activo`, así que el backend aplicaría el crédito y timbraría un CFDI
  *   relacionado a una factura borrada. PROVISIONAL hasta que el backend lo
- *   valide (nucleo-erp, issue de `validar_factura` sin `activo`).
+ *   valide (nucleo-erp #736).
  * - Timbrado pendiente (`cfdi_pendiente`): el backend lo rechaza sin guardar
  *   nada, pero con un `cfdi` que no dice en qué quedó la nota; aquí se da el
  *   motivo exacto.
