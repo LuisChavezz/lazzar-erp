@@ -1,18 +1,19 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { Training } from "../interfaces/training.interface";
-import {
-  ESTADO_CAPACITACION_CFG,
-  getEstadoCapacitacionLabel,
-} from "../constants/trainingChoices";
+import { ESTADO_CAPACITACION_CFG } from "../constants/trainingChoices";
 import { isHttpUrl } from "../schemas/training.schema";
-import {
-  usePendingTrainingDeleteIds,
-  useTrainingRowActionsContext,
-} from "../hooks/useTrainingRowActions";
+import { useTrainingRowActionsContext } from "../hooks/useTrainingRowActions";
 
 /**
  * Fila de la tabla: la capacitación tal como llega del backend más el nombre
@@ -21,61 +22,59 @@ import {
  * El nombre viaja EN LA FILA y no se resuelve dentro del accessor: TanStack
  * guarda en caché el valor del accessor por fila y solo lo recalcula cuando
  * cambia `data`. Como las capacitaciones pueden llegar antes que el catálogo
- * de empleados, el accessor se congelaría con "Empleado #N" en pantalla, en la
- * búsqueda y en el orden. Construyendo las filas en `TrainingList`, la llegada
- * del catálogo produce un `data` nuevo y TanStack recalcula todo. Mismo arreglo
- * que `ContractRow`.
+ * de empleados, el accessor se congelaría con el respaldo en pantalla, en la
+ * búsqueda y en el orden. Construyendo las filas en `TrainingList`
+ * (`buildTrainingRows`), la llegada del catálogo produce un `data` nuevo y
+ * TanStack recalcula todo. Mismo arreglo que `ContractRow`.
  *
- * `null` = el empleado no aparece en el catálogo (o todavía no llega).
+ * `empleado_nombre` es SIEMPRE string: "Empleado #N" si el id no está en el
+ * catálogo (o todavía no llega).
  */
-export type TrainingRow = Training & { empleado_nombre: string | null };
+export type TrainingRow = Training & { empleado_nombre: string };
 
 const columnHelper = createColumnHelper<TrainingRow>();
 
-/**
- * Menú de acciones de UNA fila. Lee los callbacks por contexto y el "en
- * borrado" de la `MutationCache` (ver `useTrainingRowActions`), así que un
- * borrado en vuelo solo re-renderiza este componente y no remonta las celdas.
- *
- * Es solo presentacional: el diálogo de confirmación vive en `TrainingList`,
- * porque una celda se desmonta al ordenar, paginar o filtrar, y con ella se
- * perdería el diálogo a media interacción.
- */
-function TrainingRowActionsMenu({
-  training,
-  canEdit,
-  canDelete,
-}: {
-  training: Training;
+interface TrainingColumnPermissions {
   canEdit: boolean;
   canDelete: boolean;
-}) {
-  const { onEdit, onDelete } = useTrainingRowActionsContext();
-  const deletingIds = usePendingTrainingDeleteIds();
-  const menuItems: ActionMenuItem[] = [];
+}
 
-  if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(training),
-    });
-  }
-  // Borrado FÍSICO. La "cancelación" de negocio no es esto: se hace editando el
-  // estado a "Cancelado".
-  if (canDelete) {
-    menuItems.push({
+/**
+ * El nombre de la capacitación ES el menú de la fila, con el badge de su
+ * `estado` debajo (regla de los catálogos): sin columnas aparte de "Estado"
+ * ni "Acciones". Sin punto de `activo`: la capacitación no tiene baja lógica.
+ * Los callbacks y el "en vuelo" llegan por contexto; el diálogo vive en
+ * `TrainingList`. Sin "Ver detalle": las capacitaciones no tienen vista de
+ * detalle.
+ */
+function TrainingNameCell({
+  training,
+  permissions,
+}: {
+  training: TrainingRow;
+  permissions: TrainingColumnPermissions;
+}) {
+  const { onEdit, onDelete, busyIds } = useTrainingRowActionsContext();
+
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(training), visible: permissions.canEdit },
+    // Borrado FÍSICO. La "cancelación" de negocio no es esto: se hace editando
+    // el estado a "Cancelado".
+    {
       label: "Eliminar",
       icon: DeleteIcon,
       onSelect: () => onDelete(training),
-      disabled: deletingIds.includes(training.id),
-    });
-  }
+      disabled: busyIds.includes(training.id),
+      visible: permissions.canDelete,
+    },
+  ];
 
   return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de capacitación" />
-    </div>
+    <FolioActionMenu
+      name={training.nombre}
+      items={items}
+      status={<StatusBadge status={training.estado} config={ESTADO_CAPACITACION_CFG} />}
+    />
   );
 }
 
@@ -89,24 +88,25 @@ const compareNumeric = (a: unknown, b: unknown) => Number(a) - Number(b);
 
 /**
  * Columnas de la tabla. Solo dependen de los permisos (estables durante la
- * sesión): los callbacks y el estado "en borrado" llegan al menú por contexto,
+ * sesión): los callbacks y el estado "en vuelo" llegan al menú por contexto,
  * nunca por aquí.
  */
-export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }) => {
-  const columns = [
-    // Siempre string: el respaldo evita el `null` que excluiría la columna de
-    // la búsqueda global (ver DataTable).
-    columnHelper.accessor((row) => row.empleado_nombre ?? `Empleado #${row.empleado}`, {
+export const getColumns = (permissions: TrainingColumnPermissions) =>
+  [
+    // El nombre alimenta el orden y la búsqueda; el estado de su badge se
+    // filtra desde el encabezado de esta misma columna.
+    columnHelper.accessor("nombre", {
+      header: "Capacitación",
+      size: 280,
+      cell: ({ row }) => <TrainingNameCell training={row.original} permissions={permissions} />,
+    }),
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `TrainingRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
       id: "empleado",
       header: "Empleado",
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
-      ),
-    }),
-    columnHelper.accessor("nombre", {
-      header: "Capacitación",
-      cell: (info) => (
-        <span className="text-slate-700 dark:text-slate-200">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor((row) => row.institucion || "—", {
@@ -114,13 +114,6 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
       header: "Institución",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
-      ),
-    }),
-    columnHelper.accessor((row) => getEstadoCapacitacionLabel(row.estado) ?? "—", {
-      id: "estado",
-      header: "Estado",
-      cell: ({ row }) => (
-        <StatusBadge status={row.original.estado} config={ESTADO_CAPACITACION_CFG} />
       ),
     }),
     // El accessor devuelve la fecha YA formateada para que la búsqueda global
@@ -211,22 +204,28 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
     }),
   ] as ColumnDef<TrainingRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => (
-          <TrainingRowActionsMenu
-            training={row.original}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<TrainingRow>
-    );
-  }
-
-  return columns;
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * El nombre filtra por el `estado` (su badge), con ficha "Estatus: …": el
+ * catálogo completo aunque ninguna fila lo use, y al final cada código
+ * desconocido de las filas, crudo (igual que su badge). El empleado compara
+ * contra el FK crudo, rotulado con el nombre resuelto, con buscador. La
+ * institución agrupa primero las capacitaciones sin institución. Las fechas
+ * filtran por mes; el fin agrupa aparte las que no tienen fecha de término. La
+ * constancia, con o sin ella. Horas y calificación no llevan filtro: son
+ * números libres, los cubre el orden.
+ */
+export const TRAINING_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<TrainingRow>>> = {
+  nombre: estadoHeaderFilter(optionsFromConfig(ESTADO_CAPACITACION_CFG)),
+  empleado: employeeHeaderFilter(),
+  institucion: { type: "distinct", get: (r) => r.institucion, emptyOption: "Sin institución" },
+  fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
+  fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha de fin" },
+  constancia_url: {
+    type: "presence",
+    get: (r) => r.constancia_url,
+    con: "Con constancia",
+    sin: "Sin constancia",
+  },
 };

@@ -7,7 +7,7 @@ import { Training } from "../interfaces/training.interface";
 
 /**
  * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
- * se están borrando (ver `usePendingTrainingDeleteIds`).
+ * se están borrando (ver `usePendingTrainingIds`).
  */
 export const deleteTrainingMutationKey = ["delete-training"] as const;
 
