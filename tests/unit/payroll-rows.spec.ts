@@ -7,7 +7,7 @@ import {
   PAYROLL_HEADER_FILTERS,
   type PayrollRow,
 } from "@/src/features/payroll/components/PayrollColumns";
-import { buildPayrollRows } from "@/src/features/payroll/utils/payrollRows";
+import { buildPayrollRows, isPayrollRowDialogBusy } from "@/src/features/payroll/utils/payrollRows";
 import { PAYROLL_STALE_MESSAGES } from "@/src/features/payroll/hooks/payrollErrorMessages";
 import type { Payroll } from "@/src/features/payroll/interfaces/payroll.interface";
 
@@ -151,5 +151,26 @@ test.describe("nóminas › cierre de pagar y cancelar", () => {
 
   test("con la guarda o la escritura propia en vuelo no avisa", () => {
     expect(staleNotice(1, { estado: "cancelada" }, true)).toBeNull();
+  });
+});
+
+test.describe("nóminas › pagar o cancelar en vuelo", () => {
+  test("la guarda previa del diálogo de pagar cuenta como en vuelo: la vía rápida no avisa", () => {
+    const busy = isPayrollRowDialogBusy(1, true, []);
+    expect(busy).toBe(true);
+    expect(staleNotice(1, { estado: "cancelada" }, busy)).toBeNull();
+    expect(staleNotice(1, null, busy)).toBeNull();
+  });
+
+  test("la escritura propia de ESA nómina también; la de otra no", () => {
+    expect(isPayrollRowDialogBusy(1, false, [1])).toBe(true);
+    expect(isPayrollRowDialogBusy(1, false, [2])).toBe(false);
+    expect(isPayrollRowDialogBusy(null, false, [1])).toBe(false);
+  });
+
+  test("sin guarda ni escritura en vuelo, el cambio externo sí cierra con aviso", () => {
+    expect(staleNotice(1, { estado: "cancelada" }, isPayrollRowDialogBusy(1, false, []))?.key).toBe(
+      "payroll-stale-1-cancelada",
+    );
   });
 });
