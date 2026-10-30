@@ -27,6 +27,8 @@ import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
   canEmitCreditNote,
+  getInvoiceNotCreditableReason,
+  getInvoiceUnstampedEmitWarning,
   getRelatedInvoiceEmitBlockReason,
 } from "../utils/creditNoteStamping";
 import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
@@ -34,6 +36,10 @@ import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
 interface CreditNoteFormProps {
   onSuccess: () => void;
 }
+
+/** "Emitir nota" sin conocer aún la factura elegida (el listado no cargó). */
+const INVOICE_STATE_UNKNOWN_REASON =
+  "No se pudo confirmar el estado de la factura elegida: guarda la nota como borrador o espera a que se pueda consultar para emitirla.";
 
 /** Campos de importe de una línea, para pintarlos sin repetir el mismo bloque. */
 const LINE_MONEY_FIELDS = [
@@ -95,14 +101,15 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
   const selectedDetalleIds = lines.map((line) => line.factura_detalle);
 
   // Estado de la factura elegida según el listado de facturas (el mismo que
-  // cruza el selector, misma caché). Con su timbrado sin confirmar
-  // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir: el backend
-  // rechazaría el CFDI con un `cfdi` que bloquea este formulario
-  // (`getRelatedInvoiceEmitBlockReason`). Sin el listado no se bloquea aquí; el
-  // backend rechaza igual, sin guardar nada.
+  // cruza el selector, misma caché). Eliminada, cancelada o con su timbrado sin
+  // confirmar (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir
+  // (`getRelatedInvoiceEmitBlockReason`): el backend no valida `activo`, y un
+  // timbrado pendiente volvería con un `cfdi` que bloquea este formulario.
+  // Mientras el listado no cargue (o si falló, y el selector dejó elegir sin
+  // conocer la factura) tampoco se emite: podría ser una factura eliminada.
   // `silent`: el formulario lee el listado solo como señal y no lo muestra, así
   // que un refetch fallido no avisa aquí (el selector sí, al abrirse).
-  const { invoices } = useInvoices({ silent: true });
+  const { invoices, hasLoaded: hasLoadedInvoices } = useInvoices({ silent: true });
   const facturaRow = factura > 0 ? invoices.find((invoice) => invoice.id === factura) : undefined;
   // Sin el permiso de timbrado, "Emitir nota" queda deshabilitado con su motivo
   // (el backend respondería 403); guardar como borrador sigue disponible.
@@ -111,7 +118,16 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
     ? CREDIT_NOTE_EMIT_PERMISSION_REASON
     : facturaRow
       ? getRelatedInvoiceEmitBlockReason(facturaRow)
-      : null;
+      : factura > 0
+        ? hasLoadedInvoices
+          ? getInvoiceNotCreditableReason(facturaFolio || null, undefined)
+          : INVOICE_STATE_UNKNOWN_REASON
+        : null;
+  // Aviso (no bloqueo) de factura sin timbrar: en la empresa de Facturama el
+  // backend rechazaría la emisión con un `cfdi` sin `nota_credito`, que deja
+  // este formulario bloqueado (decisión de EC-639); fuera de ella procede.
+  const unstampedWarning =
+    !emitBlockReason && facturaRow ? getInvoiceUnstampedEmitWarning(facturaRow) : null;
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún
   // campo del payload. El importe que se acredita es el `total` capturado abajo
@@ -521,12 +537,23 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                   {emitBlockReason}
                 </p>
               ) : (
-                <p
-                  id="credit-note-emit-stamp-warning"
-                  className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
-                >
-                  {CREDIT_NOTE_EMIT_STAMP_WARNING}
-                </p>
+                <>
+                  <p
+                    id="credit-note-emit-stamp-warning"
+                    className="mb-3 text-xs text-amber-600 dark:text-amber-400 text-right"
+                  >
+                    {CREDIT_NOTE_EMIT_STAMP_WARNING}
+                  </p>
+                  {unstampedWarning && (
+                    <p
+                      id="credit-note-emit-unstamped-warning"
+                      role="status"
+                      className="mb-3 text-xs font-medium text-amber-700 dark:text-amber-400 text-right"
+                    >
+                      {`${unstampedWarning} En ese caso este formulario quedará bloqueado: guárdala como borrador y emítela cuando la factura esté timbrada.`}
+                    </p>
+                  )}
+                </>
               )}
               <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
                 <FormCancelButton onClick={handleReset} disabled={isPending} />
@@ -550,7 +577,9 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                   aria-describedby={
                     emitBlockReason
                       ? "credit-note-emit-block-reason"
-                      : "credit-note-emit-stamp-warning"
+                      : unstampedWarning
+                        ? "credit-note-emit-stamp-warning credit-note-emit-unstamped-warning"
+                        : "credit-note-emit-stamp-warning"
                   }
                   isPending={isPending && estatusIntent === "Emitida"}
                   loadingLabel="Emitiendo..."
