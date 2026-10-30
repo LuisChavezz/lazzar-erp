@@ -55,10 +55,19 @@ export interface SpecialOrderTalla {
   cantidad: number;
   /**
    * SKU de producción ya generado para esta talla, o `null`. Solo refleja
-   * variantes de producción ACTIVAS. El alta es todo-o-nada por línea: o todas
-   * las tallas con cantidad lo traen, o ninguna.
+   * variantes de producción ACTIVAS. El alta es INCREMENTAL por línea: un
+   * reintento solo genera las tallas con cantidad que aún no tienen variante,
+   * así que una línea puede quedar con unas tallas con SKU y otras sin él.
+   * Un valor en cualquier talla es la señal de que la línea ya pasó por un alta.
    */
   sku_produccion: string | null;
+  /**
+   * El SKU que generará el alta para esta talla, con la misma fórmula que el
+   * backend (`{sku_prefijo}-{color.codigo}-{talla}` en mayúsculas). `null` si la
+   * talla ya tiene variante, si la línea no tiene color o si su color no tiene
+   * `codigo`. Llega también en tallas con `cantidad = 0`, que NO se generan.
+   */
+  sku_siguiente: string | null;
   lleva_bordado: boolean;
   bordado_config: SpecialOrderBordadoConfig | null;
   lleva_reflejante: boolean;
@@ -75,6 +84,12 @@ export interface SpecialOrderTalla {
   cambio_talla_config: unknown;
 }
 
+/** Categoría de producto de una línea de muestra. */
+export interface SpecialOrderCategoria {
+  id: number;
+  nombre: string;
+}
+
 /** Línea de muestra del pedido (`PedidoDetalleEspecialSerializer`). */
 export interface SpecialOrderLine {
   /** Id del `PedidoDetalle`: es el `pedido_detalle_id` del alta de SKU. */
@@ -82,6 +97,14 @@ export interface SpecialOrderLine {
   producto_nombre_externo: string;
   /** `null` cuando la línea no tiene color. El contrato NO expone el id del color. */
   color_nombre: string | null;
+  /**
+   * La que capturó ventas en la línea de muestra de la cotización: el pedido no
+   * la guarda, el backend la resuelve al leer (por nombre y color). `null` si
+   * la cotización no la tenía o no se pudo emparejar la línea.
+   */
+  categoria_producto: SpecialOrderCategoria | null;
+  /** `"MP{id}"`: prefijo del SKU de producción de cada talla. */
+  sku_prefijo: string;
   tallas: SpecialOrderTalla[];
 }
 
@@ -124,6 +147,11 @@ export interface SampleSkuOnboardingPayload {
   pedido_detalle_id: number;
   color?: number;
   materia_prima_detalle: SampleSkuOnboardingMaterial[];
+  /**
+   * También da de alta el producto y una variante por talla en el catálogo, con
+   * la categoría de la línea. Solo se envía (`true`) cuando se marca.
+   */
+  alta_catalogo?: boolean;
 }
 
 /**
@@ -137,5 +165,15 @@ export interface SampleProductionVariant {
   nombre: string;
   talla_nombre: string;
   aplica_catalogo: boolean;
+  /** SKU de la variante de catálogo creada con `alta_catalogo`; `null` sin él. */
+  sku_catalogo: string | null;
   pedido_detalle: number;
+}
+
+/**
+ * Respuesta de `GET /catalogo/producto/siguiente-codigo/`. Es una vista previa:
+ * el backend no reserva el código, el real se recalcula al crear.
+ */
+export interface NextCatalogProductCode {
+  codigo: string;
 }

@@ -78,6 +78,7 @@ export function useSampleSkuOnboardingForm({
     defaultValues: {
       color: 0,
       materia_prima_detalle: [],
+      alta_catalogo: false,
     } as SampleSkuOnboardingFormValues,
     onSubmit: async ({ value }) => {
       const parsed = buildSampleSkuOnboardingSchema(requiresColor).safeParse(value);
