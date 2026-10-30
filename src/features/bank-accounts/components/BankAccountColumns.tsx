@@ -111,13 +111,13 @@ export const getColumns = () => {
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * - El alias filtra por `activo` (su punto), con ficha "Registro: …".
+ * - El alias filtra por `activo` (su punto), con ficha "Estatus: …".
  * - El banco es un FK de catálogo, no un enum: sus opciones salen de las filas
  *   (solo los bancos que tienen alguna cuenta), comparan contra el id crudo y
  *   se rotulan con el nombre resuelto, así dos bancos homónimos no se mezclan.
  *   `banco` es obligatorio en el modelo, así que no hay opción "Sin banco".
  */
 export const BANK_ACCOUNT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CuentaBancaria>>> = {
-  alias: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  alias: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
   banco: { type: "distinct", get: (r) => r.banco, label: getBancoLabel },
 };

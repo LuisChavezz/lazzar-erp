@@ -87,9 +87,9 @@ export const getColumns = () => {
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * El nombre filtra por `activo` (su punto), con ficha "Registro: …". Código,
+ * El nombre filtra por `activo` (su punto), con ficha "Estatus: …". Código,
  * SWIFT y observaciones no llevan filtro: los cubre la búsqueda.
  */
 export const BANK_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Banco>>> = {
-  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
 };
