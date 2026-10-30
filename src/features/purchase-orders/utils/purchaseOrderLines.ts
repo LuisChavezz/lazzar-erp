@@ -85,6 +85,15 @@ export const lineFromDetalle = (d: PurchaseOrderDetalle): PurchaseOrderLine => (
 });
 
 /**
+ * ¿Algún renglón se compró por SKU? Decide si el detalle, el PDF y el correo
+ * de la OC muestran la columna SKU: sin ninguno (materia prima, PT anterior a
+ * la compra por SKU) no se pinta una columna vacía.
+ */
+export const hasVariantSku = (
+  detalles: { producto_variante_sku?: string | null }[],
+): boolean => detalles.some((d) => Boolean(d.producto_variante_sku));
+
+/**
  * Renglones guardados de la orden con su cantidad, uno por llave. Si la orden
  * repite un producto (o una variante) en dos renglones, queda uno solo, con
  * los datos del último: lo mismo que hacía la edición cuando indexaba por id

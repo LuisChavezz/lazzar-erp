@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { hasVariantSku } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
@@ -40,8 +41,10 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
     order.subtotal !== undefined ||
     order.total !== undefined;
   const showLineAmounts = detalles.some((item) => item.precio !== undefined);
-  // Columnas de la tabla de productos: 2 fijas + las 2 de importe si se ven.
-  const productColumnCount = showLineAmounts ? 4 : 2;
+  // Columna SKU solo si algún renglón se compró por SKU (PT, EC-657).
+  const showSku = hasVariantSku(detalles);
+  // Columnas de la tabla de productos: 2 fijas + SKU + las 2 de importe si se ven.
+  const productColumnCount = 2 + (showSku ? 1 : 0) + (showLineAmounts ? 2 : 0);
 
   // Igual que en PurchaseOrderPdfDocument: Flete/Seguros solo se muestran
   // como renglón cuando aportan al total, para que ambos documentos
@@ -94,6 +97,7 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
               <table className="mt-4 w-full border-collapse overflow-hidden text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-[0.16em] text-slate-500">
+                    {showSku ? <th className="py-3 pr-3 font-semibold">SKU</th> : null}
                     <th className="py-3 pr-3 font-semibold">Descripción</th>
                     <th className="py-3 pr-3 font-semibold text-right">Cantidad</th>
                     {showLineAmounts ? (
@@ -118,6 +122,11 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                       return (
                         <Fragment key={index}>
                           <tr className={dividerClass}>
+                            {showSku ? (
+                              <td className="py-4 pr-3 align-top whitespace-nowrap text-slate-900">
+                                {item.producto_variante_sku || "—"}
+                              </td>
+                            ) : null}
                             <td className="py-4 pr-3 align-top text-slate-900">
                               <Text className="m-0 text-sm font-semibold text-slate-900">
                                 {/* `descripcion` es nullable en el backend. */}
