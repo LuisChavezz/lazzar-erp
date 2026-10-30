@@ -48,6 +48,7 @@ import {
   type DataTableModeContextValue,
   type DataTableServerFilters,
 } from "./DataTableModeContext";
+import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -459,6 +460,17 @@ export function DataTable<TData, TValue>({
       return next;
     });
   }, []);
+  // Última opción vista con el valor elegido de cada filtro de columna (ver
+  // `getRememberedFilterOption` en `DataTableModeContext`). En un ref: escribirla
+  // no repinta nada, y los encabezados la leen al montarse.
+  const rememberedFilterOptionsRef = useRef<Record<string, ColumnFilterOption>>({});
+  const getRememberedFilterOption = useCallback(
+    (columnId: string) => rememberedFilterOptionsRef.current[columnId],
+    []
+  );
+  const rememberFilterOption = useCallback((columnId: string, option: ColumnFilterOption) => {
+    rememberedFilterOptionsRef.current[columnId] = option;
+  }, []);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: defaultPageSize,
@@ -719,8 +731,22 @@ export function DataTable<TData, TValue>({
         ? { mode: "server", filters: serverFilters }
         : isServerPaginated
         ? SERVER_PAGINATION_TABLE_MODE
-        : { mode: "client", columnFilters, reportFilterValueLabel },
-    [isServerMode, isServerPaginated, serverFilters, columnFilters, reportFilterValueLabel]
+        : {
+            mode: "client",
+            columnFilters,
+            reportFilterValueLabel,
+            getRememberedFilterOption,
+            rememberFilterOption,
+          },
+    [
+      isServerMode,
+      isServerPaginated,
+      serverFilters,
+      columnFilters,
+      reportFilterValueLabel,
+      getRememberedFilterOption,
+      rememberFilterOption,
+    ]
   );
   // Solo en desarrollo: una clave de `meta.serverSort` / `meta.serverFilter`
   // que la lista no conoce se ignora (la columna no ordena, o su filtro no
