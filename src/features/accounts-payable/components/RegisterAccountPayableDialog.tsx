@@ -12,6 +12,8 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { CxpIcon, InfoIcon, RefreshIcon, RejectIcon } from "@/src/components/Icons";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { useAccountPayableForm } from "../hooks/useAccountPayableForm";
 import { FacturaProveedorSelectorDialog } from "./FacturaProveedorSelectorDialog";
 
@@ -103,13 +105,13 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <>
       <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-        <fieldset disabled={isPending}>
+        <fieldset disabled={isPending} className="space-y-5">
           {/* Banner del backend. Un 409 es de REINTENTO (ámbar, con botón): nada
               que corregir, otra operación tenía la factura bloqueada. Cualquier
               otro rechazo es rojo y exige corregir antes de reenviar. */}
           {serverError &&
             (serverError.canRetry ? (
-              <div className="mb-6 flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+              <div className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
                 <InfoIcon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="flex-1 min-w-48 text-sm text-amber-800 dark:text-amber-300">
                   {serverError.message}
@@ -120,7 +122,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                 </Button>
               </div>
             ) : (
-              <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3">
                 <InfoIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="flex-1 text-sm text-red-700 dark:text-red-300">
                   {serverError.message}
@@ -136,33 +138,23 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
             ))}
 
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-4">
-            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                  <CxpIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                    Factura del Proveedor
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Solo facturas registradas que aún no tienen cuenta por pagar
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                rounded="full"
-                disabled={proveedor <= 0}
-                onClick={openPicker}
-              >
-                {facturaId > 0 ? "Cambiar factura" : "Elegir factura"}
-              </Button>
-            </div>
+          {/* Un solo bloque, compacto: la factura se elige con el selector. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Solo facturas registradas que aún no tienen cuenta por pagar
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              rounded="full"
+              disabled={proveedor <= 0}
+              onClick={openPicker}
+            >
+              {facturaId > 0 ? "Cambiar factura" : "Elegir factura"}
+            </Button>
+          </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <form.Field name="proveedor">
                 {(field) => (
                   <FormSelect
@@ -171,6 +163,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                     value={String(field.state.value)}
                     onChange={(event) => handleProveedorChange(Number(event.target.value))}
                     error={getError("proveedor")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     <option value="0" disabled>
                       Seleccionar...
@@ -199,7 +192,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                 }
                 value={facturaId > 0 ? facturaFolio || `Factura #${facturaId}` : ""}
                 onClick={openPicker}
-                className={proveedor > 0 ? "cursor-pointer" : ""}
+                className={`${COMPACT_FIELD_CLS} ${proveedor > 0 ? "cursor-pointer" : ""}`}
                 error={getError("factura_proveedor")}
               />
 
@@ -212,6 +205,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                 placeholder="Se toma de la factura"
                 value={total ? formatMoneyValueOrDash(total, monedaCodigo) : ""}
                 error={totalError}
+                className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
               />
 
               <form.Field name="fecha_vencimiento">
@@ -226,6 +220,7 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                       clearErrors("fecha_vencimiento");
                     }}
                     error={getError("fecha_vencimiento")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -251,19 +246,19 @@ function RegisterAccountPayableForm({ onSuccess }: { onSuccess: () => void }) {
                         clearErrors("observaciones");
                       }}
                       error={getError("observaciones")}
+                      className={COMPACT_FIELD_CLS}
                     />
                   )}
                 </form.Field>
               </div>
             </div>
-          </section>
 
-          <p className="mb-6 px-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="px-1 text-xs text-slate-500 dark:text-slate-400">
             La cuenta nace con saldo igual al total y estatus Pendiente. Su saldo solo
             lo mueven los pagos.
           </p>
 
-          <div className="flex items-center justify-end gap-3 pb-4">
+          <div className="flex items-center justify-end gap-3 pt-1">
             <FormCancelButton onClick={handleReset} disabled={isPending} />
             <FormSubmitButton isPending={isPending} loadingLabel="Registrando...">
               Registrar cuenta
@@ -310,11 +305,12 @@ export function RegisterAccountPayableDialog() {
           title="Registrar CxP faltante"
           subtitle="Para una factura registrada cuya cuenta por pagar se eliminó"
           statusColor="rose"
+          icon={CxpIcon}
         />
       }
       open={isOpen}
       onOpenChange={setIsOpen}
-      maxWidth="760px"
+      maxWidth={DIALOG_WIDTH_FORM}
       trigger={
         <Button
           variant="secondary"
