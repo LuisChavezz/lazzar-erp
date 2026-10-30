@@ -48,8 +48,9 @@ import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
  * agrega al final del `body` y gana el apilado. Mismo orden de montaje —y mismo
  * resultado— que en `EmbroideryView`.
  *
- * Sin edición ni transición de estatus en ningún punto: el backend no las
- * expone (`PUT`/`PATCH` → 405). El `DELETE` (soft delete) SÍ existe en el API
+ * Sin edición en el listado ni en su diálogo: estatus, prioridad y
+ * observaciones se editan en la página de detalle (`PATCH` de nucleo-erp
+ * #755). El `DELETE` (soft delete) SÍ existe en el API
  * pero no se expone aquí, igual que en bordado. Tampoco hay paginación (el
  * endpoint devuelve el arreglo completo, sin envoltorio `count`/`results`).
  *

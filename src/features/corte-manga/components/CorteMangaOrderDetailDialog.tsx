@@ -163,9 +163,9 @@ export function CorteMangaOrderDetailContent({
         <div className="space-y-5">
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-            {/* SOLO LECTURA: `estatus_corte` es `read_only` en el serializer y
-                no existe `PUT`/`PATCH` (405), así que este badge informa y no
-                ofrece ninguna transición. Reutiliza la misma config de 7
+            {/* SOLO LECTURA a propósito: el diálogo es una composición aparte
+                de la página de detalle, que es donde se edita el estatus
+                (`CorteMangaOrderPageContent`). Reutiliza la misma config de 7
                 valores del listado. */}
             <InfoField label="Estatus">
               <StatusBadge
@@ -198,10 +198,9 @@ export function CorteMangaOrderDetailContent({
                 {formatShortDate(order.fecha_inicio)} · {formatShortTime(order.fecha_inicio)}
               </span>
             </InfoField>
-            {/* `fecha_fin` es SIEMPRE `null` hoy (ningún endpoint la fija) — se
-                muestra igual, sin ocultar el campo: `formatShortDate`/
-                `formatShortTime` ya resuelven `null` al guion largo del
-                proyecto, así que no hace falta un `if` especial. */}
+            {/* `fecha_fin` la sella el backend al completar la orden y llega
+                `null` mientras no lo esté: `formatShortDate`/`formatShortTime`
+                ya resuelven `null` al guion largo del proyecto. */}
             <InfoField label="Fin">
               <span className="tabular-nums">
                 {formatShortDate(order.fecha_fin)} · {formatShortTime(order.fecha_fin)}

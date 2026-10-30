@@ -12,9 +12,17 @@ import {
   catalogAltaInheritedOn,
   getCatalogAltaState,
   getDefaultAltaCatalogo,
+  hasPendingCatalogAlta,
+  isTallaPendingCatalogAlta,
   resolveAltaCatalogo,
 } from "@/src/features/special-orders/utils/catalogAlta";
 import { getLineSkuStatus } from "@/src/features/special-orders/utils/lineSkuStatus";
+import {
+  CATALOG_ALTA_GENERIC_ERROR,
+  parseCatalogAltaError,
+} from "@/src/features/special-orders/utils/parseCatalogAltaError";
+import { canActOnSpecialOrderLines } from "@/src/features/special-orders/utils/lineActions";
+import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import { parseSampleSkuOnboardingError } from "@/src/features/special-orders/utils/parseSampleSkuOnboardingError";
 import {
   buildSampleSku,
@@ -285,5 +293,83 @@ test.describe("parseSampleSkuOnboardingError con alta en catálogo", () => {
       httpError(400, { categoria_producto: [message] }),
     );
     expect(parsed.formError).toBe(message);
+  });
+});
+
+test.describe("alta en catálogo por línea (EC-655)", () => {
+  test("pendiente = tiene SKU de producción y aún no está en catálogo", () => {
+    expect(isTallaPendingCatalogAlta(talla({ sku_produccion: "MP720-100-G" }))).toBe(true);
+    expect(
+      isTallaPendingCatalogAlta(
+        talla({ sku_produccion: "MP720-100-G", aplica_catalogo: true, sku_catalogo: "CH001-100-G" }),
+      ),
+    ).toBe(false);
+    // `aplica_catalogo` en false SIN variante no es pendiente: no hay nada que dar de alta.
+    expect(isTallaPendingCatalogAlta(talla({ sku_produccion: null }))).toBe(false);
+  });
+
+  test("la línea se ofrece si ALGUNA talla está pendiente, también tras un alta parcial", () => {
+    const parcial = line({
+      tallas: [
+        talla({ id: 1, sku_produccion: "MP720-100-G", aplica_catalogo: true, sku_catalogo: "CH001-100-G" }),
+        talla({ id: 2, talla_nombre: "XG", sku_produccion: "MP720-100-XG" }),
+      ],
+    });
+    expect(hasPendingCatalogAlta(parcial)).toBe(true);
+    expect(hasPendingCatalogAlta(line({ tallas: [talla({})] }))).toBe(false);
+    expect(
+      hasPendingCatalogAlta(
+        line({ tallas: [talla({ sku_produccion: "MP720-100-G", aplica_catalogo: true })] }),
+      ),
+    ).toBe(false);
+  });
+});
+
+test.describe("parseCatalogAltaError", () => {
+  for (const key of ["alta_catalogo", "categoria_producto", "permiso"] as const) {
+    test(`el 400 \`${key}\` muestra el mensaje del backend`, () => {
+      const message = `Mensaje de ${key}.`;
+      const parsed = parseCatalogAltaError(httpError(400, { [key]: [message] }));
+      expect(parsed).toEqual({ message, staleLine: false });
+    });
+  }
+
+  test("el 400 `pedido_detalle_id` muestra su mensaje y marca la línea obsoleta", () => {
+    const message = "La línea no tiene SKU de producción pendientes de alta en catálogo.";
+    const parsed = parseCatalogAltaError(httpError(400, { pedido_detalle_id: message }));
+    expect(parsed).toEqual({ message, staleLine: true });
+  });
+
+  test("un 404 relee el detalle", () => {
+    const parsed = parseCatalogAltaError(httpError(404, { detail: "No encontrado." }));
+    expect(parsed).toEqual({ message: "No encontrado.", staleLine: true });
+  });
+
+  test("sin cuerpo utilizable, el genérico (nunca el `message` de Axios)", () => {
+    expect(parseCatalogAltaError(httpError(500, "<html>")).message).toBe(CATALOG_ALTA_GENERIC_ERROR);
+    expect(parseCatalogAltaError(new Error("Network Error")).message).toBe(
+      CATALOG_ALTA_GENERIC_ERROR,
+    );
+  });
+});
+
+test.describe("parseCatalogAltaError con pedido cancelado", () => {
+  test("el 400 `pedido` muestra su mensaje y marca la línea obsoleta", () => {
+    const message = "El pedido está CANCELADO; no se puede dar de alta en catálogo.";
+    const parsed = parseCatalogAltaError(httpError(400, { pedido: message }));
+    expect(parsed).toEqual({ message, staleLine: true });
+  });
+});
+
+test.describe("canActOnSpecialOrderLines", () => {
+  test("un pedido CANCELADO no ofrece ninguna acción de línea, aunque el usuario las vea", () => {
+    expect(canActOnSpecialOrderLines(true, PEDIDO_ESTATUS.CANCELADO)).toBe(false);
+  });
+
+  test("un pedido vivo las ofrece solo a quien las ve", () => {
+    for (const estatus of [PEDIDO_ESTATUS.AUTORIZADA, PEDIDO_ESTATUS.EN_PROCESO]) {
+      expect(canActOnSpecialOrderLines(true, estatus)).toBe(true);
+      expect(canActOnSpecialOrderLines(false, estatus)).toBe(false);
+    }
   });
 });

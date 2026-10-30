@@ -14,11 +14,9 @@ import type { ReflectiveOrderStatus } from "../interfaces/reflective-order.inter
  * OJO: el `3` es "Aplicando", NO "Bordando" — reflejante y bordado tienen
  * enums gemelos en forma pero distintos en etiquetas. No se comparten configs.
  *
- * Hoy el backend SIEMPRE devuelve `1` (Pendiente): ninguna de las dos rutas de
- * alta escribe otro valor y no hay endpoint de transición (`PUT`/`PATCH` →
- * 405). Se cubren los 7 desde ahora para que un cambio futuro de backend que
- * empiece a usarlos no requiera tocar el frontend. Por lo mismo NO se ofrece un
- * filtro por estatus en la tabla: todas las filas comparten el mismo valor.
+ * Toda orden nace en `1` (Pendiente) y avanza desde su ficha de detalle con el
+ * `PATCH` de nucleo-erp #755 (ver `WorkOrderStatusSelect`); los 7 valores
+ * llegan en la práctica. La tabla todavía no ofrece filtro por estatus.
  *
  * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 7
  * entradas (`satisfies`); lo exportado se tipa `Record<string, …>` porque

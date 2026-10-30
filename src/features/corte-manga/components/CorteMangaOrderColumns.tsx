@@ -58,13 +58,15 @@ const FolioCell = ({
  *
  * Se omiten a propósito varios campos que sí vienen en la respuesta:
  * `empresa`/`sucursal` se muestran por su nombre resuelto y no por su id,
- * `usuario_asignado` igual, `fecha_fin` siempre es `null` y `activo` siempre
- * `true` (el queryset filtra `activo=True`). El contenido de `detalles` se
- * resume en una sola columna — su desglose vive en el diálogo de detalle.
+ * `usuario_asignado` igual, `fecha_fin` no aporta en el listado y `activo`
+ * siempre es `true` (el queryset filtra `activo=True`). El contenido de
+ * `detalles` se resume en una sola columna — su desglose vive en el diálogo de
+ * detalle.
  *
- * Sin edición ni transición de estatus: ninguna tiene endpoint. `estatus_corte`
- * es `read_only` en el serializer y `PUT`/`PATCH` responden 405, así que el
- * badge es de SOLO LECTURA y pinta el valor tal cual llega.
+ * Sin edición en la tabla: el badge de estatus es de solo lectura y pinta el
+ * valor tal cual llega. Estatus, prioridad y observaciones se editan en la
+ * página de detalle (`CorteMangaOrderPageContent`, `PATCH` de nucleo-erp
+ * #755).
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el error de inferencia ya documentado en `EmbroideryOrderColumns` y

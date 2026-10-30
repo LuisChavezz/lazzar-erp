@@ -12,6 +12,8 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
+import { canActOnSpecialOrderLines } from "../utils/lineActions";
+import { CatalogAltaConfirmDialog } from "./CatalogAltaConfirmDialog";
 import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
 
@@ -31,8 +33,9 @@ interface SpecialOrderPageContentProps {
 /**
  * Cuerpo de la página de detalle de un pedido especial: cabecera con los datos
  * del pedido y sus líneas de muestra con las tallas y servicios a fabricar.
- * Sin enlace al pedido completo. La única escritura es el alta de SKU de
- * producción + lista de materiales por línea (`SampleSkuOnboardingDialog`).
+ * Sin enlace al pedido completo. Escrituras por línea: el alta de SKU de
+ * producción + lista de materiales (`SampleSkuOnboardingDialog`) y el alta en
+ * catálogo de esos SKU (`CatalogAltaConfirmDialog`).
  */
 export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProps) {
   const numericId = Number(orderId);
@@ -41,11 +44,12 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
     isValidId ? numericId : null,
   );
 
-  // Visibilidad del alta de SKU: admin de empresa / superusuario (`role ===
-  // "admin"`, que `hasPermission` cortocircuita) o cualquier usuario con
-  // `R-PRODUCCION`. Es UX, no la regla real: el backend exige además el
-  // DEPARTAMENTO Producción, que la sesión no trae, así que un usuario puede ver
-  // la acción y recibir el rechazo al enviar (el diálogo lo explica).
+  // Visibilidad del alta de SKU y del alta en catálogo: admin de empresa /
+  // superusuario (`role === "admin"`, que `hasPermission` cortocircuita) o
+  // cualquier usuario con `R-PRODUCCION`. Es UX, no la regla real: el backend
+  // exige además el DEPARTAMENTO Producción, que la sesión no trae, así que un
+  // usuario puede ver la acción y recibir el rechazo al enviar (el diálogo lo
+  // explica).
   const { data: session } = useSession();
   const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
 
@@ -59,6 +63,13 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
     open: boolean;
     session: number;
   }>({ lineId: null, open: false, session: 0 });
+
+  // Alta en catálogo: mismo criterio de id + `open` aparte; la copia de la
+  // línea al abrir la toma el propio diálogo (`useDialogSession`).
+  const [catalogAlta, setCatalogAlta] = useState<{ lineId: number | null; open: boolean }>({
+    lineId: null,
+    open: false,
+  });
 
   const BackLink = (
     <Link
@@ -147,11 +158,13 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           mismo pedido no se listan aquí.
         </p>
         <SpecialOrderLines
+          pedidoId={data.id}
           detalles={data.detalles}
-          canGenerateSkus={canGenerateSkus}
+          canGenerateSkus={canActOnSpecialOrderLines(canGenerateSkus, data.estatus)}
           onGenerateSkus={(line) =>
             setOnboarding((prev) => ({ lineId: line.id, open: true, session: prev.session + 1 }))
           }
+          onAltaCatalogo={(line) => setCatalogAlta({ lineId: line.id, open: true })}
         />
       </Section>
 
@@ -162,6 +175,13 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
         line={data.detalles.find((line) => line.id === onboarding.lineId) ?? null}
         onClose={() => setOnboarding((prev) => ({ ...prev, open: false }))}
         onClosed={() => setOnboarding((prev) => (prev.open ? prev : { ...prev, lineId: null }))}
+      />
+
+      <CatalogAltaConfirmDialog
+        pedidoId={data.id}
+        open={catalogAlta.open}
+        line={data.detalles.find((line) => line.id === catalogAlta.lineId) ?? null}
+        onClose={() => setCatalogAlta((prev) => ({ ...prev, open: false }))}
       />
     </div>
   );

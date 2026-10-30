@@ -22,16 +22,12 @@ import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado
  * Estatus de una orden de corte de manga (`OrdenesCorteManga.EstatusCorte`,
  * enteros 1-7).
  *
- * En la práctica SIEMPRE llega `1` (Pendiente): `estatus_corte` está en los
- * `read_only_fields` del serializer, así que ninguna ruta de alta puede
- * escribir otro valor, y no existe endpoint que lo avance
- * (`OrdenesCorteMangaViewSet` solo expone `list`/`retrieve`/`create`/`destroy`/
- * `onboarding`; `PUT`/`PATCH` → 405).
- *
- * Se tipan los 7 igual, para que empezar a usarlos no requiera tocar el
- * frontend — mismo criterio que `ReflectiveOrderStatus`/`EmbroideryOrderStatus`.
- * El valor se lee TAL CUAL llega de la base de datos; el badge no asume
- * `PENDIENTE` (ver `CORTE_MANGA_ORDER_STATUS_CONFIG`).
+ * Toda orden NACE en `1` (Pendiente): `estatus_corte` está en los
+ * `read_only_fields` del serializer del ALTA, así que ninguna ruta de alta
+ * puede escribir otro valor. Desde nucleo-erp #755 se avanza con
+ * `PATCH /produccion/orden-corte-manga/{id}/` (ver
+ * `UpdateCorteMangaOrderPayload`): sin reglas de transición, y `7` (Cancelado)
+ * es terminal — una orden cancelada responde `400` a cualquier `PATCH`.
  *
  * DIFERENCIA con reflejante y bordado: el `3` aquí es `Cortando` (reflejante:
  * `Aplicando`; bordado: `Bordando`). Los tres enums son gemelos en forma pero
@@ -124,9 +120,8 @@ export interface CorteMangaOrderLine {
  * `SerializerMethodField` que devuelve `get_full_name()` y, si queda vacío, el
  * email.
  *
- * `fecha_fin` siempre llega `null` (ningún endpoint la fija) y `activo` siempre
- * `true` (el queryset filtra `activo=True`; el `DELETE` es un soft delete que
- * saca la fila del listado).
+ * `activo` siempre llega `true` (el queryset filtra `activo=True`; el `DELETE`
+ * es un soft delete que saca la fila del listado).
  *
  * RUTA DE ALTA: hoy solo una, `OrdenCorteMangaService.save`, que fija
  * `usuario_asignado` = usuario autenticado y consume el folio de la serie
@@ -161,7 +156,11 @@ export interface CorteMangaOrder {
   prioridad: number;
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
   fecha_inicio: string;
-  /** Siempre `null` hoy — ningún endpoint la fija. */
+  /**
+   * La sella el backend al pasar a `5` (Completado) si no tenía una; la UI no
+   * la captura. Al salir de `5` el frontend la limpia (ver
+   * `buildCorteMangaStatusPayload`).
+   */
   fecha_fin: string | null;
   observaciones: string | null;
   activo: boolean;
@@ -348,4 +347,22 @@ export interface CreateCorteMangaOrderPayload {
   pedido: number;
   prioridad?: number;
   observaciones?: string;
+}
+
+/**
+ * Cuerpo de `PATCH /produccion/orden-corte-manga/{id}/` (nucleo-erp #755,
+ * `OrdenesCorteMangaEditarSerializer`). Edición PARCIAL: solo viaja lo que
+ * cambia.
+ *
+ * A diferencia del alta (donde `estatus_corte` es `read_only`), este serializer
+ * SÍ lo persiste. Son los cuatro campos que escribe; cualquier otro se descarta
+ * en silencio con `200`. `fecha_fin` solo se envía como `null`, para limpiarla
+ * al salir de `5` (Completado): la UI no la captura, y al ENTRAR a `5` se omite
+ * para que el backend la selle. Ver `buildCorteMangaStatusPayload`.
+ */
+export interface UpdateCorteMangaOrderPayload {
+  estatus_corte?: CorteMangaOrderStatus;
+  prioridad?: number;
+  observaciones?: string | null;
+  fecha_fin?: null;
 }

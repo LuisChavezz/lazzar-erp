@@ -24,15 +24,12 @@ import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado
  * Estatus de una orden de reflejante (`OrdenesReflejante.EstatusReflejante`,
  * enteros 1-7).
  *
- * En la práctica SIEMPRE llega `1` (Pendiente): las DOS rutas que crean
- * órdenes hoy lo dejan en ese valor —`ventas` lo escribe literal
- * (`estatus_reflejante=1`) y `OrdenReflejanteService.save` ni siquiera lo pasa,
- * así que toma el default del modelo— y no existe endpoint que lo avance
- * (`OrdenReflejanteViewSet` solo expone `list`/`retrieve`/`create`/`destroy`/
- * `onboarding`; `PUT`/`PATCH` → 405).
- *
- * Se tipan los 7 igual, para que empezar a usarlos no requiera tocar el
- * frontend — mismo criterio que `EmbroideryOrderStatus`/`PackingEstado`.
+ * Toda orden NACE en `1` (Pendiente): las dos rutas de alta lo dejan en ese
+ * valor —`ventas` lo escribe literal (`estatus_reflejante=1`) y
+ * `OrdenReflejanteService.save` ni siquiera lo pasa—. Desde nucleo-erp #755 se
+ * avanza con `PATCH /produccion/orden-reflejante/{id}/` (ver
+ * `UpdateReflectiveOrderPayload`): sin reglas de transición, y `7` (Cancelado)
+ * es terminal — una orden cancelada responde `400` a cualquier `PATCH`.
  *
  * DIFERENCIA con bordado: el `3` de reflejante es `Aplicando` (el de bordado es
  * `Bordando`). Los enums son gemelos en forma pero NO en etiquetas; no se
@@ -106,9 +103,8 @@ export interface ReflectiveOrderLine {
  * `SerializerMethodField` que resuelve `get_full_name()` y, si queda vacío, el
  * email. Por eso este listado sí puede tener columna de operador.
  *
- * `fecha_fin` siempre llega `null` (ningún endpoint la fija) y `activo` siempre
- * `true` (el queryset filtra `activo=True`; el `DELETE` es un soft delete que
- * saca la fila del listado).
+ * `activo` siempre llega `true` (el queryset filtra `activo=True`; el `DELETE`
+ * es un soft delete que saca la fila del listado).
  *
  * DOS RUTAS DE ALTA, y por eso conviven dos formatos de `folio_reflejante` en
  * la misma tabla:
@@ -144,7 +140,11 @@ export interface ReflectiveOrder {
   prioridad: number;
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
   fecha_inicio: string;
-  /** Siempre `null` hoy — ningún endpoint la fija. */
+  /**
+   * La sella el backend al pasar a `5` (Completado) si no tenía una; la UI no
+   * la captura. Al salir de `5` el frontend la limpia (ver
+   * `buildReflectiveStatusPayload`).
+   */
   fecha_fin: string | null;
   observaciones: string | null;
   activo: boolean;
@@ -568,3 +568,19 @@ export type CreatedReflectiveOrder = Omit<
   ReflectiveOrder,
   "cobertura_completa" | "cantidad_cubierta" | "cantidad_contratada"
 >;
+
+/**
+ * Cuerpo de `PATCH /produccion/orden-reflejante/{id}/` (nucleo-erp #755,
+ * `OrdenReflejanteEditarSerializer`). Edición PARCIAL: solo viaja lo que cambia.
+ *
+ * Son los cuatro campos que el serializer persiste; cualquier otro se descarta
+ * en silencio con `200`. `fecha_fin` solo se envía como `null`, para limpiarla
+ * al salir de `5` (Completado): la UI no la captura, y al ENTRAR a `5` se omite
+ * para que el backend la selle. Ver `buildReflectiveStatusPayload`.
+ */
+export interface UpdateReflectiveOrderPayload {
+  estatus_reflejante?: ReflectiveOrderStatus;
+  prioridad?: number;
+  observaciones?: string | null;
+  fecha_fin?: null;
+}

@@ -93,10 +93,10 @@ interface CorteMangaOrderCreateFormProps {
  *    usan SOLO para RESOLVER EL NOMBRE del usuario en sesión, ver
  *    `resolveAssignedOperator`; ése es su único propósito confirmado en el
  *    contrato actual.)
- *  - Un campo de estatus: `estatus_corte` es `read_only` en el serializer —el
- *    backend ni siquiera lo admite en el cuerpo— y no existe `PUT`/`PATCH` que
- *    lo avance después (405). Se anuncia en el aviso de permanencia de abajo
- *    en vez de fingir que se elige.
+ *  - Un campo de estatus: `estatus_corte` es `read_only` en el serializer del
+ *    alta —el backend ni siquiera lo admite en el cuerpo—; la orden nace en
+ *    Pendiente y se avanza después desde su ficha de detalle. Se anuncia en el
+ *    aviso de permanencia de abajo en vez de fingir que se elige.
  *  - Un campo `fecha_fin`: el serializer lo acepta pero el service lo descarta
  *    en silencio. Capturarlo sería pedirle al usuario una decisión que se tira
  *    a la basura.

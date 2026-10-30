@@ -52,6 +52,25 @@ export const createSampleSkuOnboarding = async (
 };
 
 /**
+ * Alta en catálogo de los SKU de producción que UNA línea ya tiene
+ * (`POST /produccion/pedidos-especiales/{id}/alta-catalogo/`). Solo se lee
+ * `pedido_detalle_id`. Es parcial por talla: da de alta las variantes con
+ * `aplica_catalogo = false` y, si la línea ya tenía un producto de catálogo,
+ * las cuelga de él. Responde `201` SOLO con las variantes de esta llamada; un
+ * segundo envío sin pendientes responde `400` en `pedido_detalle_id`.
+ */
+export const altaCatalogoLinea = async (
+  pedidoId: number,
+  pedidoDetalleId: number,
+): Promise<SampleProductionVariant[]> => {
+  const response = await v1_api.post<SampleProductionVariant[]>(
+    `/produccion/pedidos-especiales/${pedidoId}/alta-catalogo/`,
+    { pedido_detalle_id: pedidoDetalleId },
+  );
+  return response.data;
+};
+
+/**
  * Código que tendría el producto de catálogo creado con `alta_catalogo`
  * (`GET /catalogo/producto/siguiente-codigo/?categoria_producto=`). Es una
  * vista previa: el backend NO lo reserva y recalcula el real al crear, así que

@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getCorteMangaOrderDetail } from "../services/actions";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 
+/** Llave del detalle; la comparte la mutación de edición para invalidarlo. */
+export const corteMangaOrderDetailQueryKey = (id: number | null) =>
+  ["corte-manga-order-detail", id] as const;
+
 /**
  * Detalle de una orden de corte de manga
  * (`GET /produccion/orden-corte-manga/{id}/`). Llave
@@ -24,7 +28,7 @@ import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface"
  */
 export const useCorteMangaOrderDetail = (id: number | null) => {
   return useQuery<CorteMangaOrder>({
-    queryKey: ["corte-manga-order-detail", id],
+    queryKey: corteMangaOrderDetailQueryKey(id),
     queryFn: () => getCorteMangaOrderDetail(id as number),
     enabled: id !== null && id > 0,
   });

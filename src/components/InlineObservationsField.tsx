@@ -9,7 +9,7 @@ import { useInlineDraft } from "@/src/hooks/useInlineDraft";
  */
 const MAX_LENGTH = 1000;
 
-interface EmbroideryObservationsFieldProps {
+interface InlineObservationsFieldProps {
   /** Valor canónico del servidor (`observaciones`). */
   value: string | null;
   /** Se invoca con el nuevo valor (o `null` si queda vacío) al confirmar. */
@@ -19,17 +19,19 @@ interface EmbroideryObservationsFieldProps {
 }
 
 /**
- * Campo multilínea editable en línea para `observaciones`.
+ * Campo multilínea editable en línea para `observaciones` de una ficha de
+ * detalle. Nació en la orden de bordado y lo usan también las de reflejante y
+ * corte de manga.
  *
- * Comparte con el campo de máquina toda la mecánica del borrador
+ * Comparte con el campo de máquina de bordado toda la mecánica del borrador
  * (`useInlineDraft`). La diferencia propia: NO confirma con Enter, porque aquí
  * el salto de línea es contenido legítimo — solo guarda al salir del campo.
  */
-export function EmbroideryObservationsField({
+export function InlineObservationsField({
   value,
   onSave,
   isPending = false,
-}: EmbroideryObservationsFieldProps) {
+}: InlineObservationsFieldProps) {
   const { draft, setDraft, handleBlur } = useInlineDraft(value, onSave);
 
   return (

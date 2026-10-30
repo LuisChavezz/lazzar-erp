@@ -1,5 +1,28 @@
-import type { SpecialOrderLine } from "../interfaces/special-order.interface";
+import type {
+  SpecialOrderLine,
+  SpecialOrderTalla,
+} from "../interfaces/special-order.interface";
 import { isGeneratedTalla } from "./lineSkuStatus";
+
+/** Aviso del botón "Dar de alta en catálogo" deshabilitado por falta de categoría. */
+export const CATALOG_ALTA_BUTTON_NO_CATEGORY =
+  "Sin categoría; se captura en la cotización.";
+
+/**
+ * La talla tiene SKU de producción que aún no está en catálogo. Hace falta
+ * que esté generada (`isGeneratedTalla`): `aplica_catalogo` también es `false`
+ * en una talla SIN variante, y esa no tiene nada que dar de alta.
+ */
+export const isTallaPendingCatalogAlta = (talla: SpecialOrderTalla): boolean =>
+  isGeneratedTalla(talla) && !talla.aplica_catalogo;
+
+/**
+ * La línea tiene algo que dar de alta con `alta-catalogo`: alguna talla con
+ * SKU de producción pendiente. Es la condición para ofrecer el botón; sin
+ * pendientes el backend responde `400` en `pedido_detalle_id`.
+ */
+export const hasPendingCatalogAlta = (line: SpecialOrderLine): boolean =>
+  line.tallas.some(isTallaPendingCatalogAlta);
 
 export const CATALOG_ALTA_WITHOUT_CATEGORY =
   "La línea no tiene categoría de producto, así que no se puede dar de alta en catálogo.";

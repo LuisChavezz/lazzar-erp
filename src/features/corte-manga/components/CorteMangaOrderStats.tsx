@@ -28,11 +28,10 @@ import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface"
  *
  * Lo que NO se muestra, y por qué:
  *
- *  - DESGLOSE POR ESTATUS: `estatus_corte` es siempre `1` (Pendiente) — está en
- *    los `read_only_fields` del serializer, así que ninguna ruta de alta puede
- *    escribir otro valor, y no existe endpoint de transición (`PUT`/`PATCH` →
- *    405): seis de los siete cubos serían permanentemente cero. Misma decisión,
- *    y por la misma razón, que `ReflectiveOrderStats`/`EmbroideryStats`.
+ *  - DESGLOSE POR ESTATUS: se omitió cuando `estatus_corte` era siempre `1`
+ *    (Pendiente) y seis de los siete cubos habrían sido cero. Desde
+ *    nucleo-erp #755 el estatus se edita en la ficha de detalle, así que esa
+ *    razón ya no aplica; añadirlo queda pendiente.
  *
  *  - DESGLOSE POR PRIORIDAD: técnicamente calculable, pero sesgado hasta ser
  *    inútil: la única ruta de alta viva toma `data.get("prioridad", 1)` y el
@@ -48,8 +47,8 @@ import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface"
  *    tarjeta clavada en cero se lee como "ninguna prenda lleva configuración",
  *    que es falso: nadie la captura todavía. Entra cuando el backend la pueble.
  *
- *  - TIEMPO DE CICLO / ÓRDENES VENCIDAS: `fecha_fin` es siempre `null` y el
- *    modelo NO tiene ningún campo de fecha compromiso (solo
+ *  - TIEMPO DE CICLO / ÓRDENES VENCIDAS: `fecha_fin` solo existe desde que el
+ *    `PATCH` la sella al completar (nucleo-erp #755), y el modelo NO tiene ningún campo de fecha compromiso (solo
  *    `fecha_inicio`/`fecha_fin`), a diferencia de picking, que sí construye su
  *    KPI de vencidos sobre `fecha_limite`. El concepto no está vacío, está
  *    ausente del modelo.
