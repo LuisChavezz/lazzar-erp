@@ -16,6 +16,9 @@ export const STOCK_REPORT_QUERY_KEY = ["stock-report"] as const;
 /** Reporte de movimientos (`useStockMovementReport`). */
 export const STOCK_MOVEMENT_REPORT_QUERY_KEY = ["stock-movement-report"] as const;
 
+/** Auxiliar de movimientos, kardex de una variante (`useMovementLedger`). */
+export const MOVEMENT_LEDGER_QUERY_KEY = ["movement-ledger"] as const;
+
 /** Historial de movimientos (`useStockMovements`). */
 export const STOCK_MOVEMENTS_QUERY_KEY = ["stockMovements"] as const;
 
