@@ -132,9 +132,12 @@ function CatalogAltaCategoryDialog({ pedidoId, open, line, onClose }: ContentPro
   const selected = covering.find((category) => category.id === selectedId) ?? null;
   const isLoading = categoriesQuery.isLoading || sizesQuery.isLoading;
   const isInitialError = categoriesQuery.isInitialError || sizesQuery.isInitialError;
-  // Los hooks de catálogo no exponen `isFetching`; se lee de la caché por llave.
+  // Los hooks de catálogo no exponen `isFetching`; se lee de la caché por su
+  // llave EXACTA (`["sizes"]` como prefijo también contaría las tallas por categoría).
   const isRetrying =
-    useIsFetching({ queryKey: ["product-categories"] }) + useIsFetching({ queryKey: ["sizes"] }) > 0;
+    useIsFetching({ queryKey: ["product-categories"], exact: true }) +
+      useIsFetching({ queryKey: ["sizes"], exact: true }) >
+    0;
   const tallas = getLineSizeNames(line).join(", ");
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
