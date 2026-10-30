@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { api } from "@/src/api/api";
 import type { MfaLoginUser } from "@/src/features/auth/interfaces/auth.interface";
 import { authSecret } from "./authSecret";
+import { getRefreshedTokenRole, getSessionRole } from "./sessionRole";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -46,11 +47,6 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          /* Mismo atajo que `tiene_permiso` del backend: superusuario o admin
-           * de empresa, a quienes además llega `permisos` vacío. NO `es_admin`:
-           * el backend lo calcula como `is_staff || is_superuser` y no exime a
-           * `is_staff` de ningún permiso. */
-          const isAdminUser = user.is_admin_empresa || user.is_superuser;
           const fullName =
             [user.first_name, user.last_name].filter(Boolean).join(" ") ||
             user.username;
@@ -59,7 +55,7 @@ export const authOptions: NextAuthOptions = {
             id: String(user.id),
             name: fullName,
             email: user.email,
-            role: isAdminUser ? "admin" : "user",
+            role: getSessionRole(user),
             permissions: user.permisos,
             /* Los dos campos con los que el backend acota listados por
              * usuario (p. ej. oportunidades). Viajan sueltos además de `role`
@@ -90,6 +86,10 @@ export const authOptions: NextAuthOptions = {
         token.is_superuser = user.is_superuser;
         token.sub = user.id || token.sub;
       }
+      /* Este callback corre en CADA lectura de la sesión, no solo al iniciarla:
+       * así un token emitido con una regla de rol anterior se corrige sin
+       * esperar a un nuevo inicio de sesión. */
+      token.role = getRefreshedTokenRole(token);
       return token;
     },
     async session({ session, token }) {
