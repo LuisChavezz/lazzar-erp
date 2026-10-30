@@ -389,8 +389,25 @@ test.describe("cobertura de tallas de la categoría (EC-671)", () => {
     ]);
   });
 
-  test("un id de talla que el catálogo no conoce (inactiva) no cubre nada", () => {
-    expect(getCategoriesCoveringLine([category(1, [4, 99])], sinCategoria, sizes)).toEqual([]);
+  test("un id de talla de la categoría que el catálogo no conoce (inactiva) se ignora", () => {
+    expect(
+      getCategoriesCoveringLine([category(1, [4, 5, 99]), category(2, [4, 99])], sinCategoria, sizes).map(
+        (c) => c.id,
+      ),
+    ).toEqual([1]);
+  });
+
+  test("una talla de la LÍNEA que el catálogo no conoce no excluye: decide el backend", () => {
+    const conInactiva = line({
+      categoria_producto: null,
+      tallas: [
+        talla({ id: 1, talla_nombre: "G", cantidad: 1 }),
+        talla({ id: 2, talla_nombre: "XCH", cantidad: 1 }), // desactivada después de cotizar
+      ],
+    });
+    expect(
+      getCategoriesCoveringLine([category(1, [4]), category(2, [5])], conInactiva, sizes).map((c) => c.id),
+    ).toEqual([1]);
   });
 
   test("ninguna la cubre: lista vacía (el diálogo lo explica y no deja confirmar)", () => {
