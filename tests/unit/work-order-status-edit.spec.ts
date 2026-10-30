@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
-import { buildReflectiveStatusPayload } from "@/src/features/reflective-orders/utils/buildReflectiveStatusPayload";
-import { buildCorteMangaStatusPayload } from "@/src/features/corte-manga/utils/buildCorteMangaStatusPayload";
 import {
   getWorkOrderTransitions,
   isWorkOrderTerminal,
@@ -17,34 +15,10 @@ const httpError = (status: number, data: unknown): AxiosError => {
 const CANCELADA = "La orden está cancelada: ya no se edita.";
 
 /**
- * Pruebas unitarias de EC-653: el cuerpo del `PATCH` de estatus de las órdenes
- * de reflejante y corte de manga (nucleo-erp #755) y los destinos que ofrece el
- * selector. `fecha_fin` es la parte que no se ve en pantalla: la clave debe
- * faltar siempre, porque el backend solo la sella al entrar a Completado y la
- * limpia al salir cuando no viene en el cuerpo (nucleo-erp #786).
+ * Pruebas unitarias de EC-653: los destinos que ofrece el selector de estatus
+ * de las órdenes de reflejante y corte de manga (nucleo-erp #755) y el mensaje
+ * cuando falla su `PATCH`.
  */
-
-test.describe("buildReflectiveStatusPayload", () => {
-  test("al entrar a Completado no envía fecha_fin, para que el backend la selle", () => {
-    const payload = buildReflectiveStatusPayload(5);
-    expect(payload).toEqual({ estatus_reflejante: 5 });
-    expect("fecha_fin" in payload).toBe(false);
-  });
-
-  test("al salir de Completado tampoco envía fecha_fin: la limpia el backend", () => {
-    const payload = buildReflectiveStatusPayload(3);
-    expect(payload).toEqual({ estatus_reflejante: 3 });
-    expect("fecha_fin" in payload).toBe(false);
-    expect(buildReflectiveStatusPayload(1)).toEqual({ estatus_reflejante: 1 });
-  });
-});
-
-test.describe("buildCorteMangaStatusPayload", () => {
-  test("usa la clave estatus_corte y tampoco envía fecha_fin", () => {
-    expect(buildCorteMangaStatusPayload(5)).toEqual({ estatus_corte: 5 });
-    expect(buildCorteMangaStatusPayload(6)).toEqual({ estatus_corte: 6 });
-  });
-});
 
 test.describe("transiciones de reflejante y corte de manga", () => {
   test("ofrece todos los demás estatus menos Cancelado", () => {

@@ -32,7 +32,6 @@ import {
 } from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
-import { buildReflectiveStatusPayload } from "../utils/buildReflectiveStatusPayload";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
@@ -393,7 +392,7 @@ export function ReflectiveOrderDetailContent({
                 statusDisplay={data.estatus_reflejante_display}
                 statusEntry={reflectiveStatusEntry}
                 onStatusChange={(next) =>
-                  updateOrder.mutate(buildReflectiveStatusPayload(next))
+                  updateOrder.mutate({ estatus_reflejante: next })
                 }
                 isPending={updateOrder.isPending}
                 // El caso Cancelado lo resuelve el propio selector (se queda sin

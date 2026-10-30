@@ -54,27 +54,6 @@ export const getWorkOrderTransitions = (
 };
 
 /**
- * Cuerpo del `PATCH` que cambia el estatus, bajo el campo propio de cada
- * módulo (`field`). Solo lleva el estatus.
- *
- * `fecha_fin` es de solo lectura en la UI y NUNCA viaja: la regla es del
- * backend, que solo la aplica si la clave falta del cuerpo (nucleo-erp #786).
- *  - Al ENTRAR a `5` (Completado) la sella con la hora actual si la orden no
- *    tenía una.
- *  - Al SALIR de `5` hacia cualquier estatus que no sea `7` la limpia, porque
- *    una orden reabierta no debe aparentar que ya terminó.
- * Como el backend decide con el estatus que tiene guardado, no con el que
- * muestra la ficha, la regla vale aunque otro usuario la haya cambiado
- * mientras la ficha estaba abierta.
- *
- * Función PURA para poder probar cada caso sin React (ver `tests/unit`).
- */
-export const buildWorkOrderStatusPayload = <F extends string>(
-  field: F,
-  next: WorkOrderStatus,
-): Record<F, WorkOrderStatus> => ({ [field]: next }) as Record<F, WorkOrderStatus>;
-
-/**
  * Mensaje del toast cuando falla el `PATCH` de una orden de trabajo.
  *
  * `drfActionErrorMessage` y no `extractErrorMessage`: el `400` de una orden
