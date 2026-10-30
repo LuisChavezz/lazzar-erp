@@ -11,8 +11,10 @@ import { drfActionErrorMessage } from "./drfWriteErrors";
  * El backend NO impone reglas de transición: su `PATCH` acepta cualquier valor
  * mientras la orden no esté cancelada. El frontend tampoco las impone —mismo
  * criterio que bordado—, con una sola excepción: el `7` no se ofrece como
- * DESTINO. Cancelar es irreversible (una orden en `7` responde `400` a
- * cualquier `PATCH`) y hoy no libera el cupo del pedido (nucleo-erp #775).
+ * DESTINO. Cancelar es irreversible: una orden en `7` responde `400` a
+ * cualquier `PATCH`. Desde nucleo-erp #786 sí libera su cupo del pedido (sus
+ * piezas dejan de contar como programadas), pero ofrecerlo es una decisión de
+ * negocio aparte.
  */
 
 export type WorkOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -24,8 +26,8 @@ const CANCELLED_STATUS: WorkOrderStatus = 7;
 
 /**
  * Las únicas prioridades que ofrece el selector de la ficha (1 Alta, 2 Media,
- * 3 Baja): el backend acepta cualquier entero (nucleo-erp #776), pero la UI se
- * cierra a las tres que sabe rotular.
+ * 3 Baja). Son también las únicas que acepta el `PATCH` del backend
+ * (nucleo-erp #786); cualquier otro entero responde `400`.
  */
 export const WORK_ORDER_PRIORITY_CODES = [1, 2, 3] as const;
 

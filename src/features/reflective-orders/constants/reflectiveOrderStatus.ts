@@ -88,11 +88,11 @@ export const reflectiveStatusEntry = (
 
 /**
  * Etiquetas de `prioridad`. El modelo la declara `IntegerField(default=1)` SIN
- * `choices`, así que el backend acepta cualquier entero; el mapeo 1 = Alta,
- * 2 = Media, 3 = Baja es el mismo que ya usan el alta de órdenes de producción
- * (`ProductionOrderStep1`) y el listado de bordado, para no inventar una escala
- * distinta dentro del mismo dominio. Cualquier otro entero cae en
- * `reflectiveOrderPriorityFallback`.
+ * `choices` y el alta acepta cualquier entero (el `PATCH` solo 1-3, nucleo-erp
+ * #786). El mapeo 1 = Alta, 2 = Media, 3 = Baja es el mismo que ya usan el
+ * alta de órdenes de producción (`ProductionOrderStep1`) y el listado de
+ * bordado, para no inventar una escala distinta dentro del mismo dominio.
+ * Cualquier otro entero cae en `reflectiveOrderPriorityFallback`.
  */
 export const REFLECTIVE_ORDER_PRIORITY_CONFIG: Record<string, StatusBadgeConfigEntry> = {
   1: {
