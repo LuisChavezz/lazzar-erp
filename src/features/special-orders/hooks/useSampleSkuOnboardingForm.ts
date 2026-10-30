@@ -127,7 +127,7 @@ export function useSampleSkuOnboardingForm({
         ...(requiresColor ? { color: parsed.data.color } : {}),
         materia_prima_detalle: parsed.data.materia_prima_detalle,
         // Solo `true` y solo si la línea lo admite AHORA: un refetch pudo traer
-        // SKU generados en otra sesión después de marcar la casilla.
+        // la línea sin categoría después de marcar la casilla.
         ...(parsed.data.alta_catalogo && getCatalogAltaBlockReason(line) === null
           ? { alta_catalogo: true }
           : {}),

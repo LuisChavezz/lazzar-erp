@@ -13,9 +13,9 @@ interface SampleSkuOnboardingResultProps {
 /**
  * Cierre del alta de SKU: lo que el backend creó, tal cual lo respondió.
  *
- * Es la ÚNICA vez que se ve el SKU de catálogo (`sku_catalogo`): el detalle
- * del pedido especial no lo expone, así que en cuanto se cierra el diálogo
- * deja de mostrarse aquí. La columna solo aparece si alguna variante lo trae.
+ * El SKU de catálogo (`sku_catalogo`) se ve aquí y después en la columna "SKU
+ * catálogo" del detalle del pedido especial. La columna solo aparece si alguna
+ * variante lo trae.
  */
 export function SampleSkuOnboardingResult({ variants, onClose }: SampleSkuOnboardingResultProps) {
   const withCatalog = variants.some((variant) => Boolean(variant.sku_catalogo));
