@@ -57,13 +57,3 @@ export const CUENTA_CONTABLE_TIPO_CONFIG: Record<
     dot: "bg-orange-500",
   },
 };
-
-/**
- * Opciones del filtro de tipo: el enum COMPLETO, no solo los tipos presentes en
- * los datos. `DataTable` compara `String(row[id]) === value` en memoria, y estos
- * valores ya son los crudos del backend, así que la comparación es directa.
- */
-export const CUENTA_CONTABLE_TIPO_FILTER = CUENTA_CONTABLE_TIPOS.map((tipo) => ({
-  value: tipo,
-  label: tipo,
-}));
