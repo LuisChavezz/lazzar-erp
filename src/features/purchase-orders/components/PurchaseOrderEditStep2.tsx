@@ -240,7 +240,7 @@ export function PurchaseOrderEditStep2({
   const handleSave = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle = buildPurchaseOrderDetalle(lines.lines, quantities, prices);
+    const detalle = buildPurchaseOrderDetalle(lines);
 
     // El PUT refleja la forma del alta: encabezado + renglones del detalle.
     // `pedidos` va SIEMPRE (reemplaza la lista completa); `tipo_compra` solo

@@ -8,6 +8,7 @@ import {
   seedFromDetalles,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import type { PurchaseOrderDetalle } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { linesStateFrom } from "@/src/features/purchase-orders/hooks/usePurchaseOrderLines";
 
 /**
  * Pruebas unitarias de EC-657: renglones de OC por producto o por variante
@@ -48,6 +49,12 @@ test.describe("llaves de renglón", () => {
     expect(keys).toEqual(["v:161", "v:162", "p:8350"]);
   });
 
+  test("la descripción de una variante elegida lleva producto · color · talla", () => {
+    expect(lineFromVariante(variante(161, "A", "2XG")).descripcion).toBe("CAMISA · VINO · 2XG");
+    expect(lineFromVariante({ ...variante(161, "A", null), color: null }).descripcion).toBe("CAMISA");
+    expect(lineFromVariante({ ...variante(161, "A", "2XG"), producto_nombre: "X".repeat(250) }).descripcion).toHaveLength(200);
+  });
+
   test("color y talla se muestran solo si se conocen", () => {
     expect(lineFromVariante(variante(161, "A", "2XG")).atributos).toBe("VINO · 2XG");
     expect(lineFromVariante(variante(161, "A", null)).atributos).toBe("VINO");
@@ -62,15 +69,15 @@ test.describe("buildPurchaseOrderDetalle", () => {
       lineFromDetalle(detalle({})),
       lineFromVariante(variante(161, "10005032XG", "2XG")),
     ];
-    const payload = buildPurchaseOrderDetalle(
+    const payload = buildPurchaseOrderDetalle({
       lines,
-      { "p:14339": 1, "p:8350": 2, "v:161": 3 },
-      { "p:14339": "270.02", "p:8350": "99", "v:161": "110.5" },
-    );
+      quantities: { "p:14339": 1, "p:8350": 2, "v:161": 3 },
+      prices: { "p:14339": "270.02", "p:8350": "99", "v:161": "110.5" },
+    });
     expect(payload).toEqual([
       { cantidad: 1, precio: "270.02", descripcion: "ANTI-CUT", producto: 14339 },
       { cantidad: 2, precio: "99.00", descripcion: "CAMISA", producto: 8350 },
-      { cantidad: 3, precio: "110.50", descripcion: "CAMISA", producto_variante: 161 },
+      { cantidad: 3, precio: "110.50", descripcion: "CAMISA · VINO · 2XG", producto_variante: 161 },
     ]);
     expect(payload.every((row) => !("producto" in row && "producto_variante" in row))).toBe(true);
   });
@@ -90,13 +97,38 @@ test.describe("seedFromDetalles", () => {
     ]);
   });
 
-  test("un renglón repetido queda una vez, con los datos del último", () => {
+  test("un producto o variante repetido conserva cada renglón con su propia llave", () => {
     const seed = seedFromDetalles([
-      detalle({ id: 1, cantidad: 1, precio: "10.00" }),
-      detalle({ id: 2, cantidad: 5, precio: "12.00" }),
+      detalle({ id: 1, producto_variante_id: 161, producto_variante_sku: "A", cantidad: 1, precio: "10.00" }),
+      detalle({ id: 2, producto_variante_id: 161, producto_variante_sku: "A", cantidad: 5, precio: "12.00" }),
+      detalle({ id: 3, producto_id: 8350, cantidad: 2 }),
+      detalle({ id: 4, producto_id: 9000, cantidad: 7 }),
+      detalle({ id: 5, producto_id: 8350, cantidad: 3 }),
     ]);
-    expect(seed).toHaveLength(1);
-    expect([seed[0].cantidad, seed[0].line.precioInicial]).toEqual([5, "12.00"]);
+    expect(seed.map((s) => [s.line.key, s.line.productoVariante, s.cantidad, s.line.precioInicial])).toEqual([
+      ["d:1", 161, 1, "10.00"],
+      ["d:2", 161, 5, "12.00"],
+      ["d:3", null, 2, "10.00"],
+      ["p:9000", null, 7, "10.00"],
+      ["d:5", null, 3, "10.00"],
+    ]);
+    // El PUT devuelve los cinco renglones, cada uno con su variante o producto.
+    const payload = buildPurchaseOrderDetalle(linesStateFrom(seed));
+    expect(payload.map((r) => [r.producto ?? null, r.producto_variante ?? null, r.cantidad])).toEqual([
+      [null, 161, 1],
+      [null, 161, 5],
+      [8350, null, 2],
+      [9000, null, 7],
+      [8350, null, 3],
+    ]);
+  });
+
+  test("un renglón guardado sin descripción se reenvía con el nombre del producto", () => {
+    expect(lineFromDetalle(detalle({ descripcion: null, producto_nombre: "330 ANTI-CUT" })).descripcion).toBe(
+      "330 ANTI-CUT",
+    );
+    // Un `""` guardado se respeta, igual que antes de EC-657.
+    expect(lineFromDetalle(detalle({ descripcion: "", producto_nombre: "330 ANTI-CUT" })).descripcion).toBe("");
   });
 });
 

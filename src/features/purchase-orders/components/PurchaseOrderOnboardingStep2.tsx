@@ -171,7 +171,7 @@ export function PurchaseOrderOnboardingStep2({
   const handleSubmit = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle = buildPurchaseOrderDetalle(lines.lines, quantities, prices);
+    const detalle = buildPurchaseOrderDetalle(lines);
 
     // Adjunta los renglones a un encabezado ya existente. Si falla, se
     // conserva su id/folio para reintentar solo este POST — evita crear un

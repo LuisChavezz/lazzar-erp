@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { PurchaseOrderDetallePrecioSchema } from "../schemas/purchase-order-onboarding.schema";
 import type { PurchaseOrderLine, PurchaseOrderLineKey } from "../utils/purchaseOrderLines";
 
-interface LinesState {
+export interface PurchaseOrderLinesData {
   /** Renglones marcados, en el orden en que se marcaron. */
   lines: PurchaseOrderLine[];
   quantities: Partial<Record<PurchaseOrderLineKey, number>>;
@@ -12,12 +12,12 @@ interface LinesState {
   prices: Partial<Record<PurchaseOrderLineKey, string>>;
 }
 
-const EMPTY: LinesState = { lines: [], quantities: {}, prices: {} };
+const EMPTY: PurchaseOrderLinesData = { lines: [], quantities: {}, prices: {} };
 
 /** Renglones guardados de la orden, todos marcados con su cantidad y precio. */
 export const linesStateFrom = (
   seed: { line: PurchaseOrderLine; cantidad: number }[],
-): LinesState => ({
+): PurchaseOrderLinesData => ({
   lines: seed.map((s) => s.line),
   quantities: Object.fromEntries(seed.map((s) => [s.line.key, s.cantidad])),
   prices: Object.fromEntries(seed.map((s) => [s.line.key, s.line.precioInicial])),
@@ -33,7 +33,7 @@ export const linesStateFrom = (
  * cantidad y sin precio o al revés.
  */
 export function usePurchaseOrderLines() {
-  const [state, setState] = useState<LinesState>(EMPTY);
+  const [state, setState] = useState<PurchaseOrderLinesData>(EMPTY);
 
   const isSelected = (key: PurchaseOrderLineKey) => key in state.quantities;
 
@@ -63,7 +63,7 @@ export function usePurchaseOrderLines() {
     setState((prev) => ({ ...prev, prices: { ...prev.prices, [key]: precio } }));
   };
 
-  const reset = (next: LinesState) => setState(next);
+  const reset = (next: PurchaseOrderLinesData) => setState(next);
   const clear = () => setState(EMPTY);
 
   // Se memoiza porque valida TODOS los renglones marcados: con la lista

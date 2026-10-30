@@ -198,7 +198,8 @@ export interface PurchaseOrderDetalle {
    */
   producto_variante_id: number | null;
   producto_variante_sku: string | null;
-  descripcion: string;
+  /** `null=True` en el backend: un renglón capturado sin descripción llega `null`. */
+  descripcion: string | null;
   cantidad: number;
   piezas: number;
   precio?: string;
