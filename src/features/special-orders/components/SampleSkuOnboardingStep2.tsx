@@ -306,7 +306,7 @@ export function SampleSkuOnboardingStep2({
  * backend no lo reserva.
  */
 function CatalogCodePreview({ categoriaId }: { categoriaId: number }) {
-  const { codigo, isLoading, isInitialError } = useNextCatalogProductCode(categoriaId, true);
+  const { codigo, isLoading, isInitialError } = useNextCatalogProductCode(categoriaId);
 
   if (isLoading) return <>Calculando el código del producto de catálogo...</>;
   if (isInitialError || !codigo) {
