@@ -10,6 +10,8 @@ import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
+import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
 import {
   ProductionOrderPedidoSelectorDialog,
   type SelectedProductionOrderPedido,
@@ -229,11 +231,7 @@ export function ProductionOrderStep1({
       <SearchableSelectList<ProductVariant>
         items={productVariants}
         searchPlaceholder="Buscar variante por nombre, SKU, código Proscai o SKU de producción..."
-        filterPredicate={(variant, term) =>
-          `${variant.nombre} ${variant.sku} ${variant.cod_proscai ?? ""} ${variant.sku_produccion ?? ""}`
-            .toLowerCase()
-            .includes(term)
-        }
+        filterPredicate={(variant, term) => matchesProductVariantSearch(variant, term)}
         getKey={(variant) => variant.id}
         isSelected={(variant) => selectedIds.includes(variant.id)}
         onSelect={(variant) => toggleVariant(variant.id)}
@@ -247,15 +245,7 @@ export function ProductionOrderStep1({
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
               <span className="min-w-0 truncate">{variant.sku}</span>
-              {/* SKU de producción (MP…) de una muestra dada de alta en catálogo. */}
-              {variant.sku_produccion && (
-                <span
-                  title="SKU de producción"
-                  className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400"
-                >
-                  {variant.sku_produccion}
-                </span>
-              )}
+              <ProductVariantCodeBadges variant={variant} />
             </p>
           </>
         )}
