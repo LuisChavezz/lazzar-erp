@@ -3,7 +3,11 @@
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { accountingCustomerColumns } from "./AccountingCustomerColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import {
+  ACCOUNTING_CUSTOMER_HEADER_FILTERS,
+  accountingCustomerColumns,
+} from "./AccountingCustomerColumns";
 import { useAccountingCustomers } from "../hooks/useAccountingCustomers";
 
 export const AccountingCustomerList = () => {
@@ -14,10 +18,16 @@ export const AccountingCustomerList = () => {
   // solo se trata como error "de pantalla completa" si nunca cargó.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  const columns = withHeaderFilters(
+    accountingCustomerColumns,
+    customers,
+    ACCOUNTING_CUSTOMER_HEADER_FILTERS,
+  );
+
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
-        columns={accountingCustomerColumns}
+        columns={columns}
         data={customers}
         baseDataCount={customers.length}
         searchPlaceholder="Buscar por nombre, razón social, RFC o correo..."
@@ -29,6 +39,7 @@ export const AccountingCustomerList = () => {
         errorTitle="Error al cargar los clientes"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando clientes"
+        getRowId={(row) => String(row.id)}
       />
     </div>
   );
