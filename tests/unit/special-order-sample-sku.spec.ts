@@ -231,3 +231,11 @@ test.describe("parseCatalogAltaError", () => {
     );
   });
 });
+
+test.describe("parseCatalogAltaError con pedido cancelado", () => {
+  test("el 400 `pedido` muestra su mensaje y marca la línea obsoleta", () => {
+    const message = "El pedido está CANCELADO; no se puede dar de alta en catálogo.";
+    const parsed = parseCatalogAltaError(httpError(400, { pedido: message }));
+    expect(parsed).toEqual({ message, staleLine: true });
+  });
+});

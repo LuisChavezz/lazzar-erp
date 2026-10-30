@@ -24,7 +24,8 @@ export interface ParsedCatalogAltaError {
   message: string;
   /**
    * Lo que se ve de la línea ya no es cierto (otra sesión ya la dio de alta,
-   * o el pedido dejó de estar visible): el detalle debe volver a pedirse.
+   * el pedido se canceló o dejó de estar visible): el detalle debe volver a
+   * pedirse.
    */
   staleLine: boolean;
 }
@@ -38,7 +39,8 @@ export interface ParsedCatalogAltaError {
  *  - `{"permiso": "..."}`: `_require_produccion` (400, no 403). Se muestra el
  *    mensaje del backend; un 403 real, sin cuerpo útil, usa el aviso del alta
  *    de SKU.
- *  - `{"pedido": "..."}`: el pedido está CANCELADO.
+ *  - `{"pedido": "..."}`: el pedido está CANCELADO. Línea obsoleta: el
+ *    detalle en pantalla aún no lo sabe.
  *  - `{"pedido_detalle_id": "..."}`: falta, la línea no es de este pedido o ya
  *    no le quedan SKU pendientes de alta. Línea obsoleta.
  *  - `{"alta_catalogo": "..."}`: sin categoría, categoría inactiva, tallas
@@ -52,12 +54,15 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
   const response = error instanceof AxiosError ? error.response : undefined;
   const data: unknown = response?.data;
 
+  const record =
+    Boolean(data) && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  // `pedido` (cancelado) también: el detalle en pantalla aún trae el estatus viejo.
   const staleLine =
     response?.status === 404 ||
-    (Boolean(data) &&
-      typeof data === "object" &&
-      !Array.isArray(data) &&
-      firstDrfMessage((data as Record<string, unknown>).pedido_detalle_id) !== undefined);
+    firstDrfMessage(record.pedido) !== undefined ||
+    firstDrfMessage(record.pedido_detalle_id) !== undefined;
 
   // `ValidationError("texto")` sin campo: DRF lo serializa como arreglo raíz.
   const backendMessage = Array.isArray(data)
