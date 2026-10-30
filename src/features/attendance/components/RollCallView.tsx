@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
+import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
 import { useAttendance } from "../hooks/useAttendance";
 import { useRegisterEntry, useRegisterExit } from "../hooks/useCheckIn";
@@ -138,10 +139,16 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
     checkInRequest && checkInRow ? { kind: checkInRequest.kind, row: checkInRow } : null
   );
 
+  // El filtro de empleado marca a los dados de baja con " (inactivo)" (el
+  // catálogo incluye a los inactivos; ver `employeeHeaderFilter`).
+  const isInactiveEmployee = getInactiveEmployeeLookup(employees);
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `AttendanceRowActionsProvider`. Las opciones de filtro salen del día
   // completo, no de la página.
-  const columns = withHeaderFilters(getRollCallColumns(permissions), rows, ROLL_CALL_HEADER_FILTERS);
+  const columns = withHeaderFilters(getRollCallColumns(permissions), rows, {
+    ...ROLL_CALL_HEADER_FILTERS,
+    empleado: employeeHeaderFilter(isInactiveEmployee),
+  });
 
   // Las banderas son de carga INICIAL (`useAttendance`, `useEmployees` y
   // `useShifts` exponen `isInitialError`): un refetch fallido de cualquiera

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
+import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
 import { useAttendance } from "../hooks/useAttendance";
 import {
@@ -79,10 +80,16 @@ export function AttendanceHistoryView({ desde, hasta, setParams }: AttendanceHis
   const listSettled = hasLoaded && !isFetching && !isPlaceholderData;
   const dialogs = useAttendanceRecordDialogs(rows, pending, listSettled);
 
+  // El filtro de empleado marca a los dados de baja con " (inactivo)" (el
+  // catálogo incluye a los inactivos; ver `employeeHeaderFilter`).
+  const isInactiveEmployee = getInactiveEmployeeLookup(employees);
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `AttendanceRowActionsProvider`. Las opciones de filtro salen del periodo
   // completo, no de la página.
-  const columns = withHeaderFilters(getHistoryColumns(permissions), rows, HISTORY_HEADER_FILTERS);
+  const columns = withHeaderFilters(getHistoryColumns(permissions), rows, {
+    ...HISTORY_HEADER_FILTERS,
+    empleado: employeeHeaderFilter(isInactiveEmployee),
+  });
 
   // Contador por campo para remontar su input al vaciarlo (ver el JSX).
   const [clearedNonce, setClearedNonce] = useState({ desde: 0, hasta: 0 });
