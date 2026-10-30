@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useColors } from "@/src/features/colors/hooks/useColors";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type {
   SampleSkuOnboardingPayload,
@@ -13,6 +14,7 @@ import {
   type SampleSkuOnboardingFormValues,
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
+import { getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
 interface UseSampleSkuOnboardingFormParams {
@@ -95,6 +97,13 @@ export function useSampleSkuOnboardingForm({
         return;
       }
 
+      // El alta fallaría con seguridad (color sin código): no se envía.
+      if (skuPreview.blocker) {
+        setErrors({});
+        setFormError(skuPreview.blocker);
+        return;
+      }
+
       setErrors({});
       setFormError(null);
 
@@ -112,6 +121,15 @@ export function useSampleSkuOnboardingForm({
       }
     },
   });
+
+  // Vista previa del SKU por talla. El color elegido solo cuenta en una línea
+  // sin color; `useColors` comparte caché con el selector del Paso 1.
+  const { colors } = useColors();
+  const chosenColorId = useStore(form.store, (state) => state.values.color);
+  const chosenColor = requiresColor
+    ? (colors.find((color) => color.id === chosenColorId) ?? null)
+    : null;
+  const skuPreview = getSampleSkuPreview(line, chosenColor);
 
   const getError = (path: string): FormFieldError | undefined =>
     errors[path] ? { message: errors[path] } : undefined;
@@ -160,6 +178,7 @@ export function useSampleSkuOnboardingForm({
   return {
     form,
     requiresColor,
+    skuPreview,
     isSubmitting: isPending,
     formError,
     getError,

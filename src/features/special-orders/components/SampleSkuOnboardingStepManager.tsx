@@ -76,7 +76,6 @@ export function SampleSkuOnboardingStepManager({
 
       {currentStep === "configure-materials" && (
         <SampleSkuOnboardingStep2
-          line={line}
           onboarding={onboarding}
           onBack={() => setCurrentStep("select-materials")}
         />
