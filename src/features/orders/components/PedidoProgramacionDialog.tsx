@@ -118,7 +118,10 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
 
   return (
     <form onSubmit={handleFormSubmit} noValidate>
-      <fieldset disabled={isPending} className="space-y-4">
+      {/* `min-w-0`: un fieldset mide por defecto lo que su contenido más ancho
+          (`min-inline-size: min-content`), y una descripción larga lo sacaba
+          del diálogo. */}
+      <fieldset disabled={isPending} className="space-y-4 min-w-0">
         <PedidoProgramarPartidas
           renglones={contexto.renglones}
           almacenSurtido={contexto.almacen_surtido}

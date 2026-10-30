@@ -88,6 +88,14 @@ export interface PedidoProgramarRenglon {
   pedido_detalle_talla_id: number;
   pedido_detalle_id: number;
   producto: string | null;
+  /**
+   * Opcionales: el backend los agregó después; en muestras traen la categoría
+   * de la línea. `producto_nombre_corto` viene recortado a 40 caracteres sin
+   * partir palabras.
+   */
+  categoria_id?: number | null;
+  categoria_nombre?: string | null;
+  producto_nombre_corto?: string | null;
   color: string | null;
   talla: string;
   sku: string | null;
