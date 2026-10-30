@@ -161,6 +161,16 @@ export function SpecialOrderLines({
                   {line.color_nombre}
                 </span>
               )}
+              <span
+                className={`basis-full text-xs ${
+                  line.categoria_producto
+                    ? "text-slate-600 dark:text-slate-300"
+                    : "text-slate-400 dark:text-slate-500"
+                }`}
+              >
+                <span className="text-slate-400 dark:text-slate-500">Categoría: </span>
+                {line.categoria_producto?.nombre ?? "Sin categoría (no se capturó en la cotización)"}
+              </span>
             </div>
             <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">
               <LineSkuStatus
