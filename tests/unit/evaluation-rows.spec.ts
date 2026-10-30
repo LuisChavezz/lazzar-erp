@@ -10,6 +10,7 @@ import {
 } from "@/src/features/evaluations/components/EvaluationColumns";
 import {
   buildEvaluationRows,
+  canDeleteEvaluation,
   EVALUATION_STALE_MESSAGES,
   getEvaluationPeriodoText,
 } from "@/src/features/evaluations/utils/evaluationRows";
@@ -159,12 +160,16 @@ test.describe("evaluaciones › tipo, periodo y evaluador", () => {
 });
 
 /** La regla de la vía rápida tal como la llama la lista. */
-const staleNotice = (target: { estado: Evaluation["estado"] } | null, isBusy: boolean) =>
+const staleNotice = (
+  target: { estado: Evaluation["estado"] } | null,
+  isBusy: boolean,
+  expectedEstado: Evaluation["estado"] = "pendiente",
+) =>
   getStaleRowDialogNotice({
     resource: "evaluation",
     targetId: 1,
     target,
-    expectedEstado: "pendiente",
+    expectedEstado,
     isBusy,
     messages: EVALUATION_STALE_MESSAGES,
   });
@@ -184,5 +189,22 @@ test.describe("evaluaciones › cierre de la confirmación de eliminar", () => {
   test("se cierra con aviso si la evaluación ya no existe; no, con el borrado propio en vuelo", () => {
     expect(staleNotice(null, false)?.key).toBe("evaluation-stale-1-gone");
     expect(staleNotice(null, true)).toBeNull();
+  });
+});
+
+test.describe("evaluaciones › quién ofrece «Eliminar» (regla previa a EC-637)", () => {
+  test("todo lo que no esté completada, también un estado fuera de catálogo", () => {
+    expect(canDeleteEvaluation("pendiente")).toBe(true);
+    expect(canDeleteEvaluation("archivada" as Evaluation["estado"])).toBe(true);
+    expect(canDeleteEvaluation("completada")).toBe(false);
+  });
+
+  test("la confirmación espera el estado de APERTURA, no siempre «pendiente»", () => {
+    const archivada = "archivada" as Evaluation["estado"];
+    expect(staleNotice({ estado: archivada }, false, archivada)).toBeNull();
+    expect(staleNotice({ estado: "pendiente" }, false, archivada)).toEqual({
+      key: "evaluation-stale-1-pendiente",
+      message: "La evaluación cambió de estado: ya está pendiente. Se actualizó el listado.",
+    });
   });
 });

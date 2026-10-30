@@ -20,7 +20,7 @@ import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inacti
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { getColumns, EVALUATION_HEADER_FILTERS } from "./EvaluationColumns";
 import { Evaluation } from "../interfaces/evaluation.interface";
-import { ESTADO_PENDIENTE } from "../constants/evaluationChoices";
+import type { EstadoEvaluacion } from "../constants/evaluationChoices";
 import EvaluationForm from "./EvaluationForm";
 import { useEvaluations } from "../hooks/useEvaluations";
 import { useDeleteEvaluation } from "../hooks/useDeleteEvaluation";
@@ -33,10 +33,15 @@ import { buildEvaluationRows, EVALUATION_STALE_MESSAGES } from "../utils/evaluat
 export default function EvaluationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvaluation, setSelectedEvaluation] = useState<Evaluation | null>(null);
-  // Diálogo de fila: solo el id, resuelto contra el listado COMPLETO — la
-  // celda se desmonta al ordenar/paginar/filtrar, y completar una evaluación
-  // cambia `estado`, que es un filtro.
-  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  // Diálogo de fila: el id y el `estado` con que se abrió, resueltos contra el
+  // listado COMPLETO — la celda se desmonta al ordenar/paginar/filtrar, y
+  // completar una evaluación cambia `estado`, que es un filtro. La
+  // confirmación espera ese mismo estado (se ofrece en todo lo que no esté
+  // completada).
+  const [deleteRequest, setDeleteRequest] = useState<{ id: number; estado: EstadoEvaluacion } | null>(
+    null
+  );
+  const deleteTargetId = deleteRequest?.id ?? null;
   const { evaluations, isLoading, isInitialError, error } = useEvaluations();
   const { employees } = useEmployees();
   const { mutate: deleteEvaluation, isPending: isDeletePending } = useDeleteEvaluation();
@@ -102,12 +107,12 @@ export default function EvaluationList() {
     resource: "evaluation",
     targetId: deleteTargetId,
     target: deleteTarget,
-    expectedEstado: ESTADO_PENDIENTE,
+    expectedEstado: deleteRequest?.estado ?? "pendiente",
     isBusy: isDeleting,
     messages: EVALUATION_STALE_MESSAGES,
   });
   if (staleDelete) {
-    setDeleteTargetId(null);
+    setDeleteRequest(null);
     setStaleNotice(staleDelete);
   }
 
@@ -126,7 +131,7 @@ export default function EvaluationList() {
     <EvaluationRowActionsProvider
       value={{
         onEdit: handleEdit,
-        onDelete: (evaluation) => setDeleteTargetId(evaluation.id),
+        onDelete: (evaluation) => setDeleteRequest({ id: evaluation.id, estado: evaluation.estado }),
         busyIds,
       }}
     >
@@ -187,7 +192,7 @@ export default function EvaluationList() {
           key={`delete-${deleteSession.id}`}
           open={deleteTargetId !== null}
           onOpenChange={(open) => {
-            if (!open) setDeleteTargetId(null);
+            if (!open) setDeleteRequest(null);
           }}
           title="Eliminar Evaluación"
           description={`¿Estás seguro de que deseas eliminar la evaluación de ${deleteSession.snapshot.empleado_nombre}? Esta acción no se puede deshacer.`}
@@ -198,7 +203,7 @@ export default function EvaluationList() {
             const id = deleteSession.snapshot?.id;
             if (id === undefined) return;
             deleteEvaluation(id, {
-              onSettled: () => setDeleteTargetId(null),
+              onSettled: () => setDeleteRequest(null),
             });
           }}
           confirmColor="red"
