@@ -6,10 +6,11 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
+import { FormSection } from "@/src/components/FormSection";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
 import {
   DeleteIcon,
   ExclamationTriangleIcon,
-  FacturacionIcon,
   InfoIcon,
   PlusIcon,
   RejectIcon,
@@ -80,6 +81,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
   const recepcionFolio = useStore(form.store, (state) => state.values.recepcion_folio);
   const proveedorNombre = useStore(form.store, (state) => state.values.proveedor_nombre);
   const monedaCodigo = useStore(form.store, (state) => state.values.moneda_codigo);
+  const sucursalNombre = useStore(form.store, (state) => state.values.sucursal_nombre);
   const tasaIva = useStore(form.store, (state) => state.values.tasa_iva);
   const lines = useStore(form.store, (state) => state.values.factura_proveedor_detalles);
   const objetivo = useStore(form.store, (state) => state.values.estatus_objetivo);
@@ -98,12 +100,12 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
   return (
     <>
       <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-        <fieldset disabled={isPending}>
+        <fieldset disabled={isPending} className="space-y-6">
           {serverBanner && (
             <div
               ref={bannerRef}
               role="alert"
-              className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
+              className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
             >
               <ExclamationTriangleIcon
                 className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
@@ -124,22 +126,11 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
           )}
 
           {/* ── Orden de compra y recepción ─────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                <FacturacionIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Orden de Compra y Recepción
-                </h3>
-                <p className="text-xs text-slate-500">
-                  La factura cubre mercancía recibida de una orden de compra
-                </p>
-              </div>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormSection
+            title="Orden de compra y recepción"
+            description="La factura cubre mercancía recibida de una orden de compra"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                   Orden de compra
@@ -208,21 +199,27 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                   </p>
                 )}
               </div>
+
+              {/* Heredada de la OC, como el proveedor y la moneda: se muestra para
+                  que se vea en qué sucursal queda la factura, sin poder cambiarla. */}
+              <FormInput
+                label="Sucursal"
+                value={oc > 0 ? sucursalNombre || "Sin sucursal" : ""}
+                placeholder="Se toma de la orden de compra"
+                readOnly
+                tabIndex={-1}
+                aria-readonly="true"
+                className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
+              />
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Datos de la factura ─────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Datos de la Factura
-              </h3>
-              <p className="text-xs text-slate-500">
-                Folio del proveedor, vencimiento y tasa de impuesto
-              </p>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormSection
+            title="Datos de la factura"
+            description="Folio del proveedor, vencimiento y tasa de impuesto"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
               <form.Field name="folio">
                 {(field) => (
                   <FormInput
@@ -236,6 +233,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                       clearError("folio");
                     }}
                     error={getError("folio")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -253,6 +251,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                         clearError("fecha_vencimiento");
                       }}
                       error={getError("fecha_vencimiento")}
+                      className={COMPACT_FIELD_CLS}
                     />
                     {!getError("fecha_vencimiento") && (
                       <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
@@ -276,6 +275,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                       clearError("tasa_iva");
                     }}
                     error={getError("tasa_iva")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -294,26 +294,24 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                         clearError("observaciones");
                       }}
                       error={getError("observaciones")}
+                      className={COMPACT_FIELD_CLS}
                     />
                   )}
                 </form.Field>
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Partidas ────────────────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Partidas
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {recepcion > 0
-                    ? "Las partidas no se pueden modificar después de guardar la factura"
-                    : "Elige primero la recepción"}
-                </p>
-              </div>
+          <FormSection
+            title="Partidas"
+            description={
+              recepcion > 0
+                ? "No se pueden modificar después de guardar la factura"
+                : "Elige primero la recepción"
+            }
+          >
+            <div className="flex justify-end">
               <Button
                 type="button"
                 variant="secondary"
@@ -327,8 +325,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                 </span>
               </Button>
             </div>
-
-            <div className="p-8">
+            <div>
               {getError("factura_proveedor_detalles") && (
                 <p
                   className="mb-3 text-sm font-medium text-rose-600 dark:text-rose-400"
@@ -426,6 +423,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                                       clearError(`factura_proveedor_detalles.${index}.cantidad`);
                                     }}
                                     error={getError(`factura_proveedor_detalles.${index}.cantidad`)}
+                                    className={COMPACT_FIELD_CLS}
                                   />
                                 )}
                               </form.Field>
@@ -451,6 +449,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                                     error={getError(
                                       `factura_proveedor_detalles.${index}.precio_unitario`,
                                     )}
+                                    className={COMPACT_FIELD_CLS}
                                   />
                                 )}
                               </form.Field>
@@ -472,6 +471,7 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                                     error={getError(
                                       `factura_proveedor_detalles.${index}.descuento`,
                                     )}
+                                    className={COMPACT_FIELD_CLS}
                                   />
                                 )}
                               </form.Field>
@@ -506,17 +506,14 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                 }
               </form.Field>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Totales (derivados, no editables) ───────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-indigo-200 dark:border-indigo-500/20 overflow-hidden mb-6">
-            <div className="p-8">
+          <FormSection title="Totales" description="Derivados de las partidas, no se capturan">
+            <div>
               <div className="flex flex-wrap items-start justify-between gap-6">
                 <div className="max-w-md">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    Totales de la factura
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500">
                     Se calculan a partir de las partidas y no se capturan. Al registrar, la
                     cuenta por pagar copia este total.
                   </p>
@@ -549,9 +546,9 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
                 </dl>
               </div>
             </div>
-          </section>
+          </FormSection>
 
-          <div className="flex flex-col items-end gap-3 pb-4">
+          <div className="flex flex-col items-end gap-3">
             <p className="max-w-xl text-right text-xs text-slate-500 dark:text-slate-400">
               {REGISTRAR_AVISO}
             </p>

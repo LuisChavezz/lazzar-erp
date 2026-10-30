@@ -232,6 +232,7 @@ export function useSupplierInvoiceForm({
     form.setFieldValue("moneda", oc.moneda || 0);
     form.setFieldValue("moneda_codigo", oc.moneda_codigo ?? "");
     form.setFieldValue("sucursal", oc.sucursal || 0);
+    form.setFieldValue("sucursal_nombre", oc.sucursal_nombre ?? "");
     const tasaOc = oc.porcentaje_iva !== undefined ? Number(oc.porcentaje_iva) : NaN;
     const siembraTasa = Number.isFinite(tasaOc) && tasaOc > 0;
     form.setFieldValue("tasa_iva", siembraTasa ? tasaOc.toFixed(2) : "");
