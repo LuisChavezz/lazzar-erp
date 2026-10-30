@@ -1,8 +1,11 @@
+import {
+  getCompanyAdminStatus,
+  type CompanyAdminFlags,
+} from "@/src/features/users/utils/companyAdminStatus";
+
 /** Lo que la ficha necesita saber del usuario de la sesión. */
-export interface WorkOrderEditUser {
+export interface WorkOrderEditUser extends CompanyAdminFlags {
   permissions?: string[];
-  is_admin_empresa?: boolean;
-  is_superuser?: boolean;
 }
 
 /**
@@ -17,16 +20,17 @@ export interface WorkOrderEditUser {
  * rol Producción.
  *
  * NO usa `hasPermission`: su atajo para el rol "admin" también cubre a
- * `is_staff` (`es_admin`), al que el backend rechaza. Y superusuario y admin
- * de empresa se leen de sus banderas porque el backend les manda `permisos`
- * vacío. Una sesión anterior a esas banderas (`undefined`) falla cerrado: la
- * ficha queda de solo lectura hasta volver a iniciar sesión.
+ * `is_staff` (`es_admin`), al que el backend rechaza. Superusuario y admin de
+ * empresa se resuelven con `getCompanyAdminStatus` (la regla de
+ * `useCompanyAdminStatus`), porque el backend les manda `permisos` vacío. Una
+ * sesión anterior a esas banderas es `unknown` y aquí falla cerrado: la ficha
+ * queda de solo lectura hasta volver a iniciar sesión.
  */
 export const canEditWorkOrder = (
   user: WorkOrderEditUser | null | undefined,
   routePermission: string,
 ): boolean => {
   if (!user) return false;
-  if (user.is_superuser === true || user.is_admin_empresa === true) return true;
+  if (getCompanyAdminStatus(user) === "admin") return true;
   return (user.permissions ?? []).includes(routePermission);
 };
