@@ -141,9 +141,8 @@ export interface ReflectiveOrder {
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
   fecha_inicio: string;
   /**
-   * La sella el backend al pasar a `5` (Completado) si no tenía una; la UI no
-   * la captura. Al salir de `5` el frontend la limpia (ver
-   * `buildReflectiveStatusPayload`).
+   * La sella el backend al pasar a `5` (Completado) si no tenía una, y la
+   * limpia al reabrir la orden (nucleo-erp #786); la UI no la captura.
    */
   fecha_fin: string | null;
   observaciones: string | null;
@@ -574,13 +573,12 @@ export type CreatedReflectiveOrder = Omit<
  * `OrdenReflejanteEditarSerializer`). Edición PARCIAL: solo viaja lo que cambia.
  *
  * Son los cuatro campos que el serializer persiste; cualquier otro se descarta
- * en silencio con `200`. `fecha_fin` solo se envía como `null`, para limpiarla
- * al salir de `5` (Completado): la UI no la captura, y al ENTRAR a `5` se omite
- * para que el backend la selle. Ver `buildReflectiveStatusPayload`.
+ * en silencio con `200`. `fecha_fin` no está en este tipo: la UI no la captura
+ * y el backend la sella al entrar a `5` (Completado) y la limpia al reabrir,
+ * solo si la clave falta del cuerpo (nucleo-erp #786).
  */
 export interface UpdateReflectiveOrderPayload {
   estatus_reflejante?: ReflectiveOrderStatus;
   prioridad?: number;
   observaciones?: string | null;
-  fecha_fin?: null;
 }

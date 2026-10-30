@@ -250,7 +250,7 @@ export function CorteMangaOrderPageContent({
               </span>
             </InfoField>
             {/* `fecha_fin` es de solo lectura: la sella el backend al pasar a
-                Completado y se limpia al salir (`buildCorteMangaStatusPayload`).
+                Completado y la limpia al reabrir la orden.
                 `formatShortDate`/`formatShortTime` resuelven `null` al guion. */}
             <InfoField label="Fin">
               <span className="tabular-nums">
@@ -285,7 +285,7 @@ export function CorteMangaOrderPageContent({
                 statusDisplay={data.estatus_corte_display}
                 statusEntry={corteMangaStatusEntry}
                 onStatusChange={(next) =>
-                  updateOrder.mutate(buildCorteMangaStatusPayload(data.estatus_corte, next))
+                  updateOrder.mutate(buildCorteMangaStatusPayload(next))
                 }
                 isPending={updateOrder.isPending}
                 // El caso Cancelado lo resuelve el propio selector (se queda sin

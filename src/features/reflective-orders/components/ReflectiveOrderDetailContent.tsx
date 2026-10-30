@@ -345,7 +345,7 @@ export function ReflectiveOrderDetailContent({
               </span>
             </InfoField>
             {/* `fecha_fin` es de solo lectura: la sella el backend al pasar a
-                Completado y se limpia al salir (`buildReflectiveStatusPayload`).
+                Completado y la limpia al reabrir la orden.
                 `formatShortDate`/`formatShortTime` resuelven `null` al guion. */}
             <InfoField label="Fin">
               <span className="tabular-nums">
@@ -392,7 +392,7 @@ export function ReflectiveOrderDetailContent({
                 statusDisplay={data.estatus_reflejante_display}
                 statusEntry={reflectiveStatusEntry}
                 onStatusChange={(next) =>
-                  updateOrder.mutate(buildReflectiveStatusPayload(data.estatus_reflejante, next))
+                  updateOrder.mutate(buildReflectiveStatusPayload(next))
                 }
                 isPending={updateOrder.isPending}
                 // El caso Cancelado lo resuelve el propio selector (se queda sin

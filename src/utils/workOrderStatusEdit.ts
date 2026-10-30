@@ -19,9 +19,6 @@ export type WorkOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 const WORK_ORDER_STATUS_CODES: readonly WorkOrderStatus[] = [1, 2, 3, 4, 5, 6, 7];
 
-/** Completado: el backend sella `fecha_fin` al entrar aquí. */
-const COMPLETED_STATUS: WorkOrderStatus = 5;
-
 /** Cancelado: sin salida, y nunca ofrecido como destino. */
 const CANCELLED_STATUS: WorkOrderStatus = 7;
 
@@ -56,35 +53,24 @@ export const getWorkOrderTransitions = (
 
 /**
  * Cuerpo del `PATCH` que cambia el estatus, bajo el campo propio de cada
- * módulo (`field`).
+ * módulo (`field`). Solo lleva el estatus.
  *
- * `fecha_fin` es de solo lectura en la UI y la regla vive aquí:
- *  - Al ENTRAR a `5` (Completado) NO se envía: el backend la sella con la hora
- *    actual solo si la clave falta del cuerpo y la orden no tenía una. Mandarla
- *    —aunque fuera `null`— impediría el sello.
- *  - Al SALIR de `5` se envía `fecha_fin: null` en el mismo `PATCH`: el backend
- *    conserva la fecha anterior (nucleo-erp #777), y una orden reabierta no debe
- *    aparentar que ya terminó.
- *  - Entre dos estatus que no son `5`, no se toca.
- *
- * `current` es el estatus que muestra la ficha. La mutación sigue pendiente
- * hasta que el detalle se re-consulta (ver `useUpdateWorkOrder`), así que dos
- * cambios seguidos del mismo usuario no parten de un valor viejo. Un cambio de
- * OTRO usuario mientras la ficha está abierta sí puede dejarlo viejo; eso solo
- * lo cierra el backend, que es quien debe ser dueño de la regla (nucleo-erp
- * #777).
+ * `fecha_fin` es de solo lectura en la UI y NUNCA viaja: la regla es del
+ * backend, que solo la aplica si la clave falta del cuerpo (nucleo-erp #786).
+ *  - Al ENTRAR a `5` (Completado) la sella con la hora actual si la orden no
+ *    tenía una.
+ *  - Al SALIR de `5` hacia cualquier estatus que no sea `7` la limpia, porque
+ *    una orden reabierta no debe aparentar que ya terminó.
+ * Como el backend decide con el estatus que tiene guardado, no con el que
+ * muestra la ficha, la regla vale aunque otro usuario la haya cambiado
+ * mientras la ficha estaba abierta.
  *
  * Función PURA para poder probar cada caso sin React (ver `tests/unit`).
  */
 export const buildWorkOrderStatusPayload = <F extends string>(
   field: F,
-  current: WorkOrderStatus,
   next: WorkOrderStatus,
-): Record<F, WorkOrderStatus> & { fecha_fin?: null } => {
-  const payload = { [field]: next } as Record<F, WorkOrderStatus> & { fecha_fin?: null };
-  if (current === COMPLETED_STATUS && next !== COMPLETED_STATUS) payload.fecha_fin = null;
-  return payload;
-};
+): Record<F, WorkOrderStatus> => ({ [field]: next }) as Record<F, WorkOrderStatus>;
 
 /**
  * Mensaje del toast cuando falla el `PATCH` de una orden de trabajo.

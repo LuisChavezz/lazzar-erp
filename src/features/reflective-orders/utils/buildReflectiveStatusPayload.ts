@@ -6,11 +6,9 @@ import type {
 
 /**
  * Cuerpo del `PATCH` que cambia el estatus de una orden de reflejante, bajo
- * `estatus_reflejante`. La regla de `fecha_fin` vive en
- * `buildWorkOrderStatusPayload`, compartida con corte de manga.
+ * `estatus_reflejante`. Ver `buildWorkOrderStatusPayload`, compartida con
+ * corte de manga.
  */
 export const buildReflectiveStatusPayload = (
-  current: ReflectiveOrderStatus,
   next: ReflectiveOrderStatus,
-): UpdateReflectiveOrderPayload =>
-  buildWorkOrderStatusPayload("estatus_reflejante", current, next);
+): UpdateReflectiveOrderPayload => buildWorkOrderStatusPayload("estatus_reflejante", next);
