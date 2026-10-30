@@ -11,11 +11,9 @@ import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import type { SpecialOrderLine } from "../interfaces/special-order.interface";
 import type { SampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
 
 interface SampleSkuOnboardingStep2Props {
-  line: SpecialOrderLine;
   onboarding: SampleSkuOnboardingForm;
   /** Regresa al Paso 1 (los valores capturados se conservan en el formulario). */
   onBack: () => void;
@@ -27,18 +25,28 @@ interface SampleSkuOnboardingStep2Props {
  * Un renglón por material con `cantidad` (por pieza), `unidad`, `desperdicio`
  * (%) y `obligatorio`. Lo capturado aquí se envía UNA vez y el backend lo
  * replica en la lista de materiales de cada talla, por eso el resumen final
- * dice cuántos SKU se van a crear y para qué tallas.
+ * dice cuántos SKU se van a crear y cuál será el de cada talla
+ * (`getSampleSkuPreview`). Si el alta fallaría con seguridad por un color sin
+ * código, se avisa y no se deja enviar.
  *
  * Los decimales son inputs de TEXTO saneados a 2 posiciones
  * (`sanitizeDecimalInput`), no `type="number"`: así lo escrito es exactamente
  * lo que se valida y se envía.
  */
 export function SampleSkuOnboardingStep2({
-  line,
   onboarding,
   onBack,
 }: SampleSkuOnboardingStep2Props) {
-  const { form, isSubmitting, formError, getError, clearError, handleFormSubmit } = onboarding;
+  const {
+    form,
+    requiresColor,
+    skuPreview,
+    isSubmitting,
+    formError,
+    getError,
+    clearError,
+    handleFormSubmit,
+  } = onboarding;
 
   // Mismo `useProducts(2)` que `BomStep1`: comparte caché, no vuelve a pedir.
   const { products, isLoading: isLoadingProducts } = useProducts(2);
@@ -50,8 +58,8 @@ export function SampleSkuOnboardingStep2({
 
   const productNameById = new Map(products.map((product) => [product.id, product.nombre]));
   const activeUnits = units.filter((unit) => unit.activo);
-  // El backend crea un SKU por cada talla con cantidad (> 0).
-  const tallasConCantidad = line.tallas.filter((talla) => Number(talla.cantidad) > 0);
+  // El backend crea un SKU por cada talla con cantidad (> 0): son las filas de la vista previa.
+  const totalSkus = skuPreview.rows.length;
 
   return (
     <form onSubmit={handleFormSubmit} className="flex flex-col gap-5">
@@ -194,20 +202,44 @@ export function SampleSkuOnboardingStep2({
 
       <div className="rounded-xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-4 py-3 text-xs text-sky-900 dark:text-sky-100 space-y-1">
         <p className="font-semibold">
-          {tallasConCantidad.length === 1
+          {totalSkus === 1
             ? "Se creará 1 SKU de producción, para la talla con cantidad:"
-            : `Se crearán ${tallasConCantidad.length} SKU de producción, uno por talla con cantidad:`}
+            : `Se crearán ${totalSkus} SKU de producción, uno por talla con cantidad:`}
         </p>
-        <p className="tabular-nums">
-          {tallasConCantidad
-            .map((talla) => `${talla.talla_nombre} (${formatQuantityValue(talla.cantidad)})`)
-            .join(", ")}
-        </p>
+        <ul className="space-y-0.5">
+          {skuPreview.rows.map(({ talla, sku }) => (
+            <li key={talla.id} className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
+              <span>
+                {talla.talla_nombre || "—"} ({formatQuantityValue(talla.cantidad)})
+              </span>
+              <span aria-hidden="true">→</span>
+              {sku ? (
+                <span className="font-semibold break-all">{sku}</span>
+              ) : (
+                <span className="text-sky-800/70 dark:text-sky-200/70">
+                  {requiresColor ? "elige el color en el paso anterior" : "SKU no disponible"}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
         <p className="text-sky-800/80 dark:text-sky-200/80">
           Los mismos materiales se copian a la lista de materiales de cada SKU. Una vez generados no
           se pueden volver a generar para esta línea.
         </p>
       </div>
+
+      {skuPreview.blocker && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20 px-4 py-3"
+        >
+          <WarningFilledIcon className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" aria-hidden="true" />
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            {skuPreview.blocker}
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-4">
         <button
@@ -223,7 +255,7 @@ export function SampleSkuOnboardingStep2({
         <FormSubmitButton
           isPending={isSubmitting}
           loadingLabel="Generando..."
-          disabled={isErrorUnits}
+          disabled={isErrorUnits || skuPreview.blocker !== null}
         >
           Generar SKU y BOM
         </FormSubmitButton>
