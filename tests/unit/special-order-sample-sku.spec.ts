@@ -12,7 +12,9 @@ import {
 import { parseSampleSkuOnboardingError } from "@/src/features/special-orders/utils/parseSampleSkuOnboardingError";
 import {
   buildSampleSku,
-  CHOSEN_COLOR_WITHOUT_CODE,
+  CHOOSE_COLOR_HINT,
+  CHOSEN_COLOR_LOADING,
+  CHOSEN_COLOR_UNAVAILABLE,
   getSampleSkuPreview,
   LINE_COLOR_WITHOUT_CODE,
 } from "@/src/features/special-orders/utils/sampleSkuPreview";
@@ -91,16 +93,37 @@ test.describe("getSampleSkuPreview", () => {
     expect(preview.blocker).toBeNull();
   });
 
-  test("línea sin color y sin elegir todavía: sin SKU y sin bloqueo", () => {
+  test("línea sin color y sin elegir todavía: pide el color y no bloquea", () => {
     const preview = getSampleSkuPreview(line({ tallas: [talla({})] }), null);
     expect(preview.rows[0].sku).toBeNull();
+    expect(preview.missingSkuHint).toBe(CHOOSE_COLOR_HINT);
     expect(preview.blocker).toBeNull();
   });
 
-  test("color elegido sin código: bloquea", () => {
-    const preview = getSampleSkuPreview(line({ tallas: [talla({})] }), { codigo: "" });
-    expect(preview.rows[0].sku).toBeNull();
-    expect(preview.blocker).toBe(CHOSEN_COLOR_WITHOUT_CODE);
+  test("color elegido cuyo código aún no se conoce: no pide elegirlo y bloquea el envío", () => {
+    const loading = getSampleSkuPreview(line({ tallas: [talla({})] }), "loading");
+    expect(loading.rows[0].sku).toBeNull();
+    expect(loading.missingSkuHint).not.toBe(CHOOSE_COLOR_HINT);
+    expect(loading.blocker).toBe(CHOSEN_COLOR_LOADING);
+
+    const unavailable = getSampleSkuPreview(line({ tallas: [talla({})] }), "unavailable");
+    expect(unavailable.missingSkuHint).not.toBe(CHOOSE_COLOR_HINT);
+    expect(unavailable.blocker).toBe(CHOSEN_COLOR_UNAVAILABLE);
+  });
+
+  test("omite las tallas que ya tienen SKU de producción, como el alta incremental", () => {
+    const preview = getSampleSkuPreview(
+      line({
+        color_nombre: "Negro",
+        tallas: [
+          talla({ id: 1, sku_produccion: "MP720-100-G" }),
+          talla({ id: 2, talla_nombre: "2XG", sku_siguiente: "MP720-100-2XG" }),
+        ],
+      }),
+      null,
+    );
+    expect(preview.rows.map((row) => [row.talla.id, row.sku])).toEqual([[2, "MP720-100-2XG"]]);
+    expect(preview.blocker).toBeNull();
   });
 
   test("línea con color y `sku_siguiente` en null sin SKU previo: el color no tiene código", () => {
