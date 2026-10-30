@@ -146,9 +146,10 @@ export interface CorteMangaOrder {
    */
   estatus_corte_display: string;
   /**
-   * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN `choices`,
-   * así que el backend acepta cualquier entero (el esquema OpenAPI lo confirma:
-   * `integer` con los límites de un `int32`, sin enum). La UI rotula 1-3
+   * El modelo lo declara `IntegerField(default=1)` SIN `choices`: el alta
+   * acepta cualquier entero (el esquema OpenAPI lo confirma: `integer` con los
+   * límites de un `int32`, sin enum), pero el `PATCH` de la ficha solo 1-3
+   * (nucleo-erp #786). La UI rotula 1-3
    * (Alta/Media/Baja, el mismo mapeo del alta de órdenes de producción y de los
    * listados de bordado/reflejante) y cae a un badge neutro para cualquier otro
    * valor.

@@ -132,10 +132,10 @@ export interface ReflectiveOrder {
    */
   estatus_reflejante_display: string;
   /**
-   * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN `choices`,
-   * así que el backend acepta cualquier entero. La UI rotula 1-3
-   * (Alta/Media/Baja, el mismo mapeo del alta de órdenes de producción) y cae a
-   * un badge neutro para cualquier otro valor.
+   * El modelo lo declara `IntegerField(default=1)` SIN `choices`: el alta
+   * acepta cualquier entero, pero el `PATCH` de la ficha solo 1-3 (nucleo-erp
+   * #786). La UI rotula 1-3 (Alta/Media/Baja, el mismo mapeo del alta de
+   * órdenes de producción) y cae a un badge neutro para cualquier otro valor.
    */
   prioridad: number;
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
