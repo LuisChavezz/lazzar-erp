@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -9,11 +8,10 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { BancosIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { BANK_ACCOUNT_HEADER_FILTERS, getBankAccountLabel, getColumns } from "./BankAccountColumns";
 import { BankAccountSummaryDialog } from "./BankAccountSummaryDialog";
 import { CuentaBancaria } from "../interfaces/bank-account.interface";
@@ -26,12 +24,6 @@ import {
 } from "../hooks/useBankAccountRowActions";
 import { BANK_ACCOUNT_STALE_MESSAGES } from "../utils/bankAccountStaleMessages";
 
-/** Confirmación de activar/desactivar abierta: el id y el `activo` que tenía al abrirse. */
-interface ToggleTarget {
-  id: number;
-  activo: boolean;
-}
-
 export default function BankAccountList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<CuentaBancaria | null>(null);
@@ -40,16 +32,23 @@ export default function BankAccountList() {
   // o la confirmación abiertos puede sacar la fila de la vista filtrada — el
   // diálogo se cerraría solo a media consulta.
   const [openSummaryId, setOpenSummaryId] = useState<number | null>(null);
-  const [toggleTarget, setToggleTarget] = useState<ToggleTarget | null>(null);
-  // Aviso de la confirmación que se cerró porque su cuenta cambió por fuera. Se
-  // dispara desde un efecto: un toast en pleno render actualizaría otro
-  // componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
 
   const { bankAccounts, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useBankAccounts();
   const { mutate: toggleActivo, isPending: isTogglePending } = useToggleBankAccountActivo();
   const busyIds = usePendingBankAccountIds();
+
+  // Confirmación de activar/desactivar, resuelta contra el listado COMPLETO:
+  // sobrevive a que la fila salga de la vista filtrada (ver `useActivoToggleDialog`).
+  const toggle = useActivoToggleDialog({
+    rows: bankAccounts,
+    busyIds,
+    isPending: isTogglePending,
+    resource: "bank-account",
+    messages: BANK_ACCOUNT_STALE_MESSAGES,
+  });
+  // Copia del registro al abrir: estrecha el tipo dentro de los callbacks del diálogo.
+  const toggleSnapshot = toggle.snapshot;
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
@@ -78,10 +77,6 @@ export default function BankAccountList() {
     openSummaryId !== null
       ? bankAccounts.find((cuenta) => cuenta.id === openSummaryId) ?? null
       : null;
-  const toggleCuenta =
-    toggleTarget !== null
-      ? bankAccounts.find((cuenta) => cuenta.id === toggleTarget.id) ?? null
-      : null;
 
   // El id NO puede sobrevivir a la desaparición de su renglón. El DELETE del
   // backend es real y alcanzable fuera de esta pantalla, así que la cuenta puede
@@ -95,41 +90,6 @@ export default function BankAccountList() {
     setOpenSummaryId(null);
   }
 
-  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
-  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
-  const isToggling =
-    toggleTarget !== null && (busyIds.includes(toggleTarget.id) || isTogglePending);
-
-  // Vía rápida contra la caché: un refetch mostró que la cuenta de la
-  // confirmación abierta ya no existe o ya tiene otro `activo` que el que tenía
-  // al abrirse. Se cierra con un aviso (mismo patrón que `AreaList`). Ajuste en
-  // render, no en un efecto.
-  const staleToggle = getStaleRowDialogNotice({
-    resource: "bank-account",
-    targetId: toggleTarget?.id ?? null,
-    target: toggleCuenta,
-    expectedActivo: toggleTarget?.activo ?? true,
-    isBusy: isToggling,
-    messages: BANK_ACCOUNT_STALE_MESSAGES,
-  });
-  if (staleToggle) {
-    setToggleTarget(null);
-    setStaleNotice(staleToggle);
-  }
-
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key });
-    }
-  }, [staleNotice]);
-
-  // Copia de la cuenta al ABRIR la confirmación: el texto no sigue a los
-  // refetch (ni al optimista, que invierte `activo` al confirmar) y sobrevive a
-  // la animación de salida cuando el objetivo vuelve a `null`.
-  const toggleSession = useDialogSession(toggleTarget !== null, toggleCuenta);
-  const toggleSnapshot = toggleSession.snapshot;
-
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nueva Cuenta"— sigue disponible durante la carga y ante un error.
@@ -140,7 +100,7 @@ export default function BankAccountList() {
       value={{
         onViewSummary: (cuenta) => setOpenSummaryId(cuenta.id),
         onEdit: handleEdit,
-        onToggleActivo: (cuenta) => setToggleTarget({ id: cuenta.id, activo: cuenta.activo }),
+        onToggleActivo: toggle.request,
         busyIds,
       }}
     >
@@ -213,10 +173,10 @@ export default function BankAccountList() {
         */}
         {toggleSnapshot && (
           <ConfirmDialog
-            key={toggleSession.id}
-            open={toggleTarget !== null}
+            key={toggle.sessionId}
+            open={toggle.open}
             onOpenChange={(open) => {
-              if (!open) setToggleTarget(null);
+              if (!open) toggle.close();
             }}
             title={toggleSnapshot.activo ? "Desactivar Cuenta Bancaria" : "Activar Cuenta Bancaria"}
             description={
@@ -226,19 +186,19 @@ export default function BankAccountList() {
             }
             confirmText={
               toggleSnapshot.activo
-                ? isToggling
+                ? toggle.isBusy
                   ? "Desactivando..."
                   : "Desactivar"
-                : isToggling
+                : toggle.isBusy
                   ? "Activando..."
                   : "Activar"
             }
             closeOnConfirm={false}
-            busy={isToggling}
+            busy={toggle.isBusy}
             onConfirm={() => {
               toggleActivo(
                 { id: toggleSnapshot.id, activo: !toggleSnapshot.activo },
-                { onSettled: () => setToggleTarget(null) },
+                { onSettled: () => toggle.close() },
               );
             }}
             // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
