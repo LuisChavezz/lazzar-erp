@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
@@ -156,23 +158,25 @@ export function SupplierInvoiceDetailDialog({
       maxWidth="960px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <FacturaProveedorIcon className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de la Factura de Proveedor
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {factura.folio || `#${factura.id}`}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de la Factura de Proveedor"
+          subtitle={factura.folio || `#${factura.id}`}
+          statusColor="indigo"
+          icon={FacturaProveedorIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Proveedor">{textOrDash(factura.proveedor_nombre)}</InfoField>
-          <InfoField label="Orden de compra">
+        {/* Encabezado: lo que se busca primero al abrir el registro. */}
+        <InfoTileGrid>
+          <InfoTile label="Estatus">
+            <StatusBadge status={factura.estatus} config={FACTURA_PROVEEDOR_ESTATUS_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Proveedor">{textOrDash(factura.proveedor_nombre)}</InfoTile>
+          <InfoTile label="Total">
+            <span className="tabular-nums">{money(factura.total)}</span>
+          </InfoTile>
+          <InfoTile label="Orden de compra">
             {canOpenOc ? (
               <Link
                 href={ocHref}
@@ -184,30 +188,24 @@ export function SupplierInvoiceDetailDialog({
             ) : (
               <span className="font-mono">{ocFolioLabel(factura)}</span>
             )}
-          </InfoField>
+          </InfoTile>
           {/* Sin enlace: no existe una ruta de detalle de recepción. */}
-          <InfoField label="Recepción">
+          <InfoTile label="Recepción">
             <span className="font-mono">{factura.recepcion_folio}</span>
-          </InfoField>
-          <InfoField label="Estatus">
-            <StatusBadge status={factura.estatus} config={FACTURA_PROVEEDOR_ESTATUS_CONFIG} />
-          </InfoField>
-          <InfoField label="Emisión">{fecha(factura.fecha_emision)}</InfoField>
-          <InfoField label="Vencimiento">{fecha(factura.fecha_vencimiento)}</InfoField>
-          <InfoField label="Moneda">{textOrDash(factura.moneda_codigo)}</InfoField>
-          <InfoField label="Total">
-            <span className="tabular-nums font-semibold">{money(factura.total)}</span>
-          </InfoField>
-          <InfoField label="Subtotal">
+          </InfoTile>
+          <InfoTile label="Moneda">{textOrDash(factura.moneda_codigo)}</InfoTile>
+          <InfoTile label="Emisión">{fecha(factura.fecha_emision)}</InfoTile>
+          <InfoTile label="Vencimiento">{fecha(factura.fecha_vencimiento)}</InfoTile>
+          <InfoTile label="Subtotal">
             <span className="tabular-nums">{money(factura.subtotal)}</span>
-          </InfoField>
-          <InfoField label="Descuento">
+          </InfoTile>
+          <InfoTile label="Descuento">
             <span className="tabular-nums">{money(factura.descuento)}</span>
-          </InfoField>
-          <InfoField label="Impuestos">
+          </InfoTile>
+          <InfoTile label="Impuestos">
             <span className="tabular-nums">{money(factura.impuestos)}</span>
-          </InfoField>
-        </div>
+          </InfoTile>
+        </InfoTileGrid>
 
         {/* Qué significa el estatus para la cuenta por pagar. */}
         <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
