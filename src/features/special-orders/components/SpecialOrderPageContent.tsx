@@ -7,14 +7,12 @@ import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { InfoField, InfoGrid, Section } from "@/src/components/DetailDialogPrimitives";
-import {
-  getPedidoClasificacionLabel,
-  PEDIDO_ESTATUS,
-} from "@/src/features/orders/constants/pedidoStatus";
+import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
+import { canActOnSpecialOrderLines } from "../utils/lineActions";
 import { CatalogAltaConfirmDialog } from "./CatalogAltaConfirmDialog";
 import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
@@ -160,9 +158,8 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
         </p>
         <SpecialOrderLines
           pedidoId={data.id}
-          isPedidoCancelled={data.estatus === PEDIDO_ESTATUS.CANCELADO}
           detalles={data.detalles}
-          canGenerateSkus={canGenerateSkus}
+          canGenerateSkus={canActOnSpecialOrderLines(canGenerateSkus, data.estatus)}
           onGenerateSkus={(line) =>
             setOnboarding((prev) => ({ lineId: line.id, open: true, session: prev.session + 1 }))
           }

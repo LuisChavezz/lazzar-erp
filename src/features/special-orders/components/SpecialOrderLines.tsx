@@ -66,13 +66,11 @@ const totalPiezas = (tallas: SpecialOrderTalla[]): number =>
 
 interface SpecialOrderLinesProps {
   pedidoId: number;
-  /** El pedido está CANCELADO: no se ofrece el alta en catálogo. */
-  isPedidoCancelled: boolean;
   detalles: SpecialOrderLine[];
   /**
-   * El usuario puede ver las acciones de la línea (alta de SKU y alta en
-   * catálogo). Es solo visibilidad: quién puede ejecutarlas lo decide el
-   * backend (ver `SpecialOrderPageContent`).
+   * Se ofrecen las acciones de la línea (alta de SKU y alta en catálogo): el
+   * usuario las ve y el pedido no está cancelado (`canActOnSpecialOrderLines`).
+   * Es solo visibilidad: quién puede ejecutarlas lo decide el backend.
    */
   canGenerateSkus: boolean;
   /** Abre el alta de SKU + BOM de la línea. El diálogo lo tiene la página. */
@@ -82,28 +80,25 @@ interface SpecialOrderLinesProps {
 }
 
 /**
- * "Dar de alta en catálogo" de la línea: solo si el usuario ve las acciones, el
- * pedido no está cancelado y alguna talla tiene SKU de producción pendiente de
- * catálogo. Sin categoría se
- * muestra DESHABILITADO con el motivo en el `title`. El `title` va en un
- * envoltorio porque un botón deshabilitado no recibe el puntero en todos los
- * navegadores (`pointer-events-none` deja que el envoltorio lo reciba).
+ * "Dar de alta en catálogo" de la línea: solo si se ofrecen las acciones de la
+ * línea y alguna talla tiene SKU de producción pendiente de catálogo. Sin
+ * categoría se muestra DESHABILITADO con el motivo en el `title`. El `title` va
+ * en un envoltorio porque un botón deshabilitado no recibe el puntero en todos
+ * los navegadores (`pointer-events-none` deja que el envoltorio lo reciba).
  */
 function CatalogAltaButton({
   pedidoId,
-  isPedidoCancelled,
   line,
   canGenerateSkus,
   onAltaCatalogo,
 }: {
   pedidoId: number;
-  isPedidoCancelled: boolean;
   line: SpecialOrderLine;
   canGenerateSkus: boolean;
   onAltaCatalogo: (line: SpecialOrderLine) => void;
 }) {
   const { isRunning } = useMutationLock(altaCatalogoMutationKey(pedidoId, line.id));
-  if (!canGenerateSkus || isPedidoCancelled || !hasPendingCatalogAlta(line)) return null;
+  if (!canGenerateSkus || !hasPendingCatalogAlta(line)) return null;
 
   if (line.categoria_producto === null) {
     const hintId = `catalog-alta-hint-${line.id}`;
@@ -214,7 +209,6 @@ function LineSkuStatus({
  */
 export function SpecialOrderLines({
   pedidoId,
-  isPedidoCancelled,
   detalles,
   canGenerateSkus,
   onGenerateSkus,
@@ -267,7 +261,6 @@ export function SpecialOrderLines({
               />
               <CatalogAltaButton
                 pedidoId={pedidoId}
-                isPedidoCancelled={isPedidoCancelled}
                 line={line}
                 canGenerateSkus={canGenerateSkus}
                 onAltaCatalogo={onAltaCatalogo}

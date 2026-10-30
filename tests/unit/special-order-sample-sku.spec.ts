@@ -14,6 +14,8 @@ import {
   CATALOG_ALTA_GENERIC_ERROR,
   parseCatalogAltaError,
 } from "@/src/features/special-orders/utils/parseCatalogAltaError";
+import { canActOnSpecialOrderLines } from "@/src/features/special-orders/utils/lineActions";
+import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import { parseSampleSkuOnboardingError } from "@/src/features/special-orders/utils/parseSampleSkuOnboardingError";
 import {
   buildSampleSku,
@@ -237,5 +239,18 @@ test.describe("parseCatalogAltaError con pedido cancelado", () => {
     const message = "El pedido está CANCELADO; no se puede dar de alta en catálogo.";
     const parsed = parseCatalogAltaError(httpError(400, { pedido: message }));
     expect(parsed).toEqual({ message, staleLine: true });
+  });
+});
+
+test.describe("canActOnSpecialOrderLines", () => {
+  test("un pedido CANCELADO no ofrece ninguna acción de línea, aunque el usuario las vea", () => {
+    expect(canActOnSpecialOrderLines(true, PEDIDO_ESTATUS.CANCELADO)).toBe(false);
+  });
+
+  test("un pedido vivo las ofrece solo a quien las ve", () => {
+    for (const estatus of [PEDIDO_ESTATUS.AUTORIZADA, PEDIDO_ESTATUS.EN_PROCESO]) {
+      expect(canActOnSpecialOrderLines(true, estatus)).toBe(true);
+      expect(canActOnSpecialOrderLines(false, estatus)).toBe(false);
+    }
   });
 });
