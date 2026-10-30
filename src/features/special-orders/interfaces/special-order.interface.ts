@@ -68,6 +68,14 @@ export interface SpecialOrderTalla {
    * `codigo`. Llega también en tallas con `cantidad = 0`, que NO se generan.
    */
   sku_siguiente: string | null;
+  /**
+   * La variante de producción de esta talla se dio de alta en catálogo. `false`
+   * también si la talla aún no tiene variante: solo dice algo junto con
+   * `sku_produccion`.
+   */
+  aplica_catalogo: boolean;
+  /** SKU de la variante de catálogo (`{codigo}-{color}-{talla}`), o `null` sin alta en catálogo. */
+  sku_catalogo: string | null;
   lleva_bordado: boolean;
   bordado_config: SpecialOrderBordadoConfig | null;
   lleva_reflejante: boolean;
