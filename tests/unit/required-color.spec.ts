@@ -4,6 +4,9 @@ import {
   getAssignableColors,
   getMissingColorLines,
   getMissingColorState,
+  getServerColorIssues,
+  MISSING_COLOR_MESSAGE,
+  UNKNOWN_COLOR_AFTER_400_MESSAGE,
 } from "@/src/features/quotes/utils/requiredColor";
 import { getVariantSizes } from "@/src/features/quotes/utils/variantSizes";
 import { extractQuoteValidationIssues } from "@/src/features/quotes/utils/quoteValidationErrors";
@@ -101,6 +104,30 @@ test.describe("getAssignableColors", () => {
       products,
     );
     expect(choices.every((choice) => choice.missingSizes.length > 0)).toBe(true);
+  });
+});
+
+test.describe("getServerColorIssues (tras un 400 `color` real)", () => {
+  test("la partida desconocida recibe el aviso de que no se puede arreglar aquí", () => {
+    expect(
+      getServerColorIssues(
+        [
+          { tipo: "catalogo", productoId: 100, colorId: null },
+          { tipo: "catalogo", productoId: 999, colorId: null },
+          { tipo: "catalogo", productoId: 999, colorId: 1 },
+        ],
+        products,
+      ),
+    ).toEqual([
+      { path: "items.0.colorId", message: MISSING_COLOR_MESSAGE },
+      { path: "items.1.colorId", message: UNKNOWN_COLOR_AFTER_400_MESSAGE },
+    ]);
+  });
+
+  test("el aviso dice que puede requerir color y qué hacer", () => {
+    expect(UNKNOWN_COLOR_AFTER_400_MESSAGE).toBe(
+      "Puede requerir un color que no se puede asignar aquí: el producto no tiene variantes activas en el catálogo. Activa una variante del producto en Catálogo y vuelve a intentar.",
+    );
   });
 });
 

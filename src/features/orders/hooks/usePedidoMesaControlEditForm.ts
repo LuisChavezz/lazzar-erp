@@ -52,8 +52,8 @@ import { getVariantSizes } from "@/src/features/quotes/utils/variantSizes";
 import {
   buildProductByIdMap,
   getMissingColorLines,
+  getServerColorIssues,
   MISSING_COLOR_MESSAGE,
-  UNAVAILABLE_COLOR_MESSAGE,
 } from "@/src/features/quotes/utils/requiredColor";
 import {
   getPathValue,
@@ -1141,11 +1141,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     const productsById = buildProductByIdMap(onboardingData?.busqueda.productos ?? []);
     const issues = rawIssues.flatMap((issue) =>
       issue.path === REQUIRED_COLOR_KEY
-        ? getMissingColorLines(submittedItemsRef.current, productsById).map((line) => ({
-            path: `items.${line.index}.colorId`,
-            message:
-              line.state === "assignable" ? MISSING_COLOR_MESSAGE : UNAVAILABLE_COLOR_MESSAGE,
-          }))
+        ? getServerColorIssues(submittedItemsRef.current, productsById)
         : [issue],
     );
     const nextErrors: ErrorNode = {};

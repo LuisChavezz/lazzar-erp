@@ -66,11 +66,13 @@ export interface MissingColorLine {
 export const MISSING_COLOR_MESSAGE = "Elige un color para esta partida";
 
 /**
- * Mensaje de la partida que un 400 `color` señala y cuyo producto no ofrece
- * colores en el catálogo.
+ * Mensaje de una partida `unknown` tras un 400 `color` REAL. "Puede" a
+ * propósito: el backend cuenta también variantes INACTIVAS, que el catálogo no
+ * trae, así que no se sabe si esta partida es de las que falló (su producto
+ * podría no tener variantes). Se arregla fuera de esta pantalla.
  */
-export const UNAVAILABLE_COLOR_MESSAGE =
-  "Sin color y sin colores disponibles: el producto no tiene variantes activas en el catálogo";
+export const UNKNOWN_COLOR_AFTER_400_MESSAGE =
+  "Puede requerir un color que no se puede asignar aquí: el producto no tiene variantes activas en el catálogo. Activa una variante del producto en Catálogo y vuelve a intentar.";
 
 /**
  * Partidas de catálogo sin color. Una muestra (`tipo: "muestra"`) nunca cuenta:
@@ -135,3 +137,18 @@ export const getAssignableColors = (
     return { color, sizes, missingSizes: [...new Set(missing)] };
   });
 };
+
+/**
+ * Errores por partida para un 400 `color` real: las que se pueden arreglar con
+ * "Asignar color" y, con el aviso de arriba, las `unknown`. Nunca lee los
+ * nombres de producto del mensaje.
+ */
+export const getServerColorIssues = (
+  items: readonly RequiredColorItem[],
+  productsById: RequiredColorProductsById,
+): { path: string; message: string }[] =>
+  getMissingColorLines(items, productsById).map((line) => ({
+    path: `items.${line.index}.colorId`,
+    message:
+      line.state === "assignable" ? MISSING_COLOR_MESSAGE : UNKNOWN_COLOR_AFTER_400_MESSAGE,
+  }));
