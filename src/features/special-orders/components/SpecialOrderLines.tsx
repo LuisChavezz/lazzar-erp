@@ -14,7 +14,7 @@ import type {
 } from "../interfaces/special-order.interface";
 import {
   CATALOG_ALTA_BUTTON_NO_CATEGORY,
-  hasPendingCatalogAlta,
+  getCatalogAltaButtonState,
   isTallaPendingCatalogAlta,
 } from "../utils/catalogAlta";
 import { getLineSkuStatus } from "../utils/lineSkuStatus";
@@ -83,9 +83,8 @@ interface SpecialOrderLinesProps {
 /**
  * "Dar de alta en catálogo" de la línea: solo si se ofrecen las acciones de la
  * línea y alguna talla tiene SKU de producción pendiente de catálogo. Sin
- * categoría se muestra DESHABILITADO con el motivo en el `title`. El `title` va
- * en un envoltorio porque un botón deshabilitado no recibe el puntero en todos
- * los navegadores (`pointer-events-none` deja que el envoltorio lo reciba).
+ * categoría también se ofrece: el diálogo la pide (`choose-category`) y el
+ * aviso lo anticipa al lector de pantalla y en el `title`.
  */
 function CatalogAltaButton({
   pedidoId,
@@ -99,37 +98,29 @@ function CatalogAltaButton({
   onAltaCatalogo: (line: SpecialOrderLine) => void;
 }) {
   const { isRunning } = useMutationLock(altaCatalogoMutationKey(pedidoId, line.id));
-  if (!canGenerateSkus || !hasPendingCatalogAlta(line)) return null;
+  const state = getCatalogAltaButtonState(line, canGenerateSkus);
+  if (state === "hidden") return null;
 
-  if (line.categoria_producto === null) {
-    const hintId = `catalog-alta-hint-${line.id}`;
-    return (
-      <span title={CATALOG_ALTA_BUTTON_NO_CATEGORY} className="inline-flex cursor-not-allowed">
-        <Button
-          variant="secondary"
-          rounded="full"
-          disabled
-          aria-describedby={hintId}
-          className="pointer-events-none"
-        >
-          Dar de alta en catálogo
-        </Button>
+  const hintId = `catalog-alta-hint-${line.id}`;
+  const choosesCategory = state === "choose-category";
+  return (
+    <>
+      <Button
+        variant="secondary"
+        rounded="full"
+        disabled={isRunning}
+        title={choosesCategory ? CATALOG_ALTA_BUTTON_NO_CATEGORY : undefined}
+        aria-describedby={choosesCategory ? hintId : undefined}
+        onClick={() => onAltaCatalogo(line)}
+      >
+        {isRunning ? "Dando de alta..." : "Dar de alta en catálogo"}
+      </Button>
+      {choosesCategory && (
         <span id={hintId} className="sr-only">
           {CATALOG_ALTA_BUTTON_NO_CATEGORY}
         </span>
-      </span>
-    );
-  }
-
-  return (
-    <Button
-      variant="secondary"
-      rounded="full"
-      disabled={isRunning}
-      onClick={() => onAltaCatalogo(line)}
-    >
-      {isRunning ? "Dando de alta..." : "Dar de alta en catálogo"}
-    </Button>
+      )}
+    </>
   );
 }
 

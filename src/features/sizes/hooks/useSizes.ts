@@ -9,7 +9,7 @@ import { Size } from "../interfaces/size.interface";
  * contrato que `useProducts`.
  */
 export const useSizes = () => {
-  const { data, isLoading, isInitialError, error } = useGuardedQuery<Size[]>(
+  const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery<Size[]>(
     {
       queryKey: ["sizes"],
       queryFn: getSizes,
@@ -24,5 +24,6 @@ export const useSizes = () => {
     isLoading,
     isInitialError,
     error,
+    refetch,
   };
 };
