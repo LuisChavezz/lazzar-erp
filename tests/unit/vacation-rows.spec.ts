@@ -1,15 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import {
   getColumns,
   VACATION_HEADER_FILTERS,
   type VacationRow,
 } from "@/src/features/vacations/components/VacationColumns";
-import {
-  buildVacationRows,
-  getVacationStaleNotice,
-} from "@/src/features/vacations/utils/vacationRows";
+import { buildVacationRows } from "@/src/features/vacations/utils/vacationRows";
+import { VACATION_STALE_MESSAGES } from "@/src/features/vacations/hooks/vacationErrorMessages";
 import type { Vacation } from "@/src/features/vacations/interfaces/vacation.interface";
 
 /**
@@ -126,32 +125,49 @@ test.describe("vacaciones › filtro de empleado", () => {
   });
 });
 
+
+/** La regla de la vía rápida tal como la llama la lista, con los mensajes de la página. */
+const staleNotice = (
+  targetId: number | null,
+  target: { estado: string } | null,
+  expectedEstado: string,
+  isBusy: boolean,
+) =>
+  getStaleRowDialogNotice({
+    resource: "vacation",
+    targetId,
+    target,
+    expectedEstado,
+    isBusy,
+    messages: VACATION_STALE_MESSAGES,
+  });
+
 test.describe("vacaciones › cierre de los diálogos de fila", () => {
   test("aprobar/rechazar: sigue abierto mientras la solicitud está pendiente", () => {
-    expect(getVacationStaleNotice(1, { estado: "pendiente" }, "pendiente", false)).toBeNull();
+    expect(staleNotice(1, { estado: "pendiente" }, "pendiente", false)).toBeNull();
   });
 
   test("aprobar/rechazar: se cierra con aviso si otra persona ya la aprobó", () => {
-    expect(getVacationStaleNotice(1, { estado: "aprobado" }, "pendiente", false)).toEqual({
+    expect(staleNotice(1, { estado: "aprobado" }, "pendiente", false)).toEqual({
       key: "vacation-stale-1-aprobado",
       message: "La solicitud cambió de estado: ya está aprobada. Se actualizó el listado.",
     });
   });
 
   test("se cierra con aviso si la solicitud ya no existe", () => {
-    expect(getVacationStaleNotice(1, null, "pendiente", false)).toEqual({
+    expect(staleNotice(1, null, "pendiente", false)).toEqual({
       key: "vacation-stale-1-gone",
       message: "La solicitud ya no existe. Se actualizó el listado.",
     });
   });
 
   test("con la acción propia en vuelo no avisa, aunque el refetch ya la muestre rechazada", () => {
-    expect(getVacationStaleNotice(1, { estado: "rechazado" }, "pendiente", true)).toBeNull();
+    expect(staleNotice(1, { estado: "rechazado" }, "pendiente", true)).toBeNull();
   });
 
   test("eliminar: compara contra el estado de APERTURA", () => {
-    expect(getVacationStaleNotice(2, { estado: "aprobado" }, "aprobado", false)).toBeNull();
-    expect(getVacationStaleNotice(2, { estado: "pendiente" }, "aprobado", false)?.key).toBe(
+    expect(staleNotice(2, { estado: "aprobado" }, "aprobado", false)).toBeNull();
+    expect(staleNotice(2, { estado: "pendiente" }, "aprobado", false)?.key).toBe(
       "vacation-stale-2-pendiente",
     );
   });

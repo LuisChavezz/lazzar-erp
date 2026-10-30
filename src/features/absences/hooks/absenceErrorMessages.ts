@@ -55,3 +55,13 @@ export const ABSENCE_OVERLAP_CHECK_FAILED_MESSAGE =
 /** Error de una acción sobre un registro: ver `drfActionErrorMessage`. */
 export const absenceActionErrorMessage = (error: unknown, fallback: string): string =>
   drfActionErrorMessage(error, fallback, ABSENCE_GONE_MESSAGE);
+
+/**
+ * Avisos de un diálogo de fila que se cerró por un cambio externo
+ * (`getStaleRowDialogNotice`). El estado nuevo se nombra con la etiqueta del
+ * TIPO del registro ("Falta confirmada"), por eso depende de él.
+ */
+export const absenceStaleMessages = (tipo: string) => ({
+  gone: ABSENCE_GONE_MESSAGE,
+  estadoChanged: (estado: string) => absenceEstadoChangedMessage(tipo, estado),
+});

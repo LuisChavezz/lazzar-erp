@@ -16,7 +16,10 @@ import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
-import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
@@ -38,7 +41,8 @@ import {
   usePendingProductivityIds,
 } from "../hooks/useProductivityRowActions";
 import { verifyProductivityEstado } from "../hooks/verifyProductivityEstado";
-import { buildProductivityRows, getProductivityStaleNotice } from "../utils/productivityRows";
+import { buildProductivityRows } from "../utils/productivityRows";
+import { PRODUCTIVITY_STALE_MESSAGES } from "../hooks/productivityErrorMessages";
 
 /**
  * Confirmar o devolver a borrador. `from` es el estado con que se abrió el
@@ -135,22 +139,26 @@ export default function ProductivityList() {
   // cambio de estado espera el estado con que se abrió; el borrado, un
   // borrador. Ninguno se toca mientras su guarda o su propia escritura están
   // en vuelo (`sent` marca que el PATCH propio ya salió).
-  const staleEstado = getProductivityStaleNotice(
-    estadoRequest?.id ?? null,
-    estadoTarget,
-    estadoRequest?.from ?? ESTADO_BORRADOR,
-    isChecking || (estadoRequest?.sent ?? false)
-  );
+  const staleEstado = getStaleRowDialogNotice({
+    resource: "productivity",
+    targetId: estadoRequest?.id ?? null,
+    target: estadoTarget,
+    expectedEstado: estadoRequest?.from ?? ESTADO_BORRADOR,
+    isBusy: isChecking || (estadoRequest?.sent ?? false),
+    messages: PRODUCTIVITY_STALE_MESSAGES,
+  });
   if (staleEstado) {
     setEstadoRequest(null);
     setStaleNotice(staleEstado);
   }
-  const staleDelete = getProductivityStaleNotice(
-    deleteTargetId,
-    deleteTarget,
-    ESTADO_BORRADOR,
-    isChecking || (deleteTargetId !== null && busyIds.includes(deleteTargetId))
-  );
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "productivity",
+    targetId: deleteTargetId,
+    target: deleteTarget,
+    expectedEstado: ESTADO_BORRADOR,
+    isBusy: isChecking || (deleteTargetId !== null && busyIds.includes(deleteTargetId)),
+    messages: PRODUCTIVITY_STALE_MESSAGES,
+  });
   if (staleDelete) {
     setDeleteTargetId(null);
     setStaleNotice(staleDelete);

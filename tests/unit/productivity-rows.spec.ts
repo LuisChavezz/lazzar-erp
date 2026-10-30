@@ -1,15 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import {
   getColumns,
   PRODUCTIVITY_HEADER_FILTERS,
   type ProductivityRow,
 } from "@/src/features/productivity/components/ProductivityColumns";
-import {
-  buildProductivityRows,
-  getProductivityStaleNotice,
-} from "@/src/features/productivity/utils/productivityRows";
+import { buildProductivityRows } from "@/src/features/productivity/utils/productivityRows";
+import { PRODUCTIVITY_STALE_MESSAGES } from "@/src/features/productivity/hooks/productivityErrorMessages";
 import type { Productivity } from "@/src/features/productivity/interfaces/productivity.interface";
 
 /**
@@ -113,26 +112,43 @@ test.describe("productividad › filtro de empleado", () => {
   });
 });
 
+
+/** La regla de la vía rápida tal como la llama la lista, con los mensajes de la página. */
+const staleNotice = (
+  targetId: number | null,
+  target: { estado: string } | null,
+  expectedEstado: string,
+  isBusy: boolean,
+) =>
+  getStaleRowDialogNotice({
+    resource: "productivity",
+    targetId,
+    target,
+    expectedEstado,
+    isBusy,
+    messages: PRODUCTIVITY_STALE_MESSAGES,
+  });
+
 test.describe("productividad › cierre de los diálogos de fila", () => {
   test("confirmar: sigue abierto mientras está en borrador", () => {
-    expect(getProductivityStaleNotice(1, { estado: "borrador" }, "borrador", false)).toBeNull();
+    expect(staleNotice(1, { estado: "borrador" }, "borrador", false)).toBeNull();
   });
 
   test("otra persona lo confirmó: aviso con el estado nuevo", () => {
-    expect(getProductivityStaleNotice(1, { estado: "confirmado" }, "borrador", false)).toEqual({
+    expect(staleNotice(1, { estado: "confirmado" }, "borrador", false)).toEqual({
       key: "productivity-stale-1-confirmado",
       message: "El registro cambió de estado (ahora: «Confirmado»). Se actualizó el listado.",
     });
   });
 
   test("devolver a borrador espera un confirmado", () => {
-    expect(getProductivityStaleNotice(2, { estado: "confirmado" }, "confirmado", false)).toBeNull();
-    expect(getProductivityStaleNotice(2, { estado: "borrador" }, "confirmado", false)?.key).toBe(
+    expect(staleNotice(2, { estado: "confirmado" }, "confirmado", false)).toBeNull();
+    expect(staleNotice(2, { estado: "borrador" }, "confirmado", false)?.key).toBe(
       "productivity-stale-2-borrador",
     );
   });
 
   test("con el PATCH propio ya enviado no avisa", () => {
-    expect(getProductivityStaleNotice(1, { estado: "confirmado" }, "borrador", true)).toBeNull();
+    expect(staleNotice(1, { estado: "confirmado" }, "borrador", true)).toBeNull();
   });
 });

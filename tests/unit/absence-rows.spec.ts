@@ -1,16 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import {
   ABSENCE_HEADER_FILTERS,
   getColumns,
   type AbsenceRow,
 } from "@/src/features/absences/components/AbsenceColumns";
-import {
-  buildAbsenceRows,
-  getAbsenceStaleNotice,
-  getAbsenceTipoText,
-} from "@/src/features/absences/utils/absenceRows";
+import { buildAbsenceRows, getAbsenceTipoText } from "@/src/features/absences/utils/absenceRows";
+import { absenceStaleMessages } from "@/src/features/absences/hooks/absenceErrorMessages";
 import type { Absence } from "@/src/features/absences/interfaces/absence.interface";
 
 /**
@@ -136,26 +134,46 @@ test.describe("ausencias › goce de sueldo y tipo", () => {
   });
 });
 
+
+/**
+ * La regla de la vía rápida tal como la llama la lista: con los mensajes de la
+ * página, que nombran el estado con la etiqueta del TIPO del registro.
+ */
+const staleNotice = (
+  targetId: number | null,
+  target: { tipo: string; estado: string } | null,
+  expectedEstado: string,
+  isBusy: boolean,
+) =>
+  getStaleRowDialogNotice({
+    resource: "absence",
+    targetId,
+    target,
+    expectedEstado,
+    isBusy,
+    messages: absenceStaleMessages(target?.tipo ?? ""),
+  });
+
 test.describe("ausencias › cierre de los diálogos de resolver", () => {
   test("sigue abierto mientras está pendiente", () => {
-    expect(getAbsenceStaleNotice(1, { tipo: "permiso", estado: "pendiente" }, "pendiente", false)).toBeNull();
+    expect(staleNotice(1, { tipo: "permiso", estado: "pendiente" }, "pendiente", false)).toBeNull();
   });
 
   test("una falta que otra persona confirmó: aviso con la etiqueta de su tipo", () => {
-    expect(getAbsenceStaleNotice(2, { tipo: "falta_injustificada", estado: "aprobado" }, "pendiente", false)).toEqual({
+    expect(staleNotice(2, { tipo: "falta_injustificada", estado: "aprobado" }, "pendiente", false)).toEqual({
       key: "absence-stale-2-aprobado",
       message: "El registro cambió de estado (ahora: «Falta confirmada»). Se actualizó el listado.",
     });
   });
 
   test("ya no existe: aviso de inexistente", () => {
-    expect(getAbsenceStaleNotice(5, null, "pendiente", false)).toEqual({
+    expect(staleNotice(5, null, "pendiente", false)).toEqual({
       key: "absence-stale-5-gone",
       message: "El registro ya no existe. Se actualizó el listado.",
     });
   });
 
   test("con la acción propia en vuelo no avisa", () => {
-    expect(getAbsenceStaleNotice(1, { tipo: "permiso", estado: "rechazado" }, "pendiente", true)).toBeNull();
+    expect(staleNotice(1, { tipo: "permiso", estado: "rechazado" }, "pendiente", true)).toBeNull();
   });
 });

@@ -1,16 +1,8 @@
 import type { User } from "@/src/features/users/interfaces/user.interface";
 import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
-import {
-  getStaleRowDialogNotice,
-  type StaleRowDialogNotice,
-} from "@/src/utils/staleRowDialogNotice";
 import type { Absence } from "../interfaces/absence.interface";
 import type { AbsenceRow } from "../components/AbsenceColumns";
-import {
-  getTipoAusenciaLabel,
-  type EstadoAusencia,
-} from "../constants/absenceChoices";
-import { ABSENCE_GONE_MESSAGE, absenceEstadoChangedMessage } from "../hooks/absenceErrorMessages";
+import { getTipoAusenciaLabel } from "../constants/absenceChoices";
 
 /**
  * Filas de la tabla: cada registro con los nombres de sus FK resueltos. Un
@@ -39,28 +31,3 @@ export const buildAbsenceRows = (
  */
 export const getAbsenceTipoText = (tipo: string | null | undefined): string =>
   getTipoAusenciaLabel(tipo) ?? (tipo || "—");
-
-/**
- * ¿El diálogo de fila (aprobar/confirmar, rechazar/descartar, eliminar) ya no
- * aplica? Se cierra con aviso si el registro desapareció o ya no está en
- * `expectedEstado`: `pendiente` para resolverlo; el estado de APERTURA para
- * eliminar. El aviso nombra el estado con la etiqueta de su tipo. Con la
- * acción propia en vuelo (`isBusy`) no aplica.
- */
-export const getAbsenceStaleNotice = (
-  targetId: number | null,
-  target: Pick<Absence, "tipo" | "estado"> | null,
-  expectedEstado: EstadoAusencia,
-  isBusy: boolean
-): StaleRowDialogNotice | null =>
-  getStaleRowDialogNotice<string>({
-    resource: "absence",
-    targetId,
-    target,
-    expectedEstado,
-    isBusy,
-    messages: {
-      gone: ABSENCE_GONE_MESSAGE,
-      estadoChanged: (estado) => absenceEstadoChangedMessage(target?.tipo ?? "", estado),
-    },
-  });

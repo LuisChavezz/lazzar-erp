@@ -15,7 +15,10 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
@@ -38,7 +41,8 @@ import { useDeleteAbsence } from "../hooks/useDeleteAbsence";
 import { useApproveAbsence } from "../hooks/useApproveAbsence";
 import { AbsenceRowActionsProvider, usePendingAbsenceIds } from "../hooks/useAbsenceRowActions";
 import { verifyAbsenceEstado } from "../hooks/verifyAbsenceEstado";
-import { buildAbsenceRows, getAbsenceStaleNotice } from "../utils/absenceRows";
+import { buildAbsenceRows } from "../utils/absenceRows";
+import { absenceStaleMessages } from "../hooks/absenceErrorMessages";
 
 /**
  * Permiso de aprobar/confirmar y rechazar/descartar: `D-RH`, igual que en
@@ -125,27 +129,38 @@ export default function AbsenceList() {
   // resolver espera un pendiente; el borrado, el estado de apertura. Ninguno
   // se toca mientras su propia acción está en vuelo. Mismo criterio que
   // vacaciones.
-  const staleApprove = getAbsenceStaleNotice(
-    approveTargetId,
-    approveTarget,
-    ESTADO_PENDIENTE,
-    isApproveBusy
-  );
+  const staleApprove = getStaleRowDialogNotice({
+    resource: "absence",
+    targetId: approveTargetId,
+    target: approveTarget,
+    expectedEstado: ESTADO_PENDIENTE,
+    isBusy: isApproveBusy,
+    messages: absenceStaleMessages(approveTarget?.tipo ?? ""),
+  });
   if (staleApprove) {
     setApproveTargetId(null);
     setStaleNotice(staleApprove);
   }
-  const staleReject = getAbsenceStaleNotice(rejectTargetId, rejectTarget, ESTADO_PENDIENTE, isRejectBusy);
+  const staleReject = getStaleRowDialogNotice({
+    resource: "absence",
+    targetId: rejectTargetId,
+    target: rejectTarget,
+    expectedEstado: ESTADO_PENDIENTE,
+    isBusy: isRejectBusy,
+    messages: absenceStaleMessages(rejectTarget?.tipo ?? ""),
+  });
   if (staleReject) {
     setRejectTargetId(null);
     setStaleNotice(staleReject);
   }
-  const staleDelete = getAbsenceStaleNotice(
-    deleteRequest?.id ?? null,
-    deleteTarget,
-    deleteRequest?.estado ?? ESTADO_PENDIENTE,
-    isCheckingDelete
-  );
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "absence",
+    targetId: deleteRequest?.id ?? null,
+    target: deleteTarget,
+    expectedEstado: deleteRequest?.estado ?? ESTADO_PENDIENTE,
+    isBusy: isCheckingDelete,
+    messages: absenceStaleMessages(deleteTarget?.tipo ?? ""),
+  });
   if (staleDelete) {
     setDeleteRequest(null);
     setStaleNotice(staleDelete);

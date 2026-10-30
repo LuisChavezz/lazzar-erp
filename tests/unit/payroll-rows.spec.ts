@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import {
   getColumns,
   PAYROLL_HEADER_FILTERS,
   type PayrollRow,
 } from "@/src/features/payroll/components/PayrollColumns";
-import { buildPayrollRows, getPayrollStaleNotice } from "@/src/features/payroll/utils/payrollRows";
+import { buildPayrollRows } from "@/src/features/payroll/utils/payrollRows";
+import { PAYROLL_STALE_MESSAGES } from "@/src/features/payroll/hooks/payrollErrorMessages";
 import type { Payroll } from "@/src/features/payroll/interfaces/payroll.interface";
 
 /**
@@ -119,23 +121,35 @@ test.describe("nóminas › filtro de empleado", () => {
   });
 });
 
+
+/** La regla de la vía rápida tal como la llama la lista, con los mensajes de la página. */
+const staleNotice = (targetId: number | null, target: { estado: string } | null, isBusy: boolean) =>
+  getStaleRowDialogNotice({
+    resource: "payroll",
+    targetId,
+    target,
+    expectedEstado: "pendiente",
+    isBusy,
+    messages: PAYROLL_STALE_MESSAGES,
+  });
+
 test.describe("nóminas › cierre de pagar y cancelar", () => {
   test("sigue abierto mientras la nómina está pendiente", () => {
-    expect(getPayrollStaleNotice(1, { estado: "pendiente" }, false)).toBeNull();
+    expect(staleNotice(1, { estado: "pendiente" }, false)).toBeNull();
   });
 
   test("otra persona ya la pagó: aviso con el estado nuevo", () => {
-    expect(getPayrollStaleNotice(1, { estado: "pagada" }, false)).toEqual({
+    expect(staleNotice(1, { estado: "pagada" }, false)).toEqual({
       key: "payroll-stale-1-pagada",
       message: "La nómina ya no está pendiente (ahora: «Pagada»). Se actualizó el listado.",
     });
   });
 
   test("ya no existe: aviso de inexistente", () => {
-    expect(getPayrollStaleNotice(1, null, false)?.key).toBe("payroll-stale-1-gone");
+    expect(staleNotice(1, null, false)?.key).toBe("payroll-stale-1-gone");
   });
 
   test("con la guarda o la escritura propia en vuelo no avisa", () => {
-    expect(getPayrollStaleNotice(1, { estado: "cancelada" }, true)).toBeNull();
+    expect(staleNotice(1, { estado: "cancelada" }, true)).toBeNull();
   });
 });

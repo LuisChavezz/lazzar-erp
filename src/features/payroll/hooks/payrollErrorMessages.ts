@@ -42,3 +42,9 @@ export const PAYROLL_CHECK_FAILED_MESSAGE =
 /** Error de una acción sobre una nómina: ver `drfActionErrorMessage`. */
 export const payrollActionErrorMessage = (error: unknown, fallback: string): string =>
   drfActionErrorMessage(error, fallback, PAYROLL_GONE_MESSAGE);
+
+/** Avisos de un diálogo de fila que se cerró por un cambio externo (`getStaleRowDialogNotice`). */
+export const PAYROLL_STALE_MESSAGES = {
+  gone: PAYROLL_GONE_MESSAGE,
+  estadoChanged: payrollEstadoChangedMessage,
+};
