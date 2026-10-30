@@ -8,6 +8,10 @@ import type {
   StockMovementReportParams,
   StockMovementReportResponse,
 } from "../interfaces/stock-movement-report.interface";
+import type {
+  MovementLedgerParams,
+  MovementLedgerResponse,
+} from "../interfaces/movement-ledger.interface";
 
 export interface StockItemsFilters {
   almacen_id?: number;
@@ -146,3 +150,21 @@ export const getFullStockMovementReport = async (
     params,
     STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE,
   );
+
+// ─── Auxiliar de movimientos (kardex de una variante) ────────────────────────
+
+/**
+ * Auxiliar de movimientos: con `q` busca la variante (una coincidencia ⇒
+ * kardex; varias o ninguna ⇒ `opciones`); con `producto_variante` va directo al
+ * kardex. Sin paginación y en orden cronológico: el saldo corrido depende de
+ * ese orden. Sin manejo de errores: de eso se encarga el hook.
+ */
+export const getMovementLedger = async (
+  params: MovementLedgerParams,
+): Promise<MovementLedgerResponse> => {
+  const { data } = await v1_api.get<MovementLedgerResponse>(
+    "/inventarios/movimientos/auxiliar/",
+    { params },
+  );
+  return data;
+};
