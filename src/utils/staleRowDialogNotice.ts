@@ -58,6 +58,21 @@ interface StaleEstadoRowDialogArgs<E extends string> extends StaleRowDialogBase 
 }
 
 /**
+ * Igual que `StaleEstadoRowDialogArgs`, pero el estado vive en el campo que
+ * nombra `statusField` (Finanzas: `"estatus"`) en vez de `estado`. El estado
+ * esperado y el de los textos se derivan de la fila (`T[K]`): un campo
+ * renombrado o ausente falla el typecheck, como con `estado`.
+ */
+interface StaleStatusFieldRowDialogArgs<T extends { [P in K]: string }, K extends string>
+  extends StaleRowDialogBase {
+  statusField: K;
+  target: T | null;
+  expectedEstado: T[K];
+  expectedActivo?: undefined;
+  messages: StaleEstadoRowDialogMessages<T[K]>;
+}
+
+/**
  * ¿El diálogo de fila de `targetId` ya no aplica? Lo decide la vía rápida
  * contra la caché del listado: si el registro ya no está, o su `activo` ya no
  * es el que la acción necesita (`expectedActivo`: `true` para desactivar), el
@@ -71,15 +86,24 @@ interface StaleEstadoRowDialogArgs<E extends string> extends StaleRowDialogBase 
  * textos traer `activoChanged`, así que un `activo` renombrado o ausente no
  * apaga el aviso en silencio — falla el typecheck. Con `expectedEstado` (un
  * registro sin `activo` cuyo diálogo depende de su `estado`, como una
- * aprobación), lo mismo con `estado` y `estadoChanged`.
+ * aprobación), lo mismo con `estado` y `estadoChanged`. Una cuarta firma
+ * agrega `statusField` para leer el estado de otro campo (el `estatus` de
+ * Finanzas); sin él se lee `estado`, así que las llamadas de RH no cambian.
  */
 export function getStaleRowDialogNotice(args: StaleActivoRowDialogArgs): StaleRowDialogNotice | null;
 export function getStaleRowDialogNotice(args: StaleGoneRowDialogArgs): StaleRowDialogNotice | null;
 export function getStaleRowDialogNotice<E extends string>(
   args: StaleEstadoRowDialogArgs<E>
 ): StaleRowDialogNotice | null;
+export function getStaleRowDialogNotice<T extends { [P in K]: string }, K extends string>(
+  args: StaleStatusFieldRowDialogArgs<T, K>
+): StaleRowDialogNotice | null;
 export function getStaleRowDialogNotice(
-  args: StaleActivoRowDialogArgs | StaleGoneRowDialogArgs | StaleEstadoRowDialogArgs<string>
+  args:
+    | StaleActivoRowDialogArgs
+    | StaleGoneRowDialogArgs
+    | StaleEstadoRowDialogArgs<string>
+    | StaleStatusFieldRowDialogArgs<Record<string, string>, string>
 ): StaleRowDialogNotice | null {
   const { resource, targetId, target, isBusy, messages } = args;
   if (targetId === null || isBusy) return null;
@@ -87,7 +111,9 @@ export function getStaleRowDialogNotice(
     return { key: `${resource}-stale-${targetId}-gone`, message: messages.gone };
   }
   if ("expectedEstado" in args && args.expectedEstado !== undefined) {
-    const { estado } = target as { estado: string };
+    // Sin `statusField` (la firma de `estado`) se lee `estado`.
+    const field = "statusField" in args ? args.statusField : "estado";
+    const estado = (target as Record<string, string>)[field];
     if (estado === args.expectedEstado) return null;
     return {
       key: `${resource}-stale-${targetId}-${estado}`,
