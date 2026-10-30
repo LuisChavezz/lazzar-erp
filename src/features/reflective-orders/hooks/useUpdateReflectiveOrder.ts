@@ -6,9 +6,9 @@ import type { UpdateReflectiveOrderPayload } from "../interfaces/reflective-orde
 /**
  * Edición parcial de una orden de reflejante
  * (`PATCH /produccion/orden-reflejante/{id}/`). El id se fija al crear el hook;
- * `mutate` recibe solo los campos que cambian (para el estatus, armados por
- * `buildReflectiveStatusPayload`). Invalidación, toasts y errores viven en
- * `useUpdateWorkOrder`, compartido con corte de manga.
+ * `mutate` recibe solo los campos que cambian (el estatus viaja solo, sin
+ * `fecha_fin`: la sella y la limpia el backend). Invalidación, toasts y errores
+ * viven en `useUpdateWorkOrder`, compartido con corte de manga.
  */
 export const useUpdateReflectiveOrder = (id: number) =>
   useUpdateWorkOrder<UpdateReflectiveOrderPayload>({

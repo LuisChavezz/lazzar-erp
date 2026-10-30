@@ -28,7 +28,6 @@ import {
 } from "../constants/corteMangaOrderStatus";
 import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
 import { useUpdateCorteMangaOrder } from "../hooks/useUpdateCorteMangaOrder";
-import { buildCorteMangaStatusPayload } from "../utils/buildCorteMangaStatusPayload";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
 
@@ -286,7 +285,7 @@ export function CorteMangaOrderPageContent({
                 statusDisplay={data.estatus_corte_display}
                 statusEntry={corteMangaStatusEntry}
                 onStatusChange={(next) =>
-                  updateOrder.mutate(buildCorteMangaStatusPayload(next))
+                  updateOrder.mutate({ estatus_corte: next })
                 }
                 isPending={updateOrder.isPending}
                 // El caso Cancelado lo resuelve el propio selector (se queda sin

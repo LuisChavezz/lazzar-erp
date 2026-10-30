@@ -6,9 +6,9 @@ import type { UpdateCorteMangaOrderPayload } from "../interfaces/corte-manga-ord
 /**
  * Edición parcial de una orden de corte de manga
  * (`PATCH /produccion/orden-corte-manga/{id}/`). El id se fija al crear el
- * hook; `mutate` recibe solo los campos que cambian (para el estatus, armados
- * por `buildCorteMangaStatusPayload`). Invalidación, toasts y errores viven en
- * `useUpdateWorkOrder`, compartido con reflejante.
+ * hook; `mutate` recibe solo los campos que cambian (el estatus viaja solo, sin
+ * `fecha_fin`: la sella y la limpia el backend). Invalidación, toasts y errores
+ * viven en `useUpdateWorkOrder`, compartido con reflejante.
  */
 export const useUpdateCorteMangaOrder = (id: number) =>
   useUpdateWorkOrder<UpdateCorteMangaOrderPayload>({
