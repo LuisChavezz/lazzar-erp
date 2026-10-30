@@ -3,6 +3,7 @@ import type {
   CorteMangaOnboardingData,
   CorteMangaOrder,
   CreateCorteMangaOrderPayload,
+  UpdateCorteMangaOrderPayload,
 } from "../interfaces/corte-manga-order.interface";
 
 /**
@@ -108,4 +109,27 @@ export const createCorteMangaOrder = async (
     data,
   );
   return response.data;
+};
+
+/**
+ * Edición parcial de una orden de corte de manga
+ * (`PATCH /produccion/orden-corte-manga/{id}/`, nucleo-erp #755): estatus,
+ * prioridad y observaciones (ver `UpdateCorteMangaOrderPayload`). Solo se
+ * envían los campos que cambian.
+ *
+ * NO devuelve nada, a propósito: la respuesta es la de
+ * `OrdenesCorteMangaEditarSerializer` (`id`, `folio_ocm`, estatus, prioridad,
+ * `fecha_fin`, `observaciones`), no la forma del detalle ni la del listado.
+ * Meterla en la caché con `setQueryData` dejaría la ficha sin `detalles`; para
+ * refrescar se re-consulta (ver `useUpdateCorteMangaOrder`). Mismo criterio que
+ * `updateEmbroideryOrder`.
+ *
+ * Una orden ya cancelada (`7`) responde `400` con el mensaje bajo la clave
+ * `estatus_corte`, mande lo que mande el cuerpo.
+ */
+export const updateCorteMangaOrder = async (
+  id: number,
+  data: UpdateCorteMangaOrderPayload,
+): Promise<void> => {
+  await v1_api.patch(`/produccion/orden-corte-manga/${id}/`, data);
 };
