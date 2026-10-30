@@ -38,10 +38,11 @@ export interface ParsedCatalogAltaError {
  *  - `{"permiso": "..."}`: `_require_produccion` (400, no 403). Se muestra el
  *    mensaje del backend; un 403 real, sin cuerpo útil, usa el aviso del alta
  *    de SKU.
+ *  - `{"pedido": "..."}`: el pedido está CANCELADO.
  *  - `{"pedido_detalle_id": "..."}`: falta, la línea no es de este pedido o ya
  *    no le quedan SKU pendientes de alta. Línea obsoleta.
- *  - `{"alta_catalogo": "..."}`: sin categoría, tallas fuera de la categoría o
- *    el SKU ya existe en catálogo.
+ *  - `{"alta_catalogo": "..."}`: sin categoría, categoría inactiva, tallas
+ *    fuera de la categoría o el SKU ya existe en catálogo.
  *  - `{"categoria_producto": "..."}`: se agotaron los códigos de la categoría.
  *  - `404` (`detail`): el pedido ya no es visible. También línea obsoleta.
  *
