@@ -1,44 +1,25 @@
 "use client";
 
-import { ColumnDef, FilterFn } from "@tanstack/react-table";
-import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnDef } from "@tanstack/react-table";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { AccountingCustomer } from "../interfaces/accounting-customer.interface";
-
-const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
-  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
-];
-
-const activoFilterFn: FilterFn<AccountingCustomer> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.activo) === filterValue;
-};
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
+/**
+ * Listado de solo lectura: el nombre lleva el punto de `activo` igual que los
+ * demás catálogos, pero sin menú — no hay acciones ni detalle, así que
+ * `FolioActionMenu` lo pinta como texto plano.
+ */
 export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
   {
     accessorKey: "nombre",
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Nombre</span>
-        <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
-      </div>
+    header: "Nombre",
+    size: 240,
+    cell: ({ row }) => (
+      <FolioActionMenu name={row.original.nombre} items={[]} active={row.original.activo} />
     ),
-    filterFn: activoFilterFn,
-    cell: ({ row }) => {
-      const statusCfg = row.original.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
-      return (
-        <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
-          <span className="font-medium text-[11px] text-slate-700 dark:text-slate-200">
-            {row.getValue("nombre") || "—"}
-          </span>
-        </div>
-      );
-    },
   },
   {
     accessorKey: "razon_social",
@@ -88,3 +69,18 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
     },
   },
 ];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * El nombre filtra por `activo` (su punto), con ficha "Registro: …". `estado`
+ * es el estado GEOGRÁFICO de la dirección, no un estatus: no lleva filtro.
+ *
+ * Hoy el backend de `clientes-contabilidad` solo devuelve clientes activos
+ * (ignora `?activo=false`), así que "Inactivo" no encuentra filas; el filtro se
+ * conserva para cuando el listado los incluya.
+ */
+export const ACCOUNTING_CUSTOMER_HEADER_FILTERS: Partial<
+  Record<string, HeaderFilterSpec<AccountingCustomer>>
+> = {
+  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+};
