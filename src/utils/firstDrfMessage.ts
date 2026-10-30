@@ -31,11 +31,23 @@ export function firstRejectionMessage(
   data: unknown,
   keys: readonly string[],
 ): string | undefined {
+  return firstRejection(data, keys)?.message;
+}
+
+/**
+ * Igual que `firstRejectionMessage`, pero dice también de qué clave salió el
+ * mensaje: para quien decide qué hacer según el campo rechazado (p. ej. mostrar
+ * unos rechazos junto a un control y el resto en el toast).
+ */
+export function firstRejection<K extends string>(
+  data: unknown,
+  keys: readonly K[],
+): { key: K; message: string } | undefined {
   if (!data || typeof data !== "object") return undefined;
   const body = data as Record<string, unknown>;
   for (const key of keys) {
     const message = firstDrfMessage(body[key]);
-    if (message) return message;
+    if (message) return { key, message };
   }
   return undefined;
 }
