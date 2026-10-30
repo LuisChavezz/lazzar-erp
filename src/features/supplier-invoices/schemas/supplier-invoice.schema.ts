@@ -396,6 +396,8 @@ export const SupplierInvoiceFormSchema = z
     moneda_codigo: z.string(),
     /** Derivado de la OC: la factura se registra en la sucursal de su orden. */
     sucursal: z.number().int().positive("La orden de compra elegida no tiene sucursal"),
+    /** Nombre de esa sucursal, solo para mostrarla (no viaja al API). */
+    sucursal_nombre: z.string(),
     folio: z.string().max(30, "El folio no puede exceder 30 caracteres"),
     /** `""` o "YYYY-MM-DD" (input date). Requerida solo al registrar. */
     fecha_vencimiento: z.string(),
@@ -618,6 +620,7 @@ export const createEmptySupplierInvoiceForm = (): SupplierInvoiceFormValues => (
   moneda: 0,
   moneda_codigo: "",
   sucursal: 0,
+  sucursal_nombre: "",
   folio: "",
   fecha_vencimiento: "",
   tasa_iva: "",
