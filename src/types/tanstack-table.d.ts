@@ -28,6 +28,12 @@ declare module "@tanstack/react-table" {
      */
     hideOnMobile?: boolean;
     /**
+     * La columna arranca OCULTA y el usuario puede
+     * mostrarla desde el selector "Mostrar/Ocultar". La lee `DataTable` una
+     * vez, al montarse; necesita `id` o `accessorKey`.
+     */
+    hiddenByDefault?: boolean;
+    /**
      * Alineación horizontal de encabezado Y celda, aplicada por `DataTable` a
      * nivel de `<th>`/`<td>` (no hace falta ninguna clase en el contenido de
      * la columna). Si se omite: `"left"`. Importes y cantidades numéricas

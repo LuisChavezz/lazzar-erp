@@ -401,6 +401,28 @@ type DataTableProps<TData, TValue> =
   | DataTableClientProps<TData, TValue>
   | DataTableServerProps<TData, TValue>;
 
+/**
+ * Visibilidad inicial: `false` para cada columna con `meta.hiddenByDefault`.
+ * El id se resuelve como lo hace TanStack (`id`, o `accessorKey` con los
+ * puntos cambiados por `_`); una columna marcada sin ninguno de los dos no se
+ * puede ocultar desde aquí y se queda visible.
+ */
+function initialColumnVisibility<TData, TValue>(
+  columns: ColumnDef<TData, TValue>[]
+): VisibilityState {
+  const visibility: VisibilityState = {};
+  for (const column of columns) {
+    if (!column.meta?.hiddenByDefault) continue;
+    const accessorKey =
+      "accessorKey" in column && typeof column.accessorKey === "string"
+        ? column.accessorKey
+        : undefined;
+    const id = column.id ?? accessorKey?.replace(/\./g, "_");
+    if (id) visibility[id] = false;
+  }
+  return visibility;
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -439,7 +461,12 @@ export function DataTable<TData, TValue>({
   // State for sorting, filtering, and column visibility
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  // Las columnas con `meta.hiddenByDefault` arrancan ocultas (siguen en el
+  // selector "Mostrar/Ocultar"). Sin esa clave el estado inicial es `{}`, igual
+  // que siempre. Solo siembra el estado: no reacciona si `columns` cambia.
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
+    initialColumnVisibility(columns)
+  );
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   // Estado NATIVO de TanStack para filtros por columna (distinto del
   // mecanismo de chips `activeFilters`/`filterConfig` de abajo). Columnas que
