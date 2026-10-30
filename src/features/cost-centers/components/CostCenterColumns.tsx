@@ -1,105 +1,76 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { BanIcon, CheckCircleIcon, ChevronRightIcon, EditIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { BanIcon, CheckCircleIcon, EditIcon } from "@/src/components/Icons";
 import type { CostCenter } from "../interfaces/cost-center.interface";
+import { useCostCenterRowActionsContext } from "../hooks/useCostCenterRowActions";
 
 const columnHelper = createColumnHelper<CostCenter>();
 
-const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
-  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
-];
-
-const activoFilterFn: FilterFn<CostCenter> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.activo) === filterValue;
-};
+/** Texto con que la fila se nombra: `nombre` y `codigo` pueden llegar vacíos en registros antiguos. */
+export const getCostCenterLabel = (centro: CostCenter): string =>
+  centro.nombre || centro.codigo || `#${centro.id}`;
 
 /**
- * Columnas del catálogo de centros de costo.
- *
- * Las acciones solo INVOCAN callbacks: los diálogos (detalle, edición y la
- * confirmación de baja/reactivación) viven en `CostCenterList`. Una celda se
- * desmonta al ordenar, filtrar o paginar, y el toggle cambia `activo`, que es
- * justo uno de los filtros de la tabla.
+ * El nombre ES el menú de la fila y lleva el punto de `activo`: sin columnas
+ * aparte de "Estatus" ni "Acciones". Los callbacks y el "en vuelo" llegan por
+ * contexto; los diálogos (detalle, edición y la confirmación de
+ * baja/reactivación) viven en `CostCenterList`.
  *
  * NO hay acción de eliminar: el `DELETE` del backend es la MISMA baja lógica que
  * el toggle —pone `activo=false` y la fila permanece—, así que ofrecer ambos
  * sería presentar dos acciones para un solo efecto. `activo` es el único control
  * de ciclo de vida (ver `setCostCenterActivo`).
  */
-export const getColumns = (
-  onViewDetail: (centro: CostCenter) => void,
-  onEdit: (centro: CostCenter) => void,
-  onToggleActivo: (centro: CostCenter) => void,
-) => {
+const CostCenterNameCell = ({ centro }: { centro: CostCenter }) => {
+  const { onViewDetail, onEdit, onToggleActivo, busyIds } = useCostCenterRowActionsContext();
+
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro) },
+    {
+      // La etiqueta cambia con el estatus de la fila: una sola acción que
+      // recorre el ciclo de vida en los dos sentidos.
+      label: centro.activo ? "Dar de baja" : "Reactivar",
+      icon: centro.activo ? BanIcon : CheckCircleIcon,
+      onSelect: () => onToggleActivo(centro),
+      disabled: busyIds.includes(centro.id),
+    },
+  ];
+
+  return (
+    <FolioActionMenu
+      name={getCostCenterLabel(centro)}
+      detail={{ onSelect: () => onViewDetail(centro) }}
+      items={items}
+      active={centro.activo}
+    />
+  );
+};
+
+/**
+ * Columnas del catálogo de centros de costo. No dependen de nada: callbacks y
+ * "en vuelo" llegan al menú por `CostCenterRowActionsProvider`, así una acción
+ * no remonta las celdas.
+ */
+export const getColumns = () => {
   const columns = [
     // Los campos de texto usan accessor de FUNCIÓN colapsando el vacío a `""`:
     // el filtro global de TanStack decide si una columna participa mirando solo
     // la primera fila, y un `null` (`typeof null === "object"`) la sacaría de la
     // búsqueda en TODAS. `codigo` y `nombre` pueden llegar vacíos en registros
     // antiguos y `descripcion` es nullable de verdad en el modelo.
-    columnHelper.accessor((row) => row.codigo ?? "", {
-      id: "codigo",
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Código</span>
-          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: activoFilterFn,
-      cell: (info) => {
-        const centro = info.row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(centro),
-          },
-          { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro) },
-          {
-            // La etiqueta cambia con el estatus de la fila: una sola acción que
-            // recorre el ciclo de vida en los dos sentidos.
-            label: centro.activo ? "Dar de baja" : "Reactivar",
-            icon: centro.activo ? BanIcon : CheckCircleIcon,
-            onSelect: () => onToggleActivo(centro),
-          },
-        ];
-
-        const codigo = info.getValue() || `#${centro.id}`;
-        const statusCfg = centro.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
-        return (
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
-            <span className="sr-only">{statusCfg.label}</span>
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones del centro de costo ${codigo}`}
-              align="start"
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {codigo}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
-    }),
     columnHelper.accessor((row) => row.nombre ?? "", {
       id: "nombre",
       header: "Nombre",
+      size: 260,
+      cell: ({ row }) => <CostCenterNameCell centro={row.original} />,
+    }),
+    columnHelper.accessor((row) => row.codigo ?? "", {
+      id: "codigo",
+      header: "Código",
       cell: (info) => (
-        <span className="font-medium text-slate-600 dark:text-slate-300">
+        <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
           {info.getValue() || "—"}
         </span>
       ),
@@ -121,4 +92,13 @@ export const getColumns = (
   ] as ColumnDef<CostCenter>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * El nombre filtra por `activo` (su punto), con ficha "Registro: …". Código y
+ * descripción no llevan filtro: son casi únicos por fila, los cubre la búsqueda.
+ */
+export const COST_CENTER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CostCenter>>> = {
+  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
 };

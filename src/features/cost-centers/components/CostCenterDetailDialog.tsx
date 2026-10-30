@@ -1,13 +1,16 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import {
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { CentrosCostoIcon } from "@/src/components/Icons";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import type { CostCenter } from "../interfaces/cost-center.interface";
 
 interface CostCenterDetailDialogProps {
@@ -37,41 +40,31 @@ export function CostCenterDetailDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="640px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <CentrosCostoIcon className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle del Centro de Costo
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {centro.codigo || `#${centro.id}`}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle del Centro de Costo"
+          subtitle={centro.codigo || `#${centro.id}`}
+          statusColor="indigo"
+          icon={CentrosCostoIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Código">
+        {/* Encabezado: lo que se busca primero al abrir el registro. */}
+        <InfoTileGrid>
+          <InfoTile label="Nombre">{textOrDash(centro.nombre)}</InfoTile>
+          <InfoTile label="Código">
             <span className="font-mono">{textOrDash(centro.codigo)}</span>
-          </InfoField>
-          <InfoField label="Estatus">
+          </InfoTile>
+          <InfoTile label="Estatus">
             <StatusBadge
               status={centro.activo ? "activo" : "inactivo"}
               config={ACTIVO_INACTIVO_CFG}
             />
-          </InfoField>
-        </div>
-
-        <div>
-          <SectionTitle>Nombre</SectionTitle>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {textOrDash(centro.nombre)}
-          </p>
-        </div>
+          </InfoTile>
+        </InfoTileGrid>
 
         <div>
           <SectionTitle>Descripción</SectionTitle>
