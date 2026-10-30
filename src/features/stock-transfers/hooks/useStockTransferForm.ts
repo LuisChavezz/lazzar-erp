@@ -24,6 +24,11 @@ export interface EntityOption {
   id: number;
   label: string;
   sublabel?: string;
+  /**
+   * SKU de producción (MP…) de una variante que viene de una muestra dada de
+   * alta en catálogo: se busca y se muestra como insignia junto al SKU.
+   */
+  skuProduccion?: string;
 }
 
 const LINE_ERROR_PREFIX = "transferencia_detalle";
@@ -116,7 +121,12 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     () =>
       productVariants
         .filter((v) => v.activo)
-        .map((v) => ({ id: v.id, label: `${v.sku} - ${v.nombre}`, sublabel: v.sku })),
+        .map((v) => ({
+          id: v.id,
+          label: `${v.sku} - ${v.nombre}`,
+          sublabel: v.sku,
+          skuProduccion: v.sku_produccion || undefined,
+        })),
     [productVariants],
   );
 

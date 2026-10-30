@@ -28,7 +28,7 @@ const MODE_COPY: Record<ItemKind, { title: string; subtitle: string; placeholder
   producto_variante: {
     title: "Seleccionar Variante",
     subtitle: "Elige la variante de producto a trasladar en esta línea",
-    placeholder: "Buscar variante por SKU o nombre...",
+    placeholder: "Buscar variante por SKU, nombre o SKU de producción...",
   },
 };
 
@@ -70,7 +70,9 @@ export function StockTransferProductSelectorDialog({
           items={mode === "producto" ? productOptions : variantOptions}
           searchPlaceholder={copy.placeholder}
           filterPredicate={(option, term) =>
-            `${option.label} ${option.sublabel ?? ""}`.toLowerCase().includes(term)
+            `${option.label} ${option.sublabel ?? ""} ${option.skuProduccion ?? ""}`
+              .toLowerCase()
+              .includes(term)
           }
           getKey={(option) => option.id}
           selectedKey={selectedId > 0 ? selectedId : null}
@@ -85,8 +87,17 @@ export function StockTransferProductSelectorDialog({
                 {option.label}
               </p>
               {option.sublabel && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {option.sublabel}
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                  <span className="min-w-0 truncate">{option.sublabel}</span>
+                  {/* SKU de producción (MP…) de una muestra dada de alta en catálogo. */}
+                  {option.skuProduccion && (
+                    <span
+                      title="SKU de producción"
+                      className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400"
+                    >
+                      {option.skuProduccion}
+                    </span>
+                  )}
                 </p>
               )}
             </>
