@@ -51,6 +51,9 @@ export interface ProgramarPartida {
   id: number;
   /** De la primera talla: la partida no trae datos propios en el GET. */
   producto: string | null;
+  /** Nombre recortado del backend; `null` si no lo manda. */
+  productoCorto: string | null;
+  categoria: string | null;
   color: string | null;
   renglones: PedidoProgramarRenglon[];
   /** La muestra es de la línea (`PedidoDetalle`): todas sus tallas la comparten. */
@@ -95,6 +98,8 @@ export const groupRenglonesPorPartida = (
     return {
       id,
       producto: tallas[0].producto,
+      productoCorto: tallas[0].producto_nombre_corto?.trim() || null,
+      categoria: tallas[0].categoria_nombre?.trim() || null,
       color: tallas[0].color,
       renglones: tallas,
       esMuestra,

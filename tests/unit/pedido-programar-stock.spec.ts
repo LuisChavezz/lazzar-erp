@@ -110,6 +110,17 @@ test.describe("groupRenglonesPorPartida", () => {
     expect(partida.color).toBeNull();
   });
 
+  test("toma categoría y nombre corto de la primera talla; vacíos o ausentes quedan null", () => {
+    const [conDatos, sinDatos] = groupRenglonesPorPartida([
+      renglon({ categoria_nombre: "Chamarra", producto_nombre_corto: "TRIPLE FORRO SCT" }),
+      renglon({ pedido_detalle_id: 99, categoria_nombre: "  ", producto_nombre_corto: undefined }),
+    ]);
+    expect(conDatos.categoria).toBe("Chamarra");
+    expect(conDatos.productoCorto).toBe("TRIPLE FORRO SCT");
+    expect(sinDatos.categoria).toBeNull();
+    expect(sinDatos.productoCorto).toBeNull();
+  });
+
   test("estado: cubierta, parcial y sin existencia", () => {
     const [cubierta, parcial, mixta, sinExistencia] = groupRenglonesPorPartida([
       conStock(2, 2, 1),
