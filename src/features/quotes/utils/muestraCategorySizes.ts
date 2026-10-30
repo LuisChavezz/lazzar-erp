@@ -14,8 +14,8 @@ import type { Size } from "../../sizes/interfaces/size.interface";
  * (`GET /catalogo/talla/?categoria_producto=<id>`) o, si la categoría no tiene
  * ninguna (`[]`), el catálogo global, igual que el backend, que no la restringe.
  */
-export const resolveMuestraSizes = (categorySizes: readonly Size[], globalSizes: Size[]): Size[] =>
-  categorySizes.length > 0 ? [...categorySizes] : globalSizes;
+export const resolveMuestraSizes = (categorySizes: Size[], globalSizes: Size[]): Size[] =>
+  categorySizes.length > 0 ? categorySizes : globalSizes;
 
 /** Resultado de `pruneSizeQuantities`. */
 export interface PrunedSizeQuantities {
@@ -93,8 +93,45 @@ export const INCOMPATIBLE_SIZES_ERROR = "Quita las tallas que no son de la categ
 
 export const MUESTRA_SIZES_LOADING_MESSAGE = "Cargando las tallas de la categoría…";
 
-export const MUESTRA_SIZES_ERROR_MESSAGE =
-  "No se pudieron cargar las tallas de la categoría. Cierra el diálogo e inténtalo de nuevo.";
+/** Aviso en el panel de la fila cuando la lista de su categoría no cargó. */
+export const MUESTRA_SIZES_ERROR_MESSAGE = "No se pudieron cargar las tallas de la categoría.";
+
+/** Error corto de la fila (encabezado del acordeón) por la misma causa. */
+export const MUESTRA_SIZES_ERROR = "No se cargaron las tallas";
 
 /** Estado de las tallas de una fila de muestra mientras su lista no está lista. */
 export type MuestraSizesStatus = "loading" | "error";
+
+/** La fila espera su lista: no se confirma, pero tampoco se marca con error. */
+export const MUESTRA_SIZES_PENDING = "pending";
+
+/**
+ * Por qué no se puede confirmar una fila de muestra: `null` si se puede,
+ * `MUESTRA_SIZES_PENDING` mientras su lista carga (su panel ya lo dice, y un
+ * error quedaría pegado cuando la lista llegue), o el mensaje de error de la
+ * fila. Va antes de `validateSelectedRows`, que se salta las filas sin tallas
+ * disponibles y dejaría pasar una muestra sin ninguna.
+ */
+export const getMuestraSizesBlock = (
+  status: MuestraSizesStatus | null,
+  incompatibleCount: number,
+): typeof MUESTRA_SIZES_PENDING | string | null => {
+  if (status === "loading") return MUESTRA_SIZES_PENDING;
+  if (status === "error") return MUESTRA_SIZES_ERROR;
+  return incompatibleCount > 0 ? INCOMPATIBLE_SIZES_ERROR : null;
+};
+
+/**
+ * De las muestras cuya categoría cambió, las que ya se pueden ajustar: las que
+ * tienen su lista lista (`status === null`) y las que ya no existen (se
+ * quitaron; solo hay que olvidarlas). Mientras la lista carga o falló no se
+ * ajusta: se podaría contra una lista vacía y se perdería todo lo capturado.
+ */
+export const getSettledDraftIds = (
+  changedDraftIds: Iterable<number>,
+  sizesByDraft: ReadonlyMap<number, { status: MuestraSizesStatus | null }>,
+): number[] =>
+  [...changedDraftIds].filter((id) => {
+    const muestraSizes = sizesByDraft.get(id);
+    return !muestraSizes || muestraSizes.status === null;
+  });

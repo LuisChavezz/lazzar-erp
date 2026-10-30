@@ -33,9 +33,9 @@ import { useSizesState } from "./useSizesState";
 import { useMuestraCategorySizes } from "./useMuestraCategorySizes";
 import { reflectiveInventoryCapError } from "../utils/reflectiveInventoryCap";
 import {
-  findIncompatibleSizes,
-  INCOMPATIBLE_SIZES_ERROR,
-  type IncompatibleSize,
+  getMuestraSizesBlock,
+  getSettledDraftIds,
+  MUESTRA_SIZES_PENDING,
   type MuestraSizesStatus,
 } from "../utils/muestraCategorySizes";
 import {
@@ -305,10 +305,7 @@ export function useAddProductDialogState({
   // ajusta durante el render (mismo patrón que el corte de manga, abajo) para
   // que el paso de tallas nunca pinte la combinación vieja.
   if (categoryChangedDraftIds.size > 0) {
-    const settledIds = [...categoryChangedDraftIds].filter((id) => {
-      const muestraSizes = muestraSizesByDraft.get(id);
-      return !muestraSizes || muestraSizes.status === null;
-    });
+    const settledIds = getSettledDraftIds(categoryChangedDraftIds, muestraSizesByDraft);
     if (settledIds.length > 0) {
       for (const id of settledIds) {
         const muestraSizes = muestraSizesByDraft.get(id);
@@ -409,25 +406,17 @@ export function useAddProductDialogState({
     return map;
   }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes, isMuestra, muestraSizesByDraft]);
 
-  // Estado y tallas fuera de categoría por fila de muestra, para `StepSizes` y
-  // para frenar el guardado. Las incompatibles solo se buscan con la lista lista.
-  const { muestraSizesStatus, muestraIncompatibleSizes } = useMemo(() => {
+  // Filas de muestra cuya lista aún no está lista, para `StepSizes` y para
+  // frenar el guardado. Aquí no se buscan tallas fuera de categoría: en el alta
+  // solo aparecen al cambiar de categoría, y la poda de arriba las quita en
+  // cuanto llega la lista. Las guardadas se marcan en "Editar tallas".
+  const muestraSizesStatus = useMemo(() => {
     const statusByDraft: Record<number, MuestraSizesStatus> = {};
-    const incompatibleByDraft: Record<number, IncompatibleSize[]> = {};
     for (const [draftId, muestraSizes] of muestraSizesByDraft) {
-      if (muestraSizes.status) {
-        statusByDraft[draftId] = muestraSizes.status;
-        continue;
-      }
-      const incompatible = findIncompatibleSizes(
-        sizesState.sizeQuantitiesPerProduct[draftId],
-        muestraSizes.sizes,
-        sizes
-      );
-      if (incompatible.length > 0) incompatibleByDraft[draftId] = incompatible;
+      if (muestraSizes.status) statusByDraft[draftId] = muestraSizes.status;
     }
-    return { muestraSizesStatus: statusByDraft, muestraIncompatibleSizes: incompatibleByDraft };
-  }, [muestraSizesByDraft, sizesState.sizeQuantitiesPerProduct, sizes]);
+    return statusByDraft;
+  }, [muestraSizesByDraft]);
 
   const orderedSteps = useMemo<Step[]>(() => {
     // Muestra arranca describiendo y NO pasa por colores (no tiene). Los pasos
@@ -552,23 +541,16 @@ export function useAddProductDialogState({
   );
 
   const handleSaveItem = useCallback(() => {
-    // Muestra cuya lista de tallas no está lista, o con tallas fuera de su
-    // categoría: no se agrega. Va antes de `validateSelectedRows`, que se salta
-    // las filas sin tallas disponibles y la dejaría pasar sin ninguna.
-    // Una fila que aún carga no se marca con error: su panel ya dice que carga,
-    // y el error quedaría pegado cuando la lista llegue.
-    const isAnyMuestraLoading = Object.values(muestraSizesStatus).includes("loading");
-    const blockedMuestraErrors: [number, string][] = [
-      ...Object.entries(muestraSizesStatus)
-        .filter(([, status]) => status === "error")
-        .map(([draftId]): [number, string] => [Number(draftId), "Sin tallas de la categoría"]),
-      ...Object.keys(muestraIncompatibleSizes).map((draftId): [number, string] => [
-        Number(draftId),
-        INCOMPATIBLE_SIZES_ERROR,
-      ]),
-    ];
-    blockedMuestraErrors.forEach(([draftId, message]) => sizesState.setSizeError(draftId, message));
-    if (isAnyMuestraLoading || blockedMuestraErrors.length > 0) {
+    // Muestra cuya lista de tallas no está lista: no se agrega
+    // (`getMuestraSizesBlock`).
+    let isAnyMuestraBlocked = false;
+    for (const [draftId, status] of Object.entries(muestraSizesStatus)) {
+      const block = getMuestraSizesBlock(status, 0);
+      if (block === null) continue;
+      isAnyMuestraBlocked = true;
+      if (block !== MUESTRA_SIZES_PENDING) sizesState.setSizeError(Number(draftId), block);
+    }
+    if (isAnyMuestraBlocked) {
       return;
     }
 
@@ -759,7 +741,6 @@ export function useAddProductDialogState({
     firstPartidaNumber,
     isMuestra,
     muestraDrafts,
-    muestraIncompatibleSizes,
     muestraSizesStatus,
     onAddItem,
     onAddItems,
@@ -881,10 +862,11 @@ export function useAddProductDialogState({
       sizeErrors: sizesState.sizeErrors,
       monedaCodigo,
       sizesStatusPerProduct: isMuestra ? muestraSizesStatus : undefined,
-      incompatibleSizesPerProduct: isMuestra ? muestraIncompatibleSizes : undefined,
-      onRemoveIncompatibleSize: isMuestra
-        ? (productId: number, sizeId: number) =>
-            sizesState.updateSizeQuantity(productId, sizeId, "")
+      onRetrySizes: isMuestra
+        ? (productId: number) => {
+            sizesState.clearSizeError(productId);
+            muestraSizesByDraft.get(productId)?.retry();
+          }
         : undefined,
     },
     colorsStepProps: {
