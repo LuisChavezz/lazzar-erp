@@ -12,6 +12,7 @@ import {
   getGravedadIncidenciaLabel,
   getTipoIncidenciaLabel,
 } from "../constants/incidentChoices";
+import { catalogText } from "@/src/utils/catalogText";
 
 /**
  * Filas de la tabla: cada incidencia con los nombres de sus dos FK resueltos.
@@ -39,13 +40,13 @@ export const buildIncidentRows = (
  * filtro. "—" sin valor.
  */
 export const getIncidentTipoText = (tipo: string | null | undefined): string =>
-  getTipoIncidenciaLabel(tipo) ?? (tipo || "—");
+  catalogText(getTipoIncidenciaLabel(tipo), tipo);
 
 export const getIncidentGravedadText = (gravedad: string | null | undefined): string =>
-  getGravedadIncidenciaLabel(gravedad) ?? (gravedad || "—");
+  catalogText(getGravedadIncidenciaLabel(gravedad), gravedad);
 
 export const getIncidentEstadoText = (estado: string | null | undefined): string =>
-  getEstadoIncidenciaLabel(estado) ?? (estado || "—");
+  catalogText(getEstadoIncidenciaLabel(estado), estado);
 
 /** Avisos del diálogo de baja/reactivación que se cerró por un cambio externo. */
 export const INCIDENT_STALE_MESSAGES: Required<StaleRowDialogMessages> = {

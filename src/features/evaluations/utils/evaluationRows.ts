@@ -7,6 +7,7 @@ import {
   getTipoEvaluacionLabel,
   type EstadoEvaluacion,
 } from "../constants/evaluationChoices";
+import { catalogText } from "@/src/utils/catalogText";
 
 /**
  * Filas de la tabla: cada evaluación con los nombres de sus dos FK resueltos
@@ -34,13 +35,13 @@ export const buildEvaluationRows = (
  * código crudo — el mismo texto que rotula su opción de filtro. "—" sin valor.
  */
 export const getEvaluationTipoText = (tipo: string | null | undefined): string =>
-  getTipoEvaluacionLabel(tipo) ?? (tipo || "—");
+  catalogText(getTipoEvaluacionLabel(tipo), tipo);
 
 export const getEvaluationPeriodoText = (periodo: string | null | undefined): string =>
-  getPeriodoEvaluacionLabel(periodo) ?? (periodo || "—");
+  catalogText(getPeriodoEvaluacionLabel(periodo), periodo);
 
 export const getEvaluationEstadoText = (estado: string | null | undefined): string =>
-  getEstadoEvaluacionLabel(estado) ?? (estado || "—");
+  catalogText(getEstadoEvaluacionLabel(estado), estado);
 
 /**
  * Avisos del diálogo de eliminar que se cerró por un cambio externo: la

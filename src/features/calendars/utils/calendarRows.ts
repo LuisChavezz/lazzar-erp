@@ -3,6 +3,7 @@ import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import type { Calendar } from "../interfaces/calendar.interface";
 import type { CalendarRow } from "../components/CalendarColumns";
 import { getTipoLabel, TIPO_OPTIONS } from "../constants/tipoCalendario";
+import { catalogText } from "@/src/utils/catalogText";
 
 /**
  * Filas de la tabla: cada día con el nombre de su turno resuelto. Un FK que no
@@ -36,7 +37,7 @@ export const SIN_TIPO_LABEL = TIPO_OPTIONS.find((option) => option.value === "")
  * Texto del tipo en la celda: la etiqueta del catálogo; "—" sin tipo; y un
  * código fuera del catálogo, crudo — el mismo texto que su opción de filtro.
  */
-export const getCalendarTipoText = (tipo: string | null): string => getTipoLabel(tipo) ?? (tipo || "—");
+export const getCalendarTipoText = (tipo: string | null): string => catalogText(getTipoLabel(tipo), tipo);
 
 /** Avisos del diálogo de eliminar que se cerró por un cambio externo. */
 export const CALENDAR_STALE_MESSAGES: StaleRowDialogMessages = {

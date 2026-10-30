@@ -3,6 +3,7 @@ import { resolveUserName } from "@/src/features/users/utils/resolveUserName";
 import type { Absence } from "../interfaces/absence.interface";
 import type { AbsenceRow } from "../components/AbsenceColumns";
 import { getTipoAusenciaLabel } from "../constants/absenceChoices";
+import { catalogText } from "@/src/utils/catalogText";
 
 /**
  * Filas de la tabla: cada registro con los nombres de sus FK resueltos. Un
@@ -30,4 +31,4 @@ export const buildAbsenceRows = (
  * código crudo — el mismo texto que su opción de filtro.
  */
 export const getAbsenceTipoText = (tipo: string | null | undefined): string =>
-  getTipoAusenciaLabel(tipo) ?? (tipo || "—");
+  catalogText(getTipoAusenciaLabel(tipo), tipo);
