@@ -9,6 +9,7 @@ import { FormSubmitButton } from "@/src/components/FormButtons";
 import { WarningFilledIcon } from "@/src/components/Icons";
 import { useProducts } from "@/src/features/products/hooks/useProducts";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
+import { useNextCatalogProductCode } from "../hooks/useNextCatalogProductCode";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type { SampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
@@ -41,6 +42,8 @@ export function SampleSkuOnboardingStep2({
     form,
     requiresColor,
     skuPreview,
+    catalogBlockReason,
+    catalogCategoryId,
     isSubmitting,
     formError,
     getError,
@@ -200,6 +203,40 @@ export function SampleSkuOnboardingStep2({
         </form.Field>
       </div>
 
+      <form.Field name="alta_catalogo">
+        {(field) => {
+          // Una línea que dejó de admitirlo (refetch) se ve desmarcada y no envía el flag.
+          const checked = field.state.value && catalogBlockReason === null;
+          return (
+            <div>
+              <FormToggle
+                label="Catálogo"
+                description="Dar de alta en catálogo"
+                name={field.name}
+                checked={checked}
+                disabled={catalogBlockReason !== null || isSubmitting}
+                title={catalogBlockReason ?? undefined}
+                aria-describedby="sample-sku-catalog-hint"
+                className={catalogBlockReason ? "opacity-60 cursor-not-allowed!" : ""}
+                onChange={(event) => field.handleChange(event.target.checked)}
+              />
+              <div
+                id="sample-sku-catalog-hint"
+                className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 ml-1"
+              >
+                {catalogBlockReason ? (
+                  catalogBlockReason
+                ) : checked && catalogCategoryId !== null ? (
+                  <CatalogCodePreview categoriaId={catalogCategoryId} />
+                ) : (
+                  "Crea también el producto y una variante por talla en el catálogo, con la categoría de la línea, para que tenga existencias y se venda como un producto normal."
+                )}
+              </div>
+            </div>
+          );
+        }}
+      </form.Field>
+
       <div className="rounded-xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-4 py-3 text-xs text-sky-900 dark:text-sky-100 space-y-1">
         <p className="font-semibold">
           {totalSkus === 1
@@ -261,5 +298,29 @@ export function SampleSkuOnboardingStep2({
         </FormSubmitButton>
       </div>
     </form>
+  );
+}
+
+/**
+ * Código del producto de catálogo que se crearía. Se monta solo con la casilla
+ * marcada, así que cada vez que se marca vuelve a pedirse. Es orientativo: el
+ * backend no lo reserva.
+ */
+function CatalogCodePreview({ categoriaId }: { categoriaId: number }) {
+  const { codigo, isLoading, isInitialError } = useNextCatalogProductCode(categoriaId, true);
+
+  if (isLoading) return <>Calculando el código del producto de catálogo...</>;
+  if (isInitialError || !codigo) {
+    return <>No se pudo obtener el código del producto de catálogo; se asignará al crear.</>;
+  }
+  return (
+    <>
+      Código de producto (orientativo):{" "}
+      <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+        {codigo}
+      </span>
+      . El definitivo se asigna al crear y puede cambiar si antes se da de alta otro producto de
+      la misma categoría.
+    </>
   );
 }
