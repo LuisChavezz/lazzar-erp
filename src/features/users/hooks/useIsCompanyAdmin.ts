@@ -11,9 +11,10 @@ export type { CompanyAdminStatus };
  *
  * Es la MISMA condición con la que el backend decide el alcance de varios
  * listados (p. ej. oportunidades: un vendedor ve las suyas; `is_admin_empresa`
- * o `is_superuser` ven las de toda la empresa). No sirve `role === "admin"` de
- * la sesión: ese rol también se concede a `is_staff`, que el backend NO trata
- * como administrador de empresa.
+ * o `is_superuser` ven las de toda la empresa). `role === "admin"` de la
+ * sesión aplica hoy la misma regla, pero no distingue "no se sabe" de "no", y
+ * una sesión iniciada antes de EC-673 lo tiene también para `is_staff`, que el
+ * backend NO trata como administrador de empresa.
  *
  * Los dos campos viajan en la sesión desde el inicio de sesión
  * (`src/lib/auth.ts`), así que no hace falta ninguna petición. La regla vive
