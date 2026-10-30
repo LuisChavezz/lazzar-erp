@@ -6,10 +6,16 @@ import { TallaServiceChips } from "@/src/features/orders/components/TallaService
 import { skuStatusPillClass } from "@/src/features/orders/constants/skuStatusPills";
 import { cleanText } from "@/src/utils/cleanText";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { useMutationLock } from "@/src/hooks/useMutationLock";
+import { altaCatalogoMutationKey } from "../hooks/useAltaCatalogoLinea";
 import type {
   SpecialOrderLine,
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
+import {
+  CATALOG_ALTA_BUTTON_NO_CATEGORY,
+  hasPendingCatalogAlta,
+} from "../utils/catalogAlta";
 
 /**
  * Servicios de UNA talla: los chips compartidos con el detalle de pedido
@@ -58,14 +64,74 @@ const totalPiezas = (tallas: SpecialOrderTalla[]): number =>
   tallas.reduce((acc, talla) => (Number.isFinite(talla.cantidad) ? acc + talla.cantidad : acc), 0);
 
 interface SpecialOrderLinesProps {
+  pedidoId: number;
   detalles: SpecialOrderLine[];
   /**
-   * El usuario puede ver la acción de alta de SKU. Es solo visibilidad: quién
-   * puede ejecutarla lo decide el backend (ver `SpecialOrderPageContent`).
+   * El usuario puede ver las acciones de la línea (alta de SKU y alta en
+   * catálogo). Es solo visibilidad: quién puede ejecutarlas lo decide el
+   * backend (ver `SpecialOrderPageContent`).
    */
   canGenerateSkus: boolean;
   /** Abre el alta de SKU + BOM de la línea. El diálogo lo tiene la página. */
   onGenerateSkus: (line: SpecialOrderLine) => void;
+  /** Abre la confirmación del alta en catálogo de la línea. La tiene la página. */
+  onAltaCatalogo: (line: SpecialOrderLine) => void;
+}
+
+/**
+ * "Dar de alta en catálogo" de la línea: solo si el usuario ve las acciones y
+ * alguna talla tiene SKU de producción pendiente de catálogo. Sin categoría se
+ * muestra DESHABILITADO con el motivo en el `title`. El `title` va en un
+ * envoltorio porque un botón deshabilitado no recibe el puntero en todos los
+ * navegadores (`pointer-events-none` deja que el envoltorio lo reciba).
+ *
+ * TODO(EC-655): ocultarlo también en un pedido CANCELADO en cuanto el detalle
+ * del pedido especial exponga su `estatus` (hoy no lo trae).
+ */
+function CatalogAltaButton({
+  pedidoId,
+  line,
+  canGenerateSkus,
+  onAltaCatalogo,
+}: {
+  pedidoId: number;
+  line: SpecialOrderLine;
+  canGenerateSkus: boolean;
+  onAltaCatalogo: (line: SpecialOrderLine) => void;
+}) {
+  const { isRunning } = useMutationLock(altaCatalogoMutationKey(pedidoId, line.id));
+  if (!canGenerateSkus || !hasPendingCatalogAlta(line)) return null;
+
+  if (line.categoria_producto === null) {
+    const hintId = `catalog-alta-hint-${line.id}`;
+    return (
+      <span title={CATALOG_ALTA_BUTTON_NO_CATEGORY} className="inline-flex cursor-not-allowed">
+        <Button
+          variant="secondary"
+          rounded="full"
+          disabled
+          aria-describedby={hintId}
+          className="pointer-events-none"
+        >
+          Dar de alta en catálogo
+        </Button>
+        <span id={hintId} className="sr-only">
+          {CATALOG_ALTA_BUTTON_NO_CATEGORY}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      rounded="full"
+      disabled={isRunning}
+      onClick={() => onAltaCatalogo(line)}
+    >
+      {isRunning ? "Dando de alta..." : "Dar de alta en catálogo"}
+    </Button>
+  );
 }
 
 /**
@@ -126,12 +192,15 @@ function LineSkuStatus({
  * Líneas de muestra del pedido: una tarjeta por línea (producto externo +
  * color · total de piezas) con su tabla de tallas. Patrón de `PedidoLineas`,
  * sin precios ni picking — este contrato no los trae. Cada talla muestra su SKU
- * de producción y cada tarjeta, el estado del alta de SKU de la línea.
+ * de producción; cada tarjeta, el estado del alta de SKU de la línea y, si hay
+ * tallas pendientes, el alta en catálogo.
  */
 export function SpecialOrderLines({
+  pedidoId,
   detalles,
   canGenerateSkus,
   onGenerateSkus,
+  onAltaCatalogo,
 }: SpecialOrderLinesProps) {
   if (detalles.length === 0) {
     return <EmptyLines>Este pedido no tiene líneas de muestra.</EmptyLines>;
@@ -177,6 +246,12 @@ export function SpecialOrderLines({
                 line={line}
                 canGenerateSkus={canGenerateSkus}
                 onGenerateSkus={onGenerateSkus}
+              />
+              <CatalogAltaButton
+                pedidoId={pedidoId}
+                line={line}
+                canGenerateSkus={canGenerateSkus}
+                onAltaCatalogo={onAltaCatalogo}
               />
               <div className="text-right">
                 <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-white">
