@@ -26,9 +26,19 @@ export interface PrunedSizeQuantities {
 }
 
 /**
+ * ¿Hay piezas capturadas? Misma regla que `parseSizeQuantity(raw) > 0` (que es
+ * lo que `getItemSizes` envía), sin importarla: `useSizesState` ya importa este
+ * módulo.
+ */
+const hasPieces = (raw: string | undefined): boolean => {
+  const value = (raw ?? "").trim();
+  return /^\d+$/.test(value) && Number(value) > 0;
+};
+
+/**
  * Separa las cantidades capturadas de una fila entre las tallas que siguen en
- * `availableSizes` y las que no. Una entrada vacía de una talla que ya no aplica
- * se descarta sin contarla como quitada: no había nada capturado.
+ * `availableSizes` y las que no. Una talla que ya no aplica sin piezas (vacía o
+ * en `0`) se descarta sin contarla como quitada: no había nada que perder.
  *
  * Al cambiar la categoría de una muestra se pasa la lista YA resuelta de la
  * nueva categoría (`resolveMuestraSizes`), así que con una categoría sin tallas
@@ -45,7 +55,7 @@ export const pruneSizeQuantities = (
     const sizeId = Number(rawId);
     if (available.has(sizeId)) {
       kept[sizeId] = value;
-    } else if ((value ?? "").trim() !== "") {
+    } else if (hasPieces(value)) {
       removedSizeIds.push(sizeId);
     }
   }
