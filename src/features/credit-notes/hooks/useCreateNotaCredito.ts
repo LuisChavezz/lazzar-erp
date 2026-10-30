@@ -367,6 +367,9 @@ export const getCreateFailureOutcome = (
   return null;
 };
 
+/** Id del toast de un alta fallida con desenlace (`getCreateFailureOutcome`). */
+const CREATE_FAILURE_TOAST_ID = "crear-nota-credito-timbrado";
+
 /**
  * Mutación de alta de nota de crédito. `onServerError` recibe el error ya
  * normalizado para que el formulario lo reparta entre el banner, los campos de
@@ -396,6 +399,9 @@ export const useCreateNotaCredito = (
   return useMutation({
     mutationFn: createNotaCredito,
     onSuccess: (nota) => {
+      // Tras corregir un rechazo (`cancelled`) el reenvío exitoso retira el aviso
+      // largo del intento anterior, que si no seguiría en pantalla.
+      toast.dismiss(CREATE_FAILURE_TOAST_ID);
       toast.success(
         nota.estatus === "Emitida"
           ? "Nota de crédito emitida correctamente"
@@ -411,7 +417,10 @@ export const useCreateNotaCredito = (
         // Con `pending` el formulario se cierra y el toast es el único aviso; los
         // tres traen el motivo largo de Facturama, así que duran lo suficiente
         // para leerlo.
-        toast.error(outcome.message, { duration: STAMP_FAILED_TOAST_DURATION_MS });
+        toast.error(outcome.message, {
+          id: CREATE_FAILURE_TOAST_ID,
+          duration: STAMP_FAILED_TOAST_DURATION_MS,
+        });
         return;
       }
       toast.error(
