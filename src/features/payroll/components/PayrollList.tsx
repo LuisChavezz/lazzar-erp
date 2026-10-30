@@ -35,7 +35,7 @@ import {
 } from "../hooks/usePayrollRowActions";
 import { verifyPayrollPendiente } from "../hooks/verifyPayrollPendiente";
 import { ESTADO_PENDIENTE } from "../constants/payrollChoices";
-import { buildPayrollRows } from "../utils/payrollRows";
+import { buildPayrollRows, isPayrollRowDialogBusy } from "../utils/payrollRows";
 import { PAYROLL_STALE_MESSAGES } from "../hooks/payrollErrorMessages";
 import { getColumns, PAYROLL_HEADER_FILTERS } from "./PayrollColumns";
 import PayrollForm from "./PayrollForm";
@@ -137,7 +137,7 @@ export default function PayrollList() {
         targetId: payTargetId,
         target: payTarget,
         expectedEstado: ESTADO_PENDIENTE,
-        isBusy: isPayChecking || (payTargetId !== null && busyIds.includes(payTargetId)),
+        isBusy: isPayrollRowDialogBusy(payTargetId, isPayChecking, busyIds),
         messages: PAYROLL_STALE_MESSAGES,
       })
     : null;
@@ -151,7 +151,7 @@ export default function PayrollList() {
         targetId: cancelTargetId,
         target: cancelTarget,
         expectedEstado: ESTADO_PENDIENTE,
-        isBusy: isChecking || (cancelTargetId !== null && busyIds.includes(cancelTargetId)),
+        isBusy: isPayrollRowDialogBusy(cancelTargetId, isChecking, busyIds),
         messages: PAYROLL_STALE_MESSAGES,
       })
     : null;
