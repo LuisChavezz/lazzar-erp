@@ -50,10 +50,17 @@ interface ToggleCostCenterActivoPayload {
  * inglés y sin nada que el usuario pueda hacer— como si fuera el aviso del
  * conflicto de código.
  */
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen un cambio de `activo` en vuelo (ver `usePendingCostCenterIds`).
+ */
+export const toggleCostCenterActivoMutationKey = ["toggle-cost-center-activo"] as const;
+
 export const useToggleCostCenterActivo = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: toggleCostCenterActivoMutationKey,
     mutationFn: ({ id, activo }: ToggleCostCenterActivoPayload) =>
       setCostCenterActivo(id, activo),
     onMutate: async ({ id, activo }) => {
