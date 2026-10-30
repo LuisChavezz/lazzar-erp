@@ -84,7 +84,7 @@ export function AttendanceNameMenu({
     <FolioActionMenu
       name={nombre}
       items={items}
-      status={numero ? <span className="text-[11px] text-slate-400 tabular-nums">{numero}</span> : undefined}
+      subtitle={numero ? <span className="text-[11px] text-slate-400 tabular-nums">{numero}</span> : undefined}
     />
   );
 }
