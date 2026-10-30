@@ -158,6 +158,13 @@ export function PurchaseOrderEditStepManager({
   const seedLines =
     linesResets > 0 ? [] : seedFromDetalles(snapshot?.detalles ?? []).map((s) => s.line);
 
+  // Otro usuario (o esta misma sesión en otra pestaña o acción) cambió la orden
+  // mientras se editaba: un refetch trae un `updated_at` distinto al de la
+  // foto. No se reemplaza lo capturado en silencio, solo se avisa, para que se
+  // decida recargar antes de guardar; guardar sigue permitido.
+  const isOutOfSync =
+    snapshot !== null && detail !== undefined && detail.updated_at !== snapshot.updated_at;
+
   // Hasta que la lectura fresca del detalle termina (con éxito o con error) se
   // muestra el estado de carga, aunque haya una copia en caché.
   const isLoading = isOnboardingLoading || !isDetailFresh;
@@ -241,6 +248,13 @@ export function PurchaseOrderEditStepManager({
           «Pendiente a confirmar» y tendrá que confirmarse de nuevo; conservará
           su folio. Si ya se la enviaste al proveedor, reenvíasela después de
           confirmarla.
+        </div>
+      )}
+      {isOutOfSync && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          Esta orden se actualizó en otro lugar mientras la editabas. Cierra y
+          vuelve a abrir el diálogo para partir de los datos más recientes
+          antes de guardar.
         </div>
       )}
       <div>
