@@ -74,9 +74,9 @@ interface SpecialOrderLinesProps {
  *    tallas con cantidad; sin ellas el backend la rechazaría).
  *  - Todas las tallas con cantidad tienen SKU: "SKU generados".
  *  - Hay SKU pero alguna talla con cantidad no lo tiene: "SKU incompletos".
- *    El alta es todo-o-nada, así que esto solo pasa si la talla se agregó (o
- *    ganó cantidad) DESPUÉS del alta. No se ofrece la acción: el backend no
- *    admite una segunda alta sobre la misma línea.
+ *    Pasa si la talla se agregó (o ganó cantidad) DESPUÉS del alta. El backend
+ *    admite un alta incremental para esas tallas, pero aquí no se ofrece: un
+ *    reintento con alta en catálogo crearía un segundo producto para la línea.
  */
 function LineSkuStatus({
   line,

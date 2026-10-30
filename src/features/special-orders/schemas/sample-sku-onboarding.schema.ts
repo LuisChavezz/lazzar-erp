@@ -82,6 +82,8 @@ export const buildSampleSkuOnboardingSchema = (requiresColor: boolean) =>
     materia_prima_detalle: z
       .array(SampleSkuOnboardingMaterialSchema)
       .min(1, "Selecciona al menos un material"),
+    /** "Dar de alta en catálogo". Solo viaja cuando es `true` y el alta lo admite. */
+    alta_catalogo: z.boolean(),
   });
 
 type SampleSkuOnboardingSchema = ReturnType<typeof buildSampleSkuOnboardingSchema>;
