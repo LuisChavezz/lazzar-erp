@@ -21,10 +21,17 @@ interface ToggleBankAccountActivoPayload {
  * sigue visible con estatus Inactivo, por eso el optimista MARCA la fila en vez
  * de filtrarla.
  */
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen un cambio de `activo` en vuelo (ver `usePendingBankAccountIds`).
+ */
+export const toggleBankAccountActivoMutationKey = ["toggle-bank-account-activo"] as const;
+
 export const useToggleBankAccountActivo = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: toggleBankAccountActivoMutationKey,
     mutationFn: ({ id, activo }: ToggleBankAccountActivoPayload) =>
       setBankAccountActivo(id, activo),
     onMutate: async ({ id, activo }) => {

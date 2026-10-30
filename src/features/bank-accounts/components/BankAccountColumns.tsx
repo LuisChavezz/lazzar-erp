@@ -1,165 +1,76 @@
-import { ColumnDef, createColumnHelper, FilterFn, Row } from "@tanstack/react-table";
-import { useState, type ReactNode } from "react";
-import { EditIcon, BanIcon, CheckCircleIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG } from "@/src/components/StatusBadge";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { EditIcon, BanIcon, CheckCircleIcon } from "@/src/components/Icons";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { CuentaBancaria } from "../interfaces/bank-account.interface";
-import { useToggleBankAccountActivo } from "../hooks/useToggleBankAccountActivo";
+import { useBankAccountRowActionsContext } from "../hooks/useBankAccountRowActions";
 import { formatSaldo } from "../utils/bankAccountMoney";
 
 const columnHelper = createColumnHelper<CuentaBancaria>();
 
-const ACTIVO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "true", label: "Activo", dotClassName: ACTIVO_INACTIVO_CFG.activo.dot },
-  { value: "false", label: "Inactivo", dotClassName: ACTIVO_INACTIVO_CFG.inactivo.dot },
-];
+/** Texto con que la fila se nombra: el alias es nullable en el modelo. */
+export const getBankAccountLabel = (cuenta: CuentaBancaria): string =>
+  cuenta.alias || cuenta.numero_cuenta || `#${cuenta.id}`;
 
-const activoFilterFn: FilterFn<CuentaBancaria> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.activo) === filterValue;
-};
-
-const bancoFilterFn: FilterFn<CuentaBancaria> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.banco) === filterValue;
-};
+/** Nombre del banco de la fila; `Banco.nombre` es nullable. */
+const getBancoLabel = (cuenta: CuentaBancaria): string =>
+  cuenta.banco_nombre || `Banco #${cuenta.banco}`;
 
 /**
- * Celda de acciones.
- *
- * "Ver resumen" solo INVOCA el callback: el diálogo se monta en
- * `BankAccountList`, no aquí. Una celda se desmonta al ordenar, filtrar o
- * paginar —y `activo` puede alternarse con el resumen abierto, lo que reordena
- * la tabla—, así que un diálogo montado en la celda desaparecería a media
- * interacción.
+ * El alias ES el menú de la fila y lleva el punto de `activo`: sin columnas
+ * aparte de "Estatus" ni "Acciones". "Ver detalle" abre el resumen de la cuenta.
+ * Los callbacks y el "en vuelo" llegan por contexto; los diálogos (resumen,
+ * edición y la confirmación) viven en `BankAccountList`: una celda se desmonta
+ * al ordenar, filtrar o paginar, y alternar `activo` puede sacar la fila de la
+ * vista filtrada.
  *
  * NO hay acción de eliminar: el DELETE del backend es un borrado FÍSICO, no una
  * baja lógica. `activo` es el único control de ciclo de vida.
  */
-const ActionsCell = ({
-  row,
-  onEdit,
-  onViewSummary,
-  trigger,
-}: {
-  row: Row<CuentaBancaria>;
-  onEdit: (cuenta: CuentaBancaria) => void;
-  onViewSummary: (id: number) => void;
-  trigger: ReactNode;
-}) => {
-  const { mutate: toggleActivo, isPending } = useToggleBankAccountActivo();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+const BankAccountNameCell = ({ cuenta }: { cuenta: CuentaBancaria }) => {
+  const { onViewSummary, onEdit, onToggleActivo, busyIds } = useBankAccountRowActionsContext();
 
-  const { activo } = row.original;
-  const nextActivo = !activo;
-
-  const menuItems: ActionMenuItem[] = [
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(cuenta) },
     {
-      label: "Ver resumen",
-      icon: ViewIcon,
-      onSelect: () => onViewSummary(row.original.id),
-    },
-    {
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    },
-    {
-      label: activo ? "Desactivar" : "Activar",
-      icon: activo ? BanIcon : CheckCircleIcon,
-      onSelect: () => setIsConfirmOpen(true),
-      disabled: isPending,
+      label: cuenta.activo ? "Desactivar" : "Activar",
+      icon: cuenta.activo ? BanIcon : CheckCircleIcon,
+      onSelect: () => onToggleActivo(cuenta),
+      disabled: busyIds.includes(cuenta.id),
     },
   ];
 
   return (
-    <>
-      <ActionMenu items={menuItems} align="start" trigger={trigger} />
-      <ConfirmDialog
-        open={isConfirmOpen}
-        onOpenChange={setIsConfirmOpen}
-        title={activo ? "Desactivar Cuenta Bancaria" : "Activar Cuenta Bancaria"}
-        description={
-          activo
-            ? "¿Deseas desactivar esta cuenta? Su información y sus movimientos se conservan, y seguirá visible en el listado con estatus Inactivo."
-            : "¿Deseas activar esta cuenta? Volverá a estar disponible para su uso."
-        }
-        // Sin etiqueta de "pendiente": `closeOnConfirm` vale true por defecto y
-        // `onConfirm` cierra el diálogo en el acto, así que `isPending` solo se
-        // vuelve true cuando este texto ya no está montado — la rama era
-        // inalcanzable (`ConfirmDialog` documenta la trampa en ese prop). El
-        // doble envío sigue cubierto por `disabled: isPending` en el menú.
-        confirmText={activo ? "Desactivar" : "Activar"}
-        onConfirm={() => {
-          toggleActivo({ id: row.original.id, activo: nextActivo });
-          setIsConfirmOpen(false);
-        }}
-        // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
-        confirmColor={activo ? "amber" : "green"}
-      />
-    </>
+    <FolioActionMenu
+      name={getBankAccountLabel(cuenta)}
+      detail={{ onSelect: () => onViewSummary(cuenta) }}
+      items={items}
+      active={cuenta.activo}
+    />
   );
 };
 
-export const getColumns = (
-  onEdit: (cuenta: CuentaBancaria) => void,
-  onViewSummary: (id: number) => void,
-  // Opciones del filtro de encabezado de "Banco" — se omite (columna sin
-  // ícono de filtro) mientras no haya bancos cargados: ver `BankAccountList`.
-  bancoFilterOptions: ColumnFilterOption[] = [],
-) => {
+/**
+ * No dependen de nada: callbacks y "en vuelo" llegan al menú por
+ * `BankAccountRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getColumns = () => {
   const columns = [
-    columnHelper.accessor("alias", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Alias</span>
-          <ColumnHeaderFilter column={column} options={ACTIVO_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: activoFilterFn,
-      cell: (info) => {
-        const cuenta = info.row.original;
-        const statusCfg = cuenta.activo ? ACTIVO_INACTIVO_CFG.activo : ACTIVO_INACTIVO_CFG.inactivo;
-        return (
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg.dot}`} title={statusCfg.label} aria-hidden="true" />
-            <span className="sr-only">{statusCfg.label}</span>
-            <ActionsCell
-              row={info.row}
-              onEdit={onEdit}
-              onViewSummary={onViewSummary}
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {info.getValue() || "—"}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+    columnHelper.accessor((row) => row.alias ?? "", {
+      id: "alias",
+      header: "Alias",
+      size: 220,
+      cell: ({ row }) => <BankAccountNameCell cuenta={row.original} />,
     }),
-    columnHelper.accessor("banco_nombre", {
-      header: ({ column }) =>
-        bancoFilterOptions.length > 0 ? (
-          <div className="flex items-center gap-1.5">
-            <span>Banco</span>
-            <ColumnHeaderFilter column={column} options={bancoFilterOptions} label="banco" />
-          </div>
-        ) : (
-          "Banco"
-        ),
-      filterFn: bancoFilterFn,
+    // Un solo valor alimenta la celda, la búsqueda global y el orden: el nombre
+    // del banco o su respaldo `Banco #N`, el mismo texto que la opción del
+    // filtro de encabezado.
+    columnHelper.accessor((row) => getBancoLabel(row), {
+      id: "banco",
+      header: "Banco",
       cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("titular", {
@@ -196,4 +107,17 @@ export const getColumns = (
   ] as ColumnDef<CuentaBancaria>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * - El alias filtra por `activo` (su punto), con ficha "Registro: …".
+ * - El banco es un FK de catálogo, no un enum: sus opciones salen de las filas
+ *   (solo los bancos que tienen alguna cuenta), comparan contra el id crudo y
+ *   se rotulan con el nombre resuelto, así dos bancos homónimos no se mezclan.
+ *   `banco` es obligatorio en el modelo, así que no hay opción "Sin banco".
+ */
+export const BANK_ACCOUNT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CuentaBancaria>>> = {
+  alias: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  banco: { type: "distinct", get: (r) => r.banco, label: getBancoLabel },
 };
