@@ -30,7 +30,8 @@ declare module "@tanstack/react-table" {
     /**
      * La columna arranca OCULTA y el usuario puede
      * mostrarla desde el selector "Mostrar/Ocultar". La lee `DataTable` una
-     * vez, al montarse; necesita `id` o `accessorKey`.
+     * vez, al montarse (también dentro de un grupo); necesita `id`,
+     * `accessorKey` o un `header` string.
      */
     hiddenByDefault?: boolean;
     /**

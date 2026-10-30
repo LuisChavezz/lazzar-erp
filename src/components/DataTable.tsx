@@ -402,23 +402,35 @@ type DataTableProps<TData, TValue> =
   | DataTableServerProps<TData, TValue>;
 
 /**
- * Visibilidad inicial: `false` para cada columna con `meta.hiddenByDefault`.
- * El id se resuelve como lo hace TanStack (`id`, o `accessorKey` con los
- * puntos cambiados por `_`); una columna marcada sin ninguno de los dos no se
- * puede ocultar desde aquí y se queda visible.
+ * Visibilidad inicial: `false` para cada columna con `meta.hiddenByDefault`,
+ * también las anidadas en un grupo (`columns`). El id se resuelve como lo hace
+ * TanStack: `id`, o `accessorKey` con los puntos cambiados por `_`, o el
+ * `header` cuando es un string. Sin ninguna columna marcada devuelve `{}`.
  */
 function initialColumnVisibility<TData, TValue>(
-  columns: ColumnDef<TData, TValue>[]
+  columns: ColumnDef<TData, TValue>[],
+  visibility: VisibilityState = {}
 ): VisibilityState {
-  const visibility: VisibilityState = {};
   for (const column of columns) {
+    if ("columns" in column && Array.isArray(column.columns)) {
+      initialColumnVisibility(column.columns, visibility);
+    }
     if (!column.meta?.hiddenByDefault) continue;
     const accessorKey =
       "accessorKey" in column && typeof column.accessorKey === "string"
         ? column.accessorKey
         : undefined;
-    const id = column.id ?? accessorKey?.replace(/\./g, "_");
-    if (id) visibility[id] = false;
+    const id =
+      column.id ??
+      accessorKey?.replace(/\./g, "_") ??
+      (typeof column.header === "string" ? column.header : undefined);
+    if (id) {
+      visibility[id] = false;
+    } else if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[DataTable] `meta.hiddenByDefault` en una columna sin `id`, `accessorKey` ni `header` string: no se puede ocultar y se queda visible."
+      );
+    }
   }
   return visibility;
 }
