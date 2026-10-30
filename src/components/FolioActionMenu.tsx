@@ -26,6 +26,11 @@ interface NameModeProps {
    * registro no tiene ese ciclo de vida y no se pinta.
    */
   active?: boolean;
+  /**
+   * Texto secundario bajo el nombre que NO es un estatus (p. ej. el número de
+   * empleado): va antes de `status` si hay ambos.
+   */
+  subtitle?: ReactNode;
   /** Badge de estatus de negocio (`estado`) bajo el nombre. */
   status?: ReactNode;
 }
@@ -69,7 +74,7 @@ export function FolioActionMenu(props: FolioModeProps | NameModeProps) {
   );
 }
 
-function NameActionMenu({ name, detail, items, active, status }: NameModeProps) {
+function NameActionMenu({ name, detail, items, active, subtitle, status }: NameModeProps) {
   const menuItems: ActionMenuItem[] = detail
     ? [{ label: "Ver detalle", icon: ViewIcon, ...detail }, ...items]
     : items;
@@ -102,6 +107,7 @@ function NameActionMenu({ name, detail, items, active, status }: NameModeProps) 
           <span className="truncate">{name || "—"}</span>
         </RowMenuTrigger>
       </div>
+      {subtitle}
       {status}
     </div>
   );
