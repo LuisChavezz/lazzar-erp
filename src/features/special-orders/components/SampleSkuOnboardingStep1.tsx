@@ -19,8 +19,8 @@ interface SampleSkuOnboardingStep1Props {
 }
 
 /**
- * Paso 1 del alta de SKU de muestra: el color de la línea y la selección de
- * materiales.
+ * Paso 1 del alta de SKU de muestra: la categoría de la línea (solo lectura;
+ * es la que usaría el alta en catálogo), el color y la selección de materiales.
  *
  * El color solo se CAPTURA cuando la línea no tiene uno (el backend lo exige y
  * lo guarda en la línea); si ya lo tiene se muestra de solo lectura y no viaja.
@@ -44,6 +44,16 @@ export function SampleSkuOnboardingStep1({
 
   return (
     <div className="flex flex-col gap-5">
+      <InfoField label="Categoría">
+        {line.categoria_producto ? (
+          line.categoria_producto.nombre
+        ) : (
+          <span className="text-slate-400 dark:text-slate-500">
+            Sin categoría (no se capturó en la cotización)
+          </span>
+        )}
+      </InfoField>
+
       {requiresColor ? (
         <form.Field name="color">
           {(field) => (
