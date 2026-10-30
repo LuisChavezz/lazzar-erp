@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -9,11 +8,10 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { PlanCuentasIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
 import { useChartOfAccounts } from "../hooks/useChartOfAccounts";
 import { useToggleChartOfAccountActivo } from "../hooks/useToggleChartOfAccountActivo";
@@ -30,12 +28,6 @@ import {
 import { ChartOfAccountDetailDialog } from "./ChartOfAccountDetailDialog";
 import ChartOfAccountForm from "./ChartOfAccountForm";
 
-/** Confirmación de activar/desactivar abierta: el id y el `activo` que tenía al abrirse. */
-interface ToggleTarget {
-  id: number;
-  activo: boolean;
-}
-
 export default function ChartOfAccountList() {
   const { cuentasContables, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useChartOfAccounts();
@@ -46,15 +38,22 @@ export default function ChartOfAccountList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CuentaContable | null>(null);
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
-  const [toggleTarget, setToggleTarget] = useState<ToggleTarget | null>(null);
-  // Aviso de la confirmación que se cerró porque su cuenta cambió por fuera. Se
-  // dispara desde un efecto: un toast en pleno render actualizaría otro
-  // componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
 
   const { mutate: toggleActivo, isPending: isTogglePending } =
     useToggleChartOfAccountActivo();
   const busyIds = usePendingChartOfAccountIds();
+
+  // Confirmación de activar/desactivar, resuelta contra el listado COMPLETO:
+  // sobrevive a que la fila salga de la vista filtrada (ver `useActivoToggleDialog`).
+  const toggle = useActivoToggleDialog({
+    rows: cuentasContables,
+    busyIds,
+    isPending: isTogglePending,
+    resource: "chart-of-account",
+    messages: CHART_OF_ACCOUNT_STALE_MESSAGES,
+  });
+  // Copia del registro al abrir: estrecha el tipo dentro de los callbacks del diálogo.
+  const toggleSnapshot = toggle.snapshot;
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
@@ -86,50 +85,11 @@ export default function ChartOfAccountList() {
     openDetailId !== null
       ? cuentasContables.find((cuenta) => cuenta.id === openDetailId) ?? null
       : null;
-  const toggleCuenta =
-    toggleTarget !== null
-      ? cuentasContables.find((cuenta) => cuenta.id === toggleTarget.id) ?? null
-      : null;
 
   // Si la cuenta desaparece del payload, el id no puede quedar colgado (un
   // refetch posterior reabriría el diálogo solo). Ajuste en RENDER, no en un
   // efecto (`react-hooks/set-state-in-effect`).
   if (openDetailId !== null && detailCuenta === null) setOpenDetailId(null);
-
-  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
-  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
-  const isToggling =
-    toggleTarget !== null && (busyIds.includes(toggleTarget.id) || isTogglePending);
-
-  // Vía rápida contra la caché: un refetch mostró que la cuenta de la
-  // confirmación abierta ya no existe o ya tiene otro `activo` que el que tenía
-  // al abrirse. Se cierra con un aviso (mismo patrón que `AreaList`). Ajuste en
-  // render, no en un efecto.
-  const staleToggle = getStaleRowDialogNotice({
-    resource: "chart-of-account",
-    targetId: toggleTarget?.id ?? null,
-    target: toggleCuenta,
-    expectedActivo: toggleTarget?.activo ?? true,
-    isBusy: isToggling,
-    messages: CHART_OF_ACCOUNT_STALE_MESSAGES,
-  });
-  if (staleToggle) {
-    setToggleTarget(null);
-    setStaleNotice(staleToggle);
-  }
-
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key });
-    }
-  }, [staleNotice]);
-
-  // Copia de la cuenta al ABRIR la confirmación: el texto no sigue a los
-  // refetch (ni al optimista, que invierte `activo` al confirmar) y sobrevive a
-  // la animación de salida cuando el objetivo vuelve a `null`.
-  const toggleSession = useDialogSession(toggleTarget !== null, toggleCuenta);
-  const toggleSnapshot = toggleSession.snapshot;
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
@@ -139,7 +99,7 @@ export default function ChartOfAccountList() {
       value={{
         onViewDetail: (cuenta) => setOpenDetailId(cuenta.id),
         onEdit: handleEdit,
-        onToggleActivo: (cuenta) => setToggleTarget({ id: cuenta.id, activo: cuenta.activo }),
+        onToggleActivo: toggle.request,
         busyIds,
       }}
     >
@@ -221,10 +181,10 @@ export default function ChartOfAccountList() {
         */}
         {toggleSnapshot && (
           <ConfirmDialog
-            key={toggleSession.id}
-            open={toggleTarget !== null}
+            key={toggle.sessionId}
+            open={toggle.open}
             onOpenChange={(open) => {
-              if (!open) setToggleTarget(null);
+              if (!open) toggle.close();
             }}
             title={
               toggleSnapshot.activo ? "Desactivar Cuenta Contable" : "Activar Cuenta Contable"
@@ -236,20 +196,20 @@ export default function ChartOfAccountList() {
             }
             confirmText={
               toggleSnapshot.activo
-                ? isToggling
+                ? toggle.isBusy
                   ? "Desactivando..."
                   : "Desactivar"
-                : isToggling
+                : toggle.isBusy
                   ? "Activando..."
                   : "Activar"
             }
             cancelText="Volver"
             closeOnConfirm={false}
-            busy={isToggling}
+            busy={toggle.isBusy}
             onConfirm={() => {
               toggleActivo(
                 { id: toggleSnapshot.id, activo: !toggleSnapshot.activo },
-                { onSettled: () => setToggleTarget(null) },
+                { onSettled: () => toggle.close() },
               );
             }}
             // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".

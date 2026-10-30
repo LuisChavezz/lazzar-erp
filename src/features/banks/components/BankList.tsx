@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -9,11 +8,10 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { BancosIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { BANK_HEADER_FILTERS, getBankLabel, getColumns } from "./BankColumns";
 import { Banco } from "../interfaces/bank.interface";
 import BankForm from "./BankForm";
@@ -22,27 +20,24 @@ import { useToggleBankActivo } from "../hooks/useToggleBankActivo";
 import { BankRowActionsProvider, usePendingBankIds } from "../hooks/useBankRowActions";
 import { BANK_STALE_MESSAGES } from "../utils/bankStaleMessages";
 
-/** Confirmación de activar/desactivar abierta: el id y el `activo` que tenía al abrirse. */
-interface ToggleTarget {
-  id: number;
-  activo: boolean;
-}
-
 export default function BankList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBank, setSelectedBank] = useState<Banco | null>(null);
-  // Diálogo de fila EN LA VISTA, no en la celda: una celda se desmonta al
-  // ordenar, filtrar o paginar, y activar/desactivar cambia `activo`, que es un
-  // filtro. Solo el id (y el `activo` de la apertura), resuelto contra el
-  // listado completo.
-  const [toggleTarget, setToggleTarget] = useState<ToggleTarget | null>(null);
-  // Aviso de la confirmación que se cerró porque su banco cambió por fuera. Se
-  // dispara desde un efecto: un toast en pleno render actualizaría otro
-  // componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   const { banks, hasLoaded, isLoading, isError, error, refetch, isFetching } = useBanks();
   const { mutate: toggleActivo, isPending: isTogglePending } = useToggleBankActivo();
   const busyIds = usePendingBankIds();
+
+  // Confirmación de activar/desactivar, resuelta contra el listado COMPLETO:
+  // sobrevive a que la fila salga de la vista filtrada (ver `useActivoToggleDialog`).
+  const toggle = useActivoToggleDialog({
+    rows: banks,
+    busyIds,
+    isPending: isTogglePending,
+    resource: "bank",
+    messages: BANK_STALE_MESSAGES,
+  });
+  // Copia del registro al abrir: estrecha el tipo dentro de los callbacks del diálogo.
+  const toggleSnapshot = toggle.snapshot;
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
@@ -62,45 +57,6 @@ export default function BankList() {
   // `BankRowActionsProvider`, así una acción no remonta las celdas.
   const columns = withHeaderFilters(getColumns(), banks, BANK_HEADER_FILTERS);
 
-  // ── Diálogo de fila, resuelto contra el listado COMPLETO ──────────────────
-  const toggleBanco =
-    toggleTarget !== null ? (banks.find((banco) => banco.id === toggleTarget.id) ?? null) : null;
-  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
-  // sigue pendiente hasta que su `onSettled` cierra el diálogo.
-  const isToggling =
-    toggleTarget !== null && (busyIds.includes(toggleTarget.id) || isTogglePending);
-
-  // Vía rápida contra la caché: un refetch mostró que el banco de la
-  // confirmación abierta ya no existe (el DELETE del backend es físico y
-  // alcanzable fuera de esta pantalla) o ya tiene otro `activo` que el que tenía
-  // al abrirse. Se cierra con un aviso (mismo patrón que `AreaList`). Ajuste en
-  // render, no en un efecto.
-  const staleToggle = getStaleRowDialogNotice({
-    resource: "bank",
-    targetId: toggleTarget?.id ?? null,
-    target: toggleBanco,
-    expectedActivo: toggleTarget?.activo ?? true,
-    isBusy: isToggling,
-    messages: BANK_STALE_MESSAGES,
-  });
-  if (staleToggle) {
-    setToggleTarget(null);
-    setStaleNotice(staleToggle);
-  }
-
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key });
-    }
-  }, [staleNotice]);
-
-  // Copia del banco al ABRIR la confirmación: el texto no sigue a los refetch
-  // (ni al optimista, que invierte `activo` al confirmar) y sobrevive a la
-  // animación de salida cuando el objetivo vuelve a `null`.
-  const toggleSession = useDialogSession(toggleTarget !== null, toggleBanco);
-  const toggleSnapshot = toggleSession.snapshot;
-
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtro, refrescar, columnas y el
   // botón "+ Nuevo Banco"— sigue disponible durante la carga y ante un error.
@@ -110,7 +66,7 @@ export default function BankList() {
     <BankRowActionsProvider
       value={{
         onEdit: handleEdit,
-        onToggleActivo: (banco) => setToggleTarget({ id: banco.id, activo: banco.activo }),
+        onToggleActivo: toggle.request,
         busyIds,
       }}
     >
@@ -167,10 +123,10 @@ export default function BankList() {
         */}
         {toggleSnapshot && (
           <ConfirmDialog
-            key={toggleSession.id}
-            open={toggleTarget !== null}
+            key={toggle.sessionId}
+            open={toggle.open}
             onOpenChange={(open) => {
-              if (!open) setToggleTarget(null);
+              if (!open) toggle.close();
             }}
             title={toggleSnapshot.activo ? "Desactivar Banco" : "Activar Banco"}
             description={
@@ -180,19 +136,19 @@ export default function BankList() {
             }
             confirmText={
               toggleSnapshot.activo
-                ? isToggling
+                ? toggle.isBusy
                   ? "Desactivando..."
                   : "Desactivar"
-                : isToggling
+                : toggle.isBusy
                   ? "Activando..."
                   : "Activar"
             }
             closeOnConfirm={false}
-            busy={isToggling}
+            busy={toggle.isBusy}
             onConfirm={() => {
               toggleActivo(
                 { id: toggleSnapshot.id, activo: !toggleSnapshot.activo },
-                { onSettled: () => setToggleTarget(null) },
+                { onSettled: () => toggle.close() },
               );
             }}
             // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
