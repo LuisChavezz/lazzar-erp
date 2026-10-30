@@ -1,9 +1,11 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { InfoField, SectionTitle, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { InfoTile, InfoTileGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { PlanCuentasIcon } from "@/src/components/Icons";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { CUENTA_CONTABLE_TIPO_CONFIG } from "../constants/chartOfAccountTipo";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
 
@@ -35,53 +37,43 @@ export function ChartOfAccountDetailDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="640px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <PlanCuentasIcon className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de la Cuenta Contable
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {cuenta.codigo || `#${cuenta.id}`}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de la Cuenta Contable"
+          subtitle={cuenta.codigo || `#${cuenta.id}`}
+          statusColor="indigo"
+          icon={PlanCuentasIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Código">
+        {/* Encabezado: lo que se busca primero al abrir el registro. */}
+        <InfoTileGrid>
+          <InfoTile label="Nombre">{textOrDash(cuenta.nombre)}</InfoTile>
+          <InfoTile label="Código">
             <span className="font-mono">{textOrDash(cuenta.codigo)}</span>
-          </InfoField>
-          <InfoField label="Tipo">
+          </InfoTile>
+          <InfoTile label="Tipo">
             <StatusBadge status={cuenta.tipo} config={CUENTA_CONTABLE_TIPO_CONFIG} />
-          </InfoField>
-          <InfoField label="Estatus">
+          </InfoTile>
+          <InfoTile label="Estatus">
             <StatusBadge
               status={cuenta.activo ? "activo" : "inactivo"}
               config={ACTIVO_INACTIVO_CFG}
             />
-          </InfoField>
-          <InfoField label="Nivel">
+          </InfoTile>
+          <InfoTile label="Nivel">
             <span className="tabular-nums">{cuenta.nivel}</span>
-          </InfoField>
-          <InfoField label="Cuenta padre">
+          </InfoTile>
+          <InfoTile label="Cuenta padre">
             {cuenta.cuenta_padre === null ? "—" : `#${cuenta.cuenta_padre}`}
-          </InfoField>
-          <InfoField label="Movimientos">
+          </InfoTile>
+          <InfoTile label="Movimientos">
             {cuenta.acepta_movimientos ? "Acepta" : "Agrupación"}
-          </InfoField>
-        </div>
-
-        <div>
-          <SectionTitle>Nombre</SectionTitle>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {textOrDash(cuenta.nombre)}
-          </p>
-        </div>
+          </InfoTile>
+        </InfoTileGrid>
 
         {/* Qué significa `acepta_movimientos` para la captura de pólizas. */}
         <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
