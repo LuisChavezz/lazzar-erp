@@ -4,11 +4,10 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { useCheckInTimeForm, type CheckInKind } from "../hooks/useCheckInTimeForm";
+import { useCheckInTimeForm } from "../hooks/useCheckInTimeForm";
+import type { CheckInKind } from "../interfaces/attendance.interface";
 import type { RollCallRow } from "../utils/attendanceRows";
 import { openPicker } from "../utils/dateInputs";
-
-export type { CheckInKind };
 
 interface CheckInTimeDialogProps {
   kind: CheckInKind;

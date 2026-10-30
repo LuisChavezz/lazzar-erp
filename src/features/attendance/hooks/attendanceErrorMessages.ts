@@ -6,6 +6,7 @@ import {
 import { AxiosError } from "axios";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import type { AttendanceCorrectionField } from "../schemas/attendance.schema";
+import { ATTENDANCE_GONE_MESSAGE } from "../constants/attendanceMessages";
 
 /**
  * Textos de error de asistencia. La lógica de DRF vive en
@@ -37,10 +38,6 @@ export const isNonFieldValidationError = (error: unknown): boolean =>
   error instanceof AxiosError &&
   error.response?.status === 400 &&
   drfFieldMessage(error, "non_field_errors") !== undefined;
-
-/** Un registro que otra persona ya borró (404 en un PATCH o DELETE). */
-export const ATTENDANCE_GONE_MESSAGE =
-  "El registro de asistencia ya no existe. Se actualizó el listado.";
 
 /**
  * Error de alta o corrección. Un 400 pinta cada mensaje bajo su campo (si el

@@ -4,8 +4,8 @@ import {
   type StaleRowDialogNotice,
 } from "@/src/utils/staleRowDialogNotice";
 import { getEstadoAsistenciaLabel, type EstadoAsistencia } from "../constants/attendanceChoices";
-import { ATTENDANCE_GONE_MESSAGE } from "../hooks/attendanceErrorMessages";
-import type { CheckInKind } from "../hooks/useCheckInTimeForm";
+import { ATTENDANCE_GONE_MESSAGE } from "../constants/attendanceMessages";
+import type { CheckInKind } from "../interfaces/attendance.interface";
 import type { AttendanceRow, RollCallRow } from "./attendanceRows";
 
 /**
