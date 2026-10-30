@@ -1,113 +1,66 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { BanIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { BanIcon, ViewIcon } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { PAGO_ESTATUS_CONFIG } from "../constants/paymentStatus";
+import { METODO_PAGO_CONFIG, PAGO_ESTATUS_CONFIG } from "../constants/paymentStatus";
 import type { Pago } from "../interfaces/payment.interface";
+import { usePaymentRowActionsContext } from "../hooks/usePaymentRowActions";
 
 const columnHelper = createColumnHelper<Pago>();
 
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(PAGO_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<Pago> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
-
-const METODO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "Efectivo", label: "Efectivo" },
-  { value: "Cheque", label: "Cheque" },
-  { value: "Tarjeta", label: "Tarjeta" },
-];
-
-const metodoFilterFn: FilterFn<Pago> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.metodo_pago === filterValue;
-};
+/**
+ * Celda del identificador: el pago NO tiene folio propio en el contrato, así que
+ * su `#id` ES el menú de la fila (`FolioActionMenu`, modo folio) y debajo va su
+ * estatus. "Ver detalle" es siempre la primera acción. Callbacks y "en vuelo"
+ * llegan por contexto (`PaymentRowActionsProvider`).
+ */
+function PaymentIdCell({ pago }: { pago: Pago }) {
+  const { onViewDetail, onCancel, cancellingId } = usePaymentRowActionsContext();
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(pago) },
+  ];
+  // "Cancelar" solo sobre pagos APLICADOS: cancelar uno ya cancelado es un no-op
+  // en el backend, y sobre un `Borrador` (que esta UI no crea pero podría leer)
+  // no habría nada que revertir.
+  if (pago.estatus === "Aplicado") {
+    items.push({
+      label: "Cancelar pago",
+      icon: BanIcon,
+      onSelect: () => onCancel(pago),
+      disabled: cancellingId === pago.id,
+    });
+  }
+  return (
+    <FolioActionMenu
+      folio={`#${pago.id}`}
+      items={items}
+      status={<StatusBadge status={pago.estatus} config={PAGO_ESTATUS_CONFIG} />}
+    />
+  );
+}
 
 /**
- * Columnas del listado de pagos.
+ * Columnas del listado de pagos. No reciben nada: callbacks y "en vuelo" llegan
+ * al menú por `PaymentRowActionsProvider`, así una acción no remonta las celdas.
  *
  * El documento NO tiene folio propio en el contrato (`Pago` no expone uno), así
  * que el identificador visible es el `id`.
  *
- * Las acciones solo INVOCAN callbacks: los diálogos de detalle y de cancelación
- * se montan en `PaymentList`, no aquí. Una celda se desmonta al ordenar, filtrar
- * o paginar —y cancelar cambia el `estatus`, que es justo uno de los filtros—,
- * así que un diálogo montado en la celda desaparecería a media interacción.
+ * Los diálogos de detalle y de cancelación se montan en `PaymentList`, no aquí:
+ * una celda se desmonta al ordenar, filtrar o paginar —y cancelar cambia el
+ * `estatus`, que es justo uno de los filtros—.
  */
-export const getColumns = (
-  onViewDetail: (id: number) => void,
-  onCancel: (id: number) => void,
-) => {
+export const getColumns = () => {
   const columns = [
     columnHelper.accessor("id", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Pago</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
-      cell: (info) => {
-        const pago = info.row.original;
-        // "Cancelar" solo sobre pagos APLICADOS: cancelar uno ya cancelado es un
-        // no-op en el backend, y sobre un `Borrador` (que esta UI no crea pero
-        // podría leer) no habría nada que revertir.
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(pago.id),
-          },
-        ];
-        if (pago.estatus === "Aplicado") {
-          menuItems.push({
-            label: "Cancelar pago",
-            icon: BanIcon,
-            onSelect: () => onCancel(pago.id),
-          });
-        }
-
-        const statusCfg = PAGO_ESTATUS_CONFIG[pago.estatus];
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-              title={statusCfg?.label ?? pago.estatus}
-              aria-hidden="true"
-            />
-            <span className="sr-only">{statusCfg?.label ?? pago.estatus}</span>
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones del pago #${pago.id}`}
-              align="start"
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {`#${pago.id}`}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+      header: "Pago",
+      size: 150,
+      cell: (info) => <PaymentIdCell pago={info.row.original} />,
     }),
     columnHelper.accessor("proveedor_nombre", {
       header: "Proveedor",
@@ -135,13 +88,7 @@ export const getColumns = (
       ),
     }),
     columnHelper.accessor("metodo_pago", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Método</span>
-          <ColumnHeaderFilter column={column} options={METODO_FILTER_OPTIONS} label="método de pago" />
-        </div>
-      ),
-      filterFn: metodoFilterFn,
+      header: "Método",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
@@ -169,4 +116,37 @@ export const getColumns = (
   ] as ColumnDef<Pago>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * - El `#id` filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
+ * - El método, del catálogo completo (`METODO_PAGO_CONFIG`, la misma lista del
+ *   alta), con ficha "Método de pago: …".
+ * - Proveedor y cuenta bancaria son valores libres: sus opciones salen de las
+ *   filas. La cuenta puede llegar sin alias resuelto: va primero "Sin cuenta".
+ * - La fecha de pago filtra por mes. Referencia y total no llevan filtro: son
+ *   valores libres, los cubren la búsqueda y el orden.
+ */
+export const PAYMENT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pago>>> = {
+  id: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(PAGO_ESTATUS_CONFIG),
+  },
+  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true },
+  fecha_pago: { type: "month", get: (r) => r.fecha_pago },
+  cuenta_bancaria_alias: {
+    type: "distinct",
+    get: (r) => r.cuenta_bancaria_alias,
+    emptyOption: "Sin cuenta",
+  },
+  metodo_pago: {
+    type: "options",
+    filterLabel: "método de pago",
+    get: (r) => r.metodo_pago,
+    options: optionsFromConfig(METODO_PAGO_CONFIG),
+  },
 };
