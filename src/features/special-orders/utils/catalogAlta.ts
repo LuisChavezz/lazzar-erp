@@ -1,5 +1,6 @@
 import type {
   AltaCatalogoPayload,
+  SpecialOrderCategoria,
   SpecialOrderLine,
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
@@ -87,6 +88,21 @@ export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
     return required.every((nombre) => allowed.has(nombre));
   });
 }
+
+/**
+ * Qué envía el diálogo de una línea que se abrió SIN categoría, según la
+ * categoría que la línea tiene AHORA (detalle releído):
+ *  - si ya tiene una (otra sesión se la dio), NO se manda la elegida: el
+ *    backend la ignoraría en silencio y daría de alta con la de la línea;
+ *  - si sigue sin categoría, la elegida; sin elegir, nada que enviar (`null`).
+ */
+export const resolveCategoryAltaSubmit = (
+  liveCategoria: SpecialOrderCategoria | null,
+  selectedId: number | null,
+): { categoriaProductoId?: number } | null => {
+  if (liveCategoria !== null) return {};
+  return selectedId === null ? null : { categoriaProductoId: selectedId };
+};
 
 /**
  * Cuerpo de `alta-catalogo`: `categoria_producto` solo cuando se da, que es

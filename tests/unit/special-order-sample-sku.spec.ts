@@ -10,6 +10,7 @@ import {
   getCatalogAltaButtonState,
   getCategoriesCoveringLine,
   getLineSizeNames,
+  resolveCategoryAltaSubmit,
   CATALOG_ALTA_MIXED,
   CATALOG_ALTA_WITHOUT_CATEGORY,
   catalogAltaDeviates,
@@ -412,6 +413,26 @@ test.describe("cobertura de tallas de la categoría (EC-671)", () => {
 
   test("ninguna la cubre: lista vacía (el diálogo lo explica y no deja confirmar)", () => {
     expect(getCategoriesCoveringLine([category(2, [4])], sinCategoria, sizes)).toEqual([]);
+  });
+});
+
+test.describe("resolveCategoryAltaSubmit (EC-671)", () => {
+  test("la línea sigue sin categoría: se envía la elegida", () => {
+    expect(resolveCategoryAltaSubmit(null, 131)).toEqual({ categoriaProductoId: 131 });
+  });
+
+  test("sin elegir todavía: nada que enviar", () => {
+    expect(resolveCategoryAltaSubmit(null, null)).toBeNull();
+  });
+
+  test("la línea recibió categoría mientras el diálogo estaba abierto: NO se envía la elegida", () => {
+    const enVivo = { id: 194, nombre: "Vestido" };
+    expect(resolveCategoryAltaSubmit(enVivo, 131)).toEqual({});
+    // Y se puede confirmar aunque no se haya elegido ninguna.
+    expect(resolveCategoryAltaSubmit(enVivo, null)).toEqual({});
+    expect(buildAltaCatalogoPayload(771, resolveCategoryAltaSubmit(enVivo, 131)?.categoriaProductoId)).toStrictEqual(
+      { pedido_detalle_id: 771 },
+    );
   });
 });
 
