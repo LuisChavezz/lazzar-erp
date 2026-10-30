@@ -2,6 +2,7 @@ import type { StaleRowDialogMessages } from "@/src/utils/staleRowDialogNotice";
 import type { Contract } from "../interfaces/contract.interface";
 import type { ContractRow } from "../components/ContractColumns";
 import { getEstadoContratoLabel, getTipoContratoLabel } from "../constants/contractChoices";
+import { catalogText } from "@/src/utils/catalogText";
 
 /**
  * Filas de la tabla: cada contrato con el nombre de su empleado resuelto. Un
@@ -24,7 +25,7 @@ export const buildContractRows = (
  * código crudo — el mismo texto que su opción de filtro. "—" sin valor.
  */
 export const getContractTipoText = (tipo: string | null | undefined): string =>
-  getTipoContratoLabel(tipo) ?? (tipo || "—");
+  catalogText(getTipoContratoLabel(tipo), tipo);
 
 /**
  * Texto del `estado` de negocio para la búsqueda y el orden: la etiqueta del
@@ -33,7 +34,7 @@ export const getContractTipoText = (tipo: string | null | undefined): string =>
  * filtro.
  */
 export const getContractEstadoText = (estado: string | null | undefined): string =>
-  getEstadoContratoLabel(estado) ?? (estado || "—");
+  catalogText(getEstadoContratoLabel(estado), estado);
 
 /** Avisos del diálogo de desactivar que se cerró por un cambio externo. */
 export const CONTRACT_STALE_MESSAGES: Required<StaleRowDialogMessages> = {
