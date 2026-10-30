@@ -1,5 +1,5 @@
 import type { PurchaseOrderDetalleItem } from "../interfaces/purchase-order-onboarding.interface";
-import type { PurchaseOrderLine, PurchaseOrderLineKey } from "./purchaseOrderLines";
+import type { PurchaseOrderLinesData } from "../hooks/usePurchaseOrderLines";
 
 /**
  * Arma el arreglo `detalle` (renglones) a partir del estado de selección
@@ -9,11 +9,11 @@ import type { PurchaseOrderLine, PurchaseOrderLineKey } from "./purchaseOrderLin
  * el producto); el resto —materia prima y renglones de PT "Sin SKU"— con
  * `producto`, como siempre.
  */
-export function buildPurchaseOrderDetalle(
-  lines: PurchaseOrderLine[],
-  quantities: Partial<Record<PurchaseOrderLineKey, number>>,
-  prices: Partial<Record<PurchaseOrderLineKey, string>>,
-): PurchaseOrderDetalleItem[] {
+export function buildPurchaseOrderDetalle({
+  lines,
+  quantities,
+  prices,
+}: PurchaseOrderLinesData): PurchaseOrderDetalleItem[] {
   return lines.map((line) => {
     const base = {
       cantidad: quantities[line.key] ?? 1,
