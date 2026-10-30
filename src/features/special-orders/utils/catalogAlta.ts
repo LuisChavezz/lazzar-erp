@@ -1,4 +1,5 @@
 import type { SpecialOrderLine } from "../interfaces/special-order.interface";
+import { isGeneratedTalla } from "./lineSkuStatus";
 
 export const CATALOG_ALTA_WITHOUT_CATEGORY =
   "La línea no tiene categoría de producto, así que no se puede dar de alta en catálogo.";
@@ -40,7 +41,7 @@ export type CatalogAltaState =
   | { kind: "locked"; value: boolean; reason: string; mixed: boolean };
 
 export function getCatalogAltaState(line: SpecialOrderLine): CatalogAltaState {
-  const generadas = line.tallas.filter((talla) => Boolean(talla.sku_produccion));
+  const generadas = line.tallas.filter(isGeneratedTalla);
 
   if (generadas.length > 0) {
     const enCatalogo = generadas.filter((talla) => talla.aplica_catalogo);

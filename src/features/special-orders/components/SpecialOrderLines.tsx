@@ -10,6 +10,7 @@ import type {
   SpecialOrderLine,
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
+import { getLineSkuStatus } from "../utils/lineSkuStatus";
 
 /**
  * Servicios de UNA talla: los chips compartidos con el detalle de pedido
@@ -86,29 +87,26 @@ function LineSkuStatus({
   canGenerateSkus: boolean;
   onGenerateSkus: (line: SpecialOrderLine) => void;
 }) {
-  const tallasSinSku = line.tallas.filter(
-    (talla) => Number(talla.cantidad) > 0 && !talla.sku_produccion,
-  );
-  const hasSku = line.tallas.some((talla) => Boolean(talla.sku_produccion));
+  const status = getLineSkuStatus(line);
 
-  if (hasSku && tallasSinSku.length === 0) {
+  if (status.kind === "generated") {
     return (
       <span className={skuStatusPillClass("emerald")}>
         SKU generados
       </span>
     );
   }
+  if (status.kind === "none") return null;
 
-  const generateButton =
-    canGenerateSkus && tallasSinSku.length > 0 ? (
-      <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
-        Generar SKU y BOM
-      </Button>
-    ) : null;
+  const generateButton = canGenerateSkus ? (
+    <Button variant="primary" rounded="full" onClick={() => onGenerateSkus(line)}>
+      Generar SKU y BOM
+    </Button>
+  ) : null;
 
-  if (!hasSku) return generateButton;
+  if (!status.partial) return generateButton;
 
-  const nombres = tallasSinSku.map((talla) => talla.talla_nombre || "—").join(", ");
+  const nombres = status.pendientes.map((talla) => talla.talla_nombre || "—").join(", ");
   return (
     <div className="flex flex-col items-end gap-1.5">
       <div className="flex flex-col items-end gap-0.5">

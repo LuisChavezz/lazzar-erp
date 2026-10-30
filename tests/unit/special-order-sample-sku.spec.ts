@@ -12,6 +12,7 @@ import {
   getCatalogAltaState,
   resolveAltaCatalogo,
 } from "@/src/features/special-orders/utils/catalogAlta";
+import { getLineSkuStatus } from "@/src/features/special-orders/utils/lineSkuStatus";
 import { parseSampleSkuOnboardingError } from "@/src/features/special-orders/utils/parseSampleSkuOnboardingError";
 import {
   buildSampleSku,
@@ -24,8 +25,8 @@ import {
 
 /**
  * Pruebas unitarias de EC-651 y EC-658: la vista previa del SKU por talla (misma
- * fórmula que `variante_onboarding` en nucleo-erp), cuándo se bloquea
- * "Dar de alta en catálogo" y cómo llegan al diálogo los `400` del alta.
+ * fórmula que `variante_onboarding` en nucleo-erp), el estado del alta en la
+ * tarjeta, qué admite "Dar de alta en catálogo" y cómo llegan al diálogo los `400` del alta.
  */
 
 const talla = (overrides: Partial<SpecialOrderTalla>): SpecialOrderTalla => ({
@@ -134,6 +135,45 @@ test.describe("getSampleSkuPreview", () => {
   test("línea con color y `sku_siguiente` en null sin SKU previo: el color no tiene código", () => {
     const preview = getSampleSkuPreview(line({ color_nombre: "Negro", tallas: [talla({})] }), null);
     expect(preview.blocker).toBe(LINE_COLOR_WITHOUT_CODE);
+  });
+});
+
+test.describe("getLineSkuStatus", () => {
+  test("sin SKU y con tallas con cantidad: pendiente, no parcial (botón solo)", () => {
+    const status = getLineSkuStatus(line({ tallas: [talla({ id: 1 })] }));
+    expect(status).toEqual({ kind: "pending", pendientes: [talla({ id: 1 })], partial: false });
+  });
+
+  test("con SKU y una talla agregada después: pendiente y parcial (incompletos + botón)", () => {
+    const status = getLineSkuStatus(
+      line({
+        tallas: [
+          talla({ id: 1, sku_produccion: "MP720-100-G" }),
+          talla({ id: 2, talla_nombre: "2XG" }),
+          talla({ id: 3, talla_nombre: "3XG", cantidad: 0 }),
+        ],
+      }),
+    );
+    expect(status.kind).toBe("pending");
+    if (status.kind !== "pending") return;
+    expect(status.partial).toBe(true);
+    expect(status.pendientes.map((t) => t.id)).toEqual([2]);
+  });
+
+  test("todas las tallas con cantidad tienen SKU: generados", () => {
+    const status = getLineSkuStatus(
+      line({
+        tallas: [
+          talla({ id: 1, sku_produccion: "MP720-100-G" }),
+          talla({ id: 2, talla_nombre: "XG", cantidad: 0 }),
+        ],
+      }),
+    );
+    expect(status).toEqual({ kind: "generated" });
+  });
+
+  test("sin SKU ni tallas con cantidad: nada que ofrecer", () => {
+    expect(getLineSkuStatus(line({ tallas: [talla({ cantidad: 0 })] }))).toEqual({ kind: "none" });
   });
 });
 
