@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
 import type { AttendanceRow, RollCallRow } from "../utils/attendanceRows";
 import type { AttendanceRowTarget } from "../utils/attendanceRowTarget";
 import { registerEntryMutationKey, registerExitMutationKey } from "./useCheckIn";
@@ -35,10 +35,9 @@ export function useAttendancePermissions(): AttendancePermissions {
 }
 
 // ─── Contexto para los menús de fila ──────────────────────────────────────────
-// Los callbacks y el "en vuelo" llegan al menú por contexto, NO por la factoría
-// de columnas: si viajaran dentro de `getColumns(...)`, cada inicio y fin de una
-// acción crearía funciones `cell` nuevas y React remontaría TODAS las celdas
-// (mismo patrón que `useVacationRowActions`). Los diálogos viven en la vista.
+// Los callbacks y el "en vuelo" llegan al menú por contexto
+// (`createRowActionsContext`), NO por la factoría de columnas. Los diálogos
+// viven en la vista.
 
 /** Acciones sobre un registro existente (ambas pestañas). */
 export interface AttendanceRecordActions {
@@ -65,20 +64,15 @@ export interface AttendanceRowActionsContextValue {
   pending: AttendanceRowTarget[];
 }
 
-const AttendanceRowActionsContext = createContext<AttendanceRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } =
+  createRowActionsContext<AttendanceRowActionsContextValue>(
+    "AttendanceNameCell",
+    "RollCallView / AttendanceHistoryView"
+  );
 
-export const AttendanceRowActionsProvider = AttendanceRowActionsContext.Provider;
-
-/** Para los menús de fila: exige estar bajo un `AttendanceRowActionsProvider`. */
-export function useAttendanceRowActionsContext(): AttendanceRowActionsContextValue {
-  const value = useContext(AttendanceRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "Los menús de asistencia deben renderizarse dentro de un AttendanceRowActionsProvider (ver RollCallView / AttendanceHistoryView)."
-    );
-  }
-  return value;
-}
+/** Callbacks y "en vuelo" de los menús de fila; ver `createRowActionsContext`. */
+export const AttendanceRowActionsProvider = Provider;
+export const useAttendanceRowActionsContext = useRowActionsContext;
 
 /** Primer segmento de la clave de cada mutación del módulo. */
 const ROW_MUTATION_KEYS = new Set<unknown>([

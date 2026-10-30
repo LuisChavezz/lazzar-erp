@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
@@ -16,9 +18,10 @@ import {
   usePendingAttendanceTargets,
 } from "../hooks/useAttendanceRowActions";
 import { useAttendanceRecordDialogs } from "../hooks/useAttendanceRecordDialogs";
-import { buildRollCallRows, type RollCallRow } from "../utils/attendanceRows";
+import { buildRollCallRows } from "../utils/attendanceRows";
 import { isEmployeeDayBusy, targetOf } from "../utils/attendanceRowTarget";
-import { getRollCallColumns } from "./RollCallColumns";
+import { getStaleCheckInNotice } from "../utils/attendanceStaleDialogs";
+import { getRollCallColumns, ROLL_CALL_HEADER_FILTERS } from "./RollCallColumns";
 import { AttendanceRecordDialogs } from "./AttendanceRecordDialogs";
 import { CheckInTimeDialog, type CheckInKind } from "./CheckInTimeDialog";
 import { DateParamInput } from "./DateParamInput";
@@ -32,19 +35,13 @@ interface RollCallViewProps {
   setParams: (patch: Record<string, string | null>) => void;
 }
 
-/** ¿La checada pedida sigue aplicando a la fila? (entrada: sin registro; salida: con entrada y sin salida). */
-const checkInApplies = (kind: CheckInKind, row: RollCallRow | null): boolean => {
-  if (!row) return false;
-  if (kind === "entrada") return row.record === null;
-  return row.record !== null && row.record.hora_entrada !== null && row.record.hora_salida === null;
-};
-
 /**
  * PASE DE LISTA: un día (hoy por defecto) cruzado contra la plantilla activa.
  * Es donde vive el checador.
  *
- * - El día va al SERVIDOR (`?fecha=`), fuera de `DataTable`; la tabla solo
- *   busca en memoria.
+ * - El día va al SERVIDOR (`?fecha=`), fuera de `DataTable`, igual que
+ *   `?todos=`; la búsqueda y los filtros de encabezado (empleado, estado)
+ *   filtran en memoria el día ya consultado.
  * - Las filas las arma `buildRollCallRows` (ver sus reglas de visibilidad).
  * - Hoy, "Registrar entrada/salida" checa con la hora del servidor, sin
  *   diálogo. En un día pasado abre `CheckInTimeDialog` para capturar la hora.
@@ -114,26 +111,37 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
     : null;
 
   // Si un refetch muestra que la checada ya no aplica (otra persona registró
-  // la entrada, o borró el registro), el diálogo se cierra. Mientras su propia
-  // checada está en vuelo no se toca. El aviso va por el mecanismo ÚNICO de
-  // `useAttendanceRecordDialogs`, y se omite si la propia checada ya falló: su
-  // toast de error ya explicó el cambio. Ajuste en RENDER.
-  if (
-    listSettled &&
-    checkInRequest !== null &&
-    !isEmployeeDayBusy(pending, checkInRequest.empleado, fecha) &&
-    !checkInApplies(checkInRequest.kind, checkInRow)
-  ) {
+  // la entrada, o borró el registro), el diálogo se cierra (regla de
+  // `getStaleCheckInNotice`). La fila se busca en el pase de lista COMPLETO:
+  // que salga de la vista filtrada (p. ej. por estado) no la cierra. Mientras
+  // su propia checada está en vuelo no se toca. El aviso va por el mecanismo
+  // ÚNICO de `useAttendanceRecordDialogs`, y se omite si la propia checada ya
+  // falló: su toast de error ya explicó el cambio. Ajuste en RENDER.
+  const staleCheckIn = checkInRequest
+    ? getStaleCheckInNotice({
+        kind: checkInRequest.kind,
+        empleado: checkInRequest.empleado,
+        row: checkInRow,
+        isBusy: isEmployeeDayBusy(pending, checkInRequest.empleado, fecha),
+        canResolve: listSettled,
+      })
+    : null;
+  if (checkInRequest && staleCheckIn) {
     setCheckInRequest(null);
-    if (!checkInRequest.failed) {
-      dialogs.notifyStale(
-        `attendance-checkin-stale-${checkInRequest.empleado}-${fecha}`,
-        "El registro del día cambió mientras capturabas la hora. Se actualizó el pase de lista."
-      );
-    }
+    if (!checkInRequest.failed) dialogs.notifyStale(staleCheckIn);
   }
 
-  const columns = getRollCallColumns(permissions);
+  // Copia de la fila al ABRIR la checada: el diálogo no sigue a los refetch y
+  // anima su salida con ella cuando la petición vuelve a `null`.
+  const checkInSession = useDialogSession(
+    checkInRequest !== null,
+    checkInRequest && checkInRow ? { kind: checkInRequest.kind, row: checkInRow } : null
+  );
+
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
+  // `AttendanceRowActionsProvider`. Las opciones de filtro salen del día
+  // completo, no de la página.
+  const columns = withHeaderFilters(getRollCallColumns(permissions), rows, ROLL_CALL_HEADER_FILTERS);
 
   // Las banderas son de carga INICIAL (`useAttendance`, `useEmployees` y
   // `useShifts` exponen `isInitialError`): un refetch fallido de cualquiera
@@ -248,11 +256,12 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
         </p>
       )}
 
-      {permissions.canCapture && checkInRequest && checkInRow && (
+      {permissions.canCapture && checkInSession.snapshot && (
         <CheckInTimeDialog
-          key={`${checkInRequest.kind}-${checkInRequest.empleado}`}
-          kind={checkInRequest.kind}
-          row={checkInRow}
+          key={`checkin-${checkInSession.id}`}
+          kind={checkInSession.snapshot.kind}
+          row={checkInSession.snapshot.row}
+          open={checkInRequest !== null}
           onClose={() => setCheckInRequest(null)}
           onFailed={() =>
             setCheckInRequest((current) => (current ? { ...current, failed: true } : current))

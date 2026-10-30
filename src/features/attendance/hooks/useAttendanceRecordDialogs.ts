@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import {
   ESTADO_JUSTIFICADA,
   ESTADOS_JUSTIFICABLES,
-  getEstadoAsistenciaLabel,
   type EstadoAsistencia,
 } from "../constants/attendanceChoices";
 import type { AttendanceRow } from "../utils/attendanceRows";
 import type { AttendanceRowTarget } from "../utils/attendanceRowTarget";
-import { ATTENDANCE_GONE_MESSAGE } from "./attendanceErrorMessages";
+import { getStaleAttendanceRecordNotice } from "../utils/attendanceStaleDialogs";
 
 export type JustificationMode = "justificar" | "quitar";
 
@@ -28,14 +28,15 @@ export const justificationModeFor = (estado: EstadoAsistencia): JustificationMod
  * pase de lista y el historial, y ÚNICO mecanismo de aviso de "diálogo cerrado
  * porque el registro cambió" del módulo (`notifyStale`, que también usa la
  * checada con hora del pase de lista). Vive en la VISTA, nunca en una celda:
- * corregir o justificar cambia `estado` (un filtro del historial) y el pase de
- * lista reordena y oculta filas, así que la celda —con su diálogo— podría
+ * corregir o justificar cambia `estado` (un filtro) y el pase de lista
+ * reordena y oculta filas, así que la celda —con su diálogo— podría
  * desmontarse a media operación.
  *
- * Se guarda el ID (y, al justificar, el modo con que se abrió) y se resuelve
- * contra el listado vigente. Si un refetch muestra que el registro ya no existe
- * o que su estado ya no admite el cambio, el diálogo se cierra con un aviso,
- * salvo que:
+ * Se guarda el ID (y, al justificar, el estado con que se abrió) y se resuelve
+ * contra el listado COMPLETO de la vista. La regla de cierre es
+ * `getStaleAttendanceRecordNotice`: si un refetch muestra que el registro ya
+ * no existe o que su estado ya no es el de la apertura, el diálogo se cierra
+ * con un aviso, salvo que:
  * - la mutación en vuelo sea la suya (entonces lo cierra su propio flujo), o
  * - su propia mutación ya FALLÓ (`markCorrectionFailed`): el toast de error ya
  *   explicó qué pasó, y un segundo aviso sobre lo mismo solo confunde.
@@ -56,7 +57,7 @@ export function useAttendanceRecordDialogs(
   );
   const [justifyRequest, setJustifyRequest] = useState<{
     id: number;
-    mode: JustificationMode;
+    estado: EstadoAsistencia;
   } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   // El desglose se resuelve contra el listado en cada render: el diálogo
@@ -64,14 +65,17 @@ export function useAttendanceRecordDialogs(
   const [breakdownId, setBreakdownId] = useState<number | null>(null);
   // Aviso pendiente del cierre por datos obsoletos. Se muestra desde un efecto:
   // un toast en pleno render actualizaría otro componente (el Toaster).
-  const [staleNotice, setStaleNotice] = useState<{ key: string; message: string } | null>(null);
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
 
   const findRow = (id: number | null) =>
     id !== null ? (rows.find((row) => row.id === id) ?? null) : null;
-  const isPending = (id: number) => pending.some((target) => target.id === id);
+  const isPending = (id: number | null) =>
+    id !== null && pending.some((target) => target.id === id);
 
-  const correctTarget = findRow(correctRequest?.id ?? null);
-  const justifyTarget = findRow(justifyRequest?.id ?? null);
+  const correctId = correctRequest?.id ?? null;
+  const justifyId = justifyRequest?.id ?? null;
+  const correctTarget = findRow(correctId);
+  const justifyTarget = findRow(justifyId);
   const deleteTarget = findRow(deleteId);
   const breakdownTarget = findRow(breakdownId);
 
@@ -79,38 +83,49 @@ export function useAttendanceRecordDialogs(
    * Programa el aviso de un diálogo cerrado por datos obsoletos. `key` estable
    * por caso: un doble render no duplica el toast.
    */
-  const notifyStale = (key: string, message: string) => setStaleNotice({ key, message });
+  const notifyStale = (notice: StaleRowDialogNotice) => setStaleNotice(notice);
 
   // Ajustes en RENDER, no en un efecto (`react-hooks/set-state-in-effect`).
-  if (canResolve) {
-    if (correctRequest !== null && correctTarget === null && !isPending(correctRequest.id)) {
-      setCorrectRequest(null);
-      if (!correctRequest.failed) {
-        notifyStale(`attendance-gone-${correctRequest.id}`, ATTENDANCE_GONE_MESSAGE);
-      }
-    }
-    if (justifyRequest !== null && !isPending(justifyRequest.id)) {
-      if (justifyTarget === null) {
-        setJustifyRequest(null);
-        notifyStale(`attendance-gone-${justifyRequest.id}`, ATTENDANCE_GONE_MESSAGE);
-      } else if (justificationModeFor(justifyTarget.estado) !== justifyRequest.mode) {
-        setJustifyRequest(null);
-        notifyStale(
-          `attendance-estado-${justifyRequest.id}-${justifyTarget.estado}`,
-          `El registro cambió de estado (ahora: «${
-            getEstadoAsistenciaLabel(justifyTarget.estado) ?? justifyTarget.estado
-          }»). Se actualizó el listado.`
-        );
-      }
-    }
-    if (deleteId !== null && deleteTarget === null && !isPending(deleteId)) {
-      setDeleteId(null);
-      notifyStale(`attendance-gone-${deleteId}`, ATTENDANCE_GONE_MESSAGE);
-    }
-    if (breakdownId !== null && breakdownTarget === null && !isPending(breakdownId)) {
-      setBreakdownId(null);
-      notifyStale(`attendance-gone-${breakdownId}`, ATTENDANCE_GONE_MESSAGE);
-    }
+  const staleCorrect = getStaleAttendanceRecordNotice({
+    targetId: correctId,
+    target: correctTarget,
+    isBusy: isPending(correctId),
+    canResolve,
+  });
+  if (staleCorrect) {
+    setCorrectRequest(null);
+    if (!correctRequest?.failed) notifyStale(staleCorrect);
+  }
+  const staleJustify = getStaleAttendanceRecordNotice({
+    targetId: justifyId,
+    target: justifyTarget,
+    expectedEstado: justifyRequest?.estado,
+    isBusy: isPending(justifyId),
+    canResolve,
+  });
+  if (staleJustify) {
+    setJustifyRequest(null);
+    notifyStale(staleJustify);
+  }
+  const staleDelete = getStaleAttendanceRecordNotice({
+    targetId: deleteId,
+    target: deleteTarget,
+    isBusy: isPending(deleteId),
+    canResolve,
+  });
+  if (staleDelete) {
+    setDeleteId(null);
+    notifyStale(staleDelete);
+  }
+  const staleBreakdown = getStaleAttendanceRecordNotice({
+    targetId: breakdownId,
+    target: breakdownTarget,
+    isBusy: isPending(breakdownId),
+    canResolve,
+  });
+  if (staleBreakdown) {
+    setBreakdownId(null);
+    notifyStale(staleBreakdown);
   }
 
   useEffect(() => {
@@ -120,9 +135,12 @@ export function useAttendanceRecordDialogs(
   }, [staleNotice]);
 
   return {
+    /** Abierto = hay petición; el registro (`*Target`) puede faltar un instante al cerrarse. */
+    isCorrectOpen: correctRequest !== null,
+    isJustifyOpen: justifyRequest !== null,
+    isDeleteOpen: deleteId !== null,
     correctTarget,
     justifyTarget,
-    justifyMode: justifyRequest?.mode ?? null,
     deleteTarget,
     breakdownTarget,
     notifyStale,
@@ -130,9 +148,8 @@ export function useAttendanceRecordDialogs(
     closeBreakdown: () => setBreakdownId(null),
     openCorrect: (record: AttendanceRow) => setCorrectRequest({ id: record.id, failed: false }),
     openJustification: (record: AttendanceRow) => {
-      const mode = justificationModeFor(record.estado);
-      if (mode) {
-        setJustifyRequest({ id: record.id, mode });
+      if (justificationModeFor(record.estado)) {
+        setJustifyRequest({ id: record.id, estado: record.estado });
       }
     },
     openDelete: (record: AttendanceRow) => setDeleteId(record.id),

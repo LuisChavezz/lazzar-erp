@@ -6,8 +6,15 @@ import {
   EditIcon,
   RejectIcon,
 } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { getMexicoTimeHHMM } from "@/src/utils/mexicoTime";
 import {
@@ -58,13 +65,27 @@ export function EstadoBadge({ estado }: { estado: Attendance["estado"] }) {
   return <StatusBadge status={estado} config={ESTADO_ASISTENCIA_CFG} />;
 }
 
-/** Nombre del empleado con su número de empleado debajo. */
-export function EmployeeCell({ nombre, numero }: { nombre: string; numero: string }) {
+/**
+ * El nombre del empleado ES el menú de la fila (regla de EC-636 para los
+ * registros de RH por empleado), con su número de empleado debajo: sin
+ * columna aparte de "Acciones". Sin acciones visibles (sin registro y sin
+ * permiso de captura) queda como texto plano.
+ */
+export function AttendanceNameMenu({
+  nombre,
+  numero,
+  items,
+}: {
+  nombre: string;
+  numero: string;
+  items: ActionMenuItem[];
+}) {
   return (
-    <div className="flex flex-col">
-      <span className="font-medium text-slate-700 dark:text-slate-200">{nombre}</span>
-      {numero && <span className="text-[11px] text-slate-400 tabular-nums">{numero}</span>}
-    </div>
+    <FolioActionMenu
+      name={nombre}
+      items={items}
+      status={numero ? <span className="text-[11px] text-slate-400 tabular-nums">{numero}</span> : undefined}
+    />
   );
 }
 
@@ -126,7 +147,8 @@ export const buildRecordMenuItems = (
   return items;
 };
 
-function HistoryRowActionsMenu({
+/** Menú de UNA fila del historial: las acciones de `buildRecordMenuItems`. */
+function HistoryNameCell({
   record,
   permissions,
 }: {
@@ -136,12 +158,11 @@ function HistoryRowActionsMenu({
   const { record: actions, pending } = useAttendanceRowActionsContext();
   const isBusy = isEmployeeDayBusy(pending, record.empleado, record.fecha);
   return (
-    <div className="flex justify-center">
-      <ActionMenu
-        items={buildRecordMenuItems(record, permissions, actions, isBusy)}
-        ariaLabel="Acciones del registro de asistencia"
-      />
-    </div>
+    <AttendanceNameMenu
+      nombre={record.empleado_nombre}
+      numero={record.numero_empleado}
+      items={buildRecordMenuItems(record, permissions, actions, isBusy)}
+    />
   );
 }
 
@@ -155,6 +176,14 @@ const columnHelper = createColumnHelper<AttendanceRow>();
  */
 export const getHistoryColumns = (permissions: AttendancePermissions) =>
   [
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo, ver `AttendanceRow`).
+    columnHelper.accessor("empleado_nombre", {
+      id: "empleado",
+      header: "Empleado",
+      size: 260,
+      cell: ({ row }) => <HistoryNameCell record={row.original} permissions={permissions} />,
+    }),
     // El accessor devuelve la fecha YA formateada para que la búsqueda global
     // encuentre lo que se ve; el orden va sobre la ISO cruda.
     columnHelper.accessor((row) => formatLocalDate(row.fecha), {
@@ -167,13 +196,6 @@ export const getHistoryColumns = (permissions: AttendancePermissions) =>
         </span>
       ),
     }),
-    columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
-      header: "Empleado",
-      cell: ({ row }) => (
-        <EmployeeCell nombre={row.original.empleado_nombre} numero={row.original.numero_empleado} />
-      ),
-    }),
     columnHelper.accessor("turno_nombre", {
       id: "turno_nombre",
       header: "Turno",
@@ -182,8 +204,10 @@ export const getHistoryColumns = (permissions: AttendancePermissions) =>
         <span className="text-slate-600 dark:text-slate-300">{info.getValue()}</span>
       ),
     }),
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su badge y su opción de filtro).
     columnHelper.accessor((row) => getEstadoAsistenciaLabel(row.estado) ?? row.estado, {
-      id: "estado_label",
+      id: "estado",
       header: "Estado",
       cell: ({ row }) => <EstadoBadge estado={row.original.estado} />,
     }),
@@ -237,10 +261,17 @@ export const getHistoryColumns = (permissions: AttendancePermissions) =>
         </span>
       ),
     }),
-    columnHelper.display({
-      id: "actions",
-      header: "Acciones",
-      meta: { align: "center" },
-      cell: ({ row }) => <HistoryRowActionsMenu record={row.original} permissions={permissions} />,
-    }),
   ] as ColumnDef<AttendanceRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) del HISTORIAL, para `withHeaderFilters`.
+ * Filtran EN MEMORIA el periodo ya consultado (`desde`/`hasta` van al
+ * servidor, fuera de la tabla). El empleado compara contra el FK crudo,
+ * rotulado con el nombre resuelto de la fila, con buscador. El estado, con
+ * ficha "Estatus: …", ofrece el catálogo completo aunque ninguna fila lo use,
+ * y al final cada código desconocido de las filas, crudo (igual que su badge).
+ */
+export const HISTORY_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<AttendanceRow>>> = {
+  empleado: employeeHeaderFilter(),
+  estado: estadoHeaderFilter(optionsFromConfig(ESTADO_ASISTENCIA_CFG)),
+};

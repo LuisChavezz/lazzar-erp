@@ -12,7 +12,10 @@ export type { CheckInKind };
 
 interface CheckInTimeDialogProps {
   kind: CheckInKind;
+  /** La copia de la fila tomada al ABRIR (`useDialogSession`). */
   row: RollCallRow;
+  /** Sale de la petición de la vista: al cerrarse, anima su salida con la copia. */
+  open: boolean;
   onClose: () => void;
   /** La checada falló y el diálogo sigue abierto. */
   onFailed: () => void;
@@ -22,9 +25,9 @@ interface CheckInTimeDialogProps {
  * Checada de un DÍA PASADO: captura la hora (México). Hoy no se usa: el
  * servidor toma su hora actual. La lógica vive en `useCheckInTimeForm`.
  *
- * Se monta en `RollCallView`, no en la celda, con `key` por empleado y tipo.
+ * Se monta en `RollCallView`, no en la celda, con `key` por apertura.
  */
-export function CheckInTimeDialog({ kind, row, onClose, onFailed }: CheckInTimeDialogProps) {
+export function CheckInTimeDialog({ kind, row, open, onClose, onFailed }: CheckInTimeDialogProps) {
   const { form, isPending, entradaGuardada, getError, clearError, handleFormSubmit } =
     useCheckInTimeForm({ kind, row, onClose, onFailed });
 
@@ -36,7 +39,7 @@ export function CheckInTimeDialog({ kind, row, onClose, onFailed }: CheckInTimeD
 
   return (
     <MainDialog
-      open
+      open={open}
       onOpenChange={handleOpenChange}
       maxWidth="440px"
       showCloseButton={false}
