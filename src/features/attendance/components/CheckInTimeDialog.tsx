@@ -16,6 +16,12 @@ interface CheckInTimeDialogProps {
   /** Sale de la petición de la vista: al cerrarse, anima su salida con la copia. */
   open: boolean;
   onClose: () => void;
+  /**
+   * Ya terminó de cerrarse (su animación de salida acabó y el contenido se
+   * desmontó): el padre deja de montarlo, para que el formulario y sus
+   * mutaciones no queden vivos con el diálogo cerrado.
+   */
+  onExited: () => void;
   /** La checada falló y el diálogo sigue abierto. */
   onFailed: () => void;
 }
@@ -26,7 +32,7 @@ interface CheckInTimeDialogProps {
  *
  * Se monta en `RollCallView`, no en la celda, con `key` por apertura.
  */
-export function CheckInTimeDialog({ kind, row, open, onClose, onFailed }: CheckInTimeDialogProps) {
+export function CheckInTimeDialog({ kind, row, open, onClose, onExited, onFailed }: CheckInTimeDialogProps) {
   const { form, isPending, entradaGuardada, getError, clearError, handleFormSubmit } =
     useCheckInTimeForm({ kind, row, onClose, onFailed });
 
@@ -40,6 +46,7 @@ export function CheckInTimeDialog({ kind, row, open, onClose, onFailed }: CheckI
     <MainDialog
       open={open}
       onOpenChange={handleOpenChange}
+      onCloseAutoFocus={onExited}
       maxWidth="440px"
       showCloseButton={false}
       title={isEntry ? "Registrar Entrada" : "Registrar Salida"}

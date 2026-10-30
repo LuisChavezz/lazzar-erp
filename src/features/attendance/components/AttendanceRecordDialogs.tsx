@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -52,6 +52,9 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
   };
 
   const correctSession = useDialogSession(dialogs.isCorrectOpen, dialogs.correctTarget);
+  // Sesión de corrección que ya terminó de cerrarse: deja de montarse (ver
+  // `onExited`), como antes de EC-637. Abrir otra vez crea una sesión nueva.
+  const [exitedCorrectId, setExitedCorrectId] = useState<number | null>(null);
   const justifySession = useDialogSession(dialogs.isJustifyOpen, dialogs.justifyTarget);
   const deleteSession = useDialogSession(dialogs.isDeleteOpen, dialogs.deleteTarget);
 
@@ -74,11 +77,12 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
         />
       )}
 
-      {permissions.canCapture && correctSession.snapshot && (
+      {permissions.canCapture && correctSession.snapshot && exitedCorrectId !== correctSession.id && (
         <AttendanceCorrectionDialog
           key={`correct-${correctSession.id}`}
           record={correctSession.snapshot}
           open={dialogs.isCorrectOpen}
+          onExited={() => setExitedCorrectId(correctSession.id)}
           onClose={dialogs.closeCorrect}
           onFailed={dialogs.markCorrectionFailed}
         />

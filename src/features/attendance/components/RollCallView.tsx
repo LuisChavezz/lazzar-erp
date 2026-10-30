@@ -136,6 +136,9 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
 
   // Copia de la fila al ABRIR la checada: el diálogo no sigue a los refetch y
   // anima su salida con ella cuando la petición vuelve a `null`.
+  // Sesión de checada que ya terminó de cerrarse: deja de montarse (ver
+  // `onExited`). Abrir otra vez crea una sesión nueva.
+  const [exitedCheckInId, setExitedCheckInId] = useState<number | null>(null);
   const checkInSession = useDialogSession(
     checkInRequest !== null,
     checkInRequest && checkInRow ? { kind: checkInRequest.kind, row: checkInRow } : null
@@ -265,13 +268,14 @@ export function RollCallView({ fecha, today, showAll, setParams }: RollCallViewP
         </p>
       )}
 
-      {permissions.canCapture && checkInSession.snapshot && (
+      {permissions.canCapture && checkInSession.snapshot && exitedCheckInId !== checkInSession.id && (
         <CheckInTimeDialog
           key={`checkin-${checkInSession.id}`}
           kind={checkInSession.snapshot.kind}
           row={checkInSession.snapshot.row}
           open={checkInRequest !== null}
           onClose={() => setCheckInRequest(null)}
+          onExited={() => setExitedCheckInId(checkInSession.id)}
           onFailed={() =>
             setCheckInRequest((current) => (current ? { ...current, failed: true } : current))
           }
