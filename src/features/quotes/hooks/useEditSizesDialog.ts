@@ -26,6 +26,8 @@ import type { Size } from '../../sizes/interfaces/size.interface';
 import { MUESTRA_ROW_ID } from '../types';
 import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
+import { useMuestraCategorySizes } from './useMuestraCategorySizes';
+import { findIncompatibleSizes, INCOMPATIBLE_SIZES_ERROR } from '../utils/muestraCategorySizes';
 import { reflectiveInventoryCapError } from '../utils/reflectiveInventoryCap';
 
 export interface UseEditSizesDialogOptions {
@@ -53,14 +55,27 @@ export function useEditSizesDialog({
   sizes,
   onOpenChange,
 }: UseEditSizesDialogOptions) {
-  // Usa las tallas guardadas en el item (filtradas por variante al momento de la creación).
-  // Si no existen (items guardados antes de esta mejora), cae al catálogo global.
+  // Una MUESTRA toma las tallas de su categoría (EC-647), no `availableSizes`:
+  // la rehidratada no lo trae y la recién agregada guardó la lista de cuando se
+  // capturó. Sin categoría, el catálogo global, como siempre.
+  const muestraCategoryId = item?.tipo === 'muestra' ? item.categoria_producto ?? null : null;
+  const getMuestraSizes = useMuestraCategorySizes(
+    muestraCategoryId !== null ? [muestraCategoryId] : [],
+    sizes
+  );
+  const muestraSizes = item?.tipo === 'muestra' ? getMuestraSizes(muestraCategoryId) : null;
+
+  // Catálogo: las tallas guardadas en el item (filtradas por variante al momento
+  // de la creación). Si no existen (items guardados antes de esa mejora), cae al
+  // catálogo global.
   const effectiveSizes: Size[] = useMemo(
     () =>
-      item?.availableSizes && item.availableSizes.length > 0
-        ? (item.availableSizes as Size[])
-        : sizes,
-    [item?.availableSizes, sizes]
+      muestraSizes
+        ? muestraSizes.sizes
+        : item?.availableSizes && item.availableSizes.length > 0
+          ? (item.availableSizes as Size[])
+          : sizes,
+    [muestraSizes, item?.availableSizes, sizes]
   );
 
   // El `key` del componente EditSizesDialog cambia con el índice del item,
@@ -80,6 +95,23 @@ export function useEditSizesDialog({
    * y no puede haber colisión.
    */
   const rowId = item ? item.productoId ?? MUESTRA_ROW_ID : null;
+
+  // Tallas guardadas que no son de la categoría de la muestra (datos de antes de
+  // EC-647). Se listan marcadas para quitarlas a mano: `getItemSizes` solo
+  // recorre `effectiveSizes`, así que guardar con ellas las perdería en silencio.
+  // Solo con categoría y con su lista ya cargada.
+  const muestraSizesStatus = muestraSizes?.status ?? null;
+  const incompatibleSizes = useMemo(
+    () =>
+      muestraSizesStatus === null && muestraCategoryId !== null && rowId !== null
+        ? findIncompatibleSizes(sizesState.sizeQuantitiesPerProduct[rowId], effectiveSizes, [
+            ...(item?.tallas ?? []).map((talla) => ({ id: talla.tallaId, nombre: talla.nombre })),
+            ...sizes,
+          ])
+        : [],
+    [muestraSizesStatus, muestraCategoryId, rowId, sizesState.sizeQuantitiesPerProduct, effectiveSizes, item?.tallas, sizes]
+  );
+  const { updateSizeQuantity } = sizesState;
 
   // Auto-expande el producto único al montar: el diálogo edita un solo
   // producto y siempre debe mostrarse expandido para facilitar la edición.
@@ -115,6 +147,18 @@ export function useEditSizesDialog({
     (onSave: (updatedItem: QuoteItem) => void) => {
       if (!item || itemIndex === null || !selectedRow) return;
 
+      // Lista de la categoría sin cargar, o tallas fuera de ella: no se guarda.
+      // Va antes de `validateSelectedRows`, que se salta una fila sin tallas
+      // disponibles.
+      if (muestraSizesStatus === 'loading') return;
+      if (muestraSizesStatus === 'error' || incompatibleSizes.length > 0) {
+        sizesState.setSizeError(
+          selectedRow.id,
+          muestraSizesStatus === 'error' ? 'Sin tallas de la categoría' : INCOMPATIBLE_SIZES_ERROR
+        );
+        return;
+      }
+
       const isValid = sizesState.validateSelectedRows([selectedRow]);
       if (!isValid) return;
 
@@ -137,7 +181,7 @@ export function useEditSizesDialog({
       onSave({ ...item, tallas, cantidad: totalCantidad });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item, itemIndex, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow]
+    [item, itemIndex, sizes, sizesState.validateSelectedRows, sizesState.getItemSizes, sizesState.setSizeError, selectedRow, muestraSizesStatus, incompatibleSizes]
   );
 
   /**
@@ -164,16 +208,26 @@ export function useEditSizesDialog({
         ? { [selectedRow.id]: effectiveSizes }
         : {} as Record<number, import('../../sizes/interfaces/size.interface').Size[]>,
       sizeQuantitiesPerProduct: sizesState.sizeQuantitiesPerProduct,
-      updateSizeQuantity: sizesState.updateSizeQuantity,
+      updateSizeQuantity,
       openProductId,
       onToggleProduct: handleToggleProduct,
       sizeErrors: sizesState.sizeErrors,
+      sizesStatusPerProduct:
+        selectedRow && muestraSizesStatus ? { [selectedRow.id]: muestraSizesStatus } : undefined,
+      incompatibleSizesPerProduct:
+        selectedRow && incompatibleSizes.length > 0
+          ? { [selectedRow.id]: incompatibleSizes }
+          : undefined,
+      onRemoveIncompatibleSize: (productId: number, sizeId: number) =>
+        updateSizeQuantity(productId, sizeId, ''),
     }),
     [
+      muestraSizesStatus,
+      incompatibleSizes,
       selectedRow,
       effectiveSizes,
       sizesState.sizeQuantitiesPerProduct,
-      sizesState.updateSizeQuantity,
+      updateSizeQuantity,
       openProductId,
       handleToggleProduct,
       sizesState.sizeErrors,
