@@ -40,8 +40,15 @@ export function PurchaseOrderOnboardingStepManager({
 
   // Renglones del Step 2. Viven aquí para que el Step 1 sepa si hay alguno y
   // pueda descartarlos al cambiar el tipo de compra (MP↔PT compran distinto:
-  // por producto o por SKU).
+  // por producto o por SKU). `linesResets` cuenta esos descartes y, como `key`
+  // del Step 2, lo remonta para que no conserve la búsqueda ni la vista "solo
+  // seleccionados" de los renglones descartados.
   const lines = usePurchaseOrderLines();
+  const [linesResets, setLinesResets] = useState(0);
+  const handleClearLines = () => {
+    lines.clear();
+    setLinesResets((n) => n + 1);
+  };
 
   /** Called by Step 1 after form validation. Stores the captured encabezados and advances. */
   const handleStep1Success = useCallback(
@@ -76,7 +83,7 @@ export function PurchaseOrderOnboardingStepManager({
             initialValues={step1Data ?? undefined}
             initialServerErrors={headerErrors}
             lineCount={lines.count}
-            onClearLines={lines.clear}
+            onClearLines={handleClearLines}
             onSuccess={handleStep1Success}
           />
         )}
@@ -86,11 +93,14 @@ export function PurchaseOrderOnboardingStepManager({
           seleccionados", encabezado ya creado) se perdería en silencio: "Volver"
           existe justamente para no perder lo capturado, y reelegir decenas de
           productos en un catálogo de miles es mucho más caro que recapturar el
-          encabezado.
+          encabezado. Solo se remonta (`key`) cuando el Step 1 descarta los
+          renglones al cambiar el tipo de compra; ahí no hay encabezado creado,
+          porque con uno pendiente "Volver" está deshabilitado.
         */}
         {step1Data !== null && (
           <div className={currentStep === "step-2" ? undefined : "hidden"}>
             <PurchaseOrderOnboardingStep2
+              key={linesResets}
               step1Data={step1Data}
               onboardingData={onboardingData}
               lines={lines}
