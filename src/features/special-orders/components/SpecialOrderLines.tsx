@@ -169,7 +169,7 @@ export function SpecialOrderLines({
                 }`}
               >
                 <span className="text-slate-400 dark:text-slate-500">Categoría: </span>
-                {line.categoria_producto?.nombre ?? "Sin categoría (no se capturó en la cotización)"}
+                {line.categoria_producto?.nombre ?? "Sin categoría de producto"}
               </span>
             </div>
             <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">

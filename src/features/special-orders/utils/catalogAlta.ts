@@ -1,7 +1,7 @@
 import type { SpecialOrderLine } from "../interfaces/special-order.interface";
 
 export const CATALOG_ALTA_WITHOUT_CATEGORY =
-  "La línea no tiene categoría de producto (se captura en la cotización), así que no se puede dar de alta en catálogo.";
+  "La línea no tiene categoría de producto, así que no se puede dar de alta en catálogo.";
 
 export const CATALOG_ALTA_WITH_EXISTING_SKUS =
   "La línea ya tiene SKU de producción generados. El alta en catálogo solo está disponible en la primera generación: repetirla crearía un segundo producto para la misma línea.";

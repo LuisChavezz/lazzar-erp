@@ -49,7 +49,7 @@ export function SampleSkuOnboardingStep1({
           line.categoria_producto.nombre
         ) : (
           <span className="text-slate-400 dark:text-slate-500">
-            Sin categoría (no se capturó en la cotización)
+            Sin categoría de producto
           </span>
         )}
       </InfoField>
