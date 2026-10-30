@@ -11,16 +11,24 @@ import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
 import type { TipoCompra } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
   initialServerErrors,
+  lineCount,
+  onClearLines,
   onSuccess,
 }: {
   /** Encabezado capturado previamente; preserva lo escrito al volver desde el Step 2. */
   initialValues?: PurchaseOrderEncabezados;
   /** Errores por campo con los que el backend rechazó el alta (ver el step manager). */
   initialServerErrors?: PurchaseOrderHeaderFieldErrors;
+  /** Renglones capturados en el Step 2: cambiar el tipo de compra los descarta. */
+  lineCount: number;
+  /** Descarta los renglones (tras confirmar el cambio de tipo de compra). */
+  onClearLines: () => void;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
   const { onboardingData, isLoading, isError, error } =
@@ -63,6 +71,8 @@ export function PurchaseOrderOnboardingStep1({
       onboardingData={onboardingData}
       initialValues={initialValues}
       initialServerErrors={initialServerErrors}
+      lineCount={lineCount}
+      onClearLines={onClearLines}
       onSuccess={onSuccess}
     />
   );
@@ -74,6 +84,8 @@ interface Step1FormProps {
   onboardingData: PurchaseOrderOnboardingData;
   initialValues?: PurchaseOrderEncabezados;
   initialServerErrors?: PurchaseOrderHeaderFieldErrors;
+  lineCount: number;
+  onClearLines: () => void;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
 
@@ -81,6 +93,8 @@ function Step1Form({
   onboardingData,
   initialValues,
   initialServerErrors,
+  lineCount,
+  onClearLines,
   onSuccess,
 }: Step1FormProps) {
   const {
@@ -101,8 +115,24 @@ function Step1Form({
     onSuccess: onSuccess ?? (() => {}),
   });
 
+  const { requestChange: requestTipoCompraChange, confirmDialogProps } = useTipoCompraChange({
+    lineCount,
+    onClearLines,
+    applyChange: (nextTipo) => {
+      form.setFieldValue("orden_compra.tipo_compra", nextTipo);
+      clearFieldErrors("orden_compra.tipo_compra");
+      // Solo el producto terminado se liga a pedidos: al cambiar a
+      // materia prima se sueltan los ya elegidos para no enviarlos.
+      if (nextTipo !== "PT") {
+        form.setFieldValue("orden_compra.pedidos", []);
+        clearFieldErrors("orden_compra.pedidos");
+      }
+    },
+  });
+
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
+      <ConfirmDialog {...confirmDialogProps} />
       <fieldset
         disabled={isPending}
         className={`grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}
@@ -195,17 +225,9 @@ function Step1Form({
               name={field.name}
               value={field.state.value}
               options={TIPO_COMPRA_OPTIONS}
-              onChange={(event) => {
-                const nextTipo = event.target.value as TipoCompra;
-                field.handleChange(nextTipo);
-                clearFieldErrors("orden_compra.tipo_compra");
-                // Solo el producto terminado se liga a pedidos: al cambiar a
-                // materia prima se sueltan los ya elegidos para no enviarlos.
-                if (nextTipo !== "PT") {
-                  form.setFieldValue("orden_compra.pedidos", []);
-                  clearFieldErrors("orden_compra.pedidos");
-                }
-              }}
+              onChange={(event) =>
+                requestTipoCompraChange(field.state.value, event.target.value as TipoCompra)
+              }
               onBlur={() => {
                 field.handleBlur();
                 validateField("orden_compra.tipo_compra");

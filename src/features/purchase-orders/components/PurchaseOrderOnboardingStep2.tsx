@@ -13,8 +13,10 @@ import type {
   PurchaseOrderOnboardingProducto,
 } from "../interfaces/purchase-order-onboarding.interface";
 import { usePostPurchaseOrder } from "../hooks/usePostPurchaseOrder";
-import { usePriceEntries } from "../hooks/usePriceEntries";
+import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
+import { lineFromProducto, lineKeyProducto } from "../utils/purchaseOrderLines";
+import { PurchaseOrderVariantLinesPicker } from "./PurchaseOrderVariantLinesPicker";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
@@ -34,6 +36,11 @@ interface PurchaseOrderOnboardingStep2Props {
   /** Captured encabezados from Step 1. */
   step1Data: PurchaseOrderEncabezados;
   onboardingData: PurchaseOrderOnboardingData | undefined;
+  /**
+   * Renglones elegidos. Viven en el step manager para que el Step 1 pueda
+   * vaciarlos al cambiar el tipo de compra.
+   */
+  lines: PurchaseOrderLinesState;
   /** Called after the full order POST succeeds. This is the wizard's final step. */
   onSuccess?: () => void;
   /**
@@ -48,6 +55,7 @@ interface PurchaseOrderOnboardingStep2Props {
 export function PurchaseOrderOnboardingStep2({
   step1Data,
   onboardingData,
+  lines,
   onSuccess,
   onHeaderFieldErrors,
   onBack,
@@ -60,10 +68,11 @@ export function PurchaseOrderOnboardingStep2({
   // capturados (EC-606); sin moneda resuelta, sin prefijo.
   const monedaCodigo = onboardingMonedaCodigo(onboardingData, step1Data.orden_compra.moneda);
 
+  // Producto terminado se compra por SKU (EC-657); materia prima, por producto.
+  const isProductoTerminado = step1Data.orden_compra.tipo_compra === "PT";
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [quantities, setQuantities] = useState<Record<number, number>>({});
-  const { prices, setPrice, togglePrice, priceErrors, hasPriceErrors } =
-    usePriceEntries(quantities);
+  const { quantities, prices, priceErrors, hasPriceErrors } = lines;
   const { mutateAsync: postDetalles, isPending } = usePostPurchaseOrder({ onHeaderFieldErrors });
   // Encabezado ya creado por un intento previo cuyo segundo POST (detalles)
   // falló. Se conserva para reintentar solo ese POST en lugar de crear un
@@ -114,33 +123,17 @@ export function PurchaseOrderOnboardingStep2({
   }, [products, searchQuery, selectedSnapshot, searchHaystacks]);
 
   // ── Selection helpers ────────────────────────────────────────────────────
-  const toggleProduct = (id: number) => {
-    setQuantities((prev) => {
-      const next = { ...prev };
-      if (id in next) {
-        delete next[id];
-      } else {
-        next[id] = 1;
-      }
-      return next;
-    });
-    togglePrice(id, () => {
-      const product = products.find((p) => p.id === id);
-      return (product?.precio_base ?? 0).toFixed(2);
-    });
+  const toggleProduct = (product: PurchaseOrderOnboardingProducto) => {
+    lines.toggle(lineFromProducto(product));
   };
 
-  const updateQuantity = (id: number, qty: number) => {
-    setQuantities((prev) => ({ ...prev, [id]: qty }));
-  };
-
-  const isSelected = (id: number) => id in quantities;
-  const selectedCount = Object.keys(quantities).length;
+  const isSelected = (id: number) => lines.isSelected(lineKeyProducto(id));
+  const selectedCount = lines.count;
 
   /** Congela los seleccionados actuales, o descarta el snapshot al apagar. */
   const toggleShowOnlySelected = () => {
     setSelectedSnapshot((prev) =>
-      prev ? null : products.filter((p) => p.id in quantities),
+      prev ? null : products.filter((p) => isSelected(p.id)),
     );
   };
 
@@ -178,11 +171,7 @@ export function PurchaseOrderOnboardingStep2({
   const handleSubmit = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle = buildPurchaseOrderDetalle(
-      quantities,
-      prices,
-      (productoId) => products.find((p) => p.id === productoId)?.nombre ?? "",
-    );
+    const detalle = buildPurchaseOrderDetalle(lines.lines, quantities, prices);
 
     // Adjunta los renglones a un encabezado ya existente. Si falla, se
     // conserva su id/folio para reintentar solo este POST — evita crear un
@@ -218,159 +207,166 @@ export function PurchaseOrderOnboardingStep2({
 
   return (
     <div className="space-y-4">
-      {/* ── Search area ────────────────────────────────────────────────── */}
-      <SearchInput
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Filtrar productos..."
-      />
+      {isProductoTerminado ? (
+        <PurchaseOrderVariantLinesPicker lines={lines} monedaCodigo={monedaCodigo} />
+      ) : (
+        <>
+          {/* ── Search area ────────────────────────────────────────────────── */}
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Filtrar productos..."
+          />
 
-      {/* ── Selected count (alterna la vista "solo seleccionados") ─────── */}
-      <div>
-        <button
-          type="button"
-          onClick={toggleShowOnlySelected}
-          aria-pressed={showOnlySelected}
-          disabled={isToggleDisabled}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-            showOnlySelected
-              ? "border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300"
-              : "border-slate-200 text-slate-500 dark:border-white/10 dark:text-slate-400"
-          } ${
-            isToggleDisabled
-              ? "opacity-60 cursor-not-allowed"
-              : "cursor-pointer hover:border-sky-300 hover:text-sky-600 dark:hover:border-sky-700 dark:hover:text-sky-400"
-          }`}
-        >
-          {selectedCount === 0
-            ? "Ningún producto seleccionado"
-            : `${selectedCount} producto${selectedCount === 1 ? "" : "s"} seleccionado${selectedCount === 1 ? "" : "s"}`}
-          {(selectedCount > 0 || showOnlySelected) && (
-            <span className="text-[10px] font-semibold opacity-70">
-              {showOnlySelected ? " · Ver todos" : " · Ver solo estos"}
-            </span>
-          )}
-        </button>
-      </div>
+          {/* ── Selected count (alterna la vista "solo seleccionados") ─────── */}
+          <div>
+            <button
+              type="button"
+              onClick={toggleShowOnlySelected}
+              aria-pressed={showOnlySelected}
+              disabled={isToggleDisabled}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                showOnlySelected
+                  ? "border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300"
+                  : "border-slate-200 text-slate-500 dark:border-white/10 dark:text-slate-400"
+              } ${
+                isToggleDisabled
+                  ? "opacity-60 cursor-not-allowed"
+                  : "cursor-pointer hover:border-sky-300 hover:text-sky-600 dark:hover:border-sky-700 dark:hover:text-sky-400"
+              }`}
+            >
+              {selectedCount === 0
+                ? "Ningún producto seleccionado"
+                : `${selectedCount} producto${selectedCount === 1 ? "" : "s"} seleccionado${selectedCount === 1 ? "" : "s"}`}
+              {(selectedCount > 0 || showOnlySelected) && (
+                <span className="text-[10px] font-semibold opacity-70">
+                  {showOnlySelected ? " · Ver todos" : " · Ver solo estos"}
+                </span>
+              )}
+            </button>
+          </div>
 
-      {/* ── Product list (virtualizada) ────────────────────────────────── */}
-      <div ref={listRef} className="max-h-80 overflow-y-auto pr-1">
-        {/* Alto total virtual: mantiene la barra de scroll proporcional. */}
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const product = filteredProducts[virtualItem.index];
-            // El índice puede venir de una lista más larga durante el render en
-            // que la lista se encoge (encender "Ver solo estos", filtrar).
-            if (!product) return null;
-            const selected = isSelected(product.id);
-            const qty = quantities[product.id] ?? 1;
-            return (
-              <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                // `measureElement` mide el alto real y observa el nodo con un
-                // ResizeObserver: al seleccionar un renglón aparecen el stepper
-                // y el precio editable (y, si el precio queda inválido, su
-                // mensaje de error), crece de alto y el virtualizador reacomoda
-                // los de abajo solo.
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div
-                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150 ${
-                    selected
-                      ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5"
-                  }`}
-                >
-                  {/* Clickable area: check + info */}
-                  <button
-                    type="button"
-                    onClick={() => toggleProduct(product.id)}
-                    className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-none p-0"
+          {/* ── Product list (virtualizada) ────────────────────────────────── */}
+          <div ref={listRef} className="max-h-80 overflow-y-auto pr-1">
+            {/* Alto total virtual: mantiene la barra de scroll proporcional. */}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const product = filteredProducts[virtualItem.index];
+                // El índice puede venir de una lista más larga durante el render en
+                // que la lista se encoge (encender "Ver solo estos", filtrar).
+                if (!product) return null;
+                const lineKey = lineKeyProducto(product.id);
+                const selected = isSelected(product.id);
+                const qty = quantities[lineKey] ?? 1;
+                return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    // `measureElement` mide el alto real y observa el nodo con un
+                    // ResizeObserver: al seleccionar un renglón aparecen el stepper
+                    // y el precio editable (y, si el precio queda inválido, su
+                    // mensaje de error), crece de alto y el virtualizador reacomoda
+                    // los de abajo solo.
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
                   >
-                    {/* Check indicator */}
-                    <span
-                      className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    <div
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150 ${
                         selected
-                          ? "border-sky-500 bg-sky-500 text-white"
-                          : "border-slate-300 dark:border-slate-600"
+                          ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
+                          : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5"
                       }`}
                     >
-                      {selected && <CheckIcon className="w-3.5 h-3.5" />}
-                    </span>
+                      {/* Clickable area: check + info */}
+                      <button
+                        type="button"
+                        onClick={() => toggleProduct(product)}
+                        className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-none p-0"
+                      >
+                        {/* Check indicator */}
+                        <span
+                          className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                            selected
+                              ? "border-sky-500 bg-sky-500 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {selected && <CheckIcon className="w-3.5 h-3.5" />}
+                        </span>
 
-                    {/* Product info */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {product.nombre}
-                      </p>
-                      {product.descripcion && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {product.descripcion}
-                        </p>
+                        {/* Product info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {product.nombre}
+                          </p>
+                          {product.descripcion && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {product.descripcion}
+                            </p>
+                          )}
+                          {(product.codigo || product.cod_proscai) && (
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                              {[product.codigo, product.cod_proscai]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Quantity + price inputs (only when selected) */}
+                      {selected && (
+                        <div className="shrink-0 flex items-center gap-2">
+                          <QuantitySelector
+                            value={qty}
+                            onChange={(next) => lines.setQuantity(lineKey, next)}
+                            label={`Cantidad de ${product.nombre}`}
+                          />
+                          <PriceInput
+                            value={prices[lineKey] ?? ""}
+                            onChange={(next) => lines.setPrice(lineKey, next)}
+                            error={priceErrors[lineKey]}
+                            monedaCodigo={monedaCodigo}
+                            label={`Precio de ${product.nombre}`}
+                          />
+                        </div>
                       )}
-                      {(product.codigo || product.cod_proscai) && (
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-                          {[product.codigo, product.cod_proscai]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
+
+                      {/* Price (read-only, before selection) */}
+                      {!selected && (
+                        <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
+                          {/* Sin símbolo: `precio_base` no declara moneda (EC-606). */}
+                          {formatMoneyValue(product.precio_base, null)}
+                        </span>
                       )}
                     </div>
-                  </button>
+                  </div>
+                );
+              })}
+            </div>
 
-                  {/* Quantity + price inputs (only when selected) */}
-                  {selected && (
-                    <div className="shrink-0 flex items-center gap-2">
-                      <QuantitySelector
-                        value={qty}
-                        onChange={(next) => updateQuantity(product.id, next)}
-                        label={`Cantidad de ${product.nombre}`}
-                      />
-                      <PriceInput
-                        value={prices[product.id] ?? ""}
-                        onChange={(next) => setPrice(product.id, next)}
-                        error={priceErrors[product.id]}
-                        monedaCodigo={monedaCodigo}
-                        label={`Precio de ${product.nombre}`}
-                      />
-                    </div>
-                  )}
-
-                  {/* Price (read-only, before selection) */}
-                  {!selected && (
-                    <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
-                      {/* Sin símbolo: `precio_base` no declara moneda (EC-606). */}
-                      {formatMoneyValue(product.precio_base, null)}
-                    </span>
-                  )}
-                </div>
+            {filteredProducts.length === 0 && (
+              <div className="py-10 text-center text-sm text-slate-400">
+                {searchQuery
+                  ? "No se encontraron productos"
+                  : "No hay productos disponibles"}
               </div>
-            );
-          })}
-        </div>
-
-        {filteredProducts.length === 0 && (
-          <div className="py-10 text-center text-sm text-slate-400">
-            {searchQuery
-              ? "No se encontraron productos"
-              : "No hay productos disponibles"}
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* ── Aviso de encabezado creado sin productos adjuntos ───────────── */}
       {pendingOrder && (

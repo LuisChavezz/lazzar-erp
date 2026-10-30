@@ -17,8 +17,9 @@
  * El wizard de edición tiene 2 pasos que reflejan los del alta:
  *   1. Datos generales (encabezado)
  *   2. Agregar productos — pre-poblado con los renglones existentes de la orden
- *      (cada `detalle` expone `producto_id`, obtenido vía GET de la orden) y,
- *      al guardar, arma el body (encabezado + `detalles`) y envía el PUT.
+ *      (cada `detalle` expone `producto_id` y, si se compró por SKU,
+ *      `producto_variante_id`, obtenidos vía GET de la orden) y, al guardar,
+ *      arma el body (encabezado + `detalles`) y envía el PUT.
  *
  * Reutilizar el wizard de creación habría requerido condicionales de `mode`
  * invasivos en pasos cuya semántica difiere por completo.
@@ -29,7 +30,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import type { PurchaseOrderDetalleItem } from "../interfaces/purchase-order-onboarding.interface";
 import type {
   PurchaseOrder,
   PurchaseOrderDetail,
@@ -41,6 +41,8 @@ import {
   type PurchaseOrderWizardStep as EditStep,
 } from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
+import { linesStateFrom, usePurchaseOrderLines } from "../hooks/usePurchaseOrderLines";
+import { seedFromDetalles } from "../utils/purchaseOrderLines";
 import { purchaseOrderQueryOptions } from "../hooks/usePurchaseOrder";
 import { canSeeAmounts } from "../utils/purchaseOrderFinance";
 import { PURCHASE_ORDER_STATUS } from "../constants/purchaseOrderStatus";
@@ -101,8 +103,16 @@ export function PurchaseOrderEditStepManager({
   // desmonta su contenido al cerrarse, así que cada apertura toma una foto
   // nueva, siempre después del `refetchOnMount: "always"`.
   const [snapshot, setSnapshot] = useState<PurchaseOrderDetail | null>(null);
+
+  // Renglones del Step 2, sembrados con los de la foto. Viven aquí (no en el
+  // Step 2) para que el Step 1 sepa si hay alguno y pueda descartarlos al
+  // cambiar el tipo de compra; `seedCleared` los saca también de la vista.
+  const lines = usePurchaseOrderLines();
+  const [seedCleared, setSeedCleared] = useState(false);
+
   if (snapshot === null && isDetailFresh && detail) {
     setSnapshot(detail);
+    lines.reset(linesStateFrom(seedFromDetalles(detail.detalles)));
   }
 
   /** Step 1 validó el encabezado: lo guardamos y avanzamos a productos. */
@@ -133,22 +143,18 @@ export function PurchaseOrderEditStepManager({
     setCurrentStep("step-1");
   };
 
-  // Renglones iniciales del paso de productos: sembrados desde los renglones
-  // existentes de la orden, conservando `precio` y `descripcion` reales (no
-  // solo la cantidad).
-  //
-  // `d.precio` puede venir AUSENTE si el backend filtró los importes por rol,
-  // pero eso NO llega hasta aquí: la edición se bloquea antes (ver
-  // `sinAccesoImportes` abajo). El `?? ""` queda solo como salvaguarda de tipos.
-  const initialItems = useMemo<PurchaseOrderDetalleItem[]>(
-    () =>
-      (snapshot?.detalles ?? []).map((d) => ({
-        producto: d.producto_id,
-        cantidad: d.cantidad,
-        precio: d.precio ?? "",
-        descripcion: d.descripcion,
-      })),
-    [snapshot],
+  /** El Step 1 cambió MP↔PT con renglones capturados y el usuario lo confirmó. */
+  const handleClearLines = () => {
+    lines.clear();
+    setSeedCleared(true);
+  };
+
+  // Renglones guardados de la orden, conservando `precio`, `descripcion` y la
+  // variante reales (ver `lineFromDetalle`). El Step 2 los mantiene a la vista
+  // aunque se desmarquen, salvo que se hayan descartado al cambiar el tipo.
+  const seedLines = useMemo(
+    () => (seedCleared ? [] : seedFromDetalles(snapshot?.detalles ?? []).map((s) => s.line)),
+    [snapshot, seedCleared],
   );
 
   // Hasta que la lectura fresca del detalle termina (con éxito o con error) se
@@ -248,6 +254,8 @@ export function PurchaseOrderEditStepManager({
             onboardingData={onboardingData}
             initialServerErrors={headerErrors}
             isTipoCompraLocked={isTipoCompraLocked}
+            lineCount={lines.count}
+            onClearLines={handleClearLines}
             onSuccess={handleStep1Success}
           />
         )}
@@ -265,7 +273,8 @@ export function PurchaseOrderEditStepManager({
               header={header}
               isTipoCompraLocked={isTipoCompraLocked}
               onboardingData={onboardingData}
-              initialItems={initialItems}
+              seedLines={seedLines}
+              lines={lines}
               onSuccess={handleStep2Success}
               onOrderNoLongerEditable={handleOrderNoLongerEditable}
               onHeaderFieldErrors={handleHeaderFieldErrors}

@@ -8,7 +8,6 @@ import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PriceInput } from "@/src/components/PriceInput";
 import { FormSubmitButton, FormSecondaryButton } from "@/src/components/FormButtons";
 import type {
-  PurchaseOrderDetalleItem,
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingProducto,
 } from "../interfaces/purchase-order-onboarding.interface";
@@ -17,9 +16,15 @@ import type {
   UpdatePurchaseOrderBody,
 } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
-import { usePriceEntries } from "../hooks/usePriceEntries";
+import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
 import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
 import { buildPurchaseOrderDetalle } from "../utils/buildPurchaseOrderDetalle";
+import {
+  lineFromProducto,
+  lineKeyProducto,
+  type PurchaseOrderLine,
+} from "../utils/purchaseOrderLines";
+import { PurchaseOrderVariantLinesPicker } from "./PurchaseOrderVariantLinesPicker";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
@@ -47,8 +52,17 @@ interface PurchaseOrderEditStep2Props {
   isTipoCompraLocked: boolean;
   /** Catálogos (incluye los productos disponibles). */
   onboardingData: PurchaseOrderOnboardingData;
-  /** Renglones iniciales (producto, cantidad, precio, descripcion), sembrados desde los renglones existentes de la orden. */
-  initialItems: PurchaseOrderDetalleItem[];
+  /**
+   * Renglones guardados de la orden (`[]` si se descartaron al cambiar el tipo
+   * de compra). Siguen a la vista aunque se desmarquen, para poder volver a
+   * marcarlos; los marcados viven en `lines`.
+   */
+  seedLines: PurchaseOrderLine[];
+  /**
+   * Renglones elegidos, sembrados con los guardados. Viven en el step manager
+   * para que el Step 1 pueda vaciarlos al cambiar el tipo de compra.
+   */
+  lines: PurchaseOrderLinesState;
   /** Llamado tras un PUT exitoso — paso final del wizard. */
   onSuccess: () => void;
   /**
@@ -70,7 +84,8 @@ interface PurchaseOrderEditStep2Props {
  * Step 2 del flujo de edición: selección de productos y guardado.
  *
  * Reproduce la UI del paso de productos del alta, pero pre-poblada con los
- * renglones existentes de la orden (vía `producto_id`). Al guardar, arma el
+ * renglones existentes de la orden (por producto, o por variante en los de
+ * producto terminado capturados por SKU). Al guardar, arma el
  * body (encabezado del Step 1 + `detalles`) y envía el PUT vía
  * {@link useUpdatePurchaseOrder} — este es el paso final del wizard.
  */
@@ -79,7 +94,8 @@ export function PurchaseOrderEditStep2({
   header,
   isTipoCompraLocked,
   onboardingData,
-  initialItems,
+  seedLines,
+  lines,
   onSuccess,
   onOrderNoLongerEditable,
   onHeaderFieldErrors,
@@ -97,38 +113,22 @@ export function PurchaseOrderEditStep2({
     onOrderNoLongerEditable,
     onHeaderFieldErrors,
   });
+  // Producto terminado se compra por SKU (EC-657); materia prima, por producto.
+  const isProductoTerminado = header.tipo_compra === "PT";
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [quantities, setQuantities] = useState<Record<number, number>>(() =>
-    Object.fromEntries(initialItems.map((i) => [i.producto, i.cantidad] as const)),
-  );
-  const { prices, setPrice, togglePrice, priceErrors, hasPriceErrors } = usePriceEntries(
-    quantities,
-    () => Object.fromEntries(initialItems.map((i) => [i.producto, i.precio] as const)),
-  );
+  const { quantities, prices, priceErrors, hasPriceErrors } = lines;
 
-  // `quantities`/`prices` se siembran una sola vez al montar. `initialItems`
-  // (y por lo tanto `seedById`/`products`, ambos derivados vía `useMemo`) sí
-  // puede cambiar de referencia después del montaje si la orden se refetchea
-  // en segundo plano mientras este diálogo sigue abierto (p. ej. otra acción
-  // invalida la misma queryKey `purchase-orders`). En ese caso no
-  // sobreescribimos silenciosamente la selección del usuario — solo lo
-  // avisamos, para que decida recargar antes de guardar. Se ajusta durante
-  // el render (patrón documentado de React para detectar cambios de props
-  // respecto al render anterior) en lugar de en un efecto, para no disparar
-  // un set-state-en-efecto que el compilador de React desaconseja.
-  const [prevInitialItems, setPrevInitialItems] = useState(initialItems);
-  const [isOutOfSync, setIsOutOfSync] = useState(false);
-  if (initialItems !== prevInitialItems) {
-    setPrevInitialItems(initialItems);
-    setIsOutOfSync(true);
-  }
-
-  // Datos de los renglones sembrados, indexados por id de producto. Se usan como
-  // respaldo para mostrar nombre/precio reales cuando un producto de la orden no
-  // está en el bucket de búsqueda del catálogo.
+  // Renglones guardados POR PRODUCTO (la lista de materia prima no muestra
+  // variantes), indexados por id de producto. Al volver a marcar uno se parte
+  // de su descripción y precio reales, no de los del catálogo.
   const seedById = useMemo(
-    () => new Map(initialItems.map((i) => [i.producto, i])),
-    [initialItems],
+    () => new Map(
+      seedLines
+        .filter((l) => l.productoVariante === null)
+        .map((l) => [l.producto, l] as const),
+    ),
+    [seedLines],
   );
 
   // Lista mostrada: productos del catálogo (bucket de búsqueda) más filas
@@ -137,18 +137,18 @@ export function PurchaseOrderEditStep2({
   const products = useMemo<PurchaseOrderOnboardingProducto[]>(() => {
     const catalog = onboardingData.busqueda.productos ?? [];
     const catalogIds = new Set(catalog.map((p) => p.id));
-    const synthetic: PurchaseOrderOnboardingProducto[] = initialItems
-      .filter((i) => !catalogIds.has(i.producto))
-      .map((i) => ({
-        id: i.producto,
+    const synthetic: PurchaseOrderOnboardingProducto[] = [...seedById.values()]
+      .filter((l) => !catalogIds.has(l.producto))
+      .map((l) => ({
+        id: l.producto,
         codigo: null,
         cod_proscai: "",
-        nombre: i.descripcion || `Producto #${i.producto}`,
+        nombre: l.descripcion || `Producto #${l.producto}`,
         descripcion: null,
-        precio_base: Number(i.precio) || 0,
+        precio_base: Number(l.precioInicial) || 0,
       }));
     return [...catalog, ...synthetic];
-  }, [onboardingData, initialItems]);
+  }, [onboardingData, seedById]);
 
   // ── Vista "solo seleccionados" ───────────────────────────────────────────
   // `null` = apagada. Cuando se enciende se congelan los RENGLONES que estaban
@@ -190,36 +190,19 @@ export function PurchaseOrderEditStep2({
   }, [products, searchQuery, selectedSnapshot, searchHaystacks]);
 
   // ── Helpers de selección ──────────────────────────────────────────────────
-  const toggleProduct = (id: number) => {
-    setQuantities((prev) => {
-      const next = { ...prev };
-      if (id in next) {
-        delete next[id];
-      } else {
-        next[id] = 1;
-      }
-      return next;
-    });
-    togglePrice(id, () => {
-      // Renglones existentes: partir del precio real de la orden; productos
-      // nuevos: partir del catálogo.
-      const seed = seedById.get(id);
-      const product = products.find((p) => p.id === id);
-      return seed?.precio ?? product?.precio_base.toFixed(2) ?? "0.00";
-    });
+  const toggleProduct = (product: PurchaseOrderOnboardingProducto) => {
+    // Renglones existentes: partir de la descripción y el precio reales de la
+    // orden; productos nuevos: del catálogo.
+    lines.toggle(seedById.get(product.id) ?? lineFromProducto(product));
   };
 
-  const updateQuantity = (id: number, qty: number) => {
-    setQuantities((prev) => ({ ...prev, [id]: qty }));
-  };
-
-  const isSelected = (id: number) => id in quantities;
-  const selectedCount = Object.keys(quantities).length;
+  const isSelected = (id: number) => lines.isSelected(lineKeyProducto(id));
+  const selectedCount = lines.count;
 
   /** Congela los seleccionados actuales, o descarta el snapshot al apagar. */
   const toggleShowOnlySelected = () => {
     setSelectedSnapshot((prev) =>
-      prev ? null : products.filter((p) => p.id in quantities),
+      prev ? null : products.filter((p) => isSelected(p.id)),
     );
   };
 
@@ -257,11 +240,7 @@ export function PurchaseOrderEditStep2({
   const handleSave = () => {
     if (selectedCount === 0 || hasPriceErrors) return;
 
-    const detalle = buildPurchaseOrderDetalle(quantities, prices, (productoId) => {
-      const seed = seedById.get(productoId);
-      const product = products.find((p) => p.id === productoId);
-      return seed?.descripcion ?? product?.nombre ?? "";
-    });
+    const detalle = buildPurchaseOrderDetalle(lines.lines, quantities, prices);
 
     // El PUT refleja la forma del alta: encabezado + renglones del detalle.
     // `pedidos` va SIEMPRE (reemplaza la lista completa); `tipo_compra` solo
@@ -278,162 +257,164 @@ export function PurchaseOrderEditStep2({
 
   return (
     <div className="space-y-4">
-      {/* ── Aviso: la orden cambió mientras el diálogo seguía abierto ───── */}
-      {isOutOfSync && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-          Esta orden se actualizó en otro lugar mientras la editabas. Cierra y
-          vuelve a abrir el diálogo para partir de los datos más recientes
-          antes de guardar.
-        </div>
-      )}
+      {isProductoTerminado ? (
+        <PurchaseOrderVariantLinesPicker
+          lines={lines}
+          seedLines={seedLines}
+          monedaCodigo={monedaCodigo}
+        />
+      ) : (
+        <>
+          {/* ── Búsqueda ───────────────────────────────────────────────────── */}
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Filtrar productos..."
+          />
 
-      {/* ── Búsqueda ───────────────────────────────────────────────────── */}
-      <SearchInput
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Filtrar productos..."
-      />
+          {/* ── Conteo de seleccionados (alterna "solo seleccionados") ─────── */}
+          <div>
+            <button
+              type="button"
+              onClick={toggleShowOnlySelected}
+              aria-pressed={showOnlySelected}
+              disabled={isToggleDisabled}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                showOnlySelected
+                  ? "border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300"
+                  : "border-slate-200 text-slate-500 dark:border-white/10 dark:text-slate-400"
+              } ${
+                isToggleDisabled
+                  ? "opacity-60 cursor-not-allowed"
+                  : "cursor-pointer hover:border-sky-300 hover:text-sky-600 dark:hover:border-sky-700 dark:hover:text-sky-400"
+              }`}
+            >
+              {selectedCount === 0
+                ? "Ningún producto seleccionado"
+                : `${selectedCount} producto${selectedCount === 1 ? "" : "s"} seleccionado${selectedCount === 1 ? "" : "s"}`}
+              {(selectedCount > 0 || showOnlySelected) && (
+                <span className="text-[10px] font-semibold opacity-70">
+                  {showOnlySelected ? " · Ver todos" : " · Ver solo estos"}
+                </span>
+              )}
+            </button>
+          </div>
 
-      {/* ── Conteo de seleccionados (alterna "solo seleccionados") ─────── */}
-      <div>
-        <button
-          type="button"
-          onClick={toggleShowOnlySelected}
-          aria-pressed={showOnlySelected}
-          disabled={isToggleDisabled}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-            showOnlySelected
-              ? "border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300"
-              : "border-slate-200 text-slate-500 dark:border-white/10 dark:text-slate-400"
-          } ${
-            isToggleDisabled
-              ? "opacity-60 cursor-not-allowed"
-              : "cursor-pointer hover:border-sky-300 hover:text-sky-600 dark:hover:border-sky-700 dark:hover:text-sky-400"
-          }`}
-        >
-          {selectedCount === 0
-            ? "Ningún producto seleccionado"
-            : `${selectedCount} producto${selectedCount === 1 ? "" : "s"} seleccionado${selectedCount === 1 ? "" : "s"}`}
-          {(selectedCount > 0 || showOnlySelected) && (
-            <span className="text-[10px] font-semibold opacity-70">
-              {showOnlySelected ? " · Ver todos" : " · Ver solo estos"}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ── Lista de productos (virtualizada) ──────────────────────────── */}
-      <div ref={listRef} className="max-h-80 overflow-y-auto pr-1">
-        {/* Alto total virtual: mantiene la barra de scroll proporcional. */}
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const product = filteredProducts[virtualItem.index];
-            // El índice puede venir de una lista más larga durante el render en
-            // que la lista se encoge (encender "Ver solo estos", filtrar).
-            if (!product) return null;
-            const selected = isSelected(product.id);
-            const qty = quantities[product.id] ?? 1;
-            return (
-              <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                // `measureElement` observa el tamaño real (ResizeObserver): al
-                // seleccionar un renglón aparecen el stepper y el precio
-                // editable, crece de alto y el virtualizador reacomoda los de
-                // abajo automáticamente.
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div
-                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150 ${
-                    selected
-                      ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleProduct(product.id)}
-                    className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-none p-0"
+          {/* ── Lista de productos (virtualizada) ──────────────────────────── */}
+          <div ref={listRef} className="max-h-80 overflow-y-auto pr-1">
+            {/* Alto total virtual: mantiene la barra de scroll proporcional. */}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const product = filteredProducts[virtualItem.index];
+                // El índice puede venir de una lista más larga durante el render en
+                // que la lista se encoge (encender "Ver solo estos", filtrar).
+                if (!product) return null;
+                const lineKey = lineKeyProducto(product.id);
+                const selected = isSelected(product.id);
+                const qty = quantities[lineKey] ?? 1;
+                return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    // `measureElement` observa el tamaño real (ResizeObserver): al
+                    // seleccionar un renglón aparecen el stepper y el precio
+                    // editable, crece de alto y el virtualizador reacomoda los de
+                    // abajo automáticamente.
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
                   >
-                    <span
-                      className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    <div
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150 ${
                         selected
-                          ? "border-sky-500 bg-sky-500 text-white"
-                          : "border-slate-300 dark:border-slate-600"
+                          ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
+                          : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5"
                       }`}
                     >
-                      {selected && <CheckIcon className="w-3.5 h-3.5" />}
-                    </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleProduct(product)}
+                        className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-none p-0"
+                      >
+                        <span
+                          className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                            selected
+                              ? "border-sky-500 bg-sky-500 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {selected && <CheckIcon className="w-3.5 h-3.5" />}
+                        </span>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {product.nombre}
-                      </p>
-                      {product.descripcion && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {product.descripcion}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {product.nombre}
+                          </p>
+                          {product.descripcion && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {product.descripcion}
+                            </p>
+                          )}
+                          {(product.codigo || product.cod_proscai) && (
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                              {[product.codigo, product.cod_proscai]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+
+                      {selected && (
+                        <div className="shrink-0 flex items-center gap-2">
+                          <QuantitySelector
+                            value={qty}
+                            onChange={(next) => lines.setQuantity(lineKey, next)}
+                            label={`Cantidad de ${product.nombre}`}
+                          />
+                          <PriceInput
+                            value={prices[lineKey] ?? ""}
+                            onChange={(next) => lines.setPrice(lineKey, next)}
+                            error={priceErrors[lineKey]}
+                            monedaCodigo={monedaCodigo}
+                            label={`Precio de ${product.nombre}`}
+                          />
+                        </div>
                       )}
-                      {(product.codigo || product.cod_proscai) && (
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-                          {[product.codigo, product.cod_proscai]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
+
+                      {!selected && (
+                        <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
+                          {/* Sin símbolo: `precio_base` no declara moneda (EC-606). */}
+                          {formatMoneyValue(product.precio_base, null)}
+                        </span>
                       )}
                     </div>
-                  </button>
+                  </div>
+                );
+              })}
+            </div>
 
-                  {selected && (
-                    <div className="shrink-0 flex items-center gap-2">
-                      <QuantitySelector
-                        value={qty}
-                        onChange={(next) => updateQuantity(product.id, next)}
-                        label={`Cantidad de ${product.nombre}`}
-                      />
-                      <PriceInput
-                        value={prices[product.id] ?? ""}
-                        onChange={(next) => setPrice(product.id, next)}
-                        error={priceErrors[product.id]}
-                        monedaCodigo={monedaCodigo}
-                        label={`Precio de ${product.nombre}`}
-                      />
-                    </div>
-                  )}
-
-                  {!selected && (
-                    <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
-                      {/* Sin símbolo: `precio_base` no declara moneda (EC-606). */}
-                      {formatMoneyValue(product.precio_base, null)}
-                    </span>
-                  )}
-                </div>
+            {filteredProducts.length === 0 && (
+              <div className="py-10 text-center text-sm text-slate-400">
+                {searchQuery
+                  ? "No se encontraron productos"
+                  : "No hay productos disponibles"}
               </div>
-            );
-          })}
-        </div>
-
-        {filteredProducts.length === 0 && (
-          <div className="py-10 text-center text-sm text-slate-400">
-            {searchQuery
-              ? "No se encontraron productos"
-              : "No hay productos disponibles"}
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* ── Acciones ────────────────────────────────────────────────────── */}
       <div className="flex justify-between pt-2">

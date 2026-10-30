@@ -12,6 +12,8 @@ import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
 import type { TipoCompra } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -28,6 +30,10 @@ interface PurchaseOrderEditStep1Props {
    * decide el step manager, el mismo valor que recibe el Step 2.
    */
   isTipoCompraLocked: boolean;
+  /** Renglones capturados en el Step 2: cambiar el tipo de compra los descarta. */
+  lineCount: number;
+  /** Descarta los renglones (tras confirmar el cambio de tipo de compra). */
+  onClearLines: () => void;
   /** Llamado con el encabezado validado al continuar al paso de productos. */
   onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
@@ -45,6 +51,8 @@ export function PurchaseOrderEditStep1({
   onboardingData,
   initialServerErrors,
   isTipoCompraLocked,
+  lineCount,
+  onClearLines,
   onSuccess,
 }: PurchaseOrderEditStep1Props) {
   const {
@@ -66,8 +74,18 @@ export function PurchaseOrderEditStep1({
     onSuccess,
   });
 
+  const { requestChange: requestTipoCompraChange, confirmDialogProps } = useTipoCompraChange({
+    lineCount,
+    onClearLines,
+    applyChange: (next) => {
+      form.setFieldValue("tipo_compra", next);
+      clearFieldErrors("tipo_compra");
+    },
+  });
+
   return (
     <form onSubmit={handleFormSubmit} className="space-y-6">
+      <ConfirmDialog {...confirmDialogProps} />
       <fieldset className="space-y-6">
         {/* ── Sucursal ─────────────────────────────────────────────────── */}
         <form.Field name="sucursal">
@@ -156,10 +174,9 @@ export function PurchaseOrderEditStep1({
                 options={TIPO_COMPRA_OPTIONS}
                 disabled={isTipoCompraLocked}
                 aria-describedby={isTipoCompraLocked ? "tipo_compra-locked-hint" : undefined}
-                onChange={(event) => {
-                  field.handleChange(event.target.value as TipoCompra);
-                  clearFieldErrors("tipo_compra");
-                }}
+                onChange={(event) =>
+                  requestTipoCompraChange(field.state.value, event.target.value as TipoCompra)
+                }
                 onBlur={() => {
                   field.handleBlur();
                   validateField("tipo_compra");
