@@ -15,7 +15,7 @@ import {
   type SampleSkuOnboardingFormValues,
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
-import { getCatalogAltaBlockReason } from "../utils/catalogAlta";
+import { getCatalogAltaState, resolveAltaCatalogo } from "../utils/catalogAlta";
 import { type ChosenSampleColor, getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
@@ -126,9 +126,9 @@ export function useSampleSkuOnboardingForm({
         pedido_detalle_id: line.id,
         ...(requiresColor ? { color: parsed.data.color } : {}),
         materia_prima_detalle: parsed.data.materia_prima_detalle,
-        // Solo `true` y solo si la línea lo admite AHORA: un refetch pudo traer
+        // Solo `true`, y con el estado de la línea AHORA: un refetch pudo traer
         // SKU generados en otra sesión después de marcar la casilla.
-        ...(parsed.data.alta_catalogo && getCatalogAltaBlockReason(line) === null
+        ...(resolveAltaCatalogo(getCatalogAltaState(line), parsed.data.alta_catalogo)
           ? { alta_catalogo: true }
           : {}),
       };
@@ -144,7 +144,7 @@ export function useSampleSkuOnboardingForm({
   // Vista previa del SKU por talla para el render (el envío la recalcula).
   const chosenColorId = useStore(form.store, (state) => state.values.color);
   const skuPreview = getSampleSkuPreview(line, resolveChosenColor(chosenColorId));
-  const catalogBlockReason = getCatalogAltaBlockReason(line);
+  const catalogAlta = getCatalogAltaState(line);
 
   const getError = (path: string): FormFieldError | undefined =>
     errors[path] ? { message: errors[path] } : undefined;
@@ -194,7 +194,7 @@ export function useSampleSkuOnboardingForm({
     form,
     requiresColor,
     skuPreview,
-    catalogBlockReason,
+    catalogAlta,
     catalogCategoryId: line.categoria_producto?.id ?? null,
     isSubmitting: isPending,
     formError,

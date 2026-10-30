@@ -5,9 +5,12 @@ import type {
   SpecialOrderTalla,
 } from "@/src/features/special-orders/interfaces/special-order.interface";
 import {
-  CATALOG_ALTA_WITH_EXISTING_SKUS,
+  CATALOG_ALTA_INHERITED_OFF,
+  CATALOG_ALTA_MIXED,
   CATALOG_ALTA_WITHOUT_CATEGORY,
-  getCatalogAltaBlockReason,
+  catalogAltaInheritedOn,
+  getCatalogAltaState,
+  resolveAltaCatalogo,
 } from "@/src/features/special-orders/utils/catalogAlta";
 import { parseSampleSkuOnboardingError } from "@/src/features/special-orders/utils/parseSampleSkuOnboardingError";
 import {
@@ -20,7 +23,7 @@ import {
 } from "@/src/features/special-orders/utils/sampleSkuPreview";
 
 /**
- * Pruebas unitarias de EC-651: la vista previa del SKU por talla (misma
+ * Pruebas unitarias de EC-651 y EC-658: la vista previa del SKU por talla (misma
  * fórmula que `variante_onboarding` en nucleo-erp), cuándo se bloquea
  * "Dar de alta en catálogo" y cómo llegan al diálogo los `400` del alta.
  */
@@ -134,22 +137,87 @@ test.describe("getSampleSkuPreview", () => {
   });
 });
 
-test.describe("getCatalogAltaBlockReason", () => {
-  test("sin categoría no se puede dar de alta en catálogo", () => {
-    expect(getCatalogAltaBlockReason(line({ categoria_producto: null }))).toBe(
-      CATALOG_ALTA_WITHOUT_CATEGORY,
-    );
+test.describe("getCatalogAltaState", () => {
+  const pendiente = talla({ id: 9, talla_nombre: "2XG", sku_siguiente: "MP720-100-2XG" });
+
+  test("sin tallas generadas y con categoría se elige libremente", () => {
+    expect(getCatalogAltaState(line({ tallas: [talla({})] }))).toEqual({ kind: "free" });
   });
 
-  test("con alguna talla con SKU de producción ya generado tampoco", () => {
-    const withSku = line({
-      tallas: [talla({ id: 1, sku_produccion: "MP720-100-G" }), talla({ id: 2, talla_nombre: "XG" })],
+  test("sin categoría se bloquea desmarcada", () => {
+    expect(getCatalogAltaState(line({ categoria_producto: null }))).toEqual({
+      kind: "locked",
+      value: false,
+      reason: CATALOG_ALTA_WITHOUT_CATEGORY,
+      mixed: false,
     });
-    expect(getCatalogAltaBlockReason(withSku)).toBe(CATALOG_ALTA_WITH_EXISTING_SKUS);
   });
 
-  test("`sku_siguiente` en null NO cuenta como SKU generado", () => {
-    expect(getCatalogAltaBlockReason(line({ tallas: [talla({ sku_siguiente: null })] }))).toBeNull();
+  test("línea parcial con las generadas en catálogo: hereda marcada", () => {
+    const state = getCatalogAltaState(
+      line({
+        tallas: [
+          talla({
+            id: 1,
+            sku_produccion: "MP720-100-G",
+            aplica_catalogo: true,
+            sku_catalogo: "30013-100-G",
+          }),
+          pendiente,
+        ],
+      }),
+    );
+    expect(state).toEqual({
+      kind: "locked",
+      value: true,
+      reason: catalogAltaInheritedOn("30013-100-G"),
+      mixed: false,
+    });
+  });
+
+  test("línea parcial con las generadas fuera de catálogo: hereda desmarcada", () => {
+    const state = getCatalogAltaState(
+      line({ tallas: [talla({ id: 1, sku_produccion: "MP720-100-G" }), pendiente] }),
+    );
+    expect(state).toEqual({
+      kind: "locked",
+      value: false,
+      reason: CATALOG_ALTA_INHERITED_OFF,
+      mixed: false,
+    });
+  });
+
+  test("línea parcial mezclada: desmarcada con aviso", () => {
+    const state = getCatalogAltaState(
+      line({
+        tallas: [
+          talla({ id: 1, sku_produccion: "MP720-100-G", aplica_catalogo: true }),
+          talla({ id: 2, talla_nombre: "XG", sku_produccion: "MP720-100-XG" }),
+          pendiente,
+        ],
+      }),
+    );
+    expect(state).toEqual({ kind: "locked", value: false, reason: CATALOG_ALTA_MIXED, mixed: true });
+  });
+
+  test("la herencia manda sobre la categoría y `aplica_catalogo` sin SKU no cuenta", () => {
+    const state = getCatalogAltaState(
+      line({
+        categoria_producto: null,
+        tallas: [
+          talla({ id: 1, sku_produccion: "MP720-100-G", aplica_catalogo: true }),
+          talla({ id: 2, talla_nombre: "XG", aplica_catalogo: true }),
+        ],
+      }),
+    );
+    expect(state).toMatchObject({ kind: "locked", value: true, mixed: false });
+  });
+
+  test("se envía el valor heredado, no el elegido", () => {
+    const locked = { kind: "locked", value: true, reason: "", mixed: false } as const;
+    expect(resolveAltaCatalogo(locked, false)).toBe(true);
+    expect(resolveAltaCatalogo({ ...locked, value: false }, true)).toBe(false);
+    expect(resolveAltaCatalogo({ kind: "free" }, true)).toBe(true);
   });
 });
 

@@ -41,7 +41,7 @@ export function SampleSkuOnboardingStep2({
   const {
     form,
     skuPreview,
-    catalogBlockReason,
+    catalogAlta,
     catalogCategoryId,
     isSubmitting,
     formError,
@@ -204,8 +204,10 @@ export function SampleSkuOnboardingStep2({
 
       <form.Field name="alta_catalogo">
         {(field) => {
-          // Una línea que dejó de admitirlo (refetch) se ve desmarcada y no envía el flag.
-          const checked = field.state.value && catalogBlockReason === null;
+          // Fija (heredada o bloqueada): se ve con el valor que se enviará, aunque
+          // un refetch la haya fijado después de marcarla.
+          const locked = catalogAlta.kind === "locked" ? catalogAlta : null;
+          const checked = locked ? locked.value : field.state.value;
           return (
             <div>
               <FormToggle
@@ -213,18 +215,22 @@ export function SampleSkuOnboardingStep2({
                 description="Dar de alta en catálogo"
                 name={field.name}
                 checked={checked}
-                disabled={catalogBlockReason !== null || isSubmitting}
-                title={catalogBlockReason ?? undefined}
+                disabled={locked !== null || isSubmitting}
+                title={locked?.reason}
                 aria-describedby="sample-sku-catalog-hint"
-                className={catalogBlockReason ? "opacity-60 cursor-not-allowed!" : ""}
+                className={locked ? "opacity-60 cursor-not-allowed!" : ""}
                 onChange={(event) => field.handleChange(event.target.checked)}
               />
               <div
                 id="sample-sku-catalog-hint"
-                className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 ml-1"
+                className={`text-[11px] mt-1 ml-1 ${
+                  locked?.mixed
+                    ? "text-amber-700 dark:text-amber-400"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
               >
-                {catalogBlockReason ? (
-                  catalogBlockReason
+                {locked ? (
+                  locked.reason
                 ) : checked && catalogCategoryId !== null ? (
                   <CatalogCodePreview categoriaId={catalogCategoryId} />
                 ) : (
