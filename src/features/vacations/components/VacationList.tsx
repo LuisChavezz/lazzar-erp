@@ -10,7 +10,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { VacationIcon } from "@/src/components/Icons";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -20,6 +20,7 @@ import {
   type StaleRowDialogNotice,
 } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
+import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
 import { formatVacationRange, getColumns, VACATION_HEADER_FILTERS } from "./VacationColumns";
@@ -117,6 +118,9 @@ export default function VacationList() {
   // de un catálogo produce un `data` nuevo y TanStack recalcula todo.
   const rows = buildVacationRows(vacations, employeeNameById, usersById, isUsersError);
 
+  // El filtro de empleado marca a los dados de baja con " (inactivo)" (el
+  // catálogo incluye a los inactivos; ver `employeeHeaderFilter`).
+  const isInactiveEmployee = getInactiveEmployeeLookup(employees);
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `VacationRowActionsProvider`, así una acción no remonta las celdas.
   const columns = withHeaderFilters(
@@ -126,7 +130,7 @@ export default function VacationList() {
       canDelete: canDeleteHr,
     }),
     rows,
-    VACATION_HEADER_FILTERS
+    { ...VACATION_HEADER_FILTERS, empleado: employeeHeaderFilter(isInactiveEmployee) }
   );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────

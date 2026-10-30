@@ -10,7 +10,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { PayrollIcon } from "@/src/components/Icons";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -21,6 +21,7 @@ import {
 } from "@/src/utils/staleRowDialogNotice";
 import { formatQuincena, getQuincenaRange } from "@/src/utils/quincena";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
+import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
@@ -104,13 +105,16 @@ export default function PayrollList() {
   // un catálogo produce un `data` nuevo y TanStack recalcula todo.
   const rows = buildPayrollRows(payrolls, employeeNameById, branchNameById);
 
+  // El filtro de empleado marca a los dados de baja con " (inactivo)" (el
+  // catálogo incluye a los inactivos; ver `employeeHeaderFilter`).
+  const isInactiveEmployee = getInactiveEmployeeLookup(employees);
   // Filtros de encabezado en memoria, sobre la quincena ya cargada. Solo
   // dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `PayrollRowActionsProvider`, así una acción no remonta las celdas.
   const columns = withHeaderFilters(
     getColumns({ canEdit: canEditHr, canPayOrCancel }),
     rows,
-    PAYROLL_HEADER_FILTERS
+    { ...PAYROLL_HEADER_FILTERS, empleado: employeeHeaderFilter(isInactiveEmployee) }
   );
 
   // ── Diálogos de fila, resueltos contra el listado COMPLETO ────────────────

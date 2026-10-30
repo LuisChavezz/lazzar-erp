@@ -9,13 +9,14 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { EvaluationIcon } from "@/src/components/Icons";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
+import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { getColumns, EVALUATION_HEADER_FILTERS } from "./EvaluationColumns";
 import { Evaluation } from "../interfaces/evaluation.interface";
@@ -74,12 +75,15 @@ export default function EvaluationList() {
   // orden y opciones de filtro. Ver `EvaluationRow`.
   const rows = buildEvaluationRows(evaluations, employeeNameById);
 
+  // El filtro de empleado marca a los dados de baja con " (inactivo)" (el
+  // catálogo incluye a los inactivos; ver `employeeHeaderFilter`).
+  const isInactiveEmployee = getInactiveEmployeeLookup(employees);
   // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `EvaluationRowActionsProvider`, así un borrado no remonta las celdas.
   const columns = withHeaderFilters(
     getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
     rows,
-    EVALUATION_HEADER_FILTERS
+    { ...EVALUATION_HEADER_FILTERS, empleado: employeeHeaderFilter(isInactiveEmployee) }
   );
 
   // ── Diálogo de fila, resuelto contra el listado COMPLETO ──────────────────

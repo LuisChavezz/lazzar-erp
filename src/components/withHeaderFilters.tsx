@@ -78,13 +78,20 @@ export type HeaderFilterSpec<T> = {
  * `empleado_nombre`, que la fila ya trae resuelto (con su respaldo
  * `Empleado #N`, el mismo texto que la celda). Con buscador: la lista de
  * empleados puede ser larga.
+ *
+ * `isInactive` (opcional, de la página que ya carga el catálogo de empleados;
+ * ver `getInactiveEmployeeLookup`) agrega " (inactivo)" a la opción —y a su
+ * ficha— de un empleado dado de baja, para distinguirlo de un homónimo
+ * activo. Solo cambia la etiqueta: el filtro sigue comparando el id.
  */
 export const employeeHeaderFilter = <
   T extends { empleado: number; empleado_nombre: string },
->(): HeaderFilterSpec<T> => ({
+>(
+  isInactive?: (empleado: number) => boolean,
+): HeaderFilterSpec<T> => ({
   type: "distinct",
   get: (r) => r.empleado,
-  label: (r) => r.empleado_nombre,
+  label: (r) => (isInactive?.(r.empleado) ? `${r.empleado_nombre} (inactivo)` : r.empleado_nombre),
   searchable: true,
 });
 
