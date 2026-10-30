@@ -30,7 +30,14 @@ import { useEmbroideryState } from "./useEmbroideryState";
 import { useProductSelection } from "./useProductSelection";
 import { useReflectiveState } from "./useReflectiveState";
 import { useSizesState } from "./useSizesState";
+import { useMuestraCategorySizes } from "./useMuestraCategorySizes";
 import { reflectiveInventoryCapError } from "../utils/reflectiveInventoryCap";
+import {
+  findIncompatibleSizes,
+  INCOMPATIBLE_SIZES_ERROR,
+  type IncompatibleSize,
+  type MuestraSizesStatus,
+} from "../utils/muestraCategorySizes";
 import {
   admitsProcess,
   buildLocationRule,
@@ -178,11 +185,23 @@ export function useAddProductDialogState({
     );
   }, []);
 
+  /**
+   * Muestras cuya categoría cambió y cuyas tallas aún no se ajustan a la nueva
+   * (EC-647). El ajuste espera a que llegue la lista de la nueva categoría; ver
+   * más abajo, junto a `getMuestraSizes`.
+   */
+  const [categoryChangedDraftIds, setCategoryChangedDraftIds] = useState<ReadonlySet<number>>(
+    () => new Set()
+  );
+
   const updateMuestraDraft = useCallback(
     (id: number, patch: Partial<Omit<MuestraDraft, "id">>) => {
       setMuestraDrafts((prev) =>
         prev.map((d) => (d.id === id ? { ...d, ...patch } : d))
       );
+      if (patch.categoria_producto !== undefined) {
+        setCategoryChangedDraftIds((prev) => new Set(prev).add(id));
+      }
       setDescribeSubmitAttempted(false);
     },
     []
@@ -261,6 +280,48 @@ export function useAddProductDialogState({
   );
 
   const sizesState = useSizesState({ initialItem });
+
+  // ─── Tallas de cada muestra según su categoría (EC-647) ───────────────────
+  //
+  // El backend rechaza en una muestra las tallas que no son de su categoría. Se
+  // ofrecen solo las de la categoría (o el catálogo global si no tiene ninguna,
+  // o si la muestra aún no la elige); mientras su lista carga, ninguna.
+  const muestraCategoryIds = isMuestra
+    ? muestraDrafts.map((draft) => (draft.categoria_producto > 0 ? draft.categoria_producto : null))
+    : [];
+  const getMuestraSizes = useMuestraCategorySizes(muestraCategoryIds, sizes);
+  const muestraSizesByDraft = useMemo(
+    () =>
+      new Map(
+        isMuestra
+          ? muestraDrafts.map((draft) => [draft.id, getMuestraSizes(draft.categoria_producto)])
+          : []
+      ),
+    [isMuestra, muestraDrafts, getMuestraSizes]
+  );
+
+  // Al cambiar la categoría se quitan las tallas capturadas que ya no aplican y
+  // se conservan las demás, en cuanto llega la lista de la nueva categoría. Se
+  // ajusta durante el render (mismo patrón que el corte de manga, abajo) para
+  // que el paso de tallas nunca pinte la combinación vieja.
+  if (categoryChangedDraftIds.size > 0) {
+    const settledIds = [...categoryChangedDraftIds].filter((id) => {
+      const muestraSizes = muestraSizesByDraft.get(id);
+      return !muestraSizes || muestraSizes.status === null;
+    });
+    if (settledIds.length > 0) {
+      for (const id of settledIds) {
+        const muestraSizes = muestraSizesByDraft.get(id);
+        if (muestraSizes) sizesState.pruneProductSizes(id, muestraSizes.sizes);
+      }
+      setCategoryChangedDraftIds((prev) => {
+        const next = new Set(prev);
+        settledIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+  }
+
   const embroideryState = useEmbroideryState(initialItem, embroideryPositionRule);
   const reflectiveState = useReflectiveState(initialItem, reflectivePositionRule);
   const colorsState = useColorsState(initialItem);
@@ -315,6 +376,12 @@ export function useAddProductDialogState({
   const sizesPerProduct = useMemo<Record<number, Size[]>>(() => {
     const map: Record<number, Size[]> = {};
     for (const row of effectiveSelectedRows) {
+      // Una muestra no tiene variantes: sus tallas son las de su categoría.
+      const muestraSizes = isMuestra ? muestraSizesByDraft.get(row.id) : undefined;
+      if (muestraSizes) {
+        map[row.id] = muestraSizes.sizes;
+        continue;
+      }
       const selectedColorId = colorsState.selectedColorPerProduct[row.id];
       const byColor = productSizesByProductAndColor[row.id];
       if (!byColor) {
@@ -340,7 +407,27 @@ export function useAddProductDialogState({
       }
     }
     return map;
-  }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes]);
+  }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes, isMuestra, muestraSizesByDraft]);
+
+  // Estado y tallas fuera de categoría por fila de muestra, para `StepSizes` y
+  // para frenar el guardado. Las incompatibles solo se buscan con la lista lista.
+  const { muestraSizesStatus, muestraIncompatibleSizes } = useMemo(() => {
+    const statusByDraft: Record<number, MuestraSizesStatus> = {};
+    const incompatibleByDraft: Record<number, IncompatibleSize[]> = {};
+    for (const [draftId, muestraSizes] of muestraSizesByDraft) {
+      if (muestraSizes.status) {
+        statusByDraft[draftId] = muestraSizes.status;
+        continue;
+      }
+      const incompatible = findIncompatibleSizes(
+        sizesState.sizeQuantitiesPerProduct[draftId],
+        muestraSizes.sizes,
+        sizes
+      );
+      if (incompatible.length > 0) incompatibleByDraft[draftId] = incompatible;
+    }
+    return { muestraSizesStatus: statusByDraft, muestraIncompatibleSizes: incompatibleByDraft };
+  }, [muestraSizesByDraft, sizesState.sizeQuantitiesPerProduct, sizes]);
 
   const orderedSteps = useMemo<Step[]>(() => {
     // Muestra arranca describiendo y NO pasa por colores (no tiene). Los pasos
@@ -366,6 +453,7 @@ export function useAddProductDialogState({
       setHasSleevecut(Boolean(initialItem?.lleva_corte_manga));
       setMuestraDrafts([createMuestraDraft(MUESTRA_ROW_ID)]);
       setDescribeErrorSignal(0);
+      setCategoryChangedDraftIds(new Set());
       nextMuestraIdRef.current = MUESTRA_ROW_ID - 1;
       setOpenMuestraRowIds(new Set([MUESTRA_ROW_ID]));
       setDescribeSubmitAttempted(false);
@@ -464,6 +552,26 @@ export function useAddProductDialogState({
   );
 
   const handleSaveItem = useCallback(() => {
+    // Muestra cuya lista de tallas no está lista, o con tallas fuera de su
+    // categoría: no se agrega. Va antes de `validateSelectedRows`, que se salta
+    // las filas sin tallas disponibles y la dejaría pasar sin ninguna.
+    // Una fila que aún carga no se marca con error: su panel ya dice que carga,
+    // y el error quedaría pegado cuando la lista llegue.
+    const isAnyMuestraLoading = Object.values(muestraSizesStatus).includes("loading");
+    const blockedMuestraErrors: [number, string][] = [
+      ...Object.entries(muestraSizesStatus)
+        .filter(([, status]) => status === "error")
+        .map(([draftId]): [number, string] => [Number(draftId), "Sin tallas de la categoría"]),
+      ...Object.keys(muestraIncompatibleSizes).map((draftId): [number, string] => [
+        Number(draftId),
+        INCOMPATIBLE_SIZES_ERROR,
+      ]),
+    ];
+    blockedMuestraErrors.forEach(([draftId, message]) => sizesState.setSizeError(draftId, message));
+    if (isAnyMuestraLoading || blockedMuestraErrors.length > 0) {
+      return;
+    }
+
     const hasValidSizes = sizesState.validateSelectedRows(effectiveSelectedRows, sizesPerProduct);
     if (!hasValidSizes) {
       return;
@@ -651,6 +759,8 @@ export function useAddProductDialogState({
     firstPartidaNumber,
     isMuestra,
     muestraDrafts,
+    muestraIncompatibleSizes,
+    muestraSizesStatus,
     onAddItem,
     onAddItems,
     onUpdateItem,
@@ -770,6 +880,12 @@ export function useAddProductDialogState({
       onToggleProduct: isMuestra ? toggleMuestraRow : productSelection.toggleProduct,
       sizeErrors: sizesState.sizeErrors,
       monedaCodigo,
+      sizesStatusPerProduct: isMuestra ? muestraSizesStatus : undefined,
+      incompatibleSizesPerProduct: isMuestra ? muestraIncompatibleSizes : undefined,
+      onRemoveIncompatibleSize: isMuestra
+        ? (productId: number, sizeId: number) =>
+            sizesState.updateSizeQuantity(productId, sizeId, "")
+        : undefined,
     },
     colorsStepProps: {
       selectedRows: productSelection.selectedRows,
