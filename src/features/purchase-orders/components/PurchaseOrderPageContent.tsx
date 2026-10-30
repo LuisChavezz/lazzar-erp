@@ -32,6 +32,7 @@ import {
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
+import { hasVariantSku } from "../utils/purchaseOrderLines";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
@@ -106,6 +107,7 @@ const LineasTable = ({
   }
 
   const showAmounts = hasLineAmounts(detalles);
+  const showSku = hasVariantSku(detalles);
   const money = (value: string | undefined) =>
     formatMoneyValueOrDash(value, monedaCodigo);
 
@@ -117,6 +119,11 @@ const LineasTable = ({
             <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
               #
             </th>
+            {showSku && (
+              <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
+                SKU
+              </th>
+            )}
             <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
               Producto
             </th>
@@ -153,6 +160,11 @@ const LineasTable = ({
               <td className="px-3 py-3 text-right tabular-nums text-slate-400 dark:text-slate-500">
                 {index + 1}
               </td>
+              {showSku && (
+                <td className="px-3 py-3 text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {textOrDash(linea.producto_variante_sku)}
+                </td>
+              )}
               <td className="px-3 py-3 font-semibold text-slate-800 dark:text-white">
                 {textOrDash(linea.producto_nombre)}
               </td>

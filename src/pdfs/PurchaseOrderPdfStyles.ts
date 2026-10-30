@@ -106,6 +106,8 @@ export const purchaseOrderPdfStyles = StyleSheet.create({
   },
 
   /* ── Tabla de productos — columnas específicas de OC ── */
+  // Solo en órdenes con algún renglón comprado por SKU (EC-657).
+  colSku: { flex: 2 },
   colDescription: { flex: 4 },
   colQty: { flex: 1.2, textAlign: "right" },
   colPrice: { flex: 1.5, textAlign: "right" },

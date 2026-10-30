@@ -31,6 +31,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { hasVariantSku } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
@@ -48,6 +49,8 @@ type PurchaseOrderPdfDocumentProps = {
 
 export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProps) => {
   const detalles = order.detalles ?? [];
+  // Columna SKU solo si algún renglón se compró por SKU (PT, EC-657).
+  const showSku = hasVariantSku(detalles);
   // `folio` es `null` hasta que la orden se confirma; mismo respaldo que el
   // correo (`PurchaseOrderEmail`).
   const folioLabel = order.folio ?? `#${order.id}`;
@@ -135,6 +138,7 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
         <View>
           {/* Encabezado de la tabla — se repite en cada página */}
           <View style={s.tableHeader} fixed>
+            {showSku && <Text style={[s.tableHeaderCell, s.colSku]}>SKU</Text>}
             <Text style={[s.tableHeaderCell, s.colDescription]}>Descripción</Text>
             <Text style={[s.tableHeaderCell, s.colQty]}>Cantidad</Text>
             <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
@@ -153,6 +157,9 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
                 style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]}
                 wrap={false}
               >
+                {showSku && (
+                  <Text style={[s.tableCell, s.colSku]}>{item.producto_variante_sku ?? "-"}</Text>
+                )}
                 <Text style={[s.tableCellBold, s.colDescription]}>{item.descripcion}</Text>
                 <Text style={[s.tableCell, s.colQty]}>
                   {item.cantidad.toLocaleString("es-MX")}

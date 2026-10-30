@@ -27,6 +27,11 @@ const purchaseOrderEmailDetalleSchema = z.object({
   // requerido reventaría el `safeParse`, devolviendo el 400 opaco que este
   // schema existe para evitar. La plantilla lo pinta con respaldo.
   descripcion: z.string().nullable(),
+  // SKU del renglón de PT comprado por SKU (EC-657); `null` en el resto.
+  // Se declara porque `z.object()` descarta lo que no declara: sin esta línea
+  // la plantilla nunca vería el SKU. `.optional()` para no rechazar con un 400
+  // un payload armado por un cliente anterior a este campo.
+  producto_variante_sku: z.string().nullable().optional(),
   cantidad: z.number(),
   precio: z.string().optional(),
   importe: z.string().optional(),
