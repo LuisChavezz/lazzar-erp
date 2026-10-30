@@ -40,8 +40,9 @@ const almacenLabel = (row: MovementLedgerRow): string =>
 // corridos en ESE orden; reordenar las filas los dejaría sin sentido.
 // Los costos llegan sin moneda (EC-600) y hoy ningún flujo los captura, por eso
 // arrancan ocultos (`hiddenByDefault`) y se muestran desde "Mostrar/Ocultar".
+// Factoría sin callbacks hoy (el reporte no tiene acciones por fila).
 
-export const movementLedgerColumns: ColumnDef<MovementLedgerRow>[] = [
+export const getMovementLedgerColumns = (): ColumnDef<MovementLedgerRow>[] => [
   {
     accessorKey: "fecha",
     header: "Fecha",
