@@ -87,3 +87,6 @@ export interface AttendanceCheckInBody {
   fecha: string;
   hora?: string;
 }
+
+/** Qué checada se registra: la entrada o la salida del día. */
+export type CheckInKind = "entrada" | "salida";

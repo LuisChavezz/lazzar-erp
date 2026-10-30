@@ -14,9 +14,8 @@ import {
 } from "../schemas/attendance.schema";
 import type { RollCallRow } from "../utils/attendanceRows";
 import { targetOf } from "../utils/attendanceRowTarget";
+import type { CheckInKind } from "../interfaces/attendance.interface";
 import { useRegisterEntry, useRegisterExit } from "./useCheckIn";
-
-export type CheckInKind = "entrada" | "salida";
 
 interface UseCheckInTimeFormParams {
   kind: CheckInKind;

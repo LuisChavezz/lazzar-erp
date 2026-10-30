@@ -24,7 +24,8 @@ import { isEmployeeDayBusy, targetOf } from "../utils/attendanceRowTarget";
 import { getStaleCheckInNotice } from "../utils/attendanceStaleDialogs";
 import { getRollCallColumns, ROLL_CALL_HEADER_FILTERS } from "./RollCallColumns";
 import { AttendanceRecordDialogs } from "./AttendanceRecordDialogs";
-import { CheckInTimeDialog, type CheckInKind } from "./CheckInTimeDialog";
+import type { CheckInKind } from "../interfaces/attendance.interface";
+import { CheckInTimeDialog } from "./CheckInTimeDialog";
 import { DateParamInput } from "./DateParamInput";
 
 interface RollCallViewProps {
