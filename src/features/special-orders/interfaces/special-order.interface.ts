@@ -128,6 +128,11 @@ export interface SpecialOrderLine {
  * (no aplica el patrón "detalle desde la fila ya cargada").
  */
 export interface SpecialOrderDetail extends SpecialOrderListItem {
+  /**
+   * Estatus del pedido (`PEDIDO_ESTATUS`). Un pedido CANCELADO sigue saliendo
+   * en pedidos especiales, así que las acciones se deciden con este campo.
+   */
+  estatus: number;
   detalles: SpecialOrderLine[];
 }
 

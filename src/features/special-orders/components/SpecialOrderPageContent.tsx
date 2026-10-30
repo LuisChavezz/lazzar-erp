@@ -7,7 +7,10 @@ import { ArrowLeftIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { InfoField, InfoGrid, Section } from "@/src/components/DetailDialogPrimitives";
-import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
+import {
+  getPedidoClasificacionLabel,
+  PEDIDO_ESTATUS,
+} from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
@@ -157,6 +160,7 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
         </p>
         <SpecialOrderLines
           pedidoId={data.id}
+          isPedidoCancelled={data.estatus === PEDIDO_ESTATUS.CANCELADO}
           detalles={data.detalles}
           canGenerateSkus={canGenerateSkus}
           onGenerateSkus={(line) =>
