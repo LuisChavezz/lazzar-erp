@@ -1,46 +1,31 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { useMutationState } from "@tanstack/react-query";
-import type { Incident, ToggleIncidentActivoPayload } from "../interfaces/incident.interface";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
+import type { Incident } from "../interfaces/incident.interface";
 import { toggleIncidentActivoMutationKey } from "./useToggleIncidentActivo";
 
-// ─── Contexto para el menú de fila ────────────────────────────────────────────
-// Los callbacks llegan al menú (`IncidentRowActionsMenu`) por contexto, NO por
-// la factoría de columnas: si el id "en vuelo" viajara dentro de
-// `getColumns(...)`, cada inicio y fin de un cambio de estatus crearía
-// funciones `cell` nuevas y React remontaría TODAS las celdas (se cierra el
-// menú abierto de otra fila, caducan las refs). Mismo patrón que
-// `useTrainingRowActions`.
-
+/**
+ * Todos reciben la incidencia y el padre guarda solo su id: el diálogo se
+ * resuelve contra el listado completo, porque el toggle cambia `activo` —justo
+ * el filtro del nombre— y la fila puede salir de la vista a mitad de la
+ * interacción.
+ */
 export interface IncidentRowActionsContextValue {
   onEdit: (incident: Incident) => void;
   onToggleActivo: (incident: Incident) => void;
+  /** Ids con un cambio de registro en vuelo (`usePendingIncidentIds`, calculado en la lista). */
+  busyIds: number[];
 }
 
-const IncidentRowActionsContext = createContext<IncidentRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } = createRowActionsContext<IncidentRowActionsContextValue>(
+  "IncidentNameCell",
+  "IncidentList"
+);
 
-export const IncidentRowActionsProvider = IncidentRowActionsContext.Provider;
+/** Callbacks y "en vuelo" del menú de fila (`IncidentNameCell`); ver `createRowActionsContext`. */
+export const IncidentRowActionsProvider = Provider;
+export const useIncidentRowActionsContext = useRowActionsContext;
 
-/** Para `IncidentRowActionsMenu`: exige estar bajo un `IncidentRowActionsProvider`. */
-export function useIncidentRowActionsContext(): IncidentRowActionsContextValue {
-  const value = useContext(IncidentRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "IncidentRowActionsMenu debe renderizarse dentro de un IncidentRowActionsProvider (ver IncidentList)."
-    );
-  }
-  return value;
-}
-
-/**
- * Ids de incidencia con un cambio de estatus EN CURSO, leídos de la
- * `MutationCache` y no de la instancia de `useMutation`, que solo recuerda su
- * ÚLTIMA llamada. Mismo criterio que `usePendingTrainingDeleteIds`.
- */
-export function usePendingIncidentToggleIds(): number[] {
-  return useMutationState({
-    filters: { mutationKey: [...toggleIncidentActivoMutationKey], status: "pending" },
-    select: (mutation) => (mutation.state.variables as ToggleIncidentActivoPayload).id,
-  });
-}
+/** Ids de incidencia con una baja o reactivación en curso. Una sola suscripción, en `IncidentList`. */
+export const usePendingIncidentIds = () => usePendingRecordIds(toggleIncidentActivoMutationKey);

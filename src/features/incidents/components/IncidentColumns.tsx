@@ -1,22 +1,24 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { BanIcon, CheckCircleIcon, EditIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate, formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { Incident } from "../interfaces/incident.interface";
 import {
   ESTADO_INCIDENCIA_CFG,
   GRAVEDAD_INCIDENCIA_CFG,
   TIPO_INCIDENCIA_CFG,
-  getEstadoIncidenciaLabel,
-  getGravedadIncidenciaLabel,
-  getTipoIncidenciaLabel,
   gravedadIncidenciaRank,
 } from "../constants/incidentChoices";
+import { useIncidentRowActionsContext } from "../hooks/useIncidentRowActions";
 import {
-  useIncidentRowActionsContext,
-  usePendingIncidentToggleIds,
-} from "../hooks/useIncidentRowActions";
+  getIncidentEstadoText,
+  getIncidentGravedadText,
+  getIncidentTipoText,
+} from "../utils/incidentRows";
 
 /**
  * Fila de la tabla: la incidencia tal como llega del backend más los nombres
@@ -26,71 +28,62 @@ import {
  * guarda en caché el valor del accessor por fila y solo lo recalcula cuando
  * cambia `data`. Como las incidencias pueden llegar antes que los catálogos de
  * empleados y usuarios, el accessor se congelaría con el respaldo en pantalla,
- * en la búsqueda y en el orden. Construyendo las filas en `IncidentList`, la
- * llegada de cada catálogo produce un `data` nuevo y TanStack recalcula todo.
- * Mismo arreglo que `TrainingRow`.
+ * en la búsqueda y en el orden. Construyendo las filas en `IncidentList`
+ * (`buildIncidentRows`), la llegada de cada catálogo produce un `data` nuevo y
+ * TanStack recalcula todo. Mismo arreglo que `ContractRow`.
  *
- * - `empleado_nombre`: `null` = el empleado no aparece en el catálogo (o
- *   todavía no llega); la celda cae a "Empleado #N".
- * - `reportado_por_nombre`: SIEMPRE string, ya con su respaldo ("…" mientras
- *   carga el catálogo, "Usuario #N" si el id no se resuelve o el catálogo
- *   falló, "—" si es `null`), para que la columna nunca quede fuera de la
- *   búsqueda global. Ver `resolveUserName` (users/utils) y su uso en `IncidentList`.
+ * Los dos son SIEMPRE string, ya con su respaldo, para que ninguna columna
+ * quede fuera de la búsqueda global:
+ * - `empleado_nombre`: "Empleado #N" si el id no está en el catálogo.
+ * - `reportado_por_nombre`: "…" mientras carga el catálogo, "Usuario #N" si el
+ *   id no se resuelve o el catálogo falló, "—" si es `null` (ver
+ *   `resolveUserName`).
  */
 export type IncidentRow = Incident & {
-  empleado_nombre: string | null;
+  empleado_nombre: string;
   reportado_por_nombre: string;
 };
 
 const columnHelper = createColumnHelper<IncidentRow>();
 
-/**
- * Menú de acciones de UNA fila. Lee los callbacks por contexto y el "en vuelo"
- * de la `MutationCache` (ver `useIncidentRowActions`), así que un cambio de
- * estatus en curso solo re-renderiza este componente y no remonta las celdas.
- *
- * Es solo presentacional: el diálogo de confirmación vive en `IncidentList`,
- * porque una celda se desmonta al ordenar, paginar o filtrar —y dar de baja
- * cambia `activo`, que es justo el filtro "Estatus"—.
- */
-function IncidentRowActionsMenu({
-  incident,
-  canEdit,
-  canDelete,
-}: {
-  incident: Incident;
+interface IncidentColumnPermissions {
   canEdit: boolean;
   canDelete: boolean;
-}) {
-  const { onEdit, onToggleActivo } = useIncidentRowActionsContext();
-  const togglingIds = usePendingIncidentToggleIds();
-  const menuItems: ActionMenuItem[] = [];
+}
 
-  // Editar se ofrece también sobre incidencias dadas de baja, igual que en
-  // centros de costo: la baja es un estatus, no un bloqueo del registro.
-  if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(incident),
-    });
-  }
-  // Una sola acción que recorre el ciclo de vida en los dos sentidos: la
-  // etiqueta sigue al estatus de la fila. Ambos sentidos exigen D-RH.
-  if (canDelete) {
-    menuItems.push({
+/**
+ * El nombre del empleado ES el menú de la fila y lleva el punto de `activo`
+ * (la baja lógica del REGISTRO): sin columnas aparte de "Estatus" ni
+ * "Acciones". El `estado` de negocio (abierto/cerrado) va en su propia
+ * columna con su badge y su filtro (esquema de Contratos). Los callbacks y el
+ * "en vuelo" llegan por contexto; el diálogo vive en `IncidentList`. Sin "Ver
+ * detalle": las incidencias no tienen vista de detalle.
+ */
+function IncidentNameCell({
+  incident,
+  permissions,
+}: {
+  incident: IncidentRow;
+  permissions: IncidentColumnPermissions;
+}) {
+  const { onEdit, onToggleActivo, busyIds } = useIncidentRowActionsContext();
+
+  const items: ActionMenuItem[] = [
+    // Editar se ofrece también sobre incidencias dadas de baja: la baja es un
+    // estatus del registro, no un bloqueo.
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(incident), visible: permissions.canEdit },
+    // Una sola acción que recorre el ciclo de vida en los dos sentidos: la
+    // etiqueta sigue al registro de la fila. Ambos sentidos exigen D-RH.
+    {
       label: incident.activo ? "Dar de baja" : "Reactivar",
       icon: incident.activo ? BanIcon : CheckCircleIcon,
       onSelect: () => onToggleActivo(incident),
-      disabled: togglingIds.includes(incident.id),
-    });
-  }
+      disabled: busyIds.includes(incident.id),
+      visible: permissions.canDelete,
+    },
+  ];
 
-  return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de incidencia" />
-    </div>
-  );
+  return <FolioActionMenu name={incident.empleado_nombre} items={items} active={incident.activo} />;
 }
 
 /** Texto largo en una línea: se recorta y el completo va en el `title`. */
@@ -111,8 +104,16 @@ const LongTextCell = ({ value }: { value: string }) =>
  * sesión): los callbacks y el estado "en vuelo" llegan al menú por contexto,
  * nunca por aquí.
  */
-export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }) => {
-  const columns = [
+export const getColumns = (permissions: IncidentColumnPermissions) =>
+  [
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `IncidentRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
+      header: "Empleado",
+      size: 260,
+      cell: ({ row }) => <IncidentNameCell incident={row.original} permissions={permissions} />,
+    }),
     // El accessor devuelve la fecha YA formateada para que la búsqueda global
     // encuentre lo que se ve en pantalla; el orden va sobre el ISO crudo.
     // `formatLocalDate` parsea el DateField como fecha LOCAL: no se corre un día.
@@ -126,21 +127,14 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
         </span>
       ),
     }),
-    // Siempre string: el respaldo evita el `null` que excluiría la columna de
-    // la búsqueda global (ver DataTable).
-    columnHelper.accessor((row) => row.empleado_nombre ?? `Empleado #${row.empleado}`, {
-      id: "empleado",
-      header: "Empleado",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
-      ),
-    }),
-    columnHelper.accessor((row) => getTipoIncidenciaLabel(row.tipo) ?? "—", {
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su badge y su opción de filtro).
+    columnHelper.accessor((row) => getIncidentTipoText(row.tipo), {
       id: "tipo",
       header: "Tipo",
       cell: ({ row }) => <StatusBadge status={row.original.tipo} config={TIPO_INCIDENCIA_CFG} />,
     }),
-    columnHelper.accessor((row) => getGravedadIncidenciaLabel(row.gravedad) ?? "—", {
+    columnHelper.accessor((row) => getIncidentGravedadText(row.gravedad), {
       id: "gravedad",
       header: "Gravedad",
       // Por severidad real (baja < media < alta), no alfabético sobre la
@@ -153,7 +147,9 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
         <StatusBadge status={row.original.gravedad} config={GRAVEDAD_INCIDENCIA_CFG} />
       ),
     }),
-    columnHelper.accessor((row) => getEstadoIncidenciaLabel(row.estado) ?? "—", {
+    // "Estado" es el estado de NEGOCIO (abierto/cerrado); la baja lógica del
+    // registro es el punto junto al nombre.
+    columnHelper.accessor((row) => getIncidentEstadoText(row.estado), {
       id: "estado",
       header: "Estado",
       cell: ({ row }) => (
@@ -161,8 +157,7 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
       ),
     }),
     // Texto libre largo: buscable (siempre string), pero SIN orden —ordenar
-    // alfabéticamente una descripción no significa nada—, así que no hay vacíos
-    // que mandar al final.
+    // alfabéticamente una descripción no significa nada—.
     columnHelper.accessor((row) => row.descripcion || "—", {
       id: "descripcion",
       header: "Descripción",
@@ -203,33 +198,32 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
         ),
       }
     ),
-    columnHelper.accessor("activo", {
-      header: "Estatus",
-      cell: (info) => (
-        <StatusBadge
-          status={info.getValue() ? "activo" : "inactivo"}
-          config={ACTIVO_INACTIVO_CFG}
-        />
-      ),
-    }),
   ] as ColumnDef<IncidentRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => (
-          <IncidentRowActionsMenu
-            incident={row.original}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<IncidentRow>
-    );
-  }
-
-  return columns;
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * Dos estatus, dos filtros con ficha propia (esquema de Contratos): el nombre
+ * filtra por `activo` (su punto), con ficha "Registro: …"; la columna Estado
+ * filtra por el `estado` de negocio, con ficha "Estado: …". Tipo, gravedad y
+ * estado ofrecen su catálogo completo (con el punto de su badge) aunque
+ * ninguna fila lo use, y al final cada código desconocido de las filas, crudo
+ * (igual que su celda). El reportante compara contra el FK crudo, rotulado con
+ * su nombre resuelto, y agrupa aparte las incidencias sin reportante. Las
+ * fechas filtran por mes. Descripción y acciones no llevan filtro: son texto
+ * libre, lo cubre la búsqueda.
+ */
+export const INCIDENT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<IncidentRow>>> = {
+  empleado: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  fecha: { type: "month", get: (r) => r.fecha },
+  tipo: { type: "options", get: (r) => r.tipo, options: optionsFromConfig(TIPO_INCIDENCIA_CFG) },
+  gravedad: { type: "options", get: (r) => r.gravedad, options: optionsFromConfig(GRAVEDAD_INCIDENCIA_CFG) },
+  estado: { type: "options", get: (r) => r.estado, options: optionsFromConfig(ESTADO_INCIDENCIA_CFG) },
+  reportado_por: {
+    type: "distinct",
+    get: (r) => r.reportado_por,
+    label: (r) => r.reportado_por_nombre,
+    emptyOption: "Sin reportante",
+  },
+  fecha_reporte: { type: "month", get: (r) => r.fecha_reporte },
 };

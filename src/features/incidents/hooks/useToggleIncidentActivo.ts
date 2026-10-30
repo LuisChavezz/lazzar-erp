@@ -8,7 +8,7 @@ import { INCIDENTS_KEY } from "./useIncidents";
 
 /**
  * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
- * tienen un cambio de estatus en vuelo (ver `usePendingIncidentToggleIds`).
+ * tienen un cambio de estatus en vuelo (ver `usePendingIncidentIds`).
  */
 export const toggleIncidentActivoMutationKey = ["toggle-incident-activo"] as const;
 
