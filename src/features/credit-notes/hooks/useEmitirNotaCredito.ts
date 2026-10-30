@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
-import { parseNotaCreditoError, stampFailureDetail } from "./useCreateNotaCredito";
+import {
+  parseNotaCreditoError,
+  stampFailureDetail,
+  type ParsedNotaCreditoError,
+} from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
@@ -26,21 +30,24 @@ export interface EmitirNotaCreditoVariables {
  * La nota que el `400` del timbrado reporta (`nota_credito`), solo si es ESTA
  * nota. Un `nota_credito` de otra nota, o sin él, no dice nada de esta.
  */
-const reportedNota = (error: unknown, id: number): StampFailedNota | undefined => {
-  const parsed = parseNotaCreditoError(error);
-  return parsed.stampFailed && parsed.notaCredito?.id === id ? parsed.notaCredito : undefined;
-};
+const reportedNota = (
+  parsed: ParsedNotaCreditoError,
+  id: number,
+): StampFailedNota | undefined =>
+  parsed.stampFailed && parsed.notaCredito?.id === id ? parsed.notaCredito : undefined;
 
 /**
  * Motivo para el detalle cuando Facturama rechazó la emisión y el backend
  * reporta ESTA nota de vuelta en `Borrador`, o `null` en cualquier otro caso.
- * `CreditNoteList` lo usa para abrir el detalle de la nota con el motivo y
- * "Emitir" a la mano.
+ * Recibe el error ya normalizado: `onError` lo parsea una sola vez.
  */
-export const getEmitRejectedDraftDetail = (error: unknown, id: number): string | null => {
-  if (reportedNota(error, id)?.estatus !== "Borrador") return null;
-  return creditNoteEmitRejectedDetail(stampFailureDetail(parseNotaCreditoError(error)));
-};
+export const getEmitRejectedDraftDetail = (
+  parsed: ParsedNotaCreditoError,
+  id: number,
+): string | null =>
+  reportedNota(parsed, id)?.estatus === "Borrador"
+    ? creditNoteEmitRejectedDetail(stampFailureDetail(parsed))
+    : null;
 
 /**
  * Emite una nota que estaba en borrador
@@ -74,8 +81,8 @@ export const getEmitRejectedDraftDetail = (error: unknown, id: number): string |
  * Un fallo del timbrado llega bajo `cfdi` y, cuando el backend sabe en qué
  * quedó la nota, con `nota_credito`:
  * - `Borrador`: Facturama rechazó; la nota volvió a borrador con el saldo
- *   intacto. Aviso breve: el motivo lo muestra el detalle que abre
- *   `CreditNoteList` (`getEmitRejectedDraftDetail`).
+ *   intacto. Aviso breve; el motivo (`getEmitRejectedDraftDetail`) va a
+ *   `onRejectedToDraft`, con el que `CreditNoteList` abre el detalle.
  * - `Emitida`: Facturama no confirmó; la nota quedó emitida con el timbrado
  *   pendiente (`creditNoteStampPendingMessage`).
  * - Sin `nota_credito` (o de otra nota): no se afirma nada y se pide revisar el
@@ -86,7 +93,12 @@ export const getEmitRejectedDraftDetail = (error: unknown, id: number): string |
  * de la factura y puede marcarla `Pagada`. El refresco también vale ante un
  * error: un fallo del timbrado puede llegar con la nota ya escrita.
  */
-export const useEmitirNotaCredito = () => {
+export const useEmitirNotaCredito = ({
+  onRejectedToDraft,
+}: {
+  /** Facturama rechazó y la nota volvió a `Borrador`: su id y el motivo. */
+  onRejectedToDraft?: (id: number, detail: string) => void;
+} = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -110,14 +122,16 @@ export const useEmitirNotaCredito = () => {
       }
       const parsed = parseNotaCreditoError(error);
       if (parsed.stampFailed) {
-        const nota = reportedNota(error, id);
+        const nota = reportedNota(parsed, id);
         const detail = stampFailureDetail(parsed);
         // Rechazo con la nota de vuelta en borrador: aviso breve, el motivo
         // completo queda en el detalle que abre el listado.
-        if (nota?.estatus === "Borrador") {
+        const rejectedDetail = getEmitRejectedDraftDetail(parsed, id);
+        if (rejectedDetail !== null) {
           toast.error(creditNoteEmitRejectedMessage(label), {
             id: `emitir-nota-credito-timbrado-${id}`,
           });
+          onRejectedToDraft?.(id, rejectedDetail);
           return;
         }
         // Pendiente, o sin saber en qué quedó: el toast es la ÚNICA explicación
