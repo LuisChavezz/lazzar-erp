@@ -3,10 +3,13 @@
  * del backend que no pertenece a un campo. No pinta nada sin `message`.
  * Extraído del diálogo de estatus de OP (`ProductionOrderStatusDialog`) sin
  * cambiar su markup; lo usa también el traslado de picking.
+ *
+ * `id` (opcional) deja que un control lo cite con `aria-describedby`.
  */
-export const FormErrorBanner = ({ message }: { message: string | null }) =>
+export const FormErrorBanner = ({ message, id }: { message: string | null; id?: string }) =>
   message ? (
     <p
+      id={id}
       role="alert"
       className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-4 py-3 text-xs font-medium text-red-700 dark:text-red-400"
     >
