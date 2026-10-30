@@ -8,13 +8,19 @@ import { drfActionErrorMessage } from "./drfWriteErrors";
  * módulo resuelve con su propia config. Bordado NO entra aquí: su enum es otro
  * (1-8, terminales 7 y 8) y tiene su propio `embroideryStatusTransitions`.
  *
- * El backend NO impone reglas de transición: su `PATCH` acepta cualquier valor
- * mientras la orden no esté cancelada. El frontend tampoco las impone —mismo
- * criterio que bordado—, con una sola excepción: el `7` no se ofrece como
- * DESTINO. Cancelar es irreversible: una orden en `7` responde `400` a
- * cualquier `PATCH`. Desde nucleo-erp #786 sí libera su cupo del pedido (sus
- * piezas dejan de contar como programadas), pero ofrecerlo es una decisión de
- * negocio aparte.
+ * Lo que exige el `PATCH` del backend (nucleo-erp #786):
+ *  - Solo producción: superusuario, admin de empresa o un rol del departamento
+ *    PRODUCCION; el resto recibe `400 {"permiso": [...]}` (ver
+ *    `canEditWorkOrder`).
+ *  - `prioridad` solo 1, 2 o 3; otro entero responde `400`.
+ *  - Una orden en `7` (Cancelado) ya no se edita: cualquier `PATCH` responde
+ *    `400` en el campo de estatus.
+ *
+ * Fuera de eso no impone reglas de transición: acepta cualquier estatus. El
+ * frontend tampoco las impone —mismo criterio que bordado—, con una sola
+ * excepción: el `7` no se ofrece como DESTINO. Cancelar es irreversible y,
+ * desde #786, libera su cupo del pedido (sus piezas dejan de contar como
+ * programadas), pero ofrecerlo es una decisión de negocio aparte.
  */
 
 export type WorkOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
