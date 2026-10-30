@@ -437,13 +437,47 @@ test.describe("parseCatalogAltaError", () => {
     });
   }
 
-  test("`categoria_producto` y `alta_catalogo` son rechazos de la categoría; el resto no", () => {
+  test("rechazos de la categoría: todo `categoria_producto` y solo los `alta_catalogo` sobre ella", () => {
+    // Textos reales de nucleo-erp (`_categoria_para_alta`, `_alta_variante_catalogo`, `codigos.py`).
     const parse = (body: unknown) => parseCatalogAltaError(httpError(400, body));
     expect(isCategoryRejection(parse({ categoria_producto: "Categoría no válida." }))).toBe(true);
     expect(
+      isCategoryRejection(
+        parse({ categoria_producto: "Se agotaron los codigos disponibles para la categoria 'Vestido'." }),
+      ),
+    ).toBe(true);
+    expect(
       isCategoryRejection(parse({ alta_catalogo: "Tallas que no son de la categoría Vestido: UNI." })),
     ).toBe(true);
-    expect(isCategoryRejection(parse({ pedido_detalle_id: "Sin pendientes." }))).toBe(false);
+    expect(
+      isCategoryRejection(
+        parse({
+          alta_catalogo: "La categoría Vestido está inactiva; no se puede dar de alta en catálogo.",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  test("el resto sigue al toast: SKU repetido, línea sin categoría, sin pendientes, permiso", () => {
+    const parse = (body: unknown) => parseCatalogAltaError(httpError(400, body));
+    expect(
+      isCategoryRejection(parse({ alta_catalogo: "El SKU '10014-703-G' ya existe en catálogo." })),
+    ).toBe(false);
+    expect(
+      isCategoryRejection(
+        parse({
+          alta_catalogo:
+            "La línea no tiene categoría (se captura en la cotización); no se puede dar de alta en catálogo.",
+        }),
+      ),
+    ).toBe(false);
+    // Un texto que no se reconoce cae al toast.
+    expect(isCategoryRejection(parse({ alta_catalogo: "Otro motivo." }))).toBe(false);
+    expect(
+      isCategoryRejection(
+        parse({ pedido_detalle_id: "La línea no tiene SKU de producción pendientes de alta en catálogo." }),
+      ),
+    ).toBe(false);
     expect(isCategoryRejection(parse({ permiso: "Solo producción." }))).toBe(false);
     expect(isCategoryRejection(parseCatalogAltaError(new Error("Network Error")))).toBe(false);
   });

@@ -87,9 +87,22 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
 }
 
 /**
- * Rechazo que depende de la categoría con la que se da de alta (`alta_catalogo`
- * o `categoria_producto`): al elegirla en el diálogo, se muestra ahí y se puede
- * elegir otra sin cerrarlo.
+ * Comienzos de los `400 {"alta_catalogo"}` que SÍ dependen de la categoría con
+ * la que se da de alta. El backend no manda códigos, así que se reconocen por
+ * su texto: `_categoria_para_alta` en nucleo-erp `produccion/api/views.py`
+ * ("La categoría X está inactiva; …" y "Tallas que no son de la categoría X:
+ * …"). Si cambian ahí, cambiar aquí; un texto que no coincide cae al toast.
+ * El resto de `alta_catalogo` (el SKU ya existe en catálogo, la línea sin
+ * categoría) no se arregla eligiendo otra.
+ */
+const CATEGORY_ALTA_REJECTION = /^(La categoría .+ está inactiva|Tallas que no son de la categoría )/;
+
+/**
+ * Rechazo de la categoría elegida: va bajo el selector y el diálogo sigue
+ * abierto para elegir otra. Son todos los `categoria_producto` ("Categoría no
+ * válida." o códigos de la categoría agotados) y los `alta_catalogo` de
+ * `CATEGORY_ALTA_REJECTION`. Lo demás sigue el camino normal (toast).
  */
 export const isCategoryRejection = (parsed: ParsedCatalogAltaError): boolean =>
-  parsed.key === "alta_catalogo" || parsed.key === "categoria_producto";
+  parsed.key === "categoria_producto" ||
+  (parsed.key === "alta_catalogo" && CATEGORY_ALTA_REJECTION.test(parsed.message));
