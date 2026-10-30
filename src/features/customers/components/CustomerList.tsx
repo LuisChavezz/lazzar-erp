@@ -55,9 +55,9 @@ export const CustomerList = () => {
   // `E-CRM-CLIENTES-CREDITO`. Sin él la sección no se muestra ni en alta ni en
   // edición, y `useCustomerForm` deja esos campos fuera del payload.
   // Misma regla que `tiene_permiso` del backend: superusuario o admin de
-  // empresa (`useIsCompanyAdmin`), o el código en la lista. NO `hasPermission`:
-  // su atajo de `role === "admin"` también cubre `is_staff`, que el backend no
-  // exime.
+  // empresa (`useIsCompanyAdmin`), o el código en la lista. Se decide con las
+  // banderas y no con `hasPermission` (`role`): una sesión sin ellas, anterior
+  // a que se guardaran, conserva el rol con que se emitió, y aquí falla cerrado.
   const isCompanyAdmin = useIsCompanyAdmin();
   const canEditCredit =
     isCompanyAdmin || (session?.user?.permissions ?? []).includes("E-CRM-CLIENTES-CREDITO");

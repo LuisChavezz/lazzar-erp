@@ -21,12 +21,15 @@ export interface WorkOrderEditUser extends CompanyAdminFlags {
  * directo o por un rol de otro departamento verá la ficha editable y el
  * backend le rechazará cada cambio (riesgo aceptado: hoy no hay ningún caso).
  *
- * NO usa `hasPermission`: su atajo para el rol "admin" también cubre a
- * `is_staff` (`es_admin`), al que el backend rechaza. Superusuario y admin de
+ * NO usa `hasPermission`, que decide con el rol de la sesión. El `jwt` de
+ * NextAuth recalcula ese rol en cada lectura, pero solo si el token trae las
+ * dos banderas; una sesión sin ellas (anterior a que se guardaran) conserva el
+ * rol con que se emitió, que antes de EC-673 era "admin" también para
+ * `is_staff`, al que el backend rechaza. Por eso superusuario y admin de
  * empresa se resuelven con `getCompanyAdminStatus` (la regla de
- * `useCompanyAdminStatus`), porque el backend les manda `permisos` vacío. Una
- * sesión anterior a esas banderas es `unknown` y aquí falla cerrado: la ficha
- * queda de solo lectura hasta volver a iniciar sesión.
+ * `useCompanyAdminStatus`; el backend les manda `permisos` vacío): esa sesión
+ * es `unknown` y aquí falla cerrado, la ficha queda de solo lectura hasta
+ * volver a iniciar sesión.
  */
 export const canEditWorkOrder = (
   user: WorkOrderEditUser | null | undefined,

@@ -131,18 +131,20 @@ Ruta base del proyecto:
 ### 4.1 Configuración de NextAuth (`src/lib/auth.ts`)
 
 - Se utiliza `CredentialsProvider` con **autenticación basada en cookies**: el login (incluido el MFA opcional) lo completa el navegador directamente contra el backend, que establece las cookies de sesión. NextAuth **no vuelve a autenticar**.
-  - El método `authorize` recibe la credencial `userData` (el usuario ya serializado como JSON tras el login) y únicamente la parsea; no llama a ningún endpoint.
+  - El método `authorize` recibe la credencial `accessToken` (el token `access` que devolvió el login) y con él consulta `GET /auth/user/` en el backend (header `Authorization: Bearer`). La identidad y los permisos salen de esa respuesta, nunca de datos enviados por el cliente; si falla, no hay sesión.
   - Construye el objeto `user` con:
     - `id`, `name` (nombre completo o `username`), `email`.
-    - `role`: `"admin"` o `"user"` según `is_admin_empresa || es_admin || is_superuser`.
-    - `permissions`: lista de permisos del usuario (`user.permisos`).
+    - `role`: `"admin"` o `"user"` según `is_admin_empresa || is_superuser` (`getSessionRole`, `src/lib/sessionRole.ts`), el mismo atajo que `tiene_permiso` del backend. `es_admin` (`is_staff || is_superuser`) no cuenta: el backend no exime a `is_staff` de ningún permiso.
+    - `permissions`: lista de permisos del usuario (`user.permisos`; vacía para superusuario y admin de empresa).
+    - `is_admin_empresa` / `is_superuser`: tal como los manda el backend (`undefined` si no llegan como booleanos).
 - Callbacks:
   - **jwt**:
-    - Copia `role`, `permissions` y `sub` (id) al `token` de NextAuth.
+    - Copia `role`, `permissions`, `is_admin_empresa`, `is_superuser` y `sub` (id) al `token` de NextAuth.
+    - Corre en cada lectura de la sesión: si el token trae las dos banderas como booleanos, recalcula `role` con la regla actual (`getRefreshedTokenRole`), así un token emitido con una regla anterior se corrige sin volver a iniciar sesión.
   - **session**:
-    - Inyecta `id`, `role` y `permissions` en `session.user`.
+    - Inyecta `id`, `role`, `permissions`, `is_admin_empresa` e `is_superuser` en `session.user`.
 - Tipos extendidos:
-  - `src/types/next-auth.d.ts` agrega `role` y `permissions` a `User`/`Session`.
+  - `src/types/next-auth.d.ts` agrega `role`, `permissions`, `is_admin_empresa` e `is_superuser` a `User`/`Session`/`JWT`.
 - Páginas personalizadas:
   - `signIn: "/auth/login"`.
 - Estrategia de sesión:
