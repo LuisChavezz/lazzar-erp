@@ -13,11 +13,13 @@ export interface WorkOrderEditUser extends CompanyAdminFlags {
  * una orden de reflejante (`R-PRODUCCION-OR`) o de corte de manga
  * (`R-PRODUCCION-CM`)?
  *
- * Reproduce el gate del backend (`_require_produccion`, nucleo-erp #786), que
+ * APROXIMA el gate del backend (`_require_produccion`, nucleo-erp #786), que
  * responde `400 {"permiso": [...]}` a quien no sea superusuario, admin de
- * empresa o de un rol del departamento Producción. Ese departamento no viaja
- * en la sesión; su equivalente es el código de la ruta, que hoy solo tiene el
- * rol Producción.
+ * empresa o de un rol del departamento PRODUCCION. Ese departamento no viaja
+ * en la sesión, así que aquí se usa el código de la ruta, que hoy solo tiene
+ * el rol Producción. No es equivalente: quien reciba el código por un permiso
+ * directo o por un rol de otro departamento verá la ficha editable y el
+ * backend le rechazará cada cambio (riesgo aceptado: hoy no hay ningún caso).
  *
  * NO usa `hasPermission`: su atajo para el rol "admin" también cubre a
  * `is_staff` (`es_admin`), al que el backend rechaza. Superusuario y admin de

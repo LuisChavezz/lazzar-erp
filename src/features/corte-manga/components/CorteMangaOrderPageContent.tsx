@@ -155,9 +155,10 @@ export function CorteMangaOrderPageContent({
   // pintan en los estados de carga/error.
   const updateOrder = useUpdateCorteMangaOrder(numericId);
 
-  // Mismo criterio que el backend (`canEditWorkOrder`): superusuario, admin de
-  // empresa o el código de esta ruta, `R-PRODUCCION-CM`. El backend rechaza al
-  // resto con un `400`; esto solo evita ofrecerle controles que van a fallar.
+  // Superusuario, admin de empresa o el código de esta ruta, `R-PRODUCCION-CM`
+  // (`canEditWorkOrder`): una aproximación del backend, que autoriza por
+  // departamento PRODUCCION y rechaza al resto con un `400`. Es UX: evita
+  // ofrecer controles que van a fallar, no es la frontera de acceso.
   // Antes de los `return` tempranos porque `useSession` es un hook.
   const { data: session } = useSession();
   const canEdit = canEditWorkOrder(session?.user, "R-PRODUCCION-CM");
