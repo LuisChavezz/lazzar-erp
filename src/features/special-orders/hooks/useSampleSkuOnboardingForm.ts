@@ -6,6 +6,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { useColors } from "@/src/features/colors/hooks/useColors";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type {
+  SampleProductionVariant,
   SampleSkuOnboardingPayload,
   SpecialOrderLine,
 } from "../interfaces/special-order.interface";
@@ -21,8 +22,8 @@ import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 interface UseSampleSkuOnboardingFormParams {
   pedidoId: number;
   line: SpecialOrderLine;
-  /** Tras un alta exitosa: cierra el diálogo. */
-  onSuccess: () => void;
+  /** Tras un alta exitosa, con lo que creó el backend: el asistente muestra el resultado. */
+  onSuccess: (variants: SampleProductionVariant[]) => void;
   /**
    * El backend rechazó el color y la línea lo captura en el Paso 1: el
    * asistente regresa ahí para que el error quede a la vista.
@@ -118,8 +119,7 @@ export function useSampleSkuOnboardingForm({
       };
 
       try {
-        await createOnboarding(payload);
-        onSuccess();
+        onSuccess(await createOnboarding(payload));
       } catch {
         // El error ya se repartió en `onServerError` y el toast lo emite la mutación.
       }

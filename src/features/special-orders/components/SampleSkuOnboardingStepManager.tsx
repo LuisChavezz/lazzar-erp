@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import type { SpecialOrderLine } from "../interfaces/special-order.interface";
+import type {
+  SampleProductionVariant,
+  SpecialOrderLine,
+} from "../interfaces/special-order.interface";
 import { useSampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
 import { SampleSkuOnboardingStep1 } from "./SampleSkuOnboardingStep1";
 import { SampleSkuOnboardingStep2 } from "./SampleSkuOnboardingStep2";
+import { SampleSkuOnboardingResult } from "./SampleSkuOnboardingResult";
 
 type SampleSkuOnboardingStep = "select-materials" | "configure-materials";
 
@@ -24,6 +28,10 @@ interface SampleSkuOnboardingStepManagerProps {
  * de muestra. Mismo corte que `BomStepManager` —"seleccionar" y luego
  * "configurar"—, con el color de la línea sumado al Paso 1.
  *
+ * Al terminar con éxito NO se cierra: muestra lo creado
+ * (`SampleSkuOnboardingResult`), incluido el SKU de catálogo, que el detalle
+ * del pedido no expone.
+ *
  * El formulario vive AQUÍ y no en un paso: los pasos se desmontan al cambiar,
  * y así regresar al Paso 1 conserva lo capturado de los materiales que sigan
  * seleccionados (ver `setMaterials`).
@@ -34,11 +42,14 @@ export function SampleSkuOnboardingStepManager({
   onClose,
 }: SampleSkuOnboardingStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<SampleSkuOnboardingStep>(STEPS[0]);
+  // Lo que creó el alta. Con él, el asistente deja los pasos y muestra el
+  // resultado hasta que se cierre a mano (no se cierra solo al terminar).
+  const [result, setResult] = useState<SampleProductionVariant[] | null>(null);
 
   const onboarding = useSampleSkuOnboardingForm({
     pedidoId,
     line,
-    onSuccess: onClose,
+    onSuccess: setResult,
     onColorRejected: () => setCurrentStep("select-materials"),
   });
 
@@ -56,6 +67,10 @@ export function SampleSkuOnboardingStepManager({
       : "Seleccionar materiales",
     "configure-materials": "Configurar materiales",
   };
+
+  if (result) {
+    return <SampleSkuOnboardingResult variants={result} onClose={onClose} />;
+  }
 
   return (
     <div className="w-full space-y-6">
