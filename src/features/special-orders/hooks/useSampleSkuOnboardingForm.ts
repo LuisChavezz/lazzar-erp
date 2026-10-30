@@ -16,7 +16,7 @@ import {
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
 import { getCatalogAltaBlockReason } from "../utils/catalogAlta";
-import { getSampleSkuPreview } from "../utils/sampleSkuPreview";
+import { type ChosenSampleColor, getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
 interface UseSampleSkuOnboardingFormParams {
@@ -78,6 +78,17 @@ export function useSampleSkuOnboardingForm({
     },
   );
 
+  // El color elegido solo cuenta en una línea sin color; `useColors` comparte
+  // caché con el selector del Paso 1. Elegido pero sin datos del catálogo
+  // (cargando o ausente) NO equivale a "sin elegir".
+  const { colors, isLoading: isLoadingColors } = useColors();
+  const resolveChosenColor = (colorId: number): ChosenSampleColor => {
+    if (!requiresColor || colorId <= 0) return null;
+    const color = colors.find((option) => option.id === colorId);
+    if (color) return { codigo: color.codigo };
+    return isLoadingColors ? "loading" : "unavailable";
+  };
+
   const form = useForm({
     defaultValues: {
       color: 0,
@@ -99,10 +110,12 @@ export function useSampleSkuOnboardingForm({
         return;
       }
 
-      // El alta fallaría con seguridad (color sin código): no se envía.
-      if (skuPreview.blocker) {
+      // Se recalcula con lo que se envía (no con valores del render): un color
+      // sin código, o cuyo código aún no se conoce, haría fallar el alta.
+      const { blocker } = getSampleSkuPreview(line, resolveChosenColor(parsed.data.color));
+      if (blocker) {
         setErrors({});
-        setFormError(skuPreview.blocker);
+        setFormError(blocker);
         return;
       }
 
@@ -115,7 +128,9 @@ export function useSampleSkuOnboardingForm({
         materia_prima_detalle: parsed.data.materia_prima_detalle,
         // Solo `true` y solo si la línea lo admite AHORA: un refetch pudo traer
         // SKU generados en otra sesión después de marcar la casilla.
-        ...(parsed.data.alta_catalogo && !catalogBlockReason ? { alta_catalogo: true } : {}),
+        ...(parsed.data.alta_catalogo && getCatalogAltaBlockReason(line) === null
+          ? { alta_catalogo: true }
+          : {}),
       };
 
       try {
@@ -126,14 +141,9 @@ export function useSampleSkuOnboardingForm({
     },
   });
 
-  // Vista previa del SKU por talla. El color elegido solo cuenta en una línea
-  // sin color; `useColors` comparte caché con el selector del Paso 1.
-  const { colors } = useColors();
+  // Vista previa del SKU por talla para el render (el envío la recalcula).
   const chosenColorId = useStore(form.store, (state) => state.values.color);
-  const chosenColor = requiresColor
-    ? (colors.find((color) => color.id === chosenColorId) ?? null)
-    : null;
-  const skuPreview = getSampleSkuPreview(line, chosenColor);
+  const skuPreview = getSampleSkuPreview(line, resolveChosenColor(chosenColorId));
   const catalogBlockReason = getCatalogAltaBlockReason(line);
 
   const getError = (path: string): FormFieldError | undefined =>
