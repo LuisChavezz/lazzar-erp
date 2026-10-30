@@ -18,6 +18,10 @@ import {
   type StampFailedNota,
 } from "../utils/creditNoteErrors";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionMutation";
+import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
+import { getInvoiceEmitPrecheckReason } from "../utils/creditNoteStamping";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
 
 /** Qué nota se emite: su id y cómo nombrarla en los avisos (folio o `#id`). */
@@ -50,6 +54,24 @@ export const getEmitRejectedDraftDetail = (
     : null;
 
 /**
+ * Factura FRESCA de la nota antes de emitirla. Un `404` no es un fallo de la
+ * consulta sino una respuesta (la factura ya no existe o el usuario ya no la
+ * ve): devuelve `undefined` y `getInvoiceEmitPrecheckReason` la trata como no
+ * disponible. Cualquier otro fallo sigue siendo `PrecheckError`.
+ */
+const fetchFreshRelatedInvoice = async (
+  queryClient: ReturnType<typeof useQueryClient>,
+  invoiceId: number,
+): Promise<Invoice | undefined> => {
+  try {
+    return await fetchFreshInvoice(queryClient, invoiceId);
+  } catch (error) {
+    if (error instanceof PrecheckError && isNotFoundError(error.cause)) return undefined;
+    throw error;
+  }
+};
+
+/**
  * Emite una nota que estaba en borrador
  * (`PATCH /finanzas/notas-credito/{id}/` con `{ estatus: "Emitida" }`).
  *
@@ -69,13 +91,17 @@ export const getEmitRejectedDraftDetail = (
  * sabe desenvolver, dejando al usuario con un "Request failed with status code
  * 400" en vez del motivo real.
  *
- * Antes del PATCH pide la nota FRESCA y se detiene con `PrecheckError`, sin
- * PATCH, si ya no es `Borrador`: un `PATCH` a `Emitida` sobre una nota que otra
- * sesión ya emitió responde `200` sin hacer nada, y se avisaría "emitida
- * correctamente" de algo que esta sesión no hizo. La FACTURA no se consulta: el
- * backend rechaza una factura cancelada o en cancelación (`400` en `factura`) y
- * valida el CFDI (factura sin timbrar, datos fiscales) dentro de la misma
- * transacción que aplica la nota, así que esos rechazos no dejan nada guardado.
+ * Antes del PATCH pide la nota y su factura FRESCAS y se detiene con
+ * `PrecheckError`, sin PATCH:
+ * - si la nota ya no es `Borrador`: un `PATCH` a `Emitida` sobre una nota que
+ *   otra sesión ya emitió responde `200` sin hacer nada, y se avisaría "emitida
+ *   correctamente" de algo que esta sesión no hizo;
+ * - si la factura está eliminada, no existe o tiene su timbrado pendiente
+ *   (`getInvoiceEmitPrecheckReason`, deliberadamente estrecho).
+ * Una factura cancelada o en cancelación no se detiene aquí: el backend la
+ * rechaza atómicamente con un `400` en `factura` que ya dice el motivo. Una
+ * factura sin timbrar tampoco: el diálogo de confirmación lo avisa, y en la
+ * empresa de Facturama el backend la rechaza sin guardar nada.
  * El candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
  * Un fallo del timbrado llega bajo `cfdi` y, cuando el backend sabe en qué
@@ -103,12 +129,16 @@ export const useEmitirNotaCredito = ({
 
   return useMutation({
     mutationFn: async ({ id }: EmitirNotaCreditoVariables) => {
-      // Nota FRESCA antes del PATCH (`fetchFresh`, staleTime 0): otra sesión
-      // pudo emitirla o cancelarla desde que se pintó el listado.
+      // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): otra
+      // sesión pudo emitir o cancelar la nota, o borrar la factura, desde que se
+      // pintó el listado.
       const nota = await fetchFreshNotaCredito(queryClient, id);
       if (nota.estatus !== "Borrador") {
         throw new PrecheckError(`La nota ${nota.folio || `#${nota.id}`} ya no está en borrador.`);
       }
+      const factura = await fetchFreshRelatedInvoice(queryClient, nota.factura);
+      const blockReason = getInvoiceEmitPrecheckReason(nota.factura_folio, factura);
+      if (blockReason) throw new PrecheckError(blockReason);
       return emitirNotaCredito(id);
     },
     onSuccess: () => {

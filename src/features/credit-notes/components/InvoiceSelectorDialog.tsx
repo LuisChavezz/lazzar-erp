@@ -52,8 +52,9 @@ function InvoiceSelectorContent({
   //
   // Se vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede
   // tener hasta 15 minutos. Mientras ese refresco viaja, con datos en caché, se
-  // decide con ellos; el backend tiene la última palabra (rechaza emitir sobre
-  // una factura cancelada o en cancelación sin guardar nada).
+  // decide con ellos. El backend rechaza emitir sobre una factura cancelada o en
+  // cancelación sin guardar nada, pero no sobre una eliminada: esa la detiene
+  // este selector (`activo`) y el formulario.
   const {
     invoices,
     hasLoaded: hasLoadedInvoices,
@@ -67,7 +68,10 @@ function InvoiceSelectorContent({
   // mientras viaja— las filas esperan deshabilitadas.
   const isCheckingInvoices = !hasLoadedInvoices && (isFetchingInvoices || !isErrorInvoices);
   // Sin el listado no se sabe qué factura admite notas. Las filas quedan
-  // seleccionables como antes: el backend sigue protegiendo la emisión.
+  // seleccionables como antes: el backend rechaza emitir sobre una factura
+  // cancelada o en cancelación, pero NO sobre una eliminada (no valida `activo`),
+  // así que el formulario no deja emitir mientras no conozca la factura elegida
+  // (ver `CreditNoteForm`).
   const isInvoiceStateUnavailable = isErrorInvoices && !hasLoadedInvoices;
 
   const getDisabledReason = (cuenta: CuentaPorCobrar): string | null => {
@@ -85,7 +89,7 @@ function InvoiceSelectorContent({
         <div className="mb-4">
           <SectionErrorNotice
             title="No se pudo consultar el estado de las facturas"
-            message="La lista puede incluir facturas canceladas o con su cancelación pendiente. Al emitir la nota se vuelve a comprobar."
+            message="La lista puede incluir facturas canceladas, eliminadas o con su cancelación pendiente. Podrás guardar la nota como borrador, pero no emitirla hasta que se pueda consultar la factura."
             onRetry={() => void refetchInvoices()}
             isRetrying={isFetchingInvoices}
           />

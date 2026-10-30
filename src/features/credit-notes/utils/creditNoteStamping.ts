@@ -99,15 +99,66 @@ export const getRelatedInvoiceCancelledReason = (invoice: {
  * borrador sí se puede guardar sobre ella.
  */
 export const getRelatedInvoiceEmitBlockReason = (
-  invoice: Parameters<typeof getRelatedInvoiceCancelledReason>[0] & { cfdi_pendiente?: boolean },
+  invoice: Parameters<typeof getRelatedInvoiceCancelledReason>[0] & {
+    activo?: boolean;
+    cfdi_pendiente?: boolean;
+  },
 ): string | null => {
+  // Eliminada (baja lógica): el backend NO lo valida al emitir (ver
+  // `getInvoiceEmitPrecheckReason`). Solo un `false` explícito bloquea.
+  if (invoice.activo === false) return getInvoiceNotCreditableReason(invoice.folio, invoice);
   const cancelledReason = getRelatedInvoiceCancelledReason(invoice);
   if (cancelledReason) return cancelledReason;
-  if (invoice.cfdi_pendiente === true) {
-    return `${relatedInvoiceLabel(invoice.folio)} tiene un timbrado pendiente de confirmación: guarda la nota como borrador y emítela cuando se confirme.`;
-  }
+  if (invoice.cfdi_pendiente === true) return invoiceStampPendingReason(invoice.folio);
   return null;
 };
+
+const invoiceStampPendingReason = (folio: string | null): string =>
+  `${relatedInvoiceLabel(folio)} tiene un timbrado pendiente de confirmación: guarda la nota como borrador y emítela cuando se confirme.`;
+
+/**
+ * Motivo para DETENER "Emitir" de un borrador antes del PATCH, con la factura
+ * FRESCA (`undefined` si respondió `404`), o `null`. Deliberadamente estrecho:
+ * solo lo que el backend no rechaza bien.
+ *
+ * - Eliminada (`activo` distinto de `true`) o inexistente: `validar_factura` no
+ *   mira `activo`, así que el backend aplicaría el crédito y timbraría un CFDI
+ *   relacionado a una factura borrada. PROVISIONAL hasta que el backend lo
+ *   valide (nucleo-erp, issue de `validar_factura` sin `activo`).
+ * - Timbrado pendiente (`cfdi_pendiente`): el backend lo rechaza sin guardar
+ *   nada, pero con un `cfdi` que no dice en qué quedó la nota; aquí se da el
+ *   motivo exacto.
+ *
+ * Una factura cancelada o en cancelación no se detiene aquí: el backend la
+ * rechaza atómicamente con un `400` en `factura` que ya dice el motivo.
+ */
+export const getInvoiceEmitPrecheckReason = (
+  folio: string | null,
+  invoice:
+    | (Parameters<typeof getRelatedInvoiceCancelledReason>[0] & {
+        activo?: boolean;
+        cfdi_pendiente?: boolean;
+      })
+    | undefined,
+): string | null => {
+  if (!invoice || invoice.activo !== true) return getInvoiceNotCreditableReason(folio, invoice);
+  if (invoice.cfdi_pendiente === true) return invoiceStampPendingReason(invoice.folio);
+  return null;
+};
+
+/**
+ * Aviso (no bloqueo) para emitir sobre una factura sin `cfdi_uuid`, o `null`.
+ * En la empresa que timbra con Facturama el backend rechaza esa emisión sin
+ * guardar nada; en otra empresa las facturas nunca tienen UUID y la emisión
+ * procede. El front no sabe cuál es, así que solo avisa.
+ */
+export const getInvoiceUnstampedEmitWarning = (invoice: {
+  folio: string | null;
+  cfdi_uuid?: string | null;
+}): string | null =>
+  invoice.cfdi_uuid
+    ? null
+    : `${relatedInvoiceLabel(invoice.folio)} aún no está timbrada. Si la empresa timbra con Facturama, la emisión se rechazará sin registrar nada hasta que se timbre la factura.`;
 
 /**
  * Motivo por el que una factura NO admite notas de crédito nuevas, ni siquiera
