@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MONEY_REGEX, toCents } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
+import { METODO_PAGO_VALUES } from "../constants/paymentStatus";
 
 /**
  * Esquema del formulario de alta de pagos a proveedor.
@@ -94,7 +95,7 @@ export const PagoFormSchema = z
     // aplica su default `timezone.localdate` cuando la llave se OMITE (ver
     // `buildPagoPayload` — nunca se manda `null`, el campo no es nullable).
     fecha_pago: z.string(),
-    metodo_pago: z.enum(["Efectivo", "Transferencia", "Tarjeta", "Cheque"]),
+    metodo_pago: z.enum(METODO_PAGO_VALUES),
     referencia: z.string().max(100, "La referencia no puede exceder 100 caracteres"),
     referencia_operacion: z
       .string()
