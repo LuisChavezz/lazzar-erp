@@ -1,17 +1,20 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
-import { StatusBadge } from "@/src/components/StatusBadge";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { ErrorState } from "@/src/components/ErrorState";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import {
   EmptyLines,
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { BancosIcon } from "@/src/components/Icons";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
@@ -117,40 +120,43 @@ export function BankAccountSummaryDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="900px"
+      maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <BancosIcon className="w-5 h-5 text-sky-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Resumen de Cuenta
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {textOrDash(account.alias)}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Resumen de Cuenta"
+          subtitle={textOrDash(account.alias)}
+          statusColor="sky"
+          icon={BancosIcon}
+        />
       }
     >
       <div className="space-y-5">
         {/* Identidad de la cuenta: sale del renglón que el listado ya cargó, así
             que se pinta de inmediato aunque el resumen siga cargando. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Banco">{textOrDash(account.banco_nombre)}</InfoField>
-          <InfoField label="No. de cuenta">{textOrDash(account.numero_cuenta)}</InfoField>
-          <InfoField label="CLABE">{textOrDash(account.clabe)}</InfoField>
-          <InfoField label="Titular">{textOrDash(account.titular)}</InfoField>
-          <InfoField label="Sucursal bancaria">
-            {textOrDash(account.sucursal_bancaria)}
-          </InfoField>
-          <InfoField label="Moneda">{textOrDash(account.moneda_codigo)}</InfoField>
-          <InfoField label="Fecha de apertura">
+        <InfoTileGrid>
+          <InfoTile label="Banco">{textOrDash(account.banco_nombre)}</InfoTile>
+          <InfoTile label="No. de cuenta">
+            <span className="font-mono">{textOrDash(account.numero_cuenta)}</span>
+          </InfoTile>
+          <InfoTile label="CLABE">
+            <span className="font-mono">{textOrDash(account.clabe)}</span>
+          </InfoTile>
+          <InfoTile label="Titular">{textOrDash(account.titular)}</InfoTile>
+          <InfoTile label="Moneda">{textOrDash(account.moneda_codigo)}</InfoTile>
+          <InfoTile label="Estatus">
+            <StatusBadge
+              status={account.activo ? "activo" : "inactivo"}
+              config={ACTIVO_INACTIVO_CFG}
+            />
+          </InfoTile>
+          <InfoTile label="Sucursal bancaria">{textOrDash(account.sucursal_bancaria)}</InfoTile>
+          <InfoTile label="Fecha de apertura">
             {formatShortDate(account.fecha_apertura, { timeZone: "UTC" })}
-          </InfoField>
-          <InfoField label="No. de cliente">{textOrDash(account.numero_cliente)}</InfoField>
-          <InfoField label="Convenio">{textOrDash(account.convenio)}</InfoField>
-        </div>
+          </InfoTile>
+          <InfoTile label="No. de cliente">{textOrDash(account.numero_cliente)}</InfoTile>
+          <InfoTile label="Convenio">{textOrDash(account.convenio)}</InfoTile>
+        </InfoTileGrid>
 
         {account.observaciones && (
           <div>
