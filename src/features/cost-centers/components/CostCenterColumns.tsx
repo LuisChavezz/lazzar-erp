@@ -96,9 +96,9 @@ export const getColumns = () => {
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * El nombre filtra por `activo` (su punto), con ficha "Registro: …". Código y
+ * El nombre filtra por `activo` (su punto), con ficha "Estatus: …". Código y
  * descripción no llevan filtro: son casi únicos por fila, los cubre la búsqueda.
  */
 export const COST_CENTER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CostCenter>>> = {
-  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
 };

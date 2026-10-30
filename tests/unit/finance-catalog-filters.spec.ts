@@ -59,7 +59,7 @@ function harness<T>(columns: ColumnDef<T, unknown>[], rows: T[]) {
 
 const labels = (options: { label: string }[]) => options.map((o) => o.label);
 
-test.describe("activo como «Registro» en los cinco catálogos", () => {
+test.describe("activo como «Estatus» en los cinco catálogos", () => {
   const cases: [string, ColumnDef<never, unknown>[], string][] = [
     ["bancos", withHeaderFilters(getBankColumns() as ColumnDef<Banco, unknown>[], [], BANK_HEADER_FILTERS) as never, "nombre"],
     [
@@ -85,10 +85,10 @@ test.describe("activo como «Registro» en los cinco catálogos", () => {
   ];
 
   for (const [name, columns, id] of cases) {
-    test(`${name}: la columna del nombre filtra Activo/Inactivo con ficha "Registro"`, () => {
+    test(`${name}: la columna del nombre filtra Activo/Inactivo con ficha "Estatus"`, () => {
       const t = harness(columns, []);
       expect(labels(t.options(id))).toEqual(["Todos", "Activo", "Inactivo"]);
-      expect(t.column(id).meta?.filterLabel).toBe("Registro");
+      expect(t.column(id).meta?.filterLabel).toBe("Estatus");
     });
   }
 });

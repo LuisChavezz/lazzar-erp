@@ -118,7 +118,7 @@ export const getColumns = () => {
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * - El nombre filtra por `activo` (su punto), con ficha "Registro: …".
+ * - El nombre filtra por `activo` (su punto), con ficha "Estatus: …".
  * - El tipo es un enum del backend: su catálogo completo, en orden, aunque
  *   ningún renglón lo tenga, y al final cualquier valor que el catálogo no cubra.
  * - Movimientos es un booleano, con las mismas etiquetas que la celda.
@@ -128,7 +128,7 @@ export const getColumns = () => {
 export const CHART_OF_ACCOUNT_HEADER_FILTERS: Partial<
   Record<string, HeaderFilterSpec<CuentaContable>>
 > = {
-  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
   tipo: { type: "options", get: (r) => r.tipo, options: optionsFromConfig(CUENTA_CONTABLE_TIPO_CONFIG) },
   acepta_movimientos: {
     type: "boolean",

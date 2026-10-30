@@ -72,7 +72,7 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * El nombre filtra por `activo` (su punto), con ficha "Registro: …". `estado`
+ * El nombre filtra por `activo` (su punto), con ficha "Estatus: …". `estado`
  * es el estado GEOGRÁFICO de la dirección, no un estatus: no lleva filtro.
  *
  * Hoy el backend de `clientes-contabilidad` solo devuelve clientes activos
@@ -82,5 +82,5 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
 export const ACCOUNTING_CUSTOMER_HEADER_FILTERS: Partial<
   Record<string, HeaderFilterSpec<AccountingCustomer>>
 > = {
-  nombre: { type: "boolean", filterLabel: "registro", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
+  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
 };
