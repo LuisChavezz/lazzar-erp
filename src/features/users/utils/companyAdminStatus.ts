@@ -14,7 +14,9 @@ export interface CompanyAdminFlags {
 /**
  * ¿El usuario es administrador de su empresa (o superusuario)? Es la MISMA
  * condición con la que el backend decide el alcance de varios listados y
- * acciones; `role === "admin"` no sirve porque también cubre a `is_staff`.
+ * acciones. `role === "admin"` aplica hoy la misma regla, pero no distingue
+ * "no se sabe" de "no", y una sesión iniciada antes de EC-673 lo tiene
+ * también para `is_staff`.
  *
  * Función PURA detrás de `useCompanyAdminStatus`, para quien ya tiene el
  * usuario de la sesión en mano (y para probarla sin React). Sin las dos

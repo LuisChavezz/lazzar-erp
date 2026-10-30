@@ -46,7 +46,11 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          const isAdminUser = user.is_admin_empresa || user.es_admin || user.is_superuser;
+          /* Mismo atajo que `tiene_permiso` del backend: superusuario o admin
+           * de empresa, a quienes además llega `permisos` vacío. NO `es_admin`:
+           * el backend lo calcula como `is_staff || is_superuser` y no exime a
+           * `is_staff` de ningún permiso. */
+          const isAdminUser = user.is_admin_empresa || user.is_superuser;
           const fullName =
             [user.first_name, user.last_name].filter(Boolean).join(" ") ||
             user.username;
@@ -58,9 +62,9 @@ export const authOptions: NextAuthOptions = {
             role: isAdminUser ? "admin" : "user",
             permissions: user.permisos,
             /* Los dos campos con los que el backend acota listados por
-             * usuario (p. ej. oportunidades). `role` los mezcla con `es_admin`
-             * (`is_staff`), así que no sirve para eso. Estrictamente booleanos:
-             * un valor ausente se queda `undefined` ("no se sabe"). */
+             * usuario (p. ej. oportunidades). Viajan sueltos además de `role`
+             * para distinguir "no se sabe" de "no": estrictamente booleanos,
+             * un valor ausente se queda `undefined`. */
             is_admin_empresa:
               typeof user.is_admin_empresa === "boolean" ? user.is_admin_empresa : undefined,
             is_superuser: typeof user.is_superuser === "boolean" ? user.is_superuser : undefined,
