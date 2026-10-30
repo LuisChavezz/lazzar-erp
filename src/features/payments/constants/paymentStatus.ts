@@ -42,13 +42,22 @@ export const PAGO_ESTATUS_CONFIG: Record<PagoEstatus, StatusBadgeConfigEntry> = 
 };
 
 /**
- * Métodos de pago del enum del backend, en el orden en que se ofrecen. El valor
- * es el que viaja al API; la etiqueta coincide porque el backend ya los nombra
- * en español.
+ * Métodos de pago del enum del backend, en el orden en que se ofrecen: la ÚNICA
+ * lista. De ella salen el selector del alta (`METODO_PAGO_OPTIONS`), el filtro
+ * de la tabla (`optionsFromConfig`) y el enum del esquema (`METODO_PAGO_VALUES`).
+ * `Record<MetodoPago, …>` obliga a cubrir el tipo completo. Sin `label`: el
+ * backend ya los nombra en español, así que la etiqueta es el valor.
  */
-export const METODO_PAGO_OPTIONS: readonly { value: MetodoPago; label: string }[] = [
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "Efectivo", label: "Efectivo" },
-  { value: "Cheque", label: "Cheque" },
-  { value: "Tarjeta", label: "Tarjeta" },
-];
+export const METODO_PAGO_CONFIG: Record<MetodoPago, { label?: string }> = {
+  Transferencia: {},
+  Efectivo: {},
+  Cheque: {},
+  Tarjeta: {},
+};
+
+/** Valores de `METODO_PAGO_CONFIG`, en su orden (tupla no vacía para `z.enum`). */
+export const METODO_PAGO_VALUES = Object.keys(METODO_PAGO_CONFIG) as [MetodoPago, ...MetodoPago[]];
+
+/** Opciones del selector del alta: valor que viaja al API y su etiqueta. */
+export const METODO_PAGO_OPTIONS: readonly { value: MetodoPago; label: string }[] =
+  METODO_PAGO_VALUES.map((value) => ({ value, label: METODO_PAGO_CONFIG[value].label ?? value }));
