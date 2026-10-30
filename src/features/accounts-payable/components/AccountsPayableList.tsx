@@ -1,23 +1,41 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
+import type { CuentaPorPagar, CxPEstatus } from "../interfaces/accounts-payable.interface";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import { useDeleteCuentaPorPagar } from "../hooks/useDeleteCuentaPorPagar";
-import { isCuentaPorPagarVencida } from "../utils/accounts-payable.utils";
+import { AccountsPayableRowActionsProvider } from "../hooks/useAccountsPayableRowActions";
 import {
   CXP_CONFLICT_FALLBACK_MESSAGE,
   parseCuentaPorPagarError,
 } from "../utils/parseCuentaPorPagarError";
-import { getColumns } from "./AccountsPayableColumns";
+import { getAccountsPayableHeaderFilters, getColumns } from "./AccountsPayableColumns";
 import { AccountsPayableDetailDialog } from "./AccountsPayableDetailDialog";
 import { RegisterAccountPayableDialog } from "./RegisterAccountPayableDialog";
+
+/**
+ * Textos del aviso de la confirmación de borrado que se cerró porque su cuenta
+ * cambió por fuera (p. ej. se le aplicó un pago: pasa a `Parcial`/`Pagada` y ya
+ * no se puede eliminar).
+ */
+const CXP_STALE_MESSAGES = {
+  gone: "La cuenta por pagar ya no está disponible. Se actualizó el listado.",
+  estadoChanged: (estatus: string) =>
+    `La cuenta por pagar cambió a ${estatus.toLowerCase()} y ya no se eliminó. Se actualizó el listado.`,
+};
 
 export default function AccountsPayableList() {
   const router = useRouter();
@@ -55,13 +73,22 @@ export default function AccountsPayableList() {
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     etiqueta: string;
+    /** Estatus con que se ABRIÓ la confirmación: la guarda de obsolescencia compara contra él. */
+    estatus: CxPEstatus;
   } | null>(null);
   /** Último 409 del borrado, atado a SU cuenta: habilita "Reintentar". */
   const [deleteConflict, setDeleteConflict] = useState<{
     id: number;
     message: string;
   } | null>(null);
-  const [soloVencidas, setSoloVencidas] = useState(false);
+  /** Aviso de la confirmación cerrada por un cambio externo (toast desde un efecto). */
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
+  useEffect(() => {
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key });
+    }
+  }, [staleNotice]);
 
   // Candado de reenvío: un DELETE repetido responde 404 y pintaría un error justo
   // después de un borrado que sí funcionó.
@@ -70,23 +97,17 @@ export default function AccountsPayableList() {
   // Un error de refetch transitorio no descarta la tabla ya cargada.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  // "Hoy" se calcula UNA vez por render y lo comparten la tabla, el filtro "Solo
-  // vencidas" y el detalle: los tres usan `isCuentaPorPagarVencida`.
+  // "Hoy" se calcula UNA vez por render y lo comparten la tabla, el filtro de
+  // vencida y el detalle: los tres usan `isCuentaPorPagarVencida`.
   const today = getMexicoTodayDate();
-  const vencidas = cuentasPorPagar.filter((cuenta) =>
-    isCuentaPorPagarVencida(cuenta, today),
-  );
-  // Filtro EN MEMORIA con la misma función que pinta la marca — no una segunda
-  // petición con `?vencidas=true`, que podría discrepar de lo que se ve.
-  const cuentasVisibles = soloVencidas ? vencidas : cuentasPorPagar;
 
-  const handleDelete = (id: number) => {
-    const cuenta = cuentasPorPagar.find((item) => item.id === id);
-    const folio = cuenta?.factura_proveedor_folio;
+  const handleDelete = (cuenta: CuentaPorPagar) => {
+    const { id, factura_proveedor_folio: folio } = cuenta;
     setDeleteConflict(null);
     setDeleteTarget({
       id,
       etiqueta: folio ? `cuenta por pagar #${id} (factura ${folio})` : `cuenta por pagar #${id}`,
+      estatus: cuenta.estatus,
     });
   };
 
@@ -102,15 +123,17 @@ export default function AccountsPayableList() {
     setDeleteTarget(null);
   };
 
-  const columns = getColumns({
-    today,
-    onViewDetail: setOpenDetailId,
-    onDelete: handleDelete,
-    onGoToPayments: () => router.push("/finance/payments"),
-  });
+  // Columnas estáticas: callbacks, "hoy" y "en vuelo" van por
+  // `AccountsPayableRowActionsProvider`. Las opciones de los filtros se arman con
+  // el listado completo.
+  const columns = withHeaderFilters(
+    getColumns(),
+    cuentasPorPagar,
+    getAccountsPayableHeaderFilters(today),
+  );
 
-  // El detalle se busca en el arreglo COMPLETO (no en el filtrado): si "Solo
-  // vencidas" está activo y un pago la saca de esa vista, el diálogo sigue
+  // El detalle se busca en el arreglo COMPLETO (no en el filtrado): si un pago
+  // saca la cuenta de la vista filtrada (p. ej. «Vencida»), el diálogo sigue
   // mostrando la cuenta con sus datos nuevos.
   const detailCuenta =
     openDetailId !== null
@@ -124,125 +147,140 @@ export default function AccountsPayableList() {
     setOpenDetailId(null);
   }
 
+  // Eliminar solo se ofrece sin pagos aplicados, y aplicar un pago siempre mueve
+  // el estatus (`Parcial`/`Pagada`): si un refetch muestra que la cuenta de la
+  // confirmación abierta cambió de estatus o ya no está, se cierra con aviso.
+  // Mientras el borrado PROPIO está en vuelo no se decide: el optimista ya sacó
+  // la fila y la cierra el resultado de la petición.
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "cxp",
+    targetId: deleteTarget?.id ?? null,
+    target:
+      deleteTarget !== null
+        ? (cuentasPorPagar.find((cuenta) => cuenta.id === deleteTarget.id) ?? null)
+        : null,
+    statusField: "estatus",
+    expectedEstado: deleteTarget?.estatus ?? "Pendiente",
+    isBusy: deleteTarget !== null && deleteLock.isPending(deleteTarget.id),
+    messages: CXP_STALE_MESSAGES,
+  });
+  // La ref de "abierto" no se toca aquí (no se escribe una ref en render): solo
+  // vale tras confirmar, y la siguiente confirmación la vuelve a fijar.
+  if (staleDelete) {
+    setDeleteTarget(null);
+    setDeleteConflict(null);
+    setStaleNotice(staleDelete);
+  }
+
   const conflictMessage =
     deleteTarget !== null && deleteConflict?.id === deleteTarget.id
       ? deleteConflict.message
       : null;
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
-  // cuerpo, así que el toolbar —búsqueda, filtros, "Solo vencidas" y "Registrar
-  // CxP faltante"— sigue disponible durante la carga y ante un error.
+  // cuerpo, así que el toolbar —búsqueda, filtros y "Registrar CxP faltante"—
+  // sigue disponible durante la carga y ante un error.
   return (
-    <div className="h-full flex flex-col min-h-0 space-y-6">
-      <div className="flex-1 min-h-0 flex flex-col">
-      <DataTable
-        columns={columns}
-        data={cuentasVisibles}
-        baseDataCount={cuentasVisibles.length}
-        searchPlaceholder="Buscar por proveedor o factura..."
-        fillHeight
-        onRefetch={refetch}
-        isRefetching={isFetching}
-        emptyMessage={
-          soloVencidas
-            ? "No hay cuentas por pagar vencidas."
-            : "No hay cuentas por pagar registradas."
-        }
-        isLoading={isLoading}
-        isError={showError}
-        errorTitle="Error al cargar las cuentas por pagar"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-        onErrorRetry={refetch}
-        loadingAriaLabel="Cargando cuentas por pagar"
-        getRowId={(row) => String(row.id)}
-        // Un alta nueva o cambiar "Solo vencidas" vuelven a la página 1.
-        paginationResetKey={`${cuentasPorPagar.length}-${soloVencidas}`}
-        actionButton={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-pressed={soloVencidas}
-              onClick={() => setSoloVencidas((prev) => !prev)}
-              className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
-                soloVencidas
-                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-              }`}
-            >
-              Solo vencidas{vencidas.length > 0 ? ` (${vencidas.length})` : ""}
-            </button>
-            <RegisterAccountPayableDialog />
-          </div>
-        }
-      />
-      </div>
-
-      {detailCuenta && (
-        <AccountsPayableDetailDialog
-          cuenta={detailCuenta}
-          today={today}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setOpenDetailId(null);
-          }}
+    <AccountsPayableRowActionsProvider
+      value={{
+        onViewDetail: (cuenta) => setOpenDetailId(cuenta.id),
+        onDelete: handleDelete,
+        onGoToPayments: () => router.push("/finance/payments"),
+        today,
+        busyIds: deleteTarget !== null && deleteLock.isPending(deleteTarget.id) ? [deleteTarget.id] : [],
+      }}
+    >
+      <div className="h-full flex flex-col min-h-0 space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col">
+          <DataTable
+          columns={columns}
+          data={cuentasPorPagar}
+          baseDataCount={cuentasPorPagar.length}
+          searchPlaceholder="Buscar por proveedor o factura..."
+          fillHeight
+          onRefetch={refetch}
+          isRefetching={isFetching}
+          emptyMessage="No hay cuentas por pagar registradas."
+          isLoading={isLoading}
+          isError={showError}
+          errorTitle="Error al cargar las cuentas por pagar"
+          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+          onErrorRetry={refetch}
+          loadingAriaLabel="Cargando cuentas por pagar"
+          getRowId={(row) => String(row.id)}
+          // Un alta nueva vuelve a la página 1.
+          paginationResetKey={cuentasPorPagar.length}
+          actionButton={<RegisterAccountPayableDialog />}
         />
-      )}
+        </div>
 
-      {deleteTarget !== null && (
-        <ConfirmDialog
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) {
-              closeDeleteDialog();
-              setDeleteConflict(null);
+        {detailCuenta && (
+          <AccountsPayableDetailDialog
+            cuenta={detailCuenta}
+            today={today}
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setOpenDetailId(null);
+            }}
+          />
+        )}
+
+        {deleteTarget !== null && (
+          <ConfirmDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) {
+                closeDeleteDialog();
+                setDeleteConflict(null);
+              }
+            }}
+            title={conflictMessage ? "No se pudo eliminar todavía" : "Eliminar Cuenta por Pagar"}
+            // El borrado del backend es FÍSICO: se dice sin rodeos. Solo se ofrece
+            // sobre cuentas sin pagos aplicados.
+            description={
+              conflictMessage
+                ? `${conflictMessage} La cuenta no se eliminó; puedes reintentar.`
+                : `¿Deseas eliminar la ${deleteTarget.etiqueta}? Se borrará de forma PERMANENTE y no podrá recuperarse.`
             }
-          }}
-          title={conflictMessage ? "No se pudo eliminar todavía" : "Eliminar Cuenta por Pagar"}
-          // El borrado del backend es FÍSICO: se dice sin rodeos. Solo se ofrece
-          // sobre cuentas sin pagos aplicados.
-          description={
-            conflictMessage
-              ? `${conflictMessage} La cuenta no se eliminó; puedes reintentar.`
-              : `¿Deseas eliminar la ${deleteTarget.etiqueta}? Se borrará de forma PERMANENTE y no podrá recuperarse.`
-          }
-          confirmText={
-            deleteLock.isPending(deleteTarget.id)
-              ? "Eliminando..."
-              : conflictMessage
-                ? "Reintentar"
-                : "Eliminar permanentemente"
-          }
-          cancelText="Volver"
-          // `closeOnConfirm={false}`: el cierre lo decide el resultado. Un 409
-          // DEJA el diálogo abierto con "Reintentar"; el éxito y cualquier otro
-          // error lo cierran (el toast del hook ya explicó el motivo).
-          closeOnConfirm={false}
-          onConfirm={() => {
-            const id = deleteTarget.id;
-            if (!deleteLock.acquire(id)) return;
-            openDeleteIdRef.current = id;
-            setDeleteConflict(null);
-            deleteCuentaAsync(id)
-              .then(() => closeDeleteDialog(id))
-              .catch((err: unknown) => {
-                const parsed = parseCuentaPorPagarError(
-                  err,
-                  "Error al eliminar la cuenta por pagar.",
-                );
-                if (parsed.kind === "conflict") {
-                  setDeleteConflict({
-                    id,
-                    message: parsed.formError ?? CXP_CONFLICT_FALLBACK_MESSAGE,
-                  });
-                  return;
-                }
-                closeDeleteDialog(id);
-              })
-              .finally(() => deleteLock.release(id));
-          }}
-          confirmColor="red"
-        />
-      )}
-    </div>
+            confirmText={
+              deleteLock.isPending(deleteTarget.id)
+                ? "Eliminando..."
+                : conflictMessage
+                  ? "Reintentar"
+                  : "Eliminar permanentemente"
+            }
+            cancelText="Volver"
+            // `closeOnConfirm={false}`: el cierre lo decide el resultado. Un 409
+            // DEJA el diálogo abierto con "Reintentar"; el éxito y cualquier otro
+            // error lo cierran (el toast del hook ya explicó el motivo).
+            closeOnConfirm={false}
+            onConfirm={() => {
+              const id = deleteTarget.id;
+              if (!deleteLock.acquire(id)) return;
+              openDeleteIdRef.current = id;
+              setDeleteConflict(null);
+              deleteCuentaAsync(id)
+                .then(() => closeDeleteDialog(id))
+                .catch((err: unknown) => {
+                  const parsed = parseCuentaPorPagarError(
+                    err,
+                    "Error al eliminar la cuenta por pagar.",
+                  );
+                  if (parsed.kind === "conflict") {
+                    setDeleteConflict({
+                      id,
+                      message: parsed.formError ?? CXP_CONFLICT_FALLBACK_MESSAGE,
+                    });
+                    return;
+                  }
+                  closeDeleteDialog(id);
+                })
+                .finally(() => deleteLock.release(id));
+            }}
+            confirmColor="red"
+          />
+        )}
+      </div>
+    </AccountsPayableRowActionsProvider>
   );
 }

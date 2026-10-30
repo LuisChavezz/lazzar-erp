@@ -1,43 +1,102 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { ChevronRightIcon, DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { CXP_ESTATUS_CONFIG } from "../constants/cxpEstatus";
+import {
+  CXP_ESTATUS_CONFIG,
+  CXP_VENCIDA_BADGE_CONFIG,
+  CXP_VENCIDA_BADGE_KEY,
+} from "../constants/cxpEstatus";
 import {
   canDeleteCuentaPorPagar,
   hasAppliedPayments,
   isCuentaPorPagarVencida,
 } from "../utils/accounts-payable.utils";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
+import { useAccountsPayableRowActionsContext } from "../hooks/useAccountsPayableRowActions";
 
 const columnHelper = createColumnHelper<CuentaPorPagar>();
 
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(CXP_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<CuentaPorPagar> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
-
-interface AccountsPayableColumnsOptions {
-  /** "Hoy" en la zona del backend, calculado UNA vez por la vista. */
-  today: string;
-  onViewDetail: (id: number) => void;
-  onDelete: (id: number) => void;
-  onGoToPayments: () => void;
+/**
+ * Vencimiento resaltado con la definición ÚNICA de vencida, la misma del badge
+ * y del filtro «Vencida / Al corriente». "Hoy" llega por el contexto del menú.
+ */
+function VencimientoCell({ cuenta }: { cuenta: CuentaPorPagar }) {
+  const { today } = useAccountsPayableRowActionsContext();
+  if (!cuenta.fecha_vencimiento) {
+    return <span className="text-slate-400 dark:text-slate-600">—</span>;
+  }
+  const vencida = isCuentaPorPagarVencida(cuenta, today);
+  return (
+    <span
+      className={`whitespace-nowrap tabular-nums ${
+        vencida ? "text-red-600 dark:text-red-400 font-semibold" : "text-slate-500 dark:text-slate-400"
+      }`}
+    >
+      {formatShortDate(cuenta.fecha_vencimiento, { timeZone: "UTC" })}
+    </span>
+  );
 }
 
 /**
- * Columnas del listado de cuentas por pagar.
+ * Celda del identificador: la CxP NO tiene folio propio, así que su `#id` ES el
+ * menú de la fila (`FolioActionMenu`, modo folio) y debajo va su estatus, más la
+ * marca DERIVADA de vencida cuando aplica (no es un estatus: va junto al badge,
+ * nunca en su lugar). "Ver detalle" es siempre la primera acción. Callbacks,
+ * "hoy" y "en vuelo" llegan por contexto (`AccountsPayableRowActionsProvider`).
+ */
+function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
+  const { onViewDetail, onDelete, onGoToPayments, today, busyIds } =
+    useAccountsPayableRowActionsContext();
+
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cuenta) },
+  ];
+  if (canDeleteCuentaPorPagar(cuenta)) {
+    items.push({
+      label: "Eliminar cuenta",
+      icon: DeleteIcon,
+      onSelect: () => onDelete(cuenta),
+      disabled: busyIds.includes(cuenta.id),
+    });
+  } else if (hasAppliedPayments(cuenta)) {
+    // Eliminar queda OCULTO con pagos aplicados (el backend respondería 400); en
+    // su lugar se dice qué hacer y se lleva a Pagos. Una cuenta `Cancelada` sin
+    // pagos no recibe esta pista: no es el motivo.
+    items.push({
+      label: "Cancela los pagos aplicados primero",
+      icon: ExternalLinkIcon,
+      onSelect: onGoToPayments,
+    });
+  }
+
+  const vencida = isCuentaPorPagarVencida(cuenta, today);
+  return (
+    <FolioActionMenu
+      folio={`#${cuenta.id}`}
+      items={items}
+      status={
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusBadge status={cuenta.estatus} config={CXP_ESTATUS_CONFIG} />
+          {vencida && (
+            <StatusBadge status={CXP_VENCIDA_BADGE_KEY} config={CXP_VENCIDA_BADGE_CONFIG} />
+          )}
+        </div>
+      }
+    />
+  );
+}
+
+/**
+ * Columnas del listado de cuentas por pagar. No reciben nada: callbacks, "hoy"
+ * y "en vuelo" llegan al menú por `AccountsPayableRowActionsProvider`, así una
+ * acción no remonta las celdas. La única que necesita "hoy" fuera del menú es
+ * el resaltado del vencimiento, que lo lee del mismo contexto.
  *
  * La CxP NO tiene folio propio en el contrato: el identificador visible es el
  * `id`, y el folio que se muestra aparte es el de su factura de proveedor.
@@ -46,89 +105,18 @@ interface AccountsPayableColumnsOptions {
  * `fecha_vencimiento`) usan un `accessorFn` que colapsa `null` a `''`: la
  * búsqueda global decide si una columna es filtrable mirando el valor de la
  * primera fila, y un `null` ahí la dejaba fuera de la búsqueda (mismo caso que
- * documenta `ProductionOrderColumns`). El `id` explícito conserva el orden y la
- * visibilidad de columnas que guarda `DataTable`.
+ * documenta `ProductionOrderColumns`).
  *
- * Las acciones solo INVOCAN callbacks: los diálogos de detalle y de borrado se
- * montan en `AccountsPayableList`, no aquí. Una celda se desmonta al ordenar,
- * filtrar o paginar, y el borrado optimista saca la fila de la tabla.
+ * Los diálogos de detalle y de borrado se montan en `AccountsPayableList`, no
+ * aquí: una celda se desmonta al ordenar, filtrar o paginar, y el borrado
+ * optimista saca la fila de la tabla.
  */
-export const getColumns = ({
-  today,
-  onViewDetail,
-  onDelete,
-  onGoToPayments,
-}: AccountsPayableColumnsOptions) =>
+export const getColumns = () =>
   [
     columnHelper.accessor("id", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>CxP</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
-      cell: (info) => {
-        const cuenta = info.row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(cuenta.id),
-          },
-        ];
-
-        if (canDeleteCuentaPorPagar(cuenta)) {
-          menuItems.push({
-            label: "Eliminar cuenta",
-            icon: DeleteIcon,
-            onSelect: () => onDelete(cuenta.id),
-          });
-        } else if (hasAppliedPayments(cuenta)) {
-          // Eliminar queda OCULTO con pagos aplicados (el backend respondería
-          // 400); en su lugar se dice qué hacer y se lleva a Pagos. Una cuenta
-          // `Cancelada` sin pagos no recibe esta pista: no es el motivo.
-          menuItems.push({
-            label: "Cancela los pagos aplicados primero",
-            icon: ExternalLinkIcon,
-            onSelect: onGoToPayments,
-          });
-        }
-
-        // El punto de color refleja el estatus, salvo que la cuenta esté
-        // VENCIDA (derivado, no es un estatus propio — ver `cxpEstatus.ts`):
-        // esa marca manda sobre el color para que salte a la vista aunque
-        // siga siendo `Pendiente` o `Parcial`.
-        const vencida = isCuentaPorPagarVencida(cuenta, today);
-        const statusCfg = CXP_ESTATUS_CONFIG[cuenta.estatus];
-        const dotLabel = vencida ? "Vencida" : statusCfg?.label ?? cuenta.estatus;
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full shrink-0 ${vencida ? "bg-red-500" : statusCfg?.dot ?? "bg-slate-400"}`}
-              title={dotLabel}
-              aria-hidden="true"
-            />
-            <span className="sr-only">{dotLabel}</span>
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones de la cuenta por pagar #${cuenta.id}`}
-              align="start"
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {`#${cuenta.id}`}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+      header: "CxP",
+      size: 170,
+      cell: (info) => <AccountsPayableIdCell cuenta={info.row.original} />,
     }),
     columnHelper.accessor((row) => row.proveedor_nombre ?? "", {
       id: "proveedor_nombre",
@@ -161,26 +149,7 @@ export const getColumns = ({
     columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
       id: "fecha_vencimiento",
       header: "Vencimiento",
-      cell: (info) => {
-        const value = info.getValue();
-        if (!value) {
-          return <span className="text-slate-400 dark:text-slate-600">—</span>;
-        }
-        // Resaltado con la definición ÚNICA de vencida, la misma del badge y del
-        // filtro "Solo vencidas".
-        const vencida = isCuentaPorPagarVencida(info.row.original, today);
-        return (
-          <span
-            className={`whitespace-nowrap tabular-nums ${
-              vencida
-                ? "text-red-600 dark:text-red-400 font-semibold"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            {formatShortDate(value, { timeZone: "UTC" })}
-          </span>
-        );
-      },
+      cell: (info) => <VencimientoCell cuenta={info.row.original} />,
     }),
     columnHelper.accessor("total", {
       header: "Total",
@@ -208,3 +177,34 @@ export const getColumns = ({
       ),
     }),
   ] as ColumnDef<CuentaPorPagar>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Se arman con "hoy" porque la vencida es DERIVADA:
+ * - El `#id` filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
+ * - El proveedor es un valor libre: sus opciones salen de las filas, con
+ *   buscador.
+ * - La emisión filtra por mes.
+ * - El vencimiento filtra «Vencida / Al corriente» con `isCuentaPorPagarVencida`,
+ *   la misma regla que pinta la marca (reemplaza al botón "Solo vencidas"). Una
+ *   cuenta sin vencimiento, pagada o cancelada cuenta como al corriente.
+ */
+export const getAccountsPayableHeaderFilters = (
+  today: string,
+): Partial<Record<string, HeaderFilterSpec<CuentaPorPagar>>> => ({
+  id: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(CXP_ESTATUS_CONFIG),
+  },
+  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true },
+  fecha_emision: { type: "month", get: (r) => r.fecha_emision },
+  fecha_vencimiento: {
+    type: "boolean",
+    get: (r) => isCuentaPorPagarVencida(r, today),
+    yes: "Vencida",
+    no: "Al corriente",
+  },
+});

@@ -1,7 +1,7 @@
 // Funciones puras de derivación para Cuentas por Pagar: la marca de vencida, las
 // reglas de borrado y el formato de importes por moneda. No consultan la hora por
 // su cuenta: la vista calcula "hoy" UNA vez (`getMexicoTodayDate`, el día del
-// backend) y lo comparte entre la tabla, el filtro "Solo vencidas" y el detalle.
+// backend) y lo comparte entre la tabla, el filtro «Vencida / Al corriente» y el detalle.
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
@@ -10,7 +10,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * DEFINICIÓN ÚNICA DE "VENCIDA" para una cuenta por pagar. La usan la marca de la
- * tabla, el filtro "Solo vencidas" y el detalle; ninguna superficie debe usar
+ * tabla, el filtro «Vencida / Al corriente» y el detalle; ninguna superficie debe usar
  * otro criterio.
  *
  * Es el MISMO criterio que `?vencidas=true` del backend. Una cuenta está vencida
