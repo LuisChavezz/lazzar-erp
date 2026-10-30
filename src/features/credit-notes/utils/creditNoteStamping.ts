@@ -57,7 +57,7 @@ export const canEmitCreditNote = (user: PermissionContext | null | undefined): b
 
 /** Por qué "Emitir" está bloqueado cuando `canEmitCreditNote` es `false`. */
 export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
-  "No tienes permiso para emitir notas de crédito: emitir timbra su CFDI y requiere el permiso de facturación.";
+  "No tienes permiso para emitir notas de crédito: si la empresa timbra con Facturama, emitir intenta timbrar su CFDI y requiere el permiso de facturación.";
 
 const relatedInvoiceLabel = (folio: string | null): string =>
   folio ? `La factura ${folio}` : "La factura relacionada";
@@ -194,12 +194,14 @@ export const getCreditNoteCancelBlockReason = (
 };
 
 /**
- * Aviso de la emisión, según nucleo-erp #732. El backend valida el CFDI dentro
- * de la transacción que aplica la nota a la cuenta por cobrar (factura sin
- * timbrar o datos fiscales faltantes: no se guarda nada) y DESPUÉS timbra. Si
- * Facturama rechaza, la emisión se revierte con el saldo intacto (un alta queda
+ * Aviso de la emisión, según nucleo-erp #732. Solo en la empresa dueña de la
+ * cuenta de Facturama el backend timbra: valida el CFDI dentro de la
+ * transacción que aplica la nota a la cuenta por cobrar (factura sin timbrar o
+ * datos fiscales faltantes: no se guarda nada) y DESPUÉS timbra. Si Facturama
+ * rechaza, la emisión se revierte con el saldo intacto (un alta queda
  * `Cancelada`, un borrador vuelve a `Borrador`); si no confirma, la nota queda
- * emitida con el timbrado pendiente.
+ * emitida con el timbrado pendiente. En otra empresa solo se aplica la nota. El
+ * front no sabe cuál es la empresa de Facturama, así que todo va condicionado.
  */
 export const CREDIT_NOTE_EMIT_STAMP_WARNING =
-  "Al emitirla se timbrará su CFDI de egreso ante el SAT, así que la factura debe estar timbrada. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si Facturama rechaza el timbrado, la emisión se revierte y el saldo por cobrar no cambia. Si Facturama no lo confirma, la nota queda emitida con el timbrado pendiente de confirmación.";
+  "Si la empresa timbra con Facturama, al emitirla se intentará timbrar su CFDI de egreso ante el SAT, y para eso la factura debe estar timbrada. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP. Si Facturama rechaza el timbrado, la emisión se revierte y el saldo por cobrar no cambia; si no lo confirma, la nota queda emitida con el timbrado pendiente de confirmación.";
