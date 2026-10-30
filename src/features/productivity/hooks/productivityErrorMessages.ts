@@ -50,3 +50,9 @@ export const PRODUCTIVITY_CHECK_FAILED_MESSAGE =
 /** Error de una acción sobre un registro: ver `drfActionErrorMessage`. */
 export const productivityActionErrorMessage = (error: unknown, fallback: string): string =>
   drfActionErrorMessage(error, fallback, PRODUCTIVITY_GONE_MESSAGE);
+
+/** Avisos de un diálogo de fila que se cerró por un cambio externo (`getStaleRowDialogNotice`). */
+export const PRODUCTIVITY_STALE_MESSAGES = {
+  gone: PRODUCTIVITY_GONE_MESSAGE,
+  estadoChanged: productivityEstadoChangedMessage,
+};

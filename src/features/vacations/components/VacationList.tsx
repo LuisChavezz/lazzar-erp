@@ -15,7 +15,10 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
@@ -39,7 +42,8 @@ import {
 } from "../hooks/useVacationRowActions";
 import { verifyVacationEstado } from "../hooks/verifyVacationEstado";
 import { diasLabel } from "../utils/diasLabel";
-import { buildVacationRows, getVacationStaleNotice } from "../utils/vacationRows";
+import { buildVacationRows } from "../utils/vacationRows";
+import { VACATION_STALE_MESSAGES } from "../hooks/vacationErrorMessages";
 
 /**
  * Permiso de aprobar y rechazar (D2). El catálogo de permisos no tiene un
@@ -151,32 +155,38 @@ export default function VacationList() {
   // diálogo no desaparezca sin explicación. Aprobar y rechazar esperan una
   // pendiente; el borrado, el estado con que se abrió (mientras se verifica no
   // se toca: el resultado lo decide `handleConfirmDelete`).
-  const staleApprove = getVacationStaleNotice(
-    approveTargetId,
-    approveTarget,
-    ESTADO_PENDIENTE,
-    isApproveBusy
-  );
+  const staleApprove = getStaleRowDialogNotice({
+    resource: "vacation",
+    targetId: approveTargetId,
+    target: approveTarget,
+    expectedEstado: ESTADO_PENDIENTE,
+    isBusy: isApproveBusy,
+    messages: VACATION_STALE_MESSAGES,
+  });
   if (staleApprove) {
     setApproveTargetId(null);
     setStaleNotice(staleApprove);
   }
-  const staleReject = getVacationStaleNotice(
-    rejectTargetId,
-    rejectTarget,
-    ESTADO_PENDIENTE,
-    isRejectBusy
-  );
+  const staleReject = getStaleRowDialogNotice({
+    resource: "vacation",
+    targetId: rejectTargetId,
+    target: rejectTarget,
+    expectedEstado: ESTADO_PENDIENTE,
+    isBusy: isRejectBusy,
+    messages: VACATION_STALE_MESSAGES,
+  });
   if (staleReject) {
     setRejectTargetId(null);
     setStaleNotice(staleReject);
   }
-  const staleDelete = getVacationStaleNotice(
-    deleteRequest?.id ?? null,
-    deleteTarget,
-    deleteRequest?.estado ?? ESTADO_PENDIENTE,
-    isCheckingDelete
-  );
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "vacation",
+    targetId: deleteRequest?.id ?? null,
+    target: deleteTarget,
+    expectedEstado: deleteRequest?.estado ?? ESTADO_PENDIENTE,
+    isBusy: isCheckingDelete,
+    messages: VACATION_STALE_MESSAGES,
+  });
   if (staleDelete) {
     setDeleteRequest(null);
     setStaleNotice(staleDelete);

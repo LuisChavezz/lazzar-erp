@@ -15,7 +15,10 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import {
+  getStaleRowDialogNotice,
+  type StaleRowDialogNotice,
+} from "@/src/utils/staleRowDialogNotice";
 import { formatQuincena, getQuincenaRange } from "@/src/utils/quincena";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
@@ -31,7 +34,9 @@ import {
   usePendingPayrollIds,
 } from "../hooks/usePayrollRowActions";
 import { verifyPayrollPendiente } from "../hooks/verifyPayrollPendiente";
-import { buildPayrollRows, getPayrollStaleNotice } from "../utils/payrollRows";
+import { ESTADO_PENDIENTE } from "../constants/payrollChoices";
+import { buildPayrollRows } from "../utils/payrollRows";
+import { PAYROLL_STALE_MESSAGES } from "../hooks/payrollErrorMessages";
 import { getColumns, PAYROLL_HEADER_FILTERS } from "./PayrollColumns";
 import PayrollForm from "./PayrollForm";
 import { PayrollDetailDialog } from "./PayrollDetailDialog";
@@ -127,22 +132,28 @@ export default function PayrollList() {
   // y cancelar esperan una pendiente, y no se tocan mientras su guarda (la de
   // pagar vive en su diálogo) o su escritura están en vuelo.
   const stalePay = listSettled
-    ? getPayrollStaleNotice(
-        payTargetId,
-        payTarget,
-        isPayChecking || (payTargetId !== null && busyIds.includes(payTargetId))
-      )
+    ? getStaleRowDialogNotice({
+        resource: "payroll",
+        targetId: payTargetId,
+        target: payTarget,
+        expectedEstado: ESTADO_PENDIENTE,
+        isBusy: isPayChecking || (payTargetId !== null && busyIds.includes(payTargetId)),
+        messages: PAYROLL_STALE_MESSAGES,
+      })
     : null;
   if (stalePay) {
     setPayTargetId(null);
     setStaleNotice(stalePay);
   }
   const staleCancel = listSettled
-    ? getPayrollStaleNotice(
-        cancelTargetId,
-        cancelTarget,
-        isChecking || (cancelTargetId !== null && busyIds.includes(cancelTargetId))
-      )
+    ? getStaleRowDialogNotice({
+        resource: "payroll",
+        targetId: cancelTargetId,
+        target: cancelTarget,
+        expectedEstado: ESTADO_PENDIENTE,
+        isBusy: isChecking || (cancelTargetId !== null && busyIds.includes(cancelTargetId)),
+        messages: PAYROLL_STALE_MESSAGES,
+      })
     : null;
   if (staleCancel) {
     setCancelTargetId(null);
