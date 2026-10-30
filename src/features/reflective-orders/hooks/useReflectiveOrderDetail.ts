@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getReflectiveOrderDetail } from "../services/actions";
 import type { ReflectiveOrderDetail } from "../interfaces/reflective-order.interface";
 
+/** Llave del detalle; la comparte la mutación de edición para invalidarlo. */
+export const reflectiveOrderDetailQueryKey = (id: number | null) =>
+  ["reflective-order-detail", id] as const;
+
 /**
  * Detalle de una orden de reflejante (`GET /produccion/orden-reflejante/{id}/`).
  * Llave `["reflective-order-detail", id]`.
@@ -19,7 +23,7 @@ import type { ReflectiveOrderDetail } from "../interfaces/reflective-order.inter
  */
 export const useReflectiveOrderDetail = (id: number | null) => {
   return useQuery<ReflectiveOrderDetail>({
-    queryKey: ["reflective-order-detail", id],
+    queryKey: reflectiveOrderDetailQueryKey(id),
     queryFn: () => getReflectiveOrderDetail(id as number),
     enabled: id !== null && id > 0,
   });

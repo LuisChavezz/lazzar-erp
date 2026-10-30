@@ -5,6 +5,7 @@ import type {
   ReflectiveOnboardingData,
   ReflectiveOrder,
   ReflectiveOrderDetail,
+  UpdateReflectiveOrderPayload,
 } from "../interfaces/reflective-order.interface";
 
 /**
@@ -117,4 +118,27 @@ export const createReflectiveOrder = async (
     data,
   );
   return response.data;
+};
+
+/**
+ * Edición parcial de una orden de reflejante
+ * (`PATCH /produccion/orden-reflejante/{id}/`, nucleo-erp #755): estatus,
+ * prioridad y observaciones (ver `UpdateReflectiveOrderPayload`). Solo se
+ * envían los campos que cambian.
+ *
+ * NO devuelve nada, a propósito: la respuesta es la de
+ * `OrdenReflejanteEditarSerializer` (`id`, `folio_reflejante`, estatus,
+ * prioridad, `fecha_fin`, `observaciones`), no la forma del detalle. Meterla en
+ * la caché con `setQueryData` dejaría la ficha sin `detalles` ni cobertura;
+ * para refrescar se re-consulta (ver `useUpdateReflectiveOrder`). Mismo
+ * criterio que `updateEmbroideryOrder`.
+ *
+ * Una orden ya cancelada (`7`) responde `400` con el mensaje bajo la clave
+ * `estatus_reflejante`, mande lo que mande el cuerpo.
+ */
+export const updateReflectiveOrder = async (
+  id: number,
+  data: UpdateReflectiveOrderPayload,
+): Promise<void> => {
+  await v1_api.patch(`/produccion/orden-reflejante/${id}/`, data);
 };
