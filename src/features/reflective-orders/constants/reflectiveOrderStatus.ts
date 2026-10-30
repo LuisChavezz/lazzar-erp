@@ -15,7 +15,7 @@ import type { ReflectiveOrderStatus } from "../interfaces/reflective-order.inter
  * enums gemelos en forma pero distintos en etiquetas. No se comparten configs.
  *
  * Toda orden nace en `1` (Pendiente) y avanza desde su ficha de detalle con el
- * `PATCH` de nucleo-erp #755 (ver `ReflectiveOrderStatusSelect`); los 7 valores
+ * `PATCH` de nucleo-erp #755 (ver `WorkOrderStatusSelect`); los 7 valores
  * llegan en la práctica. La tabla todavía no ofrece filtro por estatus.
  *
  * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 7
@@ -139,12 +139,6 @@ export const REFLECTIVE_ORDER_COVERAGE_CONFIG: Record<string, StatusBadgeConfigE
     dot: "bg-sky-500",
   },
 };
-
-/**
- * Las únicas prioridades que ofrece el selector de la ficha: el backend acepta
- * cualquier entero, pero la UI se cierra a las tres que sabe rotular.
- */
-export const REFLECTIVE_ORDER_PRIORITY_CODES = [1, 2, 3] as const;
 
 /** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
 export const reflectiveOrderPriorityFallback = (
