@@ -1,8 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  mutationOptions,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoProgramarQueryKey } from "@/src/features/orders/hooks/usePedidoProgramarContexto";
 import { useMutationLock } from "@/src/hooks/useMutationLock";
+import type { SampleProductionVariant } from "../interfaces/special-order.interface";
 import { altaCatalogoLinea } from "../services/actions";
 import {
   isCategoryRejection,
@@ -31,7 +37,7 @@ interface AltaCatalogoVariables {
  *
  * Con `categoriaProductoId` el alta SÍ toca la línea del pedido (le guarda la
  * categoría), así que también se releen el detalle de ventas
- * (`["pedido-detail", id]`, que muestra `categoria_producto_nombre`) y
+ * (`["pedido-detail", id]`, que trae `categoria_producto` de cada línea) y
  * "Programar pedido" (`["pedido-programar", id]`). El pedido especial y el de
  * ventas son el mismo `Pedido`, así que comparten id.
  *
@@ -40,13 +46,13 @@ interface AltaCatalogoVariables {
  * elegida (`isCategoryRejection`) NO da toast: lo muestra el diálogo, que sigue
  * abierto para elegir otra.
  */
-export const useAltaCatalogoLinea = (pedidoId: number, pedidoDetalleId: number) => {
-  const queryClient = useQueryClient();
-  const mutationKey = altaCatalogoMutationKey(pedidoId, pedidoDetalleId);
-  const { isRunning, isIdle } = useMutationLock(mutationKey);
-
-  const mutation = useMutation({
-    mutationKey,
+export const altaCatalogoMutationOptions = (
+  queryClient: QueryClient,
+  pedidoId: number,
+  pedidoDetalleId: number,
+) =>
+  mutationOptions<SampleProductionVariant[], unknown, AltaCatalogoVariables>({
+    mutationKey: altaCatalogoMutationKey(pedidoId, pedidoDetalleId),
     mutationFn: ({ categoriaProductoId }: AltaCatalogoVariables) =>
       altaCatalogoLinea(pedidoId, pedidoDetalleId, categoriaProductoId),
     onSuccess: async (variants, { categoriaProductoId }) => {
@@ -73,6 +79,17 @@ export const useAltaCatalogoLinea = (pedidoId: number, pedidoDetalleId: number) 
       }
     },
   });
+
+/**
+ * Hook de `altaCatalogoMutationOptions` (ahí el detalle de invalidaciones y
+ * errores) con el candado por línea.
+ */
+export const useAltaCatalogoLinea = (pedidoId: number, pedidoDetalleId: number) => {
+  const queryClient = useQueryClient();
+  const mutationOpts = altaCatalogoMutationOptions(queryClient, pedidoId, pedidoDetalleId);
+  const { isRunning, isIdle } = useMutationLock(mutationOpts.mutationKey);
+
+  const mutation = useMutation(mutationOpts);
 
   /** Dispara el alta salvo que ya haya una en vuelo para ESTA línea. */
   const altaCatalogo = (
