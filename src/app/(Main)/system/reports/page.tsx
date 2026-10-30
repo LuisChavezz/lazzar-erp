@@ -6,6 +6,7 @@ import { Button } from "@/src/components/Button";
 import { ArrowLeftIcon, DownloadIcon } from "@/src/components/Icons";
 import { ReportSelector, type ReportId } from "@/src/features/reports/components/ReportSelector";
 import { StockMovementReportView } from "@/src/features/reports/components/StockMovementReportView";
+import { MovementLedgerView } from "@/src/features/reports/components/MovementLedgerView";
 import { StockReportFilters } from "@/src/features/reports/components/StockReportFilters";
 import { StockReportSummary } from "@/src/features/reports/components/StockReportSummary";
 import { stockReportColumns } from "@/src/features/reports/components/StockReportColumns";
@@ -28,7 +29,8 @@ export default function ReportsPage() {
   // Navegación de sub-vista por estado local (Opción A), como el flujo
   // "elegir → entrar → volver" de `ConfigContent` (que también usa estado, no
   // URL). Con `null` se muestra el menú de reportes; al elegir uno se entra a su
-  // flujo. Con un solo reporte hoy, cualquier valor no nulo es "existencias".
+  // flujo. "movimientos" y "auxiliar" tienen su propia vista; el flujo que
+  // sigue en esta página es el de "existencias".
   const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
 
   const gateComplete =
@@ -120,6 +122,11 @@ export default function ReportsPage() {
   // Vista autónoma con su propio estado (tipo/almacén/fechas/página).
   if (selectedReport === "movimientos") {
     return <StockMovementReportView onBack={handleBackToSelector} />;
+  }
+
+  // ── Flujo del Auxiliar de movimientos (kardex de un SKU) ────────────────────
+  if (selectedReport === "auxiliar") {
+    return <MovementLedgerView onBack={handleBackToSelector} />;
   }
 
   // ── Flujo del Reporte de Existencias (idéntico al previo, ahora tras el menú) ─
