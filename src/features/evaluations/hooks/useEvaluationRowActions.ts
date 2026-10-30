@@ -1,48 +1,30 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { useMutationState } from "@tanstack/react-query";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { Evaluation } from "../interfaces/evaluation.interface";
 import { deleteEvaluationMutationKey } from "./useDeleteEvaluation";
 
-// ─── Contexto para el menú de fila ────────────────────────────────────────────
-// Los callbacks llegan al menú (`EvaluationRowActionsMenu`) por contexto, NO por
-// la factoría de columnas: si el id "en borrado" viajara dentro de
-// `getColumns(...)`, cada inicio y fin de un borrado crearía funciones `cell`
-// nuevas y React remontaría TODAS las celdas (se cierra el menú abierto de otra
-// fila, caducan las refs). Mismo patrón que `useIncidentRowActions`.
-
+/**
+ * Todos reciben la evaluación y el padre guarda solo su id: el diálogo se
+ * resuelve contra el listado completo, así sobrevive a que la fila salga de la
+ * vista filtrada (completarla cambia `estado`, que es un filtro).
+ */
 export interface EvaluationRowActionsContextValue {
   onEdit: (evaluation: Evaluation) => void;
   onDelete: (evaluation: Evaluation) => void;
-  /** Ids con un borrado en vuelo (`usePendingEvaluationDeleteIds`, calculado en la lista). */
-  deletingIds: number[];
+  /** Ids con un borrado en vuelo (`usePendingEvaluationIds`, calculado en la lista). */
+  busyIds: number[];
 }
 
-const EvaluationRowActionsContext = createContext<EvaluationRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } = createRowActionsContext<EvaluationRowActionsContextValue>(
+  "EvaluationNameCell",
+  "EvaluationList"
+);
 
-export const EvaluationRowActionsProvider = EvaluationRowActionsContext.Provider;
+/** Callbacks y "en vuelo" del menú de fila (`EvaluationNameCell`); ver `createRowActionsContext`. */
+export const EvaluationRowActionsProvider = Provider;
+export const useEvaluationRowActionsContext = useRowActionsContext;
 
-/** Para `EvaluationRowActionsMenu`: exige estar bajo un `EvaluationRowActionsProvider`. */
-export function useEvaluationRowActionsContext(): EvaluationRowActionsContextValue {
-  const value = useContext(EvaluationRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "EvaluationRowActionsMenu debe renderizarse dentro de un EvaluationRowActionsProvider (ver EvaluationList)."
-    );
-  }
-  return value;
-}
-
-/**
- * Ids de evaluación con un borrado EN CURSO, leídos de la `MutationCache` y no
- * de la instancia de `useMutation`, que solo recuerda su ÚLTIMA llamada. Se
- * llama UNA vez en `EvaluationList` y el resultado llega a cada menú por el
- * contexto (`deletingIds`), no con una suscripción por fila.
- */
-export function usePendingEvaluationDeleteIds(): number[] {
-  return useMutationState({
-    filters: { mutationKey: [...deleteEvaluationMutationKey], status: "pending" },
-    select: (mutation) => mutation.state.variables as number,
-  });
-}
+/** Ids de evaluación con un borrado en curso. Una sola suscripción, en `EvaluationList`. */
+export const usePendingEvaluationIds = () => usePendingRecordIds(deleteEvaluationMutationKey);

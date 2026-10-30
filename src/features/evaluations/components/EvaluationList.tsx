@@ -1,58 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
+import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { EvaluationIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
-import { getColumns, EvaluationRow } from "./EvaluationColumns";
+import { getColumns, EVALUATION_HEADER_FILTERS } from "./EvaluationColumns";
 import { Evaluation } from "../interfaces/evaluation.interface";
-import {
-  ESTADO_COMPLETADA,
-  ESTADO_EVALUACION_OPTIONS,
-  PERIODO_EVALUACION_OPTIONS,
-  TIPO_EVALUACION_OPTIONS,
-} from "../constants/evaluationChoices";
+import { ESTADO_PENDIENTE } from "../constants/evaluationChoices";
 import EvaluationForm from "./EvaluationForm";
 import { useEvaluations } from "../hooks/useEvaluations";
 import { useDeleteEvaluation } from "../hooks/useDeleteEvaluation";
 import {
   EvaluationRowActionsProvider,
-  usePendingEvaluationDeleteIds,
+  usePendingEvaluationIds,
 } from "../hooks/useEvaluationRowActions";
+import { buildEvaluationRows, EVALUATION_STALE_MESSAGES } from "../utils/evaluationRows";
 
 export default function EvaluationList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvaluation, setSelectedEvaluation] = useState<Evaluation | null>(null);
-  // El diálogo de borrado vive aquí y no en la celda: la celda se desmonta al
-  // ordenar/paginar/filtrar. Se guarda el ID y se resuelve contra el listado
-  // COMPLETO (ver `evaluationToDelete`).
+  // Diálogo de fila: solo el id, resuelto contra el listado COMPLETO — la
+  // celda se desmonta al ordenar/paginar/filtrar, y completar una evaluación
+  // cambia `estado`, que es un filtro.
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const { evaluations, isLoading, isInitialError, error } = useEvaluations();
   const { employees } = useEmployees();
-  const { mutate: deleteEvaluation } = useDeleteEvaluation();
+  const { mutate: deleteEvaluation, isPending: isDeletePending } = useDeleteEvaluation();
   // Borrados en vuelo: UNA suscripción para toda la tabla, que llega a los
-  // menús por contexto.
-  const deletingIds = usePendingEvaluationDeleteIds();
+  // menús por contexto y a la guarda de abajo.
+  const busyIds = usePendingEvaluationIds();
+  // Aviso del diálogo de fila que se cerró porque su evaluación cambió por
+  // fuera. Se dispara desde un efecto: un toast en pleno render actualizaría
+  // otro componente (el Toaster).
+  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin".
   const canEditHr = hasPermission("E-RH", session?.user);
   const canDeleteHr = hasPermission("D-RH", session?.user);
 
-  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente (ver
-  // CLAUDE.md y `IncidentList`).
+  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente.
   const handleEdit = (evaluation: Evaluation) => {
     setSelectedEvaluation(evaluation);
     setIsDialogOpen(true);
   };
-
-  const handleDelete = (evaluation: Evaluation) => setDeleteTargetId(evaluation.id);
 
   const handleNew = () => {
     setSelectedEvaluation(null);
@@ -65,58 +68,63 @@ export default function EvaluationList() {
   const employeeNameById = new Map(
     employees.map((employee) => [employee.id, getEmployeeFullName(employee)])
   );
-  const employeeName = (id: number) => employeeNameById.get(id) ?? `Empleado #${id}`;
 
   // Los nombres se incorporan a la FILA, no al accessor: así la llegada tardía
-  // del catálogo produce un `data` nuevo y TanStack recalcula celda, búsqueda y
-  // orden. Ver `EvaluationRow`.
-  const rows: EvaluationRow[] = evaluations.map((evaluation) => ({
-    ...evaluation,
-    empleado_nombre: employeeName(evaluation.empleado),
-    evaluador_nombre:
-      evaluation.evaluador === null ? "Sin evaluador" : employeeName(evaluation.evaluador),
-  }));
+  // del catálogo produce un `data` nuevo y TanStack recalcula celda, búsqueda,
+  // orden y opciones de filtro. Ver `EvaluationRow`.
+  const rows = buildEvaluationRows(evaluations, employeeNameById);
 
-  // Filtros en memoria sobre el valor CRUDO de la fila (`row.estado`,
-  // `row.empleado`, ...). Las opciones de empleado salen del catálogo COMPLETO
-  // (activos e inactivos), no de las filas visibles: si salieran de las filas,
-  // borrar la última evaluación de un empleado dejaría su filtro activo sin
-  // opción (el chip mostraría el id crudo) y, sin filas, sin config (el chip
-  // desaparecería con el filtro aún aplicado). La config existe siempre.
-  const empleadoFilterOptions = employees
-    .map((employee) => ({
-      value: String(employee.id),
-      label: employee.activo
-        ? getEmployeeFullName(employee)
-        : `${getEmployeeFullName(employee)} (inactivo)`,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estado", options: ESTADO_EVALUACION_OPTIONS },
-    { id: "tipo", label: "Tipo", options: TIPO_EVALUACION_OPTIONS },
-    { id: "periodo", label: "Periodo", options: PERIODO_EVALUACION_OPTIONS },
-    { id: "empleado", label: "Empleado", options: empleadoFilterOptions },
-  ];
-
-  // Solo dependen de los permisos: callbacks y "en borrado" llegan al menú por
+  // Solo dependen de los permisos: callbacks y "en vuelo" llegan al menú por
   // `EvaluationRowActionsProvider`, así un borrado no remonta las celdas.
-  const columns = getColumns({ canEdit: canEditHr, canDelete: canDeleteHr });
+  const columns = withHeaderFilters(
+    getColumns({ canEdit: canEditHr, canDelete: canDeleteHr }),
+    rows,
+    EVALUATION_HEADER_FILTERS
+  );
 
-  // La confirmación se resuelve contra el arreglo COMPLETO, así muestra el
-  // estado vigente tras un refetch. Mismo criterio que `IncidentList`.
-  const evaluationToDelete =
-    deleteTargetId !== null
-      ? (evaluations.find((evaluation) => evaluation.id === deleteTargetId) ?? null)
-      : null;
+  // ── Diálogo de fila, resuelto contra el listado COMPLETO ──────────────────
+  const deleteTarget =
+    deleteTargetId !== null ? (rows.find((row) => row.id === deleteTargetId) ?? null) : null;
+  // En vuelo: el "en vuelo" por fila de la caché o la mutación propia, que
+  // sigue pendiente hasta que su `onSettled` cierra el diálogo (el optimista
+  // saca la fila del listado al confirmar).
+  const isDeleting =
+    deleteTargetId !== null && (busyIds.includes(deleteTargetId) || isDeletePending);
 
-  // Si la evaluación desaparece del payload, el id no puede quedar colgado (un
-  // refetch posterior reabriría el diálogo solo). Ajuste en RENDER, no en un
-  // efecto (`react-hooks/set-state-in-effect`).
-  if (deleteTargetId !== null && evaluationToDelete === null) setDeleteTargetId(null);
+  // Vía rápida contra la caché: un refetch mostró que la evaluación del
+  // diálogo abierto ya no existe o ya no está pendiente (una completada no se
+  // elimina). Se cierra con un aviso. Ajuste en render, no en un efecto.
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "evaluation",
+    targetId: deleteTargetId,
+    target: deleteTarget,
+    expectedEstado: ESTADO_PENDIENTE,
+    isBusy: isDeleting,
+    messages: EVALUATION_STALE_MESSAGES,
+  });
+  if (staleDelete) {
+    setDeleteTargetId(null);
+    setStaleNotice(staleDelete);
+  }
+
+  useEffect(() => {
+    if (staleNotice) {
+      // `id` estable: un doble render no duplica el aviso.
+      toast.error(staleNotice.message, { id: staleNotice.key });
+    }
+  }, [staleNotice]);
+
+  // Copia de la evaluación al ABRIR la confirmación: el texto no sigue a los
+  // refetch y sobrevive a la animación de salida cuando el id vuelve a `null`.
+  const deleteSession = useDialogSession(deleteTargetId !== null, deleteTarget);
 
   return (
     <EvaluationRowActionsProvider
-      value={{ onEdit: handleEdit, onDelete: handleDelete, deletingIds }}
+      value={{
+        onEdit: handleEdit,
+        onDelete: (evaluation) => setDeleteTargetId(evaluation.id),
+        busyIds,
+      }}
     >
       <DataTable
         columns={columns}
@@ -125,7 +133,6 @@ export default function EvaluationList() {
         // borrar, las filas siguientes cambian de posición.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar evaluación..."
-        filterConfig={filterConfig}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar evaluaciones"
@@ -139,11 +146,12 @@ export default function EvaluationList() {
                   title={selectedEvaluation ? "Editar Evaluación" : "Alta de Evaluación"}
                   subtitle={selectedEvaluation ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="violet"
+                  icon={EvaluationIcon}
                 />
               }
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
-              maxWidth="1000px"
+              maxWidth={DIALOG_WIDTH_FORM}
               trigger={
                 <Button
                   variant="primary"
@@ -165,23 +173,29 @@ export default function EvaluationList() {
       />
 
       {/*
-        Solo sobre pendientes: si la evaluación se completó mientras el diálogo
-        estaba abierto (refetch), la confirmación deja de ofrecerse.
+        Montado mientras haya una copia: `open` sale del id, así que al
+        cerrarse anima su salida con el nombre de la apertura. Queda abierto y
+        bloqueado (`busy`) hasta que el servidor responde y el listado se
+        refresca; entonces lo cierra su `onSettled`.
       */}
-      {canDeleteHr && evaluationToDelete && evaluationToDelete.estado !== ESTADO_COMPLETADA && (
+      {canDeleteHr && deleteSession.snapshot && (
         <ConfirmDialog
-          open
+          key={`delete-${deleteSession.id}`}
+          open={deleteTargetId !== null}
           onOpenChange={(open) => {
-            if (!open) {
-              setDeleteTargetId(null);
-            }
+            if (!open) setDeleteTargetId(null);
           }}
           title="Eliminar Evaluación"
-          description="¿Estás seguro de que deseas eliminar esta evaluación? Esta acción no se puede deshacer."
-          confirmText="Eliminar"
+          description={`¿Estás seguro de que deseas eliminar la evaluación de ${deleteSession.snapshot.empleado_nombre}? Esta acción no se puede deshacer.`}
+          confirmText={isDeleting ? "Eliminando..." : "Eliminar"}
+          closeOnConfirm={false}
+          busy={isDeleting}
           onConfirm={() => {
-            deleteEvaluation(evaluationToDelete.id);
-            setDeleteTargetId(null);
+            const id = deleteSession.snapshot?.id;
+            if (id === undefined) return;
+            deleteEvaluation(id, {
+              onSettled: () => setDeleteTargetId(null),
+            });
           }}
           confirmColor="red"
         />
