@@ -186,6 +186,16 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     setSizeErrors((prev) => ({ ...prev, [productId]: message }));
   }, []);
 
+  /** Quita el error de una fila (p. ej. al reintentar la carga de sus tallas). */
+  const clearSizeError = useCallback((productId: number) => {
+    setSizeErrors((prev) => {
+      if (!prev[productId]) return prev;
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  }, []);
+
   const reset = useCallback((item?: QuoteItem | null) => {
     setSizeQuantitiesPerProduct(buildInitialSizeMap(item));
     setSizeErrors({});
@@ -199,6 +209,7 @@ export function useSizesState({ initialItem }: UseSizesStateParams) {
     pruneProductSizes,
     validateSelectedRows,
     setSizeError,
+    clearSizeError,
     getItemSizes,
     reset,
   };

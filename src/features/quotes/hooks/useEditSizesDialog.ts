@@ -27,8 +27,14 @@ import { MUESTRA_ROW_ID } from '../types';
 import type { CatalogRow, QuoteItem } from '../types';
 import { useSizesState } from './useSizesState';
 import { useMuestraCategorySizes } from './useMuestraCategorySizes';
-import { findIncompatibleSizes, INCOMPATIBLE_SIZES_ERROR } from '../utils/muestraCategorySizes';
+import {
+  findIncompatibleSizes,
+  getMuestraSizesBlock,
+  MUESTRA_SIZES_PENDING,
+} from '../utils/muestraCategorySizes';
 import { reflectiveInventoryCapError } from '../utils/reflectiveInventoryCap';
+
+const NO_RETRY = () => {};
 
 export interface UseEditSizesDialogOptions {
   /** Partida cuyas tallas se van a editar. */
@@ -99,19 +105,22 @@ export function useEditSizesDialog({
   // Tallas guardadas que no son de la categoría de la muestra (datos de antes de
   // EC-647). Se listan marcadas para quitarlas a mano: `getItemSizes` solo
   // recorre `effectiveSizes`, así que guardar con ellas las perdería en silencio.
-  // Solo con categoría y con su lista ya cargada.
+  // Solo cuando la lista es la de la categoría (`restricted`) y ya cargó: con el
+  // catálogo global de respaldo una talla ausente no es "de otra categoría".
   const muestraSizesStatus = muestraSizes?.status ?? null;
+  const isRestricted = muestraSizes?.restricted ?? false;
   const incompatibleSizes = useMemo(
     () =>
-      muestraSizesStatus === null && muestraCategoryId !== null && rowId !== null
+      muestraSizesStatus === null && isRestricted && rowId !== null
         ? findIncompatibleSizes(sizesState.sizeQuantitiesPerProduct[rowId], effectiveSizes, [
             ...(item?.tallas ?? []).map((talla) => ({ id: talla.tallaId, nombre: talla.nombre })),
             ...sizes,
           ])
         : [],
-    [muestraSizesStatus, muestraCategoryId, rowId, sizesState.sizeQuantitiesPerProduct, effectiveSizes, item?.tallas, sizes]
+    [muestraSizesStatus, isRestricted, rowId, sizesState.sizeQuantitiesPerProduct, effectiveSizes, item?.tallas, sizes]
   );
-  const { updateSizeQuantity } = sizesState;
+  const { updateSizeQuantity, clearSizeError } = sizesState;
+  const retryMuestraSizes = muestraSizes?.retry ?? NO_RETRY;
 
   // Auto-expande el producto único al montar: el diálogo edita un solo
   // producto y siempre debe mostrarse expandido para facilitar la edición.
@@ -147,15 +156,11 @@ export function useEditSizesDialog({
     (onSave: (updatedItem: QuoteItem) => void) => {
       if (!item || itemIndex === null || !selectedRow) return;
 
-      // Lista de la categoría sin cargar, o tallas fuera de ella: no se guarda.
-      // Va antes de `validateSelectedRows`, que se salta una fila sin tallas
-      // disponibles.
-      if (muestraSizesStatus === 'loading') return;
-      if (muestraSizesStatus === 'error' || incompatibleSizes.length > 0) {
-        sizesState.setSizeError(
-          selectedRow.id,
-          muestraSizesStatus === 'error' ? 'Sin tallas de la categoría' : INCOMPATIBLE_SIZES_ERROR
-        );
+      // Lista de la categoría sin cargar, o tallas fuera de ella: no se guarda
+      // (`getMuestraSizesBlock`).
+      const block = getMuestraSizesBlock(muestraSizesStatus, incompatibleSizes.length);
+      if (block !== null) {
+        if (block !== MUESTRA_SIZES_PENDING) sizesState.setSizeError(selectedRow.id, block);
         return;
       }
 
@@ -220,10 +225,16 @@ export function useEditSizesDialog({
           : undefined,
       onRemoveIncompatibleSize: (productId: number, sizeId: number) =>
         updateSizeQuantity(productId, sizeId, ''),
+      onRetrySizes: (productId: number) => {
+        clearSizeError(productId);
+        retryMuestraSizes();
+      },
     }),
     [
       muestraSizesStatus,
       incompatibleSizes,
+      clearSizeError,
+      retryMuestraSizes,
       selectedRow,
       effectiveSizes,
       sizesState.sizeQuantitiesPerProduct,

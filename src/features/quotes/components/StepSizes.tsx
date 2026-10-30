@@ -57,12 +57,9 @@ interface StepSizesProps {
    */
   incompatibleSizesPerProduct?: Record<number, IncompatibleSize[]>;
   onRemoveIncompatibleSize?: (productId: number, sizeId: number) => void;
+  /** Vuelve a pedir las tallas de la fila cuando su carga falló. */
+  onRetrySizes?: (productId: number) => void;
 }
-
-const SIZES_STATUS_MESSAGES: Record<MuestraSizesStatus, string> = {
-  loading: MUESTRA_SIZES_LOADING_MESSAGE,
-  error: MUESTRA_SIZES_ERROR_MESSAGE,
-};
 
 export const StepSizes = memo(function StepSizes({
   selectedRows,
@@ -77,6 +74,7 @@ export const StepSizes = memo(function StepSizes({
   sizesStatusPerProduct,
   incompatibleSizesPerProduct,
   onRemoveIncompatibleSize,
+  onRetrySizes,
 }: StepSizesProps) {
   return (
     <div className="space-y-3 mt-2">
@@ -100,16 +98,17 @@ export const StepSizes = memo(function StepSizes({
           {selectedRows.map((row) => {
             const quantities = sizeQuantitiesPerProduct[row.id] ?? {};
             const sizesForProduct = sizesPerProduct[row.id] ?? [];
-            const totalQty = sizesForProduct.reduce(
-              (s, size) => s + parseSizeQuantity(quantities[size.id]),
-              0
-            );
+            const incompatibleSizes = incompatibleSizesPerProduct?.[row.id] ?? [];
+            // Las tallas fuera de categoría siguen capturadas mientras se ven:
+            // cuentan en el total, igual que en la tabla de la cotización.
+            const totalQty =
+              sizesForProduct.reduce((s, size) => s + parseSizeQuantity(quantities[size.id]), 0) +
+              incompatibleSizes.reduce((s, size) => s + parseSizeQuantity(size.cantidad), 0);
             const isOpen = openProductIds
               ? openProductIds.has(row.id)
               : openProductId === row.id;
             const hasError = Boolean(sizeErrors[row.id]);
             const sizesStatus = sizesStatusPerProduct?.[row.id];
-            const incompatibleSizes = incompatibleSizesPerProduct?.[row.id] ?? [];
 
             return (
               <div
@@ -193,16 +192,26 @@ export const StepSizes = memo(function StepSizes({
                             </ul>
                           </div>
                         )}
-                        {sizesStatus ? (
-                          <p
-                            role={sizesStatus === "error" ? "alert" : "status"}
-                            className={`text-sm ${
-                              sizesStatus === "error"
-                                ? "text-rose-600 dark:text-rose-400"
-                                : "text-slate-500 dark:text-slate-400"
-                            }`}
+                        {sizesStatus === "error" ? (
+                          <div
+                            role="alert"
+                            className="flex items-center justify-between gap-3 text-sm text-rose-600 dark:text-rose-400"
                           >
-                            {SIZES_STATUS_MESSAGES[sizesStatus]}
+                            <span>{MUESTRA_SIZES_ERROR_MESSAGE}</span>
+                            {onRetrySizes && (
+                              <button
+                                type="button"
+                                onClick={() => onRetrySizes(row.id)}
+                                aria-label={`Reintentar cargar las tallas de ${row.nombre}`}
+                                className="shrink-0 text-xs font-semibold hover:underline cursor-pointer"
+                              >
+                                Reintentar
+                              </button>
+                            )}
+                          </div>
+                        ) : sizesStatus === "loading" ? (
+                          <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
+                            {MUESTRA_SIZES_LOADING_MESSAGE}
                           </p>
                         ) : sizesForProduct.length === 0 ? (
                           <p className="text-sm text-slate-500 dark:text-slate-400">
