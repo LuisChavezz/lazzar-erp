@@ -63,10 +63,15 @@ export const getLineSizeNames = (line: SpecialOrderLine): string[] => [
  * Categorías que admiten todas las tallas de la línea (`getLineSizeNames`).
  *
  * La categoría trae los ids de sus `Talla` y la línea solo sus nombres, así que
- * los ids se traducen con el catálogo de tallas (`GET /catalogo/talla/`, solo
- * activas). Una categoría SIN tallas no acota (el backend acepta cualquiera).
- * Un id que el catálogo no conoce (talla inactiva) no cubre nada: mejor dejar
- * fuera una categoría que ofrecer una que el backend rechace.
+ * los ids se traducen con el catálogo de tallas (`GET /catalogo/talla/`, que
+ * solo devuelve ACTIVAS y no tiene forma de pedir las inactivas). Una categoría
+ * SIN tallas no acota (el backend acepta cualquiera).
+ *
+ * Una talla de la línea que el catálogo no conoce (desactivada después de
+ * cotizar) no se puede comprobar aquí, así que NO excluye categorías: el
+ * backend valida por id, inactivas incluidas, y su `400` (bajo el selector) es
+ * la última palabra. Bloquear al usuario por un dato que el front no ve sería
+ * peor que dejar que el backend decida.
  */
 export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
   categories: readonly C[],
@@ -74,7 +79,8 @@ export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
   sizes: readonly { id: number; nombre: string }[],
 ): C[] {
   const nameById = new Map(sizes.map((size) => [size.id, normalizeSizeName(size.nombre)]));
-  const required = getLineSizeNames(line);
+  const known = new Set(nameById.values());
+  const required = getLineSizeNames(line).filter((nombre) => known.has(nombre));
   return categories.filter((category) => {
     if (category.tallas.length === 0) return true;
     const allowed = new Set(category.tallas.map((id) => nameById.get(id)));
