@@ -5,7 +5,6 @@ import type {
   SpecialOrderTalla,
 } from "@/src/features/special-orders/interfaces/special-order.interface";
 import {
-  CATALOG_ALTA_WITH_EXISTING_SKUS,
   CATALOG_ALTA_WITHOUT_CATEGORY,
   getCatalogAltaBlockReason,
 } from "@/src/features/special-orders/utils/catalogAlta";
@@ -141,11 +140,11 @@ test.describe("getCatalogAltaBlockReason", () => {
     );
   });
 
-  test("con alguna talla con SKU de producción ya generado tampoco", () => {
+  test("los SKU de producción ya generados NO lo impiden: el backend reutiliza el producto", () => {
     const withSku = line({
       tallas: [talla({ id: 1, sku_produccion: "MP720-100-G" }), talla({ id: 2, talla_nombre: "XG" })],
     });
-    expect(getCatalogAltaBlockReason(withSku)).toBe(CATALOG_ALTA_WITH_EXISTING_SKUS);
+    expect(getCatalogAltaBlockReason(withSku)).toBeNull();
   });
 
   test("`sku_siguiente` en null NO cuenta como SKU generado", () => {
