@@ -30,10 +30,17 @@ interface ToggleChartOfAccountActivoPayload {
  * por la RAÍZ, que además refresca el selector de cuentas de la póliza —una
  * cuenta recién desactivada deja de ofrecerse ahí—.
  */
+/**
+ * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
+ * tienen un cambio de `activo` en vuelo (ver `usePendingChartOfAccountIds`).
+ */
+export const toggleChartOfAccountActivoMutationKey = ["toggle-chart-of-account-activo"] as const;
+
 export const useToggleChartOfAccountActivo = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: toggleChartOfAccountActivoMutationKey,
     mutationFn: ({ id, activo }: ToggleChartOfAccountActivoPayload) =>
       setChartOfAccountActivo(id, activo),
     onMutate: async ({ id, activo }) => {
