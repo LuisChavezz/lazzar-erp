@@ -15,7 +15,11 @@ import {
   type SampleSkuOnboardingFormValues,
   type SampleSkuOnboardingMaterialFormValues,
 } from "../schemas/sample-sku-onboarding.schema";
-import { getCatalogAltaState, resolveAltaCatalogo } from "../utils/catalogAlta";
+import {
+  getCatalogAltaState,
+  getDefaultAltaCatalogo,
+  resolveAltaCatalogo,
+} from "../utils/catalogAlta";
 import { type ChosenSampleColor, getSampleSkuPreview } from "../utils/sampleSkuPreview";
 import { useCreateSampleSkuOnboarding } from "./useCreateSampleSkuOnboarding";
 
@@ -61,6 +65,11 @@ export function useSampleSkuOnboardingForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // Valor inicial de la casilla de catálogo: el heredado de la línea AL ABRIR.
+  // Fijo en estado para que un refetch no reemplace la elección del usuario.
+  const [initialAltaCatalogo] = useState(() =>
+    getDefaultAltaCatalogo(getCatalogAltaState(line)),
+  );
 
   const { mutateAsync: createOnboarding, isPending } = useCreateSampleSkuOnboarding(
     pedidoId,
@@ -93,7 +102,7 @@ export function useSampleSkuOnboardingForm({
     defaultValues: {
       color: 0,
       materia_prima_detalle: [],
-      alta_catalogo: false,
+      alta_catalogo: initialAltaCatalogo,
     } as SampleSkuOnboardingFormValues,
     onSubmit: async ({ value }) => {
       const parsed = buildSampleSkuOnboardingSchema(requiresColor).safeParse(value);
@@ -126,8 +135,8 @@ export function useSampleSkuOnboardingForm({
         pedido_detalle_id: line.id,
         ...(requiresColor ? { color: parsed.data.color } : {}),
         materia_prima_detalle: parsed.data.materia_prima_detalle,
-        // Solo `true`, y con el estado de la línea AHORA: un refetch pudo traer
-        // SKU generados en otra sesión después de marcar la casilla.
+        // Solo `true`, y con el estado de la línea AHORA: un refetch pudo dejarla
+        // sin categoría después de marcar la casilla.
         ...(resolveAltaCatalogo(getCatalogAltaState(line), parsed.data.alta_catalogo)
           ? { alta_catalogo: true }
           : {}),
@@ -195,7 +204,6 @@ export function useSampleSkuOnboardingForm({
     requiresColor,
     skuPreview,
     catalogAlta,
-    catalogCategoryId: line.categoria_producto?.id ?? null,
     isSubmitting: isPending,
     formError,
     getError,
