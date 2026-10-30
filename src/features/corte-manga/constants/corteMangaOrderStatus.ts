@@ -18,7 +18,7 @@ import type { CorteMangaOrderStatus } from "../interfaces/corte-manga-order.inte
  *
  * Toda orden nace en `1` (Pendiente) —`estatus_corte` es `read_only` en el
  * serializer del alta— y avanza desde su ficha de detalle con el `PATCH` de
- * nucleo-erp #755 (ver `CorteMangaOrderStatusSelect`); los 7 valores llegan en
+ * nucleo-erp #755 (ver `WorkOrderStatusSelect`); los 7 valores llegan en
  * la práctica. La tabla todavía no ofrece filtro por estatus.
  *
  * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 7
@@ -114,12 +114,6 @@ export const CORTE_MANGA_ORDER_PRIORITY_CONFIG: Record<string, StatusBadgeConfig
     dot: "bg-slate-400",
   },
 };
-
-/**
- * Las únicas prioridades que ofrece el selector de la ficha: el backend acepta
- * cualquier entero, pero la UI se cierra a las tres que sabe rotular.
- */
-export const CORTE_MANGA_ORDER_PRIORITY_CODES = [1, 2, 3] as const;
 
 /** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
 export const corteMangaOrderPriorityFallback = (

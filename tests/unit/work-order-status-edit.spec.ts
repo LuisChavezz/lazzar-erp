@@ -1,14 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { buildReflectiveStatusPayload } from "@/src/features/reflective-orders/utils/buildReflectiveStatusPayload";
 import { buildCorteMangaStatusPayload } from "@/src/features/corte-manga/utils/buildCorteMangaStatusPayload";
-import {
-  getAvailableTransitions as getReflectiveTransitions,
-  isTerminalStatus as isReflectiveTerminal,
-} from "@/src/features/reflective-orders/constants/reflectiveOrderStatusTransitions";
-import {
-  getAvailableTransitions as getCorteMangaTransitions,
-  isTerminalStatus as isCorteMangaTerminal,
-} from "@/src/features/corte-manga/constants/corteMangaOrderStatusTransitions";
+import { getWorkOrderTransitions, isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 
 /**
  * Pruebas unitarias de EC-653: el cuerpo del `PATCH` de estatus de las órdenes
@@ -44,22 +37,17 @@ test.describe("buildCorteMangaStatusPayload", () => {
   });
 });
 
-for (const [name, getTransitions, isTerminal] of [
-  ["reflejante", getReflectiveTransitions, isReflectiveTerminal],
-  ["corte de manga", getCorteMangaTransitions, isCorteMangaTerminal],
-] as const) {
-  test.describe(`transiciones de ${name}`, () => {
-    test("ofrece todos los demás estatus menos Cancelado", () => {
-      expect(getTransitions(1)).toEqual([2, 3, 4, 5, 6]);
-      expect(getTransitions(5)).toEqual([1, 2, 3, 4, 6]);
-      expect(getTransitions(6)).toEqual([1, 2, 3, 4, 5]);
-    });
-
-    test("Cancelado es terminal y no tiene destinos", () => {
-      expect(isTerminal(7)).toBe(true);
-      expect(getTransitions(7)).toEqual([]);
-      expect(isTerminal(5)).toBe(false);
-      expect(isTerminal(6)).toBe(false);
-    });
+test.describe("transiciones de reflejante y corte de manga", () => {
+  test("ofrece todos los demás estatus menos Cancelado", () => {
+    expect(getWorkOrderTransitions(1)).toEqual([2, 3, 4, 5, 6]);
+    expect(getWorkOrderTransitions(5)).toEqual([1, 2, 3, 4, 6]);
+    expect(getWorkOrderTransitions(6)).toEqual([1, 2, 3, 4, 5]);
   });
-}
+
+  test("Cancelado es terminal y no tiene destinos", () => {
+    expect(isWorkOrderTerminal(7)).toBe(true);
+    expect(getWorkOrderTransitions(7)).toEqual([]);
+    expect(isWorkOrderTerminal(5)).toBe(false);
+    expect(isWorkOrderTerminal(6)).toBe(false);
+  });
+});

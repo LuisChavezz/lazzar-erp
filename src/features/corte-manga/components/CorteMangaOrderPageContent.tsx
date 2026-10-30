@@ -14,16 +14,21 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
+import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
+import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
+import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import { isTerminalStatus } from "../constants/corteMangaOrderStatusTransitions";
+import {
+  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
+  corteMangaOrderPriorityFallback,
+  corteMangaStatusEntry,
+} from "../constants/corteMangaOrderStatus";
 import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
 import { useUpdateCorteMangaOrder } from "../hooks/useUpdateCorteMangaOrder";
 import { buildCorteMangaStatusPayload } from "../utils/buildCorteMangaStatusPayload";
-import { CorteMangaOrderStatusSelect } from "./CorteMangaOrderStatusSelect";
-import { CorteMangaOrderPrioritySelect } from "./CorteMangaOrderPrioritySelect";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
 
@@ -215,7 +220,7 @@ export function CorteMangaOrderPageContent({
   // Cancelada (`7`): el backend responde `400` a cualquier `PATCH`, así que la
   // ficha entera pasa a solo lectura. Se suma la falta de permiso en una sola
   // bandera para que ningún control quede editable por olvidar una condición.
-  const isTerminal = isTerminalStatus(data.estatus_corte);
+  const isTerminal = isWorkOrderTerminal(data.estatus_corte);
   const isReadOnly = isTerminal || !canEdit;
 
   return (
@@ -276,9 +281,10 @@ export function CorteMangaOrderPageContent({
               />
             </InfoField>
             <InfoField label="Estatus">
-              <CorteMangaOrderStatusSelect
+              <WorkOrderStatusSelect
                 currentStatus={data.estatus_corte}
                 statusDisplay={data.estatus_corte_display}
+                statusEntry={corteMangaStatusEntry}
                 onStatusChange={(next) =>
                   updateOrder.mutate(buildCorteMangaStatusPayload(data.estatus_corte, next))
                 }
@@ -289,8 +295,10 @@ export function CorteMangaOrderPageContent({
               />
             </InfoField>
             <InfoField label="Prioridad">
-              <CorteMangaOrderPrioritySelect
+              <WorkOrderPrioritySelect
                 value={data.prioridad}
+                config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
+                fallback={corteMangaOrderPriorityFallback}
                 onChange={(prioridad) => updateOrder.mutate({ prioridad })}
                 isPending={updateOrder.isPending}
                 readOnly={isReadOnly}

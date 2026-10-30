@@ -16,18 +16,23 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
+import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
+import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
+import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
-import { REFLECTIVE_ORDER_COVERAGE_CONFIG } from "../constants/reflectiveOrderStatus";
-import { isTerminalStatus } from "../constants/reflectiveOrderStatusTransitions";
+import {
+  REFLECTIVE_ORDER_COVERAGE_CONFIG,
+  REFLECTIVE_ORDER_PRIORITY_CONFIG,
+  reflectiveOrderPriorityFallback,
+  reflectiveStatusEntry,
+} from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
 import { buildReflectiveStatusPayload } from "../utils/buildReflectiveStatusPayload";
-import { ReflectiveOrderStatusSelect } from "./ReflectiveOrderStatusSelect";
-import { ReflectiveOrderPrioritySelect } from "./ReflectiveOrderPrioritySelect";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
@@ -312,7 +317,7 @@ export function ReflectiveOrderDetailContent({
   // Cancelada (`7`): el backend responde `400` a cualquier `PATCH`, así que la
   // ficha entera pasa a solo lectura. Se suma la falta de permiso en una sola
   // bandera para que ningún control quede editable por olvidar una condición.
-  const isTerminal = isTerminalStatus(data.estatus_reflejante);
+  const isTerminal = isWorkOrderTerminal(data.estatus_reflejante);
   const isReadOnly = isTerminal || !canEdit;
 
   return (
@@ -383,9 +388,10 @@ export function ReflectiveOrderDetailContent({
               />
             </InfoField>
             <InfoField label="Estatus">
-              <ReflectiveOrderStatusSelect
+              <WorkOrderStatusSelect
                 currentStatus={data.estatus_reflejante}
                 statusDisplay={data.estatus_reflejante_display}
+                statusEntry={reflectiveStatusEntry}
                 onStatusChange={(next) =>
                   updateOrder.mutate(buildReflectiveStatusPayload(data.estatus_reflejante, next))
                 }
@@ -396,8 +402,10 @@ export function ReflectiveOrderDetailContent({
               />
             </InfoField>
             <InfoField label="Prioridad">
-              <ReflectiveOrderPrioritySelect
+              <WorkOrderPrioritySelect
                 value={data.prioridad}
+                config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
+                fallback={reflectiveOrderPriorityFallback}
                 onChange={(prioridad) => updateOrder.mutate({ prioridad })}
                 isPending={updateOrder.isPending}
                 readOnly={isReadOnly}
