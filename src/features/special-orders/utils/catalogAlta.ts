@@ -5,9 +5,9 @@ import type {
 } from "../interfaces/special-order.interface";
 import { isGeneratedTalla } from "./lineSkuStatus";
 
-/** Aviso del botón "Dar de alta en catálogo" deshabilitado por falta de categoría. */
+/** Aviso del botón "Dar de alta en catálogo" de una línea sin categoría. */
 export const CATALOG_ALTA_BUTTON_NO_CATEGORY =
-  "Sin categoría; se captura en la cotización.";
+  "La línea no tiene categoría: se elige al darla de alta.";
 
 /**
  * La talla tiene SKU de producción que aún no está en catálogo. Hace falta
@@ -26,6 +26,63 @@ export const hasPendingCatalogAlta = (line: SpecialOrderLine): boolean =>
   line.tallas.some(isTallaPendingCatalogAlta);
 
 /**
+ * Qué ofrece la tarjeta con "Dar de alta en catálogo":
+ *  - `hidden`: sin permiso o sin tallas pendientes de alta.
+ *  - `confirm`: la línea tiene categoría; solo se confirma.
+ *  - `choose-category`: la línea no tiene categoría; el diálogo la pide y el
+ *    alta la guarda en la línea (nucleo-erp #797).
+ */
+export type CatalogAltaButtonState = "hidden" | "confirm" | "choose-category";
+
+export const getCatalogAltaButtonState = (
+  line: SpecialOrderLine,
+  canGenerateSkus: boolean,
+): CatalogAltaButtonState => {
+  if (!canGenerateSkus || !hasPendingCatalogAlta(line)) return "hidden";
+  return line.categoria_producto === null ? "choose-category" : "confirm";
+};
+
+/** Así se comparan los nombres de talla: el detalle no expone el id de `Talla`. */
+const normalizeSizeName = (nombre: string): string => nombre.trim().toUpperCase();
+
+/**
+ * Tallas de la línea que la categoría elegida debe admitir: las que tienen
+ * cantidad o ya tienen SKU de producción. Se exige a TODAS (no solo a las
+ * pendientes, que es lo que valida el alta): la categoría queda guardada en la
+ * línea y las tallas que se generen después también se validarán contra ella.
+ */
+export const getLineSizeNames = (line: SpecialOrderLine): string[] => [
+  ...new Set(
+    line.tallas
+      .filter((talla) => talla.cantidad > 0 || isGeneratedTalla(talla))
+      .map((talla) => normalizeSizeName(talla.talla_nombre)),
+  ),
+];
+
+/**
+ * Categorías que admiten todas las tallas de la línea (`getLineSizeNames`).
+ *
+ * La categoría trae los ids de sus `Talla` y la línea solo sus nombres, así que
+ * los ids se traducen con el catálogo de tallas (`GET /catalogo/talla/`, solo
+ * activas). Una categoría SIN tallas no acota (el backend acepta cualquiera).
+ * Un id que el catálogo no conoce (talla inactiva) no cubre nada: mejor dejar
+ * fuera una categoría que ofrecer una que el backend rechace.
+ */
+export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
+  categories: readonly C[],
+  line: SpecialOrderLine,
+  sizes: readonly { id: number; nombre: string }[],
+): C[] {
+  const nameById = new Map(sizes.map((size) => [size.id, normalizeSizeName(size.nombre)]));
+  const required = getLineSizeNames(line);
+  return categories.filter((category) => {
+    if (category.tallas.length === 0) return true;
+    const allowed = new Set(category.tallas.map((id) => nameById.get(id)));
+    return required.every((nombre) => allowed.has(nombre));
+  });
+}
+
+/**
  * Cuerpo de `alta-catalogo`: `categoria_producto` solo cuando se da, que es
  * cuando la línea no tiene categoría (con una, el backend la ignoraría).
  */
@@ -38,7 +95,7 @@ export const buildAltaCatalogoPayload = (
 });
 
 export const CATALOG_ALTA_WITHOUT_CATEGORY =
-  "La línea no tiene categoría de producto, así que no se puede dar de alta en catálogo.";
+  "La línea no tiene categoría de producto: genera los SKU sin catálogo y después dalos de alta con \"Dar de alta en catálogo\" en la tarjeta, eligiendo ahí la categoría.";
 
 export const CATALOG_ALTA_INHERITED_OFF =
   "Las tallas ya generadas de esta línea no están en catálogo, así que la casilla empieza desmarcada.";
