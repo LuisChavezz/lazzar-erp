@@ -45,6 +45,10 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerField): string | unde
 export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const [target, setTarget] = useState<MovementLedgerTarget | null>(null);
   const [searchedText, setSearchedText] = useState("");
+  // Variante que resolvió la búsqueda por `q` vigente. Se recuerda aparte de
+  // la consulta porque esta puede quedar sin datos (rango a medias) antes del
+  // siguiente cambio de filtro, que debe ir ya por `producto_variante`.
+  const [resolvedVariantId, setResolvedVariantId] = useState<number | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
@@ -69,17 +73,26 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const options = ledger && !isResolvedMovementLedger(ledger) ? ledger.opciones : undefined;
   const hasOptions = options !== undefined && options.length > 0;
 
+  // Ajuste de estado durante el render (no en un efecto): en cuanto la
+  // búsqueda por `q` resuelve una variante, se recuerda su id.
+  const searchResolvedId =
+    target?.q !== undefined && resolved ? resolved.variante.producto_variante_id : null;
+  if (searchResolvedId !== null && searchResolvedId !== resolvedVariantId) {
+    setResolvedVariantId(searchResolvedId);
+  }
+
   // Fija la variante ya resuelta antes de cambiar un filtro, para que la
   // siguiente consulta vaya por `producto_variante` y no repita la búsqueda.
   const pinResolvedVariant = () => {
-    if (resolved && target?.q !== undefined) {
-      setTarget({ producto_variante: resolved.variante.producto_variante_id });
+    if (target?.q !== undefined && resolvedVariantId !== null) {
+      setTarget({ producto_variante: resolvedVariantId });
     }
   };
 
   const handleSearch = (q: string) => {
     setTarget({ q });
     setSearchedText(q);
+    setResolvedVariantId(null);
     setOptionsOpen(true);
   };
 
