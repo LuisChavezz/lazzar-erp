@@ -8,7 +8,7 @@ import { EVALUATIONS_KEY } from "./useEvaluations";
 
 /**
  * Clave de la mutación: el menú de cada fila lee de la `MutationCache` qué ids
- * se están borrando (ver `usePendingEvaluationDeleteIds`).
+ * se están borrando (ver `usePendingEvaluationIds`).
  */
 export const deleteEvaluationMutationKey = ["delete-evaluation"] as const;
 

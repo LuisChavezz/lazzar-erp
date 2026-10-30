@@ -1,19 +1,28 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { DeleteIcon, EditIcon } from "@/src/components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import {
+  employeeHeaderFilter,
+  estadoHeaderFilter,
+  type HeaderFilterSpec,
+} from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { Evaluation } from "../interfaces/evaluation.interface";
 import {
-  ESTADO_COMPLETADA,
   ESTADO_EVALUACION_CFG,
-  getEstadoEvaluacionLabel,
-  getPeriodoEvaluacionLabel,
-  getTipoEvaluacionLabel,
+  ESTADO_PENDIENTE,
+  PERIODO_EVALUACION_OPTIONS,
+  TIPO_EVALUACION_OPTIONS,
 } from "../constants/evaluationChoices";
+import { useEvaluationRowActionsContext } from "../hooks/useEvaluationRowActions";
 import {
-  useEvaluationRowActionsContext,
-} from "../hooks/useEvaluationRowActions";
+  getEvaluationEstadoText,
+  getEvaluationPeriodoText,
+  getEvaluationTipoText,
+} from "../utils/evaluationRows";
 
 /**
  * Fila de la tabla: la evaluación tal como llega del backend más los nombres
@@ -24,9 +33,9 @@ import {
  * guarda en caché el valor del accessor por fila y solo lo recalcula cuando
  * cambia `data`. Como las evaluaciones pueden llegar antes que el catálogo, el
  * accessor se congelaría con el respaldo en pantalla, en la búsqueda y en el
- * orden. Construyendo las filas en `EvaluationList`, la llegada del catálogo
- * produce un `data` nuevo y TanStack recalcula todo. Mismo arreglo que
- * `IncidentRow`.
+ * orden. Construyendo las filas en `EvaluationList` (`buildEvaluationRows`),
+ * la llegada del catálogo produce un `data` nuevo y TanStack recalcula todo.
+ * Mismo arreglo que `IncidentRow`.
  *
  * Los dos son SIEMPRE string, ya con su respaldo ("Empleado #N" si el id no
  * está en el catálogo; "Sin evaluador" si `evaluador` es `null`), para que las
@@ -39,59 +48,58 @@ export type EvaluationRow = Evaluation & {
 
 const columnHelper = createColumnHelper<EvaluationRow>();
 
-/**
- * Menú de acciones de UNA fila. Lee por contexto los callbacks y el "en
- * borrado", que `EvaluationList` lee de la `MutationCache` con UNA suscripción
- * para toda la tabla (ver `useEvaluationRowActions`); un borrado en vuelo no
- * remonta las celdas.
- *
- * Es solo presentacional: el diálogo de confirmación vive en `EvaluationList`,
- * porque una celda se desmonta al ordenar, paginar o filtrar.
- */
-function EvaluationRowActionsMenu({
-  evaluation,
-  canEdit,
-  canDelete,
-}: {
-  evaluation: Evaluation;
+interface EvaluationColumnPermissions {
   canEdit: boolean;
   canDelete: boolean;
-}) {
-  const { onEdit, onDelete, deletingIds } = useEvaluationRowActionsContext();
-  const menuItems: ActionMenuItem[] = [];
+}
 
-  if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(evaluation),
-    });
-  }
-  // Borrado FÍSICO y solo sobre evaluaciones pendientes: una completada es un
-  // registro cerrado y no ofrece "Eliminar".
-  if (canDelete && evaluation.estado !== ESTADO_COMPLETADA) {
-    menuItems.push({
+/**
+ * El nombre del evaluado ES el menú de la fila: sin columna aparte de
+ * "Acciones". El `estado` va en su propia columna, con su badge y su filtro
+ * (regla de EC-636 para los registros de RH por empleado). Los callbacks y el
+ * "en vuelo" llegan por contexto; el diálogo vive en `EvaluationList`. Sin
+ * "Ver detalle": las evaluaciones no tienen vista de detalle.
+ */
+function EvaluationNameCell({
+  evaluation,
+  permissions,
+}: {
+  evaluation: EvaluationRow;
+  permissions: EvaluationColumnPermissions;
+}) {
+  const { onEdit, onDelete, busyIds } = useEvaluationRowActionsContext();
+
+  const items: ActionMenuItem[] = [
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(evaluation), visible: permissions.canEdit },
+    // Borrado FÍSICO y solo sobre evaluaciones pendientes: una completada es un
+    // registro cerrado y no ofrece "Eliminar".
+    {
       label: "Eliminar",
       icon: DeleteIcon,
       onSelect: () => onDelete(evaluation),
-      disabled: deletingIds.includes(evaluation.id),
-    });
-  }
+      disabled: busyIds.includes(evaluation.id),
+      visible: permissions.canDelete && evaluation.estado === ESTADO_PENDIENTE,
+    },
+  ];
 
-  return (
-    <div className="flex justify-center">
-      <ActionMenu items={menuItems} ariaLabel="Acciones de evaluación" />
-    </div>
-  );
+  return <FolioActionMenu name={evaluation.empleado_nombre} items={items} />;
 }
 
 /**
  * Columnas de la tabla. Solo dependen de los permisos (estables durante la
- * sesión): los callbacks y el estado "en borrado" llegan al menú por contexto,
+ * sesión): los callbacks y el estado "en vuelo" llegan al menú por contexto,
  * nunca por aquí.
  */
-export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }) => {
-  const columns = [
+export const getColumns = (permissions: EvaluationColumnPermissions) =>
+  [
+    // Un solo valor alimenta el orden y la búsqueda global: el nombre resuelto
+    // (o su respaldo `#N`, ver `EvaluationRow`).
+    columnHelper.accessor((row) => row.empleado_nombre, {
+      id: "empleado",
+      header: "Empleado",
+      size: 260,
+      cell: ({ row }) => <EvaluationNameCell evaluation={row.original} permissions={permissions} />,
+    }),
     // El accessor devuelve la fecha YA formateada para que la búsqueda global
     // encuentre lo que se ve en pantalla; el orden va sobre el ISO crudo.
     // `formatLocalDate` parsea el DateField como fecha LOCAL: no se corre un día.
@@ -103,13 +111,6 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
         <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {info.getValue()}
         </span>
-      ),
-    }),
-    columnHelper.accessor("empleado_nombre", {
-      id: "empleado_nombre",
-      header: "Empleado",
-      cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("evaluador_nombre", {
@@ -127,21 +128,23 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
         </span>
       ),
     }),
-    columnHelper.accessor((row) => getTipoEvaluacionLabel(row.tipo) ?? "—", {
+    // Etiqueta para la búsqueda global; el código desconocido, crudo (igual que
+    // su opción de filtro).
+    columnHelper.accessor((row) => getEvaluationTipoText(row.tipo), {
       id: "tipo",
       header: "Tipo",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor((row) => getPeriodoEvaluacionLabel(row.periodo) ?? "—", {
+    columnHelper.accessor((row) => getEvaluationPeriodoText(row.periodo), {
       id: "periodo",
       header: "Periodo",
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor((row) => getEstadoEvaluacionLabel(row.estado) ?? "—", {
+    columnHelper.accessor((row) => getEvaluationEstadoText(row.estado), {
       id: "estado",
       header: "Estado",
       cell: ({ row }) => (
@@ -186,22 +189,28 @@ export const getColumns = (permissions: { canEdit: boolean; canDelete: boolean }
     }),
   ] as ColumnDef<EvaluationRow>[];
 
-  if (permissions.canEdit || permissions.canDelete) {
-    columns.push(
-      columnHelper.display({
-        id: "actions",
-        header: "Acciones",
-        meta: { align: "center" },
-        cell: ({ row }) => (
-          <EvaluationRowActionsMenu
-            evaluation={row.original}
-            canEdit={permissions.canEdit}
-            canDelete={permissions.canDelete}
-          />
-        ),
-      }) as ColumnDef<EvaluationRow>
-    );
-  }
-
-  return columns;
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ *
+ * El empleado compara contra el FK crudo, rotulado con el nombre resuelto de
+ * la fila (o su respaldo `#N`, el mismo texto que la celda), con buscador; el
+ * evaluador igual, con las evaluaciones sin evaluador agrupadas primero. El
+ * estado, con ficha "Estatus: …", y el tipo y el periodo ofrecen su catálogo
+ * completo aunque ninguna fila lo use, y al final cada código desconocido de
+ * las filas, crudo (igual que su celda). La fecha filtra por mes. Puntaje y
+ * comentarios no llevan filtro: son libres, los cubren el orden y la búsqueda.
+ */
+export const EVALUATION_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<EvaluationRow>>> = {
+  empleado: employeeHeaderFilter(),
+  fecha: { type: "month", get: (r) => r.fecha },
+  evaluador: {
+    type: "distinct",
+    get: (r) => r.evaluador,
+    label: (r) => r.evaluador_nombre,
+    searchable: true,
+    emptyOption: "Sin evaluador",
+  },
+  tipo: { type: "options", get: (r) => r.tipo, options: TIPO_EVALUACION_OPTIONS },
+  periodo: { type: "options", get: (r) => r.periodo, options: PERIODO_EVALUACION_OPTIONS },
+  estado: estadoHeaderFilter(optionsFromConfig(ESTADO_EVALUACION_CFG)),
 };

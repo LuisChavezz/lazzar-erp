@@ -48,6 +48,12 @@ export const ESTADO_EVALUACION_OPTIONS: { value: EstadoEvaluacion; label: string
 export const ESTADO_COMPLETADA: EstadoEvaluacion = "completada";
 
 /**
+ * Único estado que se puede eliminar: la confirmación de borrado lo espera, y
+ * se cierra con aviso si un refetch muestra la evaluación ya completada.
+ */
+export const ESTADO_PENDIENTE: EstadoEvaluacion = "pendiente";
+
+/**
  * Traducen el valor guardado a su etiqueta. Devuelven `null` cuando el backend
  * manda un valor fuera del catálogo, para que la tabla pinte el guion.
  */
