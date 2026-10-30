@@ -1,27 +1,27 @@
 import type { PurchaseOrderDetalleItem } from "../interfaces/purchase-order-onboarding.interface";
+import type { PurchaseOrderLine, PurchaseOrderLineKey } from "./purchaseOrderLines";
 
 /**
- * Arma el arreglo `detalle` (renglones de producto) a partir del estado de
- * selección compartido por los Step 2 de alta y edición: `quantities`
- * (id de producto → cantidad) y `prices` (id de producto → precio en texto).
+ * Arma el arreglo `detalle` (renglones) a partir del estado de selección
+ * compartido por los Step 2 de alta y edición (ver `usePurchaseOrderLines`).
  *
- * La descripción de cada renglón se resuelve vía `resolveDescripcion`, ya que
- * las dos llamadas difieren ahí: alta solo consulta el catálogo, mientras que
- * edición primero intenta el renglón sembrado de la orden (`seedById`) antes
- * de caer al catálogo.
+ * Un renglón con variante viaja SOLO con `producto_variante` (el backend deduce
+ * el producto); el resto —materia prima y renglones de PT "Sin SKU"— con
+ * `producto`, como siempre.
  */
 export function buildPurchaseOrderDetalle(
-  quantities: Record<number, number>,
-  prices: Record<number, string>,
-  resolveDescripcion: (productoId: number) => string,
+  lines: PurchaseOrderLine[],
+  quantities: Partial<Record<PurchaseOrderLineKey, number>>,
+  prices: Partial<Record<PurchaseOrderLineKey, string>>,
 ): PurchaseOrderDetalleItem[] {
-  return Object.entries(quantities).map(([productoIdStr, cantidad]) => {
-    const productoId = Number(productoIdStr);
-    return {
-      producto: productoId,
-      cantidad,
-      precio: parseFloat(prices[productoId] ?? "").toFixed(2),
-      descripcion: resolveDescripcion(productoId),
+  return lines.map((line) => {
+    const base = {
+      cantidad: quantities[line.key] ?? 1,
+      precio: parseFloat(prices[line.key] ?? "").toFixed(2),
+      descripcion: line.descripcion,
     };
+    return line.productoVariante !== null
+      ? { ...base, producto_variante: line.productoVariante }
+      : { ...base, producto: line.producto };
   });
 }

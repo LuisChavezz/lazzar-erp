@@ -9,6 +9,7 @@ import {
   type PurchaseOrderWizardStep as OnboardingStep,
 } from "../constants/purchaseOrderWizardSteps";
 import { usePurchaseOrderOnboardingData } from "../hooks/usePurchaseOrderOnboardingData";
+import { usePurchaseOrderLines } from "../hooks/usePurchaseOrderLines";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
@@ -36,6 +37,11 @@ export function PurchaseOrderOnboardingStepManager({
   const [headerErrors, setHeaderErrors] = useState<PurchaseOrderHeaderFieldErrors>({});
 
   const { onboardingData } = usePurchaseOrderOnboardingData();
+
+  // Renglones del Step 2. Viven aquí para que el Step 1 sepa si hay alguno y
+  // pueda descartarlos al cambiar el tipo de compra (MP↔PT compran distinto:
+  // por producto o por SKU).
+  const lines = usePurchaseOrderLines();
 
   /** Called by Step 1 after form validation. Stores the captured encabezados and advances. */
   const handleStep1Success = useCallback(
@@ -69,13 +75,15 @@ export function PurchaseOrderOnboardingStepManager({
           <PurchaseOrderOnboardingStep1
             initialValues={step1Data ?? undefined}
             initialServerErrors={headerErrors}
+            lineCount={lines.count}
+            onClearLines={lines.clear}
             onSuccess={handleStep1Success}
           />
         )}
         {/*
           Una vez creado, el Step 2 se queda MONTADO y solo se oculta al volver
-          al Step 1. Si se desmontara, su estado local (productos elegidos,
-          cantidades y precios editados) se perdería en silencio: "Volver"
+          al Step 1. Si se desmontara, su estado local (búsqueda, vista "solo
+          seleccionados", encabezado ya creado) se perdería en silencio: "Volver"
           existe justamente para no perder lo capturado, y reelegir decenas de
           productos en un catálogo de miles es mucho más caro que recapturar el
           encabezado.
@@ -85,6 +93,7 @@ export function PurchaseOrderOnboardingStepManager({
             <PurchaseOrderOnboardingStep2
               step1Data={step1Data}
               onboardingData={onboardingData}
+              lines={lines}
               onSuccess={handleStep2Success}
               onHeaderFieldErrors={handleHeaderFieldErrors}
               onBack={() => setCurrentStep("step-1")}
