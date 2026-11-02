@@ -2,7 +2,8 @@ import { z } from "zod";
 import { MONEY_REGEX, toCents } from "@/src/features/accounts-receivable/schemas/register-pending-invoice.schema";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { getTipoCambioError, LOCAL_CURRENCY, requiresTipoCambio } from "@/src/utils/tipoCambio";
-import type { CobroMetodoPago, CobroReferencia } from "../interfaces/collection.interface";
+import { METODO_PAGO_VALUES } from "@/src/features/payments/constants/paymentStatus";
+import type { CobroReferencia } from "../interfaces/collection.interface";
 
 /**
  * Esquemas del formulario de cobros (alta y edición de borradores).
@@ -34,13 +35,6 @@ const MONEY_MESSAGE = "Importe inválido (usa hasta 2 decimales)";
 
 /** Moneda en que el backend fija el tipo de cambio en 1 (y no lo pide). */
 export const COBRO_MONEDA_LOCAL = LOCAL_CURRENCY;
-
-export const COBRO_METODOS_PAGO = [
-  "Transferencia",
-  "Efectivo",
-  "Cheque",
-  "Tarjeta",
-] as const satisfies readonly CobroMetodoPago[];
 
 export const COBRO_REFERENCIAS = [
   "SPEI",
@@ -97,7 +91,8 @@ const cobroHeaderShape = {
    * MXN (ver `requiresTipoCambio`), donde el backend lo exige aun en borrador.
    */
   tipo_cambio: z.string(),
-  metodo_pago: z.enum(COBRO_METODOS_PAGO),
+  // Lista única del enum `MetodoPago`, compartido con Pagos.
+  metodo_pago: z.enum(METODO_PAGO_VALUES),
   referencia: z.enum(COBRO_REFERENCIAS),
   referencia_operacion: z
     .string()
