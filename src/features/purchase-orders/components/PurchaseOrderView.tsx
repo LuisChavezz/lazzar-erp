@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
 import {
@@ -42,8 +41,6 @@ export function PurchaseOrderView() {
     refetch,
     isFetching,
   } = usePurchaseOrders();
-
-  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Llegar a esta pantalla exige `R-COMPRAS-OC` (ver `routePermissions`); dar
@@ -89,7 +86,6 @@ export function PurchaseOrderView() {
   const columns = useMemo(
     () =>
       getColumns(
-        (id) => router.push(`/procurement/purchase-orders/${id}`),
         setEditingOrder,
         // Inline (solo setters, estables) para no romper las deps del memo.
         (order) => {
@@ -103,7 +99,7 @@ export function PurchaseOrderView() {
         fechaOcOptions,
         vencimientoOptions,
       ),
-    [router, statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
+    [statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────

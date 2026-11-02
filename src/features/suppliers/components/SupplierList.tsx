@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   DataTable,
@@ -16,7 +15,6 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
 import SupplierFormDialog from "./SupplierFormDialog";
 import { useSuppliers } from "../hooks/useSuppliers";
-import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
 import { buildSupplierFilterOptions, getSupplierColumns } from "./SupplierColumns";
 import { useSupplierCsvExport } from "../hooks/useSupplierCsvExport";
 import { useSupplierPdfExport } from "../hooks/useSupplierPdfExport";
@@ -85,10 +83,8 @@ export default function SupplierList({
   const canViewDetail =
     permissionContext === "procurement" && hasPermission("R-COMPRAS-PROV", session?.user);
 
-  // `handleViewDetail`, `handleEdit` y `columns` sin `useCallback`/`useMemo`: el React Compiler
+  // `handleEdit` y `columns` sin `useCallback`/`useMemo`: el React Compiler
   // memoiza (ver CLAUDE.md).
-  const router = useRouter();
-  const handleViewDetail = (supplier: Supplier) => router.push(supplierDetailHref(supplier.id));
 
   const handleEdit = (supplier: Supplier) => {
     setSupplierToEdit(supplier);
@@ -123,7 +119,6 @@ export default function SupplierList({
 
   const columns = getSupplierColumns(
     handleEdit,
-    handleViewDetail,
     setSupplierToDeactivate,
     { canEdit, canDelete, canViewDetail },
     buildSupplierFilterOptions(suppliers),

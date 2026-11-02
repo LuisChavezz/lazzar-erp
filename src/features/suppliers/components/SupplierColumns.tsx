@@ -28,7 +28,6 @@ export interface SupplierColumnPermissions {
 const ActionsCell = ({
   supplier,
   onEdit,
-  onViewDetail,
   onDeactivate,
   canEdit,
   canDelete,
@@ -36,7 +35,6 @@ const ActionsCell = ({
 }: {
   supplier: Supplier;
   onEdit: (supplier: Supplier) => void;
-  onViewDetail: (supplier: Supplier) => void;
   onDeactivate: (supplier: Supplier) => void;
 } & SupplierColumnPermissions) => {
   // Global, no por fila: mientras CUALQUIER baja esté en vuelo no se permite
@@ -49,7 +47,9 @@ const ActionsCell = ({
     menuItems.push({
       label: "Ver detalle",
       icon: ViewIcon,
-      onSelect: () => onViewDetail(supplier),
+      // Enlace real (`href`), mismo destino que el nombre del proveedor: Next
+      // lo prefetchea y clic medio/Ctrl+clic abren otra pestaña.
+      href: supplierDetailHref(supplier.id),
     });
   }
 
@@ -160,7 +160,6 @@ const EMPTY_FILTER_OPTIONS: SupplierFilterOptions = {
 
 export const getSupplierColumns = (
   onEdit: (supplier: Supplier) => void,
-  onViewDetail: (supplier: Supplier) => void,
   onDeactivate: (supplier: Supplier) => void,
   permissions?: SupplierColumnPermissions,
   filterOptions: SupplierFilterOptions = EMPTY_FILTER_OPTIONS,
@@ -273,7 +272,6 @@ export const getSupplierColumns = (
       <ActionsCell
         supplier={info.row.original}
         onEdit={onEdit}
-        onViewDetail={onViewDetail}
         onDeactivate={onDeactivate}
         canEdit={permissions?.canEdit ?? false}
         canDelete={permissions?.canDelete ?? false}
