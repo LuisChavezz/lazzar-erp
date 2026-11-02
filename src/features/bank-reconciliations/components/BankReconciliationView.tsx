@@ -419,7 +419,6 @@ export function BankReconciliationView() {
                 // solapamiento: se fija ese objeto en vez de ir a buscar la fila
                 // a un listado que todavía muestra otro periodo.
                 onOpenExisting={openPinnedDetail}
-                onCancel={() => setIsFormOpen(false)}
               />
             )}
           </MainDialog>

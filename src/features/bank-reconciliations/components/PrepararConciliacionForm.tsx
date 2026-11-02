@@ -17,7 +17,6 @@ interface PrepararConciliacionFormProps {
   onPrepared: (resultado: PrepararConciliacionResponse) => void;
   /** Abre una conciliación ya existente en vez de preparar una nueva. */
   onOpenExisting: (conciliacion: ConciliacionBancaria) => void;
-  onCancel: () => void;
 }
 
 /**
@@ -31,7 +30,6 @@ interface PrepararConciliacionFormProps {
 export default function PrepararConciliacionForm({
   onPrepared,
   onOpenExisting,
-  onCancel,
 }: PrepararConciliacionFormProps) {
   const {
     form,
@@ -288,14 +286,6 @@ export default function PrepararConciliacionForm({
 
         <div className="flex justify-end gap-3 pb-4">
           <FormCancelButton onClick={handleReset} disabled={isPending} />
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isPending}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-50 cursor-pointer"
-          >
-            Cerrar
-          </button>
           {/* `isPending` va TAMBIÉN dentro de `disabled`: `FormSubmitButton`
               esparce sus props DESPUÉS de calcular `disabled`, así que un
               `disabled` propio pisa su guarda interna de pendiente. Hornearlo
