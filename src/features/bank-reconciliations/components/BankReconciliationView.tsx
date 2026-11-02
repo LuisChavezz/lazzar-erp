@@ -99,8 +99,10 @@ export function BankReconciliationView() {
     cuentaId !== null && !activeAccounts.some((cuenta) => cuenta.id === cuentaId)
       ? (bankAccounts.find((cuenta) => cuenta.id === cuentaId) ?? null)
       : null;
+  // Solo con el catálogo ya cargado: mientras llega, la lista de activas está
+  // vacía y toda cuenta parecería "fuera de lista" (un `Cuenta #N` de un instante).
   const cuentaFueraDeListaLabel =
-    cuentaId === null
+    cuentaId === null || !hasLoadedAccounts
       ? null
       : cuentaFueraDeLista
         ? `${cuentaFueraDeLista.alias || `Cuenta #${cuentaId}`} (inactiva)`
