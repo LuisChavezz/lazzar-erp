@@ -141,10 +141,11 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - **Inventario**: Existencias (`/wms/stock`).
   - **RFID**: Etiquetas RFID (`/wms/rfid-labels`) y Scanner RFID (`/wms/rfid-scanner`).
   - Además, Ubicaciones (`/wms/locations`), oculta de la navegación. Los Movimientos de Inventario se administran desde **Configuración → Organización**.
-- **Compras y SCM** (`/procurement`), organizada en sub-grupos:
+- **Compras y SCM** (`/procurement`): su página de entrada es un menú de accesos, igual que el de WMS, con una tarjeta por sub-grupo; se pinta al instante, sin consultar datos. Los sub-grupos son:
   - **Operación**: Pedidos (`/procurement/orders`), Órdenes de Compra (`/procurement/purchase-orders`) y Recepciones (`/procurement/purchase-order-receipts`).
   - **Inventario**: Existencias (`/procurement/stock`).
-  - **Maestros**: Proveedores (`/procurement/suppliers`).
+  - **Terceros**: Proveedores (`/procurement/suppliers`).
+  - **Indicadores**: Panel de compras (`/procurement/dashboard`), el resumen de órdenes de compra activas, en curso y de mayor valor que antes era la entrada del módulo.
   - Además, Revisión de Pedidos (`/procurement/order-reviews`), Solicitudes de Gastos (`/procurement/expense-requests`) y Pedidos P.Q. (`/procurement/pq-orders`).
 - **Manufactura (Producción)** (`/manufacturing`), organizada en sub-grupos:
   - **Operación**: Órdenes de Producción (`/manufacturing/production-orders`), Órdenes de Bordado (`/manufacturing/embroidery`), Órdenes de Reflejante (`/manufacturing/reflective-orders`), Órdenes de Corte de Manga (`/manufacturing/corte-manga`) y Pedidos Especiales (`/manufacturing/special-orders`).
