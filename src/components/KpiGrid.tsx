@@ -200,6 +200,9 @@ export function KpiCard(props: KpiCardProps) {
   );
 }
 
+/** Alto mínimo de la tarjeta compacta: igual con o sin barra/detalle, y igual al skeleton. */
+const KPI_COMPACT_CARD_HEIGHT_CLASS = "min-h-[104px]";
+
 /**
  * Variante compacta (~120px) para filas de indicadores encima de un listado.
  * Tres filas: título con icono en línea y ⓘ (`info`, o el motivo si no está
@@ -320,9 +323,6 @@ const KPI_COMPACT_GRID_CLASS =
   "*:w-[85%] *:shrink-0 *:snap-start @min-[34rem]:*:w-auto";
 
 const KPI_GRID_CLASS = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4";
-
-/** Alto mínimo de la tarjeta compacta: igual con o sin barra/detalle, y igual al skeleton. */
-const KPI_COMPACT_CARD_HEIGHT_CLASS = "min-h-[104px]";
 
 export default function KpiGrid(props: KpiGridProps) {
   if (props.compact) {
