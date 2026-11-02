@@ -163,45 +163,6 @@ export function useIncidentForm({ onSuccess, incidentToEdit }: UseIncidentFormPa
     setClientErrors((prev) => (prev[field] === message ? prev : { ...prev, [field]: message }));
   };
 
-  // Valida un solo campo en blur. Se usa `IncidentFormFields` y no
-  // `IncidentFormSchema.shape`: el schema lleva un refinamiento de objeto que
-  // ya no expone `.shape`.
-  const validateField = (field: IncidentFormField, value: IncidentFormValues[IncidentFormField]) => {
-    const fieldSchema = IncidentFormFields[field];
-    const parsed = fieldSchema.safeParse(value);
-
-    // El schema de UN campo de `acciones_tomadas` es `z.string()` y siempre
-    // pasa, así que sin esto su blur borraría el error de la regla cruzada
-    // aunque la incidencia siga cerrada sin acciones. Por eso su blur evalúa
-    // también la regla, con el `estado` vigente. Mismo arreglo que el blur de
-    // `fecha_fin` en capacitaciones.
-    if (field === "acciones_tomadas") {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-      const message = getAccionesTomadasError(form.getFieldValue("estado"), value as string);
-      if (message) {
-        accionesFiredRef.current = true;
-        setClientError("acciones_tomadas", message);
-        return false;
-      }
-    }
-
-    if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Valida todo el formulario antes de mutar y devuelve los campos inválidos
   // para poder llevar la vista al primero.
   const validateForm = (values: IncidentFormValues) => {
@@ -277,6 +238,44 @@ export function useIncidentForm({ onSuccess, incidentToEdit }: UseIncidentFormPa
       }
     },
   });
+
+  // Valida un solo campo en blur. Se usa `IncidentFormFields` y no
+  // `IncidentFormSchema.shape`: el schema lleva un refinamiento de objeto que
+  // ya no expone `.shape`.
+  const validateField = (field: IncidentFormField, value: IncidentFormValues[IncidentFormField]) => {
+    const fieldSchema = IncidentFormFields[field];
+    const parsed = fieldSchema.safeParse(value);
+
+    // El schema de UN campo de `acciones_tomadas` es `z.string()` y siempre
+    // pasa, así que sin esto su blur borraría el error de la regla cruzada
+    // aunque la incidencia siga cerrada sin acciones. Por eso su blur evalúa
+    // también la regla, con el `estado` vigente. Mismo arreglo que el blur de
+    // `fecha_fin` en capacitaciones.
+    if (field === "acciones_tomadas") {
+      const message = getAccionesTomadasError(form.getFieldValue("estado"), value as string);
+      if (message) {
+        accionesFiredRef.current = true;
+        setClientError("acciones_tomadas", message);
+        return false;
+      }
+    }
+
+    if (parsed.success) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+
+    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   // Mantiene a mano los últimos valores de edición SIN que su identidad sea
   // una dependencia del efecto de abajo. Va declarado antes para que React lo

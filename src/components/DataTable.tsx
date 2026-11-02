@@ -617,21 +617,6 @@ export function DataTable<TData, TValue>({
   }, [data, activeFilters]);
 
 
-  // Function to handle column reordering
-  const moveColumn = (draggedId: string, targetId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `table` (useReactTable) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-    const newColumnOrder = [...table.getAllLeafColumns().map((c) => c.id)];
-    const draggedIndex = newColumnOrder.indexOf(draggedId);
-    const targetIndex = newColumnOrder.indexOf(targetId);
-
-    if (draggedIndex === -1 || targetIndex === -1) return;
-
-    newColumnOrder.splice(draggedIndex, 1);
-    newColumnOrder.splice(targetIndex, 0, draggedId);
-
-    setColumnOrder(newColumnOrder);
-  };
-
   // State for columns dropdown
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
   const columnsDropdownRef = useRef<HTMLDivElement>(null);
@@ -761,6 +746,21 @@ export function DataTable<TData, TValue>({
         }
       : {}),
   });
+
+  // Function to handle column reordering
+  const moveColumn = (draggedId: string, targetId: string) => {
+    const newColumnOrder = [...table.getAllLeafColumns().map((c) => c.id)];
+    const draggedIndex = newColumnOrder.indexOf(draggedId);
+    const targetIndex = newColumnOrder.indexOf(targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    newColumnOrder.splice(draggedIndex, 1);
+    newColumnOrder.splice(targetIndex, 0, draggedId);
+
+    setColumnOrder(newColumnOrder);
+  };
+
   const serverSorting = isServerMode ? server.sorting : undefined;
   const serverSearch = isServerMode ? server.search : undefined;
   const serverFilters = isServerMode ? server.filters : undefined;

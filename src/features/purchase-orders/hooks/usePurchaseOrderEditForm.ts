@@ -167,31 +167,6 @@ export function usePurchaseOrderEditForm({
     return raw;
   };
 
-  // ── Validación a nivel de campo (on blur) ───────────────────────────────
-
-  const validateField = (path: EditFieldPath) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-    const fullValues = form.state.values;
-    const parsed = schema.safeParse(fullValues);
-
-    if (parsed.success) {
-      clearClientFieldError(path);
-      return true;
-    }
-
-    const matchingIssue = parsed.error.issues.find(
-      (issue) => issue.path.join(".") === path,
-    );
-
-    if (matchingIssue) {
-      setClientFieldError(path, matchingIssue.message);
-      return false;
-    }
-
-    clearClientFieldError(path);
-    return true;
-  };
-
   // ── Definición del formulario ───────────────────────────────────────────
 
   const form = useForm({
@@ -217,6 +192,30 @@ export function usePurchaseOrderEditForm({
       onSuccess(parsed.data);
     },
   });
+
+  // ── Validación a nivel de campo (on blur) ───────────────────────────────
+
+  const validateField = (path: EditFieldPath) => {
+    const fullValues = form.state.values;
+    const parsed = schema.safeParse(fullValues);
+
+    if (parsed.success) {
+      clearClientFieldError(path);
+      return true;
+    }
+
+    const matchingIssue = parsed.error.issues.find(
+      (issue) => issue.path.join(".") === path,
+    );
+
+    if (matchingIssue) {
+      setClientFieldError(path, matchingIssue.message);
+      return false;
+    }
+
+    clearClientFieldError(path);
+    return true;
+  };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

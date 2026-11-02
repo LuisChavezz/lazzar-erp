@@ -171,32 +171,6 @@ export function usePurchaseOrderStep1Form({
     return raw;
   };
 
-  // ── Field-level validation on blur ─────────────────────────────────────
-
-  const validateField = (path: Step1FieldPath) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-    const fullValues = form.state.values;
-    const parsed = PurchaseOrderEncabezadosSchema.safeParse(fullValues);
-
-    if (parsed.success) {
-      clearClientFieldError(path);
-      return true;
-    }
-
-    const matchingIssue = parsed.error.issues.find(
-      (issue) => issue.path.join(".") === path,
-    );
-
-    if (matchingIssue) {
-      setClientFieldError(path, matchingIssue.message);
-      return false;
-    }
-
-    // No error for this field — clear it.
-    clearClientFieldError(path);
-    return true;
-  };
-
   // ── Form definition ────────────────────────────────────────────────────
 
   const form = useForm({
@@ -221,6 +195,31 @@ export function usePurchaseOrderStep1Form({
       onSuccess(parsed.data);
     },
   });
+
+  // ── Field-level validation on blur ─────────────────────────────────────
+
+  const validateField = (path: Step1FieldPath) => {
+    const fullValues = form.state.values;
+    const parsed = PurchaseOrderEncabezadosSchema.safeParse(fullValues);
+
+    if (parsed.success) {
+      clearClientFieldError(path);
+      return true;
+    }
+
+    const matchingIssue = parsed.error.issues.find(
+      (issue) => issue.path.join(".") === path,
+    );
+
+    if (matchingIssue) {
+      setClientFieldError(path, matchingIssue.message);
+      return false;
+    }
+
+    // No error for this field — clear it.
+    clearClientFieldError(path);
+    return true;
+  };
 
   // ── Sucursal del workspace que llega tarde ─────────────────────────────
   // Si la lista de sucursales resuelve después de montar y el usuario ya tocó
