@@ -16,6 +16,13 @@ import {
   lineKeyProducto,
   type PurchaseOrderLine,
 } from "../utils/purchaseOrderLines";
+import {
+  isProductoLine,
+  mergeProductMatches,
+  pinSelectedProducts,
+  productFromLine,
+  snapshotSelectedProducts,
+} from "../utils/purchaseOrderProductMatches";
 import { PinnedLineRow } from "./PurchaseOrderLineRow";
 
 /**
@@ -28,22 +35,6 @@ import { PinnedLineRow } from "./PurchaseOrderLineRow";
  */
 const buildSearchHaystack = (p: PurchaseOrderOnboardingProducto): string =>
   `${p.nombre}\n${p.descripcion ?? ""}\n${p.codigo ?? ""}\n${p.cod_proscai}`.toLowerCase();
-
-/** ¿El renglón es un producto del catálogo que la lista puede marcar? */
-const isProductoLine = (line: PurchaseOrderLine) => line.key === lineKeyProducto(line.producto);
-
-/**
- * Fila para un renglón por producto que no está en lo cargado (guardado en la
- * orden, o elegido de una búsqueda que ya cambió): lo que el renglón sabe.
- */
-const productFromLine = (line: PurchaseOrderLine): PurchaseOrderOnboardingProducto => ({
-  id: line.producto,
-  codigo: null,
-  cod_proscai: "",
-  nombre: line.descripcion || `Producto #${line.producto}`,
-  descripcion: null,
-  precio_base: Number(line.precioInicial) || 0,
-});
 
 interface PurchaseOrderProductLinesListProps {
   /** Catálogo de productos del onboarding (`busqueda.productos`). */
@@ -218,13 +209,10 @@ export function PurchaseOrderProductLinesList({
     );
   }, [products, localQuery, selectedSnapshot, searchHaystacks]);
 
-  // Las coincidencias del servidor van después de las del catálogo: el
-  // catálogo son los primeros por nombre, así que el orden se conserva.
-  const matches = useMemo(() => {
-    if (!showsServerResults) return localMatches;
-    const localIds = new Set(localMatches.map((p) => p.id));
-    return [...localMatches, ...serverSearch.productos.filter((p) => !localIds.has(p.id))];
-  }, [showsServerResults, localMatches, serverSearch.productos]);
+  const matches = useMemo(
+    () => (showsServerResults ? mergeProductMatches(localMatches, serverSearch.productos) : localMatches),
+    [showsServerResults, localMatches, serverSearch.productos],
+  );
 
   // Productos cuyos datos ya se conocen: el catálogo y la búsqueda actual. Un
   // marcado fuera de ambos se pinta con los datos de su propio renglón.
@@ -234,13 +222,10 @@ export function PurchaseOrderProductLinesList({
   );
 
   // Marcados que la búsqueda dejó fuera: FIJOS arriba.
-  const filteredProducts = useMemo(() => {
-    const visibleIds = new Set(matches.map((p) => p.id));
-    const pinnedSelected = lines.lines
-      .filter((l) => isProductoLine(l) && !visibleIds.has(l.producto))
-      .map((l) => knownById.get(l.producto) ?? productFromLine(l));
-    return [...pinnedSelected, ...matches];
-  }, [matches, knownById, lines.lines]);
+  const filteredProducts = useMemo(
+    () => pinSelectedProducts(matches, lines.lines, knownById),
+    [matches, knownById, lines.lines],
+  );
 
   // ── Helpers de selección ──────────────────────────────────────────────────
   const toggleProduct = (product: PurchaseOrderOnboardingProducto) => {
@@ -253,22 +238,9 @@ export function PurchaseOrderProductLinesList({
   // Cuenta TODOS los renglones marcados, también los fijos de arriba.
   const selectedCount = lines.count;
 
-  /**
-   * Congela los seleccionados actuales, o descarta el snapshot al apagar. Los
-   * del catálogo en su orden, y después los elegidos en la búsqueda del
-   * servidor, que no están en `products`.
-   */
+  /** Congela los seleccionados actuales, o descarta el snapshot al apagar. */
   const toggleShowOnlySelected = () => {
-    setSelectedSnapshot((prev) => {
-      if (prev) return null;
-      const productIds = new Set(products.map((p) => p.id));
-      return [
-        ...products.filter((p) => isSelected(p.id)),
-        ...lines.lines
-          .filter((l) => isProductoLine(l) && !productIds.has(l.producto))
-          .map((l) => knownById.get(l.producto) ?? productFromLine(l)),
-      ];
-    });
+    setSelectedSnapshot((prev) => (prev ? null : snapshotSelectedProducts(products, lines.lines, knownById)));
   };
 
   // Sin nada seleccionado no hay vista que mostrar. Solo se deshabilita si
