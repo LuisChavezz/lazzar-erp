@@ -18,13 +18,15 @@ import {
   XIcon,
 } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
+import { READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { WorkspaceBranchNotice } from "@/src/features/workspace/components/WorkspaceBranchNotice";
 import { POLIZA_TIPOS } from "../interfaces/poliza.interface";
 import {
   centavosAMoneda,
   estaCuadrada,
   sumarLineasEnCentavos,
 } from "../schemas/poliza.schema";
-import { usePolizaForm } from "../hooks/usePolizaForm";
+import { POLIZA_SUCURSAL_DOCUMENT, usePolizaForm } from "../hooks/usePolizaForm";
 import { CuentaContableSelectorDialog } from "./CuentaContableSelectorDialog";
 
 interface PolizaFormProps {
@@ -83,7 +85,8 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
     isLoadingFormData,
     isErrorFormData,
     missingItems,
-    branches,
+    sucursalLabel,
+    isSucursalMissing,
     cuentasContables,
     centrosCosto,
     lineKeys,
@@ -133,7 +136,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
   // de una póliza vacía y habilitando "Contabilizar" sobre ella.
   const cuadrada = completo && hayImportes && estaCuadrada(cargos, abonos);
   // "Guardar borrador" NUNCA depende del cuadre: el backend crea sin validarlo.
-  const puedeContabilizar = cuadrada && !isPending;
+  const puedeContabilizar = cuadrada && !isPending && !isSucursalMissing;
 
   const centroCostoOptions = centrosCosto.map((centro) => ({
     value: centro.id,
@@ -155,7 +158,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
       <Loader
         className="py-12"
         title="Cargando catálogos"
-        message="Cargando sucursales, cuentas contables y centros de costo..."
+        message="Cargando cuentas contables y centros de costo..."
       />
     );
   }
@@ -206,6 +209,10 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
           inválido cuando la validación local falla. */}
       <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
         <fieldset disabled={isPending}>
+          {/* Sin sucursal válida en el workspace: aviso persistente y guardado bloqueado. */}
+          <div className="mb-6 empty:hidden">
+            <WorkspaceBranchNotice documento={POLIZA_SUCURSAL_DOCUMENT} />
+          </div>
           {/* Banner de "todo o nada": el alta es atómica, así que ante un error
               del backend NADA quedó registrado — ni la cabecera ni un solo
               movimiento. */}
@@ -250,35 +257,19 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
             </div>
 
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <form.Field name="sucursal">
-                {(field) => (
-                  <FormSelect
-                    label="Sucursal"
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      field.handleChange(Number.isNaN(next) ? 0 : next);
-                      clearError("sucursal");
-                    }}
-                    onBlur={field.handleBlur}
-                    error={getError("sucursal")}
-                  >
-                    <option value="0" disabled>
-                      Seleccionar sucursal...
-                    </option>
-                    {branches.map((branch) => (
-                      <option
-                        key={branch.id}
-                        value={branch.id}
-                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                      >
-                        {branch.codigo} - {branch.nombre}
-                      </option>
-                    ))}
-                  </FormSelect>
-                )}
-              </form.Field>
+              {/* La sucursal no se captura: es la del workspace (ver
+                  `usePolizaForm`). Sin sucursal válida el aviso de arriba
+                  explica por qué no se puede guardar. */}
+              <FormInput
+                id="poliza-sucursal"
+                label="Sucursal"
+                value={sucursalLabel}
+                placeholder="Sin sucursal"
+                readOnly
+                tabIndex={-1}
+                className={READ_ONLY_INPUT_CLS}
+                error={getError("sucursal")}
+              />
 
               <form.Field name="tipo">
                 {(field) => (
@@ -715,6 +706,9 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
               onClick={() => submitAs("Borrador")}
               isPending={isPending && objetivo === "Borrador"}
               loadingLabel="Guardando..."
+              // Con `isPending` incluido: lo que llegue por `disabled` gana sobre
+              // el cálculo propio de `FormSubmitButton`.
+              disabled={isPending || isSucursalMissing}
               className="bg-slate-600! hover:bg-slate-700! focus:ring-slate-500!"
             >
               Guardar borrador

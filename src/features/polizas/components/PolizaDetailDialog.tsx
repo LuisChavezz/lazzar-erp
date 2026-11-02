@@ -17,6 +17,7 @@ import {
   POLIZA_TIPO_CONFIG,
 } from "../constants/polizaStatus";
 import type { Branch } from "@/src/features/branches/interfaces/branch.interface";
+import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import type { Poliza } from "../interfaces/poliza.interface";
 import type { CostCenter } from "@/src/features/cost-centers/interfaces/cost-center.interface";
 import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
@@ -81,9 +82,13 @@ export function PolizaDetailDialog({
     return centro ? `${centro.codigo} - ${centro.nombre}` : `#${id}`;
   };
 
+  // `branches` es `mis-sucursales`: una póliza de otra sucursal de la empresa
+  // (las automáticas usan la del documento) puede no estar ahí. Se cae a las del
+  // workspace y, al final, a `Sucursal #N`.
+  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const nombreSucursal = (): string => {
-    const branch = branches.find((b) => b.id === poliza.sucursal);
-    return branch ? `${branch.codigo} - ${branch.nombre}` : `#${poliza.sucursal}`;
+    const branch = [...branches, ...availableBranches].find((b) => b.id === poliza.sucursal);
+    return branch ? `${branch.codigo} - ${branch.nombre}` : `Sucursal #${poliza.sucursal}`;
   };
 
   // Los movimientos se ordenan por `orden` sobre una COPIA: `sort` muta en sitio
