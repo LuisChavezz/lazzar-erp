@@ -7,31 +7,12 @@ import { RecentActivityFeed } from "@/src/features/operations/components/RecentA
 export const metadata: Metadata = {
   title: "Panel | Mesa de Control | ERP",
   description:
-    "Visualiza indicadores clave operativos para dar seguimiento de pedidos en tiempo real.",
-};
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "Mesa de Control Operativa",
-  description:
-    "Visualiza indicadores clave operativos para dar seguimiento de pedidos en tiempo real.",
-  applicationCategory: "BusinessApplication",
+    "Cotizaciones en revisión: cola de autorización, actividad reciente y montos por estatus.",
 };
 
 export default function OperationsDashboardPage() {
   return (
     <main className="w-full space-y-6" aria-label="Panel de Mesa de Control">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      {/* Encabezado */}
-      {/* <header>
-        
-      </header> */}
-
       {/* KPIs principales */}
       <section aria-label="Indicadores clave operativos">
         <OperationsKpiGrid />
@@ -57,4 +38,3 @@ export default function OperationsDashboardPage() {
     </main>
   );
 }
-
