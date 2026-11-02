@@ -193,7 +193,10 @@ test.describe("getStaleRowDialogNotice con statusField", () => {
       expectedEstado: "Borrador" as Estatus,
       messages: estatusMessages,
     };
-    expect(getStaleRowDialogNotice({ ...base, target: null, isBusy: false })).toEqual({
+    // La fila se tipa como en un listado real (`Row | null`): un `null` suelto no
+    // dice qué campos tiene la fila.
+    const gone = null as { estatus: Estatus } | null;
+    expect(getStaleRowDialogNotice({ ...base, target: gone, isBusy: false })).toEqual({
       key: "supplier-invoice-stale-9-gone",
       message: estatusMessages.gone,
     });
@@ -223,6 +226,24 @@ test.describe("getStaleRowDialogNotice con statusField", () => {
     const call = () =>
       // @ts-expect-error — la fila no tiene `estatus`.
       getStaleRowDialogNotice({ resource: "supplier-invoice", targetId: 9, target, statusField: "estatus", expectedEstado: "Borrador", isBusy: false, messages: estatusMessages });
+    expect(typeof call).toBe("function");
+  });
+
+  test("tipos: un objeto de argumentos en VARIABLE con estado no cae en la firma de «solo desaparición»", () => {
+    // Solo typecheck: sin el chequeo de propiedades de más de un literal, estos
+    // argumentos antes resolvían a la firma que solo mira si el registro
+    // desaparece, y la comparación del estado se saltaba en silencio.
+    const args = {
+      resource: "supplier-invoice",
+      targetId: 9,
+      target: { estado: "Borrador" as Estatus },
+      statusField: "estatus" as const,
+      expectedEstado: "Borrador" as Estatus,
+      isBusy: false,
+      messages: estatusMessages,
+    };
+    // @ts-expect-error — la fila no tiene `estatus` y ninguna firma la acepta.
+    const call = () => getStaleRowDialogNotice(args);
     expect(typeof call).toBe("function");
   });
 });
