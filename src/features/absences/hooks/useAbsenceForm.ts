@@ -170,6 +170,7 @@ export function useAbsenceForm({ onSuccess, absenceToEdit }: UseAbsenceFormParam
 
   /** Mensaje de la regla de `fecha_fin` con los valores vigentes del form. */
   const getFechaFinRuleError = (overrides: Partial<AbsenceFormValues> = {}) =>
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) y `ruleContext` (objeto que usa un hook posterior a useForm) se declaran abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     getFechaFinError({ ...form.state.values, ...overrides }, ruleContext);
 
   // Valida un solo campo en blur. `fecha_fin` evalúa también su regla cruzada.
@@ -203,6 +204,7 @@ export function useAbsenceForm({ onSuccess, absenceToEdit }: UseAbsenceFormParam
   };
 
   const validateForm = (values: AbsenceFormValues) => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `ruleContext` (objeto) usa un hook posterior a useForm; un binding objeto nunca sale de las deps del compilador (EC-701)
     const parsed = createAbsenceFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
       setClientErrors({});

@@ -174,6 +174,7 @@ export function useProductVariantForm({
     // La talla además depende del producto elegido (regla condicional).
     const conditionalMessage =
       field === "talla" && parsed.success
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
         ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
         : undefined;
 

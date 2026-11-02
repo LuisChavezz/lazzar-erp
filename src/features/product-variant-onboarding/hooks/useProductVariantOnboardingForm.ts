@@ -123,6 +123,7 @@ export function useProductVariantOnboardingForm() {
     const parsed = ProductVariantOnboardingFormSchema.shape[field].safeParse(value);
     const conditionalMessage =
       field === "talla" && parsed.success
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
         ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
         : undefined;
 

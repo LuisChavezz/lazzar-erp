@@ -179,6 +179,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   ) => {
     const parsed = OpportunityFormFields[field].safeParse(value);
     const message = parsed.success
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       ? getCrossRuleError(field, { ...form.state.values, [field]: value })
       : parsed.error.issues[0]?.message ?? "Valor inválido";
 

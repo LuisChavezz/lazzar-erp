@@ -220,6 +220,7 @@ export function useCreateCobroForm({
       // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
       // revisa al aplicar.
       const schema = meta.estatus === "Borrador" ? CobroDraftFormSchema : CobroFormSchema;
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `withFreshSaldos` depende de saldos de un hook posterior a useForm; una función nunca sale de las deps del compilador (EC-701)
       const parsed = schema.safeParse(withFreshSaldos(current));
       if (!parsed.success) {
         applyValidationIssues(parsed.error.issues);
@@ -230,6 +231,7 @@ export function useCreateCobroForm({
 
       try {
         await saveCobroMutation({ payload: buildCobroPayload(parsed.data, meta.estatus), cobroId: draft?.id });
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `resetAll` usa `form`; una función nunca sale de las deps del compilador (EC-701)
         if (!isEdit) resetAll();
         onSuccess?.();
       } catch {

@@ -177,6 +177,7 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
     if (
       field === "fecha_fin" &&
       parsed.success &&
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       !isFechaRangeValid(form.getFieldValue("fecha_inicio"), value as string)
     ) {
       fechaRangeFiredRef.current = true;
