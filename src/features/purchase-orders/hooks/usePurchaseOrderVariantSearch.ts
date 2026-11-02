@@ -4,8 +4,8 @@ import { searchPurchaseOrderVariants } from "../services/actions";
 import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-order-onboarding.interface";
 
 /**
- * Variantes de producto terminado que coinciden con `productoQ` (EC-657), para
- * el selector de renglones de una OC de PT. El `productoQ` DEBE llegar ya
+ * Variantes de producto terminado que coinciden con `varianteQ` (EC-657), para
+ * el selector de renglones de una OC de PT. El `varianteQ` DEBE llegar ya
  * debounced desde el consumidor: cada valor es una petición.
  *
  * - Llave propia, aparte de `["purchase-order-onboarding"]`: esta respuesta
@@ -14,12 +14,12 @@ import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-ord
  * - `keepPreviousData`: al teclear se conservan los resultados anteriores
  *   mientras llegan los nuevos (`isPlaceholderData`), sin parpadeo.
  */
-export const usePurchaseOrderVariantSearch = (productoQ: string) => {
+export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
   const { data, isInitialError, isFetching, isPlaceholderData, hasLoaded, refetch } =
     useGuardedQuery<PurchaseOrderOnboardingVariante[]>(
       {
-        queryKey: ["purchase-order-variant-search", productoQ],
-        queryFn: () => searchPurchaseOrderVariants(productoQ),
+        queryKey: ["purchase-order-variant-search", varianteQ],
+        queryFn: () => searchPurchaseOrderVariants(varianteQ),
         placeholderData: keepPreviousData,
       },
       {
