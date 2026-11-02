@@ -7,7 +7,12 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
+import {
+  KpiCurrencyBlocks,
+  KpiMutedValue,
+  KpiTaggedBlocks,
+  SEPARATE_CURRENCIES_NOTE,
+} from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -53,11 +58,14 @@ function openCard(kpi: PurchaseOrderOpenKpi, showAmounts: boolean, onOpen: () =>
   } else if (showAmounts) {
     // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
     const showCurrencyCount = kpi.por_moneda.length > 1;
+    // Un `monto` ausente con permiso es un hueco del payload, no un cero ni
+    // falta de permiso: "—", como en el desglose por estatus.
     value = (
-      <KpiCurrencyBlocks
+      <KpiTaggedBlocks
         blocks={kpi.por_moneda.map((fila) => ({
-          moneda: fila.moneda,
-          monto: fila.monto ?? 0,
+          key: fila.moneda,
+          value: fila.monto === undefined ? "—" : formatKpiTaggedCurrencyAmount(fila.monto, fila.moneda),
+          tag: fila.moneda,
           detail: showCurrencyCount ? `${fila.total} ${plural(fila.total, "OC", "OCs")}` : undefined,
         }))}
       />
