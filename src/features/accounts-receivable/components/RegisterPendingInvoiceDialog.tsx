@@ -14,6 +14,7 @@
  */
 
 import { useId, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -23,10 +24,15 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormSection } from "@/src/components/FormSection";
+import { CxcIcon } from "@/src/components/Icons";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
+import { registerPendingInvoiceMutationKey } from "../hooks/useRegisterPendingInvoice";
 import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
@@ -63,7 +69,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   const tipoCambioHelpId = `${tipoCambioId}-help`;
   const needsTipoCambio = requiresTipoCambio(monedaCodigo);
   const amountPrefix = monedaCodigo || undefined;
-  const amountPrefixClass = amountPrefix ? "pl-10!" : undefined;
+  const amountClass = amountPrefix ? `${COMPACT_FIELD_CLS} pl-10!` : COMPACT_FIELD_CLS;
 
   const pedidoOptions = getPedidoOptions(clienteValue, monedaValue);
   const pedidoDisabled = clienteValue < 1 || monedaValue < 1;
@@ -190,251 +196,258 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending} className="space-y-5">
-        {/* ── Cliente y moneda ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <form.Field name="cliente">
-            {(field) => (
-              <FormSelect
-                label="Cliente *"
-                name={field.name}
-                value={field.state.value}
-                options={[
-                  { value: 0, label: "Seleccionar cliente..." },
-                  ...customerOptions,
-                ]}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  field.handleChange(Number.isNaN(next) ? 0 : next);
-                  clearFieldErrors("cliente");
-                  // El pedido depende del cliente: se resetea al cambiarlo, junto
-                  // con los montos que hubiera auto-llenado.
-                  resetPedido();
-                }}
-                onBlur={field.handleBlur}
-                error={getError("cliente")}
-              />
-            )}
-          </form.Field>
+        <FormSection title="Cliente y moneda" description="Filtran los pedidos que se pueden ligar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+            <form.Field name="cliente">
+              {(field) => (
+                <FormSelect
+                  label="Cliente *"
+                  name={field.name}
+                  value={field.state.value}
+                  options={[
+                    { value: 0, label: "Seleccionar cliente..." },
+                    ...customerOptions,
+                  ]}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    field.handleChange(Number.isNaN(next) ? 0 : next);
+                    clearFieldErrors("cliente");
+                    // El pedido depende del cliente: se resetea al cambiarlo, junto
+                    // con los montos que hubiera auto-llenado.
+                    resetPedido();
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("cliente")}
+                  className={COMPACT_FIELD_CLS}
+                />
+              )}
+            </form.Field>
 
-          <form.Field name="moneda">
-            {(field) => (
-              <FormSelect
-                label="Moneda *"
-                name={field.name}
-                value={field.state.value}
-                options={[
-                  { value: 0, label: "Seleccionar moneda..." },
-                  ...currencyOptions,
-                ]}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  field.handleChange(Number.isNaN(next) ? 0 : next);
-                  clearFieldErrors("moneda");
-                  // El tipo de cambio es de la moneda anterior: se descarta.
-                  form.setFieldValue("tipo_cambio", "");
-                  clearFieldErrors("tipo_cambio");
-                  // El pedido depende de la moneda: se resetea al cambiarla, junto
-                  // con los montos que hubiera auto-llenado.
-                  resetPedido();
-                }}
-                onBlur={field.handleBlur}
-                error={getError("moneda")}
-              />
-            )}
-          </form.Field>
-        </div>
+            <form.Field name="moneda">
+              {(field) => (
+                <FormSelect
+                  label="Moneda *"
+                  name={field.name}
+                  value={field.state.value}
+                  options={[
+                    { value: 0, label: "Seleccionar moneda..." },
+                    ...currencyOptions,
+                  ]}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    field.handleChange(Number.isNaN(next) ? 0 : next);
+                    clearFieldErrors("moneda");
+                    // El tipo de cambio es de la moneda anterior: se descarta.
+                    form.setFieldValue("tipo_cambio", "");
+                    clearFieldErrors("tipo_cambio");
+                    // El pedido depende de la moneda: se resetea al cambiarla, junto
+                    // con los montos que hubiera auto-llenado.
+                    resetPedido();
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("moneda")}
+                  className={COMPACT_FIELD_CLS}
+                />
+              )}
+            </form.Field>
+          </div>
 
-        {/* ── Tipo de cambio (solo fuera de MXN) ───────────────────────── */}
-        {needsTipoCambio && (
-          <form.Field name="tipo_cambio">
-            {(field) => (
-              <div>
+          {/* ── Tipo de cambio (solo fuera de MXN) ───────────────────────── */}
+          {needsTipoCambio && (
+            <form.Field name="tipo_cambio">
+              {(field) => (
+                <div>
+                  <FormInput
+                    id={tipoCambioId}
+                    label={`Tipo de cambio (MXN por ${monedaCodigo || "unidad"}) *`}
+                    aria-describedby={tipoCambioHelpId}
+                    inputMode="decimal"
+                    placeholder="0.000000"
+                    autoComplete="off"
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(sanitizeDecimalInput(event.target.value, 6));
+                      clearFieldErrors("tipo_cambio");
+                    }}
+                    onBlur={field.handleBlur}
+                    error={getError("tipo_cambio")}
+                    className={COMPACT_FIELD_CLS}
+                  />
+                  <p
+                    id={tipoCambioHelpId}
+                    className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
+                  >
+                    Pesos por cada {monedaCodigo || "unidad"}. La factura se registra ya emitida
+                    y, si la empresa contabiliza, su póliza va en pesos; no podrá cambiarse
+                    después.
+                  </p>
+                </div>
+              )}
+            </form.Field>
+          )}
+        </FormSection>
+
+        {/* Pedido (opcional, filtrado por cliente + moneda), folio y vencimiento. */}
+        <FormSection title="Factura">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+            <form.Field name="pedido">
+              {(field) => (
+                <FormSelect
+                  label="Pedido (opcional)"
+                  name={field.name}
+                  value={field.state.value}
+                  disabled={pedidoDisabled}
+                  options={[
+                    {
+                      value: 0,
+                      label: pedidoDisabled
+                        ? "Selecciona cliente y moneda primero..."
+                        : pedidoOptions.length === 0
+                          ? "Sin pedidos para este cliente y moneda"
+                          : "Sin pedido",
+                    },
+                    ...pedidoOptions,
+                  ]}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    const pedidoId = Number.isNaN(next) ? 0 : next;
+                    field.handleChange(pedidoId);
+                    clearFieldErrors("pedido");
+                    syncAmountsForPedido(pedidoId);
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("pedido")}
+                  className={COMPACT_FIELD_CLS}
+                />
+              )}
+            </form.Field>
+
+            <form.Field name="folio">
+              {(field) => (
                 <FormInput
-                  id={tipoCambioId}
-                  label={`Tipo de cambio (MXN por ${monedaCodigo || "unidad"}) *`}
-                  aria-describedby={tipoCambioHelpId}
-                  inputMode="decimal"
-                  placeholder="0.000000"
-                  autoComplete="off"
+                  label="Folio (opcional)"
+                  placeholder="Se genera automáticamente si lo dejas vacío"
+                  forceUppercase
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
-                    field.handleChange(sanitizeDecimalInput(event.target.value, 6));
-                    clearFieldErrors("tipo_cambio");
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("folio");
                   }}
                   onBlur={field.handleBlur}
-                  error={getError("tipo_cambio")}
+                  error={getError("folio")}
+                  className={COMPACT_FIELD_CLS}
                 />
-                <p
-                  id={tipoCambioHelpId}
-                  className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
-                >
-                  Pesos por cada {monedaCodigo || "unidad"}. La factura se registra ya emitida
-                  y, si la empresa contabiliza, su póliza va en pesos; no podrá cambiarse
-                  después.
-                </p>
-              </div>
-            )}
-          </form.Field>
-        )}
+              )}
+            </form.Field>
 
-        {/* ── Pedido (opcional, filtrado por cliente + moneda) ─────────── */}
-        <form.Field name="pedido">
-          {(field) => (
-            <FormSelect
-              label="Pedido (opcional)"
-              name={field.name}
-              value={field.state.value}
-              disabled={pedidoDisabled}
-              options={[
-                {
-                  value: 0,
-                  label: pedidoDisabled
-                    ? "Selecciona cliente y moneda primero..."
-                    : pedidoOptions.length === 0
-                      ? "Sin pedidos para este cliente y moneda"
-                      : "Sin pedido",
-                },
-                ...pedidoOptions,
-              ]}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                const pedidoId = Number.isNaN(next) ? 0 : next;
-                field.handleChange(pedidoId);
-                clearFieldErrors("pedido");
-                syncAmountsForPedido(pedidoId);
-              }}
-              onBlur={field.handleBlur}
-              error={getError("pedido")}
-            />
-          )}
-        </form.Field>
+            <form.Field name="fecha_vencimiento">
+              {(field) => (
+                <FormInput
+                  label="Fecha de vencimiento (opcional)"
+                  type="date"
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("fecha_vencimiento");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("fecha_vencimiento")}
+                  className={COMPACT_FIELD_CLS}
+                />
+              )}
+            </form.Field>
+          </div>
+        </FormSection>
 
-        {/* ── Folio y vencimiento ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <form.Field name="folio">
-            {(field) => (
-              <FormInput
-                label="Folio (opcional)"
-                placeholder="Se genera automáticamente si lo dejas vacío"
-                forceUppercase
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("folio");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("folio")}
-              />
-            )}
-          </form.Field>
+        {/* Subtotal, descuento, impuestos y total, con la guía del total esperado. */}
+        <FormSection title="Importes">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3">
+            <form.Field name="subtotal">
+              {(field) => (
+                <FormInput
+                  label="Subtotal *"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  leading={amountPrefix}
+                  className={amountClass}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("subtotal");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("subtotal")}
+                />
+              )}
+            </form.Field>
 
-          <form.Field name="fecha_vencimiento">
-            {(field) => (
-              <FormInput
-                label="Fecha de vencimiento (opcional)"
-                type="date"
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("fecha_vencimiento");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("fecha_vencimiento")}
-              />
-            )}
-          </form.Field>
-        </div>
+            <form.Field name="descuento">
+              {(field) => (
+                <FormInput
+                  label="Descuento"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  leading={amountPrefix}
+                  className={amountClass}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("descuento");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("descuento")}
+                />
+              )}
+            </form.Field>
 
-        {/* ── Importes ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <form.Field name="subtotal">
-            {(field) => (
-              <FormInput
-                label="Subtotal *"
-                inputMode="decimal"
-                placeholder="0.00"
-                leading={amountPrefix}
-                className={amountPrefixClass}
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("subtotal");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("subtotal")}
-              />
-            )}
-          </form.Field>
+            <form.Field name="impuestos">
+              {(field) => (
+                <FormInput
+                  label="Impuestos"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  leading={amountPrefix}
+                  className={amountClass}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("impuestos");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("impuestos")}
+                />
+              )}
+            </form.Field>
 
-          <form.Field name="descuento">
-            {(field) => (
-              <FormInput
-                label="Descuento"
-                inputMode="decimal"
-                placeholder="0.00"
-                leading={amountPrefix}
-                className={amountPrefixClass}
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("descuento");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("descuento")}
-              />
-            )}
-          </form.Field>
-
-          <form.Field name="impuestos">
-            {(field) => (
-              <FormInput
-                label="Impuestos"
-                inputMode="decimal"
-                placeholder="0.00"
-                leading={amountPrefix}
-                className={amountPrefixClass}
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("impuestos");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("impuestos")}
-              />
-            )}
-          </form.Field>
-        </div>
-
-        {/* ── Total + guía de cálculo ──────────────────────────────────── */}
-        <div>
-          <form.Field name="total">
-            {(field) => (
-              <FormInput
-                label="Total *"
-                inputMode="decimal"
-                placeholder="0.00"
-                leading={amountPrefix}
-                className={amountPrefixClass}
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("total");
-                }}
-                onBlur={field.handleBlur}
-                error={getError("total")}
-              />
-            )}
-          </form.Field>
+            <form.Field name="total">
+              {(field) => (
+                <FormInput
+                  label="Total *"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  leading={amountPrefix}
+                  className={amountClass}
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    clearFieldErrors("total");
+                  }}
+                  onBlur={field.handleBlur}
+                  error={getError("total")}
+                />
+              )}
+            </form.Field>
+          </div>
 
           {expectedTotalCents !== null && (
-            <div className="mt-1.5 flex items-center gap-2 text-[11px]">
+            <div className="-mt-1 flex items-center justify-end gap-2 text-[11px]">
               <span
                 className={
                   totalMatches
@@ -459,44 +472,47 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
               )}
             </div>
           )}
-        </div>
+        </FormSection>
 
-        {/* ── Referencia y observaciones ───────────────────────────────── */}
-        <form.Field name="referencia">
-          {(field) => (
-            <FormInput
-              label="Referencia (opcional)"
-              placeholder="Ej. PENDIENTE-JULIO"
-              forceUppercase
-              name={field.name}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(event.target.value);
-                clearFieldErrors("referencia");
-              }}
-              onBlur={field.handleBlur}
-              error={getError("referencia")}
-            />
-          )}
-        </form.Field>
+        <FormSection title="Referencia y notas">
+          <form.Field name="referencia">
+            {(field) => (
+              <FormInput
+                label="Referencia (opcional)"
+                placeholder="Ej. PENDIENTE-JULIO"
+                forceUppercase
+                name={field.name}
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  clearFieldErrors("referencia");
+                }}
+                onBlur={field.handleBlur}
+                error={getError("referencia")}
+                className={COMPACT_FIELD_CLS}
+              />
+            )}
+          </form.Field>
 
-        <form.Field name="observaciones">
-          {(field) => (
-            <FormTextarea
-              label="Observaciones (opcional)"
-              rows={3}
-              placeholder="Notas de la factura pendiente por cobrar"
-              name={field.name}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(event.target.value);
-                clearFieldErrors("observaciones");
-              }}
-              onBlur={field.handleBlur}
-              error={getError("observaciones")}
-            />
-          )}
-        </form.Field>
+          <form.Field name="observaciones">
+            {(field) => (
+              <FormTextarea
+                label="Observaciones (opcional)"
+                rows={2}
+                placeholder="Notas de la factura pendiente por cobrar"
+                name={field.name}
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  clearFieldErrors("observaciones");
+                }}
+                onBlur={field.handleBlur}
+                error={getError("observaciones")}
+                className={COMPACT_FIELD_CLS}
+              />
+            )}
+          </form.Field>
+        </FormSection>
       </fieldset>
 
       {/* ── Acciones ───────────────────────────────────────────────────── */}
@@ -517,6 +533,11 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
  */
 export const RegisterPendingInvoiceDialog = () => {
   const [isOpen, setIsOpen] = useState(false);
+  // Con el POST en vuelo el diálogo no se cierra (X, Esc): el alta crea factura,
+  // CxC y póliza, y cerrar a medias escondería su resultado. Se lee del
+  // MutationCache por su llave, no del `isPending` del formulario, que vive
+  // dentro del contenido. Mismo patrón que "Preparar conciliación" (EC-676).
+  const isRegistering = useIsMutating({ mutationKey: registerPendingInvoiceMutationKey }) > 0;
 
   return (
     <MainDialog
@@ -525,11 +546,15 @@ export const RegisterPendingInvoiceDialog = () => {
           title="Registrar Factura Pendiente por Cobrar"
           subtitle="Genera la factura y su cuenta por cobrar"
           statusColor="sky"
+          icon={CxcIcon}
         />
       }
       open={isOpen}
-      onOpenChange={setIsOpen}
-      maxWidth="620px"
+      onOpenChange={(open) => {
+        if (!open && isRegistering) return;
+        setIsOpen(open);
+      }}
+      maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
       showCloseButton={false}
       trigger={
         <Button variant="primary" rounded="full" onClick={() => setIsOpen(true)}>
