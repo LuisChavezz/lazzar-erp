@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -26,6 +27,7 @@ import { rejectOperationsQuoteMutationKey } from "@/src/features/operations/hook
 import { RejectQuoteDialog } from "@/src/features/operations/components/RejectQuoteDialog";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { hasPermission } from "@/src/utils/permissions";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 
@@ -66,6 +68,11 @@ const MAX_VISIBLE = 6;
 
 export const PendingApprovalQueue = () => {
   const { operationsQuotes, isLoading } = useOperationsQuotes();
+  // Mismos códigos y misma comprobación que el menú de la tabla de
+  // Cotizaciones (`ActionMenu` → `getVisibleActionItems` → `hasPermission`).
+  const { data: session } = useSession();
+  const canAuthorize = hasPermission("A-MESACONTROL-COTI", session?.user);
+  const canReject = hasPermission("D-MESACONTROL-COTI", session?.user);
   const approveOperationsQuote = useApproveOperationsQuote();
   const rejectingOperationsQuoteIds = useMutationState({
     filters: { mutationKey: [...rejectOperationsQuoteMutationKey], status: "pending" },
@@ -279,28 +286,32 @@ export const PendingApprovalQueue = () => {
                         <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-amber-500 animate-spin" />
                       ) : (
                         <>
-                          <button
-                            type="button"
-                            aria-label={`Autorizar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
-                            onClick={() =>
-                              handleRequestAction("approve", operationsQuote)
-                            }
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors cursor-pointer"
-                          >
-                            <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
-                            <span className="hidden sm:inline">Autorizar</span>
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Rechazar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
-                            onClick={() =>
-                              handleRequestAction("reject", operationsQuote)
-                            }
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/30 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          >
-                            <RejectIcon className="w-4 h-4" aria-hidden="true" />
-                            <span className="hidden sm:inline">Rechazar</span>
-                          </button>
+                          {canAuthorize && (
+                            <button
+                              type="button"
+                              aria-label={`Autorizar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
+                              onClick={() =>
+                                handleRequestAction("approve", operationsQuote)
+                              }
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                            >
+                              <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+                              <span className="hidden sm:inline">Autorizar</span>
+                            </button>
+                          )}
+                          {canReject && (
+                            <button
+                              type="button"
+                              aria-label={`Rechazar cotización #${String(operationsQuote.id).padStart(5, "0")}`}
+                              onClick={() =>
+                                handleRequestAction("reject", operationsQuote)
+                              }
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/30 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            >
+                              <RejectIcon className="w-4 h-4" aria-hidden="true" />
+                              <span className="hidden sm:inline">Rechazar</span>
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
