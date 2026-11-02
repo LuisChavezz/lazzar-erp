@@ -79,6 +79,9 @@ export const routePermissions: Array<{
 
   // ── Mesa de Control ───────────────────────────────────────────────────────
   { prefix: "/operations/quotes", permission: "R-MESACONTROL-COTI" },
+  // El panel solo muestra cotizaciones en revisión: mismo código que la lista
+  // de Cotizaciones. Sin esta regla caería en `/operations` (R-MESACONTROL).
+  { prefix: "/operations/dashboard", permission: "R-MESACONTROL-COTI" },
   { prefix: "/operations/orders", permission: "R-MESACONTROL-PEDIDOS" },
   // Hermana de `/operations/orders` (no anidada, ver `appRoutes`): sin su
   // propia regla caería en `/operations` y exigiría R-MESACONTROL en su lugar.
