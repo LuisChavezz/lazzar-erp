@@ -1,5 +1,6 @@
 "use client";
 
+import { OPERATIONS_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { OperationsQuote } from "../interfaces/operations-quote.interface";
 import { getOperationsQuotes } from "../services/actions";
@@ -17,6 +18,7 @@ export const useOperationsQuotes = () => {
     {
       queryKey: operationsQuotesQueryKey,
       queryFn: getOperationsQuotes,
+      gcTime: OPERATIONS_QUERY_GC_TIME,
     },
     { toastId: "operations-quotes-refetch-error" },
   );
