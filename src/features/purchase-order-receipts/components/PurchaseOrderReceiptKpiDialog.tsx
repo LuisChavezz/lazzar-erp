@@ -235,10 +235,8 @@ interface PurchaseOrderReceiptKpiDialogProps {
    */
   kind: PurchaseOrderReceiptKpiDialogKind | null;
   data: PurchaseOrderReceiptKpis | undefined;
-  /** Misma regla que su tarjeta (`resolveKpiAmountState`). */
-  showPriceAmounts: boolean;
-  /** Misma regla que su tarjeta (`resolveKpiAmountState`). */
-  showRejectedAmounts: boolean;
+  /** `puede_ver_importes` de la respuesta (`canSeeKpiAmounts`), igual que las tarjetas. */
+  showAmounts: boolean;
   onClose: () => void;
 }
 
@@ -253,8 +251,7 @@ export function PurchaseOrderReceiptKpiDialog({
   open,
   kind,
   data,
-  showPriceAmounts,
-  showRejectedAmounts,
+  showAmounts,
   onClose,
 }: PurchaseOrderReceiptKpiDialogProps) {
   return (
@@ -269,10 +266,10 @@ export function PurchaseOrderReceiptKpiDialog({
     >
       {kind === "cumplimiento_cantidad" && data && <FulfillmentContent kpi={data.cumplimiento_cantidad} />}
       {kind === "diferencia_precio" && data && (
-        <PriceContent kpi={data.diferencia_precio} showAmounts={showPriceAmounts} />
+        <PriceContent kpi={data.diferencia_precio} showAmounts={showAmounts} />
       )}
       {kind === "material_rechazado" && data && (
-        <RejectedContent kpi={data.material_rechazado} showAmounts={showRejectedAmounts} />
+        <RejectedContent kpi={data.material_rechazado} showAmounts={showAmounts} />
       )}
     </MainDialog>
   );

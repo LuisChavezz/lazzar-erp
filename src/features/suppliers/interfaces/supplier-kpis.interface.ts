@@ -120,6 +120,11 @@ interface SupplierKpisEnvelope {
 export interface SupplierKpisAvailable extends SupplierKpisEnvelope {
   disponible: true;
   filtros: SupplierKpiFilters;
+  /**
+   * Solo una bandera: el backend manda `diferencia_precio` aunque sea `false`.
+   * Opcional por defensa (ver `canSeeKpiAmounts`).
+   */
+  puede_ver_importes?: boolean;
 }
 
 /** Usuario sin empresa: `proveedores: []` y el motivo para el usuario. */
