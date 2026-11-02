@@ -105,4 +105,6 @@ export interface PurchaseOrderKpis {
   /** Hoy SIEMPRE llega no disponible: solo se tipa la bandera. */
   ciclo_compra: KpiUntypedBlock;
   gasto_por_categoria: PurchaseOrderSpendKpi;
+  /** Ausente en la respuesta de un usuario sin empresa (ver `canSeeKpiAmounts`). */
+  puede_ver_importes?: boolean;
 }

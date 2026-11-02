@@ -13,7 +13,6 @@ import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundar
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, ComprasIcon, ExclamationTriangleIcon, WalletIcon } from "@/src/components/Icons";
 import { purchaseOrderKpisQueryKey, usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
-import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import type {
   PurchaseOrderKpis,
   PurchaseOrderOpenKpi,
@@ -22,31 +21,24 @@ import type {
 } from "../interfaces/purchase-order-kpis.interface";
 import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import {
-  getPurchaseOrderKpiAmountVisibility,
+  canSeeKpiAmounts,
   groupPurchaseOrderKpiSpend,
-  resolveKpiAmountState,
-  type KpiAmountState,
-  type KpiHiddenAmountsReason,
-  type PurchaseOrderKpiAmountVisibility,
+  HIDDEN_KPI_AMOUNT_TEXT,
+  HIDDEN_KPI_AMOUNTS_REASON,
+  isAmountOnlyKpiHidden,
 } from "../utils/purchaseOrderKpis";
 import { PurchaseOrderKpiDialog, type PurchaseOrderKpiDialogKind } from "./PurchaseOrderKpiDialog";
 
 const SECTION_TITLE = "Indicadores";
 
-/** Por qué una tarjeta no muestra importes (ver `resolveKpiAmountState`). */
-const HIDDEN_AMOUNTS_MOTIVO: Record<KpiHiddenAmountsReason, string> = {
-  "no-permission": "No tienes permiso para ver los importes de las órdenes de compra.",
-  undetermined: "No se pudo verificar si puedes ver los importes de las órdenes de compra.",
-};
-
 /**
  * OCs abiertas: un bloque por moneda con su monto y, en el detalle, el conteo
  * de todas las monedas (un conteo sí se puede sumar; un importe no). Sin
- * importes a la vista el valor es el conteo (que sí se puede ver) y el detalle
- * dice que los importes no se muestran, con el porqué en el ⓘ. Sin meta ni
- * semáforo: sin insignia y sin barra.
+ * importes a la vista solo el monto cambia a "No visible": el conteo del
+ * detalle se queda, con el porqué en el ⓘ. Sin meta ni semáforo: sin insignia
+ * y sin barra.
  */
-function openCard(kpi: PurchaseOrderOpenKpi, amounts: KpiAmountState, onOpen: () => void): KpiCompactItem {
+function openCard(kpi: PurchaseOrderOpenKpi, showAmounts: boolean, onOpen: () => void): KpiCompactItem {
   const base = { label: "OCs abiertas", icon: ComprasIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -55,11 +47,10 @@ function openCard(kpi: PurchaseOrderOpenKpi, amounts: KpiAmountState, onOpen: ()
   const count = `${kpi.total} ${plural(kpi.total, "OC abierta", "OCs abiertas")}`;
   let value: ReactNode;
   let info: string;
-  let detail: string | undefined = kpi.total > 0 ? count : undefined;
   if (kpi.total === 0) {
     value = <KpiMutedValue>Sin OCs abiertas</KpiMutedValue>;
     info = criterio;
-  } else if (amounts.show) {
+  } else if (showAmounts) {
     // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
     const showCurrencyCount = kpi.por_moneda.length > 1;
     value = (
@@ -73,9 +64,8 @@ function openCard(kpi: PurchaseOrderOpenKpi, amounts: KpiAmountState, onOpen: ()
     );
     info = `${criterio} El monto es su total con IVA, de todo el histórico. ${SEPARATE_CURRENCIES_NOTE}`;
   } else {
-    value = String(kpi.total);
-    detail = "Importes no visibles";
-    info = `${criterio} ${HIDDEN_AMOUNTS_MOTIVO[amounts.reason]}`;
+    value = <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>;
+    info = `${criterio} ${HIDDEN_KPI_AMOUNTS_REASON}`;
   }
   return {
     ...base,
@@ -83,7 +73,7 @@ function openCard(kpi: PurchaseOrderOpenKpi, amounts: KpiAmountState, onOpen: ()
     value,
     info,
     hideProgress: true,
-    ...(detail ? { detail } : {}),
+    ...(kpi.total > 0 ? { detail: count } : {}),
     action: (
       <KpiDrillDownButton
         label="Por estatus"
@@ -123,22 +113,28 @@ function overdueCard(kpi: PurchaseOrderOverdueKpi, onOpen: () => void): KpiCompa
 
 /**
  * Gasto por categoría: todo el indicador ES un importe, así que sin importes a
- * la vista la tarjeta se muestra no disponible. Un bloque por moneda con el
- * total de ESA moneda (suma de sus categorías, que el backend no expone) y su
+ * la vista la tarjeta se queda con "No visible" y sin drill-down (sin permiso
+ * el backend manda el bloque no disponible). Un bloque por moneda con el total
+ * de ESA moneda (suma de sus categorías, que el backend no expone) y su
  * categoría mayor: cada moneda tiene su propio ranking.
  */
 function spendCard(
   kpi: PurchaseOrderSpendKpi,
-  visibility: PurchaseOrderKpiAmountVisibility,
+  puedeVerImportes: boolean | undefined,
   onOpen: () => void,
 ): KpiCompactItem {
   const base = { label: "Gasto por categoría", icon: WalletIcon };
+  if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
+    return {
+      ...base,
+      ...KPI_MUTED_ICON,
+      value: <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>,
+      info: HIDDEN_KPI_AMOUNTS_REASON,
+      hideProgress: true,
+    };
+  }
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
-  }
-  const amounts = resolveKpiAmountState(visibility, true);
-  if (!amounts.show) {
-    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: HIDDEN_AMOUNTS_MOTIVO[amounts.reason] };
   }
   const monedas = groupPurchaseOrderKpiSpend(kpi.categorias);
   const hasSpend = monedas.some((moneda) => moneda.total > 0);
@@ -178,34 +174,19 @@ function spendCard(
 
 function buildCards(
   data: PurchaseOrderKpis,
-  visibility: PurchaseOrderKpiAmountVisibility,
-  openAmounts: KpiAmountState,
   openDialog: (kind: PurchaseOrderKpiDialogKind) => void,
 ): KpiCompactItem[] {
   return [
-    openCard(data.ocs_abiertas, openAmounts, () => openDialog("ocs_abiertas")),
+    openCard(data.ocs_abiertas, canSeeKpiAmounts(data.puede_ver_importes), () => openDialog("ocs_abiertas")),
     overdueCard(data.ocs_vencidas_sin_recibir, () => openDialog("ocs_vencidas_sin_recibir")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.ciclo_compra, { label: "Ciclo de compra", icon: ClockIcon }),
-    spendCard(data.gasto_por_categoria, visibility, () => openDialog("gasto_por_categoria")),
+    spendCard(data.gasto_por_categoria, data.puede_ver_importes, () => openDialog("gasto_por_categoria")),
   ];
 }
 
 function PurchaseOrderKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderKpis();
-  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } =
-    usePurchaseOrders();
-  const amountVisibility = getPurchaseOrderKpiAmountVisibility({
-    orders: purchaseOrders,
-    hasLoaded: isListLoaded,
-    isError: isListError,
-  });
-  // Importes del bloque de OCs abiertas: el listado dice `visible` y el bloque
-  // los trae. Una sola regla para la tarjeta y su desglose por estatus.
-  const openAmounts = resolveKpiAmountState(
-    amountVisibility,
-    data?.ocs_abiertas.disponible !== true || data.ocs_abiertas.por_moneda.every((fila) => fila.monto !== undefined),
-  );
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -217,11 +198,8 @@ function PurchaseOrderKpisSectionContent() {
   };
 
   let body: ReactNode;
-  // Con el listado aún sin responder se sigue en skeleton (como en la primera
-  // carga de los KPIs): así no se pinta una tarjeta sin importes que luego los
-  // "aparece", ni el motivo de permiso antes de saber si aplica.
-  if (data && amountVisibility !== "pending") {
-    body = <KpiGrid compact items={buildCards(data, amountVisibility, openAmounts, openDialog)} />;
+  if (data) {
+    body = <KpiGrid compact items={buildCards(data, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
@@ -242,7 +220,7 @@ function PurchaseOrderKpisSectionContent() {
         open={isDialogOpen}
         kind={dialogKind}
         data={data}
-        showAmounts={openAmounts.show}
+        showAmounts={canSeeKpiAmounts(data?.puede_ver_importes)}
         onClose={() => setIsDialogOpen(false)}
       />
     </>
@@ -256,10 +234,10 @@ function PurchaseOrderKpisSectionContent() {
  * `disponible`.
  *
  * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de OCs. El listado (`usePurchaseOrders`, misma llave y caché que la
- * tabla) se lee SOLO como señal de permiso para importes (ver
- * `getPurchaseOrderKpiAmountVisibility`). Sin gate de permiso: la ruta ya
- * exige `R-COMPRAS-OC` (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
+ * tabla de OCs. Los importes siguen `puede_ver_importes` de la misma respuesta
+ * (`canSeeKpiAmounts`); sin él, cada tarjeta se queda y su importe dice "No
+ * visible". Sin gate de permiso: la ruta ya exige `R-COMPRAS-OC`
+ * (`routePermissions`). Mismo patrón que `PedidoKpisSection`.
  *
  * Tiene su propio límite de error: si el payload cambia de forma y el render
  * lanza, se pinta un aviso aquí y la tabla de OCs sigue usable.

@@ -1,74 +1,31 @@
-import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import type {
   PurchaseOrderKpiCategory,
   PurchaseOrderKpiStatusBreakdown,
 } from "../interfaces/purchase-order-kpis.interface";
 
 /**
- * Visibilidad de los importes de los indicadores de OC:
- * - `pending`: el listado aún no responde por primera vez; la sección espera
- *   en skeleton para no pintar tarjetas sin importes y luego "aparecerlos".
- * - `visible`: alguna fila del listado trae `gran_total`.
- * - `no-permission`: el listado trae filas y NINGUNA trae `gran_total`: el
- *   backend se los quitó por falta de permiso de contabilidad.
- * - `undetermined`: el listado falló sin haber cargado nunca, o llegó vacío; no
- *   hay forma de saber si el usuario puede verlos, así que se ocultan sin
- *   afirmar que sea por permiso.
+ * ¿Puede el usuario ver los importes de un indicador de compras? Lo dice cada
+ * respuesta de KPIs de OC, recepciones y proveedores (`puede_ver_importes`,
+ * mismo criterio que el filtro contable del listado de OC). Ausente cuenta como
+ * `false`: el backend no lo manda en la respuesta de un usuario sin empresa.
  */
-export type PurchaseOrderKpiAmountVisibility = "pending" | "visible" | "no-permission" | "undetermined";
+export const canSeeKpiAmounts = (puedeVerImportes: boolean | undefined): boolean =>
+  puedeVerImportes === true;
 
 /**
- * ¿Se pueden mostrar los importes de los indicadores de OC?
- *
- * Señal del listado de OC: el listado elimina `gran_total` a quien no tiene
- * `puede_ver_contabilidad` (la sesión no trae ese permiso). Se lee de
- * `usePurchaseOrders` (misma caché que la tabla, sin petición extra). Solo
- * `visible` muestra importes, y siempre junto con que el bloque de KPIs los
- * traiga (`resolveKpiAmountState`): los endpoints de KPIs de OC y de recepciones
- * ya quitan los importes sin ese permiso.
- *
- * Decide por `hasLoaded` (hubo alguna respuesta exitosa) y no por
- * `isLoading`/`isError`: en un refetch del listado —incluso uno fallido— se
- * conserva la última respuesta, así que el estado no parpadea.
- *
- * OJO: NO es exclusivo de esta pantalla. Los indicadores de Recepciones
- * (`PurchaseOrderReceiptKpisSection`, `GET /compras/recepciones/kpis/`) lo usan
- * con la misma señal.
+ * ¿Una tarjeta que es SOLO un importe va como "No visible"? Sin permiso el
+ * backend manda esos bloques no disponibles (`Sin permiso de contabilidad.`),
+ * así que un `false` explícito manda sobre su `disponible`. Sin la bandera
+ * (usuario sin empresa) el bloque conserva su propio motivo.
  */
-export const getPurchaseOrderKpiAmountVisibility = ({
-  orders,
-  hasLoaded,
-  isError,
-}: {
-  orders: PurchaseOrder[];
-  hasLoaded: boolean;
-  isError: boolean;
-}): PurchaseOrderKpiAmountVisibility => {
-  if (!hasLoaded) return isError ? "undetermined" : "pending";
-  if (orders.length === 0) return "undetermined";
-  return orders.some((order) => order.gran_total !== undefined) ? "visible" : "no-permission";
-};
+export const isAmountOnlyKpiHidden = (disponible: boolean, puedeVerImportes: boolean | undefined): boolean =>
+  puedeVerImportes === false || (disponible && !canSeeKpiAmounts(puedeVerImportes));
 
-/** Por qué un indicador no muestra importes (texto del ⓘ según el caso). */
-export type KpiHiddenAmountsReason = "no-permission" | "undetermined";
+/** Lo que ocupa el lugar de un importe que el usuario no puede ver. */
+export const HIDDEN_KPI_AMOUNT_TEXT = "No visible";
 
-export type KpiAmountState = { show: true } | { show: false; reason: KpiHiddenAmountsReason };
-
-/**
- * ¿Muestra importes un bloque de KPIs de compras? Solo si el listado de OC dice
- * `visible` Y el bloque los trae. El backend quita las claves de importe SOLO a
- * quien no tiene permiso de contabilidad, así que un bloque sin ellas es falta
- * de permiso, diga lo que diga el listado. Usado por los indicadores de OC y de
- * recepciones. `pending` no llega aquí (las tarjetas con importes esperan).
- */
-export const resolveKpiAmountState = (
-  visibility: PurchaseOrderKpiAmountVisibility,
-  carriesAmounts: boolean,
-): KpiAmountState => {
-  if (!carriesAmounts || visibility === "no-permission") return { show: false, reason: "no-permission" };
-  if (visibility === "visible") return { show: true };
-  return { show: false, reason: "undetermined" };
-};
+/** El porqué, para el ⓘ de la tarjeta. */
+export const HIDDEN_KPI_AMOUNTS_REASON = "No tienes permiso para ver los importes de compras.";
 
 /** Un estatus de OCs abiertas con sus monedas (`por_estatus` agrupado). */
 export interface PurchaseOrderKpiStatusGroup {

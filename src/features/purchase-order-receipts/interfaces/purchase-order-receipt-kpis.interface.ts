@@ -180,4 +180,6 @@ export interface PurchaseOrderReceiptKpis {
   recepciones_parciales: PurchaseOrderReceiptPartialKpi;
   diferencia_precio: PurchaseOrderReceiptPriceKpi;
   material_rechazado: PurchaseOrderReceiptRejectedKpi;
+  /** Ausente en la respuesta de un usuario sin empresa (ver `canSeeKpiAmounts`). */
+  puede_ver_importes?: boolean;
 }

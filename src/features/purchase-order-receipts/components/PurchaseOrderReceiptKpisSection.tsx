@@ -11,13 +11,11 @@ import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { CheckCircleIcon, ExclamationTriangleIcon, RecepcionesIcon, WalletIcon } from "@/src/components/Icons";
-import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
-import { pendingAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import {
-  getPurchaseOrderKpiAmountVisibility,
-  resolveKpiAmountState,
-  type KpiHiddenAmountsReason,
-  type PurchaseOrderKpiAmountVisibility,
+  canSeeKpiAmounts,
+  HIDDEN_KPI_AMOUNT_TEXT,
+  HIDDEN_KPI_AMOUNTS_REASON,
+  isAmountOnlyKpiHidden,
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
@@ -115,29 +113,29 @@ function partialCard(kpi: PurchaseOrderReceiptPartialKpi): KpiCompactItem {
   };
 }
 
-/** Por qué una tarjeta no muestra importes (ver `resolveKpiAmountState`). */
-const HIDDEN_AMOUNTS_REASON: Record<KpiHiddenAmountsReason, string> = {
-  "no-permission": "No tienes permiso para ver los importes de compras.",
-  undetermined: "No se pudo verificar si puedes ver los importes de compras.",
-};
-
 /**
  * Diferencias de precio/costo: un bloque por moneda (la de la factura, que es
- * la de su OC) con la diferencia con signo y su porcentaje. Sin importes a la
- * vista, el porcentaje con signo por moneda (que no revela montos), con un ⓘ
- * que dice por qué. Un `pct` `null` o ausente (nada pactado contra qué
- * comparar) es "—", nunca "NaN%". El icono se enciende con cualquier
- * diferencia en ambos modos: la alerta no depende del permiso.
+ * la de su OC) con la diferencia con signo y su porcentaje. Un `pct` `null` o
+ * ausente (nada pactado contra qué comparar) es "—", nunca "NaN%".
  *
- * Sin permiso de contabilidad el backend manda el bloque no disponible con su
- * motivo, así que no llega aquí.
+ * Todo el indicador es un importe: sin permiso de contabilidad el backend manda
+ * el bloque no disponible y la tarjeta se queda con "No visible", sin drill-down.
  */
 function priceCard(
   kpi: PurchaseOrderReceiptPriceKpi,
-  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
+  puedeVerImportes: boolean | undefined,
   onOpen: () => void,
 ): KpiCompactItem {
   const base = { label: "Diferencias de precio/costo", icon: WalletIcon };
+  if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
+    return {
+      ...base,
+      ...KPI_MUTED_ICON,
+      value: <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>,
+      info: HIDDEN_KPI_AMOUNTS_REASON,
+      hideProgress: true,
+    };
+  }
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
   const action = (
     <KpiDrillDownButton
@@ -161,36 +159,17 @@ function priceCard(
   if (kpi.por_moneda.length === 0) {
     return { ...common, info: criterio, value: <KpiMutedValue>Sin partidas evaluadas</KpiMutedValue> };
   }
-  const amber = { iconClass: "text-amber-500" };
-  const amounts = resolveKpiAmountState(visibility, true);
-  if (amounts.show) {
-    return {
-      ...common,
-      ...(kpi.por_moneda.some((moneda) => moneda.diferencia !== 0) ? amber : {}),
-      info: criterio,
-      value: (
-        <KpiTaggedBlocks
-          blocks={kpi.por_moneda.map((moneda) => ({
-            key: moneda.moneda,
-            value: formatKpiTaggedSignedCurrencyAmount(moneda.diferencia, moneda.moneda),
-            tag: moneda.moneda,
-            detail: `${formatKpiSignedPctOrDash(moneda.pct ?? null)} sobre lo pactado en la OC`,
-          }))}
-        />
-      ),
-    };
-  }
   return {
     ...common,
-    ...(kpi.por_moneda.some((moneda) => (moneda.pct ?? 0) !== 0) ? amber : {}),
-    info: `${criterio} ${HIDDEN_AMOUNTS_REASON[amounts.reason]}`,
+    ...(kpi.por_moneda.some((moneda) => moneda.diferencia !== 0) ? { iconClass: "text-amber-500" } : {}),
+    info: criterio,
     value: (
       <KpiTaggedBlocks
         blocks={kpi.por_moneda.map((moneda) => ({
           key: moneda.moneda,
-          value: formatKpiSignedPctOrDash(moneda.pct ?? null),
+          value: formatKpiTaggedSignedCurrencyAmount(moneda.diferencia, moneda.moneda),
           tag: moneda.moneda,
-          detail: "Sobre lo pactado en la OC",
+          detail: `${formatKpiSignedPctOrDash(moneda.pct ?? null)} sobre lo pactado en la OC`,
         }))}
       />
     ),
@@ -199,12 +178,12 @@ function priceCard(
 
 /**
  * Material rechazado: cantidad por unidad de medida y, como detalle, su valor
- * por moneda (la de la OC). Sin importes a la vista el detalle lo dice en lugar
- * de desaparecer, y el ⓘ explica por qué.
+ * por moneda (la de la OC). Sin importes a la vista solo el valor cambia a "No
+ * visible" (las cantidades se quedan), y el ⓘ explica por qué.
  */
 function rejectedCard(
   kpi: PurchaseOrderReceiptRejectedKpi,
-  visibility: Exclude<PurchaseOrderKpiAmountVisibility, "pending">,
+  showAmounts: boolean,
   onOpen: () => void,
 ): KpiCompactItem {
   const base = { label: "Material rechazado", icon: ExclamationTriangleIcon };
@@ -213,17 +192,16 @@ function rejectedCard(
     "Unidades rechazadas por Calidad en las recepciones de OC; no son devoluciones al proveedor. " +
     SEPARATE_UNITS_NOTE;
   const hasRejects = kpi.por_unidad.some((fila) => fila.cantidad_rechazada > 0);
-  const amounts = resolveKpiAmountState(visibility, kpi.por_moneda !== undefined);
   let info = criterio;
   let detail: string | undefined;
-  if (hasRejects && amounts.show && kpi.por_moneda && kpi.por_moneda.length > 0) {
+  if (hasRejects && showAmounts && kpi.por_moneda && kpi.por_moneda.length > 0) {
     detail = `Valor ${kpi.por_moneda
       .map((moneda) => `${formatKpiTaggedCurrencyAmount(moneda.valor_rechazado, moneda.moneda)} ${moneda.moneda}`)
       .join(" · ")}`;
     info = `${criterio} El valor es a precio pactado en la OC. ${SEPARATE_CURRENCIES_NOTE}`;
-  } else if (hasRejects && !amounts.show) {
-    detail = "Valor no visible";
-    info = `${criterio} ${HIDDEN_AMOUNTS_REASON[amounts.reason]}`;
+  } else if (hasRejects && !showAmounts) {
+    detail = `Valor: ${HIDDEN_KPI_AMOUNT_TEXT}`;
+    info = `${criterio} ${HIDDEN_KPI_AMOUNTS_REASON}`;
   }
   return {
     ...base,
@@ -256,49 +234,24 @@ function rejectedCard(
 
 function buildCards(
   data: PurchaseOrderReceiptKpis,
-  visibility: PurchaseOrderKpiAmountVisibility,
   openDialog: (kind: PurchaseOrderReceiptKpiDialogKind) => void,
 ): KpiCompactItem[] {
-  // Cumplimiento y parciales no tienen importes: se pintan en cuanto llegan los
-  // KPIs. Las otras dos esperan, cada una con su propio marcador, a que el
-  // listado de OC diga si se pueden ver importes. Un bloque no disponible no
-  // espera: no tiene nada que decidir.
-  const waits = visibility === "pending";
   return [
     fulfillmentCard(data.cumplimiento_cantidad, () => openDialog("cumplimiento_cantidad")),
     partialCard(data.recepciones_parciales),
-    waits && data.diferencia_precio.disponible
-      ? pendingAmountCard({ label: "Diferencias de precio/costo", icon: WalletIcon })
-      : priceCard(
-          data.diferencia_precio,
-          visibility === "pending" ? "undetermined" : visibility,
-          () => openDialog("diferencia_precio"),
-        ),
-    waits && data.material_rechazado.disponible
-      ? pendingAmountCard({ label: "Material rechazado", icon: ExclamationTriangleIcon })
-      : rejectedCard(
-          data.material_rechazado,
-          visibility === "pending" ? "undetermined" : visibility,
-          () => openDialog("material_rechazado"),
-        ),
+    priceCard(data.diferencia_precio, data.puede_ver_importes, () => openDialog("diferencia_precio")),
+    rejectedCard(
+      data.material_rechazado,
+      canSeeKpiAmounts(data.puede_ver_importes),
+      () => openDialog("material_rechazado"),
+    ),
   ];
 }
 
 function PurchaseOrderReceiptKpisSectionContent() {
   const { data, isInitialError, isFetching, refetch } = usePurchaseOrderReceiptKpis();
-  const { purchaseOrders, hasLoaded: isListLoaded, isInitialError: isListError } =
-    usePurchaseOrders();
-  const amountVisibility = getPurchaseOrderKpiAmountVisibility({
-    orders: purchaseOrders,
-    hasLoaded: isListLoaded,
-    isError: isListError,
-  });
-  // Los drill-downs muestran importes con la misma regla que su tarjeta.
-  const showPriceAmounts = resolveKpiAmountState(amountVisibility, true).show;
-  const showRejectedAmounts = resolveKpiAmountState(
-    amountVisibility,
-    data?.material_rechazado.disponible === true && data.material_rechazado.por_moneda !== undefined,
-  ).show;
+  // Los drill-downs muestran importes con la misma regla que sus tarjetas.
+  const showAmounts = canSeeKpiAmounts(data?.puede_ver_importes);
 
   // `dialogKind` es el ÚLTIMO detalle abierto y no se limpia al cerrar: así el
   // diálogo conserva título y filas durante su animación de salida.
@@ -310,10 +263,8 @@ function PurchaseOrderReceiptKpisSectionContent() {
   };
 
   let body: ReactNode;
-  // Las tarjetas se pintan en cuanto llegan los KPIs; las que dependen de
-  // importes esperan aparte a la señal del listado de OC (ver `buildCards`).
   if (data) {
-    body = <KpiGrid compact items={buildCards(data, amountVisibility, openDialog)} />;
+    body = <KpiGrid compact items={buildCards(data, openDialog)} />;
   } else if (isInitialError) {
     body = (
       <SectionErrorNotice
@@ -334,8 +285,7 @@ function PurchaseOrderReceiptKpisSectionContent() {
         open={isDialogOpen}
         kind={dialogKind}
         data={data}
-        showPriceAmounts={showPriceAmounts}
-        showRejectedAmounts={showRejectedAmounts}
+        showAmounts={showAmounts}
         onClose={() => setIsDialogOpen(false)}
       />
     </>
@@ -349,13 +299,11 @@ function PurchaseOrderReceiptKpisSectionContent() {
  * bloque decide solo por su `disponible`.
  *
  * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
- * tabla de recepciones. Los importes siguen la MISMA regla que los indicadores
- * de OC (`getPurchaseOrderKpiAmountVisibility` + `resolveKpiAmountState`): el
- * listado de OC (`usePurchaseOrders`, misma llave y caché que en la página de
- * OC) se lee SOLO como señal de permiso; mientras no responde, solo las dos
- * tarjetas con importes esperan con su propio marcador. Porcentajes y
- * cantidades se muestran siempre. Sin gate de
- * permiso: la ruta ya exige `R-COMPRAS-RECEP` (`routePermissions`).
+ * tabla de recepciones. Los importes siguen `puede_ver_importes` de la misma
+ * respuesta (`canSeeKpiAmounts`), como los indicadores de OC: sin él cada
+ * tarjeta se queda y su importe dice "No visible". Porcentajes y cantidades se
+ * muestran siempre. Sin gate de permiso: la ruta ya exige `R-COMPRAS-RECEP`
+ * (`routePermissions`).
  *
  * Tiene su propio límite de error: si el payload cambia de forma y el render
  * lanza, se pinta un aviso aquí y la tabla de recepciones sigue usable.
