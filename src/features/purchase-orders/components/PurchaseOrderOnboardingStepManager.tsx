@@ -13,7 +13,6 @@ import { usePurchaseOrderLines } from "../hooks/usePurchaseOrderLines";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
-import { countPricedLines } from "../utils/supplierDefaultMoneda";
 
 interface PurchaseOrderOnboardingStepManagerProps {
   /** Called when the onboarding flow should close (e.g. after Step 2 succeeds). */
@@ -84,7 +83,8 @@ export function PurchaseOrderOnboardingStepManager({
             initialValues={step1Data ?? undefined}
             initialServerErrors={headerErrors}
             lineCount={lines.count}
-            pricedLineCount={countPricedLines(lines.lines, lines.prices)}
+            // Con precio = los que pasan la validación del precio (`priceErrors`).
+            pricedLineCount={lines.count - Object.keys(lines.priceErrors).length}
             onClearLines={handleClearLines}
             onSuccess={handleStep1Success}
           />
