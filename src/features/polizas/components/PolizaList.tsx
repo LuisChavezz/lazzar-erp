@@ -14,6 +14,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
@@ -96,28 +97,10 @@ export default function PolizaList() {
   // diálogo montado en la celda se cerraría solo a media confirmación.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [postTargetId, setPostTargetId] = useState<number | null>(null);
-  /**
-   * La cancelación guarda el `estatus` con que se ABRIÓ: su efecto depende de
-   * él (un `Borrador` solo se cancela; una `Contabilizada` genera además una
-   * contrapóliza). El texto sale de ese estatus, y si la póliza cambia de
-   * estatus con la confirmación abierta, el aviso de abajo la cierra en vez de
-   * confirmar con un texto que ya no describe lo que va a pasar.
-   */
-  const [cancelTarget, setCancelTarget] = useState<{
-    id: number;
-    estatus: PolizaEstatus;
-  } | null>(null);
-  const cancelTargetId = cancelTarget?.id ?? null;
-  /**
-   * El borrado guarda la ETIQUETA al abrir, no solo el id: su mutación es
-   * optimista y el borrado es FÍSICO, así que la fila sale del caché en cuanto se
-   * confirma y la confirmación ya no tendría de dónde leerla mientras pinta
-   * "Eliminando...".
-   */
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: number;
-    etiqueta: string;
-  } | null>(null);
+  // Cancelar y Eliminar guardan solo el id; la copia de la póliza al ABRIR la
+  // toma `useDialogSession` más abajo (ver `cancelSession`/`deleteSession`).
+  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
   const setStaleNotice = useStaleNoticeToast();
 
@@ -163,6 +146,22 @@ export default function PolizaList() {
   // totales incluidos.
   const detailPoliza = findPoliza(openDetailId);
 
+  /**
+   * La póliza tal como estaba al ABRIR cada confirmación (`useDialogSession`).
+   * - Cancelar: su efecto depende del `estatus` de la apertura (un `Borrador`
+   *   solo se cancela; una `Contabilizada` genera además una contrapóliza). El
+   *   texto sale de ese estatus, y si la póliza cambia con la confirmación
+   *   abierta, el aviso de abajo la cierra en vez de confirmar con un texto que
+   *   ya no describe lo que va a pasar.
+   * - Eliminar: la mutación es optimista y el borrado es FÍSICO, así que la fila
+   *   sale del caché al confirmar; la copia conserva el folio mientras pinta
+   *   "Eliminando...".
+   */
+  const cancelSession = useDialogSession(cancelTargetId !== null, findPoliza(cancelTargetId));
+  const cancelSnapshot = cancelSession.snapshot;
+  const deleteSession = useDialogSession(deleteTargetId !== null, findPoliza(deleteTargetId));
+  const deleteSnapshot = deleteSession.snapshot;
+
   // El id NO puede sobrevivir a la desaparición de su renglón: un refetch
   // posterior que lo devolviera volvería a abrir el detalle solo. Se ajusta en
   // RENDER (patrón de estado derivado de React) y no en un efecto, que
@@ -191,39 +190,37 @@ export default function PolizaList() {
   }
 
   const staleCancel =
-    cancelTarget &&
+    cancelTargetId !== null &&
+    cancelSnapshot &&
     getStaleRowDialogNotice({
       resource: "poliza-cancelar",
-      targetId: cancelTarget.id,
-      target: findPoliza(cancelTarget.id),
+      targetId: cancelTargetId,
+      target: findPoliza(cancelTargetId),
       statusField: "estatus",
-      expectedEstado: cancelTarget.estatus,
-      isBusy: isBusy(cancelTarget.id),
+      expectedEstado: cancelSnapshot.estatus,
+      isBusy: isBusy(cancelTargetId),
       messages: polizaStaleMessages("cancelar"),
     });
   if (staleCancel) {
-    setCancelTarget(null);
+    setCancelTargetId(null);
     setStaleNotice(staleCancel);
   }
 
-  const staleDelete =
-    deleteTarget &&
-    getStaleRowDialogNotice({
-      resource: "poliza-eliminar",
-      targetId: deleteTarget.id,
-      target: findPoliza(deleteTarget.id),
-      statusField: "estatus",
-      expectedEstado: "Borrador",
-      isBusy: isBusy(deleteTarget.id),
-      messages: polizaStaleMessages("eliminar"),
-    });
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "poliza-eliminar",
+    targetId: deleteTargetId,
+    target: findPoliza(deleteTargetId),
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: isBusy(deleteTargetId),
+    messages: polizaStaleMessages("eliminar"),
+  });
   if (staleDelete) {
-    setDeleteTarget(null);
+    setDeleteTargetId(null);
     setStaleNotice(staleDelete);
   }
 
   const postTarget = findPoliza(postTargetId);
-  const cancelPoliza = findPoliza(cancelTargetId);
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
@@ -233,8 +230,8 @@ export default function PolizaList() {
       value={{
         onViewDetail: (poliza) => setOpenDetailId(poliza.id),
         onContabilizar: handleContabilizar,
-        onCancel: (poliza) => setCancelTarget({ id: poliza.id, estatus: poliza.estatus }),
-        onDelete: (poliza) => setDeleteTarget({ id: poliza.id, etiqueta: etiquetaDe(poliza) }),
+        onCancel: (poliza) => setCancelTargetId(poliza.id),
+        onDelete: (poliza) => setDeleteTargetId(poliza.id),
         busyIds,
       }}
     >
@@ -338,57 +335,59 @@ export default function PolizaList() {
           />
         )}
 
-        {cancelTarget !== null && (
+        {cancelSnapshot && (
           <ConfirmDialog
-            open={true}
+            key={cancelSession.id}
+            open={cancelTargetId !== null}
             onOpenChange={(open) => {
-              if (!open) setCancelTarget(null);
+              if (!open) setCancelTargetId(null);
             }}
             title="Cancelar Póliza"
             description={cancelarPolizaDescription(
-              cancelPoliza ? etiquetaDe(cancelPoliza) : `#${cancelTarget.id}`,
-              cancelTarget.estatus,
+              etiquetaDe(cancelSnapshot),
+              cancelSnapshot.estatus,
             )}
-            confirmText={isBusy(cancelTarget.id) ? "Cancelando..." : "Cancelar póliza"}
+            confirmText={isBusy(cancelSnapshot.id) ? "Cancelando..." : "Cancelar póliza"}
             cancelText="Volver"
             closeOnConfirm={false}
             onConfirm={() => {
-              const id = cancelTarget.id;
+              const id = cancelSnapshot.id;
               if (isBusy(id) || !rowLock.acquire(id)) return;
               cancelarPolizaAsync(id)
                 .catch(() => {})
                 .finally(() => {
                   rowLock.release(id);
-                  setCancelTarget((current) => (current?.id === id ? null : current));
+                  setCancelTargetId((current) => (current === id ? null : current));
                 });
             }}
             confirmColor="amber"
           />
         )}
 
-        {deleteTarget !== null && (
+        {deleteSnapshot && (
           <ConfirmDialog
-            open={true}
+            key={deleteSession.id}
+            open={deleteTargetId !== null}
             onOpenChange={(open) => {
-              if (!open) setDeleteTarget(null);
+              if (!open) setDeleteTargetId(null);
             }}
             title="Eliminar Borrador"
             // El borrado del backend es FÍSICO, no baja lógica, y arrastra todos los
             // movimientos: se dice sin rodeos. La etiqueta viene del objetivo
-            // capturado al abrir, no de la lista: la fila ya no está ahí mientras
-            // la mutación corre.
-            description={`¿Deseas eliminar el borrador ${deleteTarget.etiqueta}? La póliza y todos sus movimientos se borrarán de forma PERMANENTE y no podrán recuperarse. Si prefieres conservar el rastro del documento, cancélala en vez de eliminarla.`}
-            confirmText={isBusy(deleteTarget.id) ? "Eliminando..." : "Eliminar permanentemente"}
+            // capturado al abrir (`deleteSession`), no de la lista: la fila ya no
+            // está ahí mientras la mutación corre.
+            description={`¿Deseas eliminar el borrador ${etiquetaDe(deleteSnapshot)}? La póliza y todos sus movimientos se borrarán de forma PERMANENTE y no podrán recuperarse. Si prefieres conservar el rastro del documento, cancélala en vez de eliminarla.`}
+            confirmText={isBusy(deleteSnapshot.id) ? "Eliminando..." : "Eliminar permanentemente"}
             cancelText="Volver"
             closeOnConfirm={false}
             onConfirm={() => {
-              const id = deleteTarget.id;
+              const id = deleteSnapshot.id;
               if (isBusy(id) || !rowLock.acquire(id)) return;
               deletePolizaAsync(id)
                 .catch(() => {})
                 .finally(() => {
                   rowLock.release(id);
-                  setDeleteTarget((current) => (current?.id === id ? null : current));
+                  setDeleteTargetId((current) => (current === id ? null : current));
                 });
             }}
             confirmColor="red"
