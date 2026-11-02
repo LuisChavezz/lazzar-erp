@@ -1,4 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getSuppliers } from "../services/actions";
 
 /**
@@ -12,6 +13,7 @@ export const useSuppliers = () => {
     {
       queryKey: ["suppliers"],
       queryFn: getSuppliers,
+      gcTime: PROCUREMENT_QUERY_GC_TIME,
     },
     { toastId: "suppliers-refetch-error" },
   );

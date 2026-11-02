@@ -11,6 +11,7 @@ import { Button } from '@/src/components/Button';
 import { ExportCsvIcon, ExportPdfIcon } from '@/src/components/Icons';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
+import { PROCUREMENT_QUERY_GC_TIME } from '@/src/constants/queryCache';
 import { ordersQueryKey, useOrders } from '../hooks/useOrders';
 import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExport';
 import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
@@ -69,7 +70,10 @@ export function OrderListView({
   variant,
   extraRefetchQueryKeys,
 }: OrderListViewProps) {
-  const { orders, isLoading, isError, error, hasLoaded } = useOrders(params);
+  // Compras conserva su lista más tiempo en caché (EC-695); Ventas usa el global.
+  const { orders, isLoading, isError, error, hasLoaded } = useOrders(params, {
+    gcTime: variant === 'procurement' ? PROCUREMENT_QUERY_GC_TIME : undefined,
+  });
   // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
   // conserva la tabla y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);

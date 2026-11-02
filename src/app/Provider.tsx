@@ -25,11 +25,6 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       queries: {
         retry: 1,
         staleTime: 15 * 60 * 1000, // 15 minutos
-        // Mayor que `staleTime`: con el default (5 min) una pantalla que se
-        // dejó más de 5 min perdía su caché aunque los datos siguieran frescos,
-        // y volver a ella repetía la carga completa (EC-695). Las queries que
-        // necesitan soltar la caché antes fijan su propio `gcTime`.
-        gcTime: 30 * 60 * 1000, // 30 minutos
         refetchOnWindowFocus: false,
       },
     },
