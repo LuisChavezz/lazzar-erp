@@ -76,9 +76,7 @@ export function aggregateScorecard(rows: SupplierKpiRow[]) {
 /**
  * Aviso de que el ranking llegó cortado (`truncado`): los agregados y los
  * desgloses cubren solo los proveedores que mandó el backend, no los
- * `total_proveedores`. `null` si llegaron todos. No dice con qué criterio se
- * eligieron: el backend ordena por un puntaje que incluye precio, y eso no se
- * revela a quien no puede ver importes.
+ * `total_proveedores`. `null` si llegaron todos.
  */
 export function getSupplierKpiTruncationNote(data: SupplierKpis): string | null {
   if (!data.truncado) return null;

@@ -162,8 +162,8 @@ interface SupplierKpiDialogProps {
 
 /**
  * Drill-down por proveedor de una tarjeta, armado con el payload ya cargado
- * (sin fetch propio): solo las columnas de ESA tarjeta. Nunca muestra
- * `diferencia_precio` ni `puntaje`, que se derivan de precios (backend #377).
+ * (sin fetch propio): solo las columnas de ESA tarjeta. El Scorecard no tiene
+ * desglose, así que `diferencia_precio` y `puntaje` no salen aquí.
  */
 export function SupplierKpiDialog({ open, kind, data, onClose }: SupplierKpiDialogProps) {
   const { suppliers } = useSuppliers();
