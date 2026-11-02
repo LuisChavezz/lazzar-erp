@@ -26,6 +26,7 @@ import {
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { hasVariantSku } from "../utils/purchaseOrderLines";
+import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import type {
   DocumentoLigado,
   PurchaseOrderDetalle,
@@ -119,6 +120,10 @@ const DetalleTable = ({
           )}
           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
             {textOrDash(item.producto_nombre)}
+            <VariantAttributesCaption
+              color={item.producto_variante_color}
+              talla={item.producto_variante_talla}
+            />
           </td>
           <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
             {textOrDash(item.descripcion)}

@@ -33,6 +33,7 @@ import {
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { hasVariantSku } from "../utils/purchaseOrderLines";
+import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
@@ -167,6 +168,10 @@ const LineasTable = ({
               )}
               <td className="px-3 py-3 font-semibold text-slate-800 dark:text-white">
                 {textOrDash(linea.producto_nombre)}
+                <VariantAttributesCaption
+                  color={linea.producto_variante_color}
+                  talla={linea.producto_variante_talla}
+                />
               </td>
               <td className="px-3 py-3 text-slate-500 dark:text-slate-400">
                 {textOrDash(linea.descripcion)}
