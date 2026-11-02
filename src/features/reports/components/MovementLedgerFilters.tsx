@@ -14,6 +14,8 @@ interface MovementLedgerFiltersProps {
   fechaFinal: string | null;
   /** Mensaje del backend para `q` (400). */
   searchError?: string;
+  /** Mensaje del backend para `almacen` (400). */
+  almacenError?: string;
   /** Mensaje del backend para `fecha_inicio` / `fecha_final` (400). */
   fechaInicioError?: string;
   fechaFinalError?: string;
@@ -36,6 +38,7 @@ export function MovementLedgerFilters({
   fechaInicio,
   fechaFinal,
   searchError,
+  almacenError,
   fechaInicioError,
   fechaFinalError,
   onSearch,
@@ -99,7 +102,12 @@ export function MovementLedgerFilters({
         </form>
 
         {/* Almacén OPCIONAL: sin selección, todos los almacenes. */}
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
+        <div>
+          <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
+          {almacenError && (
+            <p className="ml-1 mt-1 text-xs font-medium text-red-600 dark:text-red-400">{almacenError}</p>
+          )}
+        </div>
 
         <div className="w-44">
           <FormInput

@@ -26,10 +26,18 @@ interface MovementLedgerViewProps {
 }
 
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
-type MovementLedgerField = "q" | "fecha_inicio" | "fecha_final";
+type MovementLedgerField = "q" | "almacen" | "fecha_inicio" | "fecha_final";
+
+/**
+ * Parámetros que el backend puede rechazar con un 400. `producto_variante` no
+ * tiene control propio (sale de las opciones o de la variante resuelta): su
+ * mensaje va al estado de error de la tabla. Los alias `almacen_id` /
+ * `producto_variante_id` no se mandan nunca (`MovementLedgerParams`).
+ */
+type MovementLedgerRejectedParam = MovementLedgerField | "producto_variante";
 
 /** Mensaje del backend por campo, solo en un 400 (`{"campo": "mensaje"}`). */
-const fieldErrorOf = (error: unknown, field: MovementLedgerField): string | undefined =>
+const fieldErrorOf = (error: unknown, field: MovementLedgerRejectedParam): string | undefined =>
   isAxiosError(error) && error.response?.status === 400
     ? drfFieldMessage(error, field)
     : undefined;
@@ -125,15 +133,19 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const isNotFound = isInitialError && isNotFoundError(error);
   const fieldErrors = {
     q: fieldErrorOf(error, "q"),
+    almacen: fieldErrorOf(error, "almacen"),
     fecha_inicio: fieldErrorOf(error, "fecha_inicio"),
     fecha_final: fieldErrorOf(error, "fecha_final"),
   };
   const hasFieldError = Object.values(fieldErrors).some(Boolean);
+  const variantError = fieldErrorOf(error, "producto_variante");
   const errorMessage = isNotFound
     ? "La variante ya no está disponible o no pertenece a tu empresa. Búscala de nuevo."
-    : hasFieldError
-      ? "Revisa los filtros marcados."
-      : extractErrorMessage(error, "No se pudo generar el auxiliar.");
+    : variantError
+      ? variantError
+      : hasFieldError
+        ? "Revisa los filtros marcados."
+        : extractErrorMessage(error, "No se pudo generar el auxiliar.");
 
   const emptyMessage = !rangeComplete
     ? "Completa el rango de fechas para ver los movimientos."
@@ -167,6 +179,7 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
         fechaInicio={fechaInicio}
         fechaFinal={fechaFinal}
         searchError={fieldErrors.q}
+        almacenError={fieldErrors.almacen}
         fechaInicioError={fieldErrors.fecha_inicio}
         fechaFinalError={fieldErrors.fecha_final}
         onSearch={handleSearch}
