@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getPurchaseOrderReceipts } from "../services/actions";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 
@@ -16,7 +16,7 @@ export const usePurchaseOrderReceipts = () => {
   >({
     queryKey: ["purchase-order-receipts"],
     queryFn: () => getPurchaseOrderReceipts(),
-    gcTime: PROCUREMENT_QUERY_GC_TIME,
+    gcTime: LIST_QUERY_GC_TIME,
   });
 
   const { hasLoaded } = useHasLoadedQuery({

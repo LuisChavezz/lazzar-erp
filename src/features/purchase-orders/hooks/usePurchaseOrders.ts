@@ -1,5 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getPurchaseOrders } from "../services/actions";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
@@ -19,7 +19,7 @@ export const usePurchaseOrders = ({ silentRefetchError = false }: { silentRefetc
       {
         queryKey: ["purchase-orders"],
         queryFn: getPurchaseOrders,
-        gcTime: PROCUREMENT_QUERY_GC_TIME,
+        gcTime: LIST_QUERY_GC_TIME,
       },
       { toastId: "purchase-orders-refetch-error", silent: silentRefetchError },
     );
