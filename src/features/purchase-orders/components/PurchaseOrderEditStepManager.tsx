@@ -51,6 +51,7 @@ import { PURCHASE_ORDER_STATUS } from "../constants/purchaseOrderStatus";
 import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
+import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
 
 interface PurchaseOrderEditStepManagerProps {
   /** Orden a editar. */
@@ -73,7 +74,7 @@ export function PurchaseOrderEditStepManager({
   const {
     onboardingData,
     isLoading: isOnboardingLoading,
-    isError: isOnboardingError,
+    isInitialError: isOnboardingError,
     error: onboardingError,
   } = usePurchaseOrderOnboardingData();
 
@@ -200,7 +201,7 @@ export function PurchaseOrderEditStepManager({
           Error al cargar los datos de la orden
         </p>
         <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {(error as Error).message}
+          {onboardingLoadErrorMessage(error)}
         </p>
       </div>
     );
