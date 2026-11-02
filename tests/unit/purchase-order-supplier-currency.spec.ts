@@ -42,6 +42,9 @@ const data: PurchaseOrderOnboardingData = {
     proveedores: [proveedor(10, MXN), proveedor(20, USD), proveedor(30, INACTIVA), proveedor(40, null)],
     productos: [],
     variantes: [],
+    proveedores_truncado: false,
+    productos_truncado: false,
+    variantes_truncado: false,
   },
 };
 

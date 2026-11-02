@@ -105,6 +105,7 @@ export function PurchaseOrderOnboardingStep2({
       ) : (
         <PurchaseOrderProductLinesList
           catalog={onboardingData?.busqueda.productos ?? []}
+          catalogTruncated={onboardingData?.busqueda.productos_truncado === true}
           lines={lines}
           monedaCodigo={monedaCodigo}
         />
