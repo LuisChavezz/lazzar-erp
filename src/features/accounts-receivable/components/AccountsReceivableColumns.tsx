@@ -59,8 +59,13 @@ const getClienteLabel = (cuenta: CuentaPorCobrarRow): string =>
  * ordenar, paginar o filtrar): lo abre `AccountsReceivableList`.
  */
 export const getAccountsReceivableColumns = () => [
-  columnHelper.accessor("folio_cxc", {
+  // Accessor de TEXTO con folio y estatus: el estatus ya no tiene columna
+  // propia (va bajo el folio), y así la búsqueda global lo sigue encontrando
+  // ("Cancelada"). El orden sigue siendo por `id`, no por ese texto.
+  columnHelper.accessor((row) => `${row.folio_cxc} ${row.estatus}`, {
+    id: "folio_cxc",
     header: "Folio CxC",
+    sortingFn: (a, b) => a.original.id - b.original.id,
     size: 170,
     cell: (info) => <AccountsReceivableFolioCell cuenta={info.row.original} />,
   }),
