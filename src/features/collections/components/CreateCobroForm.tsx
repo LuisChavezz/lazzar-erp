@@ -18,11 +18,8 @@ import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPi
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { COBRO_REFERENCIA_LABELS } from "../constants/collectionStatus";
-import {
-  COBRO_METODOS_PAGO,
-  COBRO_REFERENCIAS,
-  type CobroFormValues,
-} from "../schemas/createCobro.schema";
+import { METODO_PAGO_OPTIONS } from "@/src/features/payments/constants/paymentStatus";
+import { COBRO_REFERENCIAS, type CobroFormValues } from "../schemas/createCobro.schema";
 import { customerLabel, useCreateCobroForm, type CobroDraftSeed } from "../hooks/useCreateCobroForm";
 import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 import { CobroAmount } from "./CobroAmount";
@@ -254,9 +251,9 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
                     error={getError("metodo_pago")}
                     className={COMPACT_FIELD_CLS}
                   >
-                    {COBRO_METODOS_PAGO.map((metodo) => (
-                      <option key={metodo} value={metodo} className={OPTION_CLS}>
-                        {metodo}
+                    {METODO_PAGO_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className={OPTION_CLS}>
+                        {option.label}
                       </option>
                     ))}
                   </FormSelect>

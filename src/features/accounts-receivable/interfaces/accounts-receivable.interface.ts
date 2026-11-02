@@ -46,8 +46,9 @@ export interface CuentaPorCobrar {
 /**
  * Parámetros de consulta (todos opcionales) de `GET /finanzas/cuentas-por-cobrar/`.
  * Axios omite las llaves `undefined`, así que solo se envían las que se fijan.
- * Nota: hoy la tabla filtra en cliente (ver `useCuentasPorCobrar`), por lo que
- * estos parámetros quedan disponibles para uso futuro sin que la UI los dispare.
+ * La pantalla de CxC NO los usa (su tabla filtra en cliente con los filtros de
+ * encabezado); los envían los selectores de CxC de Cobros (`useCobrableCxcs`) y
+ * de Notas de crédito.
  */
 export interface CuentaPorCobrarQueryParams {
   cliente?: number;
