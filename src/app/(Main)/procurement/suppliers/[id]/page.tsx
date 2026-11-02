@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Loader } from "@/src/components/Loader";
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { SupplierDetailContent } from "@/src/features/suppliers/components/SupplierDetailContent";
 
 /**
@@ -21,7 +21,7 @@ export default async function SupplierDetailPage({
     <div className="w-full space-y-6 pt-2">
       {/* El historial lee sus filtros de la URL con `useSearchParams`, que en
           Next.js requiere un límite de Suspense en el árbol superior. */}
-      <Suspense fallback={<Loader className="py-20" title="Cargando proveedor..." />}>
+      <Suspense fallback={<ProcurementRouteSkeleton variant="detail" />}>
         <SupplierDetailContent supplierId={id} />
       </Suspense>
     </div>

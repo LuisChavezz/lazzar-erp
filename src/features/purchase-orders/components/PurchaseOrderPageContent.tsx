@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { Loader } from "@/src/components/Loader";
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -620,16 +620,10 @@ export function PurchaseOrderPageContent({
     );
   }
 
+  // Mismo skeleton que el `loading.tsx` de la ruta: la navegación pasa de él
+  // al contenido sin un spinner intermedio.
   if (isLoading) {
-    return (
-      <div className="w-full space-y-6">
-        <div>{BackLink}</div>
-        <Loader
-          title="Cargando orden de compra"
-          message="Obteniendo el detalle de la orden..."
-        />
-      </div>
-    );
+    return <ProcurementRouteSkeleton variant="detail" backLink={<div>{BackLink}</div>} />;
   }
 
   // El caso "no existe o no tienes acceso" llega por aquí: el backend responde

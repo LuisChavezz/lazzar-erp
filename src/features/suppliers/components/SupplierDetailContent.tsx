@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { ArrowLeftIcon, EditIcon } from "@/src/components/Icons";
-import { Loader } from "@/src/components/Loader";
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Button } from "@/src/components/Button";
 import {
@@ -99,7 +99,7 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   );
 
   // Con id inválido la query está deshabilitada y nunca sale de `pending`: se
-  // resuelve ANTES de mirar la carga para no quedar atorado en el `Loader`.
+  // resuelve ANTES de mirar la carga para no quedar atorado en el skeleton.
   if (!isValidId) {
     return (
       <div className="w-full space-y-6">
@@ -139,13 +139,9 @@ export const SupplierDetailContent = ({ supplierId }: SupplierDetailContentProps
   }
 
   // Sin datos ni placeholder: carga inicial en curso (id válido ⇒ query activa).
+  // Mismo skeleton que el `loading.tsx` de la ruta: sin spinner intermedio.
   if (!data) {
-    return (
-      <div className="w-full space-y-6">
-        {backLink}
-        <Loader title="Cargando proveedor" message="Obteniendo detalle del proveedor..." />
-      </div>
-    );
+    return <ProcurementRouteSkeleton variant="detail" backLink={backLink} />;
   }
 
   const currency = currencies?.find((item) => item.id === data.moneda);
