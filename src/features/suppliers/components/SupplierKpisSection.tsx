@@ -8,12 +8,8 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPct, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
-import { KpiMutedValue } from "@/src/components/KpiCurrency";
-import {
-  canSeeKpiAmounts,
-  HIDDEN_KPI_AMOUNT_TEXT,
-  HIDDEN_KPI_AMOUNTS_REASON,
-} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNTS_REASON } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import { hiddenAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import { supplierKpisQueryKey, useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
@@ -129,13 +125,7 @@ function leadTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactIte
  */
 function scorecardCard(rows: SupplierKpiRow[], showAmounts: boolean): KpiCompactItem {
   if (!showAmounts) {
-    return {
-      ...LABELS.scorecard,
-      ...KPI_MUTED_ICON,
-      value: <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>,
-      info: `El puntaje incluye la diferencia de precio. ${HIDDEN_KPI_AMOUNTS_REASON}`,
-      hideProgress: true,
-    };
+    return hiddenAmountCard(LABELS.scorecard, `El puntaje incluye la diferencia de precio. ${HIDDEN_KPI_AMOUNTS_REASON}`);
   }
   const { enVerde, evaluados } = aggregateScorecard(rows);
   return {
