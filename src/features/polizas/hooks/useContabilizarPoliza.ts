@@ -26,10 +26,14 @@ const FALLBACK = "Error al contabilizar la póliza";
  * abonos (Y)."]}`, una forma de DRF que `extractErrorMessage` (que solo lee
  * `{ error: string }`) no sabe desenvolver.
  */
+/** Llave de la contabilización: `usePendingPolizaIds` lee de ella las pólizas en vuelo. */
+export const contabilizarPolizaMutationKey = ["contabilizar-poliza"] as const;
+
 export const useContabilizarPoliza = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: contabilizarPolizaMutationKey,
     mutationFn: (id: number) => contabilizarPoliza(id),
     onSuccess: () => {
       toast.success("Póliza contabilizada correctamente");

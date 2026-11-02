@@ -27,10 +27,14 @@ const FALLBACK = "Error al cancelar la conciliación";
  * consulta de solapamiento del formulario. Se escribe sobre TODAS las entradas
  * del prefijo y se guarda lo que había en cada una para poder revertirlas.
  */
+/** Llave de la cancelación: `usePendingConciliacionIds` lee de ella las conciliaciones en vuelo. */
+export const cancelarConciliacionMutationKey = ["cancelar-conciliacion"] as const;
+
 export const useCancelarConciliacion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: cancelarConciliacionMutationKey,
     mutationFn: (id: number) => cancelarConciliacion(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: CONCILIACIONES_KEY_ROOT });

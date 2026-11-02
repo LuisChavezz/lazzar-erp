@@ -20,10 +20,14 @@ import type { Poliza } from "../interfaces/poliza.interface";
  * `{ error: string }`) no desenvuelve, dejando al usuario con un "Request failed
  * with status code 400" en vez del motivo real.
  */
+/** Llave del borrado: `usePendingPolizaIds` lee de ella las pólizas en vuelo. */
+export const deletePolizaMutationKey = ["delete-poliza"] as const;
+
 export const useDeletePoliza = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deletePolizaMutationKey,
     mutationFn: (id: number) => deletePoliza(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["polizas"] });
