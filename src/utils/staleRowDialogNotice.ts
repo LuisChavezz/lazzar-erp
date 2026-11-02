@@ -30,10 +30,17 @@ interface StaleActivoRowDialogArgs extends StaleRowDialogBase {
   messages: Required<StaleRowDialogMessages>;
 }
 
-/** Sin baja lógica (calendarios): solo cuenta que el registro desaparezca. */
+/**
+ * Sin baja lógica (calendarios): solo cuenta que el registro desaparezca.
+ * Prohíbe `statusField`/`expectedEstado`: si no, un objeto de argumentos
+ * pasado como VARIABLE (sin chequeo de propiedades de más) caería en esta
+ * firma y se saltaría la comparación del estado sin error de tipos.
+ */
 interface StaleGoneRowDialogArgs extends StaleRowDialogBase {
   target: object | null;
   expectedActivo?: undefined;
+  statusField?: undefined;
+  expectedEstado?: undefined;
   messages: StaleRowDialogMessages;
 }
 
@@ -54,6 +61,8 @@ interface StaleEstadoRowDialogArgs<E extends string> extends StaleRowDialogBase 
   target: { estado: E } | null;
   expectedEstado: E;
   expectedActivo?: undefined;
+  /** Prohibido aquí: con `statusField` va la firma de `StaleStatusFieldRowDialogArgs`. */
+  statusField?: undefined;
   messages: StaleEstadoRowDialogMessages<E>;
 }
 
@@ -112,7 +121,7 @@ export function getStaleRowDialogNotice(
   }
   if ("expectedEstado" in args && args.expectedEstado !== undefined) {
     // Sin `statusField` (la firma de `estado`) se lee `estado`.
-    const field = "statusField" in args ? args.statusField : "estado";
+    const field = args.statusField ?? "estado";
     const estado = (target as Record<string, string>)[field];
     if (estado === args.expectedEstado) return null;
     return {
