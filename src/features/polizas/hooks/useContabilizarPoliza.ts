@@ -8,8 +8,8 @@ const FALLBACK = "Error al contabilizar la póliza";
 /**
  * Contabiliza una póliza: `POST /finanzas/polizas/{id}/contabilizar/`.
  *
- * ES LA ÚNICA VÍA. Nunca un `PATCH { estatus: "Contabilizada" }`: `perform_update`
- * no tiene máquina de estados y guardaría el estatus SIN ejecutar
+ * ES LA ÚNICA VÍA. Nunca un `PATCH { estatus: "Contabilizada" }`: sobre un
+ * `Borrador`, `perform_update` guardaría el estatus SIN ejecutar
  * `PolizaService.validar_suma_cero`, dejando contabilizada una póliza
  * descuadrada. Ver `services/actions.ts`.
  *

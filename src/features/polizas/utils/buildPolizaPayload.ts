@@ -37,7 +37,8 @@ import type {
  *  - `empresa` — la resuelve el servidor (`EmpresaResueltaEnServidorMixin` la
  *    declara de solo lectura para todo usuario no superusuario, y
  *    `perform_create` la pasa a `serializer.save()`).
- *  - `fecha` — es `auto_now_add`, de solo lectura: la fija el backend al crear.
+ *  - `fecha` — el backend pone la del día al crear (`default=timezone.localdate`);
+ *    esta pantalla no ofrece capturarla.
  *  - `folio_consecutivo` y `usuario_creacion` — los llena el backend.
  *  - `activo` — su default (`True`) es el correcto y esta pantalla no da de baja.
  *  - los campos calculados (`total_cargos`, `total_abonos`, `cuadre_correcto`):

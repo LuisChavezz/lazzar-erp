@@ -22,8 +22,8 @@ export const getPolizas = async (): Promise<Poliza[]> => {
 /**
  * Alta de una póliza con sus movimientos anidados.
  *
- * El cuerpo NO lleva `empresa` (la resuelve el servidor), ni `fecha`
- * (`auto_now_add`), ni `folio_consecutivo`/`usuario_creacion` (los llena el
+ * El cuerpo NO lleva `empresa` (la resuelve el servidor), ni `fecha` (el
+ * backend pone la del día), ni `folio_consecutivo`/`usuario_creacion` (los llena el
  * backend), ni el FK padre dentro de cada renglón (`poliza` es de solo lectura
  * en el serializer). `estatus` viaja como el literal `"Borrador"` — ver
  * `CreatePolizaPayload`.
@@ -55,10 +55,10 @@ export const createPoliza = async (
  *    `{"poliza_detalles": [...]}` si `abs(Σcargo − Σabono) > 0.01`;
  *  - y solo entonces cambia el estatus.
  *
- * Un `PATCH { estatus: "Contabilizada" }` conseguiría el mismo estatus SIN
- * ninguna de esas comprobaciones (`perform_update` solo llama a
- * `serializer.save()`): es un defecto conocido del backend y esta capa no lo
- * usa nunca — este módulo no hace ningún PATCH.
+ * Un `PATCH { estatus: "Contabilizada" }` sobre un `Borrador` conseguiría el
+ * mismo estatus SIN ninguna de esas comprobaciones (`perform_update` solo
+ * bloquea editar una contabilizada o cancelada): esta capa no lo usa nunca —
+ * este módulo no hace ningún PATCH.
  */
 export const contabilizarPoliza = async (id: number): Promise<Poliza> => {
   const { data } = await v1_api.post<Poliza>(

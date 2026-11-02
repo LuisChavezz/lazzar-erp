@@ -35,16 +35,6 @@ export const CONCILIACION_ESTATUS_CONFIG: Record<
 };
 
 /**
- * Opciones del filtro de estatus: el enum COMPLETO, no solo los estatus
- * presentes en los datos. `DataTable` compara `String(row[id]) === value` en
- * memoria y estos valores ya son los crudos del backend.
- */
-export const CONCILIACION_ESTATUS_FILTER = CONCILIACION_ESTATUS.map((estatus) => ({
-  value: estatus,
-  label: estatus,
-}));
-
-/**
  * ¿Es un estatus TERMINAL? Una conciliación `Cerrada` o `Cancelada` solo se
  * consulta: no se vuelve a preparar, ni se cierra, ni se cancela.
  *

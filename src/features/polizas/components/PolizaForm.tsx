@@ -291,9 +291,8 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
               <form.Field name="folio">
                 {(field) => (
                   // El backend NO autogenera folio para las pólizas capturadas a
-                  // mano, y el formulario lo exige aunque el API lo acepte nulo:
-                  // `Poliza.__str__` devuelve el folio y revienta si es `None`.
-                  // Las pólizas que el backend genera solo usan `POL-######`;
+                  // mano, y el formulario lo exige aunque el API lo acepte nulo
+                  // (ver `PolizaFormSchema`). Las pólizas que el backend genera solo usan `POL-######`;
                   // conviene una serie distinta para no chocar con ellas (el
                   // folio no es único en la base de datos).
                   <FormInput
