@@ -31,6 +31,13 @@ export interface PurchaseOrderOnboardingProveedor {
   nombre: string;
   razon_social: string;
   rfc: string;
+  /**
+   * Moneda dada de alta en el proveedor (EC-689): la "Nueva OC" la preselecciona
+   * al elegirlo. La FK es obligatoria en el backend, pero se tipa nullable por
+   * defensa; además puede no estar en `catalogos.monedas` (inactiva o ajena).
+   */
+  moneda_id: number | null;
+  moneda__codigo_iso: string | null;
 }
 
 export interface PurchaseOrderOnboardingProducto {
