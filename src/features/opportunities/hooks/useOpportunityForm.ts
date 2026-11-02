@@ -172,25 +172,6 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     return null;
   };
 
-  // Valida un solo campo en blur (el schema completo ya no expone `.shape`).
-  const validateField = (
-    field: OpportunityFormField,
-    value: OpportunityFormValues[OpportunityFormField]
-  ) => {
-    const parsed = OpportunityFormFields[field].safeParse(value);
-    const message = parsed.success
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-      ? getCrossRuleError(field, { ...form.state.values, [field]: value })
-      : parsed.error.issues[0]?.message ?? "Valor inválido";
-
-    if (message) {
-      setClientError(field, message);
-      return false;
-    }
-    clearClientFieldError(field);
-    return true;
-  };
-
   const validateForm = (values: OpportunityFormValues) => {
     const parsed = createOpportunityFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
@@ -275,6 +256,24 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       }
     },
   });
+
+  // Valida un solo campo en blur (el schema completo ya no expone `.shape`).
+  const validateField = (
+    field: OpportunityFormField,
+    value: OpportunityFormValues[OpportunityFormField]
+  ) => {
+    const parsed = OpportunityFormFields[field].safeParse(value);
+    const message = parsed.success
+      ? getCrossRuleError(field, { ...form.state.values, [field]: value })
+      : parsed.error.issues[0]?.message ?? "Valor inválido";
+
+    if (message) {
+      setClientError(field, message);
+      return false;
+    }
+    clearClientFieldError(field);
+    return true;
+  };
 
   const watchedEtapa = useStore(form.store, (state) => state.values.etapa);
   const watchedCliente = useStore(form.store, (state) => state.values.cliente);

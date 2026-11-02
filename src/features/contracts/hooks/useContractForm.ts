@@ -161,47 +161,6 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
     });
   };
 
-  // Valida un solo campo en blur. Se usa `ContractFormFields` y no
-  // `ContractFormSchema.shape`: el schema lleva un `refine` de objeto que ya no
-  // expone `.shape`.
-  const validateField = (field: ContractFormField, value: ContractFormValues[ContractFormField]) => {
-    const fieldSchema = ContractFormFields[field];
-    const parsed = fieldSchema.safeParse(value);
-
-    // El schema de UN campo de `fecha_fin` es `z.string()` y siempre pasa, así
-    // que sin esto el blur de `fecha_fin` borraba el error de la regla cruzada
-    // aunque el rango siguiera inválido. Y como tras un submit fallido
-    // `scrollToFirstValidationError` deja el foco en `fecha_fin`, bastaba un
-    // clic en cualquier otro campo para que el error desapareciera. Por eso su
-    // blur evalúa también la regla, con la fecha de inicio vigente.
-    if (
-      field === "fecha_fin" &&
-      parsed.success &&
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-      !isFechaRangeValid(form.getFieldValue("fecha_inicio"), value as string)
-    ) {
-      fechaRangeFiredRef.current = true;
-      setClientErrors((prev) => ({ ...prev, fecha_fin: FECHA_RANGE_MESSAGE }));
-      return false;
-    }
-
-    if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Valida todo el formulario antes de mutar y devuelve los campos inválidos
   // para poder llevar la vista al primero.
   const validateForm = (values: ContractFormValues) => {
@@ -274,6 +233,46 @@ export function useContractForm({ onSuccess, contractToEdit }: UseContractFormPa
       }
     },
   });
+
+  // Valida un solo campo en blur. Se usa `ContractFormFields` y no
+  // `ContractFormSchema.shape`: el schema lleva un `refine` de objeto que ya no
+  // expone `.shape`.
+  const validateField = (field: ContractFormField, value: ContractFormValues[ContractFormField]) => {
+    const fieldSchema = ContractFormFields[field];
+    const parsed = fieldSchema.safeParse(value);
+
+    // El schema de UN campo de `fecha_fin` es `z.string()` y siempre pasa, así
+    // que sin esto el blur de `fecha_fin` borraba el error de la regla cruzada
+    // aunque el rango siguiera inválido. Y como tras un submit fallido
+    // `scrollToFirstValidationError` deja el foco en `fecha_fin`, bastaba un
+    // clic en cualquier otro campo para que el error desapareciera. Por eso su
+    // blur evalúa también la regla, con la fecha de inicio vigente.
+    if (
+      field === "fecha_fin" &&
+      parsed.success &&
+      !isFechaRangeValid(form.getFieldValue("fecha_inicio"), value as string)
+    ) {
+      fechaRangeFiredRef.current = true;
+      setClientErrors((prev) => ({ ...prev, fecha_fin: FECHA_RANGE_MESSAGE }));
+      return false;
+    }
+
+    if (parsed.success) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+
+    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   // Mantiene a mano los últimos valores de edición SIN que su identidad sea
   // una dependencia del efecto de abajo. Va declarado antes para que React lo

@@ -103,19 +103,6 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     setStockCheckParams(null);
   };
 
-  const handleCheckStock = () => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-    const almacenId = form.getFieldValue("almacen_origen_id");
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-    const varianteId = form.getFieldValue("producto_variante_id");
-
-    if (almacenId < 1 || varianteId < 1) return;
-
-    setStockCheckParams({ almacen_id: almacenId, producto_variante_id: varianteId });
-    // Limpiar error previo de stock al consultar de nuevo.
-    clearFieldError("cantidad");
-  };
-
   // ─── Opciones derivadas ─────────────────────────────────────────────────
 
   /** Almacenes activos como opciones del select. */
@@ -275,6 +262,17 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
       }
     },
   });
+
+  const handleCheckStock = () => {
+    const almacenId = form.getFieldValue("almacen_origen_id");
+    const varianteId = form.getFieldValue("producto_variante_id");
+
+    if (almacenId < 1 || varianteId < 1) return;
+
+    setStockCheckParams({ almacen_id: almacenId, producto_variante_id: varianteId });
+    // Limpiar error previo de stock al consultar de nuevo.
+    clearFieldError("cantidad");
+  };
 
   const isPending = isSubmitting || isCreating;
 

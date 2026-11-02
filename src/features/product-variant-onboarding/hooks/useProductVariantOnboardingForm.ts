@@ -115,35 +115,6 @@ export function useProductVariantOnboardingForm() {
     setGeneralError(null);
   };
 
-  /** Valida UN campo (en blur); la talla además depende del producto elegido. */
-  const validateField = (
-    field: ProductVariantOnboardingFormField,
-    value: ProductVariantOnboardingFormValues[ProductVariantOnboardingFormField],
-  ) => {
-    const parsed = ProductVariantOnboardingFormSchema.shape[field].safeParse(value);
-    const conditionalMessage =
-      field === "talla" && parsed.success
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-        ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
-        : undefined;
-
-    if (parsed.success && !conditionalMessage) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) return prev;
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-    const message =
-      conditionalMessage ??
-      (!parsed.success ? parsed.error.issues[0]?.message : undefined) ??
-      "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   const getError = (field: ProductVariantOnboardingFormField): FormFieldError | undefined => {
     const message = serverErrors[field] ?? clientErrors[field];
     return message ? { message } : undefined;
@@ -197,6 +168,34 @@ export function useProductVariantOnboardingForm() {
       }
     },
   });
+
+  /** Valida UN campo (en blur); la talla además depende del producto elegido. */
+  const validateField = (
+    field: ProductVariantOnboardingFormField,
+    value: ProductVariantOnboardingFormValues[ProductVariantOnboardingFormField],
+  ) => {
+    const parsed = ProductVariantOnboardingFormSchema.shape[field].safeParse(value);
+    const conditionalMessage =
+      field === "talla" && parsed.success
+        ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
+        : undefined;
+
+    if (parsed.success && !conditionalMessage) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+    const message =
+      conditionalMessage ??
+      (!parsed.success ? parsed.error.issues[0]?.message : undefined) ??
+      "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   // Selección EN VIVO: decide si se muestra/exige la talla, de qué categoría
   // salen sus opciones y la vista previa del SKU.

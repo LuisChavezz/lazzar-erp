@@ -117,43 +117,6 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
     });
   };
 
-  // Ejecuta validación puntual en blur para el campo modificado.
-  const validateField = (field: SerieFolioFormField, value: SerieFolioFormValues[SerieFolioFormField]) => {
-    const fieldSchema = SerieFolioFormSchema.shape[field];
-    const parsed = fieldSchema.safeParse(value);
-
-    // El schema de UN campo de `folio_final` solo exige `min(1)`, así que sin
-    // esto su blur borraba el error de la regla cruzada aunque el rango
-    // siguiera inválido. Por eso su blur evalúa también la regla, con el folio
-    // inicial vigente. Mismo arreglo que el blur de `hora_salida` en turnos.
-    if (
-      field === "folio_final" &&
-      parsed.success &&
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-      !isFolioRangeValid(form.getFieldValue("folio_inicial"), value as number)
-    ) {
-      folioRangeFiredRef.current = true;
-      setClientErrors((prev) => ({ ...prev, folio_final: FOLIO_RANGE_MESSAGE }));
-      return false;
-    }
-
-    if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Valida todo el formulario antes de enviar y genera mapa de errores por campo.
   const validateForm = (values: SerieFolioFormValues) => {
     const parsed = SerieFolioFormSchema.safeParse(values);
@@ -217,6 +180,42 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
       }
     },
   });
+
+  // Ejecuta validación puntual en blur para el campo modificado.
+  const validateField = (field: SerieFolioFormField, value: SerieFolioFormValues[SerieFolioFormField]) => {
+    const fieldSchema = SerieFolioFormSchema.shape[field];
+    const parsed = fieldSchema.safeParse(value);
+
+    // El schema de UN campo de `folio_final` solo exige `min(1)`, así que sin
+    // esto su blur borraba el error de la regla cruzada aunque el rango
+    // siguiera inválido. Por eso su blur evalúa también la regla, con el folio
+    // inicial vigente. Mismo arreglo que el blur de `hora_salida` en turnos.
+    if (
+      field === "folio_final" &&
+      parsed.success &&
+      !isFolioRangeValid(form.getFieldValue("folio_inicial"), value as number)
+    ) {
+      folioRangeFiredRef.current = true;
+      setClientErrors((prev) => ({ ...prev, folio_final: FOLIO_RANGE_MESSAGE }));
+      return false;
+    }
+
+    if (parsed.success) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+
+    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   /**
    * Reevalúa la regla cruzada de folios cuando cambia `folio_inicial`.

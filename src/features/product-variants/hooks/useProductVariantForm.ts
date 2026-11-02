@@ -164,38 +164,6 @@ export function useProductVariantForm({
     });
   };
 
-  // Valida en blur usando regla individual del schema.
-  const validateField = (
-    field: ProductVariantFormField,
-    value: ProductVariantFormValues[ProductVariantFormField]
-  ) => {
-    const fieldSchema = ProductVariantFormSchema.shape[field];
-    const parsed = fieldSchema.safeParse(value);
-    // La talla además depende del producto elegido (regla condicional).
-    const conditionalMessage =
-      field === "talla" && parsed.success
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-        ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
-        : undefined;
-
-    if (parsed.success && !conditionalMessage) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-
-    const message =
-      conditionalMessage ?? (!parsed.success ? parsed.error.issues[0]?.message : undefined) ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Valida el formulario completo antes de intentar la mutación.
   const validateForm = (values: ProductVariantFormValues, requiresTalla: boolean) => {
     const parsed = ProductVariantFormSchema.safeParse(values);
@@ -292,6 +260,37 @@ export function useProductVariantForm({
       }
     },
   });
+
+  // Valida en blur usando regla individual del schema.
+  const validateField = (
+    field: ProductVariantFormField,
+    value: ProductVariantFormValues[ProductVariantFormField]
+  ) => {
+    const fieldSchema = ProductVariantFormSchema.shape[field];
+    const parsed = fieldSchema.safeParse(value);
+    // La talla además depende del producto elegido (regla condicional).
+    const conditionalMessage =
+      field === "talla" && parsed.success
+        ? validateTalla(Number(value), productRequiresTalla(findProduct(form.state.values.producto)))
+        : undefined;
+
+    if (parsed.success && !conditionalMessage) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+
+    const message =
+      conditionalMessage ?? (!parsed.success ? parsed.error.issues[0]?.message : undefined) ?? "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   // Sincroniza datos de edición cuando cambian catálogos o entidad a editar.
   useEffect(() => {

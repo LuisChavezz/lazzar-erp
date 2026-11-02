@@ -114,46 +114,6 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
     });
   };
 
-  // Valida un solo campo en blur. Se usa `ShiftFormFields` y no
-  // `ShiftFormSchema.shape`: el schema lleva un `refine` de objeto y un
-  // `ZodEffects` ya no expone `.shape`.
-  const validateField = (field: ShiftFormField, value: ShiftFormValues[ShiftFormField]) => {
-    const fieldSchema = ShiftFormFields[field];
-    const parsed = fieldSchema.safeParse(value);
-
-    // El schema de UN campo de `hora_salida` es solo el regex y pasa con
-    // cualquier hora completa, así que sin esto su blur borraba el error de la
-    // regla cruzada aunque el rango siguiera inválido. Por eso su blur evalúa
-    // también la regla, con la hora de entrada vigente. Mismo arreglo que el
-    // blur de `fecha_fin` en contratos.
-    if (
-      field === "hora_salida" &&
-      parsed.success &&
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
-      !isHoraRangeValid(form.getFieldValue("hora_entrada"), value as string)
-    ) {
-      horaRangeFiredRef.current = true;
-      setClientErrors((prev) => ({ ...prev, hora_salida: HORA_RANGE_MESSAGE }));
-      return false;
-    }
-
-    if (parsed.success) {
-      setClientErrors((prev) => {
-        if (!(field in prev)) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      return true;
-    }
-
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setClientErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
   // Valida todo el formulario antes de mutar.
   const validateForm = (values: ShiftFormValues) => {
     const parsed = ShiftFormSchema.safeParse(values);
@@ -247,6 +207,45 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
       }
     },
   });
+
+  // Valida un solo campo en blur. Se usa `ShiftFormFields` y no
+  // `ShiftFormSchema.shape`: el schema lleva un `refine` de objeto y un
+  // `ZodEffects` ya no expone `.shape`.
+  const validateField = (field: ShiftFormField, value: ShiftFormValues[ShiftFormField]) => {
+    const fieldSchema = ShiftFormFields[field];
+    const parsed = fieldSchema.safeParse(value);
+
+    // El schema de UN campo de `hora_salida` es solo el regex y pasa con
+    // cualquier hora completa, así que sin esto su blur borraba el error de la
+    // regla cruzada aunque el rango siguiera inválido. Por eso su blur evalúa
+    // también la regla, con la hora de entrada vigente. Mismo arreglo que el
+    // blur de `fecha_fin` en contratos.
+    if (
+      field === "hora_salida" &&
+      parsed.success &&
+      !isHoraRangeValid(form.getFieldValue("hora_entrada"), value as string)
+    ) {
+      horaRangeFiredRef.current = true;
+      setClientErrors((prev) => ({ ...prev, hora_salida: HORA_RANGE_MESSAGE }));
+      return false;
+    }
+
+    if (parsed.success) {
+      setClientErrors((prev) => {
+        if (!(field in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return true;
+    }
+
+    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
+    setClientErrors((prev) => ({ ...prev, [field]: message }));
+    return false;
+  };
 
   // Sincroniza valores cuando cambia la entidad en edición.
   useEffect(() => {
