@@ -9,6 +9,7 @@ import { toastWarning } from "@/src/utils/toastWarning";
 import { drfActionErrorMessage, isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
@@ -122,6 +123,8 @@ export const useCancelPedido = (pedidoId: number) => {
     // (su "Programar pedido" ya salió arriba y releerlo daría 404).
     void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
     void queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+    // Un pedido cancelado deja de estar por surtir (Pedidos de Almacén).
+    void invalidateScheduledPedidos(queryClient);
     void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: ["special-orders"] });
   };
