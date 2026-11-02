@@ -15,6 +15,8 @@ interface MovementLedgerOptionsDialogProps {
   query: string;
   /** Coincidencias que regresó el backend (2 a `MOVEMENT_LEDGER_MAX_OPTIONS`). */
   options: MovementLedgerVariant[];
+  /** `hay_mas` de la respuesta: hubo más coincidencias de las que llegaron. */
+  hasMore: boolean;
   onConfirm: (option: MovementLedgerVariant) => void;
 }
 
@@ -32,12 +34,13 @@ export function MovementLedgerOptionsDialog({
   onOpenChange,
   query,
   options,
+  hasMore,
   onConfirm,
 }: MovementLedgerOptionsDialogProps) {
-  // El backend corta en `MOVEMENT_LEDGER_MAX_OPTIONS` sin decir si hay más.
-  const mayBeTruncated = options.length >= MOVEMENT_LEDGER_MAX_OPTIONS;
-  const subtitle = mayBeTruncated
-    ? `Se muestran las primeras ${MOVEMENT_LEDGER_MAX_OPTIONS} coincidencias de "${query}"; puede haber más. Si no ves la que buscas, refina la búsqueda.`
+  // El backend corta en `MOVEMENT_LEDGER_MAX_OPTIONS` y avisa con `hay_mas`:
+  // exactamente ese número de coincidencias no es un recorte.
+  const subtitle = hasMore
+    ? `Más de ${MOVEMENT_LEDGER_MAX_OPTIONS} variantes coinciden con "${query}"; se muestran las primeras ${MOVEMENT_LEDGER_MAX_OPTIONS}. Si no ves la que buscas, refina la búsqueda.`
     : `${options.length} coincidencias de "${query}". Elige una para ver su auxiliar.`;
 
   return (

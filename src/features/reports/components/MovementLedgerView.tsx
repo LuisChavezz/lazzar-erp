@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from "@/src/components/Icons";
 import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger";
 import {
   isResolvedMovementLedger,
+  MOVEMENT_LEDGER_MAX_OPTIONS,
   type MovementLedgerTarget,
   type MovementLedgerVariant,
 } from "@/src/features/stock/interfaces/movement-ledger.interface";
@@ -81,6 +82,7 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
   const options = current && !isResolvedMovementLedger(current) ? current.opciones : undefined;
   const hasOptions = options !== undefined && options.length > 0;
+  const hasMoreOptions = current !== undefined && !isResolvedMovementLedger(current) && current.hay_mas;
 
   // Ajuste de estado durante el render (no en un efecto): en cuanto la
   // búsqueda por `q` resuelve una variante, se recuerda su id.
@@ -187,7 +189,9 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
           {hasOptions && (
             <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black p-6">
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                {`"${searchedText}" coincide con ${options.length} variantes. Elige una para ver su auxiliar.`}
+                {hasMoreOptions
+                  ? `Más de ${MOVEMENT_LEDGER_MAX_OPTIONS} variantes coinciden con "${searchedText}". Refina la búsqueda o elige una de las primeras ${MOVEMENT_LEDGER_MAX_OPTIONS}.`
+                  : `"${searchedText}" coincide con ${options.length} variantes. Elige una para ver su auxiliar.`}
               </p>
               <Button variant="primary" onClick={() => setOptionsOpen(true)}>
                 Elegir variante
@@ -197,6 +201,7 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
                 onOpenChange={setOptionsOpen}
                 query={searchedText}
                 options={options}
+                hasMore={hasMoreOptions}
                 onConfirm={handleChooseOption}
               />
             </div>
