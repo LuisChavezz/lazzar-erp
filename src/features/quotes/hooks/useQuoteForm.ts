@@ -220,7 +220,7 @@ export function useQuoteForm() {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `setErrorTree` (useState) se declara abajo y subirlo cambiaría el orden de hooks; el setter es estable (EC-701)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- setErrorTree (useState) se declara abajo y subirlo movería un hook; setter estable, ver CLAUDE.md (EC-701)
     setErrorTree(nextErrors);
     if (formRef.current) {
       requestAnimationFrame(() => {
@@ -308,11 +308,11 @@ export function useQuoteForm() {
           if (issue.path.length === 0) return;
           setErrorByPath(nextErrors, issue.path, issue.message);
         });
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `crossRules` (objeto de un hook que necesita `form`) no se puede subir; un binding objeto nunca sale de las deps del compilador (EC-701)
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- crossRules (hook que necesita form) se declara abajo; binding no primitivo, ver CLAUDE.md (EC-701)
         crossRules.markCrossRulesFired(submitIssues, nextErrors);
         setErrorTree(nextErrors);
         // Resumen de errores; al cerrarlo, la vista va al primer campo inválido.
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `showErrorSummary` sale de un hook declarado abajo (no se reordenan hooks); una función nunca sale de las deps del compilador (EC-701)
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- showErrorSummary sale de un hook declarado abajo; binding no primitivo, ver CLAUDE.md (EC-701)
         showErrorSummary(submitIssues);
         return;
       }
@@ -532,7 +532,7 @@ export function useQuoteForm() {
       setIsRouteTransitioning(true);
 
       form.reset(emptyValues);
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `crossRules` (objeto de un hook que necesita `form`) no se puede subir; un binding objeto nunca sale de las deps del compilador (EC-701)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- crossRules (hook que necesita form) se declara abajo; binding no primitivo, ver CLAUDE.md (EC-701)
       crossRules.resetCrossRules();
       setExtraServices([]);
       router.push("/sales/quotes");
@@ -542,7 +542,7 @@ export function useQuoteForm() {
   // Reglas cruzadas del schema (condición de pago → monto, embarque parcial →
   // comentarios): se reevalúan fuera del submit. Ver `useQuoteCrossRules`.
   // El gran total se lee en vivo para la regla del anticipo (EC-563, CO-03).
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `granTotal` deriva del store del form (abajo); el getter lo lee al llamarse, y pasado directo a un hook el compilador aborta en vez de memoizarlo obsoleto (EC-701)
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define -- granTotal (primitivo del store) se calcula abajo; el hook no se compila y, compilado, el compilador rechaza esta lectura en vez de memoizarla, ver CLAUDE.md (EC-701)
   const crossRules = useQuoteCrossRules(() => form.state.values, setErrorTree, () => granTotal);
   const { showErrorSummary, errorSummaryProps } = useQuoteSubmitErrorSummary(formRef);
 

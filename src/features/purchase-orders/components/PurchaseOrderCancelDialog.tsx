@@ -100,7 +100,7 @@ export function PurchaseOrderCancelDialog({
           onSettled: () => {
             submittingRef.current = false;
           },
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `handleOpenChange` usa `form`; una función nunca sale de las deps del compilador (EC-701)
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define -- handleOpenChange usa form (declarado abajo); binding no primitivo, ver CLAUDE.md (EC-701)
           onSuccess: () => handleOpenChange(false),
           // Un error de `estatus` (p. ej. "La orden ya no puede cancelarse.")
           // significa que la orden ya es terminal: reintentar no sirve. Se
@@ -108,7 +108,7 @@ export function PurchaseOrderCancelDialog({
           // fila con su estatus real. Cualquier otro error (red, 5xx, forma
           // inesperada) deja el diálogo abierto con el motivo escrito.
           onError: (error) => {
-            // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `handleOpenChange` usa `form`; una función nunca sale de las deps del compilador (EC-701)
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define -- handleOpenChange usa form (declarado abajo); binding no primitivo, ver CLAUDE.md (EC-701)
             if (drfFieldMessage(error, "estatus")) handleOpenChange(false);
           },
         },
