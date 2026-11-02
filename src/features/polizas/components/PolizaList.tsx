@@ -14,6 +14,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
@@ -66,7 +67,12 @@ export default function PolizaList() {
   // la MutationCache: `isPending` de cada hook solo recuerda su última llamada y
   // no dice QUÉ póliza está en vuelo.
   const busyIds = usePendingPolizaIds();
-  const isBusy = (id: number | null) => id !== null && busyIds.includes(id);
+  // Candado SÍNCRONO por fila (`useRowActionLock`): el "en vuelo" de la
+  // MutationCache (`busyIds`) llega en un render posterior, así que el segundo
+  // clic de un doble clic lo encontraría libre y mandaría otra petición. La ref
+  // del candado ya está tomada en ese segundo clic.
+  const rowLock = useRowActionLock();
+  const isBusy = (id: number | null) => id !== null && (busyIds.includes(id) || rowLock.isPending(id));
 
   // Catálogos para poner NOMBRE a los ids del detalle (`PolizaSerializer` no
   // resuelve ninguno). Se piden aquí —y no dentro del diálogo— para que abrir
@@ -316,14 +322,17 @@ export default function PolizaList() {
               const id = postTargetId;
               // Una póliza ya en vuelo no se vuelve a mandar (doble clic, o reabrir
               // tras "Volver" mientras su acción sigue pendiente).
-              if (isBusy(id)) return;
+              if (isBusy(id) || !rowLock.acquire(id)) return;
               contabilizarPolizaAsync(id)
                 // El hook ya avisó del error con su toast; aquí solo se evita el
                 // rechazo no manejado de la promesa.
                 .catch(() => {})
                 // Solo cierra SU confirmación: si mientras tanto se abrió la de
                 // otra póliza, esa no se toca.
-                .finally(() => setPostTargetId((current) => (current === id ? null : current)));
+                .finally(() => {
+                  rowLock.release(id);
+                  setPostTargetId((current) => (current === id ? null : current));
+                });
             }}
             confirmColor="green"
           />
@@ -345,12 +354,13 @@ export default function PolizaList() {
             closeOnConfirm={false}
             onConfirm={() => {
               const id = cancelTarget.id;
-              if (isBusy(id)) return;
+              if (isBusy(id) || !rowLock.acquire(id)) return;
               cancelarPolizaAsync(id)
                 .catch(() => {})
-                .finally(() =>
-                  setCancelTarget((current) => (current?.id === id ? null : current)),
-                );
+                .finally(() => {
+                  rowLock.release(id);
+                  setCancelTarget((current) => (current?.id === id ? null : current));
+                });
             }}
             confirmColor="amber"
           />
@@ -373,12 +383,13 @@ export default function PolizaList() {
             closeOnConfirm={false}
             onConfirm={() => {
               const id = deleteTarget.id;
-              if (isBusy(id)) return;
+              if (isBusy(id) || !rowLock.acquire(id)) return;
               deletePolizaAsync(id)
                 .catch(() => {})
-                .finally(() =>
-                  setDeleteTarget((current) => (current?.id === id ? null : current)),
-                );
+                .finally(() => {
+                  rowLock.release(id);
+                  setDeleteTarget((current) => (current?.id === id ? null : current));
+                });
             }}
             confirmColor="red"
           />
