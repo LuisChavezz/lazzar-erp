@@ -376,6 +376,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       { key: "operation", label: "Operación" },
       { key: "inventory", label: "Inventario" },
       { key: "master-data", label: "Terceros" },
+      { key: "analytics", label: "Indicadores" },
     ],
     items: [
       // ── Operación ───────────────────────────────────────────────────────────
@@ -436,6 +437,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-COMPRAS-PROV",
         parentPath: "/procurement/suppliers",
         showInSidebar: false,
+      },
+      // ── Indicadores ─────────────────────────────────────────────────────────
+      {
+        // Antes era el landing del módulo; vive aparte para que entrar a
+        // Compras no espere al listado completo de OC (EC-695). Sin código de
+        // sección propio: cae en la regla de módulo `/procurement` (R-COMPRAS).
+        key: "procurement-dashboard",
+        label: "Panel de compras",
+        path: "/procurement/dashboard",
+        icon: DashboardIcon,
+        description: "Resumen de órdenes de compra activas, en curso y de mayor valor.",
+        permission: "R-COMPRAS",
+        section: "analytics",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {

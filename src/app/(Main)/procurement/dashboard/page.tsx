@@ -4,7 +4,7 @@ import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurch
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
 import { ProcurementQuickLinks } from "@/src/features/purchase-orders/components/ProcurementQuickLinks";
 
-export default function ProcurementPage() {
+export default function ProcurementDashboardPage() {
   const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
 
   if (isLoading) {
@@ -34,8 +34,8 @@ export default function ProcurementPage() {
     );
   }
 
-  // Sin `<h1>` propio: el encabezado global ya titula la página ("Compras y
-  // SCM"), y repetirlo empujaba el contenido hacia abajo.
+  // Sin `<h1>` propio: el encabezado global ya titula la página ("Panel de
+  // compras"), y repetirlo empujaba el contenido hacia abajo.
   return (
     <div className="px-1 pb-8 space-y-4 sm:space-y-6">
       <ProcurementQuickLinks />
