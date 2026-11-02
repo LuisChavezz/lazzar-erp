@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -37,6 +38,7 @@ import {
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
 import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
+import { prepararConciliacionMutationKey } from "../hooks/usePrepararConciliacion";
 import {
   ConciliacionRowActionsProvider,
   usePendingConciliacionIds,
@@ -158,6 +160,10 @@ export function BankReconciliationView() {
   // Una celda se desmonta al ordenar, filtrar o paginar, y cerrar o cancelar
   // cambia el `estatus`, que es justo uno de los filtros de la tabla.
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Mientras `preparar` viaja, el diálogo no se puede cerrar (su "Cerrar" del
+  // pie, la X o Esc): al terminar, la vista cambia el filtro de la URL y abre
+  // el detalle del borrador, y eso no debe pasar con el diálogo ya cerrado.
+  const isPreparing = useIsMutating({ mutationKey: prepararConciliacionMutationKey }) > 0;
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [cerrarTargetId, setCerrarTargetId] = useState<number | null>(null);
   const [cancelarTargetId, setCancelarTargetId] = useState<number | null>(null);
@@ -403,7 +409,10 @@ export function BankReconciliationView() {
               />
             }
             open={isFormOpen}
-            onOpenChange={setIsFormOpen}
+            onOpenChange={(open) => {
+              if (!open && isPreparing) return;
+              setIsFormOpen(open);
+            }}
             maxWidth={DIALOG_WIDTH_FORM}
             trigger={
               <Button
