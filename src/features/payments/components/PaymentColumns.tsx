@@ -13,6 +13,10 @@ import { usePaymentRowActionsContext } from "../hooks/usePaymentRowActions";
 
 const columnHelper = createColumnHelper<Pago>();
 
+/** Texto de la cuenta bancaria: su alias, o `Cuenta #N` si no tiene (`alias` es nullable). */
+const getCuentaLabel = (pago: Pago): string =>
+  pago.cuenta_bancaria_alias || `Cuenta #${pago.cuenta_bancaria}`;
+
 /**
  * Celda del identificador: el pago NO tiene folio propio en el contrato, así que
  * su `#id` ES el menú de la fila (`FolioActionMenu`, modo folio) y debajo va su
@@ -81,10 +85,12 @@ export const getColumns = () => {
         </span>
       ),
     }),
-    columnHelper.accessor("cuenta_bancaria_alias", {
+    // Mismo texto en la celda, la búsqueda y la opción del filtro.
+    columnHelper.accessor((row) => getCuentaLabel(row), {
+      id: "cuenta_bancaria_alias",
       header: "Cuenta bancaria",
       cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("metodo_pago", {
@@ -124,8 +130,11 @@ export const getColumns = () => {
  *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
  * - El método, del catálogo completo (`METODO_PAGO_CONFIG`, la misma lista del
  *   alta), con ficha "Método de pago: …".
- * - Proveedor y cuenta bancaria son valores libres: sus opciones salen de las
- *   filas. La cuenta puede llegar sin alias resuelto: va primero "Sin cuenta".
+ * - Proveedor es un valor libre: sus opciones salen de las filas.
+ * - La cuenta bancaria es un FK de catálogo: sus opciones salen de las filas,
+ *   comparan contra el id crudo y se rotulan con el alias (o `Cuenta #N`), así
+ *   dos cuentas con el mismo alias no se mezclan. `cuenta_bancaria` es
+ *   obligatorio en el modelo, así que no hay opción "Sin cuenta".
  * - La fecha de pago filtra por mes. Referencia y total no llevan filtro: son
  *   valores libres, los cubren la búsqueda y el orden.
  */
@@ -138,11 +147,7 @@ export const PAYMENT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pag
   },
   proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true },
   fecha_pago: { type: "month", get: (r) => r.fecha_pago },
-  cuenta_bancaria_alias: {
-    type: "distinct",
-    get: (r) => r.cuenta_bancaria_alias,
-    emptyOption: "Sin cuenta",
-  },
+  cuenta_bancaria_alias: { type: "distinct", get: (r) => r.cuenta_bancaria, label: getCuentaLabel },
   metodo_pago: {
     type: "options",
     filterLabel: "método de pago",
