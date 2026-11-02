@@ -119,6 +119,8 @@ NextAuth uses `CredentialsProvider` with JWT strategy. The browser handles the f
 
 Forms use **TanStack Form** (`@tanstack/react-form`) with **Zod** schemas (each feature's `schemas/`) for validation. Build them with the shared primitives (`FormInput`, `FormSelect`, `FormTextarea`, `FormToggle`, `FormButtons`) rather than raw inputs. A form hook that shows both its own validation errors and the backend's per-field errors keeps them with **`useFormFieldErrors<Field>()`** (`src/hooks/useFormFieldErrors.ts`): `getError(field)` (the server's wins), `setServerFieldError` to hand to `handleDrfWriteError`, and `clearFieldErrors(field)` when the field changes. See `opportunities/hooks/useSeguimientoForm.ts`.
 
+**A callback inside a hook or component (`onSubmit`, validators, listeners, handlers) must not read a value declared further down.** A value that depends on the form's store (and so can only be computed after `useForm`) travels to `onSubmit` through `onSubmitMeta` / `form.handleSubmit(meta)` — see `bank-reconciliations/hooks/usePrepararConciliacionForm.ts`. `@typescript-eslint/no-use-before-define` enforces it in `hooks/`, `components/` and `src/app/`; disable it inline only with a concrete reason. Why: the React Compiler drops a later-declared primitive from the callback's memo deps, so the callback keeps reading the first render's value (EC-676, EC-701).
+
 ### Key Shared Components (`src/components/`)
 
 - **`DataTable.tsx`** — Full TanStack Table wrapper with sorting, pagination (10/20/50/100), global search, column visibility, drag-to-reorder columns, column resize, filter chips, and a refresh button. The `eslint-disable react-hooks/incompatible-library` comment is intentional. Notable props:
