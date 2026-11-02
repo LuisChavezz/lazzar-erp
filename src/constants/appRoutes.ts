@@ -273,7 +273,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Pedidos",
         path: "/wms/orders",
         icon: PedidosIcon,
-        description: "Consulta de pedidos y su detalle para planear el surtido en almacén.",
+        description: "Pedidos programados por Mesa de Control, listos para planear el surtido en almacén.",
         permission: "R-WMS-PEDIDOS",
         section: "operation",
       },
