@@ -11,14 +11,14 @@ import { Button } from "@/src/components/Button";
 import { ItemPickerButton } from "@/src/components/ItemPickerButton";
 import {
   CheckCircleIcon,
-  ContabilidadIcon,
   ExclamationTriangleIcon,
   InfoIcon,
   PlusIcon,
   XIcon,
 } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
-import { READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { FormSection } from "@/src/components/FormSection";
 import { WorkspaceBranchNotice } from "@/src/features/workspace/components/WorkspaceBranchNotice";
 import { POLIZA_TIPOS } from "../interfaces/poliza.interface";
 import {
@@ -208,11 +208,9 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
       {/* `ref`: `usePolizaForm` lo usa para llevar a la vista el primer campo
           inválido cuando la validación local falla. */}
       <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-        <fieldset disabled={isPending}>
+        <fieldset disabled={isPending} className="space-y-6">
           {/* Sin sucursal válida en el workspace: aviso persistente y guardado bloqueado. */}
-          <div className="mb-6 empty:hidden">
-            <WorkspaceBranchNotice documento={POLIZA_SUCURSAL_DOCUMENT} />
-          </div>
+          <WorkspaceBranchNotice documento={POLIZA_SUCURSAL_DOCUMENT} />
           {/* Banner de "todo o nada": el alta es atómica, así que ante un error
               del backend NADA quedó registrado — ni la cabecera ni un solo
               movimiento. */}
@@ -220,7 +218,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
             <div
               ref={bannerRef}
               role="alert"
-              className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
+              className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-3"
             >
               <ExclamationTriangleIcon
                 className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
@@ -241,22 +239,12 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
           )}
 
           {/* ── Datos de la póliza ──────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                <ContabilidadIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Datos de la Póliza
-                </h3>
-                <p className="text-xs text-slate-500">
-                  La fecha contable la asigna el servidor al guardar
-                </p>
-              </div>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Esta pantalla no envía `fecha`: el backend pone la del día al crear. */}
+          <FormSection
+            title="Datos de la póliza"
+            description="La fecha contable será la de hoy: el servidor la pone al guardar"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               {/* La sucursal no se captura: es la del workspace (ver
                   `usePolizaForm`). Sin sucursal válida el aviso de arriba
                   explica por qué no se puede guardar. */}
@@ -267,7 +255,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                 placeholder="Sin sucursal"
                 readOnly
                 tabIndex={-1}
-                className={READ_ONLY_INPUT_CLS}
+                className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
                 error={getError("sucursal")}
               />
 
@@ -285,6 +273,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                     }}
                     onBlur={field.handleBlur}
                     error={getError("tipo")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     {POLIZA_TIPOS.map((tipo) => (
                       <option
@@ -319,6 +308,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                     }}
                     onBlur={field.handleBlur}
                     error={getError("folio")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -341,6 +331,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                     }}
                     onBlur={field.handleBlur}
                     error={getError("centro_costo")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     <option value="0">Sin centro de costo</option>
                     {centroCostoOptions.map((opt) => (
@@ -371,25 +362,20 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                       }}
                       onBlur={field.handleBlur}
                       error={getError("concepto")}
+                      className={COMPACT_FIELD_CLS}
                     />
                   )}
                 </form.Field>
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Movimientos ─────────────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Movimientos
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Cada renglón lleva importe en el cargo o en el abono, nunca en
-                  ambos
-                </p>
-              </div>
+          <FormSection
+            title="Movimientos"
+            description="Cada renglón lleva importe en el cargo o en el abono, nunca en ambos"
+          >
+            <div className="flex justify-end">
               <Button
                 type="button"
                 variant="secondary"
@@ -403,7 +389,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
               </Button>
             </div>
 
-            <div className="p-8">
+            <div>
               {/* Error a nivel del arreglo: mínimo de movimientos o descuadre al
                   intentar contabilizar. */}
               {getError("poliza_detalles") && (
@@ -414,13 +400,13 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
 
               <form.Field name="poliza_detalles" mode="array">
                 {(arrayField) => (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {arrayField.state.value.map((line, index) => {
                       const lineFormError = getError(`poliza_detalles.${index}._form`);
                       return (
                         <div
                           key={lineKeys[index] ?? index}
-                          className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-4"
+                          className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-3"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
@@ -454,7 +440,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                           {/* Los DOS selectores del movimiento: la cuenta
                               contable (obligatoria, diálogo buscable) y su
                               centro de costo (opcional, `FormSelect`). */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
                             <form.Field
                               name={`poliza_detalles[${index}].cuenta_contable`}
                             >
@@ -493,6 +479,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                                   error={getError(
                                     `poliza_detalles.${index}.centro_costo`,
                                   )}
+                                  className={COMPACT_FIELD_CLS}
                                 >
                                   <option value="0">
                                     {/* Por defecto hereda el criterio de la
@@ -519,7 +506,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                               renglón (ver `LadoDelAsiento`), porque con los dos
                               campos vacíos —el estado inicial— nada indicaría que
                               falta elegir uno. */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
                             <form.Field name={`poliza_detalles[${index}].cargo`}>
                               {(field) => (
                                 <FormInput
@@ -540,6 +527,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                                   }}
                                   onBlur={field.handleBlur}
                                   error={getError(`poliza_detalles.${index}.cargo`)}
+                                  className={COMPACT_FIELD_CLS}
                                 />
                               )}
                             </form.Field>
@@ -561,6 +549,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                                   }}
                                   onBlur={field.handleBlur}
                                   error={getError(`poliza_detalles.${index}.abono`)}
+                                  className={COMPACT_FIELD_CLS}
                                 />
                               )}
                             </form.Field>
@@ -582,6 +571,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                                   error={getError(
                                     `poliza_detalles.${index}.referencia`,
                                   )}
+                                  className={COMPACT_FIELD_CLS}
                                 />
                               )}
                             </form.Field>
@@ -604,6 +594,7 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                                 error={getError(
                                   `poliza_detalles.${index}.observaciones`,
                                 )}
+                                className={COMPACT_FIELD_CLS}
                               />
                             )}
                           </form.Field>
@@ -614,17 +605,16 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                 )}
               </form.Field>
             </div>
-          </section>
 
-          {/* ── Cuadre en vivo ──────────────────────────────────────────── */}
-          <section
-            className={`rounded-3xl border overflow-hidden mb-6 ${
+            {/* ── Cuadre en vivo ──────────────────────────────────────────── */}
+            <div
+              className={`rounded-2xl border overflow-hidden ${
               cuadrada
                 ? "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5"
                 : "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5"
             }`}
           >
-            <div className="p-6 flex flex-wrap items-center justify-between gap-6">
+            <div className="p-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-start gap-3 min-w-0">
                 {cuadrada ? (
                   <CheckCircleIcon className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
@@ -694,7 +684,8 @@ export default function PolizaForm({ onSuccess }: PolizaFormProps) {
                 </div>
               </div>
             </div>
-          </section>
+            </div>
+          </FormSection>
 
           <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
             <FormCancelButton onClick={handleReset} disabled={isPending} />

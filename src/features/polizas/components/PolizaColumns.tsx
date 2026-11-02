@@ -1,13 +1,10 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import {
-  BanIcon,
-  CheckCircleIcon,
-  ChevronRightIcon,
-  DeleteIcon,
-  ViewIcon,
-} from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { BanIcon, CheckCircleIcon, DeleteIcon, ViewIcon } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
@@ -19,36 +16,9 @@ import {
   polizaTieneImportes,
 } from "../schemas/poliza.schema";
 import type { Poliza } from "../interfaces/poliza.interface";
+import { usePolizaRowActionsContext } from "../hooks/usePolizaRowActions";
 
 const columnHelper = createColumnHelper<Poliza>();
-
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(POLIZA_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<Poliza> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
-
-const TIPO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(POLIZA_TIPO_CONFIG).map(([tipo, cfg]) => ({
-    value: tipo,
-    label: cfg.label ?? tipo,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const tipoFilterFn: FilterFn<Poliza> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.tipo === filterValue;
-};
 
 /**
  * Importe de la tabla, SIN símbolo de moneda.
@@ -60,20 +30,90 @@ const tipoFilterFn: FilterFn<Poliza> = (row, _columnId, filterValue) => {
 const importe = (value: string): string => formatMoneyValue(value, null);
 
 /**
- * Columnas del listado de pólizas.
- *
- * Las acciones solo INVOCAN callbacks: los diálogos de detalle, contabilización,
- * cancelación y borrado se montan en `PolizaList`, no aquí. Una celda se desmonta
- * al ordenar, filtrar o paginar —las mutaciones cambian el `estatus`, que es uno
- * de los filtros, y el borrado quita la fila—, así que un diálogo montado en la
- * celda desaparecería a media interacción.
+ * Celda del folio: ES el menú de la fila (`FolioActionMenu`, modo folio) y
+ * debajo va su estatus. "Ver detalle" es siempre la primera acción. Callbacks y
+ * "en vuelo" llegan por contexto (`PolizaRowActionsProvider`), así una acción no
+ * remonta las celdas.
  */
-export const getColumns = (
-  onViewDetail: (id: number) => void,
-  onContabilizar: (id: number) => void,
-  onCancel: (id: number) => void,
-  onDelete: (id: number) => void,
-) => {
+function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
+  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds } =
+    usePolizaRowActionsContext();
+  const { id, estatus, cuadre_correcto, total_cargos, total_abonos } = poliza;
+  // Una fila con una acción en vuelo no ofrece otra: el estatus que decide las
+  // opciones está por cambiar.
+  const busy = busyIds.includes(id);
+
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(poliza) },
+  ];
+
+  // Contabilizar SOLO sobre borradores. El backend lo trata como no-op si ya
+  // está contabilizada y lo rechaza si está cancelada.
+  //
+  // La opción se ofrece aunque la póliza NO pueda contabilizarse, deshabilitada
+  // con el motivo en la etiqueta: quien abre el menú tiene que poder ver que la
+  // acción existe y por qué no está disponible. Son DOS motivos: `cuadre_correcto`
+  // da `true` con CERO movimientos (0 == 0), así que sin la comprobación de
+  // importes una póliza vacía se contabilizaría —y ya no podría eliminarse—.
+  if (estatus === "Borrador") {
+    const motivoBloqueo = !polizaTieneImportes(total_cargos, total_abonos)
+      ? "sin importes"
+      : !cuadre_correcto
+        ? "no cuadra"
+        : null;
+
+    items.push({
+      label: motivoBloqueo ? `Contabilizar (${motivoBloqueo})` : "Contabilizar",
+      icon: CheckCircleIcon,
+      disabled: busy || motivoBloqueo !== null,
+      onSelect: () => onContabilizar(poliza),
+    });
+  }
+
+  // Cancelar sobre lo que aún puede cancelarse: un borrador (solo cambia de
+  // estatus) o una contabilizada (genera su contrapóliza). Sobre una cancelada
+  // es un no-op del backend.
+  if (estatus !== "Cancelada") {
+    items.push({
+      label: "Cancelar póliza",
+      icon: BanIcon,
+      disabled: busy,
+      onSelect: () => onCancel(poliza),
+    });
+  }
+
+  // Eliminar SOLO sobre borradores capturados a mano (ver `polizaEsEliminable`).
+  // A diferencia de Contabilizar, la opción se OCULTA en vez de deshabilitarse:
+  // no hay nada que el usuario pueda corregir para volverla disponible.
+  if (polizaEsEliminable(poliza)) {
+    items.push({
+      label: "Eliminar borrador",
+      icon: DeleteIcon,
+      disabled: busy,
+      onSelect: () => onDelete(poliza),
+    });
+  }
+
+  return (
+    <FolioActionMenu
+      // `folio` es nullable en el modelo: se cae al `#id`, que siempre existe.
+      folio={poliza.folio || `#${id}`}
+      items={items}
+      status={<StatusBadge status={estatus} config={POLIZA_ESTATUS_CONFIG} />}
+    />
+  );
+}
+
+/**
+ * Columnas del listado de pólizas. No reciben nada: callbacks y "en vuelo"
+ * llegan al menú por `PolizaRowActionsProvider`.
+ *
+ * Los diálogos de detalle, contabilización, cancelación y borrado se montan en
+ * `PolizaList`, no aquí: una celda se desmonta al ordenar, filtrar o paginar —las
+ * mutaciones cambian el `estatus`, que es uno de los filtros, y el borrado quita
+ * la fila—.
+ */
+export const getColumns = () => {
   const columns = [
     // `folio`, `fecha` y `concepto` son NULLABLE, y las tres se definen con un
     // accessor de función que colapsa el nulo a `""` —en vez de
@@ -81,120 +121,13 @@ export const getColumns = (
     // `getColumnCanGlobalFilter` por defecto de TanStack decide si una columna
     // participa en la búsqueda mirando SOLO `flatRows[0]`, y como
     // `typeof null === "object"` una primera fila con el campo nulo sacaba la
-    // columna de la búsqueda EN TODAS las filas. Con el buscador prometiendo
-    // "Buscar por folio o concepto...", bastaba una póliza sin concepto arriba
-    // para que buscar por concepto no devolviera nada. El `id` explícito
-    // conserva la visibilidad y el orden de columna que la tabla persiste.
-    // Caso canónico del proyecto: `CorteMangaOrderColumns.tsx`.
+    // columna de la búsqueda EN TODAS las filas. El `id` explícito conserva la
+    // visibilidad y el orden de columna que la tabla persiste.
     columnHelper.accessor((row) => row.folio ?? "", {
       id: "folio",
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Folio</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
-      cell: (info) => {
-        const { id, estatus, cuadre_correcto, total_cargos, total_abonos } =
-          info.row.original;
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(id),
-          },
-        ];
-
-        // Contabilizar SOLO sobre borradores. El backend lo trata como no-op si
-        // ya está contabilizada y lo rechaza si está cancelada, así que ofrecerlo
-        // en esos estados solo produciría un clic sin efecto o un error.
-        //
-        // La opción se ofrece aunque la póliza NO pueda contabilizarse, y se
-        // deshabilita con el motivo en la etiqueta: quien abre el menú tiene que
-        // poder ver que la acción existe y por qué no está disponible. Ocultarla
-        // dejaría la columna "No cuadra" sin explicación de qué hacer.
-        //
-        // Son DOS motivos, no uno. `cuadre_correcto` da `true` con CERO
-        // movimientos (0 == 0), así que sin la comprobación de importes una
-        // póliza vacía se contabilizaría —cerrando como asiento un documento sin
-        // un solo renglón, y ya sin poder eliminarse—. Es la misma regla que el
-        // formulario aplica con `hayImportes`; aquí se evalúa sobre los totales
-        // que calcula el servidor.
-        if (estatus === "Borrador") {
-          const motivoBloqueo = !polizaTieneImportes(total_cargos, total_abonos)
-            ? "sin importes"
-            : !cuadre_correcto
-              ? "no cuadra"
-              : null;
-
-          menuItems.push({
-            label: motivoBloqueo
-              ? `Contabilizar (${motivoBloqueo})`
-              : "Contabilizar",
-            icon: CheckCircleIcon,
-            disabled: motivoBloqueo !== null,
-            onSelect: () => onContabilizar(id),
-          });
-        }
-
-        // Cancelar sobre lo que aún puede cancelarse. El backend acepta cancelar
-        // tanto un borrador como una póliza ya contabilizada; solo es no-op sobre
-        // una ya cancelada.
-        if (estatus !== "Cancelada") {
-          menuItems.push({
-            label: "Cancelar póliza",
-            icon: BanIcon,
-            onSelect: () => onCancel(id),
-          });
-        }
-
-        // Eliminar SOLO sobre borradores capturados a mano (ver
-        // `polizaEsEliminable`): nunca sobre una contabilizada o cancelada, ni
-        // sobre el asiento automático que genera el backend al registrar una CxC.
-        // A diferencia de Contabilizar, la opción se OCULTA en vez de
-        // deshabilitarse, igual que en notas de crédito: no hay nada que el
-        // usuario pueda corregir para volverla disponible.
-        if (polizaEsEliminable(info.row.original)) {
-          menuItems.push({
-            label: "Eliminar borrador",
-            icon: DeleteIcon,
-            onSelect: () => onDelete(id),
-          });
-        }
-
-        // El formulario exige folio, pero el listado también trae las pólizas
-        // que generó el backend y las creadas por otras vías: `folio` es
-        // nullable en el modelo. Se cae al `#id`, que siempre existe.
-        const folio = info.getValue() || `#${id}`;
-        const statusCfg = POLIZA_ESTATUS_CONFIG[estatus];
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-              title={statusCfg?.label ?? estatus}
-              aria-hidden="true"
-            />
-            <span className="sr-only">{statusCfg?.label ?? estatus}</span>
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones de la póliza ${folio}`}
-              align="start"
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {folio}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+      header: "Folio",
+      size: 170,
+      cell: (info) => <PolizaFolioCell poliza={info.row.original} />,
     }),
     columnHelper.accessor((row) => row.fecha ?? "", {
       id: "fecha",
@@ -212,23 +145,10 @@ export const getColumns = (
       },
     }),
     columnHelper.accessor("tipo", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Tipo</span>
-          <ColumnHeaderFilter column={column} options={TIPO_FILTER_OPTIONS} label="tipo" />
-        </div>
+      header: "Tipo",
+      cell: (info) => (
+        <StatusBadge status={info.getValue()} config={POLIZA_TIPO_CONFIG} />
       ),
-      filterFn: tipoFilterFn,
-      cell: (info) => {
-        const tipo = info.getValue();
-        const cfg = POLIZA_TIPO_CONFIG[tipo];
-        return (
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cfg?.dot ?? "bg-slate-400"}`} title={cfg?.label ?? tipo} aria-hidden="true" />
-            <span className="text-slate-600 dark:text-slate-300">{cfg?.label ?? tipo}</span>
-          </div>
-        );
-      },
     }),
     columnHelper.accessor((row) => row.concepto ?? "", {
       id: "concepto",
@@ -278,4 +198,33 @@ export const getColumns = (
   ] as ColumnDef<Poliza>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
+ * - El tipo, del catálogo completo (`POLIZA_TIPO_CONFIG`, la misma lista del
+ *   alta).
+ * - La fecha filtra por mes; es nullable, así que las filas sin fecha tienen su
+ *   opción al final.
+ * - El cuadre, "Cuadra / No cuadra" (el mismo `cuadre_correcto` que decide si
+ *   se puede contabilizar).
+ * Concepto e importes no llevan filtro: son valores libres, los cubren la
+ * búsqueda y el orden.
+ */
+export const POLIZA_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Poliza>>> = {
+  folio: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(POLIZA_ESTATUS_CONFIG),
+  },
+  fecha: { type: "month", get: (r) => r.fecha, emptyLabel: "Sin fecha" },
+  tipo: {
+    type: "options",
+    get: (r) => r.tipo,
+    options: optionsFromConfig(POLIZA_TIPO_CONFIG),
+  },
+  cuadre_correcto: { type: "boolean", get: (r) => r.cuadre_correcto, yes: "Cuadra", no: "No cuadra" },
 };
