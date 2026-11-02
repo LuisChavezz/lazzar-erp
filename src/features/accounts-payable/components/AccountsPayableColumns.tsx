@@ -22,6 +22,10 @@ import { useAccountsPayableRowActionsContext } from "../hooks/useAccountsPayable
 
 const columnHelper = createColumnHelper<CuentaPorPagar>();
 
+/** Texto del proveedor: su nombre resuelto, o `Proveedor #N` si llega vacío. */
+const getProveedorLabel = (cuenta: CuentaPorPagar): string =>
+  cuenta.proveedor_nombre || `Proveedor #${cuenta.proveedor}`;
+
 /**
  * Vencimiento resaltado con la definición ÚNICA de vencida, la misma del badge
  * y del filtro «Vencida / Al corriente». "Hoy" llega por el contexto del menú.
@@ -118,12 +122,13 @@ export const getColumns = () =>
       size: 170,
       cell: (info) => <AccountsPayableIdCell cuenta={info.row.original} />,
     }),
-    columnHelper.accessor((row) => row.proveedor_nombre ?? "", {
+    // Mismo texto en la celda, la búsqueda y la opción del filtro.
+    columnHelper.accessor((row) => getProveedorLabel(row), {
       id: "proveedor_nombre",
       header: "Proveedor",
       cell: (info) => (
         <span className="font-medium text-slate-600 dark:text-slate-300">
-          {info.getValue() || "—"}
+          {info.getValue()}
         </span>
       ),
     }),
@@ -183,8 +188,9 @@ export const getColumns = () =>
  * Se arman con "hoy" porque la vencida es DERIVADA:
  * - El `#id` filtra por `estatus` (su badge), con ficha "Estatus: …": el
  *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
- * - El proveedor es un valor libre: sus opciones salen de las filas, con
- *   buscador.
+ * - El proveedor es un FK: sus opciones salen de las filas, comparan contra el
+ *   id crudo y se rotulan con el nombre (o `Proveedor #N`), con buscador; dos
+ *   homónimos no se mezclan. Es obligatorio en el modelo: no hay "Sin proveedor".
  * - La emisión filtra por mes.
  * - El vencimiento filtra «Vencida / Al corriente» con `isCuentaPorPagarVencida`,
  *   la misma regla que pinta la marca (reemplaza al botón "Solo vencidas"). Una
@@ -199,7 +205,7 @@ export const getAccountsPayableHeaderFilters = (
     get: (r) => r.estatus,
     options: optionsFromConfig(CXP_ESTATUS_CONFIG),
   },
-  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true },
+  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor, label: getProveedorLabel, searchable: true },
   fecha_emision: { type: "month", get: (r) => r.fecha_emision },
   fecha_vencimiento: {
     type: "boolean",

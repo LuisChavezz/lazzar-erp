@@ -13,6 +13,10 @@ import { usePaymentRowActionsContext } from "../hooks/usePaymentRowActions";
 
 const columnHelper = createColumnHelper<Pago>();
 
+/** Texto del proveedor: su nombre resuelto, o `Proveedor #N` si llega vacío. */
+const getProveedorLabel = (pago: Pago): string =>
+  pago.proveedor_nombre || `Proveedor #${pago.proveedor}`;
+
 /** Texto de la cuenta bancaria: su alias, o `Cuenta #N` si no tiene (`alias` es nullable). */
 const getCuentaLabel = (pago: Pago): string =>
   pago.cuenta_bancaria_alias || `Cuenta #${pago.cuenta_bancaria}`;
@@ -66,12 +70,12 @@ export const getColumns = () => {
       size: 150,
       cell: (info) => <PaymentIdCell pago={info.row.original} />,
     }),
-    columnHelper.accessor("proveedor_nombre", {
+    // Mismo texto en la celda, la búsqueda y la opción del filtro.
+    columnHelper.accessor((row) => getProveedorLabel(row), {
+      id: "proveedor_nombre",
       header: "Proveedor",
       cell: (info) => (
-        <span className="font-medium text-slate-600 dark:text-slate-300">
-          {info.getValue() || "—"}
-        </span>
+        <span className="font-medium text-slate-600 dark:text-slate-300">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("fecha_pago", {
@@ -130,11 +134,10 @@ export const getColumns = () => {
  *   catálogo completo y, al final, cada valor desconocido de las filas, crudo.
  * - El método, del catálogo completo (`METODO_PAGO_CONFIG`, la misma lista del
  *   alta), con ficha "Método de pago: …".
- * - Proveedor es un valor libre: sus opciones salen de las filas.
- * - La cuenta bancaria es un FK de catálogo: sus opciones salen de las filas,
- *   comparan contra el id crudo y se rotulan con el alias (o `Cuenta #N`), así
- *   dos cuentas con el mismo alias no se mezclan. `cuenta_bancaria` es
- *   obligatorio en el modelo, así que no hay opción "Sin cuenta".
+ * - Proveedor y cuenta bancaria son FK de catálogo: sus opciones salen de las filas,
+ *   comparan contra el id crudo y se rotulan con el nombre o alias (o
+ *   `Proveedor #N` / `Cuenta #N`), así dos homónimos no se mezclan. Ambos FK son
+ *   obligatorios en el modelo, así que no hay opción "Sin proveedor" ni "Sin cuenta".
  * - La fecha de pago filtra por mes. Referencia y total no llevan filtro: son
  *   valores libres, los cubren la búsqueda y el orden.
  */
@@ -145,7 +148,7 @@ export const PAYMENT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pag
     get: (r) => r.estatus,
     options: optionsFromConfig(PAGO_ESTATUS_CONFIG),
   },
-  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true },
+  proveedor_nombre: { type: "distinct", get: (r) => r.proveedor, label: getProveedorLabel, searchable: true },
   fecha_pago: { type: "month", get: (r) => r.fecha_pago },
   cuenta_bancaria_alias: { type: "distinct", get: (r) => r.cuenta_bancaria, label: getCuentaLabel },
   metodo_pago: {
