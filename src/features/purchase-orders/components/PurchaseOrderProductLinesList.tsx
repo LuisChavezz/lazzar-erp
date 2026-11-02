@@ -186,7 +186,9 @@ export function PurchaseOrderProductLinesList({
   const debouncedQuery = useDebounce(searchQuery.trim(), 350);
   const searchesServer = catalogTruncated && !showOnlySelected;
   const serverSearch = usePurchaseOrderProductSearch(debouncedQuery, { enabled: searchesServer });
-  const showsServerResults = searchesServer && debouncedQuery !== "";
+  // Al borrar el texto, la lista vuelve al catálogo al instante, sin esperar a
+  // que el debounce suelte la búsqueda anterior.
+  const showsServerResults = searchesServer && debouncedQuery !== "" && searchQuery.trim() !== "";
   // Hay una búsqueda en camino (tecleando, o la nueva llave aún sin respuesta):
   // las coincidencias del servidor mostradas son de la anterior.
   const isSearching =
@@ -196,18 +198,17 @@ export function PurchaseOrderProductLinesList({
   // ── Filtrado por búsqueda ─────────────────────────────────────────────────
   // El snapshot acota el universo ANTES del filtro de texto, así que escribir
   // en "Filtrar productos..." busca dentro de los seleccionados, no en todo
-  // el catálogo. Con búsqueda en el servidor se filtra con el mismo texto
-  // debounced, para que lo local y lo del servidor coincidan.
-  const localQuery = searchesServer ? debouncedQuery : searchQuery;
+  // el catálogo. Lo cargado se filtra con el texto en vivo, al instante; solo
+  // la búsqueda en el servidor espera al debounce.
   const localMatches = useMemo(() => {
     const base = selectedSnapshot ?? products;
-    if (!localQuery.trim()) return base;
-    const q = localQuery.toLowerCase();
+    if (!searchQuery.trim()) return base;
+    const q = searchQuery.toLowerCase();
     // El fallback cubre a un renglón congelado que ya no esté en `products`.
     return base.filter((p) =>
       (searchHaystacks.get(p.id) ?? buildSearchHaystack(p)).includes(q),
     );
-  }, [products, localQuery, selectedSnapshot, searchHaystacks]);
+  }, [products, searchQuery, selectedSnapshot, searchHaystacks]);
 
   const matches = useMemo(
     () => (showsServerResults ? mergeProductMatches(localMatches, serverSearch.productos) : localMatches),
