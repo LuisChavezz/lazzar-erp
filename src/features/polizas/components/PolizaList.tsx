@@ -45,14 +45,30 @@ const etiquetaDe = (poliza: Pick<Poliza, "id" | "folio">): string =>
 
 /**
  * Textos del aviso de una confirmación que se cerró porque su póliza cambió por
- * fuera (otra persona la contabilizó, la canceló o la eliminó). `accion` en
- * infinitivo: "contabilizar", "cancelar", "eliminar".
+ * fuera (otra persona la contabilizó, la canceló o la eliminó). Dicen POR QUÉ se
+ * cerró y nunca invitan a repetir una acción que ya no aplica.
  */
-const polizaStaleMessages = (accion: string) => ({
-  gone: "La póliza ya no está disponible. Se actualizó el listado.",
+const POLIZA_GONE_MESSAGE = "La póliza ya no está disponible. Se actualizó el listado.";
+
+/** Contabilizar y eliminar solo aplican a un `Borrador`: cualquier otro estatus las descarta. */
+const polizaStaleMessages = (accion: "contabilizar" | "eliminar") => ({
+  gone: POLIZA_GONE_MESSAGE,
   estadoChanged: (estatus: PolizaEstatus) =>
-    `La póliza cambió a ${estatus.toLowerCase()}: revisa antes de ${accion}. Se actualizó el listado.`,
+    `La póliza ya está ${estatus.toLowerCase()}; ya no se puede ${accion}. Se actualizó el listado.`,
 });
+
+/**
+ * Cancelar aplica a un `Borrador` y a una `Contabilizada`, pero con efectos
+ * distintos: si se contabilizó con la confirmación abierta, cancelar ahora
+ * generaría una contrapóliza que el texto abierto no anunciaba.
+ */
+const POLIZA_CANCEL_STALE_MESSAGES = {
+  gone: POLIZA_GONE_MESSAGE,
+  estadoChanged: (estatus: PolizaEstatus) =>
+    estatus === "Contabilizada"
+      ? "La póliza se contabilizó mientras confirmabas: cancelarla ahora generaría una contrapóliza. Se actualizó el listado."
+      : `La póliza ya está ${estatus.toLowerCase()}; ya no se puede cancelar. Se actualizó el listado.`,
+};
 
 export default function PolizaList() {
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
@@ -199,7 +215,7 @@ export default function PolizaList() {
       statusField: "estatus",
       expectedEstado: cancelSnapshot.estatus,
       isBusy: isBusy(cancelTargetId),
-      messages: polizaStaleMessages("cancelar"),
+      messages: POLIZA_CANCEL_STALE_MESSAGES,
     });
   if (staleCancel) {
     setCancelTargetId(null);
