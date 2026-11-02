@@ -14,6 +14,7 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
@@ -170,7 +171,12 @@ export function BankReconciliationView() {
   // Cierres y cancelaciones en vuelo POR CONCILIACIÓN, leídos de la
   // MutationCache: `isPending` de cada hook solo recuerda su última llamada.
   const busyIds = usePendingConciliacionIds();
-  const isBusy = (id: number | null) => id !== null && busyIds.includes(id);
+  // Candado SÍNCRONO por fila (`useRowActionLock`): el "en vuelo" de la
+  // MutationCache (`busyIds`) llega en un render posterior, así que el segundo
+  // clic de un doble clic lo encontraría libre y mandaría otra petición. La ref
+  // del candado ya está tomada en ese segundo clic.
+  const rowLock = useRowActionLock();
+  const isBusy = (id: number | null) => id !== null && (busyIds.includes(id) || rowLock.isPending(id));
 
   /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
   const setStaleNotice = useStaleNoticeToast();
@@ -477,14 +483,17 @@ export function BankReconciliationView() {
             const id = cerrarConciliacionTarget.id;
             // Una conciliación ya en vuelo no se vuelve a mandar (doble clic, o
             // reabrir tras "Volver" mientras su cierre sigue pendiente).
-            if (isBusy(id)) return;
+            if (isBusy(id) || !rowLock.acquire(id)) return;
             cerrarAsync(id)
               // El hook ya avisó del error con su toast; aquí solo se evita el
               // rechazo no manejado de la promesa.
               .catch(() => {})
               // Solo cierra SU confirmación: si mientras tanto se abrió la de
               // otra conciliación, esa no se toca.
-              .finally(() => setCerrarTargetId((current) => (current === id ? null : current)));
+              .finally(() => {
+                rowLock.release(id);
+                setCerrarTargetId((current) => (current === id ? null : current));
+              });
           }}
           // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
           confirmColor="green"
@@ -506,10 +515,13 @@ export function BankReconciliationView() {
           closeOnConfirm={false}
           onConfirm={() => {
             const id = cancelarConciliacionTarget.id;
-            if (isBusy(id)) return;
+            if (isBusy(id) || !rowLock.acquire(id)) return;
             cancelarAsync(id)
               .catch(() => {})
-              .finally(() => setCancelarTargetId((current) => (current === id ? null : current)));
+              .finally(() => {
+                rowLock.release(id);
+                setCancelarTargetId((current) => (current === id ? null : current));
+              });
           }}
           confirmColor="amber"
         />
