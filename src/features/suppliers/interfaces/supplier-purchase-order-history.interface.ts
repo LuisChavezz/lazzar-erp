@@ -44,8 +44,8 @@ export interface SupplierPurchaseOrderHistoryResumen {
 
 /**
  * Respuesta paginada (`PageNumberPagination`) más `resumen`. `results` usa el
- * mismo serializer que el listado de órdenes de compra: los importes llegan
- * SIEMPRE (este endpoint no aplica el filtro contable por rol).
+ * mismo serializer que el listado de órdenes de compra y el mismo filtro
+ * contable: sin permiso de importes, `gran_total` y los demás montos no vienen.
  */
 export interface SupplierPurchaseOrderHistoryResponse {
   count: number;
