@@ -31,7 +31,7 @@ import { useCallback, useState } from "react";
 import { usePrefetchQuery, useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { ordersQueryOptions } from "@/src/features/orders/hooks/useOrders";
-import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import type {
   PurchaseOrder,
   PurchaseOrderDetail,
@@ -83,7 +83,7 @@ export function PurchaseOrderEditStepManager({
   // `/ventas/pedidos/` salía DESPUÉS de esa espera, en cadena (EC-695). Mismas
   // opciones que `useOrders()` sin filtros (`ordersQueryOptions`), así que el
   // campo encuentra la respuesta (o la petición en vuelo) en la caché.
-  usePrefetchQuery({ ...ordersQueryOptions(), gcTime: PROCUREMENT_QUERY_GC_TIME });
+  usePrefetchQuery({ ...ordersQueryOptions(), gcTime: LIST_QUERY_GC_TIME });
 
   // Detalle de la orden — aporta los renglones existentes (con `producto_id`)
   // para sembrar el paso de productos, y el `estatus` que decide el aviso de

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getPurchaseOrderOnboardingData } from "../services/actions";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 
@@ -12,7 +12,7 @@ export const usePurchaseOrderOnboardingData = () => {
   } = useQuery<PurchaseOrderOnboardingData>({
     queryKey: ["purchase-order-onboarding"],
     queryFn: getPurchaseOrderOnboardingData,
-    gcTime: PROCUREMENT_QUERY_GC_TIME,
+    gcTime: LIST_QUERY_GC_TIME,
   });
 
   return {

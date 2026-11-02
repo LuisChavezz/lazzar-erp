@@ -1,4 +1,4 @@
-import { OPERATIONS_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getOperationsCustomers } from "../services/actions";
 import { OperationsCustomer } from "../interfaces/operations-customer.interface";
@@ -23,7 +23,7 @@ export const useOperationsCustomers = () => {
       {
         queryKey: ["operations-customers"],
         queryFn: getOperationsCustomers,
-        gcTime: OPERATIONS_QUERY_GC_TIME,
+        gcTime: LIST_QUERY_GC_TIME,
       },
       { toastId: "operations-customers-refetch-error" },
     );

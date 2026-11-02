@@ -5,7 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { SearchInput } from "@/src/components/SearchInput";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -84,7 +84,7 @@ export function PurchaseOrderPedidosField({
   "use no memo";
 
   const { orders, isLoading, isError, hasLoaded } = useOrders(undefined, {
-    gcTime: PROCUREMENT_QUERY_GC_TIME,
+    gcTime: LIST_QUERY_GC_TIME,
   });
   const labelId = useId();
   const errorId = useId();

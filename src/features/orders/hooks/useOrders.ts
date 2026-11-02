@@ -26,7 +26,7 @@ export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
 
 /**
  * `gcTime`: opcional, para que un consumidor alargue la vida en caché de la
- * lista (Compras pasa `PROCUREMENT_QUERY_GC_TIME`); sin él, el global.
+ * lista (Compras y Mesa de Control pasan `LIST_QUERY_GC_TIME`); sin él, el global.
  */
 export const useOrders = (params?: OrdersQueryParams, { gcTime }: { gcTime?: number } = {}) => {
   const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>({
