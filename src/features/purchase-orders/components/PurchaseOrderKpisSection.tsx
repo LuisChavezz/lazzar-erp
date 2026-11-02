@@ -123,17 +123,19 @@ function overdueCard(kpi: PurchaseOrderOverdueKpi, onOpen: () => void): KpiCompa
 /**
  * Gasto por categoría: todo el indicador ES un importe, así que sin importes a
  * la vista la tarjeta se queda con "No visible" y sin drill-down (sin permiso
- * el backend manda el bloque no disponible). Un bloque por moneda con el total
- * de ESA moneda (suma de sus categorías, que el backend no expone) y su
- * categoría mayor: cada moneda tiene su propio ranking.
+ * el backend manda el bloque no disponible). Sin empresa conserva su propio
+ * motivo. Un bloque por moneda con el total de ESA moneda (suma de sus
+ * categorías, que el backend no expone) y su categoría mayor: cada moneda tiene
+ * su propio ranking.
  */
 function spendCard(
   kpi: PurchaseOrderSpendKpi,
-  puedeVerImportes: boolean | undefined,
+  puedeVerImportes: boolean,
+  sinEmpresa: boolean,
   onOpen: () => void,
 ): KpiCompactItem {
   const base = { label: "Gasto por categoría", icon: WalletIcon };
-  if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
+  if (isAmountOnlyKpiHidden(puedeVerImportes, sinEmpresa)) {
     return hiddenAmountCard(base, HIDDEN_KPI_AMOUNTS_REASON);
   }
   if (!kpi.disponible) {
@@ -179,12 +181,15 @@ function buildCards(
   data: PurchaseOrderKpis,
   openDialog: (kind: PurchaseOrderKpiDialogKind) => void,
 ): KpiCompactItem[] {
+  // `ocs_abiertas` solo llega no disponible a un usuario sin empresa: el
+  // backend lo calcula siempre que hay empresa, con o sin permiso.
+  const sinEmpresa = !data.ocs_abiertas.disponible;
   return [
     openCard(data.ocs_abiertas, canSeeKpiAmounts(data.puede_ver_importes), () => openDialog("ocs_abiertas")),
     overdueCard(data.ocs_vencidas_sin_recibir, () => openDialog("ocs_vencidas_sin_recibir")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.ciclo_compra, { label: "Ciclo de compra", icon: ClockIcon }),
-    spendCard(data.gasto_por_categoria, data.puede_ver_importes, () => openDialog("gasto_por_categoria")),
+    spendCard(data.gasto_por_categoria, data.puede_ver_importes, sinEmpresa, () => openDialog("gasto_por_categoria")),
   ];
 }
 
