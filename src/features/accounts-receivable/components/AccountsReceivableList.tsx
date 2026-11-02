@@ -17,6 +17,7 @@ import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
 import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
+import { AccountsReceivableRowActionsProvider } from "../hooks/useAccountsReceivableRowActions";
 import {
   computeAgingBuckets,
   computeCxcKpis,
@@ -53,7 +54,7 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   // Las opciones de los filtros de encabezado se arman con el listado completo;
   // filtrar la tabla no toca `kpis` ni `agingGroups` (salen de `cuentas`).
   const columns = withHeaderFilters(
-    getAccountsReceivableColumns({ onViewDetail: setOpenDetailId }),
+    getAccountsReceivableColumns(),
     rows,
     getAccountsReceivableHeaderFilters(),
   );
@@ -66,20 +67,25 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   // (recibe `isLoading`/`isError` y alterna solo su cuerpo), así que el botón
   // sigue disponible aunque el listado esté cargando o haya fallado.
   const table = (
-    <DataTable
-      columns={columns}
-      data={rows}
-      searchPlaceholder="Buscar folio, cliente o factura..."
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      emptyMessage="No hay cuentas por cobrar registradas."
-      actionButton={canCreate ? <RegisterPendingInvoiceDialog /> : undefined}
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar las cuentas por cobrar"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando cuentas por cobrar"
-    />
+    <AccountsReceivableRowActionsProvider
+      value={{ onViewDetail: (cuenta) => setOpenDetailId(cuenta.id) }}
+    >
+      <DataTable
+        columns={columns}
+        data={rows}
+        searchPlaceholder="Buscar folio, cliente o factura..."
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay cuentas por cobrar registradas."
+        actionButton={canCreate ? <RegisterPendingInvoiceDialog /> : undefined}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las cuentas por cobrar"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando cuentas por cobrar"
+        getRowId={(row) => String(row.id)}
+      />
+    </AccountsReceivableRowActionsProvider>
   );
 
   // Un único `return`: la tabla se monta SIEMPRE (su toolbar mantiene

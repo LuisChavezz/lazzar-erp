@@ -1,7 +1,8 @@
 "use client";
 
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
@@ -10,45 +11,38 @@ import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
-import type {
-  CuentaPorCobrarRow,
-  CxCEstatus,
-} from "../interfaces/accounts-receivable.interface";
+import type { CuentaPorCobrarRow } from "../interfaces/accounts-receivable.interface";
+import { useAccountsReceivableRowActionsContext } from "../hooks/useAccountsReceivableRowActions";
 
-// ── Badge de estatus ──────────────────────────────────────────────────────────
-// La config vive en `constants/cxcEstatus.ts` porque el diálogo de detalle
-// también la usa.
+// ── Folio: menú de la fila ────────────────────────────────────────────────────
 
-const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
-  <StatusBadge status={estatus} config={CXC_ESTATUS_CONFIG} />
-);
-
-// ── Acciones de fila ──────────────────────────────────────────────────────────
-
-interface AccountsReceivableColumnsCallbacks {
-  /** Abre el detalle de la cuenta. El diálogo vive en `AccountsReceivableList`. */
-  onViewDetail: (id: number) => void;
-}
-
-const ActionsCell = ({
-  row,
-  onViewDetail,
-}: { row: CuentaPorCobrarRow } & AccountsReceivableColumnsCallbacks) => {
-  // "Registrar cobro" y "Ver factura" vivían aquí con `onSelect: () => {}`: se
-  // ofrecían al usuario y no hacían nada. Se retiran hasta que exista la
-  // funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
-  // "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
-  // "Pagada" y "Cancelada") y necesitará su código de permiso.
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(row.id) },
+/**
+ * Celda del folio: el folio ES el menú de la fila (`FolioActionMenu`) y debajo
+ * va su estatus —reemplaza las columnas aparte "Estatus" y "Acciones"—. "Ver
+ * detalle" es siempre la primera acción. El callback llega por contexto
+ * (`AccountsReceivableRowActionsProvider`), no por la factoría de columnas.
+ *
+ * "Registrar cobro" y "Ver factura" vivían en el menú con `onSelect: () => {}`:
+ * se ofrecían y no hacían nada. Se retiraron hasta que exista la
+ * funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
+ * "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
+ * "Pagada" y "Cancelada") y necesitará su código de permiso.
+ */
+function AccountsReceivableFolioCell({ cuenta }: { cuenta: CuentaPorCobrarRow }) {
+  const { onViewDetail } = useAccountsReceivableRowActionsContext();
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cuenta) },
   ];
-
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio_cxc}`} />
-    </div>
+    <FolioActionMenu
+      folio={cuenta.folio_cxc}
+      items={items}
+      // La config vive en `constants/cxcEstatus.ts`: la usan también el detalle
+      // y el seguimiento de la factura.
+      status={<StatusBadge status={cuenta.estatus} config={CXC_ESTATUS_CONFIG} />}
+    />
   );
-};
+}
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
@@ -59,18 +53,16 @@ const getClienteLabel = (cuenta: CuentaPorCobrarRow): string =>
   cuenta.cliente_nombre || `Cliente #${cuenta.cliente}`;
 
 /**
- * Columnas del listado de CxC. El diálogo de detalle NO vive en una celda (las
- * celdas se desmontan al ordenar, paginar o filtrar): `onViewDetail` lo abre en
- * `AccountsReceivableList`.
+ * Columnas del listado de CxC. No reciben nada: el callback del menú llega por
+ * `AccountsReceivableRowActionsProvider`, así una acción no remonta las celdas.
+ * El diálogo de detalle NO vive en una celda (las celdas se desmontan al
+ * ordenar, paginar o filtrar): lo abre `AccountsReceivableList`.
  */
-export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivableColumnsCallbacks) => [
+export const getAccountsReceivableColumns = () => [
   columnHelper.accessor("folio_cxc", {
     header: "Folio CxC",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
-    ),
+    size: 170,
+    cell: (info) => <AccountsReceivableFolioCell cuenta={info.row.original} />,
   }),
   // Mismo texto en la celda, la búsqueda y la opción del filtro.
   columnHelper.accessor((row) => getClienteLabel(row), {
@@ -141,10 +133,6 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       </span>
     ),
   }),
-  columnHelper.accessor("estatus", {
-    header: "Estatus",
-    cell: (info) => <EstatusBadge estatus={info.getValue()} />,
-  }),
   columnHelper.accessor("dias_vencido", {
     header: "Días venc.",
     cell: (info) => {
@@ -160,19 +148,14 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       );
     },
   }),
-  columnHelper.display({
-    id: "actions",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} onViewDetail={onViewDetail} />,
-  }),
 ] as ColumnDef<CuentaPorCobrarRow>[];
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
  * Reemplazan los chips de `filterConfig` (EC-677), con la misma forma que CxP:
- * - El estatus: el catálogo completo de `CXC_ESTATUS_CONFIG` y, al final, cada
- *   valor desconocido de las filas, crudo.
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo de `CXC_ESTATUS_CONFIG` y, al final, cada valor
+ *   desconocido de las filas, crudo.
  * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
  *   crudo y se rotulan con el nombre (o `Cliente #N`), con buscador; dos
  *   homónimos no se mezclan. Es obligatorio en el modelo: no hay "Sin cliente".
@@ -186,8 +169,9 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
 export const getAccountsReceivableHeaderFilters = (): Partial<
   Record<string, HeaderFilterSpec<CuentaPorCobrarRow>>
 > => ({
-  estatus: {
+  folio_cxc: {
     type: "options",
+    filterLabel: "estatus",
     get: (r) => r.estatus,
     options: optionsFromConfig(CXC_ESTATUS_CONFIG),
   },
