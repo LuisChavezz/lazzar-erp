@@ -467,8 +467,12 @@ export function BankReconciliationView() {
         <ConfirmDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setCerrarTargetId(null);
+            // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+            // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+            // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+            if (!open && !(isBusy(cerrarTargetId) || rowLock.isHeld(cerrarTargetId))) setCerrarTargetId(null);
           }}
+          busy={isBusy(cerrarTargetId)}
           title="Cerrar Conciliación"
           description={
             conciliacionCuadra(
@@ -518,8 +522,12 @@ export function BankReconciliationView() {
         <ConfirmDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setCancelarTargetId(null);
+            // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+            // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+            // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+            if (!open && !(isBusy(cancelarTargetId) || rowLock.isHeld(cancelarTargetId))) setCancelarTargetId(null);
           }}
+          busy={isBusy(cancelarTargetId)}
           title="Cancelar Conciliación"
           description={`¿Deseas cancelar la conciliación de ${
             getCuentaLabel(cancelarConciliacionTarget)
