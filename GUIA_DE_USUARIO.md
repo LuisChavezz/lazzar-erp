@@ -130,11 +130,12 @@ Desde el listado de materiales puedes **eliminar** un componente cuando ya no ap
 Los módulos operativos, comerciales y financieros se organizan por **dominio de negocio**:
 
 - **CRM y Ventas** (`/sales`): Clientes (`/sales/customers`), Cotizaciones (`/sales/quotes`, con alta en `/sales/quotes/new` y edición en `/sales/quotes/[id]/edit`), Correos (`/sales/emails`) y Calendario (`/sales/calendar`).
-- **Mesa de Control** (`/operations`), organizada en sub-grupos:
+- **Mesa de Control** (`/operations`): su página de entrada es un menú de accesos, igual que el de WMS, con una tarjeta por sub-grupo; se pinta al instante, sin consultar datos. Los sub-grupos son:
   - **Operación Comercial**: Cotizaciones (`/operations/quotes`), Pedidos (`/operations/orders`) y Pedidos Programados (`/operations/scheduled-orders`).
   - **Seguimiento**: Existencias, Producción y Compras (`/operations/inventory-pipeline`).
-  - **Maestros**: Clientes (`/operations/customers`).
+  - **Terceros**: Clientes (`/operations/customers`).
   - **Comunicación**: Correos (`/operations/emails`) y Calendario (`/operations/calendar`).
+  - **Indicadores**: Panel de Mesa de Control (`/operations/dashboard`), con las cotizaciones por autorizar, la actividad reciente y los montos por estatus; antes era la entrada del módulo.
   - Además, Muestras (`/operations/samples`).
 - **Operaciones de Almacén – WMS** (`/wms`), organizada en sub-grupos:
   - **Operación**: Pedidos (`/wms/orders`), Recepciones (`/wms/receipts`), Calidad (`/wms/quality-inspections`), Surtido (`/wms/picking`), Embarque (`/wms/packing`) y Envíos (`/wms/shipping`).
