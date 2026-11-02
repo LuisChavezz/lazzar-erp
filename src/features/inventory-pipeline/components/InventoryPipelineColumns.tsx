@@ -159,10 +159,11 @@ export const getInventoryPipelineColumns = (
     cell: (info) => <QuantityCell value={info.getValue()} />,
   }),
   columnHelper.accessor("total", {
-    size: 120,
+    // Ancho de "Compras pendientes": la etiqueta larga cabe junto al filtro.
+    size: 150,
     header: ({ column }) => (
       <FilterHeader
-        title="Total"
+        title="Total (disp. + OP)"
         column={column}
         options={presenceOptions("Con total", "En cero")}
         label="total"
@@ -170,7 +171,7 @@ export const getInventoryPipelineColumns = (
     ),
     filterFn: presenceFilter((r) => r.total),
     enableGlobalFilter: false,
-    meta: { align: "right", label: "Total" },
+    meta: { align: "right", label: "Total (disp. + OP)" },
     cell: (info) => (
       <span className="text-sm tabular-nums font-semibold text-slate-800 dark:text-white">
         {formatExactQuantityValue(info.getValue())}
