@@ -13,11 +13,13 @@ import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeade
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
+import { useProveedorMonedaChange } from "../hooks/useProveedorMonedaChange";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
   initialServerErrors,
   lineCount,
+  pricedLineCount,
   onClearLines,
   onSuccess,
 }: {
@@ -27,6 +29,8 @@ export function PurchaseOrderOnboardingStep1({
   initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   /** Renglones capturados en el Step 2: cambiar el tipo de compra los descarta. */
   lineCount: number;
+  /** Renglones del Step 2 con precio: cambiar la moneda con el proveedor se confirma. */
+  pricedLineCount: number;
   /** Descarta los renglones (tras confirmar el cambio de tipo de compra). */
   onClearLines: () => void;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
@@ -72,6 +76,7 @@ export function PurchaseOrderOnboardingStep1({
       initialValues={initialValues}
       initialServerErrors={initialServerErrors}
       lineCount={lineCount}
+      pricedLineCount={pricedLineCount}
       onClearLines={onClearLines}
       onSuccess={onSuccess}
     />
@@ -85,6 +90,7 @@ interface Step1FormProps {
   initialValues?: PurchaseOrderEncabezados;
   initialServerErrors?: PurchaseOrderHeaderFieldErrors;
   lineCount: number;
+  pricedLineCount: number;
   onClearLines: () => void;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
@@ -94,6 +100,7 @@ function Step1Form({
   initialValues,
   initialServerErrors,
   lineCount,
+  pricedLineCount,
   onClearLines,
   onSuccess,
 }: Step1FormProps) {
@@ -130,9 +137,24 @@ function Step1Form({
     },
   });
 
+  const { requestChange: requestProveedorChange, confirmDialogProps: proveedorConfirmDialogProps } =
+    useProveedorMonedaChange({
+      onboardingData,
+      pricedLineCount,
+      applyChange: (nextProveedor, nextMoneda) => {
+        form.setFieldValue("orden_compra.proveedor", nextProveedor);
+        clearFieldErrors("orden_compra.proveedor");
+        if (nextMoneda !== null) {
+          form.setFieldValue("orden_compra.moneda", nextMoneda);
+          clearFieldErrors("orden_compra.moneda");
+        }
+      },
+    });
+
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
       <ConfirmDialog {...confirmDialogProps} />
+      <ConfirmDialog {...proveedorConfirmDialogProps} />
       <fieldset
         disabled={isPending}
         className={`grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 transition-opacity duration-200 ${isPending ? "opacity-60" : ""}`}
@@ -172,14 +194,15 @@ function Step1Form({
               name={field.name}
               value={field.state.value}
               options={proveedorOptions}
-              onChange={(event) => {
-                const nextValue = coerceNumeric(
-                  "orden_compra.proveedor",
-                  event.target.value,
-                ) as number;
-                field.handleChange(nextValue);
-                clearFieldErrors("orden_compra.proveedor");
-              }}
+              // La moneda del proveedor se preselecciona desde aquí y no desde
+              // un efecto: al "Volver" del Step 2 el formulario se remonta y
+              // la moneda capturada no debe moverse (EC-689).
+              onChange={(event) =>
+                requestProveedorChange(
+                  coerceNumeric("orden_compra.proveedor", event.target.value) as number,
+                  form.getFieldValue("orden_compra.moneda"),
+                )
+              }
               onBlur={() => {
                 field.handleBlur();
                 validateField("orden_compra.proveedor");
