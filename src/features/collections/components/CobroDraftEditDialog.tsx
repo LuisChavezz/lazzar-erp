@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -12,6 +13,7 @@ import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/us
 import { buildCxcIndex, cobroLabel, type CobroRow } from "../utils/collection.utils";
 import { cobroToFormValues } from "../utils/cobroDraft";
 import { CreateCobroForm } from "./CreateCobroForm";
+import { saveCobroMutationKey } from "../hooks/useSaveCobro";
 
 interface CobroDraftEditDialogProps {
   /** El borrador a editar (la fila del listado), o `null` cerrado. */
@@ -41,6 +43,9 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
   const draft = session.snapshot;
 
   const close = () => onOpenChange(false);
+  // Con el guardado en vuelo el diálogo no se cierra (Cancelar, X, Esc).
+  const isSaving =
+    useIsMutating({ mutationKey: saveCobroMutationKey(draft?.id), exact: true }) > 0 && draft !== null;
 
   return (
     <MainDialog
@@ -53,7 +58,10 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
         />
       }
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        if (!next && isSaving) return;
+        onOpenChange(next);
+      }}
       maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
     >
       {open && draft && <DraftLoader key={session.id} cobro={draft} onDone={close} />}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -29,6 +30,7 @@ import { CobroDraftDeleteDialog } from "./CobroDraftDeleteDialog";
 import { canManageCobroDraft, isDeletableCobroDraft } from "../utils/cobroDraft";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
+import { saveCobroMutationKey } from "../hooks/useSaveCobro";
 import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
 
 export function CollectionList() {
@@ -40,6 +42,10 @@ export function CollectionList() {
   const { data: session } = useSession();
   const canCreate = hasPermission(COBRO_CREATE_PERMISSION, session?.user);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Con el alta en vuelo el diálogo no se cierra (Cerrar, X, Esc): cerrarlo a
+  // medias escondería su resultado. Se lee del MutationCache por su llave, no
+  // del `isPending` del formulario, que vive dentro del contenido.
+  const isSavingNew = useIsMutating({ mutationKey: saveCobroMutationKey() }) > 0;
 
   // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
   // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
@@ -141,7 +147,10 @@ export function CollectionList() {
                 />
               }
               open={isFormOpen}
-              onOpenChange={setIsFormOpen}
+              onOpenChange={(open) => {
+                if (!open && isSavingNew) return;
+                setIsFormOpen(open);
+              }}
               maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
               trigger={
                 <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
