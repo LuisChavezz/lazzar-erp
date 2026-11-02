@@ -32,6 +32,11 @@ const purchaseOrderEmailDetalleSchema = z.object({
   // la plantilla nunca vería el SKU. `.optional()` para no rechazar con un 400
   // un payload armado por un cliente anterior a este campo.
   producto_variante_sku: z.string().nullable().optional(),
+  // Color y talla (NOMBRES) de la variante, para la línea "Color · Talla" bajo
+  // la descripción (EC-684). Mismo criterio que el SKU: declarados para que
+  // `z.object()` no los descarte, `.optional()` por clientes anteriores.
+  producto_variante_color: z.string().nullable().optional(),
+  producto_variante_talla: z.string().nullable().optional(),
   cantidad: z.number(),
   precio: z.string().optional(),
   importe: z.string().optional(),
