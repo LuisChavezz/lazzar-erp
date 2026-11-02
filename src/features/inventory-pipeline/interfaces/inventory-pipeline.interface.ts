@@ -41,8 +41,9 @@ export interface InventoryPipelineResultadoApi {
    * Pendiente de compra por talla, solo de los renglones de OC con variante
    * (OC de PT por SKU, EC-684). Los de materia prima o sin SKU cuentan solo en
    * `compras_pendiente_cantidad`, así que la suma puede ser menor que ese total.
+   * Opcional: un backend anterior a su desglose no lo manda.
    */
-  compras_por_talla: CantidadPorTalla;
+  compras_por_talla?: CantidadPorTalla;
   ordenes_produccion: InventoryPipelineOrdenApi[];
   ordenes_compra: InventoryPipelineOrdenApi[];
 }
@@ -60,8 +61,11 @@ export interface InventoryPipelineSize {
   enOp: number;
   /** `total_por_talla` del backend: disponible + en OP, sin compras. */
   total: number;
-  /** Pendiente de compra de la talla (solo renglones de OC con variante). */
-  compras: number;
+  /**
+   * Pendiente de compra de la talla (solo renglones de OC con variante);
+   * `null` si la respuesta no trae `compras_por_talla`.
+   */
+  compras: number | null;
 }
 
 export interface InventoryPipelineOrder {
@@ -88,6 +92,8 @@ export interface InventoryPipelineRow {
    * sin variante): `comprasPendientes` − Σ compras por talla, nunca negativo.
    */
   comprasSinTalla: number;
+  /** ¿La respuesta trae `compras_por_talla`? Sin él no hay columna ni residuo. */
+  comprasPorTallaDisponible: boolean;
   /** Ordenadas con `compareSizeNames` (el mismo orden que el backend). */
   tallas: InventoryPipelineSize[];
   ordenesProduccion: InventoryPipelineOrder[];

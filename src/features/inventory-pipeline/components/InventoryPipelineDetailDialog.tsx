@@ -27,9 +27,12 @@ import type {
 const TallasTable = ({
   tallas,
   comprasSinTalla,
+  showCompras,
 }: {
   tallas: InventoryPipelineSize[];
   comprasSinTalla: number;
+  /** `false` si la respuesta no trae `compras_por_talla`: sin columna de compras. */
+  showCompras: boolean;
 }) => {
   if (tallas.length === 0 && comprasSinTalla <= 0) {
     return <EmptyLines>Este producto no tiene desglose por talla.</EmptyLines>;
@@ -43,7 +46,7 @@ const TallasTable = ({
           <th className="px-3 py-2 font-medium text-right">Disponible</th>
           <th className="px-3 py-2 font-medium text-right">En OP</th>
           <th className="px-3 py-2 font-medium text-right">Total (disp. + OP)</th>
-          <th className="px-3 py-2 font-medium text-right">Compras pendientes</th>
+          {showCompras && <th className="px-3 py-2 font-medium text-right">Compras pendientes</th>}
         </>
       }
     >
@@ -59,9 +62,11 @@ const TallasTable = ({
           <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatExactQuantityValue(talla.total)}
           </td>
-          <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-            {formatExactQuantityValue(talla.compras)}
-          </td>
+          {showCompras && (
+            <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+              {formatExactQuantityValue(talla.compras ?? 0)}
+            </td>
+          )}
         </tr>
       ))}
       {comprasSinTalla > 0 && (
@@ -179,7 +184,11 @@ export function InventoryPipelineDetailDialog({
 
         <div>
           <SectionTitle>Por talla</SectionTitle>
-          <TallasTable tallas={row.tallas} comprasSinTalla={row.comprasSinTalla} />
+          <TallasTable
+            tallas={row.tallas}
+            comprasSinTalla={row.comprasSinTalla}
+            showCompras={row.comprasPorTallaDisponible}
+          />
         </div>
 
         <div>
@@ -192,7 +201,7 @@ export function InventoryPipelineDetailDialog({
 
         <div>
           <SectionTitle>Órdenes de compra abiertas</SectionTitle>
-          {row.comprasPendientes > 0 && (
+          {row.comprasPendientes > 0 && row.comprasPorTallaDisponible && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
               Las compras pendientes ({formatExactQuantityValue(row.comprasPendientes)}) se desglosan
               por talla solo en los renglones comprados por SKU
