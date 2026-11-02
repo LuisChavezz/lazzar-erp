@@ -40,6 +40,7 @@ import {
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 import { TIPO_COMPRA_OPTIONS, tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
+import { purchaseOrderDetailHref } from "../constants/purchaseOrderDetailOrigins";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
@@ -53,10 +54,10 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  * `OperationsOrderColumns` (texto tipo link con chevron; el punto y la
  * referencia van FUERA del botón, son indicadores, no parte de la acción).
  *
- * Navegación, edición, cancelación y ruta crítica se DELEGAN a la vista
- * (`onViewDetails` / `onEdit` / `onCancel` / `onCriticalPath`): sus destinos
- * —una página de detalle y tres diálogos de formulario— deben sobrevivir a que la celda se desmonte al ordenar,
- * paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
+ * "Ver Detalles" es un enlace real (`href` del item) a la página de detalle.
+ * Edición, cancelación y ruta crítica se DELEGAN a la vista (`onEdit` /
+ * `onCancel` / `onCriticalPath`): sus destinos —tres diálogos de formulario—
+ * deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
  * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
@@ -66,13 +67,11 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  */
 const FolioCell = ({
   order,
-  onViewDetails,
   onEdit,
   onCancel,
   onCriticalPath,
 }: {
   order: PurchaseOrder;
-  onViewDetails: (id: number) => void;
   onEdit: (order: PurchaseOrder) => void;
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
@@ -133,7 +132,8 @@ const FolioCell = ({
     {
       label: "Ver Detalles",
       icon: ViewIcon,
-      onSelect: () => onViewDetails(order.id),
+      // Enlace real: Next lo prefetchea y clic medio/Ctrl+clic abren otra pestaña.
+      href: purchaseOrderDetailHref(order.id),
     },
     {
       // En TODOS los estatus y sin `permission`: quien ve la orden puede
@@ -455,7 +455,6 @@ const CANTIDAD_FILTER_OPTIONS: DataTableFilterOption[] = CANTIDAD_RANGES.map(
  * a partir del listado completo, porque esta fábrica no lo recibe.
  */
 export const getColumns = (
-  onViewDetails: (id: number) => void,
   onEdit: (order: PurchaseOrder) => void,
   onCancel: (order: PurchaseOrder) => void,
   onCriticalPath: (order: PurchaseOrder) => void,
@@ -510,7 +509,6 @@ export const getColumns = (
         cell: ({ row }) => (
           <FolioCell
             order={row.original}
-            onViewDetails={onViewDetails}
             onEdit={onEdit}
             onCancel={onCancel}
             onCriticalPath={onCriticalPath}
