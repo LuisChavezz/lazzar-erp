@@ -192,10 +192,13 @@ export function InventoryPipelineDetailDialog({
 
         <div>
           <SectionTitle>Órdenes de compra abiertas</SectionTitle>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Las compras pendientes ({formatExactQuantityValue(row.comprasPendientes)}) se desglosan
-            por talla solo en los renglones comprados por SKU; el resto aparece como «Sin talla».
-          </p>
+          {row.comprasPendientes > 0 && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+              Las compras pendientes ({formatExactQuantityValue(row.comprasPendientes)}) se desglosan
+              por talla solo en los renglones comprados por SKU
+              {row.comprasSinTalla > 0 ? "; el resto aparece como «Sin talla»." : "."}
+            </p>
+          )}
           <OrdenesTable
             ordenes={row.ordenesCompra}
             emptyMessage="No hay órdenes de compra abiertas para este producto."
