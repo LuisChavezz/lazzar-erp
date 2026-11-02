@@ -1,8 +1,10 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { ChevronRightIcon, ShieldCheckIcon, ViewIcon } from "@/src/components/Icons";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { ShieldCheckIcon, ViewIcon } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
@@ -17,56 +19,30 @@ import { CobroRepState, getCobroRepStateLabel } from "./CobroRepState";
 
 const columnHelper = createColumnHelper<CobroRow>();
 
-// Opciones construidas desde los enums COMPLETOS: un valor nuevo del backend
-// obliga a tocar la config (typecheck) y aparece solo en el filtro.
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(COBRO_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
+/** Texto del cliente: su nombre resuelto, o `Cliente #N` si llega vacío. */
+const getClienteLabel = (cobro: CobroRow): string =>
+  cobro.cliente_nombre || `Cliente #${cobro.cliente}`;
 
-const METODO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(COBRO_METODO_PAGO_CONFIG).map(([metodo, cfg]) => ({
-    value: metodo,
-    label: cfg.label ?? metodo,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
-  filterValue === undefined || row.original.estatus === filterValue;
-
-const metodoFilterFn: FilterFn<CobroRow> = (row, _columnId, filterValue) =>
-  filterValue === undefined || row.original.metodo_pago === filterValue;
-
-interface CollectionColumnsCallbacks {
-  onViewDetail: (id: number) => void;
-}
+/** Texto de la cuenta bancaria: su alias (nullable), o `Cuenta #N`. */
+const getCuentaLabel = (cobro: CobroRow): string =>
+  cobro.cuenta_bancaria_alias || `Cuenta #${cobro.cuenta_bancaria}`;
 
 /**
- * Primera columna: punto de estatus y el folio (`#id` sin folio, ver
- * `cobroLabel`). El identificador con su chevron es el
- * disparador del menú de la fila, mismo patrón y markup que `FolioCell` de
- * `InvoiceColumns` (Facturación): un clic en cualquier parte abre el menú.
+ * Primera columna: el folio (`#id` sin folio, ver `cobroLabel`) ES el menú de la
+ * fila (`FolioActionMenu`) y debajo va su estatus. "Ver detalle" es siempre la
+ * primera acción.
  *
  * Las acciones solo INVOCAN callbacks: los diálogos se montan en
  * `CollectionList`, no aquí, porque una celda se desmonta al ordenar, filtrar o
- * paginar. "Timbrar REP" llega por `CollectionRowActionsProvider` (depende de
- * la sesión: pasarla por la factoría remontaría las celdas al resolverse).
- * Cancelar (EC-544) se agregará como otra entrada de `menuItems`.
+ * paginar. Callbacks y "Timbrar REP" (que depende de la sesión) llegan por
+ * `CollectionRowActionsProvider`: pasarlos por la factoría remontaría las
+ * celdas.
  */
-const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionColumnsCallbacks) => {
-  const { canStampRep, onStampRep } = useCollectionRowActionsContext();
-  const statusCfg = COBRO_ESTATUS_CONFIG[cobro.estatus];
-  const statusLabel = statusCfg?.label ?? cobro.estatus;
-  const label = cobroLabel(cobro);
+function CobroIdCell({ cobro }: { cobro: CobroRow }) {
+  const { onViewDetail, canStampRep, onStampRep } = useCollectionRowActionsContext();
 
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro.id) },
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cobro) },
     {
       label: "Timbrar REP",
       icon: ShieldCheckIcon,
@@ -76,36 +52,13 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
   ];
 
   return (
-    <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-      {/* Indicador, fuera del botón: no es parte de la acción. */}
-      <span
-        className={`w-2 h-2 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-        role="img"
-        aria-label={statusLabel}
-        title={statusLabel}
-      />
-      <ActionMenu
-        items={menuItems}
-        ariaLabel={`Acciones del cobro ${label}`}
-        align="start"
-        trigger={
-          <button
-            type="button"
-            aria-label={`Ver acciones del cobro ${label}`}
-            title="Ver detalle"
-            className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-          >
-            {label}
-            <ChevronRightIcon
-              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-              aria-hidden="true"
-            />
-          </button>
-        }
-      />
-    </div>
+    <FolioActionMenu
+      folio={cobroLabel(cobro)}
+      items={items}
+      status={<StatusBadge status={cobro.estatus} config={COBRO_ESTATUS_CONFIG} />}
+    />
   );
-};
+}
 
 /**
  * Columnas del listado de cobros.
@@ -114,13 +67,13 @@ const CobroIdCell = ({ cobro, onViewDetail }: { cobro: CobroRow } & CollectionCo
  * no tenga (`cobroLabel`); la columna busca por folio y por `#id`, y ordena por `id`.
  *
  * Estatus y acciones van en la primera columna (no hay columnas "Estatus" ni
- * "Acciones"), con el filtro de estatus en su encabezado: estándar de tablas de
- * la app (ver `CobroIdCell`).
+ * "Acciones"): estándar de tablas de la app (ver `CobroIdCell`). Los filtros de
+ * encabezado los agrega `withHeaderFilters` (`getCollectionHeaderFilters`).
  *
  * Los campos nullable que participan en la búsqueda global se colapsan a `""`
  * en el accessor (ver la nota de `getColumnCanGlobalFilter` en `DataTable`).
  */
-export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallbacks) =>
+export const getCollectionColumns = () =>
   [
     // Accessor de TEXTO para que la búsqueda global encuentre el folio y también
     // `#id`, con el que el movimiento bancario y la póliza nombran al cobro. La
@@ -128,17 +81,10 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
     columnHelper.accessor((row) => `${row.folio ?? ""} #${row.id}`, {
       id: "id",
       sortingFn: (a, b) => a.original.id - b.original.id,
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Cobro</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      meta: { label: "Cobro" },
-      // Cabe un folio "COB-00000" con su chevron y el punto de estatus.
-      size: 130,
-      filterFn: estatusFilterFn,
-      cell: (info) => <CobroIdCell cobro={info.row.original} onViewDetail={onViewDetail} />,
+      header: "Cobro",
+      // Cabe un folio "COB-00000" con su chevron; el estatus va debajo.
+      size: 140,
+      cell: (info) => <CobroIdCell cobro={info.row.original} />,
     }),
     columnHelper.accessor("fecha_cobro", {
       header: "Fecha",
@@ -151,33 +97,26 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
         </span>
       ),
     }),
-    columnHelper.accessor("cliente_nombre", {
+    // Mismo texto en la celda, la búsqueda y la opción del filtro.
+    columnHelper.accessor((row) => getClienteLabel(row), {
+      id: "cliente_nombre",
       header: "Cliente",
       size: 170,
       cell: (info) => (
-        <span className="font-medium text-slate-600 dark:text-slate-300">
-          {info.getValue() || "—"}
-        </span>
+        <span className="font-medium text-slate-600 dark:text-slate-300">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
+    columnHelper.accessor((row) => getCuentaLabel(row), {
       id: "cuenta_bancaria_alias",
       size: 150,
       header: "Cuenta bancaria",
       cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("metodo_pago", {
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Método</span>
-          <ColumnHeaderFilter column={column} options={METODO_FILTER_OPTIONS} label="método de pago" />
-        </div>
-      ),
+      header: "Método",
       size: 130,
-      meta: { label: "Método" },
-      filterFn: metodoFilterFn,
       cell: (info) => (
         <StatusBadge status={info.getValue()} config={COBRO_METODO_PAGO_CONFIG} />
       ),
@@ -229,3 +168,39 @@ export const getCollectionColumns = ({ onViewDetail }: CollectionColumnsCallback
       cell: (info) => <CobroRepState cobro={info.row.original} />,
     }),
   ] as ColumnDef<CobroRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`:
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo de `COBRO_ESTATUS_CONFIG` y, al final, cada valor
+ *   desconocido de las filas, crudo.
+ * - Cliente y cuenta bancaria son FKs: sus opciones salen de las filas,
+ *   comparan contra el id crudo y se rotulan con el nombre o alias (o
+ *   `Cliente #N` / `Cuenta #N`), con buscador; dos homónimos no se mezclan. Los
+ *   dos son obligatorios en el modelo: no hay opción "Sin …".
+ * - El método: el catálogo completo de `COBRO_METODO_PAGO_CONFIG`, que cubre el
+ *   enum `MetodoPago` compartido con Pagos.
+ */
+export const getCollectionHeaderFilters = (): Partial<
+  Record<string, HeaderFilterSpec<CobroRow>>
+> => ({
+  id: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(COBRO_ESTATUS_CONFIG),
+  },
+  cliente_nombre: { type: "distinct", get: (r) => r.cliente, label: getClienteLabel, searchable: true },
+  cuenta_bancaria_alias: {
+    type: "distinct",
+    get: (r) => r.cuenta_bancaria,
+    label: getCuentaLabel,
+    searchable: true,
+  },
+  metodo_pago: {
+    type: "options",
+    filterLabel: "método de pago",
+    get: (r) => r.metodo_pago,
+    options: optionsFromConfig(COBRO_METODO_PAGO_CONFIG),
+  },
+});
