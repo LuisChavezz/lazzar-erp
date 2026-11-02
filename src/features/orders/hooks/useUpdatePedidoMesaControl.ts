@@ -14,6 +14,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import type {
@@ -131,6 +132,8 @@ export const useUpdatePedidoMesaControl = (
       // Las líneas reescritas cambian las piezas de cada paso de la trazabilidad.
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      // Pedidos de Almacén muestra el cliente y las programaciones del pedido.
+      void invalidateScheduledPedidos(queryClient);
       // La cotización de origen también cambió en el servidor.
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       if (cotizacionId) {

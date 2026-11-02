@@ -13,6 +13,7 @@ import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
 import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { programarPedido } from "../services/actions";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
@@ -94,6 +95,9 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
       queryClient.invalidateQueries({ queryKey: embroideryOnboardingQueryKey });
       queryClient.invalidateQueries({ queryKey: reflectiveOnboardingQueryKey });
       queryClient.invalidateQueries({ queryKey: corteMangaOnboardingQueryKey });
+      // Pedidos de Almacén y el Paso 1 de Nuevo Surtido listan solo los
+      // programados, con sus programaciones.
+      void invalidateScheduledPedidos(queryClient);
       toast.success("Programación del pedido guardada");
     },
     onError: (error) => {
