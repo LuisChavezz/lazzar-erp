@@ -69,13 +69,14 @@ import PrepararConciliacionForm from "./PrepararConciliacionForm";
  */
 /**
  * Textos del aviso de una confirmación que se cerró porque su conciliación
- * cambió por fuera (otra persona la cerró o la canceló) o ya no está. `accion`
- * en infinitivo: "cerrar", "cancelar".
+ * cambió por fuera (otra persona la cerró o la canceló) o ya no está. Cerrar y
+ * cancelar solo aplican a un `Borrador`, así que dicen por qué se cerró sin
+ * invitar a repetirla. `accion` en infinitivo: "cerrar", "cancelar".
  */
 const conciliacionStaleMessages = (accion: string) => ({
   gone: "La conciliación ya no está disponible. Se actualizó el listado.",
   estadoChanged: (estatus: string) =>
-    `La conciliación cambió a ${estatus.toLowerCase()} y ya no se puede ${accion}. Se actualizó el listado.`,
+    `La conciliación ya está ${estatus.toLowerCase()}; ya no se puede ${accion}. Se actualizó el listado.`,
 });
 
 export function BankReconciliationView() {
