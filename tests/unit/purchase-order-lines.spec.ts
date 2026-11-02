@@ -6,6 +6,7 @@ import {
   lineFromProducto,
   lineFromVariante,
   seedFromDetalles,
+  variantAttributesCaption,
   variantAttributesLabel,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import type { PurchaseOrderDetalle } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
@@ -86,6 +87,16 @@ test.describe("variantAttributesLabel", () => {
     expect(variantAttributesLabel("VINO", "CH")).toBe("VINO · CH");
     expect(variantAttributesLabel("", "CH")).toBe("CH");
     expect(variantAttributesLabel(null, undefined)).toBeNull();
+  });
+});
+
+test.describe("variantAttributesCaption", () => {
+  test("no repite color y talla si la descripción ya termina con ellos", () => {
+    const elegida = lineFromVariante(variante(161, "A", "2XG")).descripcion;
+    expect(variantAttributesCaption(elegida, "VINO", "2XG")).toBeNull();
+    expect(variantAttributesCaption("CAMISA", "VINO", "2XG")).toBe("VINO · 2XG");
+    expect(variantAttributesCaption(null, "VINO", null)).toBe("VINO");
+    expect(variantAttributesCaption("CAMISA", null, null)).toBeNull();
   });
 });
 

@@ -33,7 +33,7 @@ import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constan
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import {
   hasVariantSku,
-  variantAttributesLabel,
+  variantAttributesCaption,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -155,7 +155,8 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
             </View>
           ) : (
             detalles.map((item, i) => {
-              const atributos = variantAttributesLabel(
+              const atributos = variantAttributesCaption(
+                item.descripcion,
                 item.producto_variante_color,
                 item.producto_variante_talla,
               );

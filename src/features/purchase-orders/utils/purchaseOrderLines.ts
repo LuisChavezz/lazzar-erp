@@ -59,6 +59,21 @@ export const variantAttributesLabel = (
   talla: string | null | undefined,
 ): string | null => [color, talla].filter(Boolean).join(" · ") || null;
 
+/**
+ * "Color · Talla" para pintar BAJO la descripción en el PDF y el correo de la
+ * OC, o `null` si la descripción ya termina con ella: los renglones elegidos
+ * del buscador guardan "Producto · Color · Talla" ({@link lineFromVariante},
+ * mismo separador y orden), y repetirla debajo la imprimiría dos veces.
+ */
+export const variantAttributesCaption = (
+  descripcion: string | null | undefined,
+  color: string | null | undefined,
+  talla: string | null | undefined,
+): string | null => {
+  const label = variantAttributesLabel(color, talla);
+  return label && !descripcion?.endsWith(label) ? label : null;
+};
+
 const formatPrecioBase = (precioBase: number | string | null | undefined) =>
   (Number(precioBase) || 0).toFixed(2);
 
