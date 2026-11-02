@@ -4,7 +4,7 @@ import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout"
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import {
   hasVariantSku,
-  variantAttributesLabel,
+  variantAttributesCaption,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -122,7 +122,8 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                     detalles.map((item, index) => {
                       const isNotLast = index < detalles.length - 1;
                       const dividerClass = isNotLast ? "border-b border-slate-100" : "";
-                      const atributos = variantAttributesLabel(
+                      const atributos = variantAttributesCaption(
+                        item.descripcion,
                         item.producto_variante_color,
                         item.producto_variante_talla,
                       );
