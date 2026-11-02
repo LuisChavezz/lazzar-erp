@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, RefObject } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
@@ -47,6 +47,14 @@ interface UsePrepararConciliacionFormParams {
    * al listado (ver `conciliacionEnDetalleDesdePreparar`).
    */
   onPrepared: (resultado: PrepararConciliacionResponse) => void;
+  /**
+   * Candado del envío, del diálogo que monta el formulario: se toma de forma
+   * SÍNCRONA al empezar `handleFormSubmit` (antes de la validación asíncrona de
+   * TanStack Form, que retrasa la mutación) y se suelta cuando el envío
+   * termina, también si la validación falla. Con él se ignoran el segundo
+   * envío, "Limpiar" y el cierre del diálogo (Cerrar, X, Esc).
+   */
+  submitLockRef: RefObject<boolean>;
 }
 
 /**
@@ -59,6 +67,7 @@ interface UsePrepararConciliacionFormParams {
  */
 export function usePrepararConciliacionForm({
   onPrepared,
+  submitLockRef,
 }: UsePrepararConciliacionFormParams) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const [clientErrors, setClientErrors] = useState<
@@ -274,6 +283,7 @@ export function usePrepararConciliacionForm({
     bankAccounts.find((cuenta) => cuenta.id === cuentaBancaria) ?? null;
 
   const handleReset = () => {
+    if (submitLockRef.current) return;
     form.reset(defaultValues);
     setClientErrors({});
   };
@@ -283,16 +293,20 @@ export function usePrepararConciliacionForm({
     event.stopPropagation();
     // El estado del render ACTUAL: `handleFormSubmit` se declara después de
     // `estadoSolapamiento`, así que nunca lo ve desfasado.
-    void form.handleSubmit({ estadoSolapamiento });
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    void form.handleSubmit({ estadoSolapamiento }).finally(() => {
+      submitLockRef.current = false;
+    });
   };
 
   return {
     form,
     formRef,
-    // `isPending` deshabilita el envío mientras `preparar` viaja. Es la ÚNICA
-    // protección contra el doble envío: la idempotencia del backend es de
-    // servicio, sin restricción única, así que dos llamadas simultáneas del
-    // mismo periodo pueden crear dos borradores.
+    // `isPending` deshabilita el envío mientras `preparar` viaja; el doble
+    // envío lo frena el candado síncrono (`submitLockRef`), porque la
+    // idempotencia del backend es de servicio, sin restricción única, y dos
+    // llamadas simultáneas del mismo periodo pueden crear dos borradores.
     isPending,
     isLoadingFormData,
     isErrorFormData,
