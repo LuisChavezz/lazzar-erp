@@ -1,4 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getWarehouses } from "../services/actions";
 import { Warehouse } from "../interfaces/warehouse.interface";
 
@@ -16,6 +17,7 @@ export const useWarehouses = () => {
     {
       queryKey: ["warehouses"],
       queryFn: getWarehouses,
+      gcTime: PROCUREMENT_QUERY_GC_TIME,
     },
     { toastId: "warehouses-refetch-error" },
   );

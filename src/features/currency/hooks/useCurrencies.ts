@@ -1,4 +1,5 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
+import { PROCUREMENT_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { getCurrencies } from "../services/actions";
 import { Currency } from "../interfaces/currency.interface";
 
@@ -7,6 +8,7 @@ export const currenciesQueryOptions = () =>
   queryOptions<Currency[]>({
     queryKey: ["currencies"],
     queryFn: getCurrencies,
+    gcTime: PROCUREMENT_QUERY_GC_TIME,
   });
 
 export const useCurrencies = () => {

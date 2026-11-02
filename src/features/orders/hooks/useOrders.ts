@@ -24,10 +24,16 @@ export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
   queryFn: () => getOrders(params),
 });
 
-export const useOrders = (params?: OrdersQueryParams) => {
-  const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>(
-    ordersQueryOptions(params),
-  );
+/**
+ * `gcTime`: opcional, para que un consumidor alargue la vida en caché de la
+ * lista (Compras pasa `PROCUREMENT_QUERY_GC_TIME`); sin él, el global.
+ */
+export const useOrders = (params?: OrdersQueryParams, { gcTime }: { gcTime?: number } = {}) => {
+  const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>({
+    ...ordersQueryOptions(params),
+    // Solo si se pidió: un `gcTime: undefined` explícito pisaría el global.
+    ...(gcTime !== undefined && { gcTime }),
+  });
 
   // Un refetch fallido con datos en caché los conserva y avisa por toast. El
   // `toastId` es uno solo para todas las variantes de params: si varios
