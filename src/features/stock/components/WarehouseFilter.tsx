@@ -24,7 +24,7 @@ interface WarehouseFilterProps {
   allowClear?: boolean;
   /**
    * Mensaje de error del filtro (p. ej. un 400 del backend). Marca el botón
-   * (borde rojo, `aria-invalid`, `aria-describedby`) y se pinta debajo, como
+   * (borde rojo y `aria-describedby`) y se pinta debajo, como
    * el `error` de `FormInput`.
    */
   error?: string;
@@ -73,7 +73,8 @@ export function WarehouseFilter({ value, onChange, allowClear = false, error }: 
           <button
             type="button"
             aria-label={`Almacén: ${label}`}
-            aria-invalid={error ? true : undefined}
+            // `aria-invalid` no aplica al rol button: el error se anuncia por
+            // `aria-describedby`.
             aria-describedby={error ? errorId : undefined}
             className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-white dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40 ${
               error ? "border-red-500" : "border-slate-300 hover:border-brand-500 dark:border-slate-700"
