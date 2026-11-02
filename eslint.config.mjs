@@ -28,6 +28,27 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // EC-701: un callback de un hook o componente que lee un `const` declarado
+    // MÁS ABAJO puede quedar memoizado por el React Compiler sin esa
+    // dependencia (si el valor es primitivo, ve siempre el del primer render;
+    // así se congeló el envío de EC-676). Ver la convención en CLAUDE.md.
+    // Solo hooks, componentes y rutas: en utils de módulo no hay memoización.
+    files: ["src/**/{hooks,components}/**", "src/app/**"],
+    rules: {
+      "@typescript-eslint/no-use-before-define": [
+        "error",
+        {
+          variables: true,
+          functions: false,
+          classes: false,
+          typedefs: false,
+          enums: false,
+          ignoreTypeReferences: true,
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
