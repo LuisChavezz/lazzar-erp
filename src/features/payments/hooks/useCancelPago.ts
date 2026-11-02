@@ -21,10 +21,14 @@ import { Pago } from "../interfaces/payment.interface";
  * movimiento bancario pasa a `Cancelado`), de modo que un diálogo abierto no se
  * quede mostrando el movimiento como vigente.
  */
+/** Llave de la cancelación: `usePendingPaymentIds` lee de ella los pagos en vuelo. */
+export const cancelPagoMutationKey = ["cancel-pago"] as const;
+
 export const useCancelPago = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: cancelPagoMutationKey,
     mutationFn: (id: number) => cancelarPago(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["pagos"] });

@@ -21,7 +21,10 @@ import { PaymentDetailDialog } from "./PaymentDetailDialog";
 import PaymentForm from "./PaymentForm";
 import { usePagos } from "../hooks/usePagos";
 import { useCancelPago } from "../hooks/useCancelPago";
-import { PaymentRowActionsProvider } from "../hooks/usePaymentRowActions";
+import {
+  PaymentRowActionsProvider,
+  usePendingPaymentIds,
+} from "../hooks/usePaymentRowActions";
 
 /**
  * Textos del aviso de la confirmación de cancelar que se cerró porque su pago
@@ -35,7 +38,10 @@ const PAYMENT_STALE_MESSAGES = {
 
 export default function PaymentList() {
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
-  const { mutate: cancelPago, isPending: isCancelling } = useCancelPago();
+  const { mutate: cancelPago } = useCancelPago();
+  // Cancelaciones en vuelo POR PAGO, leídas de la MutationCache: `isPending` del
+  // hook solo recuerda su última llamada y no dice QUÉ pago se está cancelando.
+  const busyIds = usePendingPaymentIds();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Estado de AMBOS diálogos en la vista, no en la celda de acciones: una celda
@@ -92,7 +98,7 @@ export default function PaymentList() {
     target: findPago(cancelTargetId),
     statusField: "estatus",
     expectedEstado: "Aplicado",
-    isBusy: isCancelling,
+    isBusy: cancelTargetId !== null && busyIds.includes(cancelTargetId),
     messages: PAYMENT_STALE_MESSAGES,
   });
   if (staleCancel) {
@@ -101,6 +107,7 @@ export default function PaymentList() {
   }
 
   const cancelTargetLabel = cancelTargetId !== null ? `#${cancelTargetId}` : "";
+  const isCancelTargetBusy = cancelTargetId !== null && busyIds.includes(cancelTargetId);
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
@@ -110,7 +117,7 @@ export default function PaymentList() {
       value={{
         onViewDetail: (pago) => setOpenDetailId(pago.id),
         onCancel: (pago) => setCancelTargetId(pago.id),
-        cancellingId: isCancelling ? cancelTargetId : null,
+        busyIds,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -183,7 +190,7 @@ export default function PaymentList() {
             }}
             title="Cancelar Pago"
             description={`¿Deseas cancelar el pago ${cancelTargetLabel}? Se revertirán los saldos de las cuentas por pagar aplicadas y su movimiento bancario quedará cancelado. El pago se conserva en el listado con estatus Cancelado.`}
-            confirmText={isCancelling ? "Cancelando..." : "Cancelar pago"}
+            confirmText={isCancelTargetBusy ? "Cancelando..." : "Cancelar pago"}
             cancelText="Volver"
             // `closeOnConfirm={false}`: por defecto el diálogo se cierra al instante
             // y la etiqueta de "Cancelando..." nunca alcanzaría a pintarse (está
@@ -191,8 +198,14 @@ export default function PaymentList() {
             // refetch ya terminó.
             closeOnConfirm={false}
             onConfirm={() => {
-              cancelPago(cancelTargetId, {
-                onSettled: () => setCancelTargetId(null),
+              // Un pago ya en vuelo no se vuelve a mandar (doble clic, o reabrir
+              // tras "Volver" mientras su cancelación sigue pendiente).
+              if (isCancelTargetBusy) return;
+              const id = cancelTargetId;
+              cancelPago(id, {
+                // Solo cierra SU confirmación: si mientras tanto se cerró con
+                // "Volver" y se abrió la de otro pago, esa sigue abierta.
+                onSettled: () => setCancelTargetId((current) => (current === id ? null : current)),
               });
             }}
             confirmColor="amber"
