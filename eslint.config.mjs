@@ -49,6 +49,11 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // EC-701: un `eslint-disable` que ya no tapa nada (el código se movió o se
+    // reformateó) falla el lint en vez de quedarse como aviso.
+    linterOptions: { reportUnusedDisableDirectives: "error" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
