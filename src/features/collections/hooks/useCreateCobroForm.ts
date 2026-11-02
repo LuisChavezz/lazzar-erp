@@ -18,7 +18,8 @@ import {
 import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
-import { useSaveCobro } from "./useSaveCobro";
+import { saveCobroMutationKey, useSaveCobro } from "./useSaveCobro";
+import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
@@ -196,7 +197,11 @@ export function useCreateCobroForm({
   const lineKeyCounter = useRef(initialLineCount);
   const [lineKeys, setLineKeys] = useState<number[]>(() => Array.from({ length: initialLineCount }, (_, i) => i));
 
-  const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError);
+  const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError, draft?.id);
+  // Candado del doble envío: dos clics seguidos llegan a `onSubmit` antes de
+  // que `isPending` se pinte, así que se consulta la caché de mutaciones de
+  // forma SÍNCRONA (mismo candado que cancelar o timbrar el REP).
+  const saveLock = useMutationLock(saveCobroMutationKey(draft?.id));
 
   // ── Formulario ────────────────────────────────────────────────────────────
   const form = useForm({
@@ -207,6 +212,7 @@ export function useCreateCobroForm({
     onSubmitMeta: { estatus: "Aplicado", withFreshSaldos: null } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
       if (!meta.withFreshSaldos) return;
+      if (!saveLock.isIdle()) return;
       setServerBanner(null);
       // Los botones ya están deshabilitados; esto cubre un envío por Enter, con
       // el mismo aviso como error del campo.
