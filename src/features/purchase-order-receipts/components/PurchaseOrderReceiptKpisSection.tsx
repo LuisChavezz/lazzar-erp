@@ -17,6 +17,7 @@ import {
   HIDDEN_KPI_AMOUNTS_REASON,
   isAmountOnlyKpiHidden,
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import { hiddenAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
   formatKpiPctOrDash,
@@ -128,13 +129,7 @@ function priceCard(
 ): KpiCompactItem {
   const base = { label: "Diferencias de precio/costo", icon: WalletIcon };
   if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
-    return {
-      ...base,
-      ...KPI_MUTED_ICON,
-      value: <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>,
-      info: HIDDEN_KPI_AMOUNTS_REASON,
-      hideProgress: true,
-    };
+    return hiddenAmountCard(base, HIDDEN_KPI_AMOUNTS_REASON);
   }
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
   const action = (

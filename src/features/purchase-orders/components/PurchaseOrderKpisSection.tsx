@@ -32,6 +32,7 @@ import {
   HIDDEN_KPI_AMOUNTS_REASON,
   isAmountOnlyKpiHidden,
 } from "../utils/purchaseOrderKpis";
+import { hiddenAmountCard } from "../utils/kpiAmountCards";
 import { PurchaseOrderKpiDialog, type PurchaseOrderKpiDialogKind } from "./PurchaseOrderKpiDialog";
 
 const SECTION_TITLE = "Indicadores";
@@ -133,13 +134,7 @@ function spendCard(
 ): KpiCompactItem {
   const base = { label: "Gasto por categoría", icon: WalletIcon };
   if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
-    return {
-      ...base,
-      ...KPI_MUTED_ICON,
-      value: <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>,
-      info: HIDDEN_KPI_AMOUNTS_REASON,
-      hideProgress: true,
-    };
+    return hiddenAmountCard(base, HIDDEN_KPI_AMOUNTS_REASON);
   }
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
