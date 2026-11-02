@@ -11,11 +11,20 @@ import { isAxiosError } from "axios";
 export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const;
 
 /**
+ * Releer la lista de pedidos por surtir —el catálogo del Paso 1 de Nuevo
+ * Surtido y Pedidos de Almacén (`useScheduledPedidos`), que son la misma
+ * consulta— tras algo que cambia qué pedidos están programados o sus
+ * programaciones.
+ */
+export const invalidateScheduledPedidos = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
+
+/**
  * Sin reintento solo ante un rechazo DEFINITIVO del backend (400/403/404: el
  * pedido dejó de estar programado, no es accesible o no existe). Un 408/429 u
  * otro fallo pasajero conserva el `retry: 1` global de `Provider.tsx`.
  */
-const retryUnlessDefinitiveRejection = (failureCount: number, error: unknown) => {
+export const retryUnlessDefinitiveRejection = (failureCount: number, error: unknown) => {
   const status = isAxiosError(error) ? error.response?.status : undefined;
   if (status === 400 || status === 403 || status === 404) return false;
   return failureCount < 1;
@@ -35,7 +44,7 @@ export const invalidateIfPedidoRejected = (
 ): string | undefined => {
   const message = parsePickingError(error).fieldErrors.pedido;
   if (message) {
-    void queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
+    void invalidateScheduledPedidos(queryClient);
   }
   return message;
 };
