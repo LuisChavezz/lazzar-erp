@@ -20,10 +20,17 @@ const FALLBACK = "Error al preparar la conciliación";
  * evalúa `error instanceof Error` antes de su respaldo y un `AxiosError` lo
  * satisface, así que mostraría "Request failed with status code 400".
  */
+/**
+ * Llave de `preparar`: la vista la lee (`useIsMutating`) para no dejar cerrar el
+ * diálogo mientras la petición viaja.
+ */
+export const prepararConciliacionMutationKey = ["preparar-conciliacion"] as const;
+
 export const usePrepararConciliacion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: prepararConciliacionMutationKey,
     mutationFn: prepararConciliacion,
     onSuccess: () => {
       toast.success("Conciliación preparada correctamente");
