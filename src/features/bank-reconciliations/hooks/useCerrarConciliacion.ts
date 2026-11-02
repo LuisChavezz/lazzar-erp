@@ -23,10 +23,14 @@ const FALLBACK = "Error al cerrar la conciliación";
  * `firstDrfFieldMessage`. NO se encadena a `extractErrorMessage`, que para un
  * `AxiosError` devolvería "Request failed with status code 400".
  */
+/** Llave del cierre: `usePendingConciliacionIds` lee de ella las conciliaciones en vuelo. */
+export const cerrarConciliacionMutationKey = ["cerrar-conciliacion"] as const;
+
 export const useCerrarConciliacion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: cerrarConciliacionMutationKey,
     mutationFn: (id: number) => cerrarConciliacion(id),
     onSuccess: () => {
       toast.success("Conciliación cerrada correctamente");

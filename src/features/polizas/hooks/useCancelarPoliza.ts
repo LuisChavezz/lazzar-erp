@@ -25,10 +25,14 @@ const FALLBACK = "Error al cancelar la póliza";
  * El registro NUNCA sale del listado: solo cambia su `estatus` a `Cancelada`,
  * por eso el optimista MARCA la fila en vez de filtrarla.
  */
+/** Llave de la cancelación: `usePendingPolizaIds` lee de ella las pólizas en vuelo. */
+export const cancelarPolizaMutationKey = ["cancelar-poliza"] as const;
+
 export const useCancelarPoliza = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: cancelarPolizaMutationKey,
     mutationFn: (id: number) => cancelarPoliza(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["polizas"] });
