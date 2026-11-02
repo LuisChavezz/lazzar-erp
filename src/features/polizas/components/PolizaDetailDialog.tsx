@@ -2,9 +2,11 @@
 
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import {
   EmptyLines,
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
@@ -107,40 +109,31 @@ export function PolizaDetailDialog({
       maxWidth="960px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <ContabilidadIcon className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de la Póliza
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {poliza.folio || `#${poliza.id}`}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de la Póliza"
+          subtitle={poliza.folio || `#${poliza.id}`}
+          statusColor="indigo"
+          icon={ContabilidadIcon}
+        />
       }
     >
       <div className="space-y-5">
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Fecha contable">
-            {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". La fija el
-                backend (`auto_now_add`) y es nullable en el modelo. */}
-            {poliza.fecha
-              ? formatShortDate(poliza.fecha, { timeZone: "UTC" })
-              : "—"}
-          </InfoField>
-          <InfoField label="Tipo">
-            <StatusBadge status={poliza.tipo} config={POLIZA_TIPO_CONFIG} />
-          </InfoField>
-          <InfoField label="Estatus">
+        <InfoTileGrid>
+          <InfoTile label="Estatus">
             <StatusBadge status={poliza.estatus} config={POLIZA_ESTATUS_CONFIG} />
-          </InfoField>
-          <InfoField label="Sucursal">{nombreSucursal()}</InfoField>
-          <InfoField label="Centro de costo">
-            {nombreCentro(poliza.centro_costo)}
-          </InfoField>
-          <InfoField label="Consecutivo">
+          </InfoTile>
+          <InfoTile label="Tipo">
+            <StatusBadge status={poliza.tipo} config={POLIZA_TIPO_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Fecha contable">
+            {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". Esta pantalla no
+                la envía: la pone el backend al crear. Nullable en el modelo. */}
+            {poliza.fecha ? formatShortDate(poliza.fecha, { timeZone: "UTC" }) : "—"}
+          </InfoTile>
+          <InfoTile label="Sucursal">{nombreSucursal()}</InfoTile>
+          <InfoTile label="Centro de costo">{nombreCentro(poliza.centro_costo)}</InfoTile>
+          <InfoTile label="Consecutivo">
             {/* Solo lo asigna el backend cuando ÉL genera la póliza; una póliza
                 capturada a mano lo deja nulo. */}
             {poliza.folio_consecutivo !== null ? (
@@ -148,42 +141,38 @@ export function PolizaDetailDialog({
             ) : (
               "—"
             )}
-          </InfoField>
-          <InfoField label="Total cargos">
-            <span className="tabular-nums font-semibold">
-              {importe(poliza.total_cargos)}
-            </span>
-          </InfoField>
-          <InfoField label="Total abonos">
-            <span className="tabular-nums font-semibold">
-              {importe(poliza.total_abonos)}
-            </span>
-          </InfoField>
-          <InfoField label="Cuadre">
+          </InfoTile>
+          <InfoTile label="Total cargos">
+            <span className="tabular-nums">{importe(poliza.total_cargos)}</span>
+          </InfoTile>
+          <InfoTile label="Total abonos">
+            <span className="tabular-nums">{importe(poliza.total_abonos)}</span>
+          </InfoTile>
+          <InfoTile label="Cuadre">
             {poliza.cuadre_correcto ? (
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                Cuadra
-              </span>
+              <span className="text-emerald-600 dark:text-emerald-400">Cuadra</span>
             ) : (
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                No cuadra
-              </span>
+              <span className="text-amber-600 dark:text-amber-400">No cuadra</span>
             )}
-          </InfoField>
-          <InfoField label="Concepto" className="col-span-2 sm:col-span-3">
+          </InfoTile>
+        </InfoTileGrid>
+
+        {/* El concepto va aparte: es texto libre largo y un mosaico lo truncaría. */}
+        <div>
+          <SectionTitle>Concepto</SectionTitle>
+          <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">
             {textOrDash(poliza.concepto)}
-          </InfoField>
+          </p>
         </div>
 
         {/* Qué significa el estatus, que es lo que el usuario necesita saber al
-            abrir el documento. Cancelar una póliza NO revierte importes: la
-            póliza ES el asiento, no hay saldo que devolver. */}
+            abrir el documento. */}
         <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
           {poliza.estatus === "Contabilizada"
-            ? "Esta póliza está contabilizada: su asiento forma parte de la contabilidad y ya no puede eliminarse, solo cancelarse."
+            ? "Esta póliza está contabilizada: su asiento forma parte de la contabilidad y ya no puede eliminarse. Cancelarla genera una contrapóliza que la revierte."
             : poliza.estatus === "Borrador"
               ? "Este borrador todavía no forma parte de la contabilidad. Para contabilizarlo, los cargos deben igualar a los abonos."
-              : "Esta póliza está cancelada. La cancelación es un cambio de estatus: no revierte ningún importe, porque la póliza es el asiento en sí."}
+              : "Esta póliza está cancelada. Si estaba contabilizada, su cancelación generó una contrapóliza que revierte el asiento."}
         </p>
 
         {/* Los importes no llevan símbolo: la póliza no declara moneda ni tiene
