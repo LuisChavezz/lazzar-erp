@@ -9,6 +9,11 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { UrlDateInput } from "@/src/components/UrlDateInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { ConciliacionIcon } from "@/src/components/Icons";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
@@ -21,7 +26,6 @@ import {
   diferenciaEnCentavos,
 } from "../schemas/bank-reconciliation.schema";
 import type {
-  ConciliacionBancaria,
   ConciliacionEnDetalle,
   PrepararConciliacionResponse,
 } from "../interfaces/bank-reconciliation.interface";
@@ -32,8 +36,15 @@ import {
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
 import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
-import { usePendingConciliacionIds } from "../hooks/useConciliacionRowActions";
-import { getColumns } from "./BankReconciliationColumns";
+import {
+  ConciliacionRowActionsProvider,
+  usePendingConciliacionIds,
+} from "../hooks/useConciliacionRowActions";
+import {
+  CONCILIACION_HEADER_FILTERS,
+  getCuentaLabel,
+  getColumns,
+} from "./BankReconciliationColumns";
 import { BankReconciliationDetailDialog } from "./BankReconciliationDetailDialog";
 import PrepararConciliacionForm from "./PrepararConciliacionForm";
 
@@ -53,6 +64,17 @@ import PrepararConciliacionForm from "./PrepararConciliacionForm";
  * de almacén de `StockView`: el enlace es compartible, sobrevive al refresh y
  * al botón de atrás.
  */
+/**
+ * Textos del aviso de una confirmación que se cerró porque su conciliación
+ * cambió por fuera (otra persona la cerró o la canceló) o ya no está. `accion`
+ * en infinitivo: "cerrar", "cancelar".
+ */
+const conciliacionStaleMessages = (accion: string) => ({
+  gone: "La conciliación ya no está disponible. Se actualizó el listado.",
+  estadoChanged: (estatus: string) =>
+    `La conciliación cambió a ${estatus.toLowerCase()} y ya no se puede ${accion}. Se actualizó el listado.`,
+});
+
 export function BankReconciliationView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -66,6 +88,22 @@ export function BankReconciliationView() {
 
   const { bankAccounts, hasLoaded: hasLoadedAccounts } = useBankAccounts();
   const activeAccounts = bankAccounts.filter((cuenta) => cuenta.activo);
+  // La cuenta de la URL puede no estar entre las activas (dada de baja, o un
+  // enlace viejo): la consulta sí corre con ella, así que el selector la
+  // muestra igual —con su alias si el catálogo la trae, o `Cuenta #N`— en vez de
+  // fingir "Seleccionar cuenta..." sobre un listado que sí está filtrado.
+  const cuentaFueraDeLista =
+    cuentaId !== null && !activeAccounts.some((cuenta) => cuenta.id === cuentaId)
+      ? (bankAccounts.find((cuenta) => cuenta.id === cuentaId) ?? null)
+      : null;
+  const cuentaFueraDeListaLabel =
+    cuentaId === null
+      ? null
+      : cuentaFueraDeLista
+        ? `${cuentaFueraDeLista.alias || `Cuenta #${cuentaId}`} (inactiva)`
+        : activeAccounts.some((cuenta) => cuenta.id === cuentaId)
+          ? null
+          : `Cuenta #${cuentaId}`;
 
   // La moneda es POR CUENTA: formatear con el MXN por defecto mentiría sobre
   // una cuenta en dólares. La fila solo trae el id, así que se resuelve aquí.
@@ -134,17 +172,19 @@ export function BankReconciliationView() {
   const busyIds = usePendingConciliacionIds();
   const isBusy = (id: number | null) => id !== null && busyIds.includes(id);
 
+  /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
+  const setStaleNotice = useStaleNoticeToast();
+
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  // Sin `useCallback`/`useMemo`: el React Compiler memoiza el componente.
-  const handleViewDetail = (conciliacion: ConciliacionBancaria) =>
-    setOpenDetailId(conciliacion.id);
-  const handleCerrar = (conciliacion: ConciliacionBancaria) =>
-    setCerrarTargetId(conciliacion.id);
-  const handleCancelar = (conciliacion: ConciliacionBancaria) =>
-    setCancelarTargetId(conciliacion.id);
-
-  const columns = getColumns(handleViewDetail, handleCerrar, handleCancelar, monedaDe);
+  // Callbacks y "en vuelo" van por `ConciliacionRowActionsProvider` (sin
+  // `useMemo`/`useCallback`: el React Compiler memoiza el componente). Las
+  // opciones del filtro de estatus se arman con las filas cargadas.
+  const columns = withHeaderFilters(
+    getColumns(monedaDe),
+    conciliaciones,
+    CONCILIACION_HEADER_FILTERS,
+  );
 
   const findById = (id: number | null) =>
     id !== null ? conciliaciones.find((c) => c.id === id) ?? null : null;
@@ -197,12 +237,41 @@ export function BankReconciliationView() {
   // conciliación se eliminó en el servidor mientras su detalle estaba abierto—.
   // Solo se aplica con la lista ASENTADA; el detalle fijado de arriba cubre el
   // intervalo en que el filtro todavía está cambiando.
-  if (listaAsentada) {
-    if (openDetailId !== null && detailConciliacion === null) setOpenDetailId(null);
-    if (cerrarTargetId !== null && cerrarConciliacionTarget === null)
-      setCerrarTargetId(null);
-    if (cancelarTargetId !== null && cancelarConciliacionTarget === null)
-      setCancelarTargetId(null);
+  if (listaAsentada && openDetailId !== null && detailConciliacion === null) {
+    setOpenDetailId(null);
+  }
+
+  // Cerrar y cancelar solo se ofrecen sobre un `Borrador`. Si la lista ASENTADA
+  // muestra que la conciliación de la confirmación abierta cambió de estatus
+  // (otra persona la cerró o la canceló) o ya no está, se cierra con aviso:
+  // confirmar dispararía una acción que ya no aplica. Mientras el filtro cambia
+  // no se decide (la fila puede faltar solo porque el listado es el anterior), ni
+  // mientras la acción PROPIA está en vuelo: la cierra su `finally`.
+  const staleCerrar = getStaleRowDialogNotice({
+    resource: "conciliacion-cerrar",
+    targetId: listaAsentada ? cerrarTargetId : null,
+    target: cerrarConciliacionTarget,
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: isBusy(cerrarTargetId),
+    messages: conciliacionStaleMessages("cerrar"),
+  });
+  if (staleCerrar) {
+    setCerrarTargetId(null);
+    setStaleNotice(staleCerrar);
+  }
+  const staleCancelar = getStaleRowDialogNotice({
+    resource: "conciliacion-cancelar",
+    targetId: listaAsentada ? cancelarTargetId : null,
+    target: cancelarConciliacionTarget,
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: isBusy(cancelarTargetId),
+    messages: conciliacionStaleMessages("cancelar"),
+  });
+  if (staleCancelar) {
+    setCancelarTargetId(null);
+    setStaleNotice(staleCancelar);
   }
 
   /**
@@ -232,6 +301,14 @@ export function BankReconciliationView() {
     openPinnedDetail(conciliacionEnDetalleDesdePreparar(resultado));
 
   return (
+    <ConciliacionRowActionsProvider
+      value={{
+        onViewDetail: (conciliacion) => setOpenDetailId(conciliacion.id),
+        onCerrar: (conciliacion) => setCerrarTargetId(conciliacion.id),
+        onCancelar: (conciliacion) => setCancelarTargetId(conciliacion.id),
+        busyIds,
+      }}
+    >
     <div className="h-full flex flex-col min-h-0 space-y-4">
       {/* Filtros de SERVIDOR, fuera de la tabla. `shrink-0`: solo la tabla
           de abajo debe crecer. */}
@@ -248,6 +325,14 @@ export function BankReconciliationView() {
             }
           >
             <option value="0">Seleccionar cuenta...</option>
+            {cuentaFueraDeListaLabel !== null && (
+              <option
+                value={String(cuentaId)}
+                className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+              >
+                {cuentaFueraDeListaLabel}
+              </option>
+            )}
             {activeAccounts.map((cuenta) => (
               <option
                 key={cuenta.id}
@@ -308,11 +393,12 @@ export function BankReconciliationView() {
                 title="Preparar Conciliación"
                 subtitle="Cuenta, periodo y saldo del estado de cuenta"
                 statusColor="indigo"
+                icon={ConciliacionIcon}
               />
             }
             open={isFormOpen}
             onOpenChange={setIsFormOpen}
-            maxWidth="760px"
+            maxWidth={DIALOG_WIDTH_FORM}
             trigger={
               <Button
                 variant="primary"
@@ -371,8 +457,7 @@ export function BankReconciliationView() {
               cerrarConciliacionTarget.saldo_libros,
             )
               ? `¿Deseas cerrar la conciliación de ${
-                  cerrarConciliacionTarget.cuenta_bancaria_alias ??
-                  `#${cerrarConciliacionTarget.cuenta_bancaria}`
+                  getCuentaLabel(cerrarConciliacionTarget)
                 }? Los movimientos del periodo quedarán marcados como Conciliado y la conciliación ya no admitirá cambios.`
               : `${CONCILIACION_DESCUADRADA_MESSAGE} Diferencia actual: ${formatSaldo(
                   centavosAMoneda(
@@ -415,8 +500,7 @@ export function BankReconciliationView() {
           }}
           title="Cancelar Conciliación"
           description={`¿Deseas cancelar la conciliación de ${
-            cancelarConciliacionTarget.cuenta_bancaria_alias ??
-            `#${cancelarConciliacionTarget.cuenta_bancaria}`
+            getCuentaLabel(cancelarConciliacionTarget)
           }? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`}
           confirmText={isBusy(cancelarTargetId) ? "Cancelando..." : "Cancelar conciliación"}
           cancelText="Volver"
@@ -441,5 +525,6 @@ export function BankReconciliationView() {
         </p>
       )}
     </div>
+    </ConciliacionRowActionsProvider>
   );
 }
