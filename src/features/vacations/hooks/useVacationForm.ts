@@ -194,10 +194,11 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   const getCrossRuleError = (field: CrossRuleField, overrides: Partial<VacationFormValues> = {}) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     const values = { ...form.state.values, ...overrides };
-    return field === "fecha_fin"
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `ruleContext` (objeto) usa un hook posterior a useForm; un binding objeto nunca sale de las deps del compilador (EC-701)
-      ? getFechaFinError(values, ruleContext)
-      : getDiasSolicitadosError(values);
+    if (field === "fecha_fin") {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- ruleContext usa un hook posterior a useForm; binding no primitivo, ver CLAUDE.md (EC-701)
+      return getFechaFinError(values, ruleContext);
+    }
+    return getDiasSolicitadosError(values);
   };
 
   // Valida un solo campo en blur. Se usa `VacationFormFields` y no el schema

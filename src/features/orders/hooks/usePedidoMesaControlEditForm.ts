@@ -1252,11 +1252,12 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         servicios_extras: extraServices,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- crossRules (hook que necesita form) se declara abajo; binding no primitivo, ver CLAUDE.md (EC-701)
+      const anticipoIssue = crossRules.getAnticipoIssue(value);
       const submitIssues = collectQuoteSubmitIssues(
         parsed.success ? [] : parsed.error.issues,
         value,
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `crossRules` (objeto de un hook que necesita `form`) no se puede subir; un binding objeto nunca sale de las deps del compilador (EC-701)
-        crossRules.getAnticipoIssue(value),
+        anticipoIssue,
         // Procesos que la categoría de la partida no admite (CO-04 / CO-05).
         {
           matriz: onboardingData?.catalogos.matriz_compatibilidad ?? EMPTY_MATRIZ,
