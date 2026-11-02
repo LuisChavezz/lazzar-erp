@@ -89,8 +89,9 @@ test.describe("cuentas por pagar: «Vencida / Al corriente»", () => {
 
 test.describe("pagos", () => {
   const rows = [
-    { id: 1, estatus: "Aplicado", metodo_pago: "Cheque", proveedor_nombre: "ACME", cuenta_bancaria_alias: null, fecha_pago: "2026-10-01" },
-    { id: 2, estatus: "Cancelado", metodo_pago: "Transferencia", proveedor_nombre: "ACME", cuenta_bancaria_alias: "OPERACIÓN", fecha_pago: "2026-10-02" },
+    { id: 1, estatus: "Aplicado", metodo_pago: "Cheque", proveedor: 8, proveedor_nombre: "ACME", cuenta_bancaria: 4, cuenta_bancaria_alias: null, fecha_pago: "2026-10-01" },
+    { id: 2, estatus: "Cancelado", metodo_pago: "Transferencia", proveedor: 8, proveedor_nombre: "ACME", cuenta_bancaria: 3, cuenta_bancaria_alias: "OPERACIÓN", fecha_pago: "2026-10-02" },
+    { id: 3, estatus: "Aplicado", metodo_pago: "Cheque", proveedor: 8, proveedor_nombre: "ACME", cuenta_bancaria: 5, cuenta_bancaria_alias: "OPERACIÓN", fecha_pago: "2026-10-03" },
   ] as unknown as Pago[];
   const t = harness<Pago>(
     withHeaderFilters(getPaymentColumns() as ColumnDef<Pago, unknown>[], rows, PAYMENT_HEADER_FILTERS),
@@ -102,8 +103,19 @@ test.describe("pagos", () => {
     expect(t.column("metodo_pago").meta?.filterLabel).toBe("Método de pago");
   });
 
-  test("la cuenta bancaria sin alias va primero como «Sin cuenta»", () => {
-    expect(labels(t.options("cuenta_bancaria_alias"))).toEqual(["Todos", "Sin cuenta", "OPERACIÓN"]);
-    expect(t.matching("cuenta_bancaria_alias", t.options("cuenta_bancaria_alias")[1].value as string).map((r) => r.id)).toEqual([1]);
+  test("la cuenta bancaria compara contra el FK: una opción por cuenta, aunque compartan alias", () => {
+    const options = t.options("cuenta_bancaria_alias");
+    expect(options.map((o) => [o.value, o.label])).toEqual([
+      [undefined, "Todos"],
+      ["4", "Cuenta #4"],
+      ["3", "OPERACIÓN"],
+      ["5", "OPERACIÓN"],
+    ]);
+    expect(labels(options)).not.toContain("Sin cuenta");
+    expect(t.matching("cuenta_bancaria_alias", "5").map((r) => r.id)).toEqual([3]);
+  });
+
+  test("una cuenta sin alias se rotula `Cuenta #N` igual en la celda y en la opción", () => {
+    expect(t.cellText("cuenta_bancaria_alias", rows[0])).toBe("Cuenta #4");
   });
 });
