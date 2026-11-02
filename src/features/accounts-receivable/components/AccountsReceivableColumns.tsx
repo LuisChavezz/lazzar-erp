@@ -4,6 +4,8 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
@@ -52,6 +54,10 @@ const ActionsCell = ({
 
 const columnHelper = createColumnHelper<CuentaPorCobrarRow>();
 
+/** Texto del cliente: su nombre resuelto, o `Cliente #N` si llega vacío. */
+const getClienteLabel = (cuenta: CuentaPorCobrarRow): string =>
+  cuenta.cliente_nombre || `Cliente #${cuenta.cliente}`;
+
 /**
  * Columnas del listado de CxC. El diálogo de detalle NO vive en una celda (las
  * celdas se desmontan al ordenar, paginar o filtrar): `onViewDetail` lo abre en
@@ -66,7 +72,9 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       </span>
     ),
   }),
-  columnHelper.accessor("cliente_nombre", {
+  // Mismo texto en la celda, la búsqueda y la opción del filtro.
+  columnHelper.accessor((row) => getClienteLabel(row), {
+    id: "cliente_nombre",
     header: "Cliente",
     cell: (info) => (
       <span className="text-slate-700 dark:text-slate-200">{info.getValue()}</span>
@@ -88,7 +96,8 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       </span>
     ),
   }),
-  columnHelper.accessor("fecha_vencimiento", {
+  columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
+    id: "fecha_vencimiento",
     header: "Vencimiento",
     cell: (info) => {
       // El resaltado de vencido usa la definición única `esta_vencida` (por
@@ -158,3 +167,35 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
     cell: ({ row }) => <ActionsCell row={row.original} onViewDetail={onViewDetail} />,
   }),
 ] as ColumnDef<CuentaPorCobrarRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Reemplazan los chips de `filterConfig` (EC-677), con la misma forma que CxP:
+ * - El estatus: el catálogo completo de `CXC_ESTATUS_CONFIG` y, al final, cada
+ *   valor desconocido de las filas, crudo.
+ * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
+ *   crudo y se rotulan con el nombre (o `Cliente #N`), con buscador; dos
+ *   homónimos no se mezclan. Es obligatorio en el modelo: no hay "Sin cliente".
+ * - El vencimiento filtra «Vencida / Al corriente» con `esta_vencida`, la misma
+ *   regla (`isCuentaVencida`) que el resaltado, los KPIs y la antigüedad. Una
+ *   cuenta sin vencimiento, pagada o cancelada cuenta como al corriente.
+ *
+ * Filtrar NO toca los KPIs, la alerta ni la antigüedad: se calculan sobre el
+ * listado completo en `AccountsReceivableList`, no sobre las filas filtradas.
+ */
+export const getAccountsReceivableHeaderFilters = (): Partial<
+  Record<string, HeaderFilterSpec<CuentaPorCobrarRow>>
+> => ({
+  estatus: {
+    type: "options",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(CXC_ESTATUS_CONFIG),
+  },
+  cliente_nombre: { type: "distinct", get: (r) => r.cliente, label: getClienteLabel, searchable: true },
+  fecha_vencimiento: {
+    type: "boolean",
+    get: (r) => r.esta_vencida,
+    yes: "Vencida",
+    no: "Al corriente",
+  },
+});
