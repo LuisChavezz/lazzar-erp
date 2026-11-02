@@ -3,7 +3,6 @@
 import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
-import { ProcurementQuickLinks } from "@/src/features/purchase-orders/components/ProcurementQuickLinks";
 
 export default function ProcurementDashboardPage() {
   const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
@@ -31,7 +30,6 @@ export default function ProcurementDashboardPage() {
   // compras"), y repetirlo empujaba el contenido hacia abajo.
   return (
     <div className="px-1 pb-8 space-y-4 sm:space-y-6">
-      <ProcurementQuickLinks />
       <PurchaseOrderDashboard orders={purchaseOrders} />
     </div>
   );
