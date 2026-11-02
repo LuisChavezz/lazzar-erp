@@ -18,8 +18,20 @@ import type {
   InventoryPipelineSize,
 } from "../interfaces/inventory-pipeline.interface";
 
-const TallasTable = ({ tallas }: { tallas: InventoryPipelineSize[] }) => {
-  if (tallas.length === 0) {
+/**
+ * Desglose por talla. "Total" es el `total_por_talla` del backend (disponible +
+ * en OP) y NO incluye compras, que van en su propia columna (EC-684). Lo
+ * pendiente de compra sin talla (renglones de OC sin variante) va en una fila
+ * "Sin talla" aparte, solo si lo hay; ahí disponible, OP y total no aplican.
+ */
+const TallasTable = ({
+  tallas,
+  comprasSinTalla,
+}: {
+  tallas: InventoryPipelineSize[];
+  comprasSinTalla: number;
+}) => {
+  if (tallas.length === 0 && comprasSinTalla <= 0) {
     return <EmptyLines>Este producto no tiene desglose por talla.</EmptyLines>;
   }
 
@@ -30,7 +42,8 @@ const TallasTable = ({ tallas }: { tallas: InventoryPipelineSize[] }) => {
           <th className="px-3 py-2 font-medium">Talla</th>
           <th className="px-3 py-2 font-medium text-right">Disponible</th>
           <th className="px-3 py-2 font-medium text-right">En OP</th>
-          <th className="px-3 py-2 font-medium text-right">Total</th>
+          <th className="px-3 py-2 font-medium text-right">Total (disp. + OP)</th>
+          <th className="px-3 py-2 font-medium text-right">Compras pendientes</th>
         </>
       }
     >
@@ -46,8 +59,22 @@ const TallasTable = ({ tallas }: { tallas: InventoryPipelineSize[] }) => {
           <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatExactQuantityValue(talla.total)}
           </td>
+          <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+            {formatExactQuantityValue(talla.compras)}
+          </td>
         </tr>
       ))}
+      {comprasSinTalla > 0 && (
+        <tr className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+          <td className="px-3 py-2 italic text-slate-500 dark:text-slate-400">Sin talla</td>
+          <td className="px-3 py-2 text-right text-slate-400 dark:text-slate-500">—</td>
+          <td className="px-3 py-2 text-right text-slate-400 dark:text-slate-500">—</td>
+          <td className="px-3 py-2 text-right text-slate-400 dark:text-slate-500">—</td>
+          <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+            {formatExactQuantityValue(comprasSinTalla)}
+          </td>
+        </tr>
+      )}
     </LineItemsTable>
   );
 };
@@ -141,7 +168,7 @@ export function InventoryPipelineDetailDialog({
           <HeaderStatRow>
             <HeaderStat label="Disponible">{formatExactQuantityValue(row.disponible)}</HeaderStat>
             <HeaderStat label="En OP">{formatExactQuantityValue(row.enOp)}</HeaderStat>
-            <HeaderStat label="Total" bold>
+            <HeaderStat label="Total (disp. + OP)" bold>
               {formatExactQuantityValue(row.total)}
             </HeaderStat>
             <HeaderStat label="Compras pendientes">
@@ -152,7 +179,7 @@ export function InventoryPipelineDetailDialog({
 
         <div>
           <SectionTitle>Por talla</SectionTitle>
-          <TallasTable tallas={row.tallas} />
+          <TallasTable tallas={row.tallas} comprasSinTalla={row.comprasSinTalla} />
         </div>
 
         <div>
@@ -166,8 +193,8 @@ export function InventoryPipelineDetailDialog({
         <div>
           <SectionTitle>Órdenes de compra abiertas</SectionTitle>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Las compras pendientes ({formatExactQuantityValue(row.comprasPendientes)}) se reportan
-            por producto; no se desglosan por talla.
+            Las compras pendientes ({formatExactQuantityValue(row.comprasPendientes)}) se desglosan
+            por talla solo en los renglones comprados por SKU; el resto aparece como «Sin talla».
           </p>
           <OrdenesTable
             ordenes={row.ordenesCompra}

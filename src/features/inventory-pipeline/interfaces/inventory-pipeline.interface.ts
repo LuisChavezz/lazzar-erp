@@ -9,8 +9,9 @@ export type DecimalString = string;
 
 /**
  * Mapa talla → cantidad. Las llaves son `Talla.nombre`, o `"N/A"` cuando el
- * producto no maneja talla. Los tres mapas por talla de un mismo producto
- * comparten el mismo conjunto de llaves; entre productos difieren.
+ * producto (o la variante) no maneja talla. `disponible_por_talla`,
+ * `produccion_por_talla` y `total_por_talla` de un mismo producto comparten
+ * llaves; `compras_por_talla` trae las suyas, que pueden no estar en los otros.
  */
 export type CantidadPorTalla = Record<string, DecimalString>;
 
@@ -30,11 +31,18 @@ export interface InventoryPipelineResultadoApi {
   descripcion: string;
   disponible_por_talla: CantidadPorTalla;
   produccion_por_talla: CantidadPorTalla;
+  /** Disponible + en OP de cada talla: NO incluye compras. */
   total_por_talla: CantidadPorTalla;
   disponible_total: DecimalString;
   produccion_total: DecimalString;
-  /** Solo a nivel producto: el backend no lo desglosa por talla. */
+  /** Total del producto, con y sin variante. */
   compras_pendiente_cantidad: DecimalString;
+  /**
+   * Pendiente de compra por talla, solo de los renglones de OC con variante
+   * (OC de PT por SKU, EC-684). Los de materia prima o sin SKU cuentan solo en
+   * `compras_pendiente_cantidad`, así que la suma puede ser menor que ese total.
+   */
+  compras_por_talla: CantidadPorTalla;
   ordenes_produccion: InventoryPipelineOrdenApi[];
   ordenes_compra: InventoryPipelineOrdenApi[];
 }
@@ -50,7 +58,10 @@ export interface InventoryPipelineSize {
   talla: string;
   disponible: number;
   enOp: number;
+  /** `total_por_talla` del backend: disponible + en OP, sin compras. */
   total: number;
+  /** Pendiente de compra de la talla (solo renglones de OC con variante). */
+  compras: number;
 }
 
 export interface InventoryPipelineOrder {
@@ -72,6 +83,11 @@ export interface InventoryPipelineRow {
   /** `disponible + enOp`. */
   total: number;
   comprasPendientes: number;
+  /**
+   * Compras pendientes que no se pueden atribuir a una talla (renglones de OC
+   * sin variante): `comprasPendientes` − Σ compras por talla, nunca negativo.
+   */
+  comprasSinTalla: number;
   /** Ordenadas con `compareSizeNames` (el mismo orden que el backend). */
   tallas: InventoryPipelineSize[];
   ordenesProduccion: InventoryPipelineOrder[];
