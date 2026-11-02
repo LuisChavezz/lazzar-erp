@@ -20,7 +20,7 @@ const columnHelper = createColumnHelper<Pago>();
  * llegan por contexto (`PaymentRowActionsProvider`).
  */
 function PaymentIdCell({ pago }: { pago: Pago }) {
-  const { onViewDetail, onCancel, cancellingId } = usePaymentRowActionsContext();
+  const { onViewDetail, onCancel, busyIds } = usePaymentRowActionsContext();
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(pago) },
   ];
@@ -32,7 +32,7 @@ function PaymentIdCell({ pago }: { pago: Pago }) {
       label: "Cancelar pago",
       icon: BanIcon,
       onSelect: () => onCancel(pago),
-      disabled: cancellingId === pago.id,
+      disabled: busyIds.includes(pago.id),
     });
   }
   return (
