@@ -321,8 +321,12 @@ export default function PolizaList() {
           <ConfirmDialog
             open={true}
             onOpenChange={(open) => {
-              if (!open) setPostTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(isBusy(postTargetId) || rowLock.isHeld(postTargetId))) setPostTargetId(null);
             }}
+            busy={isBusy(postTargetId)}
             title="Contabilizar Póliza"
             description={`¿Deseas contabilizar la póliza ${postTarget ? etiquetaDe(postTarget) : `#${postTargetId}`}? El asiento pasará a formar parte de la contabilidad y ya no podrá eliminarse: solo cancelarse. El servidor volverá a verificar que los cargos igualen a los abonos.`}
             confirmText={isBusy(postTargetId) ? "Contabilizando..." : "Contabilizar"}
@@ -356,8 +360,12 @@ export default function PolizaList() {
             key={cancelSession.id}
             open={cancelTargetId !== null}
             onOpenChange={(open) => {
-              if (!open) setCancelTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(isBusy(cancelSnapshot.id) || rowLock.isHeld(cancelSnapshot.id))) setCancelTargetId(null);
             }}
+            busy={isBusy(cancelSnapshot.id)}
             title="Cancelar Póliza"
             description={cancelarPolizaDescription(
               etiquetaDe(cancelSnapshot),
@@ -385,8 +393,12 @@ export default function PolizaList() {
             key={deleteSession.id}
             open={deleteTargetId !== null}
             onOpenChange={(open) => {
-              if (!open) setDeleteTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(isBusy(deleteSnapshot.id) || rowLock.isHeld(deleteSnapshot.id))) setDeleteTargetId(null);
             }}
+            busy={isBusy(deleteSnapshot.id)}
             title="Eliminar Borrador"
             // El borrado del backend es FÍSICO, no baja lógica, y arrastra todos los
             // movimientos: se dice sin rodeos. La etiqueta viene del objetivo
