@@ -56,13 +56,15 @@ test.describe("facturas de proveedor", () => {
 
 test.describe("cuentas por pagar: «Vencida / Al corriente»", () => {
   const today = "2026-10-30";
-  const base = { moneda_codigo: "MXN", total_pagado: "0.00", proveedor_nombre: "ACME", fecha_emision: "2026-09-01" };
+  const base = { moneda_codigo: "MXN", total_pagado: "0.00", proveedor: 8, proveedor_nombre: "ACME", fecha_emision: "2026-09-01" };
   const rows = [
     { ...base, id: 1, estatus: "Pendiente", saldo: "100.00", fecha_vencimiento: "2026-10-29" },
     { ...base, id: 2, estatus: "Parcial", saldo: "50.00", fecha_vencimiento: "2026-10-30" },
     { ...base, id: 3, estatus: "Pagada", saldo: "0.00", fecha_vencimiento: "2026-10-01" },
     { ...base, id: 4, estatus: "Cancelada", saldo: "100.00", fecha_vencimiento: "2026-10-01" },
     { ...base, id: 5, estatus: "Pendiente", saldo: "100.00", fecha_vencimiento: null },
+    { ...base, id: 6, proveedor: 9, estatus: "Pagada", saldo: "0.00", fecha_vencimiento: null },
+    { ...base, id: 7, proveedor: 10, proveedor_nombre: null, estatus: "Pagada", saldo: "0.00", fecha_vencimiento: null },
   ] as unknown as CuentaPorPagar[];
   const t = harness<CuentaPorPagar>(
     withHeaderFilters(
@@ -78,7 +80,18 @@ test.describe("cuentas por pagar: «Vencida / Al corriente»", () => {
     // Estricto: la que vence HOY aún no está vencida; pagada, cancelada o sin
     // vencimiento cuentan como al corriente.
     expect(t.matching("fecha_vencimiento", "si").map((r) => r.id)).toEqual([1]);
-    expect(t.matching("fecha_vencimiento", "no").map((r) => r.id)).toEqual([2, 3, 4, 5]);
+    expect(t.matching("fecha_vencimiento", "no").map((r) => r.id)).toEqual([2, 3, 4, 5, 6, 7]);
+  });
+
+  test("el proveedor compara contra el FK: homónimos aparte y `Proveedor #N` sin nombre", () => {
+    expect(t.options("proveedor_nombre").map((o) => [o.value, o.label])).toEqual([
+      [undefined, "Todos"],
+      ["8", "ACME"],
+      ["9", "ACME"],
+      ["10", "Proveedor #10"],
+    ]);
+    expect(t.matching("proveedor_nombre", "9").map((r) => r.id)).toEqual([6]);
+    expect(t.cellText("proveedor_nombre", rows[6])).toBe("Proveedor #10");
   });
 
   test("el `#id` filtra por `estatus` con ficha Estatus", () => {
