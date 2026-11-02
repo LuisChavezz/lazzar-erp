@@ -63,6 +63,16 @@ test.describe("compras por talla", () => {
     expect(row.comprasSinTalla).toBe(0);
   });
 
+  test("sin compras_por_talla en la respuesta no hay compras por talla ni residuo", () => {
+    const sinCampo = resultado({ compras_pendiente_cantidad: "70.0000" });
+    delete sinCampo.compras_por_talla;
+    const row = mapInventoryPipelineRow(sinCampo);
+    expect(row.comprasPorTallaDisponible).toBe(false);
+    expect(row.comprasSinTalla).toBe(0);
+    expect(row.comprasPendientes).toBe(70);
+    expect(row.tallas.every((t) => t.compras === null)).toBe(true);
+  });
+
   test('"N/A" es una talla más', () => {
     const row = mapInventoryPipelineRow(
       resultado({ compras_pendiente_cantidad: "2.0000", compras_por_talla: { "N/A": "2.0000" } }),

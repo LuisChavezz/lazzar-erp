@@ -60,17 +60,21 @@ export const mapInventoryPipelineRow = (
     ]),
   ).sort(compareSizeNames);
 
+  // Sin el campo (un backend anterior a su desglose) no hay compras por talla
+  // que mostrar, y tampoco residuo: sería afirmar que nada tiene talla.
+  const comprasPorTallaDisponible = item.compras_por_talla != null;
+
   const tallas: InventoryPipelineSize[] = tallaNames.map((talla) => ({
     talla,
     disponible: safeParseAmount(item.disponible_por_talla?.[talla]),
     enOp: safeParseAmount(item.produccion_por_talla?.[talla]),
     // El del backend tal cual: disponible + OP, sin compras.
     total: safeParseAmount(item.total_por_talla?.[talla]),
-    compras: safeParseAmount(item.compras_por_talla?.[talla]),
+    compras: comprasPorTallaDisponible ? safeParseAmount(item.compras_por_talla?.[talla]) : null,
   }));
 
   const comprasPendientes = safeParseAmount(item.compras_pendiente_cantidad);
-  const comprasPorTalla = tallas.reduce((sum, t) => sum + t.compras, 0);
+  const comprasPorTalla = tallas.reduce((sum, t) => sum + (t.compras ?? 0), 0);
 
   const disponible = safeParseAmount(item.disponible_total);
   const enOp = safeParseAmount(item.produccion_total);
@@ -85,7 +89,10 @@ export const mapInventoryPipelineRow = (
     enOp,
     total: disponible + enOp,
     comprasPendientes,
-    comprasSinTalla: comprasSinTalla(comprasPendientes, comprasPorTalla),
+    comprasPorTallaDisponible,
+    comprasSinTalla: comprasPorTallaDisponible
+      ? comprasSinTalla(comprasPendientes, comprasPorTalla)
+      : 0,
     tallas,
     ordenesProduccion,
     ordenesCompra,
