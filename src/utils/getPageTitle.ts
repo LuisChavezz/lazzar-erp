@@ -28,6 +28,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/procurement/purchase-order-receipts": "Recepciones",
   "/procurement/suppliers": "Proveedores",
   "/procurement/stock": "Existencias",
+  "/procurement/dashboard": "Panel de compras",
   "/procurement/order-reviews": "Revisión de Pedidos",
   "/procurement/expense-requests": "Solicitudes de Gastos",
   "/procurement/pq-orders": "Pedidos P.Q.",
