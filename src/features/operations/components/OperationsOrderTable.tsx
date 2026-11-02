@@ -21,7 +21,6 @@ interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
 // Tabla de la Mesa de Control de Pedidos — usa DataTable con columnas dedicadas
 export function OperationsOrderTable({
   orders,
-  onViewDetail,
   onEditMesaControl,
   onProgramar,
   onCancel,
@@ -36,10 +35,10 @@ export function OperationsOrderTable({
   const columns = useMemo(
     () =>
       buildOperationsOrderColumns(
-        { onViewDetail, onEditMesaControl, onProgramar, onCancel },
+        { onEditMesaControl, onProgramar, onCancel },
         buildOperationsOrderFilterOptions(orders),
       ),
-    [onViewDetail, onEditMesaControl, onProgramar, onCancel, orders],
+    [onEditMesaControl, onProgramar, onCancel, orders],
   );
 
   return (

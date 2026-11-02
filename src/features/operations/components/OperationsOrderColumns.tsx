@@ -33,6 +33,7 @@ import {
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
 import { hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
+import { pedidoDetailHref } from "@/src/features/orders/constants/pedidoDetailOrigins";
 
 export { isOrderConfirmed };
 
@@ -45,7 +46,6 @@ export { isOrderConfirmed };
  * sin columnas aparte de "Estado"/"Acciones".
  */
 export interface OperationsOrderColumnCallbacks {
-  onViewDetail: (order: PedidoListItem) => void;
   onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
   onCancel: (order: PedidoListItem) => void;
@@ -126,7 +126,6 @@ const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterVa
 
 const FolioCell = ({
   order,
-  onViewDetail,
   onEditMesaControl,
   onProgramar,
   onCancel,
@@ -136,7 +135,14 @@ const FolioCell = ({
   const confirmed = isOrderConfirmed(order);
 
   const items: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: EyeIcon, onSelect: () => onViewDetail(order) },
+    {
+      label: "Ver detalle",
+      icon: EyeIcon,
+      // Enlace real (`href`) al detalle 360°: Next lo prefetchea y clic
+      // medio/Ctrl+clic abren otra pestaña. `from=operations` hace que el
+      // "Volver" regrese a esta Mesa de Control.
+      href: pedidoDetailHref(order.id, "operations"),
+    },
     // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
       label: "Editar",

@@ -47,11 +47,6 @@ export function OperationsOrderPanel() {
   const [selectedOrderForCancel, setSelectedOrderForCancel] =
     useState<PedidoListItem | null>(null);
 
-  // Navega al detalle 360° del pedido (ruta neutra); `?from=operations` para
-  // que el "Volver" regrese a esta Mesa de Control.
-  const handleViewDetail = (order: PedidoListItem) =>
-    router.push(`/orders/${order.id}?from=operations`);
-
   // Edición del pedido con sincronización a su cotización de origen. La acción
   // solo la ve quien tiene `E-MESACONTROL-PEDIDOS` (lo filtra `ActionMenu`).
   const handleEditMesaControl = (order: PedidoListItem) =>
@@ -135,7 +130,6 @@ export function OperationsOrderPanel() {
         isLoading={isLoading}
         isError={showError}
         errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
-        onViewDetail={handleViewDetail}
         onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
         onCancel={setSelectedOrderForCancel}
