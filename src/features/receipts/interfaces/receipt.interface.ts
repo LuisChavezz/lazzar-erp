@@ -41,11 +41,13 @@ export interface Receipt {
 
 export interface ReceiptDetailLine {
   id: number;
-  // Poblado en renglones de origen OC; null en origen OP (donde en su lugar
-  // viene `producto_variante`). El shape es el mismo para ambos orígenes.
+  // Poblado en renglones de origen OC; null en origen OP. El shape es el mismo
+  // para ambos orígenes.
   orden_compra_detalle: number | null;
   producto: number;
   producto_nombre: string;
+  // Poblado en origen OP y en OC de producto terminado comprada por SKU (el
+  // backend lo copia del renglón de la OC); null en materia prima.
   producto_variante: number | null;
   ubicacion: number | null;
   // Siempre null: limitación estructural del backend (no es un bug). Se tipa como
