@@ -1,6 +1,14 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { searchPurchaseOrderProducts } from "../services/actions";
+import type { PurchaseOrderOnboardingProducto } from "../interfaces/purchase-order-onboarding.interface";
+
+/**
+ * Sin datos se devuelve SIEMPRE este mismo arreglo: el selector es
+ * `"use no memo"` y memoiza a mano con `productos` como dependencia; un `[]`
+ * nuevo por render invalidaría esos memos en cada render (y en cada scroll).
+ */
+const NO_PRODUCTS: PurchaseOrderOnboardingProducto[] = [];
 
 /**
  * Productos que coinciden con `productoQ` (EC-703), para el selector de
@@ -30,7 +38,7 @@ export const usePurchaseOrderProductSearch = (productoQ: string, { enabled }: { 
   );
 
   return {
-    productos: data?.productos ?? [],
+    productos: data?.productos ?? NO_PRODUCTS,
     /** La búsqueda también se cortó en su tope: hay más coincidencias. */
     truncado: data?.truncado ?? false,
     hasLoaded,
