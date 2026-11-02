@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
 import { ProcurementQuickLinks } from "@/src/features/purchase-orders/components/ProcurementQuickLinks";
@@ -7,17 +8,9 @@ import { ProcurementQuickLinks } from "@/src/features/purchase-orders/components
 export default function ProcurementDashboardPage() {
   const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
 
+  // Mismo skeleton que el `loading.tsx` de la ruta: sin spinner intermedio.
   if (isLoading) {
-    return (
-      <div className="px-1 pb-8">
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
-          <span className="ml-3 text-sm text-slate-500">
-            Cargando panel de compras...
-          </span>
-        </div>
-      </div>
-    );
+    return <ProcurementRouteSkeleton variant="dashboard" />;
   }
 
   // Solo si el listado nunca cargó: un refetch fallido conserva el panel y
