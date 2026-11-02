@@ -6,8 +6,8 @@ import type {
 /**
  * ¿Puede el usuario ver los importes de un indicador de compras? Lo dice cada
  * respuesta de KPIs de OC, recepciones y proveedores (`puede_ver_importes`,
- * mismo criterio que el filtro contable del listado de OC). Ausente cuenta como
- * `false`: el backend no lo manda en la respuesta de un usuario sin empresa.
+ * mismo criterio que el filtro contable del listado de OC). Siempre llega, también
+ * sin empresa (`false`, backend #860); solo un `true` explícito muestra importes.
  */
 export const canSeeKpiAmounts = (puedeVerImportes: boolean | undefined): boolean =>
   puedeVerImportes === true;
@@ -15,11 +15,14 @@ export const canSeeKpiAmounts = (puedeVerImportes: boolean | undefined): boolean
 /**
  * ¿Una tarjeta que es SOLO un importe va como "No visible"? Sin permiso el
  * backend manda esos bloques no disponibles (`Sin permiso de contabilidad.`),
- * así que un `false` explícito manda sobre su `disponible`. Sin la bandera
- * (usuario sin empresa) el bloque conserva su propio motivo.
+ * así que la bandera manda sobre su `disponible`. Excepción: un usuario sin
+ * empresa también recibe `puede_ver_importes: false` (#860), pero ahí el
+ * bloque no está disponible por falta de empresa y debe verse SU motivo
+ * ("Usuario sin empresa asignada."), no el de permiso. Cada respuesta dice a su
+ * manera que no hay empresa; el llamador lo pasa en `sinEmpresa`.
  */
-export const isAmountOnlyKpiHidden = (disponible: boolean, puedeVerImportes: boolean | undefined): boolean =>
-  puedeVerImportes === false || (disponible && !canSeeKpiAmounts(puedeVerImportes));
+export const isAmountOnlyKpiHidden = (puedeVerImportes: boolean | undefined, sinEmpresa: boolean): boolean =>
+  !sinEmpresa && !canSeeKpiAmounts(puedeVerImportes);
 
 /** Lo que ocupa el lugar de un importe que el usuario no puede ver. */
 export const HIDDEN_KPI_AMOUNT_TEXT = "No visible";
