@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { DropdownMenu } from "@radix-ui/themes";
 import {
   WarehouseIcon,
@@ -22,6 +22,12 @@ interface WarehouseFilterProps {
    * almacén es un filtro opcional, lo activa explícitamente.
    */
   allowClear?: boolean;
+  /**
+   * Mensaje de error del filtro (p. ej. un 400 del backend). Marca el botón
+   * (borde rojo, `aria-invalid`, `aria-describedby`) y se pinta debajo, como
+   * el `error` de `FormInput`.
+   */
+  error?: string;
 }
 
 /**
@@ -33,8 +39,9 @@ interface WarehouseFilterProps {
  * un filtro opcional (reporte de movimientos).
  *
  */
-export function WarehouseFilter({ value, onChange, allowClear = false }: WarehouseFilterProps) {
+export function WarehouseFilter({ value, onChange, allowClear = false, error }: WarehouseFilterProps) {
   const { data: warehouses = [], isLoading } = useWarehouses();
+  const errorId = useId();
 
   // Solo almacenes activos, alfabéticos por nombre (misma convención que
   // `useLocationForm` / `useStockMovementForm`).
@@ -66,7 +73,11 @@ export function WarehouseFilter({ value, onChange, allowClear = false }: Warehou
           <button
             type="button"
             aria-label={`Almacén: ${label}`}
-            className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:border-brand-500 hover:bg-white dark:border-slate-700 dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-white dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40 ${
+              error ? "border-red-500" : "border-slate-300 hover:border-brand-500 dark:border-slate-700"
+            }`}
           >
             <WarehouseIcon
               className="h-4 w-4 text-sky-500 dark:text-sky-400"
@@ -147,6 +158,12 @@ export function WarehouseFilter({ value, onChange, allowClear = false }: Warehou
           )}
         </DropdownMenu.Content>
       </DropdownMenu.Root>
+
+      {error && (
+        <p id={errorId} className="text-xs text-red-600 mt-1 font-medium">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
