@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -38,7 +37,6 @@ import {
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
 import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
-import { prepararConciliacionMutationKey } from "../hooks/usePrepararConciliacion";
 import {
   ConciliacionRowActionsProvider,
   usePendingConciliacionIds,
@@ -165,8 +163,11 @@ export function BankReconciliationView() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Mientras `preparar` viaja, el diálogo no se puede cerrar (su "Cerrar" del
   // pie, la X o Esc): al terminar, la vista cambia el filtro de la URL y abre
-  // el detalle del borrador, y eso no debe pasar con el diálogo ya cerrado.
-  const isPreparing = useIsMutating({ mutationKey: prepararConciliacionMutationKey }) > 0;
+  // el detalle del borrador, y eso no debe pasar con el diálogo ya cerrado. El
+  // candado se toma al ENVIAR, antes de la validación asíncrona de TanStack
+  // Form (ver `usePrepararConciliacionForm`), y se lee en el handler: el estado
+  // de la mutación llegaba tarde y dejaba cerrar en ese hueco.
+  const prepararSubmitLockRef = useRef(false);
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [cerrarTargetId, setCerrarTargetId] = useState<number | null>(null);
   const [cancelarTargetId, setCancelarTargetId] = useState<number | null>(null);
@@ -413,7 +414,7 @@ export function BankReconciliationView() {
             }
             open={isFormOpen}
             onOpenChange={(open) => {
-              if (!open && isPreparing) return;
+              if (!open && prepararSubmitLockRef.current) return;
               setIsFormOpen(open);
             }}
             maxWidth={DIALOG_WIDTH_FORM}
@@ -437,6 +438,7 @@ export function BankReconciliationView() {
                 // solapamiento: se fija ese objeto en vez de ir a buscar la fila
                 // a un listado que todavía muestra otro periodo.
                 onOpenExisting={openPinnedDetail}
+                submitLockRef={prepararSubmitLockRef}
               />
             )}
           </MainDialog>
