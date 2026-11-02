@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import Link from "next/link";
 import { ChevronRightIcon } from "./Icons";
 
 interface TiltCardProps {
@@ -102,7 +103,6 @@ export default function TiltCard({
     };
   }, []);
 
-  const Component = href ? "a" : "div";
   const shadowClassName = shadowColorClassName
     ? `shadow-sm hover:shadow-xl dark:shadow-none ${shadowColorClassName}`
     : "";
@@ -112,38 +112,48 @@ export default function TiltCard({
     return null;
   }
 
-  return (
-    <Component
-      ref={cardRef}
-      href={href}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      className={`block relative transition-all duration-300 group ${shadowClassName} ${className}`}
-      style={{ transformStyle: "preserve-3d", willChange: "transform" }}
-    >
-      <div className="h-full flex flex-col" style={{ transform: "translateZ(20px)" }}>
-        <div className={`mb-6 w-14 h-14 rounded-full ${accentBgClass} flex items-center justify-center ${accentClass}`}>
-          <Icon className="w-7 h-7" />
-        </div>
-        <div>
-          <h3 className="text-xl font-medium text-slate-800 dark:text-slate-100 mb-2 font-display">
-            {title}
-          </h3>
-          {description && (
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              {description}
-            </p>
-          )}
-        </div>
-        {footerText && (
-          <div
-            className={`mt-auto pt-8 flex items-center ${accentClass} text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0`}
-          >
-            <span>{footerText}</span>
-            <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
-          </div>
+  const rootProps = {
+    ref: cardRef,
+    onClick,
+    onMouseEnter,
+    className: `block relative transition-all duration-300 group ${shadowClassName} ${className}`,
+    style: { transformStyle: "preserve-3d", willChange: "transform" } as const,
+  };
+
+  const content = (
+    <div className="h-full flex flex-col" style={{ transform: "translateZ(20px)" }}>
+      <div className={`mb-6 w-14 h-14 rounded-full ${accentBgClass} flex items-center justify-center ${accentClass}`}>
+        <Icon className="w-7 h-7" />
+      </div>
+      <div>
+        <h3 className="text-xl font-medium text-slate-800 dark:text-slate-100 mb-2 font-display">
+          {title}
+        </h3>
+        {description && (
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            {description}
+          </p>
         )}
       </div>
-    </Component>
+      {footerText && (
+        <div
+          className={`mt-auto pt-8 flex items-center ${accentClass} text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0`}
+        >
+          <span>{footerText}</span>
+          <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+        </div>
+      )}
+    </div>
+  );
+
+  // Con `href` es un `<Link>` de Next: navega en el cliente (sin recargar el
+  // documento ni vaciar la caché de React Query) y conserva clic medio y
+  // Ctrl+clic. El efecto tilt se engancha igual al `<a>` que renderiza.
+  return href ? (
+    <Link href={href} {...rootProps}>
+      {content}
+    </Link>
+  ) : (
+    <div {...rootProps}>{content}</div>
   );
 }
