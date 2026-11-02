@@ -40,6 +40,10 @@ import {
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
 import {
+  COBRO_REP_CANCELLATION_REQUESTED_HINT,
+  COBRO_REP_CANCELLATION_REQUESTED_LABEL,
+} from "../utils/cobroRepCancellation";
+import {
   COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE,
   COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
 } from "../utils/cobroDraft";
@@ -325,6 +329,16 @@ export function CollectionDetailDialog({
                   "No"
                 )}
               </InfoField>
+              {cobro.rep_cancelacion_solicitada && (
+                <InfoField label="Cancelación">
+                  <span
+                    className="text-amber-600 dark:text-amber-400"
+                    title={COBRO_REP_CANCELLATION_REQUESTED_HINT}
+                  >
+                    {COBRO_REP_CANCELLATION_REQUESTED_LABEL}
+                  </span>
+                </InfoField>
+              )}
             </InfoGrid>
           </div>
         </div>

@@ -163,7 +163,7 @@ export const getCollectionColumns = () =>
     columnHelper.accessor((row) => getCobroRepStateLabel(row), {
       id: "rep",
       header: "REP",
-      size: 90,
+      size: 100,
       meta: { label: "REP", align: "center" },
       cell: (info) => <CobroRepState cobro={info.row.original} />,
     }),
