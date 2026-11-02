@@ -22,10 +22,12 @@ import { AccountsReceivableFacturaSection } from "./AccountsReceivableFacturaSec
 import { AccountsReceivablePolizasSection } from "./AccountsReceivablePolizasSection";
 import { AccountsReceivableCobrosSection } from "./AccountsReceivableCobrosSection";
 import {
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { DialogHeader } from "@/src/components/DialogHeader";
 
 interface AccountsReceivableDetailDialogProps {
   /** ID de la cuenta a consultar. `0` mantiene la consulta deshabilitada. */
@@ -82,6 +84,8 @@ function DetailDialogContent({
   // `Pendiente`/`Parcial`. Así el detalle no contradice a la fila.
   const estaVencida = cuenta ? isCuentaVencida(cuenta, today) : false;
   const diasDeAtraso = cuenta ? diasVencido(cuenta.fecha_vencimiento, today) : 0;
+  const money = (value: string) =>
+    formatCurrency(safeParseAmount(value), cuenta?.moneda_codigo ?? null);
 
   return (
     <MainDialog
@@ -90,17 +94,12 @@ function DetailDialogContent({
       maxWidth="900px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <CxcIcon className="w-5 h-5 text-sky-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Cuenta por Cobrar
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {folio}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de Cuenta por Cobrar"
+          subtitle={folio}
+          statusColor="sky"
+          icon={CxcIcon}
+        />
       }
     >
       {/* ── Estado: cargando ──────────────────────────────────────────────── */}
@@ -136,77 +135,62 @@ function DetailDialogContent({
                 Cuenta vencida hace {diasDeAtraso} {diasDeAtraso === 1 ? "día" : "días"}
                 , con un saldo de{" "}
                 <span className="font-semibold tabular-nums">
-                  {formatCurrency(safeParseAmount(cuenta.saldo), cuenta.moneda_codigo)}
+                  {money(cuenta.saldo)}
                 </span>
                 .
               </p>
             </div>
           )}
 
-          {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-            {/* El badge refleja el `estatus` CRUDO del backend; el resaltado de
-                vencido de abajo se deriva aparte. Pueden no coincidir (p. ej.
-                "Parcial" + vencida) y es correcto: son dos cosas distintas. */}
-            <InfoField label="Estatus">
+          {/* Encabezado: lo que se busca primero al abrir la cuenta. El badge
+              refleja el `estatus` CRUDO del backend y el resaltado de vencido se
+              deriva aparte: pueden no coincidir (p. ej. "Parcial" + vencida) y
+              es correcto, son dos cosas distintas. */}
+          <InfoTileGrid>
+            <InfoTile label="Estatus">
               <StatusBadge status={cuenta.estatus} config={CXC_ESTATUS_CONFIG} />
-            </InfoField>
-            <InfoField label="Cliente">{textOrDash(cuenta.cliente_nombre)}</InfoField>
-            <InfoField label="Moneda">{textOrDash(cuenta.moneda_codigo)}</InfoField>
-            <InfoField label="Fecha de emisión">
-              <span className="tabular-nums">
-                {formatShortDate(cuenta.fecha_emision, { timeZone: "UTC" })}
-              </span>
-            </InfoField>
-            <InfoField label="Fecha de vencimiento">
-              <span
-                className={`tabular-nums ${
-                  estaVencida ? "text-red-600 dark:text-red-400 font-semibold" : ""
-                }`}
-              >
+            </InfoTile>
+            <InfoTile label="Cliente">{textOrDash(cuenta.cliente_nombre)}</InfoTile>
+            <InfoTile label="Saldo">
+              <span className="tabular-nums">{money(cuenta.saldo)}</span>
+            </InfoTile>
+            <InfoTile label="Total">
+              <span className="tabular-nums">{money(cuenta.total)}</span>
+            </InfoTile>
+            {/* `total_pagado` lo calcula el BACKEND (`total − saldo`). Se
+                muestra tal cual: recalcularlo aquí duplicaría una regla del
+                servidor que podría divergir sin que nos enteremos. */}
+            <InfoTile label="Total pagado">
+              <span className="tabular-nums">{money(cuenta.total_pagado)}</span>
+            </InfoTile>
+            <InfoTile label="Moneda">{textOrDash(cuenta.moneda_codigo)}</InfoTile>
+            <InfoTile label="Fecha de emisión">
+              {formatShortDate(cuenta.fecha_emision, { timeZone: "UTC" })}
+            </InfoTile>
+            <InfoTile label="Vencimiento">
+              <span className={estaVencida ? "text-red-600 dark:text-red-400" : undefined}>
                 {formatShortDate(cuenta.fecha_vencimiento, { timeZone: "UTC" })}
               </span>
-            </InfoField>
-            <InfoField label="Referencia">
+            </InfoTile>
+            {/* Fecha-calendario `YYYY-MM-DD` (un `DateField`), igual que
+                `fecha_emision`/`fecha_vencimiento`: sin `timeZone: "UTC"` se
+                pintaba en la zona local y en México salía un día antes. */}
+            <InfoTile label="Último pago">
+              {formatShortDate(cuenta.fecha_ultimo_pago, { timeZone: "UTC" })}
+            </InfoTile>
+            <InfoTile label="Referencia">
               <span className="font-mono">{textOrDash(cuenta.referencia)}</span>
-            </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
-              {textOrDash(cuenta.observaciones)}
-            </InfoField>
-          </div>
+            </InfoTile>
+          </InfoTileGrid>
 
-          {/* Desglose financiero */}
-          <div>
-            <SectionTitle>Desglose financiero</SectionTitle>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
-              <InfoField label="Total">
-                <span className="tabular-nums">
-                  {formatCurrency(safeParseAmount(cuenta.total), cuenta.moneda_codigo)}
-                </span>
-              </InfoField>
-              {/* `total_pagado` lo calcula el BACKEND (`total − saldo`). Se
-                  muestra tal cual: recalcularlo aquí duplicaría una regla del
-                  servidor que podría divergir sin que nos enteremos. */}
-              <InfoField label="Total pagado">
-                <span className="tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">
-                  {formatCurrency(safeParseAmount(cuenta.total_pagado), cuenta.moneda_codigo)}
-                </span>
-              </InfoField>
-              <InfoField label="Saldo">
-                <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatCurrency(safeParseAmount(cuenta.saldo), cuenta.moneda_codigo)}
-                </span>
-              </InfoField>
-              <InfoField label="Último pago">
-                <span className="tabular-nums">
-                  {/* Fecha-calendario `YYYY-MM-DD` (un `DateField`), igual que
-                      `fecha_emision`/`fecha_vencimiento`: sin `timeZone: "UTC"`
-                      se pintaba en la zona local y en México salía un día antes. */}
-                  {formatShortDate(cuenta.fecha_ultimo_pago, { timeZone: "UTC" })}
-                </span>
-              </InfoField>
+          {cuenta.observaciones && (
+            <div>
+              <SectionTitle>Observaciones</SectionTitle>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">
+                {cuenta.observaciones}
+              </p>
             </div>
-          </div>
+          )}
 
           {/* Cobros aplicados a la cuenta (solo lectura), solo con el permiso de Cobros */}
           {canViewCobros && <AccountsReceivableCobrosSection cuentaId={cuenta.id} />}
