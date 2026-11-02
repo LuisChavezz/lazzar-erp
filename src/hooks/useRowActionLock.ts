@@ -38,5 +38,13 @@ export function useRowActionLock() {
   const isPending = (id: number | null): boolean =>
     id !== null && pendingIds.has(id);
 
-  return { acquire, release, isPending };
+  /**
+   * Lectura SÍNCRONA del candado (la ref, no el estado): para guardas en
+   * handlers —p. ej. el `onOpenChange` de una confirmación— que deben valer
+   * desde el primer frame, antes del render que pinta `isPending`. No se usa
+   * para pintar.
+   */
+  const isHeld = (id: number | null): boolean => id !== null && inFlightRef.current.has(id);
+
+  return { acquire, release, isPending, isHeld };
 }
