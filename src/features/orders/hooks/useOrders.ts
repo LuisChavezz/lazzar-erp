@@ -11,14 +11,23 @@ import { PedidoListItem } from "../interfaces/order.interface";
 export const ordersQueryKey = (params?: OrdersQueryParams) =>
   params ? (["orders", params] as const) : (["orders"] as const);
 
+/**
+ * Llave y función de la lista de pedidos, en UN solo lugar: las usan este hook
+ * y quien prefetchea la misma lista (p. ej. el wizard de edición de OC), así
+ * que lo prefetcheado es exactamente lo que el hook lee.
+ */
+export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
+  queryKey: ordersQueryKey(params),
+  // Envuelto en una arrow a propósito: pasar `getOrders` pelado haría que
+  // React Query le inyectara su `QueryFunctionContext` como primer argumento
+  // y este terminara viajando como `params` de axios.
+  queryFn: () => getOrders(params),
+});
+
 export const useOrders = (params?: OrdersQueryParams) => {
-  const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>({
-    queryKey: ordersQueryKey(params),
-    // Envuelto en una arrow a propósito: pasar `getOrders` pelado haría que
-    // React Query le inyectara su `QueryFunctionContext` como primer argumento
-    // y este terminara viajando como `params` de axios.
-    queryFn: () => getOrders(params),
-  });
+  const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>(
+    ordersQueryOptions(params),
+  );
 
   // Un refetch fallido con datos en caché los conserva y avisa por toast. El
   // `toastId` es uno solo para todas las variantes de params: si varios
