@@ -35,7 +35,7 @@ export default function BankAccountList() {
 
   const { bankAccounts, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useBankAccounts();
-  const { mutate: toggleActivo, isPending: isTogglePending } = useToggleBankAccountActivo();
+  const { mutateAsync: toggleActivoAsync, isPending: isTogglePending } = useToggleBankAccountActivo();
   const busyIds = usePendingBankAccountIds();
 
   // Confirmación de activar/desactivar, resuelta contra el listado COMPLETO:
@@ -196,10 +196,16 @@ export default function BankAccountList() {
             closeOnConfirm={false}
             busy={toggle.isBusy}
             onConfirm={() => {
-              toggleActivo(
-                { id: toggleSnapshot.id, activo: !toggleSnapshot.activo },
-                { onSettled: () => toggle.close() },
-              );
+              const id = toggleSnapshot.id;
+              if (!toggle.acquire(id)) return;
+              toggleActivoAsync({ id, activo: !toggleSnapshot.activo })
+                // El hook ya avisó del error con su toast; aquí solo se evita el
+                // rechazo no manejado de la promesa.
+                .catch(() => {})
+                .finally(() => {
+                  toggle.release(id);
+                  toggle.close();
+                });
             }}
             // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
             confirmColor={toggleSnapshot.activo ? "amber" : "green"}

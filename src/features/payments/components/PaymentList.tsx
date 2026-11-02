@@ -13,6 +13,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { getColumns, PAYMENT_HEADER_FILTERS } from "./PaymentColumns";
 import { PaymentDetailDialog } from "./PaymentDetailDialog";
 import PaymentForm from "./PaymentForm";
@@ -35,10 +36,17 @@ const PAYMENT_STALE_MESSAGES = {
 
 export default function PaymentList() {
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
-  const { mutate: cancelPago } = useCancelPago();
+  // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de cada
+  // llamada; los callbacks por llamada de `mutate` solo corren para la última.
+  const { mutateAsync: cancelPagoAsync } = useCancelPago();
   // Cancelaciones en vuelo POR PAGO, leídas de la MutationCache: `isPending` del
   // hook solo recuerda su última llamada y no dice QUÉ pago se está cancelando.
   const busyIds = usePendingPaymentIds();
+  // Candado SÍNCRONO por pago (`useRowActionLock`): `busyIds` llega en un render
+  // posterior, así que el segundo clic de un doble clic lo encontraría libre y
+  // mandaría otra cancelación. La ref del candado ya está tomada en ese clic.
+  const rowLock = useRowActionLock();
+  const isBusy = (id: number | null) => id !== null && (busyIds.includes(id) || rowLock.isPending(id));
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Estado de AMBOS diálogos en la vista, no en la celda de acciones: una celda
@@ -89,7 +97,7 @@ export default function PaymentList() {
     target: findPago(cancelTargetId),
     statusField: "estatus",
     expectedEstado: "Aplicado",
-    isBusy: cancelTargetId !== null && busyIds.includes(cancelTargetId),
+    isBusy: isBusy(cancelTargetId),
     messages: PAYMENT_STALE_MESSAGES,
   });
   if (staleCancel) {
@@ -98,7 +106,7 @@ export default function PaymentList() {
   }
 
   const cancelTargetLabel = cancelTargetId !== null ? `#${cancelTargetId}` : "";
-  const isCancelTargetBusy = cancelTargetId !== null && busyIds.includes(cancelTargetId);
+  const isCancelTargetBusy = isBusy(cancelTargetId);
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
@@ -191,13 +199,18 @@ export default function PaymentList() {
             onConfirm={() => {
               // Un pago ya en vuelo no se vuelve a mandar (doble clic, o reabrir
               // tras "Volver" mientras su cancelación sigue pendiente).
-              if (isCancelTargetBusy) return;
               const id = cancelTargetId;
-              cancelPago(id, {
-                // Solo cierra SU confirmación: si mientras tanto se cerró con
-                // "Volver" y se abrió la de otro pago, esa sigue abierta.
-                onSettled: () => setCancelTargetId((current) => (current === id ? null : current)),
-              });
+              if (isBusy(id) || !rowLock.acquire(id)) return;
+              cancelPagoAsync(id)
+                // El hook ya avisó del error con su toast; aquí solo se evita el
+                // rechazo no manejado de la promesa.
+                .catch(() => {})
+                .finally(() => {
+                  rowLock.release(id);
+                  // Solo cierra SU confirmación: si mientras tanto se cerró con
+                  // "Volver" y se abrió la de otro pago, esa sigue abierta.
+                  setCancelTargetId((current) => (current === id ? null : current));
+                });
             }}
             confirmColor="amber"
           />
