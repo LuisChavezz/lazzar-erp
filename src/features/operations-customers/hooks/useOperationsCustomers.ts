@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
+import { OPERATIONS_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getOperationsCustomers } from "../services/actions";
 import { OperationsCustomer } from "../interfaces/operations-customer.interface";
 
@@ -12,26 +12,27 @@ import { OperationsCustomer } from "../interfaces/operations-customer.interface"
 // abstracción prematura — se prefiere la duplicación actual, acotada y
 // manejable, sobre el riesgo de una abstracción incorrecta que deba
 // deshacerse después.
+/**
+ * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
+ * NUNCA cargó; un refetch fallido con datos en caché conserva la tabla y avisa
+ * por toast (`useGuardedQuery`). `error` sigue la misma regla.
+ */
 export const useOperationsCustomers = () => {
-  const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
-    OperationsCustomer[]
-  >({
-    queryKey: ["operations-customers"],
-    queryFn: getOperationsCustomers,
-  });
-
-  const { hasLoaded } = useHasLoadedQuery({
-    data,
-    isError,
-    errorUpdatedAt,
-    toastId: "operations-customers-refetch-error",
-  });
+  const { data, hasLoaded, isLoading, isInitialError, error, refetch, isFetching } =
+    useGuardedQuery<OperationsCustomer[]>(
+      {
+        queryKey: ["operations-customers"],
+        queryFn: getOperationsCustomers,
+        gcTime: OPERATIONS_QUERY_GC_TIME,
+      },
+      { toastId: "operations-customers-refetch-error" },
+    );
 
   return {
     customers: data ?? [],
     hasLoaded,
     isLoading,
-    isError,
+    isInitialError,
     error,
     refetch,
     isFetching,

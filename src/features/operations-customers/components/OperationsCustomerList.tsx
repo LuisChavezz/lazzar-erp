@@ -4,7 +4,6 @@ import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   buildOperationsCustomerFilterOptions,
   getOperationsCustomerColumns,
@@ -32,14 +31,19 @@ const QUICK_FILTERS: {
 ];
 
 export const OperationsCustomerList = () => {
-  const { customers, hasLoaded, isLoading, isError, error, refetch, isFetching } =
-    useOperationsCustomers();
+  // Un error de refetch transitorio no descarta la tabla ya cargada: solo
+  // `isInitialError` (nunca cargó) cambia el cuerpo de la tabla por el error.
+  const {
+    customers,
+    hasLoaded,
+    isLoading,
+    isInitialError: showError,
+    error,
+    refetch,
+    isFetching,
+  } = useOperationsCustomers();
   const [quickFilterKey, setQuickFilterKey] = useState("todos");
   const quickFilter = QUICK_FILTERS.find((f) => f.key === quickFilterKey) ?? QUICK_FILTERS[0];
-
-  // Un error de refetch transitorio no debe descartar la tabla ya cargada;
-  // solo se trata como error "de pantalla completa" si nunca cargó.
-  const showError = isInitialLoadError(isError, hasLoaded);
 
   // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
   // Control) + `fillHeight`: la tabla usa toda la pantalla y scrollea por
