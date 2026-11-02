@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -12,10 +11,8 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import {
-  getStaleRowDialogNotice,
-  type StaleRowDialogNotice,
-} from "@/src/utils/staleRowDialogNotice";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { getColumns, PAYMENT_HEADER_FILTERS } from "./PaymentColumns";
 import { PaymentDetailDialog } from "./PaymentDetailDialog";
 import PaymentForm from "./PaymentForm";
@@ -51,14 +48,8 @@ export default function PaymentList() {
   // montado en la celda se cerraría solo a media confirmación.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
-  /** Aviso de la confirmación cerrada por un cambio externo (toast desde un efecto). */
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key });
-    }
-  }, [staleNotice]);
+  /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
+  const setStaleNotice = useStaleNoticeToast();
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.

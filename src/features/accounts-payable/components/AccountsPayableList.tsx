@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
@@ -10,10 +9,8 @@ import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
-import {
-  getStaleRowDialogNotice,
-  type StaleRowDialogNotice,
-} from "@/src/utils/staleRowDialogNotice";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import type { CuentaPorPagar, CxPEstatus } from "../interfaces/accounts-payable.interface";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
 import { useDeleteCuentaPorPagar } from "../hooks/useDeleteCuentaPorPagar";
@@ -81,14 +78,8 @@ export default function AccountsPayableList() {
     id: number;
     message: string;
   } | null>(null);
-  /** Aviso de la confirmación cerrada por un cambio externo (toast desde un efecto). */
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key });
-    }
-  }, [staleNotice]);
+  /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
+  const setStaleNotice = useStaleNoticeToast();
 
   // Candado de reenvío: un DELETE repetido responde 404 y pintaría un error justo
   // después de un borrado que sí funcionó.
