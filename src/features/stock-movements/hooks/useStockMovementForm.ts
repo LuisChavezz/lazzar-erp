@@ -55,6 +55,21 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetCounter, setResetCounter] = useState(0);
 
+  // ─── Helpers de errores ─────────────────────────────────────────────────
+  const getError = (field: StockMovementField): FormFieldError | undefined => {
+    const message = errors[field];
+    return message ? { message } : undefined;
+  };
+
+  const clearFieldError = (field: StockMovementField) => {
+    setErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   // ─── Pedido vinculado (opcional) ────────────────────────────────────────
   // El pedido NO es un campo del formulario: se elige en un diálogo aparte y
   // solo se envía al backend si el usuario lo vincula explícitamente.
@@ -89,7 +104,9 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   };
 
   const handleCheckStock = () => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     const almacenId = form.getFieldValue("almacen_origen_id");
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     const varianteId = form.getFieldValue("producto_variante_id");
 
     if (almacenId < 1 || varianteId < 1) return;
@@ -170,21 +187,6 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     }),
     [],
   );
-
-  // ─── Helpers de errores ─────────────────────────────────────────────────
-  const getError = (field: StockMovementField): FormFieldError | undefined => {
-    const message = errors[field];
-    return message ? { message } : undefined;
-  };
-
-  const clearFieldError = (field: StockMovementField) => {
-    setErrors((prev) => {
-      if (!(field in prev)) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   // ─── Validación ─────────────────────────────────────────────────────────
   const validateForm = (values: StockMovementFormValues) => {
