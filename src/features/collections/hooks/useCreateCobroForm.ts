@@ -42,6 +42,12 @@ export interface CobroDraftSeed {
 /** Con qué estatus se envía: guardar borrador o registrar/aplicar. */
 interface CobroSubmitMeta {
   estatus: Extract<CobroEstatus, "Borrador" | "Aplicado">;
+  /**
+   * `withFreshSaldos` del render que envía. Viaja como meta porque depende de
+   * los saldos vigentes, que se consultan DESPUÉS de `useForm` (ver la
+   * convención de CLAUDE.md, EC-701). `null` solo en el meta por defecto.
+   */
+  withFreshSaldos: ((values: CobroFormValues) => CobroFormValues) | null;
 }
 
 /** Siembra una línea a partir de la CxC elegida en el selector. */
@@ -196,8 +202,11 @@ export function useCreateCobroForm({
   const form = useForm({
     defaultValues: draft?.values ?? createEmptyCobroForm(),
     // Enter y el botón principal registran/aplican; "Guardar borrador" pasa el suyo.
-    onSubmitMeta: { estatus: "Aplicado" } as CobroSubmitMeta,
+    // Por defecto NO envía: un envío que no pase los saldos vigentes (cualquier
+    // otra vía que `handleFormSubmit`/`handleSaveDraft`) no puede validarlos.
+    onSubmitMeta: { estatus: "Aplicado", withFreshSaldos: null } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
+      if (!meta.withFreshSaldos) return;
       setServerBanner(null);
       // Los botones ya están deshabilitados; esto cubre un envío por Enter, con
       // el mismo aviso como error del campo.
@@ -220,8 +229,7 @@ export function useCreateCobroForm({
       // agregarse (ver `saldoFor`). Un borrador no lo valida: el saldo se
       // revisa al aplicar.
       const schema = meta.estatus === "Borrador" ? CobroDraftFormSchema : CobroFormSchema;
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `withFreshSaldos` depende de saldos de un hook posterior a useForm; una función nunca sale de las deps del compilador (EC-701)
-      const parsed = schema.safeParse(withFreshSaldos(current));
+      const parsed = schema.safeParse(meta.withFreshSaldos(current));
       if (!parsed.success) {
         applyValidationIssues(parsed.error.issues);
         return;
@@ -359,11 +367,11 @@ export function useCreateCobroForm({
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void form.handleSubmit();
+    void form.handleSubmit({ estatus: "Aplicado", withFreshSaldos });
   };
 
   const handleSaveDraft = () => {
-    void form.handleSubmit({ estatus: "Borrador" });
+    void form.handleSubmit({ estatus: "Borrador", withFreshSaldos });
   };
 
   return {
