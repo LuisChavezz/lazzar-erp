@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ChangeEvent } from "react";
+import { useId, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -17,10 +17,8 @@ import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import {
-  getStaleRowDialogNotice,
-  type StaleRowDialogNotice,
-} from "@/src/utils/staleRowDialogNotice";
+import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
+import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import {
   motivoBloqueoRegistro,
   toastIdBloqueoRegistro,
@@ -130,18 +128,8 @@ export default function SupplierInvoiceList({
    * captura.
    */
   const [editTarget, setEditTarget] = useState<FacturaProveedor | null>(null);
-  /**
-   * Aviso del diálogo de fila que se cerró porque su factura cambió por fuera
-   * (ver los ajustes en render más abajo). Sale en un EFECTO: disparar el toast
-   * durante el render actualizaría otro componente a media renderización.
-   */
-  const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
-  useEffect(() => {
-    if (staleNotice) {
-      // `id` estable: un doble render no duplica el aviso.
-      toast.error(staleNotice.message, { id: staleNotice.key, duration: 7000 });
-    }
-  }, [staleNotice]);
+  /** Aviso del diálogo de fila que se cerró por un cambio externo (toast desde un efecto). */
+  const setStaleNotice = useStaleNoticeToast();
 
   // UN candado por fila, COMPARTIDO por registrar y cancelar: una factura tiene
   // como máximo una acción que muta en vuelo. Con un candado por acción, cerrar
