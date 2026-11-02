@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { ReceiptIcon } from "@/src/components/Icons";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { Loader } from "@/src/components/Loader";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
@@ -47,11 +49,12 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
           title="Editar borrador de cobro"
           subtitle={draft ? `Cobro ${cobroLabel(draft)} · Aplicación contra cuentas por cobrar` : ""}
           statusColor="amber"
+          icon={ReceiptIcon}
         />
       }
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="1100px"
+      maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
     >
       {open && draft && <DraftLoader key={session.id} cobro={draft} onDone={close} />}
     </MainDialog>
