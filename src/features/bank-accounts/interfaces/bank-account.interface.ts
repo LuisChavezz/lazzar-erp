@@ -1,20 +1,20 @@
 /**
- * Contrato de `/finanzas/cuentas-bancarias/` (`CuentaBancariaSerializer`, que
- * usa `fields = "__all__"` más dos campos calculados de solo lectura:
- * `banco_nombre` y `moneda_codigo`). Los nombres de las llaves se conservan EN
- * ESPAÑOL tal cual los devuelve el backend — no traducir.
+ * Contrato de `/finanzas/cuentas-bancarias/` (`CuentaBancariaSerializer`: todos
+ * los campos del modelo salvo `token` y `refresh_token`, más dos calculados de
+ * solo lectura, `banco_nombre` y `moneda_codigo`). Los nombres de las llaves se
+ * conservan EN ESPAÑOL tal cual los devuelve el backend — no traducir.
  *
  * Igual que `Banco` (EC-135): la respuesta del listado es un ARREGLO PLANO —la
  * app `finanzas` no declara paginación—, los decimales llegan como STRING
  * ("1160.00") y las fechas como string "YYYY-MM-DD". Todo campo de texto del
  * modelo es `null=True, blank=True`, de ahí el `| null` por defecto.
  *
- * CAMPOS DELIBERADAMENTE NO DECLARADOS: `api_provider`, `token`,
- * `refresh_token` y `ultima_sincronizacion`. Viajan en la respuesta por el
- * `fields = "__all__"` del serializer, pero pertenecen a un Open Banking que no
- * tiene código detrás y hoy llegan vacíos. No declararlos evita que se
- * consuman, se muestren o se filtren por accidente — en particular los dos
- * tokens, que no deben tocar la UI.
+ * CAMPOS DELIBERADAMENTE NO DECLARADOS: `api_provider` y
+ * `ultima_sincronizacion`. Viajan en la respuesta como solo lectura, pero
+ * pertenecen a un Open Banking que no tiene código detrás y hoy llegan vacíos;
+ * no declararlos evita que se consuman o se muestren por accidente. Los tokens
+ * de ese Open Banking (`token`, `refresh_token`) el backend ya no los devuelve
+ * ni los acepta (EC-710).
  *
  * Parámetros que acepta el listado: `banco`, `moneda`, `alias`, `numero_cuenta`
  * (alias `numero`), `activo` y `ordering`, con orden por defecto
