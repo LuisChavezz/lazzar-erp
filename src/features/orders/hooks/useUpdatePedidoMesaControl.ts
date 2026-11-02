@@ -132,7 +132,8 @@ export const useUpdatePedidoMesaControl = (
       // Las líneas reescritas cambian las piezas de cada paso de la trazabilidad.
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-      // Pedidos de Almacén muestra el cliente y las programaciones del pedido.
+      // Reescribir las líneas puede cambiar lo programado del pedido, que lista
+      // Pedidos de Almacén (y el Paso 1 de Nuevo Surtido).
       void invalidateScheduledPedidos(queryClient);
       // La cotización de origen también cambió en el servidor.
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
