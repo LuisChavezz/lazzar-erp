@@ -9,14 +9,15 @@ export interface ReceptionLineVariant {
 }
 
 /**
- * Talla/color de los renglones de una recepción de OP.
+ * Talla/color de los renglones de una recepción de OP o de OC de producto
+ * terminado comprada por SKU.
  *
  * El detalle de la recepción (GET /compras/recepciones/{id}/) solo trae el id
  * de `producto_variante`, sin talla ni color, y no hay otro endpoint que los
  * resuelva por renglón: se pide cada variante DISTINTA a
  * GET /catalogo/producto-variante/{id}/. Solo corre cuando el diálogo de
- * inspección ya cargó el detalle (nunca por prefetch). En renglones de OC la
- * variante es `null` y no se pide nada.
+ * inspección ya cargó el detalle (nunca por prefetch). En renglones sin
+ * variante (materia prima, PT sin SKU) es `null` y no se pide nada.
  */
 export const useReceptionLineVariants = (
   variantIds: (number | null)[],

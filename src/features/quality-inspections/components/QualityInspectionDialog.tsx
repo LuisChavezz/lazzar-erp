@@ -35,8 +35,8 @@ interface QualityInspectionDialogProps {
  * Los renglones y sus cantidades salen del onboarding de Calidad (la fila del
  * listado): son exactamente los que el POST exige. Al abrirse, el diálogo pide
  * además el detalle de la recepción (GET /compras/recepciones/{id}/) solo para
- * lo que el onboarding no trae: el nombre del almacén y, en OP, la variante de
- * cada renglón. Ambos se cruzan por el PK de `RecepcionDetalle`, que es el `id`
+ * lo que el onboarding no trae: el nombre del almacén y, en OP y en OC de
+ * producto terminado por SKU, la variante de cada renglón. Ambos se cruzan por el PK de `RecepcionDetalle`, que es el `id`
  * del renglón en los dos endpoints (y el `recepcion_detalle` del POST).
  */
 export function QualityInspectionDialog({
@@ -57,17 +57,22 @@ export function QualityInspectionDialog({
   const variantIdByLine = new Map(
     (detail?.detalles ?? []).map((line) => [line.id, line.producto_variante]),
   );
-  const variants = useReceptionLineVariants(isOp ? [...variantIdByLine.values()] : []);
+  // OP y también OC: una recepción de OC de producto terminado comprada por SKU
+  // trae la variante de cada renglón (el backend la copia del renglón de la OC,
+  // EC-684). En materia prima vienen todas `null` y no se pide nada.
+  const variants = useReceptionLineVariants([...variantIdByLine.values()]);
 
-  // `recepcion_detalle` → estado de su variante (solo OP). Un renglón SIN
-  // variante (`producto_variante` null) no lleva entrada: no hay talla ni color
-  // que mostrar y no es un error. Solo un renglón que no aparece en el detalle
-  // (cruce roto) se marca como error.
+  // `recepcion_detalle` → estado de su variante. Un renglón SIN variante
+  // (`producto_variante` null) no lleva entrada: no hay talla ni color que
+  // mostrar y no es un error. Solo en OP, donde todo renglón tiene variante, un
+  // renglón que no aparece en el detalle (cruce roto) se marca como error.
   const lineVariants = new Map<number, ReceptionLineVariant>();
-  if (isOp && reception && detail) {
+  if (reception && detail) {
     for (const line of reception.detalle) {
       if (!variantIdByLine.has(line.id)) {
-        lineVariants.set(line.id, { isLoading: false, isError: true, variant: undefined });
+        if (isOp) {
+          lineVariants.set(line.id, { isLoading: false, isError: true, variant: undefined });
+        }
         continue;
       }
       const variantId = variantIdByLine.get(line.id);
