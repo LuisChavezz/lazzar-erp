@@ -61,7 +61,7 @@ export const useCancelarPoliza = () => {
     },
     onSuccess: (data) => {
       toast.success(
-        data.contrapoliza_id !== null
+        typeof data.contrapoliza_id === "number"
           ? "Póliza cancelada. Se generó una contrapóliza que revierte el asiento."
           : "Póliza cancelada correctamente",
       );
