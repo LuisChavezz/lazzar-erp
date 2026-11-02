@@ -12,3 +12,11 @@
  * los consumidores de Compras.
  */
 export const PROCUREMENT_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos
+
+/**
+ * Mismo criterio que `PROCUREMENT_QUERY_GC_TIME`, para las listas de Mesa de
+ * Control (EC-694): cotizaciones en revisión, clientes y pedidos. En
+ * `["orders"]`, llave compartida con otros módulos, solo lo pasan los
+ * consumidores de Mesa de Control.
+ */
+export const OPERATIONS_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos

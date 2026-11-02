@@ -10,6 +10,7 @@ import {
   ListaPreciosIcon,
   PedidosIcon,
 } from '@/src/components/Icons';
+import { OPERATIONS_QUERY_GC_TIME } from '@/src/constants/queryCache';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
@@ -24,7 +25,11 @@ import { OperationsOrderTable } from './OperationsOrderTable';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
-  const { orders, isLoading, isError, error, hasLoaded } = useOrders();
+  // Mesa de Control conserva su lista más tiempo en caché (EC-694); `["orders"]`
+  // es compartida y los demás consumidores usan el global.
+  const { orders, isLoading, isError, error, hasLoaded } = useOrders(undefined, {
+    gcTime: OPERATIONS_QUERY_GC_TIME,
+  });
   // El listado solo trae la PK de la moneda (`moneda`); el código ISO sale del
   // catálogo, con la misma caché (`["currencies"]`) que `OrderCurrencyProvider`.
   const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();

@@ -1,6 +1,7 @@
 'use client';
 
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { OPERATIONS_QUERY_GC_TIME } from '@/src/constants/queryCache';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
@@ -30,7 +31,9 @@ const pluralize = (count: number, singular: string, plural: string) =>
  * hook ni la caché que comparte con otras vistas; React Compiler lo memoriza.
  */
 export function ScheduledOrdersPanel() {
-  const { orders, isLoading, isError, error, hasLoaded } = useOrders(SCHEDULED_ORDERS_PARAMS);
+  const { orders, isLoading, isError, error, hasLoaded } = useOrders(SCHEDULED_ORDERS_PARAMS, {
+    gcTime: OPERATIONS_QUERY_GC_TIME,
+  });
   const queryClient = useQueryClient();
   const queryKey = ordersQueryKey(SCHEDULED_ORDERS_PARAMS);
   const isRefetching = useIsFetching({ queryKey, exact: true }) > 0;
