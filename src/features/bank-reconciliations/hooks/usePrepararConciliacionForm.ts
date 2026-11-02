@@ -29,6 +29,17 @@ export type EstadoSolapamiento =
   | "conflicto"
   | "libre";
 
+/**
+ * Con qué resultado de la comprobación de solapamiento se envía. Viaja como
+ * `onSubmitMeta` y no se lee de la variable del hook dentro de `onSubmit`:
+ * `estadoSolapamiento` se calcula DESPUÉS de `useForm` (depende de su store), y
+ * el React Compiler memoiza `onSubmit` sin ella, así que la guarda leía siempre
+ * el valor del primer render (`"incompleto"`) y el envío nunca salía.
+ */
+interface PrepararSubmitMeta {
+  estadoSolapamiento: EstadoSolapamiento;
+}
+
 interface UsePrepararConciliacionFormParams {
   /**
    * Se invoca con la respuesta COMPLETA de `preparar`, no solo con el id: la
@@ -109,7 +120,10 @@ export function usePrepararConciliacionForm({
 
   const form = useForm({
     defaultValues,
-    onSubmit: async ({ value }) => {
+    // Por defecto BLOQUEA: un envío que no pase el estado (cualquier otra vía que
+    // `handleFormSubmit`) no puede preparar.
+    onSubmitMeta: { estadoSolapamiento: "incompleto" } as PrepararSubmitMeta,
+    onSubmit: async ({ value, meta }) => {
       const parsed = PrepararConciliacionFormSchema.safeParse(value);
       if (!parsed.success) {
         const nextErrors: Partial<Record<FormField, string>> = {};
@@ -130,7 +144,7 @@ export function usePrepararConciliacionForm({
       // que la ÚNICA salida permitida es un resultado de solapamiento verificado
       // para este rango y sin conflicto. Ni un error, ni una consulta en vuelo,
       // ni datos de otro rango cuentan como "libre".
-      if (estadoSolapamiento !== "libre") return;
+      if (meta.estadoSolapamiento !== "libre") return;
 
       const payload: PrepararConciliacionPayload = {
         cuenta_bancaria: parsed.data.cuenta_bancaria,
@@ -267,7 +281,9 @@ export function usePrepararConciliacionForm({
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void form.handleSubmit();
+    // El estado del render ACTUAL: `handleFormSubmit` se declara después de
+    // `estadoSolapamiento`, así que nunca lo ve desfasado.
+    void form.handleSubmit({ estadoSolapamiento });
   };
 
   return {
