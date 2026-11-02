@@ -74,8 +74,8 @@ export interface PolizaDetalle {
   orden: number | null;
   /**
    * Documentos que ORIGINAN el asiento cuando la póliza la genera el backend
-   * (p. ej. la póliza automática del alta de una CxC pendiente, que liga
-   * `factura`). Se declaran para no perderlos en la lectura, pero la captura
+   * (las automáticas de facturas, CxP, cobros, pagos y movimientos bancarios, y
+   * las contrapólizas que copian los de su original). Se declaran para no perderlos en la lectura, pero la captura
    * MANUAL no los ofrece: esta pantalla registra pólizas de diario capturadas a
    * mano, no reconstruye la ligadura documental que el backend arma solo. Nunca
    * viajan en el alta (ver `CreatePolizaDetallePayload`).
@@ -114,9 +114,9 @@ export interface Poliza {
   folio_consecutivo: number | null;
   tipo: PolizaTipo;
   /**
-   * Fecha contable "YYYY-MM-DD". `DateField(auto_now_add=True, null=True)`: la
-   * fija el backend al crear y es de SOLO LECTURA — nunca se envía. Es nullable
-   * en el modelo, así que puede llegar nula.
+   * Fecha contable "YYYY-MM-DD". `DateField(default=timezone.localdate,
+   * null=True)`: el modelo la admite escrita, pero esta pantalla nunca la envía
+   * y el backend pone la del día al crear. Es nullable, así que puede llegar nula.
    */
   fecha: string | null;
   concepto: string | null;
@@ -175,7 +175,7 @@ export interface CreatePolizaDetallePayload {
  * formulario y lo que viaja al API (`buildPolizaPayload`), igual que
  * `CreateNotaCreditoPayload`/`buildNotaCreditoPayload` en notas de crédito.
  *
- * Omite `empresa` (la resuelve el servidor), `fecha` (`auto_now_add`),
+ * Omite `empresa` (la resuelve el servidor), `fecha` (el backend pone la del día),
  * `folio_consecutivo` y `usuario_creacion` (los llena el backend), `activo` (su
  * default es correcto) y los tres campos calculados.
  *

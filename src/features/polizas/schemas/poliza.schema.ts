@@ -111,11 +111,11 @@ export const polizaTieneImportes = (
  * - `Cancelada` queda fuera: una póliza cancelada pudo haber estado contabilizada,
  *   y el diálogo de Cancelar promete que "se conserva en el listado". Mismo
  *   criterio que notas de crédito, que solo ofrece eliminar borradores.
- * - Las pólizas que GENERA el backend quedan fuera aunque nazcan en `Borrador`:
- *   el alta de una CxC pendiente crea su asiento automático con `factura` en los
- *   movimientos, y borrarlo destruiría el registro contable de esa factura. Se
- *   distinguen porque algún movimiento lleva un FK documental (`factura`,
- *   `factura_proveedor`, `pago`, `cobro` o `movimiento_bancario`); la captura
+ * - Las pólizas que GENERA el backend quedan fuera. Hoy nacen `Contabilizada`
+ *   (`PolizaMotorService`), así que la primera condición ya las excluye, pero la
+ *   segunda no depende de eso: llevan un FK documental en sus movimientos
+ *   (`factura`, `factura_proveedor`, `pago`, `cobro` o `movimiento_bancario`) y
+ *   borrarlas destruiría el registro contable de su documento. La captura
  *   manual nunca los envía (ver `CreatePolizaDetallePayload`).
  *
  * Se decide sobre `poliza_detalles`, que el listado ya trae anidado (list y
@@ -296,15 +296,13 @@ export const PolizaFormSchema = z
     /**
      * REQUERIDO EN EL FORMULARIO aunque el backend lo acepte nulo.
      *
-     * `Poliza.__str__` es `return self.folio`: con `folio = None` cualquier
-     * lugar que convierta la póliza a texto —el admin de Django, un mensaje de
-     * error, un log— revienta con `TypeError`. Guardar una póliza sin folio es
-     * dejar una fila que rompe herramientas ajenas a esta pantalla, así que la
-     * interfaz es deliberadamente más estricta que el API.
+     * Una póliza sin folio solo se identificaría por su `#id` en el listado y en
+     * los avisos, así que la interfaz es deliberadamente más estricta que el
+     * API.
      *
-     * Tampoco se autogenera: `PolizaViewSet.perform_create` no asigna folio (el
-     * consecutivo `POL-000001` solo lo produce el alta de CxC pendiente, por
-     * dentro), y no hay endpoint que exponga el siguiente disponible.
+     * Tampoco se autogenera: `PolizaViewSet.perform_create` no asigna folio (los
+     * consecutivos `POL-…` solo los producen las pólizas que el backend genera
+     * solo), y no hay endpoint que exponga el siguiente disponible.
      */
     folio: z
       .string()
