@@ -21,6 +21,18 @@ import type {
 export const compareSizeNames = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
 
+/** Decimales con que el backend serializa las cantidades de inventario. */
+const QTY_SCALE = 10_000;
+
+/**
+ * Lo pendiente de compra que no tiene talla (renglones de OC sin variante): el
+ * total menos lo desglosado. Se redondea a los 4 decimales del contrato para
+ * que el error de coma flotante de la resta no deje un residuo fantasma, y
+ * nunca es negativo.
+ */
+const comprasSinTalla = (total: number, porTalla: number): number =>
+  Math.max(0, Math.round((total - porTalla) * QTY_SCALE) / QTY_SCALE);
+
 const mapOrder = (orden: InventoryPipelineOrdenApi): InventoryPipelineOrder => ({
   folio: orden.folio?.trim() ? orden.folio : null,
   estatus: orden.estatus_display,
@@ -36,13 +48,15 @@ const mapOrder = (orden: InventoryPipelineOrdenApi): InventoryPipelineOrder => (
 export const mapInventoryPipelineRow = (
   item: InventoryPipelineResultadoApi,
 ): InventoryPipelineRow => {
-  // Unión de las llaves de los tres mapas: el contrato dice que coinciden, pero
-  // si alguno trajera una talla de más no se pierde — la ausente cuenta como 0.
+  // Unión de las llaves de los cuatro mapas: los tres de existencia y OP
+  // coinciden, pero `compras_por_talla` trae las suyas (una talla que solo se
+  // está comprando). La ausente en un mapa cuenta como 0 en él.
   const tallaNames = Array.from(
     new Set([
       ...Object.keys(item.disponible_por_talla ?? {}),
       ...Object.keys(item.produccion_por_talla ?? {}),
       ...Object.keys(item.total_por_talla ?? {}),
+      ...Object.keys(item.compras_por_talla ?? {}),
     ]),
   ).sort(compareSizeNames);
 
@@ -50,8 +64,13 @@ export const mapInventoryPipelineRow = (
     talla,
     disponible: safeParseAmount(item.disponible_por_talla?.[talla]),
     enOp: safeParseAmount(item.produccion_por_talla?.[talla]),
+    // El del backend tal cual: disponible + OP, sin compras.
     total: safeParseAmount(item.total_por_talla?.[talla]),
+    compras: safeParseAmount(item.compras_por_talla?.[talla]),
   }));
+
+  const comprasPendientes = safeParseAmount(item.compras_pendiente_cantidad);
+  const comprasPorTalla = tallas.reduce((sum, t) => sum + t.compras, 0);
 
   const disponible = safeParseAmount(item.disponible_total);
   const enOp = safeParseAmount(item.produccion_total);
@@ -65,7 +84,8 @@ export const mapInventoryPipelineRow = (
     disponible,
     enOp,
     total: disponible + enOp,
-    comprasPendientes: safeParseAmount(item.compras_pendiente_cantidad),
+    comprasPendientes,
+    comprasSinTalla: comprasSinTalla(comprasPendientes, comprasPorTalla),
     tallas,
     ordenesProduccion,
     ordenesCompra,
