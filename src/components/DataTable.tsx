@@ -619,6 +619,7 @@ export function DataTable<TData, TValue>({
 
   // Function to handle column reordering
   const moveColumn = (draggedId: string, targetId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `table` (useReactTable) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     const newColumnOrder = [...table.getAllLeafColumns().map((c) => c.id)];
     const draggedIndex = newColumnOrder.indexOf(draggedId);
     const targetIndex = newColumnOrder.indexOf(targetId);

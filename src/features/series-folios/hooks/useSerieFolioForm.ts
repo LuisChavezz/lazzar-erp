@@ -129,6 +129,7 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
     if (
       field === "folio_final" &&
       parsed.success &&
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       !isFolioRangeValid(form.getFieldValue("folio_inicial"), value as number)
     ) {
       folioRangeFiredRef.current = true;

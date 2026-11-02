@@ -176,6 +176,7 @@ export function useIncidentForm({ onSuccess, incidentToEdit }: UseIncidentFormPa
     // también la regla, con el `estado` vigente. Mismo arreglo que el blur de
     // `fecha_fin` en capacitaciones.
     if (field === "acciones_tomadas") {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       const message = getAccionesTomadasError(form.getFieldValue("estado"), value as string);
       if (message) {
         accionesFiredRef.current = true;

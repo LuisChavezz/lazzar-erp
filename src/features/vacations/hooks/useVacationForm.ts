@@ -192,8 +192,10 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
 
   /** Mensaje de la regla cruzada de `field` con los valores vigentes del form. */
   const getCrossRuleError = (field: CrossRuleField, overrides: Partial<VacationFormValues> = {}) => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
     const values = { ...form.state.values, ...overrides };
     return field === "fecha_fin"
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `ruleContext` (objeto) usa un hook posterior a useForm; un binding objeto nunca sale de las deps del compilador (EC-701)
       ? getFechaFinError(values, ruleContext)
       : getDiasSolicitadosError(values);
   };
@@ -235,6 +237,7 @@ export function useVacationForm({ onSuccess, vacationToEdit }: UseVacationFormPa
   // Valida todo el formulario antes de mutar y devuelve los campos inválidos
   // para poder llevar la vista al primero.
   const validateForm = (values: VacationFormValues) => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `ruleContext` (objeto) usa un hook posterior a useForm; un binding objeto nunca sale de las deps del compilador (EC-701)
     const parsed = createVacationFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
       setClientErrors({});

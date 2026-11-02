@@ -213,6 +213,7 @@ export function useTrainingForm({ onSuccess, trainingToEdit }: UseTrainingFormPa
     if (
       field === "fecha_fin" &&
       parsed.success &&
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       !isFechaRangeValid(form.getFieldValue("fecha_inicio"), value as string)
     ) {
       fechaRangeFiredRef.current = true;
@@ -223,6 +224,7 @@ export function useTrainingForm({ onSuccess, trainingToEdit }: UseTrainingFormPa
     // Igual para los campos de "Finalizado": su schema de un campo es
     // `z.string()`, así que su regla se evalúa aquí con el `estado` vigente.
     if (field === "calificacion" || field === "constancia_url") {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
       const message = RESULTADO_RULES[field](form.getFieldValue("estado"), value as string);
       if (message) {
         resultadoFiredRef.current[field] = true;
