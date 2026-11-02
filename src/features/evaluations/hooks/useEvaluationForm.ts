@@ -181,7 +181,7 @@ export function useEvaluationForm({ onSuccess, evaluationToEdit }: UseEvaluation
 
   /** Mensaje de la regla cruzada de `field` con los valores vigentes del form. */
   const getCrossRuleError = (field: CrossRuleField, overrides: Partial<EvaluationFormValues> = {}) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `form` (objeto de useForm) se declara abajo; un binding objeto nunca sale de las deps del compilador (EC-701)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- form (useForm) se declara abajo; binding no primitivo, ver CLAUDE.md (EC-701)
     const values = { ...form.state.values, ...overrides };
     return field === "evaluador"
       ? getEvaluadorError(values.evaluador, values.empleado, values.estado)

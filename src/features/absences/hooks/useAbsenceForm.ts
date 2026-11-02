@@ -205,7 +205,7 @@ export function useAbsenceForm({ onSuccess, absenceToEdit }: UseAbsenceFormParam
   };
 
   const validateForm = (values: AbsenceFormValues) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `ruleContext` (objeto) usa un hook posterior a useForm; un binding objeto nunca sale de las deps del compilador (EC-701)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- ruleContext usa un hook posterior a useForm; binding no primitivo, ver CLAUDE.md (EC-701)
     const parsed = createAbsenceFormSchema(ruleContext).safeParse(values);
     if (parsed.success) {
       setClientErrors({});

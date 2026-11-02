@@ -239,7 +239,7 @@ export function useCreateCobroForm({
 
       try {
         await saveCobroMutation({ payload: buildCobroPayload(parsed.data, meta.estatus), cobroId: draft?.id });
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- `resetAll` usa `form`; una función nunca sale de las deps del compilador (EC-701)
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- resetAll usa form (declarado abajo); binding no primitivo, ver CLAUDE.md (EC-701)
         if (!isEdit) resetAll();
         onSuccess?.();
       } catch {
