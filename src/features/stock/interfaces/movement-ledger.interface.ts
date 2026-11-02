@@ -1,7 +1,8 @@
 /**
  * Contrato de `GET /inventarios/movimientos/auxiliar/` (Auxiliar de
  * movimientos: kardex de una variante). Fuente: `inventarios/api/auxiliar.py`
- * y la acción `auxiliar` de `MovimientoOperacionViewSet` (nucleo-erp PR #798).
+ * y la acción `auxiliar` de `MovimientoOperacionViewSet` (nucleo-erp PR #798;
+ * `hay_mas`, alcance por sucursal y 400 en ids no numéricos desde el PR #810).
  *
  * Cantidades: strings decimales con 4 decimales ("10.0000"). Costos: strings
  * con 2 decimales y SIN moneda. `fecha`: datetime ISO (UTC).
@@ -81,6 +82,8 @@ export interface MovementLedgerRow {
 export interface MovementLedgerResolved {
   variante: MovementLedgerVariant;
   opciones: [];
+  /** Siempre `false` en esta forma: solo las opciones se recortan. */
+  hay_mas: boolean;
   resumen: MovementLedgerSummary;
   results: MovementLedgerRow[];
 }
@@ -92,11 +95,16 @@ export interface MovementLedgerResolved {
 export interface MovementLedgerOptions {
   variante: null;
   opciones: MovementLedgerVariant[];
+  /** Hubo más coincidencias de las que caben en `opciones`: hay que refinar la búsqueda. */
+  hay_mas: boolean;
 }
 
 export type MovementLedgerResponse = MovementLedgerResolved | MovementLedgerOptions;
 
-/** Tope de `opciones` en el backend (`LIMITE_OPCIONES`); con este largo puede haber más. */
+/**
+ * Tope de `opciones` en el backend (`LIMITE_OPCIONES`). Solo para el texto:
+ * si hay más coincidencias lo dice `hay_mas`, no el largo de `opciones`.
+ */
 export const MOVEMENT_LEDGER_MAX_OPTIONS = 20;
 
 /** Se manda `q` o `producto_variante` (si van los dos, el backend ignora `q`). */
