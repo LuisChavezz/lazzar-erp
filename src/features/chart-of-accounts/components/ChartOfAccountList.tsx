@@ -39,7 +39,7 @@ export default function ChartOfAccountList() {
   const [editTarget, setEditTarget] = useState<CuentaContable | null>(null);
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
 
-  const { mutate: toggleActivo, isPending: isTogglePending } =
+  const { mutateAsync: toggleActivoAsync, isPending: isTogglePending } =
     useToggleChartOfAccountActivo();
   const busyIds = usePendingChartOfAccountIds();
 
@@ -207,10 +207,16 @@ export default function ChartOfAccountList() {
             closeOnConfirm={false}
             busy={toggle.isBusy}
             onConfirm={() => {
-              toggleActivo(
-                { id: toggleSnapshot.id, activo: !toggleSnapshot.activo },
-                { onSettled: () => toggle.close() },
-              );
+              const id = toggleSnapshot.id;
+              if (!toggle.acquire(id)) return;
+              toggleActivoAsync({ id, activo: !toggleSnapshot.activo })
+                // El hook ya avisó del error con su toast; aquí solo se evita el
+                // rechazo no manejado de la promesa.
+                .catch(() => {})
+                .finally(() => {
+                  toggle.release(id);
+                  toggle.close();
+                });
             }}
             // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
             confirmColor={toggleSnapshot.activo ? "amber" : "green"}

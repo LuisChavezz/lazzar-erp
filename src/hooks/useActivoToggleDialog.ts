@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useDialogSession } from "./useDialogSession";
+import { useRowActionLock } from "./useRowActionLock";
 import {
   getStaleRowDialogNotice,
   type StaleRowDialogMessages,
@@ -44,6 +45,11 @@ interface UseActivoToggleDialogArgs<T extends { id: number; activo: boolean }> {
  *   con un toast de aviso (`getStaleRowDialogNotice`). Ajuste en render; el
  *   toast sale de un efecto, porque en pleno render actualizaría otro
  *   componente (el Toaster).
+ * - `acquire`/`release` (`useRowActionLock`): candado SÍNCRONO por fila para
+ *   confirmar. `busyIds` e `isPending` llegan en un render posterior, así que
+ *   el segundo clic de un doble clic los encontraría libres y mandaría otro
+ *   cambio; la ref del candado ya está tomada en ese clic. Se suelta cuando la
+ *   petición termina.
  * - `snapshot`/`sessionId` (`useDialogSession`): la copia del registro al
  *   ABRIR, para que el texto no siga a los refetch ni al optimista y sobreviva a
  *   la animación de salida. Se toma DESPUÉS del aviso, igual que en `AreaList`.
@@ -57,9 +63,11 @@ export function useActivoToggleDialog<T extends { id: number; activo: boolean }>
 }: UseActivoToggleDialogArgs<T>) {
   const [target, setTarget] = useState<ToggleTarget | null>(null);
   const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
+  const rowLock = useRowActionLock();
 
   const row = target !== null ? (rows.find((item) => item.id === target.id) ?? null) : null;
-  const isBusy = target !== null && (busyIds.includes(target.id) || isPending);
+  const isBusy =
+    target !== null && (busyIds.includes(target.id) || isPending || rowLock.isPending(target.id));
 
   const stale = getStaleRowDialogNotice({
     resource,
@@ -87,6 +95,10 @@ export function useActivoToggleDialog<T extends { id: number; activo: boolean }>
     /** Abre la confirmación para la fila, con el `activo` que tiene ahora. */
     request: (item: T) => setTarget({ id: item.id, activo: item.activo }),
     close: () => setTarget(null),
+    /** Toma el candado de la fila al confirmar; `false` si ya está en vuelo. */
+    acquire: rowLock.acquire,
+    /** Suelta el candado cuando la petición termina (éxito o error). */
+    release: rowLock.release,
     open: target !== null,
     snapshot: session.snapshot,
     sessionId: session.id,
