@@ -185,8 +185,12 @@ export default function PaymentList() {
           <ConfirmDialog
             open={true}
             onOpenChange={(open) => {
-              if (!open) setCancelTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(isBusy(cancelTargetId) || rowLock.isHeld(cancelTargetId))) setCancelTargetId(null);
             }}
+            busy={isBusy(cancelTargetId)}
             title="Cancelar Pago"
             description={`¿Deseas cancelar el pago ${cancelTargetLabel}? Se revertirán los saldos de las cuentas por pagar aplicadas y su movimiento bancario quedará cancelado. El pago se conserva en el listado con estatus Cancelado.`}
             confirmText={isCancelTargetBusy ? "Cancelando..." : "Cancelar pago"}
@@ -207,8 +211,8 @@ export default function PaymentList() {
                 .catch(() => {})
                 .finally(() => {
                   rowLock.release(id);
-                  // Solo cierra SU confirmación: si mientras tanto se cerró con
-                  // "Volver" y se abrió la de otro pago, esa sigue abierta.
+                  // Solo cierra SU confirmación: si ya no es la abierta, la que
+                  // esté abierta no se toca.
                   setCancelTargetId((current) => (current === id ? null : current));
                 });
             }}
