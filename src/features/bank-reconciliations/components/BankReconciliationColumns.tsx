@@ -1,7 +1,10 @@
-import { ColumnDef, createColumnHelper, FilterFn } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { BanIcon, CheckCircleIcon, ChevronRightIcon, ViewIcon } from "@/src/components/Icons";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { BanIcon, CheckCircleIcon } from "@/src/components/Icons";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { formatSaldo } from "@/src/features/bank-accounts/utils/bankAccountMoney";
 import { CONCILIACION_ESTATUS_CONFIG } from "../constants/conciliacionEstatus";
@@ -11,30 +14,71 @@ import {
   diferenciaEnCentavos,
 } from "../schemas/bank-reconciliation.schema";
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
+import { useConciliacionRowActionsContext } from "../hooks/useConciliacionRowActions";
 
 const columnHelper = createColumnHelper<ConciliacionBancaria>();
 
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(CONCILIACION_ESTATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<ConciliacionBancaria> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
+/** Texto de la cuenta: su alias, o `Cuenta #N` si no tiene (`alias` es nullable). */
+export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
+  conciliacion.cuenta_bancaria_alias || `Cuenta #${conciliacion.cuenta_bancaria}`;
 
 /**
- * Columnas del listado de conciliaciones bancarias.
+ * Celda de la cuenta: la conciliación NO tiene folio, así que el nombre de su
+ * cuenta ES el menú de la fila (`FolioActionMenu`, modo nombre), con "Ver
+ * detalle" como primera acción y el estatus debajo. Callbacks y "en vuelo"
+ * llegan por contexto (`ConciliacionRowActionsProvider`).
+ */
+function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
+  const { onViewDetail, onCerrar, onCancelar, busyIds } = useConciliacionRowActionsContext();
+  // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
+  const busy = busyIds.includes(conciliacion.id);
+  const items: ActionMenuItem[] = [];
+
+  // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
+  // terminales y quedan de solo consulta — cancelar una cerrada no revertiría
+  // los movimientos que ya marcó como `Conciliado`.
+  if (conciliacion.estatus === "Borrador") {
+    const cuadra = conciliacionCuadra(
+      conciliacion.saldo_estado_cuenta,
+      conciliacion.saldo_libros,
+    );
+    items.push({
+      label: cuadra ? "Cerrar conciliación" : "Cerrar conciliación (no cuadra)",
+      icon: CheckCircleIcon,
+      onSelect: () => onCerrar(conciliacion),
+      // El backend rechaza el cierre descuadrado; la acción se ofrece
+      // deshabilitada en vez de esconderla, para que se vea que existe y por qué
+      // no está disponible todavía.
+      disabled: busy || !cuadra,
+    });
+    items.push({
+      label: "Cancelar conciliación",
+      icon: BanIcon,
+      onSelect: () => onCancelar(conciliacion),
+      disabled: busy,
+    });
+  }
+
+  return (
+    <FolioActionMenu
+      name={getCuentaLabel(conciliacion)}
+      detail={{ onSelect: () => onViewDetail(conciliacion) }}
+      items={items}
+      status={
+        <StatusBadge status={conciliacion.estatus} config={CONCILIACION_ESTATUS_CONFIG} />
+      }
+    />
+  );
+}
+
+/**
+ * Columnas del listado de conciliaciones bancarias. Callbacks y "en vuelo"
+ * llegan al menú por `ConciliacionRowActionsProvider`, así una acción no remonta
+ * las celdas.
  *
- * Las acciones solo INVOCAN callbacks: los diálogos (detalle y las
- * confirmaciones de cerrar y cancelar) viven en `BankReconciliationView`. Una
- * celda se desmonta al ordenar, filtrar o paginar, y ambas mutaciones cambian
- * el `estatus`, que es justo uno de los filtros de la tabla.
+ * Los diálogos (detalle y las confirmaciones de cerrar y cancelar) viven en
+ * `BankReconciliationView`: una celda se desmonta al ordenar, filtrar o paginar,
+ * y ambas mutaciones cambian el `estatus`, que es justo uno de los filtros.
  *
  * NO hay acción de eliminar: el backend la acepta sobre un borrador, pero
  * retirar una conciliación es cancelarla —queda el rastro del periodo que se
@@ -45,91 +89,13 @@ const estatusFilterFn: FilterFn<ConciliacionBancaria> = (row, _columnId, filterV
  *   propia moneda: formatear con el MXN por defecto mentiría sobre una cuenta
  *   en dólares.
  */
-export const getColumns = (
-  onViewDetail: (conciliacion: ConciliacionBancaria) => void,
-  onCerrar: (conciliacion: ConciliacionBancaria) => void,
-  onCancelar: (conciliacion: ConciliacionBancaria) => void,
-  monedaDe: (cuentaBancariaId: number) => string | null,
-) => {
+export const getColumns = (monedaDe: (cuentaBancariaId: number) => string | null) => {
   const columns = [
-    // Accessor de FUNCIÓN colapsando el vacío a `""`: el filtro global de
-    // TanStack decide si una columna participa mirando solo la primera fila, y
-    // un `null` (`typeof null === "object"`) la sacaría de la búsqueda en
-    // TODAS. `cuenta_bancaria_alias` es nullable.
-    columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
+    // Mismo texto en la celda, la búsqueda y el orden (con su `Cuenta #N`).
+    columnHelper.accessor((row) => getCuentaLabel(row), {
       id: "cuenta_bancaria_alias",
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Cuenta</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
-      cell: (info) => {
-        const conciliacion = info.row.original;
-        const esBorrador = conciliacion.estatus === "Borrador";
-        const cuadra = conciliacionCuadra(
-          conciliacion.saldo_estado_cuenta,
-          conciliacion.saldo_libros,
-        );
-
-        const menuItems: ActionMenuItem[] = [
-          {
-            label: "Ver detalle",
-            icon: ViewIcon,
-            onSelect: () => onViewDetail(conciliacion),
-          },
-        ];
-
-        // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
-        // terminales y quedan de solo consulta — cancelar una cerrada no
-        // revertiría los movimientos que ya marcó como `Conciliado`.
-        if (esBorrador) {
-          menuItems.push({
-            label: "Cerrar conciliación",
-            icon: CheckCircleIcon,
-            onSelect: () => onCerrar(conciliacion),
-            // El backend rechaza el cierre descuadrado; la acción se ofrece
-            // deshabilitada en vez de esconderla, para que se vea que existe y
-            // por qué no está disponible todavía.
-            disabled: !cuadra,
-          });
-          menuItems.push({
-            label: "Cancelar conciliación",
-            icon: BanIcon,
-            onSelect: () => onCancelar(conciliacion),
-          });
-        }
-
-        const cuenta = info.getValue() || `#${conciliacion.cuenta_bancaria}`;
-        const statusCfg = CONCILIACION_ESTATUS_CONFIG[conciliacion.estatus];
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-              title={statusCfg?.label ?? conciliacion.estatus}
-              aria-hidden="true"
-            />
-            <span className="sr-only">{statusCfg?.label ?? conciliacion.estatus}</span>
-            <ActionMenu
-              items={menuItems}
-              ariaLabel={`Acciones de la conciliación de ${cuenta}`}
-              align="start"
-              trigger={
-                <button type="button" title="Ver acciones" className="group inline-flex items-center gap-1 cursor-pointer">
-                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {cuenta}
-                  </span>
-                  <ChevronRightIcon
-                    className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                    aria-hidden="true"
-                  />
-                </button>
-              }
-            />
-          </div>
-        );
-      },
+      header: "Cuenta",
+      cell: (info) => <ConciliacionCuentaCell conciliacion={info.row.original} />,
     }),
     // El periodo se arma de dos campos, así que la columna es de función y su
     // valor ya es el texto que se busca y se ordena.
@@ -207,4 +173,22 @@ export const getColumns = (
   ] as ColumnDef<ConciliacionBancaria>[];
 
   return columns;
+};
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * La cuenta filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ * catálogo completo y, al final, cada valor desconocido de las filas, crudo.
+ * Cuenta y periodo NO van aquí: los resuelve el servidor con los controles de
+ * arriba de la tabla (la cuenta es obligatoria y el periodo es un solapamiento).
+ */
+export const CONCILIACION_HEADER_FILTERS: Partial<
+  Record<string, HeaderFilterSpec<ConciliacionBancaria>>
+> = {
+  cuenta_bancaria_alias: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(CONCILIACION_ESTATUS_CONFIG),
+  },
 };

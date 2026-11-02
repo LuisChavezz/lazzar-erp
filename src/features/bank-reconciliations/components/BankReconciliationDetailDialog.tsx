@@ -1,9 +1,11 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
-  InfoField,
+  InfoTile,
+  InfoTileGrid,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
@@ -77,6 +79,10 @@ export function BankReconciliationDetailDialog({
       : "—"
   }`;
 
+  // `alias` es nullable: se cae a `Cuenta #N`, el mismo texto que la fila.
+  const cuenta =
+    conciliacion.cuenta_bancaria_alias || `Cuenta #${conciliacion.cuenta_bancaria}`;
+
   return (
     <MainDialog
       open={open}
@@ -84,32 +90,25 @@ export function BankReconciliationDetailDialog({
       maxWidth="640px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <ConciliacionIcon className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de la Conciliación
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              {textOrDash(conciliacion.cuenta_bancaria_alias)} · {periodo}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle de la Conciliación"
+          subtitle={`${cuenta} · ${periodo}`}
+          statusColor="indigo"
+          icon={ConciliacionIcon}
+        />
       }
     >
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Cuenta bancaria">
-            {textOrDash(conciliacion.cuenta_bancaria_alias)}
-          </InfoField>
-          <InfoField label="Estatus">
+        <InfoTileGrid>
+          <InfoTile label="Cuenta bancaria">{cuenta}</InfoTile>
+          <InfoTile label="Estatus">
             <StatusBadge
               status={conciliacion.estatus}
               config={CONCILIACION_ESTATUS_CONFIG}
             />
-          </InfoField>
-          <InfoField label="Periodo">{periodo}</InfoField>
-        </div>
+          </InfoTile>
+          <InfoTile label="Periodo">{periodo}</InfoTile>
+        </InfoTileGrid>
 
         {/* El cuadre: los dos saldos enfrentados y su diferencia. Es el motivo
             de existir de la pantalla, así que va destacado y no dentro de la

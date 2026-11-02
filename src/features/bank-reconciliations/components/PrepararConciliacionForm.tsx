@@ -4,7 +4,7 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
-import { ConciliacionIcon } from "@/src/components/Icons";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { formatShortDate } from "@/src/utils/formatDate";
 import type {
   ConciliacionBancaria,
@@ -97,22 +97,9 @@ export default function PrepararConciliacionForm({
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
       <fieldset disabled={isPending}>
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-          <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <ConciliacionIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Periodo a conciliar
-              </h3>
-              <p className="text-xs text-slate-500">
-                Cuenta, rango de fechas y saldo que reporta el estado de cuenta
-              </p>
-            </div>
-          </div>
-
-          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Un solo bloque: sin tarjeta ni encabezado propio (el título y el
+            subtítulo ya los da el diálogo). */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
             <div className="md:col-span-2">
               <form.Field name="cuenta_bancaria">
                 {(field) => (
@@ -125,6 +112,7 @@ export default function PrepararConciliacionForm({
                       clearFieldError("cuenta_bancaria");
                     }}
                     error={getError("cuenta_bancaria")}
+                    className={COMPACT_FIELD_CLS}
                   >
                     <option value="0" disabled>
                       Seleccionar...
@@ -156,6 +144,7 @@ export default function PrepararConciliacionForm({
                       clearFieldError("fecha_inicio");
                     }}
                     error={getError("fecha_inicio")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -174,6 +163,7 @@ export default function PrepararConciliacionForm({
                       clearFieldError("fecha_final");
                     }}
                     error={getError("fecha_final")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -196,6 +186,7 @@ export default function PrepararConciliacionForm({
                       clearFieldError("saldo_estado_cuenta");
                     }}
                     error={getError("saldo_estado_cuenta")}
+                    className={COMPACT_FIELD_CLS}
                   />
                 )}
               </form.Field>
@@ -206,8 +197,7 @@ export default function PrepararConciliacionForm({
                 </p>
               )}
             </div>
-          </div>
-        </section>
+        </div>
 
         {/* Comprobación previa: el periodo no puede pisar una conciliación ya
             cerrada. El backend no lo impide —volvería a tomar movimientos que
