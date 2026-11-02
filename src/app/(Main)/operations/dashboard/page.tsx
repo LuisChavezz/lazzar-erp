@@ -3,7 +3,6 @@ import { OperationsKpiGrid } from "@/src/features/operations/components/Operatio
 import { PendingApprovalQueue } from "@/src/features/operations/components/PendingApprovalQueue";
 import { OperationsQuotesStatusBreakdown } from "@/src/features/operations/components/OperationsQuotesStatusBreakdown";
 import { RecentActivityFeed } from "@/src/features/operations/components/RecentActivityFeed";
-import { OperationsQuickActions } from "@/src/features/operations/components/OperationsQuickActions";
 
 export const metadata: Metadata = {
   title: "Panel | Mesa de Control | ERP",
@@ -52,7 +51,6 @@ export default function OperationsDashboardPage() {
 
         {/* Panel lateral */}
         <div className="space-y-6">
-          <OperationsQuickActions />
           <OperationsQuotesStatusBreakdown />
         </div>
       </div>
