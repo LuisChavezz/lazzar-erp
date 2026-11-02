@@ -9,6 +9,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/finance": "Finanzas y Contabilidad",
   "/hr": "Capital Humano (HR)",
   "/operations": "Mesa de Control",
+  "/operations/dashboard": "Panel de Mesa de Control",
   "/operations/quotes": "Cotizaciones",
   "/operations/orders": "Pedidos",
   "/operations/scheduled-orders": "Pedidos Programados",
