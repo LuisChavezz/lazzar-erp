@@ -13,8 +13,8 @@
  * contenido). Sigue el patrón de `CreateInvoiceDialog` / `StockMovementForm`.
  */
 
-import { useId, useState } from "react";
-import { useIsMutating } from "@tanstack/react-query";
+import { useId, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { useStore } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -32,11 +32,16 @@ import { formatCurrency } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
-import { registerPendingInvoiceMutationKey } from "../hooks/useRegisterPendingInvoice";
 import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 
-function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
+function RegisterPendingInvoiceForm({
+  onClose,
+  submitLockRef,
+}: {
+  onClose: () => void;
+  submitLockRef: RefObject<boolean>;
+}) {
   const {
     form,
     isPending,
@@ -51,7 +56,7 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
     clearFieldErrors,
     handleFormSubmit,
     handleReset,
-  } = useRegisterPendingInvoiceForm({ onSuccess: onClose });
+  } = useRegisterPendingInvoiceForm({ onSuccess: onClose, submitLockRef });
 
   // Suscripciones reactivas para el filtro de pedidos y el total esperado.
   const clienteValue = useStore(form.store, (s) => s.values.cliente);
@@ -533,11 +538,11 @@ function RegisterPendingInvoiceForm({ onClose }: { onClose: () => void }) {
  */
 export const RegisterPendingInvoiceDialog = () => {
   const [isOpen, setIsOpen] = useState(false);
-  // Con el POST en vuelo el diálogo no se cierra (X, Esc): el alta crea factura,
-  // CxC y póliza, y cerrar a medias escondería su resultado. Se lee del
-  // MutationCache por su llave, no del `isPending` del formulario, que vive
-  // dentro del contenido. Mismo patrón que "Preparar conciliación" (EC-676).
-  const isRegistering = useIsMutating({ mutationKey: registerPendingInvoiceMutationKey }) > 0;
+  // Candado del envío (ver `useRegisterPendingInvoiceForm`): se toma al enviar,
+  // ANTES de la validación, así que el diálogo no se cierra (X, Esc) desde el
+  // primer frame. El alta crea factura, CxC y póliza; cerrar a medias
+  // escondería su resultado. Se lee en el handler, no en render.
+  const submitLockRef = useRef(false);
 
   return (
     <MainDialog
@@ -551,7 +556,7 @@ export const RegisterPendingInvoiceDialog = () => {
       }
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open && isRegistering) return;
+        if (!open && submitLockRef.current) return;
         setIsOpen(open);
       }}
       maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
@@ -562,7 +567,9 @@ export const RegisterPendingInvoiceDialog = () => {
         </Button>
       }
     >
-      {isOpen && <RegisterPendingInvoiceForm onClose={() => setIsOpen(false)} />}
+      {isOpen && (
+        <RegisterPendingInvoiceForm onClose={() => setIsOpen(false)} submitLockRef={submitLockRef} />
+      )}
     </MainDialog>
   );
 };

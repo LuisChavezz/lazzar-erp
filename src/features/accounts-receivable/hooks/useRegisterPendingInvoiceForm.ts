@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import type { FormEvent } from "react";
+import { useMemo } from "react";
+import type { FormEvent, RefObject } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
@@ -42,11 +42,18 @@ const DEFAULT_VALUES: RegisterPendingInvoiceFormValues = {
  * Errores por campo con `useFormFieldErrors`: los de cliente salen de la
  * validación Zod (`safeParse` en el submit) y los de servidor los pinta la
  * mutación con `setServerFieldError` a partir de las llaves del `400`; al
- * mostrarlos gana el de servidor. Un `ref` evita el doble envío.
+ * mostrarlos gana el de servidor.
+ *
+ * `submitLockRef` es el ÚNICO candado del envío y es del diálogo: se toma de
+ * forma SÍNCRONA al empezar `handleFormSubmit` (antes de la validación
+ * asíncrona de TanStack Form, que retrasa la mutación) y se suelta cuando el
+ * envío termina, también si la validación falla. Con él se ignoran el segundo
+ * clic o Enter y el cierre del diálogo (Cerrar, X, Esc).
  */
 export function useRegisterPendingInvoiceForm({
   onSuccess,
-}: { onSuccess?: () => void } = {}) {
+  submitLockRef,
+}: { onSuccess?: () => void; submitLockRef: RefObject<boolean> }) {
   // ─── Catálogos (reutilizados tal cual de sus módulos) ────────────────────
   const {
     customers,
@@ -171,8 +178,6 @@ export function useRegisterPendingInvoiceForm({
   };
 
   // ─── Formulario ──────────────────────────────────────────────────────────
-  const submitInFlight = useRef(false);
-
   const form = useForm({
     defaultValues: DEFAULT_VALUES,
     onSubmit: async ({ value }) => {
@@ -181,9 +186,6 @@ export function useRegisterPendingInvoiceForm({
       // `parsed` trae los montos normalizados (p. ej. descuento "" → "0.00").
       const parsed = validateForm(value);
       if (!parsed) return;
-
-      if (submitInFlight.current) return;
-      submitInFlight.current = true;
 
       try {
         const folio = parsed.folio.trim();
@@ -216,8 +218,6 @@ export function useRegisterPendingInvoiceForm({
         onSuccess?.();
       } catch {
         // Los errores de campo/toast ya se manejaron en `onError` de la mutación.
-      } finally {
-        submitInFlight.current = false;
       }
     },
   });
@@ -227,10 +227,15 @@ export function useRegisterPendingInvoiceForm({
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void form.handleSubmit();
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    void form.handleSubmit().finally(() => {
+      submitLockRef.current = false;
+    });
   };
 
   const handleReset = () => {
+    if (submitLockRef.current) return;
     form.reset(DEFAULT_VALUES);
     clearAllErrors();
   };

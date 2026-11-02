@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useIsMutating } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -13,7 +13,6 @@ import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/us
 import { buildCxcIndex, cobroLabel, type CobroRow } from "../utils/collection.utils";
 import { cobroToFormValues } from "../utils/cobroDraft";
 import { CreateCobroForm } from "./CreateCobroForm";
-import { saveCobroMutationKey } from "../hooks/useSaveCobro";
 
 interface CobroDraftEditDialogProps {
   /** El borrador a editar (la fila del listado), o `null` cerrado. */
@@ -43,9 +42,10 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
   const draft = session.snapshot;
 
   const close = () => onOpenChange(false);
-  // Con el guardado en vuelo el diálogo no se cierra (Cancelar, X, Esc).
-  const isSaving =
-    useIsMutating({ mutationKey: saveCobroMutationKey(draft?.id), exact: true }) > 0 && draft !== null;
+  // Candado del guardado (ver `useCreateCobroForm`): se toma al enviar, ANTES
+  // de la validación, así que el diálogo no se cierra (Cancelar, X, Esc) desde
+  // el primer frame. Se lee en el handler.
+  const submitLockRef = useRef(false);
 
   return (
     <MainDialog
@@ -59,18 +59,28 @@ export function CobroDraftEditDialog({ cobro, open, onOpenChange }: CobroDraftEd
       }
       open={open}
       onOpenChange={(next) => {
-        if (!next && isSaving) return;
+        if (!next && submitLockRef.current) return;
         onOpenChange(next);
       }}
       maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
     >
-      {open && draft && <DraftLoader key={session.id} cobro={draft} onDone={close} />}
+      {open && draft && (
+        <DraftLoader key={session.id} cobro={draft} onDone={close} submitLockRef={submitLockRef} />
+      )}
     </MainDialog>
   );
 }
 
 /** Espera el listado de CxC (pedido solo aquí, con el diálogo abierto) y monta el formulario. */
-function DraftLoader({ cobro, onDone }: { cobro: CobroRow; onDone: () => void }) {
+function DraftLoader({
+  cobro,
+  onDone,
+  submitLockRef,
+}: {
+  cobro: CobroRow;
+  onDone: () => void;
+  submitLockRef: RefObject<boolean>;
+}) {
   const { cuentas, hasLoaded, isError } = useCuentasPorCobrar();
 
   if (!hasLoaded) {
@@ -88,18 +98,28 @@ function DraftLoader({ cobro, onDone }: { cobro: CobroRow; onDone: () => void })
     );
   }
 
-  return <DraftForm cobro={cobro} cuentas={cuentas} onDone={onDone} />;
+  return <DraftForm cobro={cobro} cuentas={cuentas} onDone={onDone} submitLockRef={submitLockRef} />;
 }
 
 /**
  * Siembra el formulario UNA vez por apertura: los valores iniciales no deben
  * cambiar si el listado de CxC se refresca mientras se edita.
  */
-function DraftForm({ cobro, cuentas, onDone }: { cobro: CobroRow; cuentas: CuentaPorCobrar[]; onDone: () => void }) {
+function DraftForm({
+  cobro,
+  cuentas,
+  onDone,
+  submitLockRef,
+}: {
+  cobro: CobroRow;
+  cuentas: CuentaPorCobrar[];
+  onDone: () => void;
+  submitLockRef: RefObject<boolean>;
+}) {
   const [seed] = useState(() => ({
     id: cobro.id,
     values: cobroToFormValues(cobro, buildCxcIndex(cuentas)),
     clienteNombre: cobro.cliente_nombre,
   }));
-  return <CreateCobroForm draft={seed} onSuccess={onDone} onCancel={onDone} />;
+  return <CreateCobroForm draft={seed} onSuccess={onDone} onCancel={onDone} submitLockRef={submitLockRef} />;
 }

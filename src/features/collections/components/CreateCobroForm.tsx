@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { RefObject } from "react";
 import { useStore } from "@tanstack/react-form";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
@@ -33,11 +34,13 @@ interface CreateCobroFormProps {
    */
   draft?: CobroDraftSeed;
   onCancel?: () => void;
+  /** Candado del guardado, del diálogo que monta el formulario (ver `useCreateCobroForm`). */
+  submitLockRef: RefObject<boolean>;
 }
 
 const OPTION_CLS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
-export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormProps) {
+export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: CreateCobroFormProps) {
   const {
     form,
     isEdit,
@@ -66,7 +69,8 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
     handleFormSubmit,
     handleSaveDraft,
     handleReset,
-  } = useCreateCobroForm({ onSuccess, draft });
+    isSubmitLocked,
+  } = useCreateCobroForm({ onSuccess, draft, submitLockRef });
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
@@ -468,7 +472,13 @@ export function CreateCobroForm({ onSuccess, draft, onCancel }: CreateCobroFormP
             {/* En edición cierra sin guardar; en el alta limpia el formulario. */}
             <FormCancelButton
               label={isEdit ? "Cancelar" : undefined}
-              onClick={isEdit && onCancel ? onCancel : handleReset}
+              onClick={() => {
+                // Con el guardado en curso (aunque el botón aún no se pinte
+                // deshabilitado) no se cierra ni se limpia.
+                if (isSubmitLocked()) return;
+                if (isEdit && onCancel) onCancel();
+                else handleReset();
+              }}
               disabled={isPending}
             />
             <FormSecondaryButton

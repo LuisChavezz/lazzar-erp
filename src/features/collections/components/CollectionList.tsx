@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useIsMutating } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -30,7 +29,6 @@ import { CobroDraftDeleteDialog } from "./CobroDraftDeleteDialog";
 import { canManageCobroDraft, isDeletableCobroDraft } from "../utils/cobroDraft";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
-import { saveCobroMutationKey } from "../hooks/useSaveCobro";
 import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
 
 export function CollectionList() {
@@ -42,10 +40,10 @@ export function CollectionList() {
   const { data: session } = useSession();
   const canCreate = hasPermission(COBRO_CREATE_PERMISSION, session?.user);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  // Con el alta en vuelo el diálogo no se cierra (Cerrar, X, Esc): cerrarlo a
-  // medias escondería su resultado. Se lee del MutationCache por su llave, no
-  // del `isPending` del formulario, que vive dentro del contenido.
-  const isSavingNew = useIsMutating({ mutationKey: saveCobroMutationKey() }) > 0;
+  // Candado del alta (ver `useCreateCobroForm`): se toma al enviar, ANTES de la
+  // validación, así que el diálogo no se cierra (Cerrar, X, Esc) desde el primer
+  // frame; cerrarlo a medias escondería su resultado. Se lee en el handler.
+  const createSubmitLockRef = useRef(false);
 
   // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
   // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
@@ -148,7 +146,7 @@ export function CollectionList() {
               }
               open={isFormOpen}
               onOpenChange={(open) => {
-                if (!open && isSavingNew) return;
+                if (!open && createSubmitLockRef.current) return;
                 setIsFormOpen(open);
               }}
               maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
@@ -160,7 +158,9 @@ export function CollectionList() {
             >
               {/* Montado solo con el diálogo abierto: los catálogos se piden bajo
                   demanda y cada alta arranca limpia. */}
-              {isFormOpen && <CreateCobroForm onSuccess={() => setIsFormOpen(false)} />}
+              {isFormOpen && (
+                <CreateCobroForm onSuccess={() => setIsFormOpen(false)} submitLockRef={createSubmitLockRef} />
+              )}
             </MainDialog>
           ) : undefined
         }

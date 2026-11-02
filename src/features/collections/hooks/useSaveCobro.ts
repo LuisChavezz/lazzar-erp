@@ -112,13 +112,6 @@ export function parseCobroError(
   return parsed;
 }
 
-/**
- * Llave de la mutación de guardado, POR REGISTRO: el alta comparte `"nuevo"` y
- * cada borrador usa su id. Es el candado del doble envío (`useMutationLock`) y
- * lo que consulta el diálogo para no cerrarse con el guardado en vuelo.
- */
-export const saveCobroMutationKey = (cobroId?: number) => ["save-cobro", cobroId ?? "nuevo"] as const;
-
 /** Guardado de un cobro: alta (`cobroId` ausente) o edición de un borrador. */
 interface SaveCobroVariables {
   payload: CreateCobroPayload;
@@ -128,9 +121,7 @@ interface SaveCobroVariables {
 
 /**
  * Mutación de alta de cobro y de edición de un borrador. `onServerError` recibe
- * el error ya normalizado. `cobroId` (el borrador del formulario) fija la llave
- * de la mutación (`saveCobroMutationKey`); el que viaja en las variables decide
- * POST o PATCH, y es el mismo.
+ * el error ya normalizado.
  *
  * - Un `Borrador` (alta o edición) no mueve nada: solo cambia el listado de
  *   cobros (y la sección "Cobros" del detalle de CxC, que lo lee del mismo
@@ -146,15 +137,10 @@ interface SaveCobroVariables {
  * un error de edición se relee el listado: un 400 puede deberse a que el cobro
  * dejó de ser Borrador en otra pestaña.
  */
-export const useSaveCobro = (
-  onServerError?: (parsed: ParsedCobroError) => void,
-  /** Borrador que edita el formulario; sin él, la llave del alta. */
-  cobroId?: number,
-) => {
+export const useSaveCobro = (onServerError?: (parsed: ParsedCobroError) => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: saveCobroMutationKey(cobroId),
     mutationFn: ({ payload, cobroId }: SaveCobroVariables) =>
       cobroId === undefined ? createCobro(payload) : updateCobro(cobroId, payload),
     onSuccess: (cobro, { cobroId }) => {
