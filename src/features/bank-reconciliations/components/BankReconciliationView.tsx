@@ -32,6 +32,7 @@ import {
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
 import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
+import { usePendingConciliacionIds } from "../hooks/useConciliacionRowActions";
 import { getColumns } from "./BankReconciliationColumns";
 import { BankReconciliationDetailDialog } from "./BankReconciliationDetailDialog";
 import PrepararConciliacionForm from "./PrepararConciliacionForm";
@@ -122,8 +123,16 @@ export function BankReconciliationView() {
   const [cerrarTargetId, setCerrarTargetId] = useState<number | null>(null);
   const [cancelarTargetId, setCancelarTargetId] = useState<number | null>(null);
 
-  const { mutate: cerrar } = useCerrarConciliacion();
-  const { mutate: cancelar } = useCancelarConciliacion();
+  // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
+  // SU llamada. Los callbacks por llamada de `mutate` solo corren para la
+  // última del observer, así que con dos filas en vuelo el cierre de la
+  // primera se perdería.
+  const { mutateAsync: cerrarAsync } = useCerrarConciliacion();
+  const { mutateAsync: cancelarAsync } = useCancelarConciliacion();
+  // Cierres y cancelaciones en vuelo POR CONCILIACIÓN, leídos de la
+  // MutationCache: `isPending` de cada hook solo recuerda su última llamada.
+  const busyIds = usePendingConciliacionIds();
+  const isBusy = (id: number | null) => id !== null && busyIds.includes(id);
 
   const showError = isInitialLoadError(isError, hasLoaded);
 
@@ -375,11 +384,23 @@ export function BankReconciliationView() {
                   monedaDe(cerrarConciliacionTarget.cuenta_bancaria),
                 )}.`
           }
-          confirmText="Cerrar conciliación"
+          confirmText={isBusy(cerrarTargetId) ? "Cerrando..." : "Cerrar conciliación"}
           cancelText="Volver"
+          // `closeOnConfirm={false}`: el diálogo sigue abierto, con "Cerrando...",
+          // hasta que la petición y su refetch terminan; lo cierra el `finally`.
+          closeOnConfirm={false}
           onConfirm={() => {
-            cerrar(cerrarConciliacionTarget.id);
-            setCerrarTargetId(null);
+            const id = cerrarConciliacionTarget.id;
+            // Una conciliación ya en vuelo no se vuelve a mandar (doble clic, o
+            // reabrir tras "Volver" mientras su cierre sigue pendiente).
+            if (isBusy(id)) return;
+            cerrarAsync(id)
+              // El hook ya avisó del error con su toast; aquí solo se evita el
+              // rechazo no manejado de la promesa.
+              .catch(() => {})
+              // Solo cierra SU confirmación: si mientras tanto se abrió la de
+              // otra conciliación, esa no se toca.
+              .finally(() => setCerrarTargetId((current) => (current === id ? null : current)));
           }}
           // `ConfirmDialog` usa la paleta de Radix: "green", no "emerald".
           confirmColor="green"
@@ -397,11 +418,15 @@ export function BankReconciliationView() {
             cancelarConciliacionTarget.cuenta_bancaria_alias ??
             `#${cancelarConciliacionTarget.cuenta_bancaria}`
           }? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`}
-          confirmText="Cancelar conciliación"
+          confirmText={isBusy(cancelarTargetId) ? "Cancelando..." : "Cancelar conciliación"}
           cancelText="Volver"
+          closeOnConfirm={false}
           onConfirm={() => {
-            cancelar(cancelarConciliacionTarget.id);
-            setCancelarTargetId(null);
+            const id = cancelarConciliacionTarget.id;
+            if (isBusy(id)) return;
+            cancelarAsync(id)
+              .catch(() => {})
+              .finally(() => setCancelarTargetId((current) => (current === id ? null : current)));
           }}
           confirmColor="amber"
         />
