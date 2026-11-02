@@ -88,9 +88,10 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   // sería de otros filtros.
   const current = rangeComplete && !isInitialError ? ledger : undefined;
   const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
-  const options = current && !isResolvedMovementLedger(current) ? current.opciones : undefined;
+  const optionsResponse = current && !isResolvedMovementLedger(current) ? current : undefined;
+  const options = optionsResponse?.opciones;
   const hasOptions = options !== undefined && options.length > 0;
-  const hasMoreOptions = current !== undefined && !isResolvedMovementLedger(current) && current.hay_mas;
+  const hasMoreOptions = optionsResponse?.hay_mas ?? false;
 
   // Ajuste de estado durante el render (no en un efecto): en cuanto la
   // búsqueda por `q` resuelve una variante, se recuerda su id.
@@ -141,11 +142,10 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const variantError = fieldErrorOf(error, "producto_variante");
   const errorMessage = isNotFound
     ? "La variante ya no está disponible o no pertenece a tu empresa. Búscala de nuevo."
-    : variantError
-      ? variantError
-      : hasFieldError
+    : variantError ??
+      (hasFieldError
         ? "Revisa los filtros marcados."
-        : extractErrorMessage(error, "No se pudo generar el auxiliar.");
+        : extractErrorMessage(error, "No se pudo generar el auxiliar."));
 
   const emptyMessage = !rangeComplete
     ? "Completa el rango de fechas para ver los movimientos."
