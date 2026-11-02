@@ -10,6 +10,12 @@ import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidatio
 import { fieldNameFromIssuePath } from "@/src/utils/fieldNameFromIssuePath";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
+import {
+  getSinSucursalMessage,
+  WORKSPACE_BRANCH_LOADING_MESSAGE,
+  type WorkspaceBranchDocument,
+} from "@/src/features/workspace/utils/workspaceBranchMessages";
 import {
   PolizaFormSchema,
   createEmptyPolizaForm,
@@ -29,6 +35,12 @@ import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters
 
 const LINE_ERROR_PREFIX = "poliza_detalles";
 
+/** La póliza en los textos del aviso compartido de sucursal. */
+export const POLIZA_SUCURSAL_DOCUMENT: WorkspaceBranchDocument = {
+  asignarA: "a la póliza",
+  guardar: "la póliza",
+};
+
 /**
  * Detecta la ruta de un CAMPO de un movimiento (`poliza_detalles.<i>.<campo>`) y
  * captura su índice (grupo 1) y el nombre del campo (grupo 2), para derivar la
@@ -36,21 +48,6 @@ const LINE_ERROR_PREFIX = "poliza_detalles";
  * línea. Mismo mecanismo que `useCreditNoteForm`/`useStockTransferForm`.
  */
 const LINE_FIELD_PATH_RE = new RegExp(`^${LINE_ERROR_PREFIX}\\.(\\d+)\\.(.+)$`);
-
-/**
- * Valores iniciales del formulario, con la sucursal ya sembrada.
- *
- * Vive a nivel de MÓDULO —no dentro del hook— para que su identidad sea estable
- * y el `useMemo` de abajo dependa solo de la sucursal. Devuelve un objeto NUEVO
- * en cada llamada a propósito: reusar uno memoizado haría que una sola instancia
- * de `poliza_detalles` respaldara el montaje inicial y todos los `reset`, y
- * bastaría una escritura en sitio del arreglo para que la siguiente alta
- * arrancara con los movimientos de la anterior.
- */
-const buildFormDefaults = (sucursal: number): PolizaFormValues => ({
-  ...createEmptyPolizaForm(),
-  sucursal,
-});
 
 export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const queryClient = useQueryClient();
@@ -61,13 +58,28 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // selectores como las etiquetas de lo ya elegido en cada renglón, por eso se
   // cargan UNA vez aquí y se pasan hacia abajo en vez de que cada selector traiga
   // los suyos — mismo reparto que `useStockTransferForm`.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
+  // La sucursal NO se captura (EC-676, mismo criterio que RH en EC-623): es la
+  // del workspace, solo si es válida entre las sucursales del usuario
+  // (`useValidWorkspaceBranchId`, sin respaldo a una fija). Sin ella el
+  // formulario avisa (`WorkspaceBranchNotice`) y el guardado se bloquea.
   const {
-    branches,
-    isLoading: isLoadingBranches,
-    isInitialError: isErrorBranches,
-  } = useCompanyBranches(selectedCompany.id);
+    branchId: sucursalId,
+    isLoading: isLoadingWorkspaceBranch,
+    isError: isErrorWorkspaceBranch,
+  } = useValidWorkspaceBranchId();
+  // Nombre de la sucursal para el campo de solo lectura: `mis-sucursales` (la
+  // misma consulta en caché que valida el id) y, de respaldo, las del
+  // workspace; al final, el id.
+  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  const { branches } = useCompanyBranches(selectedCompany.id);
+  const sucursalLabel =
+    sucursalId === null
+      ? ""
+      : ([...branches, ...availableBranches].find((branch) => branch.id === sucursalId)?.nombre ??
+        `Sucursal #${sucursalId}`);
+  /** Sin sucursal válida (ya resuelta): el formulario avisa y no guarda. */
+  const isSucursalMissing = !isLoadingWorkspaceBranch && sucursalId === null;
   // Solo cuentas que admiten un asiento DIRECTO: el filtro va al servidor. Una
   // cuenta de agrupación (`acepta_movimientos=false`, las que solo suman a sus
   // hijas) no puede recibir un cargo o un abono, y una inactiva no debe
@@ -91,32 +103,31 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isError: isErrorCentros,
   } = useCostCenters({ activo: true });
 
-  const isLoadingFormData = isLoadingBranches || isLoadingCuentas || isLoadingCentros;
+  const isLoadingFormData = isLoadingCuentas || isLoadingCentros;
   // Si CUALQUIER catálogo falla no se puede armar el formulario con selectores
   // válidos: una lista vacía por error de red se confundiría con un catálogo
   // legítimamente vacío y mandaría al usuario a "crear" datos que sí existen.
-  // Sucursales ya llega filtrado (`useCompanyBranches` expone
-  // `isInitialError`), pero cuentas y centros de costo siguen con su `isError`
-  // crudo: un refetch fallido de esos dos todavía cambia el formulario por el
-  // error. Pendiente en #239.
-  const isErrorFormData = isErrorBranches || isErrorCuentas || isErrorCentros;
+  // Cuentas y centros de costo siguen con su `isError` crudo: un refetch
+  // fallido de esos dos todavía cambia el formulario por el error. Pendiente en
+  // #239. La sucursal no entra: su falta la explica `WorkspaceBranchNotice`.
+  const isErrorFormData = isErrorCuentas || isErrorCentros;
 
   /**
    * Prerrequisitos de captura. Sin cuentas contables que acepten movimientos no
-   * hay asiento posible, y sin sucursal no hay cabecera: son bloqueos de
-   * CONFIGURACIÓN, no errores, y se distinguen del estado de error de red.
-   * Los centros de costo NO entran: son opcionales en los dos niveles.
+   * hay asiento posible: es un bloqueo de CONFIGURACIÓN, no un error, y se
+   * distingue del estado de error de red. Los centros de costo NO entran: son
+   * opcionales en los dos niveles. La sucursal tampoco: sale del workspace y su
+   * falta la avisa `WorkspaceBranchNotice`.
    */
   const missingItems = useMemo(() => {
     const items: string[] = [];
-    if (branches.length === 0) items.push("Al menos una sucursal activa");
     if (cuentasContables.length === 0) {
       items.push(
         "Cuentas contables activas que acepten movimientos (catálogo contable)",
       );
     }
     return items;
-  }, [branches.length, cuentasContables.length]);
+  }, [cuentasContables.length]);
 
   // ── Estado de UI ─────────────────────────────────────────────────────────
   // Errores indexados por ruta ("folio", "poliza_detalles.0.cargo").
@@ -214,22 +225,14 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     useCreatePoliza(handleServerError);
 
   // ── Formulario ───────────────────────────────────────────────────────────
-  /**
-   * La sucursal arranca con la del workspace activo: es la que el usuario ya
-   * eligió al entrar y la que el backend va a validar contra su empresa. Sigue
-   * siendo editable (un usuario con varias sucursales puede capturar para otra),
-   * igual que en `useSerieFolioForm`.
-   */
-  const sucursalPorDefecto = selectedBranch?.id ?? 0;
-
-  // Memoizado (a diferencia del resto del módulo, donde el React Compiler ya lo
-  // hace) porque `useForm` recibe `defaultValues` en cada `update`: un objeto
-  // nuevo por render lo tentaría a reinicializar el store mientras el usuario
-  // escribe. Se recalcula solo si cambia la sucursal activa.
-  const defaultValues = useMemo<PolizaFormValues>(
-    () => buildFormDefaults(sucursalPorDefecto),
-    [sucursalPorDefecto],
-  );
+  // `useState` con inicializador: `useForm` recibe `defaultValues` en cada
+  // `update`, y un objeto nuevo por render lo tentaría a reinicializar el store
+  // mientras el usuario escribe. La sucursal NO vive aquí: se agrega al validar
+  // (ver `onSubmit`), así que los valores iniciales no dependen del workspace.
+  // Cada `reset` usa un objeto NUEVO (`createEmptyPolizaForm()`): reusar este
+  // haría que una sola instancia de `poliza_detalles` respaldara todas las
+  // altas, y una escritura en sitio arrastraría movimientos a la siguiente.
+  const [defaultValues] = useState<PolizaFormValues>(createEmptyPolizaForm);
 
   /**
    * Contabiliza la póliza RECIÉN CREADA, encadenando la acción al alta.
@@ -273,7 +276,20 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     onSubmit: async ({ value }) => {
       setServerBanner(null);
 
-      const parsed = PolizaFormSchema.safeParse(value);
+      // La sucursal sale del contexto, no de un campo: se revisa ANTES que el
+      // resto para no hacer corregir todo el formulario y bloquear al final.
+      if (isLoadingWorkspaceBranch) {
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "poliza-sin-sucursal" });
+        return;
+      }
+      if (sucursalId === null) {
+        toast.error(getSinSucursalMessage(isErrorWorkspaceBranch, POLIZA_SUCURSAL_DOCUMENT), {
+          id: "poliza-sin-sucursal",
+        });
+        return;
+      }
+
+      const parsed = PolizaFormSchema.safeParse({ ...value, sucursal: sucursalId });
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};
         parsed.error.issues.forEach((issue) => {
@@ -318,7 +334,7 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
         // una sola instancia de `poliza_detalles` respaldara el montaje inicial y
         // todos los `reset`, y bastaría una escritura en sitio del arreglo para
         // que la siguiente alta arrancara con los movimientos de la anterior.
-        form.reset(buildFormDefaults(sucursalPorDefecto));
+        form.reset(createEmptyPolizaForm());
         setLineKeys([lineKeyCounter.current++, lineKeyCounter.current++]);
         setErrors({});
         setServerBanner(null);
@@ -383,7 +399,7 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   };
 
   const handleReset = () => {
-    form.reset(buildFormDefaults(sucursalPorDefecto));
+    form.reset(createEmptyPolizaForm());
     setLineKeys([lineKeyCounter.current++, lineKeyCounter.current++]);
     setErrors({});
     setServerBanner(null);
@@ -396,7 +412,8 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isLoadingFormData,
     isErrorFormData,
     missingItems,
-    branches,
+    sucursalLabel,
+    isSucursalMissing,
     cuentasContables,
     centrosCosto,
     lineKeys,

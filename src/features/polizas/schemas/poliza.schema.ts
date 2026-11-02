@@ -286,7 +286,10 @@ export const sumarLineasEnCentavos = (
 
 export const PolizaFormSchema = z
   .object({
-    /** FK a `nucleo.Sucursal`. `0` = ninguna elegida. Requerido (NOT NULL). */
+    /**
+     * FK a `nucleo.Sucursal`. Requerido (NOT NULL). No se captura: `usePolizaForm`
+     * la toma del workspace y la agrega al validar; `0` = sin sucursal válida.
+     */
     sucursal: z.number().int().positive("La sucursal es requerida"),
     /** FK a `CentroCosto` de la CABECERA. `0` = sin centro de costo (opcional). */
     centro_costo: z.number().int().nonnegative(),
@@ -356,9 +359,8 @@ export const createEmptyPolizaLine = (): PolizaLineFormValues => ({
  * partida doble necesita al menos dos (un cargo y su abono): abrir con uno solo
  * obligaría siempre al mismo primer clic.
  *
- * `sucursal` la siembra el formulario con la del workspace activo (ver
- * `usePolizaForm`); aquí queda en `0` para que esta función no dependa de
- * ningún estado global.
+ * `sucursal` queda en `0`: `usePolizaForm` la reemplaza al validar por la del
+ * workspace, así esta función no depende de ningún estado global.
  */
 export const createEmptyPolizaForm = (): PolizaFormValues => ({
   sucursal: 0,
