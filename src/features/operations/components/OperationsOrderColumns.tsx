@@ -33,7 +33,7 @@ import {
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
 import { hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
-import { pedidoDetailHref } from "@/src/features/orders/constants/pedidoDetailOrigins";
+import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
 
 export { isOrderConfirmed };
 
@@ -46,7 +46,6 @@ export { isOrderConfirmed };
  * sin columnas aparte de "Estado"/"Acciones".
  */
 export interface OperationsOrderColumnCallbacks {
-  onEditMesaControl: (order: PedidoListItem) => void;
   onProgramar: (order: PedidoListItem) => void;
   onCancel: (order: PedidoListItem) => void;
 }
@@ -126,7 +125,6 @@ const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterVa
 
 const FolioCell = ({
   order,
-  onEditMesaControl,
   onProgramar,
   onCancel,
 }: {
@@ -145,9 +143,11 @@ const FolioCell = ({
     },
     // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
+      // Edición del pedido con sincronización a su cotización de origen. Enlace
+      // real, como "Ver detalle": prefetch y clic medio/Ctrl+clic.
       label: "Editar",
       icon: EditIcon,
-      onSelect: () => onEditMesaControl(order),
+      href: `${pedidoDetailPath(order.id)}/edit-mesa-control`,
       permission: "E-MESACONTROL-PEDIDOS",
       visible: canEditPedidoMesaControl(order.estatus),
     },

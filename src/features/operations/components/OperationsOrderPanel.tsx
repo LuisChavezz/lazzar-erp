@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import KpiGrid, { type KpiCompactItem } from '@/src/components/KpiGrid';
 import {
@@ -37,7 +36,6 @@ export function OperationsOrderPanel() {
   // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
   const queryClient = useQueryClient();
-  const router = useRouter();
   // `exact`: solo la clave SIN params de este panel. Las variantes con filtros
   // (`["orders", params]`, p. ej. "Mis pedidos") comparten el prefijo y, sin
   // esto, encenderían el spinner de esta tabla. Mismo criterio que `OrderListView`.
@@ -51,11 +49,6 @@ export function OperationsOrderPanel() {
   // monta siempre (`PedidoCancelDialog` conserva su copia del pedido).
   const [selectedOrderForCancel, setSelectedOrderForCancel] =
     useState<PedidoListItem | null>(null);
-
-  // Edición del pedido con sincronización a su cotización de origen. La acción
-  // solo la ve quien tiene `E-MESACONTROL-PEDIDOS` (lo filtra `ActionMenu`).
-  const handleEditMesaControl = (order: PedidoListItem) =>
-    router.push(`/orders/${order.id}/edit-mesa-control`);
 
   const counts = useMemo(() => {
     const confirmados = orders.filter(isOrderConfirmed).length;
@@ -135,7 +128,6 @@ export function OperationsOrderPanel() {
         isLoading={isLoading}
         isError={showError}
         errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
-        onEditMesaControl={handleEditMesaControl}
         onProgramar={setSelectedOrderForSchedule}
         onCancel={setSelectedOrderForCancel}
         onRefetch={handleRefetch}
