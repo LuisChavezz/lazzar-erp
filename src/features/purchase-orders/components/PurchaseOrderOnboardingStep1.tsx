@@ -14,6 +14,7 @@ import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import { useProveedorMonedaChange } from "../hooks/useProveedorMonedaChange";
+import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
@@ -35,7 +36,7 @@ export function PurchaseOrderOnboardingStep1({
   onClearLines: () => void;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
-  const { onboardingData, isLoading, isError, error } =
+  const { onboardingData, isLoading, isInitialError: isError, error } =
     usePurchaseOrderOnboardingData();
 
   // ── Loading ──────────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ export function PurchaseOrderOnboardingStep1({
           Error al cargar datos de onboarding
         </p>
         <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {(error as Error).message}
+          {onboardingLoadErrorMessage(error)}
         </p>
       </div>
     );

@@ -1,5 +1,6 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isClientError } from "@/src/utils/drfWriteErrors";
 import { searchPurchaseOrderVariants } from "../services/actions";
 import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-order-onboarding.interface";
 
@@ -13,6 +14,9 @@ import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-ord
  *   el catálogo completo que usan los pasos del wizard.
  * - `keepPreviousData`: al teclear se conservan los resultados anteriores
  *   mientras llegan los nuevos (`isPlaceholderData`), sin parpadeo.
+ * - Un 4xx no se reintenta, como en `usePurchaseOrderOnboardingData`: es el
+ *   mismo endpoint. En la práctica su único rechazo (usuario sin empresa) ya
+ *   detuvo el wizard en el Step 1, antes de llegar a esta búsqueda.
  */
 export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
   const { data, isInitialError, isFetching, isPlaceholderData, hasLoaded, refetch } =
@@ -21,6 +25,7 @@ export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
         queryKey: ["purchase-order-variant-search", varianteQ],
         queryFn: () => searchPurchaseOrderVariants(varianteQ),
         placeholderData: keepPreviousData,
+        retry: (failureCount, failure) => !isClientError(failure) && failureCount < 1,
       },
       {
         toastId: "purchase-order-variant-search-refetch-error",

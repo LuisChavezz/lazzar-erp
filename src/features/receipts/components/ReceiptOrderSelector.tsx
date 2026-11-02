@@ -16,6 +16,7 @@
 
 import { useMemo, useState } from "react";
 import { useReceiptOnboardingData } from "../hooks/useReceiptOnboardingData";
+import { onboardingLoadErrorMessage } from "@/src/features/purchase-orders/utils/onboardingLoadError";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { Loader } from "@/src/components/Loader";
@@ -61,7 +62,7 @@ export function ReceiptOrderSelector({
   selectedOrderId,
   onSelect,
 }: ReceiptOrderSelectorProps) {
-  const { onboardingData, isLoading, isError } = useReceiptOnboardingData();
+  const { onboardingData, isLoading, isInitialError: isError, error } = useReceiptOnboardingData();
   const [purchaseTypeFilter, setPurchaseTypeFilter] = useState<PurchaseTypeFilter>("todos");
 
   // Stabilise references so downstream reads don't recalculate every render
@@ -111,9 +112,14 @@ export function ReceiptOrderSelector({
   // ── Error state ───────────────────────────────────────────────────────────
   if (isError) {
     return (
-      <p className="text-sm text-red-500 p-4">
-        Error al cargar las órdenes.
-      </p>
+      <div className="p-4">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+          Error al cargar las órdenes
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-300 mt-1">
+          {onboardingLoadErrorMessage(error)}
+        </p>
+      </div>
     );
   }
 

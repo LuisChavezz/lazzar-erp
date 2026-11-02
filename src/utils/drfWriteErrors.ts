@@ -64,6 +64,15 @@ export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
 /**
+ * ¿La API respondió con un 4xx? Repetir la misma petición dará la misma
+ * respuesta: sirve para no reintentar una consulta (`retry`).
+ */
+export const isClientError = (error: unknown): boolean => {
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return status !== undefined && status >= 400 && status < 500;
+};
+
+/**
  * ¿El error es un 404 o un 403 de la API? Para un detalle, ambos dicen lo
  * mismo: el registro ya no existe o el usuario ya no puede verlo.
  */
