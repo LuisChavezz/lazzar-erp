@@ -25,6 +25,8 @@ import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters
 import { useContabilizarPoliza } from "../hooks/useContabilizarPoliza";
 import { useCancelarPoliza } from "../hooks/useCancelarPoliza";
 import { useDeletePoliza } from "../hooks/useDeletePoliza";
+import { cancelarPolizaDescription } from "../utils/cancelarPolizaCopy";
+import type { PolizaEstatus } from "../interfaces/poliza.interface";
 
 /**
  * Candado de reenvío POR FILA para una acción confirmada (contabilizar,
@@ -99,7 +101,16 @@ export default function PolizaList() {
   // diálogo montado en la celda se cerraría solo a media confirmación.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [postTargetId, setPostTargetId] = useState<number | null>(null);
-  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+  /**
+   * La cancelación guarda el `estatus` con que se ABRIÓ: su efecto depende de
+   * él (un `Borrador` solo se cancela; una `Contabilizada` genera además una
+   * contrapóliza), así que el texto de la confirmación sale de ese estatus.
+   */
+  const [cancelTarget, setCancelTarget] = useState<{
+    id: number;
+    estatus: PolizaEstatus;
+  } | null>(null);
+  const cancelTargetId = cancelTarget?.id ?? null;
   /**
    * El borrado guarda un OBJETO, no solo el id, igual que en `CreditNoteList`.
    *
@@ -174,7 +185,13 @@ export default function PolizaList() {
     [polizas],
   );
 
-  const handleCancel = useCallback((id: number) => setCancelTargetId(id), []);
+  const handleCancel = useCallback(
+    (id: number) => {
+      const poliza = polizas.find((item) => item.id === id);
+      if (poliza) setCancelTarget({ id, estatus: poliza.estatus });
+    },
+    [polizas],
+  );
   const handleDelete = useCallback(
     (id: number) => {
       const poliza = polizas.find((item) => item.id === id);
@@ -221,7 +238,7 @@ export default function PolizaList() {
   // la petición.
   const existe = (id: number) => polizas.some((poliza) => poliza.id === id);
   if (postTargetId !== null && !existe(postTargetId)) setPostTargetId(null);
-  if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTargetId(null);
+  if (cancelTargetId !== null && !existe(cancelTargetId)) setCancelTarget(null);
 
   /** Etiqueta legible de una póliza: su folio si lo tiene, si no el `#id`. */
   const etiqueta = (id: number | null) => {
@@ -340,30 +357,30 @@ export default function PolizaList() {
         />
       )}
 
-      {cancelTargetId !== null && (
+      {cancelTarget !== null && (
         <ConfirmDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setCancelTargetId(null);
+            if (!open) setCancelTarget(null);
           }}
           title="Cancelar Póliza"
           // Se dice explícitamente que cancelar NO revierte importes: a diferencia
           // de un pago o una nota de crédito, la póliza ES el asiento — no hay
           // saldo que devolver, solo un estatus que cambia.
-          description={`¿Deseas cancelar la póliza ${etiqueta(cancelTargetId)}? Es un cambio de estatus: no revierte ningún importe ni genera un asiento inverso. La póliza se conserva en el listado con estatus Cancelada y ya no podrá contabilizarse.`}
+          description={cancelarPolizaDescription(etiqueta(cancelTarget.id), cancelTarget.estatus)}
           confirmText={
             cancelLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar póliza"
           }
           cancelText="Volver"
           closeOnConfirm={false}
           onConfirm={() => {
-            const id = cancelTargetId;
+            const id = cancelTarget.id;
             if (!cancelLock.acquire(id)) return;
             cancelarPolizaAsync(id)
               .catch(() => {})
               .finally(() => {
                 cancelLock.release(id);
-                setCancelTargetId((current) => (current === id ? null : current));
+                setCancelTarget((current) => (current?.id === id ? null : current));
               });
           }}
           confirmColor="amber"
