@@ -82,8 +82,8 @@ export interface MovementLedgerRow {
 export interface MovementLedgerResolved {
   variante: MovementLedgerVariant;
   opciones: [];
-  /** Siempre `false` en esta forma: solo las opciones se recortan. */
-  hay_mas: boolean;
+  /** Solo las opciones se recortan. */
+  hay_mas: false;
   resumen: MovementLedgerSummary;
   results: MovementLedgerRow[];
 }
