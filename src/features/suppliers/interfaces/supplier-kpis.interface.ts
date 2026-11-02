@@ -29,13 +29,16 @@ export interface SupplierKpiUnitFulfillment {
 }
 
 /**
- * Costo facturado vs. pactado de UNA moneda. Importes derivados de precios que
- * el backend manda sin revisar el permiso de contabilidad: la UI NO los muestra.
+ * Costo facturado vs. pactado de UNA moneda. Sin permiso de contabilidad el
+ * backend quita los dos importes y deja `moneda` y `pct` (#859). La UI no
+ * muestra ninguno de los dos importes.
  */
 export interface SupplierKpiPriceCurrency {
   moneda: string;
-  costo_facturado: number;
-  costo_pactado_oc: number;
+  /** Ausente sin permiso de contabilidad. */
+  costo_facturado?: number;
+  /** Ausente sin permiso de contabilidad. */
+  costo_pactado_oc?: number;
   pct: number | null;
 }
 
@@ -79,8 +82,8 @@ export interface SupplierKpiRow {
     por_unidad: SupplierKpiUnitFulfillment[];
   };
   /**
-   * Derivado de precios: llega aunque el usuario no pueda ver contabilidad. La
-   * UI no lo muestra. `pct` solo cuando hay una sola moneda.
+   * `pct` es porcentaje, no importe: llega con o sin permiso, y solo cuando hay
+   * una sola moneda. Los importes de `por_moneda` faltan sin permiso.
    */
   diferencia_precio: {
     pct: number | null;
@@ -88,8 +91,8 @@ export interface SupplierKpiRow {
   };
   /**
    * Promedio simple de los factores con dato (puntualidad, calidad,
-   * cumplimiento y precio). Incluye el factor de precio: la UI no muestra
-   * `puntaje`, solo cuenta semáforos.
+   * cumplimiento y precio). El factor de precio entra por su `pct`, no por
+   * importes: llega con o sin permiso. La UI cuenta semáforos.
    */
   scorecard: {
     puntaje: number | null;
@@ -120,11 +123,8 @@ interface SupplierKpisEnvelope {
 export interface SupplierKpisAvailable extends SupplierKpisEnvelope {
   disponible: true;
   filtros: SupplierKpiFilters;
-  /**
-   * Solo una bandera: el backend manda `diferencia_precio` aunque sea `false`.
-   * Opcional por defensa (ver `canSeeKpiAmounts`).
-   */
-  puede_ver_importes?: boolean;
+  /** Con `false`, `diferencia_precio.por_moneda[]` llega sin importes (#859). */
+  puede_ver_importes: boolean;
 }
 
 /** Usuario sin empresa: `proveedores: []` y el motivo para el usuario. */
@@ -132,6 +132,8 @@ export interface SupplierKpisUnavailable extends SupplierKpisEnvelope {
   disponible: false;
   motivo: string;
   filtros: null;
+  /** Siempre `false` sin empresa (#860). */
+  puede_ver_importes: false;
 }
 
 export type SupplierKpis = SupplierKpisAvailable | SupplierKpisUnavailable;
