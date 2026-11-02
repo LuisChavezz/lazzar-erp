@@ -221,10 +221,16 @@ export default function AccountsPayableList() {
             open={true}
             onOpenChange={(open) => {
               if (!open) {
+                // En vuelo no se cierra (Volver, X, Esc): el candado se lee de
+                // forma SÍNCRONA, así que la guarda vale desde el primer frame,
+                // antes de que `busy` se pinte. El resultado de la petición
+                // decide el cierre.
+                if (deleteLock.isPending(deleteTarget.id) || deleteLock.isHeld(deleteTarget.id)) return;
                 closeDeleteDialog();
                 setDeleteConflict(null);
               }
             }}
+            busy={deleteLock.isPending(deleteTarget.id)}
             title={conflictMessage ? "No se pudo eliminar todavía" : "Eliminar Cuenta por Pagar"}
             // El borrado del backend es FÍSICO: se dice sin rodeos. Solo se ofrece
             // sobre cuentas sin pagos aplicados.
