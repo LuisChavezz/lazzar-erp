@@ -16,14 +16,14 @@ const FALLBACK = "Error al cancelar la póliza";
  *
  * Mismo molde que `useCancelNotaCredito`: optimismo de cambio de ESTATUS (no de
  * borrado) — cancelar → instantánea → marcar la fila → revertir en `onError` →
- * invalidar en `onSettled`. Aquí el optimismo es especialmente seguro:
- * `PolizaService.cancelar` es idempotente, no tiene precondiciones (acepta tanto
- * `Borrador` como `Contabilizada`) y NO revierte importes —la póliza ES el
- * asiento, no hay saldo que devolver, a diferencia de cancelar un pago o una
- * nota de crédito—.
+ * invalidar en `onSettled`. `PolizaService.cancelar` es idempotente y acepta
+ * tanto `Borrador` como `Contabilizada`.
  *
  * El registro NUNCA sale del listado: solo cambia su `estatus` a `Cancelada`,
- * por eso el optimista MARCA la fila en vez de filtrarla.
+ * por eso el optimista MARCA la fila en vez de filtrarla. Sobre una
+ * `Contabilizada` el backend genera además una CONTRAPÓLIZA (ver
+ * `cancelarPoliza`), que aparece en el listado con el refetch de `onSettled`; el
+ * aviso de éxito lo dice cuando la respuesta trae `contrapoliza_id`.
  */
 /** Llave de la cancelación: `usePendingPolizaIds` lee de ella las pólizas en vuelo. */
 export const cancelarPolizaMutationKey = ["cancelar-poliza"] as const;
@@ -59,8 +59,12 @@ export const useCancelarPoliza = () => {
       console.error(error);
       toast.error(polizaErrorToastMessage(parsePolizaError(error, `${FALLBACK}.`), FALLBACK));
     },
-    onSuccess: () => {
-      toast.success("Póliza cancelada correctamente");
+    onSuccess: (data) => {
+      toast.success(
+        data.contrapoliza_id !== null
+          ? "Póliza cancelada. Se generó una contrapóliza que revierte el asiento."
+          : "Póliza cancelada correctamente",
+      );
     },
     // Promesa, para que la mutación siga "pending" hasta que el refetch termine
     // y el diálogo (con `closeOnConfirm={false}`) pueda cerrarse ahí.

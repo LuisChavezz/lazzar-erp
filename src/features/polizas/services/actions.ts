@@ -68,17 +68,25 @@ export const contabilizarPoliza = async (id: number): Promise<Poliza> => {
 };
 
 /**
+ * Respuesta de `cancelar/`: la póliza ya cancelada más el id de la
+ * contrapóliza que la revirtió (`null` si no hubo).
+ */
+export type CancelarPolizaResponse = Poliza & { contrapoliza_id: number | null };
+
+/**
  * Cancela una póliza: `POST /finanzas/polizas/{id}/cancelar/`.
  *
- * Es un cambio de estatus y NADA MÁS: `PolizaService.cancelar` no revierte
- * importes ni toca ningún saldo, porque la póliza ES el asiento — no hay nada
- * que devolver, a diferencia de cancelar un pago o una nota de crédito. Es
- * idempotente (cancelar una ya cancelada retorna sin hacer nada) y no tiene
- * precondiciones: el backend permite cancelar tanto un `Borrador` como una
- * `Contabilizada`.
+ * El efecto depende del estatus (`PolizaService.cancelar`):
+ *  - `Borrador`: solo cambia el estatus a `Cancelada`; no hay nada que revertir.
+ *  - `Contabilizada`: genera una CONTRAPÓLIZA —una póliza nueva `Contabilizada`,
+ *    con su propio folio, fechada hoy y con cargos y abonos invertidos— y deja
+ *    la original `Cancelada`. La respuesta trae su id en `contrapoliza_id`.
+ *  - `Cancelada`: no hace nada y devuelve la contrapóliza que ya tuviera.
  */
-export const cancelarPoliza = async (id: number): Promise<Poliza> => {
-  const { data } = await v1_api.post<Poliza>(`/finanzas/polizas/${id}/cancelar/`);
+export const cancelarPoliza = async (id: number): Promise<CancelarPolizaResponse> => {
+  const { data } = await v1_api.post<CancelarPolizaResponse>(
+    `/finanzas/polizas/${id}/cancelar/`,
+  );
   return data;
 };
 
