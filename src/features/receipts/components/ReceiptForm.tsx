@@ -11,8 +11,11 @@ import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
+import { variantAttributesLabel } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
+import { VariantAttributesCaption } from "@/src/features/purchase-orders/components/VariantAttributesCaption";
 import type {
   ReceiptOrderCandidate,
+  ReceiptOnboardingOrderDetalleBase,
   ReceiptOnboardingPurchaseOrderDetalle,
 } from "../interfaces/receipt-onboarding.interface";
 
@@ -45,10 +48,15 @@ export default function ReceiptForm({
   } = useReceiptForm({ onSuccess, candidate });
 
   const { order } = candidate;
-  // Ambos tipos comparten la forma base del detalle; producción sólo añade
-  // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
-  // a la base permite iterar sin narrowing en el JSX.
-  const detalle: ReceiptOnboardingPurchaseOrderDetalle[] = order.detalle;
+  // Ambos tipos comparten la forma base del detalle. Compras añade la variante
+  // del renglón, cuyo color y talla distinguen dos tallas del mismo producto
+  // (EC-684); producción solo `producto_variante_id` (consumido en el submit, no
+  // en el render). Normalizar a la base, con color y talla opcionales, permite
+  // iterar sin narrowing en el JSX.
+  const detalle: (ReceiptOnboardingOrderDetalleBase &
+    Partial<
+      Pick<ReceiptOnboardingPurchaseOrderDetalle, "producto_variante_color" | "producto_variante_talla">
+    >)[] = order.detalle;
   const headerSubtitle =
     candidate.type === "compra"
       ? `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`
@@ -244,6 +252,10 @@ export default function ReceiptForm({
               <div className="divide-y divide-slate-100 dark:divide-white/5">
                 {detalle.map((d) => {
                   const fieldName = `cantidades.${d.id}` as const;
+                  const atributos = variantAttributesLabel(
+                    d.producto_variante_color,
+                    d.producto_variante_talla,
+                  );
                   return (
                     <div
                       key={d.id}
@@ -254,6 +266,10 @@ export default function ReceiptForm({
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                           {d.producto_nombre}
                         </p>
+                        <VariantAttributesCaption
+                          color={d.producto_variante_color}
+                          talla={d.producto_variante_talla}
+                        />
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
                           Ordenado: {Number(d.cantidad_ordenada).toFixed(0)} &middot; Pendiente: {Number(d.cantidad_pendiente).toFixed(0)}
                         </p>
@@ -268,7 +284,7 @@ export default function ReceiptForm({
                               field.handleChange(String(next))
                             }
                             min={0}
-                            label={`Cantidad de ${d.producto_nombre}`}
+                            label={`Cantidad de ${d.producto_nombre}${atributos ? ` (${atributos})` : ""}`}
                           />
                         )}
                       </form.Field>
