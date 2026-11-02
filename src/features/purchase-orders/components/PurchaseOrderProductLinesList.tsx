@@ -3,12 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SearchInput } from "@/src/components/SearchInput";
-import { CheckIcon } from "@/src/components/Icons";
+import { CheckIcon, LoadingSpinnerIcon } from "@/src/components/Icons";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PriceInput } from "@/src/components/PriceInput";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import type { PurchaseOrderOnboardingProducto } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
+import { usePurchaseOrderProductSearch } from "../hooks/usePurchaseOrderProductSearch";
 import {
   lineFromProducto,
   lineKeyProducto,
@@ -30,9 +32,27 @@ const buildSearchHaystack = (p: PurchaseOrderOnboardingProducto): string =>
 /** ¿El renglón es un producto del catálogo que la lista puede marcar? */
 const isProductoLine = (line: PurchaseOrderLine) => line.key === lineKeyProducto(line.producto);
 
+/**
+ * Fila para un renglón por producto que no está en lo cargado (guardado en la
+ * orden, o elegido de una búsqueda que ya cambió): lo que el renglón sabe.
+ */
+const productFromLine = (line: PurchaseOrderLine): PurchaseOrderOnboardingProducto => ({
+  id: line.producto,
+  codigo: null,
+  cod_proscai: "",
+  nombre: line.descripcion || `Producto #${line.producto}`,
+  descripcion: null,
+  precio_base: Number(line.precioInicial) || 0,
+});
+
 interface PurchaseOrderProductLinesListProps {
   /** Catálogo de productos del onboarding (`busqueda.productos`). */
   catalog: PurchaseOrderOnboardingProducto[];
+  /**
+   * `busqueda.productos_truncado`: el catálogo se cortó en su tope, así que lo
+   * tecleado se busca también en el servidor (EC-703).
+   */
+  catalogTruncated: boolean;
   lines: PurchaseOrderLinesState;
   /**
    * Renglones guardados de la orden (edición). `[]` en el alta, o si se
@@ -43,17 +63,75 @@ interface PurchaseOrderProductLinesListProps {
 }
 
 /**
- * Renglones de una OC de materia prima: el catálogo de productos completo,
- * filtrado en cliente y virtualizado, con cantidad y precio en los marcados.
- * La comparten el Step 2 de alta y el de edición, y solo se monta en MP: una
- * OC de PT no paga el índice de miles de productos (EC-657).
+ * Una línea bajo el buscador que dice hasta dónde llega la lista con el
+ * catálogo recortado: sin texto, que solo se ven los primeros; buscando, si el
+ * servidor aún responde, falló (con lo cargado a la vista) o también se cortó.
+ */
+function SearchScopeNote({
+  query,
+  catalogSize,
+  serverSearch,
+}: {
+  query: string;
+  catalogSize: number;
+  serverSearch: ReturnType<typeof usePurchaseOrderProductSearch>;
+}) {
+  const className = "text-xs text-slate-500 dark:text-slate-400";
+  if (query === "") {
+    return (
+      <p className={className}>
+        Se muestran los primeros {catalogSize.toLocaleString("es-MX")} productos. Escribe para buscar en todo el catálogo.
+      </p>
+    );
+  }
+  if (serverSearch.isInitialError) {
+    return (
+      <p className="text-xs text-red-700 dark:text-red-300">
+        No se pudo buscar en todo el catálogo; solo se muestran los productos cargados.{" "}
+        <button
+          type="button"
+          onClick={() => void serverSearch.refetch()}
+          className="font-semibold underline cursor-pointer"
+        >
+          Reintentar
+        </button>
+      </p>
+    );
+  }
+  if (!serverSearch.hasLoaded) {
+    return (
+      <p className={`${className} flex items-center gap-1.5`}>
+        <LoadingSpinnerIcon className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+        Buscando en todo el catálogo...
+      </p>
+    );
+  }
+  if (serverSearch.truncado) {
+    return <p className={className}>Hay más coincidencias: escribe más para afinar la búsqueda.</p>;
+  }
+  return null;
+}
+
+/**
+ * Renglones de una OC de materia prima: el catálogo de productos del
+ * onboarding, filtrado en cliente y virtualizado, con cantidad y precio en los
+ * marcados. La comparten el Step 2 de alta y el de edición, y solo se monta en
+ * MP: una OC de PT no paga el índice de miles de productos (EC-657).
  *
- * En edición, los renglones guardados que la lista no puede representar como
- * un producto —uno por SKU (`v:`) o un producto repetido (`d:`)— van FIJOS
- * arriba con su casilla, para que se vean, se cuenten y se puedan quitar.
+ * Con el catálogo recortado (`catalogTruncated`, EC-703) lo tecleado se busca
+ * además en el servidor (debounced, hasta 50): a las coincidencias del catálogo
+ * cargado —que también filtran por código, cosa que el servidor no hace— se
+ * suman las del resto. Mismo patrón que `PurchaseOrderVariantLinesPicker`.
+ *
+ * Los productos marcados que la búsqueda deja fuera van FIJOS arriba, para que
+ * "Crear"/"Guardar" nunca envíe algo que el usuario no ve. En edición, los
+ * renglones guardados que la lista no puede representar como un producto —uno
+ * por SKU (`v:`) o un producto repetido (`d:`)— también van fijos arriba con su
+ * casilla, para que se vean, se cuenten y se puedan quitar.
  */
 export function PurchaseOrderProductLinesList({
   catalog,
+  catalogTruncated,
   lines,
   seedLines = [],
   monedaCodigo,
@@ -84,16 +162,9 @@ export function PurchaseOrderProductLinesList({
   // visibles, deseleccionables y se cuenten correctamente.
   const products = useMemo<PurchaseOrderOnboardingProducto[]>(() => {
     const catalogIds = new Set(catalog.map((p) => p.id));
-    const synthetic: PurchaseOrderOnboardingProducto[] = [...seedById.values()]
+    const synthetic = [...seedById.values()]
       .filter((l) => !catalogIds.has(l.producto))
-      .map((l) => ({
-        id: l.producto,
-        codigo: null,
-        cod_proscai: "",
-        nombre: l.descripcion || `Producto #${l.producto}`,
-        descripcion: null,
-        precio_base: Number(l.precioInicial) || 0,
-      }));
+      .map(productFromLine);
     return [...catalog, ...synthetic];
   }, [catalog, seedById]);
 
@@ -118,19 +189,58 @@ export function PurchaseOrderProductLinesList({
     [products],
   );
 
+  // ── Búsqueda en el servidor (catálogo recortado) ─────────────────────────
+  // Nunca en "solo seleccionados": ahí se busca dentro de lo congelado. La
+  // búsqueda pega al servidor: 350 ms, como el selector de SKU.
+  const debouncedQuery = useDebounce(searchQuery.trim(), 350);
+  const searchesServer = catalogTruncated && !showOnlySelected;
+  const serverSearch = usePurchaseOrderProductSearch(debouncedQuery, { enabled: searchesServer });
+  const showsServerResults = searchesServer && debouncedQuery !== "";
+  // Hay una búsqueda en camino (tecleando, o la nueva llave aún sin respuesta):
+  // las coincidencias del servidor mostradas son de la anterior.
+  const isSearching =
+    showsServerResults &&
+    (serverSearch.isPlaceholderData || debouncedQuery !== searchQuery.trim());
+
   // ── Filtrado por búsqueda ─────────────────────────────────────────────────
   // El snapshot acota el universo ANTES del filtro de texto, así que escribir
   // en "Filtrar productos..." busca dentro de los seleccionados, no en todo
-  // el catálogo.
-  const filteredProducts = useMemo(() => {
+  // el catálogo. Con búsqueda en el servidor se filtra con el mismo texto
+  // debounced, para que lo local y lo del servidor coincidan.
+  const localQuery = searchesServer ? debouncedQuery : searchQuery;
+  const localMatches = useMemo(() => {
     const base = selectedSnapshot ?? products;
-    if (!searchQuery.trim()) return base;
-    const q = searchQuery.toLowerCase();
+    if (!localQuery.trim()) return base;
+    const q = localQuery.toLowerCase();
     // El fallback cubre a un renglón congelado que ya no esté en `products`.
     return base.filter((p) =>
       (searchHaystacks.get(p.id) ?? buildSearchHaystack(p)).includes(q),
     );
-  }, [products, searchQuery, selectedSnapshot, searchHaystacks]);
+  }, [products, localQuery, selectedSnapshot, searchHaystacks]);
+
+  // Las coincidencias del servidor van después de las del catálogo: el
+  // catálogo son los primeros por nombre, así que el orden se conserva.
+  const matches = useMemo(() => {
+    if (!showsServerResults) return localMatches;
+    const localIds = new Set(localMatches.map((p) => p.id));
+    return [...localMatches, ...serverSearch.productos.filter((p) => !localIds.has(p.id))];
+  }, [showsServerResults, localMatches, serverSearch.productos]);
+
+  // Productos cuyos datos ya se conocen: el catálogo y la búsqueda actual. Un
+  // marcado fuera de ambos se pinta con los datos de su propio renglón.
+  const knownById = useMemo(
+    () => new Map([...products, ...serverSearch.productos].map((p) => [p.id, p] as const)),
+    [products, serverSearch.productos],
+  );
+
+  // Marcados que la búsqueda dejó fuera: FIJOS arriba.
+  const filteredProducts = useMemo(() => {
+    const visibleIds = new Set(matches.map((p) => p.id));
+    const pinnedSelected = lines.lines
+      .filter((l) => isProductoLine(l) && !visibleIds.has(l.producto))
+      .map((l) => knownById.get(l.producto) ?? productFromLine(l));
+    return [...pinnedSelected, ...matches];
+  }, [matches, knownById, lines.lines]);
 
   // ── Helpers de selección ──────────────────────────────────────────────────
   const toggleProduct = (product: PurchaseOrderOnboardingProducto) => {
@@ -143,11 +253,22 @@ export function PurchaseOrderProductLinesList({
   // Cuenta TODOS los renglones marcados, también los fijos de arriba.
   const selectedCount = lines.count;
 
-  /** Congela los seleccionados actuales, o descarta el snapshot al apagar. */
+  /**
+   * Congela los seleccionados actuales, o descarta el snapshot al apagar. Los
+   * del catálogo en su orden, y después los elegidos en la búsqueda del
+   * servidor, que no están en `products`.
+   */
   const toggleShowOnlySelected = () => {
-    setSelectedSnapshot((prev) =>
-      prev ? null : products.filter((p) => isSelected(p.id)),
-    );
+    setSelectedSnapshot((prev) => {
+      if (prev) return null;
+      const productIds = new Set(products.map((p) => p.id));
+      return [
+        ...products.filter((p) => isSelected(p.id)),
+        ...lines.lines
+          .filter((l) => isProductoLine(l) && !productIds.has(l.producto))
+          .map((l) => knownById.get(l.producto) ?? productFromLine(l)),
+      ];
+    });
   };
 
   // Sin nada seleccionado no hay vista que mostrar. Solo se deshabilita si
@@ -201,7 +322,7 @@ export function PurchaseOrderProductLinesList({
       <SearchInput
         value={searchQuery}
         onChange={setSearchQuery}
-        placeholder="Filtrar productos..."
+        placeholder={catalogTruncated ? "Buscar productos..." : "Filtrar productos..."}
       />
 
       {/* ── Selected count (alterna la vista "solo seleccionados") ─────── */}
@@ -232,8 +353,21 @@ export function PurchaseOrderProductLinesList({
         </button>
       </div>
 
+      {/* ── Estado de la búsqueda en el servidor (catálogo recortado) ──── */}
+      {searchesServer && (
+        <SearchScopeNote
+          query={debouncedQuery}
+          catalogSize={catalog.length}
+          serverSearch={serverSearch}
+        />
+      )}
+
       {/* ── Product list (virtualizada) ────────────────────────────────── */}
-      <div ref={listRef} className="max-h-80 overflow-y-auto pr-1">
+      <div
+        ref={listRef}
+        aria-busy={isSearching || undefined}
+        className={`max-h-80 overflow-y-auto pr-1 transition-opacity ${isSearching ? "opacity-60" : ""}`}
+      >
         {/* Alto total virtual: mantiene la barra de scroll proporcional. */}
         <div
           style={{
@@ -343,7 +477,8 @@ export function PurchaseOrderProductLinesList({
           })}
         </div>
 
-        {filteredProducts.length === 0 && (
+        {/* Mientras llega la primera respuesta del servidor lo dice la nota de arriba. */}
+        {filteredProducts.length === 0 && !(showsServerResults && !serverSearch.hasLoaded) && (
           <div className="py-10 text-center text-sm text-slate-400">
             {searchQuery
               ? "No se encontraron productos"

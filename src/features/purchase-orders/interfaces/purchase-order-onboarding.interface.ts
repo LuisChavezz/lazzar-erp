@@ -68,6 +68,13 @@ export interface PurchaseOrderOnboardingBusqueda {
   productos: PurchaseOrderOnboardingProducto[];
   /** Siempre presente; vacía salvo con `?tipo_compra=PT`. */
   variantes: PurchaseOrderOnboardingVariante[];
+  /**
+   * `true` = la lista se cortó en su tope (1000 sin `*_limit`) y hay más: lo
+   * que falta solo se encuentra buscando en el servidor (`*_q`).
+   */
+  proveedores_truncado: boolean;
+  productos_truncado: boolean;
+  variantes_truncado: boolean;
 }
 
 export interface PurchaseOrderOnboardingData {

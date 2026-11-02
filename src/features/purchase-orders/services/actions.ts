@@ -14,6 +14,7 @@ import {
 import {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingPayload,
+  PurchaseOrderOnboardingProducto,
   PurchaseOrderOnboardingResponse,
   PurchaseOrderOnboardingVariante,
 } from "../interfaces/purchase-order-onboarding.interface";
@@ -61,6 +62,32 @@ export const searchPurchaseOrderVariants = async (
     },
   });
   return response.data.busqueda.variantes;
+}
+
+/** Tope de productos por búsqueda; `productos_truncado` dice si hubo más. */
+const PRODUCT_SEARCH_LIMIT = 50;
+
+/**
+ * Búsqueda de productos para los renglones de una OC de materia prima, sobre
+ * el mismo onboarding (EC-703). El catálogo sin parámetros se corta en 1000
+ * (`busqueda.productos_truncado`); esto encuentra el resto. `producto_q` filtra
+ * por nombre y descripción (no por código). Proveedores y variantes se piden
+ * con tope 1 (sin `tipo_compra` no viajan variantes): esta respuesta solo se
+ * lee por sus productos.
+ */
+export const searchPurchaseOrderProducts = async (
+  productoQ: string,
+): Promise<{ productos: PurchaseOrderOnboardingProducto[]; truncado: boolean }> => {
+  const response = await v1_api.get<PurchaseOrderOnboardingData>("/compras/ordenes/onboarding/", {
+    params: {
+      producto_q: productoQ,
+      producto_limit: PRODUCT_SEARCH_LIMIT,
+      proveedor_limit: 1,
+      variante_limit: 1,
+    },
+  });
+  const { productos, productos_truncado } = response.data.busqueda;
+  return { productos, truncado: productos_truncado };
 }
 
 export const postPurchaseOrder = async (
