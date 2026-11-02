@@ -17,7 +17,11 @@ const columnHelper = createColumnHelper<Pago>();
 const getProveedorLabel = (pago: Pago): string =>
   pago.proveedor_nombre || `Proveedor #${pago.proveedor}`;
 
-/** Texto de la cuenta bancaria: su alias, o `Cuenta #N` si no tiene (`alias` es nullable). */
+/**
+ * Rótulo de la cuenta bancaria en el filtro de encabezado: su alias, o
+ * `Cuenta #N` si no tiene (`alias` es nullable). Solo para la opción del
+ * filtro, que necesita un texto; la celda pinta «—».
+ */
 const getCuentaLabel = (pago: Pago): string =>
   pago.cuenta_bancaria_alias || `Cuenta #${pago.cuenta_bancaria}`;
 
@@ -89,12 +93,13 @@ export const getColumns = () => {
         </span>
       ),
     }),
-    // Mismo texto en la celda, la búsqueda y la opción del filtro.
-    columnHelper.accessor((row) => getCuentaLabel(row), {
+    // Una cuenta SIN alias es un dato real, no un nombre sin resolver: la celda
+    // pinta «—» y la búsqueda no indexa un texto inventado (`Cuenta #N`).
+    columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
       id: "cuenta_bancaria_alias",
       header: "Cuenta bancaria",
       cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
       ),
     }),
     columnHelper.accessor("metodo_pago", {
