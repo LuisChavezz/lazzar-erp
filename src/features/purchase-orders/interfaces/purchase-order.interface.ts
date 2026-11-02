@@ -194,10 +194,14 @@ export interface PurchaseOrderDetalle {
   /**
    * Variante (SKU) comprada: solo en renglones de producto terminado capturados
    * por SKU (EC-657). `null` en materia prima y en los renglones de PT
-   * anteriores a la compra por SKU. El backend no expone su color ni su talla.
+   * anteriores a la compra por SKU, igual que su color y su talla.
    */
   producto_variante_id: number | null;
   producto_variante_sku: string | null;
+  /** NOMBRE del color de la variante (no su id); `null` sin variante (EC-684). */
+  producto_variante_color: string | null;
+  /** NOMBRE de la talla de la variante (no su id); `null` sin variante o sin talla. */
+  producto_variante_talla: string | null;
   /** `null=True` en el backend: un renglón capturado sin descripción llega `null`. */
   descripcion: string | null;
   cantidad: number;
@@ -314,6 +318,10 @@ export interface CancelPurchaseOrderParams {
  * con la misma función del backend): el modelo plano del detalle (FKs como
  * ids), distinto de {@link PurchaseOrderDetalle} del retrieve. Forma observada
  * contra la respuesta real del backend.
+ *
+ * Ojo: la variante llega como `producto_variante` (el id de la FK, por el
+ * `fields="__all__"` del serializer), NO como `producto_variante_id` del
+ * retrieve; sus SKU, color y talla sí llevan los mismos nombres (EC-684).
  */
 export interface UpdatePurchaseOrderResponseDetalle {
   id: number;
@@ -326,6 +334,9 @@ export interface UpdatePurchaseOrderResponseDetalle {
   orden_compra: number;
   producto: number;
   producto_variante: number | null;
+  producto_variante_sku: string | null;
+  producto_variante_color: string | null;
+  producto_variante_talla: string | null;
   solicitud_compra_detalle: number | null;
   requisicion_detalle: number | null;
   sucursal: number;

@@ -40,16 +40,24 @@ export interface PurchaseOrderLine {
   sku: string | null;
   /** Nombre del producto a mostrar. */
   nombre: string;
-  /**
-   * "Color · Talla": solo en variantes elegidas del buscador, porque la lectura
-   * de la orden no los trae (los renglones guardados muestran SKU · producto).
-   */
+  /** "Color · Talla" de la variante; `null` en renglones sin variante. */
   atributos: string | null;
   /** Texto que viaja como `descripcion` del renglón. */
   descripcion: string;
   /** Precio con el que se siembra el renglón al marcarlo. */
   precioInicial: string;
 }
+
+/**
+ * "Color · Talla" de una variante, con solo las partes conocidas; `null` si no
+ * se conoce ninguna (renglones de materia prima o de PT sin SKU). Es la línea
+ * secundaria con que se distinguen dos tallas del mismo producto en el detalle,
+ * el PDF, el correo y la recepción de una OC (EC-684).
+ */
+export const variantAttributesLabel = (
+  color: string | null | undefined,
+  talla: string | null | undefined,
+): string | null => [color, talla].filter(Boolean).join(" · ") || null;
 
 const formatPrecioBase = (precioBase: number | string | null | undefined) =>
   (Number(precioBase) || 0).toFixed(2);
@@ -71,7 +79,7 @@ export const lineFromVariante = (v: PurchaseOrderOnboardingVariante): PurchaseOr
   productoVariante: v.id,
   sku: v.sku,
   nombre: v.producto_nombre,
-  atributos: [v.color, v.talla].filter(Boolean).join(" · ") || null,
+  atributos: variantAttributesLabel(v.color, v.talla),
   // "Producto · Color · Talla": dos tallas del mismo producto no deben salir
   // como renglones idénticos en el PDF y el correo, que listan por descripción.
   descripcion: [v.producto_nombre, v.color, v.talla]
@@ -105,7 +113,7 @@ export const lineFromDetalle = (
   productoVariante: d.producto_variante_id,
   sku: d.producto_variante_sku,
   nombre: d.producto_nombre || d.descripcion || `Producto #${d.producto_id}`,
-  atributos: null,
+  atributos: variantAttributesLabel(d.producto_variante_color, d.producto_variante_talla),
   descripcion: d.descripcion ?? d.producto_nombre ?? "",
   precioInicial: d.precio ?? "",
 });

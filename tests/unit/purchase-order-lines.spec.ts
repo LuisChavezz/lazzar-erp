@@ -6,6 +6,7 @@ import {
   lineFromProducto,
   lineFromVariante,
   seedFromDetalles,
+  variantAttributesLabel,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import type { PurchaseOrderDetalle } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import { linesStateFrom } from "@/src/features/purchase-orders/hooks/usePurchaseOrderLines";
@@ -22,6 +23,8 @@ const detalle = (overrides: Partial<PurchaseOrderDetalle>): PurchaseOrderDetalle
   producto_nombre: "CAMISA",
   producto_variante_id: null,
   producto_variante_sku: null,
+  producto_variante_color: null,
+  producto_variante_talla: null,
   descripcion: "CAMISA",
   cantidad: 1,
   piezas: 1,
@@ -59,6 +62,30 @@ test.describe("llaves de renglón", () => {
     expect(lineFromVariante(variante(161, "A", "2XG")).atributos).toBe("VINO · 2XG");
     expect(lineFromVariante(variante(161, "A", null)).atributos).toBe("VINO");
     expect(lineFromDetalle(detalle({ producto_variante_id: 161, producto_variante_sku: "A" })).atributos).toBeNull();
+  });
+
+  test("un renglón guardado con variante muestra su color y su talla (EC-684)", () => {
+    const guardado = (color: string | null, talla: string | null) =>
+      lineFromDetalle(
+        detalle({
+          producto_variante_id: 161,
+          producto_variante_sku: "A",
+          producto_variante_color: color,
+          producto_variante_talla: talla,
+        }),
+      ).atributos;
+    expect(guardado("VINO", "2XG")).toBe("VINO · 2XG");
+    expect(guardado(null, "2XG")).toBe("2XG");
+    expect(guardado("VINO", null)).toBe("VINO");
+    expect(lineFromDetalle(detalle({})).atributos).toBeNull();
+  });
+});
+
+test.describe("variantAttributesLabel", () => {
+  test("solo las partes conocidas; nada si no hay ninguna", () => {
+    expect(variantAttributesLabel("VINO", "CH")).toBe("VINO · CH");
+    expect(variantAttributesLabel("", "CH")).toBe("CH");
+    expect(variantAttributesLabel(null, undefined)).toBeNull();
   });
 });
 
