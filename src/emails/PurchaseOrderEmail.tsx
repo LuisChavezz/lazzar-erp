@@ -2,7 +2,10 @@ import { Fragment } from "react";
 import { Text } from "@react-email/components";
 import { BaseEmailLayout, EmailCard } from "@/src/emails/shared/BaseEmailLayout";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { hasVariantSku } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
+import {
+  hasVariantSku,
+  variantAttributesLabel,
+} from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
@@ -119,6 +122,10 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                     detalles.map((item, index) => {
                       const isNotLast = index < detalles.length - 1;
                       const dividerClass = isNotLast ? "border-b border-slate-100" : "";
+                      const atributos = variantAttributesLabel(
+                        item.producto_variante_color,
+                        item.producto_variante_talla,
+                      );
                       return (
                         <Fragment key={index}>
                           <tr className={dividerClass}>
@@ -132,6 +139,11 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                                 {/* `descripcion` es nullable en el backend. */}
                                 {item.descripcion || "—"}
                               </Text>
+                              {atributos ? (
+                                <Text className="m-0 mt-0.5 text-xs text-slate-500">
+                                  {atributos}
+                                </Text>
+                              ) : null}
                             </td>
                             <td className="py-4 pr-3 text-right align-top text-slate-900">
                               {item.cantidad.toLocaleString("es-MX")}

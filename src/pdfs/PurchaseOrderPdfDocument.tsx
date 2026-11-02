@@ -31,7 +31,10 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { hasVariantSku } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
+import {
+  hasVariantSku,
+  variantAttributesLabel,
+} from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
@@ -151,24 +154,33 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
               <Text style={s.emptyText}>Esta orden no tiene productos registrados.</Text>
             </View>
           ) : (
-            detalles.map((item, i) => (
-              <View
-                key={i}
-                style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]}
-                wrap={false}
-              >
-                {showSku && (
-                  <Text style={[s.tableCell, s.colSku]}>{item.producto_variante_sku ?? "-"}</Text>
-                )}
-                <Text style={[s.tableCellBold, s.colDescription]}>{item.descripcion}</Text>
-                <Text style={[s.tableCell, s.colQty]}>
-                  {item.cantidad.toLocaleString("es-MX")}
-                </Text>
-                <Text style={[s.tableCell, s.colPrice]}>{money(item.precio)}</Text>
-                <Text style={[s.tableCell, s.colDiscount]}>{money(item.descuento)}</Text>
-                <Text style={[s.tableCellBold, s.colAmount]}>{money(item.importe)}</Text>
-              </View>
-            ))
+            detalles.map((item, i) => {
+              const atributos = variantAttributesLabel(
+                item.producto_variante_color,
+                item.producto_variante_talla,
+              );
+              return (
+                <View
+                  key={i}
+                  style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]}
+                  wrap={false}
+                >
+                  {showSku && (
+                    <Text style={[s.tableCell, s.colSku]}>{item.producto_variante_sku ?? "-"}</Text>
+                  )}
+                  <View style={s.colDescription}>
+                    <Text style={s.tableCellBold}>{item.descripcion}</Text>
+                    {atributos && <Text style={s.variantAttributes}>{atributos}</Text>}
+                  </View>
+                  <Text style={[s.tableCell, s.colQty]}>
+                    {item.cantidad.toLocaleString("es-MX")}
+                  </Text>
+                  <Text style={[s.tableCell, s.colPrice]}>{money(item.precio)}</Text>
+                  <Text style={[s.tableCell, s.colDiscount]}>{money(item.descuento)}</Text>
+                  <Text style={[s.tableCellBold, s.colAmount]}>{money(item.importe)}</Text>
+                </View>
+              );
+            })
           )}
         </View>
 

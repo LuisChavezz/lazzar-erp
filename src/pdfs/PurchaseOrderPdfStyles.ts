@@ -109,6 +109,12 @@ export const purchaseOrderPdfStyles = StyleSheet.create({
   // Solo en órdenes con algún renglón comprado por SKU (EC-657).
   colSku: { flex: 2 },
   colDescription: { flex: 4 },
+  // "Color · Talla" bajo la descripción de un renglón con variante (EC-684).
+  variantAttributes: {
+    fontSize: 7,
+    color: C.textMuted,
+    marginTop: 1,
+  },
   colQty: { flex: 1.2, textAlign: "right" },
   colPrice: { flex: 1.5, textAlign: "right" },
   colDiscount: { flex: 1.5, textAlign: "right" },
