@@ -6,7 +6,7 @@ import { RecentActivityFeed } from "@/src/features/operations/components/RecentA
 import { OperationsQuickActions } from "@/src/features/operations/components/OperationsQuickActions";
 
 export const metadata: Metadata = {
-  title: "Mesa de Control | ERP",
+  title: "Panel | Mesa de Control | ERP",
   description:
     "Visualiza indicadores clave operativos para dar seguimiento de pedidos en tiempo real.",
 };
@@ -20,9 +20,9 @@ const jsonLd = {
   applicationCategory: "BusinessApplication",
 };
 
-export default function OperationsPage() {
+export default function OperationsDashboardPage() {
   return (
-    <main className="w-full space-y-6" aria-label="Mesa de Control">
+    <main className="w-full space-y-6" aria-label="Panel de Mesa de Control">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

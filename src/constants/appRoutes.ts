@@ -968,6 +968,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       { key: "tracking", label: "Seguimiento" },
       { key: "master-data", label: "Terceros" },
       { key: "communication", label: "Comunicación" },
+      { key: "analytics", label: "Indicadores" },
     ],
     items: [
       // ── Operación Comercial ─────────────────────────────────────────────────
@@ -1041,6 +1042,20 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: TasksIcon,
         permission: "R-MESACONTROL",
         section: "communication",
+      },
+      // ── Indicadores ─────────────────────────────────────────────────────────
+      {
+        // Antes era el landing del módulo; vive aparte para que entrar a Mesa
+        // de Control no espere a las cotizaciones en revisión (EC-694). Sin
+        // código de sección propio: cae en la regla de módulo `/operations`
+        // (R-MESACONTROL), la misma que lo protegía como landing.
+        key: "operations-dashboard",
+        label: "Panel de Mesa de Control",
+        path: "/operations/dashboard",
+        icon: DashboardIcon,
+        description: "Cotizaciones por autorizar, actividad reciente y montos por estatus.",
+        permission: "R-MESACONTROL",
+        section: "analytics",
       },
     ],
   }),
