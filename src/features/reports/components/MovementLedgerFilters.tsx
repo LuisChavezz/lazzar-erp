@@ -102,12 +102,7 @@ export function MovementLedgerFilters({
         </form>
 
         {/* Almacén OPCIONAL: sin selección, todos los almacenes. */}
-        <div>
-          <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
-          {almacenError && (
-            <p className="ml-1 mt-1 text-xs font-medium text-red-600 dark:text-red-400">{almacenError}</p>
-          )}
-        </div>
+        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear error={almacenError} />
 
         <div className="w-44">
           <FormInput
