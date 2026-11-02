@@ -8,6 +8,10 @@ import {
   PEDIDO_PROGRAMACION_DESTINOS,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
 } from '../constants/pedidoProgramacion';
+import {
+  getProgramacionesSearchText,
+  matchesProgramacionDestino,
+} from '../utils/wmsOrderProgramaciones';
 import { PedidoFolioLink } from './PedidoFolioLink';
 
 /**
@@ -26,10 +30,8 @@ const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
-// Un pedido pasa si ALGUNA de sus programaciones va al destino elegido.
 const destinoFilterFn: FilterFn<PickingOnboardingPedido> = (row, _columnId, filterValue) =>
-  filterValue === undefined ||
-  row.original.programaciones.some((programacion) => programacion.destino === filterValue);
+  matchesProgramacionDestino(row.original, filterValue);
 
 export function createWmsOrderColumns(): ColumnDef<PickingOnboardingPedido, unknown>[] {
   return [
@@ -73,11 +75,8 @@ export function createWmsOrderColumns(): ColumnDef<PickingOnboardingPedido, unkn
     },
     {
       id: 'programaciones',
-      // Texto de los destinos para que la búsqueda global los encuentre.
-      accessorFn: (pedido) =>
-        pedido.programaciones
-          .map((programacion) => getProgramacionDestinoLabel(programacion.destino))
-          .join(' '),
+      // Destinos, almacenes y comentarios, para que la búsqueda global los encuentre.
+      accessorFn: getProgramacionesSearchText,
       header: ({ column }) => (
         <FilterHeader
           title="Programación"
