@@ -32,9 +32,10 @@ export interface ReceiptOnboardingCatalogs {
 }
 
 // ─── Órdenes: detalle ────────────────────────────────────────────────────────
-// Shared detail item shape (purchase orders). Production-order details add
-// `producto_variante_id` on top of this.
-export interface ReceiptOnboardingPurchaseOrderDetalle {
+// Shared detail item shape of both order types. Purchase-order details add the
+// variant they were bought by (EC-684); production-order details add only
+// `producto_variante_id`.
+export interface ReceiptOnboardingOrderDetalleBase {
   id: number;
   producto_id: number;
   producto_nombre: string;
@@ -44,8 +45,20 @@ export interface ReceiptOnboardingPurchaseOrderDetalle {
   descripcion: string | null;
 }
 
+// Variante (SKU) del renglón de OC: solo en las de producto terminado
+// capturadas por SKU; todo `null` en materia prima y en renglones sin SKU.
+// `color` y `talla` son NOMBRES. Mismos nombres que el retrieve de la OC. El
+// submit no la manda: el backend la copia del renglón de la OC.
+export interface ReceiptOnboardingPurchaseOrderDetalle
+  extends ReceiptOnboardingOrderDetalleBase {
+  producto_variante_id: number | null;
+  producto_variante_sku: string | null;
+  producto_variante_color: string | null;
+  producto_variante_talla: string | null;
+}
+
 export interface ReceiptOnboardingProductionOrderDetalle
-  extends ReceiptOnboardingPurchaseOrderDetalle {
+  extends ReceiptOnboardingOrderDetalleBase {
   producto_variante_id: number;
 }
 
