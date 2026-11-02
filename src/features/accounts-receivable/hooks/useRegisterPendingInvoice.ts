@@ -33,19 +33,12 @@ type SetRegisterPendingInvoiceError = (
  * `setServerFieldError` de `useFormFieldErrors`), y el toast lleva el mensaje
  * que no tiene campo (`empresa`, `sucursal`, `non_field_errors`, `detail`).
  */
-/**
- * Llave de la mutación: el diálogo la consulta con `useIsMutating` para no
- * cerrarse con el POST en vuelo (el `isPending` del hook vive en el formulario).
- */
-export const registerPendingInvoiceMutationKey = ["register-pending-invoice"] as const;
-
 export const useRegisterPendingInvoice = (
   setError?: SetRegisterPendingInvoiceError,
 ) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: registerPendingInvoiceMutationKey,
     mutationFn: registerPendingInvoice,
     onSuccess: () => {
       // Refresca la lista real de CxC (`useCuentasPorCobrar` usa una llave con

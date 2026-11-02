@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, RefObject } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
 import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
@@ -18,8 +18,7 @@ import {
 import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
-import { saveCobroMutationKey, useSaveCobro } from "./useSaveCobro";
-import { useMutationLock } from "@/src/hooks/useMutationLock";
+import { useSaveCobro } from "./useSaveCobro";
 import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
@@ -71,10 +70,19 @@ const lineFromCuentaPorCobrar = (cuenta: CuentaPorCobrar): CobroLineFormValues =
  * el cobro completo por PATCH (`updateCobro`), y el cliente queda bloqueado
  * mientras haya líneas: cambiarlo exige quitarlas primero.
  */
+/**
+ * `submitLockRef` es el ÚNICO candado del guardado y es del diálogo: se toma
+ * de forma SÍNCRONA al empezar `handleFormSubmit`/`handleSaveDraft` (antes de
+ * la validación asíncrona de TanStack Form, que retrasa la mutación) y se
+ * suelta cuando el envío termina, también si la validación falla. Con él se
+ * ignoran el segundo clic o Enter, "Cancelar"/"Limpiar" y el cierre del diálogo
+ * (Cerrar, X, Esc).
+ */
 export function useCreateCobroForm({
   onSuccess,
   draft,
-}: { onSuccess?: () => void; draft?: CobroDraftSeed } = {}) {
+  submitLockRef,
+}: { onSuccess?: () => void; draft?: CobroDraftSeed; submitLockRef: RefObject<boolean> }) {
   const isEdit = draft !== undefined;
   // ── Catálogos ─────────────────────────────────────────────────────────────
   // Ninguno de los dos hooks está migrado a `useGuardedQuery`: exponen el
@@ -197,11 +205,7 @@ export function useCreateCobroForm({
   const lineKeyCounter = useRef(initialLineCount);
   const [lineKeys, setLineKeys] = useState<number[]>(() => Array.from({ length: initialLineCount }, (_, i) => i));
 
-  const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError, draft?.id);
-  // Candado del doble envío: dos clics seguidos llegan a `onSubmit` antes de
-  // que `isPending` se pinte, así que se consulta la caché de mutaciones de
-  // forma SÍNCRONA (mismo candado que cancelar o timbrar el REP).
-  const saveLock = useMutationLock(saveCobroMutationKey(draft?.id));
+  const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError);
 
   // ── Formulario ────────────────────────────────────────────────────────────
   const form = useForm({
@@ -212,7 +216,6 @@ export function useCreateCobroForm({
     onSubmitMeta: { estatus: "Aplicado", withFreshSaldos: null } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
       if (!meta.withFreshSaldos) return;
-      if (!saveLock.isIdle()) return;
       setServerBanner(null);
       // Los botones ya están deshabilitados; esto cubre un envío por Enter, con
       // el mismo aviso como error del campo.
@@ -370,15 +373,24 @@ export function useCreateCobroForm({
   };
 
   // ── Submit / reset ────────────────────────────────────────────────────────
+  const submitWith = (estatus: CobroSubmitMeta["estatus"]) => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    void form.handleSubmit({ estatus, withFreshSaldos }).finally(() => {
+      submitLockRef.current = false;
+    });
+  };
+
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void form.handleSubmit({ estatus: "Aplicado", withFreshSaldos });
+    submitWith("Aplicado");
   };
 
-  const handleSaveDraft = () => {
-    void form.handleSubmit({ estatus: "Borrador", withFreshSaldos });
-  };
+  const handleSaveDraft = () => submitWith("Borrador");
+
+  /** ¿Hay un guardado en curso? Lectura SÍNCRONA del candado, para handlers. */
+  const isSubmitLocked = () => submitLockRef.current;
 
   return {
     form,
@@ -409,5 +421,6 @@ export function useCreateCobroForm({
     handleFormSubmit,
     handleSaveDraft,
     handleReset: resetAll,
+    isSubmitLocked,
   };
 }
