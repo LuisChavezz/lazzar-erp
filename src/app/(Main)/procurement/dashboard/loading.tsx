@@ -1,4 +1,4 @@
-import { ProcurementRouteSkeleton } from "@/src/features/purchase-orders/components/ProcurementRouteSkeleton";
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 
 export default function Loading() {
   return <ProcurementRouteSkeleton variant="dashboard" />;

@@ -1,5 +1,10 @@
-import { ProcurementRouteSkeleton } from "@/src/features/purchase-orders/components/ProcurementRouteSkeleton";
+import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 
+// Mismo contenedor que la página (`w-full space-y-6 pt-2`).
 export default function Loading() {
-  return <ProcurementRouteSkeleton variant="detail" />;
+  return (
+    <div className="w-full space-y-6 pt-2">
+      <ProcurementRouteSkeleton variant="detail" />
+    </div>
+  );
 }
