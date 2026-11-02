@@ -1,10 +1,8 @@
 import { expect, test } from "@playwright/test";
 import {
-  countPricedLines,
   proveedorDefaultMonedaId,
   resolveProveedorChange,
 } from "@/src/features/purchase-orders/utils/supplierDefaultMoneda";
-import { lineFromProducto } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import type {
   PurchaseOrderOnboardingData,
   PurchaseOrderOnboardingProveedor,
@@ -81,6 +79,12 @@ test.describe("resolveProveedorChange", () => {
     });
   });
 
+  test("sin moneda elegida (0, tras volver del Step 2) y con renglones con precio, confirma", () => {
+    expect(
+      resolveProveedorChange({ onboardingData: data, currentMoneda: 0, nextProveedor: 20, pricedLineCount: 2 }),
+    ).toEqual({ moneda: USD, needsConfirmation: true });
+  });
+
   test("sin moneda válida o al volver a 0, deja la moneda y no confirma", () => {
     for (const nextProveedor of [0, 30, 40]) {
       expect(resolveProveedorChange({ ...base, nextProveedor, pricedLineCount: 3 })).toEqual({
@@ -89,12 +93,4 @@ test.describe("resolveProveedorChange", () => {
       });
     }
   });
-});
-
-test("countPricedLines cuenta solo precios mayores a 0", () => {
-  const lines = [1, 2, 3, 4].map((id) =>
-    lineFromProducto({ id, codigo: null, cod_proscai: "", nombre: `P${id}`, descripcion: null, precio_base: 0 }),
-  );
-  const [a, b, c] = lines.map((l) => l.key);
-  expect(countPricedLines(lines, { [a]: "12.50", [b]: "0.00", [c]: "" })).toBe(1);
 });

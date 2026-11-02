@@ -59,6 +59,9 @@ export function useProveedorMonedaChange({
 
   const codigoDe = (monedaId: number) =>
     onboardingMonedaCodigo(onboardingData, monedaId) ?? "otra moneda";
+  // Sin moneda actual resoluble (p. ej. se dejó en "Seleccionar moneda…" al
+  // volver del Step 2) no se nombra una moneda anterior que no existe.
+  const codigoActual = pending ? onboardingMonedaCodigo(onboardingData, pending.monedaActual) : null;
 
   const confirmDialogProps = {
     open,
@@ -67,9 +70,11 @@ export function useProveedorMonedaChange({
     },
     title: "¿Cambiar la moneda de la orden?",
     description: pending
-      ? `Este proveedor maneja ${codigoDe(pending.moneda)}, así que la orden pasará de ${codigoDe(
-          pending.monedaActual,
-        )} a ${codigoDe(pending.moneda)}. ${
+      ? `Este proveedor maneja ${codigoDe(pending.moneda)}, así que la orden ${
+          codigoActual
+            ? `pasará de ${codigoActual} a ${codigoDe(pending.moneda)}`
+            : `quedará en ${codigoDe(pending.moneda)}`
+        }. ${
           pricedLineCount === 1
             ? "El precio capturado no se convierte: revísalo"
             : `Los precios de los ${pricedLineCount} renglones capturados no se convierten: revísalos`

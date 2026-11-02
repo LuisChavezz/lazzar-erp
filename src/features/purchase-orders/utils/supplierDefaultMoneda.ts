@@ -1,5 +1,5 @@
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
-import type { PurchaseOrderLine, PurchaseOrderLineKey } from "./purchaseOrderLines";
+import { onboardingMonedaCodigo } from "./onboardingMonedaCodigo";
 
 /**
  * Moneda que la "Nueva OC" preselecciona al elegir un proveedor (EC-689): la
@@ -14,18 +14,8 @@ export const proveedorDefaultMonedaId = (
   if (!proveedorId) return null;
   const monedaId = onboardingData.busqueda.proveedores.find((p) => p.id === proveedorId)?.moneda_id;
   if (monedaId == null) return null;
-  return onboardingData.catalogos.monedas.some((m) => m.id === monedaId) ? monedaId : null;
+  return onboardingMonedaCodigo(onboardingData, monedaId) !== null ? monedaId : null;
 };
-
-/**
- * Renglones del Step 2 con un precio capturado (mayor a 0, mismo criterio que
- * la validación del precio). Cambiar la moneda no los convierte, así que son
- * los que justifican confirmar el cambio de proveedor.
- */
-export const countPricedLines = (
-  lines: PurchaseOrderLine[],
-  prices: Partial<Record<PurchaseOrderLineKey, string>>,
-): number => lines.filter(({ key }) => parseFloat(prices[key] ?? "") > 0).length;
 
 export interface ProveedorChangeResolution {
   /** Moneda a aplicar junto con el proveedor; `null` = dejar la actual. */
