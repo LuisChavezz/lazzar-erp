@@ -541,8 +541,12 @@ export default function SupplierInvoiceList({
           <ConfirmDialog
             open={true}
             onOpenChange={(open) => {
-              if (!open) setRegistrarTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(rowLock.isPending(registrarTargetId) || rowLock.isHeld(registrarTargetId))) setRegistrarTargetId(null);
             }}
+            busy={rowLock.isPending(registrarTargetId)}
             title="Registrar Factura de Proveedor"
             description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
             confirmText={
@@ -561,8 +565,12 @@ export default function SupplierInvoiceList({
           <ConfirmDialog
             open={true}
             onOpenChange={(open) => {
-              if (!open) setCancelTargetId(null);
+              // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
+              // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
+              // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
+              if (!open && !(rowLock.isPending(cancelTargetId) || rowLock.isHeld(cancelTargetId))) setCancelTargetId(null);
             }}
+            busy={rowLock.isPending(cancelTargetId)}
             title="Cancelar Factura de Proveedor"
             description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
             confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
