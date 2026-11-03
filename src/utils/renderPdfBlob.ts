@@ -19,8 +19,9 @@
  * bundler; el original queda en `cause`. Cualquier otro error —al evaluar el
  * módulo o al renderizar el PDF— se propaga tal cual.
  *
- * `loadRenderer` solo existe para las pruebas unitarias (un renderer falso);
- * los generadores nunca lo pasan.
+ * La lógica vive en `renderPdfBlobWith`, que además recibe de dónde cargar el
+ * renderer: lo usan las pruebas unitarias con uno falso. Los generadores usan
+ * `renderPdfBlob`, que carga `@react-pdf/renderer`.
  */
 import { createElement, type ComponentType, type ReactElement } from "react";
 // Solo el tipo: no mete la librería en el chunk de quien importa este módulo.
@@ -35,10 +36,18 @@ export interface PdfRenderer {
   pdf(element: ReactElement<DocumentProps>): { toBlob(): Promise<Blob> };
 }
 
-export async function renderPdfBlob<P extends object>(
+export function renderPdfBlob<P extends object>(
   loadDocument: () => Promise<ComponentType<P>>,
   props: P,
-  loadRenderer: () => Promise<PdfRenderer> = () => import("@react-pdf/renderer"),
+): Promise<Blob> {
+  return renderPdfBlobWith(() => import("@react-pdf/renderer"), loadDocument, props);
+}
+
+/** `renderPdfBlob` con el renderer inyectable (para las pruebas unitarias). */
+export async function renderPdfBlobWith<P extends object>(
+  loadRenderer: () => Promise<PdfRenderer>,
+  loadDocument: () => Promise<ComponentType<P>>,
+  props: P,
 ): Promise<Blob> {
   const [renderer, PdfDocument] = await Promise.all([loadRenderer(), loadDocument()]).catch(
     (error: unknown) => {

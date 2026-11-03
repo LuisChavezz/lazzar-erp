@@ -2,13 +2,14 @@ import { expect, test } from "@playwright/test";
 import type { ReactElement } from "react";
 import {
   PDF_GENERATOR_LOAD_ERROR_MESSAGE,
-  renderPdfBlob,
+  renderPdfBlobWith,
   type PdfRenderer,
 } from "@/src/utils/renderPdfBlob";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 /**
- * Pruebas unitarias de EC-700: `renderPdfBlob` renderiza el documento cargado
+ * Pruebas unitarias de EC-700: `renderPdfBlob` (vía `renderPdfBlobWith`, con
+ * el renderer inyectable) renderiza el documento cargado
  * con sus props y traduce a un mensaje legible SOLO el fallo al descargar un
  * chunk (`ChunkLoadError`, como lo nombran Turbopack y webpack); cualquier
  * otro error —al cargar el documento o al renderizar— llega intacto a quien
@@ -44,7 +45,9 @@ test("renderiza el documento cargado con sus props y devuelve el Blob del render
   const blob = new Blob(["%PDF-"], { type: "application/pdf" });
   const { rendered, loadRenderer } = fakeRenderer(async () => blob);
 
-  const result = await renderPdfBlob(async () => SampleDocument, { label: "Hola" }, loadRenderer);
+  const result = await renderPdfBlobWith(loadRenderer, async () => SampleDocument, {
+    label: "Hola",
+  });
 
   expect(result).toBe(blob);
   expect(rendered).toHaveLength(1);
@@ -57,9 +60,9 @@ test("un error al renderizar el PDF se propaga sin traducir", async () => {
   const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
 
   // Aunque se llame ChunkLoadError: solo se traduce el fallo al CARGAR.
-  const error = await renderPdfBlob(async () => SampleDocument, { label: "x" }, loadRenderer).catch(
-    (e: unknown) => e,
-  );
+  const error = await renderPdfBlobWith(loadRenderer, async () => SampleDocument, {
+    label: "x",
+  }).catch((e: unknown) => e);
 
   expect(error).toBe(original);
 });
@@ -68,10 +71,10 @@ test("un ChunkLoadError al cargar el documento se traduce y conserva el original
   const original = chunkLoadError();
   const { loadRenderer } = fakeRenderer(async () => new Blob());
 
-  const error = await renderPdfBlob<Props>(
+  const error = await renderPdfBlobWith<Props>(
+    loadRenderer,
     () => Promise.reject(original),
     { label: "x" },
-    loadRenderer,
   ).catch((e: unknown) => e);
 
   expect(error).toBeInstanceOf(Error);
@@ -82,10 +85,10 @@ test("un ChunkLoadError al cargar el documento se traduce y conserva el original
 test("un ChunkLoadError al cargar la librería también se traduce", async () => {
   const original = chunkLoadError();
 
-  const error = await renderPdfBlob(
+  const error = await renderPdfBlobWith(
+    () => Promise.reject(original),
     async () => SampleDocument,
     { label: "x" },
-    () => Promise.reject(original),
   ).catch((e: unknown) => e);
 
   expect((error as Error).message).toBe(PDF_GENERATOR_LOAD_ERROR_MESSAGE);
@@ -96,10 +99,10 @@ test("un error de import que no es de chunk se propaga sin cambios", async () =>
   const original = new TypeError("StyleSheet.create is not a function");
   const { loadRenderer } = fakeRenderer(async () => new Blob());
 
-  const error = await renderPdfBlob<Props>(
+  const error = await renderPdfBlobWith<Props>(
+    loadRenderer,
     () => Promise.reject(original),
     { label: "x" },
-    loadRenderer,
   ).catch((e: unknown) => e);
 
   expect(error).toBe(original);
