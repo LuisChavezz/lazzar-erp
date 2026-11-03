@@ -4,7 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
-import { getColumns, ProductRow } from "./ProductColumns";
+import { getColumns, productLineaHeaderFilter, ProductRow } from "./ProductColumns";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
@@ -15,6 +15,13 @@ import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 import { useProducts } from "../hooks/useProducts";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+
+// Solo la línea: el resto de `PRODUCT_HEADER_FILTERS` es de la vista de
+// Producción y no se adopta aquí.
+const HEADER_FILTERS = {
+  categoria_linea: productLineaHeaderFilter,
+};
 
 export default function ProductList() {
   const { data: session } = useSession();
@@ -44,7 +51,7 @@ export default function ProductList() {
 
   const lookups = useMemo(
     () => ({
-      categories: new Map(categories.map((category) => [category.id, category.nombre])),
+      categories: new Map(categories.map((category) => [category.id, category])),
       units: new Map(units.map((unit) => [unit.id, unit.nombre])),
       taxes: new Map(taxes.map((tax) => [tax.id, tax.nombre])),
       satProdserv: new Map(
@@ -64,7 +71,8 @@ export default function ProductList() {
     () =>
       products.map((product) => ({
         ...product,
-        categoria_nombre: lookups.categories.get(product.categoria_producto) ?? null,
+        categoria_nombre: lookups.categories.get(product.categoria_producto)?.nombre ?? null,
+        categoria_linea: lookups.categories.get(product.categoria_producto)?.linea ?? null,
       })),
     [products, lookups]
   );
@@ -77,7 +85,7 @@ export default function ProductList() {
   return (
     <>
       <DataTable
-        columns={columns}
+        columns={withHeaderFilters(columns, rows, HEADER_FILTERS)}
         data={rows}
         searchPlaceholder="Buscar producto..."
         isLoading={isLoading}
