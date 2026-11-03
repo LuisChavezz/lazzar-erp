@@ -11,6 +11,8 @@ export interface ProductType {
   activo: boolean;
 }
 
+/** Cuerpo de alta/edición. Sin `activo`: la baja es el `DELETE` (lógico). */
 export interface ProductTypeCreate {
   codigo: string;
+  nombre: string;
 }
