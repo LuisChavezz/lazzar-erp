@@ -8,10 +8,10 @@ import { useProductCategories } from "../../product-categories/hooks/useProductC
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProducts } from "../hooks/useProducts";
 import {
+  buildProductRows,
   getColumns,
   PRODUCT_HEADER_FILTERS,
   productLineaHeaderFilter,
-  type ProductRow,
 } from "./ProductColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 
@@ -51,15 +51,7 @@ export function ProductionProductsView() {
   // El nombre de la categoría se incorpora a la FILA (ver `ProductRow`): así la
   // llegada tardía del catálogo produce un `data` nuevo y TanStack recalcula
   // búsqueda y orden.
-  const categoriesById = new Map(categories.map((category) => [category.id, category]));
-  const rows: ProductRow[] = products.map((product) => {
-    const category = categoriesById.get(product.categoria_producto);
-    return {
-      ...product,
-      categoria_nombre: category?.nombre ?? null,
-      categoria_linea: category?.linea ?? null,
-    };
-  });
+  const rows = buildProductRows(products, categories);
 
   return (
     <div className="h-full flex flex-col min-h-0">

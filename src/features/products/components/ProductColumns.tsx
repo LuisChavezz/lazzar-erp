@@ -3,6 +3,7 @@ import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
+import type { ProductCategory } from "../../product-categories/interfaces/product-category.interface";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
@@ -36,6 +37,27 @@ export type ProductRow = Product & {
   categoria_nombre: string | null;
   categoria_linea: string | null;
 };
+
+/**
+ * Filas de las listas de productos (`ProductList`, `ProductionProductsView`):
+ * cada producto con el nombre y la línea de su categoría, resueltos con UNA
+ * búsqueda en el catálogo ya cargado. `null` en ambos si la categoría no está
+ * en el catálogo (sin categoría, inactiva o el catálogo aún no llega).
+ */
+export function buildProductRows(
+  products: readonly Product[],
+  categories: readonly Pick<ProductCategory, "id" | "nombre" | "linea">[],
+): ProductRow[] {
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  return products.map((product) => {
+    const category = categoriesById.get(product.categoria_producto);
+    return {
+      ...product,
+      categoria_nombre: category?.nombre ?? null,
+      categoria_linea: category?.linea ?? null,
+    };
+  });
+}
 
 const columnHelper = createColumnHelper<ProductRow>();
 
@@ -225,13 +247,20 @@ export const PRODUCT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pro
 /** Valor del filtro de línea para un producto cuya categoría no se resolvió. */
 const SIN_CATEGORIA_FILTER_VALUE = "__sin_categoria__";
 
+/** Opción del filtro de línea para los productos sin categoría resuelta. */
+export const SIN_CATEGORIA_O_INACTIVA_LABEL = "Sin categoría o inactiva";
+
 /**
  * Filtro de encabezado de la columna "Línea" (`categoria_linea`). Un producto
- * sin categoría resuelta (`categoria_linea === null`: sin categoría o fuera del
- * catálogo) NO es materia prima: va en su propia opción "Sin categoría", que
- * solo aparece si hay filas así, en vez de caer en "Sin línea (materia prima)".
+ * sin categoría resuelta (`categoria_linea === null`: sin categoría, o con una
+ * categoría inactiva, que `categoria-producto/` no lista) NO es materia prima:
+ * va en su propia opción "Sin categoría o inactiva", que solo aparece si hay
+ * filas así, en vez de caer en "Sin línea (materia prima)".
+ *
+ * Usa un valor marcador porque la `emptyOption` de `withHeaderFilters` trata
+ * igual `null` y `""`, y una fila `null` no genera opción propia.
  */
 export const productLineaHeaderFilter = categoriaLineaHeaderFilter<ProductRow>(
   (row) => row.categoria_linea ?? SIN_CATEGORIA_FILTER_VALUE,
-  (row) => (row.categoria_linea === null ? "Sin categoría" : null),
+  (row) => (row.categoria_linea === null ? SIN_CATEGORIA_O_INACTIVA_LABEL : null),
 );
