@@ -1,20 +1,26 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createNotaCredito } from "../services/actions";
-import type { CreateNotaCreditoPayload } from "../interfaces/credit-note.interface";
+import type {
+  CreateNotaCreditoPayload,
+  NotaCredito,
+} from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE,
-  creditNoteCreateRejectedMessage,
+  creditNoteCreateRevertedMessage,
+  creditNoteRevertCause,
   creditNoteStampFailedMessage,
-  creditNoteStampPendingMessage,
+  describeEmittedNotaCredito,
+  type EmittedNotaCreditoState,
   isUnconfirmedFailure,
   readStampFailedNota,
   STAMP_FAILED_TOAST_DURATION_MS,
   type StampFailedNota,
 } from "../utils/creditNoteErrors";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
+import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
 
 /** Campos de cabecera que el backend puede señalar en un `400`. */
 export type NotaCreditoHeaderErrorField =
@@ -42,10 +48,9 @@ export type NotaCreditoHeaderErrorField =
  * `isUnconfirmedFailure`). NO se puede afirmar que no se guardó nada.
  * `stampFailed`: el `400` trae `cfdi`, el timbrado falló; `formError` es el
  * motivo del backend, sin más.
- * `notaCredito`: la nota que la emisión dejó guardada, cuando el `400` con
- * `cfdi` la reporta (`readStampFailedNota`). Es lo ÚNICO que dice con certeza
- * en qué quedó: sin ella no se afirma nada, porque el backend tiene caminos que
- * responden con `cfdi` (o sin él) con la nota ya emitida.
+ * `notaCredito`: la nota que la emisión dejó guardada, cuando el `400` la
+ * reporta en `nota_credito` (`readStampFailedNota`), con `cfdi` o con otra
+ * llave. Es lo ÚNICO que dice con certeza que la nota existe y en qué estatus.
  * `conflict`: `409` de concurrencia. Puede salir del timbrado, que bloquea la
  * nota DESPUÉS de guardarla, así que en una emisión tampoco prueba nada.
  */
@@ -165,17 +170,21 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   const record = data as Record<string, unknown>;
 
   // ── Errores a nivel operación ────────────────────────────────────────────
-  // Todos menos `cfdi` son "todo o nada": nada quedó guardado. `cfdi` puede
-  // llegar DESPUÉS de guardar la nota (`stampFailed`).
+  // Sin `nota_credito` son "todo o nada": nada quedó guardado. Con él, la nota
+  // EXISTE (nucleo-erp #848): el timbrado corre después de guardarla y su fallo
+  // —o el de la póliza tras un timbre exitoso (#749, llaves `poliza`,
+  // `configuracion_contable`, `cuenta_contable`), o un segundo `preparar` que
+  // falla porque otra petición cambió la nota (#751, `factura` o `estatus`)—
+  // responde con ella. Por eso `nota_credito` se lee con CUALQUIER llave, no
+  // solo junto a `cfdi`: es lo único que dice con certeza en qué quedó.
+  result.notaCredito = readStampFailedNota(record.nota_credito);
   // `cfdi` primero: al emitir (y en `timbrar/`), el motivo del rechazo de
   // Facturama o de los datos fiscales llega en esa llave. Se muestra tal cual,
-  // sin interpretar su texto: el texto no es contrato. Lo que sí es contrato es
-  // `nota_credito`, que solo se lee junto a `cfdi`.
+  // sin interpretar su texto: el texto no es contrato.
   // Le sigue `estatus` (campo de cabecera, más abajo) y luego el resto.
   const cfdi = firstDrfMessage(record.cfdi);
   if (cfdi) {
     result.stampFailed = true;
-    result.notaCredito = readStampFailedNota(record.nota_credito);
     result.formError = cfdi;
     result.messages.push(cfdi);
   }
@@ -260,10 +269,11 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
     });
   }
 
-  // Junto a `cfdi` el backend puede mandar otras llaves (p. ej. `tipo_cambio`,
-  // EC-592) que ningún bloque de arriba lee: se suman al motivo en vez de
-  // perderse, porque con `cfdi` ya hay mensajes y el fallback no correría.
-  if (result.stampFailed) {
+  // Junto a `cfdi` o a `nota_credito` el backend puede mandar otras llaves (p. ej.
+  // `tipo_cambio`, EC-592, o `poliza`/`configuracion_contable` de #749) que
+  // ningún bloque de arriba lee: se suman al motivo en vez de perderse, porque
+  // con mensajes ya puestos el fallback no correría.
+  if (result.stampFailed || result.notaCredito) {
     const leidas = new Set<string>([
       "cfdi",
       "nota_credito",
@@ -321,50 +331,97 @@ export const stampFailureDetail = (parsed: ParsedNotaCreditoError): string =>
  *
  * - `locked`: la nota PUDO quedar registrada y no se sabe cómo. El formulario se
  *   bloquea: reenviarlo podría crear otra nota y rebajar el saldo dos veces.
- * - `cancelled`: Facturama rechazó el timbrado y el backend reporta la nota
- *   `Cancelada`, con el saldo restituido. El formulario se desbloquea con lo
- *   capturado para corregir y reenviar (crea una nota nueva).
- * - `pending`: Facturama no confirmó y el backend reporta la nota `Emitida` con
- *   el timbrado pendiente. El alta sí ocurrió: el formulario se cierra.
+ * - `cancelled`: el backend reporta la nota `Cancelada` (Facturama rechazó el
+ *   timbrado, o #751), con el saldo restituido. El formulario se desbloquea con
+ *   lo capturado para corregir y reenviar (crea una nota nueva).
+ * - `pending`: el backend reporta la nota `Emitida` y su nota fresca tiene el
+ *   timbrado pendiente. El alta sí ocurrió: el formulario se cierra.
+ * - `emitted`: el backend reporta la nota `Emitida` y su nota fresca ya está
+ *   timbrada (el error llegó después, p. ej. la póliza, #749) o sin CFDI. El
+ *   alta sí ocurrió: el formulario se cierra, con el estado real en el aviso.
  */
 export type CreateFailureOutcome =
   | { kind: "locked"; message: string }
   | { kind: "cancelled"; message: string }
-  | { kind: "pending"; message: string };
+  | { kind: "pending"; message: string }
+  | { kind: "emitted"; message: string };
 
 /**
  * Desenlace de un alta fallida (ver `CreateFailureOutcome`), o `null` si el
  * error prueba que no se guardó nada.
  *
- * Solo un `cfdi` acompañado de `nota_credito` dice en qué quedó la nota; es la
- * única puerta a `cancelled` y `pending`. Cualquier otro `cfdi` —sin
- * `nota_credito`, o con un estatus que un alta no produce— queda `locked`: el
- * backend tiene caminos que responden sin `nota_credito` con la nota ya emitida.
- * Sin confirmación (sin respuesta, timeout, 5xx) o un `409` también quedan
- * `locked`, solo en un alta `Emitida`: un borrador repetido no mueve ningún saldo.
+ * `nota_credito` dice en qué quedó la nota, venga con `cfdi` o con otra llave
+ * (nucleo-erp #848); es la única puerta a `cancelled`, `pending` y `emitted`.
+ * Con `Emitida`, `actual` es la nota FRESCA (el `400` no trae `cfdi_uuid` ni
+ * `cfdi_pendiente`): `null` si no se pudo consultar, y entonces queda `locked`.
+ * Un `cfdi` sin `nota_credito` —o con un estatus que un alta no produce— queda
+ * `locked`: no se sabe qué quedó. Sin confirmación (sin respuesta, timeout,
+ * 5xx) o un `409` también quedan `locked`, solo en un alta `Emitida`: un
+ * borrador repetido no mueve ningún saldo.
  */
 export const getCreateFailureOutcome = (
   parsed: ParsedNotaCreditoError,
   payload: Pick<CreateNotaCreditoPayload, "estatus" | "folio">,
+  actual: EmittedNotaCreditoState | null = null,
 ): CreateFailureOutcome | null => {
-  if (parsed.stampFailed) {
+  const nota = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
+  if (nota) {
     const detail = stampFailureDetail(parsed);
-    const nota = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
-    if (nota) {
-      const label = payload.folio?.trim() || `#${nota.id}`;
-      if (nota.estatus === "Cancelada") {
-        return { kind: "cancelled", message: creditNoteCreateRejectedMessage(label, detail) };
-      }
-      if (nota.estatus === "Emitida") {
-        return { kind: "pending", message: creditNoteStampPendingMessage(label, detail) };
-      }
+    const label = payload.folio?.trim() || `#${nota.id}`;
+    if (nota.estatus === "Cancelada") {
+      return {
+        kind: "cancelled",
+        message: creditNoteCreateRevertedMessage(
+          creditNoteRevertCause(parsed.stampFailed),
+          label,
+          detail,
+        ),
+      };
+    }
+    if (nota.estatus === "Emitida") {
+      const { kind, message } = describeEmittedNotaCredito("alta", label, detail, actual);
+      return { kind: kind === "unknown" ? "locked" : kind, message };
     }
     return { kind: "locked", message: creditNoteStampFailedMessage("alta", detail) };
+  }
+  if (parsed.stampFailed) {
+    return { kind: "locked", message: creditNoteStampFailedMessage("alta", stampFailureDetail(parsed)) };
   }
   if (payload.estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
     return { kind: "locked", message: CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE };
   }
   return null;
+};
+
+/**
+ * Errores de emisión tras los que `readEmittedNota` ya leyó FRESCA la nota, con
+ * su id: `onSettled` no vuelve a pedir ese detalle (`invalidateCreditNoteQueries`
+ * con `freshDetailId`). Por objeto de error, así no hay estado que limpiar.
+ */
+const freshlyReadNotaIds = new WeakMap<object, number>();
+
+/** Id de la nota que ya se leyó fresca tras `error`, si la hubo (para `onSettled`). */
+export const freshlyReadNotaId = (error: unknown): number | undefined =>
+  error && typeof error === "object" ? freshlyReadNotaIds.get(error) : undefined;
+
+/**
+ * Nota FRESCA que una emisión fallida (`error`) dejó `Emitida` (el `400` solo
+ * trae `{id, estatus}`), o `null` si no se pudo consultar: entonces no se afirma
+ * su timbre. La escribe en `["credit-note-detail", id]` (`fetchFreshNotaCredito`)
+ * y lo recuerda para que `onSettled` no la pida dos veces (`freshlyReadNotaId`).
+ */
+export const readEmittedNota = async (
+  queryClient: QueryClient,
+  id: number,
+  error: unknown,
+): Promise<NotaCredito | null> => {
+  try {
+    const nota = await fetchFreshNotaCredito(queryClient, id);
+    if (error && typeof error === "object") freshlyReadNotaIds.set(error, id);
+    return nota;
+  } catch {
+    return null;
+  }
 };
 
 /** Id del toast de un alta fallida con desenlace (`getCreateFailureOutcome`). */
@@ -408,15 +465,22 @@ export const useCreateNotaCredito = (
           : "Borrador de nota de crédito guardado",
       );
     },
-    onError: (error, payload) => {
+    // Asíncrono: si el backend reporta la nota `Emitida`, su timbre se lee de la
+    // nota FRESCA antes de decidir (`readEmittedNota`). TanStack espera la
+    // promesa, así que `mutateAsync` no se resuelve hasta que el formulario ya
+    // recibió el desenlace.
+    onError: async (error, payload) => {
       const parsed = parseNotaCreditoError(error);
-      const outcome = getCreateFailureOutcome(parsed, payload);
+      const reported = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
+      const actual =
+        reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, reported.id, error) : null;
+      const outcome = getCreateFailureOutcome(parsed, payload, actual);
       onServerError?.(parsed, outcome);
 
       if (outcome) {
-        // Con `pending` el formulario se cierra y el toast es el único aviso; los
-        // tres traen el motivo largo de Facturama, así que duran lo suficiente
-        // para leerlo.
+        // Con `pending` y `emitted` el formulario se cierra y el toast es el
+        // único aviso; todos traen el motivo largo del backend, así que duran lo
+        // suficiente para leerlo.
         toast.error(outcome.message, {
           id: CREATE_FAILURE_TOAST_ID,
           duration: STAMP_FAILED_TOAST_DURATION_MS,
@@ -431,10 +495,11 @@ export const useCreateNotaCredito = (
     },
     // También ante un error: un alta emitida guarda la nota antes de timbrarla,
     // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.
-    onSettled: (_nota, _error, payload) =>
+    onSettled: (_nota, error, payload) =>
       invalidateCreditNoteQueries(
         queryClient,
         payload.estatus === "Emitida" ? "balances" : "document",
+        freshlyReadNotaId(error),
       ),
   });
 };

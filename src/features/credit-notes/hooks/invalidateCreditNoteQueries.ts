@@ -27,10 +27,15 @@ export type CreditNoteChangeScope = "stamp" | "document" | "balances";
  * La promesa espera solo a la nota, para que el diálogo de confirmación siga
  * "pendiente" hasta que el listado y el detalle reflejen el resultado; el resto
  * se refresca sin bloquearlo.
+ *
+ * `freshDetailId`: una nota que el `onError` ya leyó fresca tras la mutación
+ * (`readEmittedNota`); su detalle no se vuelve a pedir. El listado, la factura y
+ * los saldos sí.
  */
 export const invalidateCreditNoteQueries = (
   queryClient: QueryClient,
   scope: CreditNoteChangeScope,
+  freshDetailId?: number,
 ) => {
   if (scope !== "stamp") {
     void queryClient.invalidateQueries({ queryKey: ["invoice-desglose"] });
@@ -46,6 +51,9 @@ export const invalidateCreditNoteQueries = (
   }
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["credit-notes"] }),
-    queryClient.invalidateQueries({ queryKey: ["credit-note-detail"] }),
+    queryClient.invalidateQueries({
+      queryKey: ["credit-note-detail"],
+      predicate: (query) => freshDetailId === undefined || query.queryKey[1] !== freshDetailId,
+    }),
   ]);
 };
