@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
@@ -8,13 +8,15 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   TOTAL_CERO_MESSAGE,
   totalEsAcreditable,
 } from "../schemas/credit-note.schema";
-import { getColumns } from "./CreditNoteColumns";
+import { getCreditNoteColumns, getCreditNoteHeaderFilters } from "./CreditNoteColumns";
+import { CreditNoteRowActionsProvider } from "../hooks/useCreditNoteRowActions";
 import { CreditNoteDetailDialog } from "./CreditNoteDetailDialog";
 import CreditNoteForm from "./CreditNoteForm";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
@@ -131,7 +133,7 @@ export default function CreditNoteList() {
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  const handleViewDetail = useCallback((id: number) => setOpenDetailId(id), []);
+  const handleViewDetail = (id: number) => setOpenDetailId(id);
   const closeDetail = () => {
     setOpenDetailId(null);
     setEmitRejection(null);
@@ -152,48 +154,50 @@ export default function CreditNoteList() {
    * Se corta ANTES de abrir la confirmación —no hay nada que confirmar— y el
    * PATCH nunca sale.
    */
-  const handleEmitir = useCallback(
-    (id: number) => {
-      // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
-      // la sesión cambió entre pintarlos y seleccionar.
-      if (!canEmit) {
-        toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
-        return;
-      }
-      const nota = notasCredito.find((item) => item.id === id);
-      if (nota && !totalEsAcreditable(nota.total)) {
-        toast.error(TOTAL_CERO_MESSAGE);
-        return;
-      }
-      setEmitTargetId(id);
-    },
-    [notasCredito, canEmit],
-  );
+  const handleEmitir = (id: number) => {
+    // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
+    // la sesión cambió entre pintarlos y seleccionar.
+    if (!canEmit) {
+      toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
+      return;
+    }
+    const nota = notasCredito.find((item) => item.id === id);
+    if (nota && !totalEsAcreditable(nota.total)) {
+      toast.error(TOTAL_CERO_MESSAGE);
+      return;
+    }
+    setEmitTargetId(id);
+  };
   // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
-  const handleCancel = useCallback(
-    (id: number) => {
-      const nota = notasCredito.find((item) => item.id === id);
-      const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
-      if (blockReason) {
-        toast.error(blockReason);
-        return;
-      }
-      setCancelTargetId(id);
-    },
-    [notasCredito],
-  );
-  const handleDelete = useCallback(
-    (id: number) => {
-      const nota = notasCredito.find((item) => item.id === id);
-      setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
-    },
-    [notasCredito],
-  );
+  const handleCancel = (id: number) => {
+    const nota = notasCredito.find((item) => item.id === id);
+    const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
+    if (blockReason) {
+      toast.error(blockReason);
+      return;
+    }
+    setCancelTargetId(id);
+  };
+  const handleDelete = (id: number) => {
+    const nota = notasCredito.find((item) => item.id === id);
+    setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
+  };
 
-  const columns = useMemo(
-    () => getColumns(handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit),
-    [handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit],
+  // Callbacks del menú de fila: llegan por contexto, no por las columnas (ver
+  // `createRowActionsContext`). Las opciones de los filtros de encabezado se
+  // arman con el listado completo.
+  const rowActions = {
+    onViewDetail: handleViewDetail,
+    onEmitir: handleEmitir,
+    onCancel: handleCancel,
+    onDelete: handleDelete,
+    canEmit,
+  };
+  const columns = withHeaderFilters(
+    getCreditNoteColumns(),
+    notasCredito,
+    getCreditNoteHeaderFilters(),
   );
 
   // La nota cuyo detalle está abierto se busca contra el arreglo que esta vista
@@ -257,13 +261,14 @@ export default function CreditNoteList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nueva nota"— sigue disponible durante la carga y ante un error.
   return (
+    <CreditNoteRowActionsProvider value={rowActions}>
     <div className="h-full flex flex-col min-h-0 space-y-6">
       <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={notasCredito}
         baseDataCount={notasCredito.length}
-        searchPlaceholder="Buscar por folio, factura, cliente o motivo..."
+        searchPlaceholder="Buscar por folio, factura, cliente, motivo o CFDI..."
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
@@ -447,5 +452,6 @@ export default function CreditNoteList() {
         />
       )}
     </div>
+    </CreditNoteRowActionsProvider>
   );
 }
