@@ -6,6 +6,7 @@ import { createNotaCredito } from "../services/actions";
 import type { CreateNotaCreditoPayload } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE,
+  creditNoteCreateCancelledMessage,
   creditNoteCreateRejectedMessage,
   creditNoteEmittedFailureMessage,
   creditNoteStampFailedMessage,
@@ -172,7 +173,8 @@ export function parseNotaCreditoError(error: unknown): ParsedNotaCreditoError {
   // `cfdi` primero: al emitir (y en `timbrar/`), el motivo del rechazo de
   // Facturama o de los datos fiscales llega en esa llave. Se muestra tal cual,
   // sin interpretar su texto: el texto no es contrato. Lo que sí es contrato es
-  // `nota_credito`, que solo se lee junto a `cfdi`.
+  // `nota_credito`, que se lee con `cfdi` o sin él (`notaCredito` NO implica
+  // `stampFailed`).
   // Le sigue `estatus` (campo de cabecera, más abajo) y luego el resto.
   // `nota_credito` solo lo manda el fallo de la emisión DESPUÉS de guardar
   // (`TimbradoNotaCreditoFallido`), con `cfdi` o sin él.
@@ -355,10 +357,11 @@ export const emittedNotaIdFromCreateFailure = (
  * Desenlace de un alta fallida (ver `CreateFailureOutcome`), o `null` si el
  * error prueba que no se guardó nada.
  *
- * Solo `nota_credito` dice en qué quedó la nota: `Emitida` (con `cfdi` o sin
- * él) es `emitted`, con el mensaje según `stampCheck`; `Cancelada` junto a
- * `cfdi` es `cancelled`. Cualquier otro `cfdi` —sin `nota_credito`, o con un
- * estatus que un alta no produce— queda `locked`.
+ * Solo `nota_credito` dice en qué quedó la nota, con `cfdi` o sin él:
+ * `Emitida` es `emitted`, con el mensaje según `stampCheck`; `Cancelada` es
+ * `cancelled` (Facturama rechazó si viene `cfdi`; si no, falló la
+ * revalidación previa al timbre). Cualquier otro `cfdi` —sin `nota_credito`, o
+ * con un estatus que un alta no produce— queda `locked`.
  * Sin confirmación (sin respuesta, timeout, 5xx) o un `409` también quedan
  * `locked`, solo en un alta `Emitida`: un borrador repetido no mueve ningún saldo.
  */
@@ -375,14 +378,19 @@ export const getCreateFailureOutcome = (
       message: creditNoteEmittedFailureMessage(label, stampFailureDetail(parsed), stampCheck),
     };
   }
-  if (parsed.stampFailed) {
+  const nota = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
+  if (nota?.estatus === "Cancelada") {
     const detail = stampFailureDetail(parsed);
-    const nota = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
-    if (nota?.estatus === "Cancelada") {
-      const label = payload.folio?.trim() || `#${nota.id}`;
-      return { kind: "cancelled", message: creditNoteCreateRejectedMessage(label, detail) };
-    }
-    return { kind: "locked", message: creditNoteStampFailedMessage("alta", detail) };
+    const label = payload.folio?.trim() || `#${nota.id}`;
+    return {
+      kind: "cancelled",
+      message: parsed.stampFailed
+        ? creditNoteCreateRejectedMessage(label, detail)
+        : creditNoteCreateCancelledMessage(label, detail),
+    };
+  }
+  if (parsed.stampFailed) {
+    return { kind: "locked", message: creditNoteStampFailedMessage("alta", stampFailureDetail(parsed)) };
   }
   if (payload.estatus === "Emitida" && (parsed.unconfirmed || parsed.conflict)) {
     return { kind: "locked", message: CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE };

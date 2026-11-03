@@ -42,13 +42,15 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
   "No se pudo confirmar la emisión: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; la nota pudo emitirse y timbrarse.";
 
 /**
- * Nota que una emisión dejó guardada aunque su timbrado falló, tal como la
- * reporta el `400` del backend junto a `cfdi`: `nota_credito: {id, estatus}`
- * (nucleo-erp #724/#732). Solo ese par dice con certeza en qué quedó:
+ * Nota que una emisión dejó guardada aunque falló después de guardarla, tal
+ * como la reporta el `400` del backend: `nota_credito: {id, estatus}`
+ * (nucleo-erp #724/#732), con `cfdi` (falló el timbrado) o sin él (falló la
+ * póliza, o la revalidación previa al timbre en `factura`/`estatus`, #751).
+ * Solo ese par dice con certeza en qué quedó:
  *
- * - `Cancelada`: Facturama rechazó un alta `Emitida` (`POST`). La nota se
- *   canceló y la cuenta por cobrar quedó como estaba.
- * - `Borrador`: Facturama rechazó la emisión de un borrador (`PATCH`). Volvió a
+ * - `Cancelada`: falló un alta `Emitida` (`POST`) sin CFDI. La nota se canceló
+ *   y la cuenta por cobrar quedó como estaba.
+ * - `Borrador`: falló la emisión de un borrador (`PATCH`) sin CFDI. Volvió a
  *   borrador y la cuenta por cobrar quedó como estaba.
  * - `Emitida`: la nota quedó emitida y aplicada. Puede ser que Facturama no
  *   confirmó (timbrado pendiente) o que el timbrado salió y falló la póliza (el
@@ -104,6 +106,22 @@ export const creditNoteStampFailedMessage = (
 /** Alta `Emitida` rechazada por Facturama: la nota quedó `Cancelada`. */
 export const creditNoteCreateRejectedMessage = (label: string, detail: string): string =>
   `Facturama rechazó el timbrado: la nota ${label} quedó cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
+
+/**
+ * Alta `Emitida` que el backend registró y canceló sin que Facturama la
+ * rechazara (el `400` no trae `cfdi`: falló la revalidación previa al timbre,
+ * #751). El motivo es el del backend, tal cual.
+ */
+export const creditNoteCreateCancelledMessage = (label: string, detail: string): string =>
+  `La nota ${label} se registró, pero su emisión falló y quedó cancelada; el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
+
+/** Emisión de un borrador que falló sin `cfdi` y volvió a `Borrador` (#751). */
+export const creditNoteEmitRevertedMessage = (label: string): string =>
+  `La emisión de la nota ${label} falló: sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+
+/** Motivo de `creditNoteEmitRevertedMessage`, en el detalle del borrador. */
+export const creditNoteEmitRevertedDetail = (detail: string): string =>
+  `La emisión falló y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
 
 /** Emisión de un borrador rechazada por Facturama: la nota sigue en `Borrador`. */
 export const creditNoteEmitRejectedMessage = (label: string): string =>
