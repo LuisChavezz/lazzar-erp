@@ -10,6 +10,7 @@ import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useProductCategories } from "@/src/features/product-categories/hooks/useProductCategories";
+import { getCategoriaLineaLabel } from "@/src/features/product-categories/constants/categoriaLinea";
 import { useSizes } from "@/src/features/sizes/hooks/useSizes";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useAltaCatalogoLinea } from "../hooks/useAltaCatalogoLinea";
@@ -273,8 +274,10 @@ function CatalogAltaCategoryDialog({
                     <span className="block truncate text-sm font-medium text-slate-700 dark:text-slate-100">
                       {category.nombre}
                     </span>
+                    {/* Sin grupos en `SearchableSelectList`: la línea va en
+                        la línea secundaria de cada opción. */}
                     <span className={`block truncate text-xs ${MUTED_CLS}`}>
-                      {category.codigo}
+                      {category.codigo} · {getCategoriaLineaLabel(category.linea)}
                       {category.descripcion && category.descripcion !== category.nombre
                         ? ` · ${category.descripcion}`
                         : ""}
