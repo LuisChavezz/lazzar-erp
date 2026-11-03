@@ -1,10 +1,19 @@
 "use client";
 
 import { FormInput } from "../../../components/FormInput";
+import { FormSelect } from "../../../components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "../../../components/FormButtons";
 import { ProductCategoriesIcon } from "../../../components/Icons";
 import { ProductCategory } from "../interfaces/product-category.interface";
 import { useProductCategoryForm } from "../hooks/useProductCategoryForm";
+import {
+  CATEGORIA_LINEAS,
+  CATEGORIA_LINEA_CONFIG,
+  SIN_LINEA_LABEL,
+  isCategoriaLinea,
+} from "../constants/categoriaLinea";
+
+const OPTION_CLS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
 interface ProductCategoryFormProps {
   onSuccess: () => void;
@@ -96,6 +105,37 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                     )}
                   </form.Field>
                 </div>
+              </div>
+
+              <div className="group/field">
+                <form.Field name="linea">
+                  {(field) => (
+                    <FormSelect
+                      label="Línea"
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        field.handleChange(isCategoriaLinea(next) ? next : "");
+                        clearFieldErrors("linea");
+                      }}
+                      onBlur={() => {
+                        field.handleBlur();
+                        validateField("linea", field.state.value);
+                      }}
+                      error={getError("linea")}
+                    >
+                      <option value="" className={OPTION_CLS}>
+                        {SIN_LINEA_LABEL}
+                      </option>
+                      {CATEGORIA_LINEAS.map((linea) => (
+                        <option key={linea} value={linea} className={OPTION_CLS}>
+                          {CATEGORIA_LINEA_CONFIG[linea].label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  )}
+                </form.Field>
               </div>
 
               <div className="group/field md:col-span-2">
