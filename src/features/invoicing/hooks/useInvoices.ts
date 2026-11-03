@@ -13,15 +13,28 @@ interface UseInvoicesOptions {
   refetchOnMount?: "always";
   /** Sin toast por un refetch fallido (ver `useHasLoadedQuery.silent`). */
   silent?: boolean;
+  /**
+   * Oculta las facturas eliminadas (baja lógica, `activo === false`): el
+   * listado del backend las incluye. Filtra en ESTE observador (`select`), así
+   * que la caché y los demás consumidores siguen viendo todas las filas — p. ej.
+   * los selectores de notas de crédito, que deshabilitan una eliminada con su
+   * motivo. Lo usan el listado de facturas y sus KPIs.
+   */
+  excludeDeleted?: boolean;
 }
 
-export const useInvoices = ({ refetchOnMount, silent }: UseInvoicesOptions = {}) => {
+/** Filas sin las facturas eliminadas; un `activo` ausente cuenta como activa. */
+const withoutDeletedInvoices = (rows: InvoiceListRow[]): InvoiceListRow[] =>
+  rows.filter((row) => row.activo !== false);
+
+export const useInvoices = ({ refetchOnMount, silent, excludeDeleted }: UseInvoicesOptions = {}) => {
   const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     InvoiceListRow[]
   >({
     queryKey: ["invoices"],
     queryFn: getInvoices,
     ...(refetchOnMount ? { refetchOnMount } : {}),
+    ...(excludeDeleted ? { select: withoutDeletedInvoices } : {}),
   });
 
   const { hasLoaded } = useHasLoadedQuery({
