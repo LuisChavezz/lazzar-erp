@@ -178,3 +178,13 @@ export interface CreateNotaCreditoPayload {
 export interface EmitirNotaCreditoPayload {
   estatus: Extract<NotaCreditoEstatus, "Emitida">;
 }
+
+/**
+ * Respuesta de `POST /finanzas/notas-credito/{id}/conciliar-cfdi/` (EC-709):
+ * la nota completa (`NotaCreditoSerializer`, el mismo del retrieve), ya sin
+ * `cfdi_pendiente`. `timbrado`: el CFDI existía y ya trae `cfdi_uuid`;
+ * `liberado`: no existía y queda sin UUID. El estatus no cambia.
+ */
+export type NotaCreditoCfdiReconcileResponse =
+  | { resultado: "timbrado"; nota_credito: NotaCredito }
+  | { resultado: "liberado"; nota_credito: NotaCredito };

@@ -35,7 +35,7 @@ export const logUnexpectedError = (error: unknown) => {
 
 /** Timbrado sin confirmar: el backend pudo dejar la nota `cfdi_pendiente`. */
 export const CREDIT_NOTE_STAMP_UNCONFIRMED_MESSAGE =
-  "No se pudo confirmar el timbrado: el servidor no respondió a tiempo. Revisa el detalle de la nota antes de reintentar; si quedó pendiente de confirmación, un administrador debe revisarlo.";
+  "No se pudo confirmar el timbrado: el servidor no respondió a tiempo. Revisa el detalle de la nota antes de reintentar; si quedó pendiente de confirmación, concílialo con \"Conciliar con Facturama\".";
 
 /** Emisión sin confirmar: pudo emitirse y timbrarse aunque se perdiera la respuesta. */
 export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
@@ -148,5 +148,26 @@ export const stampNotaCreditoErrorMessage = (error: unknown): string => {
     drfFieldMessage(error, "estatus") ??
     firstDrfFieldMessage(error) ??
     extractErrorMessage(error, "No se pudo timbrar la nota de crédito.")
+  );
+};
+
+/** Conciliación sin confirmar: el backend pudo traer el timbre o liberarlo. */
+export const CREDIT_NOTE_RECONCILE_UNCONFIRMED_MESSAGE =
+  "No se pudo confirmar la conciliación: el servidor no respondió a tiempo. Revisa el detalle de la nota antes de reintentar.";
+
+/**
+ * Mensaje de un fallo de `conciliar-cfdi/` (EC-709), como
+ * `stampNotaCreditoErrorMessage`: el motivo del backend tal cual bajo `cfdi`
+ * (no hay pendiente, timbrado muy reciente, Facturama no respondió, varios
+ * CFDIs iguales…), luego cualquier campo y al final el extractor genérico
+ * (403, 404). Un fallo sin confirmar no muestra el cuerpo.
+ */
+export const reconcileNotaCreditoCfdiErrorMessage = (error: unknown): string => {
+  if (error instanceof PrecheckError) return error.message;
+  if (isUnconfirmedFailure(error)) return CREDIT_NOTE_RECONCILE_UNCONFIRMED_MESSAGE;
+  return (
+    drfFieldMessage(error, "cfdi") ??
+    firstDrfFieldMessage(error) ??
+    extractErrorMessage(error, "No se pudo conciliar el timbrado con Facturama.")
   );
 };
