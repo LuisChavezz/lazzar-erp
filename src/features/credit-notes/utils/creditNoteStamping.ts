@@ -70,13 +70,10 @@ export const CREDIT_NOTE_WRITE_PERMISSION_REASON =
   "No tienes permiso para registrar o cancelar notas de crédito.";
 
 /**
- * ¿Puede ESTE usuario emitir notas de crédito? Es una escritura más
- * (`canWriteCreditNotes`); se conserva el nombre porque emitir además intenta
- * timbrar el CFDI de egreso, y su motivo lo dice.
+ * Por qué "Emitir" está bloqueado sin el permiso de escritura (`financeWriteBlock`
+ * con este motivo). Emitir es una escritura más, pero además intenta timbrar el
+ * CFDI de egreso, y su motivo lo dice.
  */
-export const canEmitCreditNote = canWriteCreditNotes;
-
-/** Por qué "Emitir" está bloqueado cuando `canEmitCreditNote` es `false`. */
 export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
   "No tienes permiso para emitir notas de crédito: emitir registra la nota en la cuenta por cobrar e intenta timbrar su CFDI, y requiere el permiso de facturación.";
 

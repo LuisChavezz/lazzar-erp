@@ -18,12 +18,12 @@ import {
   sumTotalesDeLineasEnCentavos,
 } from "../schemas/credit-note.schema";
 import { useCreditNoteForm } from "../hooks/useCreditNoteForm";
+import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import { InvoiceSelectorDialog } from "./InvoiceSelectorDialog";
 import { InvoiceLinesSelectorDialog } from "./InvoiceLinesSelectorDialog";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
-  canEmitCreditNote,
   getInvoiceNotCreditableReason,
   getInvoiceUnstampedEmitWarning,
   getRelatedInvoiceEmitBlockReason,
@@ -113,9 +113,15 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
   const facturaRow = factura > 0 ? invoices.find((invoice) => invoice.id === factura) : undefined;
   // Sin el permiso de timbrado, "Emitir nota" queda deshabilitado con su motivo
   // (el backend respondería 403); guardar como borrador sigue disponible.
-  const { data: session } = useSession();
-  const emitBlockReason = !canEmitCreditNote(session?.user)
-    ? CREDIT_NOTE_EMIT_PERMISSION_REASON
+  // Mientras la sesión carga se deshabilita SIN motivo (`financeWriteBlock`):
+  // un admin no debe ver "No tienes permiso…" en el primer frame.
+  const { data: session, status: sessionStatus } = useSession();
+  const emitPermissionBlock = financeWriteBlock(
+    getFinanceWriteState(session?.user, sessionStatus),
+    CREDIT_NOTE_EMIT_PERMISSION_REASON,
+  );
+  const emitBlockReason = emitPermissionBlock.disabled
+    ? (emitPermissionBlock.description ?? null)
     : facturaRow
       ? getRelatedInvoiceEmitBlockReason(facturaRow)
       : factura > 0
@@ -126,8 +132,9 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
   // Aviso (no bloqueo) de factura sin timbrar: en la empresa de Facturama el
   // backend rechazaría la emisión con un `cfdi` sin `nota_credito`, que deja
   // este formulario bloqueado (decisión de EC-639); fuera de ella procede.
+  const emitDisabled = emitPermissionBlock.disabled || emitBlockReason !== null;
   const unstampedWarning =
-    !emitBlockReason && facturaRow ? getInvoiceUnstampedEmitWarning(facturaRow) : null;
+    !emitDisabled && facturaRow ? getInvoiceUnstampedEmitWarning(facturaRow) : null;
 
   // Suma de los conceptos desglosados. Es SOLO INFORMATIVA: no alimenta ningún
   // campo del payload. El importe que se acredita es el `total` capturado abajo
@@ -547,13 +554,15 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
                 <FormSubmitButton
                   type="button"
                   onClick={() => submitAs("Emitida")}
-                  disabled={emitBlockReason !== null}
+                  disabled={emitDisabled}
                   aria-describedby={
                     emitBlockReason
                       ? "credit-note-emit-block-reason"
-                      : unstampedWarning
-                        ? "credit-note-emit-stamp-warning credit-note-emit-unstamped-warning"
-                        : "credit-note-emit-stamp-warning"
+                      : emitDisabled
+                        ? undefined
+                        : unstampedWarning
+                          ? "credit-note-emit-stamp-warning credit-note-emit-unstamped-warning"
+                          : "credit-note-emit-stamp-warning"
                   }
                   isPending={isPending && estatusIntent === "Emitida"}
                   loadingLabel="Emitiendo..."
