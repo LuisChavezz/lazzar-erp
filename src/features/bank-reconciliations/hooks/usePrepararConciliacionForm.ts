@@ -5,6 +5,7 @@ import type { FormEvent, RefObject } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import {
   PrepararConciliacionFormSchema,
@@ -293,11 +294,7 @@ export function usePrepararConciliacionForm({
     event.stopPropagation();
     // El estado del render ACTUAL: `handleFormSubmit` se declara después de
     // `estadoSolapamiento`, así que nunca lo ve desfasado.
-    if (submitLockRef.current) return;
-    submitLockRef.current = true;
-    void form.handleSubmit({ estadoSolapamiento }).finally(() => {
-      submitLockRef.current = false;
-    });
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit({ estadoSolapamiento }));
   };
 
   return {
