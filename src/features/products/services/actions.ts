@@ -22,9 +22,10 @@ export const getProducts = async (
 };
 
 /**
- * Detalle de un producto. El backend acota el `retrieve` por empresa igual que
- * el listado (`_alcance_empresa`): un producto ajeno responde 404. No aplica
- * filtro de tipo ni de `activo`.
+ * Detalle de un producto. El backend acota el `retrieve` con el mismo queryset
+ * que el listado: por empresa (`_alcance_empresa`) y solo ACTIVOS
+ * (`filter(activo=True)`), así que un producto ajeno o dado de baja responde
+ * 404. No aplica el filtro de tipo (`?tipo_id` es solo del listado).
  */
 export const getProduct = async (id: number): Promise<Product> => {
   const response = await v1_api.get<Product>(`/catalogo/producto/${id}/`);
