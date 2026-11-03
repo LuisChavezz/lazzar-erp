@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { type ComponentType, useState } from "react";
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
 
 type QueryDevtoolsProps = {
   initialIsOpen?: boolean;
@@ -23,7 +24,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: { // Opciones por defecto para las queries
       queries: {
-        retry: 1,
+        retry: DEFAULT_QUERY_RETRY,
         staleTime: 15 * 60 * 1000, // 15 minutos
         refetchOnWindowFocus: false,
       },

@@ -63,13 +63,17 @@ export const handleDrfWriteError = <F extends string>(
 export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
+/** 4xx pasajeros: el servidor tardó (408) o pidió bajar el ritmo (429). */
+const TRANSIENT_CLIENT_STATUSES = new Set([408, 429]);
+
 /**
- * ¿La API respondió con un 4xx? Repetir la misma petición dará la misma
- * respuesta: sirve para no reintentar una consulta (`retry`).
+ * ¿La API respondió con un 4xx definitivo? Repetir la misma petición dará la
+ * misma respuesta: sirve para no reintentar una consulta (`retry`). 408 y 429
+ * NO cuentan: son pasajeros y un reintento sí puede salir bien.
  */
 export const isClientError = (error: unknown): boolean => {
   const status = error instanceof AxiosError ? error.response?.status : undefined;
-  return status !== undefined && status >= 400 && status < 500;
+  return status !== undefined && status >= 400 && status < 500 && !TRANSIENT_CLIENT_STATUSES.has(status);
 };
 
 /**

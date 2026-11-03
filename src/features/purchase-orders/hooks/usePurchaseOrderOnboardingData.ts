@@ -1,6 +1,6 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
-import { isClientError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getPurchaseOrderOnboardingData } from "../services/actions";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
 
@@ -15,7 +15,7 @@ export const usePurchaseOrderOnboardingData = () => {
       queryKey: ["purchase-order-onboarding"],
       queryFn: getPurchaseOrderOnboardingData,
       gcTime: LIST_QUERY_GC_TIME,
-      retry: (failureCount, failure) => !isClientError(failure) && failureCount < 1,
+      retry: retryUnlessClientError,
     },
     { toastId: "purchase-order-onboarding-refetch-error" },
   );
