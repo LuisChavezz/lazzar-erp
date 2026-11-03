@@ -65,7 +65,7 @@ export const useReconcileNotaCreditoCfdi = (notaId: number) => {
         return;
       }
       toast.success(
-        `Facturama no tenía ningún CFDI de la nota ${label}: el timbrado pendiente se liberó y ya puedes timbrarla o cancelarla.`,
+        `Facturama no tenía ningún CFDI de la nota ${label}: se liberó el timbrado pendiente.`,
       );
     },
     onError: (error) => {

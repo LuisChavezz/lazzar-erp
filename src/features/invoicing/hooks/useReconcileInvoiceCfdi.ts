@@ -8,7 +8,6 @@ import {
 } from "../utils/invoiceStamping";
 import { fetchFreshInvoice, invalidateInvoiceBaseQueries } from "./invoiceActionMutation";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /** Candado de la conciliación, ÚNICO por factura (ver `useReconcileInvoiceCfdi`). */
 export const reconcileInvoiceCfdiMutationKey = (invoiceId: number) =>
@@ -32,10 +31,10 @@ export type ReconcileInvoiceCfdiResult =
  *   FACTURA (`useMutationLock`).
  * - Antes del POST pide el retrieve FRESCO: si ya no trae `cfdi_pendiente`, NO
  *   se hace el POST y se avisa.
- * - Al terminar, con cualquier resultado, refresca listado, retrieve y desglose
- *   (y el avance del pedido si hubo POST, como el timbrado). La respuesta NO se
- *   escribe en la caché: el refetch muestra el estado real. Conciliar no toca
- *   estatus, CxC ni póliza.
+ * - Al terminar, con cualquier resultado, refresca listado, retrieve y desglose.
+ *   La respuesta NO se escribe en la caché: el refetch muestra el estado real.
+ *   Conciliar no toca estatus, CxC, póliza ni el avance del pedido (ninguna
+ *   vista del pedido lee el timbre de sus facturas), así que no se invalida.
  *
  * Errores: toast con el motivo del backend bajo `cfdi`, tal cual
  * (`reconcileInvoiceCfdiErrorMessage`).
@@ -70,7 +69,7 @@ export const useReconcileInvoiceCfdi = (invoiceId: number) => {
         return;
       }
       toast.success(
-        `Facturama no tenía ningún CFDI de la factura ${label}: el timbrado pendiente se liberó y ya puedes timbrarla o cancelarla.`,
+        `Facturama no tenía ningún CFDI de la factura ${label}: se liberó el timbrado pendiente.`,
       );
     },
     onError: (error) => {
@@ -78,11 +77,10 @@ export const useReconcileInvoiceCfdi = (invoiceId: number) => {
         error instanceof PrecheckError ? error.message : reconcileInvoiceCfdiErrorMessage(error),
       );
     },
-    onSettled: (result) => {
-      const sentRequest = result?.outcome !== "not-pending";
-      if (sentRequest) void invalidatePedidoProgress(queryClient);
-      invalidateInvoiceBaseQueries(queryClient, invoiceId, { sentRequest });
-    },
+    onSettled: (result) =>
+      invalidateInvoiceBaseQueries(queryClient, invoiceId, {
+        sentRequest: result?.outcome !== "not-pending",
+      }),
   });
 
   /**

@@ -32,7 +32,7 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
-  CREDIT_NOTE_STAMP_PENDING_HINT,
+  creditNoteStampPendingHint,
   canReconcileCreditNoteCfdi,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
@@ -230,7 +230,7 @@ function CreditNoteCfdiSection({
               {CREDIT_NOTE_STAMP_PENDING_LABEL}
             </span>
             <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
-              {CREDIT_NOTE_STAMP_PENDING_HINT}
+              {creditNoteStampPendingHint(canReconcile)}
             </span>
           </InfoField>
         ) : (

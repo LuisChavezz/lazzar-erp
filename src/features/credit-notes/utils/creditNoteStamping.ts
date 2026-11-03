@@ -242,9 +242,15 @@ export const CREDIT_NOTE_STAMP_PENDING_MESSAGE =
 /** Indicador del detalle, en el lugar del folio fiscal. */
 export const CREDIT_NOTE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
-/** Texto bajo el indicador: lo que sigue, sin repetir el rótulo. */
-export const CREDIT_NOTE_STAMP_PENDING_HINT =
-  "Facturama no lo confirmó. Concílialo para traer el timbre o liberarlo.";
+/**
+ * Texto bajo el indicador: lo que sigue, sin repetir el rótulo. Quien no puede
+ * conciliar (`canReconcileCreditNoteCfdi`) no ve el botón, así que se le dice
+ * quién puede hacerlo.
+ */
+export const creditNoteStampPendingHint = (canReconcile: boolean): string =>
+  canReconcile
+    ? "Facturama no lo confirmó. Concílialo para traer el timbre o liberarlo."
+    : "Facturama no lo confirmó. Alguien con permiso de facturación debe conciliarlo con Facturama.";
 
 /**
  * Motivo por el que "Cancelar nota" se muestra BLOQUEADO, o `null` si se

@@ -97,7 +97,7 @@ export const isInvoiceStampPending = (invoice: { cfdi_pendiente?: boolean }): bo
 
 /** Aviso de un timbrado pendiente de confirmación: lo que sigue es conciliarlo. */
 export const INVOICE_STAMP_PENDING_MESSAGE =
-  "Timbrado pendiente de confirmación con Facturama. Usa \"Conciliar con Facturama\" en el detalle de la factura para traer el timbre o liberarlo.";
+  "La factura tiene un timbrado pendiente de confirmación con Facturama: no se puede timbrar. Concílialo con \"Conciliar con Facturama\" para traer el timbre o liberarlo.";
 
 /** Indicador de la cabecera, en el lugar del bloque del folio fiscal. */
 export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
