@@ -11,7 +11,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "./MissingPrerequisites";
 import { Product } from "../interfaces/product.interface";
 import { useProductForm } from "../hooks/useProductForm";
-import { groupCategoriesByLinea } from "@/src/features/product-categories/constants/categoriaLinea";
+import { CategoryOptionGroups } from "@/src/features/product-categories/components/CategoryOptionGroups";
 
 interface ProductFormProps {
   onSuccess: () => void;
@@ -131,23 +131,10 @@ export default function ProductForm({ onSuccess, product }: ProductFormProps) {
                       Seleccionar...
                     </option>
                     {/* Agrupadas por línea; "Sin línea (materia prima)" al final. */}
-                    {groupCategoriesByLinea(categories).map((group) => (
-                      <optgroup
-                        key={group.key}
-                        label={group.label}
-                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                      >
-                        {group.categories.map((category) => (
-                          <option
-                            key={category.id}
-                            value={category.id}
-                            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                          >
-                            {category.nombre}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
+                    <CategoryOptionGroups
+                      categories={categories}
+                      renderLabel={(category) => category.nombre}
+                    />
                   </FormSelect>
                 )}
               </form.Field>
