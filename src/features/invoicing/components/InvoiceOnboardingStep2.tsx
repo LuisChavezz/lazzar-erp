@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { FormSecondaryButton, FormSubmitButton } from "@/src/components/FormButtons";
@@ -18,6 +19,8 @@ interface InvoiceOnboardingStep2Props {
   /** PK de la moneda del pedido (`PedidoListItem.moneda`): la factura nace en ella. */
   monedaId: number;
   onBack: () => void;
+  /** Candado del envío, del diálogo (ver `useInvoiceOnboardingStep2`). */
+  submitLockRef: RefObject<boolean>;
 }
 
 /**
@@ -28,8 +31,13 @@ interface InvoiceOnboardingStep2Props {
  * descuenta de lo pendiente que devuelve el onboarding. Tras crearla se muestran
  * el folio y los importes REALES de la respuesta (la estimación es solo guía).
  */
-export function InvoiceOnboardingStep2({ pedidoId, monedaId, onBack }: InvoiceOnboardingStep2Props) {
-  const step = useInvoiceOnboardingStep2(pedidoId);
+export function InvoiceOnboardingStep2({
+  pedidoId,
+  monedaId,
+  onBack,
+  submitLockRef,
+}: InvoiceOnboardingStep2Props) {
+  const step = useInvoiceOnboardingStep2(pedidoId, submitLockRef);
   const { onboarding, data } = step;
   // El GET del onboarding no trae la moneda; se resuelve la del pedido en el
   // catálogo (en caché). Mientras carga o si no aparece, el estimado va sin
