@@ -56,7 +56,8 @@ export interface PedidoProgramarPayload {
 
 /**
  * Respuesta del PATCH. `total_piezas` es el total AUTORITATIVO del servidor
- * (suma de `PedidoDetalleTalla.cantidad` sin líneas de muestra) y
+ * (suma de `PedidoDetalleTalla.cantidad`, muestras incluidas desde el backend
+ * #912; el listado lo expone como `piezas_programables`) y
  * `programacion_conf` lo releído de base de datos, ya con el sello de
  * fecha/usuario.
  */
