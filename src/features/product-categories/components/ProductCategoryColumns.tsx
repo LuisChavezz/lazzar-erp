@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDeleteProductCategory } from "../hooks/useDeleteProductCategory";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
 import { useState } from "react";
+import { getCategoriaLineaLabel } from "../constants/categoriaLinea";
 
 const columnHelper = createColumnHelper<ProductCategory>();
 
@@ -79,6 +80,15 @@ export const getColumns = (
         <span className="text-slate-600 dark:text-slate-300 font-medium">
           {info.getValue()}
         </span>
+      ),
+    }),
+    // Búsqueda y orden por la etiqueta; el filtro de encabezado
+    // (`categoriaLineaHeaderFilter`) compara el valor crudo.
+    columnHelper.accessor((row) => getCategoriaLineaLabel(row.linea), {
+      id: "linea",
+      header: "Línea",
+      cell: (info) => (
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("descripcion", {
