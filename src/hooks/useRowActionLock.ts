@@ -46,5 +46,26 @@ export function useRowActionLock() {
    */
   const isHeld = (id: number | null): boolean => id !== null && inFlightRef.current.has(id);
 
-  return { acquire, release, isPending, isHeld };
+  /**
+   * Props de una confirmación (`ConfirmDialog`) que debe quedar abierta y
+   * bloqueada mientras la acción de SU registro está en vuelo: se esparcen tal
+   * cual (`{...rowLock.guardClose(id, cerrar)}`).
+   *
+   * - `busy`: lo que la pinta ocupada (botones deshabilitados, Esc y clic fuera
+   *   ignorados). `extraBusy` agrega el "en vuelo" de otra fuente, p. ej. la
+   *   `MutationCache` (`busyIds`), que sobrevive a un remontaje.
+   * - `onOpenChange`: ignora el cierre (Volver, X, Esc) mientras el candado
+   *   está tomado. Lee la ref (`isHeld`), así que vale desde el mismo clic de
+   *   confirmar, antes del render que pinta `busy`. Al terminar, la acción
+   *   cierra la confirmación por su cuenta.
+   */
+  const guardClose = (id: number | null, close: () => void, extraBusy = false) => ({
+    busy: extraBusy || isPending(id),
+    onOpenChange: (open: boolean) => {
+      if (open || isHeld(id)) return;
+      close();
+    },
+  });
+
+  return { acquire, release, isPending, isHeld, guardClose };
 }

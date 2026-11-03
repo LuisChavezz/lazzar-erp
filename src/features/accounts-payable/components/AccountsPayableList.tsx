@@ -219,18 +219,16 @@ export default function AccountsPayableList() {
         {deleteTarget !== null && (
           <ConfirmDialog
             open={true}
-            onOpenChange={(open) => {
-              if (!open) {
-                // En vuelo no se cierra (Volver, X, Esc): el candado se lee de
-                // forma SÍNCRONA, así que la guarda vale desde el primer frame,
-                // antes de que `busy` se pinte. El resultado de la petición
-                // decide el cierre.
-                if (deleteLock.isPending(deleteTarget.id) || deleteLock.isHeld(deleteTarget.id)) return;
-                closeDeleteDialog();
-                setDeleteConflict(null);
-              }
-            }}
+            // En vuelo queda abierta y bloqueada, con la misma regla que
+            // `guardClose`; el resultado de la petición decide el cierre. Va en
+            // línea porque `closeDeleteDialog` escribe una ref, y pasársela al
+            // helper durante el render la leería en render (`react-hooks/refs`).
             busy={deleteLock.isPending(deleteTarget.id)}
+            onOpenChange={(open) => {
+              if (open || deleteLock.isHeld(deleteTarget.id)) return;
+              closeDeleteDialog();
+              setDeleteConflict(null);
+            }}
             title={conflictMessage ? "No se pudo eliminar todavía" : "Eliminar Cuenta por Pagar"}
             // El borrado del backend es FÍSICO: se dice sin rodeos. Solo se ofrece
             // sobre cuentas sin pagos aplicados.
