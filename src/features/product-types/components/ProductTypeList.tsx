@@ -49,13 +49,9 @@ export default function ProductTypeList() {
   const deleteSession = useDialogSession(isDeleteOpen, productTypeToDelete);
   const { mutate: deleteProductType } = useDeleteProductType();
 
-  const handleDelete = useCallback((productType: ProductType) => {
-    setProductTypeToDelete(productType);
-  }, []);
-
   const columns = useMemo(
-    () => getColumns(handleEdit, handleDelete, { canEdit, canDelete }),
-    [handleEdit, handleDelete, canEdit, canDelete]
+    () => getColumns(handleEdit, setProductTypeToDelete, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
 
   return (
