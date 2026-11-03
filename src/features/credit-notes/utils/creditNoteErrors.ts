@@ -3,7 +3,7 @@ import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
-import type { NotaCreditoEstatus } from "../interfaces/credit-note.interface";
+import type { NotaCredito, NotaCreditoEstatus } from "../interfaces/credit-note.interface";
 
 /**
  * ¿El backend NO confirmó el resultado? Sin respuesta (red, timeout, o un 504
@@ -42,16 +42,19 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
   "No se pudo confirmar la emisión: el servidor no respondió a tiempo. Revisa el listado antes de reintentar; la nota pudo emitirse y timbrarse.";
 
 /**
- * Nota que una emisión dejó guardada aunque su timbrado falló, tal como la
- * reporta el `400` del backend junto a `cfdi`: `nota_credito: {id, estatus}`
- * (nucleo-erp #724/#732). Solo ese par dice con certeza en qué quedó:
+ * Nota que una emisión dejó guardada aunque falló, tal como la reporta el
+ * `400` del backend: `nota_credito: {id, estatus}` (nucleo-erp #724/#732/#848),
+ * junto a `cfdi` o a otra llave (`poliza`, `configuracion_contable`,
+ * `cuenta_contable`, `factura`, `estatus`). Solo ese par dice con certeza en qué
+ * quedó; NO trae `cfdi_uuid` ni `cfdi_pendiente` (para eso, la nota fresca):
  *
- * - `Cancelada`: Facturama rechazó un alta `Emitida` (`POST`). La nota se
- *   canceló y la cuenta por cobrar quedó como estaba.
- * - `Borrador`: Facturama rechazó la emisión de un borrador (`PATCH`). Volvió a
- *   borrador y la cuenta por cobrar quedó como estaba.
- * - `Emitida`: Facturama no confirmó (timeout, 5xx, 408, sin UUID). La nota
- *   quedó emitida y aplicada, con el timbrado pendiente de confirmación.
+ * - `Cancelada`: un alta `Emitida` (`POST`) que Facturama rechazó o que otra
+ *   petición cambió antes del timbre (#751). La nota se canceló y la cuenta por
+ *   cobrar quedó como estaba.
+ * - `Borrador`: la emisión de un borrador (`PATCH`) por las mismas causas.
+ *   Volvió a borrador y la cuenta por cobrar quedó como estaba.
+ * - `Emitida`: la nota quedó emitida y aplicada. O Facturama no confirmó
+ *   (`cfdi_pendiente`), o se timbró y falló algo después (la póliza, #749).
  */
 export interface StampFailedNota {
   id: number;
@@ -103,6 +106,14 @@ export const creditNoteStampFailedMessage = (
 export const creditNoteCreateRejectedMessage = (label: string, detail: string): string =>
   `Facturama rechazó el timbrado: la nota ${label} quedó cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
 
+/**
+ * Alta `Emitida` que NO llegó a timbrarse por otra causa (nucleo-erp #751: otra
+ * petición cambió la nota o su factura entre la emisión y el timbre): el
+ * backend la canceló como en un rechazo de Facturama.
+ */
+export const creditNoteCreateCancelledMessage = (label: string, detail: string): string =>
+  `No se pudo timbrar: la nota ${label} quedó registrada como cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
+
 /** Emisión de un borrador rechazada por Facturama: la nota sigue en `Borrador`. */
 export const creditNoteEmitRejectedMessage = (label: string): string =>
   `Facturama rechazó el timbrado: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
@@ -110,6 +121,68 @@ export const creditNoteEmitRejectedMessage = (label: string): string =>
 /** Motivo del rechazo, en el detalle del borrador que se abre tras el rechazo. */
 export const creditNoteEmitRejectedDetail = (detail: string): string =>
   `Facturama rechazó el timbrado y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
+
+/** Emisión de un borrador que no llegó a timbrarse por otra causa (#751): sigue en `Borrador`. */
+export const creditNoteEmitRevertedMessage = (label: string): string =>
+  `No se pudo timbrar: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+
+/** Motivo del #751, en el detalle del borrador que se abre tras el fallo. */
+export const creditNoteEmitRevertedDetail = (detail: string): string =>
+  `No se pudo timbrar y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
+
+/** Emisión de un borrador que el backend reporta `Cancelada` (otra operación la canceló). */
+export const creditNoteEmitCancelledMessage = (label: string, detail: string): string =>
+  `No se pudo emitir: la nota ${label} quedó cancelada. Revisa el listado. Motivo: ${detail}`;
+
+/**
+ * Estado del timbre de una nota que la emisión dejó `Emitida`, leído de la nota
+ * FRESCA (`fetchFreshNotaCredito`): el `400` solo trae `nota_credito: {id,
+ * estatus}`, no `cfdi_uuid` ni `cfdi_pendiente`.
+ */
+export type EmittedNotaCreditoState = Pick<
+  NotaCredito,
+  "estatus" | "cfdi_uuid" | "cfdi_pendiente"
+>;
+
+/**
+ * Qué decir de una nota que la emisión dejó `Emitida` y ya descontó su total
+ * del saldo por cobrar, según su nota fresca. `kind`:
+ *
+ * - `pending`: Facturama no confirmó (`cfdi_pendiente`); el mismo aviso de
+ *   siempre (`creditNoteStampPendingMessage`).
+ * - `emitted`: timbrada (`cfdi_uuid`) o emitida sin CFDI; el error llegó
+ *   DESPUÉS (p. ej. la póliza, #749). No se reintenta: la nota existe.
+ * - `unknown`: no se pudo consultar la nota (`null`) o ya no está `Emitida`. Se
+ *   pide revisar el listado.
+ *
+ * En los tres casos la nota NO debe capturarse de nuevo: rebajaría el saldo
+ * otra vez.
+ */
+export const describeEmittedNotaCredito = (
+  label: string,
+  detail: string,
+  actual: EmittedNotaCreditoState | null,
+): { kind: "pending" | "emitted" | "unknown"; message: string } => {
+  if (!actual || actual.estatus !== "Emitida") {
+    return {
+      kind: "unknown",
+      message: `La nota ${label} quedó emitida y descontó su total del saldo por cobrar, pero no se pudo confirmar el estado de su timbrado. Revisa su detalle en el listado; no la captures de nuevo. Motivo: ${detail}`,
+    };
+  }
+  if (actual.cfdi_pendiente === true && !actual.cfdi_uuid) {
+    return { kind: "pending", message: creditNoteStampPendingMessage(label, detail) };
+  }
+  if (actual.cfdi_uuid) {
+    return {
+      kind: "emitted",
+      message: `La nota ${label} se emitió, se timbró (UUID ${actual.cfdi_uuid}) y descontó su total del saldo por cobrar, pero el servidor reportó un error después del timbre. No la captures de nuevo. Motivo: ${detail}`,
+    };
+  }
+  return {
+    kind: "emitted",
+    message: `La nota ${label} quedó emitida sin CFDI y descontó su total del saldo por cobrar. No la captures de nuevo; revisa su detalle. Motivo: ${detail}`,
+  };
+};
 
 /**
  * Emisión que Facturama no confirmó: la nota quedó `Emitida` y aplicada con el

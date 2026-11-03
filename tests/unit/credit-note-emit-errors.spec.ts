@@ -4,7 +4,10 @@ import {
   getCreateFailureOutcome,
   parseNotaCreditoError,
 } from "@/src/features/credit-notes/hooks/useCreateNotaCredito";
-import { getEmitRejectedDraftDetail } from "@/src/features/credit-notes/hooks/useEmitirNotaCredito";
+import {
+  getEmitRejectedDraftDetail,
+  getEmitReportedNotaMessage,
+} from "@/src/features/credit-notes/hooks/useEmitirNotaCredito";
 import { readStampFailedNota } from "@/src/features/credit-notes/utils/creditNoteErrors";
 import {
   CREDIT_NOTE_EMIT_STAMP_WARNING,
@@ -17,7 +20,9 @@ import {
  * Pruebas unitarias de EC-639: cómo se lee el `400` de una emisión de nota de
  * crédito según nucleo-erp #732 (`cfdi` + `nota_credito: {id, estatus}`) y qué
  * desenlace decide cada camino. Cubre los casos que no se reproducen en vivo
- * (timbrado sin confirmar, `400` sin `nota_credito`).
+ * (timbrado sin confirmar, `400` sin `nota_credito`) y, desde EC-707, los `400`
+ * de #848 que traen `nota_credito` SIN `cfdi` (póliza tras timbrar, #749;
+ * segundo `preparar` fallido, #751).
  */
 
 const httpError = (status: number, data: unknown): AxiosError => {
@@ -34,6 +39,22 @@ const stampFailure = (notaCredito?: unknown) =>
     cfdi: [notaCredito ? RECHAZO : "No se puede timbrar la nota. La factura F-1 no está timbrada."],
     ...(notaCredito === undefined ? {} : { nota_credito: notaCredito }),
   });
+
+/**
+ * Formas REALES de `TimbradoNotaCreditoFallido` (nucleo-erp #848) sin `cfdi`: el
+ * `ErrorDeNegocio` del servicio llega con su llave y un string (no una lista), y
+ * `nota_credito.id` como número (#750).
+ */
+const POLIZA = "La póliza de la nota no cuadra: cargos 116.00, abonos 100.00.";
+const FACTURA_CANCELADA = "La factura está cancelada o su cancelación está en proceso.";
+const polizaTrasTimbre = () =>
+  httpError(400, { poliza: POLIZA, nota_credito: { id: 16, estatus: "Emitida" } });
+const segundoPrepararFallido = (estatus: "Cancelada" | "Borrador", id = 17) =>
+  httpError(400, { factura: FACTURA_CANCELADA, nota_credito: { id, estatus } });
+
+/** Nota fresca tras un `400` con la nota `Emitida`. */
+const timbrada = { estatus: "Emitida" as const, cfdi_uuid: "AAAA-1111", cfdi_pendiente: false };
+const pendiente = { estatus: "Emitida" as const, cfdi_uuid: null, cfdi_pendiente: true };
 
 test.describe("readStampFailedNota", () => {
   test("normaliza el id que DRF manda como string", () => {
@@ -59,14 +80,28 @@ test.describe("readStampFailedNota", () => {
 });
 
 test.describe("parseNotaCreditoError con nota_credito", () => {
-  test("lee nota_credito solo junto a cfdi y no lo suma a los mensajes", () => {
+  test("lee nota_credito junto a cfdi y no lo suma a los mensajes", () => {
     const parsed = parseNotaCreditoError(stampFailure({ id: "15", estatus: "Cancelada" }));
     expect(parsed.stampFailed).toBe(true);
     expect(parsed.notaCredito).toEqual({ id: 15, estatus: "Cancelada" });
     expect(parsed.messages).toEqual([RECHAZO]);
   });
 
-  test("sin cfdi no hay nota reportada", () => {
+  test("lee nota_credito SIN cfdi: la póliza falló tras timbrar (#749)", () => {
+    const parsed = parseNotaCreditoError(polizaTrasTimbre());
+    expect(parsed.stampFailed).toBeUndefined();
+    expect(parsed.notaCredito).toEqual({ id: 16, estatus: "Emitida" });
+    expect(parsed.messages).toEqual([POLIZA]);
+    expect(parsed.formError).toBe(POLIZA);
+  });
+
+  test("lee nota_credito SIN cfdi: segundo preparar fallido (#751)", () => {
+    const parsed = parseNotaCreditoError(segundoPrepararFallido("Cancelada"));
+    expect(parsed.notaCredito).toEqual({ id: 17, estatus: "Cancelada" });
+    expect(parsed.fieldErrors.factura).toBe(FACTURA_CANCELADA);
+  });
+
+  test("sin nota_credito no hay nota reportada", () => {
     const parsed = parseNotaCreditoError(
       httpError(400, { factura: ["La factura está cancelada o su cancelación está en proceso."] }),
     );
@@ -103,10 +138,36 @@ test.describe("getCreateFailureOutcome (alta)", () => {
         httpError(400, { cfdi: [SIN_CONFIRMAR], nota_credito: { id: "16", estatus: "Emitida" } }),
       ),
       emitida,
+      pendiente,
     );
     expect(outcome?.kind).toBe("pending");
     expect(outcome?.message).toContain("pendiente de confirmación");
     expect(outcome?.message).not.toContain("Timbrar");
+  });
+
+  test("póliza fallida tras timbrar: la nota existe, el formulario se cierra con su UUID (emitted)", () => {
+    const outcome = getCreateFailureOutcome(parseNotaCreditoError(polizaTrasTimbre()), emitida, timbrada);
+    expect(outcome?.kind).toBe("emitted");
+    expect(outcome?.message).toContain("NC-9 se emitió, se timbró (UUID AAAA-1111)");
+    expect(outcome?.message).toContain("No la captures de nuevo");
+    expect(outcome?.message).toContain(POLIZA);
+  });
+
+  test("nota Emitida cuyo timbre no se pudo consultar queda bloqueada (locked)", () => {
+    const outcome = getCreateFailureOutcome(parseNotaCreditoError(polizaTrasTimbre()), emitida, null);
+    expect(outcome?.kind).toBe("locked");
+    expect(outcome?.message).toContain("no la captures de nuevo");
+  });
+
+  test("segundo preparar fallido con la nota Cancelada desbloquea sin culpar a Facturama (#751)", () => {
+    const outcome = getCreateFailureOutcome(
+      parseNotaCreditoError(segundoPrepararFallido("Cancelada")),
+      emitida,
+    );
+    expect(outcome?.kind).toBe("cancelled");
+    expect(outcome?.message).toContain("No se pudo timbrar: la nota NC-9 quedó registrada como cancelada");
+    expect(outcome?.message).not.toContain("Facturama rechazó");
+    expect(outcome?.message).toContain(FACTURA_CANCELADA);
   });
 
   test("cfdi sin nota_credito queda bloqueado (locked)", () => {
@@ -159,6 +220,15 @@ test.describe("getEmitRejectedDraftDetail (emitir un borrador)", () => {
     expect(detail).toContain(RECHAZO);
   });
 
+  test("segundo preparar fallido con ESTA nota en Borrador abre el detalle (#751)", () => {
+    const detail = getEmitRejectedDraftDetail(
+      parseNotaCreditoError(segundoPrepararFallido("Borrador", 21)),
+      21,
+    );
+    expect(detail).toContain("No se pudo timbrar y la nota sigue en borrador");
+    expect(detail).toContain(FACTURA_CANCELADA);
+  });
+
   test("otra nota, otro estatus o sin nota_credito no abren el detalle", () => {
     expect(getEmitRejectedDraftDetail(parseNotaCreditoError(stampFailure({ id: "22", estatus: "Borrador" })), 21)).toBeNull();
     expect(getEmitRejectedDraftDetail(parseNotaCreditoError(stampFailure({ id: "21", estatus: "Emitida" })), 21)).toBeNull();
@@ -169,6 +239,46 @@ test.describe("getEmitRejectedDraftDetail (emitir un borrador)", () => {
         21,
       ),
     ).toBeNull();
+  });
+});
+
+test.describe("getEmitReportedNotaMessage (emitir un borrador)", () => {
+  test("Emitida pendiente: el aviso de siempre", () => {
+    const message = getEmitReportedNotaMessage(
+      parseNotaCreditoError(
+        httpError(400, { cfdi: [SIN_CONFIRMAR], nota_credito: { id: 21, estatus: "Emitida" } }),
+      ),
+      21,
+      "NC-1",
+      pendiente,
+    );
+    expect(message).toContain("pendiente de confirmación");
+  });
+
+  test("Emitida timbrada con la póliza fallida: dice su UUID", () => {
+    const message = getEmitReportedNotaMessage(
+      parseNotaCreditoError(
+        httpError(400, { poliza: POLIZA, nota_credito: { id: 21, estatus: "Emitida" } }),
+      ),
+      21,
+      "NC-1",
+      timbrada,
+    );
+    expect(message).toContain("UUID AAAA-1111");
+    expect(message).toContain(POLIZA);
+  });
+
+  test("Cancelada: lo dice; Borrador, otra nota o sin nota_credito: null", () => {
+    expect(
+      getEmitReportedNotaMessage(parseNotaCreditoError(segundoPrepararFallido("Cancelada", 21)), 21, "NC-1", null),
+    ).toContain("NC-1 quedó cancelada");
+    expect(
+      getEmitReportedNotaMessage(parseNotaCreditoError(segundoPrepararFallido("Borrador", 21)), 21, "NC-1", null),
+    ).toBeNull();
+    expect(
+      getEmitReportedNotaMessage(parseNotaCreditoError(segundoPrepararFallido("Cancelada", 22)), 21, "NC-1", null),
+    ).toBeNull();
+    expect(getEmitReportedNotaMessage(parseNotaCreditoError(stampFailure()), 21, "NC-1", null)).toBeNull();
   });
 });
 
