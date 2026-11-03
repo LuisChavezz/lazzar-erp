@@ -48,6 +48,7 @@ export function useProductCategoryForm({
   const emptyValues = useMemo<ProductCategoryFormValues>(
     () => ({
       nombre: "",
+      linea: "",
       codigo: "",
       descripcion: "",
     }),
@@ -60,6 +61,7 @@ export function useProductCategoryForm({
       categoryToEdit
         ? {
             nombre: categoryToEdit.nombre,
+            linea: categoryToEdit.linea ?? "",
             codigo: categoryToEdit.codigo,
             descripcion: categoryToEdit.descripcion ?? "",
           }
@@ -174,6 +176,7 @@ export function useProductCategoryForm({
             id: categoryToEdit.id,
             empresa: categoryToEdit.empresa ?? selectedCompany.id!,
             nombre: value.nombre,
+            linea: value.linea,
             codigo: value.codigo,
             descripcion,
           });
@@ -182,6 +185,7 @@ export function useProductCategoryForm({
           await createCategory({
             empresa: selectedCompany.id!,
             nombre: value.nombre,
+            linea: value.linea,
             codigo: value.codigo,
             descripcion,
           });
