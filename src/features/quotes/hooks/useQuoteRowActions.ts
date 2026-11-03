@@ -16,6 +16,7 @@ import {
   usePrepareQuoteEmail,
   type PreparedQuoteEmail,
 } from "../../google/hooks/useGoogleSendEmail";
+import { useSendEmailConfirmation } from "../../google/hooks/useSendEmailConfirmation";
 import { downloadQuotePdfMutationKey, useDownloadQuotePdf } from "./useDownloadQuotePdf";
 import { submitQuoteForReviewMutationKey, useSubmitQuoteForReview } from "./useSubmitQuoteForReview";
 import { useQuoteReviewValidationFlow } from "./useQuoteReviewValidationFlow";
@@ -63,8 +64,12 @@ function usePendingQuoteIds(mutationKey: readonly unknown[]): number[] {
   });
 }
 
-/** Diálogos que abre el menú; el resto de acciones son inmediatas. */
-export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForReview" | "sendEmail";
+/**
+ * Diálogos que abre el menú; el resto de acciones son inmediatas. La
+ * confirmación de "Enviar correo" no está aquí: la sesiona
+ * `useSendEmailConfirmation` (`dialogs.emailDialog`).
+ */
+export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForReview";
 
 interface QuoteRowDialogBase {
   /**
@@ -75,10 +80,7 @@ interface QuoteRowDialogBase {
   quote: Quote;
 }
 
-export type QuoteRowDialogState =
-  | (QuoteRowDialogBase & { kind: Exclude<QuoteRowDialogKind, "sendEmail"> })
-  /** Confirmación de "Enviar correo" con el correo ya preparado (EC-563, ME-07). */
-  | (QuoteRowDialogBase & { kind: "sendEmail"; email: PreparedQuoteEmail });
+export type QuoteRowDialogState = QuoteRowDialogBase & { kind: QuoteRowDialogKind };
 
 /**
  * Dueño, a nivel de VISTA, de las acciones de fila de cotizaciones: las
@@ -112,6 +114,16 @@ export function useQuoteRowActions() {
   // obligatorio, errores bajo el campo). Su "en curso" se lee de la caché.
   const prepareEmail = usePrepareQuoteEmail();
   const sendEmail = useGoogleSendEmail();
+  // Confirmación de "Enviar correo" (EC-563, ME-07): se prepara y se pide
+  // confirmación con destinatario, asunto y adjunto; nada se envía hasta
+  // confirmar. Los demás diálogos la invalidan (`email.invalidate()`) para que
+  // un correo que termina de prepararse no se abra encima de lo que el usuario
+  // pidió después.
+  const email = useSendEmailConfirmation<PreparedQuoteEmail>({
+    busyMutationKeys: [prepareQuoteEmailMutationKey, sendQuoteEmailMutationKey],
+    prepare: prepareEmail.mutateAsync,
+    send: sendEmail.mutate,
+  });
   const downloadPdf = useDownloadQuotePdf();
   const submitForReview = useSubmitQuoteForReview();
   const review = useQuoteReviewValidationFlow();
@@ -120,25 +132,18 @@ export function useQuoteRowActions() {
     switch (action) {
       case "view":
         dialogTurnRef.current++;
+        email.invalidate();
         setDialog({ kind: "view", quote });
         return;
       case "edit":
         router.push(`/sales/quotes/${quote.id}/edit`);
         return;
-      case "sendEmail": {
-        // Se prepara (cotización + correo renderizado) y se pide confirmación
-        // con destinatario, asunto y adjunto; nada se envía hasta confirmar.
-        const turn = ++dialogTurnRef.current;
-        try {
-          const email = await prepareEmail.mutateAsync(quote.id);
-          if (turn === dialogTurnRef.current) {
-            setDialog({ kind: "sendEmail", quote, email });
-          }
-        } catch {
-          // El toast lo muestra la mutación.
-        }
+      case "sendEmail":
+        // Cuenta como turno de diálogo: invalida un "Enviar a revisión" que
+        // siga validando, igual que cualquier otro diálogo pedido después.
+        dialogTurnRef.current++;
+        email.request(quote.id);
         return;
-      }
       case "downloadPdf":
         downloadPdf.mutate(quote.id);
         return;
@@ -148,10 +153,12 @@ export function useQuoteRowActions() {
         // autorizable el diálogo no se abre (el ítem tampoco es visible).
         if (!canManageQuoteAuthorization(quote.estatus)) return;
         dialogTurnRef.current++;
+        email.invalidate();
         setDialog({ kind: action, quote });
         return;
       case "submitForReview": {
         const turn = ++dialogTurnRef.current;
+        email.invalidate();
         const status = await review.validateBeforeSendToReview(quote.id);
         if (status === "valid" && turn === dialogTurnRef.current) {
           setDialog({ kind: "submitForReview", quote });
@@ -189,7 +196,7 @@ export function useQuoteRowActions() {
     onAuthorize: (quoteId: number) => approve.mutate(quoteId),
     onSubmitForReview: (quoteId: number, comentario?: string) =>
       submitForReview.mutate({ id: quoteId, comentario }),
-    onSendEmail: (email: PreparedQuoteEmail) => sendEmail.mutate(email),
+    emailDialog: email.dialog,
     isAuthorizing: approve.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {

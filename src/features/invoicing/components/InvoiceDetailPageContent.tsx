@@ -18,6 +18,8 @@ import {
 } from "../constants/invoiceDetailOrigins";
 import { resolveInvoiceDetailSheet } from "../constants/invoiceDetailSheets";
 import { InvoiceMainSheet } from "./InvoiceMainSheet";
+import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
+import { useInvoiceDetailEmail } from "../hooks/useInvoiceDocumentActions";
 import { InvoiceTrackingSheet } from "./InvoiceTrackingSheet";
 
 interface InvoiceDetailPageContentProps {
@@ -48,6 +50,9 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
 
   const desglose = useInvoiceDesglose(isValidId ? numericId : 0);
   const retrieve = useInvoiceRetrieveFresh(isValidId ? numericId : null);
+  // "Enviar correo" con confirmación: vive en la página y no en la cabecera de
+  // la hoja, para que cambiar de hoja no la desmonte a media preparación.
+  const email = useInvoiceDetailEmail(isValidId ? numericId : 0);
   const { data: session } = useSession();
   const canOpen = (pathname: string) => canAccessRoute(pathname, session?.user);
 
@@ -197,9 +202,22 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
       )}
 
       {sheet === "invoice" ? (
-        <InvoiceMainSheet data={data} invoice={invoice} canOpen={canOpen} user={session?.user} />
+        <InvoiceMainSheet
+          data={data}
+          invoice={invoice}
+          canOpen={canOpen}
+          user={session?.user}
+          onSendEmail={email.request}
+        />
       ) : (
         <InvoiceTrackingSheet data={data} query={query} canOpen={canOpen} />
+      )}
+
+      {/* El correo mostrado es la foto preparada al pedir el envío
+          (`useDialogSession`: sobrevive a la animación de cierre), y es
+          exactamente lo que se envía al confirmar. */}
+      {email.dialog && (
+        <InvoiceSendEmailConfirmDialog key={email.dialog.sessionId} {...email.dialog.props} />
       )}
     </div>
   );

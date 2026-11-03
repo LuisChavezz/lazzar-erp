@@ -89,6 +89,11 @@ interface InvoiceMainSheetProps {
   canOpen: (pathname: string) => boolean;
   /** Usuario de la sesión (permisos), para las reglas de "Emitir", "Cancelar factura" y "Timbrar". */
   user: PermissionContext | null | undefined;
+  /**
+   * "Enviar correo": prepara el correo y la PÁGINA pide confirmación
+   * (`useInvoiceDetailEmail`), para que sobreviva a cambiar de hoja.
+   */
+  onSendEmail: (invoiceId: number) => void;
 }
 
 const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
@@ -107,11 +112,13 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 function InvoiceDocumentActions({
   invoice,
   user,
+  onSendEmail,
 }: {
   invoice: Invoice;
   user: PermissionContext | null | undefined;
+  onSendEmail: (invoiceId: number) => void;
 }) {
-  const actions = useInvoiceDocumentActions(invoice);
+  const actions = useInvoiceDocumentActions(invoice, onSendEmail);
   const canEmit = canEmitInvoice(invoice, user);
   const emitBlockReason = canEmit ? getInvoiceEmitBlockReason(invoice) : null;
   const canCancel = canCancelInvoice(invoice, user);
@@ -189,12 +196,14 @@ function InvoiceDocumentActions({
             aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
           >
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
-            {actions.isSendingEmail
-              ? "Enviando..."
-              : invoiceEmailLabel({
-                  nonFiscal: nonFiscalPdf,
-                  noRecipient: actions.hasNoRecipientEmail,
-                })}
+            {actions.isPreparingEmail
+              ? "Preparando..."
+              : actions.isSendingEmail
+                ? "Enviando..."
+                : invoiceEmailLabel({
+                    nonFiscal: nonFiscalPdf,
+                    noRecipient: actions.hasNoRecipientEmail,
+                  })}
           </Button>
         )}
         <Button
@@ -343,7 +352,7 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
  * Los datos de la cabecera van como mosaicos (`InfoTileGrid`), con la insignia
  * del ícono de `SheetSection`; la hoja "Seguimiento" conserva su cabecera.
  */
-export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
+export function InvoiceMainSheet({ data, invoice, canOpen, user, onSendEmail }: InvoiceMainSheetProps) {
   const money = (value: number) => formatCurrency(value, data.moneda.codigo_iso);
   const { emisor, receptor, pedido, importes } = data;
 
@@ -380,7 +389,9 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
             </InfoTileGrid>
             {invoice && <InvoiceCfdiStamp invoice={invoice} />}
           </div>
-          {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
+          {invoice && (
+            <InvoiceDocumentActions invoice={invoice} user={user} onSendEmail={onSendEmail} />
+          )}
         </div>
       </SheetSection>
 

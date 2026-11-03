@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { Customer } from "../interfaces/customer.interface";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
+import toast from "react-hot-toast";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -225,22 +227,29 @@ export const useCustomerPdfExport = (
   }, [columns]);
 
   const exportToPdf = useCallback(async () => {
-    if (columnsRef.current.length === 0) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createCustomersPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      tableRef.current?.getFilteredRows() ?? [],
-      columnsRef.current
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `clientes-${today}.pdf`);
+    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
+    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
+    // rechazada sin aviso para el usuario.
+    try {
+      if (columnsRef.current.length === 0) return;
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createCustomersPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        tableRef.current?.getFilteredRows() ?? [],
+        columnsRef.current
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `clientes-${today}.pdf`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
+    }
   }, [tableRef]);
 
   useEffect(() => {

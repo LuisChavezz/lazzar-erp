@@ -22,7 +22,8 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
-import { useSendPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
+import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail";
+import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
 import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
   isPurchaseOrderAuthorizedOrComplete,
@@ -49,15 +50,16 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  * referencia van FUERA del botón, son indicadores, no parte de la acción).
  *
  * "Ver Detalles" es un enlace real (`href` del item) a la página de detalle.
- * Edición, cancelación y ruta crítica se DELEGAN a la vista (`onEdit` /
- * `onCancel` / `onCriticalPath`): sus destinos —tres diálogos de formulario—
- * deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
+ * Edición, cancelación, ruta crítica y correo se DELEGAN a la vista (`onEdit`
+ * / `onCancel` / `onCriticalPath`, y `onSendEmail` por
+ * `PurchaseOrderRowActionsProvider`): sus destinos —diálogos de formulario y
+ * la confirmación del correo— deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
  * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
  * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
- * Enviar correo y
- * Descargar PDF no abren nada — son `mutate(id)` directos.
+ * Descargar PDF no abre nada — es un `mutate(id)` directo. El "en curso" del
+ * correo se lee de la `MutationCache` (`usePurchaseOrderEmailStatus`).
  */
 const FolioCell = ({
   order,
@@ -70,11 +72,13 @@ const FolioCell = ({
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
+  const { onSendEmail } = usePurchaseOrderRowActionsContext();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
-  const { mutate: sendEmail, isPending: isSendingEmail } = useSendPurchaseOrderEmail();
+  const { isPreparingEmail, isSendingEmail } = usePurchaseOrderEmailStatus(order.id);
+  const isEmailBusy = isPreparingEmail || isSendingEmail;
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
   // Cómo se nombra la orden en el disparador, su `aria-label` y el texto de los
@@ -205,12 +209,17 @@ const FolioCell = ({
 
   if (canSendEmail) {
     menuItems.push({
-      label: isSendingEmail ? "Enviando..." : "Enviar correo",
+      label: isPreparingEmail
+        ? "Preparando..."
+        : isSendingEmail
+          ? "Enviando..."
+          : "Enviar correo",
       icon: EmailIcon,
-      onSelect: () => sendEmail(order.id),
+      // Prepara el correo y la vista pide confirmación; nada se envía antes.
+      onSelect: () => onSendEmail(order.id),
       // In-flight guard: evita doble envío o solaparse con la descarga.
-      // `keepOpenOnSelect` deja el menú abierto para ver el estado "Enviando...".
-      disabled: isSendingEmail || isDownloadingPdf,
+      // `keepOpenOnSelect` deja el menú abierto para ver "Preparando..."/"Enviando...".
+      disabled: isEmailBusy || isDownloadingPdf,
       keepOpenOnSelect: true,
     });
   }
@@ -227,7 +236,7 @@ const FolioCell = ({
     onSelect: () => downloadPdf(order.id),
     // In-flight guard: evita doble descarga o solaparse con el envío.
     // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
-    disabled: isDownloadingPdf || isSendingEmail,
+    disabled: isDownloadingPdf || isEmailBusy,
     keepOpenOnSelect: true,
   });
 

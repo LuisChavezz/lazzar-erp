@@ -17,6 +17,9 @@ import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingSte
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
+import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailConfirmDialog";
+import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
+import { PurchaseOrderRowActionsProvider } from "../hooks/purchaseOrderRowActionsContext";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
@@ -59,6 +62,14 @@ export function PurchaseOrderView() {
   // no le cambia el modo de solo lectura a media captura.
   const [criticalPathTarget, setCriticalPathTarget] =
     useState<PurchaseOrderCriticalPathTarget | null>(null);
+
+  // ── Correo al proveedor ───────────────────────────────────────────────────
+  // Mismo motivo: la confirmación vive aquí y no en la celda. "Enviar correo"
+  // PREPARA el correo (orden fresca + render) y lo muestra para confirmarse;
+  // nada se envía hasta confirmar. Mismo flujo que facturas y cotizaciones.
+  // `request` llega al menú de cada fila por contexto (ver el Provider abajo).
+  const email = usePurchaseOrderEmailConfirmation();
+  const rowActions = { onSendEmail: email.request };
 
   // Callbacks inline (solo setters, estables): la factoría no se recalcula.
   const columns = getColumns(
@@ -167,6 +178,7 @@ export function PurchaseOrderView() {
   // monta la página encima de esta vista (`PurchaseOrderKpisSection`), con
   // consulta propia al backend.
   return (
+    <PurchaseOrderRowActionsProvider value={rowActions}>
     <div className="space-y-6">
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       {table}
@@ -200,6 +212,15 @@ export function PurchaseOrderView() {
           if (!open) setCriticalPathTarget(null);
         }}
       />
+
+      {/* ── Correo al proveedor ───────────────────────────────────────────── */}
+      {/* El correo mostrado es la foto preparada al pedir el envío
+          (`useDialogSession`: sobrevive a la animación de cierre), y es
+          exactamente lo que se envía al confirmar. */}
+      {email.dialog && (
+        <PurchaseOrderSendEmailConfirmDialog key={email.dialog.sessionId} {...email.dialog.props} />
+      )}
     </div>
+    </PurchaseOrderRowActionsProvider>
   );
 }
