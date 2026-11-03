@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { loadExportRows } from "@/src/utils/loadExportRows";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -36,26 +36,26 @@ export const useSupplierCsvExport = (
   columns: DataTableVisibleColumn<Supplier>[],
 ) => {
   const columnsRef = useRef(columns);
-  const getRowsRef = useRef(getRows);
 
   useEffect(() => {
     columnsRef.current = columns;
-    getRowsRef.current = getRows;
-  }, [columns, getRows]);
+  }, [columns]);
+
+  const runExport = useServerExport(getRows, "suppliers-export-csv");
 
   const exportToCsv = useCallback(async () => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const rows = await loadExportRows(getRowsRef.current, "suppliers-export");
-    if (rows === null) return;
-    const csvContent = buildCsv(rows, exportColumns);
-    // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
-    const blob = new Blob([`﻿${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+    await runExport(async (rows) => {
+      const csvContent = buildCsv(rows, exportColumns);
+      // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
+      const blob = new Blob([`﻿${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `proveedores-${today}.csv`);
     });
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `proveedores-${today}.csv`);
-  }, []);
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

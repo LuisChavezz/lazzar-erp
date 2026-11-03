@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { loadExportRows } from "@/src/utils/loadExportRows";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -217,34 +217,34 @@ export const useSupplierPdfExport = (
   columns: DataTableVisibleColumn<Supplier>[],
 ) => {
   const columnsRef = useRef(columns);
-  const getRowsRef = useRef(getRows);
 
   useEffect(() => {
     columnsRef.current = columns;
-    getRowsRef.current = getRows;
-  }, [columns, getRows]);
+  }, [columns]);
+
+  const runExport = useServerExport(getRows, "suppliers-export-pdf");
 
   const exportToPdf = useCallback(async () => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const rows = await loadExportRows(getRowsRef.current, "suppliers-export");
-    if (rows === null) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createSuppliersPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      rows,
-      exportColumns,
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `proveedores-${today}.pdf`);
-  }, []);
+    await runExport(async (rows) => {
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createSuppliersPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        rows,
+        exportColumns,
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `proveedores-${today}.pdf`);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

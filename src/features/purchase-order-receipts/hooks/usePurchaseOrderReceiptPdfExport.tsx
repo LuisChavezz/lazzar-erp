@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { loadExportRows } from "@/src/utils/loadExportRows";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { getPurchaseOrderReceiptColumnText } from "../utils/purchaseOrderReceiptExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -216,33 +216,33 @@ export const usePurchaseOrderReceiptPdfExport = (
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
 ) => {
   const columnsRef = useRef(columns);
-  const getRowsRef = useRef(getRows);
 
   useEffect(() => {
     columnsRef.current = columns;
-    getRowsRef.current = getRows;
-  }, [columns, getRows]);
+  }, [columns]);
+
+  const runExport = useServerExport(getRows, "purchase-order-receipts-export-pdf");
 
   const exportToPdf = useCallback(async () => {
     if (columnsRef.current.length === 0) return;
-    const rows = await loadExportRows(getRowsRef.current, "purchase-order-receipts-export");
-    if (rows === null) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createPurchaseOrderReceiptsPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      rows,
-      columnsRef.current,
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `recepciones-${today}.pdf`);
-  }, []);
+    await runExport(async (rows) => {
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createPurchaseOrderReceiptsPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        rows,
+        columnsRef.current,
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `recepciones-${today}.pdf`);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {
