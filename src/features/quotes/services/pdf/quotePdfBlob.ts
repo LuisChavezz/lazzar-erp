@@ -13,7 +13,7 @@ import type { QuoteById } from "../../interfaces/quote.interface";
 import { buildQuotePdfModel } from "../../utils/quotePdfTemplateHelpers";
 import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
-export const generateQuotePdfBlob = async (
+export const generateQuotePdfBlob = (
   quote: QuoteById,
   monedaCodigo: string | null,
 ): Promise<Blob> =>

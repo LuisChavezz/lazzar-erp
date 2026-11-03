@@ -8,7 +8,7 @@
 import type { StockMovementReportResponse } from "../../interfaces/stock-movement-report.interface";
 import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
-export const generateStockMovementReportPdfBlob = async (
+export const generateStockMovementReportPdfBlob = (
   report: StockMovementReportResponse,
 ): Promise<Blob> =>
   renderPdfBlob(

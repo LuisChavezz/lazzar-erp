@@ -12,7 +12,7 @@
 import type { PurchaseOrderDetail } from "../../interfaces/purchase-order.interface";
 import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
-export const generatePurchaseOrderPdfBlob = async (
+export const generatePurchaseOrderPdfBlob = (
   order: PurchaseOrderDetail,
 ): Promise<Blob> =>
   renderPdfBlob(

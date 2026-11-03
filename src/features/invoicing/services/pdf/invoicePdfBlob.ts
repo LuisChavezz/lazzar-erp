@@ -11,7 +11,7 @@
 import type { Invoice } from "../../interfaces/invoice.interface";
 import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
-export const generateInvoicePdfBlob = async (invoice: Invoice): Promise<Blob> =>
+export const generateInvoicePdfBlob = (invoice: Invoice): Promise<Blob> =>
   renderPdfBlob(
     () => import("@/src/pdfs/InvoicePdfDocument").then((m) => m.InvoicePdfDocument),
     { invoice },
