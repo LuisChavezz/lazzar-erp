@@ -9,6 +9,7 @@ import {
   FacturacionIcon,
   PaperPlaneIcon,
   ShieldCheckIcon,
+  SyncIcon,
 } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -56,7 +57,7 @@ import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_PENDING_LABEL,
-  INVOICE_STAMP_PENDING_MESSAGE,
+  canReconcileInvoiceCfdi,
   canStampInvoice,
   isInvoicePdfNonFiscal,
   isInvoiceStampPending,
@@ -72,6 +73,7 @@ import {
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
+import { InvoiceCfdiReconcileDialog } from "./InvoiceCfdiReconcileDialog";
 import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
 import { canEmitInvoice, getInvoiceEmitBlockReason } from "../utils/invoiceEmission";
 import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
@@ -121,17 +123,19 @@ function InvoiceDocumentActions({
   const actions = useInvoiceDocumentActions(invoice, onSendEmail);
   const canEmit = canEmitInvoice(invoice, user);
   const emitBlockReason = canEmit ? getInvoiceEmitBlockReason(invoice) : null;
-  const canCancel = canCancelInvoice(invoice, user);
+  // Con el timbrado sin confirmar, "Conciliar con Facturama" REEMPLAZA a
+  // "Cancelar factura" y "Timbrar" (EC-709): el backend rechaza los dos mientras
+  // siga pendiente. Sin el permiso no se ofrece ninguno; el indicador de la
+  // cabecera sigue a la vista.
+  const stampPending = isInvoiceStampPending(invoice);
+  const canReconcile = canReconcileInvoiceCfdi(invoice, user);
+  const canCancel = !stampPending && canCancelInvoice(invoice, user);
   const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
-  const canStamp = canStampInvoice(invoice, user);
-  // Un timbrado sin confirmar manda sobre el tipo de cambio: es lo que hay que revisar primero.
-  const stampBlockReason = !canStamp
-    ? null
-    : isInvoiceStampPending(invoice)
-      ? INVOICE_STAMP_PENDING_MESSAGE
-      : isInvoiceTipoCambioMissing(invoice)
-        ? invoiceStampMissingTipoCambioMessage(invoiceCurrencyCode(invoice))
-        : null;
+  const canStamp = !stampPending && canStampInvoice(invoice, user);
+  const stampBlockReason =
+    canStamp && isInvoiceTipoCambioMissing(invoice)
+      ? invoiceStampMissingTipoCambioMessage(invoiceCurrencyCode(invoice))
+      : null;
   const cfdiEmail = getInvoiceCfdiEmailAvailability(invoice, user);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
   const emitNoteId = `invoice-${invoice.id}-emit-note`;
@@ -156,7 +160,7 @@ function InvoiceDocumentActions({
         {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
             sobre el retrieve, que es quien trae `activo`. Una timbrada se cancela (el
             diálogo avisa que primero va al SAT); con el timbrado pendiente de
-            confirmación se muestra bloqueado y descrito por su nota. */}
+            confirmación no se ofrece: lo reemplaza "Conciliar con Facturama". */}
         <DocumentActionWithDialog
           offered={canCancel}
           blockedNoteId={cancelBlockReason ? cancelNoteId : undefined}
@@ -165,15 +169,24 @@ function InvoiceDocumentActions({
           className="text-rose-600! dark:text-rose-400!"
           renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
         />
-        {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
-            (`canStampInvoice`); con el timbrado pendiente de confirmación o fuera de
-            MXN sin tipo de cambio, bloqueado y descrito por su nota. */}
+        {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI ni
+            timbrado pendiente (`canStampInvoice`); fuera de MXN sin tipo de cambio,
+            bloqueado y descrito por su nota. */}
         <DocumentActionWithDialog
           offered={canStamp}
           blockedNoteId={stampBlockReason ? stampNoteId : undefined}
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <InvoiceStampDialog invoice={invoice} {...dialog} />}
+        />
+        {/* "Conciliar con Facturama": solo con `E-FIN-FACTURAS` y el timbrado
+            pendiente de confirmación (`canReconcileInvoiceCfdi`), en el lugar de
+            "Cancelar factura" y "Timbrar". */}
+        <DocumentActionWithDialog
+          offered={canReconcile}
+          icon={SyncIcon}
+          label="Conciliar con Facturama"
+          renderDialog={(dialog) => <InvoiceCfdiReconcileDialog invoice={invoice} {...dialog} />}
         />
         {/* "Enviar CFDI": el PDF y el XML oficiales. Mismo permiso que "Enviar correo";
             oculto en una eliminada y bloqueado, con su nota, si está cancelada, con el

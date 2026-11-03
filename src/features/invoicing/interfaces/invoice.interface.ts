@@ -116,6 +116,20 @@ export interface Invoice {
 }
 
 /**
+ * Respuesta de `POST /finanzas/facturas/{id}/conciliar-cfdi/` (EC-709): la
+ * factura completa (`FacturaSerializer`, como el retrieve), ya sin
+ * `cfdi_pendiente`.
+ * - `timbrado`: el CFDI existía en Facturama; ya trae `cfdi_uuid`,
+ *   `facturama_id` y `cfdi_fecha_timbrado`.
+ * - `liberado`: no existía; queda sin UUID y se puede volver a timbrar o
+ *   cancelar.
+ * El estatus no cambia en ninguno de los dos.
+ */
+export type InvoiceCfdiReconcileResponse =
+  | { resultado: "timbrado"; factura: Invoice }
+  | { resultado: "liberado"; factura: Invoice };
+
+/**
  * Respuesta de `POST /finanzas/facturas/{id}/emitir/`: la factura ya `Emitida`
  * (`FacturaSerializer`, como el retrieve), la cuenta por cobrar que creó
  * (saldo = total, en la moneda de la factura) y su póliza, `null` si la
