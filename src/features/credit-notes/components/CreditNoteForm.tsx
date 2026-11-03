@@ -1,19 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import type { RefObject } from "react";
 import { useStore } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Button } from "@/src/components/Button";
-import {
-  InfoIcon,
-  NotaCreditoIcon,
-  PlusIcon,
-  RejectIcon,
-  DeleteIcon,
-} from "@/src/components/Icons";
+import { FormSection } from "@/src/components/FormSection";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
+import { InfoIcon, PlusIcon, RejectIcon, DeleteIcon } from "@/src/components/Icons";
 import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import {
@@ -35,6 +32,8 @@ import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
 
 interface CreditNoteFormProps {
   onSuccess: () => void;
+  /** Candado del envío, del diálogo (ver `useCreditNoteForm`). */
+  submitLockRef: RefObject<boolean>;
 }
 
 /** "Emitir nota" sin conocer aún la factura elegida (el listado no cargó). */
@@ -67,7 +66,7 @@ const BANNER_TONES = {
   },
 } as const;
 
-export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
+export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteFormProps) {
   const {
     form,
     isPending,
@@ -83,7 +82,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
     submitAs,
     handleFormSubmit,
     handleReset,
-  } = useCreditNoteForm({ onSuccess });
+  } = useCreditNoteForm({ onSuccess, submitLockRef });
 
   const [isInvoicePickerOpen, setIsInvoicePickerOpen] = useState(false);
   const [isLinesPickerOpen, setIsLinesPickerOpen] = useState(false);
@@ -143,7 +142,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
       <form onSubmit={handleFormSubmit} className="w-full">
         {/* Bloqueado cuando la nota pudo quedar registrada: todo queda de solo
             lectura y la salida es el "Cerrar" del diálogo (ver `isSubmissionLocked`). */}
-        <fieldset disabled={isPending || isSubmissionLocked}>
+        <fieldset disabled={isPending || isSubmissionLocked} className="space-y-6">
           {/* Banner del error del backend. Un error de validación no dejó nada
               registrado (el guardado es atómico), y un rechazo de Facturama
               con la nota reportada `Cancelada` tampoco movió el saldo: rojo y
@@ -153,7 +152,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
           {serverBanner && (
             <div
               role="alert"
-              className={`mb-6 flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone.box}`}
+              className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bannerTone.box}`}
             >
               <InfoIcon className={`w-5 h-5 shrink-0 mt-0.5 ${bannerTone.icon}`} aria-hidden="true" />
               <p className={`flex-1 text-sm ${bannerTone.text}`}>{serverBanner}</p>
@@ -171,82 +170,59 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
           )}
 
           {/* ── Factura a acreditar ─────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400">
-                  <NotaCreditoIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                    Factura a Acreditar
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Solo facturas con saldo por cobrar
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                rounded="full"
-                onClick={() => setIsInvoicePickerOpen(true)}
-              >
-                {factura > 0 ? "Cambiar factura" : "Elegir factura"}
-              </Button>
-            </div>
-
-            <div className="px-8 py-6">
+          <FormSection title="Factura a acreditar" description="Solo facturas con saldo por cobrar">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-4 py-3">
               {factura > 0 ? (
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 px-5 py-4">
+                <div className="flex flex-1 flex-wrap items-center justify-between gap-4 min-w-0">
                   <div className="min-w-0">
                     <p className="text-xs text-slate-400 dark:text-slate-500">Factura</p>
-                    <p className="text-base font-semibold text-slate-800 dark:text-white truncate">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
                       {facturaFolio || `Factura #${factura}`}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      Saldo por cobrar
-                    </p>
-                    <p className="text-base font-bold tabular-nums text-slate-800 dark:text-white">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Saldo por cobrar</p>
+                    <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
                       {formatMoneyValueOrDash(cxcSaldo, monedaCodigo)}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-4">
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic">
                   Ninguna factura seleccionada.
                 </p>
               )}
-              {getError("factura") && (
-                <p className="mt-3 text-sm font-medium text-rose-600 dark:text-rose-400">
-                  {getError("factura")?.message}
-                </p>
-              )}
-              {/* `cliente` NO se captura: se deriva de la factura. Si el backend
-                  lo rechaza (no coincide con el de la factura), el mensaje se
-                  pinta aquí, junto a lo que sí lo determina. */}
-              {getError("cliente") && (
-                <p className="mt-1 text-sm font-medium text-rose-600 dark:text-rose-400">
-                  {getError("cliente")?.message}
-                </p>
-              )}
+              <Button
+                type="button"
+                variant="secondary"
+                rounded="full"
+                className="shrink-0"
+                onClick={() => setIsInvoicePickerOpen(true)}
+              >
+                {factura > 0 ? "Cambiar factura" : "Elegir factura"}
+              </Button>
             </div>
-          </section>
+            {getError("factura") && (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                {getError("factura")?.message}
+              </p>
+            )}
+            {/* `cliente` NO se captura: se deriva de la factura. Si el backend
+                lo rechaza (no coincide con el de la factura), el mensaje se
+                pinta aquí, junto a lo que sí lo determina. */}
+            {getError("cliente") && (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                {getError("cliente")?.message}
+              </p>
+            )}
+          </FormSection>
 
           {/* ── Datos del documento ─────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Datos de la Nota
-              </h3>
-              <p className="text-xs text-slate-500">
-                El total es el importe que se acreditará al saldo de la factura
-              </p>
-            </div>
-
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormSection
+            title="Datos de la nota"
+            description="El total es el importe que se acreditará al saldo de la factura"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <form.Field name="folio">
                 {(field) => (
                   // El backend NO autogenera folio: no hay serie detrás de este
@@ -255,6 +231,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                     label="Folio"
                     placeholder="Folio del documento (opcional)"
                     forceUppercase
+                    className={COMPACT_FIELD_CLS}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -271,6 +248,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                   <FormInput
                     label="Motivo"
                     placeholder="Ej. Devolución de mercancía (opcional)"
+                    className={COMPACT_FIELD_CLS}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -291,6 +269,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                     label="Subtotal"
                     inputMode="decimal"
                     placeholder="0.00"
+                    className={COMPACT_FIELD_CLS}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -308,6 +287,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                     label="Impuestos"
                     inputMode="decimal"
                     placeholder="0.00"
+                    className={COMPACT_FIELD_CLS}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -326,6 +306,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                       label="Observaciones"
                       rows={2}
                       placeholder="Notas internas de la nota (opcional)"
+                      className={COMPACT_FIELD_CLS}
                       name={field.name}
                       value={field.state.value}
                       onChange={(event) => {
@@ -338,22 +319,18 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                 </form.Field>
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Conceptos acreditados ───────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden mb-6">
-            <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                  Conceptos acreditados{" "}
-                  <span className="text-sm font-normal text-slate-400">(opcional)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {factura > 0
-                    ? "Desglose documental: describe QUÉ se acredita. El importe lo fija el total de la nota."
-                    : "Selecciona primero una factura"}
-                </p>
-              </div>
+          <FormSection
+            title="Conceptos acreditados (opcional)"
+            description={
+              factura > 0
+                ? "Desglose documental: describe QUÉ se acredita. El importe lo fija el total de la nota."
+                : "Selecciona primero una factura"
+            }
+          >
+            <div className="flex justify-end">
               <Button
                 type="button"
                 variant="secondary"
@@ -368,7 +345,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
               </Button>
             </div>
 
-            <div className="p-8">
+            <div>
               {/* Error a nivel del arreglo (p. ej. conceptos repetidos). */}
               {getError("nota_credito_detalles") && (
                 <p className="mb-3 text-sm font-medium text-rose-600 dark:text-rose-400">
@@ -430,7 +407,10 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                               </p>
                             )}
 
-                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                            {/* Cinco importes en 3 + 2 (Cantidad / Precio /
+                                Impuesto, luego Subtotal / Total): a 860 px
+                                cinco columnas no caben con su etiqueta. */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                               {LINE_MONEY_FIELDS.map(({ key, label }) => (
                                 <form.Field
                                   key={key}
@@ -441,6 +421,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                                       label={label}
                                       inputMode="decimal"
                                       placeholder="0.00"
+                                      className={COMPACT_FIELD_CLS}
                                       name={field.name}
                                       value={field.state.value}
                                       onChange={(event) => {
@@ -481,47 +462,39 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                 }
               </form.Field>
             </div>
-          </section>
+          </FormSection>
 
           {/* ── Total de la nota ────────────────────────────────────────── */}
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-violet-200 dark:border-violet-500/20 overflow-hidden mb-6">
-            <div className="p-8">
-              <div className="flex flex-wrap items-end justify-between gap-6">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    Total de la nota
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 max-w-md">
-                    Es el importe que se descontará del saldo por cobrar de la factura
-                    al emitir. Se captura: no se calcula a partir de los conceptos.
-                  </p>
-                </div>
-                <div className="w-full sm:w-56">
-                  <form.Field name="total">
-                    {(field) => (
-                      <FormInput
-                        label="Total"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        name={field.name}
-                        value={field.state.value}
-                        onChange={(event) => {
-                          field.handleChange(
-                            sanitizeDecimalInput(event.target.value, 2),
-                          );
-                          clearError("total");
-                        }}
-                        error={getError("total")}
-                      />
-                    )}
-                  </form.Field>
-                </div>
+          <FormSection title="Total de la nota">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <p className="min-w-0 flex-1 text-xs text-slate-500 max-w-md">
+                Es el importe que se descontará del saldo por cobrar de la factura al
+                emitir. Se captura: no se calcula a partir de los conceptos.
+              </p>
+              <div className="w-full sm:w-56">
+                <form.Field name="total">
+                  {(field) => (
+                    <FormInput
+                      label="Total"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={COMPACT_FIELD_CLS}
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(event) => {
+                        field.handleChange(sanitizeDecimalInput(event.target.value, 2));
+                        clearError("total");
+                      }}
+                      error={getError("total")}
+                    />
+                  )}
+                </form.Field>
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {isSubmissionLocked ? (
-            <p className="pb-4 text-sm text-slate-500 dark:text-slate-400 text-right">
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-right">
               Este formulario ya no puede enviarse. Ciérralo y revisa el listado.
             </p>
           ) : (
@@ -555,7 +528,7 @@ export default function CreditNoteForm({ onSuccess }: CreditNoteFormProps) {
                   )}
                 </>
               )}
-              <div className="flex flex-wrap items-center justify-end gap-3 pb-4">
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <FormCancelButton onClick={handleReset} disabled={isPending} />
                 {/* Dos salidas explícitas. Guardar como borrador NO toca la cuenta
                     por cobrar; emitir aplica el crédito de inmediato. El `fieldset`
