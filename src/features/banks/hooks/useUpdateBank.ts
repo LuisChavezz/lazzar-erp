@@ -4,6 +4,7 @@ import { BankFormValues } from "../schemas/bank.schema";
 import { BancoCreate } from "../interfaces/bank.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 
 interface UpdateBankPayload extends BancoCreate {
   id: number;
@@ -44,7 +45,7 @@ export const useUpdateBank = (setError?: SetBankError) => {
           });
         }
       }
-      toast.error("Error al actualizar el banco");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al actualizar el banco");
     },
   });
 };

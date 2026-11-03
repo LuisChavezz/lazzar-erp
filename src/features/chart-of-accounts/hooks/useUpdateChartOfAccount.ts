@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { updateChartOfAccount } from "../services/actions";
 import type { CuentaContableCreate } from "../interfaces/chart-of-account.interface";
 import { CHART_OF_ACCOUNTS_KEY_ROOT } from "./useChartOfAccounts";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 import {
   setChartOfAccountFieldErrors,
   type SetChartOfAccountError,
@@ -31,7 +32,7 @@ export const useUpdateChartOfAccount = (setError?: SetChartOfAccountError) => {
     },
     onError: (error) => {
       setChartOfAccountFieldErrors(error, setError);
-      toast.error("Error al actualizar la cuenta contable");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al actualizar la cuenta contable");
     },
   });
 };

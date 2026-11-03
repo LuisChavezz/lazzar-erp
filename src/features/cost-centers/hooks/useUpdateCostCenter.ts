@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { updateCostCenter } from "../services/actions";
 import type { CostCenterCreate } from "../interfaces/cost-center.interface";
 import { COST_CENTERS_KEY_ROOT } from "./useCostCenters";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 import {
   setCostCenterFieldErrors,
   type SetCostCenterError,
@@ -31,7 +32,7 @@ export const useUpdateCostCenter = (setError?: SetCostCenterError) => {
     },
     onError: (error) => {
       setCostCenterFieldErrors(error, setError);
-      toast.error("Error al actualizar el centro de costo");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al actualizar el centro de costo");
     },
   });
 };
