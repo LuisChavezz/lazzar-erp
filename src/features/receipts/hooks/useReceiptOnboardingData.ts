@@ -1,5 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { isClientError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getReceiptOnboargingData } from "../services/actions";
 import type { ReceiptOnboardingData } from "../interfaces/receipt-onboarding.interface";
 
@@ -13,7 +13,7 @@ export const useReceiptOnboardingData = () => {
     {
       queryKey: ["receipt-onboarding-data"],
       queryFn: getReceiptOnboargingData,
-      retry: (failureCount, failure) => !isClientError(failure) && failureCount < 1,
+      retry: retryUnlessClientError,
     },
     { toastId: "receipt-onboarding-refetch-error" },
   );

@@ -3,6 +3,8 @@ import { AxiosError, type AxiosResponse } from "axios";
 import { isAmountOnlyKpiHidden } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { onboardingLoadErrorMessage } from "@/src/features/purchase-orders/utils/onboardingLoadError";
 import { isClientError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
 
 /**
  * Pruebas unitarias de EC-718: `puede_ver_importes` llega `false` también sin
@@ -50,10 +52,30 @@ test.describe("onboardingLoadErrorMessage", () => {
 });
 
 test.describe("isClientError", () => {
-  test("solo los 4xx", () => {
+  test("solo los 4xx definitivos", () => {
     expect(isClientError(axiosError(400, {}))).toBe(true);
+    expect(isClientError(axiosError(403, {}))).toBe(true);
     expect(isClientError(axiosError(404, {}))).toBe(true);
     expect(isClientError(axiosError(500, {}))).toBe(false);
     expect(isClientError(new Error("red"))).toBe(false);
+  });
+
+  test("408 y 429 son pasajeros: no cuentan como definitivos", () => {
+    expect(isClientError(axiosError(408, {}))).toBe(false);
+    expect(isClientError(axiosError(429, {}))).toBe(false);
+  });
+});
+
+test.describe("retryUnlessClientError", () => {
+  test("un 4xx definitivo no se reintenta", () => {
+    expect(retryUnlessClientError(0, axiosError(400, {}))).toBe(false);
+    expect(retryUnlessClientError(0, axiosError(404, {}))).toBe(false);
+  });
+
+  test("el resto sigue el retry global del QueryClient", () => {
+    for (const status of [500, 408, 429]) {
+      expect(retryUnlessClientError(DEFAULT_QUERY_RETRY - 1, axiosError(status, {}))).toBe(true);
+      expect(retryUnlessClientError(DEFAULT_QUERY_RETRY, axiosError(status, {}))).toBe(false);
+    }
   });
 });

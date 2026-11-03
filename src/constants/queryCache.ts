@@ -13,3 +13,10 @@
  * los consumidores de esos dos módulos.
  */
 export const LIST_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos
+
+/**
+ * `retry` por defecto del `QueryClient` (`Provider.tsx`). Exportado para que
+ * las políticas de `retry` propias (`retryUnlessClientError`) sigan al global
+ * en vez de copiar su número.
+ */
+export const DEFAULT_QUERY_RETRY = 1;

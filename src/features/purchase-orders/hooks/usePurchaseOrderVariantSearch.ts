@@ -1,6 +1,6 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { isClientError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { searchPurchaseOrderVariants } from "../services/actions";
 import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-order-onboarding.interface";
 
@@ -25,7 +25,7 @@ export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
         queryKey: ["purchase-order-variant-search", varianteQ],
         queryFn: () => searchPurchaseOrderVariants(varianteQ),
         placeholderData: keepPreviousData,
-        retry: (failureCount, failure) => !isClientError(failure) && failureCount < 1,
+        retry: retryUnlessClientError,
       },
       {
         toastId: "purchase-order-variant-search-refetch-error",

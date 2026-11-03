@@ -1,6 +1,6 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { isClientError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { searchPurchaseOrderProducts } from "../services/actions";
 import type { PurchaseOrderOnboardingProducto } from "../interfaces/purchase-order-onboarding.interface";
 
@@ -34,7 +34,7 @@ export const usePurchaseOrderProductSearch = (productoQ: string, { enabled }: { 
       queryFn: () => searchPurchaseOrderProducts(productoQ),
       enabled: enabled && productoQ !== "",
       placeholderData: keepPreviousData,
-      retry: (failureCount, failure) => !isClientError(failure) && failureCount < 1,
+      retry: retryUnlessClientError,
     },
     {
       toastId: "purchase-order-product-search-refetch-error",
