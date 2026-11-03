@@ -33,6 +33,7 @@ import {
   isAmountOnlyKpiHidden,
 } from "../utils/purchaseOrderKpis";
 import { hiddenAmountCard } from "../utils/kpiAmountCards";
+import { isPurchaseOrderKpisSinEmpresa } from "../utils/kpiSinEmpresa";
 import { PurchaseOrderKpiDialog, type PurchaseOrderKpiDialogKind } from "./PurchaseOrderKpiDialog";
 
 const SECTION_TITLE = "Indicadores";
@@ -177,13 +178,12 @@ function spendCard(
   };
 }
 
-function buildCards(
+/** Exportada para las pruebas unitarias (`tests/unit/procurement-kpi-scope.spec.ts`). */
+export function buildCards(
   data: PurchaseOrderKpis,
   openDialog: (kind: PurchaseOrderKpiDialogKind) => void,
 ): KpiCompactItem[] {
-  // `ocs_abiertas` solo llega no disponible a un usuario sin empresa: el
-  // backend lo calcula siempre que hay empresa, con o sin permiso.
-  const sinEmpresa = !data.ocs_abiertas.disponible;
+  const sinEmpresa = isPurchaseOrderKpisSinEmpresa(data);
   return [
     openCard(data.ocs_abiertas, canSeeKpiAmounts(data.puede_ver_importes), () => openDialog("ocs_abiertas")),
     overdueCard(data.ocs_vencidas_sin_recibir, () => openDialog("ocs_vencidas_sin_recibir")),

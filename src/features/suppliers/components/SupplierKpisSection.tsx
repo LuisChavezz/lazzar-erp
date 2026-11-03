@@ -8,6 +8,7 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPct, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
+import { isSupplierKpisSinEmpresa } from "@/src/features/purchase-orders/utils/kpiSinEmpresa";
 import { supplierKpisQueryKey, useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
@@ -135,12 +136,13 @@ function scorecardCard(rows: SupplierKpiRow[]): KpiCompactItem {
   };
 }
 
-function buildCards(
+/** Exportada para las pruebas unitarias (`tests/unit/procurement-kpi-scope.spec.ts`). */
+export function buildCards(
   data: SupplierKpis,
   openDialog: (kind: SupplierKpiDialogKind) => void,
 ): KpiCompactItem[] {
   // Sin empresa el backend lo dice a nivel raíz: las cuatro tarjetas con su motivo.
-  if (!data.disponible) {
+  if (isSupplierKpisSinEmpresa(data)) {
     return Object.values(LABELS).map((base) => unavailable(base, data.motivo));
   }
   const rows = data.proveedores;
