@@ -21,6 +21,7 @@ import { isOrderConfirmed } from './OperationsOrderColumns';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
+import { MESA_CONTROL_LIST_HEIGHT } from '../constants/listHeight';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
@@ -111,18 +112,22 @@ export function OperationsOrderPanel() {
     queryClient.invalidateQueries({ queryKey: ordersQueryKey(), exact: true });
 
   return (
-    // Altura NATURAL a propósito (sin `fillHeight`/calc de viewport): con las
-    // 4 tarjetas KPI arriba, forzar la tabla a llenar el resto de la ventana
-    // se veía extraño — mejor dejar que la tabla use su tamaño por defecto y
-    // la página scrollee normalmente si hace falta.
-    <div className="flex flex-col gap-6">
+    // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`): los KPIs
+    // conservan su alto y la tabla llena el resto (`fillHeight`) y scrollea por
+    // dentro, así la página no scrollea.
+    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-4`}>
       {/* KPIs: ocultos durante la carga y ante un error —no hay datos que
           resumir y `orders` arranca en `[]`, así que mostrarían ceros que se
           leerían como reales—, igual que `EmbroideryStats` en su vista. La
           tabla NO se gatea: se monta siempre y alterna solo su área de datos,
           de modo que el toolbar sigue visible durante la carga y el error. */}
-      {!isLoading && !showError && <KpiGrid compact items={kpis} />}
+      {!isLoading && !showError && (
+        <div className="shrink-0">
+          <KpiGrid compact items={kpis} />
+        </div>
+      )}
 
+      <div className="flex-1 min-h-0">
       <OperationsOrderTable
         orders={orders}
         isLoading={isLoading}
@@ -133,6 +138,7 @@ export function OperationsOrderPanel() {
         onRefetch={handleRefetch}
         isRefetching={isRefetching}
       />
+      </div>
 
       {selectedOrderForSchedule && (
         <PedidoProgramacionDialog

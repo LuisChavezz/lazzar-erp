@@ -29,7 +29,7 @@ import {
 /** Por qué una talla no trae stock: el backend manda `null` en todos los casos. */
 const sinStockMotivo = (renglon: PedidoProgramarRenglon): string =>
   renglon.es_muestra
-    ? "Línea de muestra: no se surte del almacén."
+    ? "Muestra: necesita su SKU y entrada al almacén para tener existencia."
     : "Sin existencia que consultar: la talla no tiene SKU de catálogo.";
 
 type CoverageStyle = { card: string; row: string; badge: string; label: string; icon: string };
@@ -103,6 +103,18 @@ const partidaRequiereAtencion = (partida: ProgramarPartida): boolean =>
 const partidaDomId = (id: number) => `programar-partida-${id}`;
 
 /**
+ * Solo se programa lo que hay en existencia: si a alguna talla le falta
+ * (`faltante > 0`, muestras con SKU incluidas), se le dice al operario qué
+ * hacer. `faltante: null` es una talla sin SKU (ya marcada aparte).
+ */
+const partidaNecesitaEntrada = (partida: ProgramarPartida): boolean =>
+  partida.renglones.some((renglon) => (renglon.faltante ?? 0) > 0);
+
+/** Ninguna talla medida con existencia: "Sin existencia" en vez de "insuficiente". */
+const partidaSinExistencia = (partida: ProgramarPartida): boolean =>
+  partida.renglones.every((renglon) => (renglon.stock_disponible ?? 0) <= 0);
+
+/**
  * `numero` es la posición de la partida en el orden del GET: con el mismo
  * producto y color en varias partidas, es lo único que las distingue.
  */
@@ -111,11 +123,13 @@ function PartidaCard({
   numero,
   open,
   onToggle,
+  almacenSurtido,
 }: {
   partida: ProgramarPartida;
   numero: number;
   open: boolean;
   onToggle: () => void;
+  almacenSurtido: string;
 }) {
   const styles = partida.coverage ? COVERAGE_STYLES[partida.coverage] : MUESTRA_STYLE;
   // La muestra lleva el ícono de pedidos especiales; `HelpIcon` queda para "Sin medir".
@@ -215,6 +229,14 @@ function PartidaCard({
           </label>
         )}
       </div>
+
+      {partidaNecesitaEntrada(partida) && (
+        <p className="flex items-center gap-1.5 border-t border-slate-200/70 dark:border-white/10 px-4 py-1.5 text-[11px] font-medium text-rose-700 dark:text-rose-300">
+          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-rose-500" aria-hidden="true" />
+          {partidaSinExistencia(partida) ? "Sin existencia" : "Existencia insuficiente"} en{" "}
+          {almacenSurtido || "ALM-00"}: dale entrada al almacén para poder programar.
+        </p>
+      )}
 
       {open && (
       <div className="border-t border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-black/10 overflow-x-auto">
@@ -539,6 +561,7 @@ export function PedidoProgramarPartidas({ renglones, almacenSurtido }: PedidoPro
               numero={index + 1}
               open={isOpen(partida)}
               onToggle={() => toggle(partida)}
+              almacenSurtido={almacenSurtido}
             />
           ))}
           {/* Afirmación de TODO el pedido: solo si todas las partidas de

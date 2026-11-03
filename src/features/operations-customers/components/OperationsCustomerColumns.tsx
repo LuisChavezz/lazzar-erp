@@ -6,7 +6,13 @@ import {
   FilterHeader,
   type ColumnFilterOption,
 } from "@/src/components/ColumnHeaderFilter";
-import { ALL_FILTER_OPTION, buildDistinctFilterOptions } from "@/src/utils/columnFilterOptions";
+import {
+  ALL_FILTER_OPTION,
+  buildDistinctFilterOptions,
+  buildMonthFilterOptions,
+  matchesMonthFilter,
+} from "@/src/utils/columnFilterOptions";
+import { formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
 import { OperationsCustomer } from "../interfaces/operations-customer.interface";
 
 /**
@@ -29,17 +35,28 @@ const estatusFilterFn: FilterFn<OperationsCustomer> = (row, _columnId, filterVal
 // Razón Social, igual que `CustomerColumns.tsx` (Ventas) — a diferencia de
 // aquella, esta tabla es de solo lectura (sin `ActionMenu` por renglón), así
 // que no lleva trigger ni chevron, solo el punto junto al texto.
+// Debajo de la razón social, el estatus EN PALABRA (badge discreto, como
+// Compras): el color solo no se entiende sin saber el código.
 const RazonSocialCell = ({ customer }: { customer: OperationsCustomer }) => (
   <div className="flex items-center gap-2">
     <span
       className={`h-2.5 w-2.5 rounded-full shrink-0 ${customer.activo ? "bg-emerald-500" : "bg-slate-400"}`}
-      role="img"
-      aria-label={customer.activo ? "Activo" : "Inactivo"}
-      title={customer.activo ? "Activo" : "Inactivo"}
+      aria-hidden="true"
     />
-    <span className="font-medium text-slate-700 dark:text-slate-200">
-      {customer.razon_social || "—"}
-    </span>
+    <div className="flex flex-col items-start gap-1 min-w-0">
+      <span className="font-medium text-slate-700 dark:text-slate-200">
+        {customer.razon_social || "—"}
+      </span>
+      <span
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${
+          customer.activo
+            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+            : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300"
+        }`}
+      >
+        {customer.activo ? "Activo" : "Inactivo"}
+      </span>
+    </div>
   </div>
 );
 
@@ -61,18 +78,34 @@ const presenceFilter =
 /** Teléfono visible de la fila: el fijo o, si no hay, el celular. */
 export const telefonoDe = (customer: OperationsCustomer) => customer.telefono || customer.celular;
 
+export interface OperationsCustomerFilterOptions {
+  estados: ColumnFilterOption[];
+  /** Meses con compras y, si algún cliente no tiene, "Sin compras". */
+  mesesUltimaCompra: ColumnFilterOption[];
+}
+
 export function buildOperationsCustomerFilterOptions(
   customers: OperationsCustomer[],
-): { estados: ColumnFilterOption[] } {
+): OperationsCustomerFilterOptions {
   return {
     estados: [ALL_FILTER_OPTION, ...buildDistinctFilterOptions(customers, (c) => c.estado)],
+    mesesUltimaCompra: [
+      ALL_FILTER_OPTION,
+      ...buildMonthFilterOptions(
+        customers.map((c) => c.fecha_ultima_compra),
+        "Sin compras",
+      ),
+    ],
   };
 }
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
 export const getOperationsCustomerColumns = (
-  filterOptions: { estados: ColumnFilterOption[] } = { estados: [ALL_FILTER_OPTION] },
+  filterOptions: OperationsCustomerFilterOptions = {
+    estados: [ALL_FILTER_OPTION],
+    mesesUltimaCompra: [ALL_FILTER_OPTION],
+  },
 ): ColumnDef<OperationsCustomer>[] => [
   // `nombre` y `rfc` ya no tienen columna propia, pero la búsqueda global de
   // `DataTable` solo ve accessors de columna: se concatenan aquí para que
@@ -178,13 +211,31 @@ export const getOperationsCustomerColumns = (
     ),
   },
   {
-    // PLACEHOLDER a propósito: el endpoint de clientes de Mesa de Control
-    // todavía no expone la fecha de última compra. Fija en "—" en todas las
-    // filas hasta que el backend la agregue — mismo patrón que
-    // `CustomerColumns.tsx` (Ventas).
+    // Fecha del último pedido (`fecha_ultima_compra`, pedida al backend). Sin
+    // el campo o sin compras, "—"; al ordenar, los vacíos van al final.
     id: "ultima_compra",
-    header: "Última Compra",
-    enableSorting: false,
-    cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+    accessorFn: (row) => row.fecha_ultima_compra || undefined,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Última Compra"
+        column={column}
+        options={filterOptions.mesesUltimaCompra}
+        label="mes de última compra"
+        menuAlign="end"
+      />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      matchesMonthFilter(row.original.fecha_ultima_compra, filterValue),
+    meta: { label: "Última Compra" },
+    sortUndefined: "last",
+    enableGlobalFilter: false,
+    cell: ({ row }) =>
+      row.original.fecha_ultima_compra ? (
+        <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap">
+          {formatFechaCalendario(row.original.fecha_ultima_compra)}
+        </span>
+      ) : (
+        <span className="text-slate-400 dark:text-slate-600">—</span>
+      ),
   },
 ];

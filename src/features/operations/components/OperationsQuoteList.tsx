@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
+import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
@@ -60,13 +61,10 @@ export const OperationsQuoteList = () => {
     setDialog({ kind, operationsQuote });
 
   return (
-    // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
-    // Control: 128px = header + padding inferior del `<main>` scrolleable) +
-    // `fillHeight` en `DataTable` para que la tabla scrollee INTERNAMENTE en
-    // vez de empujar la página — esta pantalla no tiene tarjetas KPI arriba,
-    // así que no hace falta acotar solo desde `md:`.
+    // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`
+    // en `DataTable`: la tabla scrollea INTERNAMENTE en vez de empujar la página.
     <OperationsQuoteRowActionsProvider value={{ requestAction, busy }}>
-    <div className="h-[calc(100dvh-128px)] min-h-[420px]">
+    <div className={MESA_CONTROL_LIST_HEIGHT}>
       <DataTable
         columns={getOperationsQuoteColumns(buildOperationsQuoteFilterOptions(operationsQuotes))}
         data={operationsQuotes}

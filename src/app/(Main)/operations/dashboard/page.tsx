@@ -5,14 +5,14 @@ import { OperationsQuotesStatusBreakdown } from "@/src/features/operations/compo
 import { RecentActivityFeed } from "@/src/features/operations/components/RecentActivityFeed";
 
 export const metadata: Metadata = {
-  title: "Panel | Mesa de Control | ERP",
+  title: "Dashboard | Mesa de Control | ERP",
   description:
     "Cotizaciones en revisión: cola de autorización, actividad reciente y montos por estatus.",
 };
 
 export default function OperationsDashboardPage() {
   return (
-    <main className="w-full space-y-6" aria-label="Panel de Mesa de Control">
+    <main className="w-full space-y-6" aria-label="Dashboard de Mesa de Control">
       {/* KPIs principales */}
       <section aria-label="Indicadores clave operativos">
         <OperationsKpiGrid />

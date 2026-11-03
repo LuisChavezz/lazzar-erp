@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
+import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
@@ -76,11 +77,11 @@ export function InventoryPipelineView() {
     setOpenProductoId(null);
   }
 
-  // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
-  // Control) + `fillHeight`: la tabla aprovecha toda la pantalla y scrollea
-  // por dentro, en vez de quedarse a media altura.
+  // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`:
+  // la tabla aprovecha toda la pantalla y scrollea por dentro, sin scroll de
+  // página.
   return (
-    <div className="h-[calc(100dvh-128px)] min-h-[480px] flex flex-col gap-3">
+    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
       <QuickFilterChips
         label="Atajos de filtro"
         value={quickFilterKey}

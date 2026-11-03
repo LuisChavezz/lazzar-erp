@@ -16,4 +16,9 @@ export interface OperationsCustomer
   id: number;
   celular: string | null;
   contacto: string | null;
+  /**
+   * Fecha del último pedido del cliente (ISO). Opcional: pedida al backend;
+   * mientras no llegue, la columna muestra "—".
+   */
+  fecha_ultima_compra?: string | null;
 }

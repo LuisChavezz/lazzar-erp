@@ -965,7 +965,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     showInHome: true,
     sections: [
       { key: "commercial-operations", label: "Operación Comercial" },
-      { key: "tracking", label: "Seguimiento" },
+      { key: "tracking", label: "Existencias" },
       { key: "master-data", label: "Terceros" },
       { key: "communication", label: "Comunicación" },
       { key: "analytics", label: "Indicadores" },
@@ -1000,7 +1000,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-MESACONTROL-PEDIDOS",
         section: "commercial-operations",
       },
-      // ── Seguimiento ─────────────────────────────────────────────────────────
+      // ── Existencias ─────────────────────────────────────────────────────────
       {
         key: "operations-inventory-pipeline",
         label: "Existencias, Producción y Compras",
@@ -1050,7 +1050,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         // el panel son cotizaciones (`/ventas/mesa-control/`), así que exige
         // el código de Cotizaciones, igual que su regla en `routePermissions`.
         key: "operations-dashboard",
-        label: "Panel de Mesa de Control",
+        label: "Dashboard",
         path: "/operations/dashboard",
         icon: DashboardIcon,
         description: "Cotizaciones por autorizar, actividad reciente y montos por estatus.",

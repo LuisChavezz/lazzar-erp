@@ -30,6 +30,19 @@ export type ActionMenuItem = {
    * deshabilitado. Sin él, el item se pinta exactamente como antes.
    */
   description?: string;
+  /**
+   * Opcional: tinte MUY tenue al pasar el cursor para distinguir la acción —
+   * `"warning"` (ámbar, p. ej. editar) o `"danger"` (rojo, p. ej. cancelar).
+   * Sin él, el resaltado de siempre.
+   */
+  tone?: "warning" | "danger";
+};
+
+const TONE_CLASS: Record<NonNullable<ActionMenuItem["tone"]>, string> = {
+  warning:
+    " data-highlighted:bg-amber-50! dark:data-highlighted:bg-amber-500/10! data-highlighted:text-amber-700! dark:data-highlighted:text-amber-300!",
+  danger:
+    " data-highlighted:bg-rose-50! dark:data-highlighted:bg-rose-500/10! data-highlighted:text-rose-700! dark:data-highlighted:text-rose-300!",
 };
 
 /**
@@ -38,8 +51,9 @@ export type ActionMenuItem = {
  * regla sin capa que gana a las utilidades de Tailwind, así que se anula con
  * `!`. Sin descripción queda exactamente como antes.
  */
-const itemClassName = (description?: string) =>
-  description ? `${ITEM_CLASS} h-auto! min-h-8 py-1.5!` : ITEM_CLASS;
+const itemClassName = (description?: string, tone?: ActionMenuItem["tone"]) =>
+  (description ? `${ITEM_CLASS} h-auto! min-h-8 py-1.5!` : ITEM_CLASS) +
+  (tone ? TONE_CLASS[tone] : "");
 
 /** Etiqueta del item y, si la trae, su descripción debajo. */
 const ItemText = ({ label, description }: { label: string; description?: string }) =>
@@ -122,7 +136,7 @@ export const ActionMenu = ({
                 asChild
                 onSelect={() => item.onSelect?.()}
                 disabled={item.disabled}
-                className={itemClassName(item.description)}
+                className={itemClassName(item.description, item.tone)}
               >
                 <Link href={item.href}>
                   <Icon className="w-4 h-4" aria-hidden="true" />
@@ -139,7 +153,7 @@ export const ActionMenu = ({
                 item.onSelect?.();
               }}
               disabled={item.disabled}
-              className={itemClassName(item.description)}
+              className={itemClassName(item.description, item.tone)}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
               <ItemText label={item.label} description={item.description} />

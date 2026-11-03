@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
+import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   buildOperationsCustomerFilterOptions,
@@ -45,11 +46,10 @@ export const OperationsCustomerList = () => {
   const [quickFilterKey, setQuickFilterKey] = useState("todos");
   const quickFilter = QUICK_FILTERS.find((f) => f.key === quickFilterKey) ?? QUICK_FILTERS[0];
 
-  // Altura acotada a la ventana (mismo cálculo que el resto de Mesa de
-  // Control) + `fillHeight`: la tabla usa toda la pantalla y scrollea por
-  // dentro.
+  // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`:
+  // la tabla usa toda la pantalla y scrollea por dentro.
   return (
-    <div className="h-[calc(100dvh-128px)] min-h-[480px] flex flex-col gap-3">
+    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
       <QuickFilterChips
         label="Atajos de filtro de clientes"
         value={quickFilterKey}

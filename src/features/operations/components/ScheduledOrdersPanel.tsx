@@ -8,6 +8,7 @@ import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders
 import type { OrdersQueryParams } from '@/src/features/orders/services/actions';
 import { flattenScheduledParcialidades } from '../utils/scheduled-parcialidades.utils';
 import { ScheduledOrdersTable } from './ScheduledOrdersTable';
+import { MESA_CONTROL_LIST_HEIGHT } from '../constants/listHeight';
 
 /**
  * Pedidos programados por Mesa de Control. `estatus=3,4` es OBLIGATORIO junto
@@ -47,14 +48,16 @@ export function ScheduledOrdersPanel() {
   const handleRefetch = () => queryClient.invalidateQueries({ queryKey, exact: true });
 
   return (
-    <div className="space-y-3">
+    // Altura acotada a la ventana: la tabla llena el resto y scrollea por dentro.
+    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
       {!isLoading && !showError && (
-        <p className="text-sm text-slate-500 dark:text-slate-400 tabular-nums" aria-live="polite">
+        <p className="shrink-0 text-sm text-slate-500 dark:text-slate-400 tabular-nums" aria-live="polite">
           {pluralize(totalPedidos, 'pedido', 'pedidos')}
           <span className="mx-1.5 text-slate-400 dark:text-slate-500">·</span>
           {pluralize(parcialidades.length, 'parcialidad', 'parcialidades')}
         </p>
       )}
+      <div className="flex-1 min-h-0">
       <ScheduledOrdersTable
         parcialidades={parcialidades}
         onRefetch={handleRefetch}
@@ -63,6 +66,7 @@ export function ScheduledOrdersPanel() {
         isError={showError}
         errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
       />
+      </div>
     </div>
   );
 }

@@ -271,6 +271,23 @@ export interface PedidoListItem {
   programacion_conf: PedidoProgramacionConf | null;
   /** Piezas del pedido: todas las tallas, muestras incluidas; 0 sin tallas (EC-571). */
   piezas: number;
+  /**
+   * Piezas que se pueden programar, muestras incluidas (mismo
+   * total que `total_piezas` del PATCH de `/programar/`). Opcional: un backend
+   * anterior no lo trae.
+   */
+  piezas_programables?: number;
+  /**
+   * Piezas de líneas de MUESTRA dentro de `piezas`. Opcional: pedido al
+   * backend; sin él no se marca nada.
+   */
+  piezas_muestra?: number;
+  /**
+   * Piezas ya SURTIDAS por WMS (suma de `cantidad_surtida_picking` de todas
+   * las tallas; lo mismo que `tracker_picking.total_surtido` del detalle).
+   * Opcional: pedido al backend; sin él la columna "Surtido" muestra "—".
+   */
+  piezas_surtidas?: number;
   /** Vendedor de la cotización de origen; `null` si el pedido no viene de una (EC-571). */
   vendedor_nombre: string | null;
 }
