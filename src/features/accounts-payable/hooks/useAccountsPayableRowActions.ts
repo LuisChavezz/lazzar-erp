@@ -11,6 +11,11 @@ export interface AccountsPayableRowActionsContextValue {
   today: string;
   /** Ids con un borrado en vuelo (candado de la lista). */
   busyIds: number[];
+  /**
+   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * permiso, "Eliminar cuenta" se muestra deshabilitado con su motivo.
+   */
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } =

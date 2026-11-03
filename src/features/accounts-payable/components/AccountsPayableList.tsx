@@ -2,11 +2,18 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
+import {
+  FINANCE_WRITE_PERMISSION,
+  FINANCE_WRITE_PERMISSION_REASON,
+} from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
@@ -40,6 +47,11 @@ const CXP_STALE_MESSAGES = {
 
 export default function AccountsPayableList() {
   const router = useRouter();
+  // Registrar y eliminar CxP exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
+  // "Registrar CxP faltante" se oculta y "Eliminar cuenta" se muestra
+  // deshabilitado con su motivo (`FINANCE_WRITE_PERMISSION_REASON`).
+  const { data: session } = useSession();
+  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   const { cuentasPorPagar, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useCuentasPorPagar();
   /**
@@ -100,6 +112,12 @@ export default function AccountsPayableList() {
   const today = getMexicoTodayDate();
 
   const handleDelete = (cuenta: CuentaPorPagar) => {
+    // El menú ya lo muestra deshabilitado sin el permiso; se repite aquí por si
+    // la sesión cambió entre pintarlo y seleccionar.
+    if (!canWrite) {
+      toast.error(FINANCE_WRITE_PERMISSION_REASON);
+      return;
+    }
     const { id, factura_proveedor_folio: folio } = cuenta;
     setDeleteConflict(null);
     setDeleteTarget({
@@ -186,6 +204,7 @@ export default function AccountsPayableList() {
         onGoToPayments: () => router.push("/finance/payments"),
         today,
         busyIds: deleteTarget !== null && deleteLock.isPending(deleteTarget.id) ? [deleteTarget.id] : [],
+        canWrite,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -208,7 +227,8 @@ export default function AccountsPayableList() {
           getRowId={(row) => String(row.id)}
           // Un alta nueva vuelve a la página 1.
           paginationResetKey={cuentasPorPagar.length}
-          actionButton={<RegisterAccountPayableDialog />}
+          // Sin permiso de escritura no hay alta: el botón se oculta.
+          actionButton={canWrite ? <RegisterAccountPayableDialog /> : undefined}
         />
         </div>
 
