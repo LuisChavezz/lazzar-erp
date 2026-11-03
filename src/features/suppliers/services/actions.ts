@@ -5,6 +5,7 @@ import type {
   SupplierPurchaseOrderHistoryResponse,
 } from "../interfaces/supplier-purchase-order-history.interface";
 import type { SupplierKpis } from "../interfaces/supplier-kpis.interface";
+import type { SupplierKpiDetail, SupplierKpiFactor } from "../interfaces/supplier-kpi-detail.interface";
 
 
 export const getSuppliers = async (): Promise<Supplier[]> => {
@@ -36,6 +37,21 @@ export const getSupplierPurchaseOrderHistory = async (
 /** Indicadores por proveedor (EC-436). Sin parámetros: el backend los ignora. */
 export const getSupplierKpis = async (): Promise<SupplierKpis> => {
   const response = await v1_api.get<SupplierKpis>("/terceros/proveedores/kpis/");
+  return response.data;
+};
+
+/**
+ * Registros detrás de un factor del scorecard de un proveedor. Solo `factor`:
+ * sin `sucursal` ni fechas, igual que `getSupplierKpis`, para que cuadre con
+ * las tarjetas.
+ */
+export const getSupplierKpiDetail = async <F extends SupplierKpiFactor>(
+  id: number,
+  factor: F,
+): Promise<SupplierKpiDetail<F>> => {
+  const response = await v1_api.get<SupplierKpiDetail<F>>(`/terceros/proveedores/${id}/kpis-detalle/`, {
+    params: { factor },
+  });
   return response.data;
 };
 
