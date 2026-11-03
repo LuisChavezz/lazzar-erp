@@ -28,6 +28,12 @@ export interface SupplierInvoiceRowActionsContextValue {
   uploadingIds: number[];
   /** Ids con una descarga del documento fusionado en vuelo. */
   downloadingIds: number[];
+  /**
+   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * permiso, adjuntar/reemplazar el PDF, "Editar", "Registrar" y "Cancelar
+   * factura" se muestran deshabilitados con su motivo.
+   */
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } =

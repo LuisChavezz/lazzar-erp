@@ -39,6 +39,11 @@ export interface SupplierInvoicePdfActions {
   onDownloadMerged: () => void;
   isUploading: boolean;
   isDownloading: boolean;
+  /**
+   * Por qué adjuntar/reemplazar está bloqueado (sin `FINANCE_WRITE_PERMISSION`),
+   * o `null`. El botón queda bloqueado pero enfocable, descrito por el motivo.
+   */
+  attachBlockedReason: string | null;
 }
 
 interface SupplierInvoiceDetailDialogProps {
@@ -72,6 +77,7 @@ function SupplierInvoicePdfSection({
 }) {
   const tienePdf = factura.tiene_pdf_adjunto;
   const nombre = factura.pdf_adjunto_nombre || "PDF adjunto";
+  const attachBlockedId = `supplier-invoice-${factura.id}-attach-blocked`;
 
   return (
     <div>
@@ -99,8 +105,13 @@ function SupplierInvoicePdfSection({
             variant="secondary"
             rounded="full"
             leftIcon={<UploadIcon className="w-4 h-4" aria-hidden="true" />}
-            onClick={actions.onAttach}
+            // Sin permiso: BLOQUEADO pero enfocable (`aria-disabled`, como el
+            // "Emitir nota" de notas de crédito), descrito por su motivo.
+            onClick={actions.attachBlockedReason ? undefined : actions.onAttach}
             disabled={actions.isUploading}
+            aria-disabled={actions.attachBlockedReason ? true : undefined}
+            aria-describedby={actions.attachBlockedReason ? attachBlockedId : undefined}
+            className="aria-disabled:opacity-60 aria-disabled:cursor-not-allowed!"
           >
             {actions.isUploading
               ? "Subiendo PDF..."
@@ -121,6 +132,14 @@ function SupplierInvoicePdfSection({
             </Button>
           )}
         </div>
+        {actions.attachBlockedReason && (
+          <p
+            id={attachBlockedId}
+            className="basis-full text-xs text-slate-500 dark:text-slate-400 text-right"
+          >
+            {actions.attachBlockedReason}
+          </p>
+        )}
       </div>
     </div>
   );
