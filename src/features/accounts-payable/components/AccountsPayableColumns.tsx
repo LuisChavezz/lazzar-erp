@@ -77,12 +77,23 @@ function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
   } else if (hasAppliedPayments(cuenta)) {
     // Eliminar queda OCULTO con pagos aplicados (el backend respondería 400); en
     // su lugar se dice qué hacer y se lleva a Pagos. Una cuenta `Cancelada` sin
-    // pagos no recibe esta pista: no es el motivo.
-    items.push({
-      label: "Cancela los pagos aplicados primero",
-      icon: ExternalLinkIcon,
-      onSelect: onGoToPayments,
-    });
+    // pagos no recibe esta pista: no es el motivo. Sin permiso de escritura la
+    // pista no aplica —tampoco puede cancelar pagos—: se muestra el motivo del
+    // permiso, como en una cuenta sin pagos.
+    items.push(
+      writeBlock.disabled
+        ? {
+            label: "Eliminar cuenta",
+            icon: DeleteIcon,
+            disabled: true,
+            description: writeBlock.description,
+          }
+        : {
+            label: "Cancela los pagos aplicados primero",
+            icon: ExternalLinkIcon,
+            onSelect: onGoToPayments,
+          },
+    );
   }
 
   const vencida = isCuentaPorPagarVencida(cuenta, today);
