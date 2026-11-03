@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
 import type {
   PurchaseOrderCriticalPath,
@@ -19,8 +20,28 @@ import {
   PurchaseOrderOnboardingVariante,
 } from "../interfaces/purchase-order-onboarding.interface";
 
+/**
+ * Listado COMPLETO, sin `?limit=`: el backend responde el arreglo plano. Lo
+ * usan el dashboard de Compras y los selectores, que necesitan todas las
+ * órdenes; la tabla del listado usa `getPurchaseOrdersPage`.
+ */
 export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
   const response = await v1_api.get<PurchaseOrder[]>("/compras/ordenes/");
+  return response.data;
+}
+
+/**
+ * Una PÁGINA del listado (`?limit=&offset=` → `{count, next, previous,
+ * results}`), con los filtros, la búsqueda y el orden de la tabla en modo
+ * servidor (`usePurchaseOrdersTable`). Sin `limit` el mismo endpoint responde
+ * el arreglo completo: por eso son dos acciones.
+ */
+export const getPurchaseOrdersPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<PurchaseOrder>> => {
+  const response = await v1_api.get<PaginatedListResponse<PurchaseOrder>>("/compras/ordenes/", {
+    params,
+  });
   return response.data;
 }
 

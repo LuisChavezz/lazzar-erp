@@ -1,15 +1,27 @@
 import { v1_api } from "@/src/api/v1.api";
-import { getReceipts } from "@/src/features/receipts/services/actions";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import type { PurchaseOrderReceiptKpis } from "../interfaces/purchase-order-receipt-kpis.interface";
 
-// Reutiliza la acción compartida `getReceipts`, fijando `tipo_origen: "OC"`.
-// El backend garantiza que toda fila de esta respuesta trae proveedor/orden
-// de compra (a diferencia del tipo `Receipt` general, que también modela
-// OP), por lo que aquí se afirma el tipo más angosto en un solo lugar.
-export const getPurchaseOrderReceipts = async (): Promise<PurchaseOrderReceipt[]> => {
-  const data = await getReceipts("OC");
-  return data as PurchaseOrderReceipt[];
+/**
+ * Una PÁGINA de recepciones de compra (`?limit=&offset=` → `{count, next,
+ * previous, results}`) con los filtros, la búsqueda y el orden de la tabla en
+ * modo servidor (`usePurchaseOrderReceiptsTable`). `tipo_origen=OC` va FIJO
+ * aquí y no en la URL: esta vista es solo de recepciones de OC, y así también
+ * lo lleva la exportación, que reusa esta acción.
+ *
+ * El backend garantiza que toda fila con `tipo_origen=OC` trae proveedor y
+ * orden de compra (a diferencia del tipo `Receipt` general, que también modela
+ * OP), por eso se afirma aquí el tipo más angosto, `PurchaseOrderReceipt`.
+ */
+export const getPurchaseOrderReceiptsPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<PurchaseOrderReceipt>> => {
+  const { data } = await v1_api.get<PaginatedListResponse<PurchaseOrderReceipt>>(
+    "/compras/recepciones/",
+    { params: { ...params, tipo_origen: "OC" } },
+  );
+  return data;
 };
 
 /**

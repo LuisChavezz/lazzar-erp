@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ArrowLeftIcon } from "@/src/components/Icons";
 import dynamic from "next/dynamic";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
@@ -279,7 +280,11 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
           {/* Montado desde /config: aquí el alta/edición/baja se rige por los
               códigos de CONFIGURACION, no por los de Compras (ver
               `PERMISSIONS_BY_CONTEXT` en `SupplierList`). */}
-          <SupplierList permissionContext="config" />
+          {/* `SupplierList` lee búsqueda, orden y página desde la URL con
+              `useSearchParams`, que en Next.js requiere un límite de Suspense. */}
+          <Suspense fallback={<ConfigDetailLoadingSkeleton />}>
+            <SupplierList permissionContext="config" />
+          </Suspense>
         </div>
       )}
     </div>

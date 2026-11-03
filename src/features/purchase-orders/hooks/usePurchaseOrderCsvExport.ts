@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -30,14 +31,13 @@ const buildCsv = (
  * y el disparo llega por un `CustomEvent` propio (`purchase-orders:exportCSV`)
  * para no acoplar el botón de la vista con el hook.
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de
+ * la tabla (búsqueda, filtros y orden), página por página desde el backend
+ * (`fetchAllRows` de `useServerTable`): la tabla en modo servidor solo tiene
+ * la página visible.
  */
 export const usePurchaseOrderCsvExport = (
-  tableRef: RefObject<DataTableHandle<PurchaseOrder> | null>,
+  getRows: () => Promise<PurchaseOrder[]>,
   columns: DataTableVisibleColumn<PurchaseOrder>[],
 ) => {
   const columnsRef = useRef(columns);
@@ -46,20 +46,26 @@ export const usePurchaseOrderCsvExport = (
     columnsRef.current = columns;
   }, [columns]);
 
-  const exportToCsv = useCallback(() => {
+  const runExport = useServerExport(getRows, "purchase-orders-export-csv");
+
+  const exportToCsv = useCallback(async () => {
     const exportColumns = columnsRef.current;
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
-    // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
-    const blob = new Blob([`﻿${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+    await runExport(async (rows) => {
+      const csvContent = buildCsv(rows, exportColumns);
+      // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
+      const blob = new Blob([`﻿${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `ordenes-compra-${today}.csv`);
     });
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `ordenes-compra-${today}.csv`);
-  }, [tableRef]);
+  }, [runExport]);
 
   useEffect(() => {
-    const handleExport = () => exportToCsv();
+    const handleExport = () => {
+      void exportToCsv();
+    };
     document.addEventListener("purchase-orders:exportCSV", handleExport);
     return () => {
       document.removeEventListener("purchase-orders:exportCSV", handleExport);
