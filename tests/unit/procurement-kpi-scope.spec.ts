@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, type AxiosResponse } from "axios";
 import { isAmountOnlyKpiHidden } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
-import { onboardingLoadErrorMessage } from "@/src/features/purchase-orders/utils/onboardingLoadError";
+import {
+  onboardingLoadErrorMessage,
+  onboardingSearchRejection,
+} from "@/src/features/purchase-orders/utils/onboardingLoadError";
 import { isClientError } from "@/src/utils/drfWriteErrors";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
@@ -76,6 +79,24 @@ test.describe("retryUnlessClientError", () => {
     for (const status of [500, 408, 429]) {
       expect(retryUnlessClientError(DEFAULT_QUERY_RETRY - 1, axiosError(status, {}))).toBe(true);
       expect(retryUnlessClientError(DEFAULT_QUERY_RETRY, axiosError(status, {}))).toBe(false);
+    }
+  });
+});
+
+test.describe("onboardingSearchRejection", () => {
+  test("el 400 de empresa trae su mensaje: sin Reintentar", () => {
+    expect(onboardingSearchRejection(axiosError(400, { empresa: "El usuario no tiene empresa asignada." }))).toBe(
+      "El usuario no tiene empresa asignada.",
+    );
+  });
+
+  test("otro 4xx definitivo sin mensaje conocido también se rechaza", () => {
+    expect(onboardingSearchRejection(axiosError(403, { detail: "x" }))).toBe("El servidor rechazó la búsqueda.");
+  });
+
+  test("5xx, 408 y 429 son pasajeros: se ofrece Reintentar", () => {
+    for (const status of [500, 408, 429]) {
+      expect(onboardingSearchRejection(axiosError(status, {}))).toBeUndefined();
     }
   });
 });

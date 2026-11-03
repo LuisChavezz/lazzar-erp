@@ -28,7 +28,7 @@ const NO_PRODUCTS: PurchaseOrderOnboardingProducto[] = [];
  *   detuvo el wizard en el Step 1, antes de llegar a esta búsqueda.
  */
 export const usePurchaseOrderProductSearch = (productoQ: string, { enabled }: { enabled: boolean }) => {
-  const { data, isInitialError, isFetching, isPlaceholderData, hasLoaded, refetch } = useGuardedQuery(
+  const { data, isInitialError, error, isFetching, isPlaceholderData, hasLoaded, refetch } = useGuardedQuery(
     {
       queryKey: ["purchase-order-product-search", productoQ],
       queryFn: () => searchPurchaseOrderProducts(productoQ),
@@ -48,6 +48,8 @@ export const usePurchaseOrderProductSearch = (productoQ: string, { enabled }: { 
     truncado: data?.truncado ?? false,
     hasLoaded,
     isInitialError,
+    /** Solo con `isInitialError`; ver `onboardingSearchRejection`. */
+    error,
     isFetching,
     isPlaceholderData,
     refetch,
