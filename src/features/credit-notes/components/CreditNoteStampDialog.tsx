@@ -29,7 +29,7 @@ export function CreditNoteStampDialog({ nota, open, onOpenChange }: CreditNoteSt
   const notaLabel = target ? target.folio || `#${target.id}` : "";
   const facturaLabel = target?.factura_folio ? ` ${target.factura_folio}` : "";
 
-  const { stamp, isStamping } = useStampNotaCredito(target?.id ?? 0);
+  const { stamp, isStamping, isIdle } = useStampNotaCredito(target?.id ?? 0);
 
   return (
     <StampConfirmDialog
@@ -38,11 +38,11 @@ export function CreditNoteStampDialog({ nota, open, onOpenChange }: CreditNoteSt
       title="Timbrar nota de crédito"
       description={`Se timbrará ante el SAT el CFDI de egreso de la nota ${notaLabel}, relacionado con la factura${facturaLabel}. Es un acto fiscal irreversible: una vez timbrado, el CFDI no puede cancelarse desde el ERP.`}
       isStamping={isStamping}
+      isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;
-        // Cierre directo, sin pasar por la guarda de `StampConfirmDialog`: al
-        // terminar, el `isStamping` capturado en este render todavía no se
-        // actualizó.
+        // Cierre directo, sin pasar por la guarda de `StampConfirmDialog`: el
+        // timbrado ya terminó y quien lo pidió es el propio flujo.
         stamp({ onSettled: () => onOpenChange(false) });
       }}
     />

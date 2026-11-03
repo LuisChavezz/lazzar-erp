@@ -64,11 +64,14 @@ export function InvoiceEmitDialog({ invoice, open, onOpenChange }: InvoiceEmitDi
   const target = session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
 
-  const { emit, isEmitting } = useEmitInvoice(target?.id ?? 0);
+  const { emit, isEmitting, isIdle } = useEmitInvoice(target?.id ?? 0);
 
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado (éxito o error) debe verse.
-    if (!next && isEmitting) return;
+    // `isIdle()` lee la caché de mutaciones de forma síncrona, así que vale
+    // desde el mismo clic de emitir; `isEmitting` llega un render tarde y
+    // solo pinta.
+    if (!next && !isIdle()) return;
     onOpenChange(next);
   };
 
@@ -87,8 +90,8 @@ export function InvoiceEmitDialog({ invoice, open, onOpenChange }: InvoiceEmitDi
           target={target}
           isPending={isEmitting}
           onClose={() => handleOpenChange(false)}
-          // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
-          // `isEmitting` capturado en este render todavía no se actualizó.
+          // Cierre directo, sin pasar por `handleOpenChange`: la emisión ya
+          // terminó.
           onSubmit={(tipoCambio, callbacks) =>
             emit({ tipoCambio }, { onSuccess: () => onOpenChange(false), ...callbacks })
           }

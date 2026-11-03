@@ -1,7 +1,8 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { FormEvent } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormInput } from "@/src/components/FormInput";
@@ -9,6 +10,7 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useSendInvoiceCfdi } from "../hooks/useSendInvoiceCfdi";
 import {
   SendInvoiceCfdiFormFields,
@@ -36,8 +38,12 @@ interface InvoiceCfdiEmailDialogProps {
  * precargado con `correo_facturas` y editable.
  *
  * El envío puede tardar cerca de un minuto: el diálogo no se cierra a media
- * petición y el doble envío lo corta el candado por factura de
- * `useSendInvoiceCfdi`. Se cierra al terminar bien (incluido el caso en que el
+ * petición. El candado del envío (`submitLockRef`, patrón `runWithSubmitLock`)
+ * se toma de forma SÍNCRONA al enviar, ANTES de la validación asíncrona de
+ * TanStack Form, y se suelta cuando el envío termina; el cierre (Volver, Esc)
+ * lo lee en el handler, así que no hay hueco entre el clic y la mutación. El
+ * candado por factura de `useSendInvoiceCfdi` corta además el doble envío
+ * desde otro diálogo. Se cierra al terminar bien (incluido el caso en que el
  * precheck detuvo el envío, que el hook avisa); ante un error queda abierto
  * con el correo escrito y muestra el mensaje del backend tal cual.
  */
@@ -46,11 +52,13 @@ export function InvoiceCfdiEmailDialog({ invoice, open, onOpenChange }: InvoiceC
   const target = session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
 
-  const { send, isSending } = useSendInvoiceCfdi(target?.id ?? 0);
+  const { send, isSending, isIdle } = useSendInvoiceCfdi(target?.id ?? 0);
+  // Candado del envío: se toma antes de validar y se lee aquí, en el handler.
+  const submitLockRef = useRef(false);
 
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado (éxito o error) debe verse.
-    if (!next && isSending) return;
+    if (!next && (submitLockRef.current || !isIdle())) return;
     onOpenChange(next);
   };
 
@@ -68,9 +76,10 @@ export function InvoiceCfdiEmailDialog({ invoice, open, onOpenChange }: InvoiceC
           key={session.id}
           target={target}
           isPending={isSending}
+          submitLockRef={submitLockRef}
           onClose={() => handleOpenChange(false)}
-          // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
-          // `isSending` capturado en este render todavía no se actualizó.
+          // Cierre directo, sin pasar por `handleOpenChange`: el envío ya
+          // terminó, aunque el candado se suelte un instante después.
           onSubmit={(email, callbacks) =>
             send(email, { onSuccess: () => onOpenChange(false), ...callbacks })
           }
@@ -84,9 +93,17 @@ interface InvoiceCfdiEmailFormProps {
   /** La factura como estaba al abrir el diálogo. */
   target: InvoiceCfdiEmailTarget;
   isPending: boolean;
+  /** Candado del envío, del diálogo (ver `InvoiceCfdiEmailDialog`). */
+  submitLockRef: RefObject<boolean>;
   onClose: () => void;
-  /** `onError` recibe el fallo clasificado, para mostrarlo dentro del diálogo. */
-  onSubmit: (email: string, callbacks: { onError: (failure: SendInvoiceCfdiFailure) => void }) => void;
+  /**
+   * `onError` recibe el fallo clasificado, para mostrarlo dentro del diálogo.
+   * La promesa se resuelve al terminar el envío, con cualquier resultado.
+   */
+  onSubmit: (
+    email: string,
+    callbacks: { onError: (failure: SendInvoiceCfdiFailure) => void },
+  ) => Promise<void>;
 }
 
 type SendInvoiceCfdiFormField = keyof SendInvoiceCfdiFormValues;
@@ -97,7 +114,13 @@ type SendInvoiceCfdiFormField = keyof SendInvoiceCfdiFormValues;
  * campo —los del schema y el `email` del backend— van bajo el campo
  * (`useFormFieldErrors`); los demás fallos, en el banner.
  */
-function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceCfdiEmailFormProps) {
+function InvoiceCfdiEmailForm({
+  target,
+  isPending,
+  submitLockRef,
+  onClose,
+  onSubmit,
+}: InvoiceCfdiEmailFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     getError,
@@ -123,8 +146,9 @@ function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceC
 
   const form = useForm({
     defaultValues: { email: target.correo_facturas ?? "" } satisfies SendInvoiceCfdiFormValues,
-    // El doble envío lo corta el candado por factura de `useSendInvoiceCfdi`.
-    onSubmit: ({ value }) => {
+    // El doble envío lo corta el candado del envío (`submitLockRef`); se
+    // espera al envío para que el candado siga tomado mientras viaja.
+    onSubmit: async ({ value }) => {
       clearServerErrors();
       const parsed = SendInvoiceCfdiFormSchema.safeParse(value);
       if (!parsed.success) {
@@ -133,7 +157,7 @@ function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceC
       }
       replaceClientErrors({});
       setSubmitError(null);
-      onSubmit(parsed.data.email, {
+      await onSubmit(parsed.data.email, {
         onError: (failure) => {
           if (failure.emailError) setServerFieldError("email", failure.emailError);
           else setSubmitError(failure.message);
@@ -145,7 +169,7 @@ function InvoiceCfdiEmailForm({ target, isPending, onClose, onSubmit }: InvoiceC
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void form.handleSubmit();
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit());
   };
 
   return (

@@ -230,5 +230,5 @@ export const useCancelInvoice = (invoiceId: number) => {
     );
   };
 
-  return { cancel, isCancelling };
+  return { cancel, isCancelling, isIdle };
 };
