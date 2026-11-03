@@ -14,6 +14,12 @@ export interface PolizaRowActionsContextValue {
   onDelete: (poliza: Poliza) => void;
   /** Ids con alguna acción de fila en vuelo (`usePendingPolizaIds`, calculado en la lista). */
   busyIds: number[];
+  /**
+   * ¿El usuario puede escribir pólizas? (`canWritePolizas`). Sin el permiso,
+   * "Contabilizar", "Cancelar póliza" y "Eliminar borrador" se muestran
+   * deshabilitados con su motivo.
+   */
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } = createRowActionsContext<PolizaRowActionsContextValue>(
