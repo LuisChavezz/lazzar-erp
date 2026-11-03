@@ -2,7 +2,7 @@ import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { setCostCenterActivo } from "../services/actions";
 import type { CostCenter } from "../interfaces/cost-center.interface";
 import { COST_CENTERS_KEY_ROOT, COST_CENTERS_LIST_KEY } from "./useCostCenters";

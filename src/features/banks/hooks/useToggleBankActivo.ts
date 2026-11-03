@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { setBankActivo } from "../services/actions";
 import { Banco } from "../interfaces/bank.interface";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 interface ToggleBankActivoPayload {
   id: number;

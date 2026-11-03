@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { cancelarPago } from "../services/actions";
 import { Pago } from "../interfaces/payment.interface";
 

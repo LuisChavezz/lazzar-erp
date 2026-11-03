@@ -4,7 +4,7 @@ import { BankFormValues } from "../schemas/bank.schema";
 import { BancoCreate } from "../interfaces/bank.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 interface UpdateBankPayload extends BancoCreate {
   id: number;

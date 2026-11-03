@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { updateChartOfAccount } from "../services/actions";
 import type { CuentaContableCreate } from "../interfaces/chart-of-account.interface";
 import { CHART_OF_ACCOUNTS_KEY_ROOT } from "./useChartOfAccounts";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import {
   setChartOfAccountFieldErrors,
   type SetChartOfAccountError,
