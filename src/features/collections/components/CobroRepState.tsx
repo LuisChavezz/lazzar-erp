@@ -1,4 +1,4 @@
-import { ClockIcon } from "@/src/components/Icons";
+import { CancellationRequestedIndicator } from "@/src/components/CancellationRequestedIndicator";
 import type { Cobro } from "../interfaces/collection.interface";
 import { isCobroRepPending } from "../utils/cobroRepStamping";
 import {
@@ -23,7 +23,8 @@ export const getCobroRepStateLabel = (
  * el tooltip.
  *
  * Con una cancelación del REP pendiente de que el receptor la acepte
- * (`rep_cancelacion_solicitada`) agrega el reloj ámbar, el mismo lenguaje que el
+ * (`rep_cancelacion_solicitada`) agrega el reloj ámbar compartido
+ * (`CancellationRequestedIndicator`), el mismo lenguaje que el
  * folio de una factura en ese estado: el REP sigue timbrado y vigente, así que
  * el texto no cambia. Ícono y no texto, porque la columna es angosta.
  */
@@ -45,14 +46,10 @@ export function CobroRepState({
         {label}
       </span>
       {cobro.rep_cancelacion_solicitada && (
-        <span
-          className="inline-flex shrink-0 text-amber-600 dark:text-amber-400"
-          role="img"
-          aria-label={COBRO_REP_CANCELLATION_REQUESTED_LABEL}
-          title={`${COBRO_REP_CANCELLATION_REQUESTED_LABEL}. ${COBRO_REP_CANCELLATION_REQUESTED_HINT}`}
-        >
-          <ClockIcon className="w-3.5 h-3.5" aria-hidden="true" />
-        </span>
+        <CancellationRequestedIndicator
+          label={COBRO_REP_CANCELLATION_REQUESTED_LABEL}
+          hint={COBRO_REP_CANCELLATION_REQUESTED_HINT}
+        />
       )}
     </span>
   );
