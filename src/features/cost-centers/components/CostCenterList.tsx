@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -11,6 +12,8 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import type { CostCenter } from "../interfaces/cost-center.interface";
 import { useCostCenters } from "../hooks/useCostCenters";
@@ -25,6 +28,9 @@ import { CostCenterDetailDialog } from "./CostCenterDetailDialog";
 import CostCenterForm from "./CostCenterForm";
 
 export default function CostCenterList() {
+  // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
+  const { data: session } = useSession();
+  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   // Sin parámetros: el catálogo COMPLETO, con los dados de baja incluidos. Es
   // una entrada de caché distinta de la de la póliza, que sí filtra por
   // `activo` (ver `useCostCenters`).
@@ -118,46 +124,50 @@ export default function CostCenterList() {
           getRowId={(row) => String(row.id)}
           // Un alta vuelve a la página 1 sin perder orden, búsqueda ni columnas.
           paginationResetKey={centrosCosto.length}
+          // Sin permiso de escritura se oculta el botón y, con él, el diálogo de
+          // alta/edición: "Editar" tampoco se ofrece en el menú de la fila.
           actionButton={
-            <MainDialog
-              title={
-                <DialogHeader
-                  title={
-                    editTarget ? "Editar Centro de Costo" : "Alta de Centro de Costo"
-                  }
-                  subtitle={
-                    editTarget
-                      ? "Edición de registro del catálogo"
-                      : "Registro nuevo en el catálogo"
-                  }
-                  statusColor="indigo"
-                  icon={CentrosCostoIcon}
-                />
-              }
-              open={isFormOpen}
-              onOpenChange={setIsFormOpen}
-              maxWidth={DIALOG_WIDTH_FORM}
-              trigger={
-                <Button
-                  variant="primary"
-                  rounded="full"
-                  onClick={handleNew}
-                  className="hover:scale-105 active:scale-95"
-                >
-                  + Nuevo Centro
-                </Button>
-              }
-            >
-              {isFormOpen && (
-                // `key`: cambiar de registro REMONTA el formulario, así que sus
-                // valores iniciales se leen de cero sin un `form.reset` en efecto.
-                <CostCenterForm
-                  key={editTarget ? `edit-${editTarget.id}` : "new"}
-                  centroToEdit={editTarget}
-                  onSuccess={() => setIsFormOpen(false)}
-                />
-              )}
-            </MainDialog>
+            canWrite ? (
+              <MainDialog
+                title={
+                  <DialogHeader
+                    title={
+                      editTarget ? "Editar Centro de Costo" : "Alta de Centro de Costo"
+                    }
+                    subtitle={
+                      editTarget
+                        ? "Edición de registro del catálogo"
+                        : "Registro nuevo en el catálogo"
+                    }
+                    statusColor="indigo"
+                    icon={CentrosCostoIcon}
+                  />
+                }
+                open={isFormOpen}
+                onOpenChange={setIsFormOpen}
+                maxWidth={DIALOG_WIDTH_FORM}
+                trigger={
+                  <Button
+                    variant="primary"
+                    rounded="full"
+                    onClick={handleNew}
+                    className="hover:scale-105 active:scale-95"
+                  >
+                    + Nuevo Centro
+                  </Button>
+                }
+              >
+                {isFormOpen && (
+                  // `key`: cambiar de registro REMONTA el formulario, así que sus
+                  // valores iniciales se leen de cero sin un `form.reset` en efecto.
+                  <CostCenterForm
+                    key={editTarget ? `edit-${editTarget.id}` : "new"}
+                    centroToEdit={editTarget}
+                    onSuccess={() => setIsFormOpen(false)}
+                  />
+                )}
+              </MainDialog>
+            ) : undefined
           }
         />
 
