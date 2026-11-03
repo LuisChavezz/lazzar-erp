@@ -67,6 +67,19 @@ const FLAT_LINE_KEYS: Record<string, string> = {
 };
 
 /**
+ * Qué hacer con un error de un campo que el usuario NO edita directamente. La
+ * `sucursal` se deriva de la OC y no es un input: el backend la rechaza si no es
+ * la de la OC y la de la recepción (nucleo-erp #813, `"Debe ser la sucursal de
+ * la orden de compra|recepción."`). Si la recepción es de otra sucursal que su
+ * OC (recepciones viejas), ningún cambio en el formulario lo corrige: hay que
+ * elegir otra OC o recepción.
+ */
+const FIELD_HINTS: Partial<Record<SupplierInvoiceFieldErrorKey, string>> = {
+  sucursal:
+    "La sucursal de la factura sale de la orden de compra y no se puede cambiar: elige otra orden de compra o recepción de la misma sucursal.",
+};
+
+/**
  * Llaves de raíz sin campo en pantalla: se pintan en el banner.
  *  - `empresa`: solo la escribe un superusuario.
  *  - `estatus`: rechazos de ciclo de vida.
@@ -177,8 +190,10 @@ export function parseSupplierInvoiceError(
 
   // ── Campos de cabecera ───────────────────────────────────────────────────
   for (const field of FIELD_KEYS) {
-    const message = firstDrfMessage(record[field]);
-    if (message) {
+    const raw = firstDrfMessage(record[field]);
+    if (raw) {
+      const hint = FIELD_HINTS[field];
+      const message = hint ? `${raw} ${hint}` : raw;
       result.fieldErrors[field] = message;
       result.messages.push(message);
     }
