@@ -3,7 +3,6 @@ import {
   canWriteFinance,
   FINANCE_WRITE_PERMISSION,
   financeWriteDeniedReason,
-  getFinanceWriteAccess,
 } from "@/src/utils/financeWritePermission";
 import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/features/polizas/utils/polizaPermissions";
 import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/features/bank-reconciliations/utils/conciliacionPermissions";
@@ -11,8 +10,7 @@ import { CREDIT_NOTE_WRITE_PERMISSION_REASON } from "@/src/features/credit-notes
 
 /**
  * Pruebas unitarias de EC-707: el permiso de escritura de Finanzas compartido
- * por pólizas, conciliaciones y notas de crédito, y su estado mientras la
- * sesión carga.
+ * por pólizas, conciliaciones y notas de crédito.
  */
 
 test("el código es E-FIN-FACTURAS y el rol admin pasa sin permisos en la lista", () => {
@@ -21,13 +19,6 @@ test("el código es E-FIN-FACTURAS y el rol admin pasa sin permisos en la lista"
   expect(canWriteFinance({ role: "user", permissions: ["E-FIN-FACTURAS"] })).toBe(true);
   expect(canWriteFinance({ role: "user", permissions: ["R-CONTABILIDAD"] })).toBe(false);
   expect(canWriteFinance(null)).toBe(false);
-});
-
-test("la sesión cargando no es 'sin permiso'", () => {
-  expect(getFinanceWriteAccess("loading", undefined)).toBe("loading");
-  expect(getFinanceWriteAccess("authenticated", { role: "admin" })).toBe("allowed");
-  expect(getFinanceWriteAccess("authenticated", { role: "user", permissions: [] })).toBe("denied");
-  expect(getFinanceWriteAccess("unauthenticated", undefined)).toBe("denied");
 });
 
 test("cada módulo conserva el motivo del 403 de su viewset", () => {

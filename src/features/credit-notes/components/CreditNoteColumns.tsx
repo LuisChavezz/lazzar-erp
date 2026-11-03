@@ -38,16 +38,12 @@ import { useCreditNoteRowActionsContext } from "../hooks/useCreditNoteRowActions
  * interacción.
  */
 function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
-  const { onViewDetail, onEmitir, onCancel, onDelete, writeAccess } =
+  const { onViewDetail, onEmitir, onCancel, onDelete, canWrite } =
     useCreditNoteRowActionsContext();
   const { id, estatus } = nota;
   const isDraft = estatus === "Borrador";
   // Sin permiso de escritura, el motivo del permiso manda sobre el del CFDI.
-  // Mientras la sesión carga, las escrituras quedan deshabilitadas SIN motivo:
-  // todavía no se sabe si falta el permiso.
-  const canWrite = writeAccess === "allowed";
-  const denied = writeAccess === "denied";
-  const cancelBlockReason = denied
+  const cancelBlockReason = !canWrite
     ? CREDIT_NOTE_WRITE_PERMISSION_REASON
     : estatus !== "Cancelada"
       ? getCreditNoteCancelBlockReason(nota)
@@ -66,7 +62,7 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       onSelect: () => onEmitir(id),
       visible: isDraft,
       disabled: !canWrite,
-      description: denied ? CREDIT_NOTE_EMIT_PERMISSION_REASON : undefined,
+      description: canWrite ? undefined : CREDIT_NOTE_EMIT_PERMISSION_REASON,
     },
     // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida` devuelve
     // el importe a la cuenta por cobrar; sobre un `Borrador` lo archiva sin
@@ -78,7 +74,7 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       icon: BanIcon,
       onSelect: () => onCancel(id),
       visible: estatus !== "Cancelada",
-      disabled: !canWrite || cancelBlockReason !== null,
+      disabled: cancelBlockReason !== null,
       description: cancelBlockReason ?? undefined,
     },
     {
@@ -87,7 +83,7 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       onSelect: () => onDelete(id),
       visible: isDraft,
       disabled: !canWrite,
-      description: denied ? CREDIT_NOTE_WRITE_PERMISSION_REASON : undefined,
+      description: canWrite ? undefined : CREDIT_NOTE_WRITE_PERMISSION_REASON,
     },
   ];
 

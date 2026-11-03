@@ -18,7 +18,6 @@ import { Button } from "@/src/components/Button";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
-import { useFinanceWriteAccess } from "@/src/hooks/useFinanceWriteAccess";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
@@ -32,6 +31,7 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
+  canEmitCreditNote,
   CREDIT_NOTE_STAMP_PENDING_HINT,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
@@ -129,13 +129,11 @@ function CreditNoteEmitPanel({
   onEmitir: () => void;
   isEmitting: boolean;
 }) {
-  // `loading` mientras la sesión llega: bloqueado SIN motivo (`useFinanceWriteAccess`).
-  const writeAccess = useFinanceWriteAccess();
-  const canEmit = writeAccess === "allowed";
-  const showDenied = writeAccess === "denied";
+  const { data: session } = useSession();
+  const canEmit = canEmitCreditNote(session?.user);
   const rejectionId = `credit-note-${notaId}-emit-rejection`;
   const blockedNoteId = `credit-note-${notaId}-emit-blocked`;
-  const describedBy = [rejection ? rejectionId : null, showDenied ? blockedNoteId : null]
+  const describedBy = [rejection ? rejectionId : null, canEmit ? null : blockedNoteId]
     .filter(Boolean)
     .join(" ");
   return (
@@ -156,7 +154,7 @@ function CreditNoteEmitPanel({
           <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
           {isEmitting ? "Emitiendo..." : rejection ? "Volver a emitir" : "Emitir nota"}
         </Button>
-        {showDenied && (
+        {!canEmit && (
           <p id={blockedNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs text-right">
             {CREDIT_NOTE_EMIT_PERMISSION_REASON}
           </p>

@@ -28,24 +28,3 @@ export const canWriteFinance = (user: PermissionContext | null | undefined): boo
  */
 export const financeWriteDeniedReason = (accion: string): string =>
   `No tienes permiso para ${accion}.`;
-
-/**
- * Estado del permiso de escritura según la sesión:
- * - `loading`: la sesión todavía no llega. NO es "sin permiso": las acciones se
- *   muestran bloqueadas sin motivo y su guarda no avisa nada, para que un
- *   usuario con permiso no vea "No tienes permiso…" en la carga en frío.
- * - `allowed` / `denied`: ya se sabe.
- */
-export type FinanceWriteAccess = "loading" | "allowed" | "denied";
-
-/** Estado de `useSession` (`next-auth/react`). */
-type SessionStatus = "loading" | "authenticated" | "unauthenticated";
-
-/** `FinanceWriteAccess` a partir del estado y el usuario de la sesión. */
-export const getFinanceWriteAccess = (
-  status: SessionStatus,
-  user: PermissionContext | null | undefined,
-): FinanceWriteAccess => {
-  if (status === "loading") return "loading";
-  return canWriteFinance(user) ? "allowed" : "denied";
-};

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useFinanceWriteAccess } from "@/src/hooks/useFinanceWriteAccess";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -41,6 +41,7 @@ import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
   CREDIT_NOTE_WRITE_PERMISSION_REASON,
+  canWriteCreditNotes,
   getCreditNoteCancelBlockReason,
   getInvoiceEmitPrecheckReason,
   getInvoiceUnstampedEmitWarning,
@@ -55,10 +56,9 @@ export default function CreditNoteList() {
   // `onSettled` de la primera se perdería y su candado no se soltaría nunca.
   // (La emisión se declara más abajo, tras el estado que su `onRejectedToDraft`
   // escribe.)
-  // Toda escritura de notas exige `E-FIN-FACTURAS`; `loading` mientras la
-  // sesión llega no es "sin permiso" (`useFinanceWriteAccess`).
-  const writeAccess = useFinanceWriteAccess();
-  const canWrite = writeAccess === "allowed";
+  const { data: session } = useSession();
+  // Toda escritura de notas exige `E-FIN-FACTURAS` (`canWriteCreditNotes`).
+  const canWrite = canWriteCreditNotes(session?.user);
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
@@ -167,7 +167,7 @@ export default function CreditNoteList() {
     // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
     // la sesión cambió entre pintarlos y seleccionar.
     if (!canWrite) {
-      if (writeAccess === "denied") toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
+      toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
       return;
     }
     const nota = notasCredito.find((item) => item.id === id);
@@ -181,7 +181,7 @@ export default function CreditNoteList() {
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
   const handleCancel = (id: number) => {
     if (!canWrite) {
-      if (writeAccess === "denied") toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
       return;
     }
     const nota = notasCredito.find((item) => item.id === id);
@@ -194,7 +194,7 @@ export default function CreditNoteList() {
   };
   const handleDelete = (id: number) => {
     if (!canWrite) {
-      if (writeAccess === "denied") toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
       return;
     }
     const nota = notasCredito.find((item) => item.id === id);
@@ -209,7 +209,7 @@ export default function CreditNoteList() {
     onEmitir: handleEmitir,
     onCancel: handleCancel,
     onDelete: handleDelete,
-    writeAccess,
+    canWrite,
   };
   const columns = withHeaderFilters(
     getCreditNoteColumns(),

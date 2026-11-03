@@ -37,7 +37,7 @@ const importe = (value: string): string => formatMoneyValue(value, null);
  * remonta las celdas.
  */
 function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
-  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, writeAccess } =
+  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, canWrite } =
     usePolizaRowActionsContext();
   const { id, estatus, cuadre_correcto, total_cargos, total_abonos } = poliza;
   // Una fila con una acción en vuelo no ofrece otra: el estatus que decide las
@@ -46,10 +46,7 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
   // Sin el permiso de escritura (`E-FIN-FACTURAS`) las acciones se muestran
   // deshabilitadas con su motivo, convención de EC-713. El motivo del permiso
   // manda sobre el del cuadre: corregir la póliza no la volvería disponible.
-  // Mientras la sesión carga quedan deshabilitadas SIN motivo: todavía no se
-  // sabe si falta el permiso.
-  const canWrite = writeAccess === "allowed";
-  const permissionReason = writeAccess === "denied" ? POLIZA_WRITE_PERMISSION_REASON : undefined;
+  const permissionReason = canWrite ? undefined : POLIZA_WRITE_PERMISSION_REASON;
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(poliza) },
