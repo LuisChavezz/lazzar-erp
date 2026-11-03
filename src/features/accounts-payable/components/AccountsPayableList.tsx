@@ -13,7 +13,11 @@ import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import type { CuentaPorPagar, CxPEstatus } from "../interfaces/accounts-payable.interface";
 import { useCuentasPorPagar } from "../hooks/useCuentasPorPagar";
-import { useDeleteCuentaPorPagar } from "../hooks/useDeleteCuentaPorPagar";
+import {
+  deleteCuentaPorPagarMutationKey,
+  useDeleteCuentaPorPagar,
+} from "../hooks/useDeleteCuentaPorPagar";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { AccountsPayableRowActionsProvider } from "../hooks/useAccountsPayableRowActions";
 import {
   CXP_CONFLICT_FALLBACK_MESSAGE,
@@ -84,6 +88,9 @@ export default function AccountsPayableList() {
   // Candado de reenvío: un DELETE repetido responde 404 y pintaría un error justo
   // después de un borrado que sí funcionó.
   const deleteLock = useRowActionLock();
+  // Borrados en vuelo leídos de la `MutationCache`: sobreviven a un remontaje
+  // de la vista, que deja vacío el candado de fila.
+  const pendingDeleteIds = usePendingRecordIds(deleteCuentaPorPagarMutationKey);
 
   // Un error de refetch transitorio no descarta la tabla ya cargada.
   const showError = isInitialLoadError(isError, hasLoaded);
@@ -223,7 +230,9 @@ export default function AccountsPayableList() {
             // `guardClose`; el resultado de la petición decide el cierre. Va en
             // línea porque `closeDeleteDialog` escribe una ref, y pasársela al
             // helper durante el render la leería en render (`react-hooks/refs`).
-            busy={deleteLock.isPending(deleteTarget.id)}
+            busy={
+              deleteLock.isPending(deleteTarget.id) || pendingDeleteIds.includes(deleteTarget.id)
+            }
             onOpenChange={(open) => {
               if (open || deleteLock.isHeld(deleteTarget.id)) return;
               closeDeleteDialog();

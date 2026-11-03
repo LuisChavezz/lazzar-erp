@@ -37,6 +37,13 @@ import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
  * pagos que apuntaban a ella se borran EN CASCADA — el `pago_detalles` que el
  * listado de pagos haya cacheado queda obsoleto.
  */
+/**
+ * Llave del borrado: con ella el listado lee de la `MutationCache` qué cuentas
+ * tienen un borrado en vuelo (`usePendingRecordIds`), aunque la vista se haya
+ * remontado y su candado de fila esté vacío.
+ */
+export const deleteCuentaPorPagarMutationKey = ["delete-cuenta-por-pagar"] as const;
+
 export const useDeleteCuentaPorPagar = (
   onServerError?: (parsed: ParsedCuentaPorPagarError) => void,
   options: {
@@ -53,6 +60,7 @@ export const useDeleteCuentaPorPagar = (
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deleteCuentaPorPagarMutationKey,
     mutationFn: (id: number) => deleteCuentaPorPagar(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["cuentas-por-pagar"] });
