@@ -40,7 +40,8 @@ import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoi
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
-  canEmitCreditNote,
+  CREDIT_NOTE_WRITE_PERMISSION_REASON,
+  canWriteCreditNotes,
   getCreditNoteCancelBlockReason,
   getInvoiceEmitPrecheckReason,
   getInvoiceUnstampedEmitWarning,
@@ -56,7 +57,8 @@ export default function CreditNoteList() {
   // (La emisión se declara más abajo, tras el estado que su `onRejectedToDraft`
   // escribe.)
   const { data: session } = useSession();
-  const canEmit = canEmitCreditNote(session?.user);
+  // Toda escritura de notas exige `E-FIN-FACTURAS` (`canWriteCreditNotes`).
+  const canWrite = canWriteCreditNotes(session?.user);
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
@@ -164,7 +166,7 @@ export default function CreditNoteList() {
   const handleEmitir = (id: number) => {
     // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
     // la sesión cambió entre pintarlos y seleccionar.
-    if (!canEmit) {
+    if (!canWrite) {
       toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
       return;
     }
@@ -178,6 +180,10 @@ export default function CreditNoteList() {
   // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
   const handleCancel = (id: number) => {
+    if (!canWrite) {
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      return;
+    }
     const nota = notasCredito.find((item) => item.id === id);
     const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
     if (blockReason) {
@@ -187,6 +193,10 @@ export default function CreditNoteList() {
     setCancelTargetId(id);
   };
   const handleDelete = (id: number) => {
+    if (!canWrite) {
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      return;
+    }
     const nota = notasCredito.find((item) => item.id === id);
     setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
   };
@@ -199,7 +209,7 @@ export default function CreditNoteList() {
     onEmitir: handleEmitir,
     onCancel: handleCancel,
     onDelete: handleDelete,
-    canEmit,
+    canWrite,
   };
   const columns = withHeaderFilters(
     getCreditNoteColumns(),
@@ -290,42 +300,45 @@ export default function CreditNoteList() {
         // Un alta nueva aparece tras invalidar; sin esto, quien esté parado en la
         // página 2 no vería la nota que acaba de registrar.
         paginationResetKey={notasCredito.length}
+        // Sin permiso de escritura no hay alta: el botón se oculta.
         actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Nueva Nota de Crédito"
-                subtitle="Crédito sobre una factura con saldo por cobrar"
-                statusColor="violet"
-                icon={NotaCreditoIcon}
-              />
-            }
-            open={isFormOpen}
-            onOpenChange={(open) => {
-              if (!open && formSubmitLockRef.current) return;
-              setIsFormOpen(open);
-            }}
-            maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nueva nota
-              </Button>
-            }
-          >
-            {/* Se monta solo mientras el diálogo está abierto: así los catálogos
-                de sus selectores se piden bajo demanda y cada alta arranca
-                limpia. */}
-            {isFormOpen && (
-              <CreditNoteForm
-                onSuccess={() => setIsFormOpen(false)}
-                submitLockRef={formSubmitLockRef}
-              />
-            )}
-          </MainDialog>
+          canWrite ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Nueva Nota de Crédito"
+                  subtitle="Crédito sobre una factura con saldo por cobrar"
+                  statusColor="violet"
+                  icon={NotaCreditoIcon}
+                />
+              }
+              open={isFormOpen}
+              onOpenChange={(open) => {
+                if (!open && formSubmitLockRef.current) return;
+                setIsFormOpen(open);
+              }}
+              maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
+              trigger={
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nueva nota
+                </Button>
+              }
+            >
+              {/* Se monta solo mientras el diálogo está abierto: así los catálogos
+                  de sus selectores se piden bajo demanda y cada alta arranca
+                  limpia. */}
+              {isFormOpen && (
+                <CreditNoteForm
+                  onSuccess={() => setIsFormOpen(false)}
+                  submitLockRef={formSubmitLockRef}
+                />
+              )}
+            </MainDialog>
+          ) : undefined
         }
       />
       </div>

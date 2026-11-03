@@ -9,10 +9,11 @@ export interface CreditNoteRowActionsContextValue {
   onCancel: (id: number) => void;
   onDelete: (id: number) => void;
   /**
-   * ¿El usuario puede emitir notas? (`canEmitCreditNote`). Sin el permiso,
-   * "Emitir nota" se muestra deshabilitado con su motivo.
+   * ¿El usuario puede escribir notas? (`canWriteCreditNotes`). Sin el permiso,
+   * "Emitir nota", "Cancelar nota" y "Eliminar borrador" se muestran
+   * deshabilitados con su motivo.
    */
-  canEmit: boolean;
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } =
