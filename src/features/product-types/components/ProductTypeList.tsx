@@ -7,6 +7,7 @@ import { MainDialog } from "../../../components/MainDialog";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useDeleteProductType } from "../hooks/useDeleteProductType";
+import { getProductTypeLabel } from "../utils/productTypeLabel";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ProductType } from "../interfaces/product-type.interface";
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
@@ -61,9 +62,13 @@ export default function ProductTypeList() {
           onOpenChange={(open) => {
             if (!open) setProductTypeToDelete(null);
           }}
-          title="Eliminar Tipo de Producto"
-          description="¿Estás seguro de que deseas eliminar este tipo de producto? Esta acción no se puede deshacer."
-          confirmText="Eliminar"
+          // El DELETE es una baja lógica (`activo=False`): el tipo deja de
+          // listarse, pero los productos que ya lo tienen lo conservan.
+          title="Dar de baja tipo de producto"
+          description={`El tipo "${
+            deleteSession.snapshot ? getProductTypeLabel(deleteSession.snapshot) : ""
+          }" dejará de aparecer en los catálogos y ya no podrá asignarse a productos nuevos. Los productos que ya lo tienen lo conservan. No se puede reactivar desde aquí.`}
+          confirmText="Dar de baja"
           onConfirm={() => {
             if (deleteSession.snapshot) deleteProductType(deleteSession.snapshot.id);
             setProductTypeToDelete(null);
