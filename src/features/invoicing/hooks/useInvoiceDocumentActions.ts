@@ -1,6 +1,8 @@
 "use client";
 
+import { useMutationState } from "@tanstack/react-query";
 import { useSendEmailConfirmation } from "@/src/features/google/hooks/useSendEmailConfirmation";
+import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
@@ -33,22 +35,24 @@ import {
  *   necesita correo. Sigue disponible en una factura eliminada (uso interno).
  *   Se deshabilita con una descarga o un envío en curso.
  * - Enviar correo primero PREPARA el correo (valida y renderiza) y pide
- *   confirmación mostrando destinatario, asunto y adjunto
- *   (`InvoiceSendEmailConfirmDialog`, vía `useSendEmailConfirmation`); nada se
- *   envía hasta confirmar. Si la página pasa a otra factura mientras se
- *   prepara, la confirmación de la anterior se descarta (`expectedId`).
+ *   confirmación mostrando destinatario, asunto y adjunto; nada se envía hasta
+ *   confirmar. Esa confirmación la monta la PÁGINA (`useInvoiceDetailEmail` en
+ *   `InvoiceDetailPageContent`), no esta cabecera: cambiar de hoja la
+ *   desmontaría a media preparación. Aquí llega `onSendEmail`, y el "en curso"
+ *   se lee de la `MutationCache` para esta factura.
  */
-export function useInvoiceDocumentActions(invoice: Invoice) {
-  const { mutateAsync: prepareEmail, isPending: isPreparingEmail } = usePrepareInvoiceEmail();
-  const { mutate: sendEmail, isPending: isSendingEmail } = useSendInvoiceEmail();
-  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
-  const email = useSendEmailConfirmation<PreparedInvoiceEmail>({
-    busyMutationKeys: [prepareInvoiceEmailMutationKey, sendInvoiceEmailMutationKey],
-    // `request` siempre se pide con el id de `invoice` (ver `sendEmail` abajo).
-    prepare: () => prepareEmail(invoice),
-    send: sendEmail,
-    expectedId: invoice.id,
+export function useInvoiceDocumentActions(invoice: Invoice, onSendEmail: (invoiceId: number) => void) {
+  const preparingIds = useMutationState({
+    filters: { mutationKey: [...prepareInvoiceEmailMutationKey], status: "pending" },
+    select: selectMutationRecordId,
   });
+  const sendingIds = useMutationState({
+    filters: { mutationKey: [...sendInvoiceEmailMutationKey], status: "pending" },
+    select: selectMutationRecordId,
+  });
+  const isPreparingEmail = preparingIds.includes(invoice.id);
+  const isSendingEmail = sendingIds.includes(invoice.id);
+  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
   const busy = isPreparingEmail || isSendingEmail || isDownloadingPdf;
   // Regla compartida con el menú del listado (`getInvoiceEmailBlocker`):
   // eliminada o no enviable → se oculta; sin destinatario → se deshabilita.
@@ -65,9 +69,28 @@ export function useInvoiceDocumentActions(invoice: Invoice) {
     isPreparingEmail,
     isSendingEmail,
     isDownloadingPdf,
-    sendEmail: () => email.request(invoice.id),
+    sendEmail: () => onSendEmail(invoice.id),
     downloadPdf: () => downloadPdf(invoice),
-    /** Sesión del diálogo de confirmación del correo (`useSendEmailConfirmation`). */
-    emailDialog: email.dialog,
   };
+}
+
+/**
+ * "Enviar correo" de la página de detalle con confirmación
+ * (`useSendEmailConfirmation`). Lo monta `InvoiceDetailPageContent` —no la
+ * cabecera de la hoja— para que la preparación y la confirmación sobrevivan a
+ * cambiar de hoja. Prepara desde el retrieve FRESCO (por id), no desde la
+ * lectura con la que se abrió la página. Si la página pasa a otra factura
+ * mientras se prepara, la confirmación de la anterior se descarta
+ * (`expectedId`).
+ */
+export function useInvoiceDetailEmail(invoiceId: number) {
+  const { mutateAsync: prepareEmail } = usePrepareInvoiceEmail();
+  const { mutate: sendEmail } = useSendInvoiceEmail();
+
+  return useSendEmailConfirmation<PreparedInvoiceEmail>({
+    busyMutationKeys: [prepareInvoiceEmailMutationKey, sendInvoiceEmailMutationKey],
+    prepare: prepareEmail,
+    send: sendEmail,
+    expectedId: invoiceId,
+  });
 }

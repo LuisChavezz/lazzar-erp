@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "@/src/features/google/services/actions";
 import { buildGoogleEmailAttachment } from "@/src/features/google/utils/googleEmailAttachment.utils";
@@ -35,11 +35,28 @@ export interface PreparedInvoiceEmail {
   attachmentName: string;
 }
 
+/**
+ * Lee la factura FRESCA (misma llave que el detalle: si cambió, el detalle
+ * también se actualiza) y aplica `getInvoiceEmailBlocker`. La usan preparar
+ * desde el detalle y enviar.
+ */
+const fetchSendableInvoice = async (queryClient: QueryClient, id: number): Promise<Invoice> => {
+  const invoice = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(id));
+  const blocker = getInvoiceEmailBlocker(invoice);
+  if (blocker) throw new Error(blocker.message);
+  return invoice;
+};
+
 export const prepareInvoiceEmailMutationKey = ["invoices", "prepare-email"] as const;
 export const sendInvoiceEmailMutationKey = ["invoices", "send-email"] as const;
 
 /**
  * Paso 1: valida y renderiza el correo de la factura, SIN enviarlo.
+ *
+ * Recibe la factura ya leída fresca (el listado la lee con su propio aviso de
+ * error) o su id (el detalle): con el id la lee fresca aquí y le aplica
+ * `getInvoiceEmailBlocker`, para no preparar desde la lectura que se cargó al
+ * abrir la página.
  *
  * renderEmailContent() — API Route Next.js: valida sesión + permiso +
  * destinatario + estatus enviable y renderiza el HTML en Node.js. El
@@ -48,10 +65,13 @@ export const sendInvoiceEmailMutationKey = ["invoices", "send-email"] as const;
  * vacía— para que el Route Handler lo rechace de forma autoritativa. El `to`
  * que devuelve es el destinatario ya validado, y es lo que muestra el diálogo.
  */
-export const usePrepareInvoiceEmail = () =>
-  useMutation<PreparedInvoiceEmail, unknown, Invoice>({
+export const usePrepareInvoiceEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<PreparedInvoiceEmail, unknown, Invoice | number>({
     mutationKey: prepareInvoiceEmailMutationKey,
-    mutationFn: async (invoice: Invoice): Promise<PreparedInvoiceEmail> => {
+    mutationFn: async (target): Promise<PreparedInvoiceEmail> => {
+      const invoice = typeof target === "number" ? await fetchSendableInvoice(queryClient, target) : target;
       const content = await renderEmailContent(`/api/invoices/${invoice.id}/send-email`, {
         invoice,
         correo: invoice.correo_facturas,
@@ -69,6 +89,7 @@ export const usePrepareInvoiceEmail = () =>
       toast.error(extractErrorMessage(error, "No se pudo preparar el correo de la factura."));
     },
   });
+};
 
 /**
  * Paso 2, solo tras confirmar: vuelve a leer la factura (retrieve fresco), la
@@ -95,10 +116,7 @@ export const useSendInvoiceEmail = () => {
   return useMutation<SendEmailResult, unknown, PreparedInvoiceEmail>({
     mutationKey: sendInvoiceEmailMutationKey,
     mutationFn: async ({ id, invoice, content, attachmentName }): Promise<SendEmailResult> => {
-      // Misma llave que el detalle: si cambió, el detalle también se actualiza.
-      const current = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(id));
-      const blocker = getInvoiceEmailBlocker(current);
-      if (blocker) throw new Error(blocker.message);
+      const current = await fetchSendableInvoice(queryClient, id);
       assertEmailSnapshotUnchanged(
         invoiceEmailRenderInputs(current),
         invoiceEmailRenderInputs(invoice),

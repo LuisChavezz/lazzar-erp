@@ -73,7 +73,6 @@ import { InvoiceStampDialog } from "./InvoiceStampDialog";
 import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
 import { canEmitInvoice, getInvoiceEmitBlockReason } from "../utils/invoiceEmission";
 import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
-import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { getInvoiceCfdiEmailAvailability } from "../utils/invoiceCfdiEmail";
 import { DocumentActionWithDialog } from "./DocumentActionWithDialog";
 
@@ -88,6 +87,11 @@ interface InvoiceMainSheetProps {
   canOpen: (pathname: string) => boolean;
   /** Usuario de la sesión (permisos), para las reglas de "Emitir", "Cancelar factura" y "Timbrar". */
   user: PermissionContext | null | undefined;
+  /**
+   * "Enviar correo": prepara el correo y la PÁGINA pide confirmación
+   * (`useInvoiceDetailEmail`), para que sobreviva a cambiar de hoja.
+   */
+  onSendEmail: (invoiceId: number) => void;
 }
 
 const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
@@ -106,11 +110,13 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 function InvoiceDocumentActions({
   invoice,
   user,
+  onSendEmail,
 }: {
   invoice: Invoice;
   user: PermissionContext | null | undefined;
+  onSendEmail: (invoiceId: number) => void;
 }) {
-  const actions = useInvoiceDocumentActions(invoice);
+  const actions = useInvoiceDocumentActions(invoice, onSendEmail);
   const canEmit = canEmitInvoice(invoice, user);
   const emitBlockReason = canEmit ? getInvoiceEmitBlockReason(invoice) : null;
   const canCancel = canCancelInvoice(invoice, user);
@@ -238,15 +244,6 @@ function InvoiceDocumentActions({
           {cfdiEmail.message}
         </p>
       )}
-      {/* El correo mostrado es la foto preparada al pedir el envío
-          (`useDialogSession`: sobrevive a la animación de cierre), y es
-          exactamente lo que se envía al confirmar. */}
-      {actions.emailDialog && (
-        <InvoiceSendEmailConfirmDialog
-          key={actions.emailDialog.sessionId}
-          {...actions.emailDialog.props}
-        />
-      )}
     </div>
   );
 }
@@ -346,7 +343,7 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
  * fechas, totales y acciones), emisor y receptor, pedido, conceptos e importes.
  * Todo sale del desglose; solo las acciones usan el retrieve.
  */
-export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
+export function InvoiceMainSheet({ data, invoice, canOpen, user, onSendEmail }: InvoiceMainSheetProps) {
   const money = (value: number) => formatCurrency(value, data.moneda.codigo_iso);
   const { emisor, receptor, pedido, importes } = data;
 
@@ -381,7 +378,9 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
             </HeaderStatRow>
             {invoice && <InvoiceCfdiStamp invoice={invoice} />}
           </div>
-          {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
+          {invoice && (
+            <InvoiceDocumentActions invoice={invoice} user={user} onSendEmail={onSendEmail} />
+          )}
         </div>
       </SheetSection>
 
