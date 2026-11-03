@@ -36,10 +36,13 @@ export interface Product {
  *
  * Fuera a propósito:
  *  - `empresa`: el serializer la marca `read_only` y la descartaría en silencio.
- *  - `tipo`: es de solo lectura en la edición. `ProductoRequest` no lo exige, y
- *    un PUT que lo omite conserva el valor guardado (verificado contra el
- *    backend); mandarlo, aunque fuera sin cambios, podría pisar un tipo que
- *    alguien cambió después de abrir el formulario.
+ *  - `tipo`: es de solo lectura en la edición. Es opcional en el modelo
+ *    (`null=True`; nucleo-erp #865 lo hizo obligatorio y #882 lo revirtió), así
+ *    que un PUT que lo omite conserva el valor guardado. Mandarlo, aunque fuera
+ *    sin cambios, podría pisar un tipo que alguien cambió después de abrir el
+ *    formulario, y daría 400 si ese tipo se dio de baja (`limit_choices_to`
+ *    solo admite activos). Si el backend volviera a exigirlo, este PUT
+ *    respondería 400.
  *  - `codigo`: lo asigna el alta rápida; omitirlo también lo conserva.
  */
 export interface ProductUpdate {
