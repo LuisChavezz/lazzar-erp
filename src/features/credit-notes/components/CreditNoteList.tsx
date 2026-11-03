@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
@@ -11,6 +11,8 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
+import { NotaCreditoIcon } from "@/src/components/Icons";
 import {
   TOTAL_CERO_MESSAGE,
   totalEsAcreditable,
@@ -59,6 +61,11 @@ export default function CreditNoteList() {
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Candado del envío del alta (ver `useCreditNoteForm`): se toma al enviar,
+  // ANTES de la validación, y se lee en el `onOpenChange` del diálogo, así que
+  // no se cierra (X, Cerrar, Esc) desde el primer frame. El alta emitida mueve
+  // el saldo de la CxC; cerrar a medias escondería su resultado.
+  const formSubmitLockRef = useRef(false);
   // Estado de TODOS los diálogos en la vista, no en la celda de acciones: una
   // celda se desmonta al ordenar, filtrar o paginar, y las tres mutaciones
   // cambian el `estatus` —que es justo el filtro de la tabla—, así que con el
@@ -290,11 +297,15 @@ export default function CreditNoteList() {
                 title="Nueva Nota de Crédito"
                 subtitle="Crédito sobre una factura con saldo por cobrar"
                 statusColor="violet"
+                icon={NotaCreditoIcon}
               />
             }
             open={isFormOpen}
-            onOpenChange={setIsFormOpen}
-            maxWidth="1100px"
+            onOpenChange={(open) => {
+              if (!open && formSubmitLockRef.current) return;
+              setIsFormOpen(open);
+            }}
+            maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
             trigger={
               <Button
                 variant="primary"
@@ -308,7 +319,12 @@ export default function CreditNoteList() {
             {/* Se monta solo mientras el diálogo está abierto: así los catálogos
                 de sus selectores se piden bajo demanda y cada alta arranca
                 limpia. */}
-            {isFormOpen && <CreditNoteForm onSuccess={() => setIsFormOpen(false)} />}
+            {isFormOpen && (
+              <CreditNoteForm
+                onSuccess={() => setIsFormOpen(false)}
+                submitLockRef={formSubmitLockRef}
+              />
+            )}
           </MainDialog>
         }
       />
