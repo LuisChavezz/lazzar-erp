@@ -4,7 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
-import { getColumns, productLineaHeaderFilter, ProductRow } from "./ProductColumns";
+import { buildProductRows, getColumns, productLineaHeaderFilter, ProductRow } from "./ProductColumns";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
@@ -36,10 +36,12 @@ export default function ProductList() {
   const { products, isLoading, isInitialError, error } = useProducts(3);
 
   const { categories } = useProductCategories();
-  const { units } = useUnitsOfMeasure();
-  const { taxes } = useTaxes();
-  const { satProdservCodes } = useSatProdServCodes();
-  const { satUnitCodes } = useSatUnitCodes();
+  // Sin uso aquí: precargan los catálogos que pide el formulario de edición
+  // (`useProductForm`), como antes, cuando sus mapas vivían en `lookups`.
+  useUnitsOfMeasure();
+  useTaxes();
+  useSatProdServCodes();
+  useSatUnitCodes();
 
   const handleEdit = useCallback(
     (product: Product) => {
@@ -49,32 +51,12 @@ export default function ProductList() {
     [setSelectedProduct]
   );
 
-  const lookups = useMemo(
-    () => ({
-      categories: new Map(categories.map((category) => [category.id, category])),
-      units: new Map(units.map((unit) => [unit.id, unit.nombre])),
-      taxes: new Map(taxes.map((tax) => [tax.id, tax.nombre])),
-      satProdserv: new Map(
-        satProdservCodes.map((code) => [code.id_sat_prodserv, `${code.codigo} - ${code.descripcion}`])
-      ),
-      satUnit: new Map(
-        satUnitCodes.map((code) => [code.id_sat_unidad, `${code.codigo} - ${code.descripcion}`])
-      ),
-    }),
-    [categories, units, taxes, satProdservCodes, satUnitCodes]
-  );
-
   // El nombre de la categoría se incorpora a la FILA, no al accessor: así la
   // llegada tardía de su catálogo produce un `data` nuevo y TanStack recalcula
   // búsqueda y orden aunque ya se hubieran calculado. Ver `ProductRow`.
   const rows = useMemo<ProductRow[]>(
-    () =>
-      products.map((product) => ({
-        ...product,
-        categoria_nombre: lookups.categories.get(product.categoria_producto)?.nombre ?? null,
-        categoria_linea: lookups.categories.get(product.categoria_producto)?.linea ?? null,
-      })),
-    [products, lookups]
+    () => buildProductRows(products, categories),
+    [products, categories]
   );
 
   const columns = useMemo(
