@@ -34,13 +34,17 @@ export function useProductTypeForm({ onSuccess, productTypeToEdit }: UseProductT
   const emptyValues = useMemo<ProductTypeFormValues>(
     () => ({
       codigo: "",
+      nombre: "",
     }),
     []
   );
 
   // Deriva valores para modo edición.
   const editValues = useMemo<ProductTypeFormValues>(
-    () => (productTypeToEdit ? { codigo: productTypeToEdit.codigo } : emptyValues),
+    () =>
+      productTypeToEdit
+        ? { codigo: productTypeToEdit.codigo, nombre: productTypeToEdit.nombre }
+        : emptyValues,
     [emptyValues, productTypeToEdit]
   );
 
@@ -135,15 +139,16 @@ export function useProductTypeForm({ onSuccess, productTypeToEdit }: UseProductT
       }
 
       setIsLoading(true);
+      const payload = { codigo: value.codigo, nombre: value.nombre.trim() };
       try {
         if (isEditing && productTypeToEdit) {
           await updateProductType({
             id: productTypeToEdit.id,
-            codigo: value.codigo,
+            ...payload,
           });
           form.reset(editValues);
         } else {
-          await createProductType({ codigo: value.codigo });
+          await createProductType(payload);
           form.reset(emptyValues);
         }
         onSuccess();
