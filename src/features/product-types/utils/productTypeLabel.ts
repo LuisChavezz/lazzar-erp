@@ -11,9 +11,11 @@ export const getProductTypeLabel = (productType: Pick<ProductType, "codigo" | "n
  * Etiqueta del tipo de UN producto (`Product.tipo`, PK nullable) resuelta
  * contra el catálogo de tipos ya cargado, sin pedir nada más.
  *
- * El catálogo solo trae tipos ACTIVOS y `Producto.tipo` es `PROTECT` con baja
- * lógica, así que un id que no aparece con el catálogo ya cargado es un tipo
- * dado de baja: el backend no expone su nombre.
+ * Un id que no aparece con el catálogo ya cargado puede ser un tipo dado de
+ * baja (el catálogo solo trae activos y el backend no expone los inactivos,
+ * nucleo-erp #907) o uno creado después de cargar la caché: no se distinguen,
+ * así que la etiqueta no afirma ninguno. `null` es distinto: el producto no
+ * tiene tipo (es opcional desde nucleo-erp #882).
  */
 export const getProductTypeLabelById = (
   tipo: ProductType["id"] | null,
@@ -25,5 +27,5 @@ export const getProductTypeLabelById = (
   if (productType) return getProductTypeLabel(productType);
   if (isLoading) return "Cargando...";
   if (isError) return "No se pudo cargar el tipo";
-  return "Tipo dado de baja";
+  return "Tipo no disponible";
 };

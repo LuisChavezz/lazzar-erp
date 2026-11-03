@@ -105,7 +105,7 @@ export function useProductForm({ onSuccess, product }: UseProductFormParams) {
   const productSchema = createProductEditSchema(requiredFields);
 
   // `tipo` es de solo lectura: se fija en el alta rápida y no viaja en el PUT.
-  // El catálogo solo trae tipos activos: uno ausente es un tipo dado de baja.
+  // Un tipo ausente del catálogo (activos, en caché) se muestra como no disponible.
   const productTypeLabel = getProductTypeLabelById(product.tipo, productTypes, {
     isLoading: isLoadingProductTypes,
     isError: isProductTypesError,
