@@ -11,6 +11,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
 import { getProductTypeLabel } from "../../product-types/utils/productTypeLabel";
 import { useProductOnboardingForm } from "../hooks/useProductOnboardingForm";
+import { groupCategoriesByLinea } from "@/src/features/product-categories/constants/categoriaLinea";
 
 const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
@@ -181,10 +182,15 @@ export default function ProductOnboardingForm() {
                   <option value="0" disabled>
                     {isLoadingCatalogs ? "Cargando..." : "Seleccionar..."}
                   </option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id} className={optionClassName}>
-                      {category.nombre} ({category.codigo})
-                    </option>
+                  {/* Agrupadas por línea; "Sin línea (materia prima)" al final. */}
+                  {groupCategoriesByLinea(categories).map((group) => (
+                    <optgroup key={group.key} label={group.label} className={optionClassName}>
+                      {group.categories.map((category) => (
+                        <option key={category.id} value={category.id} className={optionClassName}>
+                          {category.nombre} ({category.codigo})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </FormSelect>
               )}

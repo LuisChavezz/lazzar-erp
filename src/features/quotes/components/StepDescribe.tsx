@@ -23,6 +23,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { PlusIcon } from "@/src/components/Icons";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
+import { groupCategoriesByLinea } from "@/src/features/product-categories/constants/categoriaLinea";
 import type { MuestraDraft } from "../types";
 import { SleevecutCheckbox } from "./SleevecutCheckbox";
 
@@ -229,10 +230,15 @@ export const StepDescribe = memo(function StepDescribe({
                     <option value="0" disabled>
                       {categoriaPlaceholder}
                     </option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id} className={optionClassName}>
-                        {category.nombre} ({category.codigo})
-                      </option>
+                    {/* Agrupadas por línea; "Sin línea (materia prima)" al final. */}
+                    {groupCategoriesByLinea(categories).map((group) => (
+                      <optgroup key={group.key} label={group.label} className={optionClassName}>
+                        {group.categories.map((category) => (
+                          <option key={category.id} value={category.id} className={optionClassName}>
+                            {category.nombre} ({category.codigo})
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </FormSelect>
                 </div>
