@@ -1,28 +1,17 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { hasPermission } from "@/src/utils/permissions";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
-import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
+import { usePurchaseOrdersTable } from "../hooks/usePurchaseOrdersTable";
 import { usePurchaseOrderCsvExport } from "../hooks/usePurchaseOrderCsvExport";
 import { usePurchaseOrderPdfExport } from "../hooks/usePurchaseOrderPdfExport";
 import { getColumns } from "./PurchaseOrderColumns";
-import {
-  buildFechaOcOptions,
-  buildStatusOptions,
-  buildSupplierOptions,
-  buildVencimientoOptions,
-} from "./PurchaseOrdersFilter";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
@@ -32,15 +21,15 @@ import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-ord
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
 
+/**
+ * Listado de órdenes de compra en MODO SERVIDOR: filtros, búsqueda, orden y
+ * paginación los resuelve el backend y su estado vive en la URL
+ * (`usePurchaseOrdersTable`). Por eso la página que lo monta lo envuelve en
+ * `<Suspense>`. El dashboard de Compras y los selectores siguen leyendo el
+ * listado completo (`usePurchaseOrders`).
+ */
 export function PurchaseOrderView() {
-  const {
-    purchaseOrders,
-    isLoading,
-    isInitialError,
-    error,
-    refetch,
-    isFetching,
-  } = usePurchaseOrders();
+  const purchaseOrdersTable = usePurchaseOrdersTable();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Llegar a esta pantalla exige `R-COMPRAS-OC` (ver `routePermissions`); dar
@@ -71,58 +60,32 @@ export function PurchaseOrderView() {
   const [criticalPathTarget, setCriticalPathTarget] =
     useState<PurchaseOrderCriticalPathTarget | null>(null);
 
-  // ── Opciones de los filtros de encabezado ─────────────────────────────────
-  // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
-  // `getColumns` (ver `ColumnFilterHeader`); se recalculan solo cuando cambia
-  // el listado, no en cada render.
-  const statusOptions = useMemo(() => buildStatusOptions(purchaseOrders), [purchaseOrders]);
-  const supplierOptions = useMemo(() => buildSupplierOptions(purchaseOrders), [purchaseOrders]);
-  const fechaOcOptions = useMemo(() => buildFechaOcOptions(purchaseOrders), [purchaseOrders]);
-  const vencimientoOptions = useMemo(
-    () => buildVencimientoOptions(purchaseOrders),
-    [purchaseOrders],
-  );
-
-  const columns = useMemo(
-    () =>
-      getColumns(
-        setEditingOrder,
-        // Inline (solo setters, estables) para no romper las deps del memo.
-        (order) => {
-          setCancellingOrder(order);
-          setIsCancelOpen(true);
-        },
-        (order) =>
-          setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
-        statusOptions,
-        supplierOptions,
-        fechaOcOptions,
-        vencimientoOptions,
-      ),
-    [statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
+  // Callbacks inline (solo setters, estables): la factoría no se recalcula.
+  const columns = getColumns(
+    setEditingOrder,
+    (order) => {
+      setCancellingOrder(order);
+      setIsCancelOpen(true);
+    },
+    (order) =>
+      setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
-  // hacer clic (`getFilteredRows` de `DataTable`: filtradas y ordenadas de
-  // todas las páginas) y las columnas llegan por `onVisibleColumnsChange`
-  // (con la visibilidad que haya elegido), no el listado completo sin tocar.
-  // Mismo patrón que `QuoteList` (`useQuoteCsvExport`/`useQuotePdfExport`).
-  const tableRef = useRef<DataTableHandle<PurchaseOrder>>(null);
+  // Exportan TODO lo que cumple los criterios vigentes (búsqueda, filtros y
+  // orden), no solo la página visible: las filas se piden al backend al hacer
+  // clic (`fetchAllRows`). Las columnas son las visibles, por
+  // `onVisibleColumnsChange`.
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<PurchaseOrder>[]>(
     [],
   );
-  usePurchaseOrderCsvExport(tableRef, visibleColumns);
-  usePurchaseOrderPdfExport(tableRef, visibleColumns);
+  usePurchaseOrderCsvExport(purchaseOrdersTable.fetchAllRows, visibleColumns);
+  usePurchaseOrderPdfExport(purchaseOrdersTable.fetchAllRows, visibleColumns);
 
   // ── Orden ────────────────────────────────────────────────────────────────
-  // Lo resuelve el backend: `-fecha_oc, -id`. `fecha_oc` es la fecha DE NEGOCIO
-  // de la orden (un `DateField`, sin hora), que es la que el listado debe
-  // respetar; `-id` desempata las del mismo día de forma estable y determinista
-  // al ser la PK. Aquí ya no se reordena: el `sort` que vivía en este punto lo
-  // hacía por `created_at` (el timestamp de inserción, un campo DISTINTO), así
-  // que además de redundante contradecía el orden del backend — una OC
-  // capturada hoy con fecha retroactiva salía hasta arriba.
+  // Por defecto el del backend: `-fecha_oc, -id` (`purchaseOrdersTable`).
+  // `fecha_oc` es la fecha DE NEGOCIO de la orden (un `DateField`, sin hora);
+  // `-id` desempata las del mismo día de forma estable entre páginas.
 
   // ── Tabla de órdenes ──────────────────────────────────────────────────────
   // `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y alterna solo
@@ -134,10 +97,11 @@ export function PurchaseOrderView() {
   // + tabla vienen del default de `DataTable` (diseño aprobado): no se pasan.
   const table = (
     <DataTable
-      ref={tableRef}
       columns={columns}
-      data={purchaseOrders}
-      searchPlaceholder="Buscar orden, folio o referencia..."
+      {...purchaseOrdersTable.tableProps}
+      // Identidad de la fila por registro, no por posición en la página.
+      getRowId={(row) => String(row.id)}
+      searchPlaceholder="Buscar por folio, referencia o proveedor..."
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
         <div className="flex items-center gap-2 shrink-0">
@@ -192,12 +156,8 @@ export function PurchaseOrderView() {
           )}
         </div>
       }
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      isLoading={isLoading}
-      isError={isInitialError}
+      emptyMessage="Aún no hay órdenes de compra registradas"
       errorTitle="Error al cargar órdenes de compra"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando órdenes de compra"
     />
   );

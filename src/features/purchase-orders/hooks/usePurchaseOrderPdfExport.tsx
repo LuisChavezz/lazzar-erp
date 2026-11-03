@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { loadExportRows } from "@/src/utils/loadExportRows";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -206,25 +207,28 @@ const createPurchaseOrdersPdfDocument = (
  * al exportar, no en el bundle inicial) y el disparo llega por un
  * `CustomEvent` propio (`purchase-orders:exportPDF`).
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de
+ * la tabla (búsqueda, filtros y orden), página por página desde el backend
+ * (`fetchAllRows` de `useServerTable`): la tabla en modo servidor solo tiene
+ * la página visible.
  */
 export const usePurchaseOrderPdfExport = (
-  tableRef: RefObject<DataTableHandle<PurchaseOrder> | null>,
+  getRows: () => Promise<PurchaseOrder[]>,
   columns: DataTableVisibleColumn<PurchaseOrder>[],
 ) => {
   const columnsRef = useRef(columns);
+  const getRowsRef = useRef(getRows);
 
   useEffect(() => {
     columnsRef.current = columns;
-  }, [columns]);
+    getRowsRef.current = getRows;
+  }, [columns, getRows]);
 
   const exportToPdf = useCallback(async () => {
     const exportColumns = columnsRef.current;
     if (exportColumns.length === 0) return;
+    const rows = await loadExportRows(getRowsRef.current, "purchase-orders-export");
+    if (rows === null) return;
     const renderer = await import("@react-pdf/renderer");
     const pdfDocument = createPurchaseOrdersPdfDocument(
       {
@@ -234,13 +238,13 @@ export const usePurchaseOrderPdfExport = (
         View: renderer.View,
         StyleSheet: renderer.StyleSheet,
       },
-      tableRef.current?.getFilteredRows() ?? [],
+      rows,
       exportColumns,
     );
     const blob = await renderer.pdf(pdfDocument).toBlob();
     const today = new Date().toISOString().split("T")[0];
     downloadBlob(blob, `ordenes-compra-${today}.pdf`);
-  }, [tableRef]);
+  }, []);
 
   useEffect(() => {
     const handleExport = () => {
