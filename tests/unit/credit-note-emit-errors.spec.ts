@@ -59,7 +59,7 @@ test.describe("readStampFailedNota", () => {
 });
 
 test.describe("parseNotaCreditoError con nota_credito", () => {
-  test("lee nota_credito solo junto a cfdi y no lo suma a los mensajes", () => {
+  test("lee nota_credito junto a cfdi y no lo suma a los mensajes", () => {
     const parsed = parseNotaCreditoError(stampFailure({ id: "15", estatus: "Cancelada" }));
     expect(parsed.stampFailed).toBe(true);
     expect(parsed.notaCredito).toEqual({ id: 15, estatus: "Cancelada" });
