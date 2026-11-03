@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
@@ -24,9 +24,7 @@ class InvoiceListActionError extends Error {}
 
 // ─── Contexto para el menú de fila ────────────────────────────────────────────
 // Callbacks y "en vuelo" llegan al menú por contexto, NO por la factoría de
-// columnas: así empezar o terminar una acción solo re-renderiza las celdas,
-// sin remontarlas ni cerrar el menú abierto de otra fila. Mismo patrón que
-// `useSupplierInvoiceRowActions`.
+// columnas (ver `createRowActionsContext`).
 
 export interface InvoiceRowActionsContextValue {
   onDownloadPdf: (id: number) => void;
@@ -39,19 +37,12 @@ export interface InvoiceRowActionsContextValue {
   onCancel: (invoice: InvoiceListRow) => void;
 }
 
-const InvoiceRowActionsContext = createContext<InvoiceRowActionsContextValue | null>(null);
+const { Provider, useRowActionsContext } =
+  createRowActionsContext<InvoiceRowActionsContextValue>("FolioCell (facturas)", "InvoiceList");
 
-export const InvoiceRowActionsProvider = InvoiceRowActionsContext.Provider;
-
-export function useInvoiceRowActionsContext(): InvoiceRowActionsContextValue {
-  const value = useContext(InvoiceRowActionsContext);
-  if (!value) {
-    throw new Error(
-      "Las acciones de fila de facturas deben renderizarse dentro de un InvoiceRowActionsProvider (ver InvoiceList).",
-    );
-  }
-  return value;
-}
+/** Callbacks del menú de fila (`InvoiceColumns`); ver `createRowActionsContext`. */
+export const InvoiceRowActionsProvider = Provider;
+export const useInvoiceRowActionsContext = useRowActionsContext;
 
 /**
  * "Descargar PDF" y "Enviar correo" desde el menú de las filas del listado.

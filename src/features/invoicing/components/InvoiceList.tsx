@@ -7,7 +7,8 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
-import { invoiceColumns } from "./InvoiceColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { getInvoiceColumns, getInvoiceHeaderFilters } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { canCancelInvoice } from "../utils/invoiceCancellation";
@@ -19,8 +20,9 @@ import {
 } from "../hooks/useInvoiceListDocumentActions";
 
 export const InvoiceList = () => {
+  // Sin las eliminadas (baja lógica): su página de detalle conserva el aviso.
   const { invoices, hasLoaded, isLoading, isError, error, refetch, isFetching } =
-    useInvoices();
+    useInvoices({ excludeDeleted: true });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -48,15 +50,18 @@ export const InvoiceList = () => {
     onCancel: setInvoiceToCancel,
   };
 
+  // Las opciones de los filtros de encabezado se arman con el listado completo.
+  const columns = withHeaderFilters(getInvoiceColumns(), invoices, getInvoiceHeaderFilters());
+
   return (
     <InvoiceRowActionsProvider value={rowActions}>
     <div className="h-full flex flex-col min-h-0 space-y-6">
       <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
-        columns={invoiceColumns}
+        columns={columns}
         data={invoices}
         baseDataCount={invoices.length}
-        searchPlaceholder="Buscar por folio, cliente o estatus..."
+        searchPlaceholder="Buscar por folio, cliente, estatus o CFDI..."
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
