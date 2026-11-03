@@ -34,7 +34,10 @@ export const getSupplierPurchaseOrderHistory = async (
   return response.data;
 };
 
-/** Indicadores por proveedor (EC-436). Sin parámetros: el backend los ignora. */
+/**
+ * Indicadores por proveedor (EC-436). Sin parámetros: todo el histórico. El
+ * backend responde 400 a un parámetro que no soporta, no lo ignora.
+ */
 export const getSupplierKpis = async (): Promise<SupplierKpis> => {
   const response = await v1_api.get<SupplierKpis>("/terceros/proveedores/kpis/");
   return response.data;
