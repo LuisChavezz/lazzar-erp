@@ -97,16 +97,54 @@ test.describe("getCreateFailureOutcome (alta)", () => {
     expect(outcome?.message).toContain("#15 quedó cancelada");
   });
 
-  test("timbrado sin confirmar con la nota Emitida cierra el formulario (pending)", () => {
+  test("nota Emitida con el timbrado pendiente al releerla cierra el formulario y sugiere conciliar", () => {
     const outcome = getCreateFailureOutcome(
       parseNotaCreditoError(
         httpError(400, { cfdi: [SIN_CONFIRMAR], nota_credito: { id: "16", estatus: "Emitida" } }),
       ),
       emitida,
+      "pending",
     );
-    expect(outcome?.kind).toBe("pending");
+    expect(outcome?.kind).toBe("emitted");
     expect(outcome?.message).toContain("pendiente de confirmación");
-    expect(outcome?.message).not.toContain("Timbrar");
+    expect(outcome?.message).toContain("Conciliar con Facturama");
+    expect(outcome?.message).not.toContain("administrador");
+  });
+
+  // EC-709: el timbrado salió y falló la póliza; el `400` trae `nota_credito`
+  // `Emitida` SIN `cfdi`, y al releerla no hay pendiente.
+  const polizaFailure = () =>
+    parseNotaCreditoError(
+      httpError(400, {
+        poliza: ["No hay cuenta contable configurada."],
+        nota_credito: { id: 16, estatus: "Emitida" },
+      }),
+    );
+
+  test("el fallo de la póliza sin cfdi también reporta la nota Emitida", () => {
+    const parsed = polizaFailure();
+    expect(parsed.stampFailed).toBeUndefined();
+    expect(parsed.notaCredito).toEqual({ id: 16, estatus: "Emitida" });
+    expect(parsed.messages).toEqual(["No hay cuenta contable configurada."]);
+  });
+
+  test("nota Emitida sin timbrado pendiente al releerla no se presenta como pendiente", () => {
+    const outcome = getCreateFailureOutcome(polizaFailure(), emitida, "not-pending");
+    expect(outcome?.kind).toBe("emitted");
+    expect(outcome?.message).toContain("NC-9 se emitió");
+    expect(outcome?.message).toContain("No hay cuenta contable configurada.");
+    expect(outcome?.message).not.toContain("pendiente");
+    expect(outcome?.message).not.toContain("Conciliar");
+  });
+
+  test("si no se pudo releer la nota no afirma si quedó pendiente", () => {
+    const outcome = getCreateFailureOutcome(polizaFailure(), emitida);
+    expect(outcome?.kind).toBe("emitted");
+    expect(outcome?.message).toContain("no se pudo consultar");
+  });
+
+  test("un borrador con nota_credito Emitida no es un alta emitida", () => {
+    expect(getCreateFailureOutcome(polizaFailure(), { estatus: "Borrador", folio: null })).toBeNull();
   });
 
   test("cfdi sin nota_credito queda bloqueado (locked)", () => {
