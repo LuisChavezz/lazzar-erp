@@ -1,0 +1,40 @@
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+import { getSupplierKpiDetail } from "../services/actions";
+import type { SupplierKpiDetail, SupplierKpiFactor } from "../interfaces/supplier-kpi-detail.interface";
+import { supplierKpisQueryKey } from "./useSupplierKpis";
+
+/**
+ * Registros detrás de un factor del scorecard de un proveedor
+ * (`GET /terceros/proveedores/{id}/kpis-detalle/?factor=…`).
+ *
+ * La llave cuelga de `supplierKpisQueryKey` (y así de `["purchase-orders"]`):
+ * las mismas mutaciones que refrescan las tarjetas refrescan este detalle.
+ * Una consulta por proveedor y factor: el diálogo solo monta la pestaña activa,
+ * así que solo se pide el factor que se ve.
+ *
+ * **Un 404 o un 403 es DEFINITIVO** (`isDefinitiveError`): el proveedor se dio
+ * de baja o dejó de ser visible desde que cargó el ranking. No se reintenta ni
+ * conserva lo ya cargado; la vista dice "no disponible". Cualquier otro fallo
+ * sin datos es `isInitialError`; un refetch fallido con datos los conserva y
+ * avisa por toast.
+ */
+export const useSupplierKpiDetail = <F extends SupplierKpiFactor>(supplierId: number, factor: F) => {
+  const { data, isLoading, isFetching, isInitialError, isDefinitiveError, refetch } = useGuardedQuery<
+    SupplierKpiDetail<F>
+  >(
+    {
+      queryKey: [...supplierKpisQueryKey, "detail", supplierId, factor],
+      queryFn: () => getSupplierKpiDetail(supplierId, factor),
+      retry: retryUnlessClientError,
+    },
+    {
+      toastId: `supplier-kpi-detail-refetch-error-${factor}`,
+      errorMessage: "No se pudo actualizar el detalle del proveedor. Mostrando datos anteriores.",
+      isDefinitiveError: isNotFoundOrForbiddenError,
+    },
+  );
+
+  return { data, isLoading, isFetching, isInitialError, isNotFound: isDefinitiveError, refetch };
+};
