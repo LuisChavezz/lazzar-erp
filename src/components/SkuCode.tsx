@@ -53,3 +53,22 @@ export function SkuCode({ linea }: { linea: LineCodes }) {
     </span>
   );
 }
+
+/**
+ * SKU en línea para textos corridos (renglón de la OC en captura): hereda la
+ * letra del texto que lo rodea y solo intercala "/" sin espacios
+ * ("1000/503/3XG"), para no ensanchar el renglón.
+ */
+export function SkuInline({ sku }: { sku: string }) {
+  const parts = splitSku(sku);
+  if (!parts) return <>{sku}</>;
+  return (
+    <span title={`SKU ${sku}`}>
+      {parts.modelo}
+      <span className="font-normal text-slate-400 dark:text-slate-500">/</span>
+      {parts.color}
+      <span className="font-normal text-slate-400 dark:text-slate-500">/</span>
+      {parts.talla}
+    </span>
+  );
+}
