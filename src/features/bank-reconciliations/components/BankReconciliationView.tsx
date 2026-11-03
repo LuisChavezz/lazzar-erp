@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -27,9 +29,14 @@ import {
   diferenciaEnCentavos,
 } from "../schemas/bank-reconciliation.schema";
 import type {
+  ConciliacionBancaria,
   ConciliacionEnDetalle,
   PrepararConciliacionResponse,
 } from "../interfaces/bank-reconciliation.interface";
+import {
+  CONCILIACION_WRITE_PERMISSION_REASON,
+  canWriteConciliaciones,
+} from "../utils/conciliacionPermissions";
 import {
   conciliacionEnDetalleDesdePreparar,
   llaveDeFiltro,
@@ -78,6 +85,9 @@ const conciliacionStaleMessages = (accion: string) => ({
 });
 
 export function BankReconciliationView() {
+  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`canWriteConciliaciones`).
+  const { data: session } = useSession();
+  const canWrite = canWriteConciliaciones(session?.user);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -316,13 +326,31 @@ export function BankReconciliationView() {
   const handlePrepared = (resultado: PrepararConciliacionResponse) =>
     openPinnedDetail(conciliacionEnDetalleDesdePreparar(resultado));
 
+  // El menú ya los muestra deshabilitados sin permiso; se repite aquí por si la
+  // sesión cambió entre pintarlo y seleccionar.
+  const handleCerrar = (conciliacion: ConciliacionBancaria) => {
+    if (!canWrite) {
+      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
+      return;
+    }
+    setCerrarTargetId(conciliacion.id);
+  };
+  const handleCancelar = (conciliacion: ConciliacionBancaria) => {
+    if (!canWrite) {
+      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
+      return;
+    }
+    setCancelarTargetId(conciliacion.id);
+  };
+
   return (
     <ConciliacionRowActionsProvider
       value={{
         onViewDetail: (conciliacion) => setOpenDetailId(conciliacion.id),
-        onCerrar: (conciliacion) => setCerrarTargetId(conciliacion.id),
-        onCancelar: (conciliacion) => setCancelarTargetId(conciliacion.id),
+        onCerrar: handleCerrar,
+        onCancelar: handleCancelar,
         busyIds,
+        canWrite,
       }}
     >
     <div className="h-full flex flex-col min-h-0 space-y-4">
@@ -402,46 +430,49 @@ export function BankReconciliationView() {
         // Cambiar de cuenta o de periodo vuelve a la página 1 sin perder orden,
         // búsqueda ni columnas.
         paginationResetKey={`${cuentaId ?? ""}-${desde}-${hasta}-${conciliaciones.length}`}
+        // Sin permiso de escritura no se prepara: el botón se oculta.
         actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Preparar Conciliación"
-                subtitle="Cuenta, periodo y saldo del estado de cuenta"
-                statusColor="indigo"
-                icon={ConciliacionIcon}
-              />
-            }
-            open={isFormOpen}
-            onOpenChange={(open) => {
-              if (!open && prepararSubmitLockRef.current) return;
-              setIsFormOpen(open);
-            }}
-            maxWidth={DIALOG_WIDTH_FORM}
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                onClick={() => setIsFormOpen(true)}
-                className="hover:scale-105 active:scale-95"
-              >
-                + Preparar conciliación
-              </Button>
-            }
-          >
-            {/* Se remonta al reabrir: los valores iniciales se leen de cero sin
-                un `form.reset` en efecto. */}
-            {isFormOpen && (
-              <PrepararConciliacionForm
-                onPrepared={handlePrepared}
-                // La conciliación cerrada ya viene completa de la consulta de
-                // solapamiento: se fija ese objeto en vez de ir a buscar la fila
-                // a un listado que todavía muestra otro periodo.
-                onOpenExisting={openPinnedDetail}
-                submitLockRef={prepararSubmitLockRef}
-              />
-            )}
-          </MainDialog>
+          canWrite ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Preparar Conciliación"
+                  subtitle="Cuenta, periodo y saldo del estado de cuenta"
+                  statusColor="indigo"
+                  icon={ConciliacionIcon}
+                />
+              }
+              open={isFormOpen}
+              onOpenChange={(open) => {
+                if (!open && prepararSubmitLockRef.current) return;
+                setIsFormOpen(open);
+              }}
+              maxWidth={DIALOG_WIDTH_FORM}
+              trigger={
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={() => setIsFormOpen(true)}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Preparar conciliación
+                </Button>
+              }
+            >
+              {/* Se remonta al reabrir: los valores iniciales se leen de cero sin
+                  un `form.reset` en efecto. */}
+              {isFormOpen && (
+                <PrepararConciliacionForm
+                  onPrepared={handlePrepared}
+                  // La conciliación cerrada ya viene completa de la consulta de
+                  // solapamiento: se fija ese objeto en vez de ir a buscar la fila
+                  // a un listado que todavía muestra otro periodo.
+                  onOpenExisting={openPinnedDetail}
+                  submitLockRef={prepararSubmitLockRef}
+                />
+              )}
+            </MainDialog>
+          ) : undefined
         }
       />
       </div>

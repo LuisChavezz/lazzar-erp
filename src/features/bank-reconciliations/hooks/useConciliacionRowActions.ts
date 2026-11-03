@@ -12,6 +12,12 @@ export interface ConciliacionRowActionsContextValue {
   onCancelar: (conciliacion: ConciliacionBancaria) => void;
   /** Ids con un cierre o una cancelación en vuelo (`usePendingConciliacionIds`). */
   busyIds: number[];
+  /**
+   * ¿El usuario puede escribir conciliaciones? (`canWriteConciliaciones`). Sin
+   * el permiso, "Cerrar conciliación" y "Cancelar conciliación" se muestran
+   * deshabilitados con su motivo.
+   */
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } =
