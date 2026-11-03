@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -25,14 +26,13 @@ const buildCsv = (suppliers: Supplier[], columns: DataTableVisibleColumn<Supplie
  * `useQuoteCsvExport`: refs para no reconstruir el listener en cada render,
  * disparo por `CustomEvent` (`suppliers:exportCSV`).
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de
+ * la tabla (búsqueda y orden), página por página desde el backend
+ * (`fetchAllRows` de `useServerTable`): la tabla en modo servidor solo tiene
+ * la página visible.
  */
 export const useSupplierCsvExport = (
-  tableRef: RefObject<DataTableHandle<Supplier> | null>,
+  getRows: () => Promise<Supplier[]>,
   columns: DataTableVisibleColumn<Supplier>[],
 ) => {
   const columnsRef = useRef(columns);
@@ -41,20 +41,26 @@ export const useSupplierCsvExport = (
     columnsRef.current = columns;
   }, [columns]);
 
-  const exportToCsv = useCallback(() => {
+  const runExport = useServerExport(getRows, "suppliers-export-csv");
+
+  const exportToCsv = useCallback(async () => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
-    // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
-    const blob = new Blob([`﻿${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+    await runExport(async (rows) => {
+      const csvContent = buildCsv(rows, exportColumns);
+      // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
+      const blob = new Blob([`﻿${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `proveedores-${today}.csv`);
     });
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `proveedores-${today}.csv`);
-  }, [tableRef]);
+  }, [runExport]);
 
   useEffect(() => {
-    const handleExport = () => exportToCsv();
+    const handleExport = () => {
+      void exportToCsv();
+    };
     document.addEventListener("suppliers:exportCSV", handleExport);
     return () => {
       document.removeEventListener("suppliers:exportCSV", handleExport);

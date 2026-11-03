@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { setCostCenterActivo } from "../services/actions";
 import type { CostCenter } from "../interfaces/cost-center.interface";
 import { COST_CENTERS_KEY_ROOT, COST_CENTERS_LIST_KEY } from "./useCostCenters";
@@ -92,10 +93,11 @@ export const useToggleCostCenterActivo = () => {
       const fallback = variables.activo
         ? "Error al reactivar el centro de costo"
         : "Error al dar de baja el centro de costo";
+      // Un 403 (sin `E-FIN-FACTURAS`) también trae su motivo en `detail`.
       const drfMessage =
         error instanceof AxiosError && error.response?.status === 400
           ? firstDrfFieldMessage(error)
-          : undefined;
+          : forbiddenDetailMessage(error);
       toast.error(drfMessage ?? fallback);
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el

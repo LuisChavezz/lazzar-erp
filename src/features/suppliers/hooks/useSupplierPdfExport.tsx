@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -206,14 +207,13 @@ const createSuppliersPdfDocument = (
  * importa dinámicamente (solo al exportar) y el disparo llega por un
  * `CustomEvent` propio (`suppliers:exportPDF`).
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de
+ * la tabla (búsqueda y orden), página por página desde el backend
+ * (`fetchAllRows` de `useServerTable`): la tabla en modo servidor solo tiene
+ * la página visible.
  */
 export const useSupplierPdfExport = (
-  tableRef: RefObject<DataTableHandle<Supplier> | null>,
+  getRows: () => Promise<Supplier[]>,
   columns: DataTableVisibleColumn<Supplier>[],
 ) => {
   const columnsRef = useRef(columns);
@@ -222,25 +222,29 @@ export const useSupplierPdfExport = (
     columnsRef.current = columns;
   }, [columns]);
 
+  const runExport = useServerExport(getRows, "suppliers-export-pdf");
+
   const exportToPdf = useCallback(async () => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createSuppliersPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      tableRef.current?.getFilteredRows() ?? [],
-      exportColumns,
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `proveedores-${today}.pdf`);
-  }, [tableRef]);
+    await runExport(async (rows) => {
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createSuppliersPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        rows,
+        exportColumns,
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `proveedores-${today}.pdf`);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

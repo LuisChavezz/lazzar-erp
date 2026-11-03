@@ -1,6 +1,7 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import type { FinanceWriteState } from "@/src/utils/financeWrite";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { Poliza } from "../interfaces/poliza.interface";
 import { contabilizarPolizaMutationKey } from "./useContabilizarPoliza";
@@ -14,6 +15,12 @@ export interface PolizaRowActionsContextValue {
   onDelete: (poliza: Poliza) => void;
   /** Ids con alguna acción de fila en vuelo (`usePendingPolizaIds`, calculado en la lista). */
   busyIds: number[];
+  /**
+   * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el
+   * permiso, "Contabilizar", "Cancelar póliza" y "Eliminar borrador" se muestran
+   * deshabilitados con su motivo.
+   */
+  write: FinanceWriteState;
 }
 
 const { Provider, useRowActionsContext } = createRowActionsContext<PolizaRowActionsContextValue>(

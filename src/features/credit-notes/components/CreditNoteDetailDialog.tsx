@@ -1,20 +1,24 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { ErrorState } from "@/src/components/ErrorState";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import {
   EmptyLines,
   InfoField,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
-import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon, SyncIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
+import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
@@ -28,14 +32,15 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
-  canEmitCreditNote,
-  CREDIT_NOTE_STAMP_PENDING_HINT,
+  creditNoteStampPendingHint,
+  canReconcileCreditNoteCfdi,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
   isCreditNoteStampPending,
   type RelatedInvoiceStampState,
 } from "../utils/creditNoteStamping";
 import { CreditNoteStampDialog } from "./CreditNoteStampDialog";
+import { CreditNoteCfdiReconcileDialog } from "./CreditNoteCfdiReconcileDialog";
 
 interface CreditNoteDetailDialogProps {
   /**
@@ -62,20 +67,19 @@ interface CreditNoteDetailDialogProps {
   isEmitting?: boolean;
 }
 
-/** Título del diálogo: icono, rótulo y folio (o `#id`). */
+/**
+ * Título del diálogo: insignia del ícono, rótulo y folio (o `#id`), con
+ * `DialogHeader` como el resto de los detalles de Finanzas. Lo comparten el
+ * detalle del listado y el detalle por id.
+ */
 export function CreditNoteDialogTitle({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2.5 pr-8">
-      <NotaCreditoIcon className="w-5 h-5 text-violet-500 shrink-0" />
-      <div>
-        <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-          Detalle de la Nota de Crédito
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-          {label}
-        </p>
-      </div>
-    </div>
+    <DialogHeader
+      title="Detalle de la Nota de Crédito"
+      subtitle={label}
+      statusColor="violet"
+      icon={NotaCreditoIcon}
+    />
   );
 }
 
@@ -127,11 +131,16 @@ function CreditNoteEmitPanel({
   onEmitir: () => void;
   isEmitting: boolean;
 }) {
-  const { data: session } = useSession();
-  const canEmit = canEmitCreditNote(session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  // Mientras la sesión carga se bloquea SIN motivo (`financeWriteBlock`).
+  const emitBlock = financeWriteBlock(
+    getFinanceWriteState(session?.user, sessionStatus),
+    CREDIT_NOTE_EMIT_PERMISSION_REASON,
+  );
+  const canEmit = !emitBlock.disabled;
   const rejectionId = `credit-note-${notaId}-emit-rejection`;
   const blockedNoteId = `credit-note-${notaId}-emit-blocked`;
-  const describedBy = [rejection ? rejectionId : null, canEmit ? null : blockedNoteId]
+  const describedBy = [rejection ? rejectionId : null, emitBlock.description ? blockedNoteId : null]
     .filter(Boolean)
     .join(" ");
   return (
@@ -152,9 +161,9 @@ function CreditNoteEmitPanel({
           <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
           {isEmitting ? "Emitiendo..." : rejection ? "Volver a emitir" : "Emitir nota"}
         </Button>
-        {!canEmit && (
+        {emitBlock.description && (
           <p id={blockedNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs text-right">
-            {CREDIT_NOTE_EMIT_PERMISSION_REASON}
+            {emitBlock.description}
           </p>
         )}
       </div>
@@ -173,6 +182,8 @@ function CreditNoteEmitPanel({
  *   pendiente (`canStampCreditNote`). Bloqueado y descrito por su nota mientras
  *   la factura relacionada carga, no se pudo consultar, no está timbrada o está
  *   cancelada (`getCreditNoteStampBlockReason`).
+ * - "Conciliar con Facturama" solo con `E-FIN-FACTURAS` y el timbrado
+ *   pendiente (`canReconcileCreditNoteCfdi`, EC-709), en el lugar de "Timbrar".
  */
 function CreditNoteCfdiSection({
   nota,
@@ -185,6 +196,7 @@ function CreditNoteCfdiSection({
   const canStamp = canStampCreditNote(nota, session?.user);
   const stampBlockReason = canStamp ? getCreditNoteStampBlockReason(invoice) : null;
   const pending = !nota.cfdi_uuid && isCreditNoteStampPending(nota);
+  const canReconcile = canReconcileCreditNoteCfdi(nota, session?.user);
   const stampNoteId = `credit-note-${nota.id}-stamp-note`;
 
   // Sin timbre, sin pendiente y sin acción no hay nada que mostrar, pero la
@@ -218,7 +230,7 @@ function CreditNoteCfdiSection({
               {CREDIT_NOTE_STAMP_PENDING_LABEL}
             </span>
             <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
-              {CREDIT_NOTE_STAMP_PENDING_HINT}
+              {creditNoteStampPendingHint(canReconcile)}
             </span>
           </InfoField>
         ) : (
@@ -235,6 +247,12 @@ function CreditNoteCfdiSection({
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <CreditNoteStampDialog nota={nota} {...dialog} />}
+        />
+        <DocumentActionWithDialog
+          offered={canReconcile}
+          icon={SyncIcon}
+          label="Conciliar con Facturama"
+          renderDialog={(dialog) => <CreditNoteCfdiReconcileDialog nota={nota} {...dialog} />}
         />
         {stampBlockReason && (
           <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs sm:text-right">
@@ -311,38 +329,31 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
 
   return (
       <div className="space-y-5">
-        {/* Cabecera: sale del renglón que el listado ya cargó. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Cliente">{textOrDash(nota.cliente_nombre)}</InfoField>
-          <InfoField label="Factura">
-            {textOrDash(nota.factura_folio) === "—"
-              ? `#${nota.factura}`
-              : nota.factura_folio}
-          </InfoField>
-          <InfoField label="Fecha de emisión">
+        {/* Cabecera en mosaicos: sale del renglón que el listado ya cargó. */}
+        <InfoTileGrid>
+          <InfoTile label="Estatus">
+            <StatusBadge status={nota.estatus} config={NOTA_CREDITO_ESTATUS_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Cliente">{textOrDash(nota.cliente_nombre)}</InfoTile>
+          <InfoTile label="Factura">
+            {textOrDash(nota.factura_folio) === "—" ? `#${nota.factura}` : nota.factura_folio}
+          </InfoTile>
+          <InfoTile label="Fecha de emisión">
             {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". La fija el
                 backend (`auto_now_add`) y es nullable en el modelo. */}
-            {nota.fecha_emision
-              ? formatShortDate(nota.fecha_emision, { timeZone: "UTC" })
-              : "—"}
-          </InfoField>
-          <InfoField label="Motivo">{textOrDash(nota.motivo)}</InfoField>
-          <InfoField label="Subtotal">
+            {nota.fecha_emision ? formatShortDate(nota.fecha_emision, { timeZone: "UTC" }) : "—"}
+          </InfoTile>
+          <InfoTile label="Motivo">{textOrDash(nota.motivo)}</InfoTile>
+          <InfoTile label="Subtotal">
             <span className="tabular-nums">{money(nota.subtotal)}</span>
-          </InfoField>
-          <InfoField label="Impuestos">
+          </InfoTile>
+          <InfoTile label="Impuestos">
             <span className="tabular-nums">{money(nota.impuestos)}</span>
-          </InfoField>
-          <InfoField label="Total acreditado">
-            <span className="tabular-nums font-semibold">{money(nota.total)}</span>
-          </InfoField>
-          <InfoField label="Estatus">
-            <StatusBadge
-              status={nota.estatus}
-              config={NOTA_CREDITO_ESTATUS_CONFIG}
-            />
-          </InfoField>
-        </div>
+          </InfoTile>
+          <InfoTile label="Total acreditado">
+            <span className="tabular-nums">{money(nota.total)}</span>
+          </InfoTile>
+        </InfoTileGrid>
 
         <CreditNoteCfdiSection nota={nota} invoice={invoiceStampState} />
 

@@ -33,8 +33,9 @@ const ROW_FIELD_PATH_RE = /^programaciones\.(\d+)\./;
  *
  * Recibe el contexto YA CARGADO (`GET .../programar/`): el diálogo solo monta
  * el formulario con datos de esta apertura, así que los valores iniciales se
- * calculan una vez. El techo de piezas es `total_piezas` del backend
- * (muestras incluidas), el mismo con el que valida el PATCH.
+ * calculan una vez. El techo de piezas es `total_piezas` del backend (todas
+ * las tallas, muestras incluidas desde el backend #912), el mismo con el que
+ * valida el PATCH.
  */
 export function usePedidoProgramacionForm({
   contexto,

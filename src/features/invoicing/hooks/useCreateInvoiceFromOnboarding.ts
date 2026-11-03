@@ -64,6 +64,13 @@ export const parseCreateInvoiceError = (error: unknown): CreateInvoiceError => {
 };
 
 /**
+ * Llave de la mutación del alta: no es una llave de consulta. Permite saber de
+ * forma síncrona si hay un alta en vuelo (`queryClient.isMutating`), p. ej.
+ * para no dejar cerrar el asistente a media petición.
+ */
+export const createInvoiceFromOnboardingMutationKey = ["create-invoice-onboarding"] as const;
+
+/**
  * Crea una factura parcial (Borrador) desde el onboarding. Tras crearla se
  * refresca lo que cambia: el listado de facturas, lo pendiente por facturar de
  * ESE pedido, y el pedido (su detalle 360° lista sus documentos). Los detalles
@@ -75,6 +82,7 @@ export const useCreateInvoiceFromOnboarding = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: createInvoiceFromOnboardingMutationKey,
     mutationFn: (payload: InvoiceOnboardingPayload) =>
       createInvoiceFromOnboarding(payload),
     onSuccess: (invoice, payload) => {

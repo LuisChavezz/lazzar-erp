@@ -86,15 +86,15 @@ export function useCreateCobroForm({
 }: { onSuccess?: () => void; draft?: CobroDraftSeed; submitLockRef: RefObject<boolean> }) {
   const isEdit = draft !== undefined;
   // ── Catálogos ─────────────────────────────────────────────────────────────
-  // Ninguno de los dos hooks está migrado a `useGuardedQuery`: exponen el
-  // `isError` crudo, así que aquí se reduce a "falló la PRIMERA carga". Un
-  // refetch fallido con datos en caché no debe tirar el formulario y las líneas
-  // ya capturadas.
+  // Solo cuenta "falló la PRIMERA carga": un refetch fallido con datos en caché
+  // no debe tirar el formulario y las líneas ya capturadas. Clientes ya lo
+  // expone así (`isInitialError`, `useGuardedQuery`); cuentas bancarias todavía
+  // expone el `isError` crudo y se reduce aquí.
   const {
     customers,
     hasLoaded: hasLoadedCustomers,
     isLoading: isLoadingCustomers,
-    isError: isErrorCustomers,
+    isInitialError: isInitialErrorCustomers,
     refetch: refetchCustomers,
   } = useAccountingCustomers();
 
@@ -123,7 +123,7 @@ export function useCreateCobroForm({
 
   const isLoadingFormData = isLoadingCustomers || isLoadingBankAccounts;
   const isErrorFormData =
-    (isErrorCustomers && !hasLoadedCustomers) || (isErrorBankAccounts && !hasLoadedBankAccounts);
+    isInitialErrorCustomers || (isErrorBankAccounts && !hasLoadedBankAccounts);
 
   // `clientes-contabilidad/` ya devuelve solo activos; se filtra de nuevo por si acaso.
   const activeCustomers = customers.filter((customer) => customer.activo);

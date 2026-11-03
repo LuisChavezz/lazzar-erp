@@ -1,14 +1,11 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useState } from "react";
 import { getPurchaseOrderProgress, progressBarClass } from "../utils/purchaseOrderProgress";
-import { ColumnDef, Column, createColumnHelper } from "@tanstack/react-table";
-import { DropdownMenu } from "@radix-ui/themes";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { DataTableModeContext } from "@/src/components/DataTableModeContext";
-import type { DataTableFilterOption } from "@/src/components/DataTable";
 import {
   CheckCircleIcon,
   CloseIcon,
@@ -17,21 +14,16 @@ import {
   DownloadIcon,
   EditIcon,
   EmailIcon,
-  FilterIcon,
   RouteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import {
-  matchesMonthFilter,
-  matchesRangeFilter,
-  type RangeFilterOption,
-} from "@/src/utils/columnFilterOptions";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
-import { useSendPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
+import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail";
+import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
 import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
   isPurchaseOrderAuthorizedOrComplete,
@@ -40,8 +32,10 @@ import {
   isPurchaseOrderUnconfirmed,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
-import { TIPO_COMPRA_OPTIONS, tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
+import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import { purchaseOrderDetailHref } from "../constants/purchaseOrderDetailOrigins";
+import { SupplierCatalogHeaderFilter } from "@/src/features/suppliers/components/SupplierCatalogHeaderFilter";
+import { PurchaseOrderFechaOcHeader, PurchaseOrderFolioHeader } from "./PurchaseOrderHeaderFilters";
 
 const columnHelper = createColumnHelper<PurchaseOrder>();
 
@@ -56,15 +50,16 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  * referencia van FUERA del botón, son indicadores, no parte de la acción).
  *
  * "Ver Detalles" es un enlace real (`href` del item) a la página de detalle.
- * Edición, cancelación y ruta crítica se DELEGAN a la vista (`onEdit` /
- * `onCancel` / `onCriticalPath`): sus destinos —tres diálogos de formulario—
- * deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
+ * Edición, cancelación, ruta crítica y correo se DELEGAN a la vista (`onEdit`
+ * / `onCancel` / `onCriticalPath`, y `onSendEmail` por
+ * `PurchaseOrderRowActionsProvider`): sus destinos —diálogos de formulario y
+ * la confirmación del correo— deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
  * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
  * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
- * Enviar correo y
- * Descargar PDF no abren nada — son `mutate(id)` directos.
+ * Descargar PDF no abre nada — es un `mutate(id)` directo. El "en curso" del
+ * correo se lee de la `MutationCache` (`usePurchaseOrderEmailStatus`).
  */
 const FolioCell = ({
   order,
@@ -77,11 +72,13 @@ const FolioCell = ({
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
+  const { onSendEmail } = usePurchaseOrderRowActionsContext();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
-  const { mutate: sendEmail, isPending: isSendingEmail } = useSendPurchaseOrderEmail();
+  const { isPreparingEmail, isSendingEmail } = usePurchaseOrderEmailStatus(order.id);
+  const isEmailBusy = isPreparingEmail || isSendingEmail;
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
   // Cómo se nombra la orden en el disparador, su `aria-label` y el texto de los
@@ -212,12 +209,17 @@ const FolioCell = ({
 
   if (canSendEmail) {
     menuItems.push({
-      label: isSendingEmail ? "Enviando..." : "Enviar correo",
+      label: isPreparingEmail
+        ? "Preparando..."
+        : isSendingEmail
+          ? "Enviando..."
+          : "Enviar correo",
       icon: EmailIcon,
-      onSelect: () => sendEmail(order.id),
+      // Prepara el correo y la vista pide confirmación; nada se envía antes.
+      onSelect: () => onSendEmail(order.id),
       // In-flight guard: evita doble envío o solaparse con la descarga.
-      // `keepOpenOnSelect` deja el menú abierto para ver el estado "Enviando...".
-      disabled: isSendingEmail || isDownloadingPdf,
+      // `keepOpenOnSelect` deja el menú abierto para ver "Preparando..."/"Enviando...".
+      disabled: isEmailBusy || isDownloadingPdf,
       keepOpenOnSelect: true,
     });
   }
@@ -234,7 +236,7 @@ const FolioCell = ({
     onSelect: () => downloadPdf(order.id),
     // In-flight guard: evita doble descarga o solaparse con el envío.
     // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
-    disabled: isDownloadingPdf || isSendingEmail,
+    disabled: isDownloadingPdf || isEmailBusy,
     keepOpenOnSelect: true,
   });
 
@@ -323,158 +325,34 @@ const FolioCell = ({
   );
 };
 
-// ── Filtro por columna (encabezado) ─────────────────────────────────────────
-
 /**
- * Encabezado de columna con su propio filtro (estilo hoja de cálculo): un
- * ícono de embudo junto al título abre un desplegable con los valores
- * distintos de la columna. Reemplaza el panel de filtros tipo "chips" que
- * vivía en la barra de herramientas (`filterConfig` de `DataTable`) — el
- * usuario lo pidió así por ser el patrón al que está acostumbrado.
+ * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`), para la
+ * tabla en MODO SERVIDOR (`usePurchaseOrdersTable`): el backend filtra, busca,
+ * ordena y pagina, así que ninguna columna declara `filterFn`.
  *
- * Se apoya en el `columnFilters` NATIVO de TanStack, que `DataTable` ya deja
- * cableado (`state.columnFilters`, `onColumnFiltersChange`,
- * `getFilteredRowModel`) pero sin UI propia porque ninguno de sus 55+
- * consumidores lo usaba — así que esto vive enteramente en las columnas de
- * ESTA tabla, sin tocar el componente compartido. `e.stopPropagation()` en el
- * botón evita que el clic también dispare el `onClick` de ordenamiento que
- * `DataTable` pone en el `<th>` completo.
- */
-const ColumnFilterHeader = ({
-  label,
-  options,
-  column,
-}: {
-  label: string;
-  options: DataTableFilterOption[];
-  column: Column<PurchaseOrder, unknown>;
-}) => {
-  // Del contexto de la tabla y no de `column.getFilterValue()`, que no es
-  // reactivo (ver `DataTableModeContext`): sin esto el ícono no reflejaba el
-  // filtro recién puesto o quitado.
-  const tableMode = useContext(DataTableModeContext);
-  const activeValue =
-    tableMode.mode === "client" && tableMode.columnFilters !== undefined
-      ? (tableMode.columnFilters.find((filter) => filter.id === column.id)?.value as
-          | string
-          | undefined)
-      : (column.getFilterValue() as string | undefined);
-  const activeLabel = activeValue
-    ? options.find((opt) => opt.value === activeValue)?.label
-    : undefined;
-  // Etiqueta para el chip "Filtrado por" de `DataTable`.
-  const reportFilterValueLabel =
-    tableMode.mode === "client" ? tableMode.reportFilterValueLabel : undefined;
-  useEffect(() => {
-    reportFilterValueLabel?.(column.id, activeLabel);
-  }, [reportFilterValueLabel, column.id, activeLabel]);
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span>{label}</span>
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger>
-          <button
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={
-              activeLabel ? `Filtrar por ${label} (filtro activo: ${activeLabel})` : `Filtrar por ${label}`
-            }
-            title={activeLabel ? `Filtro activo: ${activeLabel}` : `Filtrar por ${label}`}
-            // Lo lee el `<th>` de `DataTable` para resaltar la columna filtrada.
-            data-filter-active={activeValue ? "" : undefined}
-            className={`p-1 rounded cursor-pointer transition-colors ${
-              activeValue
-                ? "text-white bg-sky-500"
-                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-            }`}
-          >
-            <FilterIcon className="w-3 h-3" aria-hidden="true" />
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content
-          align="start"
-          onClick={(e) => e.stopPropagation()}
-          className="bg-white! dark:bg-zinc-900! min-w-40 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-1 normal-case tracking-normal font-normal"
-        >
-          <DropdownMenu.Item
-            onSelect={() => column.setFilterValue(undefined)}
-            className={`flex items-center px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ${
-              activeValue
-                ? "text-slate-600 dark:text-slate-300"
-                : "text-sky-600 dark:text-sky-400"
-            }`}
-          >
-            Todos
-          </DropdownMenu.Item>
-          {options.map((opt) => (
-            <DropdownMenu.Item
-              key={opt.value}
-              onSelect={() => column.setFilterValue(opt.value)}
-              className={`flex items-center px-3 py-2 text-xs rounded-lg cursor-pointer! outline-none data-highlighted:bg-slate-50 dark:data-highlighted:bg-white/5 data-highlighted:text-sky-600 dark:data-highlighted:text-sky-400 transition-colors ${
-                opt.value === activeValue
-                  ? "text-sky-600 dark:text-sky-400"
-                  : "text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              {opt.label}
-            </DropdownMenu.Item>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
-    </div>
-  );
-};
-
-/** Filtro EXACTO (no substring) por un campo del `row.original` — el valor de la
- * columna en pantalla (folio+referencia, nombre del proveedor…) no es el que
- * se compara; el desplegable filtra por el campo crudo que indique `pick`. */
-const exactFilterFn =
-  <K extends keyof PurchaseOrder>(pick: (row: PurchaseOrder) => PurchaseOrder[K]) =>
-  (row: { original: PurchaseOrder }, _columnId: string, filterValue: string) => {
-    if (!filterValue) return true;
-    return String(pick(row.original)) === filterValue;
-  };
-
-/** Rangos del filtro de Cantidad (piezas solicitadas en la orden). */
-const CANTIDAD_RANGES: RangeFilterOption[] = [
-  { value: "1-10", label: "1 a 10 piezas", max: 11 },
-  { value: "11-100", label: "11 a 100 piezas", min: 11, max: 101 },
-  { value: "101-1000", label: "101 a 1,000 piezas", min: 101, max: 1001 },
-  { value: "mas-1000", label: "Más de 1,000 piezas", min: 1001 },
-];
-
-const CANTIDAD_FILTER_OPTIONS: DataTableFilterOption[] = CANTIDAD_RANGES.map(
-  ({ value, label }) => ({ value, label }),
-);
-
-/**
- * Columnas del listado de órdenes de compra (`GET /compras/ordenes/`).
+ * - `meta.serverSort` = el campo de `ordering` del backend (lista blanca en
+ *   `purchaseOrdersTable`); `meta.serverFilter` = la clave del filtro que
+ *   controla el encabezado de esa columna.
+ * - Los encabezados con filtro son componentes (`PurchaseOrderHeaderFilters`,
+ *   `SupplierCatalogHeaderFilter`): sus opciones son fijas o salen de un
+ *   catálogo, nunca de las filas, porque la tabla solo tiene una página.
+ * - Tipo de compra, cantidad y vencimiento ordenan pero no filtran: el
+ *   endpoint no acepta esos filtros.
  *
- * Fábrica —no un arreglo estático— porque la acción "Ver Detalles" navega a la
- * página de detalle, y "Editar"/"Cancelar" abren diálogos que viven en
- * `PurchaseOrderView`. Mismo patrón `getXColumns(callbacks)` que
- * `CorteMangaOrderColumns` (navegación).
+ * Fábrica —no un arreglo estático— porque "Editar"/"Cancelar"/"Ruta crítica"
+ * abren diálogos que viven en `PurchaseOrderView`. Mismo patrón
+ * `getXColumns(callbacks)` que `CorteMangaOrderColumns`.
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
- * de acciones de la fila, ver abajo), Proveedor, Tipo de compra, Fecha de
- * generación, Cantidad,
- * Vencimiento, Progreso OC (surtido vs. solicitado, ver `ProgresoCell`). Los
- * importes (Total/Subtotal/Impuestos) y "Entrega estimada" salieron del
- * listado a propósito — siguen disponibles en el detalle de la orden.
- *
- * `statusOptions`/`supplierOptions` alimentan los filtros de encabezado de
- * O.C. (por estatus) y Proveedor — construidos en `PurchaseOrdersFilter.tsx`
- * a partir del listado completo, porque esta fábrica no lo recibe.
+ * de acciones de la fila), Proveedor, Tipo de compra, Fecha de generación,
+ * Cantidad, Vencimiento, Progreso OC. Los importes (Total/Subtotal/Impuestos)
+ * y "Entrega estimada" salieron del listado a propósito — siguen disponibles
+ * en el detalle de la orden.
  */
 export const getColumns = (
   onEdit: (order: PurchaseOrder) => void,
   onCancel: (order: PurchaseOrder) => void,
   onCriticalPath: (order: PurchaseOrder) => void,
-  statusOptions: DataTableFilterOption[],
-  supplierOptions: DataTableFilterOption[],
-  fechaOcOptions: DataTableFilterOption[],
-  vencimientoOptions: DataTableFilterOption[],
 ) => {
   const columns = [
     // ── O.C. ───────────────────────────────────────────────────────────────
@@ -485,15 +363,9 @@ export const getColumns = (
     //    y `sr-only` — el color solo no debe ser la única señal;
     //  - la referencia va en una mini-pill gris junto al folio, y se omite por
     //    completo cuando la orden no trae una (no hay "—" decorativo);
-    //  - el `accessorFn` concatena lo que el disparador muestra —el folio, o
-    //    `#id` SOLO cuando aún no hay folio (el id es interno: añadirlo a
-    //    todas las filas haría que buscar `129` trajera también la #1290)— y
-    //    la referencia, con `?? ""`: siempre es un string, nunca `null`, por la
-    //    trampa de búsqueda global con campos nullable (ver `DataTable`). El
-    //    `cell` pinta su propio layout a partir de `row.original`;
-    //  - el filtro de encabezado filtra por ESTATUS (`exactFilterFn`, sobre
-    //    `row.original.estatus`), no por el valor del `accessorFn` — es el
-    //    campo que vive visualmente en esta columna (el punto de color);
+    //  - el filtro de encabezado es por ESTATUS (`?estatus=`), el campo que
+    //    vive visualmente en esta columna (el punto de color); ordena por
+    //    `folio`;
     //  - `enableHiding: false`: ocultarla desde "Mostrar/Ocultar" escondería
     //    también el menú de acciones; nunca lleva `hideOnMobile` por lo mismo;
     //  - `size: 260`: punto (8) + folio mono `OC-1-178` con chevron (~90) +
@@ -507,18 +379,13 @@ export const getColumns = (
       (row) => `${row.folio ?? `#${row.id}`} ${row.referencia ?? ""}`.trim(),
       {
         id: "folio",
-        // `meta.label` es lo que lee `DataTable` (la exportación CSV/PDF) para
-        // nombrar la columna: su `header` es una función (el filtro de
-        // encabezado), no un string, así que sin esto caería al `id` crudo
-        // ("Folio") en vez de "O.C.".
-        meta: { label: "O.C." },
+        // `meta.label` nombra la columna en "Mostrar/Ocultar" y en la
+        // exportación: su `header` es un componente, no un string.
+        meta: { label: "O.C.", serverSort: "folio", serverFilter: "estatus" },
         enableHiding: false,
         size: 260,
         minSize: 150,
-        header: ({ column }) => (
-          <ColumnFilterHeader label="O.C." options={statusOptions} column={column} />
-        ),
-        filterFn: exactFilterFn((row) => row.estatus),
+        header: PurchaseOrderFolioHeader,
         cell: ({ row }) => (
           <FolioCell
             order={row.original}
@@ -529,22 +396,14 @@ export const getColumns = (
         ),
       },
     ),
-    // El filtro de encabezado filtra por `proveedor` (el id, no el nombre):
-    // dos proveedores homónimos no deben mezclarse, y es el mismo criterio
-    // que ya usaba `buildSupplierOptions` para deduplicar sus opciones.
-    // El filtro de encabezado filtra por `proveedor` (el id, no el nombre):
-    // dos proveedores homónimos no deben mezclarse, y es el mismo criterio
-    // que ya usaba `buildSupplierOptions` para deduplicar sus opciones.
+    // El filtro de encabezado es por `proveedor` (el id, no el nombre): dos
+    // proveedores homónimos no deben mezclarse.
     // Sin `text-sm` explícito a propósito: esa clase (14px) le ganaba al
     // tamaño ambiente de la tabla en modo `density="compact"` (13px, ver
-    // `bodyTextCls` en `DataTable`), y era la única columna que lo hacía —
-    // se veía más grande que el resto sin motivo.
+    // `bodyTextCls` en `DataTable`).
     columnHelper.accessor("proveedor_nombre", {
-      meta: { label: "Proveedor" },
-      header: ({ column }) => (
-        <ColumnFilterHeader label="Proveedor" options={supplierOptions} column={column} />
-      ),
-      filterFn: exactFilterFn((row) => row.proveedor),
+      meta: { label: "Proveedor", serverSort: "proveedor__nombre", serverFilter: "proveedor" },
+      header: ({ column }) => <SupplierCatalogHeaderFilter column={column} title="Proveedor" />,
       cell: (info) => (
         <span className="text-slate-700 dark:text-slate-200">
           {textOrDash(info.getValue())}
@@ -552,39 +411,22 @@ export const getColumns = (
       ),
     }),
     // ── Tipo de compra ─────────────────────────────────────────────────────
-    // Se muestra la etiqueta del backend (`tipo_compra_label`) y es también lo
-    // que lee la búsqueda global; el filtro de encabezado compara el código
-    // crudo (`tipo_compra`), igual que estatus y proveedor.
+    // Se muestra la etiqueta del backend (`tipo_compra_label`).
     columnHelper.accessor(
       (row) => tipoCompraLabel(row.tipo_compra, row.tipo_compra_label),
       {
         id: "tipo_compra",
-        meta: { label: "Tipo de compra" },
-        header: ({ column }) => (
-          <ColumnFilterHeader
-            label="Tipo de compra"
-            // Fijas (todos los valores del backend), no deducidas de las
-            // filas como estatus/proveedor: el filtro se ofrece igual aunque
-            // hoy todas las órdenes sean de un solo tipo.
-            options={TIPO_COMPRA_OPTIONS}
-            column={column}
-          />
-        ),
-        filterFn: exactFilterFn((row) => row.tipo_compra),
+        header: "Tipo de compra",
+        meta: { label: "Tipo de compra", serverSort: "tipo_compra" },
         cell: (info) => (
           <span className="text-slate-700 dark:text-slate-200">{info.getValue()}</span>
         ),
       },
     ),
-    // Fechas y cantidad se filtran por MES y por RANGO (ver
-    // `columnFilterOptions.ts`); las opciones de mes salen del listado.
+    // Rango libre de fechas sobre `fecha_oc` (`?fecha_desde=&fecha_hasta=`).
     columnHelper.accessor("fecha_oc", {
-      meta: { label: "Fecha de generación" },
-      header: ({ column }) => (
-        <ColumnFilterHeader label="Fecha de generación" options={fechaOcOptions} column={column} />
-      ),
-      filterFn: (row, _columnId, filterValue) =>
-        matchesMonthFilter(row.original.fecha_oc, filterValue),
+      meta: { label: "Fecha de generación", serverSort: "fecha_oc" },
+      header: PurchaseOrderFechaOcHeader,
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {formatLocalDate(info.getValue())}
@@ -594,12 +436,8 @@ export const getColumns = (
     // `total_piezas` SÍ llega siempre (no es un campo financiero filtrado por
     // rol, ver `PurchaseOrderPageContent`).
     columnHelper.accessor("total_piezas", {
-      header: ({ column }) => (
-        <ColumnFilterHeader label="Cantidad" options={CANTIDAD_FILTER_OPTIONS} column={column} />
-      ),
-      meta: { align: "right", label: "Cantidad" },
-      filterFn: (row, _columnId, filterValue) =>
-        matchesRangeFilter(CANTIDAD_RANGES, row.original.total_piezas, filterValue),
+      header: "Cantidad",
+      meta: { align: "right", label: "Cantidad", serverSort: "total_piezas" },
       cell: (info) => (
         <span className="text-slate-700 dark:text-slate-200 tabular-nums">
           {formatQuantityValue(info.getValue())}
@@ -607,17 +445,11 @@ export const getColumns = (
       ),
     }),
     // `fecha_vencimiento` SÍ llega siempre en el listado (mismo campo que ya
-    // consume `PurchaseOrderPageContent` en el detalle), así que es un
-    // `accessorFn` normal —`?? ""` por el mismo motivo de búsqueda global que
-    // el resto de fechas nullable de esta tabla.
+    // consume `PurchaseOrderPageContent` en el detalle).
     columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
       id: "fecha_vencimiento",
-      meta: { label: "Vencimiento" },
-      header: ({ column }) => (
-        <ColumnFilterHeader label="Vencimiento" options={vencimientoOptions} column={column} />
-      ),
-      filterFn: (row, _columnId, filterValue) =>
-        matchesMonthFilter(row.original.fecha_vencimiento, filterValue),
+      header: "Vencimiento",
+      meta: { label: "Vencimiento", serverSort: "fecha_vencimiento" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 tabular-nums">
           {/* `||` y no `??`: el valor ausente ya llega como "", no como null. */}

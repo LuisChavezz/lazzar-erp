@@ -10,6 +10,8 @@ import {
 } from "../utils/quoteExportTotals";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
+import toast from "react-hot-toast";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -367,23 +369,30 @@ export const useQuotePdfExport = (
   }, [columns]);
 
   const exportToPdf = useCallback(async () => {
-    const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
-    if (exportColumns.length === 0) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createQuotesPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      tableRef.current?.getFilteredRows() ?? [],
-      exportColumns
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `quotes-${today}.pdf`);
+    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
+    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
+    // rechazada sin aviso para el usuario.
+    try {
+      const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
+      if (exportColumns.length === 0) return;
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createQuotesPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        tableRef.current?.getFilteredRows() ?? [],
+        exportColumns
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `quotes-${today}.pdf`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
+    }
   }, [tableRef]);
 
   useEffect(() => {

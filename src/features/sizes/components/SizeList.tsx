@@ -4,10 +4,12 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
 import { getColumns } from "./SizeColumns";
 import { MainDialog } from "../../../components/MainDialog";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useDeleteSize } from "../hooks/useDeleteSize";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Size } from "../interfaces/size.interface";
-import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import SizeForm from "./SizeForm";
 import { useSizes } from "../hooks/useSizes";
 
@@ -15,13 +17,9 @@ export default function SizeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const { sizes, isLoading, isInitialError, error } = useSizes();
-  const { data: session } = useSession();
-  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
-  // chequeo manual que vivía aquí. El alta usa su propio código
-  // (C-CONFIGURACION), no el de edición.
-  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
-  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
-  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
+  // Catálogo global: el backend (`SoloSuperusuarioEscribe`) solo deja escribir
+  // al superusuario; un admin de empresa recibiría 403 (EC-714).
+  const canWrite = useIsSuperuser();
 
   const handleEdit = useCallback(
     (size: Size) => {
@@ -36,39 +34,63 @@ export default function SizeList() {
     setIsDialogOpen(true);
   };
 
+  // La confirmación de baja vive aquí y no en la celda: las celdas se
+  // desmontan al ordenar, paginar o filtrar.
+  const [sizeToDelete, setSizeToDelete] = useState<Size | null>(null);
+  const isDeleteOpen = sizeToDelete !== null;
+  const deleteSession = useDialogSession(isDeleteOpen, sizeToDelete);
+  const { mutate: deleteSize } = useDeleteSize();
+
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit, canDelete }),
-    [handleEdit, canEdit, canDelete]
+    () => getColumns(handleEdit, setSizeToDelete, { canEdit: canWrite, canDelete: canWrite }),
+    [handleEdit, canWrite]
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={sizes}
-      searchPlaceholder="Buscar talla..."
-      isLoading={isLoading}
-      isError={isInitialError}
-      errorTitle="Error al cargar tallas"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando tallas"
-      actionButton={
-        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
-        // sin pasar por el trigger), así que se monta también con solo permiso
-        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
-        canCreate || canEdit ? (
-          <MainDialog
-            title={
-              <DialogHeader
-                title={selectedSize ? "Editar Talla" : "Alta de Talla"}
-                subtitle={selectedSize ? "Edición de registro" : "Registro Nuevo"}
-                statusColor="emerald"
-              />
-            }
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            maxWidth="1000px"
-            trigger={
-              canCreate ? (
+    <>
+      {canWrite && (
+        <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={(open) => {
+            if (!open) setSizeToDelete(null);
+          }}
+          // El DELETE es una baja lógica (`activo=False`): la talla deja de
+          // listarse, pero las variantes que ya la usan la conservan.
+          title="Dar de baja talla"
+          description={`La talla "${
+            deleteSession.snapshot?.nombre ?? ""
+          }" dejará de aparecer en los catálogos. Las variantes que ya la usan la conservan. No se puede reactivar desde aquí.`}
+          confirmText="Dar de baja"
+          onConfirm={() => {
+            if (deleteSession.snapshot) deleteSize(deleteSession.snapshot.id);
+            setSizeToDelete(null);
+          }}
+          confirmColor="red"
+        />
+      )}
+      <DataTable
+        columns={columns}
+        data={sizes}
+        searchPlaceholder="Buscar talla..."
+        isLoading={isLoading}
+        isError={isInitialError}
+        errorTitle="Error al cargar tallas"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando tallas"
+        actionButton={
+          canWrite ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title={selectedSize ? "Editar Talla" : "Alta de Talla"}
+                  subtitle={selectedSize ? "Edición de registro" : "Registro Nuevo"}
+                  statusColor="emerald"
+                />
+              }
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              maxWidth="1000px"
+              trigger={
                 <Button
                   variant="primary"
                   rounded="full"
@@ -77,16 +99,16 @@ export default function SizeList() {
                 >
                   + Nueva Talla
                 </Button>
-              ) : undefined
-            }
-          >
-            <SizeForm
-              onSuccess={() => setIsDialogOpen(false)}
-              sizeToEdit={selectedSize}
-            />
-          </MainDialog>
-        ) : null
-      }
-    />
+              }
+            >
+              <SizeForm
+                onSuccess={() => setIsDialogOpen(false)}
+                sizeToEdit={selectedSize}
+              />
+            </MainDialog>
+          ) : null
+        }
+      />
+    </>
   );
 }

@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cerrarConciliacion } from "../services/actions";
 import { CONCILIACIONES_KEY_ROOT } from "./useConciliaciones";
+import { invalidateMovimientoQueries } from "./invalidateMovimientoQueries";
 
 const FALLBACK = "Error al cerrar la conciliación";
 
@@ -40,8 +41,11 @@ export const useCerrarConciliacion = () => {
       toast.error(firstDrfFieldMessage(error) ?? FALLBACK);
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el
-    // refetch termine: así el listado nunca muestra un estado intermedio.
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: CONCILIACIONES_KEY_ROOT }),
+    // refetch termine: así el listado nunca muestra un estado intermedio. Los
+    // movimientos (que pasan a `Conciliado`) se refrescan sin bloquearla.
+    onSettled: () => {
+      void invalidateMovimientoQueries(queryClient);
+      return queryClient.invalidateQueries({ queryKey: CONCILIACIONES_KEY_ROOT });
+    },
   });
 };

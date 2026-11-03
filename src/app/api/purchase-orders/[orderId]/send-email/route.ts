@@ -2,7 +2,7 @@
  * API Route de renderizado de correo de orden de compra — responsabilidad
  * única: generar el HTML/texto del correo.
  *
- * El cliente (useSendPurchaseOrderEmail) obtiene la orden via v1_api (con
+ * El cliente (usePreparePurchaseOrderEmail) obtiene la orden via v1_api (con
  * cookies y refresh interceptor), la envía en el body de este endpoint, y aquí
  * solo se ejecuta el renderizado server-side de PurchaseOrderEmail con
  * react-email.

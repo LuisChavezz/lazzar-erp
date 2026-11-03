@@ -25,13 +25,13 @@ export const useDeleteProductType = () => {
         queryClient.setQueryData(["product-types"], context.previousProductTypes);
       }
       console.error(err);
-      toast.error("Error al eliminar el tipo de producto");
+      toast.error("Error al dar de baja el tipo de producto");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["product-types"] });
     },
     onSuccess: () => {
-      toast.success("Tipo de producto eliminado correctamente");
+      toast.success("Tipo de producto dado de baja");
     },
   });
 };

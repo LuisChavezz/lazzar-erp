@@ -36,6 +36,7 @@ import {
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
 import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
+import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
 import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
 
 export { isOrderConfirmed };
@@ -126,17 +127,11 @@ const EMPTY_FILTER_OPTIONS: OperationsOrderFilterOptions = {
  * pedido no tiene programación. Se compara contra `piezas_programables`, no
  * contra `piezas`: es el total que el backend permite programar.
  */
-export const getPiezasProgramadas = (order: Pick<PedidoListItem, "programacion_conf">) => {
-  const programaciones = getProgramacionesValidas(order.programacion_conf);
-  if (!programaciones.length) return null;
-  return programaciones.reduce((acc, p) => acc + (Number(p.cantidad) || 0), 0);
+export const getPiezasProgramadas = (order: PedidoListItem) => {
+  const { programado } = getPedidoProgramadoProgress(order);
+  return programado > 0 ? programado : null;
 };
 
-/**
- * "X de Y" con una barra delgada: verde al completar, azul en curso. Sin
- * `piezas_programables` (backend anterior) solo pinta lo programado; un pedido
- * sin piezas programables no tiene nada que programar.
- */
 /**
  * Piezas surtidas por WMS contra las piezas del pedido: "X de Y" con barra
  * (verde al completar). "—" mientras el backend no mande `piezas_surtidas`.
@@ -182,22 +177,21 @@ const SurtidoCell = ({ order }: { order: PedidoListItem }) => {
   );
 };
 
+/**
+ * "X de Y" con una barra delgada: verde al completar, azul en curso. Sin
+ * `piezas_programables` (backend anterior) solo pinta lo programado; un pedido
+ * sin piezas programables no tiene nada que programar.
+ */
 const ProgramadoCell = ({ order }: { order: PedidoListItem }) => {
-  const programadas = getPiezasProgramadas(order) ?? 0;
-  const parcialidades = getProgramacionesValidas(order.programacion_conf).length;
-  const total = order.piezas_programables;
+  // Mismo cálculo que el resto del módulo (`getPedidoProgramadoProgress`):
+  // lee `parcialidades` o `programacion_conf` y no pinta nada en cancelados.
+  const { programado: programadas, total, visible } = getPedidoProgramadoProgress(order);
+  const parcialidades = getProgramacionesValidas(
+    order.parcialidades !== undefined ? { programaciones: order.parcialidades } : order.programacion_conf,
+  ).length;
 
-  if (total === 0 && programadas === 0) {
+  if (!visible) {
     return <span className="text-sm text-slate-400 dark:text-slate-600">—</span>;
-  }
-  if (total === undefined) {
-    return programadas === 0 ? (
-      <span className="text-sm text-slate-400 dark:text-slate-600">—</span>
-    ) : (
-      <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
-        {programadas.toLocaleString("es-MX")}
-      </span>
-    );
   }
 
   const pct = total > 0 ? Math.min(100, Math.round((programadas / total) * 100)) : 0;

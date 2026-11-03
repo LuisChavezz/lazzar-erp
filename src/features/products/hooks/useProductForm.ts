@@ -14,6 +14,7 @@ import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasur
 import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useProductTypes } from "../../product-types/hooks/useProductTypes";
+import { getProductTypeLabelById } from "../../product-types/utils/productTypeLabel";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
 import { useUpdateProduct } from "./useUpdateProduct";
 import { Product, ProductUpdate } from "../interfaces/product.interface";
@@ -77,9 +78,13 @@ export function useProductForm({ onSuccess, product }: UseProductFormParams) {
     error: satUnitCodesError,
   } = useSatUnitCodes();
   // Solo para MOSTRAR el nombre del tipo (la respuesta del producto trae el
-  // PK, no el `codigo`). Por eso no entra en `catalogs`: si falla o viene
+  // PK, no el `nombre`). Por eso no entra en `catalogs`: si falla o viene
   // vacío, la edición sigue y el tipo se muestra degradado.
-  const { productTypes, isLoading: isLoadingProductTypes } = useProductTypes();
+  const {
+    productTypes,
+    isLoading: isLoadingProductTypes,
+    isInitialError: isProductTypesError,
+  } = useProductTypes();
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -100,12 +105,11 @@ export function useProductForm({ onSuccess, product }: UseProductFormParams) {
   const productSchema = createProductEditSchema(requiredFields);
 
   // `tipo` es de solo lectura: se fija en el alta rápida y no viaja en el PUT.
-  // Sin tipo, "—"; sin catálogo (cargando, error o id desconocido), el PK.
-  const productTypeLabel =
-    product.tipo === null
-      ? "—"
-      : (productTypes.find((type) => type.id === product.tipo)?.codigo ??
-        (isLoadingProductTypes ? "Cargando..." : `#${product.tipo}`));
+  // Un tipo ausente del catálogo (activos, en caché) se muestra como no disponible.
+  const productTypeLabel = getProductTypeLabelById(product.tipo, productTypes, {
+    isLoading: isLoadingProductTypes,
+    isError: isProductTypesError,
+  });
 
   // Normaliza valores de edición para evitar IDs inexistentes en catálogos no cargados.
   const editValues = useMemo<ProductFormValues>(() => {

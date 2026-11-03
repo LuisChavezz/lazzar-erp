@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -10,6 +11,8 @@ import { ReceiptIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -19,6 +22,7 @@ import { PaymentDetailDialog } from "./PaymentDetailDialog";
 import PaymentForm from "./PaymentForm";
 import { usePagos } from "../hooks/usePagos";
 import { useCancelPago } from "../hooks/useCancelPago";
+import type { Pago } from "../interfaces/payment.interface";
 import {
   PaymentRowActionsProvider,
   usePendingPaymentIds,
@@ -35,6 +39,12 @@ const PAYMENT_STALE_MESSAGES = {
 };
 
 export default function PaymentList() {
+  // Registrar y cancelar pagos exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
+  // "+ Nuevo pago" se oculta y "Cancelar pago" se muestra deshabilitado con su
+  // motivo (`FINANCE_WRITE_PERMISSION_REASON`).
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
   // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de cada
   // llamada; los callbacks por llamada de `mutate` solo corren para la última.
@@ -108,6 +118,13 @@ export default function PaymentList() {
   const cancelTargetLabel = cancelTargetId !== null ? `#${cancelTargetId}` : "";
   const isCancelTargetBusy = isBusy(cancelTargetId);
 
+  // El menú ya lo muestra deshabilitado sin el permiso; se repite aquí por si la
+  // sesión cambió entre pintarlo y seleccionar.
+  const handleCancel = (pago: Pago) => {
+    if (!guardFinanceWrite(write, FINANCE_WRITE_PERMISSION_REASON)) return;
+    setCancelTargetId(pago.id);
+  };
+
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nuevo pago"— sigue disponible durante la carga y ante un error.
@@ -115,8 +132,9 @@ export default function PaymentList() {
     <PaymentRowActionsProvider
       value={{
         onViewDetail: (pago) => setOpenDetailId(pago.id),
-        onCancel: (pago) => setCancelTargetId(pago.id),
+        onCancel: handleCancel,
         busyIds,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -140,33 +158,36 @@ export default function PaymentList() {
             // Un alta nueva aparece tras invalidar; sin esto, quien esté parado en la
             // página 2 no vería el pago que acaba de registrar.
             paginationResetKey={pagos.length}
+            // Sin permiso de escritura no hay alta: el botón se oculta.
             actionButton={
-              <MainDialog
-                title={
-                  <DialogHeader
-                    title="Registrar Pago"
-                    subtitle="Aplicación contra cuentas por pagar"
-                    statusColor="emerald"
-                    icon={ReceiptIcon}
-                  />
-                }
-                open={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
-                trigger={
-                  <Button
-                    variant="primary"
-                    rounded="full"
-                    className="hover:scale-105 active:scale-95"
-                  >
-                    + Nuevo pago
-                  </Button>
-                }
-              >
-                {/* Se monta solo mientras el diálogo está abierto: así los catálogos
-                    del formulario se piden bajo demanda y cada alta arranca limpia. */}
-                {isFormOpen && <PaymentForm onSuccess={() => setIsFormOpen(false)} />}
-              </MainDialog>
+              canWrite ? (
+                <MainDialog
+                  title={
+                    <DialogHeader
+                      title="Registrar Pago"
+                      subtitle="Aplicación contra cuentas por pagar"
+                      statusColor="emerald"
+                      icon={ReceiptIcon}
+                    />
+                  }
+                  open={isFormOpen}
+                  onOpenChange={setIsFormOpen}
+                  maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
+                  trigger={
+                    <Button
+                      variant="primary"
+                      rounded="full"
+                      className="hover:scale-105 active:scale-95"
+                    >
+                      + Nuevo pago
+                    </Button>
+                  }
+                >
+                  {/* Se monta solo mientras el diálogo está abierto: así los catálogos
+                      del formulario se piden bajo demanda y cada alta arranca limpia. */}
+                  {isFormOpen && <PaymentForm onSuccess={() => setIsFormOpen(false)} />}
+                </MainDialog>
+              ) : undefined
             }
           />
         </div>

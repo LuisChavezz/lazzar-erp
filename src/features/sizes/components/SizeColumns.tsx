@@ -1,28 +1,28 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Size } from "../interfaces/size.interface";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { useDeleteSize } from "../hooks/useDeleteSize";
-
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { useState } from "react";
 
 const columnHelper = createColumnHelper<Size>();
 
+/**
+ * Sin estado propio: la confirmación de baja y el diálogo de edición viven en
+ * `SizeList`, porque las celdas se desmontan al ordenar, paginar o filtrar (y
+ * con ellas un diálogo abierto).
+ */
 const ActionsCell = ({
   row,
   onEdit,
+  onDelete,
   canEdit,
   canDelete,
 }: {
   row: Row<Size>;
   onEdit: (size: Size) => void;
+  onDelete: (size: Size) => void;
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const { mutate: deleteSize, isPending } = useDeleteSize();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
   const menuItems: ActionMenuItem[] = [];
   if (canEdit) {
     menuItems.push({
@@ -33,36 +33,22 @@ const ActionsCell = ({
   }
   if (canDelete) {
     menuItems.push({
-      label: "Cancelar",
+      label: "Dar de baja",
       icon: DeleteIcon,
-      onSelect: () => setIsDeleteOpen(true),
-      disabled: isPending,
+      onSelect: () => onDelete(row.original),
     });
   }
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
-      {canDelete && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Eliminar Talla"
-          description="¿Estás seguro de que deseas eliminar esta talla? Esta acción no se puede deshacer."
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          onConfirm={() => {
-            deleteSize(row.original.id);
-            setIsDeleteOpen(false);
-          }}
-          confirmColor="red"
-        />
-      )}
     </div>
   );
 };
 
 export const getColumns = (
   onEdit: (size: Size) => void,
+  onDelete: (size: Size) => void,
   permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
   const columns = [
@@ -86,6 +72,7 @@ export const getColumns = (
           <ActionsCell
             row={row}
             onEdit={onEdit}
+            onDelete={onDelete}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />

@@ -85,6 +85,21 @@ export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
   (error.response?.status === 404 || error.response?.status === 403);
 
 /**
+ * Motivo de un `403` de DRF (`{"detail": "..."}`), o `undefined` si el error no
+ * es un `403` o no trae mensaje. Para escrituras que caen a un texto fijo: desde
+ * EC-711 el backend responde `403` sin `E-FIN-FACTURAS` con un `detail` que dice
+ * qué falta, y un "Error al registrar…" genérico lo escondía.
+ *
+ * Existe aparte de `drfActionErrorMessage` porque ese también remapea 400, 404
+ * y 409: usarlo en los catálogos de Finanzas cambiaría cómo muestran sus errores
+ * de campo. Este solo mira el `403`; el resto conserva su manejo.
+ */
+export const forbiddenDetailMessage = (error: unknown): string | undefined =>
+  error instanceof AxiosError && error.response?.status === 403
+    ? firstDrfFieldMessage(error)
+    : undefined;
+
+/**
  * ¿El backend RECHAZÓ la acción por una regla de negocio (400, 403 o 409)?
  * Son los mismos estados en los que `drfActionErrorMessage` muestra el mensaje
  * del backend: reintentar igual no sirve, así que un diálogo de acción puede

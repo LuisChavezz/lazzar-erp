@@ -1,6 +1,8 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import {
@@ -37,6 +39,9 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
   const callbacks = useSupplierInvoiceRowActionsContext();
   const uploading = callbacks.uploadingIds.includes(factura.id);
   const downloading = callbacks.downloadingIds.includes(factura.id);
+  // Sin permiso de escritura las escrituras se muestran deshabilitadas con su
+  // motivo (convención de los flujos de Finanzas). Descargar es una lectura.
+  const writeBlock = financeWriteBlock(callbacks.write, FINANCE_WRITE_PERMISSION_REASON);
 
   const menuItems: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => callbacks.onViewDetail(factura.id) },
@@ -50,7 +55,8 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
           : "Adjuntar PDF",
       icon: UploadIcon,
       onSelect: () => callbacks.onAttachPdf(factura.id),
-      disabled: uploading,
+      disabled: uploading || writeBlock.disabled,
+      description: writeBlock.description,
     },
     {
       label: downloading ? "Generando documento..." : "Descargar OC + RC + factura",
@@ -71,6 +77,8 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
       label: "Editar",
       icon: EditIcon,
       onSelect: () => callbacks.onEdit(factura.id),
+      disabled: writeBlock.disabled,
+      description: writeBlock.description,
     });
 
     // Cuando algo impide registrar (sin partidas, total en cero o sin
@@ -83,12 +91,16 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
       label: bloqueo ? `Registrar (${bloqueo.etiqueta})` : "Registrar",
       icon: CheckCircleIcon,
       onSelect: () => callbacks.onRegistrar(factura.id),
+      disabled: writeBlock.disabled,
+      description: writeBlock.description,
     });
 
     menuItems.push({
       label: "Cancelar factura",
       icon: BanIcon,
       onSelect: () => callbacks.onCancel(factura.id),
+      disabled: writeBlock.disabled,
+      description: writeBlock.description,
     });
   }
 

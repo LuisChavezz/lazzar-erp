@@ -1,6 +1,8 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon } from "@/src/components/Icons";
@@ -29,33 +31,41 @@ export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
  * llegan por contexto (`ConciliacionRowActionsProvider`).
  */
 function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
-  const { onViewDetail, onCerrar, onCancelar, busyIds } = useConciliacionRowActionsContext();
+  const { onViewDetail, onCerrar, onCancelar, busyIds, write } =
+    useConciliacionRowActionsContext();
   // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
   const busy = busyIds.includes(conciliacion.id);
+  // Sin permiso de escritura las acciones se muestran deshabilitadas con su
+  // motivo (convención de los flujos de Finanzas); manda sobre el del cuadre.
+  const writeBlock = financeWriteBlock(write, CONCILIACION_WRITE_PERMISSION_REASON);
   const items: ActionMenuItem[] = [];
 
-  // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
-  // terminales y quedan de solo consulta — cancelar una cerrada no revertiría
-  // los movimientos que ya marcó como `Conciliado`.
+  // Solo un `Borrador` se cierra.
   if (conciliacion.estatus === "Borrador") {
     const cuadra = conciliacionCuadra(
       conciliacion.saldo_estado_cuenta,
       conciliacion.saldo_libros,
     );
     items.push({
-      label: cuadra ? "Cerrar conciliación" : "Cerrar conciliación (no cuadra)",
+      label: writeBlock.disabled || cuadra ? "Cerrar conciliación" : "Cerrar conciliación (no cuadra)",
       icon: CheckCircleIcon,
       onSelect: () => onCerrar(conciliacion),
       // El backend rechaza el cierre descuadrado; la acción se ofrece
       // deshabilitada en vez de esconderla, para que se vea que existe y por qué
       // no está disponible todavía.
-      disabled: busy || !cuadra,
+      disabled: busy || writeBlock.disabled || !cuadra,
+      description: writeBlock.description,
     });
+  }
+  // Se cancela un `Borrador` o una `Cerrada`; cancelar una cerrada regresa sus
+  // movimientos a `Pendiente` (nucleo-erp #827). `Cancelada` es terminal.
+  if (conciliacion.estatus !== "Cancelada") {
     items.push({
       label: "Cancelar conciliación",
       icon: BanIcon,
       onSelect: () => onCancelar(conciliacion),
-      disabled: busy,
+      disabled: busy || writeBlock.disabled,
+      description: writeBlock.description,
     });
   }
 

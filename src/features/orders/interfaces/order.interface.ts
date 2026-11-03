@@ -5,7 +5,7 @@
 // acoplamiento real entre features (`OrderPickingFoliosSection` ya importa
 // además `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
 import type { PickingEstado } from "@/src/features/picking/interfaces/picking.interface";
-import type { PedidoProgramacionConf } from "./pedido-programacion.interface";
+import type { PedidoProgramacion, PedidoProgramacionConf } from "./pedido-programacion.interface";
 
 /**
  * Configuración JSON congelada de un servicio de la talla (`bordado_config`,
@@ -229,8 +229,9 @@ export interface Order {
 /**
  * Renglón del listado `GET /ventas/pedidos/` (`PedidoListSerializer`).
  *
- * El listado NO reusa `Order`: el backend expone un serializer minimalista de
- * 14 campos escalares (sin `detalles`/`tallas`/`servicios_extras`/`documentos`)
+ * El listado NO reusa `Order`: el backend expone un serializer minimalista,
+ * casi todo escalares más `programacion_conf`/`parcialidades` (sin
+ * `detalles`/`tallas`/`servicios_extras`/`documentos`)
  * para que la tabla no pague el shape completo del detalle — mismo precedente
  * que `TransferenciaListItem` vs `TransferenciaDetail`.
  *
@@ -272,16 +273,19 @@ export interface PedidoListItem {
   /** Piezas del pedido: todas las tallas, muestras incluidas; 0 sin tallas (EC-571). */
   piezas: number;
   /**
-   * Piezas que se pueden programar, muestras incluidas (mismo
-   * total que `total_piezas` del PATCH de `/programar/`). Opcional: un backend
-   * anterior no lo trae.
+   * Techo de la programación: el mismo `total_piezas` con el que valida
+   * `PATCH .../programar/`. Muestras incluidas (backend #912), así que hoy es
+   * igual a `piezas`; 0 sin tallas. Solo existe en el listado, y es opcional
+   * porque un backend anterior a #906 no lo manda (EC-737).
    */
   piezas_programables?: number;
-  /**
-   * Piezas de líneas de MUESTRA dentro de `piezas`. Opcional: pedido al
-   * backend; sin él no se marca nada.
-   */
+  /** Piezas de líneas de muestra; 0 si no tiene. Opcional: backend anterior a #913. */
   piezas_muestra?: number;
+  /**
+   * `programacion_conf.programaciones` en top-level (`[]` sin programar). Viene
+   * de un `JSONField`: se lee con `getProgramacionesValidas`.
+   */
+  parcialidades?: PedidoProgramacion[];
   /**
    * Piezas ya SURTIDAS por WMS (suma de `cantidad_surtida_picking` de todas
    * las tallas; lo mismo que `tracker_picking.total_surtido` del detalle).

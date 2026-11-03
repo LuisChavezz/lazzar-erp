@@ -1,28 +1,28 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { ProductType } from "../interfaces/product-type.interface";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { useDeleteProductType } from "../hooks/useDeleteProductType";
-
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { useState } from "react";
 
 const columnHelper = createColumnHelper<ProductType>();
 
+/**
+ * Sin estado propio: la confirmación de baja y el diálogo de edición viven en
+ * `ProductTypeList`, porque las celdas se desmontan al ordenar, paginar o
+ * filtrar (y con ellas un diálogo abierto).
+ */
 const ActionsCell = ({
   row,
   onEdit,
+  onDelete,
   canEdit,
   canDelete,
 }: {
   row: Row<ProductType>;
   onEdit: (productType: ProductType) => void;
+  onDelete: (productType: ProductType) => void;
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const { mutate: deleteProductType, isPending } = useDeleteProductType();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
   const menuItems: ActionMenuItem[] = [];
   if (canEdit) {
     menuItems.push({
@@ -33,36 +33,22 @@ const ActionsCell = ({
   }
   if (canDelete) {
     menuItems.push({
-      label: "Cancelar",
+      label: "Dar de baja",
       icon: DeleteIcon,
-      onSelect: () => setIsDeleteOpen(true),
-      disabled: isPending,
+      onSelect: () => onDelete(row.original),
     });
   }
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
-      {canDelete && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Eliminar Tipo de Producto"
-          description="¿Estás seguro de que deseas eliminar este tipo de producto? Esta acción no se puede deshacer."
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          onConfirm={() => {
-            deleteProductType(row.original.id);
-            setIsDeleteOpen(false);
-          }}
-          confirmColor="red"
-        />
-      )}
     </div>
   );
 };
 
 export const getColumns = (
   onEdit: (productType: ProductType) => void,
+  onDelete: (productType: ProductType) => void,
   permissions: { canEdit: boolean; canDelete: boolean }
 ) => {
   const columns = [
@@ -71,6 +57,14 @@ export const getColumns = (
       cell: (info) => (
         <span className="font-medium text-slate-700 dark:text-slate-200">
           {info.getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("nombre", {
+      header: "Nombre",
+      cell: (info) => (
+        <span className="text-slate-700 dark:text-slate-200">
+          {info.getValue().trim() || "—"}
         </span>
       ),
     }),
@@ -86,6 +80,7 @@ export const getColumns = (
           <ActionsCell
             row={row}
             onEdit={onEdit}
+            onDelete={onDelete}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />

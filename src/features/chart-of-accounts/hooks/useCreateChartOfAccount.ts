@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createChartOfAccount } from "../services/actions";
 import { CHART_OF_ACCOUNTS_KEY_ROOT } from "./useChartOfAccounts";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import {
   setChartOfAccountFieldErrors,
   type SetChartOfAccountError,
@@ -28,7 +29,7 @@ export const useCreateChartOfAccount = (setError?: SetChartOfAccountError) => {
     },
     onError: (error) => {
       setChartOfAccountFieldErrors(error, setError);
-      toast.error("Error al registrar la cuenta contable");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al registrar la cuenta contable");
     },
   });
 };

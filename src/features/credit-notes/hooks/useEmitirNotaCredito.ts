@@ -3,16 +3,21 @@ import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
 import {
   parseNotaCreditoError,
+  freshlyReadNotaId,
+  readEmittedNota,
   stampFailureDetail,
   type ParsedNotaCreditoError,
 } from "./useCreateNotaCredito";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
-  creditNoteEmitRejectedDetail,
-  creditNoteEmitRejectedMessage,
+  creditNoteEmitCancelledMessage,
+  creditNoteEmitRevertedDetail,
+  creditNoteEmitRevertedMessage,
+  creditNoteRevertCause,
   creditNoteStampFailedMessage,
-  creditNoteStampPendingMessage,
+  describeEmittedNotaCredito,
+  type EmittedNotaCreditoState,
   logUnexpectedError,
   STAMP_FAILED_TOAST_DURATION_MS,
   type StampFailedNota,
@@ -31,27 +36,51 @@ export interface EmitirNotaCreditoVariables {
 }
 
 /**
- * La nota que el `400` del timbrado reporta (`nota_credito`), solo si es ESTA
- * nota. Un `nota_credito` de otra nota, o sin él, no dice nada de esta.
+ * La nota que el `400` de la emisión reporta (`nota_credito`, con `cfdi` o con
+ * otra llave: nucleo-erp #848), solo si es ESTA nota. Un `nota_credito` de otra
+ * nota, o sin él, no dice nada de esta.
  */
 const reportedNota = (
   parsed: ParsedNotaCreditoError,
   id: number,
 ): StampFailedNota | undefined =>
-  parsed.stampFailed && parsed.notaCredito?.id === id ? parsed.notaCredito : undefined;
+  parsed.notaCredito?.id === id ? parsed.notaCredito : undefined;
 
 /**
- * Motivo para el detalle cuando Facturama rechazó la emisión y el backend
- * reporta ESTA nota de vuelta en `Borrador`, o `null` en cualquier otro caso.
- * Recibe el error ya normalizado: `onError` lo parsea una sola vez.
+ * Motivo para el detalle cuando el backend reporta ESTA nota de vuelta en
+ * `Borrador` —Facturama rechazó (`cfdi`), o otra petición la cambió antes del
+ * timbre (#751)—, o `null` en cualquier otro caso. Recibe el error ya
+ * normalizado: `onError` lo parsea una sola vez.
  */
 export const getEmitRejectedDraftDetail = (
   parsed: ParsedNotaCreditoError,
   id: number,
-): string | null =>
-  reportedNota(parsed, id)?.estatus === "Borrador"
-    ? creditNoteEmitRejectedDetail(stampFailureDetail(parsed))
-    : null;
+): string | null => {
+  if (reportedNota(parsed, id)?.estatus !== "Borrador") return null;
+  const detail = stampFailureDetail(parsed);
+  return creditNoteEmitRevertedDetail(creditNoteRevertCause(parsed.stampFailed), detail);
+};
+
+/**
+ * Aviso de una emisión fallida en la que el backend reporta ESTA nota con otro
+ * estatus que `Borrador` (ver `getEmitRejectedDraftDetail`), o `null` si no la
+ * reporta. Con `Emitida`, `actual` es la nota FRESCA (el `400` no trae
+ * `cfdi_uuid` ni `cfdi_pendiente`; `null` si no se pudo consultar): dice si
+ * quedó pendiente de confirmación o ya timbrada (`describeEmittedNotaCredito`).
+ * En ningún caso se reintenta: la nota ya no es un borrador.
+ */
+export const getEmitReportedNotaMessage = (
+  parsed: ParsedNotaCreditoError,
+  id: number,
+  label: string,
+  actual: EmittedNotaCreditoState | null,
+): string | null => {
+  const nota = reportedNota(parsed, id);
+  if (!nota || nota.estatus === "Borrador") return null;
+  const detail = stampFailureDetail(parsed);
+  if (nota.estatus === "Cancelada") return creditNoteEmitCancelledMessage(label, detail);
+  return describeEmittedNotaCredito("emision", label, detail, actual).message;
+};
 
 /**
  * Factura FRESCA de la nota antes de emitirla. Un `404` no es un fallo de la
@@ -104,13 +133,16 @@ const fetchFreshRelatedInvoice = async (
  * empresa de Facturama el backend la rechaza sin guardar nada.
  * El candado contra el doble envío es el de la fila en `CreditNoteList`.
  *
- * Un fallo del timbrado llega bajo `cfdi` y, cuando el backend sabe en qué
- * quedó la nota, con `nota_credito`:
- * - `Borrador`: Facturama rechazó; la nota volvió a borrador con el saldo
- *   intacto. Aviso breve; el motivo (`getEmitRejectedDraftDetail`) va a
- *   `onRejectedToDraft`, con el que `CreditNoteList` abre el detalle.
- * - `Emitida`: Facturama no confirmó; la nota quedó emitida con el timbrado
- *   pendiente (`creditNoteStampPendingMessage`).
+ * Un fallo después de guardar trae `nota_credito` —con `cfdi` o con otra llave
+ * (nucleo-erp #848)— y dice en qué quedó la nota:
+ * - `Borrador`: Facturama rechazó, u otra petición la cambió antes del timbre
+ *   (#751); la nota volvió a borrador con el saldo intacto. Aviso breve; el
+ *   motivo (`getEmitRejectedDraftDetail`) va a `onRejectedToDraft`, con el que
+ *   `CreditNoteList` abre el detalle.
+ * - `Emitida`: se lee la nota FRESCA (el `400` no trae su timbre) y se avisa si
+ *   quedó pendiente de confirmación o ya timbrada con un error posterior
+ *   (`getEmitReportedNotaMessage`).
+ * - `Cancelada`: otra operación la canceló; se avisa.
  * - Sin `nota_credito` (o de otra nota): no se afirma nada y se pide revisar el
  *   listado.
  *
@@ -119,6 +151,13 @@ const fetchFreshRelatedInvoice = async (
  * de la factura y puede marcarla `Pagada`. El refresco también vale ante un
  * error: un fallo del timbrado puede llegar con la nota ya escrita.
  */
+/**
+ * Llave de la emisión: con ella el listado lee de la `MutationCache` qué notas
+ * tienen una emisión en vuelo (`usePendingRecordIds`; las variables llevan el
+ * `id`), aunque la vista se haya remontado y su candado de fila esté vacío.
+ */
+export const emitirNotaCreditoMutationKey = ["emitir-nota-credito"] as const;
+
 export const useEmitirNotaCredito = ({
   onRejectedToDraft,
 }: {
@@ -128,6 +167,7 @@ export const useEmitirNotaCredito = ({
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: emitirNotaCreditoMutationKey,
     mutationFn: async ({ id }: EmitirNotaCreditoVariables) => {
       // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): otra
       // sesión pudo emitir o cancelar la nota, o borrar la factura, desde que se
@@ -144,34 +184,39 @@ export const useEmitirNotaCredito = ({
     onSuccess: () => {
       toast.success("Nota de crédito emitida correctamente");
     },
-    onError: (error, { id, label }) => {
+    // Asíncrono: si el backend reporta la nota `Emitida`, su timbre se lee de la
+    // nota FRESCA antes de avisar (`readEmittedNota`).
+    onError: async (error, { id, label }) => {
       logUnexpectedError(error);
       if (error instanceof PrecheckError) {
         toast.error(error.message);
         return;
       }
       const parsed = parseNotaCreditoError(error);
-      if (parsed.stampFailed) {
-        const nota = reportedNota(parsed, id);
-        const detail = stampFailureDetail(parsed);
-        // Rechazo con la nota de vuelta en borrador: aviso breve, el motivo
-        // completo queda en el detalle que abre el listado.
-        const rejectedDetail = getEmitRejectedDraftDetail(parsed, id);
-        if (rejectedDetail !== null) {
-          toast.error(creditNoteEmitRejectedMessage(label), {
-            id: `emitir-nota-credito-timbrado-${id}`,
-          });
-          onRejectedToDraft?.(id, rejectedDetail);
-          return;
-        }
-        // Pendiente, o sin saber en qué quedó: el toast es la ÚNICA explicación
-        // (el diálogo ya se cerró) y trae el motivo largo de Facturama, así que
-        // dura lo suficiente para leerlo, con id por nota para no apilarse.
+      const toastId = `emitir-nota-credito-timbrado-${id}`;
+      // La nota volvió a borrador (rechazo de Facturama o #751): aviso breve, el
+      // motivo completo queda en el detalle que abre el listado.
+      const rejectedDetail = getEmitRejectedDraftDetail(parsed, id);
+      if (rejectedDetail !== null) {
         toast.error(
-          nota?.estatus === "Emitida"
-            ? creditNoteStampPendingMessage(label, detail)
-            : creditNoteStampFailedMessage("emision", detail),
-          { id: `emitir-nota-credito-timbrado-${id}`, duration: STAMP_FAILED_TOAST_DURATION_MS },
+          creditNoteEmitRevertedMessage(creditNoteRevertCause(parsed.stampFailed), label),
+          { id: toastId },
+        );
+        onRejectedToDraft?.(id, rejectedDetail);
+        return;
+      }
+      // El backend reporta la nota con otro estatus (`Emitida`, `Cancelada`), o
+      // un `cfdi` sin decir en qué quedó: el toast es la ÚNICA explicación (el
+      // diálogo ya se cerró) y trae el motivo largo del backend, así que dura lo
+      // suficiente para leerlo, con id por nota para no apilarse.
+      const reported = reportedNota(parsed, id);
+      if (reported || parsed.stampFailed) {
+        const actual =
+          reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, id, error) : null;
+        toast.error(
+          getEmitReportedNotaMessage(parsed, id, label, actual) ??
+            creditNoteStampFailedMessage("emision", stampFailureDetail(parsed)),
+          { id: toastId, duration: STAMP_FAILED_TOAST_DURATION_MS },
         );
         return;
       }
@@ -188,6 +233,7 @@ export const useEmitirNotaCredito = ({
     // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
     // puede cerrarse aquí. También ante un error: emitir timbra, y un timeout del
     // PAC pudo dejar algo hecho (`invalidateCreditNoteQueries`).
-    onSettled: () => invalidateCreditNoteQueries(queryClient, "balances"),
+    onSettled: (_nota, error) =>
+      invalidateCreditNoteQueries(queryClient, "balances", freshlyReadNotaId(error)),
   });
 };

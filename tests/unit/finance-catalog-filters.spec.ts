@@ -18,21 +18,17 @@ import {
   COST_CENTER_HEADER_FILTERS,
   getColumns as getCostCenterColumns,
 } from "@/src/features/cost-centers/components/CostCenterColumns";
-import {
-  ACCOUNTING_CUSTOMER_HEADER_FILTERS,
-  accountingCustomerColumns,
-} from "@/src/features/accounting-customers/components/AccountingCustomerColumns";
 import type { Banco } from "@/src/features/banks/interfaces/bank.interface";
 import type { CuentaBancaria } from "@/src/features/bank-accounts/interfaces/bank-account.interface";
 import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
 import type { CostCenter } from "@/src/features/cost-centers/interfaces/cost-center.interface";
-import type { AccountingCustomer } from "@/src/features/accounting-customers/interfaces/accounting-customer.interface";
 
 /**
  * Pruebas unitarias de EC-674 sobre los catálogos de Finanzas (bancos, cuentas
- * bancarias, plan de cuentas, centros de costo, clientes de contabilidad): las
- * opciones y fichas de cada filtro de encabezado. Se leen el `filterFn`, el
- * accessor y las props del `FilterHeader`, sin renderizar nada.
+ * bancarias, plan de cuentas, centros de costo): las opciones y fichas de cada
+ * filtro de encabezado. Se leen el `filterFn`, el accessor y las props del
+ * `FilterHeader`, sin renderizar nada. Clientes de contabilidad ya no filtra
+ * activos en memoria: desde EC-707 el estatus va al servidor (`?activo=false`).
  */
 
 const labels = (options: { label: string }[]) => options.map((o) => o.label);
@@ -53,11 +49,6 @@ test.describe("activo como «Estatus» en los cinco catálogos", () => {
     [
       "centros de costo",
       withHeaderFilters(getCostCenterColumns() as ColumnDef<CostCenter, unknown>[], [], COST_CENTER_HEADER_FILTERS) as never,
-      "nombre",
-    ],
-    [
-      "clientes de contabilidad",
-      withHeaderFilters(accountingCustomerColumns as ColumnDef<AccountingCustomer, unknown>[], [], ACCOUNTING_CUSTOMER_HEADER_FILTERS) as never,
       "nombre",
     ],
   ];

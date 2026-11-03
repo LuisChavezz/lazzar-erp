@@ -100,5 +100,5 @@ export const useStampInvoice = (invoiceId: number) => {
     mutation.mutate(undefined, { onSettled: options.onSettled });
   };
 
-  return { stamp, isStamping };
+  return { stamp, isStamping, isIdle };
 };

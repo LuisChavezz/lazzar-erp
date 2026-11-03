@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { setBankActivo } from "../services/actions";
 import { Banco } from "../interfaces/bank.interface";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 interface ToggleBankActivoPayload {
   id: number;
@@ -51,7 +52,8 @@ export const useToggleBankActivo = () => {
       }
       console.error(err);
       toast.error(
-        variables.activo ? "Error al activar el banco" : "Error al desactivar el banco"
+        forbiddenDetailMessage(err) ??
+          (variables.activo ? "Error al activar el banco" : "Error al desactivar el banco")
       );
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el

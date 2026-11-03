@@ -72,6 +72,27 @@ export default function ProductTypeForm({ onSuccess, productTypeToEdit }: Produc
                   </form.Field>
                 </div>
               </div>
+
+              <form.Field name="nombre">
+                {(field) => (
+                  <FormInput
+                    label="Nombre"
+                    placeholder="Ej. Materia prima"
+                    name={field.name}
+                    value={field.state.value}
+                    maxLength={100}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("nombre");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("nombre", field.state.value);
+                    }}
+                    error={getError("nombre")}
+                  />
+                )}
+              </form.Field>
             </div>
           </div>
         </section>

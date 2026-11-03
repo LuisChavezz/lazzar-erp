@@ -2,6 +2,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { EditIcon, BanIcon, CheckCircleIcon } from "@/src/components/Icons";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { CuentaBancaria } from "../interfaces/bank-account.interface";
 import { useBankAccountRowActionsContext } from "../hooks/useBankAccountRowActions";
@@ -31,13 +32,16 @@ const getBancoLabel = (cuenta: CuentaBancaria): string =>
 const BankAccountNameCell = ({ cuenta }: { cuenta: CuentaBancaria }) => {
   const { onViewSummary, onEdit, onToggleActivo, busyIds } = useBankAccountRowActionsContext();
 
+  // Las escrituras llevan `permission`: sin `FINANCE_WRITE_PERMISSION` el menú las
+  // oculta (convención de los catálogos de Finanzas, EC-733).
   const items: ActionMenuItem[] = [
-    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(cuenta) },
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(cuenta), permission: FINANCE_WRITE_PERMISSION },
     {
       label: cuenta.activo ? "Desactivar" : "Activar",
       icon: cuenta.activo ? BanIcon : CheckCircleIcon,
       onSelect: () => onToggleActivo(cuenta),
       disabled: busyIds.includes(cuenta.id),
+      permission: FINANCE_WRITE_PERMISSION,
     },
   ];
 

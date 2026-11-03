@@ -3,16 +3,11 @@ import type { Receipt, ReceiptDetail } from "../interfaces/receipt.interface";
 import type { ReceiptOnboardingData, ReceiptCreatePayload } from "../interfaces/receipt-onboarding.interface";
 
 
-// Acción compartida: WMS la consume sin filtro (todas las recepciones) y
-// Compras la reutiliza pasando `tipo_origen: "OC"`. El parámetro solo se
-// envía cuando se especifica, por lo que la llamada sin argumentos de WMS
-// mantiene un comportamiento idéntico al anterior.
-export const getReceipts = async (
-  tipo_origen?: "OC" | "OP",
-): Promise<Receipt[]> => {
-  const { data } = await v1_api.get<Receipt[]>("/compras/recepciones/", {
-    params: tipo_origen ? { tipo_origen } : undefined,
-  });
+// Listado COMPLETO de recepciones (todos los orígenes), sin `?limit=`: el
+// backend responde el arreglo plano. Lo usa WMS. Compras ya no pasa por aquí:
+// su tabla pide páginas de recepciones OC con `getPurchaseOrderReceiptsPage`.
+export const getReceipts = async (): Promise<Receipt[]> => {
+  const { data } = await v1_api.get<Receipt[]>("/compras/recepciones/");
   return data;
 }
 

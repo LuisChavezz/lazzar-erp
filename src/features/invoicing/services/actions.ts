@@ -3,6 +3,7 @@ import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
 import type {
   Invoice,
   InvoiceCancelResponse,
+  InvoiceCfdiReconcileResponse,
   InvoiceCfdiEmailResponse,
   InvoiceEmitResponse,
   InvoiceListRow,
@@ -158,6 +159,21 @@ export const emitInvoice = async (id: number): Promise<InvoiceEmitResponse> => {
  */
 export const stampInvoice = async (id: number): Promise<Invoice> => {
   const { data } = await v1_api.post<Invoice>(`/finanzas/facturas/${id}/timbrar/`);
+  return data;
+};
+
+/**
+ * Concilia contra Facturama un timbrado sin confirmar (`cfdi_pendiente`)
+ * (`POST /finanzas/facturas/{id}/conciliar-cfdi/`, EC-709). Sin cuerpo. Busca
+ * el CFDI en Facturama: si existe guarda su timbre (`resultado: "timbrado"`),
+ * si no libera la reserva (`"liberado"`). Los `400` traen el motivo bajo `cfdi`
+ * (no hay pendiente, timbrado muy reciente, Facturama no respondió, varios
+ * CFDIs iguales…) y no cambian nada. El error se deja propagar.
+ */
+export const reconcileInvoiceCfdi = async (id: number): Promise<InvoiceCfdiReconcileResponse> => {
+  const { data } = await v1_api.post<InvoiceCfdiReconcileResponse>(
+    `/finanzas/facturas/${id}/conciliar-cfdi/`,
+  );
   return data;
 };
 

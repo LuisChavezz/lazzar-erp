@@ -4,10 +4,13 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { Button } from "../../../components/Button";
 import { getColumns } from "./ProductTypeColumns";
 import { MainDialog } from "../../../components/MainDialog";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useDeleteProductType } from "../hooks/useDeleteProductType";
+import { getProductTypeLabel } from "../utils/productTypeLabel";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ProductType } from "../interfaces/product-type.interface";
-import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import ProductTypeForm from "./ProductTypeForm";
 import { useProductTypes } from "../hooks/useProductTypes";
 
@@ -15,13 +18,9 @@ export default function ProductTypeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProductType, setSelectedProductType] = useState<ProductType | null>(null);
   const { productTypes, isLoading, isInitialError, error } = useProductTypes();
-  const { data: session } = useSession();
-  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
-  // chequeo manual que vivía aquí. El alta usa su propio código
-  // (C-CONFIGURACION), no el de edición.
-  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
-  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
-  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
+  // Catálogo global: el backend (`SoloSuperusuarioEscribe`) solo deja escribir
+  // al superusuario; un admin de empresa recibiría 403 (EC-714).
+  const canWrite = useIsSuperuser();
 
   const handleEdit = useCallback(
     (productType: ProductType) => {
@@ -31,44 +30,72 @@ export default function ProductTypeList() {
     [setSelectedProductType, setIsDialogOpen]
   );
 
+  // Copia del tipo al ABRIR el diálogo: un refetch del catálogo a media edición
+  // no la mueve, y sobrevive a la animación de cierre.
+  const editSession = useDialogSession(isDialogOpen, selectedProductType);
+
   const handleNew = () => {
     setSelectedProductType(null);
     setIsDialogOpen(true);
   };
 
+  // La confirmación de baja vive aquí y no en la celda: las celdas se
+  // desmontan al ordenar, paginar o filtrar.
+  const [productTypeToDelete, setProductTypeToDelete] = useState<ProductType | null>(null);
+  const isDeleteOpen = productTypeToDelete !== null;
+  const deleteSession = useDialogSession(isDeleteOpen, productTypeToDelete);
+  const { mutate: deleteProductType } = useDeleteProductType();
+
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit, canDelete }),
-    [handleEdit, canEdit, canDelete]
+    () => getColumns(handleEdit, setProductTypeToDelete, { canEdit: canWrite, canDelete: canWrite }),
+    [handleEdit, canWrite]
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={productTypes}
-      searchPlaceholder="Buscar tipo..."
-      isLoading={isLoading}
-      isError={isInitialError}
-      errorTitle="Error al cargar tipos de producto"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando tipos de producto"
-      actionButton={
-        // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
-        // sin pasar por el trigger), así que se monta también con solo permiso
-        // de edición; lo que se oculta sin `canCreate` es el botón de alta.
-        canCreate || canEdit ? (
-          <MainDialog
-            title={
-              <DialogHeader
-                title={selectedProductType ? "Editar Tipo de Producto" : "Alta de Tipo de Producto"}
-                subtitle={selectedProductType ? "Edición de registro" : "Registro Nuevo"}
-                statusColor="emerald"
-              />
-            }
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            maxWidth="1000px"
-            trigger={
-              canCreate ? (
+    <>
+      {canWrite && (
+        <ConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={(open) => {
+            if (!open) setProductTypeToDelete(null);
+          }}
+          // El DELETE es una baja lógica (`activo=False`): el tipo deja de
+          // listarse, pero los productos que ya lo tienen lo conservan.
+          title="Dar de baja tipo de producto"
+          description={`El tipo "${
+            deleteSession.snapshot ? getProductTypeLabel(deleteSession.snapshot) : ""
+          }" dejará de aparecer en los catálogos y ya no podrá asignarse a productos nuevos. Los productos que ya lo tienen lo conservan. No se puede reactivar desde aquí.`}
+          confirmText="Dar de baja"
+          onConfirm={() => {
+            if (deleteSession.snapshot) deleteProductType(deleteSession.snapshot.id);
+            setProductTypeToDelete(null);
+          }}
+          confirmColor="red"
+        />
+      )}
+      <DataTable
+        columns={columns}
+        data={productTypes}
+        searchPlaceholder="Buscar tipo..."
+        isLoading={isLoading}
+        isError={isInitialError}
+        errorTitle="Error al cargar tipos de producto"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando tipos de producto"
+        actionButton={
+          canWrite ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title={editSession.snapshot ? "Editar Tipo de Producto" : "Alta de Tipo de Producto"}
+                  subtitle={editSession.snapshot ? "Edición de registro" : "Registro Nuevo"}
+                  statusColor="emerald"
+                />
+              }
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              maxWidth="1000px"
+              trigger={
                 <Button
                   variant="primary"
                   rounded="full"
@@ -77,16 +104,17 @@ export default function ProductTypeList() {
                 >
                   + Nuevo Tipo
                 </Button>
-              ) : undefined
-            }
-          >
-            <ProductTypeForm
-              onSuccess={() => setIsDialogOpen(false)}
-              productTypeToEdit={selectedProductType}
-            />
-          </MainDialog>
-        ) : null
-      }
-    />
+              }
+            >
+              <ProductTypeForm
+                key={editSession.id}
+                onSuccess={() => setIsDialogOpen(false)}
+                productTypeToEdit={editSession.snapshot}
+              />
+            </MainDialog>
+          ) : null
+        }
+      />
+    </>
   );
 }

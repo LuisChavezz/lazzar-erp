@@ -1,6 +1,7 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import type { FinanceWriteState } from "@/src/utils/financeWrite";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 
 export interface AccountsPayableRowActionsContextValue {
@@ -11,6 +12,11 @@ export interface AccountsPayableRowActionsContextValue {
   today: string;
   /** Ids con un borrado en vuelo (candado de la lista). */
   busyIds: number[];
+  /**
+   * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el
+   * permiso, "Eliminar cuenta" se muestra deshabilitado con su motivo.
+   */
+  write: FinanceWriteState;
 }
 
 const { Provider, useRowActionsContext } =

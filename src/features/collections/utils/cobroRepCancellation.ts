@@ -3,7 +3,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
-import { COBRO_REP_CANCEL_PERMISSION } from "../constants/collectionPermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { isActionOutcomeUnknown } from "./actionOutcome";
 import { cobroLabel } from "./collection.utils";
@@ -45,7 +45,7 @@ export const getCobroRepNotCancellableMessage = (cobro: Pick<Cobro, "id" | "foli
 export const canCancelCobroRep = (
   cobro: CobroRepCancelState,
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(COBRO_REP_CANCEL_PERMISSION, user) && isCobroRepCancellable(cobro);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCobroRepCancellable(cobro);
 
 /**
  * Aviso cuando la petición se cortó sin respuesta del backend

@@ -171,7 +171,9 @@ export function BankReconciliationDetailDialog({
               ? cuadra
                 ? "Puede cerrarse: al hacerlo, los movimientos del periodo quedan marcados como Conciliado."
                 : "Para cerrarla, ambos saldos deben coincidir. Si el saldo del estado de cuenta se capturó mal, vuelve a prepararla con el valor correcto."
-              : "El periodo ya no admite cambios."}
+              : conciliacion.estatus === "Cerrada"
+                ? "El periodo ya no admite cambios. Si se cancela, sus movimientos regresan a Pendiente."
+                : "El periodo ya no admite cambios."}
           </p>
         </div>
 

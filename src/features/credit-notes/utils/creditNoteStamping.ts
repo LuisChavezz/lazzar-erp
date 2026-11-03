@@ -1,6 +1,6 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
-import { INVOICE_STAMP_PERMISSION } from "@/src/features/invoicing/utils/invoiceStamping";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import {
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
@@ -15,8 +15,8 @@ export const isCreditNoteStamped = (nota: Pick<NotaCredito, "cfdi_uuid">): boole
 /**
  * ¿Hay un timbrado SIN CONFIRMAR? Facturama no confirmó el timbrado y pudo
  * generarse un CFDI vigente ante el SAT aunque la nota no tenga `cfdi_uuid`.
- * Mientras siga marcado, `timbrar/` lo rechaza y solo un administrador lo
- * desmarca.
+ * Mientras siga marcado, `timbrar/` y `cancelar/` lo rechazan; se resuelve con
+ * "Conciliar con Facturama" (`conciliar-cfdi/`, EC-709).
  */
 export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente">): boolean =>
   nota.cfdi_pendiente === true;
@@ -26,7 +26,7 @@ export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente
  * timbrado pendiente. Emitir ya timbra (y desde nucleo-erp #732 ya no deja una
  * nota emitida sin CFDI por una factura sin timbrar: lo rechaza sin guardar),
  * así que esto es el camino de recuperación para las `Emitida` sin timbre que
- * quedaron de antes o cuyo timbrado pendiente un administrador liberó. Un
+ * quedaron de antes o cuyo timbrado pendiente se liberó al conciliarlo. Un
  * `Borrador` no se ofrece: se timbra al emitirlo.
  */
 export const isCreditNoteStampable = (
@@ -42,22 +42,43 @@ export const isCreditNoteStampable = (
 export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampable(nota);
 
 /**
- * ¿Puede ESTE usuario emitir notas de crédito? Emitir timbra el CFDI de egreso,
- * y el backend le exige el mismo permiso que a `timbrar/` (`E-FIN-FACTURAS`,
- * #725): sin él responde `403` sin guardar nada. Misma regla que
- * `canStampCreditNote`, rol "admin" incluido. El backend solo lo exige en la
- * empresa dueña de la cuenta de Facturama, que el front no conoce: en otra
- * empresa esto bloquea de más, igual que "Timbrar".
+ * ¿Se ofrece "Conciliar con Facturama" a ESTE usuario para ESTA nota? Solo con
+ * el timbrado pendiente de confirmación y el permiso de escritura de Finanzas
+ * (`conciliar-cfdi/` exige `E-FIN-FACTURAS`, EC-709).
  */
-export const canEmitCreditNote = (user: PermissionContext | null | undefined): boolean =>
-  hasPermission(INVOICE_STAMP_PERMISSION, user);
+export const canReconcileCreditNoteCfdi = (
+  nota: Pick<NotaCredito, "cfdi_pendiente">,
+  user: PermissionContext | null | undefined,
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampPending(nota);
+
+/**
+ * ¿Puede ESTE usuario escribir notas de crédito? Crear (borrador o emitida),
+ * emitir, cancelar, eliminar y timbrar exigen `FINANCE_WRITE_PERMISSION` (#752;
+ * desde EC-711 en toda escritura de Finanzas), rol "admin" incluido; sin él el
+ * backend responde `403` sin guardar nada. Convención del módulo: sin él,
+ * "+ Nueva nota" se oculta y las acciones del menú y del detalle se muestran
+ * deshabilitadas con su motivo.
+ */
+export const canWriteCreditNotes = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(FINANCE_WRITE_PERMISSION, user);
+
+/** Por qué una acción de escritura está bloqueada cuando `canWriteCreditNotes` es `false`. */
+export const CREDIT_NOTE_WRITE_PERMISSION_REASON =
+  "No tienes permiso para registrar o cancelar notas de crédito.";
+
+/**
+ * ¿Puede ESTE usuario emitir notas de crédito? Es una escritura más
+ * (`canWriteCreditNotes`); se conserva el nombre porque emitir además intenta
+ * timbrar el CFDI de egreso, y su motivo lo dice.
+ */
+export const canEmitCreditNote = canWriteCreditNotes;
 
 /** Por qué "Emitir" está bloqueado cuando `canEmitCreditNote` es `false`. */
 export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
-  "No tienes permiso para emitir notas de crédito: si la empresa timbra con Facturama, emitir intenta timbrar su CFDI y requiere el permiso de facturación.";
+  "No tienes permiso para emitir notas de crédito: emitir registra la nota en la cuenta por cobrar e intenta timbrar su CFDI, y requiere el permiso de facturación.";
 
 const relatedInvoiceLabel = (folio: string | null): string =>
   folio ? `La factura ${folio}` : "La factura relacionada";
@@ -104,8 +125,8 @@ export const getRelatedInvoiceEmitBlockReason = (
     cfdi_pendiente?: boolean;
   },
 ): string | null => {
-  // Eliminada (baja lógica): el backend NO lo valida al emitir (ver
-  // `getInvoiceEmitPrecheckReason`). Solo un `false` explícito bloquea.
+  // Eliminada (baja lógica): el backend también la rechaza (#736), pero aquí se
+  // avisa antes de intentarlo. Solo un `false` explícito bloquea.
   if (invoice.activo === false) return getInvoiceNotCreditableReason(invoice.folio, invoice);
   const cancelledReason = getRelatedInvoiceCancelledReason(invoice);
   if (cancelledReason) return cancelledReason;
@@ -121,10 +142,10 @@ const invoiceStampPendingReason = (folio: string | null): string =>
  * FRESCA (`undefined` si respondió `404`), o `null`. Deliberadamente estrecho:
  * solo lo que el backend no rechaza bien.
  *
- * - Eliminada (`activo` distinto de `true`) o inexistente: `validar_factura` no
- *   mira `activo`, así que el backend aplicaría el crédito y timbraría un CFDI
- *   relacionado a una factura borrada. PROVISIONAL hasta que el backend lo
- *   valide (nucleo-erp #736).
+ * - Eliminada (`activo` distinto de `true`) o inexistente: desde nucleo-erp
+ *   #736 `validar_factura` la rechaza con un `400` en `factura` ("La factura
+ *   está dada de baja."); se detiene antes del PATCH para avisar con el mismo
+ *   motivo que el resto del módulo.
  * - Timbrado pendiente (`cfdi_pendiente`): el backend lo rechaza sin guardar
  *   nada, pero con un `cfdi` que no dice en qué quedó la nota; aquí se da el
  *   motivo exacto.
@@ -216,14 +237,20 @@ export const getCreditNoteStampBlockReason = (invoice: RelatedInvoiceStampState)
 
 /** Mensaje de un timbrado pendiente de confirmación (toast y nota visible). */
 export const CREDIT_NOTE_STAMP_PENDING_MESSAGE =
-  "Timbrado pendiente de confirmación con Facturama. Contacta a un administrador para revisarlo.";
+  "Timbrado pendiente de confirmación con Facturama. Usa \"Conciliar con Facturama\" en el detalle de la nota para traer el timbre o liberarlo.";
 
 /** Indicador del detalle, en el lugar del folio fiscal. */
 export const CREDIT_NOTE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
-/** Texto bajo el indicador: lo que sigue, sin repetir el rótulo. */
-export const CREDIT_NOTE_STAMP_PENDING_HINT =
-  "Facturama no lo confirmó. Contacta a un administrador para revisarlo.";
+/**
+ * Texto bajo el indicador: lo que sigue, sin repetir el rótulo. Quien no puede
+ * conciliar (`canReconcileCreditNoteCfdi`) no ve el botón, así que se le dice
+ * quién puede hacerlo.
+ */
+export const creditNoteStampPendingHint = (canReconcile: boolean): string =>
+  canReconcile
+    ? "Facturama no lo confirmó. Concílialo para traer el timbre o liberarlo."
+    : "Facturama no lo confirmó. Alguien con permiso de facturación debe conciliarlo con Facturama.";
 
 /**
  * Motivo por el que "Cancelar nota" se muestra BLOQUEADO, o `null` si se
@@ -239,7 +266,7 @@ export const getCreditNoteCancelBlockReason = (
     return "Esta nota ya está timbrada y su CFDI aún no puede cancelarse ante el SAT: cancelarla en el ERP lo dejaría vigente.";
   }
   if (isCreditNoteStampPending(nota)) {
-    return "Tiene un timbrado pendiente de confirmación: no se puede cancelar hasta que un administrador lo revise.";
+    return "Tiene un timbrado pendiente de confirmación: no se puede cancelar. Usa \"Conciliar con Facturama\" en el detalle de la nota.";
   }
   return null;
 };

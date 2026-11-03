@@ -2,7 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { Supplier } from "../interfaces/supplier.interface";
+import { SUPPLIERS_TABLE_KEY } from "./useSuppliersTable";
 import { getSupplier } from "../services/actions";
 import { parseSupplierId } from "../utils/supplierPurchaseOrderHistoryFilters";
 
@@ -17,6 +19,10 @@ import { parseSupplierId } from "../utils/supplierPurchaseOrderHistoryFilters";
  * La fila del listado se usa como `placeholderData` (no `initialData`): la
  * cabecera se pinta al instante y el GET corre SIEMPRE, que es lo que detecta
  * un proveedor desactivado (404) aunque siga en un listado viejo de la caché.
+ * La fila se busca en el catálogo completo (`["suppliers"]`) y, si no está, en
+ * las páginas cacheadas de la tabla de proveedores (`["suppliers", "list",
+ * …]`, ver `useSuppliersTable`), que es lo único cargado al llegar desde ella.
+ * Solo se LEEN.
  *
  * **Un 404 o un 403 es un error DEFINITIVO** (`isDefinitiveError` de
  * `useGuardedQuery`) aunque haya datos en caché (proveedor desactivado o de
@@ -36,6 +42,21 @@ export const useSupplier = (supplierId: string) => {
   const numericId = parseSupplierId(supplierId);
   const isValidId = numericId !== null;
 
+  /** La fila en alguna página cacheada de la tabla de proveedores. */
+  const findInListPages = (id: number | null) => {
+    for (const [, page] of queryClient.getQueriesData<Partial<PaginatedListResponse<Supplier>>>({
+      queryKey: [...SUPPLIERS_TABLE_KEY, "list"],
+    })) {
+      // Una entrada puede no ser una página (el marcador de "página que ya no
+      // existe" de `useServerTable`): solo cuentan las que traen `results`.
+      const match = Array.isArray(page?.results)
+        ? page.results.find((item) => item.id === id)
+        : undefined;
+      if (match) return match;
+    }
+    return undefined;
+  };
+
   const { data, isPlaceholderData, isInitialError, isDefinitiveError, error } =
     useGuardedQuery<Supplier>(
       {
@@ -46,7 +67,7 @@ export const useSupplier = (supplierId: string) => {
         placeholderData: () =>
           queryClient
             .getQueryData<Supplier[]>(["suppliers"])
-            ?.find((item) => item.id === numericId),
+            ?.find((item) => item.id === numericId) ?? findInListPages(numericId),
       },
       {
         toastId: "supplier-detail-refetch-error",

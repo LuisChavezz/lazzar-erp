@@ -1,6 +1,8 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
@@ -55,28 +57,43 @@ function VencimientoCell({ cuenta }: { cuenta: CuentaPorPagar }) {
  * "hoy" y "en vuelo" llegan por contexto (`AccountsPayableRowActionsProvider`).
  */
 function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
-  const { onViewDetail, onDelete, onGoToPayments, today, busyIds } =
+  const { onViewDetail, onDelete, onGoToPayments, today, busyIds, write } =
     useAccountsPayableRowActionsContext();
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cuenta) },
   ];
+  const writeBlock = financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON);
+  // Sin permiso de escritura, "Eliminar cuenta" se muestra deshabilitado con su
+  // motivo (convención de los flujos de Finanzas).
   if (canDeleteCuentaPorPagar(cuenta)) {
     items.push({
       label: "Eliminar cuenta",
       icon: DeleteIcon,
       onSelect: () => onDelete(cuenta),
-      disabled: busyIds.includes(cuenta.id),
+      disabled: writeBlock.disabled || busyIds.includes(cuenta.id),
+      description: writeBlock.description,
     });
   } else if (hasAppliedPayments(cuenta)) {
     // Eliminar queda OCULTO con pagos aplicados (el backend respondería 400); en
     // su lugar se dice qué hacer y se lleva a Pagos. Una cuenta `Cancelada` sin
-    // pagos no recibe esta pista: no es el motivo.
-    items.push({
-      label: "Cancela los pagos aplicados primero",
-      icon: ExternalLinkIcon,
-      onSelect: onGoToPayments,
-    });
+    // pagos no recibe esta pista: no es el motivo. Sin permiso de escritura la
+    // pista no aplica —tampoco puede cancelar pagos—: se muestra el motivo del
+    // permiso, como en una cuenta sin pagos.
+    items.push(
+      writeBlock.disabled
+        ? {
+            label: "Eliminar cuenta",
+            icon: DeleteIcon,
+            disabled: true,
+            description: writeBlock.description,
+          }
+        : {
+            label: "Cancela los pagos aplicados primero",
+            icon: ExternalLinkIcon,
+            onSelect: onGoToPayments,
+          },
+    );
   }
 
   const vencida = isCuentaPorPagarVencida(cuenta, today);

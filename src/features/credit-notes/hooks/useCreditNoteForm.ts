@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, RefObject } from "react";
 import { useForm } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
@@ -13,6 +13,7 @@ import {
   type NotaCreditoLineFormValues,
 } from "../schemas/credit-note.schema";
 import { buildNotaCreditoPayload } from "../utils/buildNotaCreditoPayload";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import {
   useCreateNotaCredito,
   type CreateFailureOutcome,
@@ -55,7 +56,20 @@ const lineFromInvoiceDetail = (
   total: detalle.total,
 });
 
-export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+/**
+ * `submitLockRef` es el ÚNICO candado del envío y es del diálogo: se toma de
+ * forma SÍNCRONA al enviar (`runWithSubmitLock`), antes de la validación
+ * asíncrona de TanStack Form, y se suelta cuando el alta termina, también si la
+ * validación falla. Con él se ignoran el segundo clic o Enter, el reinicio del
+ * formulario y el cierre del diálogo (Cerrar, X, Esc) a media petición.
+ */
+export function useCreditNoteForm({
+  onSuccess,
+  submitLockRef,
+}: {
+  onSuccess?: () => void;
+  submitLockRef: RefObject<boolean>;
+}) {
   // ── Estado de UI ─────────────────────────────────────────────────────────
   // Errores indexados por ruta ("total", "nota_credito_detalles.0.cantidad").
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,9 +78,10 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   /**
    * Un alta `Emitida` falló de forma que la nota pudo quedar registrada sin
    * saberse cómo (`locked` en `getCreateFailureOutcome`: `cfdi` sin
-   * `nota_credito`, sin confirmación o `409`). Un rechazo de Facturama que el
-   * backend reporta como nota `Cancelada` NO bloquea: el saldo se restituyó y
-   * reenviar crea una nota nueva, que es lo que se quiere.
+   * `nota_credito`, una nota `Emitida` cuyo timbre no se pudo consultar, sin
+   * confirmación o `409`). Una nota que el backend reporta `Cancelada` NO
+   * bloquea: el saldo se restituyó y reenviar crea una nota nueva, que es lo
+   * que se quiere.
    * Bloquea el formulario para siempre: reenviar lo mismo
    * crearía OTRA nota y volvería a rebajar el saldo de la cuenta por cobrar. El
    * formulario sigue a la vista para cotejarlo con el listado, y la única salida
@@ -160,10 +175,12 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
       setServerBanner(outcome.message);
       return;
     }
-    // La nota quedó emitida con el timbrado pendiente: el alta sí ocurrió, así
-    // que el formulario se cierra como en un éxito; el toast de la mutación
-    // explica el pendiente y el listado ya se refresca en su `onSettled`.
-    if (outcome?.kind === "pending") {
+    // La nota quedó emitida —con el timbrado pendiente, o timbrada y con un
+    // error posterior (la póliza, #749)—: el alta sí ocurrió y reenviar
+    // rebajaría el saldo otra vez, así que el formulario se cierra como en un
+    // éxito; el toast de la mutación dice el estado real de la nota y el listado
+    // ya se refresca en su `onSettled`.
+    if (outcome?.kind === "pending" || outcome?.kind === "emitted") {
       onSuccess?.();
       return;
     }
@@ -210,8 +227,8 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
       }
       setErrors({});
 
-      // El reenvío concurrente ya lo impide `form.handleSubmit()`, que se niega a
-      // reentrar mientras hay un envío en vuelo; no hace falta un candado propio.
+      // El reenvío concurrente lo impide el candado del envío (`submitLockRef`),
+      // tomado antes de validar.
       setIsSubmitting(true);
 
       try {
@@ -310,8 +327,11 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
    * nuevo.
    */
   const submitAs = (estatus: NotaCreditoFormValues["estatus"]) => {
+    // Con un envío en curso no se toca ni el estatus: la etiqueta de pendiente
+    // sigue en el botón que se pulsó.
+    if (submitLockRef.current) return;
     form.setFieldValue("estatus", estatus);
-    void form.handleSubmit();
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit());
   };
 
   /**
@@ -327,6 +347,7 @@ export function useCreditNoteForm({ onSuccess }: { onSuccess?: () => void } = {}
   };
 
   const handleReset = () => {
+    if (submitLockRef.current) return;
     form.reset(createEmptyNotaCreditoForm());
     setLineKeys([]);
     setErrors({});

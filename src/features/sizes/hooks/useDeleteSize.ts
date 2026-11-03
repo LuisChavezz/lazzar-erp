@@ -25,13 +25,13 @@ export const useDeleteSize = () => {
         queryClient.setQueryData(["sizes"], context.previousSizes);
       }
       console.error(err);
-      toast.error("Error al eliminar la talla");
+      toast.error("Error al dar de baja la talla");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["sizes"] });
     },
     onSuccess: () => {
-      toast.success("Talla eliminada correctamente");
+      toast.success("Talla dada de baja");
     },
   });
 };

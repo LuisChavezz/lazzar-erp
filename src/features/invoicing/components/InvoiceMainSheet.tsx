@@ -9,6 +9,7 @@ import {
   FacturacionIcon,
   PaperPlaneIcon,
   ShieldCheckIcon,
+  SyncIcon,
 } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -17,6 +18,8 @@ import {
   HeaderStatRow,
   InfoField,
   InfoGrid,
+  InfoTile,
+  InfoTileGrid,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -54,7 +57,7 @@ import {
   INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_PENDING_LABEL,
-  INVOICE_STAMP_PENDING_MESSAGE,
+  canReconcileInvoiceCfdi,
   canStampInvoice,
   isInvoicePdfNonFiscal,
   isInvoiceStampPending,
@@ -70,6 +73,7 @@ import {
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
+import { InvoiceCfdiReconcileDialog } from "./InvoiceCfdiReconcileDialog";
 import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
 import { canEmitInvoice, getInvoiceEmitBlockReason } from "../utils/invoiceEmission";
 import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
@@ -87,6 +91,11 @@ interface InvoiceMainSheetProps {
   canOpen: (pathname: string) => boolean;
   /** Usuario de la sesión (permisos), para las reglas de "Emitir", "Cancelar factura" y "Timbrar". */
   user: PermissionContext | null | undefined;
+  /**
+   * "Enviar correo": prepara el correo y la PÁGINA pide confirmación
+   * (`useInvoiceDetailEmail`), para que sobreviva a cambiar de hoja.
+   */
+  onSendEmail: (invoiceId: number) => void;
 }
 
 const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
@@ -105,24 +114,28 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
 function InvoiceDocumentActions({
   invoice,
   user,
+  onSendEmail,
 }: {
   invoice: Invoice;
   user: PermissionContext | null | undefined;
+  onSendEmail: (invoiceId: number) => void;
 }) {
-  const actions = useInvoiceDocumentActions(invoice);
+  const actions = useInvoiceDocumentActions(invoice, onSendEmail);
   const canEmit = canEmitInvoice(invoice, user);
   const emitBlockReason = canEmit ? getInvoiceEmitBlockReason(invoice) : null;
-  const canCancel = canCancelInvoice(invoice, user);
+  // Con el timbrado sin confirmar, "Conciliar con Facturama" REEMPLAZA a
+  // "Cancelar factura" y "Timbrar" (EC-709): el backend rechaza los dos mientras
+  // siga pendiente. Sin el permiso no se ofrece ninguno; el indicador de la
+  // cabecera sigue a la vista.
+  const stampPending = isInvoiceStampPending(invoice);
+  const canReconcile = canReconcileInvoiceCfdi(invoice, user);
+  const canCancel = !stampPending && canCancelInvoice(invoice, user);
   const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
-  const canStamp = canStampInvoice(invoice, user);
-  // Un timbrado sin confirmar manda sobre el tipo de cambio: es lo que hay que revisar primero.
-  const stampBlockReason = !canStamp
-    ? null
-    : isInvoiceStampPending(invoice)
-      ? INVOICE_STAMP_PENDING_MESSAGE
-      : isInvoiceTipoCambioMissing(invoice)
-        ? invoiceStampMissingTipoCambioMessage(invoiceCurrencyCode(invoice))
-        : null;
+  const canStamp = !stampPending && canStampInvoice(invoice, user);
+  const stampBlockReason =
+    canStamp && isInvoiceTipoCambioMissing(invoice)
+      ? invoiceStampMissingTipoCambioMessage(invoiceCurrencyCode(invoice))
+      : null;
   const cfdiEmail = getInvoiceCfdiEmailAvailability(invoice, user);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
   const emitNoteId = `invoice-${invoice.id}-emit-note`;
@@ -147,7 +160,7 @@ function InvoiceDocumentActions({
         {/* "Cancelar factura": misma regla que el menú del listado (`canCancelInvoice`)
             sobre el retrieve, que es quien trae `activo`. Una timbrada se cancela (el
             diálogo avisa que primero va al SAT); con el timbrado pendiente de
-            confirmación se muestra bloqueado y descrito por su nota. */}
+            confirmación no se ofrece: lo reemplaza "Conciliar con Facturama". */}
         <DocumentActionWithDialog
           offered={canCancel}
           blockedNoteId={cancelBlockReason ? cancelNoteId : undefined}
@@ -156,15 +169,24 @@ function InvoiceDocumentActions({
           className="text-rose-600! dark:text-rose-400!"
           renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
         />
-        {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI
-            (`canStampInvoice`); con el timbrado pendiente de confirmación o fuera de
-            MXN sin tipo de cambio, bloqueado y descrito por su nota. */}
+        {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI ni
+            timbrado pendiente (`canStampInvoice`); fuera de MXN sin tipo de cambio,
+            bloqueado y descrito por su nota. */}
         <DocumentActionWithDialog
           offered={canStamp}
           blockedNoteId={stampBlockReason ? stampNoteId : undefined}
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <InvoiceStampDialog invoice={invoice} {...dialog} />}
+        />
+        {/* "Conciliar con Facturama": solo con `E-FIN-FACTURAS` y el timbrado
+            pendiente de confirmación (`canReconcileInvoiceCfdi`), en el lugar de
+            "Cancelar factura" y "Timbrar". */}
+        <DocumentActionWithDialog
+          offered={canReconcile}
+          icon={SyncIcon}
+          label="Conciliar con Facturama"
+          renderDialog={(dialog) => <InvoiceCfdiReconcileDialog invoice={invoice} {...dialog} />}
         />
         {/* "Enviar CFDI": el PDF y el XML oficiales. Mismo permiso que "Enviar correo";
             oculto en una eliminada y bloqueado, con su nota, si está cancelada, con el
@@ -187,12 +209,14 @@ function InvoiceDocumentActions({
             aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
           >
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
-            {actions.isSendingEmail
-              ? "Enviando..."
-              : invoiceEmailLabel({
-                  nonFiscal: nonFiscalPdf,
-                  noRecipient: actions.hasNoRecipientEmail,
-                })}
+            {actions.isPreparingEmail
+              ? "Preparando..."
+              : actions.isSendingEmail
+                ? "Enviando..."
+                : invoiceEmailLabel({
+                    nonFiscal: nonFiscalPdf,
+                    noRecipient: actions.hasNoRecipientEmail,
+                  })}
           </Button>
         )}
         <Button
@@ -245,10 +269,10 @@ function InvoiceDocumentActions({
  * (el desglose no lo trae); sin capturar —un `Borrador` que aún no se emite, o
  * una emitida sin él, que ya no puede corregirse— dice "Sin capturar".
  */
-function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
+function InvoiceTipoCambioTile({ invoice }: { invoice: Invoice }) {
   if (!requiresInvoiceTipoCambio(invoice)) return null;
   return (
-    <HeaderStat label="Tipo de cambio">
+    <InfoTile label="Tipo de cambio">
       {invoice.tipo_cambio === null ? (
         <span className="text-slate-400 dark:text-slate-500">Sin capturar</span>
       ) : (
@@ -256,7 +280,7 @@ function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
           {formatInvoiceTipoCambio(invoice.tipo_cambio)} MXN por {invoiceCurrencyCode(invoice)}
         </span>
       )}
-    </HeaderStat>
+    </InfoTile>
   );
 }
 
@@ -274,6 +298,9 @@ function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
  * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
  * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
+ *
+ * Va como bloque bajo los mosaicos de la cabecera y no como `InfoTile`: el
+ * mosaico trunca, y el UUID y las notas del estado no caben en una línea.
  */
 function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
   if (!invoice.cfdi_uuid) {
@@ -332,9 +359,13 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
 /**
  * Hoja 1, "Factura": la factura en solo lectura. Cabecera (folio, estatus,
  * fechas, totales y acciones), emisor y receptor, pedido, conceptos e importes.
- * Todo sale del desglose; solo las acciones usan el retrieve.
+ * Todo sale del desglose; el tipo de cambio, el bloque del CFDI y las acciones
+ * usan el retrieve.
+ *
+ * Los datos de la cabecera van como mosaicos (`InfoTileGrid`), con la insignia
+ * del ícono de `SheetSection`; la hoja "Seguimiento" conserva su cabecera.
  */
-export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
+export function InvoiceMainSheet({ data, invoice, canOpen, user, onSendEmail }: InvoiceMainSheetProps) {
   const money = (value: number) => formatCurrency(value, data.moneda.codigo_iso);
   const { emisor, receptor, pedido, importes } = data;
 
@@ -347,29 +378,33 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
         subtitle="Comprobante de venta del pedido."
         badges={<StatusBadge status={data.estatus} config={INVOICE_STATUS_CONFIG} />}
       >
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        {/* Mosaicos a todo el ancho y las acciones debajo: junto a la fila de
+            botones los mosaicos quedaban angostos y truncaban su valor. */}
+        <div className="flex flex-col gap-6">
           <div className="min-w-0 space-y-4">
             {/* El folio es el ÚNICO <h1> de esta hoja (la de Seguimiento tiene el suyo). */}
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono break-all">
               {data.folio || `#${data.id}`}
             </h1>
-            <HeaderStatRow>
-              <HeaderStat label="Fecha de emisión">{formatInvoiceDate(data.fecha_emision)}</HeaderStat>
-              <HeaderStat label="Fecha de vencimiento">
+            <InfoTileGrid>
+              <InfoTile label="Fecha de emisión">{formatInvoiceDate(data.fecha_emision)}</InfoTile>
+              <InfoTile label="Fecha de vencimiento">
                 {data.fecha_vencimiento ? formatInvoiceDate(data.fecha_vencimiento) : "Sin vencimiento"}
-              </HeaderStat>
-              <HeaderStat label="Moneda">{data.moneda.codigo_iso}</HeaderStat>
-              {invoice && <InvoiceTipoCambioStat invoice={invoice} />}
-              <HeaderStat label="Piezas">
+              </InfoTile>
+              <InfoTile label="Moneda">{data.moneda.codigo_iso}</InfoTile>
+              {invoice && <InvoiceTipoCambioTile invoice={invoice} />}
+              <InfoTile label="Piezas">
                 <span className="tabular-nums">{importes.total_piezas} pzas</span>
-              </HeaderStat>
-              <HeaderStat label="Total" bold>
+              </InfoTile>
+              <InfoTile label="Total">
                 <span className="tabular-nums">{money(importes.total)}</span>
-              </HeaderStat>
-            </HeaderStatRow>
+              </InfoTile>
+            </InfoTileGrid>
             {invoice && <InvoiceCfdiStamp invoice={invoice} />}
           </div>
-          {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
+          {invoice && (
+            <InvoiceDocumentActions invoice={invoice} user={user} onSendEmail={onSendEmail} />
+          )}
         </div>
       </SheetSection>
 
