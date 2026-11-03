@@ -93,7 +93,11 @@ export interface PickingLineLimits {
  * rechaza con "excede la existencia disponible agregada".
  */
 export const stockKeyOf = (row: PickingOnboardingTalla): string =>
-  `${row.producto ?? "-"}|${row.producto_variante ?? "-"}`;
+  // Una muestra no tiene producto/variante de catálogo: su existencia es la de
+  // su SKU (una por talla), así que no comparte techo con otras líneas.
+  row.es_muestra
+    ? `muestra|${row.variante_produccion ?? row.sku_muestra ?? row.pedido_detalle_talla}`
+    : `${row.producto ?? "-"}|${row.producto_variante ?? "-"}`;
 
 /** Nombre legible de la línea (variante si la hay, si no el producto). */
 export const tallaProductoNombre = (row: PickingOnboardingTalla): string =>

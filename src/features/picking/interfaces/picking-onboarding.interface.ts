@@ -211,6 +211,15 @@ export interface PickingOnboardingTalla {
    * `PickingOnboardingData` y la comprobación en `usePickingStep2Form`.
    */
   maximo_picking_permitido: string;
+  /**
+   * Línea de MUESTRA: se surte por su SKU de muestra (`sku_muestra`, de la
+   * `variante_produccion`), no por producto/variante de catálogo. Su
+   * existencia es la de ese SKU en el almacén origen. Opcionales: un backend
+   * anterior no los trae.
+   */
+  es_muestra?: boolean;
+  sku_muestra?: string | null;
+  variante_produccion?: number | null;
 }
 
 /**

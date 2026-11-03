@@ -152,6 +152,8 @@ export interface OperationsQuote {
   gran_total: string;
   empresa: number;
   vendedor: number;
+  /** Nombre del vendedor. Opcional: pedido al backend; sin él se ve "—". */
+  vendedor_nombre?: string | null;
   sucursal: number;
   cliente: number;
   oportunidad: number | null;

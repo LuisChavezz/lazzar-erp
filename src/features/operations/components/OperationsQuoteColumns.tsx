@@ -253,15 +253,17 @@ const OperationsQuoteIdCell = ({
   ];
 
   const statusConfig = getOperationsQuoteStatusConfig(operationsQuote.estatus);
+  const statusLabel = statusConfig?.label ?? capitalize(operationsQuote.estatus_label);
 
   return (
     <div className="flex items-center gap-2">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
-        role="img"
-        aria-label={statusConfig?.label ?? capitalize(operationsQuote.estatus_label)}
-        title={statusConfig?.label ?? capitalize(operationsQuote.estatus_label)}
+        aria-hidden="true"
       />
+      {/* Folio arriba y el estatus EN PALABRA debajo (badge discreto, como
+          Compras): el color solo no le dice nada a quien no conoce el código. */}
+      <div className="flex flex-col items-start gap-1 min-w-0">
       <ActionMenu
         items={items}
         ariaLabel="Acciones de cotización operativa"
@@ -280,6 +282,12 @@ const OperationsQuoteIdCell = ({
           </button>
         }
       />
+      <span
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${statusConfig?.badgeClass ?? "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300"}`}
+      >
+        {statusLabel}
+      </span>
+      </div>
     </div>
   );
 };
@@ -367,13 +375,41 @@ export const getOperationsQuoteColumns = (
     ),
   },
   {
-    // PLACEHOLDER a propósito: `OperationsQuote` todavía no expone
-    // clasificación. Fija en "—" en todas las filas hasta que el backend la
-    // agregue — mismo patrón que "Última Compra" en `CustomerColumns.tsx`.
-    id: "clasificacion",
-    header: "Clasificación",
-    enableSorting: false,
-    cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+    // `vendedor_nombre` lo agrega el backend; mientras no llegue, "—".
+    // Vacío → `undefined` para que `sortUndefined: "last"` lo deje al final.
+    id: "vendedor",
+    accessorFn: (operationsQuote) => operationsQuote.vendedor_nombre || undefined,
+    header: "Vendedor",
+    meta: { label: "Vendedor" },
+    sortUndefined: "last",
+    cell: ({ row }) => (
+      <span className="text-slate-600 dark:text-slate-300">
+        {row.original.vendedor_nombre || "—"}
+      </span>
+    ),
+  },
+  {
+    // Mismo `?? ""` que el resto de columnas nullable: un `null` en la primera
+    // fila sacaría la columna de la búsqueda global en todas las filas.
+    id: "codigo_postal",
+    accessorFn: (operationsQuote) => operationsQuote.codigo_postal ?? "",
+    meta: { label: "C.P." },
+    header: ({ column }) => (
+      <FilterHeader
+        title="C.P."
+        column={column}
+        options={filterOptions.codigosPostales}
+        label="código postal"
+        searchable={{ placeholder: "Buscar C.P.…" }}
+      />
+    ),
+    filterFn: (row, _columnId, filterValue) =>
+      !filterValue || row.original.codigo_postal === filterValue,
+    cell: ({ row }) => (
+      <span className="text-slate-500 dark:text-slate-400">
+        {row.original.codigo_postal || "—"}
+      </span>
+    ),
   },
   {
     accessorKey: "importe_sin_iva",
@@ -411,30 +447,6 @@ export const getOperationsQuoteColumns = (
     cell: ({ row }) => (
       <span className="text-slate-500 dark:text-slate-400">
         {row.original.moneda_codigo || "—"}
-      </span>
-    ),
-  },
-  {
-    // Mismo `?? ""` que el resto de columnas nullable: un `null` en la primera
-    // fila sacaría la columna de la búsqueda global en todas las filas.
-    id: "codigo_postal",
-    accessorFn: (operationsQuote) => operationsQuote.codigo_postal ?? "",
-    meta: { label: "C.P." },
-    header: ({ column }) => (
-      <FilterHeader
-        title="C.P."
-        column={column}
-        options={filterOptions.codigosPostales}
-        label="código postal"
-        searchable={{ placeholder: "Buscar C.P.…" }}
-        menuAlign="end"
-      />
-    ),
-    filterFn: (row, _columnId, filterValue) =>
-      !filterValue || row.original.codigo_postal === filterValue,
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.original.codigo_postal || "—"}
       </span>
     ),
   },

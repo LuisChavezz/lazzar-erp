@@ -2,6 +2,17 @@ import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
 /**
+ * Folio corto para listados: sin guiones ni año ("P-00124-2026" → "P00124").
+ * Solo PRESENTACIÓN: el folio completo sigue en el `title`, en la búsqueda y
+ * en el resto de pantallas. Un folio con otro formato se muestra tal cual.
+ */
+export function formatFolioCorto(folio: string | null | undefined): string {
+  const value = folio?.trim() ?? "";
+  const match = value.match(/^([A-Z]+)-(\d+)-\d{4}$/i);
+  return match ? `${match[1]}${match[2]}` : value;
+}
+
+/**
  * Rango de entrega estimado (`fecha_entrega_min`–`fecha_entrega_max`).
  *
  * Son fechas-calendario `"YYYY-MM-DD"`: pasan por `parseLocalDate` ANTES de

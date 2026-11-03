@@ -29,10 +29,13 @@ import type { PedidoListItem } from "@/src/features/orders/interfaces/order.inte
 import {
   canEditPedidoMesaControl,
   getPedidoClasificacionLabel,
+  getTipoPedidoConfig,
   PEDIDO_ESTATUS,
+  TIPO_PEDIDO,
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
-import { hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
+import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
+import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
 import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
 import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
 
@@ -118,6 +121,150 @@ const EMPTY_FILTER_OPTIONS: OperationsOrderFilterOptions = {
   clasificaciones: [ALL_FILTER_OPTION],
 };
 
+/**
+ * Piezas ya programadas: suma de `cantidad` de las parcialidades guardadas en
+ * `programacion_conf` (lo mismo que lista "Pedidos programados"). `null` si el
+ * pedido no tiene programación. Se compara contra `piezas_programables`, no
+ * contra `piezas`: es el total que el backend permite programar.
+ */
+export const getPiezasProgramadas = (order: PedidoListItem) => {
+  const { programado } = getPedidoProgramadoProgress(order);
+  return programado > 0 ? programado : null;
+};
+
+/**
+ * Piezas surtidas por WMS contra las piezas del pedido: "X de Y" con barra
+ * (verde al completar). "—" mientras el backend no mande `piezas_surtidas`.
+ */
+const SurtidoCell = ({ order }: { order: PedidoListItem }) => {
+  const surtidas = order.piezas_surtidas;
+  const total = order.piezas;
+  if (surtidas === undefined || total <= 0) {
+    return <span className="text-sm text-slate-400 dark:text-slate-600">—</span>;
+  }
+  const pct = Math.min(100, Math.round((surtidas / total) * 100));
+  const completo = pct >= 100;
+  return (
+    <div className="inline-flex flex-col items-end gap-1" title={`${pct}% surtido`}>
+      <span className="tabular-nums text-sm whitespace-nowrap text-slate-500 dark:text-slate-400">
+        <span
+          className={`font-semibold ${
+            surtidas === 0
+              ? "text-slate-400 dark:text-slate-500"
+              : completo
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-800 dark:text-white"
+          }`}
+        >
+          {surtidas.toLocaleString("es-MX")}
+        </span>{" "}
+        de {total.toLocaleString("es-MX")}
+      </span>
+      <span
+        className="h-1 w-16 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Piezas surtidas"
+      >
+        <span
+          className={`block h-full rounded-full ${completo ? "bg-emerald-500" : "bg-sky-500"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </div>
+  );
+};
+
+/**
+ * "X de Y" con una barra delgada: verde al completar, azul en curso. Sin
+ * `piezas_programables` (backend anterior) solo pinta lo programado; un pedido
+ * sin piezas programables no tiene nada que programar.
+ */
+const ProgramadoCell = ({ order }: { order: PedidoListItem }) => {
+  // Mismo cálculo que el resto del módulo (`getPedidoProgramadoProgress`):
+  // lee `parcialidades` o `programacion_conf` y no pinta nada en cancelados.
+  const { programado: programadas, total, visible } = getPedidoProgramadoProgress(order);
+  const parcialidades = getProgramacionesValidas(
+    order.parcialidades !== undefined ? { programaciones: order.parcialidades } : order.programacion_conf,
+  ).length;
+
+  if (!visible) {
+    return <span className="text-sm text-slate-400 dark:text-slate-600">—</span>;
+  }
+
+  const pct = total > 0 ? Math.min(100, Math.round((programadas / total) * 100)) : 0;
+  const completo = pct >= 100;
+  return (
+    <div
+      className="inline-flex flex-col items-end gap-1"
+      title={`${parcialidades} ${parcialidades === 1 ? "parcialidad" : "parcialidades"} · ${pct}%`}
+    >
+      <span className="tabular-nums text-sm whitespace-nowrap text-slate-500 dark:text-slate-400">
+        <span
+          className={`font-semibold ${
+            programadas === 0
+              ? "text-slate-400 dark:text-slate-500"
+              : completo
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-800 dark:text-white"
+          }`}
+        >
+          {programadas.toLocaleString("es-MX")}
+        </span>{" "}
+        de {total.toLocaleString("es-MX")}
+      </span>
+      <span
+        className="h-1 w-16 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Piezas programadas"
+      >
+        <span
+          className={`block h-full rounded-full ${completo ? "bg-emerald-500" : "bg-sky-500"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </div>
+  );
+};
+
+/**
+ * "Solo muestras" si todas sus piezas son de muestra, "Con muestras" si solo
+ * algunas; `null` sin muestras o sin el dato (`piezas_muestra`).
+ */
+export const getMuestrasLabel = (
+  order: Pick<PedidoListItem, "piezas" | "piezas_muestra">,
+): string | null => {
+  const muestras = order.piezas_muestra ?? 0;
+  if (muestras <= 0) return null;
+  return muestras >= order.piezas ? "Solo muestras" : "Con muestras";
+};
+
+const MUESTRA_BADGE_CLASS = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA).className;
+
+/**
+ * Opciones de muestras dentro del filtro de Piezas (un solo embudo): "con" es
+ * lo mismo que `?con_muestras=true` del backend; aquí se filtra en memoria.
+ */
+const MUESTRAS_FILTER_OPTIONS: ColumnFilterOption[] = [
+  { value: "muestras-con", label: "Con muestras", dotClassName: "bg-violet-500" },
+  { value: "muestras-solo", label: "Solo muestras", dotClassName: "bg-violet-500" },
+  { value: "muestras-sin", label: "Sin muestras", dotClassName: "bg-slate-400" },
+];
+
+/** `null` si `filterValue` no es una opción de muestras (es un rango). */
+const matchesMuestrasFilter = (order: PedidoListItem, filterValue: string): boolean | null => {
+  const label = getMuestrasLabel(order);
+  if (filterValue === "muestras-con") return label !== null;
+  if (filterValue === "muestras-solo") return label === "Solo muestras";
+  if (filterValue === "muestras-sin") return label === null;
+  return null;
+};
+
 const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
   if (!filterValue) return true;
   const confirmed = isOrderConfirmed(row.original);
@@ -132,6 +279,7 @@ const FolioCell = ({
   order: PedidoListItem;
 } & OperationsOrderColumnCallbacks) => {
   const confirmed = isOrderConfirmed(order);
+  const muestrasLabel = getMuestrasLabel(order);
 
   const items: ActionMenuItem[] = [
     {
@@ -142,16 +290,6 @@ const FolioCell = ({
       // "Volver" regrese a esta Mesa de Control.
       href: pedidoDetailHref(order.id, "operations"),
     },
-    // La fecha de confirmación se edita en la cabecera del detalle del pedido.
-    {
-      // Edición del pedido con sincronización a su cotización de origen. Enlace
-      // real, como "Ver detalle": prefetch y clic medio/Ctrl+clic.
-      label: "Editar",
-      icon: EditIcon,
-      href: `${pedidoDetailPath(order.id)}/edit-mesa-control`,
-      permission: "E-MESACONTROL-PEDIDOS",
-      visible: canEditPedidoMesaControl(order.estatus),
-    },
     // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
     // "Revisar inventario".
     {
@@ -161,6 +299,17 @@ const FolioCell = ({
       permission: "E-MESACONTROL-PEDIDOS",
       visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
     },
+    // La fecha de confirmación se edita en la cabecera del detalle del pedido.
+    {
+      // Edición del pedido con sincronización a su cotización de origen. Enlace
+      // real, como "Ver detalle": prefetch y clic medio/Ctrl+clic.
+      label: "Editar",
+      icon: EditIcon,
+      href: `${pedidoDetailPath(order.id)}/edit-mesa-control`,
+      permission: "E-MESACONTROL-PEDIDOS",
+      visible: canEditPedidoMesaControl(order.estatus),
+      tone: "warning",
+    },
     // Un CANCELADO legado (`activo = true`, de antes de `/cancelar/`) sigue
     // listándose, pero no hay nada que cancelar.
     {
@@ -169,17 +318,19 @@ const FolioCell = ({
       onSelect: () => onCancel(order),
       permission: "E-MESACONTROL-PEDIDOS",
       visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+      tone: "danger",
     },
   ];
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2">
       <span
         className={`h-2.5 w-2.5 rounded-full shrink-0 ${confirmed ? "bg-cyan-500" : "bg-amber-500"}`}
-        role="img"
-        aria-label={confirmed ? "Confirmado" : "Por confirmar"}
-        title={confirmed ? "Confirmado" : "Por confirmar"}
+        aria-hidden="true"
       />
+      {/* Folio arriba; debajo, la confirmación EN PALABRA (badge discreto,
+          como Compras) y la OC. */}
+      <div className="flex flex-col items-start gap-1 min-w-0">
       <ActionMenu
         items={items}
         ariaLabel={`Acciones del pedido ${order.folio}`}
@@ -191,7 +342,7 @@ const FolioCell = ({
             title="Ver detalle"
             className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            {order.folio || "—"}
+            <span title={order.folio || undefined}>{formatFolioCorto(order.folio) || "—"}</span>
             <ChevronRightIcon
               className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
               aria-hidden="true"
@@ -199,50 +350,34 @@ const FolioCell = ({
           </button>
         }
       />
-      {hasMeaningfulOc(order.oc) && (
+      <div className="flex items-center gap-1 min-w-0">
         <span
-          className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-mono"
-          title={`Orden de compra: ${order.oc}`}
+          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${
+            confirmed
+              ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300"
+              : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+          }`}
         >
-          OC {order.oc}
+          {confirmed ? "Confirmado" : "Por confirmar"}
         </span>
-      )}
-    </div>
-  );
-};
-
-/**
- * Piezas del pedido y, debajo, "Programado X de Y" (EC-737). Sin indicador en
- * un pedido cancelado ni cuando X e Y son 0. Si se programó de más, el mismo
- * rojo y la misma copia ("Sobran N") que el resumen de "Programar pedido".
- * La columna mide 150px fijos: el renglón puede partirse tras "Programado",
- * pero "X de Y" va junto en un span `whitespace-nowrap`, y "Sobran N" va en su
- * propio renglón; nada sale de la celda. El tono es el del texto secundario de
- * la tabla (`slate-500`/`slate-400`), que pasa 4.5:1 a 11px en ambos temas.
- */
-const PiezasCell = ({ order }: { order: PedidoListItem }) => {
-  const { programado, total, excedente, visible } = getPedidoProgramadoProgress(order);
-  const tone =
-    excedente > 0
-      ? "font-semibold text-rose-600 dark:text-rose-400"
-      : "text-slate-500 dark:text-slate-400";
-  return (
-    <div className="tabular-nums leading-tight">
-      <span className="text-sm text-slate-600 dark:text-slate-300">{order.piezas}</span>
-      {visible && (
-        <>
-          <span className={`block text-[11px] ${tone}`}>
-            {/* "X de Y" no se parte: el renglón solo corta tras "Programado". */}
-            Programado{" "}
-            <span className="whitespace-nowrap">
-              {programado} de {total}
-            </span>
+        {muestrasLabel && (
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${MUESTRA_BADGE_CLASS}`}
+            title={`${order.piezas_muestra} de ${order.piezas} piezas son muestra`}
+          >
+            {muestrasLabel}
           </span>
-          {excedente > 0 && (
-            <span className={`block text-[11px] ${tone}`}>Sobran {excedente}</span>
-          )}
-        </>
-      )}
+        )}
+        {hasMeaningfulOc(order.oc) && (
+          <span
+            className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+            title={`Orden de compra: ${order.oc}`}
+          >
+            OC {order.oc}
+          </span>
+        )}
+      </div>
+      </div>
     </div>
   );
 };
@@ -307,16 +442,43 @@ export function buildOperationsOrderColumns(
         <FilterHeader
           title="Piezas"
           column={column}
-          options={rangeOptions(PIEZAS_RANGES)}
-          label="rango de piezas"
+          options={[...rangeOptions(PIEZAS_RANGES), ...MUESTRAS_FILTER_OPTIONS]}
+          label="piezas o muestras"
         />
       ),
       meta: { align: "right", label: "Piezas" },
       filterFn: (row, _columnId, filterValue) =>
+        (filterValue && matchesMuestrasFilter(row.original, filterValue)) ??
         matchesRangeFilter(PIEZAS_RANGES, row.original.piezas, filterValue),
       sortingFn: "basic",
       enableGlobalFilter: false,
-      cell: ({ row }) => <PiezasCell order={row.original} />,
+      cell: ({ row }) => (
+        <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300">
+          {row.original.piezas}
+        </span>
+      ),
+    },
+    {
+      // Piezas ya programadas por Mesa de Control; "—" si aún no se programa.
+      id: "programado",
+      accessorFn: (order) => getPiezasProgramadas(order) ?? undefined,
+      header: "Programado",
+      meta: { align: "right", label: "Programado" },
+      sortUndefined: "last",
+      enableGlobalFilter: false,
+      size: 150,
+      cell: ({ row }) => <ProgramadoCell order={row.original} />,
+    },
+    {
+      // Piezas surtidas por WMS (pickings); "—" hasta que el backend lo mande.
+      id: "surtido",
+      accessorFn: (order) => order.piezas_surtidas,
+      header: "Surtido",
+      meta: { align: "right", label: "Surtido" },
+      sortUndefined: "last",
+      enableGlobalFilter: false,
+      size: 150,
+      cell: ({ row }) => <SurtidoCell order={row.original} />,
     },
     {
       // Vendedor de la cotización de origen; `null` sin cotización (EC-571).

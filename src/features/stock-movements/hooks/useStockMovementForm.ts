@@ -156,9 +156,24 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
   };
 
   // ─── Mutación ───────────────────────────────────────────────────────────
+  // El backend nombra sus campos distinto que el formulario: se traducen para
+  // que el error quede junto a su campo. `items` es el renglón (aquí siempre
+  // uno): "Item #1: SKU de muestra no encontrado." → sin el prefijo, en el SKU
+  // de muestra y en la variante (solo se ve el campo que está en pantalla).
   const setHookError = (field: string, error: { message?: string }) => {
     if (!error?.message) return;
-    setErrors((prev) => ({ ...prev, [field as StockMovementField]: error.message }));
+    const message = error.message;
+    if (field === "items") {
+      const sinRenglon = message.replace(/^Item #\d+:\s*/i, "");
+      setErrors((prev) => ({ ...prev, sku_muestra: sinRenglon, producto_variante_id: sinRenglon }));
+      return;
+    }
+    const BACKEND_FIELDS: Partial<Record<string, StockMovementField>> = {
+      ubicacion: "ubicacion_origen_id",
+      almacen: "almacen_origen_id",
+    };
+    const target = BACKEND_FIELDS[field] ?? (field as StockMovementField);
+    setErrors((prev) => ({ ...prev, [target]: message }));
   };
   const { mutateAsync: createMovement, isPending: isCreating } = useCreateStockMovement(setHookError);
 
@@ -168,7 +183,9 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
       tipo_movimiento: "ENTRADA",
       almacen_origen_id: 0,
       ubicacion_origen_id: 0,
+      origen_item: "VARIANTE",
       producto_variante_id: 0,
+      sku_muestra: "",
       cantidad: 0,
       observaciones: "",
     }),
@@ -231,11 +248,17 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
           data: {
             almacen: value.almacen_origen_id,
             items: [
-              {
-                producto_variante: value.producto_variante_id,
-                cantidad: value.cantidad.toFixed(4),
-                ubicacion: value.ubicacion_origen_id,
-              },
+              value.origen_item === "MUESTRA"
+                ? {
+                    sku_muestra: value.sku_muestra.trim(),
+                    cantidad: value.cantidad.toFixed(4),
+                    ubicacion: value.ubicacion_origen_id,
+                  }
+                : {
+                    producto_variante: value.producto_variante_id,
+                    cantidad: value.cantidad.toFixed(4),
+                    ubicacion: value.ubicacion_origen_id,
+                  },
             ],
             // Solo se incluyen cuando tienen valor — nunca se envía cadena vacía,
             // ni `pedido: null`/`0` como marcador (el backend lo rechazaría).

@@ -83,6 +83,8 @@ export interface PickingDetalleLine {
   producto_nombre: string | null;
   producto_variante: number | null;
   producto_variante_nombre: string | null;
+  /** SKU de muestra cuando la línea es de una muestra. Opcional (backend anterior). */
+  sku_muestra?: string | null;
   ubicacion: number | null;
   ubicacion_nombre: string | null;
   lote: string | null;

@@ -96,6 +96,11 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
         <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
             {lineaProductoNombre(linea)}
+            {linea.sku_muestra && (
+              <span className="ml-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                {linea.sku_muestra}
+              </span>
+            )}
           </td>
           <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
             {linea.talla_nombre ?? "—"}
@@ -192,8 +197,8 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
  * dos lugares donde se abre el detalle (el listado de picking y el detalle del
  * pedido). Se ofrece con `C-WMS-PICKING` (el mismo código que da de alta un
  * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el picking es
- * trasladable (`isPickingTrasladable`): estatus trasladable y ninguna línea con
- * `cantidad_surtida > 0`. Tras un traslado exitoso ambos dueños reciben el `picking`
+ * trasladable (`isPickingTrasladable`): estatus trasladable, aunque ya esté
+ * surtido. Tras un traslado exitoso ambos dueños reciben el `picking`
  * actualizado sin desmontar este cuerpo. Si el surtido deja de existir (404),
  * este cuerpo SÍ desaparece al refrescarse —y con él el diálogo—, por eso ese
  * error se avisa con un toast (ver `useTransferPicking`).

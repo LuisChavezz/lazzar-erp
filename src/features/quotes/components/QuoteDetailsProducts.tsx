@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { EyeIcon } from "@/src/components/Icons";
+import { ChevronDownIcon, EyeIcon } from "@/src/components/Icons";
 import { QuoteById } from "../interfaces/quote.interface";
 import { getQuoteDetailProductName } from "../utils/quoteDetailsFormatters";
 import {
@@ -23,8 +23,30 @@ interface QuoteDetailsProductsProps {
   formatAmount: (value?: string | number | null) => string;
 }
 
+const plural = (n: number, singular: string, pluralForm: string) =>
+  `${n.toLocaleString("es-MX")} ${n === 1 ? singular : pluralForm}`;
+
 export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProductsProps) => {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
+  // Cada producto es un desplegable: con muchas prendas, la lista se lee como
+  // un índice (nombre, piezas, subtotal) y las tallas se abren a demanda. Si
+  // solo hay uno, arranca abierto: no hay nada que resumir.
+  const [openIds, setOpenIds] = useState<Set<number>>(
+    () => new Set(details.length === 1 ? [details[0].id] : []),
+  );
+  const allOpen = details.length > 0 && details.every((detalle) => openIds.has(detalle.id));
+  const toggleOpen = (id: number) =>
+    setOpenIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const totalPiezas = details.reduce(
+    (acc, detalle) =>
+      acc + detalle.tallas.reduce((sum, talla) => sum + (Number(talla.cantidad) || 0), 0),
+    0,
+  );
   // Misma fuente que el badge de la tabla de captura y el de la columna "Tipo"
   // del listado, para que las tres vistas nombren y coloreen igual.
   const muestraBadge = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA);
@@ -38,8 +60,25 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
+      {details.length > 1 && (
+        <div className="flex items-center justify-between gap-3 px-1 pb-1">
+          <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+            {plural(details.length, "producto", "productos")} · {plural(totalPiezas, "pieza", "piezas")}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setOpenIds(allOpen ? new Set() : new Set(details.map((detalle) => detalle.id)))
+            }
+            className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            {allOpen ? "Cerrar todos" : "Abrir todos"}
+          </button>
+        </div>
+      )}
       {details.map((detalle) => {
+        const isOpen = openIds.has(detalle.id);
         const isEmbroideryViewActive = activeView?.detailId === detalle.id && activeView.view === "embroidery";
         const isReflectiveViewActive = activeView?.detailId === detalle.id && activeView.view === "reflective";
         const isAnyViewActive = isEmbroideryViewActive || isReflectiveViewActive;
@@ -54,18 +93,32 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
             .filter((talla) => talla.lleva_reflejante && talla.reflejante_config?.length > 0)
             .map((talla) => JSON.stringify(talla.reflejante_config))
         ).size;
+        const piezasLinea = detalle.tallas.reduce(
+          (acc, talla) => acc + (Number(talla.cantidad) || 0),
+          0,
+        );
+        const subtotalLinea = detalle.tallas.reduce(
+          (acc, talla) => acc + Number(talla.precio_unitario) * Number(talla.cantidad),
+          0,
+        );
 
         return (
           <div
             key={detalle.id}
             className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 overflow-hidden"
           >
-            <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {/* Encabezado = desplegable: lo esencial en una línea (nombre,
+                qué lleva, piezas y subtotal); las tallas, al abrir. */}
+            <button
+              type="button"
+              onClick={() => toggleOpen(detalle.id)}
+              aria-expanded={isOpen}
+              className="group w-full flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500"
+            >
+                <span className="min-w-0 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {getQuoteDetailProductName(detalle)}
-                  </div>
+                  </span>
                   {/* Marcador de DOMINIO: en datos de lectura no existe el
                       discriminante `tipo` del formulario. Una partida sin
                       `producto` es una muestra — la misma señal que ya usa
@@ -99,17 +152,41 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                       {detalle.color_nombre}
                     </span>
                   )}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Subtotal línea:{" "}
-                  {formatAmount(
-                    detalle.tallas.reduce(
-                      (acc, talla) => acc + Number(talla.precio_unitario) * Number(talla.cantidad),
-                      0
-                    )
+                </span>
+                <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                  {embroideryGroupCount > 0 && (
+                    <span className="rounded px-1.5 py-0.5 text-[10px] font-medium leading-none bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                      Bordado
+                    </span>
                   )}
-                </div>
-              </div>
+                  {reflectiveGroupCount > 0 && (
+                    <span className="rounded px-1.5 py-0.5 text-[10px] font-medium leading-none bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                      Reflejante
+                    </span>
+                  )}
+                  <span>
+                    {plural(detalle.tallas.length, "talla", "tallas")} ·{" "}
+                    <span className="font-semibold text-slate-800 dark:text-white">
+                      {plural(piezasLinea, "pieza", "piezas")}
+                    </span>
+                  </span>
+                  <span
+                    className="font-semibold text-slate-800 dark:text-white"
+                    title="Subtotal de la línea"
+                  >
+                    {formatAmount(subtotalLinea)}
+                  </span>
+                  <ChevronDownIcon
+                    className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </span>
+            </button>
+
+            {isOpen && (
+            <div className="border-t border-slate-200 dark:border-white/10">
+            {(embroideryGroupCount > 0 || reflectiveGroupCount > 0) && (
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-white/10 flex justify-end">
               <div className="flex flex-wrap gap-2">
                 {embroideryGroupCount > 0 && (
                   <button
@@ -145,6 +222,7 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                 )}
               </div>
             </div>
+            )}
 
             <div className="relative">
               {/* Vista normal: tabla de tallas */}
@@ -259,6 +337,8 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                 />
               </div>
             </div>
+            </div>
+            )}
           </div>
         );
       })}

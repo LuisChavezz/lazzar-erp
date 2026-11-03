@@ -35,6 +35,7 @@ export function ScheduledOrdersTable({
       baseDataCount={parcialidades.length}
       getRowId={(row) => row.rowId}
       searchPlaceholder="Folio, OC, cliente, destino…"
+      fillHeight
       emptyMessage="No hay parcialidades programadas."
       onRefetch={onRefetch}
       isRefetching={isRefetching}

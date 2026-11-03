@@ -46,6 +46,7 @@ export function OperationsOrderTable({
       data={orders}
       baseDataCount={orders.length}
       searchPlaceholder="Buscar por folio, cliente u OC..."
+      fillHeight
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}

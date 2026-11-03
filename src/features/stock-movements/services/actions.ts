@@ -3,11 +3,14 @@ import type { StockMovement, StockMovementDetail } from "../interfaces/stock-mov
 
 export interface CreateStockMovementPayload {
   almacen: number;
-  items: {
-    producto_variante: number;
-    cantidad: string;
-    ubicacion: number;
-  }[];
+  /**
+   * Un renglón es de una variante de catálogo (`producto_variante`) o, solo en
+   * ENTRADA, de una muestra por su SKU (`sku_muestra`, sin producto).
+   */
+  items: (
+    | { producto_variante: number; cantidad: string; ubicacion: number }
+    | { sku_muestra: string; cantidad: string; ubicacion: number }
+  )[];
   /** Notas del movimiento. Opcional en los tres endpoints (entrada/salida/ajuste). */
   observaciones?: string;
   /**
@@ -18,6 +21,23 @@ export interface CreateStockMovementPayload {
    */
   pedido?: number;
 }
+
+/** Un resultado del autocompletado de muestras (`GET /inventarios/skus-muestra/`). */
+export interface SampleSkuResult {
+  variante_produccion: number;
+  sku_muestra: string;
+  pedido_folio: string | null;
+  nombre: string | null;
+  talla: string | null;
+}
+
+/** Busca por SKU o folio del pedido; mínimo 1 carácter, máximo 10 resultados. */
+export const searchSampleSkus = async (search: string): Promise<SampleSkuResult[]> => {
+  const response = await v1_api.get<SampleSkuResult[]>("/inventarios/skus-muestra/", {
+    params: { search },
+  });
+  return response.data;
+};
 
 export const getStockMovements = async (): Promise<StockMovement[]> => {
   const response = await v1_api.get<StockMovement[]>("/inventarios/movimientos/");

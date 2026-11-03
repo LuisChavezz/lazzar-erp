@@ -149,11 +149,19 @@ test.describe("groupRenglonesPorPartida", () => {
     expect(partida.faltan).toBe(15);
   });
 
-  test("las partidas de muestra no tienen estado ni faltantes", () => {
+  test("las partidas de muestra no tienen estado; sin SKU no tienen faltantes", () => {
     const [partida] = groupRenglonesPorPartida([muestra(4), muestra(2)]);
     expect(partida.esMuestra).toBe(true);
     expect(partida.coverage).toBeNull();
     expect(partida.faltan).toBe(0);
+  });
+
+  test("una muestra con SKU suma su faltante del backend", () => {
+    const [partida] = groupRenglonesPorPartida([
+      renglon({ es_muestra: true, cantidad: 4, stock_disponible: 1, faltante: 3 }),
+    ]);
+    expect(partida.coverage).toBeNull();
+    expect(partida.faltan).toBe(3);
   });
 });
 

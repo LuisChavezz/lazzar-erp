@@ -286,6 +286,12 @@ export interface PedidoListItem {
    * de un `JSONField`: se lee con `getProgramacionesValidas`.
    */
   parcialidades?: PedidoProgramacion[];
+  /**
+   * Piezas ya SURTIDAS por WMS (suma de `cantidad_surtida_picking` de todas
+   * las tallas; lo mismo que `tracker_picking.total_surtido` del detalle).
+   * Opcional: pedido al backend; sin él la columna "Surtido" muestra "—".
+   */
+  piezas_surtidas?: number;
   /** Vendedor de la cotización de origen; `null` si el pedido no viene de una (EC-571). */
   vendedor_nombre: string | null;
 }

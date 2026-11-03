@@ -8,8 +8,9 @@ import type { PedidoProgramarRenglon } from "../interfaces/pedido-programacion.i
  * nunca se suma ni se reparte stock, solo se compara con lo pedido.
  *
  * Una talla con `stock_disponible === null` no se puede medir: si su línea es
- * de muestra no se surte del almacén; si no lo es (sin producto, o talla sin
- * variante de un producto con variantes), queda "sin medir".
+ * de muestra, aún no tiene SKU; si no lo es (sin producto, o talla sin variante
+ * de un producto con variantes), queda "sin medir". Una muestra CON SKU ya trae
+ * stock y faltante como cualquier talla.
  */
 
 export type TallaCoverage = "full" | "partial" | "none";
@@ -60,7 +61,7 @@ export interface ProgramarPartida {
   esMuestra: boolean;
   /** `null` en las partidas de muestra. */
   coverage: PartidaCoverage | null;
-  /** "Faltan N": suma de `faltante` de sus tallas medidas. */
+  /** "Faltan N": suma de `faltante` de sus tallas medidas (muestras con SKU incluidas). */
   faltan: number;
 }
 
@@ -104,7 +105,7 @@ export const groupRenglonesPorPartida = (
       renglones: tallas,
       esMuestra,
       coverage: esMuestra ? null : getPartidaCoverage(tallas),
-      faltan: esMuestra ? 0 : sumFaltante(tallas),
+      faltan: sumFaltante(tallas),
     };
   });
 };

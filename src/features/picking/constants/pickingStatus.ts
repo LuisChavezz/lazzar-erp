@@ -59,4 +59,5 @@ export const PICKING_ESTADOS_TRASLADABLES: readonly PickingEstado[] = [
   "En proceso",
   "Pausado",
   "Parcial",
+  "Completado",
 ];
