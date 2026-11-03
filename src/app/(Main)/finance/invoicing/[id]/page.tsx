@@ -7,7 +7,7 @@ import type { InvoiceDetailQuery } from "@/src/features/invoicing/constants/invo
  *
  * Cuelga del módulo (`/finance/invoicing/[id]`). Por el `startsWith` del proxy
  * cae en la regla `/finance/invoicing` de `routePermissions.ts` y exige
- * `R-CONTABILIDAD-FACTURACION`; junto con el matcher `/finance/:path*` de
+ * `R-CONTABILIDAD-FACTURACION` o `R-CONTABILIDAD` (lectura jerárquica); junto con el matcher `/finance/:path*` de
  * `proxy.ts` no hace falta registrar nada. Tampoco tiene entrada en
  * `appRoutes.ts` (convención de los detalles de OC, OB, OR, CM y OP): el
  * sub-grupo, la hoja activa del sidebar y el título ("Facturación") se

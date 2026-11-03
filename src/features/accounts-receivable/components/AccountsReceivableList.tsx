@@ -37,7 +37,7 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   // abierto (y se refresca) aunque la fila salga del filtro o de la página.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
 
-  // Ver el listado exige `R-CONTABILIDAD-CXC` (ver `routePermissions`);
+  // Ver el listado exige `R-CONTABILIDAD-CXC` o `R-CONTABILIDAD` (ver `routePermissions`);
   // registrar una CxC (`POST /finanzas/facturas/registrar-pendiente-cobro/`) es
   // una escritura de Finanzas y exige `FINANCE_WRITE_PERMISSION` (EC-711); sin
   // él el botón se oculta. `hasPermission` ya cortocircuita para el rol "admin".

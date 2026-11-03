@@ -30,3 +30,22 @@ export function hasAnyPermission(
   return requiredPermissions.some((permission) => hasPermission(permission, context));
 }
 
+/**
+ * Requisito de una ruta o de una hoja de navegación: un código, o un ARREGLO
+ * que se cumple con CUALQUIERA (la forma de `routePermissions`). Un código
+ * suelto se evalúa exactamente como `hasPermission`.
+ */
+export type PermissionRequirement = string | string[];
+
+/** Normaliza un requisito a la lista de códigos que lo satisfacen. */
+export const permissionRequirementCodes = (requirement: PermissionRequirement): string[] =>
+  Array.isArray(requirement) ? requirement : [requirement];
+
+/** ¿Cumple `context` el requisito? Mismo cortocircuito de rol "admin". */
+export function meetsPermissionRequirement(
+  requirement: PermissionRequirement,
+  context?: PermissionContext | null
+) {
+  return hasAnyPermission(permissionRequirementCodes(requirement), context);
+}
+

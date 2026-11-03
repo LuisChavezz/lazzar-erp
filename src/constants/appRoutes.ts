@@ -1,4 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
+import { permissionRequirementCodes, type PermissionRequirement } from "../utils/permissions";
+import { financeSectionReadPermissions } from "./financePermissions";
 import {
   CapitalHumanoIcon,
   ClientesIcon,
@@ -63,7 +65,13 @@ export interface AppRouteItem {
   path: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   description?: string;
-  permission?: string;
+  /**
+   * Código que abre la hoja, o un ARREGLO que se cumple con CUALQUIERA de sus
+   * códigos (misma forma que `routePermissions`). El arreglo lo usan las
+   * secciones de Finanzas: su subcódigo o `R-CONTABILIDAD` (lectura jerárquica,
+   * ver `financeSectionReadPermissions`). Debe coincidir con la regla de su ruta.
+   */
+  permission?: PermissionRequirement;
   parentPath?: string;
   showInSidebar?: boolean;
   /**
@@ -114,7 +122,7 @@ export interface AppRouteGroup {
  */
 export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
   ...new Set(
-    [group.permission, ...group.items.map((item) => item.permission)].filter(
+    [group.permission, ...group.items.flatMap((item) => (item.permission ? permissionRequirementCodes(item.permission) : []))].filter(
       (permission): permission is string => Boolean(permission)
     )
   ),
@@ -625,7 +633,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Facturación",
         path: "/finance/invoicing",
         icon: FacturacionIcon,
-        permission: "R-CONTABILIDAD-FACTURACION",
+        permission: financeSectionReadPermissions("invoicing"),
         section: "receivables",
       },
       {
@@ -633,7 +641,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "CxC (Cobrar)",
         path: "/finance/accounts-receivable",
         icon: CxcIcon,
-        permission: "R-CONTABILIDAD-CXC",
+        permission: financeSectionReadPermissions("receivables"),
         section: "receivables",
       },
       {
@@ -644,7 +652,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/collections",
         icon: ReceiptIcon,
         description: "Cobros de clientes aplicados contra cuentas por cobrar.",
-        permission: "R-CONTABILIDAD-CXC",
+        permission: financeSectionReadPermissions("receivables"),
         section: "receivables",
       },
       {
@@ -791,7 +799,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/finance/accounting-customers",
         icon: ClientesIcon,
-        permission: "R-CONTABILIDAD-CLIENTES",
+        permission: financeSectionReadPermissions("accountingCustomers"),
         section: "master-data",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/price-lists/components/PriceListList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.

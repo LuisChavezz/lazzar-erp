@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { Session } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
-import { hasPermission } from "@/src/utils/permissions";
+import { meetsPermissionRequirement, type PermissionRequirement } from "@/src/utils/permissions";
 
 /**
  * Verifica sesión activa + permiso de módulo para un Route Handler de
@@ -10,9 +10,12 @@ import { hasPermission } from "@/src/utils/permissions";
  * necesita su propio chequeo explícito. Devuelve la `session` en éxito, o una
  * `errorResponse` (401 sin sesión, 403 sin permiso) lista para retornar tal
  * cual desde el handler.
+ *
+ * `permissionCode` es un código, o un arreglo que se cumple con CUALQUIERA (la
+ * forma de `routePermissions`, para seguir a la regla de la ruta de su sección).
  */
 export async function requireAuthenticatedSession(
-  permissionCode: string,
+  permissionCode: PermissionRequirement,
 ): Promise<{ session: Session } | { errorResponse: NextResponse }> {
   const session = await getServerSession(authOptions);
 
@@ -21,7 +24,7 @@ export async function requireAuthenticatedSession(
   }
 
   if (
-    !hasPermission(permissionCode, {
+    !meetsPermissionRequirement(permissionCode, {
       role: session.user.role,
       permissions: session.user.permissions,
     })

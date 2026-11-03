@@ -1,18 +1,19 @@
 import { getSidebarSectionsByPath, type SidebarItem } from "../constants/sidebarItems";
 import { PermissionContext } from "../interfaces/permission-context.interface";
-import { hasAnyPermission, hasPermission } from "./permissions";
+import { hasAnyPermission, meetsPermissionRequirement } from "./permissions";
 
 /**
  * ¿Se le muestra este acceso al usuario?
  *
  * `permissionAnyOf` (items de MÓDULO) se satisface con CUALQUIERA de sus
- * códigos; `permission` (sub-rutas) exige ese código exacto. Sin código, visible.
+ * códigos; `permission` (sub-rutas) exige ese código exacto, o uno de la lista
+ * si es un arreglo (lectura jerárquica de Finanzas). Sin código, visible.
  */
 const canSeeItem = (item: SidebarItem, context?: PermissionContext | null) => {
   if (item.permissionAnyOf?.length) {
     return hasAnyPermission(item.permissionAnyOf, context);
   }
-  return item.permission ? hasPermission(item.permission, context) : true;
+  return item.permission ? meetsPermissionRequirement(item.permission, context) : true;
 };
 
 export const getSidebarItems = (

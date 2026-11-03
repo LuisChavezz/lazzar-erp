@@ -1,3 +1,5 @@
+import { FINANCE_READ_PERMISSION, financeSectionReadPermissions } from "./financePermissions";
+
 /**
  * Mapa de ruta → permiso requerido, evaluado por `src/proxy.ts`.
  *
@@ -16,6 +18,9 @@
  * del módulo y NO concede acceso a sus secciones: cada sección exige su propio
  * código. Las rutas de un módulo sin código de sección propio en el catálogo
  * (p. ej. "/wms/locations") caen en la regla de módulo.
+ *
+ * EXCEPCIÓN: Finanzas. Ahí la lectura es jerárquica como en el backend
+ * (EC-746): `R-CONTABILIDAD` abre también las secciones con código propio.
  *
  * `permission` acepta un código o un ARREGLO de códigos. Con arreglo la regla se
  * cumple teniendo CUALQUIERA de ellos (`hasAnyPermission`), para rutas neutras
@@ -123,11 +128,16 @@ export const routePermissions: Array<{
   { prefix: "/manufacturing", permission: "R-PRODUCCION" },
 
   // ── Finanzas y Contabilidad ───────────────────────────────────────────────
-  { prefix: "/finance/invoicing", permission: "R-CONTABILIDAD-FACTURACION" },
-  { prefix: "/finance/accounts-receivable", permission: "R-CONTABILIDAD-CXC" },
-  { prefix: "/finance/collections", permission: "R-CONTABILIDAD-CXC" },
-  { prefix: "/finance/accounting-customers", permission: "R-CONTABILIDAD-CLIENTES" },
-  { prefix: "/finance", permission: "R-CONTABILIDAD" },
+  // Lectura JERÁRQUICA, igual que el backend (`PermisoFinanzas`, EC-746): cada
+  // sección con código propio se abre con su subcódigo O con `R-CONTABILIDAD`,
+  // que lee todo Finanzas. Es la excepción a la regla general de arriba ("el
+  // permiso de módulo no concede sus secciones"). El resto de Finanzas cae en
+  // la regla de módulo.
+  { prefix: "/finance/invoicing", permission: financeSectionReadPermissions("invoicing") },
+  { prefix: "/finance/accounts-receivable", permission: financeSectionReadPermissions("receivables") },
+  { prefix: "/finance/collections", permission: financeSectionReadPermissions("receivables") },
+  { prefix: "/finance/accounting-customers", permission: financeSectionReadPermissions("accountingCustomers") },
+  { prefix: "/finance", permission: FINANCE_READ_PERMISSION },
 
   // ── Módulos sin secciones en el catálogo ──────────────────────────────────
   { prefix: "/hr", permission: "R-RH" },
