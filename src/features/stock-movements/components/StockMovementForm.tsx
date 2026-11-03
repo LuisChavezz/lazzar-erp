@@ -1,7 +1,8 @@
 "use client";
 
+import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useStore } from "@tanstack/react-form";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
@@ -15,6 +16,9 @@ import { XIcon } from "@/src/components/Icons";
 import { ProductVariantSearchDropdown } from "./ProductVariantSearchDropdown";
 import { StockMovementPedidoSelectorDialog } from "./StockMovementPedidoSelectorDialog";
 import { useStockMovementForm } from "../hooks/useStockMovementForm";
+import { usePedidoDetail } from "@/src/features/orders/hooks/usePedidoDetail";
+import { useSampleSkuSearch } from "../hooks/useSampleSkuSearch";
+import { formatFolioCorto } from "@/src/features/orders/utils/pedidoFormat";
 import { AJUSTE_OBSERVACIONES_MAX } from "../schemas/stock-movement.schema";
 
 /**
@@ -55,6 +59,9 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
   // ─── Suscripciones reactivas a campos del formulario ────────────────────
   const tipoMovimiento = useStore(form.store, (state) => state.values.tipo_movimiento);
   const almacenOrigenId = useStore(form.store, (state) => state.values.almacen_origen_id);
+  const origenItem = useStore(form.store, (state) => state.values.origen_item);
+  // Muestra solo en ENTRADA: producción le da entrada a su SKU.
+  const isMuestra = tipoMovimiento === "ENTRADA" && origenItem === "MUESTRA";
   const observacionesValue = useStore(form.store, (state) => state.values.observaciones ?? "");
 
   const isAjuste = tipoMovimiento === "AJUSTE";
@@ -158,6 +165,11 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                         const nextValue = event.target.value as typeof field.state.value;
                         field.handleChange(nextValue);
                         clearFieldError("tipo_movimiento");
+                        // Salida y ajuste solo aplican a variantes del catálogo.
+                        if (nextValue !== "ENTRADA") {
+                          form.setFieldValue("origen_item", "VARIANTE");
+                          clearFieldError("sku_muestra");
+                        }
                         // Las observaciones ahora son opcionales para todo tipo de
                         // movimiento — el valor no se limpia al cambiar de tipo,
                         // pero sí cualquier error previo, para no dejarlo huérfano
@@ -251,13 +263,80 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
                   Producto
                 </h3>
-                <p className="text-[11px] text-slate-500">Variante y cantidad del movimiento</p>
+                <p className="text-[11px] text-slate-500">
+                  {isMuestra ? "SKU de la muestra y cantidad" : "Variante y cantidad del movimiento"}
+                </p>
               </div>
+              {/* Solo en ENTRADA: producto del catálogo o muestra por su SKU. */}
+              {tipoMovimiento === "ENTRADA" && (
+                <div
+                  role="radiogroup"
+                  aria-label="Qué entra al almacén"
+                  className="ml-auto inline-flex rounded-lg bg-slate-100 dark:bg-white/5 p-0.5"
+                >
+                  {(
+                    [
+                      { value: "VARIANTE", label: "Producto" },
+                      { value: "MUESTRA", label: "Muestra" },
+                    ] as const
+                  ).map((opcion) => {
+                    const active = origenItem === opcion.value;
+                    return (
+                      <button
+                        key={opcion.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => {
+                          form.setFieldValue("origen_item", opcion.value);
+                          clearFieldError("producto_variante_id");
+                          clearFieldError("sku_muestra");
+                          resetStockCheck();
+                        }}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                          active
+                            ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        {opcion.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Variante de Producto */}
+                {/* SKU de muestra (solo ENTRADA) o variante de producto */}
+                {isMuestra ? (
+                <form.Field name="sku_muestra">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <SampleSkuAutocomplete
+                        value={field.state.value}
+                        onChange={(sku) => {
+                          field.handleChange(sku);
+                          clearFieldError("sku_muestra");
+                        }}
+                        onBlur={field.handleBlur}
+                        error={getError("sku_muestra")}
+                      />
+                      {selectedPedido ? (
+                        <SampleSkuSuggestions
+                          pedidoId={selectedPedido.id}
+                          value={field.state.value}
+                          onPick={(sku) => {
+                            field.handleChange(sku);
+                            clearFieldError("sku_muestra");
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  )}
+                </form.Field>
+                ) : (
                 <form.Field name="producto_variante_id">
                   {(field) => (
                     <div className="space-y-2">
@@ -303,6 +382,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
                 </form.Field>
+                )}
 
                 {/* Cantidad */}
                 <form.Field name="cantidad">
@@ -468,6 +548,207 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
  * Punto de entrada para la tabla.
  * Solo activa la carga de datos del formulario cuando el modal se abre.
  */
+
+/**
+ * Campo del SKU de muestra con autocompletado: al escribir (debounce 250 ms)
+ * busca por SKU o folio y lista hasta 10 resultados; flechas + Enter o clic
+ * eligen. Lo que se envía sigue siendo el texto del campo (`sku_muestra`).
+ */
+function SampleSkuAutocomplete({
+  value,
+  onChange,
+  onBlur,
+  error,
+}: {
+  value: string;
+  onChange: (sku: string) => void;
+  onBlur: () => void;
+  error?: FormFieldError;
+}) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const { results, isSearching, isError, term } = useSampleSkuSearch(value);
+  // `fixed` desde el input, como `ProductVariantSearchDropdown`: la tarjeta
+  // tiene `overflow-hidden` y recortaría una lista `absolute`.
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [listStyle, setListStyle] = useState<React.CSSProperties>({});
+  const placeList = () => {
+    const rect = inputRef.current?.getBoundingClientRect();
+    if (rect) {
+      setListStyle({ position: "fixed", top: rect.bottom + 8, left: rect.left, width: rect.width, zIndex: 9999 });
+    }
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("resize", close);
+    return () => window.removeEventListener("resize", close);
+  }, [open]);
+  // Ya elegido (coincide exacto con un resultado): no hace falta la lista.
+  const exact = results.some((r) => r.sku_muestra.toUpperCase() === value.trim().toUpperCase());
+  const showList = open && value.trim().length > 0 && !exact;
+  const pick = (sku: string) => {
+    onChange(sku);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <FormInput
+        ref={inputRef}
+        label="SKU de la muestra"
+        placeholder="Busca por SKU o folio del pedido"
+        name="sku_muestra"
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls="sku-muestra-sugerencias"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+          setHighlighted(0);
+        }}
+        onFocus={() => {
+          placeList();
+          setOpen(true);
+        }}
+        onBlur={() => {
+          // Deja terminar el clic sobre una sugerencia antes de cerrar.
+          setTimeout(() => setOpen(false), 120);
+          onBlur();
+        }}
+        onKeyDown={(event) => {
+          if (!showList || results.length === 0) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setHighlighted((i) => Math.min(i + 1, results.length - 1));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setHighlighted((i) => Math.max(i - 1, 0));
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            pick(results[highlighted]?.sku_muestra ?? value);
+          } else if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        error={error}
+      />
+      {showList && (
+        <ul
+          id="sku-muestra-sugerencias"
+          role="listbox"
+          style={listStyle}
+          className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-lg p-1"
+        >
+          {isSearching && results.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-slate-400">Buscando…</li>
+          ) : isError ? (
+            <li className="px-3 py-2 text-xs text-rose-600 dark:text-rose-400">
+              No se pudo buscar. Intenta de nuevo.
+            </li>
+          ) : results.length === 0 && term ? (
+            <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+              Sin muestras que coincidan.
+            </li>
+          ) : (
+            results.map((r, index) => (
+              <li
+                key={`${r.variante_produccion}-${r.sku_muestra}`}
+                role="option"
+                aria-selected={index === highlighted}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => pick(r.sku_muestra)}
+                onMouseEnter={() => setHighlighted(index)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer ${
+                  index === highlighted ? "bg-violet-50 dark:bg-violet-500/10" : ""
+                }`}
+              >
+                <span className="font-mono text-xs font-semibold text-slate-800 dark:text-white">
+                  {r.sku_muestra}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                  {[r.nombre, r.talla && `Talla ${r.talla}`].filter(Boolean).join(" · ")}
+                </span>
+                {r.pedido_folio && (
+                  <span
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                    title={r.pedido_folio}
+                  >
+                    {formatFolioCorto(r.pedido_folio)}
+                  </span>
+                )}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * SKUs de muestra del pedido relacionado, para elegir con un clic. Una sola
+ * lectura del detalle del pedido (en caché con `["pedido-detail", id]`, la
+ * misma que usa el detalle 360°), así que es inmediata al reabrir.
+ */
+function SampleSkuSuggestions({
+  pedidoId,
+  value,
+  onPick,
+}: {
+  pedidoId: number;
+  value: string;
+  onPick: (sku: string) => void;
+}) {
+  const { data: pedido, isLoading } = usePedidoDetail(pedidoId);
+  if (isLoading) {
+    return <p className="text-[11px] text-slate-400 dark:text-slate-500">Buscando SKUs de muestra…</p>;
+  }
+  const skus = (pedido?.detalles ?? []).flatMap((linea) =>
+    linea.tallas
+      .filter((talla) => talla.sku_muestra?.trim())
+      .map((talla) => ({
+        sku: talla.sku_muestra!.trim(),
+        detalle: [linea.producto_nombre_externo || linea.producto_nombre, talla.talla_nombre]
+          .filter(Boolean)
+          .join(" · "),
+      })),
+  );
+  if (skus.length === 0) {
+    return (
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        Este pedido no tiene SKUs de muestra vinculados.
+      </p>
+    );
+  }
+  const typed = value.trim().toUpperCase();
+  return (
+    <div className="flex flex-wrap gap-1.5" aria-label="SKUs de muestra del pedido">
+      {skus.map((item) => {
+        const active = item.sku.toUpperCase() === typed;
+        return (
+          <button
+            key={item.sku}
+            type="button"
+            onClick={() => onPick(item.sku)}
+            title={item.detalle}
+            aria-pressed={active}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-mono font-semibold cursor-pointer transition-colors ${
+              active
+                ? "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/20 dark:text-violet-300"
+                : "border-slate-200 text-slate-600 hover:bg-violet-50 hover:text-violet-700 dark:border-white/10 dark:text-slate-300 dark:hover:bg-violet-500/10 dark:hover:text-violet-300"
+            }`}
+          >
+            {item.sku}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export const StockMovementForm = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
