@@ -57,9 +57,13 @@ export default function SizeList() {
           onOpenChange={(open) => {
             if (!open) setSizeToDelete(null);
           }}
-          title="Eliminar Talla"
-          description="¿Estás seguro de que deseas eliminar esta talla? Esta acción no se puede deshacer."
-          confirmText="Eliminar"
+          // El DELETE es una baja lógica (`activo=False`): la talla deja de
+          // listarse, pero las variantes que ya la usan la conservan.
+          title="Dar de baja talla"
+          description={`La talla "${
+            deleteSession.snapshot?.nombre ?? ""
+          }" dejará de aparecer en los catálogos. Las variantes que ya la usan la conservan. No se puede reactivar desde aquí.`}
+          confirmText="Dar de baja"
           onConfirm={() => {
             if (deleteSession.snapshot) deleteSize(deleteSession.snapshot.id);
             setSizeToDelete(null);
