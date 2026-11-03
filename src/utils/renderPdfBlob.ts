@@ -14,39 +14,37 @@
  * propio generador: la ruta tiene que quedar LITERAL en quien llama para que
  * el bundler pueda partir ese chunk. Recibir la ruta como string lo impediría.
  *
- * Si falla la DESCARGA de un chunk (red caída, o un deploy nuevo que ya no
- * sirve los chunks de la versión cargada en la pestaña), se lanza un error
- * con un mensaje legible en vez del "Failed to load chunk …" del bundler;
- * el original queda en `cause`. Cualquier otro error —al evaluar el módulo o
- * al renderizar el PDF— se propaga tal cual.
+ * Si falla la DESCARGA de un chunk (`isChunkLoadError`), se lanza un error con
+ * un mensaje legible propio del PDF en vez del "Failed to load chunk …" del
+ * bundler; el original queda en `cause`. Cualquier otro error —al evaluar el
+ * módulo o al renderizar el PDF— se propaga tal cual.
+ *
+ * `loadRenderer` solo existe para las pruebas unitarias (un renderer falso);
+ * los generadores nunca lo pasan.
  */
-import type { ComponentType } from "react";
+import { createElement, type ComponentType, type ReactElement } from "react";
+import { isChunkLoadError } from "./isChunkLoadError";
 
 export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
   "No se pudo cargar el generador de PDF. Recarga la página e intenta de nuevo.";
 
-// Turbopack y webpack marcan así el fallo al descargar un chunk de un `import()`.
-const isChunkLoadError = (error: unknown): boolean =>
-  error instanceof Error && error.name === "ChunkLoadError";
+/** Lo único que se usa de `@react-pdf/renderer`. */
+export interface PdfRenderer {
+  pdf(element: ReactElement): { toBlob(): Promise<Blob> };
+}
 
 export async function renderPdfBlob<P extends object>(
   loadDocument: () => Promise<ComponentType<P>>,
   props: P,
+  loadRenderer: () => Promise<PdfRenderer> = () => import("@react-pdf/renderer"),
 ): Promise<Blob> {
-  let renderer: typeof import("@react-pdf/renderer");
-  let PdfDocument: ComponentType<P>;
+  const [renderer, PdfDocument] = await Promise.all([loadRenderer(), loadDocument()]).catch(
+    (error: unknown) => {
+      throw isChunkLoadError(error)
+        ? new Error(PDF_GENERATOR_LOAD_ERROR_MESSAGE, { cause: error })
+        : error;
+    },
+  );
 
-  try {
-    [renderer, PdfDocument] = await Promise.all([
-      import("@react-pdf/renderer"),
-      loadDocument(),
-    ]);
-  } catch (error) {
-    if (isChunkLoadError(error)) {
-      throw new Error(PDF_GENERATOR_LOAD_ERROR_MESSAGE, { cause: error });
-    }
-    throw error;
-  }
-
-  return renderer.pdf(<PdfDocument {...props} />).toBlob();
+  return renderer.pdf(createElement(PdfDocument, props)).toBlob();
 }
