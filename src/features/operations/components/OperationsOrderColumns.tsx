@@ -232,7 +232,11 @@ const PiezasCell = ({ order }: { order: PedidoListItem }) => {
       {visible && (
         <>
           <span className={`block text-[11px] ${tone}`}>
-            Programado {programado} de {total}
+            {/* "X de Y" no se parte: el renglón solo corta tras "Programado". */}
+            Programado{" "}
+            <span className="whitespace-nowrap">
+              {programado} de {total}
+            </span>
           </span>
           {excedente > 0 && (
             <span className={`block text-[11px] ${tone}`}>Sobran {excedente}</span>
