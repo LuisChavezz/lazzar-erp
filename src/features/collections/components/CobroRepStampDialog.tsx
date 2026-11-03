@@ -31,7 +31,7 @@ export function CobroRepStampDialog({ cobro, open, onOpenChange }: CobroRepStamp
   const target = session.snapshot;
   const label = target ? cobroLabel(target) : "";
 
-  const { stamp, isStamping } = useStampCobroRep(target?.id ?? 0);
+  const { stamp, isStamping, isIdle } = useStampCobroRep(target?.id ?? 0);
 
   return (
     <CobroActionConfirmDialog
@@ -44,6 +44,7 @@ export function CobroRepStampDialog({ cobro, open, onOpenChange }: CobroRepStamp
       confirmColor="blue"
       run={target ? stamp : null}
       isRunning={isStamping}
+      isIdle={isIdle}
     />
   );
 }

@@ -30,7 +30,7 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
   const label = target ? cobroLabel(target) : "";
   const uuidLabel = target?.rep_uuid ? ` (UUID ${target.rep_uuid})` : "";
 
-  const { cancelRep, isCancellingRep } = useCancelCobroRep(target?.id ?? 0);
+  const { cancelRep, isCancellingRep, isIdle } = useCancelCobroRep(target?.id ?? 0);
 
   return (
     <CobroActionConfirmDialog
@@ -43,6 +43,7 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
       confirmColor="red"
       run={target ? cancelRep : null}
       isRunning={isCancellingRep}
+      isIdle={isIdle}
     />
   );
 }
