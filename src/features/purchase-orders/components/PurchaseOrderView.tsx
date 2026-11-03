@@ -30,6 +30,7 @@ import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
 import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailConfirmDialog";
 import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
+import { PurchaseOrderRowActionsProvider } from "../hooks/purchaseOrderRowActionsContext";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
@@ -77,7 +78,9 @@ export function PurchaseOrderView() {
   // Mismo motivo: la confirmación vive aquí y no en la celda. "Enviar correo"
   // PREPARA el correo (orden fresca + render) y lo muestra para confirmarse;
   // nada se envía hasta confirmar. Mismo flujo que facturas y cotizaciones.
-  const { onSendEmail, emailConfirmation } = usePurchaseOrderEmailConfirmation();
+  // `request` llega al menú de cada fila por contexto (ver el Provider abajo).
+  const email = usePurchaseOrderEmailConfirmation();
+  const rowActions = { onSendEmail: email.request };
 
   // ── Opciones de los filtros de encabezado ─────────────────────────────────
   // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
@@ -102,15 +105,12 @@ export function PurchaseOrderView() {
         },
         (order) =>
           setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
-        (order) => void onSendEmail(order.id),
         statusOptions,
         supplierOptions,
         fechaOcOptions,
         vencimientoOptions,
       ),
-    // `onSendEmail` solo cierra sobre valores estables (mutación, setter y ref),
-    // así que el React Compiler lo memoiza y las columnas no se recrean.
-    [onSendEmail, statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
+    [statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
@@ -218,6 +218,7 @@ export function PurchaseOrderView() {
   // monta la página encima de esta vista (`PurchaseOrderKpisSection`), con
   // consulta propia al backend.
   return (
+    <PurchaseOrderRowActionsProvider value={rowActions}>
     <div className="space-y-6">
       {/* ── Tabla de órdenes ──────────────────────────────────────────────── */}
       {table}
@@ -253,19 +254,13 @@ export function PurchaseOrderView() {
       />
 
       {/* ── Correo al proveedor ───────────────────────────────────────────── */}
-      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+      {/* El correo mostrado es la foto preparada al pedir el envío
+          (`useDialogSession`: sobrevive a la animación de cierre), y es
           exactamente lo que se envía al confirmar. */}
-      {emailConfirmation && (
-        <PurchaseOrderSendEmailConfirmDialog
-          key={`send-email-${emailConfirmation.email.id}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) emailConfirmation.onClose();
-          }}
-          email={emailConfirmation.email}
-          onConfirm={emailConfirmation.onConfirm}
-        />
+      {email.dialog && (
+        <PurchaseOrderSendEmailConfirmDialog key={email.dialog.sessionId} {...email.dialog.props} />
       )}
     </div>
+    </PurchaseOrderRowActionsProvider>
   );
 }

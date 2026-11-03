@@ -1,9 +1,13 @@
 "use client";
 
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import {
+  useSendEmailConfirmation,
+  type SendEmailDialogSession,
+} from "@/src/features/google/hooks/useSendEmailConfirmation";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
@@ -79,8 +83,8 @@ export function useInvoiceRowActionsContext(): InvoiceRowActionsContextValue {
  * `usePrepareInvoiceEmail` / `useSendInvoiceEmail`): mismo PDF, mismo correo y
  * mismos avisos. El correo se bloquea con la misma regla
  * (`getInvoiceEmailBlocker`), avisando el motivo, y como en el detalle se
- * prepara y se confirma (`emailConfirmation`, que el listado pinta con
- * `InvoiceSendEmailConfirmDialog`) antes de enviarse.
+ * prepara y se confirma (`emailDialog`, de `useSendEmailConfirmation`, que el
+ * listado pinta con `InvoiceSendEmailConfirmDialog`) antes de enviarse.
  *
  * "En curso" vive en la `MutationCache` (`useMutationState`), no en la celda:
  * sobrevive a que la celda se desmonte al ordenar o paginar, y se limpia solo
@@ -92,21 +96,13 @@ export function useInvoiceListDocumentActions(): Omit<
   InvoiceRowActionsContextValue,
   "canCancel" | "onCancel"
 > & {
-  /** Correo preparado esperando confirmación, o `null` si no hay ninguno. */
-  emailConfirmation: {
-    email: PreparedInvoiceEmail;
-    onClose: () => void;
-    onConfirm: () => void;
-  } | null;
+  /** Sesión del diálogo de confirmación del correo (`useSendEmailConfirmation`). */
+  emailDialog: SendEmailDialogSession<PreparedInvoiceEmail> | null;
 } {
   const queryClient = useQueryClient();
   const { mutateAsync: downloadPdf } = useDownloadInvoicePdf();
   const { mutateAsync: prepareEmail } = usePrepareInvoiceEmail();
   const { mutateAsync: sendEmail } = useSendInvoiceEmail();
-  const [preparedEmail, setPreparedEmail] = useState<PreparedInvoiceEmail | null>(null);
-  // Turno del ÚLTIMO "Enviar correo" pedido: si mientras se prepara uno el
-  // usuario pide el de otra fila, el primero ya no abre su confirmación encima.
-  const emailTurnRef = useRef(0);
 
   const { mutate, mutateAsync } = useMutation<
     PreparedInvoiceEmail | void,
@@ -163,31 +159,24 @@ export function useInvoiceListDocumentActions(): Omit<
         (mutation.state.variables as InvoiceListDocumentActionVariables | undefined)?.id === id,
     }) > 0;
 
-  const prepareAndConfirmEmail = async (id: number) => {
-    if (isInFlight(id)) return;
-    const turn = ++emailTurnRef.current;
-    try {
-      const email = await mutateAsync({ id, action: "email" });
-      if (email && turn === emailTurnRef.current) setPreparedEmail(email);
-    } catch {
-      // El toast lo muestra la mutación (o la de preparar el correo).
-    }
-  };
+  // Preparar y enviar corren por la mutación del listado (consulta fresca,
+  // regla de bloqueo y toast de "en curso"), así que esa es la que ocupa la fila.
+  const email = useSendEmailConfirmation<PreparedInvoiceEmail>({
+    busyMutationKeys: [invoiceListDocumentActionMutationKey],
+    prepare: async (id) => {
+      const prepared = await mutateAsync({ id, action: "email" });
+      if (!prepared) throw new Error("La acción \"email\" siempre devuelve el correo preparado.");
+      return prepared;
+    },
+    send: (prepared) => mutate({ id: prepared.id, action: "send", email: prepared }),
+  });
 
   return {
     onDownloadPdf: (id) => {
       if (!isInFlight(id)) mutate({ id, action: "pdf" });
     },
-    onSendEmail: (id) => void prepareAndConfirmEmail(id),
+    onSendEmail: email.request,
     pendingIds,
-    emailConfirmation: preparedEmail && {
-      email: preparedEmail,
-      onClose: () => setPreparedEmail(null),
-      onConfirm: () => {
-        if (!isInFlight(preparedEmail.id)) {
-          mutate({ id: preparedEmail.id, action: "send", email: preparedEmail });
-        }
-      },
-    },
+    emailDialog: email.dialog,
   };
 }

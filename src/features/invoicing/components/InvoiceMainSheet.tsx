@@ -238,17 +238,13 @@ function InvoiceDocumentActions({
           {cfdiEmail.message}
         </p>
       )}
-      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+      {/* El correo mostrado es la foto preparada al pedir el envío
+          (`useDialogSession`: sobrevive a la animación de cierre), y es
           exactamente lo que se envía al confirmar. */}
-      {actions.emailConfirmation && (
+      {actions.emailDialog && (
         <InvoiceSendEmailConfirmDialog
-          key={`send-email-${actions.emailConfirmation.email.id}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) actions.emailConfirmation?.onClose();
-          }}
-          email={actions.emailConfirmation.email}
-          onConfirm={actions.emailConfirmation.onConfirm}
+          key={actions.emailDialog.sessionId}
+          {...actions.emailDialog.props}
         />
       )}
     </div>

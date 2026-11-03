@@ -31,6 +31,7 @@ import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
 import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail";
+import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
 import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
   isPurchaseOrderAuthorizedOrComplete,
@@ -56,8 +57,9 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  *
  * "Ver Detalles" es un enlace real (`href` del item) a la página de detalle.
  * Edición, cancelación, ruta crítica y correo se DELEGAN a la vista (`onEdit`
- * / `onCancel` / `onCriticalPath` / `onSendEmail`): sus destinos —diálogos de
- * formulario y la confirmación del correo— deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
+ * / `onCancel` / `onCriticalPath`, y `onSendEmail` por
+ * `PurchaseOrderRowActionsProvider`): sus destinos —diálogos de formulario y
+ * la confirmación del correo— deben sobrevivir a que la celda se desmonte al ordenar, paginar o filtrar. Cancelar en particular CAMBIA el estatus de la fila, así
  * que el refetch puede sacarla de una vista filtrada con el diálogo abierto.
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
@@ -70,14 +72,13 @@ const FolioCell = ({
   onEdit,
   onCancel,
   onCriticalPath,
-  onSendEmail,
 }: {
   order: PurchaseOrder;
   onEdit: (order: PurchaseOrder) => void;
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
-  onSendEmail: (order: PurchaseOrder) => void;
 }) => {
+  const { onSendEmail } = usePurchaseOrderRowActionsContext();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
@@ -217,7 +218,7 @@ const FolioCell = ({
           : "Enviar correo",
       icon: EmailIcon,
       // Prepara el correo y la vista pide confirmación; nada se envía antes.
-      onSelect: () => onSendEmail(order),
+      onSelect: () => onSendEmail(order.id),
       // In-flight guard: evita doble envío o solaparse con la descarga.
       // `keepOpenOnSelect` deja el menú abierto para ver "Preparando..."/"Enviando...".
       disabled: isEmailBusy || isDownloadingPdf,
@@ -466,7 +467,6 @@ export const getColumns = (
   onEdit: (order: PurchaseOrder) => void,
   onCancel: (order: PurchaseOrder) => void,
   onCriticalPath: (order: PurchaseOrder) => void,
-  onSendEmail: (order: PurchaseOrder) => void,
   statusOptions: DataTableFilterOption[],
   supplierOptions: DataTableFilterOption[],
   fechaOcOptions: DataTableFilterOption[],
@@ -521,7 +521,6 @@ export const getColumns = (
             onEdit={onEdit}
             onCancel={onCancel}
             onCriticalPath={onCriticalPath}
-            onSendEmail={onSendEmail}
           />
         ),
       },

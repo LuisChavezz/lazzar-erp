@@ -42,7 +42,7 @@ export const InvoiceList = () => {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   // PDF y correo del menú de cada fila: una sola instancia, por contexto.
-  const { emailConfirmation, ...documentActions } = useInvoiceListDocumentActions();
+  const { emailDialog, ...documentActions } = useInvoiceListDocumentActions();
   const rowActions = {
     ...documentActions,
     canCancel: (invoice: InvoiceListRow) => canCancelInvoice(invoice, session?.user),
@@ -90,17 +90,10 @@ export const InvoiceList = () => {
         }}
       />
       {/* Confirmación del correo: vive aquí y no en la celda, como la
-          cancelación. Muestra la foto preparada, que es lo que se envía. */}
-      {emailConfirmation && (
-        <InvoiceSendEmailConfirmDialog
-          key={`send-email-${emailConfirmation.email.id}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) emailConfirmation.onClose();
-          }}
-          email={emailConfirmation.email}
-          onConfirm={emailConfirmation.onConfirm}
-        />
+          cancelación. Muestra la foto preparada (`useDialogSession`: sobrevive a la
+          animación de cierre), que es lo que se envía. */}
+      {emailDialog && (
+        <InvoiceSendEmailConfirmDialog key={emailDialog.sessionId} {...emailDialog.props} />
       )}
     </div>
     </InvoiceRowActionsProvider>

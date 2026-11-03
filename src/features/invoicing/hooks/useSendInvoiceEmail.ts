@@ -1,14 +1,20 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "@/src/features/google/services/actions";
 import { buildGoogleEmailAttachment } from "@/src/features/google/utils/googleEmailAttachment.utils";
 import { renderEmailContent, type SendEmailResult } from "@/src/features/google/utils/emailSend.utils";
 import type { GoogleEmailPayload } from "@/src/features/google/interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEmailFlow";
 import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
+import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import type { Invoice } from "../interfaces/invoice.interface";
+import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
+
+export const INVOICE_EMAIL_STALE_MESSAGE =
+  "La factura cambió desde que preparaste el correo, así que no se envió. Vuelve a intentarlo para revisar la versión actual.";
 
 /**
  * Correo de una factura LISTO para confirmarse: lo que se va a enviar, tal como
@@ -64,8 +70,16 @@ export const usePrepareInvoiceEmail = () =>
   });
 
 /**
- * Paso 2, solo tras confirmar: genera el PDF y envía el correo preparado al
- * CLIENTE (v1_api POST, cookies + interceptor de refresh).
+ * Paso 2, solo tras confirmar: vuelve a leer la factura (retrieve fresco), la
+ * revalida con `getInvoiceEmailBlocker` y, si sigue IGUAL a la foto que se
+ * preparó, genera el PDF y envía el correo al CLIENTE (v1_api POST, cookies +
+ * interceptor de refresh).
+ *
+ * Entre preparar y confirmar la confirmación puede quedar abierta: si otro
+ * usuario canceló, eliminó o modificó la factura, se aborta sin enviar —nunca
+ * sale una versión distinta de la que el usuario confirmó—. La comparación es
+ * de la factura completa (`assertEmailSnapshotUnchanged`), que cubre todo lo que muestran el
+ * diálogo, el correo y el PDF (incluido `correo_facturas`, el destinatario).
  *
  * El PDF se genera con el MISMO generador que "Descargar PDF"
  * (generateInvoicePdfBlob) a partir de la MISMA foto con la que se renderizó el
@@ -73,10 +87,18 @@ export const usePrepareInvoiceEmail = () =>
  * validación de tamaño (25 MB sobre el payload base64 real) se delega en
  * `buildGoogleEmailAttachment`.
  */
-export const useSendInvoiceEmail = () =>
-  useMutation<SendEmailResult, unknown, PreparedInvoiceEmail>({
+export const useSendInvoiceEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<SendEmailResult, unknown, PreparedInvoiceEmail>({
     mutationKey: sendInvoiceEmailMutationKey,
-    mutationFn: async ({ invoice, content, attachmentName }): Promise<SendEmailResult> => {
+    mutationFn: async ({ id, invoice, content, attachmentName }): Promise<SendEmailResult> => {
+      // Misma llave que el detalle: si cambió, el detalle también se actualiza.
+      const current = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(id));
+      const blocker = getInvoiceEmailBlocker(current);
+      if (blocker) throw new Error(blocker.message);
+      assertEmailSnapshotUnchanged(current, invoice, INVOICE_EMAIL_STALE_MESSAGE);
+
       const pdfBlob = await generateInvoicePdfBlob(invoice);
       const attachment = await buildGoogleEmailAttachment(
         pdfBlob,
@@ -99,3 +121,4 @@ export const useSendInvoiceEmail = () =>
       toast.error(extractErrorMessage(error, "No se pudo enviar el correo de la factura."));
     },
   });
+};

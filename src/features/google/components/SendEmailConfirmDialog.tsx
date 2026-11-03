@@ -57,7 +57,8 @@ export function SendEmailConfirmDialog({
       actionButton={
         <Button
           variant="primary"
-          disabled={!hasRecipients}
+          // Cerrado (animación de salida): un segundo clic no confirma otra vez.
+          disabled={!hasRecipients || !open}
           onClick={() => {
             onOpenChange(false);
             onConfirm();

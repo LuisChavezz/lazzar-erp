@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useSendEmailConfirmation } from "@/src/features/google/hooks/useSendEmailConfirmation";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
 import {
+  prepareInvoiceEmailMutationKey,
+  sendInvoiceEmailMutationKey,
   usePrepareInvoiceEmail,
   useSendInvoiceEmail,
   type PreparedInvoiceEmail,
@@ -32,14 +34,21 @@ import {
  *   Se deshabilita con una descarga o un envío en curso.
  * - Enviar correo primero PREPARA el correo (valida y renderiza) y pide
  *   confirmación mostrando destinatario, asunto y adjunto
- *   (`InvoiceSendEmailConfirmDialog`); nada se envía hasta confirmar.
+ *   (`InvoiceSendEmailConfirmDialog`, vía `useSendEmailConfirmation`); nada se
+ *   envía hasta confirmar. Si la página pasa a otra factura mientras se
+ *   prepara, la confirmación de la anterior se descarta (`expectedId`).
  */
 export function useInvoiceDocumentActions(invoice: Invoice) {
-  const { mutate: prepareEmail, isPending: isPreparingEmail } = usePrepareInvoiceEmail();
+  const { mutateAsync: prepareEmail, isPending: isPreparingEmail } = usePrepareInvoiceEmail();
   const { mutate: sendEmail, isPending: isSendingEmail } = useSendInvoiceEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
-  // Correo preparado esperando confirmación; `null` con el diálogo cerrado.
-  const [preparedEmail, setPreparedEmail] = useState<PreparedInvoiceEmail | null>(null);
+  const email = useSendEmailConfirmation<PreparedInvoiceEmail>({
+    busyMutationKeys: [prepareInvoiceEmailMutationKey, sendInvoiceEmailMutationKey],
+    // `request` siempre se pide con el id de `invoice` (ver `sendEmail` abajo).
+    prepare: () => prepareEmail(invoice),
+    send: sendEmail,
+    expectedId: invoice.id,
+  });
   const busy = isPreparingEmail || isSendingEmail || isDownloadingPdf;
   // Regla compartida con el menú del listado (`getInvoiceEmailBlocker`):
   // eliminada o no enviable → se oculta; sin destinatario → se deshabilita.
@@ -56,13 +65,9 @@ export function useInvoiceDocumentActions(invoice: Invoice) {
     isPreparingEmail,
     isSendingEmail,
     isDownloadingPdf,
-    sendEmail: () => prepareEmail(invoice, { onSuccess: setPreparedEmail }),
+    sendEmail: () => email.request(invoice.id),
     downloadPdf: () => downloadPdf(invoice),
-    /** Confirmación del correo preparado, o `null` si no hay ninguno pendiente. */
-    emailConfirmation: preparedEmail && {
-      email: preparedEmail,
-      onClose: () => setPreparedEmail(null),
-      onConfirm: () => sendEmail(preparedEmail),
-    },
+    /** Sesión del diálogo de confirmación del correo (`useSendEmailConfirmation`). */
+    emailDialog: email.dialog,
   };
 }
