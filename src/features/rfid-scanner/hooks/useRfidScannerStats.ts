@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { fetchScannerStats } from "../services/actions";
 import type { RfidScannerStatsResponse } from "../interfaces/rfid-scanner.interface";
 
@@ -26,8 +26,9 @@ export const RFID_SCANNER_STATS_POLL_INTERVAL_MS = 15000;
  * actualización de la consulta, así que vuelve solo cuando un refetch tiene
  * éxito, y eso únicamente ocurre por los disparadores explícitos: encender el
  * monitoreo, el botón de actualizar o una purga (ver `RfidScannerView` y
- * `useClearRfidScans`). Por lo mismo, un 4xx no se reintenta: con el `retry: 1`
- * global cada 403 costaría dos peticiones.
+ * `useClearRfidScans`). Por lo mismo, un 4xx definitivo no se reintenta
+ * (`retryUnlessClientError`; 408 y 429 sí): con el `retry: 1` global cada 403
+ * costaría dos peticiones.
  *
  * Igual que `useRfidScans`, no sondea con la pestaña oculta.
  *
@@ -45,11 +46,7 @@ export const useRfidScannerStats = (polling: boolean) => {
         ? RFID_SCANNER_STATS_POLL_INTERVAL_MS
         : false,
     refetchIntervalInBackground: false,
-    retry: (failureCount, error) => {
-      const status = error instanceof AxiosError ? error.response?.status : undefined;
-      if (status !== undefined && status >= 400 && status < 500) return false;
-      return failureCount < 1;
-    },
+    retry: retryUnlessClientError,
   });
 
   return {
