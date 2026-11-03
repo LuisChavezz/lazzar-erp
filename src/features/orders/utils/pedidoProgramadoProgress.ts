@@ -5,12 +5,15 @@ import { getProgramacionesValidas } from "./pedidoProgramacion";
 /**
  * "Programado X de Y" de un renglón del listado de pedidos (EC-737).
  *
- * - `programado` (X): suma de `parcialidades[].cantidad`; un renglón inválido o
- *   con una cantidad que no es un número finito no suma.
+ * - `programado` (X): suma de `parcialidades[].cantidad`, o de
+ *   `programacion_conf.programaciones` si el backend no manda `parcialidades`.
+ *   Solo suman cantidades enteras positivas (lo único que acepta el PATCH); un
+ *   renglón inválido del `JSONField` no suma.
  * - `total` (Y): `piezas_programables`, o `piezas` si el backend no lo manda.
  *   Muestras incluidas, igual que el techo de `PATCH .../programar/`.
  * - `excedente`: lo que X pasa de Y (0 si no se pasa).
- * - `visible`: no se pinta en un pedido CANCELADO ni con Y = 0.
+ * - `visible`: no se pinta en un pedido CANCELADO ni cuando X e Y son 0. Con
+ *   Y = 0 y X > 0 (tallas quitadas tras programar) sí, como excedente.
  */
 export interface PedidoProgramadoProgress {
   programado: number;
@@ -21,15 +24,21 @@ export interface PedidoProgramadoProgress {
 
 type PedidoProgramadoSource = Pick<
   PedidoListItem,
-  "estatus" | "piezas" | "piezas_programables" | "parcialidades"
+  "estatus" | "piezas" | "piezas_programables" | "parcialidades" | "programacion_conf"
 >;
 
 export const getPedidoProgramadoProgress = (
   order: PedidoProgramadoSource,
 ): PedidoProgramadoProgress => {
-  const programado = getProgramacionesValidas({ programaciones: order.parcialidades }).reduce(
+  const programaciones =
+    order.parcialidades !== undefined
+      ? { programaciones: order.parcialidades }
+      : order.programacion_conf;
+  const programado = getProgramacionesValidas(programaciones).reduce(
     (sum, parcialidad) =>
-      Number.isFinite(parcialidad.cantidad) ? sum + parcialidad.cantidad : sum,
+      Number.isInteger(parcialidad.cantidad) && parcialidad.cantidad > 0
+        ? sum + parcialidad.cantidad
+        : sum,
     0,
   );
   const total = order.piezas_programables ?? order.piezas;
@@ -37,6 +46,6 @@ export const getPedidoProgramadoProgress = (
     programado,
     total,
     excedente: Math.max(0, programado - total),
-    visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO && total > 0,
+    visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO && (total > 0 || programado > 0),
   };
 };
