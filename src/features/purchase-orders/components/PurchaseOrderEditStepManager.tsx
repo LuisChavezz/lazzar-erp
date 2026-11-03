@@ -52,6 +52,9 @@ import { PurchaseOrderEditStep1 } from "./PurchaseOrderEditStep1";
 import { PurchaseOrderEditStep2 } from "./PurchaseOrderEditStep2";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 
 interface PurchaseOrderEditStepManagerProps {
   /** Orden a editar. */
@@ -104,6 +107,8 @@ export function PurchaseOrderEditStepManager({
   } = useQuery<PurchaseOrderDetail>({
     ...purchaseOrderQueryOptions(initialData.id),
     refetchOnMount: "always",
+    // Un 404/403 (la orden se eliminó o ya no es visible) no se reintenta.
+    retry: retryUnlessClientError,
   });
 
   // Foto del detalle tomada UNA vez, en cuanto llega la lectura fresca. Siembra
@@ -180,7 +185,20 @@ export function PurchaseOrderEditStepManager({
   // muestra el estado de carga, aunque haya una copia en caché.
   const isLoading = isOnboardingLoading || !isDetailFresh;
   const isError = isOnboardingError || isDetailError;
-  const error = onboardingError ?? detailError;
+  // Un 404/403 del detalle es definitivo: la orden se eliminó o el usuario ya
+  // no puede verla, así que el aviso no invita a reintentar. El error de los
+  // catálogos (onboarding) tiene su propio mensaje (`onboardingLoadErrorMessage`).
+  const isOrderGone = !isOnboardingError && isNotFoundOrForbiddenError(detailError);
+  let errorTitle = "Error al cargar los datos de la orden";
+  let errorMessage: string;
+  if (isOnboardingError) {
+    errorMessage = onboardingLoadErrorMessage(onboardingError);
+  } else if (isOrderGone) {
+    errorTitle = "La orden de compra no está disponible";
+    errorMessage = "Se eliminó o ya no tienes acceso a ella. Cierra esta ventana y actualiza el listado.";
+  } else {
+    errorMessage = extractErrorMessage(detailError, "Intenta de nuevo en unos momentos.");
+  }
 
   // ── Carga de catálogos y detalle ────────────────────────────────────────
   if (isLoading) {
@@ -198,10 +216,10 @@ export function PurchaseOrderEditStepManager({
     return (
       <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
         <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-          Error al cargar los datos de la orden
+          {errorTitle}
         </p>
         <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-          {onboardingLoadErrorMessage(error)}
+          {errorMessage}
         </p>
       </div>
     );
