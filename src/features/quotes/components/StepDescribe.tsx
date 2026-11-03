@@ -23,11 +23,9 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { PlusIcon } from "@/src/components/Icons";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
-import { groupCategoriesByLinea } from "@/src/features/product-categories/constants/categoriaLinea";
+import { CategoryOptionGroups } from "@/src/features/product-categories/components/CategoryOptionGroups";
 import type { MuestraDraft } from "../types";
 import { SleevecutCheckbox } from "./SleevecutCheckbox";
-
-const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
 interface StepDescribeProps {
   drafts: MuestraDraft[];
@@ -231,15 +229,10 @@ export const StepDescribe = memo(function StepDescribe({
                       {categoriaPlaceholder}
                     </option>
                     {/* Agrupadas por línea; "Sin línea (materia prima)" al final. */}
-                    {groupCategoriesByLinea(categories).map((group) => (
-                      <optgroup key={group.key} label={group.label} className={optionClassName}>
-                        {group.categories.map((category) => (
-                          <option key={category.id} value={category.id} className={optionClassName}>
-                            {category.nombre} ({category.codigo})
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
+                    <CategoryOptionGroups
+                      categories={categories}
+                      renderLabel={(category) => `${category.nombre} (${category.codigo})`}
+                    />
                   </FormSelect>
                 </div>
                 <div className="w-44">
