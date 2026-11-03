@@ -25,7 +25,7 @@
  * la leyenda "CANCELADA" (banner en la primera página + pie de cada página),
  * su `motivo_cancelacion` y una marca de agua en cada página, para que no se
  * confunda con una orden válida. Los demás estatus se renderizan sin ninguna
- * marca. El correo al proveedor solo sale en 3/4/5 (`useSendPurchaseOrderEmail`),
+ * marca. El correo al proveedor solo sale en 3/4/5 (`usePreparePurchaseOrderEmail`),
  * así que su adjunto nunca lleva la leyenda.
  */
 import { Document, Page, Text, View } from "@react-pdf/renderer";

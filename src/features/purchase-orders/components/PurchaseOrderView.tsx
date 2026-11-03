@@ -28,6 +28,8 @@ import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingSte
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
+import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailConfirmDialog";
+import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
@@ -71,6 +73,12 @@ export function PurchaseOrderView() {
   const [criticalPathTarget, setCriticalPathTarget] =
     useState<PurchaseOrderCriticalPathTarget | null>(null);
 
+  // ── Correo al proveedor ───────────────────────────────────────────────────
+  // Mismo motivo: la confirmación vive aquí y no en la celda. "Enviar correo"
+  // PREPARA el correo (orden fresca + render) y lo muestra para confirmarse;
+  // nada se envía hasta confirmar. Mismo flujo que facturas y cotizaciones.
+  const { onSendEmail, emailConfirmation } = usePurchaseOrderEmailConfirmation();
+
   // ── Opciones de los filtros de encabezado ─────────────────────────────────
   // Alimentan los desplegables de O.C. (Estatus) y Proveedor dentro de
   // `getColumns` (ver `ColumnFilterHeader`); se recalculan solo cuando cambia
@@ -94,12 +102,15 @@ export function PurchaseOrderView() {
         },
         (order) =>
           setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
+        (order) => void onSendEmail(order.id),
         statusOptions,
         supplierOptions,
         fechaOcOptions,
         vencimientoOptions,
       ),
-    [statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
+    // `onSendEmail` solo cierra sobre valores estables (mutación, setter y ref),
+    // así que el React Compiler lo memoiza y las columnas no se recrean.
+    [onSendEmail, statusOptions, supplierOptions, fechaOcOptions, vencimientoOptions],
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
@@ -240,6 +251,21 @@ export function PurchaseOrderView() {
           if (!open) setCriticalPathTarget(null);
         }}
       />
+
+      {/* ── Correo al proveedor ───────────────────────────────────────────── */}
+      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+          exactamente lo que se envía al confirmar. */}
+      {emailConfirmation && (
+        <PurchaseOrderSendEmailConfirmDialog
+          key={`send-email-${emailConfirmation.email.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) emailConfirmation.onClose();
+          }}
+          email={emailConfirmation.email}
+          onConfirm={emailConfirmation.onConfirm}
+        />
+      )}
     </div>
   );
 }
