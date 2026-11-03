@@ -13,6 +13,7 @@ import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
+  CREDIT_NOTE_WRITE_PERMISSION_REASON,
   getCreditNoteCancelBlockReason,
 } from "../utils/creditNoteStamping";
 import {
@@ -37,25 +38,31 @@ import { useCreditNoteRowActionsContext } from "../hooks/useCreditNoteRowActions
  * interacción.
  */
 function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
-  const { onViewDetail, onEmitir, onCancel, onDelete, canEmit } =
+  const { onViewDetail, onEmitir, onCancel, onDelete, canWrite } =
     useCreditNoteRowActionsContext();
   const { id, estatus } = nota;
   const isDraft = estatus === "Borrador";
-  const cancelBlockReason = estatus !== "Cancelada" ? getCreditNoteCancelBlockReason(nota) : null;
+  // Sin permiso de escritura, el motivo del permiso manda sobre el del CFDI.
+  const cancelBlockReason = !canWrite
+    ? CREDIT_NOTE_WRITE_PERMISSION_REASON
+    : estatus !== "Cancelada"
+      ? getCreditNoteCancelBlockReason(nota)
+      : null;
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(id) },
     // Emitir y eliminar SOLO sobre borradores: son las dos salidas de un
     // documento que todavía no tiene efecto contable. El backend impone lo
-    // mismo (un DELETE sobre una `Emitida` responde 400). Sin el permiso,
-    // "Emitir" se muestra deshabilitado con su motivo.
+    // mismo (un DELETE sobre una `Emitida` responde 400). Sin el permiso de
+    // escritura (`E-FIN-FACTURAS`), las acciones se muestran deshabilitadas con
+    // su motivo, convención de este módulo.
     {
       label: "Emitir nota",
       icon: CheckCircleIcon,
       onSelect: () => onEmitir(id),
       visible: isDraft,
-      disabled: !canEmit,
-      description: canEmit ? undefined : CREDIT_NOTE_EMIT_PERMISSION_REASON,
+      disabled: !canWrite,
+      description: canWrite ? undefined : CREDIT_NOTE_EMIT_PERMISSION_REASON,
     },
     // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida` devuelve
     // el importe a la cuenta por cobrar; sobre un `Borrador` lo archiva sin
@@ -75,6 +82,8 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       icon: DeleteIcon,
       onSelect: () => onDelete(id),
       visible: isDraft,
+      disabled: !canWrite,
+      description: canWrite ? undefined : CREDIT_NOTE_WRITE_PERMISSION_REASON,
     },
   ];
 
