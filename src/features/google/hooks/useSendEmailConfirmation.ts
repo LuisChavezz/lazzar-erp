@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { isRecordMutating } from "@/src/utils/mutationRecordId";
 import { createSendEmailFlow } from "../utils/sendEmailFlow";
 
 export const EMAIL_RECORD_BUSY_MESSAGE =
@@ -25,7 +25,9 @@ interface UseSendEmailConfirmationOptions<T extends { id: number }> {
   /**
    * Mutaciones que ocupan el registro mientras están en curso (sus variables
    * son el id o un objeto con `id`): con alguna pendiente no se prepara otro
-   * correo de ese registro, y confirmar avisa en vez de enviar.
+   * correo de ese registro, y confirmar avisa en vez de enviar. Incluye la
+   * mutación que ENVÍA (con el correo como variables, o en `variables.email`):
+   * es el candado contra confirmar dos veces el mismo correo.
    */
   busyMutationKeys: readonly (readonly unknown[])[];
   /** Prepara el correo del registro; si falla, su mutación ya avisó. */
@@ -64,21 +66,19 @@ export function useSendEmailConfirmation<T extends { id: number }>({
 }: UseSendEmailConfirmationOptions<T>) {
   const queryClient = useQueryClient();
   const turnRef = useRef(0);
-  // Sesión ya confirmada: un doble clic en "Enviar" más rápido que el render
-  // que lo deshabilita no la confirma otra vez.
-  const confirmedSessionRef = useRef<number | null>(null);
   const [prepared, setPrepared] = useState<T | null>(null);
 
   // Cambió el registro de la vista: se cierra la confirmación del anterior
-  // (aquí, en el render) y se invalida lo que se esté preparando (en el
-  // efecto: el turno es un ref y no se escribe durante el render).
+  // (aquí, en el render). Lo que se esté preparando lo descarta el flujo al
+  // terminar (`getExpectedId`), que lee el registro vigente de este ref.
   const [lastExpectedId, setLastExpectedId] = useState(expectedId);
   if (lastExpectedId !== expectedId) {
     setLastExpectedId(expectedId);
     setPrepared(null);
   }
+  const expectedIdRef = useRef(expectedId);
   useEffect(() => {
-    turnRef.current++;
+    expectedIdRef.current = expectedId;
   }, [expectedId]);
 
   const open = prepared !== null;
@@ -87,14 +87,27 @@ export function useSendEmailConfirmation<T extends { id: number }>({
   const flow = () =>
     createSendEmailFlow<T>({
       turn: turnRef,
-      isBusy: (id) =>
+      isBusy: (id) => isRecordMutating(queryClient, busyMutationKeys, id),
+      // La mutación de envío lleva el correo como variables (o dentro de ellas,
+      // en el listado de facturas): es el candado contra el doble "Enviar".
+      isSending: (sent) =>
         busyMutationKeys.some(
           (mutationKey) =>
-            queryClient.isMutating({
+            queryClient.getMutationCache().findAll({
               mutationKey: [...mutationKey],
-              predicate: (mutation) => selectMutationRecordId(mutation) === id,
-            }) > 0,
+              status: "pending",
+              predicate: (mutation) => {
+                const variables = mutation.state.variables;
+                return (
+                  variables === sent ||
+                  (typeof variables === "object" &&
+                    variables !== null &&
+                    (variables as { email?: unknown }).email === sent)
+                );
+              },
+            }).length > 0,
         ),
+      getExpectedId: () => expectedIdRef.current,
       prepare,
       send,
       onPrepared: setPrepared,
@@ -111,11 +124,7 @@ export function useSendEmailConfirmation<T extends { id: number }>({
       onOpenChange: (nextOpen: boolean) => {
         if (!nextOpen) setPrepared(null);
       },
-      onConfirm: () => {
-        if (confirmedSessionRef.current === session.id) return;
-        confirmedSessionRef.current = session.id;
-        flow().confirm(email);
-      },
+      onConfirm: () => flow().confirm(email),
     },
   };
 

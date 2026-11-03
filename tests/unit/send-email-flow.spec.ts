@@ -30,6 +30,8 @@ const deferred = <T>() => {
 const setup = (prepare: (id: number) => Promise<Email>) => {
   const log = {
     busy: new Set<number>(),
+    sending: new Set<Email>(),
+    expectedId: undefined as number | undefined,
     prepared: [] as Email[],
     sent: [] as Email[],
     busyNotices: 0,
@@ -38,6 +40,8 @@ const setup = (prepare: (id: number) => Promise<Email>) => {
   const flow = createSendEmailFlow<Email>({
     turn: { current: 0 },
     isBusy: (id) => log.busy.has(id),
+    isSending: (email) => log.sending.has(email),
+    getExpectedId: () => log.expectedId,
     prepare: (id) => {
       log.prepareCalls.push(id);
       return prepare(id);
@@ -75,6 +79,42 @@ test("con el registro ocupado no se prepara otra vez (doble clic)", async () => 
 
   expect(log.prepareCalls).toEqual([]);
   expect(log.prepared).toEqual([]);
+});
+
+test("confirmar otra vez el correo que ya se está enviando no hace nada ni avisa", () => {
+  const { flow, log } = setup(async (id) => ({ id, subject: "x" }));
+  const email = { id: 7, subject: "x" };
+  // La mutación de envío de ESTE correo está en curso (doble clic en Enviar):
+  // el registro aparece ocupado, pero no es "otra acción".
+  log.sending.add(email);
+  log.busy.add(7);
+
+  flow.confirm(email);
+
+  expect(log.sent).toEqual([]);
+  expect(log.busyNotices).toBe(0);
+});
+
+test("no abre la confirmación si la vista pasó a otro registro mientras se preparaba", async () => {
+  const pending = deferred<Email>();
+  const { flow, log } = setup(() => pending.promise);
+  log.expectedId = 493;
+
+  const request = flow.request(493);
+  log.expectedId = 492;
+  pending.resolve({ id: 493, subject: "F-00097" });
+  await request;
+
+  expect(log.prepared).toEqual([]);
+});
+
+test("sí abre la confirmación si la vista sigue en el mismo registro", async () => {
+  const { flow, log } = setup(async (id) => ({ id, subject: "F-00097" }));
+  log.expectedId = 493;
+
+  await flow.request(493);
+
+  expect(log.prepared).toEqual([{ id: 493, subject: "F-00097" }]);
 });
 
 test("confirmar con el registro ocupado avisa y no envía", () => {

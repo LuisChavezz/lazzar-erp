@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isRecordMutating } from "@/src/utils/mutationRecordId";
 import {
   useSendEmailConfirmation,
   type SendEmailDialogSession,
@@ -152,13 +153,6 @@ export function useInvoiceListDocumentActions(): Omit<
     select: (mutation) => (mutation.state.variables as InvoiceListDocumentActionVariables).id,
   });
 
-  const isInFlight = (id: number) =>
-    queryClient.isMutating({
-      mutationKey: invoiceListDocumentActionMutationKey,
-      predicate: (mutation) =>
-        (mutation.state.variables as InvoiceListDocumentActionVariables | undefined)?.id === id,
-    }) > 0;
-
   // Preparar y enviar corren por la mutación del listado (consulta fresca,
   // regla de bloqueo y toast de "en curso"), así que esa es la que ocupa la fila.
   const email = useSendEmailConfirmation<PreparedInvoiceEmail>({
@@ -173,7 +167,9 @@ export function useInvoiceListDocumentActions(): Omit<
 
   return {
     onDownloadPdf: (id) => {
-      if (!isInFlight(id)) mutate({ id, action: "pdf" });
+      if (!isRecordMutating(queryClient, [invoiceListDocumentActionMutationKey], id)) {
+        mutate({ id, action: "pdf" });
+      }
     },
     onSendEmail: email.request,
     pendingIds,
