@@ -6,8 +6,7 @@ import { getColumns } from "./SizeColumns";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Size } from "../interfaces/size.interface";
-import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import SizeForm from "./SizeForm";
 import { useSizes } from "../hooks/useSizes";
 
@@ -15,13 +14,12 @@ export default function SizeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const { sizes, isLoading, isInitialError, error } = useSizes();
-  const { data: session } = useSession();
-  // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
-  // chequeo manual que vivía aquí. El alta usa su propio código
-  // (C-CONFIGURACION), no el de edición.
-  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
-  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
-  const canDelete = hasPermission("D-CONFIGURACION", session?.user);
+  // Catálogo global: el backend (`SoloSuperusuarioEscribe`) solo deja escribir
+  // al superusuario; un admin de empresa recibiría 403 (EC-714).
+  const isSuperuser = useIsSuperuser();
+  const canCreate = isSuperuser;
+  const canEdit = isSuperuser;
+  const canDelete = isSuperuser;
 
   const handleEdit = useCallback(
     (size: Size) => {
