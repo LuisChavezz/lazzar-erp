@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
-import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import { getKpiSemaforoConfig } from "@/src/features/production-orders/constants/productionOrderKpis";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPct, plural } from "@/src/utils/kpiFormat";
-import type { SupplierKpiRow, SupplierKpis, SupplierKpiSemaforo } from "../interfaces/supplier-kpis.interface";
+import { formatPercentageNumber } from "@/src/utils/percentage";
+import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import { supplierDetailHref } from "../utils/supplierPurchaseOrderHistoryFilters";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { getSupplierKpiTruncationNote } from "../utils/supplierKpis";
@@ -142,29 +144,11 @@ function LeadTimeTable({ rows, activeIds }: { rows: SupplierKpiRow[]; activeIds:
   );
 }
 
-const SEMAFORO_CONFIG: Record<Exclude<SupplierKpiSemaforo, "sin_datos">, StatusBadgeConfigEntry> = {
-  verde: {
-    label: "Verde",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    dot: "bg-emerald-500",
-  },
-  amarillo: {
-    label: "Amarillo",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-500",
-  },
-  rojo: {
-    label: "Rojo",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
-    dot: "bg-rose-500",
-  },
-};
-
-const PUNTAJE_FORMAT = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
 /**
  * Ranking por puntaje. El nombre abre el detalle por factor del proveedor
- * (diálogo de la sección), así que es un botón y no el enlace a su ficha.
+ * (diálogo de la sección), así que es un botón y no el enlace a su ficha. El
+ * semáforo (contra `meta_scorecard`) usa la paleta de los KPIs con meta
+ * (`getKpiSemaforoConfig`, la de OP), con su respaldo neutro.
  */
 function ScorecardTable({
   rows,
@@ -195,9 +179,13 @@ function ScorecardTable({
               {row.proveedor_nombre || `#${row.proveedor_id}`}
             </button>
           </td>
-          <td className={NUM_TD_CLASS}>{PUNTAJE_FORMAT.format(row.scorecard.puntaje ?? 0)}</td>
+          <td className={NUM_TD_CLASS}>{formatPercentageNumber(row.scorecard.puntaje ?? 0, 1)}</td>
           <td className={`${TD_CLASS} text-center`}>
-            <StatusBadge status={row.scorecard.semaforo} config={SEMAFORO_CONFIG} />
+            <StatusBadge
+              status={row.scorecard.semaforo}
+              config={{}}
+              defaultConfig={getKpiSemaforoConfig(row.scorecard.semaforo)}
+            />
           </td>
         </tr>
       ))}
