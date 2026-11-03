@@ -2,6 +2,8 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, ViewIcon } from "@/src/components/Icons";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
@@ -32,19 +34,22 @@ const getCuentaLabel = (pago: Pago): string =>
  * llegan por contexto (`PaymentRowActionsProvider`).
  */
 function PaymentIdCell({ pago }: { pago: Pago }) {
-  const { onViewDetail, onCancel, busyIds } = usePaymentRowActionsContext();
+  const { onViewDetail, onCancel, busyIds, write } = usePaymentRowActionsContext();
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(pago) },
   ];
   // "Cancelar" solo sobre pagos APLICADOS: cancelar uno ya cancelado es un no-op
   // en el backend, y sobre un `Borrador` (que esta UI no crea pero podría leer)
-  // no habría nada que revertir.
+  // no habría nada que revertir. Sin permiso de escritura se muestra
+  // deshabilitado con su motivo (convención de los flujos de Finanzas).
   if (pago.estatus === "Aplicado") {
+    const writeBlock = financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON);
     items.push({
       label: "Cancelar pago",
       icon: BanIcon,
       onSelect: () => onCancel(pago),
-      disabled: busyIds.includes(pago.id),
+      disabled: writeBlock.disabled || busyIds.includes(pago.id),
+      description: writeBlock.description,
     });
   }
   return (

@@ -3,6 +3,7 @@ import { createBank } from "../services/actions";
 import { BankFormValues } from "../schemas/bank.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 type SetBankError = (
   field: keyof BankFormValues,
@@ -42,7 +43,7 @@ export const useCreateBank = (setError?: SetBankError) => {
           });
         }
       }
-      toast.error("Error al registrar el banco");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al registrar el banco");
     },
   });
 };

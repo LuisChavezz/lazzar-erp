@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -11,6 +12,7 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { getFinanceWriteState } from "@/src/utils/financeWrite";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
 import { useChartOfAccounts } from "../hooks/useChartOfAccounts";
@@ -29,6 +31,9 @@ import { ChartOfAccountDetailDialog } from "./ChartOfAccountDetailDialog";
 import ChartOfAccountForm from "./ChartOfAccountForm";
 
 export default function ChartOfAccountList() {
+  // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
+  const { data: session, status: sessionStatus } = useSession();
+  const { canWrite } = getFinanceWriteState(session?.user, sessionStatus);
   const { cuentasContables, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useChartOfAccounts();
 
@@ -37,6 +42,13 @@ export default function ChartOfAccountList() {
   // que es justo uno de los filtros de la tabla.
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CuentaContable | null>(null);
+  // Sin permiso el diálogo de alta/edición no se monta. Si el permiso se pierde
+  // con el diálogo abierto, su estado se limpia aquí (en render, patrón de estado
+  // derivado): si no, reaparecería solo, con el registro anterior, al volver.
+  if (!canWrite && (isFormOpen || editTarget !== null)) {
+    setIsFormOpen(false);
+    setEditTarget(null);
+  }
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
 
   const { mutateAsync: toggleActivoAsync, isPending: isTogglePending } =
@@ -124,44 +136,48 @@ export default function ChartOfAccountList() {
           getRowId={(row) => String(row.id)}
           // Un alta vuelve a la página 1 sin perder orden, búsqueda ni columnas.
           paginationResetKey={cuentasContables.length}
+          // Sin permiso de escritura se oculta el botón y, con él, el diálogo de
+          // alta/edición: "Editar" tampoco se ofrece en el menú de la fila.
           actionButton={
-            <MainDialog
-              title={
-                <DialogHeader
-                  title={editTarget ? "Editar Cuenta Contable" : "Alta de Cuenta Contable"}
-                  subtitle={
-                    editTarget
-                      ? "Edición de registro del catálogo"
-                      : "Registro nuevo en el catálogo"
-                  }
-                  statusColor="indigo"
-                  icon={PlanCuentasIcon}
-                />
-              }
-              open={isFormOpen}
-              onOpenChange={setIsFormOpen}
-              maxWidth={DIALOG_WIDTH_FORM}
-              trigger={
-                <Button
-                  variant="primary"
-                  rounded="full"
-                  onClick={handleNew}
-                  className="hover:scale-105 active:scale-95"
-                >
-                  + Nueva Cuenta
-                </Button>
-              }
-            >
-              {isFormOpen && (
-                // `key`: cambiar de registro REMONTA el formulario, así que sus
-                // valores iniciales se leen de cero sin un `form.reset` en efecto.
-                <ChartOfAccountForm
-                  key={editTarget ? `edit-${editTarget.id}` : "new"}
-                  cuentaToEdit={editTarget}
-                  onSuccess={() => setIsFormOpen(false)}
-                />
-              )}
-            </MainDialog>
+            canWrite ? (
+              <MainDialog
+                title={
+                  <DialogHeader
+                    title={editTarget ? "Editar Cuenta Contable" : "Alta de Cuenta Contable"}
+                    subtitle={
+                      editTarget
+                        ? "Edición de registro del catálogo"
+                        : "Registro nuevo en el catálogo"
+                    }
+                    statusColor="indigo"
+                    icon={PlanCuentasIcon}
+                  />
+                }
+                open={isFormOpen}
+                onOpenChange={setIsFormOpen}
+                maxWidth={DIALOG_WIDTH_FORM}
+                trigger={
+                  <Button
+                    variant="primary"
+                    rounded="full"
+                    onClick={handleNew}
+                    className="hover:scale-105 active:scale-95"
+                  >
+                    + Nueva Cuenta
+                  </Button>
+                }
+              >
+                {isFormOpen && (
+                  // `key`: cambiar de registro REMONTA el formulario, así que sus
+                  // valores iniciales se leen de cero sin un `form.reset` en efecto.
+                  <ChartOfAccountForm
+                    key={editTarget ? `edit-${editTarget.id}` : "new"}
+                    cuentaToEdit={editTarget}
+                    onSuccess={() => setIsFormOpen(false)}
+                  />
+                )}
+              </MainDialog>
+            ) : undefined
           }
         />
 

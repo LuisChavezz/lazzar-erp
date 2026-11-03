@@ -7,8 +7,9 @@ import type { DataTableServerMode } from "@/src/components/DataTable";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
-import type { ServerListAdapter } from "@/src/utils/serverListAdapters";
+import { fetchAllServerListRows, type ServerListAdapter } from "@/src/utils/serverListAdapters";
 import {
+  areServerTableRangesValid,
   effectiveServerTableOrdering,
   hasServerTableCriteria,
   nextServerTableOrdering,
@@ -198,28 +199,58 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   };
 
   // ── Filtros ─────────────────────────────────────────────────────────────
-  const writeFilter = (key: string, value: unknown) =>
+  // Todos los cambios de filtros pasan por aquí, uno o varios a la vez. Un
+  // resultado que invierta un rango de `definition.dateRanges` no se escribe:
+  // el backend lo rechazaría con un 400.
+  const writeFilters = (changes: Readonly<Record<string, unknown>>) =>
     commit((current) => {
       const filters: Record<string, unknown> = { ...current.filters };
-      if (value === undefined) {
-        if (!(key in filters)) return current;
-        delete filters[key];
-      } else {
-        if (filters[key] === value) return current;
-        filters[key] = value;
+      let changed = false;
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === undefined) {
+          if (!(key in filters)) continue;
+          delete filters[key];
+        } else {
+          if (filters[key] === value) continue;
+          filters[key] = value;
+        }
+        changed = true;
       }
-      return { ...current, filters: filters as ServerTableFilterValues<P>, page: 1 };
+      if (!changed) return current;
+      const next = filters as ServerTableFilterValues<P>;
+      if (!areServerTableRangesValid(definition, next)) return current;
+      return { ...current, filters: next, page: 1 };
     });
+
+  const writeFilter = (key: string, value: unknown) => writeFilters({ [key]: value });
+
+  /**
+   * Texto crudo de un filtro → valor validado. `undefined` quita el filtro;
+   * `null` = clave desconocida o valor que su `parse` no acepta (se ignora).
+   */
+  const parseRawFilter = (key: string, raw: string | undefined): unknown => {
+    if (!Object.prototype.hasOwnProperty.call(definition.filters, key)) return null;
+    return raw === undefined ? undefined : definition.filters[key].parse(raw);
+  };
 
   /** Desde la tabla: llega el texto de la opción elegida y se valida aquí. */
   const handleFilterChange = (key: string, raw: string | undefined) => {
-    if (!Object.prototype.hasOwnProperty.call(definition.filters, key)) return;
-    if (raw === undefined) {
-      writeFilter(key, undefined);
-      return;
-    }
-    const value = definition.filters[key].parse(raw);
+    const value = parseRawFilter(key, raw);
     if (value !== null) writeFilter(key, value);
+  };
+
+  /**
+   * Desde la tabla, varios a la vez (un rango de fechas). Todo o nada: si
+   * alguno no es válido no se aplica ninguno, para no dejar el rango a medias.
+   */
+  const handleFiltersChange = (raws: Readonly<Record<string, string | undefined>>) => {
+    const changes: Record<string, unknown> = {};
+    for (const [key, raw] of Object.entries(raws)) {
+      const value = parseRawFilter(key, raw);
+      if (value === null) return;
+      changes[key] = value;
+    }
+    writeFilters(changes);
   };
 
   /**
@@ -344,6 +375,21 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   const ordering = effectiveServerTableOrdering(definition, state.ordering);
   const hasActiveCriteria = hasServerTableCriteria(state);
 
+  /**
+   * TODAS las filas de los criterios vigentes, para exportar. Los criterios se
+   * leen de la URL del navegador AL LLAMARLA (como `commit`), no de este
+   * render: un clic justo después de cambiar un filtro exporta lo nuevo.
+   */
+  const fetchAllRows = () => {
+    const currentQuery = new URLSearchParams(window.location.search);
+    const current = readServerTableState(definition, (key) => currentQuery.get(key));
+    return fetchAllServerListRows({
+      queryFn,
+      adapter,
+      criteria: toServerTableCriteria(definition, current),
+    });
+  };
+
   const server: DataTableServerMode = {
     pagination: {
       page: state.page,
@@ -376,6 +422,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     filters: {
       values: serializeServerTableFilters(definition, state.filters),
       onChange: handleFilterChange,
+      onChangeMany: handleFiltersChange,
       keys: Object.keys(definition.filters),
     },
     hasActiveCriteria,
@@ -399,6 +446,8 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
      */
     criteria,
     hasActiveCriteria,
+    /** Todas las filas de los criterios vigentes, página por página (exportar). */
+    fetchAllRows,
     setFilter,
     clear,
     /** Hay una consulta con parámetros nuevos en curso. */

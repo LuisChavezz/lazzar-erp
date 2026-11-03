@@ -3,7 +3,7 @@ import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfa
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { COBRO_CANCEL_PERMISSION } from "../constants/collectionPermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro, CobroEstatus } from "../interfaces/collection.interface";
 import { isActionOutcomeUnknown } from "./actionOutcome";
 import { isCobroRepCancellable } from "./cobroRepCancellation";
@@ -40,7 +40,7 @@ export const COBRO_CANCEL_BLOCKED_BY_CANCELLED_INVOICE_MESSAGE =
 export const canOfferCobroCancel = (
   cobro: Pick<Cobro, "estatus">,
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(COBRO_CANCEL_PERMISSION, user) && CANCELLABLE_STATUSES.includes(cobro.estatus);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && CANCELLABLE_STATUSES.includes(cobro.estatus);
 
 /**
  * Motivo por el que NO se puede cancelar el cobro, o `null` si se puede. En este

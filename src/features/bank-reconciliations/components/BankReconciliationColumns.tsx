@@ -1,6 +1,8 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon } from "@/src/components/Icons";
@@ -15,7 +17,6 @@ import {
 } from "../schemas/bank-reconciliation.schema";
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
 import { useConciliacionRowActionsContext } from "../hooks/useConciliacionRowActions";
-import { CONCILIACION_WRITE_PERMISSION_REASON } from "../utils/conciliacionPermissions";
 
 const columnHelper = createColumnHelper<ConciliacionBancaria>();
 
@@ -30,14 +31,13 @@ export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
  * llegan por contexto (`ConciliacionRowActionsProvider`).
  */
 function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
-  const { onViewDetail, onCerrar, onCancelar, busyIds, canWrite } =
+  const { onViewDetail, onCerrar, onCancelar, busyIds, write } =
     useConciliacionRowActionsContext();
   // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
   const busy = busyIds.includes(conciliacion.id);
-  // Sin el permiso de escritura (`E-FIN-FACTURAS`) las acciones se muestran
-  // deshabilitadas con su motivo, convención de EC-713. El motivo del permiso
-  // manda sobre el del cuadre.
-  const permissionReason = canWrite ? undefined : CONCILIACION_WRITE_PERMISSION_REASON;
+  // Sin permiso de escritura las acciones se muestran deshabilitadas con su
+  // motivo (convención de los flujos de Finanzas); manda sobre el del cuadre.
+  const writeBlock = financeWriteBlock(write, CONCILIACION_WRITE_PERMISSION_REASON);
   const items: ActionMenuItem[] = [];
 
   // Solo un `Borrador` se cierra.
@@ -47,14 +47,14 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
       conciliacion.saldo_libros,
     );
     items.push({
-      label: !canWrite || cuadra ? "Cerrar conciliación" : "Cerrar conciliación (no cuadra)",
+      label: writeBlock.disabled || cuadra ? "Cerrar conciliación" : "Cerrar conciliación (no cuadra)",
       icon: CheckCircleIcon,
       onSelect: () => onCerrar(conciliacion),
       // El backend rechaza el cierre descuadrado; la acción se ofrece
       // deshabilitada en vez de esconderla, para que se vea que existe y por qué
       // no está disponible todavía.
-      disabled: busy || !canWrite || !cuadra,
-      description: permissionReason,
+      disabled: busy || writeBlock.disabled || !cuadra,
+      description: writeBlock.description,
     });
   }
   // Se cancela un `Borrador` o una `Cerrada`; cancelar una cerrada regresa sus
@@ -64,8 +64,8 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
       label: "Cancelar conciliación",
       icon: BanIcon,
       onSelect: () => onCancelar(conciliacion),
-      disabled: busy || !canWrite,
-      description: permissionReason,
+      disabled: busy || writeBlock.disabled,
+      description: writeBlock.description,
     });
   }
 

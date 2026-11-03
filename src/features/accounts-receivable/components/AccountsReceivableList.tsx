@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
@@ -37,10 +38,11 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
 
   // Ver el listado exige `R-CONTABILIDAD-CXC` (ver `routePermissions`);
-  // registrar una CxC exige además `C-CONTABILIDAD-CXC`. `hasPermission` ya
-  // cortocircuita para el rol "admin".
+  // registrar una CxC (`POST /finanzas/facturas/registrar-pendiente-cobro/`) es
+  // una escritura de Finanzas y exige `FINANCE_WRITE_PERMISSION` (EC-711); sin
+  // él el botón se oculta. `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission("C-CONTABILIDAD-CXC", session?.user);
+  const canCreate = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y

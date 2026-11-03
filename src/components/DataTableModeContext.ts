@@ -15,6 +15,14 @@ export interface DataTableServerFilters {
   /** `undefined` quita el filtro (opción "Todos"). */
   onChange: (key: string, value: string | undefined) => void;
   /**
+   * Varios filtros en UN solo cambio (los dos extremos de un rango de fechas):
+   * aplicarlos uno por uno pasaría por un estado intermedio que la lista puede
+   * rechazar (p. ej. el nuevo "desde" contra el "hasta" anterior). Mismo
+   * contrato por clave que `onChange`. Opcional: un encabezado que lo necesite
+   * no se pinta sin él.
+   */
+  onChangeMany?: (values: Readonly<Record<string, string | undefined>>) => void;
+  /**
    * Claves que la lista acepta. Solo sirve para avisar en desarrollo de un
    * `meta.serverFilter` que no está entre ellas; si se omite, no se comprueba.
    */

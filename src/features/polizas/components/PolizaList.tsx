@@ -12,6 +12,8 @@ import { ContabilidadIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -38,8 +40,6 @@ import {
   usePendingPolizaIds,
 } from "../hooks/usePolizaRowActions";
 import { cancelarPolizaDescription } from "../utils/cancelarPolizaCopy";
-import { canWriteFinance } from "@/src/utils/financeWritePermission";
-import { POLIZA_WRITE_PERMISSION_REASON } from "../utils/polizaPermissions";
 import type { Poliza, PolizaEstatus } from "../interfaces/poliza.interface";
 
 /** Etiqueta legible de una póliza: su folio si lo tiene, si no el `#id`. */
@@ -74,9 +74,12 @@ const POLIZA_CANCEL_STALE_MESSAGES = {
 };
 
 export default function PolizaList() {
-  // Toda escritura de pólizas exige `E-FIN-FACTURAS` (`canWriteFinance`).
-  const { data: session } = useSession();
-  const canWrite = canWriteFinance(session?.user);
+  // Toda escritura de pólizas exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
+  // "+ Nueva póliza" se oculta y las acciones del menú se muestran deshabilitadas
+  // con su motivo (`POLIZA_WRITE_PERMISSION_REASON`).
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
@@ -130,6 +133,10 @@ export default function PolizaList() {
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // El menú ya deshabilita las escrituras sin el permiso; se repite aquí por si
+  // la sesión cambió entre pintarlo y seleccionar.
+  const guardWrite = () => guardFinanceWrite(write, POLIZA_WRITE_PERMISSION_REASON);
+
   /**
    * Contabilizar desde el listado — el camino que NO pasa por el esquema del
    * formulario (el alta con intención "Contabilizada" sí lo hace).
@@ -143,12 +150,7 @@ export default function PolizaList() {
    * que garantiza el invariante aunque la fila del caché estuviera desfasada.
    */
   const handleContabilizar = (poliza: Poliza) => {
-    // El menú ya lo muestra deshabilitado; se repite aquí por si la sesión
-    // cambió entre pintarlo y seleccionar.
-    if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardWrite()) return;
     if (!polizaTieneImportes(poliza.total_cargos, poliza.total_abonos)) {
       toast.error(POLIZA_SIN_IMPORTES_MESSAGE);
       return;
@@ -158,20 +160,6 @@ export default function PolizaList() {
       return;
     }
     setPostTargetId(poliza.id);
-  };
-  const handleCancel = (poliza: Poliza) => {
-    if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
-      return;
-    }
-    setCancelTargetId(poliza.id);
-  };
-  const handleDelete = (poliza: Poliza) => {
-    if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
-      return;
-    }
-    setDeleteTargetId(poliza.id);
   };
 
   // Columnas estáticas: callbacks y "en vuelo" van por `PolizaRowActionsProvider`
@@ -272,10 +260,14 @@ export default function PolizaList() {
       value={{
         onViewDetail: (poliza) => setOpenDetailId(poliza.id),
         onContabilizar: handleContabilizar,
-        onCancel: handleCancel,
-        onDelete: handleDelete,
+        onCancel: (poliza) => {
+          if (guardWrite()) setCancelTargetId(poliza.id);
+        },
+        onDelete: (poliza) => {
+          if (guardWrite()) setDeleteTargetId(poliza.id);
+        },
         busyIds,
-        canWrite,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">

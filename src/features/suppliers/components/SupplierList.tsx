@@ -1,21 +1,16 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useSession } from "next-auth/react";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { hasPermission } from "@/src/utils/permissions";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDeleteSupplier } from "../hooks/useDeleteSupplier";
 import SupplierFormDialog from "./SupplierFormDialog";
-import { useSuppliers } from "../hooks/useSuppliers";
-import { buildSupplierFilterOptions, getSupplierColumns } from "./SupplierColumns";
+import { useSuppliersTable } from "../hooks/useSuppliersTable";
+import { getSupplierColumns } from "./SupplierColumns";
 import { useSupplierCsvExport } from "../hooks/useSupplierCsvExport";
 import { useSupplierPdfExport } from "../hooks/useSupplierPdfExport";
 import { Supplier } from "../interfaces/supplier.interface";
@@ -62,13 +57,20 @@ interface SupplierListProps {
   fillHeight?: boolean;
 }
 
+/**
+ * Listado de proveedores en MODO SERVIDOR: búsqueda, orden y paginación los
+ * resuelve el backend y su estado vive en la URL (`useSuppliersTable`), así
+ * que quien lo monte debe envolverlo en `<Suspense>` (la página de Compras y
+ * `ConfigDetailView`). El catálogo completo de los formularios y selectores
+ * (`useSuppliers`) es otra consulta y no cambia.
+ */
 export default function SupplierList({
   permissionContext = "procurement",
   fillHeight = false,
 }: SupplierListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [supplierToEdit, setSupplierToEdit] = useState<Supplier | null>(null);
-  const { suppliers, isLoading, isInitialError, error } = useSuppliers();
+  const table = useSuppliersTable();
   const { data: session } = useSession();
 
   // `hasPermission` ya cortocircuita para el rol "admin", así que no hace falta
@@ -92,9 +94,9 @@ export default function SupplierList({
   };
 
   // ── Desactivar ────────────────────────────────────────────────────────────
-  // El diálogo vive AQUÍ y no en la celda: la baja quita la fila de forma
-  // optimista (y ordenar/paginar desmonta celdas), así que un diálogo dentro de
-  // la celda se desmontaría con ella. La celda solo dispara `onDeactivate`.
+  // El diálogo vive AQUÍ y no en la celda: la baja saca la fila del listado al
+  // refrescarse (y ordenar/paginar desmonta celdas), así que un diálogo dentro
+  // de la celda se desmontaría con ella. La celda solo dispara `onDeactivate`.
   // El DELETE del backend es una baja LÓGICA (`activo=False`): el proveedor
   // deja de listarse y su detalle responde 404, pero no se borra.
   const [supplierToDeactivate, setSupplierToDeactivate] = useState<Supplier | null>(null);
@@ -121,27 +123,26 @@ export default function SupplierList({
     handleEdit,
     setSupplierToDeactivate,
     { canEdit, canDelete, canViewDetail },
-    buildSupplierFilterOptions(suppliers),
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
-  // hacer clic (`getFilteredRows`: filtradas y ordenadas de todas las
-  // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
-  // que `PurchaseOrderView`.
-  const tableRef = useRef<DataTableHandle<Supplier>>(null);
+  // Exportan TODO lo que cumple la búsqueda vigente (con su orden), no solo la
+  // página visible: las filas se piden al backend al hacer clic
+  // (`fetchAllRows`). Las columnas son las visibles, por
+  // `onVisibleColumnsChange`. Mismo patrón que `PurchaseOrderView`.
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Supplier>[]>([]);
-  useSupplierCsvExport(tableRef, visibleColumns);
-  useSupplierPdfExport(tableRef, visibleColumns);
+  useSupplierCsvExport(table.fetchAllRows, visibleColumns);
+  useSupplierPdfExport(table.fetchAllRows, visibleColumns);
 
   return (
     <>
       <div className={fillHeight ? "h-full flex flex-col min-h-0" : undefined}>
       <DataTable
-        ref={tableRef}
         columns={columns}
-        data={suppliers}
-        searchPlaceholder="Buscar proveedor..."
+        {...table.tableProps}
+        // Identidad de la fila por registro, no por posición en la página.
+        getRowId={(row) => String(row.id)}
+        searchPlaceholder="Buscar por código, nombre, razón social o RFC..."
         fillHeight={fillHeight}
         onVisibleColumnsChange={setVisibleColumns}
         actionButton={
@@ -177,10 +178,8 @@ export default function SupplierList({
             )}
           </div>
         }
-        isLoading={isLoading}
-        isError={isInitialError}
+        emptyMessage="Aún no hay proveedores registrados"
         errorTitle="Error al cargar proveedores"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando proveedores"
       />
       </div>

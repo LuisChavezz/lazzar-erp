@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { NotaCreditoIcon } from "@/src/components/Icons";
 import {
@@ -41,7 +42,6 @@ import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
   CREDIT_NOTE_WRITE_PERMISSION_REASON,
-  canWriteCreditNotes,
   getCreditNoteCancelBlockReason,
   getInvoiceEmitPrecheckReason,
   getInvoiceUnstampedEmitWarning,
@@ -56,9 +56,10 @@ export default function CreditNoteList() {
   // `onSettled` de la primera se perdería y su candado no se soltaría nunca.
   // (La emisión se declara más abajo, tras el estado que su `onRejectedToDraft`
   // escribe.)
-  const { data: session } = useSession();
-  // Toda escritura de notas exige `E-FIN-FACTURAS` (`canWriteCreditNotes`).
-  const canWrite = canWriteCreditNotes(session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  // Toda escritura de notas exige `E-FIN-FACTURAS` (`getFinanceWriteState`).
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
@@ -166,10 +167,7 @@ export default function CreditNoteList() {
   const handleEmitir = (id: number) => {
     // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
     // la sesión cambió entre pintarlos y seleccionar.
-    if (!canWrite) {
-      toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
-      return;
-    }
+    if (!guardFinanceWrite(write, CREDIT_NOTE_EMIT_PERMISSION_REASON)) return;
     const nota = notasCredito.find((item) => item.id === id);
     if (nota && !totalEsAcreditable(nota.total)) {
       toast.error(TOTAL_CERO_MESSAGE);
@@ -180,10 +178,7 @@ export default function CreditNoteList() {
   // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
   const handleCancel = (id: number) => {
-    if (!canWrite) {
-      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardFinanceWrite(write, CREDIT_NOTE_WRITE_PERMISSION_REASON)) return;
     const nota = notasCredito.find((item) => item.id === id);
     const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
     if (blockReason) {
@@ -193,10 +188,7 @@ export default function CreditNoteList() {
     setCancelTargetId(id);
   };
   const handleDelete = (id: number) => {
-    if (!canWrite) {
-      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardFinanceWrite(write, CREDIT_NOTE_WRITE_PERMISSION_REASON)) return;
     const nota = notasCredito.find((item) => item.id === id);
     setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
   };
@@ -209,7 +201,7 @@ export default function CreditNoteList() {
     onEmitir: handleEmitir,
     onCancel: handleCancel,
     onDelete: handleDelete,
-    canWrite,
+    write,
   };
   const columns = withHeaderFilters(
     getCreditNoteColumns(),

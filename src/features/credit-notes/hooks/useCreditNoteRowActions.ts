@@ -1,6 +1,7 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import type { FinanceWriteState } from "@/src/utils/financeWrite";
 
 export interface CreditNoteRowActionsContextValue {
   /** Abre el detalle. Los diálogos viven en `CreditNoteList`, no en la celda. */
@@ -9,11 +10,11 @@ export interface CreditNoteRowActionsContextValue {
   onCancel: (id: number) => void;
   onDelete: (id: number) => void;
   /**
-   * ¿El usuario puede escribir notas? (`canWriteCreditNotes`). Sin el permiso,
+   * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el permiso,
    * "Emitir nota", "Cancelar nota" y "Eliminar borrador" se muestran
    * deshabilitados con su motivo.
    */
-  canWrite: boolean;
+  write: FinanceWriteState;
 }
 
 const { Provider, useRowActionsContext } =

@@ -20,6 +20,8 @@ import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -36,8 +38,6 @@ import type {
   ConciliacionEnDetalle,
   PrepararConciliacionResponse,
 } from "../interfaces/bank-reconciliation.interface";
-import { canWriteFinance } from "@/src/utils/financeWritePermission";
-import { CONCILIACION_WRITE_PERMISSION_REASON } from "../utils/conciliacionPermissions";
 import {
   conciliacionEnDetalleDesdePreparar,
   llaveDeFiltro,
@@ -117,9 +117,12 @@ const cancelarConciliacionDescription = (
 };
 
 export function BankReconciliationView() {
-  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`canWriteFinance`).
-  const { data: session } = useSession();
-  const canWrite = canWriteFinance(session?.user);
+  // Preparar, cerrar y cancelar exigen `FINANCE_WRITE_PERMISSION` (EC-733). Sin
+  // él, "+ Preparar conciliación" se oculta y las acciones del menú se muestran
+  // deshabilitadas con su motivo (`CONCILIACION_WRITE_PERMISSION_REASON`).
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -385,18 +388,16 @@ export function BankReconciliationView() {
     setOpenDetailId(conciliacion.id);
   };
 
+  // El menú ya deshabilita las escrituras sin el permiso; se repite aquí por si
+  // la sesión cambió entre pintarlo y seleccionar.
+  const guardWrite = () => guardFinanceWrite(write, CONCILIACION_WRITE_PERMISSION_REASON);
+
   /** Tras preparar: se aterriza en el detalle del borrador preparado. */
   const handlePrepared = (resultado: PrepararConciliacionResponse) =>
     openPinnedDetail(conciliacionEnDetalleDesdePreparar(resultado));
 
-  // El menú ya los muestra deshabilitados sin permiso; se repite aquí por si la
-  // sesión cambió entre pintarlo y seleccionar.
   const handleCerrar = (conciliacion: ConciliacionBancaria) => {
-    if (!canWrite) {
-      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
-      return;
-    }
-    setCerrarTargetId(conciliacion.id);
+    if (guardWrite()) setCerrarTargetId(conciliacion.id);
   };
   /**
    * Lee del servidor el estatus real de la conciliación a cancelar
@@ -429,10 +430,7 @@ export function BankReconciliationView() {
   };
 
   const handleCancelar = (conciliacion: ConciliacionBancaria) => {
-    if (!canWrite) {
-      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardWrite()) return;
     setCancelarVerificado(null);
     setCancelarTargetId(conciliacion.id);
     void verificarCancelar(conciliacion.id, conciliacion.estatus);
@@ -445,7 +443,7 @@ export function BankReconciliationView() {
         onCerrar: handleCerrar,
         onCancelar: handleCancelar,
         busyIds,
-        canWrite,
+        write,
       }}
     >
     <div className="h-full flex flex-col min-h-0 space-y-4">
@@ -525,7 +523,7 @@ export function BankReconciliationView() {
         // Cambiar de cuenta o de periodo vuelve a la página 1 sin perder orden,
         // búsqueda ni columnas.
         paginationResetKey={`${cuentaId ?? ""}-${desde}-${hasta}-${conciliaciones.length}`}
-        // Sin permiso de escritura no se prepara: el botón se oculta.
+        // Sin permiso de escritura no hay alta: el botón se oculta.
         actionButton={
           canWrite ? (
             <MainDialog

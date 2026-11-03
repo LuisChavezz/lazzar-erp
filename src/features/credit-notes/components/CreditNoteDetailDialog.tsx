@@ -18,6 +18,7 @@ import { Button } from "@/src/components/Button";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
+import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   formatMoneyValueOrDash,
@@ -31,7 +32,6 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
-  canEmitCreditNote,
   CREDIT_NOTE_STAMP_PENDING_HINT,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
@@ -129,11 +129,16 @@ function CreditNoteEmitPanel({
   onEmitir: () => void;
   isEmitting: boolean;
 }) {
-  const { data: session } = useSession();
-  const canEmit = canEmitCreditNote(session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  // Mientras la sesión carga se bloquea SIN motivo (`financeWriteBlock`).
+  const emitBlock = financeWriteBlock(
+    getFinanceWriteState(session?.user, sessionStatus),
+    CREDIT_NOTE_EMIT_PERMISSION_REASON,
+  );
+  const canEmit = !emitBlock.disabled;
   const rejectionId = `credit-note-${notaId}-emit-rejection`;
   const blockedNoteId = `credit-note-${notaId}-emit-blocked`;
-  const describedBy = [rejection ? rejectionId : null, canEmit ? null : blockedNoteId]
+  const describedBy = [rejection ? rejectionId : null, emitBlock.description ? blockedNoteId : null]
     .filter(Boolean)
     .join(" ");
   return (
@@ -154,9 +159,9 @@ function CreditNoteEmitPanel({
           <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
           {isEmitting ? "Emitiendo..." : rejection ? "Volver a emitir" : "Emitir nota"}
         </Button>
-        {!canEmit && (
+        {emitBlock.description && (
           <p id={blockedNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs text-right">
-            {CREDIT_NOTE_EMIT_PERMISSION_REASON}
+            {emitBlock.description}
           </p>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon, EditIcon } from "@/src/components/Icons";
 import type { CostCenter } from "../interfaces/cost-center.interface";
@@ -26,8 +27,10 @@ export const getCostCenterLabel = (centro: CostCenter): string =>
 const CostCenterNameCell = ({ centro }: { centro: CostCenter }) => {
   const { onViewDetail, onEdit, onToggleActivo, busyIds } = useCostCenterRowActionsContext();
 
+  // Las escrituras llevan `permission`: sin `FINANCE_WRITE_PERMISSION` el menú las
+  // oculta (convención de los catálogos de Finanzas, EC-733).
   const items: ActionMenuItem[] = [
-    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro) },
+    { label: "Editar", icon: EditIcon, onSelect: () => onEdit(centro), permission: FINANCE_WRITE_PERMISSION },
     {
       // La etiqueta cambia con el estatus de la fila: una sola acción que
       // recorre el ciclo de vida en los dos sentidos.
@@ -35,6 +38,7 @@ const CostCenterNameCell = ({ centro }: { centro: CostCenter }) => {
       icon: centro.activo ? BanIcon : CheckCircleIcon,
       onSelect: () => onToggleActivo(centro),
       disabled: busyIds.includes(centro.id),
+      permission: FINANCE_WRITE_PERMISSION,
     },
   ];
 

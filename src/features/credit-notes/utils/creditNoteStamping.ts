@@ -1,5 +1,6 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { canWriteFinance, financeWriteDeniedReason } from "@/src/utils/financeWritePermission";
+import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import {
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
@@ -41,23 +42,22 @@ export const isCreditNoteStampable = (
 export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
-): boolean => canWriteFinance(user) && isCreditNoteStampable(nota);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampable(nota);
 
 /**
- * ¿Puede ESTE usuario escribir notas de crédito (crear, emitir, cancelar,
- * eliminar, timbrar)? El permiso de escritura de Finanzas
- * (`FINANCE_WRITE_PERMISSION`, rol "admin" incluido): el backend lo exige en
- * toda escritura del viewset de notas (#752; desde EC-711 en toda escritura de
- * Finanzas) y responde `403` sin guardar nada. Convención del módulo: sin él,
+ * ¿Puede ESTE usuario escribir notas de crédito? Crear (borrador o emitida),
+ * emitir, cancelar, eliminar y timbrar exigen `FINANCE_WRITE_PERMISSION` (#752;
+ * desde EC-711 en toda escritura de Finanzas), rol "admin" incluido; sin él el
+ * backend responde `403` sin guardar nada. Convención del módulo: sin él,
  * "+ Nueva nota" se oculta y las acciones del menú y del detalle se muestran
  * deshabilitadas con su motivo.
  */
-export const canWriteCreditNotes = canWriteFinance;
+export const canWriteCreditNotes = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(FINANCE_WRITE_PERMISSION, user);
 
 /** Por qué una acción de escritura está bloqueada cuando `canWriteCreditNotes` es `false`. */
-export const CREDIT_NOTE_WRITE_PERMISSION_REASON = financeWriteDeniedReason(
-  "registrar o cancelar notas de crédito",
-);
+export const CREDIT_NOTE_WRITE_PERMISSION_REASON =
+  "No tienes permiso para registrar o cancelar notas de crédito.";
 
 /**
  * ¿Puede ESTE usuario emitir notas de crédito? Es una escritura más

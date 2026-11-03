@@ -13,7 +13,7 @@ import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
 import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { canCancelInvoice } from "../utils/invoiceCancellation";
-import { INVOICE_WRITE_PERMISSION } from "../constants/invoicePermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { useInvoices } from "../hooks/useInvoices";
 import {
@@ -30,10 +30,10 @@ export const InvoiceList = () => {
 
   // Ver el listado exige `R-CONTABILIDAD-FACTURACION` (ver `routePermissions`);
   // facturar es una escritura de Finanzas y exige `E-FIN-FACTURAS`
-  // (`INVOICE_WRITE_PERMISSION`); sin él el botón se oculta. `hasPermission` ya
+  // (`FINANCE_WRITE_PERMISSION`); sin él el botón se oculta. `hasPermission` ya
   // cortocircuita para el rol "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission(INVOICE_WRITE_PERMISSION, session?.user);
+  const canCreate = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
 
   // Factura a cancelar. El diálogo vive aquí y no en la celda: al quedar
   // Cancelada, un filtro de estatus puede sacar la fila de la tabla.

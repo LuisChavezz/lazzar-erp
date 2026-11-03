@@ -6,6 +6,23 @@ import type {
 } from "../interfaces/supplier-purchase-order-history.interface";
 import type { SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import type { SupplierKpiDetail, SupplierKpiFactor } from "../interfaces/supplier-kpi-detail.interface";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
+
+/**
+ * Una PÁGINA del listado de proveedores (`?limit=&offset=` → `{count, next,
+ * previous, results}`) con la búsqueda y el orden de la tabla en modo servidor
+ * (`useSuppliersTable`). Sin `limit` el mismo endpoint responde el arreglo
+ * completo, que es lo que usa el catálogo (`getSuppliers`). Sin `activo`: el
+ * default del backend (`true`) es el listado de siempre, solo activos.
+ */
+export const getSuppliersPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<Supplier>> => {
+  const response = await v1_api.get<PaginatedListResponse<Supplier>>("/terceros/proveedores/", {
+    params,
+  });
+  return response.data;
+};
 
 
 export const getSuppliers = async (): Promise<Supplier[]> => {
