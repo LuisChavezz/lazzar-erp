@@ -1,6 +1,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon } from "@/src/components/Icons";
@@ -29,9 +30,13 @@ export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
  * llegan por contexto (`ConciliacionRowActionsProvider`).
  */
 function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
-  const { onViewDetail, onCerrar, onCancelar, busyIds } = useConciliacionRowActionsContext();
+  const { onViewDetail, onCerrar, onCancelar, busyIds, canWrite } =
+    useConciliacionRowActionsContext();
   // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
   const busy = busyIds.includes(conciliacion.id);
+  // Sin permiso de escritura las acciones se muestran deshabilitadas con su
+  // motivo (convención de los flujos de Finanzas); manda sobre el del cuadre.
+  const permissionReason = canWrite ? undefined : CONCILIACION_WRITE_PERMISSION_REASON;
   const items: ActionMenuItem[] = [];
 
   // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
@@ -49,13 +54,15 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
       // El backend rechaza el cierre descuadrado; la acción se ofrece
       // deshabilitada en vez de esconderla, para que se vea que existe y por qué
       // no está disponible todavía.
-      disabled: busy || !cuadra,
+      disabled: busy || !canWrite || !cuadra,
+      description: permissionReason,
     });
     items.push({
       label: "Cancelar conciliación",
       icon: BanIcon,
       onSelect: () => onCancelar(conciliacion),
-      disabled: busy,
+      disabled: busy || !canWrite,
+      description: permissionReason,
     });
   }
 

@@ -10,6 +10,12 @@ export interface ConciliacionRowActionsContextValue {
   onViewDetail: (conciliacion: ConciliacionBancaria) => void;
   onCerrar: (conciliacion: ConciliacionBancaria) => void;
   onCancelar: (conciliacion: ConciliacionBancaria) => void;
+  /**
+   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * permiso, "Cerrar conciliación" y "Cancelar conciliación" se muestran
+   * deshabilitados con su motivo.
+   */
+  canWrite: boolean;
   /** Ids con un cierre o una cancelación en vuelo (`usePendingConciliacionIds`). */
   busyIds: number[];
 }
