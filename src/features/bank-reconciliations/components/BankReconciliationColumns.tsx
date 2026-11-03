@@ -40,9 +40,7 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
   const permissionReason = canWrite ? undefined : CONCILIACION_WRITE_PERMISSION_REASON;
   const items: ActionMenuItem[] = [];
 
-  // Solo un `Borrador` se cierra o se cancela. `Cerrada` y `Cancelada` son
-  // terminales y quedan de solo consulta — cancelar una cerrada no revertiría
-  // los movimientos que ya marcó como `Conciliado`.
+  // Solo un `Borrador` se cierra.
   if (conciliacion.estatus === "Borrador") {
     const cuadra = conciliacionCuadra(
       conciliacion.saldo_estado_cuenta,
@@ -58,6 +56,10 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
       disabled: busy || !canWrite || !cuadra,
       description: permissionReason,
     });
+  }
+  // Se cancela un `Borrador` o una `Cerrada`; cancelar una cerrada regresa sus
+  // movimientos a `Pendiente` (nucleo-erp #827). `Cancelada` es terminal.
+  if (conciliacion.estatus !== "Cancelada") {
     items.push({
       label: "Cancelar conciliación",
       icon: BanIcon,
