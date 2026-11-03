@@ -9,6 +9,7 @@ import { CheckCircleIcon } from "@/src/components/Icons";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
+import { getProductTypeLabel } from "../../product-types/utils/productTypeLabel";
 import { useProductOnboardingForm } from "../hooks/useProductOnboardingForm";
 
 const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
@@ -152,7 +153,7 @@ export default function ProductOnboardingForm() {
                   </option>
                   {productTypes.map((type) => (
                     <option key={type.id} value={type.id} className={optionClassName}>
-                      {type.codigo}
+                      {getProductTypeLabel(type)}
                     </option>
                   ))}
                 </FormSelect>

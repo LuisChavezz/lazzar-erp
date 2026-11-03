@@ -74,6 +74,14 @@ export const getColumns = (
         </span>
       ),
     }),
+    columnHelper.accessor("nombre", {
+      header: "Nombre",
+      cell: (info) => (
+        <span className="text-slate-700 dark:text-slate-200">
+          {info.getValue().trim() || "—"}
+        </span>
+      ),
+    }),
   ] as ColumnDef<ProductType>[];
 
   if (permissions.canEdit || permissions.canDelete) {
