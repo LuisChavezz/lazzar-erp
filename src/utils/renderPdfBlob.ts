@@ -23,14 +23,16 @@
  * los generadores nunca lo pasan.
  */
 import { createElement, type ComponentType, type ReactElement } from "react";
+// Solo el tipo: no mete la librería en el chunk de quien importa este módulo.
+import type { DocumentProps } from "@react-pdf/renderer";
 import { isChunkLoadError } from "./isChunkLoadError";
 
 export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
   "No se pudo cargar el generador de PDF. Recarga la página e intenta de nuevo.";
 
-/** Lo único que se usa de `@react-pdf/renderer`. */
+/** Lo único que se usa de `@react-pdf/renderer` (misma firma que su `pdf`). */
 export interface PdfRenderer {
-  pdf(element: ReactElement): { toBlob(): Promise<Blob> };
+  pdf(element: ReactElement<DocumentProps>): { toBlob(): Promise<Blob> };
 }
 
 export async function renderPdfBlob<P extends object>(
@@ -46,5 +48,8 @@ export async function renderPdfBlob<P extends object>(
     },
   );
 
-  return renderer.pdf(createElement(PdfDocument, props)).toBlob();
+  // Cada documento de `src/pdfs/` es un componente cuya raíz es `<Document>`,
+  // pero su elemento lleva SUS props, no las de `Document`; el tipo no puede
+  // expresar esa relación (con JSX se perdía igual, como `JSX.Element`).
+  return renderer.pdf(createElement(PdfDocument, props) as ReactElement<DocumentProps>).toBlob();
 }
