@@ -4,6 +4,7 @@ import {
   dateParam,
   defineServerTable,
   enumParam,
+  positiveIdParam,
   readServerTableState,
   toServerTableCriteria,
 } from "@/src/utils/serverTableParams";
@@ -26,6 +27,15 @@ const withRange = defineServerTable({
   },
   dateRanges: [{ from: "fecha_desde", to: "fecha_hasta" }],
 });
+
+// Solo tipos (no se ejecuta): un rango sobre filtros que no son `dateParam`
+// no compila, porque su comparación es por el texto "yyyy-mm-dd".
+export const rangeOverNonDateFilters = () =>
+  defineServerTable({
+    filters: { desde: positiveIdParam, hasta: positiveIdParam },
+    // @ts-expect-error -- `dateRanges` solo admite filtros `dateParam`.
+    dateRanges: [{ from: "desde", to: "hasta" }],
+  });
 
 const withoutRange = defineServerTable({
   filters: { fecha_desde: dateParam, fecha_hasta: dateParam },

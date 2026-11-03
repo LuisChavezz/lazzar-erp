@@ -41,8 +41,18 @@ export const positiveIdParam: ServerTableParam<number> = {
   serialize: (value) => String(value),
 };
 
+/**
+ * Codec de fecha: lleva la marca `kind: "date"` para que `dateRanges` acepte
+ * SOLO filtros de fecha (su comparación es por texto "yyyy-mm-dd", que no
+ * sirve para otros valores).
+ */
+export interface DateServerTableParam extends ServerTableParam<string> {
+  readonly kind: "date";
+}
+
 /** Día real "yyyy-mm-dd" (año ≥ 1900), como lo emite un `<input type="date">`. */
-export const dateParam: ServerTableParam<string> = {
+export const dateParam: DateServerTableParam = {
+  kind: "date",
   parse: (raw) => (isCompleteDateEntry(raw) ? raw : null),
   serialize: (value) => value,
 };
@@ -95,8 +105,9 @@ export interface ServerTableDefinition<
    * Pares de filtros de fecha (`dateParam`) que forman un RANGO: `from` no
    * puede ser posterior a `to` (el backend responde 400). Un par invertido en
    * la URL se trata como ausente —ninguno de los dos se envía— y un cambio que
-   * lo invertiría no se escribe. Omitido → ningún par se compara. Las claves
-   * deben ser de `filters` (lo comprueba `defineServerTable`).
+   * lo invertiría no se escribe. Omitido → ningún par se compara. Las dos
+   * claves deben ser filtros `dateParam` de `filters` (lo comprueba
+   * `defineServerTable`): la comparación es por el texto "yyyy-mm-dd".
    */
   dateRanges?: readonly { from: string; to: string }[];
   /** Opciones del selector "Filas". Por defecto 10/20/50/100. */
@@ -111,10 +122,19 @@ export interface ServerTableDefinition<
   urlPrefix?: string;
 }
 
-/** Identidad con inferencia: conserva los tipos de cada filtro. */
+/** Claves de `P` cuyos filtros son de fecha (`dateParam`). */
+type DateFilterKey<P extends ServerTableFilterParams> = {
+  [K in keyof P]: P[K] extends DateServerTableParam ? K : never;
+}[keyof P] &
+  string;
+
+/**
+ * Identidad con inferencia: conserva los tipos de cada filtro. Un par de
+ * `dateRanges` que nombre un filtro que no sea `dateParam` no compila.
+ */
 export const defineServerTable = <const P extends ServerTableFilterParams>(
   definition: ServerTableDefinition<P> & {
-    dateRanges?: readonly { from: keyof P & string; to: keyof P & string }[];
+    dateRanges?: readonly { from: DateFilterKey<P>; to: DateFilterKey<P> }[];
   },
 ): ServerTableDefinition<P> => definition;
 
