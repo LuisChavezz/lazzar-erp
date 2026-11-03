@@ -4,6 +4,7 @@ import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelarConciliacion } from "../services/actions";
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
 import { CONCILIACIONES_KEY_ROOT } from "./useConciliaciones";
+import { invalidateMovimientoQueries } from "./invalidateMovimientoQueries";
 
 const FALLBACK = "Error al cancelar la conciliación";
 
@@ -68,8 +69,11 @@ export const useCancelarConciliacion = () => {
       toast.success("Conciliación cancelada correctamente");
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el
-    // refetch termine: así el listado nunca muestra un estado intermedio.
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: CONCILIACIONES_KEY_ROOT }),
+    // refetch termine: así el listado nunca muestra un estado intermedio. Los
+    // movimientos se refrescan sin bloquearla (`invalidateMovimientoQueries`).
+    onSettled: () => {
+      void invalidateMovimientoQueries(queryClient);
+      return queryClient.invalidateQueries({ queryKey: CONCILIACIONES_KEY_ROOT });
+    },
   });
 };
