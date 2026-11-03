@@ -4,6 +4,8 @@ import type { ReceiptDetail, ReceiptDetailLine } from "../interfaces/receipt.int
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { InfoTile, InfoTileGrid } from "@/src/components/DetailDialogPrimitives";
 import { RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
+import { SkuCode } from "@/src/components/SkuCode";
+import { hasLineCode } from "@/src/utils/sku";
 
 // ── Shell presentacional compartido del detalle de recepción ──────────────────
 // Recibe un `ReceiptDetail` YA CARGADO (no hace fetch — eso vive en el diálogo
@@ -54,7 +56,7 @@ const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
     );
   }
 
-  const showSku = detalles.some((linea) => linea.producto_variante_sku?.trim());
+  const showSku = hasLineCode(detalles);
   const TH = "px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 
   return (
@@ -71,8 +73,8 @@ const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
           {detalles.map((linea) => (
             <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
               {showSku && (
-                <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap align-top">
-                  {linea.producto_variante_sku?.trim() || "—"}
+                <td className="px-3 py-2 align-top">
+                  <SkuCode linea={linea} />
                 </td>
               )}
               <td className="px-3 py-2 align-top">

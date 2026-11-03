@@ -206,6 +206,13 @@ export interface PurchaseOrderDetalle {
    */
   producto_variante_id: number | null;
   producto_variante_sku: string | null;
+  /**
+   * Códigos del PRODUCTO (no de la variante); opcionales, `null` si no tiene.
+   * Identifican la materia prima, que no tiene SKU. `producto_cod_proscai` es
+   * el que reconoce el operario.
+   */
+  producto_codigo?: string | null;
+  producto_cod_proscai?: string | null;
   /** NOMBRE del color de la variante (no su id); `null` sin variante (EC-684). */
   producto_variante_color: string | null;
   /** NOMBRE de la talla de la variante (no su id); `null` sin variante o sin talla. */
