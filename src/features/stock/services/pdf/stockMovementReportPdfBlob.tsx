@@ -1,16 +1,20 @@
 /**
  * Genera un Blob PDF a partir del reporte de movimientos COMPLETO (todas las
- * filas del periodo, no solo la página visible). Usa dynamic import de
- * @react-pdf/renderer para evitar problemas en SSR, igual que los demás PDF.
+ * filas del periodo, no solo la página visible). El documento (y con él
+ * `@react-pdf/renderer`) se carga con `import()` dinámico vía
+ * `renderPdfBlob`, para que la librería no entre en el chunk inicial de
+ * Reportes (EC-700).
  */
-import React from "react";
 import type { StockMovementReportResponse } from "../../interfaces/stock-movement-report.interface";
-import { StockMovementReportPdfDocument } from "@/src/pdfs/StockMovementReportPdfDocument";
+import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
 export const generateStockMovementReportPdfBlob = async (
   report: StockMovementReportResponse,
-): Promise<Blob> => {
-  const { pdf } = await import("@react-pdf/renderer");
-
-  return pdf(<StockMovementReportPdfDocument report={report} />).toBlob();
-};
+): Promise<Blob> =>
+  renderPdfBlob(
+    () =>
+      import("@/src/pdfs/StockMovementReportPdfDocument").then(
+        (m) => m.StockMovementReportPdfDocument,
+      ),
+    { report },
+  );

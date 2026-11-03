@@ -1,16 +1,18 @@
 /**
  * Genera un Blob PDF a partir de los datos de una factura.
- * Utiliza dynamic import de @react-pdf/renderer para evitar problemas en SSR.
+ *
+ * El documento (y con él `@react-pdf/renderer`) se carga con `import()`
+ * dinámico vía `renderPdfBlob`, para que la librería no entre en el chunk
+ * inicial del listado ni del detalle de facturas (EC-700).
  *
  * Es el MISMO generador que consume "Descargar PDF" y el adjunto del correo al
  * cliente, por lo que el archivo enviado es idéntico al descargable.
  */
-import React from "react";
 import type { Invoice } from "../../interfaces/invoice.interface";
-import { InvoicePdfDocument } from "@/src/pdfs/InvoicePdfDocument";
+import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
-export const generateInvoicePdfBlob = async (invoice: Invoice): Promise<Blob> => {
-  const { pdf } = await import("@react-pdf/renderer");
-
-  return pdf(<InvoicePdfDocument invoice={invoice} />).toBlob();
-};
+export const generateInvoicePdfBlob = async (invoice: Invoice): Promise<Blob> =>
+  renderPdfBlob(
+    () => import("@/src/pdfs/InvoicePdfDocument").then((m) => m.InvoicePdfDocument),
+    { invoice },
+  );

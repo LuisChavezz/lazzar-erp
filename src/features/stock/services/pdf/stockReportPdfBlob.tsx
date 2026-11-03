@@ -1,16 +1,17 @@
 /**
  * Genera un Blob PDF a partir del reporte de inventario COMPLETO (todas las
- * filas del periodo, no solo la página visible). Usa dynamic import de
- * @react-pdf/renderer para evitar problemas en SSR, igual que los demás PDF.
+ * filas del periodo, no solo la página visible). El documento (y con él
+ * `@react-pdf/renderer`) se carga con `import()` dinámico vía
+ * `renderPdfBlob`, para que la librería no entre en el chunk inicial de
+ * Reportes (EC-700).
  */
-import React from "react";
 import type { StockReportResponse } from "../../interfaces/stock-report.interface";
-import { StockReportPdfDocument } from "@/src/pdfs/StockReportPdfDocument";
+import { renderPdfBlob } from "@/src/utils/renderPdfBlob";
 
 export const generateStockReportPdfBlob = async (
   report: StockReportResponse,
-): Promise<Blob> => {
-  const { pdf } = await import("@react-pdf/renderer");
-
-  return pdf(<StockReportPdfDocument report={report} />).toBlob();
-};
+): Promise<Blob> =>
+  renderPdfBlob(
+    () => import("@/src/pdfs/StockReportPdfDocument").then((m) => m.StockReportPdfDocument),
+    { report },
+  );
