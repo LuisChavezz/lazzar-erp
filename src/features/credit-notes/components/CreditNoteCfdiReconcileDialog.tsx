@@ -1,7 +1,7 @@
 "use client";
 
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { CfdiReconcileConfirmDialog } from "@/src/features/invoicing/components/CfdiReconcileConfirmDialog";
+import { StampConfirmDialog } from "@/src/components/StampConfirmDialog";
 import { useReconcileNotaCreditoCfdi } from "../hooks/useReconcileNotaCreditoCfdi";
 
 /** Lo mínimo para conciliar y nombrar la nota. */
@@ -33,12 +33,14 @@ export function CreditNoteCfdiReconcileDialog({
   const { reconcile, isReconciling, isIdle } = useReconcileNotaCreditoCfdi(target?.id ?? 0);
 
   return (
-    <CfdiReconcileConfirmDialog
+    <StampConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Conciliar con Facturama"
       description={`Se buscará en Facturama el CFDI de egreso de la nota ${notaLabel}, cuyo timbrado nunca se confirmó. Si existe, la nota quedará timbrada con él; si no, se liberará el timbrado pendiente y podrás volver a timbrarla o cancelarla.`}
-      isReconciling={isReconciling}
+      isStamping={isReconciling}
+      confirmText="Conciliar"
+      busyText="Conciliando…"
       isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;

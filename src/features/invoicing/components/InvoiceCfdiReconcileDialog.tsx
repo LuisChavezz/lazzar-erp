@@ -2,7 +2,7 @@
 
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useReconcileInvoiceCfdi } from "../hooks/useReconcileInvoiceCfdi";
-import { CfdiReconcileConfirmDialog } from "./CfdiReconcileConfirmDialog";
+import { StampConfirmDialog } from "@/src/components/StampConfirmDialog";
 
 /** Lo mínimo para conciliar y nombrar la factura. */
 export interface InvoiceCfdiReconcileTarget {
@@ -33,12 +33,14 @@ export function InvoiceCfdiReconcileDialog({
   const { reconcile, isReconciling, isIdle } = useReconcileInvoiceCfdi(target?.id ?? 0);
 
   return (
-    <CfdiReconcileConfirmDialog
+    <StampConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Conciliar con Facturama"
       description={`Se buscará en Facturama el CFDI de la factura ${invoiceLabel}, cuyo timbrado nunca se confirmó. Si existe, la factura quedará timbrada con él; si no, se liberará el timbrado pendiente y podrás volver a timbrarla o cancelarla.`}
-      isReconciling={isReconciling}
+      isStamping={isReconciling}
+      confirmText="Conciliar"
+      busyText="Conciliando…"
       isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;
