@@ -11,6 +11,7 @@ import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEm
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
+import { purchaseOrderEmailRenderInputs } from "../utils/purchaseOrderEmailRenderInputs";
 import { getPurchaseOrderEmailBlocker } from "../utils/purchaseOrderEmailBlocker";
 import type { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
 import { purchaseOrderQueryOptions } from "./usePurchaseOrder";
@@ -109,9 +110,10 @@ export const usePreparePurchaseOrderEmail = () => {
  *
  * Entre preparar y confirmar la confirmación puede quedar abierta: si otro
  * usuario canceló la orden, la regresó a pendiente o la editó, se aborta sin
- * enviar —nunca sale una versión distinta de la que el usuario confirmó—. La
- * comparación es de la orden completa (`assertEmailSnapshotUnchanged`), que
- * cubre todo lo que muestran el diálogo, el correo y el PDF.
+ * enviar —nunca sale una versión distinta de la que el usuario confirmó—. Se
+ * compara lo que se RENDERIZA (`purchaseOrderEmailRenderInputs`): un cambio que
+ * no se ve en el correo ni en el PDF (avance de recepciones, auditoría) no
+ * aborta.
  *
  * El PDF se genera con el MISMO generador que "Descargar PDF"
  * (generatePurchaseOrderPdfBlob) a partir de la MISMA foto con la que se
@@ -126,7 +128,11 @@ export const useSendPurchaseOrderEmail = () => {
     mutationKey: sendPurchaseOrderEmailMutationKey,
     mutationFn: async ({ id, order, content, attachmentName }): Promise<SendEmailResult> => {
       const current = await fetchSendablePurchaseOrder(queryClient, id);
-      assertEmailSnapshotUnchanged(current, order, PURCHASE_ORDER_EMAIL_STALE_MESSAGE);
+      assertEmailSnapshotUnchanged(
+        purchaseOrderEmailRenderInputs(current),
+        purchaseOrderEmailRenderInputs(order),
+        PURCHASE_ORDER_EMAIL_STALE_MESSAGE,
+      );
 
       const pdfBlob = await generatePurchaseOrderPdfBlob(order);
       const attachment = await buildGoogleEmailAttachment(

@@ -6,6 +6,7 @@ import { googleSendEmail } from "../services/actions";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePdfBlob";
 import { loadQuoteForDocument } from "@/src/features/quotes/utils/loadQuoteForDocument";
+import { quoteEmailRenderInputs } from "@/src/features/quotes/utils/quoteEmailRenderInputs";
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
 import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
 import type { GoogleEmailPayload } from "../interfaces/google.interface";
@@ -93,9 +94,9 @@ export const usePrepareQuoteEmail = () => {
  * moneda y, si siguen IGUALES a la foto que se preparó, genera el PDF y envía
  * el correo preparado. Si otro usuario la modificó mientras la confirmación
  * estaba abierta, se aborta sin enviar: nunca sale una versión distinta de la
- * que el usuario confirmó. La comparación es de la cotización completa
- * (`assertEmailSnapshotUnchanged`, con el código de moneda), que cubre lo que muestran el diálogo, el correo y el PDF
- * (incluido `correo_facturas`, de donde salen los destinatarios).
+ * que el usuario confirmó. Se compara lo que se RENDERIZA
+ * (`quoteEmailRenderInputs`, con el código de moneda y `correo_facturas`, de
+ * donde salen los destinatarios): un cambio que no se ve no aborta.
  *
  * El PDF se genera con el MISMO generador que usa "Descargar PDF"
  * (generateQuotePdfBlob) a partir de la MISMA foto con la que se renderizó el
@@ -112,7 +113,11 @@ export const useGoogleSendEmail = () => {
       }
 
       const current = await loadQuoteForDocument(queryClient, quote.id);
-      assertEmailSnapshotUnchanged(current, { quote, monedaCodigo }, QUOTE_EMAIL_STALE_MESSAGE);
+      assertEmailSnapshotUnchanged(
+        quoteEmailRenderInputs(current.quote, current.monedaCodigo),
+        quoteEmailRenderInputs(quote, monedaCodigo),
+        QUOTE_EMAIL_STALE_MESSAGE,
+      );
 
       const pdfBlob = await generateQuotePdfBlob(quote, monedaCodigo);
       const attachment = await buildGoogleEmailAttachment(

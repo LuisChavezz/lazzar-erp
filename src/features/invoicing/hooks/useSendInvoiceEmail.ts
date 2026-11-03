@@ -10,6 +10,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEmailFlow";
 import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
+import { invoiceEmailRenderInputs } from "../utils/invoiceEmailRenderInputs";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 
@@ -77,9 +78,10 @@ export const usePrepareInvoiceEmail = () =>
  *
  * Entre preparar y confirmar la confirmación puede quedar abierta: si otro
  * usuario canceló, eliminó o modificó la factura, se aborta sin enviar —nunca
- * sale una versión distinta de la que el usuario confirmó—. La comparación es
- * de la factura completa (`assertEmailSnapshotUnchanged`), que cubre todo lo que muestran el
- * diálogo, el correo y el PDF (incluido `correo_facturas`, el destinatario).
+ * sale una versión distinta de la que el usuario confirmó—. Se compara lo que
+ * se RENDERIZA (`invoiceEmailRenderInputs`: el modelo del documento y
+ * `correo_facturas`, el destinatario): un cambio que no se ve (pagos, CFDI,
+ * auditoría) no aborta.
  *
  * El PDF se genera con el MISMO generador que "Descargar PDF"
  * (generateInvoicePdfBlob) a partir de la MISMA foto con la que se renderizó el
@@ -97,7 +99,11 @@ export const useSendInvoiceEmail = () => {
       const current = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(id));
       const blocker = getInvoiceEmailBlocker(current);
       if (blocker) throw new Error(blocker.message);
-      assertEmailSnapshotUnchanged(current, invoice, INVOICE_EMAIL_STALE_MESSAGE);
+      assertEmailSnapshotUnchanged(
+        invoiceEmailRenderInputs(current),
+        invoiceEmailRenderInputs(invoice),
+        INVOICE_EMAIL_STALE_MESSAGE,
+      );
 
       const pdfBlob = await generateInvoicePdfBlob(invoice);
       const attachment = await buildGoogleEmailAttachment(
