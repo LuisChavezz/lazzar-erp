@@ -38,7 +38,8 @@ import {
   usePendingPolizaIds,
 } from "../hooks/usePolizaRowActions";
 import { cancelarPolizaDescription } from "../utils/cancelarPolizaCopy";
-import { canWritePolizas, POLIZA_WRITE_PERMISSION_REASON } from "../utils/polizaPermissions";
+import { canWriteFinance } from "@/src/utils/financeWritePermission";
+import { POLIZA_WRITE_PERMISSION_REASON } from "../utils/polizaPermissions";
 import type { Poliza, PolizaEstatus } from "../interfaces/poliza.interface";
 
 /** Etiqueta legible de una póliza: su folio si lo tiene, si no el `#id`. */
@@ -73,9 +74,9 @@ const POLIZA_CANCEL_STALE_MESSAGES = {
 };
 
 export default function PolizaList() {
-  // Toda escritura de pólizas exige `E-FIN-FACTURAS` (`canWritePolizas`).
+  // Toda escritura de pólizas exige `E-FIN-FACTURAS` (`canWriteFinance`).
   const { data: session } = useSession();
-  const canWrite = canWritePolizas(session?.user);
+  const canWrite = canWriteFinance(session?.user);
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de

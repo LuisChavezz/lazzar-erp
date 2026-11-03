@@ -15,7 +15,7 @@ export interface PolizaRowActionsContextValue {
   /** Ids con alguna acción de fila en vuelo (`usePendingPolizaIds`, calculado en la lista). */
   busyIds: number[];
   /**
-   * ¿El usuario puede escribir pólizas? (`canWritePolizas`). Sin el permiso,
+   * ¿El usuario puede escribir pólizas? (`canWriteFinance`). Sin el permiso,
    * "Contabilizar", "Cancelar póliza" y "Eliminar borrador" se muestran
    * deshabilitados con su motivo.
    */

@@ -13,7 +13,7 @@ export interface ConciliacionRowActionsContextValue {
   /** Ids con un cierre o una cancelación en vuelo (`usePendingConciliacionIds`). */
   busyIds: number[];
   /**
-   * ¿El usuario puede escribir conciliaciones? (`canWriteConciliaciones`). Sin
+   * ¿El usuario puede escribir conciliaciones? (`canWriteFinance`). Sin
    * el permiso, "Cerrar conciliación" y "Cancelar conciliación" se muestran
    * deshabilitados con su motivo.
    */

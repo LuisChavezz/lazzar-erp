@@ -35,10 +35,8 @@ import type {
   ConciliacionEnDetalle,
   PrepararConciliacionResponse,
 } from "../interfaces/bank-reconciliation.interface";
-import {
-  CONCILIACION_WRITE_PERMISSION_REASON,
-  canWriteConciliaciones,
-} from "../utils/conciliacionPermissions";
+import { canWriteFinance } from "@/src/utils/financeWritePermission";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "../utils/conciliacionPermissions";
 import {
   conciliacionEnDetalleDesdePreparar,
   llaveDeFiltro,
@@ -106,9 +104,9 @@ const cancelarConciliacionDescription = (cuenta: string, estatus: ConciliacionEs
     : `¿Deseas cancelar la conciliación de ${cuenta}? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`;
 
 export function BankReconciliationView() {
-  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`canWriteConciliaciones`).
+  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`canWriteFinance`).
   const { data: session } = useSession();
-  const canWrite = canWriteConciliaciones(session?.user);
+  const canWrite = canWriteFinance(session?.user);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
