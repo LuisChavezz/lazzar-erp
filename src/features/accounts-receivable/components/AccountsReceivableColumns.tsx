@@ -59,15 +59,19 @@ const getClienteLabel = (cuenta: CuentaPorCobrarRow): string =>
  * ordenar, paginar o filtrar): lo abre `AccountsReceivableList`.
  */
 export const getAccountsReceivableColumns = () => [
-  // Accessor de TEXTO con folio y estatus: el estatus ya no tiene columna
-  // propia (va bajo el folio), y así la búsqueda global lo sigue encontrando
-  // ("Cancelada"). El orden sigue siendo por `id`, no por ese texto.
-  columnHelper.accessor((row) => `${row.folio_cxc} ${row.estatus}`, {
-    id: "folio_cxc",
+  columnHelper.accessor("folio_cxc", {
     header: "Folio CxC",
-    sortingFn: (a, b) => a.original.id - b.original.id,
     size: 170,
     cell: (info) => <AccountsReceivableFolioCell cuenta={info.row.original} />,
+  }),
+  // El estatus se pinta bajo el folio; esta columna, OCULTA por defecto, lo
+  // mantiene en la búsqueda global ("Cancelada") —TanStack busca también en
+  // las columnas ocultas— sin ensuciar el valor del folio, y en el selector de
+  // columnas por si alguien lo quiere ver aparte.
+  columnHelper.accessor("estatus", {
+    header: "Estatus",
+    meta: { hiddenByDefault: true },
+    cell: (info) => <StatusBadge status={info.getValue()} config={CXC_ESTATUS_CONFIG} />,
   }),
   // Mismo texto en la celda, la búsqueda y la opción del filtro.
   columnHelper.accessor((row) => getClienteLabel(row), {
