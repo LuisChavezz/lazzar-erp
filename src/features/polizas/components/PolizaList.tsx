@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -38,7 +37,7 @@ import {
   usePendingPolizaIds,
 } from "../hooks/usePolizaRowActions";
 import { cancelarPolizaDescription } from "../utils/cancelarPolizaCopy";
-import { canWriteFinance } from "@/src/utils/financeWritePermission";
+import { useFinanceWriteAccess } from "@/src/hooks/useFinanceWriteAccess";
 import { POLIZA_WRITE_PERMISSION_REASON } from "../utils/polizaPermissions";
 import type { Poliza, PolizaEstatus } from "../interfaces/poliza.interface";
 
@@ -74,9 +73,10 @@ const POLIZA_CANCEL_STALE_MESSAGES = {
 };
 
 export default function PolizaList() {
-  // Toda escritura de pólizas exige `E-FIN-FACTURAS` (`canWriteFinance`).
-  const { data: session } = useSession();
-  const canWrite = canWriteFinance(session?.user);
+  // Toda escritura de pólizas exige `E-FIN-FACTURAS` (`useFinanceWriteAccess`).
+  // `loading` mientras la sesión llega: no es "sin permiso" (`useFinanceWriteAccess`).
+  const writeAccess = useFinanceWriteAccess();
+  const canWrite = writeAccess === "allowed";
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
@@ -146,7 +146,7 @@ export default function PolizaList() {
     // El menú ya lo muestra deshabilitado; se repite aquí por si la sesión
     // cambió entre pintarlo y seleccionar.
     if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
+      if (writeAccess === "denied") toast.error(POLIZA_WRITE_PERMISSION_REASON);
       return;
     }
     if (!polizaTieneImportes(poliza.total_cargos, poliza.total_abonos)) {
@@ -161,14 +161,14 @@ export default function PolizaList() {
   };
   const handleCancel = (poliza: Poliza) => {
     if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
+      if (writeAccess === "denied") toast.error(POLIZA_WRITE_PERMISSION_REASON);
       return;
     }
     setCancelTargetId(poliza.id);
   };
   const handleDelete = (poliza: Poliza) => {
     if (!canWrite) {
-      toast.error(POLIZA_WRITE_PERMISSION_REASON);
+      if (writeAccess === "denied") toast.error(POLIZA_WRITE_PERMISSION_REASON);
       return;
     }
     setDeleteTargetId(poliza.id);
@@ -275,7 +275,7 @@ export default function PolizaList() {
         onCancel: handleCancel,
         onDelete: handleDelete,
         busyIds,
-        canWrite,
+        writeAccess,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">

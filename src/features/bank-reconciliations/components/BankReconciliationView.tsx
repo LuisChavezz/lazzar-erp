@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -35,7 +34,7 @@ import type {
   ConciliacionEnDetalle,
   PrepararConciliacionResponse,
 } from "../interfaces/bank-reconciliation.interface";
-import { canWriteFinance } from "@/src/utils/financeWritePermission";
+import { useFinanceWriteAccess } from "@/src/hooks/useFinanceWriteAccess";
 import { CONCILIACION_WRITE_PERMISSION_REASON } from "../utils/conciliacionPermissions";
 import {
   conciliacionEnDetalleDesdePreparar,
@@ -104,9 +103,10 @@ const cancelarConciliacionDescription = (cuenta: string, estatus: ConciliacionEs
     : `¿Deseas cancelar la conciliación de ${cuenta}? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`;
 
 export function BankReconciliationView() {
-  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`canWriteFinance`).
-  const { data: session } = useSession();
-  const canWrite = canWriteFinance(session?.user);
+  // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`useFinanceWriteAccess`).
+  // `loading` mientras la sesión llega: no es "sin permiso" (`useFinanceWriteAccess`).
+  const writeAccess = useFinanceWriteAccess();
+  const canWrite = writeAccess === "allowed";
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -364,14 +364,14 @@ export function BankReconciliationView() {
   // sesión cambió entre pintarlo y seleccionar.
   const handleCerrar = (conciliacion: ConciliacionBancaria) => {
     if (!canWrite) {
-      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
+      if (writeAccess === "denied") toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
       return;
     }
     setCerrarTargetId(conciliacion.id);
   };
   const handleCancelar = (conciliacion: ConciliacionBancaria) => {
     if (!canWrite) {
-      toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
+      if (writeAccess === "denied") toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
       return;
     }
     setCancelarTargetId(conciliacion.id);
@@ -384,7 +384,7 @@ export function BankReconciliationView() {
         onCerrar: handleCerrar,
         onCancelar: handleCancelar,
         busyIds,
-        canWrite,
+        writeAccess,
       }}
     >
     <div className="h-full flex flex-col min-h-0 space-y-4">

@@ -30,14 +30,17 @@ export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
  * llegan por contexto (`ConciliacionRowActionsProvider`).
  */
 function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
-  const { onViewDetail, onCerrar, onCancelar, busyIds, canWrite } =
+  const { onViewDetail, onCerrar, onCancelar, busyIds, writeAccess } =
     useConciliacionRowActionsContext();
   // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
   const busy = busyIds.includes(conciliacion.id);
   // Sin el permiso de escritura (`E-FIN-FACTURAS`) las acciones se muestran
   // deshabilitadas con su motivo, convención de EC-713. El motivo del permiso
-  // manda sobre el del cuadre.
-  const permissionReason = canWrite ? undefined : CONCILIACION_WRITE_PERMISSION_REASON;
+  // manda sobre el del cuadre. Mientras la sesión carga quedan deshabilitadas
+  // SIN motivo: todavía no se sabe si falta el permiso.
+  const canWrite = writeAccess === "allowed";
+  const permissionReason =
+    writeAccess === "denied" ? CONCILIACION_WRITE_PERMISSION_REASON : undefined;
   const items: ActionMenuItem[] = [];
 
   // Solo un `Borrador` se cierra.

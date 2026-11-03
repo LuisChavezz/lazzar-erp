@@ -2,6 +2,7 @@
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
+import type { FinanceWriteAccess } from "@/src/utils/financeWritePermission";
 import type { Poliza } from "../interfaces/poliza.interface";
 import { contabilizarPolizaMutationKey } from "./useContabilizarPoliza";
 import { cancelarPolizaMutationKey } from "./useCancelarPoliza";
@@ -15,11 +16,12 @@ export interface PolizaRowActionsContextValue {
   /** Ids con alguna acción de fila en vuelo (`usePendingPolizaIds`, calculado en la lista). */
   busyIds: number[];
   /**
-   * ¿El usuario puede escribir pólizas? (`canWriteFinance`). Sin el permiso,
-   * "Contabilizar", "Cancelar póliza" y "Eliminar borrador" se muestran
-   * deshabilitados con su motivo.
+   * Permiso de escritura de Finanzas (`useFinanceWriteAccess`). Sin él
+   * (`denied`), "Contabilizar", "Cancelar póliza" y "Eliminar borrador" se
+   * muestran deshabilitados con su motivo; mientras la sesión carga
+   * (`loading`), deshabilitados sin motivo.
    */
-  canWrite: boolean;
+  writeAccess: FinanceWriteAccess;
 }
 
 const { Provider, useRowActionsContext } = createRowActionsContext<PolizaRowActionsContextValue>(
