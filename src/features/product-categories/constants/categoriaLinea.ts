@@ -24,6 +24,13 @@ export type CategoriaLinea = (typeof CATEGORIA_LINEAS)[number];
  */
 export type CategoriaLineaValue = CategoriaLinea | "";
 
+/**
+ * `linea` tal como puede llegar del backend: un valor conocido o una línea que
+ * el backend agregó y este catálogo aún no conoce (se muestra cruda, nunca se
+ * reescribe). `(string & {})` conserva el autocompletado de los conocidos.
+ */
+export type CategoriaLineaRaw = CategoriaLineaValue | (string & {});
+
 /** Etiquetas exactas del backend. Llaves = valores crudos. */
 export const CATEGORIA_LINEA_CONFIG: Record<CategoriaLinea, { label: string }> = {
   INDUSTRIAL: { label: "Industrial" },
@@ -40,6 +47,31 @@ export const SIN_LINEA_LABEL = "Sin línea (materia prima)";
 
 export const isCategoriaLinea = (value: unknown): value is CategoriaLinea =>
   typeof value === "string" && (CATEGORIA_LINEAS as readonly string[]).includes(value);
+
+/** ¿Es una línea que el backend mandó pero este catálogo no conoce? (`""` sí se conoce.) */
+export const isUnrecognizedLinea = (value: string | null | undefined): value is string =>
+  typeof value === "string" && value !== "" && !isCategoriaLinea(value);
+
+/** Sufijo de la opción de una línea no reconocida en el formulario. */
+export const UNRECOGNIZED_LINEA_SUFFIX = "(no reconocida)";
+
+/**
+ * Opciones del select de línea del formulario de categoría: "Sin línea
+ * (materia prima)" (`""`) primero, luego el catálogo en su orden y, si la
+ * categoría que se edita trae una línea que el catálogo no conoce, esa línea
+ * cruda al final, marcada como no reconocida, para que siga visible y
+ * seleccionada en vez de que el `<select>` muestre otra opción.
+ */
+export function getLineaFormOptions(currentLinea?: string | null): { value: string; label: string }[] {
+  const options = [
+    { value: "", label: SIN_LINEA_LABEL },
+    ...CATEGORIA_LINEAS.map((linea) => ({ value: linea as string, label: CATEGORIA_LINEA_CONFIG[linea].label })),
+  ];
+  if (isUnrecognizedLinea(currentLinea)) {
+    options.push({ value: currentLinea, label: `${currentLinea} ${UNRECOGNIZED_LINEA_SUFFIX}` });
+  }
+  return options;
+}
 
 /**
  * Etiqueta de un valor de `linea`: la del catálogo, `SIN_LINEA_LABEL` si viene

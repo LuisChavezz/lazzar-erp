@@ -1,13 +1,16 @@
 import { Company } from "../../companies/interfaces/company.interface";
-import type { CategoriaLineaValue } from "../constants/categoriaLinea";
+import type { CategoriaLineaRaw } from "../constants/categoriaLinea";
 
 
 export interface ProductCategory {
   id: number;
   empresa: Company["id"];
   nombre: string;
-  /** Línea comercial; `""` = materia prima. Ver `CATEGORIA_LINEA_CONFIG`. */
-  linea: CategoriaLineaValue;
+  /**
+   * Línea comercial; `""` = materia prima. Ver `CATEGORIA_LINEA_CONFIG`. Siempre
+   * string: `getProductCategories` normaliza a `""` una respuesta sin el campo.
+   */
+  linea: CategoriaLineaRaw;
   codigo: string;
   descripcion: string;
   /**
@@ -20,8 +23,11 @@ export interface ProductCategory {
 export interface ProductCategoryCreate {
   empresa: Company["id"];
   nombre: string;
-  /** `""` deja la categoría sin línea (materia prima). */
-  linea: CategoriaLineaValue;
+  /**
+   * `""` deja la categoría sin línea (materia prima). Una línea no reconocida
+   * solo viaja si ya la tenía la categoría editada (ver `getLineaFormOptions`).
+   */
+  linea: CategoriaLineaRaw;
   codigo: string;
   descripcion: string;
 }
