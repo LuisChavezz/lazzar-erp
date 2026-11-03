@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { FacturaProveedorIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -137,6 +138,10 @@ export default function SupplierInvoiceList({
   // disparaba los dos PATCH a la vez, y el resultado dependía de cuál llegaba
   // primero. Registrar genera una CxP: un doble clic tampoco debe disparar dos.
   const rowLock = useRowActionLock();
+  // Escrituras (PATCH) en vuelo por factura, leídas de la `MutationCache`:
+  // registrar y cancelar las confirmaciones quedan ocupadas aunque la vista se
+  // haya remontado y su candado de fila esté vacío.
+  const pendingUpdateIds = usePendingRecordIds(updateSupplierInvoiceMutationKey);
 
   /**
    * `true` —con aviso— si la fila ya tiene una acción en vuelo. Se consulta al
@@ -541,7 +546,11 @@ export default function SupplierInvoiceList({
           <ConfirmDialog
             open={true}
             // En vuelo queda abierta y bloqueada (ver `guardClose`).
-            {...rowLock.guardClose(registrarTargetId, () => setRegistrarTargetId(null))}
+            {...rowLock.guardClose(
+              registrarTargetId,
+              () => setRegistrarTargetId(null),
+              pendingUpdateIds.includes(registrarTargetId),
+            )}
             title="Registrar Factura de Proveedor"
             description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
             confirmText={
@@ -560,7 +569,11 @@ export default function SupplierInvoiceList({
           <ConfirmDialog
             open={true}
             // En vuelo queda abierta y bloqueada (ver `guardClose`).
-            {...rowLock.guardClose(cancelTargetId, () => setCancelTargetId(null))}
+            {...rowLock.guardClose(
+              cancelTargetId,
+              () => setCancelTargetId(null),
+              pendingUpdateIds.includes(cancelTargetId),
+            )}
             title="Cancelar Factura de Proveedor"
             description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
             confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
