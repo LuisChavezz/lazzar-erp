@@ -25,7 +25,8 @@ import {
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
-import { hasVariantSku } from "../utils/purchaseOrderLines";
+import { SkuCode } from "@/src/components/SkuCode";
+import { hasLineCode } from "@/src/utils/sku";
 import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import type {
   DocumentoLigado,
@@ -85,7 +86,7 @@ const DetalleTable = ({
   }
 
   const showAmounts = hasLineAmounts(detalles);
-  const showSku = hasVariantSku(detalles);
+  const showSku = hasLineCode(detalles);
   const money = (value: string | undefined) =>
     formatMoneyValueOrDash(value, monedaCodigo);
 
@@ -114,8 +115,8 @@ const DetalleTable = ({
           className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
         >
           {showSku && (
-            <td className="px-3 py-2 text-slate-700 dark:text-slate-200 whitespace-nowrap">
-              {textOrDash(item.producto_variante_sku)}
+            <td className="px-3 py-2 align-top">
+              <SkuCode linea={item} />
             </td>
           )}
           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">

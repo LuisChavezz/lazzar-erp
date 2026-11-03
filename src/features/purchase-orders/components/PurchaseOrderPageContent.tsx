@@ -6,6 +6,8 @@ import Link from "next/link";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { ArrowLeftIcon, ChevronDownIcon, RouteIcon } from "@/src/components/Icons";
 import { DocChevron, DocEstatusBadge } from "@/src/components/DocEstatusBadge";
+import { SkuCode } from "@/src/components/SkuCode";
+import { hasLineCode } from "@/src/utils/sku";
 import { Button } from "@/src/components/Button";
 import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -34,7 +36,6 @@ import {
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
-import { hasVariantSku } from "../utils/purchaseOrderLines";
 import { getPurchaseOrderProgress, progressBarClass } from "../utils/purchaseOrderProgress";
 import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
@@ -129,7 +130,7 @@ const LineasTable = ({
   }
 
   const showAmounts = hasLineAmounts(detalles);
-  const showSku = hasVariantSku(detalles);
+  const showSku = hasLineCode(detalles);
   const money = (value: string | undefined) =>
     formatMoneyValueOrDash(value, monedaCodigo);
 
@@ -181,7 +182,7 @@ const LineasTable = ({
               </td>
               {showSku && (
                 <td className="px-3 py-2 text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {textOrDash(linea.producto_variante_sku)}
+                  <SkuCode linea={linea} />
                 </td>
               )}
               <td className="px-3 py-2 font-semibold text-slate-800 dark:text-white">
@@ -336,7 +337,7 @@ const RecepcionCard = ({
     recepcion.proveedor_nombre && recepcion.proveedor_nombre !== proveedorOrden;
   // Cerrada por defecto: una línea con lo esencial; el desglose, al abrirla.
   const [open, setOpen] = useState(false);
-  const recepcionConSku = recepcion.detalles.some((linea) => linea.producto_variante_sku?.trim());
+  const recepcionConSku = hasLineCode(recepcion.detalles);
   const piezasRecibidas = recepcion.detalles.reduce(
     (total, linea) => total + (Number(linea.cantidad_recibida) || 0),
     0,
@@ -409,8 +410,8 @@ const RecepcionCard = ({
                   className="border-t border-slate-100 dark:border-white/10"
                 >
                   {recepcionConSku && (
-                    <td className="px-3 py-1.5 font-mono font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                      {textOrDash(linea.producto_variante_sku)}
+                    <td className="px-3 py-1.5 align-top">
+                      <SkuCode linea={linea} />
                     </td>
                   )}
                   <td className="px-3 py-1.5 text-slate-700 dark:text-slate-200">

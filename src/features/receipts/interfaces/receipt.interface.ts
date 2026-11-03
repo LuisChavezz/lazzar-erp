@@ -52,6 +52,13 @@ export interface ReceiptDetailLine {
   // SKU de esa variante; opcional porque el backend lo agregó después. `null`
   // cuando el renglón no tiene variante (materia prima).
   producto_variante_sku?: string | null;
+  /**
+   * Códigos del PRODUCTO (no de la variante); opcionales, `null` si no tiene.
+   * Identifican la materia prima, que no tiene SKU. `producto_cod_proscai` es
+   * el que reconoce el operario.
+   */
+  producto_codigo?: string | null;
+  producto_cod_proscai?: string | null;
   ubicacion: number | null;
   // Siempre null: limitación estructural del backend (no es un bug). Se tipa como
   // `null` literal a propósito para que cualquier intento futuro de renderizarlo
