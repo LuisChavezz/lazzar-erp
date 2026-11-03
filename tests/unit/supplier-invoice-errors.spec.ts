@@ -28,3 +28,17 @@ test("los demás campos no llevan la indicación", () => {
   const parsed = parseSupplierInvoiceError(httpError(400, { oc: ["Orden de compra no pertenece a la empresa."] }));
   expect(parsed.fieldErrors.oc).toBe("Orden de compra no pertenece a la empresa.");
 });
+
+test("la verificación de empresa de la sucursal no lleva la indicación de OC/recepción", () => {
+  const parsed = parseSupplierInvoiceError(
+    httpError(400, { sucursal: "Sucursal no pertenece a la empresa." }),
+  );
+  expect(parsed.fieldErrors.sucursal).toBe("Sucursal no pertenece a la empresa.");
+});
+
+test("la indicación también aplica a la sucursal de la orden de compra", () => {
+  const parsed = parseSupplierInvoiceError(
+    httpError(400, { sucursal: ["Debe ser la sucursal de la orden de compra."] }),
+  );
+  expect(parsed.fieldErrors.sucursal).toContain("elige otra orden de compra o recepción");
+});
