@@ -1,6 +1,7 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import type { FinanceWriteState } from "@/src/utils/financeWrite";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
 import { cerrarConciliacionMutationKey } from "./useCerrarConciliacion";
@@ -11,11 +12,11 @@ export interface ConciliacionRowActionsContextValue {
   onCerrar: (conciliacion: ConciliacionBancaria) => void;
   onCancelar: (conciliacion: ConciliacionBancaria) => void;
   /**
-   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el
    * permiso, "Cerrar conciliación" y "Cancelar conciliación" se muestran
    * deshabilitados con su motivo.
    */
-  canWrite: boolean;
+  write: FinanceWriteState;
   /** Ids con un cierre o una cancelación en vuelo (`usePendingConciliacionIds`). */
   busyIds: number[];
 }

@@ -40,10 +40,11 @@ export interface SupplierInvoicePdfActions {
   isUploading: boolean;
   isDownloading: boolean;
   /**
-   * Por qué adjuntar/reemplazar está bloqueado (sin `FINANCE_WRITE_PERMISSION`),
-   * o `null`. El botón queda bloqueado pero enfocable, descrito por el motivo.
+   * Bloqueo de adjuntar/reemplazar por permiso (`financeWriteBlock`). Bloqueado,
+   * el botón queda enfocable y, si hay motivo, descrito por él (mientras la
+   * sesión carga se bloquea sin motivo).
    */
-  attachBlockedReason: string | null;
+  attachBlock: { disabled: boolean; description: string | undefined };
 }
 
 interface SupplierInvoiceDetailDialogProps {
@@ -107,10 +108,10 @@ function SupplierInvoicePdfSection({
             leftIcon={<UploadIcon className="w-4 h-4" aria-hidden="true" />}
             // Sin permiso: BLOQUEADO pero enfocable (`aria-disabled`, como el
             // "Emitir nota" de notas de crédito), descrito por su motivo.
-            onClick={actions.attachBlockedReason ? undefined : actions.onAttach}
+            onClick={actions.attachBlock.disabled ? undefined : actions.onAttach}
             disabled={actions.isUploading}
-            aria-disabled={actions.attachBlockedReason ? true : undefined}
-            aria-describedby={actions.attachBlockedReason ? attachBlockedId : undefined}
+            aria-disabled={actions.attachBlock.disabled || undefined}
+            aria-describedby={actions.attachBlock.description ? attachBlockedId : undefined}
             className="aria-disabled:opacity-60 aria-disabled:cursor-not-allowed!"
           >
             {actions.isUploading
@@ -132,12 +133,12 @@ function SupplierInvoicePdfSection({
             </Button>
           )}
         </div>
-        {actions.attachBlockedReason && (
+        {actions.attachBlock.description && (
           <p
             id={attachBlockedId}
             className="basis-full text-xs text-slate-500 dark:text-slate-400 text-right"
           >
-            {actions.attachBlockedReason}
+            {actions.attachBlock.description}
           </p>
         )}
       </div>

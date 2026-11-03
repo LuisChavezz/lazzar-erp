@@ -2,6 +2,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
@@ -56,12 +57,13 @@ function VencimientoCell({ cuenta }: { cuenta: CuentaPorPagar }) {
  * "hoy" y "en vuelo" llegan por contexto (`AccountsPayableRowActionsProvider`).
  */
 function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
-  const { onViewDetail, onDelete, onGoToPayments, today, busyIds, canWrite } =
+  const { onViewDetail, onDelete, onGoToPayments, today, busyIds, write } =
     useAccountsPayableRowActionsContext();
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cuenta) },
   ];
+  const writeBlock = financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON);
   // Sin permiso de escritura, "Eliminar cuenta" se muestra deshabilitado con su
   // motivo (convención de los flujos de Finanzas).
   if (canDeleteCuentaPorPagar(cuenta)) {
@@ -69,8 +71,8 @@ function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
       label: "Eliminar cuenta",
       icon: DeleteIcon,
       onSelect: () => onDelete(cuenta),
-      disabled: !canWrite || busyIds.includes(cuenta.id),
-      description: canWrite ? undefined : FINANCE_WRITE_PERMISSION_REASON,
+      disabled: writeBlock.disabled || busyIds.includes(cuenta.id),
+      description: writeBlock.description,
     });
   } else if (hasAppliedPayments(cuenta)) {
     // Eliminar queda OCULTO con pagos aplicados (el backend respondería 400); en

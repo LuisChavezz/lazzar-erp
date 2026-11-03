@@ -3,6 +3,7 @@ import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon, DeleteIcon, ViewIcon } from "@/src/components/Icons";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
@@ -37,7 +38,7 @@ const importe = (value: string): string => formatMoneyValue(value, null);
  * remonta las celdas.
  */
 function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
-  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, canWrite } =
+  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, write } =
     usePolizaRowActionsContext();
   const { id, estatus, cuadre_correcto, total_cargos, total_abonos } = poliza;
   // Una fila con una acción en vuelo no ofrece otra: el estatus que decide las
@@ -46,7 +47,7 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
   // Sin permiso de escritura las acciones se muestran deshabilitadas con su
   // motivo (convención de los flujos de Finanzas); el motivo del permiso manda
   // sobre los del cuadre.
-  const permissionReason = canWrite ? undefined : POLIZA_WRITE_PERMISSION_REASON;
+  const writeBlock = financeWriteBlock(write, POLIZA_WRITE_PERMISSION_REASON);
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(poliza) },
@@ -70,8 +71,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: motivoBloqueo ? `Contabilizar (${motivoBloqueo})` : "Contabilizar",
       icon: CheckCircleIcon,
-      disabled: busy || !canWrite || motivoBloqueo !== null,
-      description: permissionReason,
+      disabled: busy || writeBlock.disabled || motivoBloqueo !== null,
+      description: writeBlock.description,
       onSelect: () => onContabilizar(poliza),
     });
   }
@@ -83,8 +84,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: "Cancelar póliza",
       icon: BanIcon,
-      disabled: busy || !canWrite,
-      description: permissionReason,
+      disabled: busy || writeBlock.disabled,
+      description: writeBlock.description,
       onSelect: () => onCancel(poliza),
     });
   }
@@ -96,8 +97,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: "Eliminar borrador",
       icon: DeleteIcon,
-      disabled: busy || !canWrite,
-      description: permissionReason,
+      disabled: busy || writeBlock.disabled,
+      description: writeBlock.description,
       onSelect: () => onDelete(poliza),
     });
   }

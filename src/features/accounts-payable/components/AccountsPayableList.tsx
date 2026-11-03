@@ -3,17 +3,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import {
-  FINANCE_WRITE_PERMISSION,
-  FINANCE_WRITE_PERMISSION_REASON,
-} from "@/src/constants/financePermissions";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
@@ -50,8 +46,9 @@ export default function AccountsPayableList() {
   // Registrar y eliminar CxP exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
   // "Registrar CxP faltante" se oculta y "Eliminar cuenta" se muestra
   // deshabilitado con su motivo (`FINANCE_WRITE_PERMISSION_REASON`).
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { cuentasPorPagar, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useCuentasPorPagar();
   /**
@@ -114,10 +111,7 @@ export default function AccountsPayableList() {
   const handleDelete = (cuenta: CuentaPorPagar) => {
     // El menú ya lo muestra deshabilitado sin el permiso; se repite aquí por si
     // la sesión cambió entre pintarlo y seleccionar.
-    if (!canWrite) {
-      toast.error(FINANCE_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardFinanceWrite(write, FINANCE_WRITE_PERMISSION_REASON)) return;
     const { id, factura_proveedor_folio: folio } = cuenta;
     setDeleteConflict(null);
     setDeleteTarget({
@@ -204,7 +198,7 @@ export default function AccountsPayableList() {
         onGoToPayments: () => router.push("/finance/payments"),
         today,
         busyIds: deleteTarget !== null && deleteLock.isPending(deleteTarget.id) ? [deleteTarget.id] : [],
-        canWrite,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
