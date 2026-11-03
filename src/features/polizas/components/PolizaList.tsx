@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -11,6 +12,8 @@ import { ContabilidadIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION, POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -71,6 +74,11 @@ const POLIZA_CANCEL_STALE_MESSAGES = {
 };
 
 export default function PolizaList() {
+  // Toda escritura de pólizas exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
+  // "+ Nueva póliza" se oculta y las acciones del menú se muestran deshabilitadas
+  // con su motivo (`POLIZA_WRITE_PERMISSION_REASON`).
+  const { data: session } = useSession();
+  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
@@ -124,6 +132,14 @@ export default function PolizaList() {
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // El menú ya deshabilita las escrituras sin el permiso; se repite aquí por si
+  // la sesión cambió entre pintarlo y seleccionar.
+  const guardWrite = () => {
+    if (canWrite) return true;
+    toast.error(POLIZA_WRITE_PERMISSION_REASON);
+    return false;
+  };
+
   /**
    * Contabilizar desde el listado — el camino que NO pasa por el esquema del
    * formulario (el alta con intención "Contabilizada" sí lo hace).
@@ -137,6 +153,7 @@ export default function PolizaList() {
    * que garantiza el invariante aunque la fila del caché estuviera desfasada.
    */
   const handleContabilizar = (poliza: Poliza) => {
+    if (!guardWrite()) return;
     if (!polizaTieneImportes(poliza.total_cargos, poliza.total_abonos)) {
       toast.error(POLIZA_SIN_IMPORTES_MESSAGE);
       return;
@@ -246,9 +263,14 @@ export default function PolizaList() {
       value={{
         onViewDetail: (poliza) => setOpenDetailId(poliza.id),
         onContabilizar: handleContabilizar,
-        onCancel: (poliza) => setCancelTargetId(poliza.id),
-        onDelete: (poliza) => setDeleteTargetId(poliza.id),
+        onCancel: (poliza) => {
+          if (guardWrite()) setCancelTargetId(poliza.id);
+        },
+        onDelete: (poliza) => {
+          if (guardWrite()) setDeleteTargetId(poliza.id);
+        },
         busyIds,
+        canWrite,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -272,34 +294,37 @@ export default function PolizaList() {
             // Un alta nueva aparece tras invalidar; sin esto, quien esté parado en la
             // página 2 no vería la póliza que acaba de registrar.
             paginationResetKey={polizas.length}
+            // Sin permiso de escritura no hay alta: el botón se oculta.
             actionButton={
-              <MainDialog
-                title={
-                  <DialogHeader
-                    title="Nueva Póliza"
-                    subtitle="Asiento contable de partida doble: los cargos deben igualar a los abonos"
-                    statusColor="indigo"
-                    icon={ContabilidadIcon}
-                  />
-                }
-                open={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
-                trigger={
-                  <Button
-                    variant="primary"
-                    rounded="full"
-                    className="hover:scale-105 active:scale-95"
-                  >
-                    + Nueva póliza
-                  </Button>
-                }
-              >
-                {/* Se monta solo mientras el diálogo está abierto: así los catálogos
-                    de sus selectores se piden bajo demanda y cada alta arranca
-                    limpia. */}
-                {isFormOpen && <PolizaForm onSuccess={() => setIsFormOpen(false)} />}
-              </MainDialog>
+              canWrite ? (
+                <MainDialog
+                  title={
+                    <DialogHeader
+                      title="Nueva Póliza"
+                      subtitle="Asiento contable de partida doble: los cargos deben igualar a los abonos"
+                      statusColor="indigo"
+                      icon={ContabilidadIcon}
+                    />
+                  }
+                  open={isFormOpen}
+                  onOpenChange={setIsFormOpen}
+                  maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
+                  trigger={
+                    <Button
+                      variant="primary"
+                      rounded="full"
+                      className="hover:scale-105 active:scale-95"
+                    >
+                      + Nueva póliza
+                    </Button>
+                  }
+                >
+                  {/* Se monta solo mientras el diálogo está abierto: así los catálogos
+                      de sus selectores se piden bajo demanda y cada alta arranca
+                      limpia. */}
+                  {isFormOpen && <PolizaForm onSuccess={() => setIsFormOpen(false)} />}
+                </MainDialog>
+              ) : undefined
             }
           />
         </div>

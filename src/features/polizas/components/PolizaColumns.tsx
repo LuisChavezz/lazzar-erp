@@ -2,6 +2,7 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, CheckCircleIcon, DeleteIcon, ViewIcon } from "@/src/components/Icons";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
@@ -36,12 +37,16 @@ const importe = (value: string): string => formatMoneyValue(value, null);
  * remonta las celdas.
  */
 function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
-  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds } =
+  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, canWrite } =
     usePolizaRowActionsContext();
   const { id, estatus, cuadre_correcto, total_cargos, total_abonos } = poliza;
   // Una fila con una acción en vuelo no ofrece otra: el estatus que decide las
   // opciones está por cambiar.
   const busy = busyIds.includes(id);
+  // Sin permiso de escritura las acciones se muestran deshabilitadas con su
+  // motivo (convención de los flujos de Finanzas); el motivo del permiso manda
+  // sobre los del cuadre.
+  const permissionReason = canWrite ? undefined : POLIZA_WRITE_PERMISSION_REASON;
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(poliza) },
@@ -65,7 +70,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: motivoBloqueo ? `Contabilizar (${motivoBloqueo})` : "Contabilizar",
       icon: CheckCircleIcon,
-      disabled: busy || motivoBloqueo !== null,
+      disabled: busy || !canWrite || motivoBloqueo !== null,
+      description: permissionReason,
       onSelect: () => onContabilizar(poliza),
     });
   }
@@ -77,7 +83,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: "Cancelar póliza",
       icon: BanIcon,
-      disabled: busy,
+      disabled: busy || !canWrite,
+      description: permissionReason,
       onSelect: () => onCancel(poliza),
     });
   }
@@ -89,7 +96,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: "Eliminar borrador",
       icon: DeleteIcon,
-      disabled: busy,
+      disabled: busy || !canWrite,
+      description: permissionReason,
       onSelect: () => onDelete(poliza),
     });
   }

@@ -17,7 +17,14 @@ export const FINANCE_WRITE_PERMISSION = "E-FIN-FACTURAS";
 /**
  * Motivo de una acción de Finanzas deshabilitada por falta de
  * `FINANCE_WRITE_PERMISSION`: el mismo texto que el `detail` del `403` genérico
- * del backend. Pólizas y conciliaciones tienen su propio mensaje en el backend y
- * usan el suyo.
+ * del backend (pagos, CxP, CxC, facturas de proveedor). Pólizas y conciliaciones
+ * tienen su propio mensaje en el backend (`mensaje_sin_permiso_escritura`) y
+ * usan el suyo, abajo.
  */
 export const FINANCE_WRITE_PERMISSION_REASON = "No tienes permiso para modificar datos de finanzas.";
+
+/** Motivo en pólizas: el `detail` del `403` de `PolizaViewSet`. */
+export const POLIZA_WRITE_PERMISSION_REASON = "No tienes permiso para registrar o cancelar pólizas.";
+
+/** Motivo en conciliaciones: el `detail` del `403` de `ConciliacionBancariaViewSet`. */
+export const CONCILIACION_WRITE_PERMISSION_REASON = "No tienes permiso para conciliar cuentas bancarias.";
