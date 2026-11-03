@@ -4,11 +4,12 @@ import { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { ChevronRightIcon } from "@/src/components/Icons";
-import type { DataTableFilterOption } from "@/src/components/DataTable";
 import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { ALL_FILTER_OPTION, matchesMonthFilter } from "@/src/utils/columnFilterOptions";
+import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
+import { ColumnHeaderDateRangeFilter } from "@/src/components/ColumnHeaderDateRangeFilter";
+import { SupplierCatalogHeaderFilter } from "@/src/features/suppliers/components/SupplierCatalogHeaderFilter";
 import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDialog";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
@@ -18,17 +19,7 @@ import {
   getReceiptEstatusLabel,
   RECEIPT_STATUS_CONFIG,
 } from "@/src/features/receipts/constants/receiptStatus";
-
-// ── Filtro exacto por columna ────────────────────────────────────────────────
-// Mismo criterio que `PurchaseOrderColumns.tsx`: el valor a comparar es un
-// campo crudo de `row.original` (estatus/proveedor), no lo que la columna
-// muestra tal cual (el folio+remisión concatenados, el nombre traducido…).
-const exactFilterFn =
-  <K extends keyof PurchaseOrderReceipt>(pick: (row: PurchaseOrderReceipt) => PurchaseOrderReceipt[K]) =>
-  (row: { original: PurchaseOrderReceipt }, _columnId: string, filterValue: string) => {
-    if (!filterValue) return true;
-    return String(pick(row.original)) === filterValue;
-  };
+import { RECEIPT_ESTATUS_VALUES } from "../hooks/usePurchaseOrderReceiptsTable";
 
 /**
  * Celda de la OC de origen. Enlaza al detalle de la orden solo si el usuario
@@ -121,89 +112,69 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
   );
 };
 
-export interface CreatePurchaseOrderReceiptColumnsOptions {
-  statusOptions: DataTableFilterOption[];
-  supplierOptions: DataTableFilterOption[];
-  /** OC de origen (por id), almacén (por id) y mes de recepción. */
-  orderOptions: DataTableFilterOption[];
-  warehouseOptions: DataTableFilterOption[];
-  monthOptions: DataTableFilterOption[];
-}
+/** Los estatus del backend con su punto de color: el menú es la leyenda. */
+const ESTATUS_OPTIONS = [
+  ALL_FILTER_OPTION,
+  ...RECEIPT_ESTATUS_VALUES.map((estatus) => {
+    const label = getReceiptEstatusLabel(Number(estatus));
+    return { value: estatus, label, dotClassName: RECEIPT_STATUS_CONFIG[label]?.dot };
+  }),
+];
 
 /**
- * Fábrica de columnas — no un arreglo estático como antes, porque los
- * filtros de encabezado (Estatus, Proveedor) necesitan las opciones
- * construidas a partir de TODO el listado (`PurchaseOrderReceiptsFilter.ts`),
- * que `PurchaseOrderReceiptList` recalcula con `useMemo`.
+ * Columnas del listado de recepciones de compra, para la tabla en MODO
+ * SERVIDOR (`usePurchaseOrderReceiptsTable`): el backend filtra, busca, ordena
+ * y pagina, así que ninguna columna filtra en memoria.
+ *
+ * - `meta.serverSort` = el campo de `ordering` del backend (lista blanca en
+ *   `purchaseOrderReceiptsTable`); `meta.serverFilter` = la clave del filtro
+ *   que controla el encabezado de esa columna.
+ * - Las opciones de los filtros son fijas o salen del catálogo de proveedores,
+ *   nunca de las filas: la tabla solo tiene una página.
+ * - Orden de compra y almacén ordenan pero no filtran: el endpoint no acepta
+ *   esos filtros.
  *
  * Vista de Compras (solo lectura) sobre recepciones tipo OC.
  * `PurchaseOrderReceipt` afirma que proveedor/orden de compra siempre están
  * presentes en esta vista filtrada server-side, así que sus columnas no
  * necesitan fallback `|| "—"`.
  */
-export const createPurchaseOrderReceiptColumns = ({
-  statusOptions,
-  supplierOptions,
-  orderOptions,
-  warehouseOptions,
-  monthOptions,
-}: CreatePurchaseOrderReceiptColumnsOptions): ColumnDef<PurchaseOrderReceipt>[] => [
-  // Folio+remisión+estatus concatenados en el `accessorFn` (con `?? ""` por el
-  // mismo motivo de búsqueda global que el resto de columnas de listado
-  // nullable del proyecto) para que el buscador encuentre por cualquiera de
-  // los tres (p. ej. "calidad"), aunque el `cell` pinte su propio layout desde
-  // `row.original`. El folio va primero, así que el orden sigue siendo por folio.
+export const purchaseOrderReceiptColumns: ColumnDef<PurchaseOrderReceipt>[] = [
+  // Folio + estatus + remisión en una celda; el filtro de encabezado es por
+  // ESTATUS (el punto de color vive aquí) y la columna ordena por `folio`.
   {
     id: "folio",
-    accessorFn: (row) =>
-      `${row.folio ?? ""} ${row.remision ?? ""} ${getReceiptEstatusLabel(row.estatus)}`.trim(),
-    meta: { label: "Folio" },
+    accessorFn: (row) => row.folio ?? "",
+    meta: { label: "Folio", serverSort: "folio", serverFilter: "estatus" },
     header: ({ column }) => (
       <div className="flex items-center gap-1.5">
         <span>Folio</span>
-        <ColumnHeaderFilter
-          column={column}
-          options={[{ value: undefined, label: "Todos" }, ...statusOptions]}
-          label="estatus"
-        />
+        <ColumnHeaderFilter column={column} options={ESTATUS_OPTIONS} label="estatus" />
       </div>
     ),
-    filterFn: exactFilterFn((row) => row.estatus),
     cell: ({ row }) => <FolioCell receipt={row.original} />,
   },
   {
     accessorKey: "orden_compra_folio",
-    meta: { label: "Orden de Compra" },
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Orden de Compra</span>
-        <ColumnHeaderFilter
-          column={column}
-          options={[ALL_FILTER_OPTION, ...orderOptions]}
-          label="orden de compra"
-          searchable={{ placeholder: "Buscar folio de OC…" }}
-        />
-      </div>
-    ),
-    filterFn: exactFilterFn((row) => row.orden_compra),
+    header: "Orden de Compra",
+    meta: { label: "Orden de Compra", serverSort: "orden_compra__folio" },
     cell: ({ row }) => <PurchaseOrderFolioCell receipt={row.original} />,
   },
-  // Columna compartida con la vista de WMS (ver `TipoCompraColumn.tsx`).
-  createTipoCompraColumn<PurchaseOrderReceipt>(),
+  // Columna compartida con la vista de WMS (ver `TipoCompraColumn.tsx`). En
+  // modo servidor su filtro va a `?tipo_compra=` (MP/PT, mismos valores que
+  // sus opciones fijas); `filterFn` queda inerte (`manualFiltering`).
+  {
+    ...createTipoCompraColumn<PurchaseOrderReceipt>(),
+    meta: {
+      label: "Tipo de compra",
+      serverSort: "orden_compra__tipo_compra",
+      serverFilter: "tipo_compra",
+    },
+  },
   {
     accessorKey: "proveedor_nombre",
-    meta: { label: "Proveedor" },
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Proveedor</span>
-        <ColumnHeaderFilter
-          column={column}
-          options={[{ value: undefined, label: "Todos" }, ...supplierOptions]}
-          label="proveedor"
-        />
-      </div>
-    ),
-    filterFn: exactFilterFn((row) => row.proveedor),
+    meta: { label: "Proveedor", serverSort: "proveedor__nombre", serverFilter: "proveedor" },
+    header: ({ column }) => <SupplierCatalogHeaderFilter column={column} title="Proveedor" />,
     cell: ({ row }) => (
       <span className="text-slate-700 dark:text-slate-200">
         {row.original.proveedor_nombre}
@@ -212,39 +183,28 @@ export const createPurchaseOrderReceiptColumns = ({
   },
   {
     accessorKey: "almacen_nombre",
-    meta: { label: "Almacén" },
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Almacén</span>
-        <ColumnHeaderFilter
-          column={column}
-          options={[ALL_FILTER_OPTION, ...warehouseOptions]}
-          label="almacén"
-        />
-      </div>
-    ),
-    filterFn: exactFilterFn((row) => row.almacen),
+    header: "Almacén",
+    meta: { label: "Almacén", serverSort: "almacen__nombre" },
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {row.original.almacen_nombre || "—"}
       </span>
     ),
   },
+  // Rango libre de fechas sobre el día de `fecha_recepcion`.
   {
     accessorKey: "fecha_recepcion",
-    meta: { label: "Fecha de Recepción" },
-    header: ({ column }) => (
+    meta: { label: "Fecha de Recepción", serverSort: "fecha_recepcion" },
+    header: () => (
       <div className="flex items-center gap-1.5">
         <span>Fecha de Recepción</span>
-        <ColumnHeaderFilter
-          column={column}
-          options={[ALL_FILTER_OPTION, ...monthOptions]}
-          label="mes de recepción"
+        <ColumnHeaderDateRangeFilter
+          label="fecha de recepción"
+          fromKey="fecha_desde"
+          toKey="fecha_hasta"
         />
       </div>
     ),
-    filterFn: (row, _columnId, filterValue) =>
-      matchesMonthFilter(row.original.fecha_recepcion, filterValue),
     cell: ({ row }) => (
       <span className="tabular-nums text-slate-600 dark:text-slate-300">
         {formatLocalDate(row.original.fecha_recepcion)}

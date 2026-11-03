@@ -1,83 +1,53 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { buildDistinctFilterOptions, buildMonthFilterOptions } from "@/src/utils/columnFilterOptions";
-import { createPurchaseOrderReceiptColumns } from "./PurchaseOrderReceiptColumns";
-import { buildReceiptStatusOptions, buildReceiptSupplierOptions } from "./PurchaseOrderReceiptsFilter";
-import { usePurchaseOrderReceipts } from "../hooks/usePurchaseOrderReceipts";
+import { purchaseOrderReceiptColumns } from "./PurchaseOrderReceiptColumns";
+import {
+  PURCHASE_ORDER_RECEIPTS_KEY,
+  usePurchaseOrderReceiptsTable,
+} from "../hooks/usePurchaseOrderReceiptsTable";
 import { usePurchaseOrderReceiptCsvExport } from "../hooks/usePurchaseOrderReceiptCsvExport";
 import { usePurchaseOrderReceiptPdfExport } from "../hooks/usePurchaseOrderReceiptPdfExport";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 
+/**
+ * Recepciones de compra (origen OC) en MODO SERVIDOR: filtros, búsqueda,
+ * orden y paginación los resuelve el backend y su estado vive en la URL
+ * (`usePurchaseOrderReceiptsTable`). Por eso la página que lo monta lo
+ * envuelve en `<Suspense>`. La vista de WMS (`ReceiptView`) sigue leyendo el
+ * listado completo con su propia consulta.
+ */
 export const PurchaseOrderReceiptList = () => {
-  const { receipts, hasLoaded, isLoading, isError, error, isFetching } =
-    usePurchaseOrderReceipts();
+  const table = usePurchaseOrderReceiptsTable();
   const queryClient = useQueryClient();
 
-  // Un refetch fallido transitorio no debe descartar la tabla ya cargada;
-  // solo se trata como error "de pantalla completa" si nunca cargó.
-  const showError = isInitialLoadError(isError, hasLoaded);
-
-  // ── Opciones de los filtros de encabezado ─────────────────────────────────
-  // Alimentan los desplegables de Folio (Estatus) y Proveedor dentro de
-  // `createPurchaseOrderReceiptColumns` (ver `ColumnHeaderFilter`).
-  const statusOptions = useMemo(() => buildReceiptStatusOptions(receipts), [receipts]);
-  const supplierOptions = useMemo(() => buildReceiptSupplierOptions(receipts), [receipts]);
-  const orderOptions = useMemo(
-    () => buildDistinctFilterOptions(receipts, (r) => r.orden_compra, (r) => r.orden_compra_folio),
-    [receipts],
-  );
-  const warehouseOptions = useMemo(
-    () => buildDistinctFilterOptions(receipts, (r) => r.almacen, (r) => r.almacen_nombre),
-    [receipts],
-  );
-  const monthOptions = useMemo(
-    () => buildMonthFilterOptions(receipts.map((r) => r.fecha_recepcion)),
-    [receipts],
-  );
-  const columns = useMemo(
-    () =>
-      createPurchaseOrderReceiptColumns({
-        statusOptions,
-        supplierOptions,
-        orderOptions,
-        warehouseOptions,
-        monthOptions,
-      }),
-    [statusOptions, supplierOptions, orderOptions, warehouseOptions, monthOptions],
-  );
-
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
-  // Exportan lo que el usuario está VIENDO: las filas se LEEN de la tabla al
-  // hacer clic (`getFilteredRows`: filtradas y ordenadas de todas las
-  // páginas) y las columnas llegan por `onVisibleColumnsChange`. Mismo patrón
-  // que `PurchaseOrderView`.
-  const tableRef = useRef<DataTableHandle<PurchaseOrderReceipt>>(null);
+  // Exportan TODO lo que cumple los criterios vigentes, no solo la página
+  // visible: las filas se piden al backend al hacer clic (`fetchAllRows`).
+  // Las columnas son las visibles, por `onVisibleColumnsChange`.
   const [visibleColumns, setVisibleColumns] = useState<
     DataTableVisibleColumn<PurchaseOrderReceipt>[]
   >([]);
-  usePurchaseOrderReceiptCsvExport(tableRef, visibleColumns);
-  usePurchaseOrderReceiptPdfExport(tableRef, visibleColumns);
+  usePurchaseOrderReceiptCsvExport(table.fetchAllRows, visibleColumns);
+  usePurchaseOrderReceiptPdfExport(table.fetchAllRows, visibleColumns);
 
   // Sin `fillHeight` ni contenedor de altura acotada: la página monta los
   // indicadores ENCIMA de esta lista y hace scroll normal (mismo cambio que la
   // lista de OP al recibir sus indicadores).
   return (
     <DataTable
-      ref={tableRef}
-      columns={columns}
-      data={receipts}
-      baseDataCount={receipts.length}
+      columns={purchaseOrderReceiptColumns}
+      {...table.tableProps}
+      // Invalida el PREFIJO y no solo la página: refresca también los
+      // indicadores (`["purchase-order-receipts", "kpis"]`) que la página
+      // monta encima, para que tarjetas y tabla muestren el mismo momento.
+      onRefetch={() => queryClient.invalidateQueries({ queryKey: PURCHASE_ORDER_RECEIPTS_KEY })}
+      // Identidad de la fila por registro, no por posición en la página.
+      getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar por folio, orden de compra o proveedor..."
       onVisibleColumnsChange={setVisibleColumns}
       actionButton={
@@ -102,15 +72,8 @@ export const PurchaseOrderReceiptList = () => {
           </Button>
         </div>
       }
-      // Invalida el PREFIJO y no solo el listado: refresca también los
-      // indicadores (`["purchase-order-receipts", "kpis"]`) que la página
-      // monta encima, para que tarjetas y tabla muestren el mismo momento.
-      onRefetch={() => queryClient.invalidateQueries({ queryKey: ["purchase-order-receipts"] })}
-      isRefetching={isFetching}
-      isLoading={isLoading}
-      isError={showError}
+      emptyMessage="Aún no hay recepciones registradas"
       errorTitle="Error al cargar las recepciones"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando recepciones"
     />
   );
