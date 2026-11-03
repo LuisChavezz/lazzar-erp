@@ -18,6 +18,7 @@ import {
   isAmountOnlyKpiHidden,
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { hiddenAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
+import { isPurchaseOrderReceiptKpisSinEmpresa } from "@/src/features/purchase-orders/utils/kpiSinEmpresa";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
   formatKpiPctOrDash,
@@ -229,12 +230,12 @@ function rejectedCard(
   };
 }
 
-function buildCards(
+/** Exportada para las pruebas unitarias (`tests/unit/procurement-kpi-scope.spec.ts`). */
+export function buildCards(
   data: PurchaseOrderReceiptKpis,
   openDialog: (kind: PurchaseOrderReceiptKpiDialogKind) => void,
 ): KpiCompactItem[] {
-  // `filtros` es `null` solo en la respuesta de un usuario sin empresa.
-  const sinEmpresa = data.filtros === null;
+  const sinEmpresa = isPurchaseOrderReceiptKpisSinEmpresa(data);
   return [
     fulfillmentCard(data.cumplimiento_cantidad, () => openDialog("cumplimiento_cantidad")),
     partialCard(data.recepciones_parciales),
