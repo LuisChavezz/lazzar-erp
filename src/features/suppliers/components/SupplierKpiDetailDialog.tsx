@@ -8,12 +8,20 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useSupplierKpiDetail } from "../hooks/useSupplierKpiDetail";
 import type { SupplierKpiDetail, SupplierKpiFactor } from "../interfaces/supplier-kpi-detail.interface";
+import { supplierKpiDetailRejection } from "../utils/supplierKpiDetailError";
 import {
+  getSupplierFulfillmentColumns,
   getSupplierPriceColumns,
-  SUPPLIER_FULFILLMENT_COLUMNS,
-  SUPPLIER_PUNCTUALITY_COLUMNS,
-  SUPPLIER_QUALITY_COLUMNS,
+  getSupplierPunctualityColumns,
+  getSupplierQualityColumns,
 } from "./SupplierKpiDetailColumns";
+
+// Sin callbacks: una sola instancia por módulo, estable entre renders.
+const PUNCTUALITY_COLUMNS = getSupplierPunctualityColumns();
+const QUALITY_COLUMNS = getSupplierQualityColumns();
+const FULFILLMENT_COLUMNS = getSupplierFulfillmentColumns();
+const PRICE_COLUMNS_WITH_AMOUNTS = getSupplierPriceColumns(true);
+const PRICE_COLUMNS_WITHOUT_AMOUNTS = getSupplierPriceColumns(false);
 
 /** Proveedor cuyo detalle se abre: lo que el ranking ya sabe de él. */
 export interface SupplierKpiDetailTarget {
@@ -45,8 +53,9 @@ interface FactorTableProps<F extends SupplierKpiFactor> {
 
 /**
  * Tabla de un factor. La tabla se monta siempre (toolbar incluido) y su cuerpo
- * alterna entre carga, error, vacío y filas. Un 404/403 (el proveedor ya no
- * está disponible) no ofrece "Reintentar": la respuesta ya es definitiva.
+ * alterna entre carga, error, vacío y filas. Ni un 404/403 (el proveedor ya no
+ * está disponible) ni otro 4xx (la consulta se rechazó, con el motivo del
+ * backend) ofrecen "Reintentar": la misma petición daría la misma respuesta.
  */
 function FactorTable<F extends SupplierKpiFactor>({
   query,
@@ -55,13 +64,21 @@ function FactorTable<F extends SupplierKpiFactor>({
   emptyMessage,
   note,
 }: FactorTableProps<F>) {
-  const { data, isLoading, isFetching, isInitialError, isNotFound, refetch } = query;
+  const { data, isLoading, isFetching, isInitialError, isNotFound, error, refetch } = query;
+  const rejection = isInitialError ? supplierKpiDetailRejection(error) : undefined;
+  let errorTitle = "No se pudo cargar el detalle";
+  let errorMessage = rejection ?? "Intenta de nuevo en unos momentos.";
+  if (isNotFound) {
+    errorTitle = "Proveedor no disponible";
+    errorMessage = "El proveedor se dio de baja o ya no es visible para tu usuario.";
+  }
   return (
     <>
       {note}
+      {/* Sin "Mostrando…": esa palabra ya la usa el paginador de la tabla. */}
       {data?.truncado && (
         <Note>
-          Mostrando {data.registros.length} de {data.total} registros.
+          Lista recortada: incluye {data.registros.length} de los {data.total} registros de este factor.
         </Note>
       )}
       <DataTable
@@ -72,13 +89,9 @@ function FactorTable<F extends SupplierKpiFactor>({
         emptyMessage={emptyMessage}
         isLoading={isLoading}
         isError={isInitialError || isNotFound}
-        errorTitle={isNotFound ? "Proveedor no disponible" : "No se pudo cargar el detalle"}
-        errorMessage={
-          isNotFound
-            ? "El proveedor se dio de baja o ya no es visible para tu usuario."
-            : "Intenta de nuevo en unos momentos."
-        }
-        onErrorRetry={isNotFound ? undefined : () => void refetch()}
+        errorTitle={errorTitle}
+        errorMessage={errorMessage}
+        onErrorRetry={isNotFound || rejection !== undefined ? undefined : () => void refetch()}
         onRefetch={() => refetch()}
         isRefetching={isFetching}
       />
@@ -90,7 +103,7 @@ function PunctualityTab({ supplierId }: { supplierId: number }) {
   return (
     <FactorTable
       query={useSupplierKpiDetail(supplierId, "puntualidad")}
-      columns={SUPPLIER_PUNCTUALITY_COLUMNS}
+      columns={PUNCTUALITY_COLUMNS}
       getRowId={(record) => String(record.recepcion_id)}
       emptyMessage="El proveedor no tiene recepciones de órdenes de compra."
       note={
@@ -107,9 +120,10 @@ function QualityTab({ supplierId }: { supplierId: number }) {
   return (
     <FactorTable
       query={useSupplierKpiDetail(supplierId, "calidad")}
-      columns={SUPPLIER_QUALITY_COLUMNS}
+      columns={QUALITY_COLUMNS}
       getRowId={(record) => String(record.id)}
-      emptyMessage="Calidad no ha rechazado material de este proveedor."
+      // Vacío es un resultado válido: la pestaña solo lista rechazos.
+      emptyMessage="Sin rechazos registrados."
       note={<Note>Solo los renglones rechazados por Calidad; lo aprobado no se lista.</Note>}
     />
   );
@@ -119,7 +133,7 @@ function FulfillmentTab({ supplierId }: { supplierId: number }) {
   return (
     <FactorTable
       query={useSupplierKpiDetail(supplierId, "cumplimiento")}
-      columns={SUPPLIER_FULFILLMENT_COLUMNS}
+      columns={FULFILLMENT_COLUMNS}
       getRowId={(record) => `${record.oc_id}-${record.unidad_id ?? "sin-unidad"}`}
       emptyMessage="Ninguna orden de compra del proveedor tiene cantidades pendientes."
       note={<Note>OCs con faltante por unidad de medida: recibido neto (menos lo rechazado) contra lo ordenado.</Note>}
@@ -134,7 +148,7 @@ function PriceTab({ supplierId }: { supplierId: number }) {
   return (
     <FactorTable
       query={query}
-      columns={getSupplierPriceColumns(canSeeAmounts)}
+      columns={canSeeAmounts ? PRICE_COLUMNS_WITH_AMOUNTS : PRICE_COLUMNS_WITHOUT_AMOUNTS}
       getRowId={(record) => String(record.id)}
       emptyMessage="No hay líneas facturadas con precio distinto al pactado."
       note={
