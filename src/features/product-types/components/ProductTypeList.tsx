@@ -33,6 +33,10 @@ export default function ProductTypeList() {
     [setSelectedProductType, setIsDialogOpen]
   );
 
+  // Copia del tipo al ABRIR el diálogo: un refetch del catálogo a media edición
+  // no la mueve, y sobrevive a la animación de cierre.
+  const editSession = useDialogSession(isDialogOpen, selectedProductType);
+
   const handleNew = () => {
     setSelectedProductType(null);
     setIsDialogOpen(true);
@@ -93,8 +97,8 @@ export default function ProductTypeList() {
             <MainDialog
               title={
                 <DialogHeader
-                  title={selectedProductType ? "Editar Tipo de Producto" : "Alta de Tipo de Producto"}
-                  subtitle={selectedProductType ? "Edición de registro" : "Registro Nuevo"}
+                  title={editSession.snapshot ? "Editar Tipo de Producto" : "Alta de Tipo de Producto"}
+                  subtitle={editSession.snapshot ? "Edición de registro" : "Registro Nuevo"}
                   statusColor="emerald"
                 />
               }
@@ -115,8 +119,9 @@ export default function ProductTypeList() {
               }
             >
               <ProductTypeForm
+                key={editSession.id}
                 onSuccess={() => setIsDialogOpen(false)}
-                productTypeToEdit={selectedProductType}
+                productTypeToEdit={editSession.snapshot}
               />
             </MainDialog>
           ) : null
