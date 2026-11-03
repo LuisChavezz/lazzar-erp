@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
 import type { AccountingCustomer } from "@/src/features/accounting-customers/interfaces/accounting-customer.interface";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -374,11 +375,7 @@ export function useCreateCobroForm({
 
   // ── Submit / reset ────────────────────────────────────────────────────────
   const submitWith = (estatus: CobroSubmitMeta["estatus"]) => {
-    if (submitLockRef.current) return;
-    submitLockRef.current = true;
-    void form.handleSubmit({ estatus, withFreshSaldos }).finally(() => {
-      submitLockRef.current = false;
-    });
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit({ estatus, withFreshSaldos }));
   };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { acquireRowLock, isRowLockHeld, releaseRowLock } from "@/src/utils/actionLocks";
 
 /**
  * Candado de reenvío POR FILA para una acción confirmada (eliminar, cancelar,
@@ -24,14 +25,13 @@ export function useRowActionLock() {
   const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(() => new Set());
 
   const acquire = (id: number): boolean => {
-    if (inFlightRef.current.has(id)) return false;
-    inFlightRef.current.add(id);
+    if (!acquireRowLock(inFlightRef.current, id)) return false;
     setPendingIds(new Set(inFlightRef.current));
     return true;
   };
 
   const release = (id: number) => {
-    inFlightRef.current.delete(id);
+    releaseRowLock(inFlightRef.current, id);
     setPendingIds(new Set(inFlightRef.current));
   };
 
@@ -44,7 +44,7 @@ export function useRowActionLock() {
    * desde el primer frame, antes del render que pinta `isPending`. No se usa
    * para pintar.
    */
-  const isHeld = (id: number | null): boolean => id !== null && inFlightRef.current.has(id);
+  const isHeld = (id: number | null): boolean => isRowLockHeld(inFlightRef.current, id);
 
   /**
    * Props de una confirmación (`ConfirmDialog`) que debe quedar abierta y

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { FormEvent, RefObject } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { useOrders } from "@/src/features/orders/hooks/useOrders";
@@ -227,11 +228,7 @@ export function useRegisterPendingInvoiceForm({
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (submitLockRef.current) return;
-    submitLockRef.current = true;
-    void form.handleSubmit().finally(() => {
-      submitLockRef.current = false;
-    });
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit());
   };
 
   const handleReset = () => {
