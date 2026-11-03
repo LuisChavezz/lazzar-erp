@@ -1,5 +1,6 @@
 "use client";
 
+import { SkuInline } from "@/src/components/SkuCode";
 import { CheckIcon } from "@/src/components/Icons";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PriceInput } from "@/src/components/PriceInput";
@@ -89,7 +90,7 @@ export function LineInfo({
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
         {line.sku ? (
           <>
-            {line.sku}
+            <SkuInline sku={line.sku} />
             <span className="font-normal text-slate-500 dark:text-slate-400"> · {line.nombre}</span>
           </>
         ) : (
