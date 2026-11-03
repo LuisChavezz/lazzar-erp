@@ -20,10 +20,7 @@ export default function ProductTypeList() {
   const { productTypes, isLoading, isInitialError, error } = useProductTypes();
   // Catálogo global: el backend (`SoloSuperusuarioEscribe`) solo deja escribir
   // al superusuario; un admin de empresa recibiría 403 (EC-714).
-  const isSuperuser = useIsSuperuser();
-  const canCreate = isSuperuser;
-  const canEdit = isSuperuser;
-  const canDelete = isSuperuser;
+  const canWrite = useIsSuperuser();
 
   const handleEdit = useCallback(
     (productType: ProductType) => {
@@ -50,13 +47,13 @@ export default function ProductTypeList() {
   const { mutate: deleteProductType } = useDeleteProductType();
 
   const columns = useMemo(
-    () => getColumns(handleEdit, setProductTypeToDelete, { canEdit, canDelete }),
-    [handleEdit, canEdit, canDelete]
+    () => getColumns(handleEdit, setProductTypeToDelete, { canEdit: canWrite, canDelete: canWrite }),
+    [handleEdit, canWrite]
   );
 
   return (
     <>
-      {canDelete && (
+      {canWrite && (
         <ConfirmDialog
           open={isDeleteOpen}
           onOpenChange={(open) => {
@@ -86,10 +83,7 @@ export default function ProductTypeList() {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando tipos de producto"
         actionButton={
-          // El diálogo es DUAL (alta y edición: lo abre `handleEdit` por `open`,
-          // sin pasar por el trigger), así que se monta también con solo permiso
-          // de edición; lo que se oculta sin `canCreate` es el botón de alta.
-          canCreate || canEdit ? (
+          canWrite ? (
             <MainDialog
               title={
                 <DialogHeader
@@ -102,16 +96,14 @@ export default function ProductTypeList() {
               onOpenChange={setIsDialogOpen}
               maxWidth="1000px"
               trigger={
-                canCreate ? (
-                  <Button
-                    variant="primary"
-                    rounded="full"
-                    onClick={handleNew}
-                    className="hover:scale-105 active:scale-95"
-                  >
-                    + Nuevo Tipo
-                  </Button>
-                ) : undefined
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  onClick={handleNew}
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nuevo Tipo
+                </Button>
               }
             >
               <ProductTypeForm
