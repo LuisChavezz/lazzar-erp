@@ -265,6 +265,12 @@ export function PickingWizardStep2({
                             {row.color_nombre && (
                               <span className="text-[11px] text-slate-500 dark:text-slate-400">{row.color_nombre}</span>
                             )}
+                            {row.es_muestra && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                                Muestra
+                                {row.sku_muestra && <span className="font-mono">{row.sku_muestra}</span>}
+                              </span>
+                            )}
                           </div>
                           {/* Se resalta la restricción que MANDA: normalmente
                               el pendiente del pedido, pero cuando la existencia
