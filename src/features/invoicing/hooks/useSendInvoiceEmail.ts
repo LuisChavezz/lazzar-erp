@@ -3,65 +3,87 @@
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { googleSendEmail } from "@/src/features/google/services/actions";
-import {
-  createEmailAttachmentPromise,
-  renderEmailContent,
-  type SendEmailResult,
-} from "@/src/features/google/utils/emailSend.utils";
+import { buildGoogleEmailAttachment } from "@/src/features/google/utils/googleEmailAttachment.utils";
+import { renderEmailContent, type SendEmailResult } from "@/src/features/google/utils/emailSend.utils";
+import type { GoogleEmailPayload } from "@/src/features/google/interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
 import type { Invoice } from "../interfaces/invoice.interface";
 
-// --- Hook ---
+/**
+ * Correo de una factura LISTO para confirmarse: lo que se va a enviar, tal como
+ * se enviará. Se arma ANTES de pedir confirmación para que el diálogo
+ * (`InvoiceSendEmailConfirmDialog`) muestre destinatario, asunto y adjunto
+ * reales, y el envío usa exactamente este contenido. Mismo flujo que el de
+ * cotizaciones (`usePrepareQuoteEmail` / `useGoogleSendEmail`).
+ */
+export interface PreparedInvoiceEmail {
+  id: number;
+  /** Folio a mostrar en el título del diálogo (`#id` si viene vacío). */
+  label: string;
+  /** Foto de la factura con la que se renderizó el correo y se genera el PDF. */
+  invoice: Invoice;
+  /** Correo renderizado por el Route Handler; `to` es el destinatario validado. */
+  content: GoogleEmailPayload;
+  attachmentName: string;
+}
+
+export const prepareInvoiceEmailMutationKey = ["invoices", "prepare-email"] as const;
+export const sendInvoiceEmailMutationKey = ["invoices", "send-email"] as const;
 
 /**
- * Envía la factura por correo al CLIENTE con el PDF adjunto.
+ * Paso 1: valida y renderiza el correo de la factura, SIN enviarlo.
  *
- * Flujo — todo el acceso al backend externo ocurre client-side via v1_api,
- * garantizando que las cookies auth-jwt/auth-refresh-jwt del browser viajen
- * correctamente y el interceptor de refresh actúe ante un 401.
- *
- * 1. renderEmailContent() — API Route Next.js: valida sesión + permiso +
- *    destinatario + estatus enviable y renderiza HTML en Node.js. El
- *    destinatario (`correo_facturas`) ya viaja en la factura —resuelto
- *    server-side—, así que no hace falta un lookup adicional al catálogo de
- *    clientes. Su error tiene PRIORIDAD sobre un fallo de generación de
- *    PDF/adjunto no relacionado (ver comentario junto a `attachmentPromise`). ✓
- * 2. googleSendEmail()    — v1_api POST, cookies + interceptor de refresh ✓
+ * renderEmailContent() — API Route Next.js: valida sesión + permiso +
+ * destinatario + estatus enviable y renderiza el HTML en Node.js. El
+ * destinatario (`correo_facturas`) ya viaja en la factura —resuelto
+ * server-side—; se preserva su `null` tal cual —sin coaccionar a cadena
+ * vacía— para que el Route Handler lo rechace de forma autoritativa. El `to`
+ * que devuelve es el destinatario ya validado, y es lo que muestra el diálogo.
+ */
+export const usePrepareInvoiceEmail = () =>
+  useMutation<PreparedInvoiceEmail, unknown, Invoice>({
+    mutationKey: prepareInvoiceEmailMutationKey,
+    mutationFn: async (invoice: Invoice): Promise<PreparedInvoiceEmail> => {
+      const content = await renderEmailContent(`/api/invoices/${invoice.id}/send-email`, {
+        invoice,
+        correo: invoice.correo_facturas,
+      });
+      const label = invoice.folio || `#${invoice.id}`;
+      return {
+        id: invoice.id,
+        label,
+        invoice,
+        content,
+        attachmentName: `factura-${invoice.folio || invoice.id}.pdf`,
+      };
+    },
+    onError: (error) => {
+      toast.error(extractErrorMessage(error, "No se pudo preparar el correo de la factura."));
+    },
+  });
+
+/**
+ * Paso 2, solo tras confirmar: genera el PDF y envía el correo preparado al
+ * CLIENTE (v1_api POST, cookies + interceptor de refresh).
  *
  * El PDF se genera con el MISMO generador que "Descargar PDF"
- * (generateInvoicePdfBlob) a partir del MISMO snapshot de la factura, por lo que
- * el adjunto es idéntico al documento descargable. La validación de tamaño
- * (25 MB sobre el payload base64 real) se delega en `buildGoogleEmailAttachment`.
+ * (generateInvoicePdfBlob) a partir de la MISMA foto con la que se renderizó el
+ * correo, por lo que el adjunto es idéntico al documento descargable. La
+ * validación de tamaño (25 MB sobre el payload base64 real) se delega en
+ * `buildGoogleEmailAttachment`.
  */
-export const useSendInvoiceEmail = () => {
-  return useMutation<SendEmailResult, unknown, Invoice>({
-    mutationKey: ["invoices", "send-email"],
-    mutationFn: async (invoice: Invoice): Promise<SendEmailResult> => {
-      // Dispara el PDF/adjunto en paralelo con la validación de abajo, sin
-      // esperarlo todavía — ver rationale en `createEmailAttachmentPromise`.
-      const attachmentPromise = createEmailAttachmentPromise(
-        () => generateInvoicePdfBlob(invoice),
-        `factura-${invoice.folio || invoice.id}.pdf`,
+export const useSendInvoiceEmail = () =>
+  useMutation<SendEmailResult, unknown, PreparedInvoiceEmail>({
+    mutationKey: sendInvoiceEmailMutationKey,
+    mutationFn: async ({ invoice, content, attachmentName }): Promise<SendEmailResult> => {
+      const pdfBlob = await generateInvoicePdfBlob(invoice);
+      const attachment = await buildGoogleEmailAttachment(
+        pdfBlob,
+        attachmentName,
         "application/pdf",
         "El PDF de la factura excede el límite de 25 MB permitido para adjuntos.",
       );
-
-      // El destinatario ya viaja en la factura como `correo_facturas` (resuelto
-      // server-side); se preserva su `null` tal cual —sin coaccionar a cadena
-      // vacía— para que el Route Handler lo rechace de forma autoritativa.
-      const correo = invoice.correo_facturas;
-
-      // Valida (destinatario + estatus + sesión) y renderiza el HTML — su error
-      // tiene prioridad sobre un fallo de generación de PDF/adjunto.
-      const content = await renderEmailContent(`/api/invoices/${invoice.id}/send-email`, {
-        invoice,
-        correo,
-      });
-
-      // Para este punto el adjunto ya se generó (o está a punto de hacerlo) en
-      // paralelo, así que este await normalmente no agrega espera adicional.
-      const attachment = await attachmentPromise;
 
       await googleSendEmail({
         ...content,
@@ -77,4 +99,3 @@ export const useSendInvoiceEmail = () => {
       toast.error(extractErrorMessage(error, "No se pudo enviar el correo de la factura."));
     },
   });
-};

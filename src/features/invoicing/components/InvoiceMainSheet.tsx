@@ -73,6 +73,7 @@ import { InvoiceStampDialog } from "./InvoiceStampDialog";
 import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
 import { canEmitInvoice, getInvoiceEmitBlockReason } from "../utils/invoiceEmission";
 import { InvoiceCfdiEmailDialog } from "./InvoiceCfdiEmailDialog";
+import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { getInvoiceCfdiEmailAvailability } from "../utils/invoiceCfdiEmail";
 import { DocumentActionWithDialog } from "./DocumentActionWithDialog";
 
@@ -187,12 +188,14 @@ function InvoiceDocumentActions({
             aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
           >
             <EmailIcon className="w-4 h-4" aria-hidden="true" />
-            {actions.isSendingEmail
-              ? "Enviando..."
-              : invoiceEmailLabel({
-                  nonFiscal: nonFiscalPdf,
-                  noRecipient: actions.hasNoRecipientEmail,
-                })}
+            {actions.isPreparingEmail
+              ? "Preparando..."
+              : actions.isSendingEmail
+                ? "Enviando..."
+                : invoiceEmailLabel({
+                    nonFiscal: nonFiscalPdf,
+                    noRecipient: actions.hasNoRecipientEmail,
+                  })}
           </Button>
         )}
         <Button
@@ -234,6 +237,19 @@ function InvoiceDocumentActions({
         <p id={cfdiEmailNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">
           {cfdiEmail.message}
         </p>
+      )}
+      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+          exactamente lo que se envía al confirmar. */}
+      {actions.emailConfirmation && (
+        <InvoiceSendEmailConfirmDialog
+          key={`send-email-${actions.emailConfirmation.email.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) actions.emailConfirmation?.onClose();
+          }}
+          email={actions.emailConfirmation.email}
+          onConfirm={actions.emailConfirmation.onConfirm}
+        />
       )}
     </div>
   );

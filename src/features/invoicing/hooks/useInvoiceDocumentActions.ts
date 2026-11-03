@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
-import { useSendInvoiceEmail } from "./useSendInvoiceEmail";
+import {
+  usePrepareInvoiceEmail,
+  useSendInvoiceEmail,
+  type PreparedInvoiceEmail,
+} from "./useSendInvoiceEmail";
 
 /**
  * Reglas de las acciones "Enviar correo" y "Descargar PDF" de UNA factura, en
@@ -25,11 +30,17 @@ import { useSendInvoiceEmail } from "./useSendInvoiceEmail";
  *   ocultara, no quedaría forma de obtener el documento de una cancelada. No
  *   necesita correo. Sigue disponible en una factura eliminada (uso interno).
  *   Se deshabilita con una descarga o un envío en curso.
+ * - Enviar correo primero PREPARA el correo (valida y renderiza) y pide
+ *   confirmación mostrando destinatario, asunto y adjunto
+ *   (`InvoiceSendEmailConfirmDialog`); nada se envía hasta confirmar.
  */
 export function useInvoiceDocumentActions(invoice: Invoice) {
+  const { mutate: prepareEmail, isPending: isPreparingEmail } = usePrepareInvoiceEmail();
   const { mutate: sendEmail, isPending: isSendingEmail } = useSendInvoiceEmail();
   const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
-  const busy = isSendingEmail || isDownloadingPdf;
+  // Correo preparado esperando confirmación; `null` con el diálogo cerrado.
+  const [preparedEmail, setPreparedEmail] = useState<PreparedInvoiceEmail | null>(null);
+  const busy = isPreparingEmail || isSendingEmail || isDownloadingPdf;
   // Regla compartida con el menú del listado (`getInvoiceEmailBlocker`):
   // eliminada o no enviable → se oculta; sin destinatario → se deshabilita.
   const emailBlocker = getInvoiceEmailBlocker(invoice);
@@ -42,9 +53,16 @@ export function useInvoiceDocumentActions(invoice: Invoice) {
     noRecipientMessage: hasNoRecipientEmail ? emailBlocker.message : undefined,
     emailDisabled: busy || hasNoRecipientEmail,
     pdfDisabled: busy,
+    isPreparingEmail,
     isSendingEmail,
     isDownloadingPdf,
-    sendEmail: () => sendEmail(invoice),
+    sendEmail: () => prepareEmail(invoice, { onSuccess: setPreparedEmail }),
     downloadPdf: () => downloadPdf(invoice),
+    /** Confirmación del correo preparado, o `null` si no hay ninguno pendiente. */
+    emailConfirmation: preparedEmail && {
+      email: preparedEmail,
+      onClose: () => setPreparedEmail(null),
+      onConfirm: () => sendEmail(preparedEmail),
+    },
   };
 }

@@ -10,6 +10,7 @@ import { Button } from "@/src/components/Button";
 import { invoiceColumns } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
+import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { canCancelInvoice } from "../utils/invoiceCancellation";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { useInvoices } from "../hooks/useInvoices";
@@ -41,7 +42,7 @@ export const InvoiceList = () => {
   const showError = isInitialLoadError(isError, hasLoaded);
 
   // PDF y correo del menú de cada fila: una sola instancia, por contexto.
-  const documentActions = useInvoiceListDocumentActions();
+  const { emailConfirmation, ...documentActions } = useInvoiceListDocumentActions();
   const rowActions = {
     ...documentActions,
     canCancel: (invoice: InvoiceListRow) => canCancelInvoice(invoice, session?.user),
@@ -88,6 +89,19 @@ export const InvoiceList = () => {
           if (!open) setInvoiceToCancel(null);
         }}
       />
+      {/* Confirmación del correo: vive aquí y no en la celda, como la
+          cancelación. Muestra la foto preparada, que es lo que se envía. */}
+      {emailConfirmation && (
+        <InvoiceSendEmailConfirmDialog
+          key={`send-email-${emailConfirmation.email.id}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) emailConfirmation.onClose();
+          }}
+          email={emailConfirmation.email}
+          onConfirm={emailConfirmation.onConfirm}
+        />
+      )}
     </div>
     </InvoiceRowActionsProvider>
   );

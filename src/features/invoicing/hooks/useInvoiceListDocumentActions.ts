@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -8,14 +8,28 @@ import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
 import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
-import { useSendInvoiceEmail } from "./useSendInvoiceEmail";
+import {
+  usePrepareInvoiceEmail,
+  useSendInvoiceEmail,
+  type PreparedInvoiceEmail,
+} from "./useSendInvoiceEmail";
 
-export type InvoiceListDocumentAction = "pdf" | "email";
+/**
+ * - `pdf`: descarga el PDF.
+ * - `email`: PREPARA el correo (valida y renderiza) para pedir confirmación.
+ * - `send`: envía el correo ya preparado y confirmado.
+ */
+export type InvoiceListDocumentAction = "pdf" | "email" | "send";
 
-interface InvoiceListDocumentActionVariables {
-  id: number;
-  action: InvoiceListDocumentAction;
-}
+type InvoiceListDocumentActionVariables =
+  | { id: number; action: "pdf" | "email" }
+  | { id: number; action: "send"; email: PreparedInvoiceEmail };
+
+const LOADING_MESSAGES: Record<InvoiceListDocumentAction, string> = {
+  pdf: "Generando PDF...",
+  email: "Preparando correo...",
+  send: "Enviando correo...",
+};
 
 export const invoiceListDocumentActionMutationKey = ["invoice-list-document-action"] as const;
 
@@ -62,8 +76,11 @@ export function useInvoiceRowActionsContext(): InvoiceRowActionsContextValue {
  * así que cada acción pide el retrieve FRESCO al activarse (nunca al abrir el
  * menú; `invoiceRetrieveFreshOptions`) y le pasa ese `Invoice` a las MISMAS
  * mutaciones que usa la página de detalle (`useDownloadInvoicePdf` /
- * `useSendInvoiceEmail`): mismo PDF, mismo correo y mismos avisos. El correo
- * se bloquea con la misma regla (`getInvoiceEmailBlocker`), avisando el motivo.
+ * `usePrepareInvoiceEmail` / `useSendInvoiceEmail`): mismo PDF, mismo correo y
+ * mismos avisos. El correo se bloquea con la misma regla
+ * (`getInvoiceEmailBlocker`), avisando el motivo, y como en el detalle se
+ * prepara y se confirma (`emailConfirmation`, que el listado pinta con
+ * `InvoiceSendEmailConfirmDialog`) antes de enviarse.
  *
  * "En curso" vive en la `MutationCache` (`useMutationState`), no en la celda:
  * sobrevive a que la celda se desmonte al ordenar o paginar, y se limpia solo
@@ -71,38 +88,59 @@ export function useInvoiceRowActionsContext(): InvoiceRowActionsContextValue {
  * misma fila se descarta consultando la caché de forma síncrona (la mutación
  * queda `pending` en el mismo tick en que se dispara).
  */
-export function useInvoiceListDocumentActions(): Omit<InvoiceRowActionsContextValue, "canCancel" | "onCancel"> {
+export function useInvoiceListDocumentActions(): Omit<
+  InvoiceRowActionsContextValue,
+  "canCancel" | "onCancel"
+> & {
+  /** Correo preparado esperando confirmación, o `null` si no hay ninguno. */
+  emailConfirmation: {
+    email: PreparedInvoiceEmail;
+    onClose: () => void;
+    onConfirm: () => void;
+  } | null;
+} {
   const queryClient = useQueryClient();
   const { mutateAsync: downloadPdf } = useDownloadInvoicePdf();
+  const { mutateAsync: prepareEmail } = usePrepareInvoiceEmail();
   const { mutateAsync: sendEmail } = useSendInvoiceEmail();
+  const [preparedEmail, setPreparedEmail] = useState<PreparedInvoiceEmail | null>(null);
+  // Turno del ÚLTIMO "Enviar correo" pedido: si mientras se prepara uno el
+  // usuario pide el de otra fila, el primero ya no abre su confirmación encima.
+  const emailTurnRef = useRef(0);
 
-  const { mutate } = useMutation<
-    void,
+  const { mutate, mutateAsync } = useMutation<
+    PreparedInvoiceEmail | void,
     unknown,
     InvoiceListDocumentActionVariables,
     { loadingId: string }
   >({
     mutationKey: invoiceListDocumentActionMutationKey,
-    mutationFn: async ({ id, action }) => {
+    mutationFn: async (variables) => {
+      // El correo confirmado ya trae su foto de la factura: no se vuelve a pedir.
+      if (variables.action === "send") {
+        await sendEmail(variables.email);
+        return;
+      }
+
       let invoice;
       try {
-        invoice = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(id));
+        invoice = await queryClient.fetchQuery(invoiceRetrieveFreshOptions(variables.id));
       } catch (error) {
         throw new InvoiceListActionError(
           extractErrorMessage(error, "No se pudo consultar la factura."),
         );
       }
 
-      if (action === "pdf") {
+      if (variables.action === "pdf") {
         await downloadPdf(invoice);
         return;
       }
       const blocker = getInvoiceEmailBlocker(invoice);
       if (blocker) throw new InvoiceListActionError(blocker.message);
-      await sendEmail(invoice);
+      return prepareEmail(invoice);
     },
     onMutate: ({ action }) => ({
-      loadingId: toast.loading(action === "pdf" ? "Generando PDF..." : "Enviando correo..."),
+      loadingId: toast.loading(LOADING_MESSAGES[action]),
     }),
     onError: (error) => {
       // Los errores del PDF o del envío ya los avisó la mutación reutilizada.
@@ -118,19 +156,38 @@ export function useInvoiceListDocumentActions(): Omit<InvoiceRowActionsContextVa
     select: (mutation) => (mutation.state.variables as InvoiceListDocumentActionVariables).id,
   });
 
-  const trigger = (id: number, action: InvoiceListDocumentAction) => {
-    const inFlight = queryClient.isMutating({
+  const isInFlight = (id: number) =>
+    queryClient.isMutating({
       mutationKey: invoiceListDocumentActionMutationKey,
       predicate: (mutation) =>
         (mutation.state.variables as InvoiceListDocumentActionVariables | undefined)?.id === id,
-    });
-    if (inFlight > 0) return;
-    mutate({ id, action });
+    }) > 0;
+
+  const prepareAndConfirmEmail = async (id: number) => {
+    if (isInFlight(id)) return;
+    const turn = ++emailTurnRef.current;
+    try {
+      const email = await mutateAsync({ id, action: "email" });
+      if (email && turn === emailTurnRef.current) setPreparedEmail(email);
+    } catch {
+      // El toast lo muestra la mutación (o la de preparar el correo).
+    }
   };
 
   return {
-    onDownloadPdf: (id) => trigger(id, "pdf"),
-    onSendEmail: (id) => trigger(id, "email"),
+    onDownloadPdf: (id) => {
+      if (!isInFlight(id)) mutate({ id, action: "pdf" });
+    },
+    onSendEmail: (id) => void prepareAndConfirmEmail(id),
     pendingIds,
+    emailConfirmation: preparedEmail && {
+      email: preparedEmail,
+      onClose: () => setPreparedEmail(null),
+      onConfirm: () => {
+        if (!isInFlight(preparedEmail.id)) {
+          mutate({ id: preparedEmail.id, action: "send", email: preparedEmail });
+        }
+      },
+    },
   };
 }
