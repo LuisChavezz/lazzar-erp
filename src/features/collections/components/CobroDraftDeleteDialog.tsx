@@ -26,7 +26,7 @@ interface CobroDraftDeleteDialogProps {
 export function CobroDraftDeleteDialog({ cobro, open, onOpenChange }: CobroDraftDeleteDialogProps) {
   const session = useDialogSession(open, cobro);
   const target = session.snapshot;
-  const { remove, isDeleting } = useDeleteCobroDraft(target?.id ?? 0);
+  const { remove, isDeleting, isIdle } = useDeleteCobroDraft(target?.id ?? 0);
 
   return (
     <CobroActionConfirmDialog
@@ -43,6 +43,7 @@ export function CobroDraftDeleteDialog({ cobro, open, onOpenChange }: CobroDraft
       confirmColor="red"
       run={target ? remove : null}
       isRunning={isDeleting}
+      isIdle={isIdle}
     />
   );
 }

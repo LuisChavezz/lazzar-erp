@@ -18,8 +18,14 @@ interface CobroActionConfirmDialogProps {
    * objetivo: confirmar entonces no hace nada.
    */
   run: ((options: { onSettled?: () => void }) => void) | null;
-  /** La acción de ESTE cobro está en vuelo (`isRunning` de `useCobroAction`). */
+  /** La acción de ESTE cobro está en vuelo (`isRunning` de `useCobroAction`). Para pintar. */
   isRunning: boolean;
+  /**
+   * Lectura SÍNCRONA del candado (`isIdle` de `useCobroAction`, consulta directa
+   * a la caché de mutaciones): la guarda del cierre. `isRunning` llega un render
+   * tarde, tras el aviso de React Query; esta vale desde el mismo clic.
+   */
+  isIdle: () => boolean;
 }
 
 /**
@@ -42,10 +48,12 @@ export function CobroActionConfirmDialog({
   confirmColor,
   run,
   isRunning,
+  isIdle,
 }: CobroActionConfirmDialogProps) {
   const handleOpenChange = (next: boolean) => {
-    // No se cierra a media petición: el resultado debe verse.
-    if (!next && isRunning) return;
+    // No se cierra a media petición: el resultado debe verse. Se lee el
+    // candado, no `isRunning`, para que valga antes del siguiente render.
+    if (!next && !isIdle()) return;
     onOpenChange(next);
   };
 

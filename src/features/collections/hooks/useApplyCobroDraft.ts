@@ -44,7 +44,7 @@ const applyCobroErrorMessage = (error: unknown): string => {
 export const useApplyCobroDraft = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: apply, isRunning: isApplying } = useCobroAction({
+  const { trigger: apply, isRunning: isApplying, isIdle } = useCobroAction({
     mutationKey: applyCobroDraftMutationKey(cobroId),
     cobroId,
     run: async (current) => {
@@ -67,5 +67,5 @@ export const useApplyCobroDraft = (cobroId: number) => {
     },
   });
 
-  return { apply, isApplying };
+  return { apply, isApplying, isIdle };
 };

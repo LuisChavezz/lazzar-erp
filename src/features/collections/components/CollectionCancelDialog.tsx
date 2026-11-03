@@ -32,7 +32,7 @@ export function CollectionCancelDialog({ cobro, open, onOpenChange }: Collection
   const target = session.snapshot;
   const label = target ? cobroLabel(target) : "";
 
-  const { cancel, isCancelling } = useCancelCobro(target?.id ?? 0);
+  const { cancel, isCancelling, isIdle } = useCancelCobro(target?.id ?? 0);
 
   const description =
     target?.estatus === "Borrador"
@@ -50,6 +50,7 @@ export function CollectionCancelDialog({ cobro, open, onOpenChange }: Collection
       confirmColor="red"
       run={target ? cancel : null}
       isRunning={isCancelling}
+      isIdle={isIdle}
     />
   );
 }
