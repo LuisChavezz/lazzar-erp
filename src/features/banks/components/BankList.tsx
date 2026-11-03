@@ -12,8 +12,7 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import { getFinanceWriteState } from "@/src/utils/financeWrite";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { BANK_HEADER_FILTERS, getBankLabel, getColumns } from "./BankColumns";
 import { Banco } from "../interfaces/bank.interface";
@@ -25,10 +24,17 @@ import { BANK_STALE_MESSAGES } from "../utils/bankStaleMessages";
 
 export default function BankList() {
   // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const { canWrite } = getFinanceWriteState(session?.user, sessionStatus);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBank, setSelectedBank] = useState<Banco | null>(null);
+  // Sin permiso el diálogo de alta/edición no se monta. Si el permiso se pierde
+  // con el diálogo abierto, su estado se limpia aquí (en render, patrón de estado
+  // derivado): si no, reaparecería solo, con el registro anterior, al volver.
+  if (!canWrite && (isDialogOpen || selectedBank !== null)) {
+    setIsDialogOpen(false);
+    setSelectedBank(null);
+  }
   const { banks, hasLoaded, isLoading, isError, error, refetch, isFetching } = useBanks();
   const { mutateAsync: toggleActivoAsync, isPending: isTogglePending } = useToggleBankActivo();
   const busyIds = usePendingBankIds();

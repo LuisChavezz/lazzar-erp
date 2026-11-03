@@ -12,8 +12,7 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import { getFinanceWriteState } from "@/src/utils/financeWrite";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
 import { useChartOfAccounts } from "../hooks/useChartOfAccounts";
@@ -33,8 +32,8 @@ import ChartOfAccountForm from "./ChartOfAccountForm";
 
 export default function ChartOfAccountList() {
   // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const { canWrite } = getFinanceWriteState(session?.user, sessionStatus);
   const { cuentasContables, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useChartOfAccounts();
 
@@ -43,6 +42,13 @@ export default function ChartOfAccountList() {
   // que es justo uno de los filtros de la tabla.
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CuentaContable | null>(null);
+  // Sin permiso el diálogo de alta/edición no se monta. Si el permiso se pierde
+  // con el diálogo abierto, su estado se limpia aquí (en render, patrón de estado
+  // derivado): si no, reaparecería solo, con el registro anterior, al volver.
+  if (!canWrite && (isFormOpen || editTarget !== null)) {
+    setIsFormOpen(false);
+    setEditTarget(null);
+  }
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
 
   const { mutateAsync: toggleActivoAsync, isPending: isTogglePending } =
