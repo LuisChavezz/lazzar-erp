@@ -2,6 +2,7 @@
 
 import { useId, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useIsMutating } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
@@ -17,6 +18,11 @@ import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
+import {
+  FINANCE_WRITE_PERMISSION,
+  FINANCE_WRITE_PERMISSION_REASON,
+} from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -71,6 +77,12 @@ export default function SupplierInvoiceList({
   /** Proveedor preseleccionado al montar (`?proveedor=` ya validado por la página). */
   initialProveedorId?: number;
 }) {
+  // Toda escritura de facturas de proveedor exige `FINANCE_WRITE_PERMISSION`
+  // (EC-733). Sin él, "+ Nueva factura" se oculta y las acciones del menú y del
+  // detalle se muestran deshabilitadas con su motivo
+  // (`FINANCE_WRITE_PERMISSION_REASON`).
+  const { data: session } = useSession();
+  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   /**
    * Proveedor cuyas facturas se listan (`0` = ninguno). Es la ENTRADA de la
    * pantalla: sin él no se consulta nada, porque el listado sin acotar bajaría
@@ -163,7 +175,16 @@ export default function SupplierInvoiceList({
   // componente, y `DataTable` no depende de la identidad de `columns`.
   const handleViewDetail = (id: number) => setOpenDetailId(id);
 
+  // El menú y el detalle ya deshabilitan las escrituras sin el permiso; se
+  // repite aquí por si la sesión cambió entre pintarlos y seleccionar.
+  const guardWrite = () => {
+    if (canWrite) return true;
+    toast.error(FINANCE_WRITE_PERMISSION_REASON);
+    return false;
+  };
+
   const handleEdit = (id: number) => {
+    if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
     // Solo borradores: una factura registrada o cancelada se consulta, no se edita.
     if (factura?.estatus === "Borrador") setEditTarget(factura);
@@ -178,6 +199,7 @@ export default function SupplierInvoiceList({
    * tiene dónde capturar la fecha, así que se dice dónde hacerlo.
    */
   const handleRegistrar = (id: number) => {
+    if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
     if (!factura || factura.estatus !== "Borrador") return;
     if (accionEnCurso(id)) return;
@@ -194,6 +216,7 @@ export default function SupplierInvoiceList({
   };
 
   const handleCancel = (id: number) => {
+    if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
     // Solo borradores (ver `SupplierInvoiceColumns`).
     if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
@@ -236,6 +259,7 @@ export default function SupplierInvoiceList({
   };
 
   const handleAttachPdf = (id: number) => {
+    if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
     if (!factura) return;
     if (uploadingIds.includes(id)) {
@@ -413,6 +437,7 @@ export default function SupplierInvoiceList({
         onDownloadMergedPdf: handleDownloadMergedPdf,
         uploadingIds,
         downloadingIds,
+        canWrite,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -468,39 +493,42 @@ export default function SupplierInvoiceList({
                     ))}
                   </FormSelect>
                 </div>
-                <MainDialog
-                  title={
-                    <DialogHeader
-                      title="Nueva Factura de Proveedor"
-                      subtitle="Factura de mercancía recibida contra una orden de compra"
-                      statusColor="indigo"
-                      icon={FacturaProveedorIcon}
-                    />
-                  }
-                  open={isFormOpen}
-                  onOpenChange={setIsFormOpen}
-                  maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
-                  trigger={
-                    <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
-                      + Nueva factura
-                    </Button>
-                  }
-                >
-                  {isFormOpen && (
-                    <SupplierInvoiceForm
-                      onSuccess={(factura) => {
-                        setIsFormOpen(false);
-                        // SOLO en el alta: el listado se filtra por proveedor, y una
-                        // factura de otro proveedor se guardaría sin verse, como si el
-                        // alta hubiera fallado. Si ya es el seleccionado,
-                        // `selectProveedor` no hace nada y basta la invalidación de
-                        // la mutación. Registrar, cancelar y editar no tocan el
-                        // filtro.
-                        selectProveedor(factura.proveedor);
-                      }}
-                    />
-                  )}
-                </MainDialog>
+                {/* Sin permiso de escritura no hay alta: el botón se oculta. */}
+                {canWrite && (
+                  <MainDialog
+                    title={
+                      <DialogHeader
+                        title="Nueva Factura de Proveedor"
+                        subtitle="Factura de mercancía recibida contra una orden de compra"
+                        statusColor="indigo"
+                        icon={FacturaProveedorIcon}
+                      />
+                    }
+                    open={isFormOpen}
+                    onOpenChange={setIsFormOpen}
+                    maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
+                    trigger={
+                      <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
+                        + Nueva factura
+                      </Button>
+                    }
+                  >
+                    {isFormOpen && (
+                      <SupplierInvoiceForm
+                        onSuccess={(factura) => {
+                          setIsFormOpen(false);
+                          // SOLO en el alta: el listado se filtra por proveedor, y una
+                          // factura de otro proveedor se guardaría sin verse, como si el
+                          // alta hubiera fallado. Si ya es el seleccionado,
+                          // `selectProveedor` no hace nada y basta la invalidación de
+                          // la mutación. Registrar, cancelar y editar no tocan el
+                          // filtro.
+                          selectProveedor(factura.proveedor);
+                        }}
+                      />
+                    )}
+                  </MainDialog>
+                )}
               </div>
             }
           />
@@ -514,6 +542,7 @@ export default function SupplierInvoiceList({
               onDownloadMerged: () => handleDownloadMergedPdf(detailFactura.id),
               isUploading: uploadingIds.includes(detailFactura.id),
               isDownloading: downloadingIds.includes(detailFactura.id),
+              attachBlockedReason: canWrite ? null : FINANCE_WRITE_PERMISSION_REASON,
             }}
             open={true}
             onOpenChange={(open) => {
