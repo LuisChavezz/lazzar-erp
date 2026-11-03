@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -11,6 +12,8 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { BANK_HEADER_FILTERS, getBankLabel, getColumns } from "./BankColumns";
 import { Banco } from "../interfaces/bank.interface";
@@ -21,6 +24,9 @@ import { BankRowActionsProvider, usePendingBankIds } from "../hooks/useBankRowAc
 import { BANK_STALE_MESSAGES } from "../utils/bankStaleMessages";
 
 export default function BankList() {
+  // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
+  const { data: session } = useSession();
+  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBank, setSelectedBank] = useState<Banco | null>(null);
   const { banks, hasLoaded, isLoading, isError, error, refetch, isFetching } = useBanks();
@@ -59,9 +65,9 @@ export default function BankList() {
 
   // `DataTable` se monta SIEMPRE: recibe `isLoading`/`isError` y alterna solo su
   // cuerpo, de modo que el toolbar —búsqueda, filtro, refrescar, columnas y el
-  // botón "+ Nuevo Banco"— sigue disponible durante la carga y ante un error.
-  // El listado no se gatea con permisos de acción: el backend de finanzas solo
-  // exige `IsAuthenticated` y no existen códigos de permiso para bancos.
+  // botón "+ Nuevo Banco", si hay permiso— sigue disponible durante la carga y
+  // ante un error. Leer el listado no exige el permiso de escritura; el alta,
+  // la edición y activar/desactivar sí (`FINANCE_WRITE_PERMISSION`, EC-711).
   return (
     <BankRowActionsProvider
       value={{
@@ -88,32 +94,36 @@ export default function BankList() {
           // Ata la identidad de la fila al id del registro y no a su índice:
           // activar/desactivar cambia `activo`, que es un filtro.
           getRowId={(row) => String(row.id)}
+          // Sin permiso de escritura se oculta el botón y, con él, el diálogo de
+          // alta/edición: "Editar" tampoco se ofrece en el menú de la fila.
           actionButton={
-            <MainDialog
-              title={
-                <DialogHeader
-                  title={selectedBank ? "Editar Banco" : "Alta de Banco"}
-                  subtitle={selectedBank ? "Edición de registro" : "Registro Nuevo"}
-                  statusColor="emerald"
-                  icon={BancosIcon}
-                />
-              }
-              open={isDialogOpen}
-              onOpenChange={setIsDialogOpen}
-              maxWidth={DIALOG_WIDTH_FORM}
-              trigger={
-                <Button
-                  variant="primary"
-                  rounded="full"
-                  onClick={handleNew}
-                  className="hover:scale-105 active:scale-95"
-                >
-                  + Nuevo Banco
-                </Button>
-              }
-            >
-              <BankForm onSuccess={() => setIsDialogOpen(false)} bankToEdit={selectedBank} />
-            </MainDialog>
+            canWrite ? (
+              <MainDialog
+                title={
+                  <DialogHeader
+                    title={selectedBank ? "Editar Banco" : "Alta de Banco"}
+                    subtitle={selectedBank ? "Edición de registro" : "Registro Nuevo"}
+                    statusColor="emerald"
+                    icon={BancosIcon}
+                  />
+                }
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                maxWidth={DIALOG_WIDTH_FORM}
+                trigger={
+                  <Button
+                    variant="primary"
+                    rounded="full"
+                    onClick={handleNew}
+                    className="hover:scale-105 active:scale-95"
+                  >
+                    + Nuevo Banco
+                  </Button>
+                }
+              >
+                <BankForm onSuccess={() => setIsDialogOpen(false)} bankToEdit={selectedBank} />
+              </MainDialog>
+            ) : undefined
           }
         />
 
