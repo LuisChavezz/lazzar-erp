@@ -10,6 +10,12 @@ import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductCategoryForm from "./ProductCategoryForm";
 import { useProductCategories } from "../hooks/useProductCategories";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { categoriaLineaHeaderFilter } from "../utils/categoriaLineaHeaderFilter";
+
+const HEADER_FILTERS = {
+  linea: categoriaLineaHeaderFilter<ProductCategory>((category) => category.linea),
+};
 
 export default function ProductCategoryList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +49,7 @@ export default function ProductCategoryList() {
 
   return (
     <DataTable
-      columns={columns}
+      columns={withHeaderFilters(columns, categories, HEADER_FILTERS)}
       data={categories}
       searchPlaceholder="Buscar categoría..."
       isLoading={isLoading}
