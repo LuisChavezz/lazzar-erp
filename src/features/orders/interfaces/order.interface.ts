@@ -5,7 +5,7 @@
 // acoplamiento real entre features (`OrderPickingFoliosSection` ya importa
 // además `PICKING_STATUS_CONFIG` de ese módulo para pintarlo).
 import type { PickingEstado } from "@/src/features/picking/interfaces/picking.interface";
-import type { PedidoProgramacionConf } from "./pedido-programacion.interface";
+import type { PedidoProgramacion, PedidoProgramacionConf } from "./pedido-programacion.interface";
 
 /**
  * Configuración JSON congelada de un servicio de la talla (`bordado_config`,
@@ -271,6 +271,20 @@ export interface PedidoListItem {
   programacion_conf: PedidoProgramacionConf | null;
   /** Piezas del pedido: todas las tallas, muestras incluidas; 0 sin tallas (EC-571). */
   piezas: number;
+  /**
+   * Techo de la programación: el mismo `total_piezas` con el que valida
+   * `PATCH .../programar/`. Muestras incluidas (backend #912), así que hoy es
+   * igual a `piezas`; 0 sin tallas. Solo existe en el listado, y es opcional
+   * porque un backend anterior a #906 no lo manda (EC-737).
+   */
+  piezas_programables?: number;
+  /** Piezas de líneas de muestra; 0 si no tiene. Opcional: backend anterior a #913. */
+  piezas_muestra?: number;
+  /**
+   * `programacion_conf.programaciones` en top-level (`[]` sin programar). Viene
+   * de un `JSONField`: se lee con `getProgramacionesValidas`.
+   */
+  parcialidades?: PedidoProgramacion[];
   /** Vendedor de la cotización de origen; `null` si el pedido no viene de una (EC-571). */
   vendedor_nombre: string | null;
 }
