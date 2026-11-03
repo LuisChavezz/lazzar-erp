@@ -1,19 +1,12 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
 import { invoiceCurrencyCode, requiresInvoiceTipoCambio } from "./invoiceCurrency";
 import { isInvoiceStamped } from "./invoiceStamping";
-
-/**
- * Permiso que exige el backend en `POST /finanzas/facturas/{id}/emitir/` (sin
- * él responde `403`). El backend reutiliza el de cancelar y timbrar
- * (`PERMISO_CANCELAR_FACTURA`), así que es el mismo código. La compuerta real
- * sigue siendo el backend; esta es de UX.
- */
-export const INVOICE_EMIT_PERMISSION = "E-FIN-FACTURAS";
 
 /**
  * ¿Se ofrece "Emitir factura"? Solo un `Borrador` ACTIVO: `emitir/` rechaza
@@ -29,7 +22,7 @@ export const isInvoiceEmittable = (invoice: {
 export const canEmitInvoice = (
   invoice: Parameters<typeof isInvoiceEmittable>[0],
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(INVOICE_EMIT_PERMISSION, user) && isInvoiceEmittable(invoice);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isInvoiceEmittable(invoice);
 
 /**
  * ¿La factura ya tiene CFDI y está fuera de MXN? Entonces su tipo de cambio es

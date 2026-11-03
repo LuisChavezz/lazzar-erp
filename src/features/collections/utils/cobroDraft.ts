@@ -1,7 +1,7 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { hasPermission } from "@/src/utils/permissions";
-import { COBRO_DRAFT_WRITE_PERMISSION } from "../constants/collectionPermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { COBRO_MONEDA_LOCAL, type CobroFormValues } from "../schemas/createCobro.schema";
 import type { CobroRow } from "./collection.utils";
@@ -15,7 +15,7 @@ import type { CobroRow } from "./collection.utils";
 export const canManageCobroDraft = (
   cobro: Pick<Cobro, "estatus" | "activo">,
   user: PermissionContext | null | undefined,
-): boolean => cobro.estatus === "Borrador" && cobro.activo && hasPermission(COBRO_DRAFT_WRITE_PERMISSION, user);
+): boolean => cobro.estatus === "Borrador" && cobro.activo && hasPermission(FINANCE_WRITE_PERMISSION, user);
 
 /**
  * ¿Se ELIMINA (DELETE) en vez de cancelarse? Un `Borrador` sin folio: borrarlo

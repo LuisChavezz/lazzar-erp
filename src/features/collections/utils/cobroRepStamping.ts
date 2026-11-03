@@ -2,7 +2,7 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { COBRO_REP_STAMP_PERMISSION } from "../constants/collectionPermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { isActionOutcomeUnknown } from "./actionOutcome";
 
@@ -24,7 +24,7 @@ export const isCobroRepStampable = (cobro: CobroRepState): boolean =>
 export const canStampCobroRep = (
   cobro: CobroRepState,
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(COBRO_REP_STAMP_PERMISSION, user) && isCobroRepStampable(cobro);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCobroRepStampable(cobro);
 
 /**
  * ¿Hay un timbrado del REP SIN CONFIRMAR? El backend marca `rep_pendiente`
