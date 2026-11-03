@@ -17,8 +17,8 @@ import { acquireRowLock, isRowLockHeld, releaseRowLock } from "@/src/utils/actio
  * de la fila correcta; el `isPending` de la mutación no sirve para eso, porque
  * con dos filas en vuelo describe solo la última llamada.
  *
- * Extraído tal cual de la función privada que `CreditNoteList` y `PolizaList`
- * repiten; esos dos módulos aún conservan su copia local.
+ * Extraído de la función privada que repetían `CreditNoteList` y `PolizaList`;
+ * los dos ya usan este hook.
  */
 export function useRowActionLock() {
   const inFlightRef = useRef<Set<number>>(new Set());
