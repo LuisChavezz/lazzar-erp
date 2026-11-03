@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   EmptyLines,
   LineItemsTable,
@@ -22,6 +23,7 @@ import { CXC_ESTATUS_CONFIG } from "@/src/features/accounts-receivable/constants
 import { formatFolioCxc } from "@/src/features/accounts-receivable/utils/accounts-receivable.utils";
 import { CreditNoteDetailByIdDialog } from "@/src/features/credit-notes/components/CreditNoteDetailByIdDialog";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "@/src/features/credit-notes/constants/creditNoteStatus";
+import { FINANCE_READ_REASONS } from "@/src/constants/financePermissions";
 import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import {
   buildInvoiceDetailHref,
@@ -38,6 +40,25 @@ const LINK_CLASS =
   "font-mono font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline cursor-pointer text-left transition-colors";
 const TH = "px-3 py-2 font-semibold";
 const TD = "px-3 py-2 text-xs text-slate-600 dark:text-slate-300";
+
+/**
+ * Folio de un registro cuyo detalle el usuario NO puede abrir (otra sección de
+ * Finanzas, EC-734): la fila sigue visible —`cobranza` y `notas_credito` del
+ * desglose son datos de seguimiento de la propia factura—, pero su apertura
+ * queda deshabilitada con el motivo. Mientras la sesión carga no hay motivo.
+ */
+function BlockedFolio({ folio, reason }: { folio: string; reason: string | null }) {
+  return (
+    <span
+      aria-disabled="true"
+      title={reason ?? undefined}
+      className={`font-mono ${reason ? "text-slate-400 dark:text-slate-500 cursor-not-allowed" : ""}`}
+    >
+      {folio}
+      {reason && <span className="sr-only">{`. ${reason}`}</span>}
+    </span>
+  );
+}
 
 interface InvoiceTrackingSheetProps {
   data: InvoiceDesglose;
@@ -63,6 +84,10 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
   const canOpenPedido = pedido !== null && canOpen(`/orders/${pedido.id}`);
   const canOpenCxc = canOpen(ACCOUNTS_RECEIVABLE_PATH);
   const canOpenNotas = canOpen(CREDIT_NOTES_PATH);
+  // Sin acceso a la sección del detalle se muestra el motivo, salvo mientras la
+  // sesión carga (`canOpen` falla cerrado hasta entonces).
+  const { status: sessionStatus } = useSession();
+  const blockedReason = (reason: string) => (sessionStatus === "loading" ? null : reason);
   const pctFacturado =
     avance && avance.piezas_pedidas > 0
       ? clampPercentage((avance.piezas_facturadas / avance.piezas_pedidas) * 100)
@@ -246,7 +271,7 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
                         {folio}
                       </button>
                     ) : (
-                      <span className="font-mono">{folio}</span>
+                      <BlockedFolio folio={folio} reason={blockedReason(FINANCE_READ_REASONS.receivables)} />
                     )}
                   </td>
                   <td className={TD}>
@@ -300,7 +325,7 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
                         {folio}
                       </button>
                     ) : (
-                      <span className="font-mono">{folio}</span>
+                      <BlockedFolio folio={folio} reason={blockedReason(FINANCE_READ_REASONS.creditNotes)} />
                     )}
                   </td>
                   <td className={`${TD} whitespace-nowrap`}>

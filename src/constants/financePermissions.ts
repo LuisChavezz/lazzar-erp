@@ -55,3 +55,16 @@ export const POLIZA_WRITE_PERMISSION_REASON = "No tienes permiso para registrar 
 
 /** Motivo en conciliaciones: el `detail` del `403` de `ConciliacionBancariaViewSet`. */
 export const CONCILIACION_WRITE_PERMISSION_REASON = "No tienes permiso para conciliar cuentas bancarias.";
+
+/**
+ * Motivos de una LECTURA de otra sección deshabilitada (lectura jerárquica,
+ * EC-734): la pantalla la ofrece, pero el usuario no tiene ni el subcódigo de
+ * esa sección ni `R-CONTABILIDAD`. Sin el permiso no se dispara la consulta
+ * (el backend respondería `403`).
+ */
+export const FINANCE_READ_REASONS = {
+  receivables: "No tienes permiso para ver cuentas por cobrar.",
+  creditNotes: "No tienes permiso para ver notas de crédito.",
+  accountingCustomers: "No tienes permiso para consultar los clientes de contabilidad.",
+  bankAccounts: "No tienes permiso para consultar las cuentas bancarias.",
+} as const;

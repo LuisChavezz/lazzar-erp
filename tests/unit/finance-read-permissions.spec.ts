@@ -3,6 +3,12 @@ import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRo
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
+import { financeReadBlockReason, getFinanceReadState } from "@/src/utils/financeRead";
+import {
+  FINANCE_READ_PERMISSION,
+  FINANCE_READ_REASONS,
+  financeSectionReadPermissions,
+} from "@/src/constants/financePermissions";
 
 /**
  * Pruebas unitarias de EC-734: lectura JERÁRQUICA de Finanzas, la misma regla
@@ -123,5 +129,26 @@ test.describe("navegación de Finanzas", () => {
       "/finance/accounts-receivable",
       "/finance/collections",
     ]);
+  });
+});
+
+test.describe("compuerta de lectura entre secciones (getFinanceReadState)", () => {
+  const clientes = financeSectionReadPermissions("accountingCustomers");
+
+  test("lee con el subcódigo de esa sección o con R-CONTABILIDAD; el admin siempre", () => {
+    expect(getFinanceReadState(soloClientes, "authenticated", clientes).canRead).toBe(true);
+    expect(getFinanceReadState(soloModulo, "authenticated", clientes).canRead).toBe(true);
+    expect(getFinanceReadState(admin, "authenticated", clientes).canRead).toBe(true);
+    expect(getFinanceReadState(soloCxc, "authenticated", clientes).canRead).toBe(false);
+    expect(getFinanceReadState(soloCxc, "authenticated", FINANCE_READ_PERMISSION).canRead).toBe(false);
+  });
+
+  test("sin permiso da el motivo; mientras la sesión carga, bloquea sin motivo", () => {
+    const motivo = FINANCE_READ_REASONS.accountingCustomers;
+    expect(financeReadBlockReason(getFinanceReadState(soloCxc, "authenticated", clientes), motivo)).toBe(motivo);
+    const cargando = getFinanceReadState(undefined, "loading", clientes);
+    expect(cargando.canRead).toBe(false);
+    expect(financeReadBlockReason(cargando, motivo)).toBeNull();
+    expect(financeReadBlockReason(getFinanceReadState(soloModulo, "authenticated", clientes), motivo)).toBeNull();
   });
 });

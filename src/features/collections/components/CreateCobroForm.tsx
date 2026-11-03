@@ -53,6 +53,8 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
     isLoadingFormData,
     isErrorFormData,
     missingItems,
+    customersBlockReason,
+    bankAccountsBlockReason,
     customers,
     bankAccountOptions,
     selectorMoneda,
@@ -80,10 +82,18 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
   const lines = useStore(form.store, (state) => state.values.cobro_detalles);
 
   const selectedCustomer = customers.find((customer) => customer.id === cliente);
-  // Cliente o cuenta del borrador ya inactivos: el backend los rechazaría.
-  const isBlocked = isClienteInactivo || isCuentaInactiva;
+  // Cliente o cuenta del borrador ya inactivos: el backend los rechazaría. Sin
+  // permiso para leer alguno de los dos catálogos (EC-734) tampoco se puede
+  // elegir, así que el envío queda bloqueado con el mismo motivo.
+  const isBlocked =
+    isClienteInactivo || isCuentaInactiva || customersBlockReason !== null || bankAccountsBlockReason !== null;
   const blockedNoteIds =
-    [isClienteInactivo && "cobro-cliente-inactivo-note", isCuentaInactiva && "cobro-cuenta-inactiva-note"]
+    [
+      isClienteInactivo && "cobro-cliente-inactivo-note",
+      customersBlockReason && "cobro-cliente-permiso-note",
+      isCuentaInactiva && "cobro-cuenta-inactiva-note",
+      bankAccountsBlockReason && "cobro-cuenta-permiso-note",
+    ]
       .filter(Boolean)
       .join(" ") || undefined;
   const canPickLines = cliente > 0 && selectorMoneda !== null;
@@ -160,8 +170,13 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                   selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : null}
                   onClick={() => setIsCustomerPickerOpen(true)}
                   error={getError("cliente")}
-                  disabled={isClienteLocked}
+                  disabled={isClienteLocked || customersBlockReason !== null}
                 />
+                {customersBlockReason && (
+                  <p id="cobro-cliente-permiso-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {customersBlockReason}
+                  </p>
+                )}
                 {/* La nota se omite cuando el mismo aviso ya está como error del campo. */}
                 {isClienteInactivo ? (
                   !getError("cliente") && (
@@ -186,6 +201,8 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                   onChange={(event) => handleCuentaChange(Number(event.target.value))}
                   error={getError("cuenta_bancaria")}
                   className={COMPACT_FIELD_CLS}
+                  disabled={bankAccountsBlockReason !== null}
+                  aria-describedby={bankAccountsBlockReason ? "cobro-cuenta-permiso-note" : undefined}
                 >
                   <option value="0" disabled>
                     Seleccionar...
@@ -196,6 +213,11 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                     </option>
                   ))}
                 </FormSelect>
+                {bankAccountsBlockReason && (
+                  <p id="cobro-cuenta-permiso-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {bankAccountsBlockReason}
+                  </p>
+                )}
                 {isCuentaInactiva && !getError("cuenta_bancaria") && (
                   <p id="cobro-cuenta-inactiva-note" className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                     {COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE}
