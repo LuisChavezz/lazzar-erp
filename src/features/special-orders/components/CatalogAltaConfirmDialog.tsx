@@ -258,9 +258,11 @@ function CatalogAltaCategoryDialog({
                 items={covering}
                 pinSelected
                 searchPlaceholder="Buscar categoría…"
+                // También por la línea que muestra cada opción ("Industrial"…).
                 filterPredicate={(category, term) =>
                   category.nombre.toLowerCase().includes(term) ||
-                  category.codigo.toLowerCase().includes(term)
+                  category.codigo.toLowerCase().includes(term) ||
+                  getCategoriaLineaLabel(category.linea).toLowerCase().includes(term)
                 }
                 getKey={(category) => category.id}
                 isSelected={(category) => category.id === selectedId}
