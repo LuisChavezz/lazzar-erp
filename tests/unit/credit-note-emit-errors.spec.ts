@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
+import { QueryClient } from "@tanstack/react-query";
+import { invalidateCreditNoteQueries } from "@/src/features/credit-notes/hooks/invalidateCreditNoteQueries";
 import {
   getCreateFailureOutcome,
   parseNotaCreditoError,
@@ -328,5 +330,19 @@ test.describe("factura al emitir (precheck y avisos)", () => {
     expect(CREDIT_NOTE_EMIT_STAMP_WARNING.startsWith("Si la empresa timbra con Facturama")).toBe(
       true,
     );
+  });
+});
+
+test.describe("invalidateCreditNoteQueries tras leer la nota fresca", () => {
+  test("no invalida el detalle recién leído y sí el resto", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["credit-note-detail", 16], { id: 16 });
+    queryClient.setQueryData(["credit-note-detail", 17], { id: 17 });
+    queryClient.setQueryData(["credit-notes"], []);
+    await invalidateCreditNoteQueries(queryClient, "balances", 16);
+    const invalidated = (key: unknown[]) => queryClient.getQueryState(key)?.isInvalidated;
+    expect(invalidated(["credit-note-detail", 16])).toBe(false);
+    expect(invalidated(["credit-note-detail", 17])).toBe(true);
+    expect(invalidated(["credit-notes"])).toBe(true);
   });
 });

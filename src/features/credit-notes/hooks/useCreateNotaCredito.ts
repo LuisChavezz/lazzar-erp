@@ -392,16 +392,31 @@ export const getCreateFailureOutcome = (
 };
 
 /**
- * Nota FRESCA que una emisión fallida dejó `Emitida` (el `400` solo trae `{id,
- * estatus}`), o `null` si no se pudo consultar: entonces no se afirma su timbre.
- * La escribe en `["credit-note-detail", id]` (`fetchFreshNotaCredito`).
+ * Errores de emisión tras los que `readEmittedNota` ya leyó FRESCA la nota, con
+ * su id: `onSettled` no vuelve a pedir ese detalle (`invalidateCreditNoteQueries`
+ * con `freshDetailId`). Por objeto de error, así no hay estado que limpiar.
+ */
+const freshlyReadNotaIds = new WeakMap<object, number>();
+
+/** Id de la nota que ya se leyó fresca tras `error`, si la hubo (para `onSettled`). */
+export const freshlyReadNotaId = (error: unknown): number | undefined =>
+  error && typeof error === "object" ? freshlyReadNotaIds.get(error) : undefined;
+
+/**
+ * Nota FRESCA que una emisión fallida (`error`) dejó `Emitida` (el `400` solo
+ * trae `{id, estatus}`), o `null` si no se pudo consultar: entonces no se afirma
+ * su timbre. La escribe en `["credit-note-detail", id]` (`fetchFreshNotaCredito`)
+ * y lo recuerda para que `onSettled` no la pida dos veces (`freshlyReadNotaId`).
  */
 export const readEmittedNota = async (
   queryClient: QueryClient,
   id: number,
+  error: unknown,
 ): Promise<NotaCredito | null> => {
   try {
-    return await fetchFreshNotaCredito(queryClient, id);
+    const nota = await fetchFreshNotaCredito(queryClient, id);
+    if (error && typeof error === "object") freshlyReadNotaIds.set(error, id);
+    return nota;
   } catch {
     return null;
   }
@@ -456,7 +471,7 @@ export const useCreateNotaCredito = (
       const parsed = parseNotaCreditoError(error);
       const reported = payload.estatus === "Emitida" ? parsed.notaCredito : undefined;
       const actual =
-        reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, reported.id) : null;
+        reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, reported.id, error) : null;
       const outcome = getCreateFailureOutcome(parsed, payload, actual);
       onServerError?.(parsed, outcome);
 
@@ -478,10 +493,11 @@ export const useCreateNotaCredito = (
     },
     // También ante un error: un alta emitida guarda la nota antes de timbrarla,
     // así que un fallo del timbrado (o un timeout) pudo dejarla en el listado.
-    onSettled: (_nota, _error, payload) =>
+    onSettled: (_nota, error, payload) =>
       invalidateCreditNoteQueries(
         queryClient,
         payload.estatus === "Emitida" ? "balances" : "document",
+        freshlyReadNotaId(error),
       ),
   });
 };

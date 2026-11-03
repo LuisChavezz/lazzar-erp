@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { emitirNotaCredito } from "../services/actions";
 import {
   parseNotaCreditoError,
+  freshlyReadNotaId,
   readEmittedNota,
   stampFailureDetail,
   type ParsedNotaCreditoError,
@@ -216,7 +217,7 @@ export const useEmitirNotaCredito = ({
       const reported = reportedNota(parsed, id);
       if (reported || parsed.stampFailed) {
         const actual =
-          reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, id) : null;
+          reported?.estatus === "Emitida" ? await readEmittedNota(queryClient, id, error) : null;
         toast.error(
           getEmitReportedNotaMessage(parsed, id, label, actual) ??
             creditNoteStampFailedMessage("emision", stampFailureDetail(parsed)),
@@ -237,6 +238,7 @@ export const useEmitirNotaCredito = ({
     // intermedio y el diálogo de confirmación (con `closeOnConfirm={false}`)
     // puede cerrarse aquí. También ante un error: emitir timbra, y un timeout del
     // PAC pudo dejar algo hecho (`invalidateCreditNoteQueries`).
-    onSettled: () => invalidateCreditNoteQueries(queryClient, "balances"),
+    onSettled: (_nota, error) =>
+      invalidateCreditNoteQueries(queryClient, "balances", freshlyReadNotaId(error)),
   });
 };
