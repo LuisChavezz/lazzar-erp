@@ -17,6 +17,8 @@ import {
   HeaderStatRow,
   InfoField,
   InfoGrid,
+  InfoTile,
+  InfoTileGrid,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -245,10 +247,10 @@ function InvoiceDocumentActions({
  * (el desglose no lo trae); sin capturar —un `Borrador` que aún no se emite, o
  * una emitida sin él, que ya no puede corregirse— dice "Sin capturar".
  */
-function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
+function InvoiceTipoCambioTile({ invoice }: { invoice: Invoice }) {
   if (!requiresInvoiceTipoCambio(invoice)) return null;
   return (
-    <HeaderStat label="Tipo de cambio">
+    <InfoTile label="Tipo de cambio">
       {invoice.tipo_cambio === null ? (
         <span className="text-slate-400 dark:text-slate-500">Sin capturar</span>
       ) : (
@@ -256,7 +258,7 @@ function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
           {formatInvoiceTipoCambio(invoice.tipo_cambio)} MXN por {invoiceCurrencyCode(invoice)}
         </span>
       )}
-    </HeaderStat>
+    </InfoTile>
   );
 }
 
@@ -274,6 +276,9 @@ function InvoiceTipoCambioStat({ invoice }: { invoice: Invoice }) {
  * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
  * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
+ *
+ * Va como bloque bajo los mosaicos de la cabecera y no como `InfoTile`: el
+ * mosaico trunca, y el UUID y las notas del estado no caben en una línea.
  */
 function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
   if (!invoice.cfdi_uuid) {
@@ -332,7 +337,11 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
 /**
  * Hoja 1, "Factura": la factura en solo lectura. Cabecera (folio, estatus,
  * fechas, totales y acciones), emisor y receptor, pedido, conceptos e importes.
- * Todo sale del desglose; solo las acciones usan el retrieve.
+ * Todo sale del desglose; el tipo de cambio, el bloque del CFDI y las acciones
+ * usan el retrieve.
+ *
+ * Los datos de la cabecera van como mosaicos (`InfoTileGrid`), con la insignia
+ * del ícono de `SheetSection`; la hoja "Seguimiento" conserva su cabecera.
  */
 export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSheetProps) {
   const money = (value: number) => formatCurrency(value, data.moneda.codigo_iso);
@@ -347,26 +356,28 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user }: InvoiceMainSh
         subtitle="Comprobante de venta del pedido."
         badges={<StatusBadge status={data.estatus} config={INVOICE_STATUS_CONFIG} />}
       >
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        {/* Mosaicos a todo el ancho y las acciones debajo: junto a la fila de
+            botones los mosaicos quedaban angostos y truncaban su valor. */}
+        <div className="flex flex-col gap-6">
           <div className="min-w-0 space-y-4">
             {/* El folio es el ÚNICO <h1> de esta hoja (la de Seguimiento tiene el suyo). */}
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono break-all">
               {data.folio || `#${data.id}`}
             </h1>
-            <HeaderStatRow>
-              <HeaderStat label="Fecha de emisión">{formatInvoiceDate(data.fecha_emision)}</HeaderStat>
-              <HeaderStat label="Fecha de vencimiento">
+            <InfoTileGrid>
+              <InfoTile label="Fecha de emisión">{formatInvoiceDate(data.fecha_emision)}</InfoTile>
+              <InfoTile label="Fecha de vencimiento">
                 {data.fecha_vencimiento ? formatInvoiceDate(data.fecha_vencimiento) : "Sin vencimiento"}
-              </HeaderStat>
-              <HeaderStat label="Moneda">{data.moneda.codigo_iso}</HeaderStat>
-              {invoice && <InvoiceTipoCambioStat invoice={invoice} />}
-              <HeaderStat label="Piezas">
+              </InfoTile>
+              <InfoTile label="Moneda">{data.moneda.codigo_iso}</InfoTile>
+              {invoice && <InvoiceTipoCambioTile invoice={invoice} />}
+              <InfoTile label="Piezas">
                 <span className="tabular-nums">{importes.total_piezas} pzas</span>
-              </HeaderStat>
-              <HeaderStat label="Total" bold>
+              </InfoTile>
+              <InfoTile label="Total">
                 <span className="tabular-nums">{money(importes.total)}</span>
-              </HeaderStat>
-            </HeaderStatRow>
+              </InfoTile>
+            </InfoTileGrid>
             {invoice && <InvoiceCfdiStamp invoice={invoice} />}
           </div>
           {invoice && <InvoiceDocumentActions invoice={invoice} user={user} />}
