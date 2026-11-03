@@ -172,7 +172,6 @@ export function createProcurementOrderColumns({
               title={cfg.label}
               aria-hidden="true"
             />
-            <span className="sr-only">{cfg.label}</span>
             <div className="flex flex-col items-start gap-1 min-w-0">
               <PedidoFolioLink
                 pedidoId={order.id}
@@ -185,14 +184,18 @@ export function createProcurementOrderColumns({
                   aria-hidden="true"
                 />
               </PedidoFolioLink>
-              {hasMeaningfulOc(order.oc) && (
-                <span
-                  className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
-                  title={`Orden de compra: ${order.oc}`}
-                >
-                  {order.oc}
-                </span>
-              )}
+              {/* Estatus como badge discreto (mismo que Recepciones) junto a la OC. */}
+              <div className="flex items-center gap-1 min-w-0">
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${cfg.className}`}>{cfg.label}</span>
+                {hasMeaningfulOc(order.oc) && (
+                  <span
+                    className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                    title={`Orden de compra: ${order.oc}`}
+                  >
+                    {order.oc}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         );

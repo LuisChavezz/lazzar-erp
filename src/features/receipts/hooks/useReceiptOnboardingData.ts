@@ -1,22 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getReceiptOnboargingData } from "../services/actions";
 import type { ReceiptOnboardingData } from "../interfaces/receipt-onboarding.interface";
 
+/**
+ * Órdenes recibibles del wizard de recepción (`GET /compras/recepciones/onboarding/`).
+ * Un 4xx no se reintenta: es el rechazo de un usuario sin empresa
+ * (`onboardingRejectionMessage`) y la segunda petición respondería lo mismo.
+ */
 export const useReceiptOnboardingData = () => {
-  const {
-    data: onboardingData,
-    isLoading,
-    isError,
-    error,
-  } = useQuery<ReceiptOnboardingData>({
-    queryKey: ["receipt-onboarding-data"],
-    queryFn: getReceiptOnboargingData,
-  });
+  const { data, isLoading, isInitialError, error } = useGuardedQuery<ReceiptOnboardingData>(
+    {
+      queryKey: ["receipt-onboarding-data"],
+      queryFn: getReceiptOnboargingData,
+      retry: retryUnlessClientError,
+    },
+    { toastId: "receipt-onboarding-refetch-error" },
+  );
 
   return {
-    onboardingData,
+    onboardingData: data,
     isLoading,
-    isError,
+    isInitialError,
     error,
   };
 };

@@ -1,10 +1,14 @@
 "use client";
 
-import { ColumnDef, FilterFn } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
-import { BanIcon, ChevronRightIcon, ClockIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { BanIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
+import type { ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationRequestedIndicator } from "@/src/components/CancellationRequestedIndicator";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceStatus";
@@ -22,59 +26,43 @@ import {
   getInvoiceCancelBlockReason,
   isInvoiceCfdiCancellationRequested,
 } from "../utils/invoiceCancellation";
-
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...Object.entries(INVOICE_STATUS_CONFIG).map(([estatus, cfg]) => ({
-    value: estatus,
-    label: cfg.label ?? estatus,
-    dotClassName: cfg.dot,
-  })),
-];
-
-const estatusFilterFn: FilterFn<InvoiceListRow> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return row.original.estatus === filterValue;
-};
+import {
+  INVOICE_CFDI_STATE_CONFIG,
+  getInvoiceCfdiState,
+  getInvoiceCfdiStateLabel,
+} from "../utils/invoiceCfdiState";
 
 // ── Celda de folio ────────────────────────────────────────────────────────────
 
 /**
- * Primera columna: punto de estatus y folio. El folio con su chevron es el
- * disparador del menú de la fila (no hay columna "Acciones"), mismo patrón y
- * markup que `PurchaseOrderColumns` / `OperationsOrderColumns`: un clic en
- * cualquier parte abre el menú. "Ver detalles" va primero y es un ENLACE real
- * (`href` de `ActionMenu`), así que Ctrl+clic o clic medio abren la página en
- * otra pestaña. Sin folio se muestra `#id`, también en el `aria-label`.
- * "Descargar PDF" y "Enviar correo" piden el retrieve al activarse; sus
- * callbacks y el "en curso" llegan por `InvoiceRowActionsProvider` (ver
- * `useInvoiceListDocumentActions`). Abrir el menú no hace ninguna petición.
+ * Primera columna: el folio ES el menú de la fila (`FolioActionMenu`) y debajo
+ * va su estatus —no hay columnas aparte "Estatus" ni "Acciones"—. "Ver
+ * detalle" va primero y es un ENLACE real (`href`), así que Ctrl+clic o clic
+ * medio abren la página en otra pestaña. Sin folio se muestra `#id`, también
+ * en el nombre accesible. Callbacks, permisos y "en curso" llegan por
+ * `InvoiceRowActionsProvider` (ver `useInvoiceListDocumentActions`), no por
+ * las columnas. Abrir el menú no hace ninguna petición.
  *
- * "Enviar correo" se oculta si el estatus no es enviable o si la fila trae
- * `activo === false` (el listado SÍ trae `activo`); además, al activarse se
- * bloquea contra el retrieve fresco.
+ * "Descargar PDF" y "Enviar correo" piden el retrieve al activarse. "Enviar
+ * correo" se oculta si el estatus no es enviable o si la fila trae
+ * `activo === false`; además, al activarse se bloquea contra el retrieve
+ * fresco. En una factura timbrada los dos se rotulan como no fiscales: el PDF
+ * del ERP no es el CFDI (no lleva folio fiscal ni sello).
  *
  * "Cancelar factura" sigue la regla única `canCancelInvoice` (permiso +
- * `activo === true` + Borrador o Emitida), que llega por contexto. Solo ABRE
- * el diálogo, que vive en `InvoiceList`: si un filtro de estatus oculta la
- * fila al quedar Cancelada, el diálogo no se desmonta. Una timbrada también
- * se cancela (el diálogo avisa que primero va al SAT). Lo único que la
- * bloquea es el timbrado pendiente de confirmación (`getInvoiceCancelBlockReason`,
- * la misma regla que la cabecera del detalle): la fila trae `cfdi_pendiente`,
- * así que el item se deshabilita con el motivo debajo. El precheck de
- * `useCancelInvoice` lo vuelve a revisar con el retrieve fresco al confirmar.
+ * `activo === true` + Borrador o Emitida). Solo ABRE el diálogo, que vive en
+ * `InvoiceList`: si un filtro de estatus oculta la fila al quedar Cancelada, el
+ * diálogo no se desmonta. Una timbrada también se cancela (el diálogo avisa
+ * que primero va al SAT). Lo único que la bloquea es el timbrado pendiente de
+ * confirmación (`getInvoiceCancelBlockReason`): el item se deshabilita con el
+ * motivo debajo, y el precheck de `useCancelInvoice` lo vuelve a revisar con
+ * el retrieve fresco al confirmar.
  *
  * Con la cancelación del CFDI solicitada y pendiente de que el receptor la
- * acepte (`isInvoiceCfdiCancellationRequested`), el folio lleva al lado un
- * reloj ámbar con el mismo rótulo que la cabecera del detalle (`aria-label`) y
- * su explicación (`title`).
- *
- * En una factura timbrada, "Descargar PDF" y "Enviar correo" se rotulan como
- * no fiscales: el PDF del ERP no es el CFDI (no lleva folio fiscal ni sello).
+ * acepte, junto al estatus va el reloj compartido
+ * (`CancellationRequestedIndicator`). Es un estado válido, no uno obsoleto.
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
-  const statusCfg = INVOICE_STATUS_CONFIG[invoice.estatus];
-  const statusLabel = statusCfg?.label ?? invoice.estatus;
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
   const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
     useInvoiceRowActionsContext();
@@ -82,9 +70,9 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
   const cancelBlockReason = getInvoiceCancelBlockReason(invoice);
 
-  const menuItems: ActionMenuItem[] = [
+  const items: ActionMenuItem[] = [
     {
-      label: "Ver detalles",
+      label: "Ver detalle",
       icon: ViewIcon,
       href: invoiceDetailHref(invoice.id, "invoicing"),
     },
@@ -114,114 +102,137 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   ];
 
   return (
-    <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-      {/* Indicador, fuera del botón: no es parte de la acción. */}
-      <span
-        className={`w-2 h-2 rounded-full shrink-0 ${statusCfg?.dot ?? "bg-slate-400"}`}
-        role="img"
-        aria-label={statusLabel}
-        title={statusLabel}
-      />
-      <ActionMenu
-        items={menuItems}
-        ariaLabel={`Acciones de la factura ${invoiceLabel}`}
-        align="start"
-        trigger={
-          <button
-            type="button"
-            aria-label={`Ver acciones de la factura ${invoiceLabel}`}
-            title="Ver detalle"
-            className="group inline-flex items-center gap-1 font-mono font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
-          >
-            {invoiceLabel}
-            <ChevronRightIcon
-              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-              aria-hidden="true"
+    <FolioActionMenu
+      folio={invoiceLabel}
+      items={items}
+      status={
+        <span className="inline-flex items-center gap-1.5">
+          <StatusBadge status={invoice.estatus} config={INVOICE_STATUS_CONFIG} />
+          {isInvoiceCfdiCancellationRequested(invoice) && (
+            <CancellationRequestedIndicator
+              label={INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL}
+              hint={INVOICE_CFDI_CANCELLATION_REQUESTED_HINT}
             />
-          </button>
-        }
-      />
-      {isInvoiceCfdiCancellationRequested(invoice) && (
-        // Ícono y no texto: en la columna angosta el rótulo se recortaba a
-        // "Cancel…", que se confunde con "Cancelada".
-        <span
-          className="inline-flex shrink-0 text-amber-600 dark:text-amber-400"
-          role="img"
-          aria-label={INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL}
-          title={`${INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL}. ${INVOICE_CFDI_CANCELLATION_REQUESTED_HINT}`}
-        >
-          <ClockIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
         </span>
-      )}
-    </div>
+      }
+    />
   );
 };
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
-export const invoiceColumns: ColumnDef<InvoiceListRow>[] = [
-  {
-    accessorKey: "folio",
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Folio</span>
-        <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-      </div>
-    ),
-    filterFn: estatusFilterFn,
-    cell: ({ row }) => <FolioCell invoice={row.original} />,
+const columnHelper = createColumnHelper<InvoiceListRow>();
+
+/** Texto del cliente: su nombre resuelto, o `Cliente #N` si llega vacío. */
+const getClienteLabel = (invoice: InvoiceListRow): string =>
+  invoice.cliente_nombre || `Cliente #${invoice.cliente}`;
+
+/**
+ * Columnas del listado de facturas. No reciben nada: callbacks y "en curso"
+ * llegan por `InvoiceRowActionsProvider`, así una acción no remonta las celdas.
+ */
+export const getInvoiceColumns = () =>
+  [
+    columnHelper.accessor((row) => row.folio || `#${row.id}`, {
+      id: "folio",
+      header: "Folio",
+      size: 170,
+      cell: (info) => <FolioCell invoice={info.row.original} />,
+    }),
+    // El estatus se pinta bajo el folio; esta columna, OCULTA por defecto, lo
+    // mantiene en la búsqueda global ("Cancelada") —TanStack busca también en
+    // las columnas ocultas— y en el selector de columnas.
+    columnHelper.accessor("estatus", {
+      header: "Estatus",
+      meta: { hiddenByDefault: true },
+      cell: (info) => <StatusBadge status={info.getValue()} config={INVOICE_STATUS_CONFIG} />,
+    }),
+    // Estado del CFDI (`getInvoiceCfdiState`): independiente de `estatus`. El
+    // valor de la columna es el rótulo, así que la búsqueda global lo encuentra.
+    columnHelper.accessor((row) => getInvoiceCfdiStateLabel(row), {
+      id: "cfdi",
+      header: "CFDI",
+      cell: (info) => (
+        <StatusBadge
+          status={getInvoiceCfdiState(info.row.original)}
+          config={INVOICE_CFDI_STATE_CONFIG}
+        />
+      ),
+    }),
+    // Mismo texto en la celda, la búsqueda y la opción del filtro.
+    columnHelper.accessor((row) => getClienteLabel(row), {
+      id: "cliente_nombre",
+      header: "Cliente",
+      cell: (info) => (
+        <span className="text-slate-700 dark:text-slate-200 font-medium">{info.getValue()}</span>
+      ),
+    }),
+    columnHelper.accessor("fecha_emision", {
+      header: "Fecha emisión",
+      cell: (info) => (
+        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
+          {formatLocalDate(info.getValue())}
+        </span>
+      ),
+    }),
+    columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
+      id: "fecha_vencimiento",
+      header: "Fecha vencimiento",
+      cell: (info) => (
+        <span className="text-slate-600 dark:text-slate-300 tabular-nums">
+          {formatLocalDate(info.row.original.fecha_vencimiento)}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("total", {
+      header: "Total",
+      meta: { align: "right" },
+      // `total` es un string numérico; ordenamos numéricamente en vez de por
+      // el orden alfanumérico que TanStack infiere para strings.
+      sortingFn: (rowA, rowB) =>
+        safeParseAmount(rowA.original.total) - safeParseAmount(rowB.original.total),
+      cell: (info) => (
+        <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+          {formatCurrency(safeParseAmount(info.getValue()), info.row.original.moneda_nombre)}
+        </div>
+      ),
+    }),
+    columnHelper.accessor("moneda_nombre", {
+      header: "Moneda",
+      cell: (info) => (
+        <span className="text-slate-600 dark:text-slate-300">{info.getValue()}</span>
+      ),
+    }),
+  ] as ColumnDef<InvoiceListRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`:
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo de `INVOICE_STATUS_CONFIG` y al final cada valor
+ *   desconocido de las filas, crudo.
+ * - «CFDI» filtra por `getInvoiceCfdiState`: los cinco estados, en su orden.
+ * - El cliente es un FK: compara contra el id crudo y se rotula con el nombre
+ *   (o `Cliente #N`), con buscador; dos homónimos no se mezclan.
+ * - La moneda, por su código.
+ *
+ * Filtrar NO toca los KPIs (`InvoiceStats` lee el listado completo).
+ */
+export const getInvoiceHeaderFilters = (): Partial<
+  Record<string, HeaderFilterSpec<InvoiceListRow>>
+> => ({
+  folio: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(INVOICE_STATUS_CONFIG),
   },
-  {
-    accessorKey: "cliente_nombre",
-    header: "Cliente",
-    cell: ({ row }) => (
-      <span className="text-slate-700 dark:text-slate-200 font-medium">
-        {row.getValue("cliente_nombre")}
-      </span>
-    ),
+  cfdi: {
+    type: "options",
+    filterLabel: "CFDI",
+    get: (r) => getInvoiceCfdiState(r),
+    options: optionsFromConfig(INVOICE_CFDI_STATE_CONFIG),
   },
-  {
-    accessorKey: "fecha_emision",
-    header: "Fecha emisión",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatLocalDate(row.original.fecha_emision)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "fecha_vencimiento",
-    header: "Fecha vencimiento",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-        {formatLocalDate(row.original.fecha_vencimiento)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "total",
-    header: "Total",
-    meta: { align: "right" },
-    // `total` es un string numérico; ordenamos numéricamente en vez de por
-    // el orden alfanumérico que TanStack infiere para strings.
-    sortingFn: (rowA, rowB) =>
-      safeParseAmount(rowA.original.total) - safeParseAmount(rowB.original.total),
-    cell: ({ row }) => (
-      <div className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-        {formatCurrency(
-          safeParseAmount(row.original.total),
-          row.original.moneda_nombre,
-        )}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "moneda_nombre",
-    header: "Moneda",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("moneda_nombre")}
-      </span>
-    ),
-  },
-];
+  cliente_nombre: { type: "distinct", get: (r) => r.cliente, label: getClienteLabel, searchable: true },
+  moneda_nombre: { type: "distinct", get: (r) => r.moneda_nombre },
+});

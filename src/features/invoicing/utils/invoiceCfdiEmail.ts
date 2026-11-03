@@ -6,15 +6,15 @@ import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfField
 import { INVOICE_STATUS, isInvoiceSendable } from "../constants/invoiceStatus";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { isInvoiceCfdiCancelled } from "./invoiceCancellation";
+import { INVOICE_WRITE_PERMISSION } from "../constants/invoicePermissions";
 import { isInvoiceStampPending, isInvoiceStamped } from "./invoiceStamping";
 
 /**
- * Permiso para ofrecer "Enviar CFDI": el MISMO que rige "Enviar correo" (el
- * de la sección de Facturación, que exigen la ruta `/finance/invoicing` y el
- * Route Handler de envío). El backend de `enviar-cfdi/` solo pide sesión; esta
- * compuerta es de UX.
+ * Permiso para ofrecer "Enviar CFDI": el backend de `enviar-cfdi/` exige
+ * `E-FIN-FACTURAS` (EC-711; ver `INVOICE_WRITE_PERMISSION`). Sin él la acción se
+ * oculta. Esta compuerta es de UX.
  */
-export const INVOICE_CFDI_EMAIL_PERMISSION = "R-CONTABILIDAD-FACTURACION";
+export const INVOICE_CFDI_EMAIL_PERMISSION = INVOICE_WRITE_PERMISSION;
 
 export type InvoiceCfdiEmailBlockReason =
   | "deleted"

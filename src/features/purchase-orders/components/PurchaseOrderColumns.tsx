@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useState } from "react";
+import { getPurchaseOrderProgress, progressBarClass } from "../utils/purchaseOrderProgress";
 import { ColumnDef, Column, createColumnHelper } from "@tanstack/react-table";
 import { DropdownMenu } from "@radix-ui/themes";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
@@ -139,15 +140,19 @@ const FolioCell = ({
       // Enlace real: Next lo prefetchea y clic medio/Ctrl+clic abren otra pestaña.
       href: purchaseOrderDetailHref(order.id),
     },
-    {
-      // En TODOS los estatus y sin `permission`: quien ve la orden puede
-      // consultar su ruta crítica. El diálogo (de la vista) decide si es de
-      // solo lectura: OC Cancelada o sin `E-COMPRAS-OC`.
+  ];
+
+  // Solo con la orden ya confirmada (borrador o pendiente de confirmar no
+  // tienen ruta que seguir) y sin `permission`: quien ve la orden puede
+  // consultarla. El diálogo decide si es de solo lectura: OC Cancelada o sin
+  // `E-COMPRAS-OC`.
+  if (!unconfirmed) {
+    menuItems.push({
       label: "Ruta crítica",
       icon: RouteIcon,
       onSelect: () => onCriticalPath(order),
-    },
-  ];
+    });
+  }
 
   if (editable) {
     menuItems.push({
@@ -254,7 +259,9 @@ const FolioCell = ({
         title={statusCfg.label}
         aria-hidden="true"
       />
-      <span className="sr-only">{statusCfg.label}</span>
+      {/* Folio arriba; estatus (badge discreto, como Recepciones) y
+          referencia debajo. */}
+      <div className="flex flex-col items-start gap-1 min-w-0">
       {/* "Ver Detalles" siempre es visible, así que `ActionMenu` nunca devuelve
           `null` aquí y el folio no desaparece. */}
       <ActionMenu
@@ -276,14 +283,20 @@ const FolioCell = ({
           </button>
         }
       />
-      {order.referencia && (
-        <span
-          className="inline-flex max-w-[120px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
-          title={order.referencia}
-        >
-          {order.referencia}
+      <div className="flex items-center gap-1 min-w-0">
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${statusCfg.cls}`}>
+          {statusCfg.label}
         </span>
-      )}
+        {order.referencia && (
+          <span
+            className="inline-flex max-w-[120px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+            title={order.referencia}
+          >
+            {order.referencia}
+          </span>
+        )}
+      </div>
+      </div>
       {unconfirmed && (
         <ConfirmDialog
           open={isConfirmOpen}
@@ -622,31 +635,35 @@ export const getColumns = (
       ),
     }),
     // ── Progreso OC ────────────────────────────────────────────────────────
-    // Fusiona "Surtidas"/"Restantes" en una sola barra + texto ("surtido /
-    // solicitado · %"). El backend todavía no expone una cantidad SURTIDA
-    // agregada a nivel de cabecera en `GET /compras/ordenes/` (solo el
-    // detalle trae `recepciones[]` anidadas, y sumarlas por fila en el
-    // listado sería un fetch N+1), así que `surtido` queda en 0 A PROPÓSITO
-    // —decisión de negocio, no un supuesto del cliente— hasta que el backend
-    // lo añada; la barra en 0% documenta eso, no afirma que nada se ha
-    // recibido.
+    // Barra + "recibido / solicitado · %" con lo que calcula el backend
+    // (`piezas_recibidas`, `progreso_pct`; ver `getPurchaseOrderProgress`).
+    // Sin esos campos se muestra "—", nunca un 0 % inventado.
     columnHelper.display({
       id: "progreso",
       header: "Progreso OC",
       cell: ({ row }) => {
-        const solicitado = row.original.total_piezas;
-        const surtido = 0;
-        const pct = solicitado > 0 ? Math.round((surtido / solicitado) * 100) : 0;
+        const progress = getPurchaseOrderProgress(row.original);
+        if (!progress) return <span className="text-slate-400">—</span>;
         return (
           <div className="flex flex-col gap-1 w-full max-w-36">
-            <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+            <div
+              className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden"
+              role="progressbar"
+              aria-valuenow={progress.pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Recibido ${progress.pct}%`}
+            >
               <div
-                className="h-full rounded-full bg-sky-500 transition-all"
-                style={{ width: `${pct}%` }}
+                className={`h-full rounded-full transition-all ${progressBarClass(progress.pct)}`}
+                style={{ width: `${progress.pct}%` }}
               />
             </div>
             <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-              {formatQuantityValue(surtido)} / {formatQuantityValue(solicitado)} · {pct}%
+              {formatQuantityValue(progress.recibidas)} / {formatQuantityValue(progress.solicitadas)} ·{" "}
+              <span className={progress.pct >= 100 ? "font-semibold text-emerald-600 dark:text-emerald-400" : ""}>
+                {progress.pct}%
+              </span>
             </span>
           </div>
         );

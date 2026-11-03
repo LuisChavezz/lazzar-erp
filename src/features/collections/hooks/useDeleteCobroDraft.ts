@@ -37,7 +37,7 @@ const deleteCobroDraftErrorMessage = (error: unknown): string =>
 export const useDeleteCobroDraft = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: remove, isRunning: isDeleting } = useCobroAction({
+  const { trigger: remove, isRunning: isDeleting, isIdle } = useCobroAction({
     mutationKey: deleteCobroDraftMutationKey(cobroId),
     cobroId,
     run: async (current) => {
@@ -63,5 +63,5 @@ export const useDeleteCobroDraft = (cobroId: number) => {
     },
   });
 
-  return { remove, isDeleting };
+  return { remove, isDeleting, isIdle };
 };

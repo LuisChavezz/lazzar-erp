@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
@@ -8,68 +8,44 @@ import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
+import { NotaCreditoIcon } from "@/src/components/Icons";
 import {
   TOTAL_CERO_MESSAGE,
   totalEsAcreditable,
 } from "../schemas/credit-note.schema";
-import { getColumns } from "./CreditNoteColumns";
+import { getCreditNoteColumns, getCreditNoteHeaderFilters } from "./CreditNoteColumns";
+import { CreditNoteRowActionsProvider } from "../hooks/useCreditNoteRowActions";
 import { CreditNoteDetailDialog } from "./CreditNoteDetailDialog";
 import CreditNoteForm from "./CreditNoteForm";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { useNotasCredito } from "../hooks/useNotasCredito";
-import { useEmitirNotaCredito } from "../hooks/useEmitirNotaCredito";
-import { useCancelNotaCredito } from "../hooks/useCancelNotaCredito";
-import { useDeleteNotaCredito } from "../hooks/useDeleteNotaCredito";
+import {
+  emitirNotaCreditoMutationKey,
+  useEmitirNotaCredito,
+} from "../hooks/useEmitirNotaCredito";
+import {
+  cancelNotaCreditoMutationKey,
+  useCancelNotaCredito,
+} from "../hooks/useCancelNotaCredito";
+import {
+  deleteNotaCreditoMutationKey,
+  useDeleteNotaCredito,
+} from "../hooks/useDeleteNotaCredito";
 import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
-  canEmitCreditNote,
+  CREDIT_NOTE_WRITE_PERMISSION_REASON,
+  canWriteCreditNotes,
   getCreditNoteCancelBlockReason,
   getInvoiceEmitPrecheckReason,
   getInvoiceUnstampedEmitWarning,
 } from "../utils/creditNoteStamping";
-
-/**
- * Candado de reenvío POR FILA para una acción confirmada (emitir, cancelar,
- * eliminar). Misma implementación que en `PolizaList`.
- *
- * - Se toma al CONFIRMAR, nunca al abrir: cerrar el diálogo sin confirmar no deja
- *   nada tomado.
- * - Guarda los ids EN VUELO, no un booleano de la acción: mientras la nota A
- *   viaja, confirmar la B sigue funcionando; confirmar A otra vez no.
- * - Cerrar el diálogo a mano NO lo suelta: se suelta cuando la petición termina.
- *   Soltarlo antes dejaría reabrir y confirmar la misma nota con la primera
- *   petición todavía en curso — justo el doble movimiento de saldo que evita.
- *
- * La ref es la guarda: se marca de forma SÍNCRONA, así que el segundo clic de un
- * doble clic —que llega antes de que React vuelva a pintar— ya la encuentra
- * puesta. El estado solo refleja lo mismo para pintar la etiqueta de pendiente
- * de la fila correcta; el `isPending` de la mutación no sirve para eso, porque
- * con dos filas en vuelo describe solo la última llamada.
- */
-function useRowActionLock() {
-  const inFlightRef = useRef<Set<number>>(new Set());
-  const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(() => new Set());
-
-  const acquire = (id: number): boolean => {
-    if (inFlightRef.current.has(id)) return false;
-    inFlightRef.current.add(id);
-    setPendingIds(new Set(inFlightRef.current));
-    return true;
-  };
-
-  const release = (id: number) => {
-    inFlightRef.current.delete(id);
-    setPendingIds(new Set(inFlightRef.current));
-  };
-
-  const isPending = (id: number | null): boolean =>
-    id !== null && pendingIds.has(id);
-
-  return { acquire, release, isPending };
-}
 
 export default function CreditNoteList() {
   const { notasCredito, hasLoaded, isLoading, isError, error, refetch, isFetching } =
@@ -81,11 +57,17 @@ export default function CreditNoteList() {
   // (La emisión se declara más abajo, tras el estado que su `onRejectedToDraft`
   // escribe.)
   const { data: session } = useSession();
-  const canEmit = canEmitCreditNote(session?.user);
+  // Toda escritura de notas exige `E-FIN-FACTURAS` (`canWriteCreditNotes`).
+  const canWrite = canWriteCreditNotes(session?.user);
   const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Candado del envío del alta (ver `useCreditNoteForm`): se toma al enviar,
+  // ANTES de la validación, y se lee en el `onOpenChange` del diálogo, así que
+  // no se cierra (X, Cerrar, Esc) desde el primer frame. El alta emitida mueve
+  // el saldo de la CxC; cerrar a medias escondería su resultado.
+  const formSubmitLockRef = useRef(false);
   // Estado de TODOS los diálogos en la vista, no en la celda de acciones: una
   // celda se desmonta al ordenar, filtrar o paginar, y las tres mutaciones
   // cambian el `estatus` —que es justo el filtro de la tabla—, así que con el
@@ -149,12 +131,18 @@ export default function CreditNoteList() {
   // optimista de la fila: un DELETE repetido responde 404 y pintaría un error
   // justo después de un borrado que sí funcionó.
   const deleteLock = useRowActionLock();
+  // El "en vuelo" de cada acción también se lee de la `MutationCache`, que
+  // sobrevive a un remontaje de la vista (el candado de fila no): pinta la
+  // confirmación ocupada (`guardClose(..., extraBusy)`).
+  const emittingIds = usePendingRecordIds(emitirNotaCreditoMutationKey);
+  const cancellingIds = usePendingRecordIds(cancelNotaCreditoMutationKey);
+  const deletingIds = usePendingRecordIds(deleteNotaCreditoMutationKey);
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
   // se trata como error "de pantalla completa" si la consulta nunca cargó.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  const handleViewDetail = useCallback((id: number) => setOpenDetailId(id), []);
+  const handleViewDetail = (id: number) => setOpenDetailId(id);
   const closeDetail = () => {
     setOpenDetailId(null);
     setEmitRejection(null);
@@ -175,48 +163,58 @@ export default function CreditNoteList() {
    * Se corta ANTES de abrir la confirmación —no hay nada que confirmar— y el
    * PATCH nunca sale.
    */
-  const handleEmitir = useCallback(
-    (id: number) => {
-      // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
-      // la sesión cambió entre pintarlos y seleccionar.
-      if (!canEmit) {
-        toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
-        return;
-      }
-      const nota = notasCredito.find((item) => item.id === id);
-      if (nota && !totalEsAcreditable(nota.total)) {
-        toast.error(TOTAL_CERO_MESSAGE);
-        return;
-      }
-      setEmitTargetId(id);
-    },
-    [notasCredito, canEmit],
-  );
+  const handleEmitir = (id: number) => {
+    // El menú y el detalle ya lo muestran deshabilitado; se repite aquí por si
+    // la sesión cambió entre pintarlos y seleccionar.
+    if (!canWrite) {
+      toast.error(CREDIT_NOTE_EMIT_PERMISSION_REASON);
+      return;
+    }
+    const nota = notasCredito.find((item) => item.id === id);
+    if (nota && !totalEsAcreditable(nota.total)) {
+      toast.error(TOTAL_CERO_MESSAGE);
+      return;
+    }
+    setEmitTargetId(id);
+  };
   // El menú ya deshabilita "Cancelar nota" con CFDI timbrado o pendiente; se
   // repite aquí por si la fila cambió entre pintar el menú y seleccionar.
-  const handleCancel = useCallback(
-    (id: number) => {
-      const nota = notasCredito.find((item) => item.id === id);
-      const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
-      if (blockReason) {
-        toast.error(blockReason);
-        return;
-      }
-      setCancelTargetId(id);
-    },
-    [notasCredito],
-  );
-  const handleDelete = useCallback(
-    (id: number) => {
-      const nota = notasCredito.find((item) => item.id === id);
-      setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
-    },
-    [notasCredito],
-  );
+  const handleCancel = (id: number) => {
+    if (!canWrite) {
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      return;
+    }
+    const nota = notasCredito.find((item) => item.id === id);
+    const blockReason = nota ? getCreditNoteCancelBlockReason(nota) : null;
+    if (blockReason) {
+      toast.error(blockReason);
+      return;
+    }
+    setCancelTargetId(id);
+  };
+  const handleDelete = (id: number) => {
+    if (!canWrite) {
+      toast.error(CREDIT_NOTE_WRITE_PERMISSION_REASON);
+      return;
+    }
+    const nota = notasCredito.find((item) => item.id === id);
+    setDeleteTarget({ id, etiqueta: nota?.folio || `#${id}` });
+  };
 
-  const columns = useMemo(
-    () => getColumns(handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit),
-    [handleViewDetail, handleEmitir, handleCancel, handleDelete, canEmit],
+  // Callbacks del menú de fila: llegan por contexto, no por las columnas (ver
+  // `createRowActionsContext`). Las opciones de los filtros de encabezado se
+  // arman con el listado completo.
+  const rowActions = {
+    onViewDetail: handleViewDetail,
+    onEmitir: handleEmitir,
+    onCancel: handleCancel,
+    onDelete: handleDelete,
+    canWrite,
+  };
+  const columns = withHeaderFilters(
+    getCreditNoteColumns(),
+    notasCredito,
+    getCreditNoteHeaderFilters(),
   );
 
   // La nota cuyo detalle está abierto se busca contra el arreglo que esta vista
@@ -280,13 +278,14 @@ export default function CreditNoteList() {
   // cuerpo, de modo que el toolbar —búsqueda, filtros, refrescar, columnas y el
   // botón "+ Nueva nota"— sigue disponible durante la carga y ante un error.
   return (
+    <CreditNoteRowActionsProvider value={rowActions}>
     <div className="h-full flex flex-col min-h-0 space-y-6">
       <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
         columns={columns}
         data={notasCredito}
         baseDataCount={notasCredito.length}
-        searchPlaceholder="Buscar por folio, factura, cliente o motivo..."
+        searchPlaceholder="Buscar por folio, factura, cliente, motivo o CFDI..."
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
@@ -301,33 +300,45 @@ export default function CreditNoteList() {
         // Un alta nueva aparece tras invalidar; sin esto, quien esté parado en la
         // página 2 no vería la nota que acaba de registrar.
         paginationResetKey={notasCredito.length}
+        // Sin permiso de escritura no hay alta: el botón se oculta.
         actionButton={
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Nueva Nota de Crédito"
-                subtitle="Crédito sobre una factura con saldo por cobrar"
-                statusColor="violet"
-              />
-            }
-            open={isFormOpen}
-            onOpenChange={setIsFormOpen}
-            maxWidth="1100px"
-            trigger={
-              <Button
-                variant="primary"
-                rounded="full"
-                className="hover:scale-105 active:scale-95"
-              >
-                + Nueva nota
-              </Button>
-            }
-          >
-            {/* Se monta solo mientras el diálogo está abierto: así los catálogos
-                de sus selectores se piden bajo demanda y cada alta arranca
-                limpia. */}
-            {isFormOpen && <CreditNoteForm onSuccess={() => setIsFormOpen(false)} />}
-          </MainDialog>
+          canWrite ? (
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Nueva Nota de Crédito"
+                  subtitle="Crédito sobre una factura con saldo por cobrar"
+                  statusColor="violet"
+                  icon={NotaCreditoIcon}
+                />
+              }
+              open={isFormOpen}
+              onOpenChange={(open) => {
+                if (!open && formSubmitLockRef.current) return;
+                setIsFormOpen(open);
+              }}
+              maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
+              trigger={
+                <Button
+                  variant="primary"
+                  rounded="full"
+                  className="hover:scale-105 active:scale-95"
+                >
+                  + Nueva nota
+                </Button>
+              }
+            >
+              {/* Se monta solo mientras el diálogo está abierto: así los catálogos
+                  de sus selectores se piden bajo demanda y cada alta arranca
+                  limpia. */}
+              {isFormOpen && (
+                <CreditNoteForm
+                  onSuccess={() => setIsFormOpen(false)}
+                  submitLockRef={formSubmitLockRef}
+                />
+              )}
+            </MainDialog>
+          ) : undefined
         }
       />
       </div>
@@ -341,20 +352,26 @@ export default function CreditNoteList() {
           }}
           emitRejection={emitRejection?.id === detailNota.id ? emitRejection.message : null}
           onEmitir={() => handleEmitir(detailNota.id)}
-          isEmitting={emitLock.isPending(detailNota.id)}
+          isEmitting={emitLock.isPending(detailNota.id) || emittingIds.includes(detailNota.id)}
         />
       )}
 
       {emitTargetId !== null && (
         <ConfirmDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) setEmitTargetId(null);
-          }}
+          // En vuelo queda abierta y bloqueada (`guardClose`): Volver, X y Esc
+          // no la cierran; la cierra el resultado de la petición.
+          {...emitLock.guardClose(
+            emitTargetId,
+            () => setEmitTargetId(null),
+            emittingIds.includes(emitTargetId),
+          )}
           title="Emitir Nota de Crédito"
           description={`¿Deseas emitir la nota ${etiqueta(emitTargetId)}? Su total se descontará del saldo por cobrar de la factura ligada y podrá marcarla como pagada. Después de emitirla ya no podrá eliminarse. ${CREDIT_NOTE_EMIT_STAMP_WARNING}${emitUnstampedWarning ? ` ${emitUnstampedWarning}` : ""}`}
           confirmText={
-            emitLock.isPending(emitTargetId) ? "Emitiendo..." : "Emitir nota"
+            emitLock.isPending(emitTargetId) || emittingIds.includes(emitTargetId)
+              ? "Emitiendo..."
+              : "Emitir nota"
           }
           cancelText="Volver"
           // `closeOnConfirm={false}`: por defecto el diálogo se cierra al instante
@@ -363,12 +380,12 @@ export default function CreditNoteList() {
           // refetch terminaron.
           closeOnConfirm={false}
           // Guarda de reenvío: con `closeOnConfirm={false}` el diálogo sigue
-          // montado durante todo el viaje y `ConfirmDialog` no expone forma de
-          // deshabilitar su botón (solo cambia de etiqueta), así que un segundo
-          // clic dispararía un segundo PATCH. Dos emisiones de la misma nota
-          // descontarían su total DOS VECES del saldo de la cuenta por cobrar,
-          // porque el backend decide si aplicar el crédito comparando contra el
-          // estatus anterior, que ambas peticiones leerían como `Borrador`.
+          // montado durante todo el viaje, y `busy` deshabilita su botón solo
+          // desde el render siguiente; el candado de fila corta el segundo clic
+          // del mismo tick. Dos emisiones de la misma nota descontarían su
+          // total DOS VECES del saldo de la cuenta por cobrar, porque el
+          // backend decide si aplicar el crédito comparando contra el estatus
+          // anterior, que ambas peticiones leerían como `Borrador`.
           onConfirm={() => {
             const id = emitTargetId;
             if (!emitLock.acquire(id)) return;
@@ -393,13 +410,18 @@ export default function CreditNoteList() {
       {cancelTargetId !== null && (
         <ConfirmDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) setCancelTargetId(null);
-          }}
+          // En vuelo queda abierta y bloqueada (`guardClose`).
+          {...cancelLock.guardClose(
+            cancelTargetId,
+            () => setCancelTargetId(null),
+            cancellingIds.includes(cancelTargetId),
+          )}
           title="Cancelar Nota de Crédito"
           description={`¿Deseas cancelar la nota ${etiqueta(cancelTargetId)}? Si estaba emitida, su importe se devolverá al saldo por cobrar de la factura. La nota se conserva en el listado con estatus Cancelada.`}
           confirmText={
-            cancelLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar nota"
+            cancelLock.isPending(cancelTargetId) || cancellingIds.includes(cancelTargetId)
+              ? "Cancelando..."
+              : "Cancelar nota"
           }
           cancelText="Volver"
           closeOnConfirm={false}
@@ -426,9 +448,12 @@ export default function CreditNoteList() {
       {deleteTarget !== null && (
         <ConfirmDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null);
-          }}
+          // En vuelo queda abierta y bloqueada (`guardClose`).
+          {...deleteLock.guardClose(
+            deleteTarget.id,
+            () => setDeleteTarget(null),
+            deletingIds.includes(deleteTarget.id),
+          )}
           title="Eliminar Borrador"
           // El borrado del backend es FÍSICO, no baja lógica: se dice sin rodeos.
           // Solo se ofrece sobre borradores, que nunca tocaron ningún saldo.
@@ -436,7 +461,7 @@ export default function CreditNoteList() {
           // fila ya no está ahí mientras la mutación corre.
           description={`¿Deseas eliminar el borrador ${deleteTarget.etiqueta}? Se borrará de forma PERMANENTE y no podrá recuperarse. Si prefieres conservar el rastro del documento, cancélalo en vez de eliminarlo.`}
           confirmText={
-            deleteLock.isPending(deleteTarget.id)
+            deleteLock.isPending(deleteTarget.id) || deletingIds.includes(deleteTarget.id)
               ? "Eliminando..."
               : "Eliminar permanentemente"
           }
@@ -456,5 +481,6 @@ export default function CreditNoteList() {
         />
       )}
     </div>
+    </CreditNoteRowActionsProvider>
   );
 }

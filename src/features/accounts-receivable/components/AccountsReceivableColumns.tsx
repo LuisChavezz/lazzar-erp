@@ -1,72 +1,81 @@
 "use client";
 
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
-import type {
-  CuentaPorCobrarRow,
-  CxCEstatus,
-} from "../interfaces/accounts-receivable.interface";
+import type { CuentaPorCobrarRow } from "../interfaces/accounts-receivable.interface";
+import { useAccountsReceivableRowActionsContext } from "../hooks/useAccountsReceivableRowActions";
 
-// ── Badge de estatus ──────────────────────────────────────────────────────────
-// La config vive en `constants/cxcEstatus.ts` porque el diálogo de detalle
-// también la usa.
+// ── Folio: menú de la fila ────────────────────────────────────────────────────
 
-const EstatusBadge = ({ estatus }: { estatus: CxCEstatus }) => (
-  <StatusBadge status={estatus} config={CXC_ESTATUS_CONFIG} />
-);
-
-// ── Acciones de fila ──────────────────────────────────────────────────────────
-
-interface AccountsReceivableColumnsCallbacks {
-  /** Abre el detalle de la cuenta. El diálogo vive en `AccountsReceivableList`. */
-  onViewDetail: (id: number) => void;
-}
-
-const ActionsCell = ({
-  row,
-  onViewDetail,
-}: { row: CuentaPorCobrarRow } & AccountsReceivableColumnsCallbacks) => {
-  // "Registrar cobro" y "Ver factura" vivían aquí con `onSelect: () => {}`: se
-  // ofrecían al usuario y no hacían nada. Se retiran hasta que exista la
-  // funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
-  // "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
-  // "Pagada" y "Cancelada") y necesitará su código de permiso.
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(row.id) },
+/**
+ * Celda del folio: el folio ES el menú de la fila (`FolioActionMenu`) y debajo
+ * va su estatus —reemplaza las columnas aparte "Estatus" y "Acciones"—. "Ver
+ * detalle" es siempre la primera acción. El callback llega por contexto
+ * (`AccountsReceivableRowActionsProvider`), no por la factoría de columnas.
+ *
+ * "Registrar cobro" y "Ver factura" vivían en el menú con `onSelect: () => {}`:
+ * se ofrecían y no hacían nada. Se retiraron hasta que exista la
+ * funcionalidad — un menú que miente es peor que uno corto. Al reponerlas,
+ * "Registrar cobro" solo aplica con saldo pendiente (estatus distinto de
+ * "Pagada" y "Cancelada") y necesitará su código de permiso.
+ */
+function AccountsReceivableFolioCell({ cuenta }: { cuenta: CuentaPorCobrarRow }) {
+  const { onViewDetail } = useAccountsReceivableRowActionsContext();
+  const items: ActionMenuItem[] = [
+    { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(cuenta) },
   ];
-
   return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio_cxc}`} />
-    </div>
+    <FolioActionMenu
+      folio={cuenta.folio_cxc}
+      items={items}
+      // La config vive en `constants/cxcEstatus.ts`: la usan también el detalle
+      // y el seguimiento de la factura.
+      status={<StatusBadge status={cuenta.estatus} config={CXC_ESTATUS_CONFIG} />}
+    />
   );
-};
+}
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
 
 const columnHelper = createColumnHelper<CuentaPorCobrarRow>();
 
+/** Texto del cliente: su nombre resuelto, o `Cliente #N` si llega vacío. */
+const getClienteLabel = (cuenta: CuentaPorCobrarRow): string =>
+  cuenta.cliente_nombre || `Cliente #${cuenta.cliente}`;
+
 /**
- * Columnas del listado de CxC. El diálogo de detalle NO vive en una celda (las
- * celdas se desmontan al ordenar, paginar o filtrar): `onViewDetail` lo abre en
- * `AccountsReceivableList`.
+ * Columnas del listado de CxC. No reciben nada: el callback del menú llega por
+ * `AccountsReceivableRowActionsProvider`, así una acción no remonta las celdas.
+ * El diálogo de detalle NO vive en una celda (las celdas se desmontan al
+ * ordenar, paginar o filtrar): lo abre `AccountsReceivableList`.
  */
-export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivableColumnsCallbacks) => [
+export const getAccountsReceivableColumns = () => [
   columnHelper.accessor("folio_cxc", {
     header: "Folio CxC",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
-    ),
+    size: 170,
+    cell: (info) => <AccountsReceivableFolioCell cuenta={info.row.original} />,
   }),
-  columnHelper.accessor("cliente_nombre", {
+  // El estatus se pinta bajo el folio; esta columna, OCULTA por defecto, lo
+  // mantiene en la búsqueda global ("Cancelada") —TanStack busca también en
+  // las columnas ocultas— sin ensuciar el valor del folio, y en el selector de
+  // columnas por si alguien lo quiere ver aparte.
+  columnHelper.accessor("estatus", {
+    header: "Estatus",
+    meta: { hiddenByDefault: true },
+    cell: (info) => <StatusBadge status={info.getValue()} config={CXC_ESTATUS_CONFIG} />,
+  }),
+  // Mismo texto en la celda, la búsqueda y la opción del filtro.
+  columnHelper.accessor((row) => getClienteLabel(row), {
+    id: "cliente_nombre",
     header: "Cliente",
     cell: (info) => (
       <span className="text-slate-700 dark:text-slate-200">{info.getValue()}</span>
@@ -88,7 +97,8 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       </span>
     ),
   }),
-  columnHelper.accessor("fecha_vencimiento", {
+  columnHelper.accessor((row) => row.fecha_vencimiento ?? "", {
+    id: "fecha_vencimiento",
     header: "Vencimiento",
     cell: (info) => {
       // El resaltado de vencido usa la definición única `esta_vencida` (por
@@ -132,10 +142,6 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       </span>
     ),
   }),
-  columnHelper.accessor("estatus", {
-    header: "Estatus",
-    cell: (info) => <EstatusBadge estatus={info.getValue()} />,
-  }),
   columnHelper.accessor("dias_vencido", {
     header: "Días venc.",
     cell: (info) => {
@@ -151,10 +157,38 @@ export const getAccountsReceivableColumns = ({ onViewDetail }: AccountsReceivabl
       );
     },
   }),
-  columnHelper.display({
-    id: "actions",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} onViewDetail={onViewDetail} />,
-  }),
 ] as ColumnDef<CuentaPorCobrarRow>[];
+
+/**
+ * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
+ * Reemplazan los chips de `filterConfig` (EC-677), con la misma forma que CxP:
+ * - El folio filtra por `estatus` (su badge), con ficha "Estatus: …": el
+ *   catálogo completo de `CXC_ESTATUS_CONFIG` y, al final, cada valor
+ *   desconocido de las filas, crudo.
+ * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
+ *   crudo y se rotulan con el nombre (o `Cliente #N`), con buscador; dos
+ *   homónimos no se mezclan. Es obligatorio en el modelo: no hay "Sin cliente".
+ * - El vencimiento filtra «Vencida / Al corriente» con `esta_vencida`, la misma
+ *   regla (`isCuentaVencida`) que el resaltado, los KPIs y la antigüedad. Una
+ *   cuenta sin vencimiento, pagada o cancelada cuenta como al corriente.
+ *
+ * Filtrar NO toca los KPIs, la alerta ni la antigüedad: se calculan sobre el
+ * listado completo en `AccountsReceivableList`, no sobre las filas filtradas.
+ */
+export const getAccountsReceivableHeaderFilters = (): Partial<
+  Record<string, HeaderFilterSpec<CuentaPorCobrarRow>>
+> => ({
+  folio_cxc: {
+    type: "options",
+    filterLabel: "estatus",
+    get: (r) => r.estatus,
+    options: optionsFromConfig(CXC_ESTATUS_CONFIG),
+  },
+  cliente_nombre: { type: "distinct", get: (r) => r.cliente, label: getClienteLabel, searchable: true },
+  fecha_vencimiento: {
+    type: "boolean",
+    get: (r) => r.esta_vencida,
+    yes: "Vencida",
+    no: "Al corriente",
+  },
+});

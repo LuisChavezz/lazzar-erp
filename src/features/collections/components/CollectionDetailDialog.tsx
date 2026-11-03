@@ -6,10 +6,13 @@ import {
   EmptyLines,
   InfoField,
   InfoGrid,
+  InfoTile,
+  InfoTileGrid,
   LineItemsTable,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import {
   BanIcon,
@@ -36,6 +39,10 @@ import {
 } from "../utils/collection.utils";
 import { COBRO_REP_PENDING_MESSAGE, isCobroRepPending } from "../utils/cobroRepStamping";
 import { getCobroCancelBlockReason } from "../utils/cobroCancellation";
+import {
+  COBRO_REP_CANCELLATION_REQUESTED_HINT,
+  COBRO_REP_CANCELLATION_REQUESTED_LABEL,
+} from "../utils/cobroRepCancellation";
 import {
   COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE,
   COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
@@ -144,20 +151,42 @@ export function CollectionDetailDialog({
       maxWidth="900px"
       showCloseButton={true}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
-          <ReceiptIcon className="w-5 h-5 text-sky-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle del Cobro
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {cobroLabel(cobro)}
-            </p>
-          </div>
-        </div>
+        <DialogHeader
+          title="Detalle del Cobro"
+          subtitle={cobroLabel(cobro)}
+          statusColor="emerald"
+          icon={ReceiptIcon}
+        />
       }
     >
       <div className="space-y-5">
+        {/* Encabezado: lo que se busca primero al abrir el cobro. */}
+        <InfoTileGrid>
+          <InfoTile label="Estatus">
+            <StatusBadge status={cobro.estatus} config={COBRO_ESTATUS_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Cliente">{textOrDash(cobro.cliente_nombre)}</InfoTile>
+          <InfoTile label="Total cobrado">
+            <span className="tabular-nums">
+              <CobroAmount value={cobro.total_cobrado} moneda={moneda} />
+            </span>
+          </InfoTile>
+          <InfoTile label="Fecha de cobro">
+            {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". */}
+            {formatShortDate(cobro.fecha_cobro, { timeZone: "UTC" })}
+          </InfoTile>
+          <InfoTile label="Cuenta bancaria">{textOrDash(cobro.cuenta_bancaria_alias)}</InfoTile>
+          <InfoTile label="Método">
+            <StatusBadge status={cobro.metodo_pago} config={COBRO_METODO_PAGO_CONFIG} />
+          </InfoTile>
+          <InfoTile label="Referencia">
+            {COBRO_REFERENCIA_LABELS[cobro.referencia] ?? cobro.referencia}
+          </InfoTile>
+          <InfoTile label="Referencia de operación">
+            {textOrDash(cobro.referencia_operacion)}
+          </InfoTile>
+          <InfoTile label="Moneda">{textOrDash(moneda)}</InfoTile>
+        </InfoTileGrid>
         {/* Acciones del borrador y "Cancelar cobro": solo aquí, no en el menú de
             la fila. Cada diálogo vive en `CollectionList`. */}
         {(onEdit || onApply || onDelete) && (
@@ -234,38 +263,6 @@ export function CollectionDetailDialog({
           </div>
         )}
 
-        {/* ── Resumen ─────────────────────────────────────────────────── */}
-        <div>
-          <SectionTitle>Resumen</SectionTitle>
-          <div className="px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5">
-            <InfoGrid>
-              <InfoField label="Cliente">{textOrDash(cobro.cliente_nombre)}</InfoField>
-              <InfoField label="Fecha de cobro">
-                {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". */}
-                {formatShortDate(cobro.fecha_cobro, { timeZone: "UTC" })}
-              </InfoField>
-              <InfoField label="Cuenta bancaria">{textOrDash(cobro.cuenta_bancaria_alias)}</InfoField>
-              <InfoField label="Método">
-                <StatusBadge status={cobro.metodo_pago} config={COBRO_METODO_PAGO_CONFIG} />
-              </InfoField>
-              <InfoField label="Referencia">
-                {COBRO_REFERENCIA_LABELS[cobro.referencia] ?? cobro.referencia}
-              </InfoField>
-              <InfoField label="Referencia de operación">
-                {textOrDash(cobro.referencia_operacion)}
-              </InfoField>
-              <InfoField label="Total cobrado">
-                <span className="tabular-nums font-semibold">
-                  <CobroAmount value={cobro.total_cobrado} moneda={moneda} />
-                </span>
-              </InfoField>
-              <InfoField label="Estatus">
-                <StatusBadge status={cobro.estatus} config={COBRO_ESTATUS_CONFIG} />
-              </InfoField>
-            </InfoGrid>
-          </div>
-        </div>
-
         {cobro.observaciones && (
           <div>
             <SectionTitle>Observaciones</SectionTitle>
@@ -332,6 +329,16 @@ export function CollectionDetailDialog({
                   "No"
                 )}
               </InfoField>
+              {cobro.rep_cancelacion_solicitada && (
+                <InfoField label="Cancelación">
+                  <span
+                    className="text-amber-600 dark:text-amber-400"
+                    title={COBRO_REP_CANCELLATION_REQUESTED_HINT}
+                  >
+                    {COBRO_REP_CANCELLATION_REQUESTED_LABEL}
+                  </span>
+                </InfoField>
+              )}
             </InfoGrid>
           </div>
         </div>

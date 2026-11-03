@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
@@ -17,6 +18,8 @@ interface PrepararConciliacionFormProps {
   onPrepared: (resultado: PrepararConciliacionResponse) => void;
   /** Abre una conciliación ya existente en vez de preparar una nueva. */
   onOpenExisting: (conciliacion: ConciliacionBancaria) => void;
+  /** Candado del envío, del diálogo (ver `usePrepararConciliacionForm`). */
+  submitLockRef: RefObject<boolean>;
 }
 
 /**
@@ -30,6 +33,7 @@ interface PrepararConciliacionFormProps {
 export default function PrepararConciliacionForm({
   onPrepared,
   onOpenExisting,
+  submitLockRef,
 }: PrepararConciliacionFormProps) {
   const {
     form,
@@ -48,7 +52,7 @@ export default function PrepararConciliacionForm({
     clearFieldError,
     handleReset,
     handleFormSubmit,
-  } = usePrepararConciliacionForm({ onPrepared });
+  } = usePrepararConciliacionForm({ onPrepared, submitLockRef });
 
   if (isLoadingFormData) {
     return (

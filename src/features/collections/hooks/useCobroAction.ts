@@ -82,5 +82,5 @@ export const useCobroAction = <TResult extends { cobro: Cobro }>({
     mutation.mutate(undefined, { onSettled: options.onSettled });
   };
 
-  return { trigger, isRunning };
+  return { trigger, isRunning, isIdle };
 };

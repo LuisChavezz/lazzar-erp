@@ -29,7 +29,7 @@ interface CobroDraftApplyDialogProps {
 export function CobroDraftApplyDialog({ cobro, open, onOpenChange }: CobroDraftApplyDialogProps) {
   const session = useDialogSession(open, cobro);
   const target = session.snapshot;
-  const { apply, isApplying } = useApplyCobroDraft(target?.id ?? 0);
+  const { apply, isApplying, isIdle } = useApplyCobroDraft(target?.id ?? 0);
 
   const lineCount = target?.cobro_detalles.length ?? 0;
   // El código explícito: "$" solo no distingue MXN de USD.
@@ -51,6 +51,7 @@ export function CobroDraftApplyDialog({ cobro, open, onOpenChange }: CobroDraftA
       confirmColor="green"
       run={target ? apply : null}
       isRunning={isApplying}
+      isIdle={isIdle}
     />
   );
 }

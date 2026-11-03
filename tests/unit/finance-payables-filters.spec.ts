@@ -128,7 +128,8 @@ test.describe("pagos", () => {
     expect(t.matching("cuenta_bancaria_alias", "5").map((r) => r.id)).toEqual([3]);
   });
 
-  test("una cuenta sin alias se rotula `Cuenta #N` igual en la celda y en la opción", () => {
-    expect(t.cellText("cuenta_bancaria_alias", rows[0])).toBe("Cuenta #4");
+  test("una cuenta sin alias: `Cuenta #N` solo en la opción; la celda y la búsqueda quedan vacías («—»)", () => {
+    expect(t.cellText("cuenta_bancaria_alias", rows[0])).toBe("");
+    expect(labels(t.options("cuenta_bancaria_alias"))).toContain("Cuenta #4");
   });
 });

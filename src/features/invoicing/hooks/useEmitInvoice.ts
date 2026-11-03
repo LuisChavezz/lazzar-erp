@@ -210,5 +210,5 @@ export const useEmitInvoice = (invoiceId: number) => {
     );
   };
 
-  return { emit, isEmitting };
+  return { emit, isEmitting, isIdle };
 };

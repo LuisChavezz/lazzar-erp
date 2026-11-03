@@ -78,11 +78,14 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
   const target = session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
 
-  const { cancel, isCancelling } = useCancelInvoice(target?.id ?? 0);
+  const { cancel, isCancelling, isIdle } = useCancelInvoice(target?.id ?? 0);
 
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado (éxito o error) debe verse.
-    if (!next && isCancelling) return;
+    // `isIdle()` lee la caché de mutaciones de forma síncrona, así que vale
+    // desde el mismo clic de confirmar; `isCancelling` llega un render tarde
+    // y solo pinta.
+    if (!next && !isIdle()) return;
     onOpenChange(next);
   };
 
@@ -101,8 +104,8 @@ export function InvoiceCancelDialog({ invoice, open, onOpenChange }: InvoiceCanc
           target={target}
           isPending={isCancelling}
           onClose={() => handleOpenChange(false)}
-          // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
-          // `isCancelling` capturado en este render todavía no se actualizó.
+          // Cierre directo, sin pasar por `handleOpenChange`: la cancelación
+          // ya terminó.
           onSubmit={(variables, callbacks) =>
             cancel(variables, { onSuccess: () => onOpenChange(false), ...callbacks })
           }

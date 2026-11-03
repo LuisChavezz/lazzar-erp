@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { RefObject } from "react";
 import toast from "react-hot-toast";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import type { Invoice } from "../interfaces/invoice.interface";
 import type { InvoiceOnboardingData } from "../interfaces/invoice-onboarding.interface";
 import { invoiceOnboardingPayloadSchema } from "../schemas/invoice-onboarding.schema";
@@ -35,11 +37,16 @@ const clampToPending = (quantities: QuantityMap, data: InvoiceOnboardingData): Q
  * Estado del Paso 2 de "Nueva Factura": piezas por talla, estimación, envío y
  * resultado. Precedente: `usePickingStep2Form` (cantidades por talla con techo
  * en lo pendiente, recarga ante datos desactualizados).
+ *
+ * `submitLockRef` es el candado del envío y es del diálogo: se toma de forma
+ * SÍNCRONA al enviar (`runWithSubmitLock`) y se suelta cuando el POST termina,
+ * así que un doble clic no manda dos facturas —el `isPending` de la mutación
+ * llega un render tarde— y el diálogo no se cierra a media petición.
  */
-export function useInvoiceOnboardingStep2(pedidoId: number) {
+export function useInvoiceOnboardingStep2(pedidoId: number, submitLockRef: RefObject<boolean>) {
   const onboarding = useInvoiceOnboarding(pedidoId);
   const { data } = onboarding;
-  const { mutate, isPending } = useCreateInvoiceFromOnboarding();
+  const { mutateAsync, isPending } = useCreateInvoiceFromOnboarding();
 
   const [quantities, setQuantities] = useState<QuantityMap>(new Map());
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
@@ -91,8 +98,8 @@ export function useInvoiceOnboardingStep2(pedidoId: number) {
     setQuantities(new Map());
   };
 
-  const submit = () => {
-    if (!data || isPending || onboarding.isFetching) return;
+  const submitUnlocked = async () => {
+    if (!data || onboarding.isFetching) return;
     setStaleNotice(false);
     const parsed = invoiceOnboardingPayloadSchema.safeParse({
       pedido: data.pedido,
@@ -106,23 +113,26 @@ export function useInvoiceOnboardingStep2(pedidoId: number) {
       return;
     }
 
-    mutate(parsed.data, {
-      onSuccess: (invoice) => {
-        setErrorMessages([]);
-        setCreatedInvoice(invoice);
-      },
-      onError: (error) => {
-        const { messages, isStalePending } = parseCreateInvoiceError(error);
-        setErrorMessages(messages);
-        if (isStalePending) {
-          // Otra factura tomó esas piezas: se recargan los pendientes (lo
-          // capturado se recorta a ellos) y se deja reintentar.
-          setStaleNotice(true);
-          void onboarding.refetch();
-          toast("Las piezas pendientes cambiaron; se actualizaron los datos.", { icon: "ℹ️" });
-        }
-      },
-    });
+    try {
+      const invoice = await mutateAsync(parsed.data);
+      setErrorMessages([]);
+      setCreatedInvoice(invoice);
+    } catch (error) {
+      const { messages, isStalePending } = parseCreateInvoiceError(error);
+      setErrorMessages(messages);
+      if (isStalePending) {
+        // Otra factura tomó esas piezas: se recargan los pendientes (lo
+        // capturado se recorta a ellos) y se deja reintentar.
+        setStaleNotice(true);
+        void onboarding.refetch();
+        toast("Las piezas pendientes cambiaron; se actualizaron los datos.", { icon: "ℹ️" });
+      }
+    }
+  };
+
+  /** Envía bajo el candado: el segundo clic o Enter con un envío en curso no hace nada. */
+  const submit = () => {
+    void runWithSubmitLock(submitLockRef, submitUnlocked);
   };
 
   return {

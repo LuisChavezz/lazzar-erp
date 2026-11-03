@@ -119,6 +119,13 @@ const fetchFreshRelatedInvoice = async (
  * de la factura y puede marcarla `Pagada`. El refresco también vale ante un
  * error: un fallo del timbrado puede llegar con la nota ya escrita.
  */
+/**
+ * Llave de la emisión: con ella el listado lee de la `MutationCache` qué notas
+ * tienen una emisión en vuelo (`usePendingRecordIds`; las variables llevan el
+ * `id`), aunque la vista se haya remontado y su candado de fila esté vacío.
+ */
+export const emitirNotaCreditoMutationKey = ["emitir-nota-credito"] as const;
+
 export const useEmitirNotaCredito = ({
   onRejectedToDraft,
 }: {
@@ -128,6 +135,7 @@ export const useEmitirNotaCredito = ({
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: emitirNotaCreditoMutationKey,
     mutationFn: async ({ id }: EmitirNotaCreditoVariables) => {
       // Nota y factura FRESCAS antes del PATCH (`fetchFresh`, staleTime 0): otra
       // sesión pudo emitir o cancelar la nota, o borrar la factura, desde que se

@@ -44,7 +44,7 @@ export type CancelCobroRepResult =
 export const useCancelCobroRep = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: cancelRep, isRunning: isCancellingRep } = useCobroAction<CancelCobroRepResult>({
+  const { trigger: cancelRep, isRunning: isCancellingRep, isIdle } = useCobroAction<CancelCobroRepResult>({
     mutationKey: cancelCobroRepMutationKey(cobroId),
     cobroId,
     run: async (current) => {
@@ -74,5 +74,5 @@ export const useCancelCobroRep = (cobroId: number) => {
     },
   });
 
-  return { cancelRep, isCancellingRep };
+  return { cancelRep, isCancellingRep, isIdle };
 };

@@ -45,19 +45,36 @@ export const canStampCreditNote = (
 ): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
 
 /**
- * ¿Puede ESTE usuario emitir notas de crédito? Emitir timbra el CFDI de egreso,
- * y el backend le exige el mismo permiso que a `timbrar/` (`E-FIN-FACTURAS`,
- * #725): sin él responde `403` sin guardar nada. Misma regla que
- * `canStampCreditNote`, rol "admin" incluido. El backend solo lo exige en la
- * empresa dueña de la cuenta de Facturama, que el front no conoce: en otra
- * empresa esto bloquea de más, igual que "Timbrar".
+ * Permiso de ESCRITURA de notas de crédito: crear (borrador o emitida),
+ * emitir, cancelar, eliminar y timbrar. El backend exige `E-FIN-FACTURAS` en
+ * toda escritura del viewset de notas (#752; desde EC-711 en toda escritura de
+ * Finanzas) y responde `403` sin guardar nada. El mismo código que
+ * `INVOICE_STAMP_PERMISSION`.
  */
-export const canEmitCreditNote = (user: PermissionContext | null | undefined): boolean =>
-  hasPermission(INVOICE_STAMP_PERMISSION, user);
+export const CREDIT_NOTE_WRITE_PERMISSION = INVOICE_STAMP_PERMISSION;
+
+/**
+ * ¿Puede ESTE usuario escribir notas de crédito? (`CREDIT_NOTE_WRITE_PERMISSION`,
+ * rol "admin" incluido). Convención del módulo: sin él, "+ Nueva nota" se oculta
+ * y las acciones del menú y del detalle se muestran deshabilitadas con su motivo.
+ */
+export const canWriteCreditNotes = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(CREDIT_NOTE_WRITE_PERMISSION, user);
+
+/** Por qué una acción de escritura está bloqueada cuando `canWriteCreditNotes` es `false`. */
+export const CREDIT_NOTE_WRITE_PERMISSION_REASON =
+  "No tienes permiso para registrar o cancelar notas de crédito.";
+
+/**
+ * ¿Puede ESTE usuario emitir notas de crédito? Es una escritura más
+ * (`canWriteCreditNotes`); se conserva el nombre porque emitir además intenta
+ * timbrar el CFDI de egreso, y su motivo lo dice.
+ */
+export const canEmitCreditNote = canWriteCreditNotes;
 
 /** Por qué "Emitir" está bloqueado cuando `canEmitCreditNote` es `false`. */
 export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
-  "No tienes permiso para emitir notas de crédito: si la empresa timbra con Facturama, emitir intenta timbrar su CFDI y requiere el permiso de facturación.";
+  "No tienes permiso para emitir notas de crédito: emitir registra la nota en la cuenta por cobrar e intenta timbrar su CFDI, y requiere el permiso de facturación.";
 
 const relatedInvoiceLabel = (folio: string | null): string =>
   folio ? `La factura ${folio}` : "La factura relacionada";
@@ -104,8 +121,8 @@ export const getRelatedInvoiceEmitBlockReason = (
     cfdi_pendiente?: boolean;
   },
 ): string | null => {
-  // Eliminada (baja lógica): el backend NO lo valida al emitir (ver
-  // `getInvoiceEmitPrecheckReason`). Solo un `false` explícito bloquea.
+  // Eliminada (baja lógica): el backend también la rechaza (#736), pero aquí se
+  // avisa antes de intentarlo. Solo un `false` explícito bloquea.
   if (invoice.activo === false) return getInvoiceNotCreditableReason(invoice.folio, invoice);
   const cancelledReason = getRelatedInvoiceCancelledReason(invoice);
   if (cancelledReason) return cancelledReason;
@@ -121,10 +138,10 @@ const invoiceStampPendingReason = (folio: string | null): string =>
  * FRESCA (`undefined` si respondió `404`), o `null`. Deliberadamente estrecho:
  * solo lo que el backend no rechaza bien.
  *
- * - Eliminada (`activo` distinto de `true`) o inexistente: `validar_factura` no
- *   mira `activo`, así que el backend aplicaría el crédito y timbraría un CFDI
- *   relacionado a una factura borrada. PROVISIONAL hasta que el backend lo
- *   valide (nucleo-erp #736).
+ * - Eliminada (`activo` distinto de `true`) o inexistente: desde nucleo-erp
+ *   #736 `validar_factura` la rechaza con un `400` en `factura` ("La factura
+ *   está dada de baja."); se detiene antes del PATCH para avisar con el mismo
+ *   motivo que el resto del módulo.
  * - Timbrado pendiente (`cfdi_pendiente`): el backend lo rechaza sin guardar
  *   nada, pero con un `cfdi` que no dice en qué quedó la nota; aquí se da el
  *   motivo exacto.

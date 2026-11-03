@@ -8,26 +8,21 @@ import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { WarningFilledIcon, RejectIcon } from "@/src/components/Icons";
 import { formatCurrencyTotalsInline } from "@/src/components/CurrencyTotalsValue";
-import { getAccountsReceivableColumns } from "./AccountsReceivableColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import {
+  getAccountsReceivableColumns,
+  getAccountsReceivableHeaderFilters,
+} from "./AccountsReceivableColumns";
 import { AccountsReceivableDetailDialog } from "./AccountsReceivableDetailDialog";
 import { AccountsReceivableAgingSummary } from "./AccountsReceivableAgingSummary";
 import { RegisterPendingInvoiceDialog } from "./RegisterPendingInvoiceDialog";
 import { useCuentasPorCobrar } from "../hooks/useCuentasPorCobrar";
+import { AccountsReceivableRowActionsProvider } from "../hooks/useAccountsReceivableRowActions";
 import {
   computeAgingBuckets,
   computeCxcKpis,
   mapCuentasToRows,
 } from "../utils/accounts-receivable.utils";
-
-// Valores exactos del estatus del backend. El filtro de la tabla es en cliente:
-// `DataTable` compara `String(fila.estatus) === value`, así que las opciones
-// deben coincidir con los strings reales de la respuesta.
-const ESTATUS_FILTER = [
-  { value: "Pendiente", label: "Pendiente" },
-  { value: "Parcial", label: "Parcial" },
-  { value: "Pagada", label: "Pagada" },
-  { value: "Cancelada", label: "Cancelada" },
-];
 
 /**
  * `today` es el día del backend ("YYYY-MM-DD") que calcula UNA vez
@@ -40,7 +35,6 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   // Detalle abierto, por id: el diálogo trae su propia cuenta, así que sigue
   // abierto (y se refresca) aunque la fila salga del filtro o de la página.
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
-  const columns = getAccountsReceivableColumns({ onViewDetail: setOpenDetailId });
 
   // Ver el listado exige `R-CONTABILIDAD-CXC` (ver `routePermissions`);
   // registrar una CxC exige además `C-CONTABILIDAD-CXC`. `hasPermission` ya
@@ -57,6 +51,13 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   const rows = mapCuentasToRows(cuentas, today);
   const kpis = computeCxcKpis(cuentas, today);
   const agingGroups = computeAgingBuckets(cuentas, today);
+  // Las opciones de los filtros de encabezado se arman con el listado completo;
+  // filtrar la tabla no toca `kpis` ni `agingGroups` (salen de `cuentas`).
+  const columns = withHeaderFilters(
+    getAccountsReceivableColumns(),
+    rows,
+    getAccountsReceivableHeaderFilters(),
+  );
 
   const showBanner = !showError && !bannerDismissed && kpis.cuentasVencidas > 0;
 
@@ -66,21 +67,25 @@ export const AccountsReceivableList = ({ today }: { today: string }) => {
   // (recibe `isLoading`/`isError` y alterna solo su cuerpo), así que el botón
   // sigue disponible aunque el listado esté cargando o haya fallado.
   const table = (
-    <DataTable
-      columns={columns}
-      data={rows}
-      searchPlaceholder="Buscar folio, cliente o factura..."
-      filterConfig={[{ id: "estatus", label: "Estatus", options: ESTATUS_FILTER }]}
-      onRefetch={refetch}
-      isRefetching={isFetching}
-      emptyMessage="No hay cuentas por cobrar registradas."
-      actionButton={canCreate ? <RegisterPendingInvoiceDialog /> : undefined}
-      isLoading={isLoading}
-      isError={showError}
-      errorTitle="Error al cargar las cuentas por cobrar"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
-      loadingAriaLabel="Cargando cuentas por cobrar"
-    />
+    <AccountsReceivableRowActionsProvider
+      value={{ onViewDetail: (cuenta) => setOpenDetailId(cuenta.id) }}
+    >
+      <DataTable
+        columns={columns}
+        data={rows}
+        searchPlaceholder="Buscar folio, cliente o factura..."
+        onRefetch={refetch}
+        isRefetching={isFetching}
+        emptyMessage="No hay cuentas por cobrar registradas."
+        actionButton={canCreate ? <RegisterPendingInvoiceDialog /> : undefined}
+        isLoading={isLoading}
+        isError={showError}
+        errorTitle="Error al cargar las cuentas por cobrar"
+        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
+        loadingAriaLabel="Cargando cuentas por cobrar"
+        getRowId={(row) => String(row.id)}
+      />
+    </AccountsReceivableRowActionsProvider>
   );
 
   // Un único `return`: la tabla se monta SIEMPRE (su toolbar mantiene

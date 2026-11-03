@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { ReceiptIcon } from "@/src/components/Icons";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { getCollectionColumns } from "./CollectionColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { getCollectionColumns, getCollectionHeaderFilters } from "./CollectionColumns";
 import { CollectionDetailDialog } from "./CollectionDetailDialog";
 import { CreateCobroForm } from "./CreateCobroForm";
 import { CobroRepStampDialog } from "./CobroRepStampDialog";
@@ -37,6 +40,10 @@ export function CollectionList() {
   const { data: session } = useSession();
   const canCreate = hasPermission(COBRO_CREATE_PERMISSION, session?.user);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // Candado del alta (ver `useCreateCobroForm`): se toma al enviar, ANTES de la
+  // validación, así que el diálogo no se cierra (Cerrar, X, Esc) desde el primer
+  // frame; cerrarlo a medias escondería su resultado. Se lee en el handler.
+  const createSubmitLockRef = useRef(false);
 
   // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
   // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
@@ -71,11 +78,15 @@ export function CollectionList() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const deleteCobro = deleteId !== null ? rows.find((row) => row.id === deleteId) ?? null : null;
 
-  const columns = getCollectionColumns({ onViewDetail: setOpenDetailId });
+  // Columnas estáticas; las opciones de los filtros se arman con el listado
+  // completo.
+  const columns = withHeaderFilters(getCollectionColumns(), rows, getCollectionHeaderFilters());
 
-  // "Timbrar REP" depende de la sesión: va por contexto para que las columnas
-  // no cambien (y las celdas no se remonten) cuando la sesión se resuelve.
+  // Callbacks y "Timbrar REP" (que depende de la sesión) van por contexto para
+  // que las columnas no cambien (y las celdas no se remonten) cuando la sesión
+  // se resuelve.
   const rowActions = {
+    onViewDetail: (cobro: CobroRow) => setOpenDetailId(cobro.id),
     canStampRep: (cobro: CobroRow) => canStampCobroRep(cobro, session?.user),
     onStampRep: setStampRepId,
   };
@@ -130,11 +141,15 @@ export function CollectionList() {
                   title="Registrar Cobro"
                   subtitle="Aplicación contra cuentas por cobrar"
                   statusColor="emerald"
+                  icon={ReceiptIcon}
                 />
               }
               open={isFormOpen}
-              onOpenChange={setIsFormOpen}
-              maxWidth="1100px"
+              onOpenChange={(open) => {
+                if (!open && createSubmitLockRef.current) return;
+                setIsFormOpen(open);
+              }}
+              maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
               trigger={
                 <Button variant="primary" rounded="full" className="hover:scale-105 active:scale-95">
                   + Nuevo cobro
@@ -143,7 +158,9 @@ export function CollectionList() {
             >
               {/* Montado solo con el diálogo abierto: los catálogos se piden bajo
                   demanda y cada alta arranca limpia. */}
-              {isFormOpen && <CreateCobroForm onSuccess={() => setIsFormOpen(false)} />}
+              {isFormOpen && (
+                <CreateCobroForm onSuccess={() => setIsFormOpen(false)} submitLockRef={createSubmitLockRef} />
+              )}
             </MainDialog>
           ) : undefined
         }

@@ -32,7 +32,7 @@ export const cancelCobroMutationKey = (cobroId: number) => ["cancel-cobro", cobr
 export const useCancelCobro = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: cancel, isRunning: isCancelling } = useCobroAction<{ cobro: Cobro }>({
+  const { trigger: cancel, isRunning: isCancelling, isIdle } = useCobroAction<{ cobro: Cobro }>({
     mutationKey: cancelCobroMutationKey(cobroId),
     cobroId,
     run: async (current) => {
@@ -65,5 +65,5 @@ export const useCancelCobro = (cobroId: number) => {
     },
   });
 
-  return { cancel, isCancelling };
+  return { cancel, isCancelling, isIdle };
 };

@@ -32,7 +32,8 @@ const isOverdue = (invoice: InvoiceListRow, today: Date) => {
 };
 
 export const InvoiceStats = () => {
-  const { invoices, hasLoaded, isLoading, isError } = useInvoices();
+  // Sin las eliminadas: no cuentan en ningún indicador.
+  const { invoices, hasLoaded, isLoading, isError } = useInvoices({ excludeDeleted: true });
 
   // Solo ocultamos por completo los KPIs cuando la consulta nunca cargó con
   // éxito; un error de refetch transitorio no debe borrar las tarjetas ya

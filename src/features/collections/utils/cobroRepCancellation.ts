@@ -11,6 +11,18 @@ import { cobroLabel } from "./collection.utils";
 type CobroRepCancelState = Pick<Cobro, "rep_uuid" | "rep_facturama_id">;
 
 /**
+ * Indicador de la cancelación del REP que espera la aceptación del receptor
+ * (`rep_cancelacion_solicitada`): mismo texto que el de una factura en ese
+ * estado. El REP sigue vigente hasta que la acepte y se resuelve volviendo a
+ * cancelarlo; no es un estado obsoleto.
+ */
+export const COBRO_REP_CANCELLATION_REQUESTED_LABEL = "Cancelación pendiente de aceptar";
+
+/** Explicación del indicador (`title` en el listado y nota del detalle). */
+export const COBRO_REP_CANCELLATION_REQUESTED_HINT =
+  "Se solicitó cancelar el REP ante el SAT; falta que el receptor la acepte.";
+
+/**
  * ¿Se puede cancelar el REP de este cobro? Exactamente la guarda del backend:
  * UUID e id de Facturama, los dos. A propósito NO filtra por `estatus`: el
  * backend cancela el REP de un cobro en cualquier estatus, incluido un

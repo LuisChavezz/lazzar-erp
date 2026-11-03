@@ -27,7 +27,7 @@ export function InvoiceStampDialog({ invoice, open, onOpenChange }: InvoiceStamp
   const target = session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
 
-  const { stamp, isStamping } = useStampInvoice(target?.id ?? 0);
+  const { stamp, isStamping, isIdle } = useStampInvoice(target?.id ?? 0);
 
   return (
     <StampConfirmDialog
@@ -36,11 +36,11 @@ export function InvoiceStampDialog({ invoice, open, onOpenChange }: InvoiceStamp
       title="Timbrar factura"
       description={`Se timbrará el CFDI de la factura ${invoiceLabel} ante el SAT. Es un acto fiscal irreversible: una vez timbrado, el CFDI solo puede anularse cancelándolo ante el SAT.`}
       isStamping={isStamping}
+      isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;
-        // Cierre directo, sin pasar por la guarda de `StampConfirmDialog`: al
-        // terminar, el `isStamping` capturado en este render todavía no se
-        // actualizó.
+        // Cierre directo, sin pasar por la guarda de `StampConfirmDialog`: el
+        // timbrado ya terminó y quien lo pidió es el propio flujo.
         stamp({ onSettled: () => onOpenChange(false) });
       }}
     />

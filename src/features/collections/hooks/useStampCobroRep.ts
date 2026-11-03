@@ -41,7 +41,7 @@ export type StampCobroRepResult =
 export const useStampCobroRep = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: stamp, isRunning: isStamping } = useCobroAction<StampCobroRepResult>({
+  const { trigger: stamp, isRunning: isStamping, isIdle } = useCobroAction<StampCobroRepResult>({
     mutationKey: stampCobroRepMutationKey(cobroId),
     cobroId,
     run: async (current) => {
@@ -70,5 +70,5 @@ export const useStampCobroRep = (cobroId: number) => {
     },
   });
 
-  return { stamp, isStamping };
+  return { stamp, isStamping, isIdle };
 };

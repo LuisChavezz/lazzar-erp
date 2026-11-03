@@ -18,6 +18,7 @@ import {
   isAmountOnlyKpiHidden,
 } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { hiddenAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
+import { isPurchaseOrderReceiptKpisSinEmpresa } from "@/src/features/purchase-orders/utils/kpiSinEmpresa";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import {
   formatKpiPctOrDash,
@@ -121,14 +122,16 @@ function partialCard(kpi: PurchaseOrderReceiptPartialKpi): KpiCompactItem {
  *
  * Todo el indicador es un importe: sin permiso de contabilidad el backend manda
  * el bloque no disponible y la tarjeta se queda con "No visible", sin drill-down.
+ * Sin empresa conserva su propio motivo.
  */
 function priceCard(
   kpi: PurchaseOrderReceiptPriceKpi,
-  puedeVerImportes: boolean | undefined,
+  puedeVerImportes: boolean,
+  sinEmpresa: boolean,
   onOpen: () => void,
 ): KpiCompactItem {
   const base = { label: "Diferencias de precio/costo", icon: WalletIcon };
-  if (isAmountOnlyKpiHidden(kpi.disponible, puedeVerImportes)) {
+  if (isAmountOnlyKpiHidden(puedeVerImportes, sinEmpresa)) {
     return hiddenAmountCard(base, HIDDEN_KPI_AMOUNTS_REASON);
   }
   if (!kpi.disponible) return unavailable(base, kpi.motivo);
@@ -227,14 +230,16 @@ function rejectedCard(
   };
 }
 
-function buildCards(
+/** Exportada para las pruebas unitarias (`tests/unit/procurement-kpi-scope.spec.ts`). */
+export function buildCards(
   data: PurchaseOrderReceiptKpis,
   openDialog: (kind: PurchaseOrderReceiptKpiDialogKind) => void,
 ): KpiCompactItem[] {
+  const sinEmpresa = isPurchaseOrderReceiptKpisSinEmpresa(data);
   return [
     fulfillmentCard(data.cumplimiento_cantidad, () => openDialog("cumplimiento_cantidad")),
     partialCard(data.recepciones_parciales),
-    priceCard(data.diferencia_precio, data.puede_ver_importes, () => openDialog("diferencia_precio")),
+    priceCard(data.diferencia_precio, data.puede_ver_importes, sinEmpresa, () => openDialog("diferencia_precio")),
     rejectedCard(
       data.material_rechazado,
       canSeeKpiAmounts(data.puede_ver_importes),

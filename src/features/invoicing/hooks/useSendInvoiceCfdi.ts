@@ -77,17 +77,22 @@ export const useSendInvoiceCfdi = (invoiceId: number) => {
    * síncrona a la caché). `onSuccess` corre al terminar sin error (enviado o
    * detenido por el precheck, que ya avisó); `onError`, con el fallo
    * clasificado (mismo mensaje que el toast).
+   *
+   * Devuelve una promesa que se resuelve al TERMINAR, con cualquier resultado
+   * (nunca rechaza): el diálogo la espera para soltar su candado de envío
+   * (`runWithSubmitLock`). Va sobre `mutateAsync`, que se resuelve aunque el
+   * observador se desmonte.
    */
   const send = (
     email: string,
     options: { onSuccess?: () => void; onError?: (failure: SendInvoiceCfdiFailure) => void } = {},
-  ) => {
-    if (!isIdle()) return;
-    mutation.mutate(email, {
-      onSuccess: () => options.onSuccess?.(),
-      onError: (error) => options.onError?.(failureOf(error)),
-    });
+  ): Promise<void> => {
+    if (!isIdle()) return Promise.resolve();
+    return mutation.mutateAsync(email).then(
+      () => options.onSuccess?.(),
+      (error: unknown) => options.onError?.(failureOf(error)),
+    );
   };
 
-  return { send, isSending };
+  return { send, isSending, isIdle };
 };

@@ -36,10 +36,17 @@ import { logUnexpectedError } from "../utils/creditNoteErrors";
  * no desenvuelve, dejando al usuario con un "Request failed with status code
  * 400" en vez del motivo real y de qué hacer al respecto.
  */
+/**
+ * Llave del borrado: el listado lee de la `MutationCache` qué notas tienen un
+ * borrado en vuelo (`usePendingRecordIds`; la variable es el id).
+ */
+export const deleteNotaCreditoMutationKey = ["eliminar-nota-credito"] as const;
+
 export const useDeleteNotaCredito = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deleteNotaCreditoMutationKey,
     mutationFn: (id: number) => deleteNotaCredito(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["credit-notes"] });

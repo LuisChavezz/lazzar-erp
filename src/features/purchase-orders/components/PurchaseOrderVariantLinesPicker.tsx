@@ -6,6 +6,7 @@ import { LoadingSpinnerIcon } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { usePurchaseOrderVariantSearch } from "../hooks/usePurchaseOrderVariantSearch";
+import { onboardingSearchRejection } from "../utils/onboardingLoadError";
 import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
 import {
   lineFromVariante,
@@ -46,8 +47,10 @@ export function PurchaseOrderVariantLinesPicker({
   const [query, setQuery] = useState("");
   // La búsqueda pega al servidor: 350 ms, como el onboarding de etiquetas RFID.
   const debouncedQuery = useDebounce(query.trim(), 350);
-  const { variantes, hasLoaded, isInitialError, isFetching, isPlaceholderData, refetch } =
+  const { variantes, hasLoaded, isInitialError, error, isFetching, isPlaceholderData, refetch } =
     usePurchaseOrderVariantSearch(debouncedQuery);
+  // Un 4xx definitivo trae su motivo y no se ofrece "Reintentar".
+  const rejection = isInitialError ? onboardingSearchRejection(error) : undefined;
 
   // Fijados: primero los guardados (en su orden), luego los marcados en la
   // sesión que no son guardados.
@@ -88,14 +91,20 @@ export function PurchaseOrderVariantLinesPicker({
 
         {isInitialError ? (
           <div className="rounded-xl border border-red-100 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300">
-            No se pudieron buscar los SKU.{" "}
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="font-semibold underline cursor-pointer"
-            >
-              Reintentar
-            </button>
+            {rejection ? (
+              `No se pudieron buscar los SKU: ${rejection}`
+            ) : (
+              <>
+                No se pudieron buscar los SKU.{" "}
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="font-semibold underline cursor-pointer"
+                >
+                  Reintentar
+                </button>
+              </>
+            )}
           </div>
         ) : !hasLoaded ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">

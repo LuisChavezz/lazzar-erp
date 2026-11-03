@@ -8,8 +8,7 @@ import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, EmbarquesIcon, ShieldCheckIcon, StarIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatKpiDias, formatKpiPct, formatKpiPctOrDash, plural } from "@/src/utils/kpiFormat";
-import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNTS_REASON } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
-import { hiddenAmountCard } from "@/src/features/purchase-orders/utils/kpiAmountCards";
+import { isSupplierKpisSinEmpresa } from "@/src/features/purchase-orders/utils/kpiSinEmpresa";
 import { supplierKpisQueryKey, useSupplierKpis } from "../hooks/useSupplierKpis";
 import type { SupplierKpiRow, SupplierKpis } from "../interfaces/supplier-kpis.interface";
 import {
@@ -20,6 +19,7 @@ import {
   getSupplierKpiTruncationNote,
 } from "../utils/supplierKpis";
 import { SupplierKpiDialog, type SupplierKpiDialogKind } from "./SupplierKpiDialog";
+import { SupplierKpiDetailDialog, type SupplierKpiDetailTarget } from "./SupplierKpiDetailDialog";
 
 const SECTION_TITLE = "Indicadores";
 
@@ -118,15 +118,12 @@ function leadTimeCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactIte
 }
 
 /**
- * Scorecard: cuántos proveedores están en verde. Su puntaje se deriva también
- * de precios, así que sin importes a la vista la tarjeta se queda con "No
- * visible", como los importes de OC y de recepciones. Sin semáforo a nivel
- * tarjeta y SIN drill-down: el puntaje nunca se muestra.
+ * Scorecard: cuántos proveedores están en verde. Se muestra con o sin permiso
+ * de importes: el factor de precio entra al puntaje por su porcentaje, que no
+ * es un importe (backend #859). Sin semáforo a nivel tarjeta. Su drill-down es
+ * el ranking por puntaje, y cada proveedor abre su detalle por factor.
  */
-function scorecardCard(rows: SupplierKpiRow[], showAmounts: boolean): KpiCompactItem {
-  if (!showAmounts) {
-    return hiddenAmountCard(LABELS.scorecard, `El puntaje incluye la diferencia de precio. ${HIDDEN_KPI_AMOUNTS_REASON}`);
-  }
+function scorecardCard(rows: SupplierKpiRow[], onOpen: () => void): KpiCompactItem {
   const { enVerde, evaluados } = aggregateScorecard(rows);
   return {
     ...LABELS.scorecard,
@@ -138,15 +135,19 @@ function scorecardCard(rows: SupplierKpiRow[], showAmounts: boolean): KpiCompact
       "sin fechas de entrega estimada) no cuenta.",
     hideProgress: true,
     detail: evaluados > 0 ? "en verde" : "Sin proveedores evaluados",
+    action: (
+      <KpiDrillDownButton label="Por proveedor" ariaLabel="Ver scorecard por proveedor" isEmpty={evaluados === 0} onClick={onOpen} />
+    ),
   };
 }
 
-function buildCards(
+/** Exportada para las pruebas unitarias (`tests/unit/procurement-kpi-scope.spec.ts`). */
+export function buildCards(
   data: SupplierKpis,
   openDialog: (kind: SupplierKpiDialogKind) => void,
 ): KpiCompactItem[] {
   // Sin empresa el backend lo dice a nivel raíz: las cuatro tarjetas con su motivo.
-  if (!data.disponible) {
+  if (isSupplierKpisSinEmpresa(data)) {
     return Object.values(LABELS).map((base) => unavailable(base, data.motivo));
   }
   const rows = data.proveedores;
@@ -157,7 +158,7 @@ function buildCards(
     onTimeCard(rows, () => openDialog("entrega_a_tiempo")),
     qualityCard(rows, () => openDialog("calidad")),
     leadTimeCard(rows, () => openDialog("lead_time")),
-    scorecardCard(rows, canSeeKpiAmounts(data.puede_ver_importes)),
+    scorecardCard(rows, () => openDialog("scorecard")),
   ];
   // Con el ranking cortado, cada agregado lo dice en su ⓘ (las tarjetas no
   // disponibles no agregan nada).
@@ -177,6 +178,11 @@ function SupplierKpisSectionContent() {
     setDialogKind(kind);
     setIsDialogOpen(true);
   };
+
+  // Detalle por factor de un proveedor, abierto desde el ranking del Scorecard
+  // y apilado sobre él: al cerrarlo se vuelve al ranking. Vive aquí y no en
+  // una fila del ranking (las filas se rearman en cada refetch).
+  const [detailSupplier, setDetailSupplier] = useState<SupplierKpiDetailTarget | null>(null);
 
   let body: ReactNode;
   if (data) {
@@ -202,6 +208,12 @@ function SupplierKpisSectionContent() {
         kind={dialogKind}
         data={data}
         onClose={() => setIsDialogOpen(false)}
+        onOpenSupplier={(row) => setDetailSupplier({ id: row.proveedor_id, nombre: row.proveedor_nombre })}
+      />
+      <SupplierKpiDetailDialog
+        open={detailSupplier !== null}
+        supplier={detailSupplier}
+        onClose={() => setDetailSupplier(null)}
       />
     </>
   );
@@ -211,17 +223,18 @@ function SupplierKpisSectionContent() {
  * Indicadores de proveedores (`GET /terceros/proveedores/kpis/`, EC-436):
  * entrega a tiempo, calidad, lead time y scorecard, en ese orden. El backend
  * manda un ranking por proveedor; las tarjetas suman sus conteos
- * (`utils/supplierKpis.ts`) y cada drill-down es ese mismo ranking.
+ * (`utils/supplierKpis.ts`) y cada drill-down es ese mismo ranking. El del
+ * Scorecard abre además el detalle por factor de un proveedor
+ * (`kpis-detalle/`, `SupplierKpiDetailDialog`).
  *
  * Tiene su propia consulta: carga y falla dentro de la sección sin tocar la
  * tabla de proveedores. La ruta ya exige `R-COMPRAS-PROV` (`routePermissions`).
  *
- * Gate de importes SOLO para el Scorecard: su `puntaje` incluye el factor de
- * diferencia de precio, y el backend lo manda aunque `puede_ver_importes` sea
- * `false` (la bandera no filtra nada en este endpoint). Por eso el gate sigue
- * en el cliente, con la misma bandera y regla que los indicadores de OC y de
- * recepciones (`canSeeKpiAmounts`): sin ella el Scorecard dice "No visible".
- * `diferencia_precio` y `puntaje` no se muestran en ningún lado.
+ * Ninguna tarjeta muestra importes, así que no depende de `puede_ver_importes`
+ * (el detalle por factor usa el que trae su propia respuesta):
+ * sin permiso el backend solo quita `costo_facturado` y `costo_pactado_oc` de
+ * `diferencia_precio.por_moneda[]` (#859), que la UI no usa. Porcentajes,
+ * puntaje y ranking llegan igual con o sin permiso.
  *
  * Tiene su propio límite de error: si el payload cambia de forma y el render
  * lanza, se pinta un aviso aquí y la tabla de proveedores sigue usable.

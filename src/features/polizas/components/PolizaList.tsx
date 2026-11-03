@@ -320,9 +320,8 @@ export default function PolizaList() {
         {postTargetId !== null && (
           <ConfirmDialog
             open={true}
-            onOpenChange={(open) => {
-              if (!open) setPostTargetId(null);
-            }}
+            // En vuelo queda abierta y bloqueada (ver `guardClose`).
+            {...rowLock.guardClose(postTargetId, () => setPostTargetId(null), isBusy(postTargetId))}
             title="Contabilizar Póliza"
             description={`¿Deseas contabilizar la póliza ${postTarget ? etiquetaDe(postTarget) : `#${postTargetId}`}? El asiento pasará a formar parte de la contabilidad y ya no podrá eliminarse: solo cancelarse. El servidor volverá a verificar que los cargos igualen a los abonos.`}
             confirmText={isBusy(postTargetId) ? "Contabilizando..." : "Contabilizar"}
@@ -355,9 +354,8 @@ export default function PolizaList() {
           <ConfirmDialog
             key={cancelSession.id}
             open={cancelTargetId !== null}
-            onOpenChange={(open) => {
-              if (!open) setCancelTargetId(null);
-            }}
+            // En vuelo queda abierta y bloqueada (ver `guardClose`).
+            {...rowLock.guardClose(cancelSnapshot.id, () => setCancelTargetId(null), isBusy(cancelSnapshot.id))}
             title="Cancelar Póliza"
             description={cancelarPolizaDescription(
               etiquetaDe(cancelSnapshot),
@@ -384,9 +382,8 @@ export default function PolizaList() {
           <ConfirmDialog
             key={deleteSession.id}
             open={deleteTargetId !== null}
-            onOpenChange={(open) => {
-              if (!open) setDeleteTargetId(null);
-            }}
+            // En vuelo queda abierta y bloqueada (ver `guardClose`).
+            {...rowLock.guardClose(deleteSnapshot.id, () => setDeleteTargetId(null), isBusy(deleteSnapshot.id))}
             title="Eliminar Borrador"
             // El borrado del backend es FÍSICO, no baja lógica, y arrastra todos los
             // movimientos: se dice sin rodeos. La etiqueta viene del objetivo
