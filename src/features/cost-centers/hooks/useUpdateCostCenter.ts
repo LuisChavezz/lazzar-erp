@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { updateCostCenter } from "../services/actions";
 import type { CostCenterCreate } from "../interfaces/cost-center.interface";
 import { COST_CENTERS_KEY_ROOT } from "./useCostCenters";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import {
   setCostCenterFieldErrors,
   type SetCostCenterError,

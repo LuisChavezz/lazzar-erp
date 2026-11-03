@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createChartOfAccount } from "../services/actions";
 import { CHART_OF_ACCOUNTS_KEY_ROOT } from "./useChartOfAccounts";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import {
   setChartOfAccountFieldErrors,
   type SetChartOfAccountError,

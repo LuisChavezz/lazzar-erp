@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createCostCenter } from "../services/actions";
 import { COST_CENTERS_KEY_ROOT } from "./useCostCenters";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import {
   setCostCenterFieldErrors,
   type SetCostCenterError,

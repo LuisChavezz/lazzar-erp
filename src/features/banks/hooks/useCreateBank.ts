@@ -3,7 +3,7 @@ import { createBank } from "../services/actions";
 import { BankFormValues } from "../schemas/bank.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 type SetBankError = (
   field: keyof BankFormValues,

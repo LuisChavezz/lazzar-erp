@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 
 /**
  * Pruebas unitarias de EC-733: `forbiddenDetailMessage` saca el motivo de un
