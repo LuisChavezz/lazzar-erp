@@ -12,7 +12,8 @@
  * cookies auth-jwt / auth-refresh-jwt que solo el browser puede enviar a ese
  * dominio. La validación autoritativa del envío vive AQUÍ (no solo en el botón
  * deshabilitado del cliente), en varias capas antes de renderizar:
- *   1. Sesión activa + permiso R-CONTABILIDAD-FACTURACION (las rutas de
+ *   1. Sesión activa + lectura de Facturación: R-CONTABILIDAD-FACTURACION o
+ *      R-CONTABILIDAD (las rutas de
  *      `src/app/api/**` no
  *      pasan por `src/proxy.ts`, así que este handler necesita su propio chequeo).
  *   2. La forma de `invoice` se valida con `invoiceEmailPayloadSchema` para no
@@ -29,6 +30,7 @@
  * pero sí impide enviar sin sesión/permiso, con un destinatario inválido, o una
  * factura en un estado no enviable, sin depender del deshabilitado del cliente.
  */
+import { financeSectionReadPermissions } from "@/src/constants/financePermissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuthenticatedSession, parseRequiredJsonField } from "@/src/lib/routeHandlers";
@@ -48,11 +50,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ invoiceId: string }> },
 ) {
-  // Sección de Facturación — mismo permiso que protege /finance/invoicing en el
-  // proxy (el envío es de una factura, así que se rige por la sección y no por
-  // el módulo completo).
+  // Sección de Facturación — la misma regla que protege /finance/invoicing en
+  // el proxy (el envío es de una factura, así que se rige por la sección): su
+  // subcódigo o `R-CONTABILIDAD`, lectura jerárquica (EC-746).
   const authResult = await requireAuthenticatedSession(
-    "R-CONTABILIDAD-FACTURACION",
+    financeSectionReadPermissions("invoicing"),
   );
 
   if ("errorResponse" in authResult) {

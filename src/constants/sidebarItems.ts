@@ -1,12 +1,14 @@
 import type React from "react";
 import { HomeIcon } from "../components/Icons";
 import { appRouteGroups, getGroupAccessPermissions } from "./appRoutes";
+import type { PermissionRequirement } from "../utils/permissions";
 
 export interface SidebarItem {
   label: string;
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  permission?: string;
+  /** Un código, o un arreglo que se cumple con CUALQUIERA (ver `AppRouteItem.permission`). */
+  permission?: PermissionRequirement;
   /**
    * Alternativa a `permission`: basta con tener UNO de estos códigos. La usan
    * los items de MÓDULO, alcanzables tanto con el permiso del módulo como con

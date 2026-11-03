@@ -28,7 +28,7 @@ export const InvoiceList = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Ver el listado exige `R-CONTABILIDAD-FACTURACION` (ver `routePermissions`);
+  // Ver el listado exige `R-CONTABILIDAD-FACTURACION` o `R-CONTABILIDAD` (ver `routePermissions`);
   // facturar es una escritura de Finanzas y exige `E-FIN-FACTURAS`
   // (`FINANCE_WRITE_PERMISSION`); sin él el botón se oculta. `hasPermission` ya
   // cortocircuita para el rol "admin".

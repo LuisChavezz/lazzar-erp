@@ -1,9 +1,36 @@
 /**
+ * Permiso de LECTURA de Finanzas (módulo). Lectura jerárquica, igual que el
+ * backend (`PermisoFinanzas`, nucleo-erp EC-746): `R-CONTABILIDAD` lee TODO
+ * Finanzas; un subcódigo de sección lee SOLO su sección. Las pantallas sin
+ * código de sección propio (bancos, notas de crédito, CxP, pólizas…) siguen
+ * pidiendo `R-CONTABILIDAD` a secas.
+ */
+export const FINANCE_READ_PERMISSION = "R-CONTABILIDAD";
+
+/** Subcódigos de lectura por sección (el backend acepta estos y ninguno más). */
+export const FINANCE_SECTION_READ = {
+  invoicing: "R-CONTABILIDAD-FACTURACION",
+  /** Lo comparten Cuentas por cobrar y Cobros (también en el backend). */
+  receivables: "R-CONTABILIDAD-CXC",
+  accountingCustomers: "R-CONTABILIDAD-CLIENTES",
+} as const;
+
+/**
+ * Códigos que abren la lectura de una sección: su subcódigo O el de módulo.
+ * Es una regla "cualquiera de" (`hasAnyPermission`), la misma forma que ya
+ * aceptan `routePermissions` y `AppRouteItem.permission`.
+ */
+export const financeSectionReadPermissions = (
+  section: keyof typeof FINANCE_SECTION_READ,
+): string[] => [FINANCE_SECTION_READ[section], FINANCE_READ_PERMISSION];
+
+/**
  * Permiso de ESCRITURA de Finanzas. Desde EC-711 (nucleo-erp #856, PR #879) el
  * backend exige `E-FIN-FACTURAS` en TODA escritura bajo `/finanzas/` salvo
  * Facturama (`PermisoFinanzas`), revisado antes de validar el body; sin él
- * responde `403`. Las lecturas siguen pidiendo `R-CONTABILIDAD`, así que este
- * permiso nunca gatea la navegación ni una lectura. Superusuario y admin de
+ * responde `403`. Las lecturas van por `FINANCE_READ_PERMISSION` y los
+ * subcódigos de sección (arriba), así que este permiso nunca gatea la
+ * navegación ni una lectura. Superusuario y admin de
  * empresa pasan siempre (`hasPermission` ya lo cubre con el rol "admin").
  *
  * Convención (EC-733): en los catálogos (bancos, cuentas bancarias, plan de

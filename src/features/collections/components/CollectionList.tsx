@@ -34,7 +34,7 @@ import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
 export function CollectionList() {
   const { cobros, isLoading, isFetching, isInitialError, error, refetch } = useCobros();
   const { bankAccounts } = useBankAccounts();
-  // Ver la lista exige `R-CONTABILIDAD-CXC` (lo aplica `proxy.ts`); registrar un
+  // Ver la lista exige `R-CONTABILIDAD-CXC` o `R-CONTABILIDAD` (lo aplica `proxy.ts`); registrar un
   // cobro exige además el permiso que valida el backend. `hasPermission` deja
   // pasar a `role === "admin"`.
   const { data: session } = useSession();

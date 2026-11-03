@@ -1,6 +1,6 @@
 import type { AppRouteGroup, AppRouteItem } from "../constants/appRoutes";
 import type { PermissionContext } from "../interfaces/permission-context.interface";
-import { hasPermission } from "./permissions";
+import { meetsPermissionRequirement } from "./permissions";
 
 /** Sub-grupo de navegación con las hojas que le tocan. */
 export interface RouteSection {
@@ -35,7 +35,7 @@ const warnUnsectioned = (group: AppRouteGroup, item: AppRouteItem) => {
 
 /** Misma regla de visibilidad por hoja que el sidebar y `ModuleNav` en plano. */
 const canSeeItem = (item: AppRouteItem, context?: PermissionContext | null) =>
-  item.permission ? hasPermission(item.permission, context) : true;
+  item.permission ? meetsPermissionRequirement(item.permission, context) : true;
 
 /**
  * Sub-grupos del módulo con TODAS sus hojas navegables, sin filtrar permisos

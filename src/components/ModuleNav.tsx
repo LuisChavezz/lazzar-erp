@@ -8,7 +8,7 @@ import { NavigationMenu } from "radix-ui";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasPermission, meetsPermissionRequirement } from "@/src/utils/permissions";
 import {
   filterVisibleRouteSections,
   findActiveRouteSection,
@@ -314,7 +314,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   const crumbs = declaredSections
     ? []
     : visibleRouteItems
-        .filter((item) => (item.permission ? hasPermission(item.permission, session?.user) : true))
+        .filter((item) => (item.permission ? meetsPermissionRequirement(item.permission, session?.user) : true))
         .map((item) => ({
           label: item.label,
           href: item.path,
