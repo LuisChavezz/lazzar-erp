@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { ChevronRightIcon } from "@/src/components/Icons";
@@ -10,7 +9,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { ColumnHeaderDateRangeFilter } from "@/src/components/ColumnHeaderDateRangeFilter";
 import { SupplierCatalogHeaderFilter } from "@/src/features/suppliers/components/SupplierCatalogHeaderFilter";
-import { PurchaseOrderReceiptDetailDialog } from "./PurchaseOrderReceiptDetailDialog";
+import { usePurchaseOrderReceiptRowActionsContext } from "../hooks/usePurchaseOrderReceiptRowActions";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
@@ -58,10 +57,12 @@ const PurchaseOrderFolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) 
  * Acciones — esta vista no tiene página propia de detalle (es un `MainDialog`,
  * no una ruta), así que a diferencia de Órdenes de Compra/Pedidos el folio no
  * navega, abre el diálogo directamente. Con un solo ítem de menú posible
- * ("Ver Detalles"), la columna Acciones entera sobraba.
+ * ("Ver Detalles"), la columna Acciones entera sobraba. El diálogo vive en
+ * `PurchaseOrderReceiptList` (la celda solo avisa por contexto): una celda se
+ * desmonta al refrescar, paginar u ordenar.
  */
 const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { onViewDetail } = usePurchaseOrderReceiptRowActionsContext();
   const estatusLabel = getReceiptEstatusLabel(receipt.estatus);
   const estatusCfg = RECEIPT_STATUS_CONFIG[estatusLabel];
 
@@ -75,7 +76,7 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
       <div className="flex flex-col items-start gap-1 min-w-0">
         <button
           type="button"
-          onClick={() => setIsDetailOpen(true)}
+          onClick={() => onViewDetail(receipt)}
           className="group inline-flex items-center gap-1 font-mono text-slate-700 dark:text-slate-200 font-semibold hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer"
           title="Ver detalle"
         >
@@ -103,11 +104,6 @@ const FolioCell = ({ receipt }: { receipt: PurchaseOrderReceipt }) => {
           )}
         </div>
       </div>
-      <PurchaseOrderReceiptDetailDialog
-        receiptId={isDetailOpen ? receipt.id : null}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
     </div>
   );
 };
