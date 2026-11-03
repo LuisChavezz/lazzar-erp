@@ -4,7 +4,6 @@ import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { FormSelect } from "@/src/components/FormSelect";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { accountingCustomerColumns } from "./AccountingCustomerColumns";
 import { useAccountingCustomers } from "../hooks/useAccountingCustomers";
 
@@ -18,12 +17,8 @@ export const AccountingCustomerList = () => {
   // control propio que cambia la consulta.
   const [estatus, setEstatus] = useState<AccountingCustomerEstatus>("activos");
   const activo = estatus === "activos";
-  const { customers, hasLoaded, isLoading, isError, error, refetch, isFetching } =
+  const { customers, isLoading, isInitialError, error, refetch, isFetching } =
     useAccountingCustomers({ activo });
-
-  // Un error de refetch transitorio no debe descartar la tabla ya cargada;
-  // solo se trata como error "de pantalla completa" si nunca cargó.
-  const showError = isInitialLoadError(isError, hasLoaded);
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-4">
@@ -50,7 +45,9 @@ export const AccountingCustomerList = () => {
           onRefetch={refetch}
           isRefetching={isFetching}
           isLoading={isLoading}
-          isError={showError}
+          // Solo si la vista pedida nunca cargó (`isInitialError`): un refetch
+          // fallido conserva la tabla y avisa por toast.
+          isError={isInitialError}
           errorTitle="Error al cargar los clientes"
           errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
           onErrorRetry={refetch}
