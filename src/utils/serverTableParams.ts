@@ -91,6 +91,14 @@ export interface ServerTableDefinition<
      */
     tiebreaker?: string;
   };
+  /**
+   * Pares de filtros de fecha (`dateParam`) que forman un RANGO: `from` no
+   * puede ser posterior a `to` (el backend responde 400). Un par invertido en
+   * la URL se trata como ausente —ninguno de los dos se envía— y un cambio que
+   * lo invertiría no se escribe. Omitido → ningún par se compara. Las claves
+   * deben ser de `filters` (lo comprueba `defineServerTable`).
+   */
+  dateRanges?: readonly { from: string; to: string }[];
   /** Opciones del selector "Filas". Por defecto 10/20/50/100. */
   pageSizes?: readonly number[];
   /** Tamaño de página inicial; debe estar en `pageSizes`. Por defecto 20. */
@@ -105,7 +113,9 @@ export interface ServerTableDefinition<
 
 /** Identidad con inferencia: conserva los tipos de cada filtro. */
 export const defineServerTable = <const P extends ServerTableFilterParams>(
-  definition: ServerTableDefinition<P>,
+  definition: ServerTableDefinition<P> & {
+    dateRanges?: readonly { from: keyof P & string; to: keyof P & string }[];
+  },
 ): ServerTableDefinition<P> => definition;
 
 /** Lo que la URL dice de la tabla, ya validado. */
@@ -197,6 +207,32 @@ const ownUrlKeys = (definition: ServerTableDefinition): string[] => [
 ].map((name) => urlKey(definition, name));
 
 /**
+ * Rangos de `definition.dateRanges` con los dos extremos presentes y `from`
+ * posterior a `to`. Compara el texto serializado: `dateParam` emite
+ * "yyyy-mm-dd", que ordena igual como texto que como fecha.
+ */
+const invertedServerTableRanges = (
+  definition: ServerTableDefinition,
+  filters: Readonly<Record<string, unknown>>,
+) =>
+  (definition.dateRanges ?? []).filter(({ from, to }) => {
+    const fromValue = filters[from];
+    const toValue = filters[to];
+    if (fromValue === undefined || fromValue === null || toValue === undefined || toValue === null) {
+      return false;
+    }
+    return (
+      definition.filters[from].serialize(fromValue) > definition.filters[to].serialize(toValue)
+    );
+  });
+
+/** ¿Los filtros respetan todos los rangos de `definition.dateRanges`? */
+export const areServerTableRangesValid = <P extends ServerTableFilterParams>(
+  definition: ServerTableDefinition<P>,
+  filters: ServerTableFilterValues<P>,
+): boolean => invertedServerTableRanges(definition, filters).length === 0;
+
+/**
  * Lee el estado validando cada valor POR SEPARADO. `get` abstrae la fuente:
  * `URLSearchParams.get` en el cliente o el objeto `searchParams` de una página
  * de servidor.
@@ -211,6 +247,13 @@ export const readServerTableState = <P extends ServerTableFilterParams>(
     if (raw === null || raw === undefined || raw === "") continue;
     const value = definition.filters[name].parse(raw);
     if (value !== null) filters[name] = value;
+  }
+
+  // Un rango invertido no es "uno de los dos válido": no hay forma de saber
+  // cuál sobra, así que se descartan ambos.
+  for (const range of invertedServerTableRanges(definition, filters)) {
+    delete filters[range.from];
+    delete filters[range.to];
   }
 
   const pageSizes = serverTablePageSizes(definition);

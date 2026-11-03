@@ -75,3 +75,45 @@ export const pageNumberAdapter = <
   parse: parsePaginated,
   isOutOfRange: isNotFoundError,
 });
+
+/** Tamaño de página al recorrer una lista completa: el `max_limit` de los endpoints. */
+export const SERVER_LIST_EXPORT_PAGE_SIZE = 500;
+
+/**
+ * Tope de páginas al recorrer una lista: una respuesta que nunca se acaba (un
+ * `count` que crece sin parar, un adaptador mal armado) no debe colgar la
+ * exportación. Con 500 filas por página son 100 000 registros.
+ */
+const SERVER_LIST_EXPORT_MAX_PAGES = 200;
+
+/**
+ * TODAS las filas que cumplen `criteria` (filtros, búsqueda y orden con su
+ * desempate, como los arma `useServerTable`), página por página. Es lo que
+ * usa una exportación: la tabla en modo servidor solo conoce la página que
+ * muestra.
+ *
+ * Se detiene al juntar `total` filas o al recibir una página incompleta (lo
+ * que llegue antes). Si el conjunto cambia mientras se recorre, el resultado
+ * refleja cada página en el momento en que se pidió, igual que paginar a mano.
+ */
+export const fetchAllServerListRows = async <TResponse, TRow>({
+  queryFn,
+  adapter,
+  criteria,
+  pageSize = SERVER_LIST_EXPORT_PAGE_SIZE,
+}: {
+  queryFn: (params: Record<string, string | number>) => Promise<TResponse>;
+  adapter: ServerListAdapter<TResponse, TRow>;
+  criteria: Readonly<Record<string, string>>;
+  pageSize?: number;
+}): Promise<TRow[]> => {
+  const rows: TRow[] = [];
+  for (let page = 1; page <= SERVER_LIST_EXPORT_MAX_PAGES; page += 1) {
+    const listPage = { page, pageSize };
+    const response = await queryFn({ ...criteria, ...adapter.paginationParams(listPage) });
+    const parsed = adapter.parse(response, listPage);
+    rows.push(...parsed.rows);
+    if (parsed.rows.length < pageSize || rows.length >= parsed.total) return rows;
+  }
+  throw new Error("La lista es demasiado grande para exportarla completa.");
+};
