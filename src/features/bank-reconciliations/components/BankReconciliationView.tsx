@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
@@ -43,6 +44,7 @@ import {
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
 import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
+import { fetchFreshConciliacion } from "../hooks/fetchFreshConciliacion";
 import {
   ConciliacionRowActionsProvider,
   usePendingConciliacionIds,
@@ -96,17 +98,29 @@ const CONCILIACION_CANCEL_STALE_MESSAGES = {
       : `La conciliación ya está ${estatus.toLowerCase()}; ya no se puede cancelar. Se actualizó el listado.`,
 };
 
-/** Texto de la confirmación de cancelar, según el estatus que tenía al abrirla. */
-const cancelarConciliacionDescription = (cuenta: string, estatus: ConciliacionEstatus): string =>
-  estatus === "Cerrada"
-    ? `¿Deseas cancelar la conciliación cerrada de ${cuenta}? Los movimientos que conciliaba regresarán a Pendiente (salvo los que ampare otra conciliación cerrada) y el periodo quedará libre para volver a prepararse. Se conserva en el listado con estatus Cancelada.`
-    : `¿Deseas cancelar la conciliación de ${cuenta}? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`;
+/**
+ * Texto de la confirmación de cancelar, según el estatus VERIFICADO. `cambio`:
+ * el servidor dijo otro estatus que el listado, y se avisa antes de la pregunta.
+ */
+const cancelarConciliacionDescription = (
+  cuenta: string,
+  estatus: ConciliacionEstatus,
+  cambio: boolean,
+): string => {
+  const aviso = cambio
+    ? `El estatus cambió desde que se cargó el listado: ahora está ${estatus}. `
+    : "";
+  return estatus === "Cerrada"
+    ? `${aviso}¿Deseas cancelar la conciliación cerrada de ${cuenta}? Los movimientos que conciliaba regresarán a Pendiente (salvo los que ampare otra conciliación cerrada) y el periodo quedará libre para volver a prepararse. Se conserva en el listado con estatus Cancelada.`
+    : `${aviso}¿Deseas cancelar la conciliación de ${cuenta}? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`;
+};
 
 export function BankReconciliationView() {
   // Toda escritura de conciliaciones exige `E-FIN-FACTURAS` (`useFinanceWriteAccess`).
   // `loading` mientras la sesión llega: no es "sin permiso" (`useFinanceWriteAccess`).
   const writeAccess = useFinanceWriteAccess();
   const canWrite = writeAccess === "allowed";
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -200,6 +214,16 @@ export function BankReconciliationView() {
   const [openDetailId, setOpenDetailId] = useState<number | null>(null);
   const [cerrarTargetId, setCerrarTargetId] = useState<number | null>(null);
   const [cancelarTargetId, setCancelarTargetId] = useState<number | null>(null);
+  // Estatus REAL de la conciliación a cancelar, leído del servidor al abrir la
+  // confirmación y otra vez al confirmar (`verificarCancelar`): el listado puede
+  // tener hasta 15 minutos. `cambio` = difiere del que mostraba el listado, y el
+  // texto lo dice para que se confirme con conocimiento de causa.
+  const [cancelarVerificado, setCancelarVerificado] = useState<{
+    id: number;
+    estatus: ConciliacionEstatus;
+    cambio: boolean;
+  } | null>(null);
+  const [cancelarVerificando, setCancelarVerificando] = useState(false);
 
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
   // SU llamada. Los callbacks por llamada de `mutate` solo corren para la
@@ -275,17 +299,22 @@ export function BankReconciliationView() {
       ? pinnedDetail.conciliacion
       : null);
   const cerrarConciliacionTarget = findById(cerrarTargetId);
-  // La conciliación tal como estaba al ABRIR la cancelación (`useDialogSession`):
-  // su efecto depende de ese estatus (un `Borrador` solo se cancela; una
-  // `Cerrada` regresa además sus movimientos a `Pendiente`), y el texto y la
-  // mutación salen de él. Si cambia con la confirmación abierta, el aviso de
-  // abajo la cierra en vez de confirmar con un texto que ya no describe lo que
-  // va a pasar.
+  // La conciliación tal como estaba al ABRIR la cancelación (`useDialogSession`).
+  // Su efecto depende del estatus (un `Borrador` solo se cancela; una `Cerrada`
+  // regresa además sus movimientos a `Pendiente`), y el que manda es el
+  // VERIFICADO contra el servidor (`cancelarVerificado`), no el del listado:
+  // texto, optimismo y aviso salen de él. Si cambia por fuera con la
+  // confirmación abierta, el aviso de abajo la cierra.
   const cancelarSession = useDialogSession(
     cancelarTargetId !== null,
     findById(cancelarTargetId),
   );
   const cancelarSnapshot = cancelarSession.snapshot;
+  const cancelarVerificadoVigente =
+    cancelarSnapshot !== null && cancelarVerificado?.id === cancelarSnapshot.id
+      ? cancelarVerificado
+      : null;
+  const cancelarEstatus = cancelarVerificadoVigente?.estatus ?? cancelarSnapshot?.estatus ?? null;
 
   // Si la fila desaparece del payload, el id no puede quedar colgado: un
   // refetch posterior reabriría el diálogo solo. Es el caso LEGÍTIMO —p. ej. la
@@ -319,14 +348,14 @@ export function BankReconciliationView() {
   }
   const staleCancelar =
     cancelarTargetId !== null &&
-    cancelarSnapshot &&
+    cancelarEstatus !== null &&
     getStaleRowDialogNotice({
       resource: "conciliacion-cancelar",
       targetId: listaAsentada ? cancelarTargetId : null,
       target: findById(cancelarTargetId),
       statusField: "estatus",
-      expectedEstado: cancelarSnapshot.estatus,
-      isBusy: isBusy(cancelarTargetId),
+      expectedEstado: cancelarEstatus,
+      isBusy: isBusy(cancelarTargetId) || cancelarVerificando,
       messages: CONCILIACION_CANCEL_STALE_MESSAGES,
     });
   if (staleCancelar) {
@@ -369,12 +398,44 @@ export function BankReconciliationView() {
     }
     setCerrarTargetId(conciliacion.id);
   };
+  /**
+   * Lee del servidor el estatus real de la conciliación a cancelar
+   * (`fetchFreshConciliacion`, que también pone esa fila en el listado) y lo
+   * fija como el de la confirmación si todavía se puede cancelar (`Borrador`
+   * o `Cerrada`), marcando si difiere de `esperado`. Devuelve ese estatus, o
+   * `null` si no se pudo leer o ya no existe. Si ya está `Cancelada`, o ya no
+   * existe, no se fija nada: el aviso de confirmación desfasada la cierra.
+   */
+  const verificarCancelar = async (
+    id: number,
+    esperado: ConciliacionEstatus,
+  ): Promise<ConciliacionEstatus | null> => {
+    setCancelarVerificando(true);
+    try {
+      const fresh = await fetchFreshConciliacion(queryClient, id);
+      if (fresh.kind === "error") {
+        toast.error("No se pudo verificar el estado de la conciliación. Intenta de nuevo.");
+        return null;
+      }
+      if (fresh.kind === "gone") return null;
+      const real = fresh.conciliacion.estatus;
+      if (real === "Borrador" || real === "Cerrada") {
+        setCancelarVerificado({ id, estatus: real, cambio: real !== esperado });
+      }
+      return real;
+    } finally {
+      setCancelarVerificando(false);
+    }
+  };
+
   const handleCancelar = (conciliacion: ConciliacionBancaria) => {
     if (!canWrite) {
       if (writeAccess === "denied") toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
       return;
     }
+    setCancelarVerificado(null);
     setCancelarTargetId(conciliacion.id);
+    void verificarCancelar(conciliacion.id, conciliacion.estatus);
   };
 
   return (
@@ -583,24 +644,44 @@ export function BankReconciliationView() {
           key={cancelarSession.id}
           open={cancelarTargetId !== null}
           // En vuelo queda abierta y bloqueada (ver `guardClose`).
-          {...rowLock.guardClose(cancelarSnapshot.id, () => setCancelarTargetId(null), isBusy(cancelarSnapshot.id))}
+          // Bloqueada mientras verifica el estatus y mientras cancela (`guardClose`).
+          {...rowLock.guardClose(
+            cancelarSnapshot.id,
+            () => setCancelarTargetId(null),
+            isBusy(cancelarSnapshot.id) || cancelarVerificando,
+          )}
           title="Cancelar Conciliación"
           description={cancelarConciliacionDescription(
             getCuentaLabel(cancelarSnapshot),
-            cancelarSnapshot.estatus,
+            cancelarEstatus ?? cancelarSnapshot.estatus,
+            cancelarVerificadoVigente?.cambio ?? false,
           )}
-          confirmText={isBusy(cancelarSnapshot.id) ? "Cancelando..." : "Cancelar conciliación"}
+          confirmText={
+            cancelarVerificando
+              ? "Verificando..."
+              : isBusy(cancelarSnapshot.id)
+                ? "Cancelando..."
+                : "Cancelar conciliación"
+          }
           cancelText="Volver"
           closeOnConfirm={false}
           onConfirm={() => {
-            const { id, estatus } = cancelarSnapshot;
-            if (isBusy(id) || !rowLock.acquire(id)) return;
-            cancelarAsync({ id, estatus })
-              .catch(() => {})
-              .finally(() => {
+            const { id } = cancelarSnapshot;
+            const esperado = cancelarEstatus ?? cancelarSnapshot.estatus;
+            if (isBusy(id) || cancelarVerificando || !rowLock.acquire(id)) return;
+            // Se vuelve a leer el estatus justo antes de cancelar. Si cambió, el
+            // texto se actualiza (o el aviso cierra la confirmación) y hay que
+            // confirmar de nuevo: nunca se cancela con un efecto que no se avisó.
+            void (async () => {
+              const real = await verificarCancelar(id, esperado);
+              if (real !== esperado) {
                 rowLock.release(id);
-                setCancelarTargetId((current) => (current === id ? null : current));
-              });
+                return;
+              }
+              await cancelarAsync({ id, estatus: real }).catch(() => {});
+              rowLock.release(id);
+              setCancelarTargetId((current) => (current === id ? null : current));
+            })();
           }}
           confirmColor="amber"
         />
