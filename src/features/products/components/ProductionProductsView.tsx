@@ -7,12 +7,22 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProducts } from "../hooks/useProducts";
-import { getColumns, PRODUCT_HEADER_FILTERS, type ProductRow } from "./ProductColumns";
+import {
+  getColumns,
+  PRODUCT_HEADER_FILTERS,
+  productLineaHeaderFilter,
+  type ProductRow,
+} from "./ProductColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 
 // Sin acciones por fila: esta vista solo lista y da de alta. La edición y la
 // baja siguen viviendo en Configuración (`ProductList`).
 const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: false });
+
+const HEADER_FILTERS = {
+  ...PRODUCT_HEADER_FILTERS,
+  categoria_linea: productLineaHeaderFilter,
+};
 
 /**
  * Gestión de productos del módulo de Producción (`/manufacturing/products`):
@@ -41,16 +51,20 @@ export function ProductionProductsView() {
   // El nombre de la categoría se incorpora a la FILA (ver `ProductRow`): así la
   // llegada tardía del catálogo produce un `data` nuevo y TanStack recalcula
   // búsqueda y orden.
-  const categoryNames = new Map(categories.map((category) => [category.id, category.nombre]));
-  const rows: ProductRow[] = products.map((product) => ({
-    ...product,
-    categoria_nombre: categoryNames.get(product.categoria_producto) ?? null,
-  }));
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const rows: ProductRow[] = products.map((product) => {
+    const category = categoriesById.get(product.categoria_producto);
+    return {
+      ...product,
+      categoria_nombre: category?.nombre ?? null,
+      categoria_linea: category?.linea ?? null,
+    };
+  });
 
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
-        columns={withHeaderFilters(READ_ONLY_COLUMNS, rows, PRODUCT_HEADER_FILTERS)}
+        columns={withHeaderFilters(READ_ONLY_COLUMNS, rows, HEADER_FILTERS)}
         data={rows}
         searchPlaceholder="Buscar producto..."
         getRowId={(row) => String(row.id)}

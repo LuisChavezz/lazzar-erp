@@ -8,6 +8,8 @@ import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
 import { textOrDash } from "../../../components/DetailDialogPrimitives";
 import { useState } from "react";
+import { getCategoriaLineaLabel } from "../../product-categories/constants/categoriaLinea";
+import { categoriaLineaHeaderFilter } from "../../product-categories/utils/categoriaLineaHeaderFilter";
 
 /**
  * Fila de la tabla: el producto tal como llega del backend más el nombre de su
@@ -25,8 +27,15 @@ import { useState } from "react";
  * arreglo que `ContractRow` y `CalendarRow`.
  *
  * `null` = la categoría no aparece en el catálogo (o todavía no llega).
+ *
+ * `categoria_linea` sigue la misma regla: la `linea` cruda de la categoría
+ * (`""` = sin línea, materia prima), resuelta del catálogo de categorías porque
+ * `producto/` no la expone; `null` si la categoría no está en el catálogo.
  */
-export type ProductRow = Product & { categoria_nombre: string | null };
+export type ProductRow = Product & {
+  categoria_nombre: string | null;
+  categoria_linea: string | null;
+};
 
 const columnHelper = createColumnHelper<ProductRow>();
 
@@ -143,6 +152,23 @@ export const getColumns = (
         </span>
       ),
     }),
+    // Búsqueda y orden por la etiqueta; el filtro de encabezado
+    // (`categoriaLineaHeaderFilter`) compara la línea cruda. Sin categoría
+    // resuelta no hay línea que mostrar.
+    columnHelper.accessor(
+      (row) => (row.categoria_linea === null ? "" : getCategoriaLineaLabel(row.categoria_linea)),
+      {
+        id: "categoria_linea",
+        header: "Línea",
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            {row.original.categoria_linea === null
+              ? "—"
+              : getCategoriaLineaLabel(row.original.categoria_linea)}
+          </span>
+        ),
+      },
+    ),
     columnHelper.accessor("precio_base", {
       header: "Precio",
       meta: { align: "right" },
@@ -195,3 +221,17 @@ export const PRODUCT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pro
     ],
   },
 };
+
+/** Valor del filtro de línea para un producto cuya categoría no se resolvió. */
+const SIN_CATEGORIA_FILTER_VALUE = "__sin_categoria__";
+
+/**
+ * Filtro de encabezado de la columna "Línea" (`categoria_linea`). Un producto
+ * sin categoría resuelta (`categoria_linea === null`: sin categoría o fuera del
+ * catálogo) NO es materia prima: va en su propia opción "Sin categoría", que
+ * solo aparece si hay filas así, en vez de caer en "Sin línea (materia prima)".
+ */
+export const productLineaHeaderFilter = categoriaLineaHeaderFilter<ProductRow>(
+  (row) => row.categoria_linea ?? SIN_CATEGORIA_FILTER_VALUE,
+  (row) => (row.categoria_linea === null ? "Sin categoría" : null),
+);
