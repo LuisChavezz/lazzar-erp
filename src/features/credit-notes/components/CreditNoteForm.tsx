@@ -102,8 +102,9 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
   // Estado de la factura elegida según el listado de facturas (el mismo que
   // cruza el selector, misma caché). Eliminada, cancelada o con su timbrado sin
   // confirmar (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir
-  // (`getRelatedInvoiceEmitBlockReason`): el backend no valida `activo`, y un
-  // timbrado pendiente volvería con un `cfdi` que bloquea este formulario.
+  // (`getRelatedInvoiceEmitBlockReason`): el backend rechazaría la eliminada
+  // (#736) y la cancelada, y un timbrado pendiente volvería con un `cfdi` que
+  // bloquea este formulario.
   // Mientras el listado no cargue (o si falló, y el selector dejó elegir sin
   // conocer la factura) tampoco se emite: podría ser una factura eliminada.
   // `silent`: el formulario lee el listado solo como señal y no lo muestra, así

@@ -52,9 +52,9 @@ function InvoiceSelectorContent({
   //
   // Se vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede
   // tener hasta 15 minutos. Mientras ese refresco viaja, con datos en caché, se
-  // decide con ellos. El backend rechaza emitir sobre una factura cancelada o en
-  // cancelación sin guardar nada, pero no sobre una eliminada: esa la detiene
-  // este selector (`activo`) y el formulario.
+  // decide con ellos. El backend rechaza emitir sobre una factura cancelada, en
+  // cancelación o eliminada (#736) sin guardar nada; este selector (`activo`) y
+  // el formulario lo avisan antes.
   const {
     invoices,
     hasLoaded: hasLoadedInvoices,
@@ -69,9 +69,8 @@ function InvoiceSelectorContent({
   const isCheckingInvoices = !hasLoadedInvoices && (isFetchingInvoices || !isErrorInvoices);
   // Sin el listado no se sabe qué factura admite notas. Las filas quedan
   // seleccionables como antes: el backend rechaza emitir sobre una factura
-  // cancelada o en cancelación, pero NO sobre una eliminada (no valida `activo`),
-  // así que el formulario no deja emitir mientras no conozca la factura elegida
-  // (ver `CreditNoteForm`).
+  // cancelada, en cancelación o eliminada, y el formulario no deja emitir
+  // mientras no conozca la factura elegida (ver `CreditNoteForm`).
   const isInvoiceStateUnavailable = isErrorInvoices && !hasLoadedInvoices;
 
   const getDisabledReason = (cuenta: CuentaPorCobrar): string | null => {

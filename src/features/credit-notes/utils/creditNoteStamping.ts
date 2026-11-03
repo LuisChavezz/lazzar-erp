@@ -121,8 +121,8 @@ export const getRelatedInvoiceEmitBlockReason = (
     cfdi_pendiente?: boolean;
   },
 ): string | null => {
-  // Eliminada (baja lógica): el backend NO lo valida al emitir (ver
-  // `getInvoiceEmitPrecheckReason`). Solo un `false` explícito bloquea.
+  // Eliminada (baja lógica): el backend también la rechaza (#736), pero aquí se
+  // avisa antes de intentarlo. Solo un `false` explícito bloquea.
   if (invoice.activo === false) return getInvoiceNotCreditableReason(invoice.folio, invoice);
   const cancelledReason = getRelatedInvoiceCancelledReason(invoice);
   if (cancelledReason) return cancelledReason;
@@ -138,10 +138,10 @@ const invoiceStampPendingReason = (folio: string | null): string =>
  * FRESCA (`undefined` si respondió `404`), o `null`. Deliberadamente estrecho:
  * solo lo que el backend no rechaza bien.
  *
- * - Eliminada (`activo` distinto de `true`) o inexistente: `validar_factura` no
- *   mira `activo`, así que el backend aplicaría el crédito y timbraría un CFDI
- *   relacionado a una factura borrada. PROVISIONAL hasta que el backend lo
- *   valide (nucleo-erp #736).
+ * - Eliminada (`activo` distinto de `true`) o inexistente: desde nucleo-erp
+ *   #736 `validar_factura` la rechaza con un `400` en `factura` ("La factura
+ *   está dada de baja."); se detiene antes del PATCH para avisar con el mismo
+ *   motivo que el resto del módulo.
  * - Timbrado pendiente (`cfdi_pendiente`): el backend lo rechaza sin guardar
  *   nada, pero con un `cfdi` que no dice en qué quedó la nota; aquí se da el
  *   motivo exacto.
