@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { cancelarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
@@ -84,7 +85,10 @@ export const useCancelNotaCredito = () => {
       toast.error(
         err instanceof PrecheckError
           ? err.message
-          : extractErrorMessage(err, "Error al cancelar la nota de crédito"),
+          : // Un `403` trae en `detail` el motivo del backend (p. ej. sin
+            // `E-FIN-FACTURAS`); `extractErrorMessage` solo lee `{ error }`.
+            (forbiddenDetailMessage(err) ??
+            extractErrorMessage(err, "Error al cancelar la nota de crédito")),
       );
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
