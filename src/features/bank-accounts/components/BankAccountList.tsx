@@ -12,8 +12,7 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useActivoToggleDialog } from "@/src/hooks/useActivoToggleDialog";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import { getFinanceWriteState } from "@/src/utils/financeWrite";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { BANK_ACCOUNT_HEADER_FILTERS, getBankAccountLabel, getColumns } from "./BankAccountColumns";
 import { BankAccountSummaryDialog } from "./BankAccountSummaryDialog";
@@ -29,10 +28,17 @@ import { BANK_ACCOUNT_STALE_MESSAGES } from "../utils/bankAccountStaleMessages";
 
 export default function BankAccountList() {
   // Escribir es `FINANCE_WRITE_PERMISSION` (EC-733); leer el catálogo, no.
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const { canWrite } = getFinanceWriteState(session?.user, sessionStatus);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<CuentaBancaria | null>(null);
+  // Sin permiso el diálogo de alta/edición no se monta. Si el permiso se pierde
+  // con el diálogo abierto, su estado se limpia aquí (en render, patrón de estado
+  // derivado): si no, reaparecería solo, con el registro anterior, al volver.
+  if (!canWrite && (isDialogOpen || selectedAccount !== null)) {
+    setIsDialogOpen(false);
+    setSelectedAccount(null);
+  }
   // Estado de los diálogos de fila EN LA VISTA y no en la celda: una celda se
   // desmonta al ordenar, filtrar o paginar, y alternar `activo` con el resumen
   // o la confirmación abiertos puede sacar la fila de la vista filtrada — el
