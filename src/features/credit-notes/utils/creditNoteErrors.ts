@@ -102,33 +102,40 @@ export const creditNoteStampFailedMessage = (
   detail: string,
 ): string => `${STAMP_FAILED_UNKNOWN_COPY[camino]} Motivo: ${detail}`;
 
-/** Alta `Emitida` rechazada por Facturama: la nota quedó `Cancelada`. */
-export const creditNoteCreateRejectedMessage = (label: string, detail: string): string =>
-  `Facturama rechazó el timbrado: la nota ${label} quedó cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
-
 /**
- * Alta `Emitida` que NO llegó a timbrarse por otra causa (nucleo-erp #751: otra
- * petición cambió la nota o su factura entre la emisión y el timbre): el
- * backend la canceló como en un rechazo de Facturama.
+ * Por qué una emisión no llegó a timbrarse y el backend revirtió la nota
+ * (`nota_credito` con `Cancelada` o `Borrador`):
+ * - `facturama`: Facturama rechazó el CFDI (el `400` trae `cfdi`).
+ * - `otra`: otra petición cambió la nota o su factura entre la emisión y el
+ *   timbre (nucleo-erp #751, `factura` o `estatus`).
  */
-export const creditNoteCreateCancelledMessage = (label: string, detail: string): string =>
-  `No se pudo timbrar: la nota ${label} quedó registrada como cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
+export type CreditNoteRevertCause = "facturama" | "otra";
 
-/** Emisión de un borrador rechazada por Facturama: la nota sigue en `Borrador`. */
-export const creditNoteEmitRejectedMessage = (label: string): string =>
-  `Facturama rechazó el timbrado: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+/** La causa a partir del error normalizado: `cfdi` es el rechazo de Facturama. */
+export const creditNoteRevertCause = (stampFailed: boolean | undefined): CreditNoteRevertCause =>
+  stampFailed ? "facturama" : "otra";
 
-/** Motivo del rechazo, en el detalle del borrador que se abre tras el rechazo. */
-export const creditNoteEmitRejectedDetail = (detail: string): string =>
-  `Facturama rechazó el timbrado y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
+/** Arranque de cada aviso de reversión, según la causa. */
+const REVERT_LEAD: Record<CreditNoteRevertCause, string> = {
+  facturama: "Facturama rechazó el timbrado",
+  otra: "No se pudo timbrar",
+};
 
-/** Emisión de un borrador que no llegó a timbrarse por otra causa (#751): sigue en `Borrador`. */
-export const creditNoteEmitRevertedMessage = (label: string): string =>
-  `No se pudo timbrar: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+/** Alta `Emitida` revertida: la nota quedó `Cancelada` y se registra una nueva al reenviar. */
+export const creditNoteCreateRevertedMessage = (
+  cause: CreditNoteRevertCause,
+  label: string,
+  detail: string,
+): string =>
+  `${REVERT_LEAD[cause]}: la nota ${label} quedó ${cause === "facturama" ? "cancelada" : "registrada como cancelada"} y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: ${detail}`;
 
-/** Motivo del #751, en el detalle del borrador que se abre tras el fallo. */
-export const creditNoteEmitRevertedDetail = (detail: string): string =>
-  `No se pudo timbrar y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
+/** Emisión de un borrador revertida: la nota sigue en `Borrador` (aviso breve). */
+export const creditNoteEmitRevertedMessage = (cause: CreditNoteRevertCause, label: string): string =>
+  `${REVERT_LEAD[cause]}: la nota ${label} sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.`;
+
+/** Motivo de la reversión, en el detalle del borrador que se abre tras ella. */
+export const creditNoteEmitRevertedDetail = (cause: CreditNoteRevertCause, detail: string): string =>
+  `${REVERT_LEAD[cause]} y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: ${detail}`;
 
 /** Emisión de un borrador que el backend reporta `Cancelada` (otra operación la canceló). */
 export const creditNoteEmitCancelledMessage = (label: string, detail: string): string =>
@@ -145,6 +152,21 @@ export type EmittedNotaCreditoState = Pick<
 >;
 
 /**
+ * De dónde viene la emisión fallida, para decir qué NO repetir:
+ * - `alta`: el formulario de nueva nota. Capturarla otra vez crearía una nota
+ *   más y rebajaría el saldo otra vez.
+ * - `emision`: "Emitir" sobre un borrador que ya existía. No se capturó nada;
+ *   lo que no hay que hacer es volver a emitirla ni registrar una sustituta.
+ */
+export type EmitFailureFlow = "alta" | "emision";
+
+/** Qué NO repetir en cada flujo (ver `EmitFailureFlow`). */
+const NO_REPETIR: Record<EmitFailureFlow, string> = {
+  alta: "No la captures de nuevo",
+  emision: "No vuelvas a emitirla ni registres una nota sustituta",
+};
+
+/**
  * Qué decir de una nota que la emisión dejó `Emitida` y ya descontó su total
  * del saldo por cobrar, según su nota fresca. `kind`:
  *
@@ -155,18 +177,20 @@ export type EmittedNotaCreditoState = Pick<
  * - `unknown`: no se pudo consultar la nota (`null`) o ya no está `Emitida`. Se
  *   pide revisar el listado.
  *
- * En los tres casos la nota NO debe capturarse de nuevo: rebajaría el saldo
- * otra vez.
+ * En los tres casos repetir la operación rebajaría el saldo otra vez; el aviso
+ * dice qué no repetir según el flujo (`EmitFailureFlow`).
  */
 export const describeEmittedNotaCredito = (
+  flow: EmitFailureFlow,
   label: string,
   detail: string,
   actual: EmittedNotaCreditoState | null,
 ): { kind: "pending" | "emitted" | "unknown"; message: string } => {
+  const noRepetir = NO_REPETIR[flow];
   if (!actual || actual.estatus !== "Emitida") {
     return {
       kind: "unknown",
-      message: `La nota ${label} quedó emitida y descontó su total del saldo por cobrar, pero no se pudo confirmar el estado de su timbrado. Revisa su detalle en el listado; no la captures de nuevo. Motivo: ${detail}`,
+      message: `La nota ${label} quedó emitida y descontó su total del saldo por cobrar, pero no se pudo confirmar el estado de su timbrado. Revisa su detalle en el listado; ${noRepetir.charAt(0).toLowerCase()}${noRepetir.slice(1)}. Motivo: ${detail}`,
     };
   }
   if (actual.cfdi_pendiente === true && !actual.cfdi_uuid) {
@@ -175,12 +199,12 @@ export const describeEmittedNotaCredito = (
   if (actual.cfdi_uuid) {
     return {
       kind: "emitted",
-      message: `La nota ${label} se emitió, se timbró (UUID ${actual.cfdi_uuid}) y descontó su total del saldo por cobrar, pero el servidor reportó un error después del timbre. No la captures de nuevo. Motivo: ${detail}`,
+      message: `La nota ${label} se emitió, se timbró (UUID ${actual.cfdi_uuid}) y descontó su total del saldo por cobrar, pero el servidor reportó un error después del timbre. ${noRepetir}. Motivo: ${detail}`,
     };
   }
   return {
     kind: "emitted",
-    message: `La nota ${label} quedó emitida sin CFDI y descontó su total del saldo por cobrar. No la captures de nuevo; revisa su detalle. Motivo: ${detail}`,
+    message: `La nota ${label} quedó emitida sin CFDI y descontó su total del saldo por cobrar. ${noRepetir}; revisa su detalle. Motivo: ${detail}`,
   };
 };
 

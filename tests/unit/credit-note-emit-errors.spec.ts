@@ -10,7 +10,12 @@ import {
   getEmitRejectedDraftDetail,
   getEmitReportedNotaMessage,
 } from "@/src/features/credit-notes/hooks/useEmitirNotaCredito";
-import { readStampFailedNota } from "@/src/features/credit-notes/utils/creditNoteErrors";
+import {
+  creditNoteCreateRevertedMessage,
+  creditNoteEmitRevertedDetail,
+  creditNoteEmitRevertedMessage,
+  readStampFailedNota,
+} from "@/src/features/credit-notes/utils/creditNoteErrors";
 import {
   CREDIT_NOTE_EMIT_STAMP_WARNING,
   getInvoiceEmitPrecheckReason,
@@ -344,5 +349,56 @@ test.describe("invalidateCreditNoteQueries tras leer la nota fresca", () => {
     expect(invalidated(["credit-note-detail", 16])).toBe(false);
     expect(invalidated(["credit-note-detail", 17])).toBe(true);
     expect(invalidated(["credit-notes"])).toBe(true);
+  });
+});
+
+test.describe("avisos de reversión por causa (un solo builder)", () => {
+  test("alta revertida: mismo texto que antes para Facturama y para #751", () => {
+    expect(creditNoteCreateRevertedMessage("facturama", "NC-1", "m")).toBe(
+      "Facturama rechazó el timbrado: la nota NC-1 quedó cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: m",
+    );
+    expect(creditNoteCreateRevertedMessage("otra", "NC-1", "m")).toBe(
+      "No se pudo timbrar: la nota NC-1 quedó registrada como cancelada y el saldo por cobrar de la factura no cambió. Corrige los datos y vuelve a emitirla; se registrará una nota nueva. Motivo: m",
+    );
+  });
+
+  test("borrador revertido: aviso y detalle según la causa", () => {
+    expect(creditNoteEmitRevertedMessage("facturama", "NC-1")).toBe(
+      "Facturama rechazó el timbrado: la nota NC-1 sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.",
+    );
+    expect(creditNoteEmitRevertedMessage("otra", "NC-1")).toBe(
+      "No se pudo timbrar: la nota NC-1 sigue en borrador y el saldo por cobrar no cambió. El motivo está en su detalle.",
+    );
+    expect(creditNoteEmitRevertedDetail("facturama", "m")).toBe(
+      "Facturama rechazó el timbrado y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: m",
+    );
+    expect(creditNoteEmitRevertedDetail("otra", "m")).toBe(
+      "No se pudo timbrar y la nota sigue en borrador; el saldo por cobrar no cambió. Motivo: m",
+    );
+  });
+});
+
+test.describe("qué no repetir según el flujo", () => {
+  test("al emitir un borrador no se habla de capturar: no volver a emitir ni sustituir", () => {
+    const message = getEmitReportedNotaMessage(
+      parseNotaCreditoError(polizaTrasTimbre()),
+      16,
+      "NC-1",
+      timbrada,
+    );
+    expect(message).not.toContain("captures");
+    expect(message).toContain("No vuelvas a emitirla ni registres una nota sustituta");
+    expect(
+      getEmitReportedNotaMessage(parseNotaCreditoError(polizaTrasTimbre()), 16, "NC-1", null),
+    ).toContain("no vuelvas a emitirla ni registres una nota sustituta");
+  });
+
+  test("en el alta sigue diciendo que no la capture de nuevo", () => {
+    const outcome = getCreateFailureOutcome(
+      parseNotaCreditoError(polizaTrasTimbre()),
+      { estatus: "Emitida", folio: "NC-9" },
+      timbrada,
+    );
+    expect(outcome?.message).toContain("No la captures de nuevo");
   });
 });

@@ -12,10 +12,9 @@ import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
 import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
   creditNoteEmitCancelledMessage,
-  creditNoteEmitRejectedDetail,
-  creditNoteEmitRejectedMessage,
   creditNoteEmitRevertedDetail,
   creditNoteEmitRevertedMessage,
+  creditNoteRevertCause,
   creditNoteStampFailedMessage,
   describeEmittedNotaCredito,
   type EmittedNotaCreditoState,
@@ -59,9 +58,7 @@ export const getEmitRejectedDraftDetail = (
 ): string | null => {
   if (reportedNota(parsed, id)?.estatus !== "Borrador") return null;
   const detail = stampFailureDetail(parsed);
-  return parsed.stampFailed
-    ? creditNoteEmitRejectedDetail(detail)
-    : creditNoteEmitRevertedDetail(detail);
+  return creditNoteEmitRevertedDetail(creditNoteRevertCause(parsed.stampFailed), detail);
 };
 
 /**
@@ -82,7 +79,7 @@ export const getEmitReportedNotaMessage = (
   if (!nota || nota.estatus === "Borrador") return null;
   const detail = stampFailureDetail(parsed);
   if (nota.estatus === "Cancelada") return creditNoteEmitCancelledMessage(label, detail);
-  return describeEmittedNotaCredito(label, detail, actual).message;
+  return describeEmittedNotaCredito("emision", label, detail, actual).message;
 };
 
 /**
@@ -202,9 +199,7 @@ export const useEmitirNotaCredito = ({
       const rejectedDetail = getEmitRejectedDraftDetail(parsed, id);
       if (rejectedDetail !== null) {
         toast.error(
-          parsed.stampFailed
-            ? creditNoteEmitRejectedMessage(label)
-            : creditNoteEmitRevertedMessage(label),
+          creditNoteEmitRevertedMessage(creditNoteRevertCause(parsed.stampFailed), label),
           { id: toastId },
         );
         onRejectedToDraft?.(id, rejectedDetail);

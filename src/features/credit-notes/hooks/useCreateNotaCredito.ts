@@ -9,8 +9,8 @@ import type {
 } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_CREATE_UNCONFIRMED_MESSAGE,
-  creditNoteCreateCancelledMessage,
-  creditNoteCreateRejectedMessage,
+  creditNoteCreateRevertedMessage,
+  creditNoteRevertCause,
   creditNoteStampFailedMessage,
   describeEmittedNotaCredito,
   type EmittedNotaCreditoState,
@@ -371,13 +371,15 @@ export const getCreateFailureOutcome = (
     if (nota.estatus === "Cancelada") {
       return {
         kind: "cancelled",
-        message: parsed.stampFailed
-          ? creditNoteCreateRejectedMessage(label, detail)
-          : creditNoteCreateCancelledMessage(label, detail),
+        message: creditNoteCreateRevertedMessage(
+          creditNoteRevertCause(parsed.stampFailed),
+          label,
+          detail,
+        ),
       };
     }
     if (nota.estatus === "Emitida") {
-      const { kind, message } = describeEmittedNotaCredito(label, detail, actual);
+      const { kind, message } = describeEmittedNotaCredito("alta", label, detail, actual);
       return { kind: kind === "unknown" ? "locked" : kind, message };
     }
     return { kind: "locked", message: creditNoteStampFailedMessage("alta", detail) };
