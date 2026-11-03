@@ -11,6 +11,7 @@ import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import type { PurchaseOrderOnboardingProducto } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
 import { usePurchaseOrderProductSearch } from "../hooks/usePurchaseOrderProductSearch";
+import { onboardingSearchRejection } from "../utils/onboardingLoadError";
 import {
   lineFromProducto,
   lineKeyProducto,
@@ -76,6 +77,15 @@ function SearchScopeNote({
     );
   }
   if (serverSearch.isInitialError) {
+    // Un 4xx definitivo trae su motivo y no se ofrece "Reintentar".
+    const rejection = onboardingSearchRejection(serverSearch.error);
+    if (rejection) {
+      return (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          No se pudo buscar en todo el catálogo; solo se muestran los productos cargados. {rejection}
+        </p>
+      );
+    }
     return (
       <p className="text-xs text-red-700 dark:text-red-300">
         No se pudo buscar en todo el catálogo; solo se muestran los productos cargados.{" "}

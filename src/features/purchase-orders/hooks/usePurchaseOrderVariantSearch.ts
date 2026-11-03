@@ -19,7 +19,7 @@ import type { PurchaseOrderOnboardingVariante } from "../interfaces/purchase-ord
  *   detuvo el wizard en el Step 1, antes de llegar a esta búsqueda.
  */
 export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
-  const { data, isInitialError, isFetching, isPlaceholderData, hasLoaded, refetch } =
+  const { data, isInitialError, error, isFetching, isPlaceholderData, hasLoaded, refetch } =
     useGuardedQuery<PurchaseOrderOnboardingVariante[]>(
       {
         queryKey: ["purchase-order-variant-search", varianteQ],
@@ -37,6 +37,8 @@ export const usePurchaseOrderVariantSearch = (varianteQ: string) => {
     variantes: data ?? [],
     hasLoaded,
     isInitialError,
+    /** Solo con `isInitialError`; ver `onboardingSearchRejection`. */
+    error,
     isFetching,
     isPlaceholderData,
     refetch,
