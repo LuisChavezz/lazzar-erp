@@ -4,7 +4,7 @@ import type { PermissionContext } from "@/src/interfaces/permission-context.inte
 import { hasPermission } from "./permissions";
 
 /** `status` de `useSession()` de NextAuth. */
-type SessionStatus = "authenticated" | "loading" | "unauthenticated";
+export type SessionStatus = "authenticated" | "loading" | "unauthenticated";
 
 /**
  * Estado de escritura de Finanzas para la sesión actual (EC-733). Se calcula una

@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
+import { useSession } from "next-auth/react";
+import {
+  FINANCE_READ_PERMISSION,
+  FINANCE_READ_REASONS,
+  financeSectionReadPermissions,
+} from "@/src/constants/financePermissions";
+import { financeReadBlockReason, getFinanceReadState } from "@/src/utils/financeRead";
 import { useLineItemsFormErrors } from "@/src/hooks/useLineItemsFormErrors";
 import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useAccountingCustomers } from "@/src/features/accounting-customers/hooks/useAccountingCustomers";
@@ -85,6 +92,23 @@ export function useCreateCobroForm({
   submitLockRef,
 }: { onSuccess?: () => void; draft?: CobroDraftSeed; submitLockRef: RefObject<boolean> }) {
   const isEdit = draft !== undefined;
+  // ── Permisos de lectura de los catálogos (EC-734) ─────────────────────────
+  // Los dos catálogos son de OTRA sección: clientes de contabilidad (su
+  // subcódigo o `R-CONTABILIDAD`) y cuentas bancarias (solo `R-CONTABILIDAD`).
+  // Sin el permiso no se piden (el backend respondería 403) y su selector queda
+  // deshabilitado con el motivo; mientras la sesión carga, se espera.
+  const { data: session, status: sessionStatus } = useSession();
+  const customersRead = getFinanceReadState(
+    session?.user,
+    sessionStatus,
+    financeSectionReadPermissions("accountingCustomers"),
+  );
+  const bankAccountsRead = getFinanceReadState(session?.user, sessionStatus, FINANCE_READ_PERMISSION);
+  const canReadCustomers = customersRead.canRead;
+  const canReadBankAccounts = bankAccountsRead.canRead;
+  const customersBlockReason = financeReadBlockReason(customersRead, FINANCE_READ_REASONS.accountingCustomers);
+  const bankAccountsBlockReason = financeReadBlockReason(bankAccountsRead, FINANCE_READ_REASONS.bankAccounts);
+
   // ── Catálogos ─────────────────────────────────────────────────────────────
   // Solo cuenta "falló la PRIMERA carga": un refetch fallido con datos en caché
   // no debe tirar el formulario y las líneas ya capturadas. Clientes ya lo
@@ -96,7 +120,7 @@ export function useCreateCobroForm({
     isLoading: isLoadingCustomers,
     isInitialError: isInitialErrorCustomers,
     refetch: refetchCustomers,
-  } = useAccountingCustomers();
+  } = useAccountingCustomers({ enabled: canReadCustomers });
 
   // Al editar, el catálogo de clientes se vuelve a pedir al montar: el caché
   // (15 min) puede no traer un cliente creado después en otra pestaña, y faltar
@@ -105,7 +129,8 @@ export function useCreateCobroForm({
   // alta conserva el caché.
   const [customersRefreshed, setCustomersRefreshed] = useState(!isEdit);
   useEffect(() => {
-    if (!isEdit) return;
+    // `refetch` ignora `enabled`: sin permiso no se relee.
+    if (!isEdit || !canReadCustomers) return;
     let cancelled = false;
     void refetchCustomers().then((result) => {
       if (!cancelled && result.isSuccess) setCustomersRefreshed(true);
@@ -113,15 +138,16 @@ export function useCreateCobroForm({
     return () => {
       cancelled = true;
     };
-  }, [isEdit, refetchCustomers]);
+  }, [isEdit, canReadCustomers, refetchCustomers]);
   const {
     bankAccounts,
     hasLoaded: hasLoadedBankAccounts,
     isLoading: isLoadingBankAccounts,
     isError: isErrorBankAccounts,
-  } = useBankAccounts();
+  } = useBankAccounts({ enabled: canReadBankAccounts });
 
-  const isLoadingFormData = isLoadingCustomers || isLoadingBankAccounts;
+  const isLoadingFormData =
+    customersRead.isSessionLoading || isLoadingCustomers || isLoadingBankAccounts;
   const isErrorFormData =
     isInitialErrorCustomers || (isErrorBankAccounts && !hasLoadedBankAccounts);
 
@@ -173,8 +199,11 @@ export function useCreateCobroForm({
   // Solo en el alta: un borrador ya trae su cliente y su cuenta, y debe poder
   // abrirse (y mostrar por qué no se guarda) aunque ya no haya activos.
   const missingItems: string[] = [];
-  if (!isEdit && activeCustomers.length === 0) missingItems.push("Clientes activos");
-  if (!isEdit && activeBankAccounts.length === 0) missingItems.push("Cuentas bancarias activas");
+  // Un catálogo sin permiso no "falta": su selector ya dice por qué no se usa.
+  if (!isEdit && canReadCustomers && activeCustomers.length === 0) missingItems.push("Clientes activos");
+  if (!isEdit && canReadBankAccounts && activeBankAccounts.length === 0) {
+    missingItems.push("Cuentas bancarias activas");
+  }
 
   /** Código de moneda de una cuenta del catálogo (`null` si no se resuelve). */
   const monedaOf = (cuentaId: number): string | null =>
@@ -401,6 +430,8 @@ export function useCreateCobroForm({
     isLoadingFormData,
     isErrorFormData,
     missingItems,
+    customersBlockReason,
+    bankAccountsBlockReason,
     customers: selectableCustomers,
     bankAccounts: selectableBankAccounts,
     bankAccountOptions,
