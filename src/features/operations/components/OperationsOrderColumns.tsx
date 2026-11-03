@@ -291,13 +291,15 @@ const FolioCell = ({
       href: pedidoDetailHref(order.id, "operations"),
     },
     // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
-    // "Revisar inventario".
+    // "Revisar inventario". Solo para pedidos confirmados (EC-748): la misma
+    // regla que el punto de color y el filtro "Por confirmar / Confirmado"
+    // (`fecha_confirmacion` no nula). El backend todavía no lo valida.
     {
       label: "Programar",
       icon: CalendarDaysIcon,
       onSelect: () => onProgramar(order),
       permission: "E-MESACONTROL-PEDIDOS",
-      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+      visible: confirmed && order.estatus !== PEDIDO_ESTATUS.CANCELADO,
     },
     // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
