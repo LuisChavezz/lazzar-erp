@@ -78,9 +78,10 @@ export function useCreditNoteForm({
   /**
    * Un alta `Emitida` falló de forma que la nota pudo quedar registrada sin
    * saberse cómo (`locked` en `getCreateFailureOutcome`: `cfdi` sin
-   * `nota_credito`, sin confirmación o `409`). Un rechazo de Facturama que el
-   * backend reporta como nota `Cancelada` NO bloquea: el saldo se restituyó y
-   * reenviar crea una nota nueva, que es lo que se quiere.
+   * `nota_credito`, una nota `Emitida` cuyo timbre no se pudo consultar, sin
+   * confirmación o `409`). Una nota que el backend reporta `Cancelada` NO
+   * bloquea: el saldo se restituyó y reenviar crea una nota nueva, que es lo
+   * que se quiere.
    * Bloquea el formulario para siempre: reenviar lo mismo
    * crearía OTRA nota y volvería a rebajar el saldo de la cuenta por cobrar. El
    * formulario sigue a la vista para cotejarlo con el listado, y la única salida
@@ -174,11 +175,12 @@ export function useCreditNoteForm({
       setServerBanner(outcome.message);
       return;
     }
-    // La nota quedó emitida (con el timbrado pendiente u otro fallo, p. ej. la
-    // póliza): el alta sí ocurrió, así que el formulario se cierra como en un
-    // éxito; el toast de la mutación lo explica y el listado ya se refresca en
-    // su `onSettled`.
-    if (outcome?.kind === "emitted") {
+    // La nota quedó emitida —con el timbrado pendiente, o timbrada y con un
+    // error posterior (la póliza, #749)—: el alta sí ocurrió y reenviar
+    // rebajaría el saldo otra vez, así que el formulario se cierra como en un
+    // éxito; el toast de la mutación dice el estado real de la nota y el listado
+    // ya se refresca en su `onSettled`.
+    if (outcome?.kind === "pending" || outcome?.kind === "emitted") {
       onSuccess?.();
       return;
     }

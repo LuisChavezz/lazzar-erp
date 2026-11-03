@@ -2,7 +2,6 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { AccountingCustomer } from "../interfaces/accounting-customer.interface";
 
 // ── Columnas ──────────────────────────────────────────────────────────────────
@@ -69,18 +68,3 @@ export const accountingCustomerColumns: ColumnDef<AccountingCustomer>[] = [
     },
   },
 ];
-
-/**
- * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * El nombre filtra por `activo` (su punto), con ficha "Estatus: …". `estado`
- * es el estado GEOGRÁFICO de la dirección, no un estatus: no lleva filtro.
- *
- * Hoy el backend de `clientes-contabilidad` solo devuelve clientes activos
- * (ignora `?activo=false`), así que "Inactivo" no encuentra filas; el filtro se
- * conserva para cuando el listado los incluya.
- */
-export const ACCOUNTING_CUSTOMER_HEADER_FILTERS: Partial<
-  Record<string, HeaderFilterSpec<AccountingCustomer>>
-> = {
-  nombre: { type: "boolean", filterLabel: "estatus", get: (r) => r.activo, yes: "Activo", no: "Inactivo" },
-};

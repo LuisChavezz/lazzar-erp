@@ -109,8 +109,8 @@ export interface NotaCredito {
   /**
    * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado de la emisión o de
    * `timbrar/` (timeout, red, 5xx o respuesta sin UUID) y pudo generarse un
-   * CFDI. Mientras siga en `true`, `timbrar/` lo rechaza; solo un administrador
-   * lo desmarca.
+   * CFDI. Mientras siga en `true`, `timbrar/` lo rechaza; se resuelve con
+   * `conciliar-cfdi/` ("Conciliar con Facturama", EC-709).
    */
   cfdi_pendiente: boolean;
   /** Líneas anidadas. Puede venir vacío — el backend no exige ninguna. */

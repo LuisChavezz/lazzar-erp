@@ -81,7 +81,7 @@ export interface Invoice {
   /**
    * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado (timeout, red,
    * 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras siga en
-   * `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca. Lo trae
+   * `true`, `timbrar/` lo rechaza; se resuelve con `conciliar-cfdi/` (EC-709). Lo trae
    * el retrieve y el listado (no el desglose).
    */
   cfdi_pendiente: boolean;

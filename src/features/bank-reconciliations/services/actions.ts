@@ -46,6 +46,18 @@ export const getConciliaciones = async (
  *
  * El error se deja propagar tal cual para que el hook lo reparta.
  */
+/**
+ * UNA conciliación (`GET /finanzas/conciliaciones-bancarias/{id}/`), con el
+ * mismo `ConciliacionBancariaSerializer` que el listado. Para leer su estatus
+ * real antes de una acción cuyo efecto depende de él (cancelar).
+ */
+export const getConciliacion = async (id: number): Promise<ConciliacionBancaria> => {
+  const { data } = await v1_api.get<ConciliacionBancaria>(
+    `/finanzas/conciliaciones-bancarias/${id}/`,
+  );
+  return data;
+};
+
 export const prepararConciliacion = async (
   payload: PrepararConciliacionPayload,
 ): Promise<PrepararConciliacionResponse> => {
@@ -85,9 +97,9 @@ export const cerrarConciliacion = async (
  * Cancela una conciliación:
  * `POST /finanzas/conciliaciones-bancarias/{id}/cancelar/`.
  *
- * Es un cambio de estatus y NADA MÁS: no revierte los movimientos que un cierre
- * hubiera marcado como `Conciliado`. Por eso la pantalla solo lo ofrece sobre un
- * `Borrador`, que por definición todavía no marcó nada. Idempotente.
+ * Sobre un `Borrador` solo cambia su estatus. Sobre una `Cerrada` regresa
+ * además a `Pendiente` los movimientos que conciliaba, salvo los que ampare
+ * otra conciliación cerrada (nucleo-erp #827). Idempotente.
  */
 export const cancelarConciliacion = async (
   id: number,
