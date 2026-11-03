@@ -2,10 +2,10 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { EmptyLines, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { SheetSection } from "./OrderSheetPrimitives";
-import { CheckIcon, ChevronRightIcon, FacturacionIcon } from "@/src/components/Icons";
+import { FacturacionIcon } from "@/src/components/Icons";
+import { DocChevron, DocEstatusBadge } from "@/src/components/DocEstatusBadge";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
-import { ORIGIN_BADGE_CLASS } from "../constants/pedidoStatus";
 import type { PedidoDocumento, PedidoFolioPicking } from "../interfaces/order.interface";
 import {
   getOrderDocumentRoute,
@@ -17,14 +17,6 @@ import {
 
 const DOC_LINK_CLASS =
   "group inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-semibold text-left transition-colors";
-
-/** ">" del enlace a un documento: dice que se puede abrir su detalle. */
-const DocChevron = () => (
-  <ChevronRightIcon
-    className="w-3.5 h-3.5 shrink-0 text-sky-400 group-hover:translate-x-0.5 transition-transform"
-    aria-hidden="true"
-  />
-);
 
 /**
  * Tipos stub: sus `folio` y `fecha` son el PK crudo (`str(id)`), no datos
@@ -73,51 +65,6 @@ function docSortTime(doc: PedidoDocumento): number | null {
   if (STUB_DOCUMENTO_TIPOS.has(doc.tipo) || !doc.fecha) return null;
   const time = new Date(doc.fecha).getTime();
   return Number.isNaN(time) ? null : time;
-}
-
-/** Badge neutro para el estatus del documento (sin mapa de color por tipo). */
-/**
- * Tono del estatus de un documento. El backend lo manda como texto libre (cada
- * tipo con su vocabulario: "AUTORIZADA", "Pendiente"…), así que se clasifica
- * por palabra clave; lo que no encaja queda neutro, como antes.
- */
-const docEstatusTone = (estatus: string): "ok" | "bad" | "wait" | "neutral" => {
-  const value = estatus.toLowerCase();
-  if (/(cancel|rechaz)/.test(value)) return "bad";
-  if (/(autoriz|complet|entregad|emitid|timbrad|recibid|finaliz|cerrad|pagad|surtid|aplicad)/.test(value)) return "ok";
-  if (/(pendiente|borrador|proceso|parcial|revisi)/.test(value)) return "wait";
-  return "neutral";
-};
-
-/** Texto del estatus en tipo oración ("AUTORIZADA" → "Autorizada"). */
-const sentenceCase = (value: string) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : value;
-
-function DocEstatusBadge({ estatus }: { estatus: string }) {
-  const tone = docEstatusTone(estatus);
-  if (tone === "ok") {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-        <span className="grid place-items-center w-3.5 h-3.5 rounded-full bg-emerald-500 text-white">
-          <CheckIcon className="w-2.5 h-2.5" aria-hidden="true" />
-        </span>
-        {sentenceCase(estatus)}
-      </span>
-    );
-  }
-  const cls =
-    tone === "bad"
-      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
-      : tone === "wait"
-        ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-        : ORIGIN_BADGE_CLASS;
-  const dot = tone === "bad" ? "bg-rose-500" : tone === "wait" ? "bg-amber-500" : "bg-slate-400";
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden="true" />
-      {sentenceCase(estatus)}
-    </span>
-  );
 }
 
 /**

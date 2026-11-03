@@ -99,6 +99,14 @@ export interface PurchaseOrder {
   estatus_label: string;
   tipo: string;
   total_piezas: number;
+  /**
+   * Progreso de recepción calculado por el backend (recepciones no canceladas).
+   * Opcionales: llegaron después; las piezas vienen como string decimal
+   * ("5.0000") y `progreso_pct` de 0 a 100.
+   */
+  piezas_recibidas?: string | null;
+  piezas_pendientes?: string | null;
+  progreso_pct?: number | null;
   observaciones: string | null;
   /**
    * Motivo capturado al cancelar la orden (`POST ordenes/{id}/cancelar/`),

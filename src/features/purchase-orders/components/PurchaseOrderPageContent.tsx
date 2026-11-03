@@ -4,7 +4,8 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import { ArrowLeftIcon, RouteIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ChevronDownIcon, RouteIcon } from "@/src/components/Icons";
+import { DocChevron, DocEstatusBadge } from "@/src/components/DocEstatusBadge";
 import { Button } from "@/src/components/Button";
 import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -29,10 +30,12 @@ import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import {
   isPurchaseOrderCancelled,
+  isPurchaseOrderUnconfirmed,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
 import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { hasVariantSku } from "../utils/purchaseOrderLines";
+import { getPurchaseOrderProgress, progressBarClass } from "../utils/purchaseOrderProgress";
 import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
@@ -96,6 +99,24 @@ const hasLineAmounts = (detalles: PurchaseOrderDetalle[]): boolean =>
  * guiones: el usuario sin visibilidad financiera no está viendo un dato vacío,
  * es que ese dato no es suyo.
  */
+/**
+ * La descripción de un renglón casi siempre repite "producto - color - talla";
+ * en ese caso no se pinta (ya se lee arriba). Solo si dice algo más.
+ */
+const extraDescripcion = (linea: PurchaseOrderDetalle): string | null => {
+  const descripcion = linea.descripcion?.trim();
+  if (!descripcion) return null;
+  // Solo letras y números: guiones, espacios o acentos de más no cuentan como dato.
+  const norm = (value: string) =>
+    value.normalize("NFD").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const nombre = linea.producto_nombre ?? "";
+  const redundantes = [
+    nombre,
+    [nombre, linea.producto_variante_color, linea.producto_variante_talla].filter(Boolean).join(" - "),
+  ].map(norm);
+  return redundantes.includes(norm(descripcion)) ? null : descripcion;
+};
+
 const LineasTable = ({
   detalles,
   monedaCodigo,
@@ -117,35 +138,32 @@ const LineasTable = ({
       <table className="min-w-full text-sm">
         <thead className="bg-slate-50 dark:bg-white/5">
           <tr className="text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+            <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
               #
             </th>
             {showSku && (
-              <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">
                 SKU
               </th>
             )}
-            <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
+            <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">
               Producto
             </th>
-            <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">
-              Descripción
-            </th>
-            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+            <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
               Cantidad
             </th>
-            <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+            <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
               Piezas
             </th>
             {showAmounts && (
               <>
-                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
                   Precio
                 </th>
-                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
                   Descuento
                 </th>
-                <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">
                   Importe
                 </th>
               </>
@@ -158,39 +176,41 @@ const LineasTable = ({
               key={linea.id}
               className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             >
-              <td className="px-3 py-3 text-right tabular-nums text-slate-400 dark:text-slate-500">
+              <td className="px-3 py-2 text-right tabular-nums text-slate-400 dark:text-slate-500">
                 {index + 1}
               </td>
               {showSku && (
-                <td className="px-3 py-3 text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-200 whitespace-nowrap">
                   {textOrDash(linea.producto_variante_sku)}
                 </td>
               )}
-              <td className="px-3 py-3 font-semibold text-slate-800 dark:text-white">
+              <td className="px-3 py-2 font-semibold text-slate-800 dark:text-white">
                 {textOrDash(linea.producto_nombre)}
                 <VariantAttributesCaption
                   color={linea.producto_variante_color}
                   talla={linea.producto_variante_talla}
                 />
+                {extraDescripcion(linea) && (
+                  <p className="mt-0.5 text-xs font-normal text-slate-500 dark:text-slate-400">
+                    {extraDescripcion(linea)}
+                  </p>
+                )}
               </td>
-              <td className="px-3 py-3 text-slate-500 dark:text-slate-400">
-                {textOrDash(linea.descripcion)}
-              </td>
-              <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 {formatQuantityValue(linea.cantidad)}
               </td>
-              <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 {formatQuantityValue(linea.piezas)}
               </td>
               {showAmounts && (
                 <>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {money(linea.precio)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {money(linea.descuento)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                     {money(linea.importe)}
                   </td>
                 </>
@@ -210,58 +230,75 @@ const LineasTable = ({
  * `Gran total` es el único renglón con jerarquía propia (borde superior,
  * tamaño mayor, color de acento) porque es el número que más se escanea.
  */
+/** `undefined`, vacío o 0: el cargo no aplica a esta orden. */
+const isZeroAmount = (value: string | undefined) => !value || Number(value) === 0;
+
+/**
+ * Pie de totales de la orden, pegado a la tabla de artículos (como el total
+ * de una factura). Los cargos opcionales en cero (descuento, flete, seguros,
+ * a cuenta) no ocupan un renglón cada uno: se nombran juntos en una línea
+ * tenue, así el pie solo crece cuando de verdad hay algo que leer.
+ * `Gran total` es el único renglón con jerarquía propia.
+ */
 const TotalsFooter = ({
   data,
   money,
 }: {
   data: OrderTotals;
   money: (value: string | undefined) => string;
-}) => (
-  <div className="mt-5 flex justify-end">
-    <div className="w-full sm:w-80 space-y-1.5 text-sm">
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>Subtotal</span>
-        <span className="tabular-nums">{money(data.subtotal)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>Descuento</span>
-        <span className="tabular-nums">{money(data.descuento)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>
-          {data.porcentaje_iva !== undefined
-            ? `Impuestos (IVA ${formatIvaPercent(data.porcentaje_iva)}%)`
-            : "Impuestos"}
-        </span>
-        <span className="tabular-nums">{money(data.impuestos ?? data.total_iva)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>Flete</span>
-        <span className="tabular-nums">{money(data.flete)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>Seguros</span>
-        <span className="tabular-nums">{money(data.seguros)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-        <span>A cuenta</span>
-        <span className="tabular-nums">{money(data.a_cuenta)}</span>
-      </div>
-      <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-        <span>Total</span>
-        <span className="tabular-nums font-medium">{money(data.total)}</span>
-      </div>
-      <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-slate-200 dark:border-white/10">
-        <span className="text-base font-bold text-slate-900 dark:text-white">
-          Gran total
-        </span>
-        <span className="text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
-          {money(data.gran_total)}
-        </span>
+}) => {
+  const cargos = [
+    { label: "Descuento", value: data.descuento },
+    { label: "Flete", value: data.flete },
+    { label: "Seguros", value: data.seguros },
+    { label: "A cuenta", value: data.a_cuenta },
+  ];
+  const conMonto = cargos.filter((cargo) => !isZeroAmount(cargo.value));
+  const enCero = cargos.filter((cargo) => isZeroAmount(cargo.value));
+  const row = "flex items-center justify-between text-slate-500 dark:text-slate-400";
+
+  return (
+    <div className="mt-4 flex justify-end">
+      <div className="w-full sm:w-80 space-y-1 text-sm">
+        <div className={row}>
+          <span>Subtotal</span>
+          <span className="tabular-nums">{money(data.subtotal)}</span>
+        </div>
+        {conMonto.map((cargo) => (
+          <div key={cargo.label} className={row}>
+            <span>{cargo.label}</span>
+            <span className="tabular-nums">{money(cargo.value)}</span>
+          </div>
+        ))}
+        <div className={row}>
+          <span>
+            {data.porcentaje_iva !== undefined
+              ? `Impuestos (IVA ${formatIvaPercent(data.porcentaje_iva)}%)`
+              : "Impuestos"}
+          </span>
+          <span className="tabular-nums">{money(data.impuestos ?? data.total_iva)}</span>
+        </div>
+        <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+          <span>Total</span>
+          <span className="tabular-nums font-medium">{money(data.total)}</span>
+        </div>
+        {enCero.length > 0 && (
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            {enCero.map((cargo) => cargo.label).join(", ")} en {money("0")}
+          </p>
+        )}
+        <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-white/10">
+          <span className="text-base font-bold text-slate-900 dark:text-white">
+            Gran total
+          </span>
+          <span className="text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
+            {money(data.gran_total)}
+          </span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Recepciones asociadas ────────────────────────────────────────────────────
 
@@ -297,24 +334,46 @@ const RecepcionCard = ({
   // cada tarjeta es ruido, y una discrepancia sí merece verse.
   const proveedorDistinto =
     recepcion.proveedor_nombre && recepcion.proveedor_nombre !== proveedorOrden;
+  // Cerrada por defecto: una línea con lo esencial; el desglose, al abrirla.
+  const [open, setOpen] = useState(false);
+  const recepcionConSku = recepcion.detalles.some((linea) => linea.producto_variante_sku?.trim());
+  const piezasRecibidas = recepcion.detalles.reduce(
+    (total, linea) => total + (Number(linea.cantidad_recibida) || 0),
+    0,
+  );
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className="font-mono text-sm font-semibold text-slate-800 dark:text-white">
-            {textOrDash(recepcion.folio)}
-          </span>
-          <StatusBadge
-            status={recepcion.estatus_label}
-            config={RECEIPT_STATUS_CONFIG}
-          />
-        </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
-          {formatShortDate(recepcion.fecha_recepcion)}
+    <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="group w-full flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+      >
+        <span className="font-mono text-sm font-semibold text-slate-800 dark:text-white">
+          {textOrDash(recepcion.folio)}
         </span>
-      </div>
+        <StatusBadge status={recepcion.estatus_label} config={RECEIPT_STATUS_CONFIG} />
+        <span className="min-w-0 truncate text-xs text-slate-500 dark:text-slate-400">
+          {textOrDash(recepcion.almacen_nombre)}
+        </span>
+        <span className="ml-auto flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+          <span>
+            <span className="font-semibold text-slate-800 dark:text-white">
+              {formatQuantityValue(piezasRecibidas)}
+            </span>{" "}
+            {piezasRecibidas === 1 ? "pieza" : "piezas"}
+          </span>
+          <span>{formatShortDate(recepcion.fecha_recepcion)}</span>
+          <ChevronDownIcon
+            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+        </span>
+      </button>
 
+      {open && (
+      <div className="border-t border-slate-100 dark:border-white/10 px-4 py-3">
       <InfoGrid>
         <InfoField label="Sucursal">{textOrDash(recepcion.sucursal_nombre)}</InfoField>
         <InfoField label="Almacén">{textOrDash(recepcion.almacen_nombre)}</InfoField>
@@ -333,9 +392,11 @@ const RecepcionCard = ({
 
       {recepcion.detalles.length > 0 && (
         <div className="mt-3 overflow-x-auto rounded-lg border border-slate-100 dark:border-white/10">
+          {/* SKU solo si algún renglón lo trae (materia prima no tiene). */}
           <table className="min-w-full text-xs">
             <thead className="bg-slate-50 dark:bg-white/5">
               <tr className="text-slate-500 dark:text-slate-400">
+                {recepcionConSku && <th className="px-3 py-1.5 text-left font-semibold">SKU</th>}
                 <th className="px-3 py-1.5 text-left font-semibold">Producto</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Lote / Serie</th>
                 <th className="px-3 py-1.5 text-right font-semibold">Recibido</th>
@@ -347,6 +408,11 @@ const RecepcionCard = ({
                   key={linea.id}
                   className="border-t border-slate-100 dark:border-white/10"
                 >
+                  {recepcionConSku && (
+                    <td className="px-3 py-1.5 font-mono font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                      {textOrDash(linea.producto_variante_sku)}
+                    </td>
+                  )}
                   <td className="px-3 py-1.5 text-slate-700 dark:text-slate-200">
                     {textOrDash(linea.producto_nombre)}
                   </td>
@@ -363,6 +429,8 @@ const RecepcionCard = ({
             </tbody>
           </table>
         </div>
+      )}
+      </div>
       )}
     </div>
   );
@@ -426,7 +494,7 @@ const DOC_TIPOS_SIN_FOLIO = new Set(["movimiento_inventario", "solicitud_compra"
 
 /** Estilo compartido por los objetivos de clic (botón de diálogo y enlace a pedido). */
 const DOC_LINK_CLASS =
-  "text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors text-left";
+  "group inline-flex items-center gap-1 font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer transition-colors text-left";
 
 /**
  * Una fila de documento. El `label` (columna Tipo) es el objetivo de clic:
@@ -460,6 +528,7 @@ const DocRow = ({
       onClick={() => onOpenDoc({ tipo: doc.tipo, id: doc.id })}
     >
       {doc.label}
+      <DocChevron />
     </button>
   ) : isPedido ? (
     <Link
@@ -468,13 +537,14 @@ const DocRow = ({
       title={`Ver detalle: ${doc.label}`}
     >
       {doc.label}
+      <DocChevron />
     </Link>
   ) : (
     textOrDash(doc.label)
   );
 
   return (
-    <tr className="border-t border-slate-100 dark:border-white/10 align-top">
+    <tr className="border-t border-slate-100 dark:border-white/10 align-middle hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
       <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{tipoCell}</td>
       <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
         {folioCell}
@@ -486,8 +556,8 @@ const DocRow = ({
             antes en husos negativos. `formatLocalDate` respeta ambas formas. */}
         {formatLocalDate(doc.fecha)}
       </td>
-      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-        {textOrDash(doc.estatus)}
+      <td className="px-3 py-2">
+        {doc.estatus?.trim() ? <DocEstatusBadge estatus={doc.estatus} /> : "—"}
       </td>
     </tr>
   );
@@ -645,14 +715,17 @@ export function PurchaseOrderPageContent({
   }
 
   const data = purchaseOrder;
+  const progress = getPurchaseOrderProgress(data);
   const showAmounts = canSeeAmounts(data);
   const money = (value: string | undefined) =>
     formatMoneyValueOrDash(value, data.moneda_codigo);
 
   return (
-    <div className="w-full space-y-6">
+    // En oscuro, tarjetas opacas como la hoja del detalle de pedido
+    // (`SheetSection`), no el translúcido del `Section` compartido.
+    <div className="w-full space-y-4 dark:[&>section]:bg-zinc-900! dark:[&>section]:border-white/5! dark:[&>section]:shadow-none">
       {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 w-fit">{BackLink}</div>
+      <div className="w-fit">{BackLink}</div>
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
       {/* Cabecera en fila, mismo patrón que la orden de bordado: identidad a
@@ -699,6 +772,33 @@ export function PurchaseOrderPageContent({
             <HeaderStat label="Total piezas" bold>
               {formatQuantityValue(data.total_piezas)}
             </HeaderStat>
+            {/* Progreso del backend; sin los campos no se pinta (ver helper). */}
+            {progress && (
+              <HeaderStat label="Recibido">
+                <span className="flex flex-col gap-1">
+                  <span className="tabular-nums">
+                    <span className="font-semibold">{formatQuantityValue(progress.recibidas)}</span> de{" "}
+                    {formatQuantityValue(progress.solicitadas)} ·{" "}
+                    <span className={progress.pct >= 100 ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-semibold"}>
+                      {progress.pct}%
+                    </span>
+                  </span>
+                  <span
+                    className="block h-1 w-24 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={progress.pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Recibido ${progress.pct}%`}
+                  >
+                    <span
+                      className={`block h-full rounded-full ${progressBarClass(progress.pct)}`}
+                      style={{ width: `${progress.pct}%` }}
+                    />
+                  </span>
+                </span>
+              </HeaderStat>
+            )}
             {showAmounts && (
               <HeaderStat label="Gran total" bold>
                 <span className="text-sky-600 dark:text-sky-400">
@@ -708,8 +808,10 @@ export function PurchaseOrderPageContent({
             )}
           </HeaderStatRow>
 
-          {/* Disponible en todos los estatus: el diálogo decide si es de solo
-              lectura (OC Cancelada o sin `E-COMPRAS-OC`). */}
+          {/* Solo con la orden ya confirmada (mismo criterio que el menú del
+              listado); el diálogo decide si es de solo lectura (OC Cancelada o
+              sin `E-COMPRAS-OC`). */}
+          {!isPurchaseOrderUnconfirmed(data.estatus) && (
           <Button
             variant="secondary"
             onClick={() =>
@@ -719,6 +821,7 @@ export function PurchaseOrderPageContent({
             <RouteIcon className="w-4 h-4" aria-hidden="true" />
             Ruta crítica
           </Button>
+          )}
         </div>
       </section>
 
@@ -730,13 +833,6 @@ export function PurchaseOrderPageContent({
           tarjeta aparte más abajo. */}
       <Section title={`Artículos (${data.detalles.length})`}>
         <LineasTable detalles={data.detalles} monedaCodigo={data.moneda_codigo} />
-        {data.detalles.length > 0 && (
-          <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400">
-            {data.detalles.length === 1
-              ? "Se muestra 1 artículo de esta orden."
-              : `Se muestran ${data.detalles.length} artículos de esta orden.`}
-          </p>
-        )}
         {/* La sección de totales se omite cuando el rol no tiene visibilidad
             financiera: pintarla llena de guiones sugeriría una orden sin
             importes, que es una lectura distinta (y falsa). */}
@@ -837,16 +933,9 @@ export function PurchaseOrderPageContent({
       {/* ── 4. Recepciones asociadas ────────────────────────────────────── */}
       {data.recepciones.length > 0 && (
         <Section title={`Recepciones asociadas (${data.recepciones.length})`}>
-          {/* Con pocas recepciones se leen de corrido; a partir de cuatro se
-              acota el alto para que la sección no empuje el resto de la página
-              fuera de pantalla. */}
-          <div
-            className={
-              data.recepciones.length > 3
-                ? "space-y-3 max-h-[32rem] overflow-y-auto pr-1"
-                : "space-y-3"
-            }
-          >
+          {/* Cada recepción ocupa una línea y se abre para ver lo recibido:
+              con muchas, la sección sigue siendo corta. */}
+          <div className="space-y-2">
             {data.recepciones.map((recepcion) => (
               <RecepcionCard
                 key={recepcion.id}

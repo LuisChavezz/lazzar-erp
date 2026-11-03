@@ -40,6 +40,11 @@ const LinePill = ({ label, value }: { label: string; value: string | null | unde
     </span>
   ) : null;
 
+/**
+ * Productos recibidos como tabla compacta: SKU, producto y cantidad en una
+ * línea por renglón, con letra chica y la cantidad alineada a la derecha para
+ * leerla de un vistazo. La columna SKU solo aparece si algún renglón lo trae.
+ */
 const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
   if (detalles.length === 0) {
     return (
@@ -49,33 +54,46 @@ const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
     );
   }
 
+  const showSku = detalles.some((linea) => linea.producto_variante_sku?.trim());
+  const TH = "px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
+
   return (
-    <ul className="max-h-80 overflow-y-auto rounded-xl border border-slate-100 dark:border-white/10 divide-y divide-slate-100 dark:divide-white/5">
-      {detalles.map((linea) => (
-        <li
-          key={linea.id}
-          className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100" title={linea.producto_nombre}>
-              {linea.producto_nombre}
-            </p>
-            {(linea.lote || linea.serie) && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                <LinePill label="Lote" value={linea.lote} />
-                <LinePill label="Serie" value={linea.serie} />
-              </div>
-            )}
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
-              {formatCantidad(linea.cantidad_recibida)}
-            </p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">recibidas</p>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 dark:border-white/10">
+      <table className="w-full text-xs">
+        <thead className="sticky top-0 bg-slate-50 dark:bg-zinc-800">
+          <tr>
+            {showSku && <th className={`${TH} text-left`}>SKU</th>}
+            <th className={`${TH} text-left`}>Producto</th>
+            <th className={`${TH} text-right`}>Recibido</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+          {detalles.map((linea) => (
+            <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+              {showSku && (
+                <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap align-top">
+                  {linea.producto_variante_sku?.trim() || "—"}
+                </td>
+              )}
+              <td className="px-3 py-2 align-top">
+                <p className="text-slate-600 dark:text-slate-300 line-clamp-2" title={linea.producto_nombre}>
+                  {linea.producto_nombre}
+                </p>
+                {(linea.lote || linea.serie) && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <LinePill label="Lote" value={linea.lote} />
+                    <LinePill label="Serie" value={linea.serie} />
+                  </div>
+                )}
+              </td>
+              <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums text-slate-900 dark:text-white whitespace-nowrap align-top">
+                {formatCantidad(linea.cantidad_recibida)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
