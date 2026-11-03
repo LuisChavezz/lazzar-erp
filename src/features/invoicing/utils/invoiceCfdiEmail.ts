@@ -1,20 +1,13 @@
 import { isAxiosError } from "axios";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS, isInvoiceSendable } from "../constants/invoiceStatus";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { isInvoiceCfdiCancelled } from "./invoiceCancellation";
-import { INVOICE_WRITE_PERMISSION } from "../constants/invoicePermissions";
 import { isInvoiceStampPending, isInvoiceStamped } from "./invoiceStamping";
-
-/**
- * Permiso para ofrecer "Enviar CFDI": el backend de `enviar-cfdi/` exige
- * `E-FIN-FACTURAS` (EC-711; ver `INVOICE_WRITE_PERMISSION`). Sin él la acción se
- * oculta. Esta compuerta es de UX.
- */
-export const INVOICE_CFDI_EMAIL_PERMISSION = INVOICE_WRITE_PERMISSION;
 
 export type InvoiceCfdiEmailBlockReason =
   | "deleted"
@@ -93,7 +86,8 @@ export const getInvoiceCfdiEmailAvailability = (
   invoice: Parameters<typeof getInvoiceCfdiEmailBlocker>[0],
   user: PermissionContext | null | undefined,
 ): InvoiceCfdiEmailAvailability => {
-  if (!hasPermission(INVOICE_CFDI_EMAIL_PERMISSION, user)) return { state: "hidden" };
+  // `enviar-cfdi/` es una escritura de Finanzas: sin el permiso, se oculta.
+  if (!hasPermission(FINANCE_WRITE_PERMISSION, user)) return { state: "hidden" };
   const blocker = getInvoiceCfdiEmailBlocker(invoice);
   if (blocker === null) return { state: "available" };
   if (blocker.reason === "deleted") return { state: "hidden" };

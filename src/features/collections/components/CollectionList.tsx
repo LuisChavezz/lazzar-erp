@@ -16,7 +16,7 @@ import { CollectionDetailDialog } from "./CollectionDetailDialog";
 import { CreateCobroForm } from "./CreateCobroForm";
 import { CobroRepStampDialog } from "./CobroRepStampDialog";
 import { CobroRepCancelDialog } from "./CobroRepCancelDialog";
-import { COBRO_CREATE_PERMISSION } from "../constants/collectionPermissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { CollectionRowActionsProvider } from "../hooks/useCollectionRowActions";
 import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { canOfferCobroCancel } from "../utils/cobroCancellation";
@@ -38,7 +38,7 @@ export function CollectionList() {
   // cobro exige además el permiso que valida el backend. `hasPermission` deja
   // pasar a `role === "admin"`.
   const { data: session } = useSession();
-  const canCreate = hasPermission(COBRO_CREATE_PERMISSION, session?.user);
+  const canCreate = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Candado del alta (ver `useCreateCobroForm`): se toma al enviar, ANTES de la
   // validación, así que el diálogo no se cierra (Cerrar, X, Esc) desde el primer

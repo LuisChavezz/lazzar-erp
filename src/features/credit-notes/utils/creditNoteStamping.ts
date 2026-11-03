@@ -1,6 +1,6 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
-import { INVOICE_STAMP_PERMISSION } from "@/src/features/invoicing/utils/invoiceStamping";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import {
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
@@ -42,24 +42,18 @@ export const isCreditNoteStampable = (
 export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(INVOICE_STAMP_PERMISSION, user) && isCreditNoteStampable(nota);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampable(nota);
 
 /**
- * Permiso de ESCRITURA de notas de crédito: crear (borrador o emitida),
- * emitir, cancelar, eliminar y timbrar. El backend exige `E-FIN-FACTURAS` en
- * toda escritura del viewset de notas (#752; desde EC-711 en toda escritura de
- * Finanzas) y responde `403` sin guardar nada. El mismo código que
- * `INVOICE_STAMP_PERMISSION`.
- */
-export const CREDIT_NOTE_WRITE_PERMISSION = INVOICE_STAMP_PERMISSION;
-
-/**
- * ¿Puede ESTE usuario escribir notas de crédito? (`CREDIT_NOTE_WRITE_PERMISSION`,
- * rol "admin" incluido). Convención del módulo: sin él, "+ Nueva nota" se oculta
- * y las acciones del menú y del detalle se muestran deshabilitadas con su motivo.
+ * ¿Puede ESTE usuario escribir notas de crédito? Crear (borrador o emitida),
+ * emitir, cancelar, eliminar y timbrar exigen `FINANCE_WRITE_PERMISSION` (#752;
+ * desde EC-711 en toda escritura de Finanzas), rol "admin" incluido; sin él el
+ * backend responde `403` sin guardar nada. Convención del módulo: sin él,
+ * "+ Nueva nota" se oculta y las acciones del menú y del detalle se muestran
+ * deshabilitadas con su motivo.
  */
 export const canWriteCreditNotes = (user: PermissionContext | null | undefined): boolean =>
-  hasPermission(CREDIT_NOTE_WRITE_PERMISSION, user);
+  hasPermission(FINANCE_WRITE_PERMISSION, user);
 
 /** Por qué una acción de escritura está bloqueada cuando `canWriteCreditNotes` es `false`. */
 export const CREDIT_NOTE_WRITE_PERMISSION_REASON =

@@ -1,18 +1,11 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
 import { isInvoiceStamped } from "./invoiceStamping";
-
-/**
- * Permiso que exige el backend en `POST /finanzas/facturas/{id}/cancelar/`
- * (sin él responde `403`). Es el MISMO que valida el servidor: ofrecer la
- * acción con otro código lleva a un 403 al confirmar. La compuerta real sigue
- * siendo el backend; esta es de UX.
- */
-export const INVOICE_CANCEL_PERMISSION = "E-FIN-FACTURAS";
 
 /** Estatus desde los que el backend permite cancelar (conjunto explícito). */
 const CANCELLABLE_STATUSES: readonly string[] = [INVOICE_STATUS.BORRADOR, INVOICE_STATUS.EMITIDA];
@@ -30,12 +23,12 @@ export const isInvoiceCancellable = (invoice: {
 /**
  * ¿Se ofrece "Cancelar factura" a ESTE usuario para ESTA factura? Fuente ÚNICA
  * de la regla para el menú del listado y la cabecera del detalle: permiso
- * (`INVOICE_CANCEL_PERMISSION`) + `isInvoiceCancellable`.
+ * (`FINANCE_WRITE_PERMISSION`) + `isInvoiceCancellable`.
  */
 export const canCancelInvoice = (
   invoice: Parameters<typeof isInvoiceCancellable>[0],
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(INVOICE_CANCEL_PERMISSION, user) && isInvoiceCancellable(invoice);
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isInvoiceCancellable(invoice);
 
 /**
  * Explicación de "Cancelar factura" deshabilitado con un timbrado sin
