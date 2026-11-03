@@ -33,7 +33,7 @@ const ActionsCell = ({
   }
   if (canDelete) {
     menuItems.push({
-      label: "Cancelar",
+      label: "Dar de baja",
       icon: DeleteIcon,
       onSelect: () => onDelete(row.original),
     });
