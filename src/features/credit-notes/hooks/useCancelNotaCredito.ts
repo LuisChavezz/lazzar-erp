@@ -31,10 +31,17 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  * (`invalidateCreditNoteQueries`): cancelar una nota EMITIDA devuelve el
  * importe acreditado al saldo de la cuenta por cobrar y reajusta su estatus.
  */
+/**
+ * Llave de la cancelación: el listado lee de la `MutationCache` qué notas
+ * tienen una cancelación en vuelo (`usePendingRecordIds`; la variable es el id).
+ */
+export const cancelNotaCreditoMutationKey = ["cancelar-nota-credito"] as const;
+
 export const useCancelNotaCredito = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: cancelNotaCreditoMutationKey,
     mutationFn: async (id: number) => {
       // Retrieve FRESCO antes del POST: el listado puede tener hasta 15 min y
       // otra sesión pudo emitir (y con eso timbrar) o cancelar la nota. El
