@@ -79,16 +79,33 @@ test.describe("areServerTableRangesValid", () => {
 
 test.describe("fetchAllServerListRows", () => {
   const adapter = limitOffsetAdapter<number>();
-  const fakeEndpoint = (total: number) => {
+
+  /**
+   * Endpoint falso con `limit`/`offset`. `maxLimit` imita el `max_limit` de
+   * DRF (recorta `limit` sin avisar); `delays` retrasa respuestas por offset
+   * para que lleguen desordenadas; `stopAt` corta el conjunto real (`next:
+   * null` y vacío desde ahí) aunque `count` diga más.
+   */
+  const fakeEndpoint = (
+    total: number,
+    { maxLimit = Infinity, delays = {}, stopAt }: {
+      maxLimit?: number;
+      delays?: Record<number, number>;
+      stopAt?: number;
+    } = {},
+  ) => {
     const calls: Record<string, string | number>[] = [];
     const queryFn = async (
       params: Record<string, string | number>,
     ): Promise<PaginatedListResponse<number>> => {
       calls.push(params);
       const offset = Number(params.offset);
-      const limit = Number(params.limit);
-      const results = Array.from({ length: Math.max(0, Math.min(limit, total - offset)) }, (_, i) => offset + i);
-      return { count: total, next: null, previous: null, results };
+      const limit = Math.min(Number(params.limit), maxLimit);
+      const end = Math.min(total, stopAt ?? total, offset + limit);
+      const results = Array.from({ length: Math.max(0, end - offset) }, (_, i) => offset + i);
+      await new Promise((resolve) => setTimeout(resolve, delays[offset] ?? 0));
+      const next = end < Math.min(total, stopAt ?? total) ? "next" : null;
+      return { count: total, next, previous: null, results };
     };
     return { calls, queryFn };
   };
@@ -119,5 +136,38 @@ test.describe("fetchAllServerListRows", () => {
     const { calls, queryFn } = fakeEndpoint(0);
     expect(await fetchAllServerListRows({ queryFn, adapter, criteria: {} })).toEqual([]);
     expect(calls).toEqual([{ limit: 500, offset: 0 }]);
+  });
+
+  test("un backend que recorta el límite: avanza por las filas recibidas, sin saltar ni cortar", async () => {
+    const { calls, queryFn } = fakeEndpoint(7, { maxLimit: 2 });
+    const rows = await fetchAllServerListRows({ queryFn, adapter, criteria: {}, pageSize: 5 });
+    expect(rows).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(calls.map((call) => call.offset)).toEqual([0, 2, 4, 6]);
+  });
+
+  test("los lotes en paralelo conservan el orden aunque las respuestas lleguen desordenadas", async () => {
+    const { calls, queryFn } = fakeEndpoint(10, { delays: { 2: 30, 4: 10, 6: 0, 8: 20 } });
+    const rows = await fetchAllServerListRows({ queryFn, adapter, criteria: {}, pageSize: 2 });
+    expect(rows).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // Primera página sola y luego lotes de tres.
+    expect(calls).toHaveLength(5);
+  });
+
+  test("se detiene cuando el endpoint dice que no hay más (`next: null`)", async () => {
+    const { queryFn } = fakeEndpoint(10, { stopAt: 3 });
+    // `count` dice 10, pero el conjunto real acaba en 3 (p. ej. filas borradas).
+    const rows = await fetchAllServerListRows({ queryFn, adapter, criteria: {}, pageSize: 2 });
+    expect(rows).toEqual([0, 1, 2]);
+  });
+
+  test("se detiene en una página vacía y descarta las posteriores", async () => {
+    const empty: PaginatedListResponse<number> = { count: 9, next: "x", previous: null, results: [] };
+    const queryFn = async (params: Record<string, string | number>) => {
+      const offset = Number(params.offset);
+      if (offset === 3) return empty;
+      return { count: 9, next: "x", previous: null, results: [offset, offset + 1, offset + 2] };
+    };
+    const rows = await fetchAllServerListRows({ queryFn, adapter, criteria: {}, pageSize: 3 });
+    expect(rows).toEqual([0, 1, 2]);
   });
 });
