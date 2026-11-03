@@ -6,14 +6,7 @@ import { FormCancelButton, FormSubmitButton } from "../../../components/FormButt
 import { ProductCategoriesIcon } from "../../../components/Icons";
 import { ProductCategory } from "../interfaces/product-category.interface";
 import { useProductCategoryForm } from "../hooks/useProductCategoryForm";
-import {
-  CATEGORIA_LINEAS,
-  CATEGORIA_LINEA_CONFIG,
-  SIN_LINEA_LABEL,
-  isCategoriaLinea,
-} from "../constants/categoriaLinea";
-
-const OPTION_CLS = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
+import { getLineaFormOptions } from "../constants/categoriaLinea";
 
 interface ProductCategoryFormProps {
   onSuccess: () => void;
@@ -36,6 +29,9 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
     onSuccess,
     categoryToEdit,
   });
+
+  // Una línea no reconocida solo se ofrece si ya la tenía la categoría editada.
+  const lineaOptions = getLineaFormOptions(categoryToEdit?.linea);
 
   return (
     <form ref={formRef} key={formKey} onSubmit={handleFormSubmit} className="w-full">
@@ -114,9 +110,12 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                       label="Línea"
                       name={field.name}
                       value={field.state.value}
+                      // Las opciones son el único conjunto posible: el valor
+                      // elegido viaja tal cual (incluida una línea no
+                      // reconocida que ya traía la categoría).
+                      options={lineaOptions}
                       onChange={(event) => {
-                        const next = event.target.value;
-                        field.handleChange(isCategoriaLinea(next) ? next : "");
+                        field.handleChange(event.target.value);
                         clearFieldErrors("linea");
                       }}
                       onBlur={() => {
@@ -124,16 +123,7 @@ export default function ProductCategoryForm({ onSuccess, categoryToEdit }: Produ
                         validateField("linea", field.state.value);
                       }}
                       error={getError("linea")}
-                    >
-                      <option value="" className={OPTION_CLS}>
-                        {SIN_LINEA_LABEL}
-                      </option>
-                      {CATEGORIA_LINEAS.map((linea) => (
-                        <option key={linea} value={linea} className={OPTION_CLS}>
-                          {CATEGORIA_LINEA_CONFIG[linea].label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    />
                   )}
                 </form.Field>
               </div>

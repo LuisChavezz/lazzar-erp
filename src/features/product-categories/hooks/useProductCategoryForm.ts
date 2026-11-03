@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import {
-  ProductCategoryFormSchema,
+  createProductCategoryFormSchema,
   ProductCategoryFormValues,
 } from "../schemas/product-category.schema";
 import { useWorkspaceStore } from "../../workspace/store/workspace.store";
@@ -29,6 +29,10 @@ export function useProductCategoryForm({
 
   // Determina el modo del formulario para conservar el flujo original.
   const isEditing = Boolean(categoryToEdit?.id);
+
+  // Acepta además la línea que ya trae la categoría editada aunque el catálogo
+  // del front no la conozca (ver `createProductCategoryFormSchema`).
+  const formSchema = createProductCategoryFormSchema(isEditing ? categoryToEdit?.linea : undefined);
 
   // Mantiene referencia al formulario para realizar scroll superior al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -110,7 +114,7 @@ export function useProductCategoryForm({
     field: ProductCategoryFormField,
     value: ProductCategoryFormValues[ProductCategoryFormField]
   ) => {
-    const fieldSchema = ProductCategoryFormSchema.shape[field];
+    const fieldSchema = formSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
 
     if (parsed.success) {
@@ -132,7 +136,7 @@ export function useProductCategoryForm({
 
   // Valida todo el formulario antes de enviar mutaciones.
   const validateForm = (values: ProductCategoryFormValues) => {
-    const parsed = ProductCategoryFormSchema.safeParse(values);
+    const parsed = formSchema.safeParse(values);
     if (parsed.success) {
       setClientErrors({});
       return true;
