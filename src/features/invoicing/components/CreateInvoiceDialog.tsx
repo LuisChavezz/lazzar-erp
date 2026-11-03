@@ -13,9 +13,16 @@
  * El cuerpo vive en un componente interno que `MainDialog` monta como
  * `children`; al cerrarse, Radix lo desmonta y el estado (pedido elegido,
  * piezas capturadas, resultado) se reinicia al reabrir.
+ *
+ * No se cierra (X, Cerrar, Esc) mientras el alta viaja: el candado del envío
+ * (`submitLockRef`, tomado de forma síncrona al pulsar "Crear factura") o la
+ * mutación en vuelo (`queryClient.isMutating`, también síncrono) lo impiden.
+ * Cerrar a medias escondería el folio de la factura creada.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { RefObject } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
@@ -27,6 +34,7 @@ import {
 } from "../constants/invoiceWizard";
 import { InvoiceOrderSelector } from "./InvoiceOrderSelector";
 import { InvoiceOnboardingStep2 } from "./InvoiceOnboardingStep2";
+import { createInvoiceFromOnboardingMutationKey } from "../hooks/useCreateInvoiceFromOnboarding";
 
 interface CreateInvoiceDialogProps {
   /** Si el diálogo está abierto. Lo controla el padre. */
@@ -36,6 +44,19 @@ interface CreateInvoiceDialogProps {
 }
 
 export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogProps) {
+  const queryClient = useQueryClient();
+  // Candado del envío (ver `useInvoiceOnboardingStep2`): se lee en el handler,
+  // no en render, así que vale desde el mismo clic.
+  const submitLockRef = useRef(false);
+
+  const handleOpenChange = (next: boolean) => {
+    const creating =
+      submitLockRef.current ||
+      queryClient.isMutating({ mutationKey: createInvoiceFromOnboardingMutationKey }) > 0;
+    if (!next && creating) return;
+    onOpenChange(next);
+  };
+
   return (
     <MainDialog
       title={
@@ -46,16 +67,16 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
         />
       }
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       maxWidth="760px"
       showCloseButton={true}
     >
-      <CreateInvoiceWizard />
+      <CreateInvoiceWizard submitLockRef={submitLockRef} />
     </MainDialog>
   );
 }
 
-function CreateInvoiceWizard() {
+function CreateInvoiceWizard({ submitLockRef }: { submitLockRef: RefObject<boolean> }) {
   const [currentStep, setCurrentStep] = useState<InvoiceWizardStep>(INVOICE_WIZARD_STEPS[0]);
   const [pedidoId, setPedidoId] = useState(0);
   // Moneda del pedido elegido (PK): el onboarding no la expone y la factura nace
@@ -101,6 +122,7 @@ function CreateInvoiceWizard() {
           pedidoId={pedidoId}
           monedaId={monedaId}
           onBack={() => setCurrentStep("step-1")}
+          submitLockRef={submitLockRef}
         />
       )}
     </div>
