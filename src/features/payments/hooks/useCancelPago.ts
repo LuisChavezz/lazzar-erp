@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 import { cancelarPago } from "../services/actions";
 import { Pago } from "../interfaces/payment.interface";
 
@@ -51,7 +52,7 @@ export const useCancelPago = () => {
         queryClient.setQueryData(["pagos"], context.previousPagos);
       }
       console.error(err);
-      toast.error(extractErrorMessage(err, "Error al cancelar el pago"));
+      toast.error(forbiddenDetailMessage(err) ?? extractErrorMessage(err, "Error al cancelar el pago"));
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
     // refetch termine: así el listado nunca muestra un estado intermedio y el

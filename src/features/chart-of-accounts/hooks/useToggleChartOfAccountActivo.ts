@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { setChartOfAccountActivo } from "../services/actions";
 import type { CuentaContable } from "../interfaces/chart-of-account.interface";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 import {
   CHART_OF_ACCOUNTS_KEY_ROOT,
   CHART_OF_ACCOUNTS_LIST_KEY,
@@ -72,9 +73,10 @@ export const useToggleChartOfAccountActivo = () => {
       }
       console.error(error);
       toast.error(
-        variables.activo
-          ? "Error al activar la cuenta contable"
-          : "Error al desactivar la cuenta contable",
+        forbiddenDetailMessage(error) ??
+          (variables.activo
+            ? "Error al activar la cuenta contable"
+            : "Error al desactivar la cuenta contable"),
       );
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el

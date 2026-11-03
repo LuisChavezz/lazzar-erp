@@ -4,6 +4,7 @@ import { BankAccountFormValues } from "../schemas/bank-account.schema";
 import { CuentaBancariaCreate } from "../interfaces/bank-account.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 
 interface UpdateBankAccountPayload extends CuentaBancariaCreate {
   id: number;
@@ -50,7 +51,7 @@ export const useUpdateBankAccount = (setError?: SetBankAccountError) => {
           });
         }
       }
-      toast.error("Error al actualizar la cuenta bancaria");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al actualizar la cuenta bancaria");
     },
   });
 };

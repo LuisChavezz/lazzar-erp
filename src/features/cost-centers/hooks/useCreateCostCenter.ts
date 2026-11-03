@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createCostCenter } from "../services/actions";
 import { COST_CENTERS_KEY_ROOT } from "./useCostCenters";
+import { forbiddenDetailMessage } from "@/src/utils/forbiddenDetailMessage";
 import {
   setCostCenterFieldErrors,
   type SetCostCenterError,
@@ -28,7 +29,7 @@ export const useCreateCostCenter = (setError?: SetCostCenterError) => {
     },
     onError: (error) => {
       setCostCenterFieldErrors(error, setError);
-      toast.error("Error al registrar el centro de costo");
+      toast.error(forbiddenDetailMessage(error) ?? "Error al registrar el centro de costo");
     },
   });
 };
