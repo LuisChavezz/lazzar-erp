@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { ChevronRightIcon } from "@/src/components/Icons";
-import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
+import { FilterHeader } from "@/src/components/ColumnHeaderFilter";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
@@ -143,10 +143,7 @@ export const purchaseOrderReceiptColumns: ColumnDef<PurchaseOrderReceipt>[] = [
     accessorFn: (row) => row.folio ?? "",
     meta: { label: "Folio", serverSort: "folio", serverFilter: "estatus" },
     header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Folio</span>
-        <ColumnHeaderFilter column={column} options={ESTATUS_OPTIONS} label="estatus" />
-      </div>
+      <FilterHeader title="Folio" column={column} options={ESTATUS_OPTIONS} label="estatus" />
     ),
     cell: ({ row }) => <FolioCell receipt={row.original} />,
   },

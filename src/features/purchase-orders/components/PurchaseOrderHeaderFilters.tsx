@@ -2,7 +2,7 @@
 
 import type { Column } from "@tanstack/react-table";
 import { ColumnHeaderDateRangeFilter } from "@/src/components/ColumnHeaderDateRangeFilter";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
 import { PURCHASE_ORDER_ESTATUS_VALUES } from "../hooks/usePurchaseOrdersTable";
@@ -28,12 +28,7 @@ const ESTATUS_OPTIONS: ColumnFilterOption[] = [
 
 /** "O.C.": el estatus vive en esta columna (el punto junto al folio). */
 export function PurchaseOrderFolioHeader({ column }: { column: PurchaseOrderColumn }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span>O.C.</span>
-      <ColumnHeaderFilter column={column} options={ESTATUS_OPTIONS} label="estatus" />
-    </div>
-  );
+  return <FilterHeader title="O.C." column={column} options={ESTATUS_OPTIONS} label="estatus" />;
 }
 
 /** "Fecha de generación": rango libre sobre `fecha_oc`. */

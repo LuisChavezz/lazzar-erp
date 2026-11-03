@@ -1,7 +1,7 @@
 "use client";
 
 import type { Column } from "@tanstack/react-table";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { useSuppliers } from "../hooks/useSuppliers";
 import type { Supplier } from "../interfaces/supplier.interface";
@@ -46,16 +46,14 @@ export function SupplierCatalogHeaderFilter<TData>({
 }) {
   const { suppliers, isLoading, isInitialError } = useSuppliers();
   return (
-    <div className="flex items-center gap-1.5">
-      <span>{title}</span>
-      <ColumnHeaderFilter
-        column={column}
-        options={supplierCatalogOptions(suppliers)}
-        label="proveedor"
-        searchable={{ placeholder: "Buscar proveedor…" }}
-        isLoading={isLoading}
-        isError={isInitialError}
-      />
-    </div>
+    <FilterHeader
+      title={title}
+      column={column}
+      options={supplierCatalogOptions(suppliers)}
+      label="proveedor"
+      searchable={{ placeholder: "Buscar proveedor…" }}
+      isLoading={isLoading}
+      isError={isInitialError}
+    />
   );
 }
