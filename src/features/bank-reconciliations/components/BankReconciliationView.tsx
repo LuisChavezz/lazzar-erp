@@ -466,13 +466,8 @@ export function BankReconciliationView() {
       {cerrarConciliacionTarget && (
         <ConfirmDialog
           open={true}
-          onOpenChange={(open) => {
-            // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
-            // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
-            // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
-            if (!open && !(isBusy(cerrarTargetId) || rowLock.isHeld(cerrarTargetId))) setCerrarTargetId(null);
-          }}
-          busy={isBusy(cerrarTargetId)}
+          // En vuelo queda abierta y bloqueada (ver `guardClose`).
+          {...rowLock.guardClose(cerrarTargetId, () => setCerrarTargetId(null), isBusy(cerrarTargetId))}
           title="Cerrar Conciliación"
           description={
             conciliacionCuadra(
@@ -521,13 +516,8 @@ export function BankReconciliationView() {
       {cancelarConciliacionTarget && (
         <ConfirmDialog
           open={true}
-          onOpenChange={(open) => {
-            // En vuelo no se cierra (Volver, X, Esc): el candado se lee de forma
-            // SÍNCRONA, así que la guarda vale desde el primer frame, antes de que
-            // `busy` se pinte. La confirmación se cierra sola al terminar su acción.
-            if (!open && !(isBusy(cancelarTargetId) || rowLock.isHeld(cancelarTargetId))) setCancelarTargetId(null);
-          }}
-          busy={isBusy(cancelarTargetId)}
+          // En vuelo queda abierta y bloqueada (ver `guardClose`).
+          {...rowLock.guardClose(cancelarTargetId, () => setCancelarTargetId(null), isBusy(cancelarTargetId))}
           title="Cancelar Conciliación"
           description={`¿Deseas cancelar la conciliación de ${
             getCuentaLabel(cancelarConciliacionTarget)
