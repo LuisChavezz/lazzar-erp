@@ -18,11 +18,8 @@ import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import {
-  FINANCE_WRITE_PERMISSION,
-  FINANCE_WRITE_PERMISSION_REASON,
-} from "@/src/constants/financePermissions";
+import { financeWriteBlock, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -81,8 +78,9 @@ export default function SupplierInvoiceList({
   // (EC-733). Sin él, "+ Nueva factura" se oculta y las acciones del menú y del
   // detalle se muestran deshabilitadas con su motivo
   // (`FINANCE_WRITE_PERMISSION_REASON`).
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   /**
    * Proveedor cuyas facturas se listan (`0` = ninguno). Es la ENTRADA de la
    * pantalla: sin él no se consulta nada, porque el listado sin acotar bajaría
@@ -177,11 +175,7 @@ export default function SupplierInvoiceList({
 
   // El menú y el detalle ya deshabilitan las escrituras sin el permiso; se
   // repite aquí por si la sesión cambió entre pintarlos y seleccionar.
-  const guardWrite = () => {
-    if (canWrite) return true;
-    toast.error(FINANCE_WRITE_PERMISSION_REASON);
-    return false;
-  };
+  const guardWrite = () => guardFinanceWrite(write, FINANCE_WRITE_PERMISSION_REASON);
 
   const handleEdit = (id: number) => {
     if (!guardWrite()) return;
@@ -437,7 +431,7 @@ export default function SupplierInvoiceList({
         onDownloadMergedPdf: handleDownloadMergedPdf,
         uploadingIds,
         downloadingIds,
-        canWrite,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -542,7 +536,7 @@ export default function SupplierInvoiceList({
               onDownloadMerged: () => handleDownloadMergedPdf(detailFactura.id),
               isUploading: uploadingIds.includes(detailFactura.id),
               isDownloading: downloadingIds.includes(detailFactura.id),
-              attachBlockedReason: canWrite ? null : FINANCE_WRITE_PERMISSION_REASON,
+              attachBlock: financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON),
             }}
             open={true}
             onOpenChange={(open) => {

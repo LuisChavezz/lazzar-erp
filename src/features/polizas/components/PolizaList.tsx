@@ -12,8 +12,8 @@ import { ContabilidadIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import { FINANCE_WRITE_PERMISSION, POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -77,8 +77,9 @@ export default function PolizaList() {
   // Toda escritura de pólizas exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
   // "+ Nueva póliza" se oculta y las acciones del menú se muestran deshabilitadas
   // con su motivo (`POLIZA_WRITE_PERMISSION_REASON`).
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
@@ -134,11 +135,7 @@ export default function PolizaList() {
 
   // El menú ya deshabilita las escrituras sin el permiso; se repite aquí por si
   // la sesión cambió entre pintarlo y seleccionar.
-  const guardWrite = () => {
-    if (canWrite) return true;
-    toast.error(POLIZA_WRITE_PERMISSION_REASON);
-    return false;
-  };
+  const guardWrite = () => guardFinanceWrite(write, POLIZA_WRITE_PERMISSION_REASON);
 
   /**
    * Contabilizar desde el listado — el camino que NO pasa por el esquema del
@@ -270,7 +267,7 @@ export default function PolizaList() {
           if (guardWrite()) setDeleteTargetId(poliza.id);
         },
         busyIds,
-        canWrite,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">

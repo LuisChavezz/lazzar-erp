@@ -2,6 +2,7 @@
 
 import { useMutationState } from "@tanstack/react-query";
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
+import type { FinanceWriteState } from "@/src/utils/financeWrite";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import {
   uploadSupplierInvoicePdfMutationKey,
@@ -29,11 +30,11 @@ export interface SupplierInvoiceRowActionsContextValue {
   /** Ids con una descarga del documento fusionado en vuelo. */
   downloadingIds: number[];
   /**
-   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el
    * permiso, adjuntar/reemplazar el PDF, "Editar", "Registrar" y "Cancelar
    * factura" se muestran deshabilitados con su motivo.
    */
-  canWrite: boolean;
+  write: FinanceWriteState;
 }
 
 const { Provider, useRowActionsContext } =

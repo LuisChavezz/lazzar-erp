@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -18,11 +17,8 @@ import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import {
-  CONCILIACION_WRITE_PERMISSION_REASON,
-  FINANCE_WRITE_PERMISSION,
-} from "@/src/constants/financePermissions";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -88,8 +84,9 @@ export function BankReconciliationView() {
   // Preparar, cerrar y cancelar exigen `FINANCE_WRITE_PERMISSION` (EC-733). Sin
   // él, "+ Preparar conciliación" se oculta y las acciones del menú se muestran
   // deshabilitadas con su motivo (`CONCILIACION_WRITE_PERMISSION_REASON`).
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -327,11 +324,7 @@ export function BankReconciliationView() {
   /** Tras preparar: se aterriza en el detalle del borrador preparado. */
   // El menú ya deshabilita las escrituras sin el permiso; se repite aquí por si
   // la sesión cambió entre pintarlo y seleccionar.
-  const guardWrite = () => {
-    if (canWrite) return true;
-    toast.error(CONCILIACION_WRITE_PERMISSION_REASON);
-    return false;
-  };
+  const guardWrite = () => guardFinanceWrite(write, CONCILIACION_WRITE_PERMISSION_REASON);
 
   const handlePrepared = (resultado: PrepararConciliacionResponse) =>
     openPinnedDetail(conciliacionEnDetalleDesdePreparar(resultado));
@@ -347,7 +340,7 @@ export function BankReconciliationView() {
           if (guardWrite()) setCancelarTargetId(conciliacion.id);
         },
         busyIds,
-        canWrite,
+        write,
       }}
     >
     <div className="h-full flex flex-col min-h-0 space-y-4">

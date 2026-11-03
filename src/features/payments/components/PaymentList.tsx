@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import toast from "react-hot-toast";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -12,8 +11,8 @@ import { ReceiptIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
-import { FINANCE_WRITE_PERMISSION, FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -43,8 +42,9 @@ export default function PaymentList() {
   // Registrar y cancelar pagos exige `FINANCE_WRITE_PERMISSION` (EC-733). Sin él,
   // "+ Nuevo pago" se oculta y "Cancelar pago" se muestra deshabilitado con su
   // motivo (`FINANCE_WRITE_PERMISSION_REASON`).
-  const { data: session } = useSession();
-  const canWrite = hasPermission(FINANCE_WRITE_PERMISSION, session?.user);
+  const { data: session, status: sessionStatus } = useSession();
+  const write = getFinanceWriteState(session?.user, sessionStatus);
+  const { canWrite } = write;
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
   // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de cada
   // llamada; los callbacks por llamada de `mutate` solo corren para la última.
@@ -121,10 +121,7 @@ export default function PaymentList() {
   // El menú ya lo muestra deshabilitado sin el permiso; se repite aquí por si la
   // sesión cambió entre pintarlo y seleccionar.
   const handleCancel = (pago: Pago) => {
-    if (!canWrite) {
-      toast.error(FINANCE_WRITE_PERMISSION_REASON);
-      return;
-    }
+    if (!guardFinanceWrite(write, FINANCE_WRITE_PERMISSION_REASON)) return;
     setCancelTargetId(pago.id);
   };
 
@@ -137,7 +134,7 @@ export default function PaymentList() {
         onViewDetail: (pago) => setOpenDetailId(pago.id),
         onCancel: handleCancel,
         busyIds,
-        canWrite,
+        write,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">

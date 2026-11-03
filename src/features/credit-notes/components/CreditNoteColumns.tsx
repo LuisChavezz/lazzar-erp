@@ -9,6 +9,7 @@ import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatAmountNoCurrency } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "../constants/creditNoteStatus";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
@@ -38,16 +39,15 @@ import { useCreditNoteRowActionsContext } from "../hooks/useCreditNoteRowActions
  * interacción.
  */
 function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
-  const { onViewDetail, onEmitir, onCancel, onDelete, canWrite } =
+  const { onViewDetail, onEmitir, onCancel, onDelete, write } =
     useCreditNoteRowActionsContext();
   const { id, estatus } = nota;
   const isDraft = estatus === "Borrador";
+  const writeBlock = financeWriteBlock(write, CREDIT_NOTE_WRITE_PERMISSION_REASON);
+  const emitBlock = financeWriteBlock(write, CREDIT_NOTE_EMIT_PERMISSION_REASON);
   // Sin permiso de escritura, el motivo del permiso manda sobre el del CFDI.
-  const cancelBlockReason = !canWrite
-    ? CREDIT_NOTE_WRITE_PERMISSION_REASON
-    : estatus !== "Cancelada"
-      ? getCreditNoteCancelBlockReason(nota)
-      : null;
+  const cfdiCancelBlockReason =
+    estatus !== "Cancelada" ? getCreditNoteCancelBlockReason(nota) : null;
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(id) },
@@ -61,8 +61,8 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       icon: CheckCircleIcon,
       onSelect: () => onEmitir(id),
       visible: isDraft,
-      disabled: !canWrite,
-      description: canWrite ? undefined : CREDIT_NOTE_EMIT_PERMISSION_REASON,
+      disabled: emitBlock.disabled,
+      description: emitBlock.description,
     },
     // Cancelar sobre lo que aún puede cancelarse. Sobre una `Emitida` devuelve
     // el importe a la cuenta por cobrar; sobre un `Borrador` lo archiva sin
@@ -74,16 +74,18 @@ function CreditNoteFolioCell({ nota }: { nota: NotaCredito }) {
       icon: BanIcon,
       onSelect: () => onCancel(id),
       visible: estatus !== "Cancelada",
-      disabled: cancelBlockReason !== null,
-      description: cancelBlockReason ?? undefined,
+      disabled: writeBlock.disabled || cfdiCancelBlockReason !== null,
+      description: writeBlock.disabled
+        ? writeBlock.description
+        : (cfdiCancelBlockReason ?? undefined),
     },
     {
       label: "Eliminar borrador",
       icon: DeleteIcon,
       onSelect: () => onDelete(id),
       visible: isDraft,
-      disabled: !canWrite,
-      description: canWrite ? undefined : CREDIT_NOTE_WRITE_PERMISSION_REASON,
+      disabled: writeBlock.disabled,
+      description: writeBlock.description,
     },
   ];
 
