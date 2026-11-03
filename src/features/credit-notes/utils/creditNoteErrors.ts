@@ -50,8 +50,10 @@ export const CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE =
  *   canceló y la cuenta por cobrar quedó como estaba.
  * - `Borrador`: Facturama rechazó la emisión de un borrador (`PATCH`). Volvió a
  *   borrador y la cuenta por cobrar quedó como estaba.
- * - `Emitida`: Facturama no confirmó (timeout, 5xx, 408, sin UUID). La nota
- *   quedó emitida y aplicada, con el timbrado pendiente de confirmación.
+ * - `Emitida`: la nota quedó emitida y aplicada. Puede ser que Facturama no
+ *   confirmó (timbrado pendiente) o que el timbrado salió y falló la póliza (el
+ *   `400` entonces no trae `cfdi`): el estatus no los distingue, así que se
+ *   relee la nota y se decide por `cfdi_pendiente` (EC-709).
  */
 export interface StampFailedNota {
   id: number;
@@ -113,12 +115,44 @@ export const creditNoteEmitRejectedDetail = (detail: string): string =>
 
 /**
  * Emisión que Facturama no confirmó: la nota quedó `Emitida` y aplicada con el
- * timbrado pendiente. `timbrar/` rechaza una nota con `cfdi_pendiente` (solo un
- * administrador lo desmarca tras revisar Facturama), así que no se ofrece
- * reintentar con "Timbrar".
+ * timbrado pendiente (`cfdi_pendiente`, confirmado al releerla). `timbrar/` la
+ * rechaza mientras siga así, así que no se ofrece reintentar: se concilia desde
+ * su detalle (EC-709).
  */
 export const creditNoteStampPendingMessage = (label: string, detail: string): string =>
-  `La nota ${label} se emitió y descontó su total del saldo por cobrar, pero Facturama no confirmó el timbrado: quedó pendiente de confirmación. Contacta a un administrador para revisarlo. Motivo: ${detail}`;
+  `La nota ${label} se emitió y descontó su total del saldo por cobrar, pero Facturama no confirmó el timbrado: quedó pendiente de confirmación. No vuelvas a emitirla: ábrela desde el listado de notas de crédito y usa "Conciliar con Facturama" en su detalle. Motivo: ${detail}`;
+
+/**
+ * El `400` reporta la nota `Emitida`, pero al releerla NO tiene el timbrado
+ * pendiente: el backend también responde así cuando el timbrado salió y falló
+ * otra parte de la emisión (la póliza). No es un timbrado pendiente: se dice
+ * que la nota quedó emitida y se muestra el motivo del backend tal cual.
+ */
+export const creditNoteEmittedWithErrorMessage = (label: string, detail: string): string =>
+  `La nota ${label} se emitió y descontó su total del saldo por cobrar, pero la operación respondió con un error. Motivo: ${detail}`;
+
+/** El `400` reporta la nota `Emitida` y no se pudo releerla para saber si su timbrado quedó pendiente. */
+export const creditNoteEmittedUncheckedMessage = (label: string, detail: string): string =>
+  `La nota ${label} se emitió y descontó su total del saldo por cobrar, pero no se pudo consultar si su timbrado quedó pendiente de confirmación. Revisa su detalle antes de volver a intentar nada. Motivo: ${detail}`;
+
+/**
+ * Qué dijo la relectura de una nota que el `400` de la emisión reporta
+ * `Emitida` (`checkEmittedNotaStamp`): con el timbrado pendiente, sin él, o no
+ * se pudo consultar.
+ */
+export type EmittedNotaStampCheck = "pending" | "not-pending" | "unknown";
+
+/** Mensaje de una emisión que dejó la nota `Emitida` con un `400`, según la relectura. */
+export const creditNoteEmittedFailureMessage = (
+  label: string,
+  detail: string,
+  check: EmittedNotaStampCheck,
+): string =>
+  check === "pending"
+    ? creditNoteStampPendingMessage(label, detail)
+    : check === "not-pending"
+      ? creditNoteEmittedWithErrorMessage(label, detail)
+      : creditNoteEmittedUncheckedMessage(label, detail);
 
 /**
  * Duración del toast de un timbrado fallido al emitir: el mensaje ronda los 300

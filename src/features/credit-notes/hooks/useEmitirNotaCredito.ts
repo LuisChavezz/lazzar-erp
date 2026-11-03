@@ -11,8 +11,8 @@ import {
   CREDIT_NOTE_EMIT_UNCONFIRMED_MESSAGE,
   creditNoteEmitRejectedDetail,
   creditNoteEmitRejectedMessage,
+  creditNoteEmittedFailureMessage,
   creditNoteStampFailedMessage,
-  creditNoteStampPendingMessage,
   logUnexpectedError,
   STAMP_FAILED_TOAST_DURATION_MS,
   type StampFailedNota,
@@ -23,6 +23,7 @@ import { fetchFreshInvoice } from "@/src/features/invoicing/hooks/invoiceActionM
 import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
 import { getInvoiceEmitPrecheckReason } from "../utils/creditNoteStamping";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
+import { checkEmittedNotaStamp } from "./checkEmittedNotaStamp";
 
 /** Qué nota se emite: su id y cómo nombrarla en los avisos (folio o `#id`). */
 export interface EmitirNotaCreditoVariables {
@@ -109,8 +110,10 @@ const fetchFreshRelatedInvoice = async (
  * - `Borrador`: Facturama rechazó; la nota volvió a borrador con el saldo
  *   intacto. Aviso breve; el motivo (`getEmitRejectedDraftDetail`) va a
  *   `onRejectedToDraft`, con el que `CreditNoteList` abre el detalle.
- * - `Emitida`: Facturama no confirmó; la nota quedó emitida con el timbrado
- *   pendiente (`creditNoteStampPendingMessage`).
+ * - `Emitida` (también sin `cfdi`: el fallo de la póliza tras timbrar): la
+ *   nota quedó emitida. Se relee (`checkEmittedNotaStamp`) y el mensaje dice
+ *   si quedó con el timbrado pendiente —y que se concilia desde su detalle— o
+ *   si fue otro fallo (`creditNoteEmittedFailureMessage`).
  * - Sin `nota_credito` (o de otra nota): no se afirma nada y se pide revisar el
  *   listado.
  *
@@ -152,15 +155,24 @@ export const useEmitirNotaCredito = ({
     onSuccess: () => {
       toast.success("Nota de crédito emitida correctamente");
     },
-    onError: (error, { id, label }) => {
+    // Async: una nota reportada `Emitida` se relee antes de avisar; la mutación
+    // espera a `onError`.
+    onError: async (error, { id, label }) => {
       logUnexpectedError(error);
       if (error instanceof PrecheckError) {
         toast.error(error.message);
         return;
       }
       const parsed = parseNotaCreditoError(error);
+      if (parsed.notaCredito?.id === id && parsed.notaCredito.estatus === "Emitida") {
+        const check = await checkEmittedNotaStamp(queryClient, id);
+        toast.error(creditNoteEmittedFailureMessage(label, stampFailureDetail(parsed), check), {
+          id: `emitir-nota-credito-timbrado-${id}`,
+          duration: STAMP_FAILED_TOAST_DURATION_MS,
+        });
+        return;
+      }
       if (parsed.stampFailed) {
-        const nota = reportedNota(parsed, id);
         const detail = stampFailureDetail(parsed);
         // Rechazo con la nota de vuelta en borrador: aviso breve, el motivo
         // completo queda en el detalle que abre el listado.
@@ -172,15 +184,13 @@ export const useEmitirNotaCredito = ({
           onRejectedToDraft?.(id, rejectedDetail);
           return;
         }
-        // Pendiente, o sin saber en qué quedó: el toast es la ÚNICA explicación
-        // (el diálogo ya se cerró) y trae el motivo largo de Facturama, así que
-        // dura lo suficiente para leerlo, con id por nota para no apilarse.
-        toast.error(
-          nota?.estatus === "Emitida"
-            ? creditNoteStampPendingMessage(label, detail)
-            : creditNoteStampFailedMessage("emision", detail),
-          { id: `emitir-nota-credito-timbrado-${id}`, duration: STAMP_FAILED_TOAST_DURATION_MS },
-        );
+        // Sin saber en qué quedó: el toast es la ÚNICA explicación (el diálogo
+        // ya se cerró) y trae el motivo largo de Facturama, así que dura lo
+        // suficiente para leerlo, con id por nota para no apilarse.
+        toast.error(creditNoteStampFailedMessage("emision", detail), {
+          id: `emitir-nota-credito-timbrado-${id}`,
+          duration: STAMP_FAILED_TOAST_DURATION_MS,
+        });
         return;
       }
       // Sin confirmación del backend la nota pudo emitirse y timbrarse.

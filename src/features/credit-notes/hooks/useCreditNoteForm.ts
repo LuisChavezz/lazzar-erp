@@ -174,10 +174,11 @@ export function useCreditNoteForm({
       setServerBanner(outcome.message);
       return;
     }
-    // La nota quedó emitida con el timbrado pendiente: el alta sí ocurrió, así
-    // que el formulario se cierra como en un éxito; el toast de la mutación
-    // explica el pendiente y el listado ya se refresca en su `onSettled`.
-    if (outcome?.kind === "pending") {
+    // La nota quedó emitida (con el timbrado pendiente u otro fallo, p. ej. la
+    // póliza): el alta sí ocurrió, así que el formulario se cierra como en un
+    // éxito; el toast de la mutación lo explica y el listado ya se refresca en
+    // su `onSettled`.
+    if (outcome?.kind === "emitted") {
       onSuccess?.();
       return;
     }
