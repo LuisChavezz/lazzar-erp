@@ -213,12 +213,12 @@ const FolioCell = ({
 
 /**
  * Piezas del pedido y, debajo, "Programado X de Y" (EC-737). Sin indicador en
- * un pedido cancelado o sin piezas programables. Si se programó de más, el
- * mismo rojo y la misma copia ("Sobran N") que el resumen de "Programar pedido".
- * La columna mide 150px fijos: el indicador puede partirse en renglones (nunca
- * `whitespace-nowrap`, que lo sacaba de la celda sobre "Vendedor") y "Sobran N"
- * va en su propio renglón. Tono secundario de la tabla (`slate-500`/`slate-400`):
- * el `slate-400`/`slate-500` anterior no llegaba a 4.5:1 a 11px.
+ * un pedido cancelado ni cuando X e Y son 0. Si se programó de más, el mismo
+ * rojo y la misma copia ("Sobran N") que el resumen de "Programar pedido".
+ * La columna mide 150px fijos: el renglón puede partirse tras "Programado",
+ * pero "X de Y" va junto en un span `whitespace-nowrap`, y "Sobran N" va en su
+ * propio renglón; nada sale de la celda. El tono es el del texto secundario de
+ * la tabla (`slate-500`/`slate-400`), que pasa 4.5:1 a 11px en ambos temas.
  */
 const PiezasCell = ({ order }: { order: PedidoListItem }) => {
   const { programado, total, excedente, visible } = getPedidoProgramadoProgress(order);

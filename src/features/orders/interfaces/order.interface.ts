@@ -229,8 +229,9 @@ export interface Order {
 /**
  * Renglón del listado `GET /ventas/pedidos/` (`PedidoListSerializer`).
  *
- * El listado NO reusa `Order`: el backend expone un serializer minimalista de
- * 14 campos escalares (sin `detalles`/`tallas`/`servicios_extras`/`documentos`)
+ * El listado NO reusa `Order`: el backend expone un serializer minimalista,
+ * casi todo escalares más `programacion_conf`/`parcialidades` (sin
+ * `detalles`/`tallas`/`servicios_extras`/`documentos`)
  * para que la tabla no pague el shape completo del detalle — mismo precedente
  * que `TransferenciaListItem` vs `TransferenciaDetail`.
  *

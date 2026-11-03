@@ -16,6 +16,7 @@ const order = (
   piezas: 630,
   piezas_programables: 630,
   parcialidades: [],
+  programacion_conf: null,
   ...overrides,
 });
 
@@ -73,4 +74,68 @@ test("ignora renglones inválidos y cantidades no numéricas del JSONField", () 
     { destino: "EMBARQUE", cantidad: Number.NaN },
   ] as unknown as PedidoProgramacion[];
   expect(getPedidoProgramadoProgress(order({ parcialidades })).programado).toBe(3);
+});
+
+test("Y = 0 con X > 0 se muestra como excedente", () => {
+  expect(
+    getPedidoProgramadoProgress(
+      order({ piezas: 0, piezas_programables: 0, parcialidades: [parcialidad(10)] }),
+    ),
+  ).toEqual({ programado: 10, total: 0, excedente: 10, visible: true });
+});
+
+test("Y = 0 y X = 0 no se muestra", () => {
+  expect(
+    getPedidoProgramadoProgress(order({ piezas: 0, piezas_programables: 0, parcialidades: [] }))
+      .visible,
+  ).toBe(false);
+});
+
+test("un pedido cancelado con X > 0 y Y = 0 tampoco se muestra", () => {
+  expect(
+    getPedidoProgramadoProgress(
+      order({
+        estatus: PEDIDO_ESTATUS.CANCELADO,
+        piezas: 0,
+        piezas_programables: 0,
+        parcialidades: [parcialidad(10)],
+      }),
+    ).visible,
+  ).toBe(false);
+});
+
+test("sin parcialidades en el payload suma programacion_conf", () => {
+  const progress = getPedidoProgramadoProgress(
+    order({
+      parcialidades: undefined,
+      programacion_conf: { programaciones: [parcialidad(4), parcialidad(6)] },
+    }),
+  );
+  expect(progress.programado).toBe(10);
+});
+
+test("con parcialidades presentes ignora programacion_conf", () => {
+  const progress = getPedidoProgramadoProgress(
+    order({
+      parcialidades: [parcialidad(2)],
+      programacion_conf: { programaciones: [parcialidad(99)] },
+    }),
+  );
+  expect(progress.programado).toBe(2);
+});
+
+test("ignora cantidades negativas, fraccionarias y no numéricas", () => {
+  const invalidas = [
+    parcialidad(5),
+    parcialidad(-5),
+    parcialidad(2.5),
+    parcialidad(0),
+    { destino: "EMBARQUE", cantidad: "3" },
+  ] as unknown as PedidoProgramacion[];
+  expect(getPedidoProgramadoProgress(order({ parcialidades: invalidas })).programado).toBe(5);
+  expect(
+    getPedidoProgramadoProgress(
+      order({ parcialidades: undefined, programacion_conf: { programaciones: invalidas } }),
+    ).programado,
+  ).toBe(5);
 });
