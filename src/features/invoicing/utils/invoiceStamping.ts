@@ -88,15 +88,16 @@ export const canStampInvoice = (
  * ¿Hay un timbrado SIN CONFIRMAR? El backend marca `cfdi_pendiente` cuando
  * Facturama no confirmó el timbrado (timeout, red, 5xx o respuesta sin UUID):
  * puede existir un CFDI vigente ante el SAT aunque la factura no tenga
- * `cfdi_uuid`. Mientras siga marcado, `timbrar/` lo rechaza y solo un
- * administrador lo desmarca. Viene en el retrieve y en el listado.
+ * `cfdi_uuid`. Mientras siga marcado, `timbrar/` y `cancelar/` lo rechazan;
+ * se resuelve con "Conciliar con Facturama" (`conciliar-cfdi/`, EC-709). Viene
+ * en el retrieve y en el listado.
  */
 export const isInvoiceStampPending = (invoice: { cfdi_pendiente?: boolean }): boolean =>
   invoice.cfdi_pendiente === true;
 
-/** Explicación de "Timbrar" bloqueado mientras el timbrado está pendiente de confirmación. */
+/** Aviso de un timbrado pendiente de confirmación: lo que sigue es conciliarlo. */
 export const INVOICE_STAMP_PENDING_MESSAGE =
-  "Timbrado pendiente de confirmación con Facturama. Contacta a un administrador para revisarlo.";
+  "La factura tiene un timbrado pendiente de confirmación con Facturama: no se puede timbrar. Concílialo con \"Conciliar con Facturama\" para traer el timbre o liberarlo.";
 
 /** Indicador de la cabecera, en el lugar del bloque del folio fiscal. */
 export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
@@ -115,3 +116,26 @@ export const stampInvoiceErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "estatus") ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo timbrar la factura.");
+
+/**
+ * ¿Se ofrece "Conciliar con Facturama" a ESTE usuario para ESTA factura? Solo
+ * con el timbrado pendiente de confirmación y el permiso de escritura de
+ * Finanzas (`conciliar-cfdi/` exige `E-FIN-FACTURAS`, EC-709). En el detalle
+ * reemplaza a "Timbrar" y "Cancelar factura", que el backend rechaza mientras
+ * siga pendiente.
+ */
+export const canReconcileInvoiceCfdi = (
+  invoice: { cfdi_pendiente?: boolean },
+  user: PermissionContext | null | undefined,
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isInvoiceStampPending(invoice);
+
+/**
+ * Mensaje de un fallo de `conciliar-cfdi/`: el motivo del backend tal cual
+ * bajo `cfdi` (no hay pendiente, timbrado muy reciente, Facturama no respondió,
+ * varios CFDIs iguales…), luego cualquier campo y al final el extractor
+ * genérico (403, 404, red), como `stampInvoiceErrorMessage`.
+ */
+export const reconcileInvoiceCfdiErrorMessage = (error: unknown): string =>
+  drfFieldMessage(error, "cfdi") ??
+  firstDrfFieldMessage(error) ??
+  extractErrorMessage(error, "No se pudo conciliar el timbrado con Facturama.");

@@ -15,8 +15,8 @@ export const isCreditNoteStamped = (nota: Pick<NotaCredito, "cfdi_uuid">): boole
 /**
  * ¿Hay un timbrado SIN CONFIRMAR? Facturama no confirmó el timbrado y pudo
  * generarse un CFDI vigente ante el SAT aunque la nota no tenga `cfdi_uuid`.
- * Mientras siga marcado, `timbrar/` lo rechaza y solo un administrador lo
- * desmarca.
+ * Mientras siga marcado, `timbrar/` y `cancelar/` lo rechazan; se resuelve con
+ * "Conciliar con Facturama" (`conciliar-cfdi/`, EC-709).
  */
 export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente">): boolean =>
   nota.cfdi_pendiente === true;
@@ -26,7 +26,7 @@ export const isCreditNoteStampPending = (nota: Pick<NotaCredito, "cfdi_pendiente
  * timbrado pendiente. Emitir ya timbra (y desde nucleo-erp #732 ya no deja una
  * nota emitida sin CFDI por una factura sin timbrar: lo rechaza sin guardar),
  * así que esto es el camino de recuperación para las `Emitida` sin timbre que
- * quedaron de antes o cuyo timbrado pendiente un administrador liberó. Un
+ * quedaron de antes o cuyo timbrado pendiente se liberó al conciliarlo. Un
  * `Borrador` no se ofrece: se timbra al emitirlo.
  */
 export const isCreditNoteStampable = (
@@ -43,6 +43,16 @@ export const canStampCreditNote = (
   nota: Parameters<typeof isCreditNoteStampable>[0],
   user: PermissionContext | null | undefined,
 ): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampable(nota);
+
+/**
+ * ¿Se ofrece "Conciliar con Facturama" a ESTE usuario para ESTA nota? Solo con
+ * el timbrado pendiente de confirmación y el permiso de escritura de Finanzas
+ * (`conciliar-cfdi/` exige `E-FIN-FACTURAS`, EC-709).
+ */
+export const canReconcileCreditNoteCfdi = (
+  nota: Pick<NotaCredito, "cfdi_pendiente">,
+  user: PermissionContext | null | undefined,
+): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCreditNoteStampPending(nota);
 
 /**
  * ¿Puede ESTE usuario escribir notas de crédito? Crear (borrador o emitida),
@@ -227,14 +237,20 @@ export const getCreditNoteStampBlockReason = (invoice: RelatedInvoiceStampState)
 
 /** Mensaje de un timbrado pendiente de confirmación (toast y nota visible). */
 export const CREDIT_NOTE_STAMP_PENDING_MESSAGE =
-  "Timbrado pendiente de confirmación con Facturama. Contacta a un administrador para revisarlo.";
+  "Timbrado pendiente de confirmación con Facturama. Usa \"Conciliar con Facturama\" en el detalle de la nota para traer el timbre o liberarlo.";
 
 /** Indicador del detalle, en el lugar del folio fiscal. */
 export const CREDIT_NOTE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
-/** Texto bajo el indicador: lo que sigue, sin repetir el rótulo. */
-export const CREDIT_NOTE_STAMP_PENDING_HINT =
-  "Facturama no lo confirmó. Contacta a un administrador para revisarlo.";
+/**
+ * Texto bajo el indicador: lo que sigue, sin repetir el rótulo. Quien no puede
+ * conciliar (`canReconcileCreditNoteCfdi`) no ve el botón, así que se le dice
+ * quién puede hacerlo.
+ */
+export const creditNoteStampPendingHint = (canReconcile: boolean): string =>
+  canReconcile
+    ? "Facturama no lo confirmó. Concílialo para traer el timbre o liberarlo."
+    : "Facturama no lo confirmó. Alguien con permiso de facturación debe conciliarlo con Facturama.";
 
 /**
  * Motivo por el que "Cancelar nota" se muestra BLOQUEADO, o `null` si se
@@ -250,7 +266,7 @@ export const getCreditNoteCancelBlockReason = (
     return "Esta nota ya está timbrada y su CFDI aún no puede cancelarse ante el SAT: cancelarla en el ERP lo dejaría vigente.";
   }
   if (isCreditNoteStampPending(nota)) {
-    return "Tiene un timbrado pendiente de confirmación: no se puede cancelar hasta que un administrador lo revise.";
+    return "Tiene un timbrado pendiente de confirmación: no se puede cancelar. Usa \"Conciliar con Facturama\" en el detalle de la nota.";
   }
   return null;
 };

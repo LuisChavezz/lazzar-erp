@@ -81,7 +81,7 @@ export interface Invoice {
   /**
    * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado (timeout, red,
    * 5xx o respuesta sin UUID) y pudo generarse un CFDI. Mientras siga en
-   * `true`, `timbrar/` lo rechaza; solo un administrador lo desmarca. Lo trae
+   * `true`, `timbrar/` lo rechaza; se resuelve con `conciliar-cfdi/` (EC-709). Lo trae
    * el retrieve y el listado (no el desglose).
    */
   cfdi_pendiente: boolean;
@@ -114,6 +114,20 @@ export interface Invoice {
    */
   tipo_cambio: string | null;
 }
+
+/**
+ * Respuesta de `POST /finanzas/facturas/{id}/conciliar-cfdi/` (EC-709): la
+ * factura completa (`FacturaSerializer`, como el retrieve), ya sin
+ * `cfdi_pendiente`.
+ * - `timbrado`: el CFDI existía en Facturama; ya trae `cfdi_uuid`,
+ *   `facturama_id` y `cfdi_fecha_timbrado`.
+ * - `liberado`: no existía; queda sin UUID y se puede volver a timbrar o
+ *   cancelar.
+ * El estatus no cambia en ninguno de los dos.
+ */
+export type InvoiceCfdiReconcileResponse =
+  | { resultado: "timbrado"; factura: Invoice }
+  | { resultado: "liberado"; factura: Invoice };
 
 /**
  * Respuesta de `POST /finanzas/facturas/{id}/emitir/`: la factura ya `Emitida`

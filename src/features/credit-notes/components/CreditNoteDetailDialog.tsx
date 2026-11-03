@@ -16,7 +16,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { Button } from "@/src/components/Button";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
-import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, NotaCreditoIcon, ShieldCheckIcon, SyncIcon } from "@/src/components/Icons";
 import { useSession } from "next-auth/react";
 import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -32,13 +32,15 @@ import type { NotaCredito } from "../interfaces/credit-note.interface";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_STAMP_PENDING_LABEL,
-  CREDIT_NOTE_STAMP_PENDING_HINT,
+  creditNoteStampPendingHint,
+  canReconcileCreditNoteCfdi,
   canStampCreditNote,
   getCreditNoteStampBlockReason,
   isCreditNoteStampPending,
   type RelatedInvoiceStampState,
 } from "../utils/creditNoteStamping";
 import { CreditNoteStampDialog } from "./CreditNoteStampDialog";
+import { CreditNoteCfdiReconcileDialog } from "./CreditNoteCfdiReconcileDialog";
 
 interface CreditNoteDetailDialogProps {
   /**
@@ -180,6 +182,8 @@ function CreditNoteEmitPanel({
  *   pendiente (`canStampCreditNote`). Bloqueado y descrito por su nota mientras
  *   la factura relacionada carga, no se pudo consultar, no está timbrada o está
  *   cancelada (`getCreditNoteStampBlockReason`).
+ * - "Conciliar con Facturama" solo con `E-FIN-FACTURAS` y el timbrado
+ *   pendiente (`canReconcileCreditNoteCfdi`, EC-709), en el lugar de "Timbrar".
  */
 function CreditNoteCfdiSection({
   nota,
@@ -192,6 +196,7 @@ function CreditNoteCfdiSection({
   const canStamp = canStampCreditNote(nota, session?.user);
   const stampBlockReason = canStamp ? getCreditNoteStampBlockReason(invoice) : null;
   const pending = !nota.cfdi_uuid && isCreditNoteStampPending(nota);
+  const canReconcile = canReconcileCreditNoteCfdi(nota, session?.user);
   const stampNoteId = `credit-note-${nota.id}-stamp-note`;
 
   // Sin timbre, sin pendiente y sin acción no hay nada que mostrar, pero la
@@ -225,7 +230,7 @@ function CreditNoteCfdiSection({
               {CREDIT_NOTE_STAMP_PENDING_LABEL}
             </span>
             <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
-              {CREDIT_NOTE_STAMP_PENDING_HINT}
+              {creditNoteStampPendingHint(canReconcile)}
             </span>
           </InfoField>
         ) : (
@@ -242,6 +247,12 @@ function CreditNoteCfdiSection({
           icon={ShieldCheckIcon}
           label="Timbrar"
           renderDialog={(dialog) => <CreditNoteStampDialog nota={nota} {...dialog} />}
+        />
+        <DocumentActionWithDialog
+          offered={canReconcile}
+          icon={SyncIcon}
+          label="Conciliar con Facturama"
+          renderDialog={(dialog) => <CreditNoteCfdiReconcileDialog nota={nota} {...dialog} />}
         />
         {stampBlockReason && (
           <p id={stampNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-xs sm:text-right">

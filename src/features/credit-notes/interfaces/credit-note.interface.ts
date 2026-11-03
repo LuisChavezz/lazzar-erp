@@ -109,8 +109,8 @@ export interface NotaCredito {
   /**
    * Timbrado SIN CONFIRMAR: Facturama no confirmó el timbrado de la emisión o de
    * `timbrar/` (timeout, red, 5xx o respuesta sin UUID) y pudo generarse un
-   * CFDI. Mientras siga en `true`, `timbrar/` lo rechaza; solo un administrador
-   * lo desmarca.
+   * CFDI. Mientras siga en `true`, `timbrar/` lo rechaza; se resuelve con
+   * `conciliar-cfdi/` ("Conciliar con Facturama", EC-709).
    */
   cfdi_pendiente: boolean;
   /** Líneas anidadas. Puede venir vacío — el backend no exige ninguna. */
@@ -178,3 +178,13 @@ export interface CreateNotaCreditoPayload {
 export interface EmitirNotaCreditoPayload {
   estatus: Extract<NotaCreditoEstatus, "Emitida">;
 }
+
+/**
+ * Respuesta de `POST /finanzas/notas-credito/{id}/conciliar-cfdi/` (EC-709):
+ * la nota completa (`NotaCreditoSerializer`, el mismo del retrieve), ya sin
+ * `cfdi_pendiente`. `timbrado`: el CFDI existía y ya trae `cfdi_uuid`;
+ * `liberado`: no existía y queda sin UUID. El estatus no cambia.
+ */
+export type NotaCreditoCfdiReconcileResponse =
+  | { resultado: "timbrado"; nota_credito: NotaCredito }
+  | { resultado: "liberado"; nota_credito: NotaCredito };

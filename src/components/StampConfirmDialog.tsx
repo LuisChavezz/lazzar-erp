@@ -16,11 +16,16 @@ interface StampConfirmDialogProps {
   isIdle: () => boolean;
   /** Dispara el timbrado; el llamador cierra el diálogo al terminar. */
   onConfirm: () => void;
+  /** Texto del botón de confirmar. Por defecto "Timbrar". */
+  confirmText?: string;
+  /** Texto del botón mientras la petición está en vuelo. Por defecto "Timbrando…". */
+  busyText?: string;
 }
 
 /**
  * Confirmación del TIMBRADO de un CFDI (facturas, notas de crédito), un acto
- * fiscal irreversible.
+ * fiscal irreversible. También la usa "Conciliar con Facturama" (EC-709), con
+ * su propio `confirmText`/`busyText`: el mismo cierre guardado por `isIdle()`.
  *
  * Mientras la petición está en vuelo no se puede cerrar ni reenviar: Confirmar
  * y Volver quedan deshabilitados (`busy`) y Esc y el clic fuera se ignoran. El
@@ -42,6 +47,8 @@ export function StampConfirmDialog({
   isStamping,
   isIdle,
   onConfirm,
+  confirmText = "Timbrar",
+  busyText = "Timbrando…",
 }: StampConfirmDialogProps) {
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado debe verse.
@@ -55,7 +62,7 @@ export function StampConfirmDialog({
       onOpenChange={handleOpenChange}
       title={title}
       description={description}
-      confirmText={isStamping ? "Timbrando…" : "Timbrar"}
+      confirmText={isStamping ? busyText : confirmText}
       cancelText="Volver"
       confirmColor="blue"
       closeOnConfirm={false}

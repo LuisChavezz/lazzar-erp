@@ -3,6 +3,7 @@ import type {
   CreateNotaCreditoPayload,
   EmitirNotaCreditoPayload,
   NotaCredito,
+  NotaCreditoCfdiReconcileResponse,
 } from "../interfaces/credit-note.interface";
 
 /**
@@ -127,6 +128,21 @@ export const timbrarNotaCredito = async (id: number): Promise<NotaCredito> => {
   const { data } = await v1_api.post<NotaCredito>(
     `/finanzas/notas-credito/${id}/timbrar/`,
     {},
+  );
+  return data;
+};
+
+/**
+ * Concilia contra Facturama un timbrado sin confirmar (`cfdi_pendiente`)
+ * (`POST /finanzas/notas-credito/{id}/conciliar-cfdi/`, EC-709). Sin cuerpo.
+ * `resultado: "timbrado"` si el CFDI existía (ya trae `cfdi_uuid`),
+ * `"liberado"` si no. Los `400` traen el motivo bajo `cfdi` y no cambian nada.
+ */
+export const conciliarCfdiNotaCredito = async (
+  id: number,
+): Promise<NotaCreditoCfdiReconcileResponse> => {
+  const { data } = await v1_api.post<NotaCreditoCfdiReconcileResponse>(
+    `/finanzas/notas-credito/${id}/conciliar-cfdi/`,
   );
   return data;
 };

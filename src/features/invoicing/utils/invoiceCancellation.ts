@@ -37,7 +37,7 @@ export const canCancelInvoice = (
  * backend no lo rechaza).
  */
 export const INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE =
-  "No se puede cancelar mientras el timbrado está pendiente de confirmación.";
+  "No se puede cancelar mientras el timbrado está pendiente de confirmación. Usa \"Conciliar con Facturama\" en el detalle de la factura.";
 
 /**
  * Motivo por el que "Cancelar factura" está BLOQUEADO, o `null` si no lo está.

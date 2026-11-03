@@ -402,3 +402,44 @@ test.describe("qué no repetir según el flujo", () => {
     expect(outcome?.message).toContain("No la captures de nuevo");
   });
 });
+
+/**
+ * EC-709: casos que cubrían las pruebas de EC-709 antes de fusionar EC-707 y
+ * que sus pruebas no verifican.
+ */
+test.describe("nota Emitida tras un 400: conciliar, sin CFDI y borrador (EC-709)", () => {
+  const emitida = { estatus: "Emitida" as const, folio: "NC-9" };
+  const sinCfdi = { estatus: "Emitida" as const, cfdi_uuid: null, cfdi_pendiente: false };
+  const sinConfirmar = () =>
+    parseNotaCreditoError(
+      httpError(400, { cfdi: [SIN_CONFIRMAR], nota_credito: { id: 16, estatus: "Emitida" } }),
+    );
+
+  test("el timbrado pendiente manda a Conciliar con Facturama, no a un administrador", () => {
+    const alta = getCreateFailureOutcome(sinConfirmar(), emitida, pendiente)?.message ?? "";
+    const emision = getEmitReportedNotaMessage(sinConfirmar(), 16, "NC-9", pendiente) ?? "";
+    for (const message of [alta, emision]) {
+      expect(message).toContain("Conciliar con Facturama");
+      expect(message).not.toContain("administrador");
+    }
+  });
+
+  test("emitida sin CFDI y sin pendiente no se presenta como pendiente", () => {
+    const outcome = getCreateFailureOutcome(parseNotaCreditoError(polizaTrasTimbre()), emitida, sinCfdi);
+    expect(outcome?.kind).toBe("emitted");
+    expect(outcome?.message).toContain("quedó emitida sin CFDI");
+    expect(outcome?.message).toContain(POLIZA);
+    expect(outcome?.message).not.toContain("pendiente");
+    expect(outcome?.message).not.toContain("Conciliar");
+
+    const emision = getEmitReportedNotaMessage(parseNotaCreditoError(polizaTrasTimbre()), 16, "NC-9", sinCfdi);
+    expect(emision).toContain("quedó emitida sin CFDI");
+    expect(emision).not.toContain("pendiente");
+  });
+
+  test("un borrador con nota_credito Emitida no es un alta emitida", () => {
+    expect(
+      getCreateFailureOutcome(parseNotaCreditoError(polizaTrasTimbre()), { estatus: "Borrador", folio: null }, sinCfdi),
+    ).toBeNull();
+  });
+});
