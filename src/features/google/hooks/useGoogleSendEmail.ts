@@ -6,11 +6,16 @@ import { googleSendEmail } from "../services/actions";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import { generateQuotePdfBlob } from "@/src/features/quotes/services/pdf/quotePdfBlob";
 import { loadQuoteForDocument } from "@/src/features/quotes/utils/loadQuoteForDocument";
+import { quoteEmailRenderInputs } from "@/src/features/quotes/utils/quoteEmailRenderInputs";
 import { buildGoogleEmailAttachment } from "../utils/googleEmailAttachment.utils";
 import { renderEmailContent, type SendEmailResult } from "../utils/emailSend.utils";
 import type { GoogleEmailPayload } from "../interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatEmailRecipients, parseEmailRecipients } from "../utils/emailRecipients";
+import { assertEmailSnapshotUnchanged } from "../utils/sendEmailFlow";
+
+export const QUOTE_EMAIL_STALE_MESSAGE =
+  "La cotización cambió desde que preparaste el correo, así que no se envió. Vuelve a intentarlo para revisar la versión actual.";
 
 /**
  * Correo de una cotización LISTO para confirmarse (EC-563, ME-07): lo que se
@@ -85,19 +90,34 @@ export const usePrepareQuoteEmail = () => {
 };
 
 /**
- * Paso 2, solo tras confirmar: genera el PDF y envía el correo preparado.
+ * Paso 2, solo tras confirmar: vuelve a leer la cotización y el código de su
+ * moneda y, si siguen IGUALES a la foto que se preparó, genera el PDF y envía
+ * el correo preparado. Si otro usuario la modificó mientras la confirmación
+ * estaba abierta, se aborta sin enviar: nunca sale una versión distinta de la
+ * que el usuario confirmó. Se compara lo que se RENDERIZA
+ * (`quoteEmailRenderInputs`, con el código de moneda y `correo_facturas`, de
+ * donde salen los destinatarios): un cambio que no se ve no aborta.
  *
  * El PDF se genera con el MISMO generador que usa "Descargar PDF"
  * (generateQuotePdfBlob) a partir de la MISMA foto con la que se renderizó el
  * correo, por lo que el adjunto es idéntico al documento descargable.
  */
-export const useGoogleSendEmail = () =>
-  useMutation<SendEmailResult, unknown, PreparedQuoteEmail>({
+export const useGoogleSendEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<SendEmailResult, unknown, PreparedQuoteEmail>({
     mutationKey: sendQuoteEmailMutationKey,
     mutationFn: async ({ quote, monedaCodigo, content, attachmentName }): Promise<SendEmailResult> => {
       if (!content) {
         throw new Error("El cliente no tiene correo de facturación registrado.");
       }
+
+      const current = await loadQuoteForDocument(queryClient, quote.id);
+      assertEmailSnapshotUnchanged(
+        quoteEmailRenderInputs(current.quote, current.monedaCodigo),
+        quoteEmailRenderInputs(quote, monedaCodigo),
+        QUOTE_EMAIL_STALE_MESSAGE,
+      );
 
       const pdfBlob = await generateQuotePdfBlob(quote, monedaCodigo);
       const attachment = await buildGoogleEmailAttachment(
@@ -121,3 +141,4 @@ export const useGoogleSendEmail = () =>
       toast.error(extractErrorMessage(error, "No se pudo enviar el correo de la cotizacion."));
     },
   });
+};

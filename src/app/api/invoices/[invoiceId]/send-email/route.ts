@@ -2,7 +2,7 @@
  * API Route de renderizado de correo de factura — responsabilidad única:
  * generar el HTML/texto del correo.
  *
- * El cliente (useSendInvoiceEmail) obtiene la factura (fila del listado), cuyo
+ * El cliente (usePrepareInvoiceEmail) obtiene la factura (fila del listado), cuyo
  * `correo_facturas` ya trae el destinatario resuelto server-side, y envía la
  * factura + el correo en el body de este endpoint (v1_api, con cookies y
  * refresh interceptor); aquí solo se ejecuta el renderizado server-side de

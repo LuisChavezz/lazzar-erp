@@ -56,7 +56,7 @@ export function QuoteRowActionDialogs({
   onClose,
   onAuthorize,
   onSubmitForReview,
-  onSendEmail,
+  emailDialog,
   isAuthorizing,
   isSubmittingForReview,
   reviewValidation,
@@ -149,16 +149,11 @@ export function QuoteRowActionDialogs({
         />
       )}
 
-      {/* El correo mostrado es la foto preparada al pedir el envío, y es
+      {/* El correo mostrado es la foto preparada al pedir el envío
+          (`useDialogSession`: sobrevive a la animación de cierre), y es
           exactamente lo que se envía al confirmar. */}
-      {dialog?.kind === "sendEmail" && (
-        <QuoteSendEmailConfirmDialog
-          key={`send-email-${dialog.email.id}`}
-          open
-          onOpenChange={handleOpenChange}
-          email={dialog.email}
-          onConfirm={() => onSendEmail(dialog.email)}
-        />
+      {emailDialog && (
+        <QuoteSendEmailConfirmDialog key={emailDialog.sessionId} {...emailDialog.props} />
       )}
 
       {reviewValidation.quoteId !== null && (

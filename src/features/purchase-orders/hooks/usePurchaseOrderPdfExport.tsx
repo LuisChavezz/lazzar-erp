@@ -3,6 +3,8 @@ import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/D
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { getPurchaseOrderColumnText } from "../utils/purchaseOrderExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
+import toast from "react-hot-toast";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 /** Ancho relativo de cada columna en el PDF — O.C./Proveedor llevan texto más largo. */
 const getColumnWeight = (column: DataTableVisibleColumn<PurchaseOrder>): number => {
@@ -223,23 +225,30 @@ export const usePurchaseOrderPdfExport = (
   }, [columns]);
 
   const exportToPdf = useCallback(async () => {
-    const exportColumns = columnsRef.current;
-    if (exportColumns.length === 0) return;
-    const renderer = await import("@react-pdf/renderer");
-    const pdfDocument = createPurchaseOrdersPdfDocument(
-      {
-        Document: renderer.Document,
-        Page: renderer.Page,
-        Text: renderer.Text,
-        View: renderer.View,
-        StyleSheet: renderer.StyleSheet,
-      },
-      tableRef.current?.getFilteredRows() ?? [],
-      exportColumns,
-    );
-    const blob = await renderer.pdf(pdfDocument).toBlob();
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `ordenes-compra-${today}.pdf`);
+    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
+    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
+    // rechazada sin aviso para el usuario.
+    try {
+      const exportColumns = columnsRef.current;
+      if (exportColumns.length === 0) return;
+      const renderer = await import("@react-pdf/renderer");
+      const pdfDocument = createPurchaseOrdersPdfDocument(
+        {
+          Document: renderer.Document,
+          Page: renderer.Page,
+          Text: renderer.Text,
+          View: renderer.View,
+          StyleSheet: renderer.StyleSheet,
+        },
+        tableRef.current?.getFilteredRows() ?? [],
+        exportColumns,
+      );
+      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `ordenes-compra-${today}.pdf`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
+    }
   }, [tableRef]);
 
   useEffect(() => {
