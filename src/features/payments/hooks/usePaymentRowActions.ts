@@ -10,6 +10,11 @@ export interface PaymentRowActionsContextValue {
   onCancel: (pago: Pago) => void;
   /** Ids con una cancelación en vuelo (`usePendingPaymentIds`, calculado en la lista). */
   busyIds: number[];
+  /**
+   * ¿El usuario puede escribir en Finanzas? (`FINANCE_WRITE_PERMISSION`). Sin el
+   * permiso, "Cancelar pago" se muestra deshabilitado con su motivo.
+   */
+  canWrite: boolean;
 }
 
 const { Provider, useRowActionsContext } = createRowActionsContext<PaymentRowActionsContextValue>(
