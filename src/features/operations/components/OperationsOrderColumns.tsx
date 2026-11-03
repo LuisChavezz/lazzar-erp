@@ -215,23 +215,29 @@ const FolioCell = ({
  * Piezas del pedido y, debajo, "Programado X de Y" (EC-737). Sin indicador en
  * un pedido cancelado o sin piezas programables. Si se programó de más, el
  * mismo rojo y la misma copia ("Sobran N") que el resumen de "Programar pedido".
+ * La columna mide 150px fijos: el indicador puede partirse en renglones (nunca
+ * `whitespace-nowrap`, que lo sacaba de la celda sobre "Vendedor") y "Sobran N"
+ * va en su propio renglón. Tono secundario de la tabla (`slate-500`/`slate-400`):
+ * el `slate-400`/`slate-500` anterior no llegaba a 4.5:1 a 11px.
  */
 const PiezasCell = ({ order }: { order: PedidoListItem }) => {
   const { programado, total, excedente, visible } = getPedidoProgramadoProgress(order);
+  const tone =
+    excedente > 0
+      ? "font-semibold text-rose-600 dark:text-rose-400"
+      : "text-slate-500 dark:text-slate-400";
   return (
     <div className="tabular-nums leading-tight">
       <span className="text-sm text-slate-600 dark:text-slate-300">{order.piezas}</span>
       {visible && (
-        <span
-          className={`block text-[11px] whitespace-nowrap ${
-            excedente > 0
-              ? "font-semibold text-rose-600 dark:text-rose-400"
-              : "text-slate-400 dark:text-slate-500"
-          }`}
-        >
-          Programado {programado} de {total}
-          {excedente > 0 && ` · Sobran ${excedente}`}
-        </span>
+        <>
+          <span className={`block text-[11px] ${tone}`}>
+            Programado {programado} de {total}
+          </span>
+          {excedente > 0 && (
+            <span className={`block text-[11px] ${tone}`}>Sobran {excedente}</span>
+          )}
+        </>
       )}
     </div>
   );
