@@ -86,7 +86,7 @@ const CardContent = memo(function CardContent({
       )}
       {/* Franja de color izquierda — elemento real, independiente de la cascada de bordes */}
       <span
-        className={["absolute left-0 top-0 bottom-0 w-0.75", cfg.accentDot].join(" ")}
+        className={["absolute left-0 top-0 bottom-0 w-0.75", cfg.accentStripe].join(" ")}
         aria-hidden="true"
       />
 

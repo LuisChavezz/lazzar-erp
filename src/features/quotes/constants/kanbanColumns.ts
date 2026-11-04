@@ -18,9 +18,9 @@ export interface KanbanColumnConfig {
   accentText: string;
   /** Clases de fondo del círculo de acento */
   accentBg: string;
-  /** Clase del color del borde izquierdo (strip de color) */
-  accentBorderLeft: string;
-  /** Clase del punto de color en el círculo de acento */
+  /** Clase de fondo de la franja vertical de color (borde izquierdo de columna y tarjeta) */
+  accentStripe: string;
+  /** Clase del punto de color de estatus (encabezado, listados, filtros, feeds) */
   accentDot: string;
   /** Clases del badge numérico en el encabezado */
   badgeClass: string;
@@ -46,7 +46,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     label: "Borrador",
     accentText: "text-slate-500 dark:text-slate-400",
     accentBg: "bg-slate-100 dark:bg-slate-500/10",
-    accentBorderLeft: "border-l-slate-400",
+    accentStripe: "bg-slate-400",
     accentDot: "bg-slate-400",
     badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300",
     statusBadgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300",
@@ -60,8 +60,8 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     label: "Por Autorizar",
     accentText: "text-amber-600 dark:text-amber-400",
     accentBg: "bg-amber-50 dark:bg-amber-500/10",
-    accentBorderLeft: "border-l-amber-400",
-    accentDot: "bg-amber-400",
+    accentStripe: "bg-amber-400",
+    accentDot: "bg-amber-500",
     badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
     statusBadgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
     cardShadowHover: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
@@ -74,8 +74,8 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     label: "Autorizada",
     accentText: "text-emerald-600 dark:text-emerald-400",
     accentBg: "bg-emerald-50 dark:bg-emerald-500/10",
-    accentBorderLeft: "border-l-emerald-400",
-    accentDot: "bg-emerald-400",
+    accentStripe: "bg-emerald-400",
+    accentDot: "bg-emerald-500",
     badgeClass:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
     statusBadgeClass:
@@ -90,8 +90,8 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     label: "Rechazada",
     accentText: "text-rose-600 dark:text-rose-400",
     accentBg: "bg-rose-50 dark:bg-rose-500/10",
-    accentBorderLeft: "border-l-rose-400",
-    accentDot: "bg-rose-400",
+    accentStripe: "bg-rose-400",
+    accentDot: "bg-rose-500",
     badgeClass: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
     statusBadgeClass: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
     cardShadowHover: "hover:shadow-rose-500/25 dark:hover:shadow-rose-500/25",
@@ -104,8 +104,8 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     label: "Cambios Solicitados",
     accentText: "text-orange-600 dark:text-orange-400",
     accentBg: "bg-orange-50 dark:bg-orange-500/10",
-    accentBorderLeft: "border-l-orange-400",
-    accentDot: "bg-orange-400",
+    accentStripe: "bg-orange-400",
+    accentDot: "bg-orange-500",
     badgeClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
     statusBadgeClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
     cardShadowHover: "hover:shadow-orange-500/25 dark:hover:shadow-orange-500/25",

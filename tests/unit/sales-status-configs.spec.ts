@@ -70,6 +70,25 @@ test.describe("getQuoteStatusConfig", () => {
   });
 });
 
+test.describe("KANBAN_COLUMNS: punto vs franja", () => {
+  test("puntos en 500 (gris en 400) y franja con su propio campo en 400", () => {
+    expect(KANBAN_COLUMNS.map((c) => c.accentDot)).toEqual([
+      "bg-slate-400",
+      "bg-amber-500",
+      "bg-emerald-500",
+      "bg-rose-500",
+      "bg-orange-500",
+    ]);
+    expect(KANBAN_COLUMNS.map((c) => c.accentStripe)).toEqual([
+      "bg-slate-400",
+      "bg-amber-400",
+      "bg-emerald-400",
+      "bg-rose-400",
+      "bg-orange-400",
+    ]);
+  });
+});
+
 test.describe("cotizacionEstatusBadge", () => {
   test("usa la config de cotización y su mismo neutro", () => {
     expect(cotizacionEstatusBadge({ estatus: 2, estatus_display: "EN REVISION" } as OpportunityCotizacion)).toEqual({
