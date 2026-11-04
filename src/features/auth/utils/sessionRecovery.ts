@@ -79,7 +79,9 @@ export const probeSession = async (signal: AbortSignal): Promise<SessionProbeRes
  * pide la sesión sin importar la caché y hace `setSession`. Se dispara ese mismo
  * evento en esta pestaña (ver `BroadcastChannel` en
  * `node_modules/next-auth/client/_utils.js` y el `useEffect` de `broadcast.receive`
- * en `next-auth/react/index.js`). Si se actualiza next-auth, revisar que siga así.
+ * en `next-auth/react/index.js`). Por eso `next-auth` va FIJADO a 4.24.15 en
+ * `package.json` (sin `^`): antes de subirlo, `tests/unit/session-provider-refetch.spec.ts`
+ * debe pasar con la versión nueva, porque monta el `SessionProvider` real.
  */
 export const requestSessionRefetch = () => {
   window.dispatchEvent(
