@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
-import {
-  MESA_CONTROL_LIST_HEIGHT,
-  MESA_CONTROL_TABLE_REGION,
-} from "@/src/features/operations/constants/listHeight";
+import { MESA_CONTROL_LIST } from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
@@ -68,14 +65,15 @@ export const OperationsQuoteList = () => {
     // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
     // página scrollea.
     <OperationsQuoteRowActionsProvider value={{ requestAction, busy }}>
-    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col`}>
-      <div className={MESA_CONTROL_TABLE_REGION}>
+    <div className={`${MESA_CONTROL_LIST.panel} flex flex-col`}>
+      <div className={MESA_CONTROL_LIST.region}>
       <DataTable
         columns={getOperationsQuoteColumns(buildOperationsQuoteFilterOptions(operationsQuotes))}
         data={operationsQuotes}
         baseDataCount={operationsQuotes.length}
         searchPlaceholder="Buscar cotización operativa..."
         fillHeight
+        fillHeightBodyClassName={MESA_CONTROL_LIST.body}
         onRefetch={refetch}
         isRefetching={isFetching}
         isLoadingOverlay={isUpdatingOperationsQuoteStatus}

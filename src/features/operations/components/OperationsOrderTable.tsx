@@ -8,6 +8,7 @@ import {
   buildOperationsOrderFilterOptions,
   type OperationsOrderColumnCallbacks,
 } from './OperationsOrderColumns';
+import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
 
 interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
   orders: PedidoListItem[];
@@ -47,6 +48,7 @@ export function OperationsOrderTable({
       baseDataCount={orders.length}
       searchPlaceholder="Buscar por folio, cliente u OC..."
       fillHeight
+      fillHeightBodyClassName={MESA_CONTROL_KPI_LIST.body}
       onRefetch={onRefetch}
       isRefetching={isRefetching}
       isLoadingOverlay={isRefetching}

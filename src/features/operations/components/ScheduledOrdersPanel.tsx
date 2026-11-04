@@ -8,7 +8,7 @@ import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders
 import type { OrdersQueryParams } from '@/src/features/orders/services/actions';
 import { flattenScheduledParcialidades } from '../utils/scheduled-parcialidades.utils';
 import { ScheduledOrdersTable } from './ScheduledOrdersTable';
-import { MESA_CONTROL_LIST_HEIGHT, MESA_CONTROL_TABLE_REGION } from '../constants/listHeight';
+import { MESA_CONTROL_LIST } from '../constants/listHeight';
 
 /**
  * Pedidos programados por Mesa de Control. `estatus=3,4` es OBLIGATORIO junto
@@ -51,7 +51,7 @@ export function ScheduledOrdersPanel() {
     // Altura según la ventana (`listHeight.ts`): en pantallas altas la tabla
     // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
     // página scrollea.
-    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
+    <div className={`${MESA_CONTROL_LIST.panel} flex flex-col gap-3`}>
       {!isLoading && !showError && (
         <p className="shrink-0 text-sm text-slate-500 dark:text-slate-400 tabular-nums" aria-live="polite">
           {pluralize(totalPedidos, 'pedido', 'pedidos')}
@@ -59,7 +59,7 @@ export function ScheduledOrdersPanel() {
           {pluralize(parcialidades.length, 'parcialidad', 'parcialidades')}
         </p>
       )}
-      <div className={MESA_CONTROL_TABLE_REGION}>
+      <div className={MESA_CONTROL_LIST.region}>
       <ScheduledOrdersTable
         parcialidades={parcialidades}
         onRefetch={handleRefetch}
