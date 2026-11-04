@@ -11,7 +11,7 @@ import { Loader } from "@/src/components/Loader";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import { buildCxcIndex, cobroLabel, type CobroRow } from "../utils/collection.utils";
-import { cobroToFormValues } from "../utils/cobroDraft";
+import { cobroBankAccountLabel, cobroToFormValues } from "../utils/cobroDraft";
 import { CreateCobroForm } from "./CreateCobroForm";
 
 interface CobroDraftEditDialogProps {
@@ -120,6 +120,7 @@ function DraftForm({
     id: cobro.id,
     values: cobroToFormValues(cobro, buildCxcIndex(cuentas)),
     clienteNombre: cobro.cliente_nombre,
+    cuentaBancariaLabel: cobroBankAccountLabel(cobro),
   }));
   return <CreateCobroForm draft={seed} onSuccess={onDone} onCancel={onDone} submitLockRef={submitLockRef} />;
 }

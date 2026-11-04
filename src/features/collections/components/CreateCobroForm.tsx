@@ -55,6 +55,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
     missingItems,
     customersBlockReason,
     bankAccountsBlockReason,
+    draftCustomerLabel,
     customers,
     bankAccountOptions,
     selectorMoneda,
@@ -167,7 +168,7 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                 <ItemPickerButton
                   label="Cliente"
                   placeholder="Seleccionar cliente..."
-                  selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : null}
+                  selectedLabel={selectedCustomer ? customerLabel(selectedCustomer) : draftCustomerLabel}
                   onClick={() => setIsCustomerPickerOpen(true)}
                   error={getError("cliente")}
                   disabled={isClienteLocked || customersBlockReason !== null}

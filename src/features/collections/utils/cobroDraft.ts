@@ -81,3 +81,39 @@ export const cobroToFormValues = (
     };
   }),
 });
+
+/**
+ * Etiqueta de la cuenta bancaria de un cobro armada con lo que trae el propio
+ * cobro (alias y moneda embebidos), sin el catálogo de cuentas bancarias.
+ */
+export const cobroBankAccountLabel = (
+  cobro: Pick<Cobro, "cuenta_bancaria" | "cuenta_bancaria_alias" | "cuenta_bancaria_moneda_codigo">,
+): string =>
+  [cobro.cuenta_bancaria_alias || `Cuenta #${cobro.cuenta_bancaria}`, cobro.cuenta_bancaria_moneda_codigo]
+    .filter(Boolean)
+    .join(" · ");
+
+/** Lo mínimo del borrador para etiquetar su cliente y su cuenta sin catálogos. */
+export interface CobroDraftLabelSource {
+  values: Pick<CobroFormValues, "cliente" | "cuenta_bancaria">;
+  clienteNombre: string;
+  cuentaBancariaLabel: string;
+}
+
+/**
+ * Etiquetas de SOLO LECTURA del cliente y la cuenta del borrador cuando el
+ * catálogo correspondiente no se puede leer (EC-734): el selector sigue
+ * deshabilitado con su motivo, pero muestra lo que el borrador ya tiene en vez
+ * de "Seleccionar…", que lo haría parecer vacío. Sin borrador (alta) o con el
+ * catálogo legible, `null`: manda el catálogo.
+ */
+export const getBlockedCatalogDraftLabels = (
+  draft: CobroDraftLabelSource | undefined,
+  blocked: { customers: boolean; bankAccounts: boolean },
+): { customerLabel: string | null; bankAccountOption: { value: number; label: string } | null } => ({
+  customerLabel: draft && blocked.customers && draft.values.cliente > 0 ? draft.clienteNombre : null,
+  bankAccountOption:
+    draft && blocked.bankAccounts && draft.values.cuenta_bancaria > 0
+      ? { value: draft.values.cuenta_bancaria, label: draft.cuentaBancariaLabel }
+      : null,
+});
