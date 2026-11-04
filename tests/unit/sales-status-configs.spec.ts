@@ -9,7 +9,10 @@ import {
   QUOTE_STATUS_CONFIG,
   QUOTE_STATUS_FALLBACK_CLS,
   getQuoteDialogStatusColor,
+  getQuoteStatusConfig,
 } from "@/src/features/quotes/constants/quoteStatus";
+import { cotizacionEstatusBadge } from "@/src/features/opportunities/utils/cotizacionEstatus";
+import type { OpportunityCotizacion } from "@/src/features/opportunities/interfaces/opportunity-onboarding.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 
 /**
@@ -29,7 +32,7 @@ test.describe("QUOTE_STATUS_CONFIG", () => {
     for (const column of KANBAN_COLUMNS) {
       expect(QUOTE_STATUS_CONFIG[column.estatus]).toEqual({
         label: column.label,
-        cls: column.badgeClass,
+        cls: column.statusBadgeClass,
         dot: column.accentDot,
         dialogColor: column.dialogColor,
       });
@@ -39,8 +42,9 @@ test.describe("QUOTE_STATUS_CONFIG", () => {
   test("Borrador es gris y Por Autorizar ámbar en el encabezado de diálogo", () => {
     expect(getQuoteDialogStatusColor(1)).toBe("slate");
     expect(getQuoteDialogStatusColor(2)).toBe("amber");
-    expect(getQuoteDialogStatusColor(99)).toBe("sky");
-    expect(getQuoteDialogStatusColor(null)).toBe("sky");
+    // Estatus desconocido: el mismo neutro que el badge, no "sky".
+    expect(getQuoteDialogStatusColor(99)).toBe("slate");
+    expect(getQuoteDialogStatusColor(null)).toBe("slate");
   });
 
   test("getStatusStyles usa el badge del tablero y cae al neutro", () => {
@@ -48,6 +52,34 @@ test.describe("QUOTE_STATUS_CONFIG", () => {
     expect(getStatusStyles({ estatus: 1 })).toBe(QUOTE_STATUS_CONFIG[1].cls);
     expect(getStatusStyles(null)).toBe(QUOTE_STATUS_FALLBACK_CLS);
     expect(getStatusStyles(99)).toBe(QUOTE_STATUS_FALLBACK_CLS);
+  });
+});
+
+test.describe("getQuoteStatusConfig", () => {
+  test("devuelve undefined fuera del enum o sin estatus", () => {
+    expect(getQuoteStatusConfig(1)?.label).toBe("Borrador");
+    expect(getQuoteStatusConfig(99)).toBeUndefined();
+    expect(getQuoteStatusConfig(null)).toBeUndefined();
+    expect(getQuoteStatusConfig(undefined)).toBeUndefined();
+  });
+
+  test("el badge de estatus no depende del contador de la columna", () => {
+    for (const column of KANBAN_COLUMNS) {
+      expect(getQuoteStatusConfig(column.estatus)?.cls).toBe(column.statusBadgeClass);
+    }
+  });
+});
+
+test.describe("cotizacionEstatusBadge", () => {
+  test("usa la config de cotización y su mismo neutro", () => {
+    expect(cotizacionEstatusBadge({ estatus: 2, estatus_display: "EN REVISION" } as OpportunityCotizacion)).toEqual({
+      label: "Por Autorizar",
+      className: QUOTE_STATUS_CONFIG[2].cls,
+    });
+    expect(cotizacionEstatusBadge({ estatus: 9, estatus_display: "NUEVO" } as OpportunityCotizacion)).toEqual({
+      label: "NUEVO",
+      className: QUOTE_STATUS_FALLBACK_CLS,
+    });
   });
 });
 

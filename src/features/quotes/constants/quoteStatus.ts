@@ -1,4 +1,4 @@
-import type { DialogHeaderStatusColor } from "@/src/components/DialogHeader";
+import type { DialogHeaderStatusColor } from "@/src/constants/dialogStatusColors";
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { KANBAN_COLUMNS } from "./kanbanColumns";
 
@@ -13,6 +13,11 @@ import { KANBAN_COLUMNS } from "./kanbanColumns";
  * `cls`, `dot`) para que la consuman tanto `optionsFromConfig` (filtros) como
  * `StatusBadge` (celda de estatus), igual que las configs de Finanzas, más el
  * color del encabezado de diálogo (`dialogColor`).
+ *
+ * Queda tipada `Record<number, …>` (no `Partial`) porque `optionsFromConfig`
+ * exige un `Record` completo. Por eso, para RENDERIZAR un estatus que llega del
+ * backend, NO se indexa directo: se usa `getQuoteStatusConfig`, que obliga a
+ * manejar el caso ausente. El `Record` es solo para recorrerlo (filtros).
  */
 export interface QuoteStatusConfigEntry extends StatusBadgeConfigEntry {
   label: string;
@@ -24,7 +29,7 @@ export const QUOTE_STATUS_CONFIG: Record<number, QuoteStatusConfigEntry> = Objec
     column.estatus,
     {
       label: column.label,
-      cls: column.badgeClass,
+      cls: column.statusBadgeClass,
       dot: column.accentDot,
       dialogColor: column.dialogColor,
     },
@@ -47,7 +52,10 @@ export const getQuoteStatusConfig = (
     ? QUOTE_STATUS_CONFIG[estatus]
     : undefined;
 
-/** Color del encabezado de diálogo de una cotización; "sky" si el estatus no se conoce. */
+/**
+ * Color del encabezado de diálogo de una cotización; "slate" (el mismo neutro
+ * que el badge, `QUOTE_STATUS_FALLBACK_CLS`) si el estatus no se conoce.
+ */
 export const getQuoteDialogStatusColor = (
   estatus: number | null | undefined,
-): DialogHeaderStatusColor => getQuoteStatusConfig(estatus)?.dialogColor ?? "sky";
+): DialogHeaderStatusColor => getQuoteStatusConfig(estatus)?.dialogColor ?? "slate";
