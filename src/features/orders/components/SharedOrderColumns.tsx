@@ -2,6 +2,7 @@
 
 import type { DataTableFilterConfig } from '@/src/components/DataTable';
 import type { PedidoListItem } from '../interfaces/order.interface';
+import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
 
 /**
  * Helpers del estado de confirmación de un pedido (`GET /ventas/pedidos/`),
@@ -16,13 +17,6 @@ export const ORDER_STATUS_FILTER_FIELD = 'estatus_confirmacion' as const;
 
 /** Pedido enriquecido con el estado que consume el filtro de `DataTable`. */
 export type OrderWithStatus = PedidoListItem & { [ORDER_STATUS_FILTER_FIELD]: string };
-
-// Un pedido se considera confirmado cuando ya tiene fecha de confirmación.
-// Recibe solo ese campo para que otros contratos de pedido (p. ej. los pedidos
-// especiales de Producción) compartan la misma regla.
-export function isOrderConfirmed(order: Pick<PedidoListItem, 'fecha_confirmacion'>): boolean {
-  return Boolean(order.fecha_confirmacion);
-}
 
 /**
  * El filtro de `DataTable` lee la propiedad cruda del objeto (`row[configId]`),
