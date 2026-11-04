@@ -1,15 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-
-/** Colores disponibles para el punto de estado (y la insignia) del encabezado. */
-export type DialogHeaderStatusColor =
-  | "sky"
-  | "emerald"
-  | "amber"
-  | "rose"
-  | "indigo"
-  | "violet"
-  | "orange"
-  | "slate";
+import type { DialogHeaderStatusColor } from "@/src/constants/dialogStatusColors";
 
 interface DialogHeaderProps {
   title: string;

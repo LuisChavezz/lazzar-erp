@@ -13,6 +13,7 @@ import {
   getStatusStyles as getOperationsQuoteStatusStyles,
 } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteStatusConfig } from "@/src/features/quotes/constants/quoteStatus";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
 // ─── Máximo de ítems en el feed ───────────────────────────────────────────────
@@ -22,7 +23,7 @@ const MAX_ITEMS = 8;
 // El color sale de `QUOTE_STATUS_CONFIG` (mismo punto que el tablero); solo
 // "Por Autorizar" late, para llamar la atención sobre lo pendiente.
 const getActivityDot = (estatus: number) =>
-  `${getQuoteStatusConfig(estatus)?.dot ?? "bg-slate-400"}${estatus === 2 ? " animate-pulse" : ""}`;
+  `${getQuoteStatusConfig(estatus)?.dot ?? "bg-slate-400"}${estatus === PENDING_AUTHORIZATION_QUOTE_STATUS ? " animate-pulse" : ""}`;
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const RecentActivityFeed = () => {

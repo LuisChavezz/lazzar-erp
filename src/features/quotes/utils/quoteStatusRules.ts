@@ -12,6 +12,8 @@ const REVIEWABLE_QUOTE_STATUSES = new Set([1, 4]);
 const REJECTED_QUOTE_STATUS = 4;
 const AUTHORIZABLE_QUOTE_STATUSES = new Set([2, 5]);
 const CHANGES_REQUESTED_QUOTE_STATUSES = new Set([5]);
+/** 2 (En revisión, "Por Autorizar" en la app): espera la decisión de mesa de control. */
+export const PENDING_AUTHORIZATION_QUOTE_STATUS = 2;
 
 export const canEditQuote = (status: number | null | undefined): boolean => {
   return typeof status === "number" && EDITABLE_QUOTE_STATUSES.has(status);

@@ -14,7 +14,7 @@ import {
   type RangeFilterOption,
 } from '@/src/utils/columnFilterOptions';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { PEDIDO_ESTATUS_CONFIG, getPedidoEstatusBadge, getPedidoEstatusConfig } from '../constants/pedidoStatus';
+import { PEDIDO_ESTATUS_CONFIG, getPedidoEstatusBadge } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { PedidoFolioLink } from './PedidoFolioLink';
@@ -155,12 +155,12 @@ export function createProcurementOrderColumns({
       size: 190,
       cell: ({ row }) => {
         const order = row.original;
-        const cfg = getPedidoEstatusConfig(order.estatus);
+        const badge = getPedidoEstatusBadge(order.estatus);
         return (
           <div className="flex items-center gap-2 min-w-0">
             <span
-              className={`h-2 w-2 rounded-full shrink-0 ${getPedidoEstatusBadge(order.estatus).dot}`}
-              title={cfg.label}
+              className={`h-2 w-2 rounded-full shrink-0 ${badge.dot}`}
+              title={badge.label}
               aria-hidden="true"
             />
             <div className="flex flex-col items-start gap-1 min-w-0">
@@ -177,7 +177,7 @@ export function createProcurementOrderColumns({
               </PedidoFolioLink>
               {/* Estatus como badge discreto (mismo que Recepciones) junto a la OC. */}
               <div className="flex items-center gap-1 min-w-0">
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${cfg.className}`}>{cfg.label}</span>
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${badge.cls}`}>{badge.label}</span>
                 {hasMeaningfulOc(order.oc) && (
                   <span
                     className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
