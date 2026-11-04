@@ -84,12 +84,11 @@ Ruta base del proyecto:
 
 - Define el layout raíz para todo el proyecto:
   - Carga fuentes **Inter** y **Poppins** mediante `next/font`.
-  - Importa estilos globales (`globals.css`) y estilos de Radix (`@radix-ui/themes/styles.css`).
-  - Obtiene la sesión actual vía `getServerSession(authOptions)` (Server Component).
-  - Envuelve la aplicación en un componente `Provider` que:
-    - Integra **NextAuth SessionProvider** en el cliente.
-    - Configura **TanStack Query** (QueryClientProvider).
-    - Configura **Radix Theme** y otros providers globales.
+  - Importa estilos globales (`globals.css`).
+  - Inyecta el script anti-FOUC que aplica la clase `dark` antes del primer pintado.
+  - **No lee la sesión** (ni cookies ni headers): así las rutas pueden prerenderizarse (ver 3.2).
+  - Envuelve la aplicación en un componente `Provider` que configura **TanStack Query** (QueryClientProvider), el `Toaster` y Speed Insights.
+- La sesión de NextAuth (`SessionProvider`) y el tema de Radix los montan los layouts que los necesitan (`(Main)` y `select-branch`) a través de `SessionThemeProvider`.
 
 ### 3.2 Layout principal de la aplicación (`src/app/(main)/layout.tsx`)
 
@@ -97,6 +96,10 @@ Ruta base del proyecto:
   - Muestra `Sidebar` fijo a la izquierda.
   - Header superior (`Header`) con buscador, notificaciones, workspace y menú de usuario.
   - Área central de contenido (`main`) con scroll vertical.
+- **No lee la sesión en el servidor** (EC-767). `getServerSession`, `cookies()` o `headers()` en este layout —o en el `not-found.tsx` raíz, que se renderiza dentro del árbol de todas las rutas— vuelven dinámicas TODAS las rutas: cada clic paga entonces una petición RSC a la función de Vercel (~150 ms) antes de pintar. Sin ellos, las rutas de módulo se prerenderizan y la navegación entre ellas no hace ninguna petición RSC.
+  - `SessionProvider` arranca sin sesión inicial y el cliente la pide a `/api/auth/session`. Mientras tanto el sidebar pinta como skeleton los accesos que dependen de permisos (`useSidebarSections`).
+  - Si esa lectura falla, `SessionRecoveryProvider` (`features/auth`) la reintenta con espera creciente y, si se agota, el sidebar muestra un aviso con "Reintentar". Una respuesta "sin sesión" no se reintenta.
+  - El acceso no depende de esto: `src/proxy.ts` valida la cookie de NextAuth (firma y expiración) y los permisos de módulo antes de servir la ruta, y el backend valida cada petición.
 - Las rutas se agrupan por **dominio de negocio** (ya no de forma plana). Cada grupo tiene una página raíz y, en su caso, subrutas:
   - `/` – Dashboard / inicio.
   - `/system` – Panel de Control (Core): `/system/reports`.
@@ -286,7 +289,8 @@ Los flujos de alta complejos se modelan como **asistentes dentro de `MainDialog`
   - Columnas de tablas: `...Columns.tsx`.
   - Stores Zustand: `...store.ts`.
 - **Server vs Client Components**:
-  - Layouts y páginas que necesitan sesión (pero no interactividad directa) se mantienen como **Server Components** (`async` + `getServerSession`).
+  - Los layouts compartidos **no leen la sesión en el servidor**: hacerlo vuelve dinámicas todas las rutas que envuelven (ver 3.2). La sesión y los permisos se leen en el cliente con `useSession()`.
+  - Una página que YA es dinámica por sí misma (p. ej. una ruta `[id]`) puede leer el JWT de NextAuth con `getServerSession(authOptions)` para una comprobación local de permiso, como `quotes/services/quoteEditAccess.server.ts`. Nunca para consultar al backend.
   - Componentes interactivos utilizan `"use client";` y se apoyan en hooks (React Query, Zustand, etc.).
 
 ---
