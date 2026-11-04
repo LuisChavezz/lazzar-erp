@@ -1,9 +1,20 @@
 import type { ComponentType, SVGProps } from "react";
 
+/** Colores disponibles para el punto de estado (y la insignia) del encabezado. */
+export type DialogHeaderStatusColor =
+  | "sky"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "indigo"
+  | "violet"
+  | "orange"
+  | "slate";
+
 interface DialogHeaderProps {
   title: string;
   subtitle: string;
-  statusColor?: "sky" | "emerald" | "amber" | "rose" | "indigo" | "violet" | "orange";
+  statusColor?: DialogHeaderStatusColor;
   /**
    * Ícono del formulario o detalle, en una insignia a la izquierda del título,
    * del color de `statusColor`. Sin él, el encabezado queda exactamente como
@@ -27,7 +38,9 @@ export const DialogHeader = ({
     indigo: { bg: "bg-indigo-500", ping: "bg-indigo-400", badge: "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
     violet: { bg: "bg-violet-500", ping: "bg-violet-400", badge: "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400" },
     orange: { bg: "bg-orange-500", ping: "bg-orange-400", badge: "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400" },
-  } as const;
+    // Estado neutro (p. ej. cotización en Borrador, gris en el tablero).
+    slate: { bg: "bg-slate-400", ping: "bg-slate-300", badge: "bg-slate-100 dark:bg-slate-500/15 text-slate-600 dark:text-slate-400" },
+  } as const satisfies Record<DialogHeaderStatusColor, { bg: string; ping: string; badge: string }>;
 
   const colors = colorMap[statusColor] || colorMap.sky;
 

@@ -18,6 +18,7 @@ import { useRejectChangesOperationsQuote } from "../hooks/useRejectChangesOperat
 import type { OperationsQuote } from "../interfaces/operations-quote.interface";
 import type { OperationsQuoteRowAction } from "./OperationsQuoteColumns";
 import { RejectQuoteDialog } from "./RejectQuoteDialog";
+import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -31,17 +32,6 @@ const OperationsQuoteDetails = dynamic(
     ),
   }
 );
-
-const operationsQuoteStatusDialogColors: Record<
-  number,
-  "sky" | "emerald" | "amber" | "rose" | "orange"
-> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-  5: "orange",
-};
 
 export interface OperationsQuoteDialogState {
   kind: OperationsQuoteRowAction;
@@ -121,10 +111,7 @@ export function OperationsQuoteActionDialogs({
                 snapshot.operationsQuote.cliente_nombre ||
                 snapshot.operationsQuote.cliente_razon_social
               }
-              statusColor={
-                operationsQuoteStatusDialogColors[operationsQuote.estatus] ??
-                "sky"
-              }
+              statusColor={getQuoteDialogStatusColor(operationsQuote.estatus)}
             />
           }
         >

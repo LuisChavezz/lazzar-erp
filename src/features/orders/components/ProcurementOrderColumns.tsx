@@ -14,7 +14,7 @@ import {
   type RangeFilterOption,
 } from '@/src/utils/columnFilterOptions';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { PEDIDO_ESTATUS, PEDIDO_ESTATUS_CONFIG, getPedidoEstatusConfig } from '../constants/pedidoStatus';
+import { PEDIDO_ESTATUS_CONFIG, getPedidoEstatusBadge, getPedidoEstatusConfig } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { PedidoFolioLink } from './PedidoFolioLink';
@@ -122,21 +122,12 @@ function FilterHeader({
   );
 }
 
-/** Punto de color por estatus — deriva de los mismos colores que ya usa `PEDIDO_ESTATUS_CONFIG.className`. */
-const ESTATUS_DOT: Record<number, string> = {
-  [PEDIDO_ESTATUS.BORRADOR]: 'bg-slate-400',
-  [PEDIDO_ESTATUS.POR_AUTORIZAR]: 'bg-amber-500',
-  [PEDIDO_ESTATUS.AUTORIZADA]: 'bg-emerald-500',
-  [PEDIDO_ESTATUS.EN_PROCESO]: 'bg-sky-500',
-  [PEDIDO_ESTATUS.CANCELADO]: 'bg-rose-500',
-};
-
 const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
   { value: undefined, label: 'Todos' },
   ...Object.entries(PEDIDO_ESTATUS_CONFIG).map(([id, cfg]) => ({
     value: id,
     label: cfg.label,
-    dotClassName: ESTATUS_DOT[Number(id)],
+    dotClassName: cfg.dot,
   })),
 ];
 
@@ -168,7 +159,7 @@ export function createProcurementOrderColumns({
         return (
           <div className="flex items-center gap-2 min-w-0">
             <span
-              className={`h-2 w-2 rounded-full shrink-0 ${ESTATUS_DOT[order.estatus] ?? 'bg-slate-400'}`}
+              className={`h-2 w-2 rounded-full shrink-0 ${getPedidoEstatusBadge(order.estatus).dot}`}
               title={cfg.label}
               aria-hidden="true"
             />

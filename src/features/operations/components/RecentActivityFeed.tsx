@@ -12,19 +12,17 @@ import {
 import {
   getStatusStyles as getOperationsQuoteStatusStyles,
 } from "@/src/features/quotes/utils/getStatusStyle";
+import { getQuoteStatusConfig } from "@/src/features/quotes/constants/quoteStatus";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
 
 // ─── Máximo de ítems en el feed ───────────────────────────────────────────────
 const MAX_ITEMS = 8;
 
-// ─── Color del indicador por estatus ─────────────────────────────────────────
-const dotClass: Record<number, string> = {
-  1: "bg-slate-300 dark:bg-slate-600",
-  2: "bg-amber-400 animate-pulse",
-  3: "bg-emerald-400",
-  4: "bg-rose-400",
-  5: "bg-orange-400",
-};
+// ─── Indicador por estatus ───────────────────────────────────────────────────
+// El color sale de `QUOTE_STATUS_CONFIG` (mismo punto que el tablero); solo
+// "Por Autorizar" late, para llamar la atención sobre lo pendiente.
+const getActivityDot = (estatus: number) =>
+  `${getQuoteStatusConfig(estatus)?.dot ?? "bg-slate-400"}${estatus === 2 ? " animate-pulse" : ""}`;
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const RecentActivityFeed = () => {
@@ -95,7 +93,7 @@ export const RecentActivityFeed = () => {
                 const statusClass = getOperationsQuoteStatusStyles(
                   operationsQuote
                 );
-                const dot = dotClass[operationsQuote.estatus] ?? dotClass[1];
+                const dot = getActivityDot(operationsQuote.estatus);
 
                 return (
                   <tr
