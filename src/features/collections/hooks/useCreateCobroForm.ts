@@ -27,7 +27,11 @@ import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
 import { buildCobroPayload } from "../services/actions";
 import { useSaveCobro } from "./useSaveCobro";
-import { COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE, COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE } from "../utils/cobroDraft";
+import {
+  COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
+  COBRO_DRAFT_INACTIVE_CLIENT_MESSAGE,
+  getBlockedCatalogDraftLabels,
+} from "../utils/cobroDraft";
 
 /** Etiqueta de un cliente en el selector y en el campo una vez elegido. */
 export const customerLabel = (customer: Pick<AccountingCustomer, "razon_social" | "nombre">) =>
@@ -45,6 +49,11 @@ export interface CobroDraftSeed {
    * clientes activos, así que si el suyo se desactivó es la única etiqueta.
    */
   clienteNombre: string;
+  /**
+   * Cuenta bancaria del borrador (`cobroBankAccountLabel`): su etiqueta cuando
+   * el catálogo de cuentas no se puede leer (EC-734).
+   */
+  cuentaBancariaLabel: string;
 }
 
 /** Con qué estatus se envía: guardar borrador o registrar/aplicar. */
@@ -189,12 +198,21 @@ export function useCreateCobroForm({
   const selectableBankAccounts = bankAccounts.filter(
     (account) => account.activo || (draftCuentaId !== undefined && account.id === draftCuentaId),
   );
-  const bankAccountOptions = selectableBankAccounts.map((account) => ({
+  // Sin permiso para un catálogo, el borrador conserva a la vista su cliente y su
+  // cuenta (de solo lectura): el selector está deshabilitado y no se consulta.
+  const draftLabels = getBlockedCatalogDraftLabels(draft, {
+    customers: customersBlockReason !== null,
+    bankAccounts: bankAccountsBlockReason !== null,
+  });
+  const catalogBankAccountOptions = selectableBankAccounts.map((account) => ({
     value: account.id,
     label:
       [account.alias, account.banco_nombre, account.moneda_codigo].filter(Boolean).join(" · ") +
       (account.activo ? "" : " (inactiva)"),
   }));
+  const bankAccountOptions = draftLabels.bankAccountOption
+    ? [draftLabels.bankAccountOption]
+    : catalogBankAccountOptions;
 
   // Solo en el alta: un borrador ya trae su cliente y su cuenta, y debe poder
   // abrirse (y mostrar por qué no se guarda) aunque ya no haya activos.
@@ -432,6 +450,7 @@ export function useCreateCobroForm({
     missingItems,
     customersBlockReason,
     bankAccountsBlockReason,
+    draftCustomerLabel: draftLabels.customerLabel,
     customers: selectableCustomers,
     bankAccounts: selectableBankAccounts,
     bankAccountOptions,
