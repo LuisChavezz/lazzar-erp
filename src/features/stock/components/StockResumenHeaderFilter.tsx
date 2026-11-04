@@ -3,10 +3,12 @@
 import { createContext, useContext } from "react";
 import type { Column } from "@tanstack/react-table";
 import { FilterHeader } from "@/src/components/ColumnHeaderFilter";
+import { DataTableModeContext } from "@/src/components/DataTableModeContext";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { useStockPorAlmacenResumen } from "../hooks/useStockPorAlmacenResumen";
 import {
   stockResumenFilterOptions,
+  withActiveStockFilterOption,
   type StockResumenOptionKey,
 } from "../utils/stockFilterOptions";
 
@@ -23,7 +25,8 @@ const ONLY_ALL = [ALL_FILTER_OPTION];
  * Encabezado "título + filtro" de una columna de existencias cuyas opciones
  * salen de `resumen.opciones` del almacén completo, nunca de las filas
  * cargadas (la tabla solo tiene una página). El valor viaja crudo, en texto,
- * como lo espera el filtro del backend (`ubicacion` es un id).
+ * como lo espera el filtro del backend (`ubicacion` es un id). Un valor activo
+ * que el resumen no trae se muestra igual, con una etiqueta de respaldo.
  */
 export function StockResumenHeaderFilter<TData>({
   column,
@@ -40,9 +43,19 @@ export function StockResumenHeaderFilter<TData>({
   searchPlaceholder?: string;
 }) {
   const almacenId = useContext(StockAlmacenContext);
+  const tableMode = useContext(DataTableModeContext);
   const { data, isLoading, isInitialError } = useStockPorAlmacenResumen(almacenId);
 
-  const options = data ? stockResumenFilterOptions(data)[optionKey] : ONLY_ALL;
+  const serverFilterKey = column.columnDef.meta?.serverFilter;
+  const activeValue =
+    tableMode.mode === "server" && serverFilterKey !== undefined
+      ? tableMode.filters?.values[serverFilterKey]
+      : undefined;
+  const options = withActiveStockFilterOption(
+    data ? stockResumenFilterOptions(data)[optionKey] : ONLY_ALL,
+    optionKey,
+    activeValue,
+  );
 
   return (
     <FilterHeader
