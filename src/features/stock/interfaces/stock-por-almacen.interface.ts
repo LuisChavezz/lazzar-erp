@@ -6,11 +6,13 @@
  * `ExistenciaPorAlmacenSerializer`).
  */
 
+import type { STOCK_ESTADOS, STOCK_EXISTENCIAS_RANGOS } from "../constants/stockPorAlmacen";
+
 /** Estado de stock de una fila, calculado por el backend contra el `max_stock` del almacén completo. */
-export type StockEstado = "full" | "ok" | "low" | "critical";
+export type StockEstado = (typeof STOCK_ESTADOS)[number];
 
 /** Rango del filtro "Existencias" (`?existencias=`). */
-export type StockExistenciasRango = "cero" | "1-10" | "11-100" | "mas-100";
+export type StockExistenciasRango = (typeof STOCK_EXISTENCIAS_RANGOS)[number];
 
 /**
  * Producto de la fila: el de la existencia, el de su variante o la muestra
