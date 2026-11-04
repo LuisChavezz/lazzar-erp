@@ -28,6 +28,7 @@ import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmount
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   canEditPedidoMesaControl,
+  canProgramarPedido,
   getPedidoClasificacionLabel,
   getTipoPedidoConfig,
   PEDIDO_ESTATUS,
@@ -291,15 +292,15 @@ const FolioCell = ({
       href: pedidoDetailHref(order.id, "operations"),
     },
     // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
-    // "Revisar inventario". Solo para pedidos confirmados (EC-748): la misma
-    // regla que el punto de color y el filtro "Por confirmar / Confirmado"
-    // (`fecha_confirmacion` no nula). El backend todavía no lo valida.
+    // "Revisar inventario". Solo para pedidos confirmados y no cancelados
+    // (EC-748, `canProgramarPedido`). El backend aún no lo valida: lo sigue
+    // EC-750; quitar esta nota cuando se libere.
     {
       label: "Programar",
       icon: CalendarDaysIcon,
       onSelect: () => onProgramar(order),
       permission: "E-MESACONTROL-PEDIDOS",
-      visible: confirmed && order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+      visible: canProgramarPedido(order),
     },
     // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
