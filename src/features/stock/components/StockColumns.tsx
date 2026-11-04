@@ -10,7 +10,7 @@ import type {
   StockExistenciasRango,
   StockPorAlmacenItem,
 } from "../interfaces/stock-por-almacen.interface";
-import { STOCK_ESTADOS, STOCK_EXISTENCIAS_RANGOS } from "../hooks/useStockPorAlmacenTable";
+import { STOCK_ESTADOS, STOCK_EXISTENCIAS_RANGOS } from "../constants/stockPorAlmacen";
 import { StockResumenHeaderFilter } from "./StockResumenHeaderFilter";
 import { colorToHex } from "./stock-colors";
 
@@ -23,12 +23,12 @@ import { colorToHex } from "./stock-colors";
  */
 export const STATUS_CONFIG: Record<
   StockEstado,
-  { label: string; dot: string; textClass: string; pillActive: string }
+  { label: string; dot: string; textClass: string }
 > = {
-  full:     { label: "Óptimo",  dot: "bg-emerald-500",              textClass: "text-emerald-600 dark:text-emerald-400", pillActive: "bg-emerald-500 text-white shadow-emerald-500/30" },
-  ok:       { label: "Normal",  dot: "bg-sky-500",                  textClass: "text-sky-600 dark:text-sky-400",         pillActive: "bg-sky-500 text-white shadow-sky-500/30"         },
-  low:      { label: "Bajo",    dot: "bg-amber-500",                textClass: "text-amber-600 dark:text-amber-400",     pillActive: "bg-amber-500 text-white shadow-amber-500/30"     },
-  critical: { label: "Crítico", dot: "bg-red-500 animate-pulse",   textClass: "text-red-600 dark:text-red-400",         pillActive: "bg-red-500 text-white shadow-red-500/30"         },
+  full:     { label: "Óptimo",  dot: "bg-emerald-500",              textClass: "text-emerald-600 dark:text-emerald-400" },
+  ok:       { label: "Normal",  dot: "bg-sky-500",                  textClass: "text-sky-600 dark:text-sky-400" },
+  low:      { label: "Bajo",    dot: "bg-amber-500",                textClass: "text-amber-600 dark:text-amber-400" },
+  critical: { label: "Crítico", dot: "bg-red-500 animate-pulse",   textClass: "text-red-600 dark:text-red-400" },
 };
 
 // ─── Filtros de encabezado con opciones fijas ────────────────────────────────

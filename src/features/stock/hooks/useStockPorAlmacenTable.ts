@@ -10,23 +10,9 @@ import {
   positiveIdParam,
   textParam,
 } from "@/src/utils/serverTableParams";
-import type {
-  StockEstado,
-  StockExistenciasRango,
-  StockPorAlmacenItem,
-} from "../interfaces/stock-por-almacen.interface";
+import type { StockPorAlmacenItem } from "../interfaces/stock-por-almacen.interface";
+import { STOCK_ESTADOS, STOCK_EXISTENCIAS_RANGOS } from "../constants/stockPorAlmacen";
 import { getStockPorAlmacenPage } from "../services/actions";
-
-/** Valores de `?existencias=` (rangos de piezas), en el orden del menú. */
-export const STOCK_EXISTENCIAS_RANGOS = [
-  "cero",
-  "1-10",
-  "11-100",
-  "mas-100",
-] as const satisfies readonly StockExistenciasRango[];
-
-/** Valores de `?estado=`, en el orden del menú. */
-export const STOCK_ESTADOS = ["full", "ok", "low", "critical"] as const satisfies readonly StockEstado[];
 
 /**
  * Contrato de la tabla de existencias con `GET /inventarios/existencias/por-almacen/`
