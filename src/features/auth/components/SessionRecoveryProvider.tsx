@@ -5,7 +5,9 @@ import { useSession } from "next-auth/react";
 import {
   SESSION_RECOVERY_DELAYS_MS,
   SESSION_REFETCH_GRACE_MS,
+  clearNoSessionReloadMark,
   probeSession,
+  reloadThroughProxy,
   requestSessionRefetch,
   waitFor,
   type SessionProbeResult,
@@ -17,11 +19,12 @@ import {
  * - `idle`: no aplica (la sesión carga o ya está).
  * - `recovering`: se está volviendo a pedir; la UI debe tratarlo como "cargando".
  * - `exhausted`: los reintentos fallaron; se ofrece "Reintentar".
- * - `noSession`: el servidor respondió que NO hay sesión (cookie expirada,
- *   cierre de sesión en otra pestaña). No se reintenta ni se avisa: es el mismo
- *   estado de antes de EC-767, y el 401 del backend acaba en `signOut`.
+ *
+ * Cuando el servidor responde que NO hay sesión (cookie expirada o borrada,
+ * cierre de sesión en otra pestaña) la pestaña recarga para que el proxy la
+ * mande a login (`reloadThroughProxy`); mientras navega sigue en `recovering`.
  */
-export type SessionRecoveryPhase = "idle" | "recovering" | "exhausted" | "noSession";
+export type SessionRecoveryPhase = "idle" | "recovering" | "exhausted";
 
 interface SessionRecoveryValue {
   phase: SessionRecoveryPhase;
@@ -34,7 +37,7 @@ const SessionRecoveryContext = createContext<SessionRecoveryValue>({
   retry: () => {},
 });
 
-type RoundOutcome = "pending" | "exhausted" | "noSession";
+type RoundOutcome = "pending" | "exhausted";
 
 /**
  * Recupera la sesión de NextAuth cuando su primera lectura en el cliente falla
@@ -43,13 +46,14 @@ type RoundOutcome = "pending" | "exhausted" | "noSession";
  *
  * Cada reintento consulta el endpoint de sesión directamente para distinguir un
  * fallo (se reintenta con espera creciente) de una respuesta "sin sesión"
- * (definitiva, se detiene). Cuando hay sesión, pide a `SessionProvider` que la
+ * (definitiva: recarga y el proxy manda a login). Cuando hay sesión, pide a `SessionProvider` que la
  * relea; si esa relectura también falla, la ronda sigue con el siguiente
  * intento. En cuanto `useSession()` pasa a `authenticated` la ronda se cancela.
  *
  * No choca con el cierre de sesión: `signOut` (logout y 401 sin refresh) navega a
  * `/auth/login` sin pasar esta pestaña a `unauthenticated`, y el cierre en OTRA
- * pestaña llega como respuesta "sin sesión", que nunca se reintenta.
+ * pestaña llega como respuesta "sin sesión", que no se reintenta: recarga una
+ * vez y el proxy la manda a login (con guarda contra ciclos).
  */
 export function SessionRecoveryProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
@@ -68,6 +72,11 @@ export function SessionRecoveryProvider({ children }: { children: React.ReactNod
     }
   }
 
+  // La sesión volvió: una próxima pérdida puede recargar otra vez.
+  useEffect(() => {
+    if (status === "authenticated") clearNoSessionReloadMark();
+  }, [status]);
+
   useEffect(() => {
     if (status !== "unauthenticated" || round.outcome !== "pending") return;
 
@@ -82,8 +91,11 @@ export function SessionRecoveryProvider({ children }: { children: React.ReactNod
         lastResult = await probeSession(signal);
         if (signal.aborted) return;
         if (lastResult === "none") {
+          // La pestaña navega y el proxy decide (login con su `callbackUrl`).
+          // Si la guarda contra ciclos lo impide, la ronda acaba como agotada.
+          if (reloadThroughProxy()) return;
           setRound((current) =>
-            current.id === round.id ? { ...current, outcome: "noSession" } : current
+            current.id === round.id ? { ...current, outcome: "exhausted" } : current
           );
           return;
         }

@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  NO_SESSION_RELOAD_WINDOW_MS,
   SESSION_RECOVERY_DELAYS_MS,
   classifySessionResponse,
+  shouldReloadForNoSession,
 } from "@/src/features/auth/utils/sessionRecovery";
 import {
   getSidebarSectionsForSession,
@@ -87,4 +89,24 @@ test("getRouteSectionsForSession: pendiente marca las hojas con permiso", () => 
   }
   const resolved = getRouteSectionsForSession(group!, { role: "admin", permissions: [] }, false) ?? [];
   expect(resolved.flatMap((section) => section.items).every((leaf) => !leaf.isPlaceholder)).toBe(true);
+});
+
+test.describe("shouldReloadForNoSession", () => {
+  const url = "http://localhost:3000/operations/orders";
+  const now = 1_000_000;
+
+  test("sin marca previa, recarga", () => {
+    expect(shouldReloadForNoSession(null, url, now)).toBe(true);
+  });
+
+  test("ya recargó por la misma URL hace poco: no recarga (evita el ciclo)", () => {
+    const mark = JSON.stringify({ url, at: now - 5_000 });
+    expect(shouldReloadForNoSession(mark, url, now)).toBe(false);
+  });
+
+  test("marca vieja, de otra URL o ilegible: recarga", () => {
+    expect(shouldReloadForNoSession(JSON.stringify({ url, at: now - NO_SESSION_RELOAD_WINDOW_MS - 1 }), url, now)).toBe(true);
+    expect(shouldReloadForNoSession(JSON.stringify({ url: url + "?x=1", at: now }), url, now)).toBe(true);
+    expect(shouldReloadForNoSession("{roto", url, now)).toBe(true);
+  });
 });

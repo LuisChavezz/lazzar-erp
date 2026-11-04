@@ -33,7 +33,8 @@ export const SESSION_ENDPOINT = "/api/auth/session";
  *
  * - `session`: hay sesión; falta que `SessionProvider` la recoja.
  * - `none`: respuesta válida SIN sesión (`{}`): la cookie se borró o expiró, o se
- *   cerró sesión en otra pestaña. Es una respuesta definitiva: no se reintenta.
+ *   cerró sesión en otra pestaña. Es definitiva: no se reintenta, se recarga
+ *   para que el proxy mande a login (`reloadThroughProxy`).
  * - `failed`: error de red, status no 2xx o cuerpo que no es JSON. Transitorio.
  */
 export type SessionProbeResult = "session" | "none" | "failed";
@@ -91,6 +92,67 @@ export const requestSessionRefetch = () => {
       }),
     })
   );
+};
+
+/**
+ * Sin sesión definitiva (`200 {}`) dentro de (Main): la pestaña recarga la URL
+ * actual y deja que `src/proxy.ts` la mande a `/auth/login` con su `callbackUrl`.
+ * Esa respuesta solo llega cuando la cookie ya no sirve —se cerró sesión en otra
+ * pestaña, se borró, o el endpoint la rechazó y la limpió (`JWT_SESSION_ERROR`)—,
+ * y en todos esos casos el proxy, que la descifra con el mismo secreto, redirige.
+ *
+ * Guarda contra ciclos: si el proxy dejara pasar la recarga (p. ej. un desfase de
+ * nombre de cookie entre `getToken` y la ruta de sesión), la página volvería a
+ * recibir `{}` y recargaría sin fin. Se anota la recarga en `sessionStorage` y,
+ * si se repite para la misma URL dentro de esta ventana, no se recarga: la ronda
+ * acaba como agotada (aviso con "Reintentar").
+ */
+export const NO_SESSION_RELOAD_KEY = "erp:no-session-reload";
+export const NO_SESSION_RELOAD_WINDOW_MS = 60_000;
+
+/** ¿Hay que recargar? `false` si ya se recargó por lo mismo hace poco. */
+export const shouldReloadForNoSession = (
+  previousMark: string | null,
+  url: string,
+  now: number
+): boolean => {
+  if (!previousMark) return true;
+  try {
+    const mark = JSON.parse(previousMark) as { url?: unknown; at?: unknown };
+    const recent = typeof mark.at === "number" && now - mark.at < NO_SESSION_RELOAD_WINDOW_MS;
+    return !(recent && mark.url === url);
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Recarga para que el proxy decida (ver arriba). Devuelve `false` sin recargar si
+ * la guarda contra ciclos lo impide o si `sessionStorage` no está disponible
+ * (sin poder anotar, recargar arriesga el ciclo).
+ */
+export const reloadThroughProxy = (): boolean => {
+  try {
+    const url = window.location.href;
+    const now = Date.now();
+    if (!shouldReloadForNoSession(sessionStorage.getItem(NO_SESSION_RELOAD_KEY), url, now)) {
+      return false;
+    }
+    sessionStorage.setItem(NO_SESSION_RELOAD_KEY, JSON.stringify({ url, at: now }));
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+};
+
+/** Olvida la marca de recarga (la sesión volvió a estar disponible). */
+export const clearNoSessionReloadMark = () => {
+  try {
+    sessionStorage.removeItem(NO_SESSION_RELOAD_KEY);
+  } catch {
+    // Sin sessionStorage no hay marca que borrar.
+  }
 };
 
 /** Espera `ms` o hasta que se aborte `signal` (lo que pase primero). */

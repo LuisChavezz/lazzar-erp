@@ -98,7 +98,7 @@ Ruta base del proyecto:
   - Área central de contenido (`main`) con scroll vertical.
 - **No lee la sesión en el servidor** (EC-767). `getServerSession`, `cookies()` o `headers()` en este layout —o en el `not-found.tsx` raíz, que se renderiza dentro del árbol de todas las rutas— vuelven dinámicas TODAS las rutas: cada clic paga entonces una petición RSC a la función de Vercel (~150 ms) antes de pintar. Sin ellos, las rutas de módulo se prerenderizan y la navegación entre ellas no hace ninguna petición RSC.
   - `SessionProvider` arranca sin sesión inicial y el cliente la pide a `/api/auth/session`. Mientras tanto el sidebar pinta como skeleton los accesos que dependen de permisos (`useSidebarSections`).
-  - Si esa lectura falla, `SessionRecoveryProvider` (`features/auth`) la reintenta con espera creciente y, si se agota, el sidebar muestra un aviso con "Reintentar". Una respuesta "sin sesión" no se reintenta.
+  - Si esa lectura falla, `SessionRecoveryProvider` (`features/auth`) la reintenta con espera creciente y, si se agota, el sidebar muestra un aviso con "Reintentar". Una respuesta "sin sesión" (`200 {}`) no se reintenta: la pestaña recarga y el proxy la manda a login.
   - El acceso no depende de esto: `src/proxy.ts` valida la cookie de NextAuth (firma y expiración) y los permisos de módulo antes de servir la ruta, y el backend valida cada petición.
 - Las rutas se agrupan por **dominio de negocio** (ya no de forma plana). Cada grupo tiene una página raíz y, en su caso, subrutas:
   - `/` – Dashboard / inicio.
