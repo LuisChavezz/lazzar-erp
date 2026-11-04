@@ -134,9 +134,12 @@ export const MUESTRA_SIZES_EMPTY_MESSAGE =
 /** Qué hacer, en el alta de muestras: la categoría se elige en el paso anterior. */
 export const MUESTRA_SIZES_EMPTY_ADD_HINT = "Regresa al paso anterior y elige otra categoría.";
 
-/** Qué hacer, en una muestra guardada: su categoría no se puede cambiar en ningún lado. */
+/**
+ * Qué hacer desde "Editar tallas" (muestra guardada o agregada en esta misma
+ * edición): ahí la categoría no se puede cambiar.
+ */
 export const MUESTRA_SIZES_EMPTY_EDIT_HINT =
-  "La categoría de una muestra guardada no se puede cambiar: quítala de la cotización y vuelve a agregarla con otra categoría.";
+  "La categoría de una muestra no se puede cambiar aquí: quítala de la cotización y vuelve a agregarla con otra categoría.";
 
 /** Error corto de la fila (encabezado del acordeón) por la misma causa. */
 export const MUESTRA_SIZES_EMPTY = "La categoría no tiene tallas";

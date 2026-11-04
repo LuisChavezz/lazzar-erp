@@ -224,7 +224,7 @@ export function useEditSizesDialog({
       sizeErrors: sizesState.sizeErrors,
       sizesStatusPerProduct:
         selectedRow && muestraSizesStatus ? { [selectedRow.id]: muestraSizesStatus } : undefined,
-      emptySizesHint: MUESTRA_SIZES_EMPTY_EDIT_HINT,
+      emptySizesHint: item?.tipo === 'muestra' ? MUESTRA_SIZES_EMPTY_EDIT_HINT : undefined,
       incompatibleSizesPerProduct:
         selectedRow && incompatibleSizes.length > 0
           ? { [selectedRow.id]: incompatibleSizes }
@@ -248,6 +248,7 @@ export function useEditSizesDialog({
       openProductId,
       handleToggleProduct,
       sizesState.sizeErrors,
+      item?.tipo,
     ]
   );
 
