@@ -66,7 +66,9 @@ export const getLineSizeNames = (line: SpecialOrderLine): string[] => [
  * La categoría trae los ids de sus `Talla` y la línea solo sus nombres, así que
  * los ids se traducen con el catálogo de tallas (`GET /catalogo/talla/`, que
  * solo devuelve ACTIVAS y no tiene forma de pedir las inactivas). Una categoría
- * SIN tallas no acota (el backend acepta cualquiera).
+ * SIN tallas (`tallas: []`) no cubre ninguna línea: el backend la rechaza con
+ * `400 {"alta_catalogo": "La categoría X no tiene tallas configuradas; …"}`
+ * (nucleo-erp #927), así que no se ofrece.
  *
  * Una talla de la línea que el catálogo no conoce (desactivada después de
  * cotizar) no se puede comprobar aquí, así que NO excluye categorías: el
@@ -83,7 +85,7 @@ export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
   const known = new Set(nameById.values());
   const required = getLineSizeNames(line).filter((nombre) => known.has(nombre));
   return categories.filter((category) => {
-    if (category.tallas.length === 0) return true;
+    if (category.tallas.length === 0) return false;
     const allowed = new Set(category.tallas.map((id) => nameById.get(id)));
     return required.every((nombre) => allowed.has(nombre));
   });

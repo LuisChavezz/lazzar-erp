@@ -377,7 +377,7 @@ test.describe("cobertura de tallas de la categoría (EC-671)", () => {
     expect(getLineSizeNames(sinCategoria)).toEqual(["G", "XG"]);
   });
 
-  test("solo quedan las que admiten TODAS las tallas; sin tallas, la categoría no acota", () => {
+  test("solo quedan las que admiten TODAS las tallas; una sin tallas no cubre ninguna (#927)", () => {
     const categorias = [
       category(1, [4, 5]),
       category(2, [4]),
@@ -386,8 +386,18 @@ test.describe("cobertura de tallas de la categoría (EC-671)", () => {
       category(5, [11]),
     ];
     expect(getCategoriesCoveringLine(categorias, sinCategoria, sizes).map((c) => c.id)).toEqual([
-      1, 3, 4,
+      1, 3,
     ]);
+  });
+
+  test("una categoría sin tallas tampoco cubre una línea cuyas tallas el catálogo no conoce", () => {
+    const soloInactivas = line({
+      categoria_producto: null,
+      tallas: [talla({ id: 1, talla_nombre: "XCH", cantidad: 1 })],
+    });
+    expect(
+      getCategoriesCoveringLine([category(1, []), category(2, [4])], soloInactivas, sizes).map((c) => c.id),
+    ).toEqual([2]);
   });
 
   test("un id de talla de la categoría que el catálogo no conoce (inactiva) se ignora", () => {
