@@ -7,14 +7,9 @@ import {
   KpiTaggedBlocks,
   SEPARATE_CURRENCIES_NOTE,
 } from "@/src/components/KpiCurrency";
-import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { formatKpiDate, formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
-import { useFinanceDashboard } from "../hooks/useFinanceDashboard";
-
-interface Moneda {
-  id: number;
-  codigo: string;
-}
+import type { CobrosResumenMoneda } from "../interfaces/collection.interface";
+import { useCobrosResumen } from "../hooks/useCobrosResumen";
 
 type Metric = "monto" | "cantidad";
 
@@ -30,77 +25,46 @@ const periodNote = (periodo: { fecha_inicio: string; fecha_fin: string } | undef
     ? `Período del ${formatKpiDate(periodo.fecha_inicio)} al ${formatKpiDate(periodo.fecha_fin)}. Solo cuenta cobros aplicados.`
     : "Solo cuenta cobros aplicados.";
 
-/**
- * Monedas distintas entre las cuentas bancarias de la empresa: el cobro se
- * cobra en la moneda de su cuenta, así que son las únicas en que puede haber
- * cobros. Las cuentas sin código de moneda no se pueden etiquetar y se omiten.
- */
-const distinctMonedas = (
-  accounts: { moneda: number; moneda_codigo: string | null }[],
-): Moneda[] => {
-  const byId = new Map<number, Moneda>();
-  for (const account of accounts) {
-    if (account.moneda_codigo && !byId.has(account.moneda)) {
-      byId.set(account.moneda, { id: account.moneda, codigo: account.moneda_codigo });
-    }
-  }
-  return [...byId.values()].sort((a, b) => a.codigo.localeCompare(b.codigo));
-};
-
-/**
- * Valor de UNA moneda dentro de una tarjeta. Cada bloque pide su propio
- * `dashboard/?moneda_id=`; las dos tarjetas leen la misma llave, así que es una
- * sola petición por moneda. Solo `<span>`: se pinta dentro del `<h3>` de
- * `KpiGrid`.
- */
-function CurrencyBlock({ moneda, metric }: { moneda: Moneda; metric: Metric }) {
-  const { dashboard, isLoading, isInitialError } = useFinanceDashboard({ moneda_id: moneda.id });
-
-  let value: string;
-  if (isInitialError) value = "No disponible";
-  else if (isLoading || !dashboard) value = PLACEHOLDER;
-  else if (metric === "monto") {
-    value = formatKpiTaggedCurrencyAmount(dashboard.cobros_periodo.monto_total, moneda.codigo);
-  } else {
-    value = String(dashboard.cobros_periodo.cantidad);
-  }
-
-  return <KpiTaggedBlocks blocks={[{ key: moneda.codigo, value, tag: moneda.codigo }]} />;
-}
-
-function CurrencyBlocks({ monedas, metric }: { monedas: Moneda[]; metric: Metric }) {
+/** Un bloque por moneda; solo `<span>`: se pinta dentro del `<h3>` de `KpiGrid`. */
+function CurrencyBlocks({ monedas, metric }: { monedas: CobrosResumenMoneda[]; metric: Metric }) {
   return (
     <span className="block space-y-1.5">
       {monedas.map((moneda) => (
-        <CurrencyBlock key={moneda.id} moneda={moneda} metric={metric} />
+        <KpiTaggedBlocks
+          key={moneda.moneda_id}
+          blocks={[
+            {
+              key: moneda.moneda_codigo,
+              value:
+                metric === "monto"
+                  ? formatKpiTaggedCurrencyAmount(moneda.monto_total, moneda.moneda_codigo)
+                  : String(moneda.cantidad),
+              tag: moneda.moneda_codigo,
+            },
+          ]}
+        />
       ))}
     </span>
   );
 }
 
 /**
- * Indicadores de cobros del período, POR MONEDA: una consulta al dashboard por
- * cada moneda de las cuentas bancarias, nunca una suma de monedas mezcladas.
+ * Indicadores de cobros del período, POR MONEDA, nunca una suma de monedas
+ * mezcladas. Salen de `cobros/resumen/` (EC-746), que ya trae una entrada por
+ * cada moneda de las cuentas bancarias de la empresa —en cero si no hubo
+ * cobros—, así que basta con quien pueda leer Cobros (`R-CONTABILIDAD-CXC`).
  *
  * Es independiente del listado: su carga o su error no tocan la tabla ni su
- * toolbar, y un fallo de una moneda solo marca "No disponible" en esa moneda.
+ * toolbar.
  */
 export function CollectionStats() {
-  const { bankAccounts, hasLoaded, isLoading, isError } = useBankAccounts();
-  const monedas = distinctMonedas(bankAccounts);
-  // El período es el mismo para todas las monedas: se lee de la primera. Misma
-  // llave que su bloque, así que no es una petición extra.
-  const { dashboard: firstDashboard } = useFinanceDashboard(
-    { moneda_id: monedas[0]?.id ?? 0 },
-    { enabled: monedas.length > 0 },
-  );
-  const periodText = periodNote(firstDashboard?.periodo);
-
-  const catalogUnavailable = isError && !hasLoaded;
+  const { resumen, isLoading, isInitialError } = useCobrosResumen();
+  const monedas = resumen?.por_moneda ?? [];
+  const periodText = periodNote(resumen?.periodo);
 
   const valueFor = (metric: Metric) => {
-    if (catalogUnavailable) return <KpiMutedValue>No disponible</KpiMutedValue>;
-    if (isLoading) return PLACEHOLDER;
+    if (isInitialError) return <KpiMutedValue>No disponible</KpiMutedValue>;
+    if (isLoading || !resumen) return PLACEHOLDER;
     if (monedas.length === 0) return <KpiMutedValue>Sin cuentas bancarias</KpiMutedValue>;
     return <CurrencyBlocks monedas={monedas} metric={metric} />;
   };

@@ -136,28 +136,33 @@ export interface FacturamaCfdiFile {
  * backend toma el mes en curso hasta hoy; sin `moneda_id` SUMA todas las
  * monedas, por eso los indicadores siempre la mandan.
  */
-export interface FinanceDashboardParams {
+/** Totales de UNA moneda en `GET /finanzas/cobros/resumen/`. */
+export interface CobrosResumenMoneda {
   moneda_id: number;
+  moneda_codigo: string;
+  /** Cobros `Aplicado` del período en esa moneda (la de su cuenta bancaria). */
+  cantidad: number;
+  /** Suma de `total_cobrado`, decimal con 2 posiciones como string. */
+  monto_total: string;
 }
 
 /**
- * Solo las partes de la respuesta del dashboard que consume este módulo. La
- * respuesta trae además `cuentas_por_cobrar`, `cuentas_por_pagar`,
- * `pagos_periodo`, `bancos` y `alertas_mora`, que no se declaran aquí.
+ * `GET /finanzas/cobros/resumen/` (EC-746): los indicadores de Cobros, de la
+ * propia sección (se leen con `R-CONTABILIDAD-CXC`, sin abrir el dashboard).
+ * Mismos números que `cobros_periodo` del dashboard, por moneda.
  */
-export interface FinanceDashboard {
+export interface CobrosResumen {
+  /** El período que resolvió el backend: del día 1 del mes en curso a hoy. */
   periodo: {
     fecha_inicio: string;
     fecha_fin: string;
   };
-  /** Solo cuenta cobros `Aplicado` con `fecha_cobro` dentro del período. */
-  cobros_periodo: {
-    cantidad: number;
-    /** Decimal como string. */
-    monto_total: string;
-    /** Monto por día, "YYYY-MM-DD" → decimal como string. */
-    por_dia: Record<string, string>;
-  };
+  /**
+   * Una entrada por cada moneda de las cuentas bancarias de la empresa
+   * (activas o no), aunque no tenga cobros, ordenadas por código. Vacío si la
+   * empresa no tiene cuentas con moneda.
+   */
+  por_moneda: CobrosResumenMoneda[];
 }
 
 /** Línea del cuerpo de alta: sin `id`, `cobro` ni `created_at` (los pone el backend). */

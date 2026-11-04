@@ -27,7 +27,7 @@ export const writeCobroToList = (queryClient: QueryClient, cobro: Cobro) => {
 export const invalidateCobroEffects = (queryClient: QueryClient) => {
   [
     ["cobros"],
-    ["finance-dashboard"],
+    ["cobros-resumen"],
     ["accounts-receivable"],
     ["accounts-receivable-detail"],
     ["bank-accounts"],
