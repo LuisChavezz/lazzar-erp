@@ -14,6 +14,7 @@ import type { CatalogRow } from "../types";
 import type { Size } from "../../sizes/interfaces/size.interface";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import {
+  MUESTRA_SIZES_EMPTY_MESSAGE,
   MUESTRA_SIZES_ERROR_MESSAGE,
   MUESTRA_SIZES_LOADING_MESSAGE,
   type IncompatibleSize,
@@ -45,11 +46,17 @@ interface StepSizesProps {
    */
   monedaCodigo: string | null;
   /**
-   * Filas de MUESTRA cuya lista de tallas por categoría aún no está lista
-   * (EC-647): en vez de las tallas se muestra el aviso. Opcional; catálogo no
-   * la pasa.
+   * Filas de MUESTRA sin tallas que capturar (EC-647): su lista por categoría
+   * aún no está lista, o la categoría no tiene ninguna (#927). En vez de las
+   * tallas se muestra el aviso. Opcional; catálogo no la pasa.
    */
   sizesStatusPerProduct?: Record<number, MuestraSizesStatus>;
+  /**
+   * Qué hacer con una muestra cuya categoría no tiene tallas (`"empty"`): cambia
+   * según el diálogo (en el alta se elige otra; una guardada se quita y se
+   * vuelve a agregar).
+   */
+  emptySizesHint?: string;
   /**
    * Tallas capturadas que no son de la categoría de la muestra (datos guardados
    * antes de EC-647). Se listan marcadas, con su cantidad, para quitarlas a
@@ -72,6 +79,7 @@ export const StepSizes = memo(function StepSizes({
   sizeErrors,
   monedaCodigo,
   sizesStatusPerProduct,
+  emptySizesHint,
   incompatibleSizesPerProduct,
   onRemoveIncompatibleSize,
   onRetrySizes,
@@ -208,6 +216,14 @@ export const StepSizes = memo(function StepSizes({
                                 Reintentar
                               </button>
                             )}
+                          </div>
+                        ) : sizesStatus === "empty" ? (
+                          <div
+                            role="alert"
+                            className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 space-y-1 text-sm text-amber-800 dark:text-amber-300"
+                          >
+                            <p>{MUESTRA_SIZES_EMPTY_MESSAGE}</p>
+                            {emptySizesHint && <p className="font-semibold">{emptySizesHint}</p>}
                           </div>
                         ) : sizesStatus === "loading" ? (
                           <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
