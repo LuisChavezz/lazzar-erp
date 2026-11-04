@@ -8,8 +8,7 @@ import type {
   CreateCobroDetallePayload,
   FacturamaCfdiFile,
   CreateCobroPayload,
-  FinanceDashboard,
-  FinanceDashboardParams,
+  CobrosResumen,
 } from "../interfaces/collection.interface";
 import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import type { CobroFormValues } from "../schemas/createCobro.schema";
@@ -95,13 +94,11 @@ export const getCobroRepFile = async (
 };
 
 /**
- * Indicadores de finanzas: `GET /finanzas/dashboard/`, para el período por
- * defecto del backend (mes en curso hasta hoy) y UNA moneda.
+ * Indicadores de Cobros: `GET /finanzas/cobros/resumen/`, para el período por
+ * defecto del backend (mes en curso hasta hoy), todas las monedas a la vez.
  */
-export const getFinanceDashboard = async (
-  params: FinanceDashboardParams,
-): Promise<FinanceDashboard> => {
-  const { data } = await v1_api.get<FinanceDashboard>("/finanzas/dashboard/", { params });
+export const getCobrosResumen = async (): Promise<CobrosResumen> => {
+  const { data } = await v1_api.get<CobrosResumen>("/finanzas/cobros/resumen/");
   return data;
 };
 
