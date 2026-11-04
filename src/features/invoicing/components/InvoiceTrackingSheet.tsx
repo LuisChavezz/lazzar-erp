@@ -24,6 +24,7 @@ import { formatFolioCxc } from "@/src/features/accounts-receivable/utils/account
 import { CreditNoteDetailByIdDialog } from "@/src/features/credit-notes/components/CreditNoteDetailByIdDialog";
 import { NOTA_CREDITO_ESTATUS_CONFIG } from "@/src/features/credit-notes/constants/creditNoteStatus";
 import { FINANCE_READ_REASONS } from "@/src/constants/financePermissions";
+import { financeReadBlockReason } from "@/src/utils/financeRead";
 import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import {
   buildInvoiceDetailHref,
@@ -31,10 +32,11 @@ import {
 } from "../constants/invoiceDetailOrigins";
 import type { InvoiceDesglose } from "../interfaces/invoice-desglose.interface";
 import { formatInvoiceDate } from "../utils/invoiceDetailFormat";
-
-/** Rutas cuyos detalles se abren desde aquí (sus diálogos viven en esos listados). */
-const ACCOUNTS_RECEIVABLE_PATH = "/finance/accounts-receivable";
-const CREDIT_NOTES_PATH = "/finance/credit-notes";
+import {
+  ACCOUNTS_RECEIVABLE_PATH,
+  CREDIT_NOTES_PATH,
+  getTrackingReadState,
+} from "../utils/invoiceTrackingAccess";
 
 const LINK_CLASS =
   "font-mono font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline cursor-pointer text-left transition-colors";
@@ -42,21 +44,17 @@ const TH = "px-3 py-2 font-semibold";
 const TD = "px-3 py-2 text-xs text-slate-600 dark:text-slate-300";
 
 /**
- * Folio de un registro cuyo detalle el usuario NO puede abrir (otra sección de
- * Finanzas, EC-734): la fila sigue visible —`cobranza` y `notas_credito` del
- * desglose son datos de seguimiento de la propia factura—, pero su apertura
- * queda deshabilitada con el motivo. Mientras la sesión carga no hay motivo.
+ * Motivo VISIBLE de que los registros de una tabla no se puedan abrir (otra
+ * sección de Finanzas, EC-734), una vez sobre la tabla y no en un tooltip: las
+ * filas siguen visibles —`cobranza` y `notas_credito` del desglose son datos de
+ * seguimiento de la propia factura— y su folio queda como texto. Mismo estilo
+ * que los motivos de los selectores bloqueados del alta de cobro.
  */
-function BlockedFolio({ folio, reason }: { folio: string; reason: string | null }) {
+function BlockedReasonNote({ id, reason }: { id: string; reason: string }) {
   return (
-    <span
-      aria-disabled="true"
-      title={reason ?? undefined}
-      className={`font-mono ${reason ? "text-slate-400 dark:text-slate-500 cursor-not-allowed" : ""}`}
-    >
-      {folio}
-      {reason && <span className="sr-only">{`. ${reason}`}</span>}
-    </span>
+    <p id={id} className="mb-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+      {reason}
+    </p>
   );
 }
 
@@ -64,6 +62,7 @@ interface InvoiceTrackingSheetProps {
   data: InvoiceDesglose;
   /** Query actual: las parcialidades conservan el origen del "Volver". */
   query: InvoiceDetailQuery;
+  /** Solo para el pedido (fuera de Finanzas); CxC y notas usan `getTrackingReadState`. */
   canOpen: (pathname: string) => boolean;
 }
 
@@ -82,12 +81,16 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
 
   const { avance_pedido: avance, pedido } = data;
   const canOpenPedido = pedido !== null && canOpen(`/orders/${pedido.id}`);
-  const canOpenCxc = canOpen(ACCOUNTS_RECEIVABLE_PATH);
-  const canOpenNotas = canOpen(CREDIT_NOTES_PATH);
-  // Sin acceso a la sección del detalle se muestra el motivo, salvo mientras la
-  // sesión carga (`canOpen` falla cerrado hasta entonces).
-  const { status: sessionStatus } = useSession();
-  const blockedReason = (reason: string) => (sessionStatus === "loading" ? null : reason);
+  // CxC y notas de crédito son de OTRA sección: un solo estado por lectura
+  // (`getTrackingReadState`) dice si se abre y si la sesión aún carga. Sin
+  // acceso se muestra el motivo, salvo mientras la sesión carga.
+  const { data: session, status: sessionStatus } = useSession();
+  const cxcRead = getTrackingReadState(session?.user, sessionStatus, ACCOUNTS_RECEIVABLE_PATH);
+  const notasRead = getTrackingReadState(session?.user, sessionStatus, CREDIT_NOTES_PATH);
+  const canOpenCxc = cxcRead.canRead;
+  const canOpenNotas = notasRead.canRead;
+  const cxcBlockReason = financeReadBlockReason(cxcRead, FINANCE_READ_REASONS.receivables);
+  const notasBlockReason = financeReadBlockReason(notasRead, FINANCE_READ_REASONS.creditNotes);
   const pctFacturado =
     avance && avance.piezas_pedidas > 0
       ? clampPercentage((avance.piezas_facturadas / avance.piezas_pedidas) * 100)
@@ -244,53 +247,56 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
               : "Esta factura no tiene cuentas por cobrar."}
           </EmptyLines>
         ) : (
-          <LineItemsTable
-            head={
-              <>
-                <th className={`${TH} text-left`}>Cuenta</th>
-                <th className={`${TH} text-left`}>Estatus</th>
-                <th className={`${TH} text-right`}>Total</th>
-                <th className={`${TH} text-right`}>Saldo</th>
-                <th className={`${TH} text-left`}>Vencimiento</th>
-                <th className={`${TH} text-left`}>Último pago</th>
-              </>
-            }
-          >
-            {data.cobranza.map((cuenta) => {
-              const folio = formatFolioCxc(cuenta.id);
-              return (
-                <tr key={cuenta.id}>
-                  <td className={TD}>
-                    {canOpenCxc ? (
-                      <button
-                        type="button"
-                        onClick={() => setOpenCxcId(cuenta.id)}
-                        className={LINK_CLASS}
-                        title={`Ver la cuenta por cobrar ${folio}`}
-                      >
-                        {folio}
-                      </button>
-                    ) : (
-                      <BlockedFolio folio={folio} reason={blockedReason(FINANCE_READ_REASONS.receivables)} />
-                    )}
-                  </td>
-                  <td className={TD}>
-                    <StatusBadge status={cuenta.estatus} config={CXC_ESTATUS_CONFIG} />
-                  </td>
-                  <td className={`${TD} text-right tabular-nums`}>{money(cuenta.total)}</td>
-                  <td className={`${TD} text-right tabular-nums font-semibold text-slate-800 dark:text-white`}>
-                    {money(cuenta.saldo)}
-                  </td>
-                  <td className={`${TD} whitespace-nowrap`}>
-                    {formatInvoiceDate(cuenta.fecha_vencimiento)}
-                  </td>
-                  <td className={`${TD} whitespace-nowrap`}>
-                    {formatInvoiceDate(cuenta.fecha_ultimo_pago)}
-                  </td>
-                </tr>
-              );
-            })}
-          </LineItemsTable>
+          <>
+            {cxcBlockReason && <BlockedReasonNote id="tracking-cxc-block-reason" reason={cxcBlockReason} />}
+            <LineItemsTable
+              head={
+                <>
+                  <th className={`${TH} text-left`}>Cuenta</th>
+                  <th className={`${TH} text-left`}>Estatus</th>
+                  <th className={`${TH} text-right`}>Total</th>
+                  <th className={`${TH} text-right`}>Saldo</th>
+                  <th className={`${TH} text-left`}>Vencimiento</th>
+                  <th className={`${TH} text-left`}>Último pago</th>
+                </>
+              }
+            >
+              {data.cobranza.map((cuenta) => {
+                const folio = formatFolioCxc(cuenta.id);
+                return (
+                  <tr key={cuenta.id}>
+                    <td className={TD}>
+                      {canOpenCxc ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpenCxcId(cuenta.id)}
+                          className={LINK_CLASS}
+                          title={`Ver la cuenta por cobrar ${folio}`}
+                        >
+                          {folio}
+                        </button>
+                      ) : (
+                        <span className="font-mono">{folio}</span>
+                      )}
+                    </td>
+                    <td className={TD}>
+                      <StatusBadge status={cuenta.estatus} config={CXC_ESTATUS_CONFIG} />
+                    </td>
+                    <td className={`${TD} text-right tabular-nums`}>{money(cuenta.total)}</td>
+                    <td className={`${TD} text-right tabular-nums font-semibold text-slate-800 dark:text-white`}>
+                      {money(cuenta.saldo)}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap`}>
+                      {formatInvoiceDate(cuenta.fecha_vencimiento)}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap`}>
+                      {formatInvoiceDate(cuenta.fecha_ultimo_pago)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </LineItemsTable>
+          </>
         )}
       </Section>
 
@@ -299,49 +305,52 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
         {data.notas_credito.length === 0 ? (
           <EmptyLines>Esta factura no tiene notas de crédito.</EmptyLines>
         ) : (
-          <LineItemsTable
-            head={
-              <>
-                <th className={`${TH} text-left`}>Folio</th>
-                <th className={`${TH} text-left`}>Emisión</th>
-                <th className={`${TH} text-left`}>Motivo</th>
-                <th className={`${TH} text-left`}>Estatus</th>
-                <th className={`${TH} text-right`}>Total</th>
-              </>
-            }
-          >
-            {data.notas_credito.map((nota) => {
-              const folio = nota.folio || `#${nota.id}`;
-              return (
-                <tr key={nota.id}>
-                  <td className={TD}>
-                    {canOpenNotas ? (
-                      <button
-                        type="button"
-                        onClick={() => setOpenNotaId(nota.id)}
-                        className={LINK_CLASS}
-                        title={`Ver la nota de crédito ${folio}`}
-                      >
-                        {folio}
-                      </button>
-                    ) : (
-                      <BlockedFolio folio={folio} reason={blockedReason(FINANCE_READ_REASONS.creditNotes)} />
-                    )}
-                  </td>
-                  <td className={`${TD} whitespace-nowrap`}>
-                    {formatInvoiceDate(nota.fecha_emision)}
-                  </td>
-                  <td className={TD}>{textOrDash(nota.motivo)}</td>
-                  <td className={TD}>
-                    <StatusBadge status={nota.estatus} config={NOTA_CREDITO_ESTATUS_CONFIG} />
-                  </td>
-                  <td className={`${TD} text-right tabular-nums font-semibold text-slate-800 dark:text-white`}>
-                    {money(nota.total)}
-                  </td>
-                </tr>
-              );
-            })}
-          </LineItemsTable>
+          <>
+            {notasBlockReason && <BlockedReasonNote id="tracking-notas-block-reason" reason={notasBlockReason} />}
+            <LineItemsTable
+              head={
+                <>
+                  <th className={`${TH} text-left`}>Folio</th>
+                  <th className={`${TH} text-left`}>Emisión</th>
+                  <th className={`${TH} text-left`}>Motivo</th>
+                  <th className={`${TH} text-left`}>Estatus</th>
+                  <th className={`${TH} text-right`}>Total</th>
+                </>
+              }
+            >
+              {data.notas_credito.map((nota) => {
+                const folio = nota.folio || `#${nota.id}`;
+                return (
+                  <tr key={nota.id}>
+                    <td className={TD}>
+                      {canOpenNotas ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpenNotaId(nota.id)}
+                          className={LINK_CLASS}
+                          title={`Ver la nota de crédito ${folio}`}
+                        >
+                          {folio}
+                        </button>
+                      ) : (
+                        <span className="font-mono">{folio}</span>
+                      )}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap`}>
+                      {formatInvoiceDate(nota.fecha_emision)}
+                    </td>
+                    <td className={TD}>{textOrDash(nota.motivo)}</td>
+                    <td className={TD}>
+                      <StatusBadge status={nota.estatus} config={NOTA_CREDITO_ESTATUS_CONFIG} />
+                    </td>
+                    <td className={`${TD} text-right tabular-nums font-semibold text-slate-800 dark:text-white`}>
+                      {money(nota.total)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </LineItemsTable>
+          </>
         )}
       </Section>
 
