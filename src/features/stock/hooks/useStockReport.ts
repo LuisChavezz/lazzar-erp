@@ -16,7 +16,7 @@ import { STOCK_REPORT_QUERY_KEY } from "@/src/constants/stockQueryKeys";
  * cada página se cachea de forma independiente y navegar hacia atrás/adelante
  * entre páginas ya traídas no vuelve a consultar. `keepPreviousData` mantiene
  * visible la página anterior mientras llega la nueva, evitando el parpadeo a
- * pantalla de carga (misma convención que `useStockItems`).
+ * pantalla de carga.
  */
 export const useStockReport = (params: StockReportParams | null) => {
   return useQuery<StockReportResponse>({

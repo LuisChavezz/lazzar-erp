@@ -1,54 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useEffectEvent, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ExistenciasIcon,
   ErrorIcon,
   ProductVariantsIcon,
 } from "@/src/components/Icons";
 import { DataTable } from "@/src/components/DataTable";
-import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { plural } from "@/src/utils/plural";
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import KpiGrid, { KpiGridSkeleton, type KpiItem } from "@/src/components/KpiGrid";
+import { readServerTableState, writeServerTableQuery } from "@/src/utils/serverTableParams";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
-import { useStockItems } from "../hooks/useStockItems";
-import {
-  getStockColumns,
-  getStockStatus,
-} from "./StockColumns";
+import { stockPorAlmacenTable, useStockPorAlmacenTable } from "../hooks/useStockPorAlmacenTable";
+import { useStockPorAlmacenResumen } from "../hooks/useStockPorAlmacenResumen";
+import type { StockPorAlmacenResumen } from "../interfaces/stock-por-almacen.interface";
+import { getStockColumns } from "./StockColumns";
+import { StockAlmacenContext } from "./StockResumenHeaderFilter";
 import { SkuInfoDialog } from "./SkuInfoDialog";
 import { WarehouseFilter } from "./WarehouseFilter";
 import { StockEmptyState } from "./StockEmptyState";
-import type { StockItem } from "../interfaces/stock.interface";
-import { buildStockFilterOptions } from "./StockFilter";
 
+// ─── KPIs del almacén completo (`resumen.kpis`) ──────────────────────────────
 
+const pctOf = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
-// ─── Componente: KPIs calculados sobre datos reales ──────────────────────────
+function StockStats({ kpis }: { kpis: StockPorAlmacenResumen["kpis"] }) {
+  const { total_registros, skus_en_existencia, requiere_stock, total_stock } = kpis;
+  const pctSkusEnExistencia = pctOf(skus_en_existencia, total_registros);
+  const pctRequiereStock = pctOf(requiere_stock, total_registros);
 
-function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number }) {
-  const skusEnExistencia = items.filter((i) => i.stock > 0).length;
-  const requiereStock    = items.filter(
-    (i) => {
-      const status = getStockStatus(i.stock, maxStock);
-      return status === "low" || status === "critical";
-    }
-  ).length;
-  const totalStock       = items.reduce((acc, i) => acc + i.stock, 0);
-
-  const pctSkusEnExistencia = items.length > 0
-    ? Math.round((skusEnExistencia / items.length) * 100)
-    : 0;
-  const pctRequiereStock = items.length > 0
-    ? Math.round((requiereStock / items.length) * 100)
-    : 0;
-
-  const kpis: KpiItem[] = [
+  const items: KpiItem[] = [
     {
       label:       "SKUs en Existencia",
-      value:       skusEnExistencia.toString(),
+      value:       skus_en_existencia.toString(),
       icon:        ExistenciasIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass:   "text-sky-500",
@@ -58,7 +44,7 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
     },
     {
       label:       "Requiere Stock",
-      value:       requiereStock.toString(),
+      value:       requiere_stock.toString(),
       icon:        ErrorIcon,
       iconBgClass: "bg-red-50 dark:bg-red-500/10",
       iconClass:   "text-red-500",
@@ -68,31 +54,53 @@ function StockStats({ items, maxStock }: { items: StockItem[]; maxStock: number 
     },
     {
       label:       "Total en Inventario",
-      value:       totalStock.toLocaleString("es-MX"),
+      value:       total_stock.toLocaleString("es-MX"),
       icon:        ProductVariantsIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass:   "text-amber-500",
-      trendLabel:  `${items.length} ${plural(items.length, "registro", "registros")}`,
+      trendLabel:  `${total_registros} ${plural(total_registros, "registro", "registros")}`,
       status:      "neutral",
       progress:    100,
     },
   ];
 
-  return <KpiGrid items={kpis} />;
+  return <KpiGrid items={items} />;
 }
 
-
+/**
+ * Tarjetas de indicadores con su propia consulta (`resumen`): carga y error
+ * independientes de la tabla. Un refetch fallido conserva las cifras y avisa
+ * por toast desde el hook.
+ */
+function StockStatsSection({ almacenId }: { almacenId: number | null }) {
+  const { data, isInitialError, isFetching, refetch } = useStockPorAlmacenResumen(almacenId);
+  if (data) return <StockStats kpis={data.kpis} />;
+  if (isInitialError) {
+    return (
+      <SectionErrorNotice
+        title="No se pudieron cargar los indicadores"
+        message="Ocurrió un problema al consultar el resumen del almacén. Intenta de nuevo en unos momentos."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+  return <KpiGridSkeleton count={3} />;
+}
 
 // ─── Vista principal de existencias ──────────────────────────────────────────
 
 /**
- * Vista de existencias con datos obtenidos de la API.
- * Incluye KPIs, filtros por almacén / categoría / estado y tabla de datos.
- * El buscador interno y la paginación los gestiona `DataTable`.
+ * Existencias de un almacén en MODO SERVIDOR (`existencias/por-almacen/`):
+ * el backend filtra, busca, ordena y pagina; los KPIs y las opciones de los
+ * filtros salen de su resumen del almacén completo. La comparten WMS, Compras
+ * y SCM y Producción (`StockPage`).
+ *
+ * La URL es la fuente de verdad: `?almacen=<id>` elige el almacén y el resto
+ * (`nombre`, `estado`, `search`, `ordering`, `page`…) es de la tabla
+ * (`stockPorAlmacenTable`).
  */
 export function StockView() {
-  // ── Filtro de almacén: la URL (`?almacen=<id>`) es la fuente de verdad ───
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -106,13 +114,9 @@ export function StockView() {
   // activo (no uno borrado/inactivo/inventado, p. ej. `?almacen=999`). ─────
   const { data: warehouses, refetch: refetchWarehouses } = useWarehouses();
   const warehousesLoaded = warehouses !== undefined;
-  const activeWarehouses = useMemo(
-    () =>
-      (warehouses ?? [])
-        .filter((w) => w.estatus === "ACTIVO")
-        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    [warehouses],
-  );
+  const activeWarehouses = (warehouses ?? [])
+    .filter((w) => w.estatus === "ACTIVO")
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
   // Solo se marca inválido una vez que ya sabemos qué almacenes existen; antes
   // de eso se asume válido para no bloquear la consulta con una espera extra.
   const isAlmacenInvalid =
@@ -120,82 +124,58 @@ export function StockView() {
     warehousesLoaded &&
     !activeWarehouses.some((w) => w.id_almacen === almacenId);
 
-  const filters = almacenId ? { almacen_id: almacenId } : undefined;
+  // Almacén con el que se consulta: ninguno mientras no haya uno válido.
+  const queryAlmacenId = hasAlmacen && !isAlmacenInvalid ? almacenId : null;
 
-  // El fetch se activa solo cuando hay un almacén seleccionado y no se sabe
-  // todavía que sea inválido: evita consultar existencias con un almacen_id
-  // que no corresponde a ningún almacén real o activo.
-  const stockQuery = useStockItems(filters, { enabled: hasAlmacen && !isAlmacenInvalid });
-  const {
-    data: stockItems = [],
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-    isPlaceholderData,
-  } = stockQuery;
+  const table = useStockPorAlmacenTable(queryAlmacenId);
+  const resumen = useStockPorAlmacenResumen(queryAlmacenId);
 
-  // Solo la respuesta real de ESTE almacén cuenta como "cargado", no el
-  // placeholder del anterior (mismo criterio que `useCustomer`). Un refetch
-  // fallido con datos conserva la tabla y avisa por toast.
-  const { hasLoaded } = useHasLoadedQuery({
-    data: isPlaceholderData ? undefined : stockQuery.data,
-    isError,
-    errorUpdatedAt: stockQuery.errorUpdatedAt,
-    toastId: "stock-items-refetch-error",
-  });
-  const showError = isInitialLoadError(isError, hasLoaded);
-
-  // Cambio de almacén en curso: `keepPreviousData` sigue mostrando los datos
-  // del almacén anterior mientras llega la nueva página. Distinto de
-  // `isLoading` (que solo es true en la primera carga, sin datos previos que
-  // mostrar como placeholder).
-  const isSwitchingAlmacen = isFetching && isPlaceholderData;
-
-  // Cambiar de almacén es ajustar un filtro, no navegar: usamos `replace` para
-  // no ensuciar el historial (el botón "atrás" regresa a la pantalla previa en
-  // lugar de recorrer cada selección). La URL sigue siendo compartible y
-  // sobrevive al refresh / back-forward.
+  /**
+   * Cambiar de almacén reinicia la tabla (página, filtros, búsqueda y orden;
+   * las opciones de los filtros son de cada almacén) en UNA sola escritura de
+   * la URL, con `history.replaceState` como la propia tabla: así ningún render
+   * ve el almacén nuevo con los filtros del anterior, y no se mezcla con un
+   * `router.replace` asíncrono. Se conserva el tamaño de página. Después,
+   * `table.clear()` cancela una búsqueda que siga en su pausa de escritura
+   * (no escribe nada: la URL ya está limpia).
+   */
   const handleAlmacenChange = (nextAlmacenId: number | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextAlmacenId == null) {
-      params.delete("almacen");
-    } else {
-      params.set("almacen", String(nextAlmacenId));
-    }
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const current = new URLSearchParams(window.location.search);
+    const currentAlmacen = current.get("almacen");
+    if (nextAlmacenId !== null && currentAlmacen === String(nextAlmacenId)) return;
+    if (nextAlmacenId === null && currentAlmacen === null) return;
+
+    const { pageSize } = readServerTableState(stockPorAlmacenTable, (key) => current.get(key));
+    const query = writeServerTableQuery(
+      stockPorAlmacenTable,
+      { filters: {}, search: "", ordering: null, page: 1, pageSize },
+      current,
+    );
+    if (nextAlmacenId === null) query.delete("almacen");
+    else query.set("almacen", String(nextAlmacenId));
+    const qs = query.toString();
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+    table.clear();
   };
 
   // Si el almacén de la URL no existe o ya no está activo, se cae en
   // silencio al primero disponible (o se limpia el filtro si no hay ninguno)
-  // en vez de dejar una consulta inválida en curso con una etiqueta genérica
-  // de "sin selección".
-  useEffect(() => {
-    if (!isAlmacenInvalid) return;
+  // en vez de dejar una consulta inválida en curso. `useEffectEvent` y no un
+  // `eslint-disable` de `exhaustive-deps`: esa supresión hace que el React
+  // Compiler se salte TODO el componente, y entonces las columnas se recrean
+  // en cada render (cada tecla del buscador remontaba encabezados y celdas).
+  const fallBackToFirstWarehouse = useEffectEvent(() => {
     const fallback = activeWarehouses[0] ?? null;
     handleAlmacenChange(fallback ? fallback.id_almacen : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => {
+    if (isAlmacenInvalid) fallBackToFirstWarehouse();
   }, [isAlmacenInvalid]);
 
-  // ── Diálogo de información del SKU (renderizado fuera de la tabla; ver
-  // `SkuColumnHeader` en StockColumns.tsx para el motivo) ──────────────────
+  // ── Diálogo de información del SKU (fuera de la tabla: los encabezados se
+  // remontan al ordenar o paginar) ─────────────────────────────────────────
   const [skuInfoOpen, setSkuInfoOpen] = useState(false);
-
-  // ── Máximo stock para normalizar el anillo ───────────────────────────────
-  const maxStock = useMemo(
-    () => stockItems.reduce((max, item) => Math.max(max, item.stock), 0),
-    [stockItems],
-  );
-
-  // ── Columnas con el maxStock calculado ───────────────────────────────────
-  // Filtros de encabezado (estilo Excel) en cada columna; sus opciones salen
-  // de las existencias del almacén elegido.
-  const filterOptions = useMemo(() => buildStockFilterOptions(stockItems), [stockItems]);
-  const columns = useMemo(
-    () => getStockColumns(maxStock || undefined, () => setSkuInfoOpen(true), filterOptions),
-    [maxStock, filterOptions],
-  );
+  const columns = getStockColumns(() => setSkuInfoOpen(true));
 
   // ── Estado vacío: sin almacén seleccionado no se consulta ni se muestran
   // KPIs/tabla. El selector va embebido para elegir uno desde aquí. ─────────
@@ -204,79 +184,55 @@ export function StockView() {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 space-y-6">
-      {/* ── Barra de filtros (siempre visible, incluso en carga/error) ─────
-          `shrink-0`: solo la tabla de abajo debe crecer. */}
-      <div className="flex flex-wrap items-center gap-3 shrink-0">
-        <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
-      </div>
-
-      {/* `DataTable` se monta SIEMPRE: carga y error se muestran en su área de
-          datos (con "Reintentar" vía `onErrorRetry`), y el toolbar sigue
-          visible. `animate-stock-reveal` da la entrada sutil al elegir un
-          almacén; el wrapper NO va keyeado por almacén, así que al cambiar
-          entre dos almacenes válidos permanece montado y no se repite. */}
-      <div className="flex-1 min-h-0 flex flex-col space-y-6 animate-stock-reveal">
-        {/* ── KPIs calculados sobre los datos ya filtrados por almacén ────
-            Ocultos durante la carga INICIAL (`isLoading`, sin datos ni
-            placeholder): antes se mostraban con existencias en cero (p. ej.
-            "Total en Inventario: 0") hasta que llegaba la respuesta. En un
-            cambio de almacén (`isSwitchingAlmacen` = `isFetching &&
-            isPlaceholderData`, con los datos del almacén anterior como
-            placeholder) `isLoading` es false, así que siguen visibles pero
-            atenuados, igual que la tabla, en vez de mostrar en silencio las
-            cifras del almacén anterior sin ningún indicador visual.
-            `shrink-0`: solo la tabla debe crecer. */}
-        {!isLoading && !showError && (
-          <div
-            className={
-              "shrink-0 " +
-              (isSwitchingAlmacen
-                ? "blur-sm pointer-events-none select-none transition-[filter] duration-200"
-                : "transition-[filter] duration-200")
-            }
-          >
-            <StockStats items={stockItems} maxStock={maxStock} />
-          </div>
-        )}
-
-        {/* ── Tabla de existencias ───────────────────────────────────────
-            El componente permanece montado al cambiar de almacén: el
-            `queryKey` de `useStockItems` ya incluye el almacén y trae los
-            datos correctos sin remontar la tabla (lo que antes borraba
-            sort/búsqueda/filtros/columnas). Solo la paginación se reinicia
-            a la página 1, vía `paginationResetKey`. `fillHeight`: el cuerpo
-            llena el espacio restante del contenedor de altura acotada que
-            da la página que monta la vista, en vez de reservar un alto fijo.
-            `min-h-120`: piso de la tabla cuando el filtro de almacén + los
-            KPIs dejan poco espacio remanente. */}
-        <div className="flex-1 min-h-120 flex flex-col">
-          <DataTable
-            columns={columns}
-            data={stockItems}
-            searchPlaceholder="Buscar por producto o SKU..."
-            fillHeight
-            onRefetch={async () => {
-              await Promise.all([refetch(), refetchWarehouses()]);
-            }}
-            isRefetching={isFetching}
-            isLoadingOverlay={isSwitchingAlmacen}
-            loadingTitle="Actualizando existencias"
-            loadingMessage="Estamos cargando las existencias del almacén seleccionado."
-            paginationResetKey={almacenId}
-            isLoading={isLoading}
-            loadingAriaLabel="Cargando existencias"
-            isError={showError}
-            errorTitle="Error al cargar existencias"
-            // Texto fijo, sin derivarlo del error: `extractErrorMessage` caería en
-            // el `message` del `AxiosError` ("Request failed with status code …").
-            errorMessage="Ocurrió un problema al consultar las existencias del almacén. Intenta de nuevo en unos momentos."
-            onErrorRetry={() => void refetch()}
-          />
+    <StockAlmacenContext value={queryAlmacenId}>
+      <div className="h-full flex flex-col min-h-0 space-y-6">
+        {/* ── Barra de filtros (siempre visible, incluso en carga/error) ─────
+            `shrink-0`: solo la tabla de abajo debe crecer. */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <WarehouseFilter value={almacenId} onChange={handleAlmacenChange} />
         </div>
-      </div>
 
-      <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
-    </div>
+        {/* `animate-stock-reveal` da la entrada sutil al elegir un almacén; el
+            wrapper NO va keyeado por almacén, así que al cambiar entre dos
+            almacenes válidos permanece montado y no se repite. */}
+        <div className="flex-1 min-h-0 flex flex-col space-y-6 animate-stock-reveal">
+          {/* KPIs del almacén completo: consulta propia, con su carga y su
+              error, independientes de la tabla. `shrink-0`: solo la tabla
+              debe crecer. */}
+          <div className="shrink-0">
+            <StockStatsSection almacenId={queryAlmacenId} />
+          </div>
+
+          {/* ── Tabla de existencias (modo servidor) ────────────────────────
+              Se monta SIEMPRE: carga, error y vacío se pintan en su cuerpo y
+              el encabezado con sus filtros sigue montado. `fillHeight`: el
+              cuerpo llena el espacio restante del contenedor de altura
+              acotada que da `StockPage`. `min-h-120`: piso de la tabla cuando
+              el filtro de almacén + los KPIs dejan poco espacio. */}
+          <div className="flex-1 min-h-120 flex flex-col">
+            <DataTable
+              columns={columns}
+              {...table.tableProps}
+              searchPlaceholder="Buscar por producto o SKU..."
+              fillHeight
+              // "Actualizar datos" relee también los KPIs y el catálogo de
+              // almacenes. Sin almacén válido la consulta está deshabilitada y
+              // `refetch()` consultaría igual: no se ofrece.
+              onRefetch={
+                queryAlmacenId === null
+                  ? undefined
+                  : async () => {
+                      await Promise.all([table.refetch(), resumen.refetch(), refetchWarehouses()]);
+                    }
+              }
+              loadingAriaLabel="Cargando existencias"
+              errorTitle="Error al cargar existencias"
+            />
+          </div>
+        </div>
+
+        <SkuInfoDialog open={skuInfoOpen} onOpenChange={setSkuInfoOpen} />
+      </div>
+    </StockAlmacenContext>
   );
 }
