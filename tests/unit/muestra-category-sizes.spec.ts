@@ -106,6 +106,14 @@ test.describe("findIncompatibleSizes", () => {
     expect(findIncompatibleSizes({ 10: "0", 30: "5" }, [uni], global)).toEqual([]);
   });
 
+  test("con una categoría sin tallas (lista vacía) lista todas las capturadas (#927)", () => {
+    const resolved = resolveMuestraSizes([], global);
+    expect(findIncompatibleSizes({ 10: "2", 12: "3", 30: "0" }, resolved.sizes, global)).toEqual([
+      { id: 10, nombre: "CH", cantidad: "2" },
+      { id: 12, nombre: "G", cantidad: "3" },
+    ]);
+  });
+
   test("sin cantidades no hay incompatibles", () => {
     expect(findIncompatibleSizes(undefined, [uni], global)).toEqual([]);
   });
@@ -147,6 +155,8 @@ test.describe("getMuestraSizesBlock", () => {
 
   test("con una categoría sin tallas, bloquea con su error (#927)", () => {
     expect(getMuestraSizesBlock("empty", 0)).toBe(MUESTRA_SIZES_EMPTY);
+    // Aunque se listen sus tallas capturadas, el error es el de la categoría.
+    expect(getMuestraSizesBlock("empty", 2)).toBe(MUESTRA_SIZES_EMPTY);
   });
 
   test("con tallas fuera de la categoría, bloquea", () => {
