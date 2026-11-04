@@ -26,3 +26,45 @@ export const getSidebarItems = (
       items: section.items.filter((item) => canSeeItem(item, context)),
     }))
     .filter((section) => section.items.length > 0);
+
+/**
+ * ¿La visibilidad de este acceso depende de los permisos de la sesión? Mismo
+ * criterio que `canSeeItem`: sin código, se ve siempre (p. ej. "Inicio").
+ */
+export const sidebarItemRequiresPermission = (item: SidebarItem) =>
+  Boolean(item.permissionAnyOf?.length || item.permission);
+
+/** Acceso del sidebar listo para pintar: real o, si `isPlaceholder`, skeleton. */
+export type SidebarEntry = SidebarItem & { isPlaceholder: boolean };
+
+export interface SidebarEntrySection {
+  title?: string;
+  items: SidebarEntry[];
+}
+
+/**
+ * Secciones del sidebar según el estado de la sesión (EC-767).
+ *
+ * Mientras la sesión está pendiente (carga o se está recuperando) se devuelve la
+ * estructura SIN filtrar —el máximo que puede ver el usuario, así el menú solo
+ * se encoge al llegar los permisos— y cada acceso que depende de un permiso va
+ * como `isPlaceholder`. Los que no dependen de ninguno salen reales desde el
+ * primer pintado. Con la sesión resuelta, es `getSidebarItems` tal cual.
+ */
+export const getSidebarSectionsForSession = (
+  pathname: string,
+  context: PermissionContext | null | undefined,
+  isSessionPending: boolean
+): SidebarEntrySection[] =>
+  isSessionPending
+    ? getSidebarSectionsByPath(pathname).map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({
+          ...item,
+          isPlaceholder: sidebarItemRequiresPermission(item),
+        })),
+      }))
+    : getSidebarItems(context, pathname).map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({ ...item, isPlaceholder: false })),
+      }));

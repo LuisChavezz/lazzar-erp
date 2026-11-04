@@ -3,33 +3,30 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
-import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
+import SidebarSessionNotice from "./SidebarSessionNotice";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { UserMenu } from "./UserMenu";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import {
-  getSidebarSectionsByPath,
-  mainGroupKeys,
-  type SidebarItem as SidebarItemType,
-} from "@/src/constants/sidebarItems";
+import { mainGroupKeys } from "@/src/constants/sidebarItems";
+import { useSidebarSections } from "@/src/hooks/useSidebarSections";
+import type { SidebarEntry } from "@/src/utils/getSidebarItems";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session, status } = useSession();
-  // Mismo criterio que `Sidebar`: mientras la sesión carga se pinta la
-  // estructura sin filtrar con cada acceso como skeleton.
-  const isSessionLoading = status === "loading";
-  const availableSections = isSessionLoading
-    ? getSidebarSectionsByPath(pathname)
-    : getSidebarItems(session?.user, pathname);
-  const renderItem = (item: SidebarItemType) =>
-    isSessionLoading ? (
+  // Mismo estado y secciones que `Sidebar` (ver `useSidebarSections`).
+  const {
+    sections: availableSections,
+    isPending,
+    isUnavailable,
+    retry,
+  } = useSidebarSections(pathname);
+  const renderItem = (item: SidebarEntry) =>
+    item.isPlaceholder ? (
       <SidebarItemSkeleton variant="mobile" />
     ) : (
       <SidebarItem item={item} variant="mobile" setIsMobileOpen={setIsMobileOpen} />
@@ -105,7 +102,8 @@ export default function MobileSidebar() {
               <CloseIcon className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
-          <div aria-busy={isSessionLoading} className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div aria-busy={isPending} className="flex-1 overflow-y-auto p-4 space-y-3">
+            {isUnavailable && <SidebarSessionNotice onRetry={retry} variant="mobile" />}
             {availableSections.map((section, index) => (
               <div key={index}>
                 {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}

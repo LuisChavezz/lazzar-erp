@@ -4,6 +4,7 @@ import { Header } from "@/src/components/Header";
 import Sidebar from "@/src/components/Sidebar";
 import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
+import { SessionRecoveryProvider } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
 import { GlobalSearchProvider } from "@/src/features/search/components/GlobalSearchProvider";
@@ -23,10 +24,11 @@ export const metadata = {
  *
  * `SessionProvider` arranca entonces sin sesión inicial: `useSession()` empieza
  * en `loading` y el cliente pide `/api/auth/session`. El sidebar muestra un
- * skeleton mientras tanto; los botones que dependen de permisos aparecen al
- * llegar la sesión (aceptado). El acceso no cambia: `src/proxy.ts` sigue
- * exigiendo sesión, workspace y permiso de módulo antes de servir la ruta, y el
- * backend valida cada petición.
+ * skeleton mientras tanto, y si esa lectura falla `SessionRecoveryProvider` la
+ * reintenta (con aviso y "Reintentar" en el sidebar si se agota). Los botones
+ * que dependen de permisos aparecen al llegar la sesión (aceptado). El acceso
+ * no cambia: `src/proxy.ts` sigue exigiendo sesión, workspace y permiso de
+ * módulo antes de servir la ruta, y el backend valida cada petición.
  */
 export default function MainLayout({
   children,
@@ -35,6 +37,7 @@ export default function MainLayout({
 }) {
   return (
     <SessionThemeProvider>
+      <SessionRecoveryProvider>
       <SettingsModalProvider>
         {/* Envuelve al header (su disparador) y a todas las páginas: monta la
             paleta de búsqueda una sola vez para todas las rutas de (Main). */}
@@ -63,6 +66,7 @@ export default function MainLayout({
         </SidebarProvider>
         </GlobalSearchProvider>
       </SettingsModalProvider>
+      </SessionRecoveryProvider>
     </SessionThemeProvider>
   );
 }

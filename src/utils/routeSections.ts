@@ -135,3 +135,32 @@ export const findActiveRouteSection = (
 
   return activeSection;
 };
+
+/** Hoja de un sub-grupo lista para pintar: real o, si `isPlaceholder`, skeleton. */
+export type RouteSectionEntry = Omit<RouteSection, "items"> & {
+  items: (AppRouteItem & { isPlaceholder: boolean })[];
+};
+
+/**
+ * Sub-grupos del módulo según el estado de la sesión (EC-767), con el mismo
+ * criterio que `getSidebarSectionsForSession`: pendiente → TODOS los sub-grupos
+ * y las hojas con permiso como `isPlaceholder`; resuelta →
+ * `getVisibleRouteSections`. `null` si el grupo no declara `sections`.
+ */
+export const getRouteSectionsForSession = (
+  group: AppRouteGroup,
+  context: PermissionContext | null | undefined,
+  isSessionPending: boolean
+): RouteSectionEntry[] | null => {
+  const sections = isSessionPending
+    ? getRouteSections(group)
+    : getVisibleRouteSections(group, context);
+  if (!sections) return null;
+  return sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      ...item,
+      isPlaceholder: isSessionPending && Boolean(item.permission),
+    })),
+  }));
+};

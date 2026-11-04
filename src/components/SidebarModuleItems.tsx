@@ -1,11 +1,10 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import { useSidebar } from "./SidebarProvider";
 import type { AppRouteGroup } from "@/src/constants/appRoutes";
-import { getRouteSections, getVisibleRouteSections } from "@/src/utils/routeSections";
+import { useSidebarModuleSections } from "@/src/hooks/useSidebarSections";
 
 interface SidebarModuleItemsProps {
   /** Grupo activo; debe declarar `sections` (los grupos planos los pinta el sidebar como siempre). */
@@ -27,15 +26,10 @@ export default function SidebarModuleItems({
   variant = "desktop",
   setIsMobileOpen,
 }: SidebarModuleItemsProps) {
-  const { data: session, status } = useSession();
   const { isPinned } = useSidebar();
-  // Mientras la sesión carga (carga completa: el layout no entrega sesión
-  // inicial) se pintan TODOS los sub-grupos con sus hojas como skeleton, igual
-  // que el resto del sidebar; al llegar la sesión quedan solo los visibles.
-  const isSessionLoading = status === "loading";
-  const sections = isSessionLoading
-    ? getRouteSections(group)
-    : getVisibleRouteSections(group, session?.user);
+  // Mientras la sesión está pendiente (carga o recuperación) salen TODOS los
+  // sub-grupos y las hojas con permiso como skeleton (ver `useSidebarSections`).
+  const sections = useSidebarModuleSections(group);
 
   if (!sections) {
     return null;
@@ -73,7 +67,7 @@ export default function SidebarModuleItems({
               </span>
             </div>
           )}
-          {section.items.map((item) => isSessionLoading ? (
+          {section.items.map((item) => item.isPlaceholder ? (
             <SidebarItemSkeleton key={item.path} variant={variant} />
           ) : (
             <SidebarItem
