@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
-import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
+import {
+  MESA_CONTROL_LIST_HEIGHT,
+  MESA_CONTROL_TABLE_REGION,
+} from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
@@ -77,9 +80,9 @@ export function InventoryPipelineView() {
     setOpenProductoId(null);
   }
 
-  // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`:
-  // la tabla aprovecha toda la pantalla y scrollea por dentro, sin scroll de
-  // página.
+  // Altura según la ventana (`listHeight.ts`): en pantallas altas la tabla
+  // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
+  // página scrollea.
   return (
     <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
       <QuickFilterChips
@@ -93,6 +96,7 @@ export function InventoryPipelineView() {
           count: hasLoaded ? rows.filter(filter.matches).length : undefined,
         }))}
       />
+      <div className={MESA_CONTROL_TABLE_REGION}>
       <DataTable
         columns={columns}
         data={visibleRows}
@@ -110,6 +114,7 @@ export function InventoryPipelineView() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando reporte de existencias, producción y compras"
       />
+      </div>
 
       {/* Sin endpoint de detalle al cual recurrir: si el producto sale del
           reporte, el diálogo se cierra (ver el ajuste de `openProductoId`). */}

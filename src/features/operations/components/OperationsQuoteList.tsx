@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import { DataTable } from "@/src/components/DataTable";
-import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
+import {
+  MESA_CONTROL_LIST_HEIGHT,
+  MESA_CONTROL_TABLE_REGION,
+} from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { acceptChangesOperationsQuoteMutationKey } from "../hooks/useAcceptChangesOperationsQuote";
@@ -61,10 +64,12 @@ export const OperationsQuoteList = () => {
     setDialog({ kind, operationsQuote });
 
   return (
-    // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`
-    // en `DataTable`: la tabla scrollea INTERNAMENTE en vez de empujar la página.
+    // Altura según la ventana (`listHeight.ts`): en pantallas altas la tabla
+    // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
+    // página scrollea.
     <OperationsQuoteRowActionsProvider value={{ requestAction, busy }}>
-    <div className={MESA_CONTROL_LIST_HEIGHT}>
+    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col`}>
+      <div className={MESA_CONTROL_TABLE_REGION}>
       <DataTable
         columns={getOperationsQuoteColumns(buildOperationsQuoteFilterOptions(operationsQuotes))}
         data={operationsQuotes}
@@ -86,6 +91,7 @@ export const OperationsQuoteList = () => {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones operativas"
       />
+      </div>
       <OperationsQuoteActionDialogs
         dialog={dialog}
         onClose={() => setDialog(null)}

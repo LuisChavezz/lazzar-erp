@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
-import { MESA_CONTROL_LIST_HEIGHT } from "@/src/features/operations/constants/listHeight";
+import {
+  MESA_CONTROL_LIST_HEIGHT,
+  MESA_CONTROL_TABLE_REGION,
+} from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   buildOperationsCustomerFilterOptions,
@@ -46,8 +49,9 @@ export const OperationsCustomerList = () => {
   const [quickFilterKey, setQuickFilterKey] = useState("todos");
   const quickFilter = QUICK_FILTERS.find((f) => f.key === quickFilterKey) ?? QUICK_FILTERS[0];
 
-  // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`) + `fillHeight`:
-  // la tabla usa toda la pantalla y scrollea por dentro.
+  // Altura según la ventana (`listHeight.ts`): en pantallas altas la tabla
+  // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
+  // página scrollea.
   return (
     <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
       <QuickFilterChips
@@ -61,6 +65,7 @@ export const OperationsCustomerList = () => {
           count: hasLoaded ? customers.filter(filter.matches).length : undefined,
         }))}
       />
+      <div className={MESA_CONTROL_TABLE_REGION}>
       <DataTable
         columns={getOperationsCustomerColumns(buildOperationsCustomerFilterOptions(customers))}
         data={customers.filter(quickFilter.matches)}
@@ -75,6 +80,7 @@ export const OperationsCustomerList = () => {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando clientes"
       />
+      </div>
     </div>
   );
 };

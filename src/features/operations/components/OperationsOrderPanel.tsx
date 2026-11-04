@@ -21,7 +21,7 @@ import { isOrderConfirmed } from '@/src/features/orders/utils/pedidoConfirmacion
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
-import { MESA_CONTROL_LIST_HEIGHT } from '../constants/listHeight';
+import { MESA_CONTROL_LIST_HEIGHT, MESA_CONTROL_TABLE_REGION } from '../constants/listHeight';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
@@ -112,9 +112,10 @@ export function OperationsOrderPanel() {
     queryClient.invalidateQueries({ queryKey: ordersQueryKey(), exact: true });
 
   return (
-    // Altura acotada a la ventana (`MESA_CONTROL_LIST_HEIGHT`): los KPIs
+    // Altura según la ventana (`listHeight.ts`): en pantallas altas los KPIs
     // conservan su alto y la tabla llena el resto (`fillHeight`) y scrollea por
-    // dentro, así la página no scrollea.
+    // dentro, sin scroll de página; en laptops la tabla mide ~7 filas y la
+    // página scrollea.
     <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-4`}>
       {/* KPIs: ocultos durante la carga y ante un error —no hay datos que
           resumir y `orders` arranca en `[]`, así que mostrarían ceros que se
@@ -127,7 +128,7 @@ export function OperationsOrderPanel() {
         </div>
       )}
 
-      <div className="flex-1 min-h-0">
+      <div className={MESA_CONTROL_TABLE_REGION}>
       <OperationsOrderTable
         orders={orders}
         isLoading={isLoading}
