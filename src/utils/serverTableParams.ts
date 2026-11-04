@@ -42,6 +42,24 @@ export const positiveIdParam: ServerTableParam<number> = {
 };
 
 /**
+ * Texto libre que el backend compara EXACTO (un nombre, un código, un color
+ * tal como los entrega su catálogo de opciones). No recorta ni normaliza: un
+ * espacio de más cambia la coincidencia, así que el valor viaja tal cual. Solo
+ * descarta el texto vacío o hecho solo de espacios, que no coincidiría con
+ * nada.
+ */
+export const textParam: ServerTableParam<string> = {
+  parse: (raw) => (raw.trim() === "" ? null : raw),
+  serialize: (value) => value,
+};
+
+/** Mes "AAAA-MM" (01 a 12), como el `?mes=` de los filtros por mes. */
+export const monthParam: ServerTableParam<string> = {
+  parse: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : null),
+  serialize: (value) => value,
+};
+
+/**
  * Codec de fecha: lleva la marca `kind: "date"` para que `dateRanges` acepte
  * SOLO filtros de fecha (su comparación es por texto "yyyy-mm-dd", que no
  * sirve para otros valores).
