@@ -25,6 +25,7 @@ import { getLineSkuStatus } from "@/src/features/special-orders/utils/lineSkuSta
 import {
   CATALOG_ALTA_GENERIC_ERROR,
   isCategoryRejection,
+  isNoSizesCategoryRejection,
   parseCatalogAltaError,
 } from "@/src/features/special-orders/utils/parseCatalogAltaError";
 import { canActOnSpecialOrderLines } from "@/src/features/special-orders/utils/lineActions";
@@ -496,6 +497,30 @@ test.describe("parseCatalogAltaError", () => {
         }),
       ),
     ).toBe(true);
+  });
+
+  test("solo el rechazo por categoría sin tallas pide releer el catálogo de categorías (#927)", () => {
+    const parse = (body: unknown) => parseCatalogAltaError(httpError(400, body));
+    expect(
+      isNoSizesCategoryRejection(
+        parse({
+          alta_catalogo:
+            "La categoría Vestido no tiene tallas configuradas; no se puede dar de alta en catálogo.",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isNoSizesCategoryRejection(
+        parse({
+          alta_catalogo: "La categoría Vestido está inactiva; no se puede dar de alta en catálogo.",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isNoSizesCategoryRejection(
+        parse({ categoria_producto: "La categoría Vestido no tiene tallas configuradas." }),
+      ),
+    ).toBe(false);
   });
 
   test("el resto sigue al toast: SKU repetido, línea sin categoría, sin pendientes, permiso", () => {
