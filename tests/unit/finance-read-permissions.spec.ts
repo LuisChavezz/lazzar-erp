@@ -4,6 +4,7 @@ import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
 import { financeReadBlockReason, getFinanceReadState } from "@/src/utils/financeRead";
+import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import {
   FINANCE_READ_PERMISSION,
   FINANCE_READ_REASONS,
@@ -161,4 +162,37 @@ test("las pólizas del detalle de CxC se deciden por R-CONTABILIDAD, no por la l
   expect(bloqueo(facturacionYCxc)).toBe(motivo);
   expect(bloqueo(soloModulo)).toBeNull();
   expect(bloqueo(admin)).toBeNull();
+});
+
+test.describe("la compuerta de escritura delega en la de lectura (EC-734)", () => {
+  const conEscritura = perfil("R-CONTABILIDAD", "E-FIN-FACTURAS");
+  const estados = ["authenticated", "loading", "unauthenticated"] as const;
+
+  test("getFinanceWriteState es getFinanceReadState con E-FIN-FACTURAS", () => {
+    for (const user of [conEscritura, soloModulo, admin, undefined]) {
+      for (const status of estados) {
+        const read = getFinanceReadState(user, status, "E-FIN-FACTURAS");
+        expect(getFinanceWriteState(user, status)).toEqual({
+          canWrite: read.canRead,
+          isSessionLoading: read.isSessionLoading,
+        });
+      }
+    }
+  });
+
+  test("financeWriteBlock: libre, bloqueado con motivo, o bloqueado sin motivo mientras carga", () => {
+    const motivo = "sin permiso";
+    expect(financeWriteBlock({ canWrite: true, isSessionLoading: false }, motivo)).toEqual({
+      disabled: false,
+      description: undefined,
+    });
+    expect(financeWriteBlock({ canWrite: false, isSessionLoading: false }, motivo)).toEqual({
+      disabled: true,
+      description: motivo,
+    });
+    expect(financeWriteBlock({ canWrite: false, isSessionLoading: true }, motivo)).toEqual({
+      disabled: true,
+      description: undefined,
+    });
+  });
 });
