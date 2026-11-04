@@ -3,35 +3,31 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
-import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
+import SidebarSessionNotice from "./SidebarSessionNotice";
 import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import {
-  getSidebarSectionsByPath,
-  mainGroupKeys,
-  type SidebarItem as SidebarItemType,
-} from "@/src/constants/sidebarItems";
+import { mainGroupKeys } from "@/src/constants/sidebarItems";
+import { useSidebarSections } from "@/src/hooks/useSidebarSections";
+import type { SidebarEntry } from "@/src/utils/getSidebarItems";
 import { useSidebar } from "./SidebarProvider";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
   const { isPinned, togglePin } = useSidebar();
-  // El layout de (Main) no entrega sesión inicial (las rutas son estáticas), así
-  // que en la carga completa la sesión llega del cliente. Mientras tanto se pinta
-  // la estructura SIN filtrar por permisos con cada acceso como skeleton: es el
-  // máximo que puede ver el usuario, y al llegar la sesión solo se encoge.
-  const isSessionLoading = status === "loading";
-  const availableSections = isSessionLoading
-    ? getSidebarSectionsByPath(pathname)
-    : getSidebarItems(session?.user, pathname);
-  const renderItem = (item: SidebarItemType) =>
-    isSessionLoading ? (
+  // Estado de la sesión y secciones (carga, recuperación, aviso): ver
+  // `useSidebarSections`, compartido con `MobileSidebar`.
+  const {
+    sections: availableSections,
+    isPending,
+    isUnavailable,
+    retry,
+  } = useSidebarSections(pathname);
+  const renderItem = (item: SidebarEntry) =>
+    item.isPlaceholder ? (
       <SidebarItemSkeleton variant="desktop" />
     ) : (
       <SidebarItem item={item} variant="desktop" />
@@ -113,9 +109,10 @@ export default function Sidebar() {
 
             {/* Navigation Items */}
             <nav
-              aria-busy={isSessionLoading}
+              aria-busy={isPending}
               className="flex-1 overflow-y-auto no-scrollbar py-6 px-3 space-y-3"
             >
+              {isUnavailable && <SidebarSessionNotice onRetry={retry} variant="desktop" />}
               {availableSections.map((section, index) => (
                 <div key={index} className={index > 0 ? "mt-6" : ""}>
                   {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}
