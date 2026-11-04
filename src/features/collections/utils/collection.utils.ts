@@ -1,4 +1,3 @@
-import type { CuentaBancaria } from "@/src/features/bank-accounts/interfaces/bank-account.interface";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatKpiCurrencyAmount } from "@/src/utils/kpiFormat";
@@ -6,15 +5,16 @@ import type { Cobro } from "../interfaces/collection.interface";
 
 /**
  * Renglón del listado: el cobro tal cual más el CÓDIGO de su moneda ya resuelto
- * (el de su cuenta bancaria; `moneda` del cobro es solo la FK). Se calcula UNA
- * vez al armar las filas, no en cada celda.
+ * (el de su cuenta bancaria; `moneda` del cobro es solo la FK). Ambos datos de
+ * la cuenta llegan con el cobro (EC-746), sin pedir `cuentas-bancarias/`.
  */
 export interface CobroRow extends Cobro {
   moneda_codigo: string | null;
   /**
-   * ¿Su cuenta bancaria sigue activa? `null` si el catálogo no la trae (aún sin
-   * cargar). Un borrador con la cuenta desactivada no se puede aplicar: el
-   * backend solo acepta cuentas activas en `cuenta_bancaria`.
+   * ¿Su cuenta bancaria sigue activa? (`cuenta_bancaria_activo`). Un borrador
+   * con la cuenta desactivada no se puede aplicar: el backend solo acepta
+   * cuentas activas en `cuenta_bancaria`. `null` se conserva en el tipo para
+   * los consumidores que distinguen "desconocido".
    */
   cuenta_bancaria_activa: boolean | null;
 }
@@ -35,33 +35,26 @@ export const buildCxcIndex = (cuentas: CuentaPorCobrar[]): Map<number, CuentaPor
  */
 export const cobroLabel = (cobro: Pick<Cobro, "id" | "folio">): string => cobro.folio || `#${cobro.id}`;
 
-/** Índice de cuentas bancarias por id, para resolver la moneda de cada cobro. */
-export const buildBankAccountIndex = (accounts: CuentaBancaria[]): Map<number, CuentaBancaria> =>
-  new Map(accounts.map((account) => [account.id, account]));
-
 /**
  * Código de la moneda del cobro: el de su cuenta bancaria (el backend fija
- * `moneda` del cobro con la de la cuenta). Al aplicar, el backend exige que cada
- * factura esté en esa moneda; los cobros previos a esa regla pueden mezclarlas.
+ * `moneda` del cobro con la de la cuenta), que llega con el cobro en
+ * `cuenta_bancaria_moneda_codigo` (EC-746). Al aplicar, el backend exige que
+ * cada factura esté en esa moneda; los cobros previos a esa regla pueden
+ * mezclarlas.
  *
- * `null` si la cuenta no se puede resolver (catálogo sin cargar, o la cuenta no
- * viene en él) o no trae código: en ese caso el importe se muestra SIN símbolo
- * en vez de adivinar una moneda.
+ * `null` si la cuenta no trae código: en ese caso el importe se muestra SIN
+ * símbolo en vez de adivinar una moneda.
  */
-export const resolveCobroMoneda = (
-  cobro: Pick<Cobro, "cuenta_bancaria">,
-  bankAccounts: Map<number, CuentaBancaria>,
-): string | null => bankAccounts.get(cobro.cuenta_bancaria)?.moneda_codigo || null;
+export const resolveCobroMoneda = (cobro: Pick<Cobro, "cuenta_bancaria_moneda_codigo">): string | null =>
+  cobro.cuenta_bancaria_moneda_codigo || null;
 
 /** Mapea los cobros a filas de tabla con su moneda resuelta (ver `resolveCobroMoneda`). */
-export const mapCobrosToRows = (cobros: Cobro[], bankAccounts: CuentaBancaria[]): CobroRow[] => {
-  const index = buildBankAccountIndex(bankAccounts);
-  return cobros.map((cobro) => ({
+export const mapCobrosToRows = (cobros: Cobro[]): CobroRow[] =>
+  cobros.map((cobro) => ({
     ...cobro,
-    moneda_codigo: resolveCobroMoneda(cobro, index),
-    cuenta_bancaria_activa: index.get(cobro.cuenta_bancaria)?.activo ?? null,
+    moneda_codigo: resolveCobroMoneda(cobro),
+    cuenta_bancaria_activa: cobro.cuenta_bancaria_activo,
   }));
-};
 
 /**
  * ¿La línea está en otra moneda que el cobro? Solo con AMBAS monedas conocidas

@@ -12,8 +12,8 @@ import type { MetodoPago } from "@/src/features/payments/interfaces/payment.inte
  * `Cancelado`. Los decimales llegan como string ("1160.00").
  *
  * La moneda del cobro es SIEMPRE la de su cuenta bancaria: `moneda` la fija el
- * servidor (solo lectura) y el código ISO se resuelve contra el catálogo de
- * cuentas (ver `resolveCobroMoneda`). El identificador visible es `folio`, o
+ * servidor (solo lectura) y el código ISO llega con el cobro en
+ * `cuenta_bancaria_moneda_codigo` (ver `resolveCobroMoneda`). El identificador visible es `folio`, o
  * `#id` mientras no tenga (ver `cobroLabel`).
  */
 
@@ -60,6 +60,15 @@ export interface Cobro {
    * `null=True`, aunque el OpenAPI no lo marque como nullable.
    */
   cuenta_bancaria_alias: string | null;
+  /**
+   * `source="cuenta_bancaria.moneda.codigo_iso"` (EC-746): la moneda de la
+   * cuenta, que es la del cobro. Llega con el cobro para que quien lee Cobros
+   * con `R-CONTABILIDAD-CXC` no necesite `cuentas-bancarias/`. `null` si la
+   * cuenta no trae moneda o código.
+   */
+  cuenta_bancaria_moneda_codigo: string | null;
+  /** `source="cuenta_bancaria.activo"` (EC-746): ¿la cuenta sigue activa? */
+  cuenta_bancaria_activo: boolean;
   /** Fecha-calendario "YYYY-MM-DD". */
   fecha_cobro: string;
   metodo_pago: CobroMetodoPago;
