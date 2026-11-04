@@ -12,6 +12,7 @@ import type { SampleProductionVariant } from "../interfaces/special-order.interf
 import { altaCatalogoLinea } from "../services/actions";
 import {
   isCategoryRejection,
+  isNoSizesCategoryRejection,
   parseCatalogAltaError,
   type ParsedCatalogAltaError,
 } from "../utils/parseCatalogAltaError";
@@ -42,7 +43,8 @@ interface AltaCatalogoVariables {
  * ventas son el mismo `Pedido`, así que comparten id.
  *
  * Errores: el mensaje del backend en un toast; si la línea quedó obsoleta
- * (`pedido_detalle_id` o `404`) se relee el detalle. Un rechazo de la categoría
+ * (`pedido_detalle_id` o `404`) se relee el detalle, y si la categoría no tiene
+ * tallas, el catálogo de categorías. Un rechazo de la categoría
  * elegida (`isCategoryRejection`) NO da toast: lo muestra el diálogo, que sigue
  * abierto para elegir otra.
  */
@@ -73,6 +75,11 @@ export const altaCatalogoMutationOptions = (
       const parsed = parseCatalogAltaError(error);
       if (categoriaProductoId === undefined || !isCategoryRejection(parsed)) {
         toast.error(parsed.message);
+      }
+      // La categoría perdió sus tallas después de cargar el catálogo: se relee
+      // para que el selector deje de ofrecerla (#927). El error sigue donde iba.
+      if (isNoSizesCategoryRejection(parsed)) {
+        void queryClient.invalidateQueries({ queryKey: ["product-categories"] });
       }
       if (parsed.staleLine) {
         await queryClient.invalidateQueries({ queryKey: ["special-order-detail", pedidoId] });

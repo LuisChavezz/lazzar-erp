@@ -100,6 +100,17 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
 const CATEGORY_ALTA_REJECTION =
   /^(La categoría .+ (está inactiva|no tiene tallas configuradas)|Tallas que no son de la categoría )/;
 
+/** Comienzo del `400 {"alta_catalogo"}` de una categoría sin tallas configuradas (#927). */
+const NO_SIZES_ALTA_REJECTION = /^La categoría .+ no tiene tallas configuradas/;
+
+/**
+ * La categoría se rechazó por no tener tallas: el catálogo de categorías en
+ * caché (15 min) la sigue mostrando con tallas, así que hay que volver a pedirlo
+ * para que deje de ofrecerse.
+ */
+export const isNoSizesCategoryRejection = (parsed: ParsedCatalogAltaError): boolean =>
+  parsed.key === "alta_catalogo" && NO_SIZES_ALTA_REJECTION.test(parsed.message);
+
 /**
  * Rechazo de la categoría elegida: va bajo el selector y el diálogo sigue
  * abierto para elegir otra. Son todos los `categoria_producto` ("Categoría no
