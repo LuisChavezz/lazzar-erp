@@ -31,7 +31,8 @@ function CurrencyBlocks({ monedas, metric }: { monedas: CobrosResumenMoneda[]; m
     <span className="block space-y-1.5">
       {monedas.map((moneda) => (
         <KpiTaggedBlocks
-          key={moneda.moneda_id}
+          // Por código: `moneda_id` es null cuando varias monedas comparten código.
+          key={moneda.moneda_codigo}
           blocks={[
             {
               key: moneda.moneda_codigo,

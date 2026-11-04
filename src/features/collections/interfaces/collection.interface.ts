@@ -132,13 +132,15 @@ export interface FacturamaCfdiFile {
 }
 
 /**
- * Parámetros de `GET /finanzas/dashboard/` que usa este módulo. Sin fechas el
- * backend toma el mes en curso hasta hoy; sin `moneda_id` SUMA todas las
- * monedas, por eso los indicadores siempre la mandan.
+ * Totales de UNA moneda en `GET /finanzas/cobros/resumen/`, agrupados por
+ * CÓDIGO: `Moneda.codigo_iso` no es único (hay monedas globales y privadas de
+ * cada empresa), así que una entrada puede sumar varias filas de `Moneda`.
+ * Se identifica y se compara por `moneda_codigo`, nunca por `moneda_id`.
  */
-/** Totales de UNA moneda en `GET /finanzas/cobros/resumen/`. */
 export interface CobrosResumenMoneda {
-  moneda_id: number;
+  /** Id de la `Moneda` si UNA sola respalda la entrada; `null` si son varias con el mismo código. */
+  moneda_id: number | null;
+  /** Código ISO tal cual está guardado: la llave de la entrada. */
   moneda_codigo: string;
   /** Cobros `Aplicado` del período en esa moneda (la de su cuenta bancaria). */
   cantidad: number;
@@ -149,7 +151,8 @@ export interface CobrosResumenMoneda {
 /**
  * `GET /finanzas/cobros/resumen/` (EC-746): los indicadores de Cobros, de la
  * propia sección (se leen con `R-CONTABILIDAD-CXC`, sin abrir el dashboard).
- * Mismos números que `cobros_periodo` del dashboard, por moneda.
+ * Por código, los números son la SUMA de `cobros_periodo` del dashboard sobre
+ * cada `moneda_id` con ese código.
  */
 export interface CobrosResumen {
   /** El período que resolvió el backend: del día 1 del mes en curso a hoy. */
@@ -158,8 +161,8 @@ export interface CobrosResumen {
     fecha_fin: string;
   };
   /**
-   * Una entrada por cada moneda de las cuentas bancarias de la empresa
-   * (activas o no), aunque no tenga cobros, ordenadas por código. Vacío si la
+   * Una entrada por cada CÓDIGO de moneda de las cuentas bancarias de la
+   * empresa (activas o no), aunque no tenga cobros, ordenadas por código. Vacío si la
    * empresa no tiene cuentas con moneda.
    */
   por_moneda: CobrosResumenMoneda[];
