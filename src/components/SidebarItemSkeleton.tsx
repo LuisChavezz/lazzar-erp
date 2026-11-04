@@ -22,7 +22,7 @@ export default function SidebarItemSkeleton({ variant = "desktop" }: SidebarItem
     return (
       <div aria-hidden="true" className="px-4 py-3">
         <div className="flex h-6 items-center">
-          <LoadingSkeleton className="h-4 w-2/3! rounded-full" />
+          <LoadingSkeleton className="h-4 w-2/3! rounded-full!" />
         </div>
       </div>
     );
@@ -30,11 +30,11 @@ export default function SidebarItemSkeleton({ variant = "desktop" }: SidebarItem
 
   return (
     <div aria-hidden="true" className="relative flex items-center gap-4 px-3 py-3">
-      <LoadingSkeleton className="h-6 w-6! shrink-0 rounded-lg" />
+      <LoadingSkeleton className="h-6 w-6! shrink-0 rounded-lg!" />
       <span
         className={`absolute left-14 right-3 transition-opacity duration-200 ${isPinned ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100"}`}
       >
-        <LoadingSkeleton className="h-3 rounded-full" />
+        <LoadingSkeleton className="h-3 rounded-full!" />
       </span>
     </div>
   );
