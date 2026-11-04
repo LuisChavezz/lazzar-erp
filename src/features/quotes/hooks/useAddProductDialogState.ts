@@ -35,6 +35,7 @@ import { reflectiveInventoryCapError } from "../utils/reflectiveInventoryCap";
 import {
   getMuestraSizesBlock,
   getSettledDraftIds,
+  MUESTRA_SIZES_EMPTY_ADD_HINT,
   MUESTRA_SIZES_PENDING,
   type MuestraSizesStatus,
 } from "../utils/muestraCategorySizes";
@@ -284,8 +285,9 @@ export function useAddProductDialogState({
   // ─── Tallas de cada muestra según su categoría (EC-647) ───────────────────
   //
   // El backend rechaza en una muestra las tallas que no son de su categoría. Se
-  // ofrecen solo las de la categoría (o el catálogo global si no tiene ninguna,
-  // o si la muestra aún no la elige); mientras su lista carga, ninguna.
+  // ofrecen solo las de la categoría (o el catálogo global si la muestra aún no
+  // la elige); mientras su lista carga, o si la categoría no tiene ninguna
+  // (#927), ninguna.
   const muestraCategoryIds = isMuestra
     ? muestraDrafts.map((draft) => (draft.categoria_producto > 0 ? draft.categoria_producto : null))
     : [];
@@ -406,8 +408,8 @@ export function useAddProductDialogState({
     return map;
   }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes, isMuestra, muestraSizesByDraft]);
 
-  // Filas de muestra cuya lista aún no está lista, para `StepSizes` y para
-  // frenar el guardado. Aquí no se buscan tallas fuera de categoría: en el alta
+  // Filas de muestra sin tallas que capturar (su lista aún no está lista, o su
+  // categoría no tiene ninguna), para `StepSizes` y para frenar el guardado. Aquí no se buscan tallas fuera de categoría: en el alta
   // solo aparecen al cambiar de categoría, y la poda de arriba las quita en
   // cuanto llega la lista. Las guardadas se marcan en "Editar tallas".
   const muestraSizesStatus = useMemo(() => {
@@ -862,6 +864,7 @@ export function useAddProductDialogState({
       sizeErrors: sizesState.sizeErrors,
       monedaCodigo,
       sizesStatusPerProduct: isMuestra ? muestraSizesStatus : undefined,
+      emptySizesHint: isMuestra ? MUESTRA_SIZES_EMPTY_ADD_HINT : undefined,
       onRetrySizes: isMuestra
         ? (productId: number) => {
             sizesState.clearSizeError(productId);

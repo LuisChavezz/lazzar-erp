@@ -4,18 +4,43 @@
  * El backend (`_save_cotizacion_detalle`) rechaza en una muestra con categoría
  * las tallas que no son de esa categoría (`CategoriaProductoTalla`), con
  * `400 {"detalle": "La talla X no corresponde a la categoría Y."}`. Una
- * categoría SIN tallas configuradas no restringe, y una muestra sin categoría
- * no se valida. Estas funciones reproducen esa regla en el cliente.
+ * categoría SIN tallas configuradas no acepta ninguna
+ * (`400 {"detalle": "Partida N: la categoría X no tiene tallas configuradas."}`,
+ * nucleo-erp #927), y una muestra sin categoría no se valida. Estas funciones
+ * reproducen esa regla en el cliente.
  */
 import type { Size } from "../../sizes/interfaces/size.interface";
 
+/** Tallas de una muestra ya resueltas (su lista, si tiene categoría, ya cargó). */
+export interface ResolvedMuestraSizes {
+  sizes: Size[];
+  /** `"empty"`: la muestra tiene categoría y esa categoría no ofrece ninguna talla. */
+  status: "empty" | null;
+  /** `true` si `sizes` es la lista de la categoría; `false` si es el catálogo global. */
+  restricted: boolean;
+}
+
 /**
- * Tallas que se ofrecen a la muestra: las de su categoría
- * (`GET /catalogo/talla/?categoria_producto=<id>`) o, si la categoría no tiene
- * ninguna (`[]`), el catálogo global, igual que el backend, que no la restringe.
+ * Tallas que se ofrecen a la muestra según su categoría:
+ *  - sin categoría (`categorySizes === null`): el catálogo global, que el
+ *    backend no restringe;
+ *  - con categoría: su lista (`GET /catalogo/talla/?categoria_producto=<id>`).
+ *    Si viene vacía NO se cae al catálogo global (#927): no se ofrece ninguna
+ *    talla y el estado `"empty"` lo explica y frena la confirmación.
+ *
+ * La lista por categoría solo trae tallas ACTIVAS, así que también viene vacía
+ * cuando todas las tallas de la categoría están desactivadas (su `tallas` del
+ * catálogo de categorías no está vacío). Se trata igual: el backend solo acepta
+ * tallas activas de la categoría, así que tampoco hay ninguna que capturar.
  */
-export const resolveMuestraSizes = (categorySizes: Size[], globalSizes: Size[]): Size[] =>
-  categorySizes.length > 0 ? categorySizes : globalSizes;
+export const resolveMuestraSizes = (
+  categorySizes: Size[] | null,
+  globalSizes: Size[],
+): ResolvedMuestraSizes => {
+  if (categorySizes === null) return { sizes: globalSizes, status: null, restricted: false };
+  if (categorySizes.length === 0) return { sizes: [], status: "empty", restricted: true };
+  return { sizes: categorySizes, status: null, restricted: true };
+};
 
 /** Resultado de `pruneSizeQuantities`. */
 export interface PrunedSizeQuantities {
@@ -41,8 +66,8 @@ const hasPieces = (raw: string | undefined): boolean => {
  * en `0`) se descarta sin contarla como quitada: no había nada que perder.
  *
  * Al cambiar la categoría de una muestra se pasa la lista YA resuelta de la
- * nueva categoría (`resolveMuestraSizes`), así que con una categoría sin tallas
- * se conserva todo lo que sea del catálogo global.
+ * nueva categoría (`resolveMuestraSizes`). Con una categoría sin tallas no se
+ * poda (ver `getSettledDraftIds`).
  */
 export const pruneSizeQuantities = (
   quantities: Record<number, string>,
@@ -99,8 +124,29 @@ export const MUESTRA_SIZES_ERROR_MESSAGE = "No se pudieron cargar las tallas de 
 /** Error corto de la fila (encabezado del acordeón) por la misma causa. */
 export const MUESTRA_SIZES_ERROR = "No se cargaron las tallas";
 
-/** Estado de las tallas de una fila de muestra mientras su lista no está lista. */
-export type MuestraSizesStatus = "loading" | "error";
+/**
+ * Aviso del panel de la fila cuando su categoría no ofrece ninguna talla
+ * (#927): sin tallas configuradas o con todas desactivadas.
+ */
+export const MUESTRA_SIZES_EMPTY_MESSAGE =
+  "La categoría de esta muestra no tiene tallas configuradas (o todas están desactivadas), así que no se le puede capturar ninguna.";
+
+/** Qué hacer, en el alta de muestras: la categoría se elige en el paso anterior. */
+export const MUESTRA_SIZES_EMPTY_ADD_HINT = "Regresa al paso anterior y elige otra categoría.";
+
+/** Qué hacer, en una muestra guardada: su categoría no se puede cambiar en ningún lado. */
+export const MUESTRA_SIZES_EMPTY_EDIT_HINT =
+  "La categoría de una muestra guardada no se puede cambiar: quítala de la cotización y vuelve a agregarla con otra categoría.";
+
+/** Error corto de la fila (encabezado del acordeón) por la misma causa. */
+export const MUESTRA_SIZES_EMPTY = "La categoría no tiene tallas";
+
+/**
+ * Estado de las tallas de una fila de muestra cuando no hay tallas que
+ * capturar: su lista carga (`loading`), no cargó (`error`) o cargó vacía
+ * porque la categoría no ofrece ninguna (`empty`).
+ */
+export type MuestraSizesStatus = "loading" | "error" | "empty";
 
 /** La fila espera su lista: no se confirma, pero tampoco se marca con error. */
 export const MUESTRA_SIZES_PENDING = "pending";
@@ -118,6 +164,7 @@ export const getMuestraSizesBlock = (
 ): typeof MUESTRA_SIZES_PENDING | string | null => {
   if (status === "loading") return MUESTRA_SIZES_PENDING;
   if (status === "error") return MUESTRA_SIZES_ERROR;
+  if (status === "empty") return MUESTRA_SIZES_EMPTY;
   return incompatibleCount > 0 ? INCOMPATIBLE_SIZES_ERROR : null;
 };
 
@@ -126,6 +173,9 @@ export const getMuestraSizesBlock = (
  * tienen su lista lista (`status === null`) y las que ya no existen (se
  * quitaron; solo hay que olvidarlas). Mientras la lista carga o falló no se
  * ajusta: se podaría contra una lista vacía y se perdería todo lo capturado.
+ * Tampoco con una categoría sin tallas (`empty`): se perdería igual, y la fila
+ * no se puede confirmar hasta que se elija otra categoría, momento en que se
+ * poda contra la lista de esa.
  */
 export const getSettledDraftIds = (
   changedDraftIds: Iterable<number>,

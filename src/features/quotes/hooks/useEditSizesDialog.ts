@@ -30,6 +30,7 @@ import { useMuestraCategorySizes } from './useMuestraCategorySizes';
 import {
   findIncompatibleSizes,
   getMuestraSizesBlock,
+  MUESTRA_SIZES_EMPTY_EDIT_HINT,
   MUESTRA_SIZES_PENDING,
 } from '../utils/muestraCategorySizes';
 import { reflectiveInventoryCapError } from '../utils/reflectiveInventoryCap';
@@ -105,8 +106,10 @@ export function useEditSizesDialog({
   // Tallas guardadas que no son de la categoría de la muestra (datos de antes de
   // EC-647). Se listan marcadas para quitarlas a mano: `getItemSizes` solo
   // recorre `effectiveSizes`, así que guardar con ellas las perdería en silencio.
-  // Solo cuando la lista es la de la categoría (`restricted`) y ya cargó: con el
-  // catálogo global de respaldo una talla ausente no es "de otra categoría".
+  // Solo cuando la lista es la de la categoría (`restricted`) y ya cargó con
+  // tallas: sin categoría (catálogo global) una talla ausente no es "de otra
+  // categoría", y con una categoría sin tallas (`empty`, #927) el aviso de la
+  // fila ya lo explica y la confirmación queda frenada.
   const muestraSizesStatus = muestraSizes?.status ?? null;
   const isRestricted = muestraSizes?.restricted ?? false;
   const incompatibleSizes = useMemo(
@@ -219,6 +222,7 @@ export function useEditSizesDialog({
       sizeErrors: sizesState.sizeErrors,
       sizesStatusPerProduct:
         selectedRow && muestraSizesStatus ? { [selectedRow.id]: muestraSizesStatus } : undefined,
+      emptySizesHint: MUESTRA_SIZES_EMPTY_EDIT_HINT,
       incompatibleSizesPerProduct:
         selectedRow && incompatibleSizes.length > 0
           ? { [selectedRow.id]: incompatibleSizes }

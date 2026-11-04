@@ -4,6 +4,7 @@ import {
   getMuestraSizesBlock,
   getSettledDraftIds,
   INCOMPATIBLE_SIZES_ERROR,
+  MUESTRA_SIZES_EMPTY,
   MUESTRA_SIZES_ERROR,
   MUESTRA_SIZES_PENDING,
   pruneSizeQuantities,
@@ -24,18 +25,28 @@ const global = [ch, m, g, uno, uni];
 test.describe("resolveMuestraSizes", () => {
   test("usa las tallas de la categoría cuando tiene", () => {
     const categorySizes = [ch, m];
-    expect(resolveMuestraSizes(categorySizes, global)).toBe(categorySizes);
+    const resolved = resolveMuestraSizes(categorySizes, global);
+    expect(resolved.sizes).toBe(categorySizes);
+    expect(resolved).toMatchObject({ status: null, restricted: true });
   });
 
-  test("cae al catálogo global cuando la categoría no tiene tallas", () => {
-    expect(resolveMuestraSizes([], global)).toBe(global);
+  test("sin categoría usa el catálogo global, sin restringir", () => {
+    const resolved = resolveMuestraSizes(null, global);
+    expect(resolved.sizes).toBe(global);
+    expect(resolved).toMatchObject({ status: null, restricted: false });
+  });
+
+  test("con categoría sin tallas NO cae al catálogo global: ninguna y `empty` (#927)", () => {
+    // También es el caso de una categoría con todas sus tallas desactivadas: la
+    // lista por categoría solo trae activas y llega vacía.
+    expect(resolveMuestraSizes([], global)).toEqual({ sizes: [], status: "empty", restricted: true });
   });
 });
 
 test.describe("pruneSizeQuantities", () => {
-  test("con una categoría sin tallas (catálogo global) conserva todo", () => {
+  test("sin categoría (catálogo global) conserva todo", () => {
     const quantities = { 10: "3", 20: "1" };
-    expect(pruneSizeQuantities(quantities, resolveMuestraSizes([], global))).toEqual({
+    expect(pruneSizeQuantities(quantities, resolveMuestraSizes(null, global).sizes)).toEqual({
       kept: { 10: "3", 20: "1" },
       removedSizeIds: [],
     });
@@ -105,10 +116,15 @@ test.describe("getSettledDraftIds", () => {
     [-1, { status: null }],
     [-2, { status: "loading" as const }],
     [-3, { status: "error" as const }],
+    [-4, { status: "empty" as const }],
   ]);
 
   test("no poda mientras la lista carga o falló", () => {
     expect(getSettledDraftIds([-2, -3], sizesByDraft)).toEqual([]);
+  });
+
+  test("no poda contra una categoría sin tallas: se perdería todo lo capturado", () => {
+    expect(getSettledDraftIds([-4], sizesByDraft)).toEqual([]);
   });
 
   test("poda la muestra cuya lista ya está lista", () => {
@@ -127,6 +143,10 @@ test.describe("getMuestraSizesBlock", () => {
 
   test("si la lista no cargó, bloquea con su error (no como lista vacía)", () => {
     expect(getMuestraSizesBlock("error", 0)).toBe(MUESTRA_SIZES_ERROR);
+  });
+
+  test("con una categoría sin tallas, bloquea con su error (#927)", () => {
+    expect(getMuestraSizesBlock("empty", 0)).toBe(MUESTRA_SIZES_EMPTY);
   });
 
   test("con tallas fuera de la categoría, bloquea", () => {

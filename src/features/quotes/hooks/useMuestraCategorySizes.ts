@@ -15,8 +15,8 @@ export interface MuestraSizes {
   sizes: Size[];
   status: MuestraSizesStatus | null;
   /**
-   * `true` si `sizes` es la lista de la categoría; `false` si es el catálogo
-   * global (muestra sin categoría, o categoría sin tallas), que no restringe.
+   * `true` si `sizes` es la lista de la categoría (vacía con `status: "empty"`);
+   * `false` si es el catálogo global (muestra sin categoría), que no restringe.
    */
   restricted: boolean;
   /** Vuelve a pedir la lista de la categoría (con `status: "error"`). */
@@ -43,8 +43,9 @@ type CategoryResult = Pick<
  * respuestas ni el catálogo global (`combine` de TanStack devuelve el mismo
  * Map si ninguna consulta cambió):
  * - sin categoría (`null` o `<= 0`): el catálogo global, como hasta ahora;
- * - con su lista cargada: la de la categoría, o el global si viene vacía
- *   (`resolveMuestraSizes`, la regla del backend);
+ * - con su lista cargada: la de la categoría; si viene vacía, ninguna y
+ *   `status: "empty"`, sin caer al global (`resolveMuestraSizes`, la regla del
+ *   backend desde nucleo-erp #927);
  * - mientras carga, o si la primera carga falló: `sizes: []` y un `status`.
  *   NO se ofrece el catálogo global en ese tiempo, porque permitiría elegir
  *   tallas que el backend rechazaría.
@@ -109,12 +110,7 @@ export function useMuestraCategorySizes(
     const map = new Map<number, MuestraSizes>();
     for (const [categoryId, result] of byCategory) {
       if (result.data !== undefined) {
-        map.set(categoryId, {
-          sizes: resolveMuestraSizes(result.data, globalSizes),
-          status: null,
-          restricted: result.data.length > 0,
-          retry: NO_RETRY,
-        });
+        map.set(categoryId, { ...resolveMuestraSizes(result.data, globalSizes), retry: NO_RETRY });
       } else {
         map.set(categoryId, {
           sizes: [],
@@ -131,7 +127,7 @@ export function useMuestraCategorySizes(
   return useCallback(
     (categoryId: number | null): MuestraSizes => {
       if (categoryId === null || categoryId <= 0) {
-        return { sizes: globalSizes, status: null, restricted: false, retry: NO_RETRY };
+        return { ...resolveMuestraSizes(null, globalSizes), retry: NO_RETRY };
       }
       const muestraSizes = resolved.get(categoryId);
       if (muestraSizes) return muestraSizes;
