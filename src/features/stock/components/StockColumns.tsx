@@ -4,6 +4,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { InfoIcon, MapPinIcon } from "@/src/components/Icons";
 import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import type {
   StockEstado,
   StockExistenciasRango,
@@ -80,6 +81,21 @@ function SkuColumnHeader({ onInfoClick }: { onInfoClick?: () => void }) {
     </div>
   );
 }
+
+/**
+ * "Última actualización" en hora de México, la misma zona en la que el
+ * backend arma el filtro `mes` y sus opciones: así una fila del 1.º de
+ * noviembre a las 00:30 se ve en noviembre aunque el navegador esté en otra
+ * zona. Un solo formateador para todas las celdas (crearlo es caro).
+ */
+const FECHA_ACTUALIZACION_FORMAT = new Intl.DateTimeFormat("es-MX", {
+  timeZone: MEXICO_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 const EmptyDash = () => <span className="text-xs text-slate-400 dark:text-slate-500">—</span>;
 
@@ -248,13 +264,7 @@ export function getStockColumns(onSkuInfoClick?: () => void) {
         }
         return (
           <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {date.toLocaleDateString("es-MX", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {FECHA_ACTUALIZACION_FORMAT.format(date)}
           </span>
         );
       },
