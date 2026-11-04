@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { setBankAccountActivo } from "../services/actions";
 import { CuentaBancaria } from "../interfaces/bank-account.interface";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { invalidateCobroBankAccountData } from "@/src/features/collections/hooks/cobroQueryCache";
 
 interface ToggleBankAccountActivoPayload {
   id: number;
@@ -63,7 +64,14 @@ export const useToggleBankAccountActivo = () => {
     },
     // Se devuelve la promesa para que la mutación siga "pending" hasta que el
     // refetch termine: así el listado nunca muestra un estado intermedio.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["bank-accounts"] }),
+    // `cuenta_bancaria_activo` va embebido en cada cobro (EC-746): un borrador
+    // sobre la cuenta desactivada deja de ofrecerse para aplicar sin esperar al
+    // staleTime.
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["bank-accounts"] }),
+        invalidateCobroBankAccountData(queryClient),
+      ]),
     onSuccess: (_data, variables) => {
       toast.success(
         variables.activo

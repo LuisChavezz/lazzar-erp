@@ -38,3 +38,22 @@ export const invalidateCobroEffects = (queryClient: QueryClient) => {
   ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   invalidatePedidoProgress(queryClient);
 };
+
+/**
+ * Llaves de Cobros que llevan datos de la cuenta bancaria embebidos (EC-746):
+ * el listado (`cuenta_bancaria_moneda_codigo`, `cuenta_bancaria_activo`) y el
+ * resumen (una entrada por moneda de las cuentas de la empresa). El detalle de
+ * un cobro se pide fresco (`useCobroAction`), sin caché propia.
+ */
+export const COBRO_BANK_ACCOUNT_QUERY_KEYS = [["cobros"], ["cobros-resumen"]] as const;
+
+/**
+ * Invalida lo que Cobros muestra de las cuentas bancarias. Lo llama toda
+ * mutación de cuentas bancarias que puede cambiar su moneda o su estado (alta,
+ * edición, activar/desactivar): antes Cobros los leía de `["bank-accounts"]`,
+ * que esas mutaciones ya invalidaban.
+ */
+export const invalidateCobroBankAccountData = (queryClient: QueryClient) =>
+  Promise.all(
+    COBRO_BANK_ACCOUNT_QUERY_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );

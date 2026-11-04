@@ -4,6 +4,7 @@ import { BankAccountFormValues } from "../schemas/bank-account.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { invalidateCobroBankAccountData } from "@/src/features/collections/hooks/cobroQueryCache";
 
 type SetBankAccountError = (
   field: keyof BankAccountFormValues,
@@ -17,6 +18,8 @@ export const useCreateBankAccount = (setError?: SetBankAccountError) => {
     mutationFn: createBankAccount,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+      // Una moneda nueva aparece en el resumen de Cobros (EC-746).
+      void invalidateCobroBankAccountData(queryClient);
       toast.success("Cuenta bancaria registrada correctamente");
     },
     onError: (error) => {

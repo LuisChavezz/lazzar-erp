@@ -5,6 +5,7 @@ import { CuentaBancariaCreate } from "../interfaces/bank-account.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { invalidateCobroBankAccountData } from "@/src/features/collections/hooks/cobroQueryCache";
 
 interface UpdateBankAccountPayload extends CuentaBancariaCreate {
   id: number;
@@ -23,6 +24,8 @@ export const useUpdateBankAccount = (setError?: SetBankAccountError) => {
       updateBankAccount(id, values),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+      // La moneda de la cuenta va embebida en los cobros y en su resumen (EC-746).
+      void invalidateCobroBankAccountData(queryClient);
       // El resumen repite alias, número y saldo de la cuenta: si se quedara con
       // la copia anterior, el diálogo abierto mostraría datos ya editados.
       queryClient.invalidateQueries({
