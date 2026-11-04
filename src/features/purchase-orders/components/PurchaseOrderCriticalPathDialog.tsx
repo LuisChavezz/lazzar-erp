@@ -15,10 +15,8 @@ import {
   isValidPurchaseOrderId,
   usePurchaseOrderCriticalPath,
 } from "../hooks/usePurchaseOrderCriticalPath";
-import {
-  PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE,
-  updatePurchaseOrderCriticalPathMutationKey,
-} from "../hooks/useUpdatePurchaseOrderCriticalPath";
+import { updatePurchaseOrderCriticalPathMutationKey } from "../hooks/useUpdatePurchaseOrderCriticalPath";
+import { PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE } from "../utils/purchaseOrderCriticalPathErrors";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathForm } from "./PurchaseOrderCriticalPathForm";
 
