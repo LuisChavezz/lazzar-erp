@@ -487,6 +487,15 @@ test.describe("parseCatalogAltaError", () => {
         }),
       ),
     ).toBe(true);
+    // #927: la categoría sin tallas configuradas también se corrige eligiendo otra.
+    expect(
+      isCategoryRejection(
+        parse({
+          alta_catalogo:
+            "La categoría Vestido no tiene tallas configuradas; no se puede dar de alta en catálogo.",
+        }),
+      ),
+    ).toBe(true);
   });
 
   test("el resto sigue al toast: SKU repetido, línea sin categoría, sin pendientes, permiso", () => {

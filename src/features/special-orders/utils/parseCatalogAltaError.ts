@@ -47,8 +47,9 @@ export interface ParsedCatalogAltaError {
  *    detalle en pantalla aún no lo sabe.
  *  - `{"pedido_detalle_id": "..."}`: falta, la línea no es de este pedido o ya
  *    no le quedan SKU pendientes de alta. Línea obsoleta.
- *  - `{"alta_catalogo": "..."}`: sin categoría, categoría inactiva, tallas
- *    fuera de la categoría o el SKU ya existe en catálogo.
+ *  - `{"alta_catalogo": "..."}`: sin categoría, categoría inactiva o sin
+ *    tallas configuradas, tallas fuera de la categoría o el SKU ya existe en
+ *    catálogo.
  *  - `{"categoria_producto": "..."}`: dos sentidos. "Categoría no válida."
  *    cuando la elegida para una línea sin categoría es de otra empresa o no
  *    existe; o se agotaron los códigos de la categoría.
@@ -90,12 +91,14 @@ export function parseCatalogAltaError(error: unknown): ParsedCatalogAltaError {
  * Comienzos de los `400 {"alta_catalogo"}` que SÍ dependen de la categoría con
  * la que se da de alta. El backend no manda códigos, así que se reconocen por
  * su texto: `_categoria_para_alta` en nucleo-erp `produccion/api/views.py`
- * ("La categoría X está inactiva; …" y "Tallas que no son de la categoría X:
- * …"). Si cambian ahí, cambiar aquí; un texto que no coincide cae al toast.
+ * ("La categoría X está inactiva; …", "La categoría X no tiene tallas
+ * configuradas; …" (#927) y "Tallas que no son de la categoría X: …"). Si
+ * cambian ahí, cambiar aquí; un texto que no coincide cae al toast.
  * El resto de `alta_catalogo` (el SKU ya existe en catálogo, la línea sin
  * categoría) no se arregla eligiendo otra.
  */
-const CATEGORY_ALTA_REJECTION = /^(La categoría .+ está inactiva|Tallas que no son de la categoría )/;
+const CATEGORY_ALTA_REJECTION =
+  /^(La categoría .+ (está inactiva|no tiene tallas configuradas)|Tallas que no son de la categoría )/;
 
 /**
  * Rechazo de la categoría elegida: va bajo el selector y el diálogo sigue
