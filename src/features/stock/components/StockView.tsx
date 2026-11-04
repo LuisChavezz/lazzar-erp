@@ -11,9 +11,9 @@ import { DataTable } from "@/src/components/DataTable";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { plural } from "@/src/utils/plural";
 import KpiGrid, { KpiGridSkeleton, type KpiItem } from "@/src/components/KpiGrid";
-import { readServerTableState, writeServerTableQuery } from "@/src/utils/serverTableParams";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
-import { stockPorAlmacenTable, useStockPorAlmacenTable } from "../hooks/useStockPorAlmacenTable";
+import { useStockPorAlmacenTable } from "../hooks/useStockPorAlmacenTable";
+import { nextStockAlmacenQuery, STOCK_ALMACEN_PARAM } from "../utils/stockAlmacenQuery";
 import { useStockPorAlmacenResumen } from "../hooks/useStockPorAlmacenResumen";
 import type { StockPorAlmacenResumen } from "../interfaces/stock-por-almacen.interface";
 import { getStockColumns } from "./StockColumns";
@@ -104,7 +104,7 @@ export function StockView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const almacenParam = searchParams.get("almacen");
+  const almacenParam = searchParams.get(STOCK_ALMACEN_PARAM);
   const parsedAlmacen = almacenParam ? Number(almacenParam) : NaN;
   const almacenId =
     Number.isInteger(parsedAlmacen) && parsedAlmacen > 0 ? parsedAlmacen : null;
@@ -140,19 +140,8 @@ export function StockView() {
    * (no escribe nada: la URL ya está limpia).
    */
   const handleAlmacenChange = (nextAlmacenId: number | null) => {
-    const current = new URLSearchParams(window.location.search);
-    const currentAlmacen = current.get("almacen");
-    if (nextAlmacenId !== null && currentAlmacen === String(nextAlmacenId)) return;
-    if (nextAlmacenId === null && currentAlmacen === null) return;
-
-    const { pageSize } = readServerTableState(stockPorAlmacenTable, (key) => current.get(key));
-    const query = writeServerTableQuery(
-      stockPorAlmacenTable,
-      { filters: {}, search: "", ordering: null, page: 1, pageSize },
-      current,
-    );
-    if (nextAlmacenId === null) query.delete("almacen");
-    else query.set("almacen", String(nextAlmacenId));
+    const query = nextStockAlmacenQuery(new URLSearchParams(window.location.search), nextAlmacenId);
+    if (query === null) return;
     const qs = query.toString();
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
     table.clear();
