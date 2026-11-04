@@ -82,11 +82,14 @@ export const StepDescribe = memo(function StepDescribe({
   } = useProductCategories();
   // Alcance de UI, no validación: el endpoint devuelve a un superusuario las
   // categorías de TODAS las empresas, y aquí solo tienen sentido las de la
-  // empresa bajo la que se guarda la cotización.
-  const categories =
-    companyId == null
-      ? allCategories
-      : allCategories.filter((category) => category.empresa === companyId);
+  // empresa bajo la que se guarda la cotización. Tampoco se ofrecen las
+  // categorías sin tallas configuradas: el backend rechaza una muestra con ellas
+  // (`400 {"detalle": "Partida N: la categoría X no tiene tallas configuradas."}`,
+  // nucleo-erp #927).
+  const categories = allCategories.filter(
+    (category) =>
+      category.tallas.length > 0 && (companyId == null || category.empresa === companyId)
+  );
   const hasNoCategories =
     !isLoadingCategories && !isErrorCategories && categories.length === 0;
   const categoriaPlaceholder = isLoadingCategories
