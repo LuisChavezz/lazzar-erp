@@ -1,5 +1,10 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { StockItem } from "../interfaces/stock.interface";
+import type {
+  StockPorAlmacenItem,
+  StockPorAlmacenResumen,
+} from "../interfaces/stock-por-almacen.interface";
 import type {
   StockReportParams,
   StockReportResponse,
@@ -35,6 +40,39 @@ export const getStockItems = async (filters?: StockItemsFilters): Promise<StockI
   const response = await v1_api.get<StockItem[]>(url);
   return response.data;
 }
+
+/**
+ * Una página de existencias de UN almacén para la pantalla de stock
+ * (`GET /inventarios/existencias/por-almacen/`, EC-774). `params` llega ya
+ * validado por `useServerTable` (filtros, `search`, `ordering`, `limit`,
+ * `offset`); el almacén va aparte porque no es un filtro de la tabla. Siempre
+ * viaja `limit`, así que la respuesta es el sobre paginado (sin `limit` el
+ * backend devolvería el arreglo completo).
+ */
+export const getStockPorAlmacenPage = async (
+  almacenId: number,
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<StockPorAlmacenItem>> => {
+  const { data } = await v1_api.get<PaginatedListResponse<StockPorAlmacenItem>>(
+    "/inventarios/existencias/por-almacen/",
+    { params: { ...params, almacen_id: almacenId } },
+  );
+  return data;
+};
+
+/**
+ * KPIs, `max_stock` y opciones de los filtros de encabezado del almacén
+ * completo (`GET /inventarios/existencias/por-almacen/resumen/`, EC-774).
+ */
+export const getStockPorAlmacenResumen = async (
+  almacenId: number,
+): Promise<StockPorAlmacenResumen> => {
+  const { data } = await v1_api.get<StockPorAlmacenResumen>(
+    "/inventarios/existencias/por-almacen/resumen/",
+    { params: { almacen_id: almacenId } },
+  );
+  return data;
+};
 
 /**
  * Resuelve el reporte COMPLETO (todas las filas del periodo) para un endpoint
