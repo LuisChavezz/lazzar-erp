@@ -4,6 +4,7 @@ import type {
   SpecialOrderLine,
   SpecialOrderTalla,
 } from "../interfaces/special-order.interface";
+import { categoryHasSizes } from "@/src/features/product-categories/utils/categoryHasSizes";
 import { isGeneratedTalla } from "./lineSkuStatus";
 
 /** Aviso del botón "Dar de alta en catálogo" de una línea sin categoría. */
@@ -66,9 +67,11 @@ export const getLineSizeNames = (line: SpecialOrderLine): string[] => [
  * La categoría trae los ids de sus `Talla` y la línea solo sus nombres, así que
  * los ids se traducen con el catálogo de tallas (`GET /catalogo/talla/`, que
  * solo devuelve ACTIVAS y no tiene forma de pedir las inactivas). Una categoría
- * SIN tallas (`tallas: []`) no cubre ninguna línea: el backend la rechaza con
- * `400 {"alta_catalogo": "La categoría X no tiene tallas configuradas; …"}`
- * (nucleo-erp #927), así que no se ofrece.
+ * sin ninguna talla activa (`categoryHasSizes`, la misma regla que el selector
+ * de muestras de la cotización) no cubre ninguna línea: sin tallas el backend
+ * la rechaza con `400 {"alta_catalogo": "La categoría X no tiene tallas
+ * configuradas; …"}` (nucleo-erp #927), y con todas desactivadas no ofrece
+ * ninguna. No se ofrece.
  *
  * Una talla de la línea que el catálogo no conoce (desactivada después de
  * cotizar) no se puede comprobar aquí, así que NO excluye categorías: el
@@ -82,10 +85,11 @@ export function getCategoriesCoveringLine<C extends { tallas: number[] }>(
   sizes: readonly { id: number; nombre: string }[],
 ): C[] {
   const nameById = new Map(sizes.map((size) => [size.id, normalizeSizeName(size.nombre)]));
+  const activeSizeIds = new Set(nameById.keys());
   const known = new Set(nameById.values());
   const required = getLineSizeNames(line).filter((nombre) => known.has(nombre));
   return categories.filter((category) => {
-    if (category.tallas.length === 0) return false;
+    if (!categoryHasSizes(category, activeSizeIds)) return false;
     const allowed = new Set(category.tallas.map((id) => nameById.get(id)));
     return required.every((nombre) => allowed.has(nombre));
   });

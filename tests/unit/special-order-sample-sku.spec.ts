@@ -391,6 +391,10 @@ test.describe("cobertura de tallas de la categoría (EC-671)", () => {
     ]);
   });
 
+  test("una categoría con todas sus tallas inactivas no cubre ninguna línea (categoryHasSizes)", () => {
+    expect(getCategoriesCoveringLine([category(1, [99]), category(2, [4, 5])], sinCategoria, sizes).map((c) => c.id)).toEqual([2]);
+  });
+
   test("una categoría sin tallas tampoco cubre una línea cuyas tallas el catálogo no conoce", () => {
     const soloInactivas = line({
       categoria_producto: null,

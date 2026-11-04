@@ -23,6 +23,8 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { PlusIcon } from "@/src/components/Icons";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
+import { categoryHasSizes } from "../../product-categories/utils/categoryHasSizes";
+import { useSizes } from "../../sizes/hooks/useSizes";
 import { CategoryOptionGroups } from "@/src/features/product-categories/components/CategoryOptionGroups";
 import type { MuestraDraft } from "../types";
 import { SleevecutCheckbox } from "./SleevecutCheckbox";
@@ -74,22 +76,32 @@ export const StepDescribe = memo(function StepDescribe({
   sleevecutNotAllowedMessage,
   monedaCodigo,
 }: StepDescribeProps) {
-  const {
-    categories: allCategories,
-    isLoading: isLoadingCategories,
-    isInitialError: isErrorCategories,
-    refetch: refetchCategories,
-  } = useProductCategories();
+  const categoriesQuery = useProductCategories();
+  // El catálogo de tallas ACTIVAS (misma llave `["sizes"]` que ya pide el
+  // formulario de la cotización): decide qué categorías tienen tallas.
+  const sizesQuery = useSizes();
+  const isLoadingCategories = categoriesQuery.isLoading || sizesQuery.isLoading;
+  const isErrorCategories = categoriesQuery.isInitialError || sizesQuery.isInitialError;
   // Alcance de UI, no validación: el endpoint devuelve a un superusuario las
   // categorías de TODAS las empresas, y aquí solo tienen sentido las de la
-  // empresa bajo la que se guarda la cotización. Tampoco se ofrecen las
-  // categorías sin tallas configuradas: el backend rechaza una muestra con ellas
+  // empresa bajo la que se guarda la cotización.
+  const companyCategories =
+    companyId == null
+      ? categoriesQuery.categories
+      : categoriesQuery.categories.filter((category) => category.empresa === companyId);
+  // Tampoco se ofrecen las categorías sin ninguna talla activa
+  // (`categoryHasSizes`, la misma regla que "Dar de alta en catálogo"): el
+  // backend rechaza una muestra con una categoría sin tallas
   // (`400 {"detalle": "Partida N: la categoría X no tiene tallas configuradas."}`,
-  // nucleo-erp #927).
-  const categories = allCategories.filter(
-    (category) =>
-      category.tallas.length > 0 && (companyId == null || category.empresa === companyId)
+  // nucleo-erp #927), y con todas desactivadas no habría ninguna que capturar.
+  const activeSizeIds = new Set(sizesQuery.sizes.map((size) => size.id));
+  const categories = companyCategories.filter((category) =>
+    categoryHasSizes(category, activeSizeIds)
   );
+  const retryCategories = () => {
+    if (categoriesQuery.isInitialError) void categoriesQuery.refetch();
+    if (sizesQuery.isInitialError) void sizesQuery.refetch();
+  };
   const hasNoCategories =
     !isLoadingCategories && !isErrorCategories && categories.length === 0;
   const categoriaPlaceholder = isLoadingCategories
@@ -136,11 +148,11 @@ export const StepDescribe = memo(function StepDescribe({
           descripción y el precio siguen siendo capturables mientras tanto. */}
       {isErrorCategories && (
         <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
-          No se pudieron cargar las categorías de producto, necesarias para
-          agregar una muestra.{" "}
+          No se pudieron cargar las categorías de producto o el catálogo de
+          tallas, necesarios para agregar una muestra.{" "}
           <button
             type="button"
-            onClick={() => refetchCategories()}
+            onClick={retryCategories}
             className="font-semibold underline cursor-pointer"
           >
             Reintentar
