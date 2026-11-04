@@ -1,22 +1,41 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import MobileSidebar from "./MobileSidebar";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
+import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
 import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import { mainGroupKeys } from "@/src/constants/sidebarItems";
+import {
+  getSidebarSectionsByPath,
+  mainGroupKeys,
+  type SidebarItem as SidebarItemType,
+} from "@/src/constants/sidebarItems";
 import { useSidebar } from "./SidebarProvider";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { isPinned, togglePin } = useSidebar();
-  const availableSections = getSidebarItems(session?.user, pathname);
+  // El layout de (Main) no entrega sesión inicial (las rutas son estáticas), así
+  // que en la carga completa la sesión llega del cliente. Mientras tanto se pinta
+  // la estructura SIN filtrar por permisos con cada acceso como skeleton: es el
+  // máximo que puede ver el usuario, y al llegar la sesión solo se encoge.
+  const isSessionLoading = status === "loading";
+  const availableSections = isSessionLoading
+    ? getSidebarSectionsByPath(pathname)
+    : getSidebarItems(session?.user, pathname);
+  const renderItem = (item: SidebarItemType) =>
+    isSessionLoading ? (
+      <SidebarItemSkeleton variant="desktop" />
+    ) : (
+      <SidebarItem item={item} variant="desktop" />
+    );
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
   );
@@ -93,14 +112,17 @@ export default function Sidebar() {
             </div>
 
             {/* Navigation Items */}
-            <nav className="flex-1 overflow-y-auto no-scrollbar py-6 px-3 space-y-3">
+            <nav
+              aria-busy={isSessionLoading}
+              className="flex-1 overflow-y-auto no-scrollbar py-6 px-3 space-y-3"
+            >
               {availableSections.map((section, index) => (
                 <div key={index} className={index > 0 ? "mt-6" : ""}>
                   {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}
                   {index === 0 && moduleItem ? (
                     <div className="space-y-2">
                       <div>
-                        <SidebarItem item={section.items[0]} variant="desktop" />
+                        {renderItem(section.items[0])}
                         <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                       </div>
                       <div className="space-y-2">
@@ -130,7 +152,7 @@ export default function Sidebar() {
                               .slice(1)
                               .filter((item) => item.href !== moduleItem.href)
                               .map((item, itemIndex) => (
-                                <SidebarItem key={itemIndex} item={item} variant="desktop" />
+                                <Fragment key={itemIndex}>{renderItem(item)}</Fragment>
                               ))
                           )}
                         </div>
@@ -140,7 +162,7 @@ export default function Sidebar() {
                     <div className="space-y-2">
                       {section.items.map((item, itemIndex) => (
                         <div key={itemIndex}>
-                          <SidebarItem item={item} variant="desktop" />
+                          {renderItem(item)}
                           {index === 0 && itemIndex === 0 && (
                             <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                           )}
