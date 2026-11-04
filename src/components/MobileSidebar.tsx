@@ -1,23 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import SidebarItem from "./SidebarItem";
+import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { UserMenu } from "./UserMenu";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import { mainGroupKeys } from "@/src/constants/sidebarItems";
+import {
+  getSidebarSectionsByPath,
+  mainGroupKeys,
+  type SidebarItem as SidebarItemType,
+} from "@/src/constants/sidebarItems";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const availableSections = getSidebarItems(session?.user, pathname);
+  const { data: session, status } = useSession();
+  // Mismo criterio que `Sidebar`: mientras la sesión carga se pinta la
+  // estructura sin filtrar con cada acceso como skeleton.
+  const isSessionLoading = status === "loading";
+  const availableSections = isSessionLoading
+    ? getSidebarSectionsByPath(pathname)
+    : getSidebarItems(session?.user, pathname);
+  const renderItem = (item: SidebarItemType) =>
+    isSessionLoading ? (
+      <SidebarItemSkeleton variant="mobile" />
+    ) : (
+      <SidebarItem item={item} variant="mobile" setIsMobileOpen={setIsMobileOpen} />
+    );
   const activeGroup = appRouteGroups.find(
     (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
   );
@@ -89,18 +105,14 @@ export default function MobileSidebar() {
               <CloseIcon className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div aria-busy={isSessionLoading} className="flex-1 overflow-y-auto p-4 space-y-3">
             {availableSections.map((section, index) => (
               <div key={index}>
                 {index > 0 && <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />}
                 {index === 0 && moduleItem ? (
                   <div className="space-y-2">
                     <div>
-                      <SidebarItem
-                        item={section.items[0]}
-                        variant="mobile"
-                        setIsMobileOpen={setIsMobileOpen}
-                      />
+                      {renderItem(section.items[0])}
                       <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                     </div>
                     <div className="space-y-2">
@@ -136,12 +148,7 @@ export default function MobileSidebar() {
                             .slice(1)
                             .filter((item) => item.href !== moduleItem.href)
                             .map((item, itemIndex) => (
-                              <SidebarItem
-                                key={itemIndex}
-                                item={item}
-                                variant="mobile"
-                                setIsMobileOpen={setIsMobileOpen}
-                              />
+                              <Fragment key={itemIndex}>{renderItem(item)}</Fragment>
                             ))
                         )}
                       </div>
@@ -151,11 +158,7 @@ export default function MobileSidebar() {
                   <div className="space-y-2">
                     {section.items.map((item, itemIndex) => (
                       <div key={itemIndex}>
-                        <SidebarItem
-                          item={item}
-                          variant="mobile"
-                          setIsMobileOpen={setIsMobileOpen}
-                        />
+                        {renderItem(item)}
                         {index === 0 && itemIndex === 0 && (
                           <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                         )}

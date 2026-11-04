@@ -3,8 +3,6 @@ import "@/src/styles/radix-theme.css";
 import { Header } from "@/src/components/Header";
 import Sidebar from "@/src/components/Sidebar";
 import BranchChangeLoader from "@/src/components/BranchChangeLoader";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/src/lib/auth";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
@@ -15,15 +13,28 @@ export const metadata = {
   description: "ERP NextJS is a modern ERP system built with Next.js",
 };
 
-export default async function MainLayout({
+/**
+ * Layout de todas las rutas autenticadas.
+ *
+ * NO lee la sesión en el servidor (`getServerSession`) a propósito: leer la
+ * cookie aquí volvía dinámicas TODAS las rutas de (Main), y cada clic pagaba
+ * una petición RSC a la función de Vercel antes de pintar nada (EC-767). Sin
+ * ella las rutas se prerenderizan y el prefetch trae la ruta completa.
+ *
+ * `SessionProvider` arranca entonces sin sesión inicial: `useSession()` empieza
+ * en `loading` y el cliente pide `/api/auth/session`. El sidebar muestra un
+ * skeleton mientras tanto; los botones que dependen de permisos aparecen al
+ * llegar la sesión (aceptado). El acceso no cambia: `src/proxy.ts` sigue
+ * exigiendo sesión, workspace y permiso de módulo antes de servir la ruta, y el
+ * backend valida cada petición.
+ */
+export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-
   return (
-    <SessionThemeProvider session={session}>
+    <SessionThemeProvider>
       <SettingsModalProvider>
         {/* Envuelve al header (su disparador) y a todas las páginas: monta la
             paleta de búsqueda una sola vez para todas las rutas de (Main). */}
