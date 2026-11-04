@@ -8,6 +8,7 @@ import {
   CapitalHumanoIcon,
   OperationsIcon,
 } from "../components/Icons";
+import { FINANCE_READ_PERMISSION } from "./financePermissions";
 
 const defaultCardClassName =
   "cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-8 h-full";
@@ -82,7 +83,7 @@ export const homeCards = [
     accentClass: "text-emerald-600 dark:text-emerald-400",
     accentBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
     shadowColorClassName: "hover:shadow-emerald-500/25 dark:hover:shadow-emerald-500/25",
-    permission: "R-CONTABILIDAD",
+    permission: FINANCE_READ_PERMISSION,
     className: defaultCardClassName,
   },
   {

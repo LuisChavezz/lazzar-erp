@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import { permissionRequirementCodes, type PermissionRequirement } from "../utils/permissions";
-import { financeSectionReadPermissions } from "./financePermissions";
+import { FINANCE_READ_PERMISSION, financeSectionReadPermissions } from "./financePermissions";
 import {
   CapitalHumanoIcon,
   ClientesIcon,
@@ -611,7 +611,7 @@ export const appRouteGroups: AppRouteGroup[] = [
     key: "finance",
     label: "Finanzas y contabilidad",
     description: "Facturación, cuentas y bancos.",
-    permission: "R-CONTABILIDAD",
+    permission: FINANCE_READ_PERMISSION,
     moduleLabel: "Finanzas y Contabilidad",
     modulePath: "/finance",
     moduleDescription: "Facturación, CxC, CxP, tesorería, bancos y contabilidad general.",
@@ -661,7 +661,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/credit-notes",
         icon: NotaCreditoIcon,
         description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "receivables",
       },
       // ── Cuentas por Pagar ───────────────────────────────────────────────────
@@ -674,7 +674,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/supplier-invoices",
         icon: FacturaProveedorIcon,
         description: "Facturas de mercancía recibida; al registrarse generan su cuenta por pagar.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       {
@@ -686,7 +686,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/accounts-payable",
         icon: CxpIcon,
         description: "Cuentas por pagar a proveedores, con saldo y vencimiento.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       {
@@ -695,7 +695,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/payments",
         icon: ReceiptIcon,
         description: "Pagos a proveedor aplicados contra cuentas por pagar.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       // ── Tesorería ───────────────────────────────────────────────────────────
@@ -705,7 +705,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/banks",
         icon: BancosIcon,
         description: "Catálogo de instituciones bancarias de la empresa.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       {
@@ -719,7 +719,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         // el banco que la emite.
         icon: WalletIcon,
         description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       {
@@ -732,7 +732,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ConciliacionIcon,
         description:
           "Cuadre del estado de cuenta contra los libros, por cuenta y periodo.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       // ── Contabilidad ────────────────────────────────────────────────────────
@@ -758,7 +758,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ContabilidadIcon,
         description:
           "Asientos contables de partida doble, con cuadre de cargos y abonos.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       {
@@ -776,7 +776,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PlanCuentasIcon,
         description:
           "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       {
@@ -790,7 +790,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CentrosCostoIcon,
         description:
           "Catálogo de centros de costo para imputar los movimientos de una póliza.",
-        permission: "R-CONTABILIDAD",
+        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       // ── Maestros ────────────────────────────────────────────────────────────
