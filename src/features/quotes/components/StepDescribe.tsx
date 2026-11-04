@@ -98,6 +98,14 @@ export const StepDescribe = memo(function StepDescribe({
   const categories = companyCategories.filter((category) =>
     categoryHasSizes(category, activeSizeIds)
   );
+  // La categoría ya elegida en una muestra se queda entre sus opciones aunque
+  // una relectura la saque del filtro: el select nunca muestra vacía una
+  // selección que la muestra conserva, y el paso de tallas explica por qué no
+  // tiene ninguna.
+  const getCategoryOptions = (selectedId: number) =>
+    selectedId > 0 && !categories.some((category) => category.id === selectedId)
+      ? [...categories, ...companyCategories.filter((category) => category.id === selectedId)]
+      : categories;
   const retryCategories = () => {
     if (categoriesQuery.isInitialError) void categoriesQuery.refetch();
     if (sizesQuery.isInitialError) void sizesQuery.refetch();
@@ -245,7 +253,7 @@ export const StepDescribe = memo(function StepDescribe({
                     </option>
                     {/* Agrupadas por línea; "Sin línea (materia prima)" al final. */}
                     <CategoryOptionGroups
-                      categories={categories}
+                      categories={getCategoryOptions(draft.categoria_producto)}
                       renderLabel={(category) => `${category.nombre} (${category.codigo})`}
                     />
                   </FormSelect>
