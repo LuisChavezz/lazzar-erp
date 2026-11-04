@@ -106,15 +106,17 @@ export function useEditSizesDialog({
   // Tallas guardadas que no son de la categoría de la muestra (datos de antes de
   // EC-647). Se listan marcadas para quitarlas a mano: `getItemSizes` solo
   // recorre `effectiveSizes`, así que guardar con ellas las perdería en silencio.
-  // Solo cuando la lista es la de la categoría (`restricted`) y ya cargó con
-  // tallas: sin categoría (catálogo global) una talla ausente no es "de otra
-  // categoría", y con una categoría sin tallas (`empty`, #927) el aviso de la
-  // fila ya lo explica y la confirmación queda frenada.
+  // Solo cuando la lista es la de la categoría (`restricted`) y ya cargó: sin
+  // categoría (catálogo global) una talla ausente no es "de otra categoría".
+  // Con una categoría sin tallas (`empty`, #927) TODAS las capturadas quedan
+  // fuera: se listan igual, para que se vea lo que se perderá al quitar la
+  // muestra, y la confirmación sigue frenada por el estado.
   const muestraSizesStatus = muestraSizes?.status ?? null;
   const isRestricted = muestraSizes?.restricted ?? false;
   const incompatibleSizes = useMemo(
     () =>
-      muestraSizesStatus === null && isRestricted && rowId !== null
+      ((muestraSizesStatus === null && isRestricted) || muestraSizesStatus === 'empty') &&
+      rowId !== null
         ? findIncompatibleSizes(sizesState.sizeQuantitiesPerProduct[rowId], effectiveSizes, [
             ...(item?.tallas ?? []).map((talla) => ({ id: talla.tallaId, nombre: talla.nombre })),
             ...sizes,

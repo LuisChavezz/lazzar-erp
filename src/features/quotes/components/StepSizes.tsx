@@ -172,7 +172,11 @@ export const StepSizes = memo(function StepSizes({
                         {incompatibleSizes.length > 0 && (
                           <div className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/60 dark:bg-rose-900/10 px-3 py-2 space-y-2">
                             <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
-                              Estas tallas no son de la categoría de la muestra. Quítalas para continuar.
+                              {/* Con una categoría sin tallas ninguna se puede conservar:
+                                  quitarlas no desbloquea nada, solo se muestran. */}
+                              {sizesStatus === "empty"
+                                ? "Tallas capturadas en esta muestra. Se perderán al quitarla de la cotización."
+                                : "Estas tallas no son de la categoría de la muestra. Quítalas para continuar."}
                             </p>
                             <ul className="space-y-1">
                               {incompatibleSizes.map((size) => (
@@ -185,7 +189,7 @@ export const StepSizes = memo(function StepSizes({
                                     {" · "}
                                     {size.cantidad} pzas
                                   </span>
-                                  {onRemoveIncompatibleSize && (
+                                  {onRemoveIncompatibleSize && sizesStatus !== "empty" && (
                                     <button
                                       type="button"
                                       onClick={() => onRemoveIncompatibleSize(row.id, size.id)}
