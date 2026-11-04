@@ -361,6 +361,18 @@ interface DataTableOwnProps<TData, TValue> {
    * definida (flex/grid con `min-h-0`, o una altura explícita).
    */
   fillHeight?: boolean;
+  /**
+   * Solo con `fillHeight`, opcional: clases del área de filas que SUSTITUYEN a
+   * `flex-1 min-h-0` mientras la tabla conserva su altura (las mismas
+   * condiciones en las que, sin `fillHeight`, el área mide `h-120`). Sin datos
+   * base vuelve a `flex-1 min-h-0` y colapsa igual que sin `fillHeight`. Es
+   * para un contenedor que solo A VECES acota la altura (según una media o
+   * container query): fuera de ese caso el área necesita una altura propia,
+   * que no dependa de la del toolbar —p. ej.
+   * `"h-120 shrink-0 mi-variante:h-auto mi-variante:flex-1 mi-variante:min-h-0"`—.
+   * Sin esta prop, `fillHeight` se comporta exactamente como siempre.
+   */
+  fillHeightBodyClassName?: string;
 }
 
 /**
@@ -466,6 +478,7 @@ export function DataTable<TData, TValue>({
   density = "compact",
   framed = true,
   fillHeight = false,
+  fillHeightBodyClassName,
 }: DataTableProps<TData, TValue>) {
   const searchInputId = useId();
   const columnsMenuId = `${searchInputId}-columns-menu`;
@@ -863,6 +876,10 @@ export function DataTable<TData, TValue>({
     [table, isServerMode]
   );
   const hasBaseData = baseDataCount !== undefined ? baseDataCount > 0 : data.length > 0;
+  // Cuándo el área de filas conserva su altura propia (`h-120`, o
+  // `fillHeightBodyClassName` con `fillHeight`) en vez de colapsar al contenido.
+  const keepsBodyHeight =
+    isServerMode || visibleRows.length > 0 || isLoadingOverlay || hasBaseData;
   // En modo servidor el pie habla del TOTAL de la consulta y de la posición de
   // la página dentro de él; las filas que hay en memoria son solo esa página.
   const totalRows = isServerMode
@@ -1569,7 +1586,9 @@ export function DataTable<TData, TValue>({
               framed ? "" : "rounded-2xl"
             } ${
               fillHeight
-                ? "flex-1 min-h-0"
+                ? fillHeightBodyClassName && keepsBodyHeight
+                  ? fillHeightBodyClassName
+                  : "flex-1 min-h-0"
                 : // La altura fija se conserva también cuando la búsqueda o un
                   // filtro dejan 0 filas (`hasBaseData`): este contenedor es
                   // `overflow-y-auto`, y si colapsara a encabezado + fila de
@@ -1578,7 +1597,7 @@ export function DataTable<TData, TValue>({
                   // necesita cambiar el filtro. Solo colapsa sin datos base.
                   // En modo servidor la altura es siempre fija: una página
                   // vacía, la carga o el error no deben encoger el panel.
-                  isServerMode || visibleRows.length > 0 || isLoadingOverlay || hasBaseData
+                  keepsBodyHeight
                 ? "h-120"
                 : ""
             } ${

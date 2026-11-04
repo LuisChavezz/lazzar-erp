@@ -6,6 +6,7 @@ import {
   buildScheduledOrderFilterOptions,
   getScheduledOrderColumns,
 } from './ScheduledOrderColumns';
+import { MESA_CONTROL_LIST } from '../constants/listHeight';
 
 interface ScheduledOrdersTableProps {
   parcialidades: ScheduledParcialidadRow[];
@@ -36,6 +37,7 @@ export function ScheduledOrdersTable({
       getRowId={(row) => row.rowId}
       searchPlaceholder="Folio, OC, cliente, destino…"
       fillHeight
+      fillHeightBodyClassName={MESA_CONTROL_LIST.body}
       emptyMessage="No hay parcialidades programadas."
       onRefetch={onRefetch}
       isRefetching={isRefetching}

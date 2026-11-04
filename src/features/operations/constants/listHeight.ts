@@ -2,41 +2,55 @@
  * Alto de los listados de Mesa de Control (Pedidos, Cotizaciones, Programados,
  * Clientes y Existencias/producción/compras). Dos modos, según la ventana:
  *
- * - **Ajustado** (ventana de al menos 1320px de ancho y 860px de alto): el
- *   panel (`MESA_CONTROL_LIST_HEIGHT`) mide la ventana menos lo que ocupa el
- *   cromo alrededor —header de la app, `ModuleNav` con su separación y el
- *   margen inferior del `<main>`: 172px medidos = `10.75rem`—, la zona de la
- *   tabla (`MESA_CONTROL_TABLE_REGION`) llena lo que dejan los KPIs/atajos y
- *   `DataTable` (`fillHeight`) scrollea por dentro: la página no scrollea.
- * - **Natural** (ventana más baja o más angosta): el panel recupera su altura
- *   natural, la zona de la tabla mide lo mismo que antes de ajustarla a la
- *   ventana —cuerpo `h-120` (30rem, ~7 filas de pedido) más toolbar, paginador
- *   y bordes: 141px— y la página scrollea.
+ * - **Ajustado**: el panel mide la ventana menos el cromo alrededor —header de
+ *   la app, `ModuleNav` con su separación y el margen inferior del `<main>`:
+ *   172px medidos = `10.75rem`—, la zona de la tabla llena lo que dejan los
+ *   KPIs/atajos y `DataTable` (`fillHeight`) scrollea por dentro: la página no
+ *   scrollea.
+ * - **Natural**: el panel tiene su altura natural, el cuerpo de la tabla mide
+ *   `h-120` (30rem, lo mismo que antes de ajustarlo a la ventana; ~7 filas de
+ *   pedido) sin importar lo que mida el toolbar, y la página scrollea. Sin
+ *   datos base la tabla colapsa (ver `fillHeightBodyClassName` en `DataTable`).
  *
- * Por qué el umbral: en una laptop el cromo, los KPIs, el toolbar y el
- * paginador se comen casi toda la altura y el modo ajustado dejaba 0–1 filas
- * visibles (EC-749). Los números salen de Pedidos, el listado más alto:
- * - Alto: 172 (cromo) + 134 (KPIs y su separación) + 141 (toolbar, paginador,
- *   bordes) + 53 (encabezado) + 6 filas × 59 = 854px → 860px garantiza 6 filas.
- * - Ancho: por debajo de 1306px de ventana el contenedor de los KPIs baja de
- *   1100px (`@min-[68.75rem]` en `KpiGrid`), pasan a dos filas (+128px) y el
- *   modo ajustado volvería a mostrar ~4 filas; 1320px deja margen. Por debajo
- *   también quedan móvil y tableta, donde el `<main>` tiene otros márgenes y
- *   el `10.75rem` no aplica.
+ * Por qué hay umbral: en una laptop el cromo, los KPIs, el toolbar y el
+ * paginador se comían casi toda la altura y el modo ajustado dejaba 0–1 filas
+ * visibles (EC-749). Cada listado entra al modo ajustado solo donde sigue
+ * mostrando ~6 filas completas. Los umbrales son variantes de Tailwind
+ * definidas en `src/app/globals.css`:
  *
- * Las clases van completas y literales (sin interpolar la media query) para
- * que Tailwind las detecte al escanear el código. Si cambias el umbral,
- * cámbialo en las dos constantes.
+ * - `mesa-fit` (listados sin KPIs): ventana desde `lg` (1024px; por debajo el
+ *   toolbar se apila y en móvil el `<main>` tiene otros márgenes) y desde
+ *   810px de alto. Altura de ventana medida para 6 filas completas, en el
+ *   peor ancho y con la barra lateral anclada o colapsada: Clientes 805px (sus
+ *   filas se parten en dos líneas en anchos angostos), Cotizaciones ~768,
+ *   Programados 725, Existencias 703. Sin KPIs ni cuenta del ancho del
+ *   listado: nada encima de la tabla cambia de alto con él.
+ * - `mesa-fit-kpi` (Pedidos): 860px de alto —172 (cromo) + 134 (KPIs y su
+ *   separación) + 141 (toolbar, paginador y bordes) + 53 (encabezado) + 6 filas
+ *   × 59 = 854px— y el listado de al menos 68.75rem (1100px) de ANCHO, medido
+ *   con la container query `mesa-list`: por debajo los KPIs pasan a dos filas
+ *   (+128px) y el ajustado volvería a ~4 filas. Se mide el listado y no el
+ *   viewport porque la barra lateral anclada (`w-72`) le quita 208px respecto
+ *   a la colapsada (`w-20`).
  */
 
-/** Panel del listado: altura acotada a la ventana solo en el modo ajustado. */
-export const MESA_CONTROL_LIST_HEIGHT =
-  "[@media(min-width:1320px)_and_(min-height:860px)]:h-[calc(100dvh-10.75rem)]";
+/** Clases de un listado sin KPIs (`mesa-fit`). */
+export const MESA_CONTROL_LIST = {
+  /** Panel `flex flex-col`: altura acotada a la ventana solo en el ajustado. */
+  panel: "mesa-fit:h-[calc(100dvh-10.75rem)]",
+  /** Contenedor directo del `DataTable`: llena el panel en el ajustado. */
+  region: "mesa-fit:flex-1 mesa-fit:min-h-0",
+  /** `fillHeightBodyClassName` del `DataTable`: `h-120` en el natural. */
+  body: "h-120 shrink-0 mesa-fit:h-auto mesa-fit:flex-1 mesa-fit:min-h-0",
+} as const;
 
 /**
- * Contenedor directo del `DataTable` (con `fillHeight`), hijo de un panel
- * `flex flex-col` con `MESA_CONTROL_LIST_HEIGHT`. Alto fijo de ~7 filas en el
- * modo natural; en el ajustado llena el resto del panel (`flex-1 min-h-0`).
+ * Clases de Pedidos (`mesa-fit-kpi`). `container` va en un ancestro del panel
+ * con ancho real (flujo de bloque): es el que mide la container query.
  */
-export const MESA_CONTROL_TABLE_REGION =
-  "h-[calc(30rem+141px)] [@media(min-width:1320px)_and_(min-height:860px)]:h-auto [@media(min-width:1320px)_and_(min-height:860px)]:flex-1 [@media(min-width:1320px)_and_(min-height:860px)]:min-h-0";
+export const MESA_CONTROL_KPI_LIST = {
+  container: "@container/mesa-list",
+  panel: "mesa-fit-kpi:h-[calc(100dvh-10.75rem)]",
+  region: "mesa-fit-kpi:flex-1 mesa-fit-kpi:min-h-0",
+  body: "h-120 shrink-0 mesa-fit-kpi:h-auto mesa-fit-kpi:flex-1 mesa-fit-kpi:min-h-0",
+} as const;

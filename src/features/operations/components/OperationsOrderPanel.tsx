@@ -21,7 +21,7 @@ import { isOrderConfirmed } from '@/src/features/orders/utils/pedidoConfirmacion
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
-import { MESA_CONTROL_LIST_HEIGHT, MESA_CONTROL_TABLE_REGION } from '../constants/listHeight';
+import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
@@ -112,11 +112,13 @@ export function OperationsOrderPanel() {
     queryClient.invalidateQueries({ queryKey: ordersQueryKey(), exact: true });
 
   return (
-    // Altura según la ventana (`listHeight.ts`): en pantallas altas los KPIs
-    // conservan su alto y la tabla llena el resto (`fillHeight`) y scrollea por
-    // dentro, sin scroll de página; en laptops la tabla mide ~7 filas y la
-    // página scrollea.
-    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-4`}>
+    // Altura según la ventana y el ancho del listado (`listHeight.ts`): con
+    // espacio, los KPIs conservan su alto y la tabla llena el resto
+    // (`fillHeight`) y scrollea por dentro, sin scroll de página; en laptops la
+    // tabla mide ~7 filas y la página scrollea. El contenedor exterior es el que
+    // mide la container query del umbral.
+    <div className={MESA_CONTROL_KPI_LIST.container}>
+    <div className={`${MESA_CONTROL_KPI_LIST.panel} flex flex-col gap-4`}>
       {/* KPIs: ocultos durante la carga y ante un error —no hay datos que
           resumir y `orders` arranca en `[]`, así que mostrarían ceros que se
           leerían como reales—, igual que `EmbroideryStats` en su vista. La
@@ -128,7 +130,7 @@ export function OperationsOrderPanel() {
         </div>
       )}
 
-      <div className={MESA_CONTROL_TABLE_REGION}>
+      <div className={MESA_CONTROL_KPI_LIST.region}>
       <OperationsOrderTable
         orders={orders}
         isLoading={isLoading}
@@ -156,6 +158,7 @@ export function OperationsOrderPanel() {
         pedido={selectedOrderForCancel}
         onClose={() => setSelectedOrderForCancel(null)}
       />
+    </div>
     </div>
   );
 }

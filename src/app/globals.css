@@ -9,6 +9,26 @@
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Modo "ajustado a la ventana" de los listados de Mesa de Control (EC-749):
+ * los umbrales, su derivación y las clases que los usan viven en
+ * `src/features/operations/constants/listHeight.ts`.
+ * - `mesa-fit`: listados sin KPIs. Desde `lg` (toolbar en una fila) y con
+ *   altura suficiente para ~6 filas.
+ * - `mesa-fit-kpi`: Pedidos. Altura para ~6 filas bajo los KPIs, y el ancho
+ *   REAL del listado (container query `mesa-list`, no el viewport) donde los
+ *   KPIs caben en una fila (`@min-[68.75rem]` de `KpiGrid`), con la barra
+ *   lateral anclada o colapsada.
+ */
+@custom-variant mesa-fit (@media (min-width: 64rem) and (min-height: 810px));
+@custom-variant mesa-fit-kpi {
+  @media (min-height: 860px) {
+    @container mesa-list (min-width: 68.75rem) {
+      @slot;
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

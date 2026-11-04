@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { QuickFilterChips } from "@/src/components/QuickFilterChips";
-import {
-  MESA_CONTROL_LIST_HEIGHT,
-  MESA_CONTROL_TABLE_REGION,
-} from "@/src/features/operations/constants/listHeight";
+import { MESA_CONTROL_LIST } from "@/src/features/operations/constants/listHeight";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import {
   buildOperationsCustomerFilterOptions,
@@ -53,7 +50,7 @@ export const OperationsCustomerList = () => {
   // llena el panel y scrollea por dentro; en laptops mide ~7 filas y la
   // página scrollea.
   return (
-    <div className={`${MESA_CONTROL_LIST_HEIGHT} flex flex-col gap-3`}>
+    <div className={`${MESA_CONTROL_LIST.panel} flex flex-col gap-3`}>
       <QuickFilterChips
         label="Atajos de filtro de clientes"
         value={quickFilterKey}
@@ -65,12 +62,13 @@ export const OperationsCustomerList = () => {
           count: hasLoaded ? customers.filter(filter.matches).length : undefined,
         }))}
       />
-      <div className={MESA_CONTROL_TABLE_REGION}>
+      <div className={MESA_CONTROL_LIST.region}>
       <DataTable
         columns={getOperationsCustomerColumns(buildOperationsCustomerFilterOptions(customers))}
         data={customers.filter(quickFilter.matches)}
         baseDataCount={customers.length}
         fillHeight
+        fillHeightBodyClassName={MESA_CONTROL_LIST.body}
         searchPlaceholder="Buscar cliente, RFC o contacto…"
         onRefetch={refetch}
         isRefetching={isFetching}
