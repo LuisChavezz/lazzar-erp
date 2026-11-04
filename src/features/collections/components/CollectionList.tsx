@@ -27,13 +27,11 @@ import { CobroDraftEditDialog } from "./CobroDraftEditDialog";
 import { CobroDraftApplyDialog } from "./CobroDraftApplyDialog";
 import { CobroDraftDeleteDialog } from "./CobroDraftDeleteDialog";
 import { canManageCobroDraft, isDeletableCobroDraft } from "../utils/cobroDraft";
-import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { useCobros } from "../hooks/useCobros";
 import { mapCobrosToRows, type CobroRow } from "../utils/collection.utils";
 
 export function CollectionList() {
   const { cobros, isLoading, isFetching, isInitialError, error, refetch } = useCobros();
-  const { bankAccounts } = useBankAccounts();
   // Ver la lista exige `R-CONTABILIDAD-CXC` o `R-CONTABILIDAD` (lo aplica `proxy.ts`); registrar un
   // cobro exige además el permiso que valida el backend. `hasPermission` deja
   // pasar a `role === "admin"`.
@@ -45,10 +43,9 @@ export function CollectionList() {
   // frame; cerrarlo a medias escondería su resultado. Se lee en el handler.
   const createSubmitLockRef = useRef(false);
 
-  // La moneda de cada cobro (la de su cuenta bancaria) se resuelve UNA vez aquí.
-  // Cuando el catálogo termina de cargar cambian los objetos de fila, no su
-  // identidad (`getRowId`), así que las celdas se actualizan sin remontarse.
-  const rows = mapCobrosToRows(cobros, bankAccounts);
+  // La moneda de cada cobro (la de su cuenta bancaria, que llega con el cobro)
+  // se resuelve UNA vez aquí, no en cada celda.
+  const rows = mapCobrosToRows(cobros);
 
   // Estado de los diálogos en la VISTA, no en la celda: una celda se desmonta al
   // ordenar, filtrar o paginar, y el estatus del cobro (uno de los filtros)

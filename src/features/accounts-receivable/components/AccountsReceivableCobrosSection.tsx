@@ -4,14 +4,9 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { EmptyLines, LineItemsTable, SectionTitle } from "@/src/components/DetailDialogPrimitives";
 import { useCobros } from "@/src/features/collections/hooks/useCobros";
-import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
 import { COBRO_ESTATUS_CONFIG } from "@/src/features/collections/constants/collectionStatus";
 import { CobroAmount } from "@/src/features/collections/components/CobroAmount";
-import {
-  buildBankAccountIndex,
-  cobroLabel,
-  resolveCobroMoneda,
-} from "@/src/features/collections/utils/collection.utils";
+import { cobroLabel, resolveCobroMoneda } from "@/src/features/collections/utils/collection.utils";
 import { CobroRepState } from "@/src/features/collections/components/CobroRepState";
 import { getCxcCobros } from "../utils/cxcCobros";
 
@@ -22,15 +17,14 @@ import { getCxcCobros } from "../utils/cxcCobros";
  * caché que la pantalla de Cobros) filtrado en el cliente por
  * `cobro_detalles[].cxc`: el backend no filtra cobros por CxC.
  *
- * El importe va en la moneda del cobro, que es la de su cuenta bancaria
- * (`resolveCobroMoneda`); sin catálogo de cuentas se muestra sin símbolo.
+ * El importe va en la moneda del cobro, que es la de su cuenta bancaria y llega
+ * con el cobro (`resolveCobroMoneda`, EC-746): no hace falta leer
+ * `cuentas-bancarias/`, que esta sección no puede abrir con `-CXC`.
  *
  * Su carga y su error son propios: no bloquean el resto del detalle.
  */
 export const AccountsReceivableCobrosSection = ({ cuentaId }: { cuentaId: number }) => {
   const { cobros, isLoading, isInitialError } = useCobros();
-  const { bankAccounts } = useBankAccounts();
-  const bankAccountIndex = buildBankAccountIndex(bankAccounts);
   const cobrosDeLaCuenta = getCxcCobros(cobros, cuentaId);
 
   return (
@@ -66,7 +60,7 @@ export const AccountsReceivableCobrosSection = ({ cuentaId }: { cuentaId: number
                 {formatShortDate(cobro.fecha_cobro, { timeZone: "UTC" })}
               </td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
-                <CobroAmount value={importe} moneda={resolveCobroMoneda(cobro, bankAccountIndex)} />
+                <CobroAmount value={importe} moneda={resolveCobroMoneda(cobro)} />
               </td>
               <td className="px-3 py-2">
                 <StatusBadge status={cobro.estatus} config={COBRO_ESTATUS_CONFIG} />
