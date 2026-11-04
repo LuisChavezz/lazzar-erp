@@ -1,3 +1,6 @@
+import { isOrderConfirmed } from "../components/SharedOrderColumns";
+import type { PedidoListItem } from "../interfaces/order.interface";
+
 /**
  * Mapas de presentación para los enteros crudos `estatus` y `tipo_pedido` del
  * pedido — el serializer NO trae etiquetas, solo el número. Se construyen
@@ -180,3 +183,13 @@ const RECOMPRABLE_PEDIDO_ESTATUSES = new Set<number>([
  */
 export const canRecomprarPedido = (estatus: number | null | undefined): boolean =>
   estatus != null && RECOMPRABLE_PEDIDO_ESTATUSES.has(estatus);
+
+/**
+ * ¿Se ofrece "Programar" en Mesa de Control para este pedido? (EC-748) Solo si
+ * está confirmado —la misma regla que el punto de color y el filtro "Por
+ * confirmar / Confirmado" (`isOrderConfirmed`: `fecha_confirmacion` no nula)— y
+ * no está CANCELADO. Regla de la UI: el backend aún no la valida (EC-750).
+ */
+export const canProgramarPedido = (
+  order: Pick<PedidoListItem, "estatus" | "fecha_confirmacion">,
+): boolean => isOrderConfirmed(order) && order.estatus !== PEDIDO_ESTATUS.CANCELADO;
