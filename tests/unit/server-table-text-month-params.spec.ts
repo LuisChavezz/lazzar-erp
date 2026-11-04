@@ -38,11 +38,12 @@ test.describe("monthParam", () => {
   test("acepta AAAA-MM con mes de 01 a 12", () => {
     expect(monthParam.parse("2026-01")).toBe("2026-01");
     expect(monthParam.parse("2026-12")).toBe("2026-12");
+    expect(monthParam.parse("1900-01")).toBe("1900-01");
     expect(monthParam.serialize("2026-11")).toBe("2026-11");
   });
 
   test("rechaza meses fuera de rango y otros formatos", () => {
-    for (const raw of ["2026-00", "2026-13", "2026-1", "26-01", "2026-01-01", "2026/01", "oct", " 2026-01"]) {
+    for (const raw of ["2026-00", "2026-13", "2026-1", "26-01", "2026-01-01", "2026/01", "oct", " 2026-01", "0000-05", "1899-12"]) {
       expect(monthParam.parse(raw), raw).toBeNull();
     }
   });

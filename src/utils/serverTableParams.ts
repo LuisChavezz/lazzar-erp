@@ -53,9 +53,13 @@ export const textParam: ServerTableParam<string> = {
   serialize: (value) => value,
 };
 
-/** Mes "AAAA-MM" (01 a 12), como el `?mes=` de los filtros por mes. */
+/**
+ * Mes "AAAA-MM" (01 a 12, año ≥ 1900 como `dateParam`), como el `?mes=` de los
+ * filtros por mes. Sin el piso, un año como 0000 llegaría al backend y Django
+ * respondería 500 al armar la fecha.
+ */
 export const monthParam: ServerTableParam<string> = {
-  parse: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : null),
+  parse: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) && raw >= "1900-01" ? raw : null),
   serialize: (value) => value,
 };
 
