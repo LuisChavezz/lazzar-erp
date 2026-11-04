@@ -1,3 +1,5 @@
+import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+
 import { isOrderConfirmed } from "../utils/pedidoConfirmacion";
 import type { PedidoListItem } from "../interfaces/order.interface";
 
@@ -7,8 +9,9 @@ import type { PedidoListItem } from "../interfaces/order.interface";
  * completos contra el enum del backend (`Pedido.CHOICES_ESTATUS` /
  * `TIPO_PEDIDO_CHOICES`), no solo contra los valores presentes hoy en datos.
  *
- * Cada entrada trae `label` (es-MX) y `className` con las utilidades de badge
- * ya usadas en el resto del ERP (par claro/oscuro). `getPedidoEstatusConfig` /
+ * Cada entrada trae `label` (es-MX), `className` con las utilidades de badge
+ * ya usadas en el resto del ERP (par claro/oscuro) y `dot`, la clase del punto
+ * de color para filtros y la celda de estatus. `getPedidoEstatusConfig` /
  * `getTipoPedidoConfig` caen a un badge neutro "Desconocido (n)" para valores
  * fuera de rango, en vez de romper el render.
  */
@@ -16,6 +19,8 @@ import type { PedidoListItem } from "../interfaces/order.interface";
 export interface BadgeConfig {
   label: string;
   className: string;
+  /** Clase del punto de color (filtros de cabecera y celda de estatus). */
+  dot?: string;
 }
 
 export const PEDIDO_ESTATUS = {
@@ -31,25 +36,30 @@ export const PEDIDO_ESTATUS_CONFIG: Record<number, BadgeConfig> = {
     label: "Borrador",
     className:
       "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+    dot: "bg-slate-400",
   },
   [PEDIDO_ESTATUS.POR_AUTORIZAR]: {
     label: "Por autorizar",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    dot: "bg-amber-500",
   },
   [PEDIDO_ESTATUS.AUTORIZADA]: {
     label: "Autorizada",
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+    dot: "bg-emerald-500",
   },
   [PEDIDO_ESTATUS.EN_PROCESO]: {
     label: "En proceso",
     className: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+    dot: "bg-sky-500",
   },
   [PEDIDO_ESTATUS.CANCELADO]: {
     label: "Cancelado",
     className:
       "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+    dot: "bg-rose-500",
   },
 };
 
@@ -63,16 +73,19 @@ export const TIPO_PEDIDO_CONFIG: Record<number, BadgeConfig> = {
   [TIPO_PEDIDO.PEDIDO_DE_VENTA]: {
     label: "Pedido de venta",
     className: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+    dot: "bg-sky-500",
   },
   [TIPO_PEDIDO.MUESTRA]: {
     label: "Muestra",
     className:
       "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+    dot: "bg-violet-500",
   },
   [TIPO_PEDIDO.PEDIDO_DE_ERROR]: {
     label: "Pedido de error",
     className:
       "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+    dot: "bg-rose-500",
   },
 };
 
@@ -90,6 +103,20 @@ export const getPedidoEstatusConfig = (estatus: number): BadgeConfig =>
     label: `Desconocido (${estatus})`,
     className: NEUTRAL_BADGE,
   };
+
+/** Punto neutro para un estatus fuera de rango (mismo gris que Borrador). */
+const NEUTRAL_DOT = "bg-slate-400";
+
+/**
+ * El estatus del pedido con la forma de `StatusBadgeConfigEntry` (`label`,
+ * `cls`, `dot`), la que leen `StatusBadge` y la celda de estatus de los
+ * listados. Se arma desde `PEDIDO_ESTATUS_CONFIG` —sin config paralela—, con
+ * el mismo respaldo "Desconocido (n)" que `getPedidoEstatusConfig`.
+ */
+export const getPedidoEstatusBadge = (estatus: number): StatusBadgeConfigEntry => {
+  const { label, className, dot } = getPedidoEstatusConfig(estatus);
+  return { label, cls: className, dot: dot ?? NEUTRAL_DOT };
+};
 
 export const getTipoPedidoConfig = (tipo: number): BadgeConfig =>
   TIPO_PEDIDO_CONFIG[tipo] ?? {

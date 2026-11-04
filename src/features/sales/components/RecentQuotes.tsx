@@ -10,6 +10,7 @@ import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetail
 import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
+import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
 import { capitalize } from "@/src/utils/capitalize";
 
 // Carga dinámica del componente de detalles de cotización para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
@@ -26,14 +27,6 @@ const LazyQuoteDetails = dynamic(
     ),
   }
 );
-
-const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose" | "orange"> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-  5: "orange",
-};
 
 const parseOrderDate = (value?: string | null) => {
   if (!value) return null;
@@ -179,7 +172,7 @@ export const RecentQuotes = () => {
             <DialogHeader
               title={`Detalles de la cotización #${selectedQuote.id}`}
               subtitle={selectedQuote.cliente_nombre || selectedQuote.cliente_razon_social}
-              statusColor={statusDialogColors[selectedQuote.estatus] ?? "sky"}
+              statusColor={getQuoteDialogStatusColor(selectedQuote.estatus)}
             />
           }
         >

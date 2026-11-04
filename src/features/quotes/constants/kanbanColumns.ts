@@ -1,4 +1,10 @@
 // ─── Configuración estática de columnas del tablero Kanban ─────────────────────
+//
+// FUENTE ÚNICA de los colores por estatus de la cotización: el badge, el punto
+// y el color del encabezado de diálogo de toda la app derivan de aquí a través
+// de `QUOTE_STATUS_CONFIG` (`quoteStatus.ts`). No declares otro mapa de colores.
+
+import type { DialogHeaderStatusColor } from "@/src/components/DialogHeader";
 
 // ─── Interfaz ─────────────────────────────────────────────────────────────────
 export interface KanbanColumnConfig {
@@ -22,6 +28,8 @@ export interface KanbanColumnConfig {
   cardShadowHover: string;
   /** Clases del contenedor de drop cuando está activo como drop target */
   dropActiveClass: string;
+  /** Color del punto de estado en el encabezado de los diálogos (`DialogHeader`) */
+  dialogColor: DialogHeaderStatusColor;
 }
 
 // ─── Configuración por columna ────────────────────────────────────────────────
@@ -37,6 +45,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300",
     cardShadowHover: "hover:shadow-slate-400/25 dark:hover:shadow-slate-500/25",
     dropActiveClass: "ring-2 ring-slate-400/50 bg-slate-50/40 dark:bg-slate-500/5",
+    dialogColor: "slate",
   },
   {
     id: "col-2",
@@ -49,6 +58,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
     cardShadowHover: "hover:shadow-amber-500/25 dark:hover:shadow-amber-500/25",
     dropActiveClass: "ring-2 ring-amber-400/50 bg-amber-50/40 dark:bg-amber-500/5",
+    dialogColor: "amber",
   },
   {
     id: "col-3",
@@ -62,6 +72,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
     cardShadowHover: "hover:shadow-emerald-500/25 dark:hover:shadow-emerald-500/25",
     dropActiveClass: "ring-2 ring-emerald-400/50 bg-emerald-50/40 dark:bg-emerald-500/5",
+    dialogColor: "emerald",
   },
   {
     id: "col-4",
@@ -74,6 +85,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     badgeClass: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
     cardShadowHover: "hover:shadow-rose-500/25 dark:hover:shadow-rose-500/25",
     dropActiveClass: "ring-2 ring-rose-400/50 bg-rose-50/40 dark:bg-rose-500/5",
+    dialogColor: "rose",
   },
   {
     id: "col-5",
@@ -86,5 +98,6 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
     badgeClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
     cardShadowHover: "hover:shadow-orange-500/25 dark:hover:shadow-orange-500/25",
     dropActiveClass: "ring-2 ring-orange-400/50 bg-orange-50/40 dark:bg-orange-500/5",
+    dialogColor: "orange",
   },
 ];

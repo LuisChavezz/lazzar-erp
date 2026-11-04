@@ -30,6 +30,7 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { hasPermission } from "@/src/utils/permissions";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
+import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -52,17 +53,6 @@ const OperationsQuoteDetails = dynamic(
     ),
   }
 );
-
-const OPERATIONS_QUOTE_DIALOG_COLORS: Record<
-  number,
-  "sky" | "emerald" | "amber" | "rose" | "orange"
-> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-  5: "orange",
-};
 
 const MAX_VISIBLE = 6;
 
@@ -349,10 +339,7 @@ export const PendingApprovalQueue = () => {
                 activeOperationsQuote.cliente_nombre ||
                 activeOperationsQuote.cliente_razon_social
               }
-              statusColor={
-                OPERATIONS_QUOTE_DIALOG_COLORS[activeOperationsQuote.estatus] ??
-                "sky"
-              }
+              statusColor={getQuoteDialogStatusColor(activeOperationsQuote.estatus)}
             />
           }
         >

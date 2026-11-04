@@ -14,6 +14,7 @@ import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
+import { getQuoteDialogStatusColor } from "../constants/quoteStatus";
 
 // ─── Carga diferida del panel de detalles ─────────────────────────────────────
 const QuoteDetails = dynamic(
@@ -25,15 +26,6 @@ const QuoteDetails = dynamic(
     ),
   }
 );
-
-// ─── Colores del dialog de detalles por estatus ───────────────────────────────
-const statusDialogColors: Record<number, "sky" | "emerald" | "amber" | "rose" | "orange"> = {
-  1: "amber",
-  2: "sky",
-  3: "emerald",
-  4: "rose",
-  5: "orange",
-};
 
 interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
   /**
@@ -100,7 +92,7 @@ export function QuoteRowActionDialogs({
             <DialogHeader
               title={`Detalles de la cotización #${quote.id}`}
               subtitle={quote.cliente_nombre || quote.cliente_razon_social}
-              statusColor={statusDialogColors[quote.estatus] ?? "sky"}
+              statusColor={getQuoteDialogStatusColor(quote.estatus)}
             />
           }
         >
