@@ -409,9 +409,13 @@ export function useAddProductDialogState({
   }, [effectiveSelectedRows, colorsState.selectedColorPerProduct, productSizesByProductAndColor, sizes, isMuestra, muestraSizesByDraft]);
 
   // Filas de muestra sin tallas que capturar (su lista aún no está lista, o su
-  // categoría no tiene ninguna), para `StepSizes` y para frenar el guardado. Aquí no se buscan tallas fuera de categoría: en el alta
-  // solo aparecen al cambiar de categoría, y la poda de arriba las quita en
-  // cuanto llega la lista. Las guardadas se marcan en "Editar tallas".
+  // categoría no tiene ninguna), para `StepSizes` y para frenar el guardado.
+  // Aquí no se buscan tallas fuera de categoría: en el alta solo aparecen al
+  // cambiar de categoría, y la poda de arriba las quita en cuanto llega una
+  // lista con tallas. Con una categoría sin tallas (`empty`) no se poda
+  // (`getSettledDraftIds`): lo capturado se conserva oculto, la fila queda
+  // frenada, y se poda contra la lista de la categoría que se elija después.
+  // Las guardadas se marcan en "Editar tallas".
   const muestraSizesStatus = useMemo(() => {
     const statusByDraft: Record<number, MuestraSizesStatus> = {};
     for (const [draftId, muestraSizes] of muestraSizesByDraft) {
