@@ -2,10 +2,13 @@
 
 import { createContext, useContext } from "react";
 import type { Column } from "@tanstack/react-table";
-import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { FilterHeader } from "@/src/components/ColumnHeaderFilter";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { useStockPorAlmacenResumen } from "../hooks/useStockPorAlmacenResumen";
-import type { StockPorAlmacenResumen } from "../interfaces/stock-por-almacen.interface";
+import {
+  stockResumenFilterOptions,
+  type StockResumenOptionKey,
+} from "../utils/stockFilterOptions";
 
 /**
  * Almacén que muestra la tabla de existencias. Llega a los encabezados por
@@ -14,7 +17,7 @@ import type { StockPorAlmacenResumen } from "../interfaces/stock-por-almacen.int
  */
 export const StockAlmacenContext = createContext<number | null>(null);
 
-type ResumenOptionKey = keyof StockPorAlmacenResumen["opciones"];
+const ONLY_ALL = [ALL_FILTER_OPTION];
 
 /**
  * Encabezado "título + filtro" de una columna de existencias cuyas opciones
@@ -31,7 +34,7 @@ export function StockResumenHeaderFilter<TData>({
 }: {
   column: Column<TData, unknown>;
   title: string;
-  optionKey: ResumenOptionKey;
+  optionKey: StockResumenOptionKey;
   label: string;
   /** Con placeholder, el menú lleva buscador (catálogos largos). */
   searchPlaceholder?: string;
@@ -39,13 +42,7 @@ export function StockResumenHeaderFilter<TData>({
   const almacenId = useContext(StockAlmacenContext);
   const { data, isLoading, isInitialError } = useStockPorAlmacenResumen(almacenId);
 
-  const options: ColumnFilterOption[] = [
-    ALL_FILTER_OPTION,
-    ...(data?.opciones[optionKey] ?? []).map((option) => ({
-      value: String(option.value),
-      label: option.label,
-    })),
-  ];
+  const options = data ? stockResumenFilterOptions(data)[optionKey] : ONLY_ALL;
 
   return (
     <FilterHeader
