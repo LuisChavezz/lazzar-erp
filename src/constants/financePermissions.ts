@@ -67,4 +67,6 @@ export const FINANCE_READ_REASONS = {
   creditNotes: "No tienes permiso para ver notas de crédito.",
   accountingCustomers: "No tienes permiso para consultar los clientes de contabilidad.",
   bankAccounts: "No tienes permiso para consultar las cuentas bancarias.",
+  /** Pólizas embebidas en el detalle de CxC: el backend las manda vacías sin `R-CONTABILIDAD`. */
+  polizas: "No tienes permiso para ver las pólizas contables.",
 } as const;

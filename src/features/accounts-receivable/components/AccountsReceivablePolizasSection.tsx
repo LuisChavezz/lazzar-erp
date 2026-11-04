@@ -1,5 +1,8 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { FINANCE_READ_PERMISSION, FINANCE_READ_REASONS } from "@/src/constants/financePermissions";
+import { financeReadBlockReason, getFinanceReadState } from "@/src/utils/financeRead";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import type {
@@ -172,18 +175,31 @@ const PolizaCard = ({
  * Sección "Pólizas" del detalle de CxC: las pólizas contables asociadas, cada
  * una con sus movimientos. Los dos niveles pueden venir vacíos —ninguna póliza,
  * o una póliza sin movimientos— y cada uno tiene su propio estado vacío.
+ *
+ * Las pólizas son de Contabilidad: el detalle de CxC se lee con
+ * `R-CONTABILIDAD-CXC`, pero el backend manda `polizas` vacío sin
+ * `R-CONTABILIDAD` (EC-746). Por eso el vacío se decide por el PERMISO, no por
+ * la lista: sin él se muestra el motivo, nunca "no tiene pólizas". Mientras la
+ * sesión carga no se afirma ni una cosa ni la otra.
  */
 export const AccountsReceivablePolizasSection = ({
   polizas,
   monedaCodigo,
 }: AccountsReceivablePolizasSectionProps) => {
   const lista = polizas ?? [];
+  const { data: session, status } = useSession();
+  const read = getFinanceReadState(session?.user, status, FINANCE_READ_PERMISSION);
+  const blockReason = financeReadBlockReason(read, FINANCE_READ_REASONS.polizas);
 
   return (
     <div>
       <SectionTitle>Pólizas contables</SectionTitle>
 
-      {lista.length === 0 ? (
+      {!read.canRead ? (
+        blockReason && (
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{blockReason}</p>
+        )
+      ) : lista.length === 0 ? (
         <EmptyLines>Esta cuenta no tiene pólizas asociadas.</EmptyLines>
       ) : (
         <div className="space-y-3">
