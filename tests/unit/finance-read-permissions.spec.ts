@@ -152,3 +152,13 @@ test.describe("compuerta de lectura entre secciones (getFinanceReadState)", () =
     expect(financeReadBlockReason(getFinanceReadState(soloModulo, "authenticated", clientes), motivo)).toBeNull();
   });
 });
+
+test("las pólizas del detalle de CxC se deciden por R-CONTABILIDAD, no por la lista", () => {
+  const motivo = FINANCE_READ_REASONS.polizas;
+  const bloqueo = (user: Parameters<typeof getFinanceReadState>[0]) =>
+    financeReadBlockReason(getFinanceReadState(user, "authenticated", FINANCE_READ_PERMISSION), motivo);
+  expect(bloqueo(soloCxc)).toBe(motivo);
+  expect(bloqueo(facturacionYCxc)).toBe(motivo);
+  expect(bloqueo(soloModulo)).toBeNull();
+  expect(bloqueo(admin)).toBeNull();
+});
