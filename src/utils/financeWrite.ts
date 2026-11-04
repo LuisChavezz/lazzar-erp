@@ -1,10 +1,9 @@
 import toast from "react-hot-toast";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { hasPermission } from "./permissions";
+import { financeReadBlockReason, getFinanceReadState, type SessionStatus } from "./financeRead";
 
-/** `status` de `useSession()` de NextAuth. */
-export type SessionStatus = "authenticated" | "loading" | "unauthenticated";
+export type { SessionStatus } from "./financeRead";
 
 /**
  * Estado de escritura de Finanzas para la sesión actual (EC-733). Se calcula una
@@ -22,13 +21,14 @@ export interface FinanceWriteState {
   isSessionLoading: boolean;
 }
 
+/** La compuerta de sesión y permiso de `financeRead`, con `FINANCE_WRITE_PERMISSION`. */
 export const getFinanceWriteState = (
   user: PermissionContext | null | undefined,
   status: SessionStatus,
-): FinanceWriteState => ({
-  canWrite: status === "authenticated" && hasPermission(FINANCE_WRITE_PERMISSION, user),
-  isSessionLoading: status === "loading",
-});
+): FinanceWriteState => {
+  const { canRead, isSessionLoading } = getFinanceReadState(user, status, FINANCE_WRITE_PERMISSION);
+  return { canWrite: canRead, isSessionLoading };
+};
 
 /**
  * `disabled`/`description` de un item de menú (o un botón) que escribe en
@@ -39,10 +39,12 @@ export const getFinanceWriteState = (
 export const financeWriteBlock = (
   write: FinanceWriteState,
   reason: string,
-): { disabled: boolean; description: string | undefined } =>
-  write.canWrite
-    ? { disabled: false, description: undefined }
-    : { disabled: true, description: write.isSessionLoading ? undefined : reason };
+): { disabled: boolean; description: string | undefined } => ({
+  disabled: !write.canWrite,
+  description:
+    financeReadBlockReason({ canRead: write.canWrite, isSessionLoading: write.isSessionLoading }, reason) ??
+    undefined,
+});
 
 /**
  * Guarda de los handlers: `true` si puede escribir. Si no, avisa con el motivo
