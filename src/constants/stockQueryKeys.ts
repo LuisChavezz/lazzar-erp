@@ -7,7 +7,11 @@
  * filtros detrás, y se invalidan por prefijo.
  */
 
-/** Existencias por almacén (`useStockItems`) y su chequeo (`useStockMovementForm`). */
+/**
+ * Existencias por almacén: la tabla y el resumen de la pantalla de stock
+ * (`useStockPorAlmacenTable`, `useStockPorAlmacenResumen`) y el chequeo del
+ * formulario de movimientos (`useStockMovementForm`).
+ */
 export const STOCK_ITEMS_QUERY_KEY = ["stock-items"] as const;
 
 /** Reporte de existencias (`useStockReport`). */

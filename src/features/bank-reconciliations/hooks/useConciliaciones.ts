@@ -21,7 +21,7 @@ export const CONCILIACIONES_KEY_ROOT = ["conciliaciones-bancarias"] as const;
  * decorativos: el periodo no se puede filtrar en memoria porque el backend
  * resuelve el SOLAPAMIENTO de rangos, y `DataTable` solo sabe comparar valores
  * de una columna. Por eso los controles viven fuera de la tabla y alimentan
- * este hook, igual que el filtro de almacén de `useStockItems`.
+ * este hook, igual que hacía el filtro de almacén de la pantalla de existencias antes del modo servidor.
  *
  * `params` forma parte de la LLAVE DE CACHÉ, así que las dos vistas del recurso
  * —la pantalla y la comprobación previa del formulario, que piden rangos
