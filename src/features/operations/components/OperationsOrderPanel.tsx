@@ -17,7 +17,7 @@ import { useCurrencies } from '@/src/features/currency/hooks/useCurrencies';
 import { valorTotalPorMoneda } from '@/src/features/orders/utils/valorTotalPorMoneda';
 import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
-import { isOrderConfirmed } from './OperationsOrderColumns';
+import { isOrderConfirmed } from '@/src/features/orders/utils/pedidoConfirmacion';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';

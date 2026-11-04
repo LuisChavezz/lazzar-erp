@@ -4,10 +4,10 @@ import {
   PEDIDO_CLASIFICACIONES,
 } from "@/src/features/orders/constants/pedidoStatus";
 import {
-  isOrderConfirmed,
   ORDER_STATUS_FILTER_FIELD,
   sharedOrderFilterConfig,
 } from "@/src/features/orders/components/SharedOrderColumns";
+import { isOrderConfirmed } from "@/src/features/orders/utils/pedidoConfirmacion";
 import type { SpecialOrderListItem } from "../interfaces/special-order.interface";
 
 /**

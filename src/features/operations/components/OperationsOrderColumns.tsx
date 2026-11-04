@@ -34,13 +34,11 @@ import {
   PEDIDO_ESTATUS,
   TIPO_PEDIDO,
 } from "@/src/features/orders/constants/pedidoStatus";
-import { isOrderConfirmed } from "@/src/features/orders/components/SharedOrderColumns";
+import { isOrderConfirmed } from "@/src/features/orders/utils/pedidoConfirmacion";
 import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
 import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
 import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
-
-export { isOrderConfirmed };
 
 /**
  * Columnas de Pedidos en Mesa de Control. NO reusa `createOrderColumns` de

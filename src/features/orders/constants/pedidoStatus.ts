@@ -1,4 +1,4 @@
-import { isOrderConfirmed } from "../components/SharedOrderColumns";
+import { isOrderConfirmed } from "../utils/pedidoConfirmacion";
 import type { PedidoListItem } from "../interfaces/order.interface";
 
 /**

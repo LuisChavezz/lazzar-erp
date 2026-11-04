@@ -7,7 +7,7 @@ import { ChevronRightIcon } from '@/src/components/Icons';
 import { ColumnHeaderFilter } from '@/src/components/ColumnHeaderFilter';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { isOrderConfirmed } from './SharedOrderColumns';
+import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { getPedidoClasificacionLabel } from '../constants/pedidoStatus';
