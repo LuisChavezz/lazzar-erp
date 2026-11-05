@@ -1,11 +1,12 @@
 "use client";
 
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getQuoteDetailById } from "../services/actions";
+import type { QuoteById } from "../interfaces/quote.interface";
 import {
-  fixedQuoteResource,
   isQuoteDetailDefinitiveError,
+  quoteComentariosResource,
   type QuoteDetailSource,
   type QuoteResource,
 } from "../utils/quoteResource";
@@ -16,12 +17,17 @@ import {
  * así que comparten hook, tipo y componente de detalle; solo cambia el último
  * segmento de la clave de caché, y las invalidaciones por `["quote", id]`
  * alcanzan a todos.
- *
- * La caché guarda `{ data, resource }`: el detalle junto con el recurso que lo
- * sirvió, para que sus comentarios lean de ese mismo recurso.
  */
 export type { QuoteDetailSource, QuoteResource };
 
+/**
+ * Consulta del detalle de una cotización.
+ *
+ * FORMA DE LA CACHÉ: `["quote", id, source]` guarda `{ data, resource }`
+ * (`QuoteResourceRead<QuoteById>`), NO un `QuoteById` suelto: el detalle junto
+ * con el recurso que lo sirvió, del que leen sus comentarios. Para leerla usa
+ * `getQuoteFromCache`; un `setQueryData` debe escribir esa misma forma.
+ */
 export const getQuoteQueryOptions = (
   quoteId: number | null | undefined,
   source: QuoteDetailSource
@@ -30,6 +36,14 @@ export const getQuoteQueryOptions = (
     queryKey: ["quote", quoteId, source],
     queryFn: () => getQuoteDetailById(quoteId!, source),
   });
+
+/** Cotización en caché para `quoteId` y `source`, o `undefined` si no hay. */
+export const getQuoteFromCache = (
+  queryClient: QueryClient,
+  quoteId: number,
+  source: QuoteDetailSource
+): QuoteById | undefined =>
+  queryClient.getQueryData(getQuoteQueryOptions(quoteId, source).queryKey)?.data;
 
 interface UseQuoteOptions {
   /**
@@ -46,9 +60,10 @@ interface UseQuoteOptions {
  * exponen en `isDefinitiveError`. El respaldo entre recursos sigue siendo solo
  * ante un 404 (`readQuoteResource`).
  *
- * `resource` es el recurso del que deben leerse los comentarios: el fijo de
- * `source` desde el primer render —así arrancan junto con el detalle— o, si
- * `source` tiene respaldo, el que lo sirvió (`undefined` hasta saberlo).
+ * - `resource`: el recurso que sirvió el detalle (`undefined` hasta saberlo).
+ * - `comentariosResource`: del que leen sus comentarios
+ *   (`quoteComentariosResource`): desde el primer render, para que arranquen
+ *   junto con el detalle.
  */
 export const useQuote = (
   quoteId: number | null | undefined,
@@ -69,6 +84,7 @@ export const useQuote = (
   return {
     ...query,
     data: data?.data,
-    resource: fixedQuoteResource(source) ?? data?.resource,
+    resource: data?.resource,
+    comentariosResource: quoteComentariosResource(source, data?.resource),
   };
 };

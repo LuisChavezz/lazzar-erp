@@ -1,11 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
 import {
-  fixedQuoteResource,
+  isQuoteDetailDefinitiveError,
+  quoteComentariosResource,
   readQuoteResource,
   type QuoteDetailSource,
   type QuoteResource,
 } from "@/src/features/quotes/utils/quoteResource";
+import {
+  getQuoteEditLoadState,
+  QUOTE_EDIT_REFETCH_ERROR_MESSAGE,
+} from "@/src/features/quotes/utils/quoteEditLoadState";
+import { REFETCH_ERROR_MESSAGE } from "@/src/hooks/useHasLoadedQuery";
 import { resolveNotificationTarget } from "@/src/features/notifications/constants/notificationTargets";
 import {
   TIPO_COTIZACION_EN_REVISION,
@@ -123,11 +129,85 @@ test("un error que no es de axios se propaga sin respaldo", async () => {
   expect(calls).toEqual(["cotizaciones"]);
 });
 
-test("fixedQuoteResource: recurso fijo solo para los source sin respaldo", () => {
-  expect(fixedQuoteResource("cotizaciones")).toBe("cotizaciones");
-  expect(fixedQuoteResource("mesa-control")).toBe("mesa-control");
-  expect(fixedQuoteResource("cotizaciones-o-mesa-control")).toBeUndefined();
-  expect(fixedQuoteResource("mesa-control-o-cotizaciones")).toBeUndefined();
+test("comentarios con source fijo: siempre su recurso, antes y después de leer", () => {
+  for (const source of ["cotizaciones", "mesa-control"] as const) {
+    expect(quoteComentariosResource(source, undefined)).toBe(source);
+    expect(quoteComentariosResource(source, source)).toBe(source);
+  }
+});
+
+test("comentarios con respaldo: el primero del orden hasta saber cuál sirvió el detalle", () => {
+  // Antes de que responda el detalle: el primero, para arrancar en paralelo.
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", undefined)).toBe("cotizaciones");
+  expect(quoteComentariosResource("mesa-control-o-cotizaciones", undefined)).toBe("mesa-control");
+  // El detalle se resolvió por el primero: no cambia.
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "cotizaciones")).toBe("cotizaciones");
+  // El detalle se resolvió por el segundo: se releen de ahí.
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "mesa-control")).toBe("mesa-control");
+  expect(quoteComentariosResource("mesa-control-o-cotizaciones", "cotizaciones")).toBe("cotizaciones");
+});
+
+test("el 404 y el 403 del detalle son definitivos; un 500 no", () => {
+  expect(isQuoteDetailDefinitiveError(httpError(404))).toBe(true);
+  expect(isQuoteDetailDefinitiveError(httpError(403))).toBe(true);
+  expect(isQuoteDetailDefinitiveError(httpError(500))).toBe(false);
+  expect(isQuoteDetailDefinitiveError(new Error("red"))).toBe(false);
+});
+
+const editState = (overrides: Partial<Parameters<typeof getQuoteEditLoadState>[0]>) =>
+  getQuoteEditLoadState({
+    hasQuote: false,
+    isEditableStatus: false,
+    isAccessError: false,
+    isFetchedAfterMount: true,
+    hasLoadError: false,
+    ...overrides,
+  });
+
+test("edición: 404/403 de este montaje redirige avisando, también con datos ya cargados", () => {
+  // Carga inicial (sin datos) y relectura (con datos): mismo resultado.
+  for (const hasQuote of [false, true]) {
+    expect(editState({ hasQuote, isEditableStatus: true, isAccessError: true })).toEqual({
+      accessDenied: true,
+      shouldRedirect: true,
+      loadFailed: false,
+    });
+  }
+});
+
+test("edición: un 404/403 viejo de la caché no redirige mientras relee", () => {
+  expect(editState({ isAccessError: true, isFetchedAfterMount: false })).toEqual({
+    accessDenied: false,
+    shouldRedirect: false,
+    loadFailed: false,
+  });
+});
+
+test("edición: un fallo técnico de la carga inicial muestra el error; con datos, no", () => {
+  expect(editState({ hasLoadError: true }).loadFailed).toBe(true);
+  // `useQuote` no expone `error` en una relectura con datos: se queda el formulario.
+  expect(editState({ hasQuote: true, isEditableStatus: true })).toEqual({
+    accessDenied: false,
+    shouldRedirect: false,
+    loadFailed: false,
+  });
+});
+
+test("edición: estatus no editable redirige sin aviso", () => {
+  expect(editState({ hasQuote: true, isEditableStatus: false })).toEqual({
+    accessDenied: false,
+    shouldRedirect: true,
+    loadFailed: false,
+  });
+});
+
+test("edición: su toast de relectura es propio y no cambia el genérico", () => {
+  expect(QUOTE_EDIT_REFETCH_ERROR_MESSAGE).toBe(
+    "No se pudo actualizar la información. Tus cambios se conservan.",
+  );
+  expect(REFETCH_ERROR_MESSAGE).toBe(
+    "No se pudo actualizar la información. Mostrando datos anteriores.",
+  );
 });
 
 const enRevision = (data: unknown): Notificacion => ({
