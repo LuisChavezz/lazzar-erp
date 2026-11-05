@@ -16,7 +16,10 @@ import {
   usePurchaseOrderCriticalPath,
 } from "../hooks/usePurchaseOrderCriticalPath";
 import { updatePurchaseOrderCriticalPathMutationKey } from "../hooks/useUpdatePurchaseOrderCriticalPath";
-import { PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE } from "../utils/purchaseOrderCriticalPathErrors";
+import {
+  PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE,
+  PURCHASE_ORDER_CRITICAL_PATH_PERMISSION_SENTENCE,
+} from "../utils/purchaseOrderCriticalPathErrors";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathForm } from "./PurchaseOrderCriticalPathForm";
 
@@ -32,8 +35,7 @@ interface PurchaseOrderCriticalPathDialogProps {
 
 const CANCELLED_NOTICE =
   "La orden de compra está cancelada: su ruta crítica solo se puede consultar.";
-const NO_PERMISSION_NOTICE =
-  "No tienes permiso para editar la ruta crítica de órdenes de compra: solo se puede consultar.";
+const NO_PERMISSION_NOTICE = `${PURCHASE_ORDER_CRITICAL_PATH_PERMISSION_SENTENCE}: solo se puede consultar.`;
 
 /**
  * Diálogo CONTROLADO de la ruta crítica de UNA OC (EC-488). Lo abren el

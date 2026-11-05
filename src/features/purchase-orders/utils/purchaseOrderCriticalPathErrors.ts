@@ -13,11 +13,15 @@ export const PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE =
   "No se encontró la orden de compra. Puede que ya no exista o que no pertenezca a tu empresa.";
 
 /**
- * Respaldo de un 403 sin `detail`. El backend normalmente sí lo trae: "No
- * tienes permiso para editar la ruta crítica de la orden de compra."
+ * Única fuente de la oración de permiso, con la redacción del `detail` del 403
+ * del backend. La usan el respaldo del toast y el aviso de solo lectura del
+ * diálogo (que añade "solo se puede consultar").
  */
-export const PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE =
-  "No tienes permiso para editar la ruta crítica de órdenes de compra.";
+export const PURCHASE_ORDER_CRITICAL_PATH_PERMISSION_SENTENCE =
+  "No tienes permiso para editar la ruta crítica de la orden de compra";
+
+/** Respaldo de un 403 sin `detail` (el backend normalmente sí lo trae). */
+export const PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE = `${PURCHASE_ORDER_CRITICAL_PATH_PERMISSION_SENTENCE}.`;
 
 export const PURCHASE_ORDER_CRITICAL_PATH_SAVE_FALLBACK = "No se pudo guardar la ruta crítica.";
 
