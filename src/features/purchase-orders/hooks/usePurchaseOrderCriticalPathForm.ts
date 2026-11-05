@@ -4,6 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { isForbiddenError } from "@/src/utils/drfWriteErrors";
 import type { PurchaseOrderCriticalPath } from "../interfaces/purchase-order-critical-path.interface";
 import {
   PurchaseOrderCriticalPathFields,
@@ -23,6 +24,11 @@ interface UsePurchaseOrderCriticalPathFormParams {
   data: PurchaseOrderCriticalPath;
   /** OC Cancelada o usuario sin `E-COMPRAS-OC`: se consulta, nunca envía. */
   readOnly: boolean;
+  /**
+   * El PATCH respondió 403: la sesión dice que hay `E-COMPRAS-OC` pero el
+   * backend ya no lo reconoce (permisos cambiados tras iniciar sesión).
+   */
+  onForbidden?: () => void;
 }
 
 /**
@@ -41,6 +47,7 @@ export function usePurchaseOrderCriticalPathForm({
   ocId,
   data,
   readOnly,
+  onForbidden,
 }: UsePurchaseOrderCriticalPathFormParams) {
   const [initialValues] = useState<PurchaseOrderCriticalPathValues>(() =>
     toPurchaseOrderCriticalPathValues(data),
@@ -101,9 +108,11 @@ export function usePurchaseOrderCriticalPathForm({
 
       try {
         await mutateAsync({ ocId, body });
-      } catch {
+      } catch (error) {
         // El toast ya lo dio el hook; los errores por campo quedan bajo su
-        // campo y el formulario conserva lo capturado para reintentar.
+        // campo y el formulario conserva lo capturado para reintentar. Un 403
+        // no se arregla reintentando: se avisa para pasar a solo lectura.
+        if (isForbiddenError(error)) onForbidden?.();
       }
     },
   });
