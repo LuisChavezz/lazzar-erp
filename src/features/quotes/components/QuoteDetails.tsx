@@ -70,7 +70,7 @@ interface QuoteDetailsProps {
 }
 
 export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
-  const { data: quote, isLoading, isError, resource } = useQuote(quoteId, source);
+  const { data: quote, isLoading, resource } = useQuote(quoteId, source);
   // Lee del recurso del detalle (`resource`), nunca con un respaldo propio. Con
   // un `source` fijo arranca junto con el detalle, antes de los retornos de
   // carga/error; con respaldo espera a saber qué recurso sirvió el detalle.
@@ -89,7 +89,8 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
     );
   }
 
-  if (isError || !quote) {
+  // Sin datos tras cargar: fallo inicial o 404 definitivo (`useQuote`).
+  if (!quote) {
     return (
       <div className="rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-200">
         No se pudieron cargar los detalles de la cotización.

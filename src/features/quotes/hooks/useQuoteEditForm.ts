@@ -213,6 +213,7 @@ export function useQuoteEditForm(quoteId: number) {
     isLoading: isQuoteLoading,
     isFetching: isQuoteFetching,
     isFetchedAfterMount: isQuoteFetchedAfterMount,
+    isDefinitiveError: isQuoteNotFound,
     error: quoteError,
     refetch: refetchQuote,
   } = useQuote(quoteId, "cotizaciones");
@@ -233,9 +234,11 @@ export function useQuoteEditForm(quoteId: number) {
    * el 404/403 de un intento anterior mientras la relectura apenas empieza: con
    * ese error viejo no se avisa ni se redirige (se sigue cargando), porque el
    * acceso pudo cambiar entretanto —p. ej. le transfirieron la cotización—. */
+  /* `useQuote` entrega el 404 aparte, como error definitivo (`isQuoteNotFound`,
+   * sin `error`); el 403 llega en `error` cuando la consulta nunca cargó. */
   const quoteErrorStatus =
     quoteError instanceof AxiosError ? quoteError.response?.status : undefined;
-  const isQuoteAccessError = quoteErrorStatus === 404 || quoteErrorStatus === 403;
+  const isQuoteAccessError = isQuoteNotFound || quoteErrorStatus === 403;
   const quoteAccessDenied = isQuoteAccessError && isQuoteFetchedAfterMount;
   const shouldRedirectToQuotesList =
     (Boolean(quoteData) && !isEditableQuoteStatus) || quoteAccessDenied;

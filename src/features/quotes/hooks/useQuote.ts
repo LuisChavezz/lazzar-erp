@@ -1,6 +1,8 @@
 "use client";
 
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getQuoteDetailById } from "../services/actions";
 import {
   fixedQuoteResource,
@@ -30,19 +32,26 @@ export const getQuoteQueryOptions = (
   });
 
 /**
- * Detalle de una cotización. `resource` es el recurso del que deben leerse los
- * comentarios: el fijo de `source` desde el primer render —así arrancan junto
- * con el detalle— o, si `source` tiene respaldo, el que lo sirvió
- * (`undefined` hasta saberlo).
+ * Detalle de una cotización. Un 404 es definitivo (la cotización no existe o
+ * no es visible por los recursos de `source`, ya agotado su respaldo si lo
+ * tiene): no se reintenta, no avisa por toast y se expone en
+ * `isDefinitiveError`.
+ *
+ * `resource` es el recurso del que deben leerse los comentarios: el fijo de
+ * `source` desde el primer render —así arrancan junto con el detalle— o, si
+ * `source` tiene respaldo, el que lo sirvió (`undefined` hasta saberlo).
  */
 export const useQuote = (
   quoteId: number | null | undefined,
   source: QuoteDetailSource
 ) => {
-  const { data, ...query } = useQuery({
-    ...getQuoteQueryOptions(quoteId, source),
-    enabled: Number.isFinite(quoteId) && Number(quoteId) > 0,
-  });
+  const { data, ...query } = useGuardedQuery(
+    {
+      ...getQuoteQueryOptions(quoteId, source),
+      enabled: Number.isFinite(quoteId) && Number(quoteId) > 0,
+    },
+    { toastId: "quote-detail-refetch-error", isDefinitiveError: isNotFoundError },
+  );
   return {
     ...query,
     data: data?.data,
