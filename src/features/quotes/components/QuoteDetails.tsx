@@ -10,6 +10,12 @@ import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { RecompraBadge } from "./RecompraBadge";
+import type { QuoteDetailView } from "../interfaces/quote.interface";
+import {
+  hasQuotePaymentInfo,
+  hasQuoteTotals,
+  hasServicioMonto,
+} from "../utils/quoteAmountVisibility";
 import {
   formatQuoteDateTime,
   getEnabledOptionLabels,
@@ -69,34 +75,42 @@ interface QuoteDetailsProps {
   source: QuoteDetailSource;
 }
 
-export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
-  const { data: quote, isLoading, comentariosResource } = useQuote(quoteId, source);
-  // Arranca junto con el detalle, antes de los retornos de carga/error, y lee
-  // del recurso que sirve el detalle (`comentariosResource`), nunca con un
-  // respaldo propio.
-  const comentariosQuery = useQuoteComentarios(quoteId, comentariosResource);
+export const QuoteDetailsSkeleton = () => (
+  <div className="space-y-4" role="status" aria-live="polite" aria-label="Cargando detalles de la cotización">
+    <div className="h-24 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+    <div className="h-56 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+    <div className="h-48 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+  </div>
+);
+
+export const QuoteDetailsLoadError = () => (
+  <div className="rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-200">
+    No se pudieron cargar los detalles de la cotización.
+  </div>
+);
+
+interface QuoteDetailsViewProps {
+  quote: QuoteDetailView;
+  /**
+   * Historial de comentarios (`useQuoteComentarios`). `null` omite la sección
+   * por completo: el pedido 360° lo pasa así cuando el historial no es
+   * visible para quien mira (404).
+   */
+  comentarios: ReturnType<typeof useQuoteComentarios> | null;
+}
+
+/**
+ * Detalle de solo lectura de una cotización ya cargada. Lo que la respuesta
+ * NO trae (importes y datos de pago enmascarados por el backend) no se pinta:
+ * ver `quoteAmountVisibility`. Con una respuesta completa se ve igual que
+ * siempre.
+ */
+export const QuoteDetailsView = ({ quote, comentarios }: QuoteDetailsViewProps) => {
   // La cotización solo trae la PK de la moneda; el código y el nombre salen
   // del catálogo (misma consulta que el formulario).
   const { data: currencies } = useCurrencies();
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4" role="status" aria-live="polite" aria-label="Cargando detalles de la cotización">
-        <div className="h-24 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
-        <div className="h-56 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
-        <div className="h-48 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
-      </div>
-    );
-  }
-
-  // Sin datos tras cargar: fallo inicial o 404 definitivo (`useQuote`).
-  if (!quote) {
-    return (
-      <div className="rounded-xl border border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-200">
-        No se pudieron cargar los detalles de la cotización.
-      </div>
-    );
-  }
+  const showTotals = hasQuoteTotals(quote);
+  const showPaymentInfo = hasQuotePaymentInfo(quote);
 
   const statusClassName = getStatusStyles(quote);
   const currency = findCurrency(currencies, quote.moneda);
@@ -115,12 +129,12 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
     0
   );
   const condiciones = getEnabledOptionLabels([
-    { label: "Anticipo total", active: quote.anticipo_total },
-    { label: "Anticipo parcial", active: quote.anticipo_parcial },
+    { label: "Anticipo total", active: quote.anticipo_total === true },
+    { label: "Anticipo parcial", active: quote.anticipo_parcial === true },
     { label: "Vendedor autoriza", active: quote.vendedor_autoriza },
-    { label: "Pago antes embarque", active: quote.pago_antes_embarque },
-    { label: "Por confirmar", active: quote.por_confirmar },
-    { label: "Otra cantidad", active: quote.otra_cantidad },
+    { label: "Pago antes embarque", active: quote.pago_antes_embarque === true },
+    { label: "Por confirmar", active: quote.por_confirmar === true },
+    { label: "Otra cantidad", active: quote.otra_cantidad === true },
   ]);
 
   return (
@@ -146,12 +160,16 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Total
-            </p>
-            <p className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-              {formatAmount(quote.gran_total)}
-            </p>
+            {showTotals && (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Total
+                </p>
+                <p className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+                  {formatAmount(quote.gran_total)}
+                </p>
+              </>
+            )}
             <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
               {piezas} {piezas === 1 ? "pieza" : "piezas"} · {formatQuoteDateTime(quote.created_at)}
             </p>
@@ -180,11 +198,12 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
         </div>
       )}
 
-      <QuoteComentariosHistory query={comentariosQuery} />
+      {comentarios && <QuoteComentariosHistory query={comentarios} />}
 
       {/* ── Datos en listas agrupadas, en dos columnas ───────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <div className="space-y-5 min-w-0">
+          {showPaymentInfo && (
           <DetailGroup title="Facturación y pagos">
             <DetailRow label="Uso CFDI">{toDisplayValue(quote.uso_cfdi)}</DetailRow>
             <DetailRow label="Forma de pago">{toDisplayValue(quote.forma_pago)}</DetailRow>
@@ -198,27 +217,32 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
             <DetailRow label="Teléfono de pagos">{toDisplayValue(quote.telefono_pagos)}</DetailRow>
             <DetailRow label="ID cliente">{toDisplayValue(quote.cliente)}</DetailRow>
           </DetailGroup>
+          )}
 
           <DetailGroup title="Servicios y cargos">
             {quote.servicios_extras.length > 0 ? (
-              quote.servicios_extras.map((servicio) => {
-                const total = Number(servicio.cantidad) * Number(servicio.monto);
-                return (
-                  <div key={servicio.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <p className="text-[13px] font-medium text-slate-800 dark:text-slate-100 min-w-0 truncate">
-                      {servicio.nombre}
-                    </p>
+              quote.servicios_extras.map((servicio) => (
+                <div key={servicio.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <p className="text-[13px] font-medium text-slate-800 dark:text-slate-100 min-w-0 truncate">
+                    {servicio.nombre}
+                  </p>
+                  {/* Sin `monto` (enmascarado) quedan nombre y cantidad. */}
+                  {hasServicioMonto(servicio) ? (
                     <div className="flex items-center gap-2 shrink-0 text-right">
                       <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap tabular-nums">
                         {servicio.cantidad} × {formatAmount(servicio.monto)}
                       </span>
                       <span className="text-[13px] font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
-                        {formatAmount(total)}
+                        {formatAmount(Number(servicio.cantidad) * Number(servicio.monto))}
                       </span>
                     </div>
-                  </div>
-                );
-              })
+                  ) : (
+                    <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
+                      Cantidad {servicio.cantidad}
+                    </span>
+                  )}
+                </div>
+              ))
             ) : (
               <p className="px-4 py-2.5 text-[13px] text-slate-400 dark:text-slate-500">Sin servicios extras</p>
             )}
@@ -226,6 +250,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
         </div>
 
         <div className="space-y-5 min-w-0">
+          {showTotals && (
           <DetailGroup title="Importes">
             <DetailRow label="Subtotal">
               <span className="tabular-nums">{formatAmount(quote.subtotal)}</span>
@@ -261,6 +286,7 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
               </div>
             </div>
           </DetailGroup>
+          )}
 
           <DetailGroup title="Envío">
             <DetailRow label="Destinatario">{toDisplayValue(quote.destinatario)}</DetailRow>
@@ -286,4 +312,19 @@ export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
       </DetailGroup>
     </div>
   );
+};
+
+export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
+  const { data: quote, isLoading, comentariosResource } = useQuote(quoteId, source);
+  // Arranca junto con el detalle, antes de los retornos de carga/error, y lee
+  // del recurso que sirve el detalle (`comentariosResource`), nunca con un
+  // respaldo propio.
+  const comentariosQuery = useQuoteComentarios(quoteId, comentariosResource);
+
+  if (isLoading) return <QuoteDetailsSkeleton />;
+
+  // Sin datos tras cargar: fallo inicial o 404 definitivo (`useQuote`).
+  if (!quote) return <QuoteDetailsLoadError />;
+
+  return <QuoteDetailsView quote={quote} comentarios={comentariosQuery} />;
 };
