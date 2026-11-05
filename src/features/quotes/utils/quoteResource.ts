@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
 
 /** Uno de los dos recursos que sirven una cotización por id. */
 export type QuoteResource = "cotizaciones" | "mesa-control";
@@ -41,6 +42,14 @@ export const fixedQuoteResource = (source: QuoteDetailSource): QuoteResource | u
   const order = QUOTE_RESOURCE_ORDER[source];
   return order.length === 1 ? order[0] : undefined;
 };
+
+/**
+ * Errores definitivos del detalle de una cotización: el 404 (no existe o no es
+ * visible por los recursos de `source`, ya agotado su respaldo) y el 403. No
+ * se reintentan, no conservan datos anteriores y el formulario de edición los
+ * trata como denegación de acceso.
+ */
+export const isQuoteDetailDefinitiveError = isNotFoundOrForbiddenError;
 
 export type QuoteResourceReaders<T> = Record<QuoteResource, (id: number) => Promise<T>>;
 

@@ -2,10 +2,10 @@
 
 import { queryOptions } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getQuoteDetailById } from "../services/actions";
 import {
   fixedQuoteResource,
+  isQuoteDetailDefinitiveError,
   type QuoteDetailSource,
   type QuoteResource,
 } from "../utils/quoteResource";
@@ -31,11 +31,20 @@ export const getQuoteQueryOptions = (
     queryFn: () => getQuoteDetailById(quoteId!, source),
   });
 
+interface UseQuoteOptions {
+  /**
+   * Texto del toast cuando una relectura falla con datos ya cargados. Por
+   * omisión, el genérico de `useHasLoadedQuery`; el formulario de edición pasa
+   * el suyo porque ahí lo que se ve son los cambios del usuario.
+   */
+  refetchErrorMessage?: string;
+}
+
 /**
- * Detalle de una cotización. Un 404 es definitivo (la cotización no existe o
- * no es visible por los recursos de `source`, ya agotado su respaldo si lo
- * tiene): no se reintenta, no avisa por toast y se expone en
- * `isDefinitiveError`.
+ * Detalle de una cotización. El 404 y el 403 son definitivos
+ * (`isQuoteDetailDefinitiveError`): no se reintentan, no avisan por toast y se
+ * exponen en `isDefinitiveError`. El respaldo entre recursos sigue siendo solo
+ * ante un 404 (`readQuoteResource`).
  *
  * `resource` es el recurso del que deben leerse los comentarios: el fijo de
  * `source` desde el primer render —así arrancan junto con el detalle— o, si
@@ -43,14 +52,19 @@ export const getQuoteQueryOptions = (
  */
 export const useQuote = (
   quoteId: number | null | undefined,
-  source: QuoteDetailSource
+  source: QuoteDetailSource,
+  { refetchErrorMessage }: UseQuoteOptions = {}
 ) => {
   const { data, ...query } = useGuardedQuery(
     {
       ...getQuoteQueryOptions(quoteId, source),
       enabled: Number.isFinite(quoteId) && Number(quoteId) > 0,
     },
-    { toastId: "quote-detail-refetch-error", isDefinitiveError: isNotFoundError },
+    {
+      toastId: "quote-detail-refetch-error",
+      errorMessage: refetchErrorMessage,
+      isDefinitiveError: isQuoteDetailDefinitiveError,
+    },
   );
   return {
     ...query,
