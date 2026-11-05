@@ -79,7 +79,10 @@ export function ServerSearchSelectList<T>({
   const pinnedKeys = new Set(pinned.map(getKey));
   const rest = results.filter((item) => !pinnedKeys.has(getKey(item)));
   const hasSearch = search.trim() !== "";
-  const hiddenCount = total - results.length;
+  // El servidor tiene más coincidencias de las que trajo la página. El aviso
+  // cuenta las filas listadas bajo "Resultados" (`rest`, sin las fijadas
+  // arriba), no `results`, para no contradecir lo que se ve.
+  const hasMore = total > results.length;
 
   const renderRow = (item: T) => {
     const selected = isSelected(item);
@@ -146,10 +149,10 @@ export function ServerSearchSelectList<T>({
             className={`space-y-1 transition-opacity ${isSearching ? "opacity-60" : ""}`}
           >
             {rest.map(renderRow)}
-            {hiddenCount > 0 && (
+            {hasMore && (
               <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                Se muestran {results.length} de {total} coincidencias. Escribe más para acotar
-                la búsqueda.
+                Hay {total} coincidencias y aquí se listan solo {rest.length}. Escribe más para
+                acotar la búsqueda.
               </p>
             )}
           </div>
