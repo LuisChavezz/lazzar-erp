@@ -1,11 +1,14 @@
 import {
-  extractJoinedRejectionMessage,
   extractPlainDetalleMessage,
   extractProcessCompatibilityMessage,
   REQUIRED_COLOR_KEY,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
-import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
+import {
+  extractJoinedRejectionMessage,
+  firstDrfMessage,
+  firstRejectionMessage,
+} from "@/src/utils/firstDrfMessage";
 
 /**
  * Rechazo de servicios extras ya facturados (#744,

@@ -51,3 +51,23 @@ export function firstRejection<K extends string>(
   }
   return undefined;
 }
+
+/**
+ * TODOS los mensajes de un rechazo que llega como lista (un mensaje por
+ * elemento afectado), unidos con `separator`; `undefined` si la clave no viene
+ * o no trae ningún mensaje. Acepta también el string suelto. A diferencia de
+ * `firstDrfMessage`, descarta los strings que solo traen espacios, así que
+ * nunca produce un mensaje en blanco.
+ */
+export function extractJoinedRejectionMessage(
+  data: unknown,
+  key: string,
+  separator = " ",
+): string | undefined {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  const value = (data as Record<string, unknown>)[key];
+  const messages = (Array.isArray(value) ? value : [value]).filter(
+    (message): message is string => typeof message === "string" && message.trim().length > 0,
+  );
+  return messages.length > 0 ? messages.join(separator) : undefined;
+}
