@@ -186,9 +186,10 @@ export const MOCK_CEDICOR_PRODUCTION_ORDERS: ProductionOrder[] = Array.from(
     // Fechas base distribuidas en los últimos 6 meses. Excepción deliberada a la
     // "fecha fija": `Date.now()` se resuelve en el build (página estática), así
     // que la mezcla de órdenes vencidas y a tiempo de "Est. Entrega" (que compara
-    // contra la fecha real del navegador) se renueva en cada deploy; con una
-    // fecha fija acabarían todas vencidas.
-    // Sin hydration mismatch: el cliente recibe los datos ya resueltos por props.
+    // contra la fecha real del navegador) se renueva con cada build nuevo (un
+    // promote o rollback que reutiliza un build conserva su fecha); con una
+    // fecha fija acabarían todas vencidas. El dato llega resuelto por props; el
+    // "vencida" se calcula en el cliente después de montar (`useClientNow`).
     const fechaCreacion = new Date(
       Date.now() - faker.number.int({ min: 10, max: 180 }) * 86_400_000
     );
