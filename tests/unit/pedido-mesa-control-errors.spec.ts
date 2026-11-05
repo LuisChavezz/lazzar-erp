@@ -1,98 +1,148 @@
 import { expect, test } from "@playwright/test";
 import {
-  extractPedidoMesaControlRejectionMessage,
-  pedidoMesaControlFieldIssues,
+  parsePedidoMesaControl400,
+  SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS,
 } from "@/src/features/orders/utils/pedidoMesaControlErrors";
-import { extractQuoteValidationIssues } from "@/src/features/quotes/utils/quoteValidationErrors";
+import { extractProcessCompatibilityMessage } from "@/src/features/quotes/utils/quoteValidationErrors";
+import { extractJoinedRejectionMessage } from "@/src/utils/firstDrfMessage";
 
 /**
- * EC-762: el 400 `servicios_extras` de `editar-mesa-control/` (servicios ya
- * facturados, #744) trae un mensaje por servicio. Todos llegan al toast y
- * ninguno queda como error de formulario sin control que lo pinte.
+ * EC-762: el cuerpo 400 de `editar-mesa-control/` pasa por
+ * `parsePedidoMesaControl400`, la misma función que llama
+ * `useUpdatePedidoMesaControl`: `issues` van al formulario y `rejection` al
+ * toast.
  */
 const FACTURADO = "Bordado: está en la factura F-12; no se cambia su importe ni se oculta.";
 const ELIMINADO = "Flete: ya se facturó; no se puede eliminar.";
 
-/** Lo que `onError` del hook calcula a partir del cuerpo 400. */
-const parse400 = (data: unknown) => ({
-  message: extractPedidoMesaControlRejectionMessage(data),
-  issues: pedidoMesaControlFieldIssues(extractQuoteValidationIssues(data)),
-});
-
-test.describe("rechazo servicios_extras de editar-mesa-control", () => {
-  test("un solo mensaje llega tal cual al toast y no marca el formulario", () => {
-    const { message, issues } = parse400({ servicios_extras: [FACTURADO] });
-    expect(message).toBe(FACTURADO);
-    expect(issues).toEqual([]);
+test.describe("rechazo servicios_extras", () => {
+  test("un solo mensaje llega tal cual al toast, sin duración propia ni error de formulario", () => {
+    expect(parsePedidoMesaControl400({ servicios_extras: [FACTURADO] })).toEqual({
+      issues: [],
+      rejection: { message: FACTURADO },
+    });
   });
 
-  test("varios mensajes llegan todos al toast, en orden", () => {
-    const { message, issues } = parse400({ servicios_extras: [FACTURADO, ELIMINADO] });
-    expect(message).toBe(`${FACTURADO} ${ELIMINADO}`);
-    expect(issues).toEqual([]);
+  test("varios mensajes: uno por línea y un toast más largo", () => {
+    expect(parsePedidoMesaControl400({ servicios_extras: [FACTURADO, ELIMINADO] })).toEqual({
+      issues: [],
+      rejection: {
+        message: `${FACTURADO}\n${ELIMINADO}`,
+        duration: SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS,
+      },
+    });
   });
 
   test("un string suelto también se acepta", () => {
-    expect(extractPedidoMesaControlRejectionMessage({ servicios_extras: ELIMINADO })).toBe(
-      ELIMINADO,
-    );
+    expect(parsePedidoMesaControl400({ servicios_extras: ELIMINADO }).rejection).toEqual({
+      message: ELIMINADO,
+    });
+  });
+
+  test("strings de solo espacios no dan un toast en blanco ni un error de formulario", () => {
+    expect(parsePedidoMesaControl400({ servicios_extras: ["  ", ""] })).toEqual({
+      issues: [],
+      rejection: undefined,
+    });
   });
 
   test("los errores por servicio siguen marcando su campo y no van al toast", () => {
-    const data = { servicios_extras: [{}, { monto: ["Asegúrese de que este valor sea mayor o igual a 0."] }] };
-    const { message, issues } = parse400(data);
-    expect(message).toBeUndefined();
-    expect(issues).toEqual([
-      {
-        path: "servicios_extras.1.monto",
-        message: "Asegúrese de que este valor sea mayor o igual a 0.",
-      },
-    ]);
+    const parsed = parsePedidoMesaControl400({
+      servicios_extras: [{}, { monto: ["Asegúrese de que este valor sea mayor o igual a 0."] }],
+    });
+    expect(parsed).toEqual({
+      issues: [
+        {
+          path: "servicios_extras.1.monto",
+          message: "Asegúrese de que este valor sea mayor o igual a 0.",
+        },
+      ],
+      rejection: undefined,
+    });
   });
 });
 
-test.describe("otras claves del 400 no cambian", () => {
-  test("un error de campo de la cabecera va al formulario, no al toast", () => {
-    const { message, issues } = parse400({
-      pedido: { persona_pagos: ["Este campo no puede estar en blanco."] },
+test.describe("claves de rechazo: toast sin error de formulario invisible", () => {
+  for (const key of ["permiso", "cotizacion", "detail"]) {
+    test(`${key} como lista va al toast con su primer mensaje y no al formulario`, () => {
+      expect(parsePedidoMesaControl400({ [key]: ["Motivo.", "Otro."] })).toEqual({
+        issues: [],
+        rejection: { message: "Motivo." },
+      });
     });
-    expect(message).toBeUndefined();
-    expect(issues).toEqual([
-      { path: "persona_pagos", message: "Este campo no puede estar en blanco." },
-    ]);
-  });
-
-  test("permiso sigue siendo el primer mensaje de su clave", () => {
-    const { message, issues } = parse400({
-      permiso: ["Acción disponible solo para mesa de control.", "otro"],
-    });
-    expect(message).toBe("Acción disponible solo para mesa de control.");
-    // Comportamiento previo intacto: el filtro solo descarta `servicios_extras`.
-    expect(issues).toEqual([
-      { path: "permiso", message: "Acción disponible solo para mesa de control." },
-    ]);
-  });
+  }
 
   test("pedido como string plano es rechazo", () => {
-    expect(
-      extractPedidoMesaControlRejectionMessage({
-        pedido: "El pedido no tiene cotización relacionada para sincronizar.",
-      }),
-    ).toBe("El pedido no tiene cotización relacionada para sincronizar.");
+    const message = "El pedido no tiene cotización relacionada para sincronizar.";
+    expect(parsePedidoMesaControl400({ pedido: message })).toEqual({
+      issues: [],
+      rejection: { message },
+    });
   });
 
-  test("compatibilidad_proceso sigue mostrándose completa y antes que servicios_extras", () => {
+  test("pedido como lista también va solo al toast", () => {
+    expect(parsePedidoMesaControl400({ pedido: ["Sin cotización."] })).toEqual({
+      issues: [],
+      rejection: { message: "Sin cotización." },
+    });
+  });
+
+  test("permiso de solo espacios cae al mensaje genérico (sin toast en blanco)", () => {
+    expect(parsePedidoMesaControl400({ permiso: ["   "] }).rejection).toBeUndefined();
+  });
+});
+
+test.describe("claves que no cambian", () => {
+  test("un error de campo de la cabecera va al formulario, no al toast", () => {
     expect(
-      extractPedidoMesaControlRejectionMessage({
+      parsePedidoMesaControl400({
+        pedido: { persona_pagos: ["Este campo no puede estar en blanco."] },
+      }),
+    ).toEqual({
+      issues: [{ path: "persona_pagos", message: "Este campo no puede estar en blanco." }],
+      rejection: undefined,
+    });
+  });
+
+  test("color va al toast Y al formulario, que lo traduce a las partidas", () => {
+    expect(parsePedidoMesaControl400({ color: ["Elige el color de: Playera."] })).toEqual({
+      issues: [{ path: "color", message: "Elige el color de: Playera." }],
+      rejection: { message: "Elige el color de: Playera." },
+    });
+  });
+
+  test("compatibilidad_proceso se muestra completa, en una línea, y gana a servicios_extras", () => {
+    expect(
+      parsePedidoMesaControl400({
         compatibilidad_proceso: ["A no admite bordado.", "B no admite reflejante."],
-        servicios_extras: [FACTURADO],
+        servicios_extras: [FACTURADO, ELIMINADO],
       }),
-    ).toBe("A no admite bordado. B no admite reflejante.");
+    ).toEqual({
+      issues: [],
+      rejection: { message: "A no admite bordado. B no admite reflejante." },
+    });
+  });
+});
+
+test.describe("extractJoinedRejectionMessage", () => {
+  test("une con espacio por defecto y con el separador pedido", () => {
+    const data = { k: ["a", " ", "b"] };
+    expect(extractJoinedRejectionMessage(data, "k")).toBe("a b");
+    expect(extractJoinedRejectionMessage(data, "k", "\n")).toBe("a\nb");
   });
 
-  test("color sigue marcando las partidas además del toast", () => {
-    const { message, issues } = parse400({ color: "Elige el color de: Playera." });
-    expect(message).toBe("Elige el color de: Playera.");
-    expect(issues).toEqual([{ path: "color", message: "Elige el color de: Playera." }]);
+  test("sin la clave, sin mensajes o con un cuerpo que no es objeto da undefined", () => {
+    expect(extractJoinedRejectionMessage({}, "k")).toBeUndefined();
+    expect(extractJoinedRejectionMessage({ k: [] }, "k")).toBeUndefined();
+    expect(extractJoinedRejectionMessage(["k"], "k")).toBeUndefined();
+    expect(extractJoinedRejectionMessage("k", "k")).toBeUndefined();
+  });
+
+  test("compatibilidad_proceso conserva su comportamiento", () => {
+    expect(
+      extractProcessCompatibilityMessage({ compatibilidad_proceso: ["A.", "", "B."] }),
+    ).toBe("A. B.");
+    expect(extractProcessCompatibilityMessage({ compatibilidad_proceso: "Solo." })).toBe("Solo.");
+    expect(extractProcessCompatibilityMessage({})).toBeUndefined();
   });
 });

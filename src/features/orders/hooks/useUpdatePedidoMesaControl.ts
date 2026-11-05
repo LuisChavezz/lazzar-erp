@@ -3,10 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import {
-  extractQuoteValidationIssues,
-  type QuoteValidationIssue,
-} from "@/src/features/quotes/utils/quoteValidationErrors";
+import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
@@ -14,8 +11,8 @@ import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useSche
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import {
-  extractPedidoMesaControlRejectionMessage,
-  pedidoMesaControlFieldIssues,
+  parsePedidoMesaControl400,
+  type PedidoMesaControlRejectionToast,
 } from "../utils/pedidoMesaControlErrors";
 import type {
   PedidoMesaControlUpdate,
@@ -99,7 +96,7 @@ export const useUpdatePedidoMesaControl = (
       toast.success("Pedido actualizado y sincronizado con su cotización");
     },
     onError: (error) => {
-      let message: string | undefined;
+      let rejection: PedidoMesaControlRejectionToast | undefined;
       if (error instanceof AxiosError) {
         const statusCode = error.response?.status;
         const data = error.response?.data;
@@ -127,18 +124,21 @@ export const useUpdatePedidoMesaControl = (
           return;
         }
         if (statusCode === 400 && data) {
-          const issues = pedidoMesaControlFieldIssues(extractQuoteValidationIssues(data));
-          if (issues.length > 0) {
-            onValidationError?.(issues);
+          const parsed = parsePedidoMesaControl400(data);
+          if (parsed.issues.length > 0) {
+            onValidationError?.(parsed.issues);
           }
-          message = extractPedidoMesaControlRejectionMessage(data);
+          rejection = parsed.rejection;
         }
       }
       /* `extractErrorMessage` como último eslabón: lee el `{ error: string }`
        * de Django. No sirve como PRIMERO porque un `AxiosError` es un `Error`,
        * así que devolvería "Request failed with status code 400" antes de mirar
        * las claves de DRF. */
-      toast.error(message ?? extractErrorMessage(error, "No se pudo actualizar el pedido"));
+      toast.error(
+        rejection?.message ?? extractErrorMessage(error, "No se pudo actualizar el pedido"),
+        rejection?.duration ? { duration: rejection.duration } : undefined,
+      );
     },
   });
 };
