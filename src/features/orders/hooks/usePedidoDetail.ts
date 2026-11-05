@@ -58,8 +58,11 @@ export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}
  * `refetchOnMount: "always"`, igual que la trazabilidad: la hoja de Avances
  * pinta lado a lado el paso "Asignado" (trazabilidad) y la barra "Avance
  * asignado" (`tracker_picking` de ESTE detalle), que miden lo mismo. Lo que
- * cambia en ESTA sesión ya los refresca a los dos: desde EC-521 las mutaciones
- * de avance (picking, packing, envío, órdenes de trabajo, facturas…) llaman a
+ * cambia en ESTA sesión ya los refresca a los dos: las mutaciones del propio
+ * pedido (programar, cabecera, edición de Mesa de Control, cancelar) y el alta
+ * y la cancelación de su factura los invalidan POR ID, y desde EC-521 las de
+ * otros módulos (picking, packing, envío, órdenes de trabajo, emisión y
+ * timbrado de facturas, cobros, notas de crédito…) llaman a
  * `invalidatePedidoProgress`. Releer al abrir cubre lo que otros usuarios
  * cambian en otras sesiones; si solo una se releyera, un picking ajeno las
  * dejaría con cifras distintas durante el `staleTime` de 15 min.
