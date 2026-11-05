@@ -41,6 +41,12 @@ export interface OpenOrderDocument {
  */
 type DocDetailDialog = React.ComponentType<{
   orderId: number | null;
+  /**
+   * Id del pedido 360° que abre el documento. Solo lo usa la cotización, que
+   * se lee por el pedido (`/ventas/pedidos/{id}/cotizacion/`); los demás
+   * diálogos lo ignoran.
+   */
+  pedidoId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }>;
@@ -64,8 +70,8 @@ export const ORDER_DOCUMENT_DIALOGS: Record<string, DocDetailDialog> = {
   // Orden de compra encaja directo: ya es self-fetching por id y su firma es
   // exactamente la del registro (`{ orderId, open, onOpenChange }`).
   orden_compra: PurchaseOrderDetailDialog,
-  // Cotización: `QuoteDetails` es contenido self-fetching (no un diálogo);
-  // `PedidoQuoteDetailDialog` lo envuelve fijando el recurso de lectura (EC-787).
+  // Cotización: se lee por el PEDIDO (`/ventas/pedidos/{id}/cotizacion/`,
+  // EC-792), así que es el único que usa `pedidoId`.
   cotizacion: PedidoQuoteDetailDialog,
   // La factura NO está aquí: tiene página propia (ver `ORDER_DOCUMENT_ROUTES`).
   // Movimiento de inventario sí es self-fetching, pero con prop `movementId`
