@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { KPI_QUERY_STALE_TIME } from "@/src/constants/queryCache";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getSupplierKpis } from "../services/actions";
 import type { SupplierKpis } from "../interfaces/supplier-kpis.interface";
@@ -17,10 +18,13 @@ export const supplierKpisQueryKey = ["purchase-orders", "supplier-kpis"] as cons
 /**
  * Indicadores por proveedor (`GET /terceros/proveedores/kpis/`, EC-436).
  *
- * `refetchOnMount: "always"`: el backend los CALCULA en cada lectura a partir
- * de OCs, recepciones, inspecciones y facturas de proveedor que cambian en
- * otras pantallas; con el `staleTime` global de 15 min, volver a la lista
- * mostraría cifras viejas. Mismo criterio que `usePurchaseOrderKpis`.
+ * `staleTime` de 30 s (`KPI_QUERY_STALE_TIME`), mismo criterio que
+ * `usePurchaseOrderKpis`: el backend los CALCULA en cada lectura a partir de
+ * OCs, recepciones, inspecciones y facturas de proveedor que otro usuario
+ * puede cambiar en otra sesión; pasados 30 s se releen al volver, y antes se
+ * usa la caché. Las mutaciones de esta sesión invalidan la llave (ver arriba).
+ * El detalle por factor (`useSupplierKpiDetail`) sí relee en cada apertura,
+ * para no quedar más viejo que este ranking.
  *
  * Un refetch fallido con datos en caché los conserva y avisa por toast; solo un
  * fallo SIN datos (`isInitialError`) se pinta como error en la sección.
@@ -29,7 +33,7 @@ export const useSupplierKpis = () => {
   const { data, isError, isFetching, errorUpdatedAt, refetch } = useQuery<SupplierKpis>({
     queryKey: supplierKpisQueryKey,
     queryFn: () => getSupplierKpis(),
-    refetchOnMount: "always",
+    staleTime: KPI_QUERY_STALE_TIME,
   });
 
   const { isInitialError } = useHasLoadedQuery({
