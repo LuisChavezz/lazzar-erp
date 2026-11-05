@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { KPI_QUERY_STALE_TIME } from "@/src/constants/queryCache";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getSupplierKpis } from "../services/actions";
 import type { SupplierKpis } from "../interfaces/supplier-kpis.interface";
@@ -18,13 +17,13 @@ export const supplierKpisQueryKey = ["purchase-orders", "supplier-kpis"] as cons
 /**
  * Indicadores por proveedor (`GET /terceros/proveedores/kpis/`, EC-436).
  *
- * `staleTime` de 30 s (`KPI_QUERY_STALE_TIME`), mismo criterio que
- * `usePurchaseOrderKpis`: el backend los CALCULA en cada lectura a partir de
- * OCs, recepciones, inspecciones y facturas de proveedor que otro usuario
- * puede cambiar en otra sesión; pasados 30 s se releen al volver, y antes se
- * usa la caché. Las mutaciones de esta sesión invalidan la llave (ver arriba).
- * El detalle por factor (`useSupplierKpiDetail`) sí relee en cada apertura,
- * para no quedar más viejo que este ranking.
+ * `refetchOnMount: "always"`: el backend los CALCULA en cada lectura a partir
+ * de OCs, recepciones, inspecciones y facturas de proveedor que otro usuario
+ * puede cambiar en otra sesión. A diferencia de los indicadores de OC y de
+ * recepciones (`PROCUREMENT_KPI_STALE_TIME`), sin caché corta: el detalle por
+ * factor (`useSupplierKpiDetail`) también se lee en cada apertura, y con caché
+ * en uno solo de los dos el detalle podría no cuadrar con el puntaje del
+ * ranking que explica (EC-724, EC-771).
  *
  * Un refetch fallido con datos en caché los conserva y avisa por toast; solo un
  * fallo SIN datos (`isInitialError`) se pinta como error en la sección.
@@ -33,7 +32,7 @@ export const useSupplierKpis = () => {
   const { data, isError, isFetching, errorUpdatedAt, refetch } = useQuery<SupplierKpis>({
     queryKey: supplierKpisQueryKey,
     queryFn: () => getSupplierKpis(),
-    staleTime: KPI_QUERY_STALE_TIME,
+    refetchOnMount: "always",
   });
 
   const { isInitialError } = useHasLoadedQuery({
