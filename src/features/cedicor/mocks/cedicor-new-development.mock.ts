@@ -227,7 +227,7 @@ function generarNewDevelopment(index: number): NewDevelopment {
     faker.number.int({ min: 2, max: 6 })
   );
 
-  const folio = `ND-${fechaCreacion.getFullYear()}-${String(index + 1).padStart(3, '0')}`;
+  const folio = `ND-${fechaCreacion.getUTCFullYear()}-${String(index + 1).padStart(3, '0')}`;
 
   return {
     id: faker.string.uuid(),
