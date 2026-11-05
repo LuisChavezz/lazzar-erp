@@ -229,7 +229,7 @@ function calcularStats(zonas: LocationZone[]): LocationDashboardData["stats"] {
 
 // ─── Constructor principal ────────────────────────────────────────────────────
 
-export function generarLocationDashboardData(): LocationDashboardData {
+function generarLocationDashboardData(): LocationDashboardData {
   const zonaRollos: LocationZone = {
     id: "zona-a",
     nombre: "Zona A: Racks de Rollos",
