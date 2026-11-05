@@ -33,6 +33,7 @@ import {
   type InvoiceWizardStep,
 } from "../constants/invoiceWizard";
 import { InvoiceOrderSelector } from "./InvoiceOrderSelector";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { InvoiceOnboardingStep2 } from "./InvoiceOnboardingStep2";
 import { createInvoiceFromOnboardingMutationKey } from "../hooks/useCreateInvoiceFromOnboarding";
 
@@ -78,10 +79,13 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
 
 function CreateInvoiceWizard({ submitLockRef }: { submitLockRef: RefObject<boolean> }) {
   const [currentStep, setCurrentStep] = useState<InvoiceWizardStep>(INVOICE_WIZARD_STEPS[0]);
-  const [pedidoId, setPedidoId] = useState(0);
+  // El pedido elegido COMPLETO (del listado), no solo su id: al regresar al
+  // Paso 1 el selector lo fija arriba aunque la búsqueda ya no lo traiga.
+  const [selectedOrder, setSelectedOrder] = useState<PedidoListItem | null>(null);
+  const pedidoId = selectedOrder?.id ?? 0;
   // Moneda del pedido elegido (PK): el onboarding no la expone y la factura nace
   // en ella, así que el Paso 2 la usa para pintar el estimado.
-  const [monedaId, setMonedaId] = useState(0);
+  const monedaId = selectedOrder?.moneda ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,13 +99,7 @@ function CreateInvoiceWizard({ submitLockRef }: { submitLockRef: RefObject<boole
         <>
           {/* Selección de pedido sin <form>: Enter en la búsqueda no tiene
               envío implícito que prevenir. Avanzar no crea nada todavía. */}
-          <InvoiceOrderSelector
-            selectedOrderId={pedidoId}
-            onSelect={(order) => {
-              setPedidoId(order.id);
-              setMonedaId(order.moneda);
-            }}
-          />
+          <InvoiceOrderSelector selectedOrder={selectedOrder} onSelect={setSelectedOrder} />
           <div className="flex justify-end pt-2">
             <Button
               variant="primary"
