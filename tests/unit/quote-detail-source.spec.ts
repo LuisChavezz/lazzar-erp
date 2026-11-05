@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
 import {
   isQuoteDetailDefinitiveError,
+  otherQuoteResource,
   quoteComentariosResource,
   readQuoteResource,
+  retainedQuoteComentarios,
   type QuoteDetailSource,
   type QuoteResource,
 } from "@/src/features/quotes/utils/quoteResource";
@@ -132,20 +134,36 @@ test("un error que no es de axios se propaga sin respaldo", async () => {
 
 test("comentarios con source fijo: siempre su recurso, antes y después de leer", () => {
   for (const source of ["cotizaciones", "mesa-control"] as const) {
-    expect(quoteComentariosResource(source, undefined)).toBe(source);
-    expect(quoteComentariosResource(source, source)).toBe(source);
+    expect(quoteComentariosResource(source, undefined, false)).toBe(source);
+    expect(quoteComentariosResource(source, source, false)).toBe(source);
   }
 });
 
 test("comentarios con respaldo: el primero del orden hasta saber cuál sirvió el detalle", () => {
   // Antes de que responda el detalle: el primero, para arrancar en paralelo.
-  expect(quoteComentariosResource("cotizaciones-o-mesa-control", undefined)).toBe("cotizaciones");
-  expect(quoteComentariosResource("mesa-control-o-cotizaciones", undefined)).toBe("mesa-control");
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", undefined, false)).toBe("cotizaciones");
+  expect(quoteComentariosResource("mesa-control-o-cotizaciones", undefined, false)).toBe("mesa-control");
   // El detalle se resolvió por el primero: no cambia.
-  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "cotizaciones")).toBe("cotizaciones");
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "cotizaciones", false)).toBe("cotizaciones");
   // El detalle se resolvió por el segundo: se releen de ahí.
-  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "mesa-control")).toBe("mesa-control");
-  expect(quoteComentariosResource("mesa-control-o-cotizaciones", "cotizaciones")).toBe("cotizaciones");
+  expect(quoteComentariosResource("cotizaciones-o-mesa-control", "mesa-control", false)).toBe("mesa-control");
+  expect(quoteComentariosResource("mesa-control-o-cotizaciones", "cotizaciones", false)).toBe("cotizaciones");
+});
+
+test("comentarios: con el detalle en error definitivo la consulta se apaga, sin volver al primero", () => {
+  for (const source of ["cotizaciones", "mesa-control", "cotizaciones-o-mesa-control", "mesa-control-o-cotizaciones"] as const) {
+    expect(quoteComentariosResource(source, undefined, true)).toBeUndefined();
+  }
+});
+
+test("comentarios: un fallo no definitivo conserva lo que la misma cotización tenía por el otro recurso", () => {
+  const anteriores = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  expect(retainedQuoteComentarios(true, anteriores)).toBe(anteriores);
+  // Sin fallo, o sin nada leído por el otro recurso: no hay nada que conservar.
+  expect(retainedQuoteComentarios(false, anteriores)).toBeUndefined();
+  expect(retainedQuoteComentarios(true, undefined)).toBeUndefined();
+  expect(otherQuoteResource("cotizaciones")).toBe("mesa-control");
+  expect(otherQuoteResource("mesa-control")).toBe("cotizaciones");
 });
 
 test("el 404 y el 403 del detalle son definitivos; un 500 no", () => {

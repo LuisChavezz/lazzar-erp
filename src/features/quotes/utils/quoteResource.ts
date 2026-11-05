@@ -41,11 +41,33 @@ const QUOTE_RESOURCE_ORDER: Record<QuoteDetailSource, readonly QuoteResource[]> 
  * respaldo —en el caso común el primero responde—, y solo si el detalle se
  * resolvió por el segundo se vuelven a leer de ahí. Con un `source` fijo es
  * siempre ese recurso.
+ *
+ * `undefined` (consulta apagada) cuando el detalle terminó en un error
+ * definitivo: ningún recurso la sirve y la vista ya muestra el error, así que
+ * leer comentarios sería una petición sin efecto.
  */
 export const quoteComentariosResource = (
   source: QuoteDetailSource,
-  resolved: QuoteResource | undefined
-): QuoteResource => resolved ?? QUOTE_RESOURCE_ORDER[source][0];
+  resolved: QuoteResource | undefined,
+  isDetailUnavailable: boolean
+): QuoteResource | undefined =>
+  isDetailUnavailable ? undefined : (resolved ?? QUOTE_RESOURCE_ORDER[source][0]);
+
+/**
+ * Comentarios a mostrar cuando la lectura del recurso actual FALLÓ sin ser
+ * definitiva (500, red): los que la MISMA cotización ya tenía leídos por el
+ * otro recurso (`otherResourceData`), en vez de cambiarlos por un error. Ambos
+ * recursos sirven el mismo contenido. `undefined` si no hay nada que conservar
+ * o la lectura no falló así.
+ */
+export const retainedQuoteComentarios = <T>(
+  isNonDefinitiveFailure: boolean,
+  otherResourceData: T | undefined
+): T | undefined => (isNonDefinitiveFailure ? otherResourceData : undefined);
+
+/** El otro de los dos recursos. */
+export const otherQuoteResource = (resource: QuoteResource): QuoteResource =>
+  resource === "cotizaciones" ? "mesa-control" : "cotizaciones";
 
 /**
  * Errores definitivos del detalle de una cotización: el 404 (no existe o no es
