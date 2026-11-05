@@ -62,12 +62,11 @@ function DetailRow({
 interface QuoteDetailsProps {
   quoteId: number;
   /**
-   * Recurso por el que se pregunta primero (ante un 404 se reintenta en el
-   * otro). Se omite en todas las vistas salvo en Mesa de Control, que pasa
-   * `"mesa-control"` porque su usuario no es el vendedor y
-   * `/ventas/cotizaciones/{id}/` le responde 404.
+   * Recurso por el que se leen el detalle y su historial de comentarios —el
+   * mismo para los dos—. Obligatorio: cada vista declara el suyo (ver
+   * `QuoteDetailSource`).
    */
-  source?: QuoteDetailSource;
+  source: QuoteDetailSource;
 }
 
 export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {

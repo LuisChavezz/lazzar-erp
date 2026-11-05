@@ -215,7 +215,7 @@ export function useQuoteEditForm(quoteId: number) {
     isFetchedAfterMount: isQuoteFetchedAfterMount,
     error: quoteError,
     refetch: refetchQuote,
-  } = useQuote(quoteId);
+  } = useQuote(quoteId, "cotizaciones");
   const isEditableQuoteStatus = canEditQuote(quoteData?.estatus);
   /* 404/403: denegaciones DEFINITIVAS del backend — la cotización no existe
    * (404) o el backend autenticó la petición y la denegó explícitamente (403).

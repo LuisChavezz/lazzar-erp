@@ -176,7 +176,7 @@ export const RecentQuotes = () => {
             />
           }
         >
-          <LazyQuoteDetails quoteId={selectedQuote.id} />
+          <LazyQuoteDetails quoteId={selectedQuote.id} source="cotizaciones" />
         </MainDialog>
       ) : null}
     </section>

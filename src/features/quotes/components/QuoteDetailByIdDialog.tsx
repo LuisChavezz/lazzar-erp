@@ -11,15 +11,12 @@ interface QuoteDetailByIdDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Recurso por el que `QuoteDetails` pregunta primero. Se omite en el pedido
-   * 360° y en la paleta global: ahí lo común es abrir cotizaciones de cualquier
-   * estatus, que es justo lo que `/ventas/cotizaciones/` sirve —y cuando quien
-   * mira es de mesa de control y no el vendedor, el respaldo por 404 de
-   * `getQuoteDetailById` la recupera por `/ventas/mesa-control/`—. Las
-   * notificaciones de `cotizacion_en_revision` pasan `"mesa-control"` porque
-   * ahí el caso común es el inverso.
+   * Recurso por el que `QuoteDetails` lee el detalle y sus comentarios.
+   * Obligatorio: el buscador global pasa `"cotizaciones"` (sus resultados
+   * salen de ese mismo alcance), las notificaciones lo eligen por `tipo` y rol,
+   * y el pedido 360° pasa `"cotizaciones-o-mesa-control"` (EC-787).
    */
-  source?: QuoteDetailSource;
+  source: QuoteDetailSource;
   /**
    * Opcional, se pasa tal cual a `MainDialog`: corre cuando el diálogo YA se
    * desmontó (terminada la animación de salida). Sirve para soltar el id justo

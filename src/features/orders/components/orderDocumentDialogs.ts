@@ -6,7 +6,7 @@ import { ProductionOrderDetailByIdDialog } from "@/src/features/production-order
 import { PickingDetailByIdDialog } from "@/src/features/picking/components/PickingDetailByIdDialog";
 import { PackingDetailByIdDialog } from "@/src/features/packing/components/PackingDetailByIdDialog";
 import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/components/PurchaseOrderDetailDialog";
-import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
+import { PedidoQuoteDetailDialog } from "./PedidoQuoteDetailDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import { invoiceDetailHref, invoiceDetailPath } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 
@@ -65,8 +65,8 @@ export const ORDER_DOCUMENT_DIALOGS: Record<string, DocDetailDialog> = {
   // exactamente la del registro (`{ orderId, open, onOpenChange }`).
   orden_compra: PurchaseOrderDetailDialog,
   // Cotización: `QuoteDetails` es contenido self-fetching (no un diálogo);
-  // `QuoteDetailByIdDialog` solo lo envuelve en un MainDialog (sin action/hook).
-  cotizacion: QuoteDetailByIdDialog,
+  // `PedidoQuoteDetailDialog` lo envuelve fijando el recurso de lectura (EC-787).
+  cotizacion: PedidoQuoteDetailDialog,
   // La factura NO está aquí: tiene página propia (ver `ORDER_DOCUMENT_ROUTES`).
   // Movimiento de inventario sí es self-fetching, pero con prop `movementId`
   // no-nullable; `StockMovementDetailByIdDialog` solo adapta la firma.

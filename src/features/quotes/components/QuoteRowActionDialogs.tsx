@@ -96,7 +96,7 @@ export function QuoteRowActionDialogs({
             />
           }
         >
-          <QuoteDetails quoteId={quote.id} />
+          <QuoteDetails quoteId={quote.id} source="cotizaciones" />
         </MainDialog>
       )}
 

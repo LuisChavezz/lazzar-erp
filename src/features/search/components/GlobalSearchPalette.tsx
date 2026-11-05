@@ -477,6 +477,9 @@ export function GlobalSearchPalette() {
       */}
       <QuoteDetailByIdDialog
         orderId={quoteId}
+        // El buscador acota cotizaciones con `cotizaciones_visibles`, el mismo
+        // alcance que `/ventas/cotizaciones/{id}/`: todo resultado se lee ahí.
+        source="cotizaciones"
         open={isQuoteOpen}
         onOpenChange={setQuoteOpen}
         onCloseAutoFocus={() => {

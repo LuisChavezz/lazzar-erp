@@ -220,7 +220,8 @@ export const Notifications = () => {
       */}
       <QuoteDetailByIdDialog
         orderId={quoteTarget?.quoteId ?? null}
-        source={quoteTarget?.source}
+        // Sin destino (`null`) la consulta está apagada y el recurso no se usa.
+        source={quoteTarget?.source ?? "cotizaciones"}
         open={isQuoteOpen}
         onOpenChange={setQuoteOpen}
         onCloseAutoFocus={() => {

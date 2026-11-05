@@ -13,15 +13,16 @@ export const QUOTE_COMENTARIOS_KEY = "quote-comentarios";
 
 /**
  * Historial de comentarios (rechazos y reenvíos) de una cotización. `source`
- * es el recurso por el que se pregunta primero, igual que en `useQuote`.
+ * debe ser el MISMO que el del detalle al que acompaña (`useQuote`): ambos
+ * recursos tienen los mismos alcances que su detalle.
  *
  * Devuelve `data` crudo: el consumidor distingue "aún no cargó" de "cargó
- * vacío". Un 404 es definitivo (la cotización no es visible por ninguna de
- * las dos rutas): no se reintenta ni avisa por toast.
+ * vacío". Un 404 es definitivo (la cotización no es visible por ese recurso):
+ * no se reintenta ni avisa por toast.
  */
 export const useQuoteComentarios = (
   quoteId: number,
-  source: QuoteDetailSource = "cotizaciones"
+  source: QuoteDetailSource
 ) =>
   useGuardedQuery<QuoteComentario[]>(
     {
