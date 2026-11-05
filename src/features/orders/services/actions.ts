@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { PedidoListItem, PedidoDetail } from "../interfaces/order.interface";
 import type {
   PedidoMesaControlUpdate,
@@ -36,6 +37,32 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
   const response = await v1_api.get<PedidoListItem[]>("/ventas/pedidos/", { params });
   return response.data;
 }
+
+/**
+ * Filtros de la búsqueda de pedidos de los selectores. Solo los que
+ * `GET /ventas/pedidos/` aplica de verdad: `q` (folio, OC y nombre, razón
+ * social y RFC del cliente) y `estatus` (lista de códigos separados por coma,
+ * de INCLUSIÓN). `limit` pide la respuesta paginada (`{count, results}`).
+ */
+export interface PedidoSearchParams {
+  q?: string;
+  estatus?: string;
+  limit: number;
+}
+
+/**
+ * Una página de la búsqueda de pedidos (`?limit=`, sin `offset`): los
+ * selectores muestran las primeras coincidencias y el `count` total, y el
+ * usuario acota tecleando en vez de paginar.
+ */
+export const searchOrders = async (
+  params: PedidoSearchParams,
+): Promise<PaginatedListResponse<PedidoListItem>> => {
+  const response = await v1_api.get<PaginatedListResponse<PedidoListItem>>("/ventas/pedidos/", {
+    params,
+  });
+  return response.data;
+};
 
 /**
  * Lee el detalle de UN pedido, con sus líneas producto+color y tallas
