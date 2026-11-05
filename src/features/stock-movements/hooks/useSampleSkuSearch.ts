@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useDebounce } from "@/src/hooks/useDebounce";
+import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
 import { searchSampleSkus } from "../services/actions";
 
 /**
@@ -9,7 +9,7 @@ import { searchSampleSkus } from "../services/actions";
  * ya buscado es inmediato.
  */
 export function useSampleSkuSearch(search: string) {
-  const term = useDebounce(search.trim(), 250);
+  const { term, isDebouncing } = useServerSearchTerm(search, 250);
   const query = useQuery({
     queryKey: ["skus-muestra", term],
     queryFn: () => searchSampleSkus(term),
@@ -19,7 +19,7 @@ export function useSampleSkuSearch(search: string) {
   return {
     results: query.data ?? [],
     // Mientras corre el debounce o la petición: el texto aún no tiene respuesta.
-    isSearching: search.trim() !== term || query.isFetching,
+    isSearching: isDebouncing || query.isFetching,
     isError: query.isError,
     term,
   };
