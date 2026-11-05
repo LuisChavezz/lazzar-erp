@@ -16,15 +16,22 @@
 export const LIST_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos
 
 /**
- * `staleTime` corto de los indicadores de Compras (órdenes de compra,
- * recepciones y proveedores, EC-771). El backend los CALCULA en cada lectura,
- * así que el `staleTime` global de 15 min mostraría cifras viejas al volver a
- * la pantalla; pero releerlos en CADA montaje repetía la petición al ir y venir
+ * `staleTime` corto de los indicadores de Compras de órdenes de compra y de
+ * recepciones (EC-771). El backend los CALCULA en cada lectura, así que el
+ * `staleTime` global de 15 min mostraría cifras viejas al volver a la
+ * pantalla; pero releerlos en CADA montaje repetía la petición al ir y venir
  * entre las pestañas de Compras. Con 30 s, volver enseguida usa la caché y
  * volver más tarde relee. Lo que cambia en esta sesión no espera a que venzan:
  * sus mutaciones invalidan la llave. Cabe en el `gcTime` default (5 min).
+ *
+ * Los demás indicadores siguen con `refetchOnMount: "always"` a propósito: los
+ * de pedidos, clientes y OP (`usePedidoKpis`, `useCustomerKpis`,
+ * `useProductionOrderKpis`) porque pocas mutaciones —o ninguna de otros
+ * módulos— invalidan su llave (p. ej. autorizar en Mesa de Control no toca
+ * `["pedido-kpis"]`), y el ranking de proveedores (`useSupplierKpis`) para
+ * cuadrar con su detalle por factor, que se lee fresco en cada apertura.
  */
-export const KPI_QUERY_STALE_TIME = 30 * 1000; // 30 segundos
+export const PROCUREMENT_KPI_STALE_TIME = 30 * 1000; // 30 segundos
 
 /**
  * `retry` por defecto del `QueryClient` (`Provider.tsx`). Exportado para que
