@@ -63,6 +63,10 @@ export const handleDrfWriteError = <F extends string>(
 export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
+/** ¿El error es un 403 de la API? (el usuario no tiene permiso para la acción). */
+export const isForbiddenError = (error: unknown): boolean =>
+  error instanceof AxiosError && error.response?.status === 403;
+
 /** 4xx pasajeros: el servidor tardó (408) o pidió bajar el ritmo (429). */
 const TRANSIENT_CLIENT_STATUSES = new Set([408, 429]);
 
@@ -81,8 +85,7 @@ export const isClientError = (error: unknown): boolean => {
  * mismo: el registro ya no existe o el usuario ya no puede verlo.
  */
 export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
-  error instanceof AxiosError &&
-  (error.response?.status === 404 || error.response?.status === 403);
+  isNotFoundError(error) || isForbiddenError(error);
 
 /**
  * Motivo de un `403` de DRF (`{"detail": "..."}`), o `undefined` si el error no
@@ -95,9 +98,7 @@ export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
  * de campo. Este solo mira el `403`; el resto conserva su manejo.
  */
 export const forbiddenDetailMessage = (error: unknown): string | undefined =>
-  error instanceof AxiosError && error.response?.status === 403
-    ? firstDrfFieldMessage(error)
-    : undefined;
+  isForbiddenError(error) ? firstDrfFieldMessage(error) : undefined;
 
 /**
  * ¿El backend RECHAZÓ la acción por una regla de negocio (400, 403 o 409)?

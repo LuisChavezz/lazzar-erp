@@ -1,7 +1,7 @@
-import { AxiosError } from "axios";
 import {
   forbiddenDetailMessage,
   handleDrfWriteError,
+  isForbiddenError,
   isNotFoundError,
 } from "@/src/utils/drfWriteErrors";
 import {
@@ -40,7 +40,7 @@ export const purchaseOrderCriticalPathSaveErrorMessage = (
   setFieldError?: (field: PurchaseOrderCriticalPathField, message: string) => void,
 ): string => {
   if (isNotFoundError(error)) return PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE;
-  if (error instanceof AxiosError && error.response?.status === 403) {
+  if (isForbiddenError(error)) {
     return forbiddenDetailMessage(error) ?? PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE;
   }
   return handleDrfWriteError(
