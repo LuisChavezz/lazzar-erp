@@ -6,7 +6,7 @@ import { SearchInput } from "@/src/components/SearchInput";
 import { CheckIcon, LoadingSpinnerIcon } from "@/src/components/Icons";
 import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { PriceInput } from "@/src/components/PriceInput";
-import { useDebounce } from "@/src/hooks/useDebounce";
+import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import type { PurchaseOrderOnboardingProducto } from "../interfaces/purchase-order-onboarding.interface";
 import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
@@ -193,7 +193,7 @@ export function PurchaseOrderProductLinesList({
   // ── Búsqueda en el servidor (catálogo recortado) ─────────────────────────
   // Nunca en "solo seleccionados": ahí se busca dentro de lo congelado. La
   // búsqueda pega al servidor: 350 ms, como el selector de SKU.
-  const debouncedQuery = useDebounce(searchQuery.trim(), 350);
+  const { term: debouncedQuery, isDebouncing } = useServerSearchTerm(searchQuery, 350);
   const searchesServer = catalogTruncated && !showOnlySelected;
   const serverSearch = usePurchaseOrderProductSearch(debouncedQuery, { enabled: searchesServer });
   // Al borrar el texto, la lista vuelve al catálogo al instante, sin esperar a
@@ -203,7 +203,7 @@ export function PurchaseOrderProductLinesList({
   // las coincidencias del servidor mostradas son de la anterior.
   const isSearching =
     showsServerResults &&
-    (serverSearch.isPlaceholderData || debouncedQuery !== searchQuery.trim());
+    (serverSearch.isPlaceholderData || isDebouncing);
 
   // ── Filtrado por búsqueda ─────────────────────────────────────────────────
   // El snapshot acota el universo ANTES del filtro de texto, así que escribir

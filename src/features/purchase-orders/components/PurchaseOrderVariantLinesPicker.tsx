@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
 import { LoadingSpinnerIcon } from "@/src/components/Icons";
-import { useDebounce } from "@/src/hooks/useDebounce";
+import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { usePurchaseOrderVariantSearch } from "../hooks/usePurchaseOrderVariantSearch";
 import { onboardingSearchRejection } from "../utils/onboardingLoadError";
@@ -46,7 +46,7 @@ export function PurchaseOrderVariantLinesPicker({
 }: PurchaseOrderVariantLinesPickerProps) {
   const [query, setQuery] = useState("");
   // La búsqueda pega al servidor: 350 ms, como el onboarding de etiquetas RFID.
-  const debouncedQuery = useDebounce(query.trim(), 350);
+  const { term: debouncedQuery, isDebouncing } = useServerSearchTerm(query, 350);
   const { variantes, hasLoaded, isInitialError, error, isFetching, isPlaceholderData, refetch } =
     usePurchaseOrderVariantSearch(debouncedQuery);
   // Un 4xx definitivo trae su motivo y no se ofrece "Reintentar".
@@ -60,7 +60,7 @@ export function PurchaseOrderVariantLinesPicker({
   const results = variantes.filter((v) => !pinnedKeys.has(lineKeyVariante(v.id)));
   // Hay una búsqueda en camino (tecleando, o la nueva llave aún sin respuesta):
   // los resultados mostrados son de la anterior.
-  const isSearching = isPlaceholderData || (isFetching && !hasLoaded) || debouncedQuery !== query.trim();
+  const isSearching = isPlaceholderData || (isFetching && !hasLoaded) || isDebouncing;
 
   return (
     <div className="space-y-4">

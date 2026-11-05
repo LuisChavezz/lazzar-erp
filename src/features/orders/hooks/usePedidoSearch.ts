@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
-import { useDebounce } from "@/src/hooks/useDebounce";
+import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { searchOrders } from "../services/actions";
 import { pedidoSearchQueryKey } from "../constants/ordersQueryKeys";
@@ -72,8 +72,8 @@ const PEDIDO_SEARCH_DEBOUNCE_MS = 350;
  */
 export const usePedidoSearchField = ({ estatus }: { estatus?: string } = {}) => {
   const [search, setSearch] = useState("");
-  const q = useDebounce(search.trim(), PEDIDO_SEARCH_DEBOUNCE_MS);
-  const query = usePedidoSearch({ q, estatus });
-  const isSearching = query.isPlaceholderData || q !== search.trim();
+  const { term, isDebouncing } = useServerSearchTerm(search, PEDIDO_SEARCH_DEBOUNCE_MS);
+  const query = usePedidoSearch({ q: term, estatus });
+  const isSearching = query.isPlaceholderData || isDebouncing;
   return { search, setSearch, isSearching, ...query };
 };
