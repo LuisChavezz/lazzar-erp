@@ -26,7 +26,7 @@ const pluralize = (count: number, singular: string, plural: string) =>
  * armazón que `OperationsOrderPanel`, sin KPIs: `DataTable` montada siempre,
  * error de la tabla solo en la carga inicial, y spinner/refresco acotados a SU
  * clave exacta. La programación se hace desde "Pedidos"; sus mutaciones
- * invalidan `["orders"]` por prefijo, así que esta lista se refresca sola.
+ * invalidan el prefijo `["orders"]` (`ORDERS_QUERY_KEY`), así que esta lista se refresca sola.
  *
  * El aplanado vive aquí (no en un `select` de `useOrders`) para no tocar el
  * hook ni la caché que comparte con otras vistas; React Compiler lo memoriza.
