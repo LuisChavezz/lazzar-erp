@@ -172,15 +172,26 @@ export const REQUIRED_COLOR_KEY = "color";
  */
 const PROCESS_COMPATIBILITY_KEY = "compatibilidad_proceso";
 
-/** Todos los mensajes de `compatibilidad_proceso`, unidos; `undefined` si no viene. */
-export const extractProcessCompatibilityMessage = (data: unknown): string | undefined => {
+/**
+ * Todos los mensajes de un RECHAZO que llega como lista (un mensaje por
+ * elemento afectado), unidos con un espacio; `undefined` si la clave no viene o
+ * no trae ningún mensaje. Acepta también el string suelto.
+ */
+export const extractJoinedRejectionMessage = (
+  data: unknown,
+  key: string
+): string | undefined => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
-  const value = (data as Record<string, unknown>)[PROCESS_COMPATIBILITY_KEY];
+  const value = (data as Record<string, unknown>)[key];
   const messages = (Array.isArray(value) ? value : [value]).filter(
     (message): message is string => typeof message === "string" && message.trim().length > 0
   );
   return messages.length > 0 ? messages.join(" ") : undefined;
 };
+
+/** Todos los mensajes de `compatibilidad_proceso`, unidos; `undefined` si no viene. */
+export const extractProcessCompatibilityMessage = (data: unknown): string | undefined =>
+  extractJoinedRejectionMessage(data, PROCESS_COMPATIBILITY_KEY);
 
 /**
  * `detalle` como RECHAZO plano (`{"detalle": "Partida N: ..."}`, p. ej. el tope
