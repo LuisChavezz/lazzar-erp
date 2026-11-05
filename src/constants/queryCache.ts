@@ -16,6 +16,17 @@
 export const LIST_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos
 
 /**
+ * `staleTime` corto de los indicadores de Compras (órdenes de compra,
+ * recepciones y proveedores, EC-771). El backend los CALCULA en cada lectura,
+ * así que el `staleTime` global de 15 min mostraría cifras viejas al volver a
+ * la pantalla; pero releerlos en CADA montaje repetía la petición al ir y venir
+ * entre las pestañas de Compras. Con 30 s, volver enseguida usa la caché y
+ * volver más tarde relee. Lo que cambia en esta sesión no espera a que venzan:
+ * sus mutaciones invalidan la llave. Cabe en el `gcTime` default (5 min).
+ */
+export const KPI_QUERY_STALE_TIME = 30 * 1000; // 30 segundos
+
+/**
  * `retry` por defecto del `QueryClient` (`Provider.tsx`). Exportado para que
  * las políticas de `retry` propias (`retryUnlessClientError`) sigan al global
  * en vez de copiar su número.
