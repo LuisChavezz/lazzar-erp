@@ -50,30 +50,21 @@ test.describe("toPedidoSearchParams", () => {
 
 test.describe("filtros de estatus por exclusión", () => {
   test("pedidoEstatusParamExcept deja todo el mapa menos lo excluido, en orden", () => {
-    const todos = Object.values(PEDIDO_ESTATUS);
-    expect(pedidoEstatusParamExcept([])).toBe(todos.join(","));
-    expect(pedidoEstatusParamExcept([PEDIDO_ESTATUS.CANCELADO])).toBe(
-      todos.filter((estatus) => estatus !== PEDIDO_ESTATUS.CANCELADO).join(","),
+    expect(pedidoEstatusParamExcept([])).toBe("1,2,3,4,5");
+    expect(pedidoEstatusParamExcept([PEDIDO_ESTATUS.CANCELADO])).toBe("1,2,3,4");
+  });
+
+  test("un estatus excluido no viaja en el filtro", () => {
+    expect(pedidoEstatusParamExcept([PEDIDO_ESTATUS.POR_AUTORIZAR]).split(",")).not.toContain(
+      String(PEDIDO_ESTATUS.POR_AUTORIZAR),
     );
   });
 
   test("facturables: todo menos Borrador, Por autorizar y Cancelado", () => {
-    const excluidos: number[] = [
-      PEDIDO_ESTATUS.BORRADOR,
-      PEDIDO_ESTATUS.POR_AUTORIZAR,
-      PEDIDO_ESTATUS.CANCELADO,
-    ];
-    expect(INVOICEABLE_PEDIDO_ESTATUS).toBe(
-      Object.values(PEDIDO_ESTATUS)
-        .filter((estatus) => !excluidos.includes(estatus))
-        .join(","),
-    );
-    // Con el mapa de hoy:
     expect(INVOICEABLE_PEDIDO_ESTATUS).toBe("3,4");
   });
 
   test("ligables a una OC: todo menos Cancelado", () => {
-    expect(LINKABLE_PEDIDO_ESTATUS.split(",")).not.toContain(String(PEDIDO_ESTATUS.CANCELADO));
     expect(LINKABLE_PEDIDO_ESTATUS).toBe("1,2,3,4");
   });
 });
