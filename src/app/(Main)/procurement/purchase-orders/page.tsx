@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Loader } from "@/src/components/Loader";
 import { PurchaseOrderKpisSection } from "@/src/features/purchase-orders/components/PurchaseOrderKpisSection";
 import { PurchaseOrderView } from "@/src/features/purchase-orders/components/PurchaseOrderView";
-import { purchaseOrderKpisQueryKey } from "@/src/features/purchase-orders/hooks/usePurchaseOrderKpis";
+import { purchaseOrderKpisQueryKey } from "@/src/features/purchase-orders/constants/purchaseOrderKpis";
 
 // Las llaves que "Actualizar datos" de la tabla invalida además de la lista:
 // los indicadores de arriba, que con su caché de 30 s no se releerían solos.

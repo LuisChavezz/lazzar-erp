@@ -17,7 +17,8 @@ import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { ClockIcon, ComprasIcon, ExclamationTriangleIcon, WalletIcon } from "@/src/components/Icons";
-import { purchaseOrderKpisQueryKey, usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
+import { usePurchaseOrderKpis } from "../hooks/usePurchaseOrderKpis";
+import { purchaseOrderKpisQueryKey } from "../constants/purchaseOrderKpis";
 import type {
   PurchaseOrderKpis,
   PurchaseOrderOpenKpi,
