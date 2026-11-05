@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
+import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { emitInvoice, patchInvoice } from "../services/actions";
@@ -168,7 +168,7 @@ export const useEmitInvoice = (invoiceId: number) => {
       if (!mayHaveEmitted) return;
       // Prefijos: alcanzan también las variantes con filtros y los detalles.
       void invalidatePedidoProgress(queryClient);
-      queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable-detail"] });
       queryClient.invalidateQueries({ queryKey: ["polizas"] });

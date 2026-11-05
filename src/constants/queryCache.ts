@@ -9,7 +9,8 @@
  * acumularían en memoria.
  *
  * Una query toma el mayor `gcTime` de los observadores que la montaron, así
- * que en las llaves compartidas con otros módulos (`["orders"]`) solo lo pasan
+ * que en las llaves compartidas con otros módulos (la lista completa de pedidos,
+ * `ordersQueryKey()`) solo lo pasan
  * los consumidores de esos dos módulos.
  */
 export const LIST_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos

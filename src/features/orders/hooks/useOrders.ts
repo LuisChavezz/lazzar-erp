@@ -4,17 +4,29 @@ import { getOrders, type OrdersQueryParams } from "../services/actions";
 import { PedidoListItem } from "../interfaces/order.interface";
 
 /**
- * Construye la queryKey de la lista de pedidos. Sin filtros conserva la clave
- * histórica `["orders"]` (la que ya invalidan varios módulos); con filtros
- * agrega los params para que React Query cachee cada variante por separado.
+ * Prefijo de TODAS las consultas de `GET /ventas/pedidos/`: la lista completa
+ * (`ordersQueryKey`), las búsquedas de los selectores
+ * (`["orders", "search", …]`) y cualquier lista paginada que cuelgue de él.
+ * Las mutaciones que cambian pedidos invalidan ESTE prefijo, nunca una llave
+ * concreta, para refrescar todas las variantes a la vez.
  */
-export const ordersQueryKey = (params?: OrdersQueryParams) =>
-  params ? (["orders", params] as const) : (["orders"] as const);
+export const ORDERS_QUERY_KEY = ["orders"] as const;
 
 /**
- * Llave y función de la lista de pedidos, en UN solo lugar: las usan este hook
- * y quien prefetchea la misma lista (p. ej. el wizard de edición de OC), así
- * que lo prefetcheado es exactamente lo que el hook lee.
+ * Llave de la lista COMPLETA (sin paginar) de pedidos, con sus filtros si los
+ * hay. Va bajo `"full"` y no en el prefijo pelado: así ninguna búsqueda ni
+ * página comparte llave con ella, y un `exact: true` sobre esta llave toca solo
+ * esta variante. Para invalidar todo, `ORDERS_QUERY_KEY`.
+ */
+export const ordersQueryKey = (params?: OrdersQueryParams) =>
+  params
+    ? ([...ORDERS_QUERY_KEY, "full", params] as const)
+    : ([...ORDERS_QUERY_KEY, "full"] as const);
+
+/**
+ * Llave y función de la lista completa de pedidos, en UN solo lugar: las usan
+ * este hook y quien prefetchee la misma lista, así que lo prefetcheado es
+ * exactamente lo que el hook lee.
  */
 export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
   queryKey: ordersQueryKey(params),
@@ -25,6 +37,11 @@ export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
 });
 
 /**
+ * Lista COMPLETA de pedidos. Solo para las vistas que todavía derivan algo del
+ * conjunto entero (Mesa de Control, Compras › Pedidos, Programados, Mis
+ * pedidos, CxC pendiente); un selector que solo busca un pedido usa
+ * `usePedidoSearch`, que pide una página al servidor.
+ *
  * `gcTime`: opcional, para que un consumidor alargue la vida en caché de la
  * lista (Compras y Mesa de Control pasan `LIST_QUERY_GC_TIME`); sin él, el global.
  */
@@ -53,4 +70,3 @@ export const useOrders = (params?: OrdersQueryParams, { gcTime }: { gcTime?: num
     error,
   };
 };
-

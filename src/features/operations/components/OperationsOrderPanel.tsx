@@ -25,8 +25,9 @@ import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
 
 // Componente principal de la Mesa de Control de Pedidos.
 export function OperationsOrderPanel() {
-  // Mesa de Control conserva su lista más tiempo en caché (EC-694); `["orders"]`
-  // es compartida y los demás consumidores usan el global.
+  // Mesa de Control conserva su lista más tiempo en caché (EC-694); la lista
+  // completa (`ordersQueryKey()`) es compartida y los demás consumidores usan
+  // el global.
   const { orders, isLoading, isError, error, hasLoaded } = useOrders(undefined, {
     gcTime: LIST_QUERY_GC_TIME,
   });
@@ -37,9 +38,11 @@ export function OperationsOrderPanel() {
   // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
   const queryClient = useQueryClient();
-  // `exact`: solo la clave SIN params de este panel. Las variantes con filtros
-  // (`["orders", params]`, p. ej. "Mis pedidos") comparten el prefijo y, sin
-  // esto, encenderían el spinner de esta tabla. Mismo criterio que `OrderListView`.
+  // `exact`: solo la lista completa SIN params de este panel. Las variantes con
+  // filtros (`["orders", "full", params]`, p. ej. "Mis pedidos") y las búsquedas
+  // de los selectores (`["orders", "search", …]`) cuelgan de ella o de su
+  // prefijo y, sin esto, encenderían el spinner de esta tabla. Mismo criterio
+  // que `OrderListView`.
   const isRefetching = useIsFetching({ queryKey: ordersQueryKey(), exact: true }) > 0;
 
   // El estado del diálogo vive aquí, no en la celda, para que sobreviva si el

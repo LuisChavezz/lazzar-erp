@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import toast from "react-hot-toast";
-import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
+import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
 import { createInvoiceFromOnboarding } from "../services/actions";
@@ -93,7 +93,7 @@ export const useCreateInvoiceFromOnboarding = () => {
       queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(payload.pedido) });
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(payload.pedido) });
       // Prefijo: alcanza también las variantes con filtros de la lista.
-      queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       toast.success(`Factura ${invoice.folio} creada como Borrador`);
     },
   });

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
 import { toastWarning } from "@/src/utils/toastWarning";
-import { ordersQueryKey } from "@/src/features/orders/hooks/useOrders";
+import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
 import { cancelInvoice } from "../services/actions";
@@ -171,7 +171,7 @@ export const useCancelInvoice = (invoiceId: number) => {
         queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(invoice.pedido) });
       }
       // Prefijos: alcanzan también las variantes con filtros y los detalles.
-      queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
       queryClient.invalidateQueries({ queryKey: ["accounts-receivable-detail"] });
       queryClient.invalidateQueries({ queryKey: ["polizas"] });

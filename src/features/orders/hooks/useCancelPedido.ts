@@ -13,7 +13,7 @@ import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useSche
 import { cancelPedido } from "../services/actions";
 import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
-import { ordersQueryKey } from "./useOrders";
+import { ORDERS_QUERY_KEY } from "./useOrders";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
@@ -122,7 +122,7 @@ export const useCancelPedido = (pedidoId: number) => {
     // devolver existencias al cancelarse. Fuera las consultas de ESTE pedido
     // (su "Programar pedido" ya salió arriba y releerlo daría 404).
     void invalidateStockQueries(queryClient, { exclude: isRecordQuery });
-    void queryClient.invalidateQueries({ queryKey: ordersQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     // Un pedido cancelado deja de estar por surtir (Pedidos de Almacén).
     void invalidateScheduledPedidos(queryClient);
     void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
