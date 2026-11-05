@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
+import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getPedidoTrazabilidad } from "../services/actions";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
 
@@ -51,6 +53,9 @@ export const usePedidoTrazabilidad = (
       queryFn: () => getPedidoTrazabilidad(id),
       enabled: isEnabled,
       refetchOnMount: "always",
+      // Un 404/403 (pedido inexistente, cancelado o de otra empresa) no cambia
+      // al reintentarlo.
+      retry: retryUnlessClientError,
     });
 
   const wasEnabledRef = useRef(isEnabled);
@@ -66,6 +71,9 @@ export const usePedidoTrazabilidad = (
     errorUpdatedAt,
     toastId: "pedido-trazabilidad-refetch-error",
     errorMessage: "No se pudo actualizar la trazabilidad. Mostrando datos anteriores.",
+    // Un 404/403 significa que el PEDIDO ya no está disponible: lo explica la
+    // página ("Pedido no encontrado"), no un toast de la trazabilidad encima.
+    silent: isNotFoundOrForbiddenError(error),
   });
 
   return { data, hasLoaded, isInitialError, isLoading, isFetching, error, refetch };

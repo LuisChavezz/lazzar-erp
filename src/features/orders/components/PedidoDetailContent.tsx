@@ -255,12 +255,19 @@ export function PedidoDetailContent({
   const router = useRouter();
   const queryClient = useQueryClient();
   const sheet = resolveOrderDetailSheet(rawSheet);
+  // ¿Lo que pinta la página ya se sabe que NO es el pedido? Id inválido, o el
+  // pedido en uno de los estados de error que cambian la página (404, carga
+  // inicial fallida). Las consultas que van en paralelo con el pedido se
+  // apagan con esto, que solo mira fallos ya ocurridos: nunca esperan a que el
+  // pedido cargue, que reintroduciría la cascada (EC-768).
+  const isValidPedidoId = Number.isInteger(numericId) && numericId > 0;
+  const isPedidoUnavailable = !isValidPedidoId || isNotFoundError(error) || isInitialError;
   // Catálogo SAT de "Información Comercial" (régimen fiscal) pedido desde el
   // montaje, en paralelo con el pedido: la sección solo se monta cuando el
   // pedido ya llegó, y pedirlo ahí lo encadenaba detrás (EC-768). Misma llave
   // que la sección, que lo encuentra fresco (24 h) y no lo vuelve a pedir; sus
   // respaldos mientras carga no cambian. Solo en la hoja que lo pinta.
-  useSatInfo({ enabled: sheet === "order" });
+  useSatInfo({ enabled: sheet === "order" && !isPedidoUnavailable });
   // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
   // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
   // de departamento sea exactamente `MESACONTROL`—, así que esto solo gobierna
@@ -288,10 +295,11 @@ export function PedidoDetailContent({
   // Trazabilidad de la hoja de Avances, pedida desde el montaje y en paralelo
   // con el pedido: la sección solo se monta cuando el pedido ya llegó (EC-768).
   // Esta es la ÚNICA consulta de la página: la sección la recibe por props.
-  // Apagada en la hoja "Pedido" (no se pinta ahí) y tras cancelar (respondería
-  // 404); al volver a encenderse se relee (`usePedidoTrazabilidad`).
+  // Apagada en la hoja "Pedido" (no se pinta ahí), tras cancelar (respondería
+  // 404) y mientras la página muestra un error del pedido; al volver a
+  // encenderse se relee (`usePedidoTrazabilidad`).
   const trazabilidad = usePedidoTrazabilidad(numericId, {
-    enabled: sheet === "progress" && !cancelled,
+    enabled: sheet === "progress" && !cancelled && !isPedidoUnavailable,
   });
   // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
   // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
@@ -503,8 +511,12 @@ export function PedidoDetailContent({
                 // pide AL CLIC para que corra mientras llega la ruta y su chunk
                 // (EC-768). Misma llave y opciones que `useQuoteOnboardingData`,
                 // que lo encuentra fresco al montar y no lo vuelve a pedir; si
-                // ya está fresco en caché, esto no pide nada.
-                onClick={() => {
+                // ya está fresco en caché, esto no pide nada. Un clic que abre
+                // la ruta en OTRA pestaña o ventana (modificadores, botón no
+                // principal) no navega aquí: no se pide nada en esta pestaña.
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  if (event.button !== 0) return;
                   void queryClient.prefetchQuery(getQuoteOnboardingDataQueryOptions());
                 }}
                 className="inline-flex items-center gap-2"

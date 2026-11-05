@@ -351,8 +351,8 @@ interface OrderTraceabilitySectionProps {
  * ni color.
  *
  * Tiene su propia consulta (la monta la página y la recibe por props), así que
- * carga y falla por su cuenta sin tocar el resto de la hoja. Mientras carga o si falla no hay ningún control accionable
- * salvo "Reintentar".
+ * carga y falla por su cuenta sin tocar el resto de la hoja. Mientras carga o
+ * si falla no hay ningún control accionable salvo "Reintentar".
  *
  * Qué NO se pinta, a propósito:
  * - `pedido.folio`/`cliente`/`clasificacion`/`estatus_label`: la página ya los
