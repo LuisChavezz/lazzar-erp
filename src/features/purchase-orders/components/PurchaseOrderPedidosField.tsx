@@ -52,11 +52,16 @@ function ClienteNote({ cliente }: { cliente: string | null }) {
 }
 
 /**
- * Segunda línea de un pedido YA LIGADO a la orden y aún marcado: avisa si se
- * canceló o se dio de baja desde que se ligó (sigue marcado; desligarlo es
- * decisión del usuario). Su disponibilidad se consulta aparte
- * (`useLinkedPedidoAvailability`), porque la búsqueda del selector nunca trae
- * cancelados. Mientras no se sabe, se pinta como cualquier otro.
+ * Segunda línea de un pedido YA LIGADO a la orden y aún marcado. Su estado se
+ * consulta aparte (`useLinkedPedidoAvailability`), porque la búsqueda del
+ * selector nunca trae cancelados:
+ *
+ * - cancelado, dado de baja o fuera del alcance del usuario → aviso (sigue
+ *   marcado; desligarlo es decisión del usuario);
+ * - la consulta falló → nota neutra: no puede pasar por válido sin verificar,
+ *   pero tampoco impide guardar;
+ * - si no, su cliente: el que ya se conocía (`cliente`, de la selección) o el
+ *   que trajo la consulta, porque `pedidos_vinculados` no lo incluye.
  */
 function LinkedPedidoNote({
   pedido,
@@ -65,15 +70,22 @@ function LinkedPedidoNote({
   pedido: PedidoVinculado;
   cliente: string | null;
 }) {
-  const availability = useLinkedPedidoAvailability(pedido);
-  if (availability === "unavailable") {
+  const lookup = useLinkedPedidoAvailability(pedido);
+  if (lookup.availability === "unavailable") {
     return (
       <span className="block truncate text-xs text-amber-600 dark:text-amber-400">
         Ya no está disponible (cancelado o inactivo). Desmárcalo para desligarlo.
       </span>
     );
   }
-  return <ClienteNote cliente={cliente} />;
+  if (lookup.isUnverified) {
+    return (
+      <span className={`block truncate text-xs ${MUTED_CLS}`}>
+        No se pudo verificar su estatus.
+      </span>
+    );
+  }
+  return <ClienteNote cliente={cliente ?? lookup.cliente} />;
 }
 
 /**
