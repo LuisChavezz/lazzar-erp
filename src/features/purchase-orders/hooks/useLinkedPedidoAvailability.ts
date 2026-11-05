@@ -31,6 +31,9 @@ const fetchLookup = async (
     const detail = await queryClient.ensureQueryData({
       queryKey: pedidoDetailQueryKey(id),
       queryFn: () => getPedidoDetail(id),
+      // Un 404/403 ya es la respuesta (no disponible): reintentarlo solo
+      // retrasa el aviso y repite una descarga pesada.
+      retry: retryUnlessClientError,
     });
     return linkedPedidoLookupFromRow(detail);
   } catch (error) {
