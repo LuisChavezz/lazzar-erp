@@ -139,7 +139,9 @@ export function ServerSearchSelectList<T>({
             <LoadingSpinnerIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
             Buscando...
           </p>
-        ) : rest.length === 0 ? (
+        ) : rest.length === 0 && !hasMore ? (
+          // Vacío solo si el servidor de verdad no tiene más: si la página
+          // traía únicamente lo ya fijado arriba, abajo va el aviso de que hay más.
           <p className="py-6 text-center text-sm text-slate-400">
             {hasSearch ? noResultsMessage : emptyMessage}
           </p>
@@ -151,8 +153,10 @@ export function ServerSearchSelectList<T>({
             {rest.map(renderRow)}
             {hasMore && (
               <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                Hay {total} coincidencias y aquí se listan solo {rest.length}. Escribe más para
-                acotar la búsqueda.
+                {rest.length === 0
+                  ? `Hay ${total} coincidencias, pero las de esta página ya están seleccionadas arriba.`
+                  : `Hay ${total} coincidencias y aquí se listan solo ${rest.length}.`}{" "}
+                Escribe más para acotar la búsqueda.
               </p>
             )}
           </div>
