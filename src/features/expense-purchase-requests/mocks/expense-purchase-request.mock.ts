@@ -272,7 +272,7 @@ function generarSolicitud(index: number, estatus: ExpenseRequestStatus): Expense
     ? null
     : (() => {
         const d = new Date(fechaSolicitud);
-        d.setDate(d.getDate() + diasPago);
+        d.setUTCDate(d.getUTCDate() + diasPago);
         return d.toISOString();
       })();
 
@@ -290,7 +290,7 @@ function generarSolicitud(index: number, estatus: ExpenseRequestStatus): Expense
   const pasoRG = (EXPENSE_REQUEST_STEPS as readonly string[]).indexOf('rg_registrado') + 1;
   const tieneFolioRG = pasoActual >= pasoRG && !esTerminal;
   const folioRG = tieneFolioRG
-    ? `RG-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
+    ? `RG-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getUTCFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
     : null;
 
   // Aprobador disponible desde paso 5 (pedido_emitido)

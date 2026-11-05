@@ -209,7 +209,7 @@ function generarRevision(index: number, estatus: ReviewStatus): PurchaseOrderRev
 
   const diasEntrega = faker.number.int({ min: 7, max: 45 });
   const fechaEstimadaEntrega = new Date(fechaSolicitud);
-  fechaEstimadaEntrega.setDate(fechaEstimadaEntrega.getDate() + diasEntrega);
+  fechaEstimadaEntrega.setUTCDate(fechaEstimadaEntrega.getUTCDate() + diasEntrega);
 
   const pasoActual = getPasoActual(estatus);
   const responsableCompras = faker.helpers.arrayElement(RESPONSABLES_COMPRAS);
@@ -227,7 +227,7 @@ function generarRevision(index: number, estatus: ReviewStatus): PurchaseOrderRev
   const pasoFolioRT = (REVIEW_STEPS as readonly string[]).indexOf('recepcion_confirmada') + 1;
   const tieneFolioRT = pasoActual >= pasoFolioRT && estatus !== 'cancelado';
   const folioRT = tieneFolioRT
-    ? `RT-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
+    ? `RT-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getUTCFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
     : null;
 
   // Nota de crédito (solo si tiene folio RT y con cierta probabilidad)

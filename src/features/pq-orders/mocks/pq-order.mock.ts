@@ -198,7 +198,7 @@ function generarPedidoPQ(index: number, estatus: PQOrderStatus): PQOrder {
     ? null
     : (() => {
         const d = new Date(fechaSolicitud);
-        d.setDate(d.getDate() + diasEntrega);
+        d.setUTCDate(d.getUTCDate() + diasEntrega);
         return d.toISOString();
       })();
 
