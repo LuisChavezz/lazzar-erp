@@ -4,7 +4,7 @@ import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList"
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
-import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
+import { INVOICEABLE_PEDIDO_ESTATUS } from "../constants/invoiceablePedidos";
 
 interface InvoiceOrderSelectorProps {
   /** Pedido seleccionado (`null` = ninguno): va fijo arriba aunque la búsqueda no lo traiga. */
@@ -14,20 +14,11 @@ interface InvoiceOrderSelectorProps {
 }
 
 /**
- * Estatus de pedido que se facturan: de la autorización en adelante. Los
- * previos (Borrador, Por autorizar) y el cancelado quedan fuera. Viaja como
- * `?estatus=` (el backend solo filtra por INCLUSIÓN), así que un estatus nuevo
- * del backend no aparece hasta sumarlo aquí. El backend no valida el estatus
- * del pedido al facturar. Los inactivos no los devuelve el listado.
- */
-const INVOICEABLE_ESTATUS = [PEDIDO_ESTATUS.AUTORIZADA, PEDIDO_ESTATUS.EN_PROCESO].join(",");
-
-/**
  * InvoiceOrderSelector
  *
  * Lista buscable de **selección única** de pedidos a facturar (Paso 1 de
  * "Nueva Factura"). Busca en el servidor (`?q=` por folio, OC o cliente) solo
- * entre los pedidos facturables (`INVOICEABLE_ESTATUS`). NO puede saber si a
+ * entre los pedidos facturables (`INVOICEABLE_PEDIDO_ESTATUS`). NO puede saber si a
  * un pedido aún le quedan piezas por facturar: el listado no lo expone, así
  * que eso lo dice el Paso 2 con el onboarding del pedido.
  */
@@ -41,7 +32,7 @@ export function InvoiceOrderSelector({ selectedOrder, onSelect }: InvoiceOrderSe
     hasResults,
     isInitialError,
     refetch,
-  } = usePedidoSearchField({ estatus: INVOICEABLE_ESTATUS });
+  } = usePedidoSearchField({ estatus: INVOICEABLE_PEDIDO_ESTATUS });
 
   return (
     <ServerSearchSelectList<PedidoListItem>

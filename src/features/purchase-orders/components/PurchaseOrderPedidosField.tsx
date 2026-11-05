@@ -6,22 +6,11 @@ import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList"
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
-import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { PedidoVinculado } from "../interfaces/purchase-order.interface";
-
-/**
- * Estatus de los pedidos que se ofrecen para ligar: todos menos el CANCELADO.
- * Viaja como `?estatus=` y el backend solo filtra por INCLUSIÓN, así que la
- * lista sale del mapa de estatus: un estatus que se sume a `PEDIDO_ESTATUS`
- * se ofrece sin tocar este archivo. Los inactivos (borrados) ya no los
- * devuelve `GET /ventas/pedidos/`.
- */
-export const LINKABLE_PEDIDO_ESTATUS = Object.values(PEDIDO_ESTATUS)
-  .filter((estatus) => estatus !== PEDIDO_ESTATUS.CANCELADO)
-  .join(",");
+import { LINKABLE_PEDIDO_ESTATUS } from "../constants/linkablePedidos";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 

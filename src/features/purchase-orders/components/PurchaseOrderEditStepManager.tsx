@@ -31,7 +31,7 @@ import { useCallback, useState } from "react";
 import { usePrefetchQuery, useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { pedidoSearchQueryOptions } from "@/src/features/orders/hooks/usePedidoSearch";
-import { LINKABLE_PEDIDO_ESTATUS } from "./PurchaseOrderPedidosField";
+import { LINKABLE_PEDIDO_ESTATUS } from "../constants/linkablePedidos";
 import type {
   PurchaseOrder,
   PurchaseOrderDetail,
