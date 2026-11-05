@@ -13,6 +13,7 @@ import {
   RefreshIcon,
   UserIcon,
 } from "@/src/components/Icons";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useCorteMangaOrderForm } from "../hooks/useCorteMangaOrderForm";
 
@@ -30,10 +31,11 @@ const CATALOG_ERROR_FALLBACK = "Vuelve a intentarlo en un momento.";
  * `parseCorteMangaOrderError` para el alta.
  */
 const getCatalogErrorMessage = (error: unknown): string =>
-  (error instanceof AxiosError &&
-  (error.response?.status === 400 || error.response?.status === 403)
-    ? firstDrfFieldMessage(error)
-    : undefined) ?? CATALOG_ERROR_FALLBACK;
+  (isForbiddenError(error)
+    ? forbiddenDetailMessage(error)
+    : error instanceof AxiosError && error.response?.status === 400
+      ? firstDrfFieldMessage(error)
+      : undefined) ?? CATALOG_ERROR_FALLBACK;
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja es EL MISMO que

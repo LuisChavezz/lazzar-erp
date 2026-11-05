@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { marcarNotificacionLeida } from "../services/actions";
 import type { Notificacion } from "../interfaces/notification.interface";
@@ -51,8 +52,9 @@ export const useMarcarNotificacionLeida = () => {
       // esta notificación."—. Un 5xx o un fallo de red cae al texto de abajo.
       const status =
         error instanceof AxiosError ? error.response?.status : undefined;
-      const drfMessage =
-        status === 400 || status === 403
+      const drfMessage = isForbiddenError(error)
+        ? forbiddenDetailMessage(error)
+        : status === 400
           ? firstDrfFieldMessage(error)
           : undefined;
       toast.error(drfMessage ?? "No se pudo marcar la notificación como leída.");
