@@ -1,6 +1,8 @@
 "use client";
 
 import { useClientNow } from "@/src/hooks/useClientNow";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 interface CedicorEstEntregaCellProps {
   /** `fecha_estimada_entrega` de la orden (ISO) o `null`. */
@@ -31,7 +33,7 @@ export function CedicorEstEntregaCell({ value, despachada }: CedicorEstEntregaCe
           : 'text-slate-600 dark:text-slate-400'
       }`}
     >
-      {fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+      {formatShortDate(fecha, { timeZone: MEXICO_TIME_ZONE })}
     </span>
   );
 }

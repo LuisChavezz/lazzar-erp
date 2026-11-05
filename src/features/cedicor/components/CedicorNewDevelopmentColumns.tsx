@@ -32,6 +32,8 @@ import {
   DownloadIcon,
 } from "@/src/components/Icons";
 import { TableMiniStepper, type TableMiniStepperProps } from "@/src/components/TableMiniStepper";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual de estatus ──────────────────────────────────────────
 
@@ -234,7 +236,7 @@ export function getCedicorNewDevelopmentColumns(): ColumnDef<NewDevelopment>[] {
         const fecha = new Date(info.getValue<string>());
         return (
           <span className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-            {fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {formatShortDate(fecha, { timeZone: MEXICO_TIME_ZONE })}
           </span>
         );
       },

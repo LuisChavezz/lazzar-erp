@@ -22,6 +22,8 @@ import {
   TIPO_COMPRA_LABELS,
 } from "../interfaces/purchase-order-review.interface";
 import { formatMxn } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -194,6 +196,7 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
             {step.evento && (
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                 {new Date(step.evento.fecha).toLocaleString('es-MX', {
+                  timeZone: MEXICO_TIME_ZONE,
                   day: '2-digit', month: 'short', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
                 })} · {step.evento.responsable}
@@ -302,13 +305,13 @@ function ResumenPanel({ review }: { review: PurchaseOrderReview }) {
       <div className="rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-2">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">F. Solicitud</p>
         <p className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-          {new Date(review.fecha_solicitud).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+          {formatShortDate(review.fecha_solicitud, { timeZone: MEXICO_TIME_ZONE })}
         </p>
       </div>
       <div className="rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-2">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">F. Est. Entrega</p>
         <p className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-          {new Date(review.fecha_estimada_entrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+          {formatShortDate(review.fecha_estimada_entrega, { timeZone: MEXICO_TIME_ZONE })}
         </p>
       </div>
 

@@ -12,6 +12,7 @@ import {
   PQ_ORDER_STEPS,
   PQ_ORDER_STATUS_LABELS,
 } from "../interfaces/pq-order.interface";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // Semilla fija para datos deterministas
 faker.seed(5003);
@@ -250,7 +251,7 @@ function generarPedidoPQ(index: number, estatus: PQOrderStatus): PQOrder {
     intentos_surtido,
     observaciones: faker.helpers.arrayElement([
       'Sin observaciones.',
-      `Urgente: requerido para línea de producción del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX')}.`,
+      `Urgente: requerido para línea de producción del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
       'Insumo crítico para colección de temporada. Prioridad alta.',
       faker.lorem.sentence(5),
     ]),

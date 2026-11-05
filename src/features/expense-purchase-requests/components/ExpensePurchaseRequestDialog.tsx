@@ -26,6 +26,8 @@ import {
   TIPO_GASTO_LABELS,
 } from "../interfaces/expense-purchase-request.interface";
 import { formatMxn } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -203,6 +205,7 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
             {step.evento && (
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                 {new Date(step.evento.fecha).toLocaleString('es-MX', {
+                  timeZone: MEXICO_TIME_ZONE,
                   day: '2-digit', month: 'short', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
                 })} · {step.evento.responsable}
@@ -266,24 +269,18 @@ function ResumenPanel({ request }: { request: ExpensePurchaseRequest }) {
     },
     {
       label: 'F. Solicitud',
-      value: new Date(request.fecha_solicitud).toLocaleDateString('es-MX', {
-        day: '2-digit', month: 'short', year: 'numeric',
-      }),
+      value: formatShortDate(request.fecha_solicitud, { timeZone: MEXICO_TIME_ZONE }),
     },
     {
       label: 'F. Est. Pago',
       value: request.fecha_estimada_pago
-        ? new Date(request.fecha_estimada_pago).toLocaleDateString('es-MX', {
-            day: '2-digit', month: 'short', year: 'numeric',
-          })
+        ? formatShortDate(request.fecha_estimada_pago, { timeZone: MEXICO_TIME_ZONE })
         : '—',
     },
     {
       label: 'F. Recepción',
       value: request.fecha_recepcion_real
-        ? new Date(request.fecha_recepcion_real).toLocaleDateString('es-MX', {
-            day: '2-digit', month: 'short', year: 'numeric',
-          })
+        ? formatShortDate(request.fecha_recepcion_real, { timeZone: MEXICO_TIME_ZONE })
         : '—',
     },
     {

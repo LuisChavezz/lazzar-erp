@@ -25,6 +25,8 @@ import {
   CATEGORIA_INSUMO_LABELS,
 } from "../interfaces/pq-order.interface";
 import { formatMxn } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual del timeline ────────────────────────────────────────
 
@@ -200,6 +202,7 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
         {step.evento?.fecha && (
           <p className="mt-1 text-[10px] text-slate-400 font-mono">
             {new Date(step.evento.fecha).toLocaleString('es-MX', {
+              timeZone: MEXICO_TIME_ZONE,
               day:    '2-digit',
               month:  'short',
               year:   'numeric',
@@ -286,14 +289,14 @@ function ResumenPanel({ pedido }: { pedido: PQOrder }) {
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fecha de Solicitud</p>
           <p className="text-xs text-slate-700 dark:text-slate-200 mt-0.5">
-            {new Date(pedido.fecha_solicitud).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {formatShortDate(pedido.fecha_solicitud, { timeZone: MEXICO_TIME_ZONE })}
           </p>
         </div>
         {pedido.fecha_estimada_entrega && (
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Entrega Estimada</p>
             <p className="text-xs text-slate-700 dark:text-slate-200 mt-0.5">
-              {new Date(pedido.fecha_estimada_entrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {formatShortDate(pedido.fecha_estimada_entrega, { timeZone: MEXICO_TIME_ZONE })}
             </p>
           </div>
         )}
@@ -301,7 +304,7 @@ function ResumenPanel({ pedido }: { pedido: PQOrder }) {
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Surtido Real</p>
             <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-              {new Date(pedido.fecha_surtido_real).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {formatShortDate(pedido.fecha_surtido_real, { timeZone: MEXICO_TIME_ZONE })}
             </p>
           </div>
         )}

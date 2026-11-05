@@ -12,6 +12,7 @@ import {
   EXPENSE_REQUEST_STEPS,
   EXPENSE_REQUEST_STATUS_LABELS,
 } from "../interfaces/expense-purchase-request.interface";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // Semilla fija para datos deterministas
 faker.seed(5002);
@@ -340,7 +341,7 @@ function generarSolicitud(index: number, estatus: ExpenseRequestStatus): Expense
     folio_rg:            folioRG,
     observaciones:       faker.helpers.arrayElement([
       'Sin observaciones.',
-      `Urgente: requerido antes del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX')}.`,
+      `Urgente: requerido antes del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
       'Cotización adjunta en expediente físico.',
       faker.lorem.sentence(5),
     ]),
