@@ -1118,9 +1118,33 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     [serviciosExtrasBaseIds],
   );
 
+  /**
+   * Cliente cuyas direcciones se piden (EC-768).
+   *
+   * Antes de hidratar —el efecto de arriba fija `selectedCustomerId` solo
+   * cuando ya llegaron pedido, onboarding y catálogo SAT— se piden las del
+   * cliente DEL PEDIDO, que es lo único que necesitan: así salen en cuanto
+   * responde el detalle, en paralelo con onboarding y SAT. Mientras tanto el
+   * formulario no se pinta (`showForm`), así que no hay selección del usuario
+   * que pisar.
+   *
+   * Ya hidratado manda el estado del formulario, igual que antes: la
+   * hidratación fija ese mismo cliente (misma llave, sin segunda petición) y
+   * cualquier cambio posterior del usuario (`handleSelectCustomer`,
+   * `handleReset`) se sigue tal cual. Un pedido que no se va a poder editar por
+   * lo que ya dice su detalle no pide nada.
+   */
+  const isPedidoHydrationBlocked =
+    pedidoNotSyncable || pedidoAccountingHidden || pedidoNotEditableStatus || pedidoNotRepresentable;
+  const addressesCustomerId = extraServicesInitialized
+    ? selectedCustomerId
+    : (pedidoData?.cliente ?? 0);
+  const addressesEnabled = extraServicesInitialized
+    ? customerSelectedFromSearch && selectedCustomerId > 0
+    : !isPedidoHydrationBlocked && addressesCustomerId > 0;
   const { addresses: customerAddresses } = useCustomerAddresses({
-    customerId: selectedCustomerId,
-    enabled: customerSelectedFromSearch && selectedCustomerId > 0,
+    customerId: addressesCustomerId,
+    enabled: addressesEnabled,
   });
 
   const showForm =
