@@ -10,6 +10,7 @@ import {
   OperationsQuote,
   OperationsQuoteActionResponse,
 } from "../interfaces/operations-quote.interface";
+import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { operationsQuotesQueryKey } from "./useOperationsQuotes";
 
 interface CreateOperationsQuoteMutationParams {
@@ -63,6 +64,12 @@ export const applyOperationsQuoteActionResult = async (
   queryClient.invalidateQueries({ queryKey: operationsQuotesQueryKey });
   queryClient.invalidateQueries({ queryKey: ["quotes"] });
   queryClient.invalidateQueries({ queryKey: ["quote"] });
+  // Autorizar CREA el pedido (la respuesta lo trae en `pedido`): las listas de
+  // pedidos (Mesa de Control › Pedidos, Mis pedidos, los selectores) ya no
+  // están al día. Las demás acciones no tocan pedidos.
+  if (pedido) {
+    queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+  }
 };
 
 export const createOperationsQuoteMutation = ({
