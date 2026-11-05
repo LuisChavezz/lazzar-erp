@@ -218,17 +218,22 @@ export const Notifications = () => {
         El detalle de cotización vive FUERA del modal —como hermano— para que
         nunca haya dos diálogos anidados.
       */}
-      <QuoteDetailByIdDialog
-        orderId={quoteTarget?.quoteId ?? null}
-        // Sin destino (`null`) la consulta está apagada y el recurso no se usa.
-        source={quoteTarget?.source ?? "cotizaciones"}
-        open={isQuoteOpen}
-        onOpenChange={setQuoteOpen}
-        onCloseAutoFocus={() => {
-          // Guarda: un cierre tardío no suelta la cotización que ya se reabrió.
-          if (!isQuoteOpenRef.current) setQuoteTarget(null);
-        }}
-      />
+      {/*
+        Solo se monta con destino: id y recurso salen del MISMO objeto. Al
+        cerrar, el destino se suelta ya desmontado el contenido (ver arriba).
+      */}
+      {quoteTarget && (
+        <QuoteDetailByIdDialog
+          orderId={quoteTarget.quoteId}
+          source={quoteTarget.source}
+          open={isQuoteOpen}
+          onOpenChange={setQuoteOpen}
+          onCloseAutoFocus={() => {
+            // Guarda: un cierre tardío no suelta la cotización que ya se reabrió.
+            if (!isQuoteOpenRef.current) setQuoteTarget(null);
+          }}
+        />
+      )}
 
       {/*
         Sin indicador de no leídas: no hay conteo ni polling, y la lista solo se
