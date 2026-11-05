@@ -42,11 +42,13 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
  * Filtros de la búsqueda de pedidos de los selectores. Solo los que
  * `GET /ventas/pedidos/` aplica de verdad: `q` (folio, OC y nombre, razón
  * social y RFC del cliente) y `estatus` (lista de códigos separados por coma,
- * de INCLUSIÓN). `limit` pide la respuesta paginada (`{count, results}`).
+ * de INCLUSIÓN) y `folio`. `limit` pide la respuesta paginada (`{count, results}`).
  */
 export interface PedidoSearchParams {
   q?: string;
   estatus?: string;
+  /** Folio que CONTIENE el texto (`folio__icontains`), sin mirar OC ni cliente. */
+  folio?: string;
   limit: number;
 }
 

@@ -12,6 +12,7 @@ import type {
   PedidoSeleccionado,
   PedidoSelectionMemory,
 } from "../hooks/usePedidoSelectionMemory";
+import { useLinkedPedidoAvailability } from "../hooks/useLinkedPedidoAvailability";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 
@@ -46,6 +47,35 @@ interface PurchaseOrderPedidosFieldProps {
 
 const NO_LINKED_PEDIDOS: PedidoVinculado[] = [];
 
+function ClienteNote({ cliente }: { cliente: string | null }) {
+  return cliente ? <span className={`block truncate text-xs ${MUTED_CLS}`}>{cliente}</span> : null;
+}
+
+/**
+ * Segunda línea de un pedido YA LIGADO a la orden y aún marcado: avisa si se
+ * canceló o se dio de baja desde que se ligó (sigue marcado; desligarlo es
+ * decisión del usuario). Su disponibilidad se consulta aparte
+ * (`useLinkedPedidoAvailability`), porque la búsqueda del selector nunca trae
+ * cancelados. Mientras no se sabe, se pinta como cualquier otro.
+ */
+function LinkedPedidoNote({
+  pedido,
+  cliente,
+}: {
+  pedido: PedidoVinculado;
+  cliente: string | null;
+}) {
+  const availability = useLinkedPedidoAvailability(pedido);
+  if (availability === "unavailable") {
+    return (
+      <span className="block truncate text-xs text-amber-600 dark:text-amber-400">
+        Ya no está disponible (cancelado o inactivo). Desmárcalo para desligarlo.
+      </span>
+    );
+  }
+  return <ClienteNote cliente={cliente} />;
+}
+
 /**
  * Selector MÚLTIPLE de pedidos de venta para el encabezado de la orden de
  * compra (alta y edición). Busca en el servidor (`?q=` + `?limit=`, solo los
@@ -55,6 +85,9 @@ const NO_LINKED_PEDIDOS: PedidoVinculado[] = [];
  *   #262): lo que se guarda siempre está a la vista. Se pintan con lo que se
  *   sabe de ellos: el resultado en que se marcaron (`selection`, que guarda
  *   el step manager) o, para los ya ligados, su folio de `pedidos_vinculados`.
+ * - Un ya ligado que se canceló o se dio de baja sigue marcado, con un aviso
+ *   (`LinkedPedidoNote`); que la página de búsqueda no lo traiga, por sí
+ *   solo, no lo marca como no disponible.
  * - No hay pedido "principal" ni orden significativo: los seleccionados se
  *   muestran en el orden en que están en el valor.
  */
@@ -124,16 +157,21 @@ export function PurchaseOrderPedidosField({
         isSelected={(option) => selectedIds.has(option.id)}
         onSelect={toggle}
         renderIndicator={renderCheckboxIndicator}
-        renderContent={(option) => (
-          <>
-            <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
-              {pedidoLabel(option)}
-            </span>
-            {option.cliente && (
-              <span className={`block truncate text-xs ${MUTED_CLS}`}>{option.cliente}</span>
-            )}
-          </>
-        )}
+        renderContent={(option) => {
+          const linked = selectedIds.has(option.id) ? linkedById.get(option.id) : undefined;
+          return (
+            <>
+              <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
+                {pedidoLabel(option)}
+              </span>
+              {linked ? (
+                <LinkedPedidoNote pedido={linked} cliente={option.cliente} />
+              ) : (
+                <ClienteNote cliente={option.cliente} />
+              )}
+            </>
+          );
+        }}
         hasResults={hasResults}
         isInitialError={isInitialError}
         isSearching={isSearching}
