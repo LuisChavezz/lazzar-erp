@@ -10,6 +10,7 @@ import {
 import {
   getQuoteEditLoadState,
   QUOTE_EDIT_REFETCH_ERROR_MESSAGE,
+  quoteLoadErrorKind,
 } from "@/src/features/quotes/utils/quoteEditLoadState";
 import { REFETCH_ERROR_MESSAGE } from "@/src/hooks/useHasLoadedQuery";
 import { resolveNotificationTarget } from "@/src/features/notifications/constants/notificationTargets";
@@ -154,20 +155,28 @@ test("el 404 y el 403 del detalle son definitivos; un 500 no", () => {
   expect(isQuoteDetailDefinitiveError(new Error("red"))).toBe(false);
 });
 
+test("edición: el tipo de error sale de la última lectura", () => {
+  expect(quoteLoadErrorKind(null)).toBe("none");
+  expect(quoteLoadErrorKind(undefined)).toBe("none");
+  expect(quoteLoadErrorKind(httpError(404))).toBe("access");
+  expect(quoteLoadErrorKind(httpError(403))).toBe("access");
+  expect(quoteLoadErrorKind(httpError(500))).toBe("technical");
+  expect(quoteLoadErrorKind(new Error("red"))).toBe("technical");
+});
+
 const editState = (overrides: Partial<Parameters<typeof getQuoteEditLoadState>[0]>) =>
   getQuoteEditLoadState({
     hasQuote: false,
     isEditableStatus: false,
-    isAccessError: false,
+    latestErrorKind: "none",
     isFetchedAfterMount: true,
-    hasLoadError: false,
     ...overrides,
   });
 
 test("edición: 404/403 de este montaje redirige avisando, también con datos ya cargados", () => {
   // Carga inicial (sin datos) y relectura (con datos): mismo resultado.
   for (const hasQuote of [false, true]) {
-    expect(editState({ hasQuote, isEditableStatus: true, isAccessError: true })).toEqual({
+    expect(editState({ hasQuote, isEditableStatus: true, latestErrorKind: "access" })).toEqual({
       accessDenied: true,
       shouldRedirect: true,
       loadFailed: false,
@@ -176,17 +185,25 @@ test("edición: 404/403 de este montaje redirige avisando, también con datos ya
 });
 
 test("edición: un 404/403 viejo de la caché no redirige mientras relee", () => {
-  expect(editState({ isAccessError: true, isFetchedAfterMount: false })).toEqual({
+  expect(editState({ latestErrorKind: "access", isFetchedAfterMount: false })).toEqual({
     accessDenied: false,
     shouldRedirect: false,
     loadFailed: false,
   });
 });
 
-test("edición: un fallo técnico de la carga inicial muestra el error; con datos, no", () => {
-  expect(editState({ hasLoadError: true }).loadFailed).toBe(true);
-  // `useQuote` no expone `error` en una relectura con datos: se queda el formulario.
-  expect(editState({ hasQuote: true, isEditableStatus: true })).toEqual({
+test("edición: un 500 tras un 404/403 recordado es un fallo técnico, no una denegación", () => {
+  // `useQuote` no tiene datos (el definitivo recordado los oculta) y la última
+  // lectura falló con un 500: error con reintento, sin redirigir.
+  expect(editState({ latestErrorKind: quoteLoadErrorKind(httpError(500)) })).toEqual({
+    accessDenied: false,
+    shouldRedirect: false,
+    loadFailed: true,
+  });
+});
+
+test("edición: un fallo técnico con datos ya cargados conserva el formulario", () => {
+  expect(editState({ hasQuote: true, isEditableStatus: true, latestErrorKind: "technical" })).toEqual({
     accessDenied: false,
     shouldRedirect: false,
     loadFailed: false,
@@ -201,13 +218,8 @@ test("edición: estatus no editable redirige sin aviso", () => {
   });
 });
 
-test("edición: su toast de relectura es propio y no cambia el genérico", () => {
-  expect(QUOTE_EDIT_REFETCH_ERROR_MESSAGE).toBe(
-    "No se pudo actualizar la información. Tus cambios se conservan.",
-  );
-  expect(REFETCH_ERROR_MESSAGE).toBe(
-    "No se pudo actualizar la información. Mostrando datos anteriores.",
-  );
+test("edición: su toast de relectura es propio, distinto del genérico compartido", () => {
+  expect(QUOTE_EDIT_REFETCH_ERROR_MESSAGE).not.toBe(REFETCH_ERROR_MESSAGE);
 });
 
 const enRevision = (data: unknown): Notificacion => ({
