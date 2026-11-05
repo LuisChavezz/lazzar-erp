@@ -9,11 +9,11 @@ import { ORDERS_QUERY_KEY, ordersQueryKey } from "../constants/ordersQueryKeys";
 export { ORDERS_QUERY_KEY, ordersQueryKey };
 
 /**
- * Llave y función de la lista completa de pedidos, en UN solo lugar: las usan
- * este hook y quien prefetchee la misma lista, así que lo prefetcheado es
- * exactamente lo que el hook lee.
+ * Llave y función de la lista completa de pedidos. Privadas del módulo a
+ * propósito: nadie fuera de `useOrders` debe prefetchear la lista completa
+ * (los selectores buscan en el servidor, `usePedidoSearch`).
  */
-export const ordersQueryOptions = (params?: OrdersQueryParams) => ({
+const ordersQueryOptions = (params?: OrdersQueryParams) => ({
   queryKey: ordersQueryKey(params),
   // Envuelto en una arrow a propósito: pasar `getOrders` pelado haría que
   // React Query le inyectara su `QueryFunctionContext` como primer argumento
