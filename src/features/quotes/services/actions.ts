@@ -1,5 +1,11 @@
-import { isAxiosError } from "axios";
 import { v1_api } from "@/src/api/v1.api";
+import {
+  readQuoteResource,
+  type QuoteDetailSource,
+  type QuoteResource,
+  type QuoteResourceRead,
+  type QuoteResourceReaders,
+} from "../utils/quoteResource";
 import {
   Quote,
   QuoteById,
@@ -42,60 +48,23 @@ export const getMesaControlQuoteById = async (
   return response.data;
 };
 
-/** Uno de los dos recursos que sirven una cotización por id. */
-type QuoteResource = "cotizaciones" | "mesa-control";
-
-/**
- * Cómo se lee una cotización por id. Cada pantalla declara el suyo; no hay
- * valor por omisión, para que ninguna caiga en el respaldo sin pedirlo.
- *
- * - `"cotizaciones"`: `/ventas/cotizaciones/{id}/` —su empresa a cualquier
- *   estatus para `is_admin_empresa`/superuser; para los demás solo las que
- *   vendieron—. Es la de Ventas, la edición, el buscador global y las
- *   notificaciones que llegan al vendedor o a un admin.
- * - `"mesa-control"`: `/ventas/mesa-control/{id}/` —empresa y estatus [2, 5]
- *   para admins y el departamento de mesa de control; nada para los demás—.
- *   Es la de las vistas de Mesa de Control, cuyas filas salen de ese alcance.
- * - `"cotizaciones-o-mesa-control"`: la primera y, SOLO ante un 404, la
- *   segunda. Exclusiva del pedido 360°, que abre la cotización de un pedido
- *   para lectores de varios módulos sin que el front sepa cuál de los dos
- *   alcances le toca a cada uno (la pertenencia a mesa de control es un
- *   departamento, no viaja en la sesión). Se retira con EC-787, la lectura de
- *   la cotización con el alcance del pedido.
- */
-export type QuoteDetailSource = QuoteResource | "cotizaciones-o-mesa-control";
-
-type QuoteResourceReaders<T> = Record<QuoteResource, (id: number) => Promise<T>>;
-
-/**
- * Lee del recurso que pide `source`. Con `"cotizaciones-o-mesa-control"`, solo
- * un 404 de la primera activa la segunda: cualquier otro error (401, 403, 5xx)
- * se propaga tal cual, y si la segunda también da 404 se propaga ese error.
- */
-async function readQuoteResource<T>(
-  readers: QuoteResourceReaders<T>,
-  id: number,
-  source: QuoteDetailSource
-): Promise<T> {
-  if (source !== "cotizaciones-o-mesa-control") return readers[source](id);
-  try {
-    return await readers.cotizaciones(id);
-  } catch (error) {
-    if (!isAxiosError(error) || error.response?.status !== 404) throw error;
-    return readers["mesa-control"](id);
-  }
-}
+export type { QuoteDetailSource, QuoteResource } from "../utils/quoteResource";
 
 const QUOTE_DETAIL_READERS: QuoteResourceReaders<QuoteById> = {
   cotizaciones: getQuoteById,
   "mesa-control": getMesaControlQuoteById,
 };
 
-/** Detalle de cotización por el recurso que declara la pantalla (ver `QuoteDetailSource`). */
+/**
+ * Detalle de cotización por el recurso que declara la pantalla (ver
+ * `QuoteDetailSource`), con el recurso que lo sirvió: los comentarios de esa
+ * cotización se leen de ese mismo recurso.
+ */
 export const getQuoteDetailById = (
   id: number,
   source: QuoteDetailSource
-): Promise<QuoteById> => readQuoteResource(QUOTE_DETAIL_READERS, id, source);
+): Promise<QuoteResourceRead<QuoteById>> =>
+  readQuoteResource(QUOTE_DETAIL_READERS, id, source);
 
 const QUOTE_COMENTARIOS_READERS: QuoteResourceReaders<QuoteComentario[]> = {
   cotizaciones: async (id) =>
@@ -106,13 +75,14 @@ const QUOTE_COMENTARIOS_READERS: QuoteResourceReaders<QuoteComentario[]> = {
 
 /**
  * Historial de rechazos y reenvíos, en orden cronológico. Mismos alcances que
- * el detalle, así que se lee con el MISMO `source` que el detalle al que
- * acompaña (`QuoteDetails` pasa el suyo a los dos).
+ * el detalle, así que se lee del recurso CONCRETO del detalle al que acompaña
+ * —el fijo de su `source` o el que resolvió su respaldo—, nunca con un
+ * respaldo propio: así detalle y comentarios no pueden divergir.
  */
 export const getQuoteComentarios = (
   id: number,
-  source: QuoteDetailSource
-): Promise<QuoteComentario[]> => readQuoteResource(QUOTE_COMENTARIOS_READERS, id, source);
+  resource: QuoteResource
+): Promise<QuoteComentario[]> => QUOTE_COMENTARIOS_READERS[resource](id);
 
 export const createQuote = async (quote: QuoteCreate): Promise<QuoteCreate> => {
   const response = await v1_api.post<QuoteCreate>("/ventas/cotizaciones/onboarding/", quote);
