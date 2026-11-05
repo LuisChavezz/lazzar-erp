@@ -70,10 +70,11 @@ interface QuoteDetailsProps {
 }
 
 export const QuoteDetails = ({ quoteId, source }: QuoteDetailsProps) => {
-  const { data: quote, isLoading, isError } = useQuote(quoteId, source);
-  // Arranca junto con el detalle, antes de los retornos de carga/error: si
-  // viviera dentro de la sección, esperaría a que el detalle respondiera.
-  const comentariosQuery = useQuoteComentarios(quoteId, source);
+  const { data: quote, isLoading, isError, resource } = useQuote(quoteId, source);
+  // Lee del recurso del detalle (`resource`), nunca con un respaldo propio. Con
+  // un `source` fijo arranca junto con el detalle, antes de los retornos de
+  // carga/error; con respaldo espera a saber qué recurso sirvió el detalle.
+  const comentariosQuery = useQuoteComentarios(quoteId, resource);
   // La cotización solo trae la PK de la moneda; el código y el nombre salen
   // del catálogo (misma consulta que el formulario).
   const { data: currencies } = useCurrencies();

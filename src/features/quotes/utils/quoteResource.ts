@@ -1,0 +1,75 @@
+import { isAxiosError } from "axios";
+
+/** Uno de los dos recursos que sirven una cotización por id. */
+export type QuoteResource = "cotizaciones" | "mesa-control";
+
+/**
+ * Cómo se lee una cotización por id. Cada pantalla declara el suyo; no hay
+ * valor por omisión, para que ninguna caiga en un respaldo sin pedirlo.
+ *
+ * - `"cotizaciones"`: `/ventas/cotizaciones/{id}/` —su empresa a cualquier
+ *   estatus para `is_admin_empresa`/superuser; para los demás solo las que
+ *   vendieron—. Es la de Ventas, la edición y el buscador global.
+ * - `"mesa-control"`: `/ventas/mesa-control/{id}/` —empresa y estatus [2, 5]
+ *   para admins y el departamento de mesa de control; nada para los demás—.
+ *   Es la de las vistas de Mesa de Control, cuyas filas salen de ese alcance.
+ * - `"cotizaciones-o-mesa-control"` / `"mesa-control-o-cotizaciones"`: el
+ *   primero y, SOLO ante un 404, el segundo. Únicamente para las pantallas que
+ *   abren una cotización sin poder saber cuál de los dos alcances le toca a
+ *   quien mira (la pertenencia a mesa de control es un departamento y no viaja
+ *   en la sesión): el pedido 360° (hasta EC-787) y la notificación
+ *   `cotizacion_en_revision`, que eligen el orden.
+ */
+export type QuoteDetailSource =
+  | QuoteResource
+  | "cotizaciones-o-mesa-control"
+  | "mesa-control-o-cotizaciones";
+
+/** Recursos a los que se pregunta, en orden, para cada `source`. */
+const QUOTE_RESOURCE_ORDER: Record<QuoteDetailSource, readonly QuoteResource[]> = {
+  cotizaciones: ["cotizaciones"],
+  "mesa-control": ["mesa-control"],
+  "cotizaciones-o-mesa-control": ["cotizaciones", "mesa-control"],
+  "mesa-control-o-cotizaciones": ["mesa-control", "cotizaciones"],
+};
+
+/**
+ * Recurso fijo de `source`, o `undefined` si `source` tiene respaldo y el
+ * recurso solo se conoce al leer (ver `readQuoteResource`).
+ */
+export const fixedQuoteResource = (source: QuoteDetailSource): QuoteResource | undefined => {
+  const order = QUOTE_RESOURCE_ORDER[source];
+  return order.length === 1 ? order[0] : undefined;
+};
+
+export type QuoteResourceReaders<T> = Record<QuoteResource, (id: number) => Promise<T>>;
+
+/** Lo leído y el recurso que lo sirvió. */
+export interface QuoteResourceRead<T> {
+  data: T;
+  resource: QuoteResource;
+}
+
+/**
+ * Lee por los recursos de `source`, en orden. Solo un 404 pasa al siguiente:
+ * cualquier otro error (401, 403, 5xx, red) se propaga tal cual, y si el
+ * último también da 404 se propaga ese error. Devuelve el recurso que
+ * respondió para que lo que acompaña al detalle (sus comentarios) lea del
+ * mismo, sin resolver el respaldo por su cuenta.
+ */
+export async function readQuoteResource<T>(
+  readers: QuoteResourceReaders<T>,
+  id: number,
+  source: QuoteDetailSource
+): Promise<QuoteResourceRead<T>> {
+  const order = QUOTE_RESOURCE_ORDER[source];
+  for (let i = 0; ; i += 1) {
+    const resource = order[i];
+    try {
+      return { data: await readers[resource](id), resource };
+    } catch (error) {
+      const isLast = i === order.length - 1;
+      if (isLast || !isAxiosError(error) || error.response?.status !== 404) throw error;
+    }
+  }
+}
