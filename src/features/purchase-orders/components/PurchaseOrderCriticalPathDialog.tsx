@@ -187,7 +187,10 @@ function CriticalPathDialogContent({
           </p>
         )}
         <PurchaseOrderCriticalPathForm
-          key={data.updated_at ?? "sin-captura"}
+          // Al bloquearse tras un 403 se vuelve a montar desde `data` (el
+          // registro guardado, que el 403 no tocó): lo capturado sin guardar
+          // no debe quedar en campos de solo lectura como si fuera el registro.
+          key={`${data.updated_at ?? "sin-captura"}${forbiddenOnSave ? ":bloqueado" : ""}`}
           ocId={target.ocId}
           data={data}
           readOnlyNotice={readOnlyNotice}
