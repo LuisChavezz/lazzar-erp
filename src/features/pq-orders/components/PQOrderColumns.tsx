@@ -25,6 +25,8 @@ import {
   RefreshIcon,
 } from "@/src/components/Icons";
 import { formatMxn } from "@/src/utils/formatCurrency";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual por estatus ─────────────────────────────────────────
 
@@ -369,11 +371,7 @@ export function getPQOrderColumns(): ColumnDef<PQOrder, unknown>[] {
       header: 'F. Solicitud',
       cell: (info) => (
         <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-          {new Date(info.getValue() as string).toLocaleDateString('es-MX', {
-            day:   '2-digit',
-            month: 'short',
-            year:  'numeric',
-          })}
+          {formatShortDate(info.getValue() as string, { timeZone: MEXICO_TIME_ZONE })}
         </span>
       ),
     }) as ColumnDef<PQOrder, unknown>,

@@ -28,6 +28,7 @@ import {
   CxpIcon,
 } from "@/src/components/Icons";
 import { formatMxn } from "@/src/utils/formatCurrency";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual por estatus ─────────────────────────────────────────
 
@@ -382,6 +383,7 @@ export function getExpenseRequestColumns(): ColumnDef<ExpensePurchaseRequest, un
       cell: ({ getValue }) => (
         <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
           {new Date(getValue() as string).toLocaleDateString('es-MX', {
+            timeZone: MEXICO_TIME_ZONE,
             day: '2-digit', month: 'short', year: '2-digit',
           })}
         </span>

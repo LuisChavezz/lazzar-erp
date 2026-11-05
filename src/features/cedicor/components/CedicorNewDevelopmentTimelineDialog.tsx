@@ -5,6 +5,8 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import type { NewDevelopment, FlowStatus, FlowEventRecord } from "../interfaces/cedicor-new-development.interface";
 import { FLOW_STEPS, FLOW_STATUS_LABELS } from "../interfaces/cedicor-new-development.interface";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // ── Configuración visual por estatus del flujo ────────────────────────────────
 
@@ -154,11 +156,7 @@ function TimelineItem({ step, isLast }: TimelineItemProps) {
           {step.evento && (step.completado || step.esCurrent) && (
             <div className="text-right shrink-0">
               <p className="text-xs tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                {new Date(step.evento.fecha).toLocaleDateString('es-MX', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                })}
+                {formatShortDate(step.evento.fecha, { timeZone: MEXICO_TIME_ZONE })}
               </p>
               <p className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
                 {step.evento.responsable}
@@ -261,6 +259,7 @@ export function CedicorNewDevelopmentTimelineDialog({
             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight">
               {order.fecha_estimada_entrega
                 ? new Date(order.fecha_estimada_entrega).toLocaleDateString('es-MX', {
+                    timeZone: MEXICO_TIME_ZONE,
                     day: '2-digit',
                     month: 'short',
                   })
