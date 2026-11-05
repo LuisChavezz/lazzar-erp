@@ -37,8 +37,10 @@ export const Notifications = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   /*
-    El id y el recurso del que se lee viajan JUNTOS: la fuente la decide el
-    `tipo` de la notificación en `notificationTargets`, no este componente.
+    El id y el recurso del que se lee viajan JUNTOS, y los decide
+    `notificationTargets`, no este componente: el `tipo` y, en
+    `cotizacion_en_revision`, también el rol, que elige el orden del respaldo
+    entre los dos recursos.
   */
   const [quoteTarget, setQuoteTarget] = useState<Extract<
     NotificationTarget,
