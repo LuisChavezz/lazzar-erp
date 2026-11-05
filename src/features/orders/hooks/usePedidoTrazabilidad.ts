@@ -23,9 +23,11 @@ export const pedidoTrazabilidadQueryKey = (id: number) =>
  * Trazabilidad de un pedido (`GET /ventas/pedidos/{id}/trazabilidad/`).
  *
  * `refetchOnMount: "always"`: el backend la CALCULA en cada lectura a partir
- * de picking, empaque, embarque, órdenes de trabajo y facturas. Esas altas en
- * ESTA sesión ya la invalidan (`invalidatePedidoProgress`, desde EC-521); la
- * relectura al montar cubre las que hacen otros usuarios en otras sesiones,
+ * de picking, empaque, embarque, órdenes de trabajo y facturas. Esos cambios en
+ * ESTA sesión ya la invalidan: por id el alta y la cancelación de la factura y
+ * las mutaciones del propio pedido (ver `pedidoTrazabilidadQueryKey`), y por
+ * raíz los de otros módulos (`invalidatePedidoProgress`, desde EC-521). La
+ * relectura al montar cubre los que hacen otros usuarios en otras sesiones,
  * que con el `staleTime` global de 15 min dejarían ver el avance de hace
  * minutos al volver al pedido.
  *
