@@ -14,8 +14,8 @@ interface QuoteDetailByIdDialogProps {
    * Recurso por el que `QuoteDetails` lee el detalle y sus comentarios.
    * Obligatorio: el buscador global pasa `"cotizaciones"` (sus resultados
    * salen de ese mismo alcance), las notificaciones lo eligen por `tipo` (y
-   * por rol en `cotizacion_en_revision`), y el pedido 360° pasa
-   * `"cotizaciones-o-mesa-control"` (EC-787).
+   * por rol en `cotizacion_en_revision`). El pedido 360° ya no lo usa: lee
+   * por el pedido (`PedidoQuoteDetailDialog`, EC-792).
    */
   source: QuoteDetailSource;
   /**
@@ -28,8 +28,8 @@ interface QuoteDetailByIdDialogProps {
 }
 
 /**
- * Envoltorio de `QuoteDetails` para el registro `CLICKABLE_DOC_TIPOS` del detalle
- * de pedido. `QuoteDetails` NO es un diálogo: es el CONTENIDO que
+ * Envoltorio de `QuoteDetails` para abrir una cotización por id (buscador
+ * global, notificaciones). `QuoteDetails` NO es un diálogo: es el CONTENIDO que
  * `QuoteRowActionDialogs` mete dentro de un `MainDialog`, y ya es self-fetching por id
  * (`useQuote`) con sus propios estados de carga/error. Este wrapper solo aporta
  * el armazón `MainDialog` con la firma por id que el registro exige —sin action

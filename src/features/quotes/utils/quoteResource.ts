@@ -18,8 +18,9 @@ export type QuoteResource = "cotizaciones" | "mesa-control";
  *   primero y, SOLO ante un 404, el segundo. Únicamente para las pantallas que
  *   abren una cotización sin poder saber cuál de los dos alcances le toca a
  *   quien mira (la pertenencia a mesa de control es un departamento y no viaja
- *   en la sesión): el pedido 360° (hasta EC-787) y la notificación
- *   `cotizacion_en_revision`, que eligen el orden.
+ *   en la sesión): la notificación `cotizacion_en_revision`, que elige el
+ *   orden por rol. (El pedido 360° lo usó hasta EC-792; ahora lee por el
+ *   pedido.)
  */
 export type QuoteDetailSource =
   | QuoteResource

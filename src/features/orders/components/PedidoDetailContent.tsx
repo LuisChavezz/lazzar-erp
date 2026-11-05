@@ -599,6 +599,7 @@ export function PedidoDetailContent({
       {openDoc && OpenDocDialog && (
         <OpenDocDialog
           orderId={openDoc.id}
+          pedidoId={numericId}
           open={true}
           onOpenChange={(open) => {
             if (!open) setOpenDoc(null);

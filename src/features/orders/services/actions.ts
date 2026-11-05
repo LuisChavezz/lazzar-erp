@@ -1,6 +1,7 @@
 import { v1_api } from "@/src/api/v1.api";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { PedidoListItem, PedidoDetail } from "../interfaces/order.interface";
+import type { QuoteDetailView } from "@/src/features/quotes/interfaces/quote.interface";
 import type {
   PedidoMesaControlUpdate,
   PedidoMesaControlUpdateResponse,
@@ -74,6 +75,21 @@ export const searchOrders = async (
  */
 export const getPedidoDetail = async (id: number): Promise<PedidoDetail> => {
   const response = await v1_api.get<PedidoDetail>(`/ventas/pedidos/${id}/`);
+  return response.data;
+};
+
+/**
+ * Cotización ligada a UN pedido, con el alcance del PEDIDO
+ * (`GET /ventas/pedidos/{id}/cotizacion/`, EC-787): la ve quien ve el pedido,
+ * no solo su vendedor o Mesa de Control. Recibe el id del PEDIDO.
+ *
+ * Misma forma que `/ventas/cotizaciones/{id}/` (`CotizacionFullSerializer`),
+ * salvo que a quien no tiene visibilidad contable el backend le QUITA los
+ * importes y los datos de pago (claves ausentes, no `null`): por eso se tipa
+ * como `QuoteDetailView`. 404 si el pedido no tiene cotización o no es visible.
+ */
+export const getPedidoCotizacion = async (pedidoId: number): Promise<QuoteDetailView> => {
+  const response = await v1_api.get<QuoteDetailView>(`/ventas/pedidos/${pedidoId}/cotizacion/`);
   return response.data;
 };
 
