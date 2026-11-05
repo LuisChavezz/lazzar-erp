@@ -54,6 +54,10 @@ import { withMirroredShippingPhones } from "../utils/shippingPhones";
 import { EMPTY_MATRIZ } from "../utils/processCompatibility";
 import type { QuoteValidationIssue } from "../utils/quoteValidationErrors";
 import { canEditQuote } from "../utils/quoteStatusRules";
+import {
+  getQuoteEditLoadState,
+  QUOTE_EDIT_REFETCH_ERROR_MESSAGE,
+} from "../utils/quoteEditLoadState";
 import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
 import { scrollToFirstValidationError } from "../utils/scrollToFirstValidationError";
@@ -213,10 +217,14 @@ export function useQuoteEditForm(quoteId: number) {
     isLoading: isQuoteLoading,
     isFetching: isQuoteFetching,
     isFetchedAfterMount: isQuoteFetchedAfterMount,
-    isDefinitiveError: isQuoteNotFound,
+    isDefinitiveError: isQuoteAccessError,
     error: quoteError,
     refetch: refetchQuote,
-  } = useQuote(quoteId, "cotizaciones");
+  } = useQuote(quoteId, "cotizaciones", {
+    // Aquí lo que se ve son los cambios del usuario, no "datos anteriores": el
+    // formulario se llena una sola vez y una relectura no lo toca.
+    refetchErrorMessage: QUOTE_EDIT_REFETCH_ERROR_MESSAGE,
+  });
   const isEditableQuoteStatus = canEditQuote(quoteData?.estatus);
   /* 404/403: denegaciones DEFINITIVAS del backend — la cotización no existe
    * (404) o el backend autenticó la petición y la denegó explícitamente (403).
@@ -234,20 +242,20 @@ export function useQuoteEditForm(quoteId: number) {
    * el 404/403 de un intento anterior mientras la relectura apenas empieza: con
    * ese error viejo no se avisa ni se redirige (se sigue cargando), porque el
    * acceso pudo cambiar entretanto —p. ej. le transfirieron la cotización—. */
-  /* `useQuote` entrega el 404 aparte, como error definitivo (`isQuoteNotFound`,
-   * sin `error`); el 403 llega en `error` cuando la consulta nunca cargó. */
-  const quoteErrorStatus =
-    quoteError instanceof AxiosError ? quoteError.response?.status : undefined;
-  const isQuoteAccessError = isQuoteNotFound || quoteErrorStatus === 403;
-  const quoteAccessDenied = isQuoteAccessError && isQuoteFetchedAfterMount;
-  const shouldRedirectToQuotesList =
-    (Boolean(quoteData) && !isEditableQuoteStatus) || quoteAccessDenied;
-  /* Cualquier otro fallo de la consulta (500, error de red, timeout tras los
-   * reintentos de TanStack) es un problema TÉCNICO, no una denegación:
-   * QuoteEditForm muestra un estado de error con reintento en vez de dejar el
-   * loader "Cargando formulario…" girando para siempre — misma distinción
-   * denegación/fallo-técnico que aplica el guard del servidor. */
-  const quoteLoadFailed = Boolean(quoteError) && !isQuoteAccessError;
+  /* `useQuote` entrega el 404 y el 403 aparte, como error definitivo
+   * (`isQuoteAccessError`, sin `error`), también en una relectura con datos ya
+   * cargados. */
+  const {
+    accessDenied: quoteAccessDenied,
+    shouldRedirect: shouldRedirectToQuotesList,
+    loadFailed: quoteLoadFailed,
+  } = getQuoteEditLoadState({
+    hasQuote: Boolean(quoteData),
+    isEditableStatus: isEditableQuoteStatus,
+    isAccessError: isQuoteAccessError,
+    isFetchedAfterMount: isQuoteFetchedAfterMount,
+    hasLoadError: Boolean(quoteError),
+  });
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
