@@ -16,8 +16,10 @@ import { firstDrfFieldMessage } from "./firstDrfFieldMessage";
  * Error de alta/edición. Un 400 pinta cada mensaje bajo su campo (si el campo
  * está en `formFields`) y devuelve el texto del toast: el mensaje de objeto
  * (`non_field_errors`/`detail`) o, si el error cae en un campo que el form no
- * muestra, ese mensaje, para que no se pierda. Cualquier otro error (red, 5xx)
- * cae al respaldo en español.
+ * muestra, ese mensaje, para que no se pierda. Un 403 muestra su `detail`
+ * (`forbiddenDetailMessage`: el motivo de `PermissionDenied`) o el respaldo, y
+ * nunca pinta campos. Cualquier otro error (red, 5xx) cae al respaldo en
+ * español.
  */
 export const handleDrfWriteError = <F extends string>(
   error: unknown,
@@ -25,6 +27,9 @@ export const handleDrfWriteError = <F extends string>(
   formFields: readonly F[],
   setFieldError?: (field: F, message: string) => void
 ): string => {
+  if (isForbiddenError(error)) {
+    return forbiddenDetailMessage(error) ?? fallback;
+  }
   if (!(error instanceof AxiosError) || error.response?.status !== 400) {
     return fallback;
   }

@@ -1,5 +1,4 @@
 import {
-  forbiddenDetailMessage,
   handleDrfWriteError,
   isForbiddenError,
   isNotFoundError,
@@ -26,7 +25,7 @@ export const PURCHASE_ORDER_CRITICAL_PATH_SAVE_FALLBACK = "No se pudo guardar la
  * Mensaje del toast de un PATCH fallido de la ruta crítica de la OC.
  *
  * - 404: la OC no se encontró.
- * - 403: el `detail` del backend (`forbiddenDetailMessage`), o un texto fijo de
+ * - 403: el `detail` del backend (vía `handleDrfWriteError`), o un texto fijo de
  *   permiso si no trae. El PATCH exige `E-COMPRAS-OC`; sin él el diálogo ya es
  *   de solo lectura, así que esto llega cuando la sesión quedó con permisos
  *   viejos. Un 403 del chequeo de origen también trae su `detail` y se muestra
@@ -40,12 +39,13 @@ export const purchaseOrderCriticalPathSaveErrorMessage = (
   setFieldError?: (field: PurchaseOrderCriticalPathField, message: string) => void,
 ): string => {
   if (isNotFoundError(error)) return PURCHASE_ORDER_CRITICAL_PATH_NOT_FOUND_MESSAGE;
-  if (isForbiddenError(error)) {
-    return forbiddenDetailMessage(error) ?? PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE;
-  }
+  // `handleDrfWriteError` ya muestra el `detail` de un 403; aquí solo cambia
+  // su respaldo, para que un 403 sin `detail` siga diciendo que falta permiso.
   return handleDrfWriteError(
     error,
-    PURCHASE_ORDER_CRITICAL_PATH_SAVE_FALLBACK,
+    isForbiddenError(error)
+      ? PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE
+      : PURCHASE_ORDER_CRITICAL_PATH_SAVE_FALLBACK,
     PURCHASE_ORDER_CRITICAL_PATH_FORM_FIELDS,
     setFieldError,
   );
