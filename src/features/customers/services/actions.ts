@@ -56,8 +56,20 @@ export const verifyCustomerRfc = async ({
   return response.data;
 };
 
-export const getCustomerAddresses = async (): Promise<CustomerAddress[]> => {
-  const response = await v1_api.get<CustomerAddress[]>(`/terceros/direcciones-clientes/`);
+/**
+ * Direcciones de envío ACTIVAS de UN cliente
+ * (`GET /terceros/direcciones-clientes/?cliente=<pk>`), con la predeterminada
+ * primero. Arreglo plano, sin paginar.
+ *
+ * El backend acota a la empresa del usuario ANTES de aplicar el filtro, así que
+ * un cliente de otra empresa (o inexistente) responde `200 []`. Un valor que no
+ * es entero responde 400: quien llama debe pasar un pk positivo (ver
+ * `useCustomerAddresses`, que no habilita la consulta sin uno).
+ */
+export const getCustomerAddresses = async (clienteId: number): Promise<CustomerAddress[]> => {
+  const response = await v1_api.get<CustomerAddress[]>(`/terceros/direcciones-clientes/`, {
+    params: { cliente: clienteId },
+  });
   return response.data;
 }
 
