@@ -14,6 +14,7 @@ import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeade
 import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
+import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -34,6 +35,8 @@ interface PurchaseOrderEditStep1Props {
   lineCount: number;
   /** Descarta los renglones (tras confirmar el cambio de tipo de compra). */
   onClearLines: () => void;
+  /** Folio y cliente de los pedidos marcados; vive en el step manager (ver `usePedidoSelectionMemory`). */
+  pedidoSelection: PedidoSelectionMemory;
   /** Llamado con el encabezado validado al continuar al paso de productos. */
   onSuccess: (header: PurchaseOrderEditHeader) => void;
 }
@@ -53,6 +56,7 @@ export function PurchaseOrderEditStep1({
   isTipoCompraLocked,
   lineCount,
   onClearLines,
+  pedidoSelection,
   onSuccess,
 }: PurchaseOrderEditStep1Props) {
   const {
@@ -277,6 +281,7 @@ export function PurchaseOrderEditStep1({
             <PurchaseOrderPedidosField
               value={field.state.value ?? []}
               linkedPedidos={initialData.pedidos_vinculados}
+              selection={pedidoSelection}
               onChange={(ids) => {
                 field.handleChange(ids);
                 clearFieldErrors("pedidos");

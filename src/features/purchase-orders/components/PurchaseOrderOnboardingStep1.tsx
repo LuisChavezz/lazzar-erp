@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import { useProveedorMonedaChange } from "../hooks/useProveedorMonedaChange";
 import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
+import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
@@ -22,6 +23,7 @@ export function PurchaseOrderOnboardingStep1({
   lineCount,
   pricedLineCount,
   onClearLines,
+  pedidoSelection,
   onSuccess,
 }: {
   /** Encabezado capturado previamente; preserva lo escrito al volver desde el Step 2. */
@@ -34,6 +36,8 @@ export function PurchaseOrderOnboardingStep1({
   pricedLineCount: number;
   /** Descarta los renglones (tras confirmar el cambio de tipo de compra). */
   onClearLines: () => void;
+  /** Folio y cliente de los pedidos marcados; vive en el step manager (ver `usePedidoSelectionMemory`). */
+  pedidoSelection: PedidoSelectionMemory;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }) {
   const { onboardingData, isLoading, isInitialError: isError, error } =
@@ -79,6 +83,7 @@ export function PurchaseOrderOnboardingStep1({
       lineCount={lineCount}
       pricedLineCount={pricedLineCount}
       onClearLines={onClearLines}
+      pedidoSelection={pedidoSelection}
       onSuccess={onSuccess}
     />
   );
@@ -93,6 +98,7 @@ interface Step1FormProps {
   lineCount: number;
   pricedLineCount: number;
   onClearLines: () => void;
+  pedidoSelection: PedidoSelectionMemory;
   onSuccess?: (data: PurchaseOrderEncabezados) => void;
 }
 
@@ -103,6 +109,7 @@ function Step1Form({
   lineCount,
   pricedLineCount,
   onClearLines,
+  pedidoSelection,
   onSuccess,
 }: Step1FormProps) {
   const {
@@ -343,6 +350,7 @@ function Step1Form({
                   <div className="sm:col-span-2">
                     <PurchaseOrderPedidosField
                       value={field.state.value ?? []}
+                      selection={pedidoSelection}
                       onChange={(ids) => {
                         field.handleChange(ids);
                         clearFieldErrors("orden_compra.pedidos");

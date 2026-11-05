@@ -13,6 +13,7 @@ import { usePurchaseOrderLines } from "../hooks/usePurchaseOrderLines";
 import { PurchaseOrderOnboardingStep1 } from "./PurchaseOrderOnboardingStep1";
 import { PurchaseOrderOnboardingStep2 } from "./PurchaseOrderOnboardingStep2";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
+import { usePedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
 
 interface PurchaseOrderOnboardingStepManagerProps {
   /** Called when the onboarding flow should close (e.g. after Step 2 succeeds). */
@@ -45,6 +46,9 @@ export function PurchaseOrderOnboardingStepManager({
   // seleccionados" de los renglones descartados.
   const lines = usePurchaseOrderLines();
   const [linesResets, setLinesResets] = useState(0);
+  // Folio y cliente de los pedidos marcados en el Step 1: aquí y no en el
+  // campo, que se desmonta al pasar al Step 2.
+  const pedidoSelection = usePedidoSelectionMemory();
   const handleClearLines = () => {
     lines.clear();
     setLinesResets((n) => n + 1);
@@ -86,6 +90,7 @@ export function PurchaseOrderOnboardingStepManager({
             // Con precio = los que pasan la validación del precio (`priceErrors`).
             pricedLineCount={lines.count - Object.keys(lines.priceErrors).length}
             onClearLines={handleClearLines}
+            pedidoSelection={pedidoSelection}
             onSuccess={handleStep1Success}
           />
         )}

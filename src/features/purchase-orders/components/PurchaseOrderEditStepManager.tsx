@@ -55,6 +55,7 @@ import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
 import { isNotFoundOrForbiddenError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+import { usePedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
 
 interface PurchaseOrderEditStepManagerProps {
   /** Orden a editar. */
@@ -128,6 +129,9 @@ export function PurchaseOrderEditStepManager({
   // remonta para que no conserve la búsqueda ni la vista "solo seleccionados"
   // de los renglones descartados.
   const lines = usePurchaseOrderLines();
+  // Folio y cliente de los pedidos marcados en el Step 1: aquí y no en el
+  // campo, que se desmonta al pasar al Step 2.
+  const pedidoSelection = usePedidoSelectionMemory();
   const [linesResets, setLinesResets] = useState(0);
 
   if (snapshot === null && isDetailFresh && detail) {
@@ -301,6 +305,7 @@ export function PurchaseOrderEditStepManager({
             isTipoCompraLocked={isTipoCompraLocked}
             lineCount={lines.count}
             onClearLines={handleClearLines}
+            pedidoSelection={pedidoSelection}
             onSuccess={handleStep1Success}
           />
         )}

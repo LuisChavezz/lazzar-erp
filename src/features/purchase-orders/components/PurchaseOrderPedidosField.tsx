@@ -1,24 +1,21 @@
 "use client";
 
-import { useId, useState } from "react";
-import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useId } from "react";
 import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
-import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
-import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { PedidoVinculado } from "../interfaces/purchase-order.interface";
 import { LINKABLE_PEDIDO_ESTATUS } from "../constants/linkablePedidos";
+import type {
+  PedidoSeleccionado,
+  PedidoSelectionMemory,
+} from "../hooks/usePedidoSelectionMemory";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 
-interface PedidoOption {
-  id: number;
-  folio: string | null;
-  cliente: string | null;
-}
+type PedidoOption = PedidoSeleccionado;
 
 const toOption = (pedido: PedidoListItem): PedidoOption => ({
   id: pedido.id,
@@ -29,28 +26,6 @@ const toOption = (pedido: PedidoListItem): PedidoOption => ({
 const pedidoLabel = (option: Pick<PedidoOption, "id" | "folio">) =>
   option.folio?.trim() || `Pedido #${option.id}`;
 
-/**
- * Lo que ya se sabe de cada pedido al montar el campo: los ligados a la orden
- * (`pedidos_vinculados`, solo folio) y lo que trajeron las búsquedas que
- * siguen en caché. Con esto un pedido marcado antes de cambiar de paso
- * conserva su folio y cliente al volver, aunque la búsqueda ya no lo traiga.
- */
-const seedKnownPedidos = (
-  queryClient: QueryClient,
-  linkedPedidos: PedidoVinculado[],
-): Map<number, PedidoOption> => {
-  const known = new Map<number, PedidoOption>(
-    linkedPedidos.map((pedido) => [pedido.id, { ...pedido, cliente: null }]),
-  );
-  const cached = queryClient.getQueriesData<PaginatedListResponse<PedidoListItem>>({
-    queryKey: [...ORDERS_QUERY_KEY, "search"],
-  });
-  for (const [, page] of cached) {
-    for (const pedido of page?.results ?? []) known.set(pedido.id, toOption(pedido));
-  }
-  return known;
-};
-
 interface PurchaseOrderPedidosFieldProps {
   /** Ids seleccionados (el valor del formulario). */
   value: number[];
@@ -60,6 +35,12 @@ interface PurchaseOrderPedidosFieldProps {
    * un seleccionado que la búsqueda no trae. `[]` en el alta.
    */
   linkedPedidos?: PedidoVinculado[];
+  /**
+   * Folio y cliente de lo que el usuario marcó, guardados al marcar por el
+   * step manager (`usePedidoSelectionMemory`): sobreviven a que este campo se
+   * desmonte al cambiar de paso.
+   */
+  selection: PedidoSelectionMemory;
   error?: FormFieldError;
 }
 
@@ -72,10 +53,8 @@ const NO_LINKED_PEDIDOS: PedidoVinculado[] = [];
  *
  * - Los seleccionados van FIJOS arriba y la búsqueda nunca los oculta (issue
  *   #262): lo que se guarda siempre está a la vista. Se pintan con lo que se
- *   sabe de ellos (`known`): el resultado en que se marcaron o, para los ya
- *   ligados, su folio de `pedidos_vinculados`. Que la página de resultados no
- *   los traiga no dice nada de ellos, así que no se marcan como "no
- *   disponibles".
+ *   sabe de ellos: el resultado en que se marcaron (`selection`, que guarda
+ *   el step manager) o, para los ya ligados, su folio de `pedidos_vinculados`.
  * - No hay pedido "principal" ni orden significativo: los seleccionados se
  *   muestran en el orden en que están en el valor.
  */
@@ -83,20 +62,23 @@ export function PurchaseOrderPedidosField({
   value,
   onChange,
   linkedPedidos = NO_LINKED_PEDIDOS,
+  selection,
   error,
 }: PurchaseOrderPedidosFieldProps) {
-  const queryClient = useQueryClient();
   const labelId = useId();
   const errorId = useId();
   const { search, setSearch, isSearching, pedidos, total, hasResults, isInitialError, refetch } =
     usePedidoSearchField({ estatus: LINKABLE_PEDIDO_ESTATUS });
-  // Folio y cliente de cada pedido que el usuario marcó (o que ya venía
-  // ligado). Se completa al marcar, no al renderizar.
-  const [known, setKnown] = useState(() => seedKnownPedidos(queryClient, linkedPedidos));
+  const linkedById = new Map(linkedPedidos.map((pedido) => [pedido.id, pedido]));
 
   const selectedIds = new Set(value);
   const pinned = value.map(
-    (id) => known.get(id) ?? { id, folio: null, cliente: null },
+    (id): PedidoOption =>
+      selection.known.get(id) ?? {
+        id,
+        folio: linkedById.get(id)?.folio ?? null,
+        cliente: null,
+      },
   );
 
   const toggle = (option: PedidoOption) => {
@@ -104,7 +86,7 @@ export function PurchaseOrderPedidosField({
       onChange(value.filter((id) => id !== option.id));
       return;
     }
-    setKnown((prev) => new Map(prev).set(option.id, option));
+    selection.remember(option);
     onChange([...value, option.id]);
   };
 
