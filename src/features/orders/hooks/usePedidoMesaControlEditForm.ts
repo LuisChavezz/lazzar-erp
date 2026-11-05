@@ -945,8 +945,10 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   /**
    * Los `id` de los servicios extra que tenía el pedido al cargarse, EN ORDEN.
    *
-   * `_save_pedido_servicios_extras` los empareja por índice POSICIONAL y rechaza
-   * con 400 que el arreglo encoja. No basta con vigilar la longitud: añadir uno
+   * `_save_pedido_servicios_extras` los empareja por índice POSICIONAL (los
+   * guardados en orden de `id`) y, si el arreglo encoge, BORRA los guardados
+   * que sobran al final — sin 400. Esta pantalla no quita servicios guardados
+   * (ver `setExtraServicesGuarded`). No basta con vigilar la longitud: añadir uno
    * y luego borrar uno guardado deja el mismo total y aun así rompe el
    * emparejamiento (el nuevo ocuparía la posición del borrado y le reescribiría
    * el nombre y el monto encima, conservando su id). Por eso se guardan las
@@ -1087,11 +1089,12 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   /**
    * `setExtraServices` blindado: acepta añadir y editar, rechaza ENCOGER.
    *
-   * `QuoteFormContent` entrega el setter crudo a un botón de papelera por fila,
-   * y `_save_pedido_servicios_extras` responde 400 si el arreglo trae menos
-   * elementos de los que hay guardados. Se envuelve aquí para que ninguna ruta
-   * —incluido ese botón, que además se pinta deshabilitado— pueda producir el
-   * payload que el backend rechaza.
+   * `QuoteFormContent` entrega el setter crudo a un botón de papelera por fila.
+   * El backend NO rechaza un arreglo más corto: `_save_pedido_servicios_extras`
+   * empareja por posición y borra los guardados que sobran AL FINAL, así que
+   * quitar uno de en medio reescribiría los siguientes sobre la fila equivocada
+   * y borraría el último. Se envuelve aquí para que ninguna ruta —incluido ese
+   * botón, que además se pinta deshabilitado— quite un servicio guardado.
    *
    * Nota sobre el ORDEN: el backend empareja por índice posicional, así que
    * reordenar reescribiría valores sobre filas ajenas. El JSX compartido NO
@@ -1244,8 +1247,9 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
 
   /**
    * Un servicio extra que YA existía no puede quedarse sin nombre: el backend lo
-   * exige (`CharField` requerido) y el payload no lo puede descartar, porque el
-   * arreglo no puede encoger. Se corta con el error sobre su propio campo.
+   * exige (`CharField` requerido) y el payload no lo puede descartar: sacarlo
+   * del arreglo desalinearía el emparejamiento posicional y el backend borraría
+   * otro servicio, el último. Se corta con el error sobre su propio campo.
    */
   const requireNombresDeServiciosBase = useCallback(() => {
     const index = extraServices
@@ -1481,10 +1485,11 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
          * así que un servicio sin nombre tumbaría el guardado.
          *
          * Solo se descartan los servicios AÑADIDOS en esta sesión que quedaron
-         * sin nombre. Los que venían del pedido no se pueden filtrar: el arreglo
-         * no puede encoger (400), y además el emparejamiento es posicional, así
-         * que quitar uno de en medio reescribiría los siguientes sobre la fila
-         * equivocada. Uno guardado que se quede sin nombre se corta antes, en
+         * sin nombre. Los que venían del pedido no se pueden filtrar: el
+         * emparejamiento es posicional y el backend borra los guardados que
+         * sobran al final, así que quitar uno de en medio reescribiría los
+         * siguientes sobre la fila equivocada y borraría el último. Uno guardado
+         * que se quede sin nombre se corta antes, en
          * `requireNombresDeServiciosBase`. */
         servicios_extras: parsed.data.servicios_extras
           .filter(
