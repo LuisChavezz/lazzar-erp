@@ -18,7 +18,9 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
+import { getQuoteOnboardingDataQueryOptions } from "@/src/features/quotes/hooks/useQuoteOnboardingData";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
 import { usePedidoTrazabilidad } from "../hooks/usePedidoTrazabilidad";
 import { useSampleSkuLinking } from "../hooks/useSampleSkuLinking";
@@ -251,6 +253,7 @@ export function PedidoDetailContent({
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const sheet = resolveOrderDetailSheet(rawSheet);
   // Catálogo SAT de "Información Comercial" (régimen fiscal) pedido desde el
   // montaje, en paralelo con el pedido: la sección solo se monta cuando el
@@ -495,6 +498,15 @@ export function PedidoDetailContent({
             <Button asChild variant="primary">
               <Link
                 href={`/orders/${data.id}/edit-mesa-control`}
+                // El formulario de edición espera el onboarding de cotización
+                // (~400 KB, ninguna otra petición del detalle lo trae): se
+                // pide AL CLIC para que corra mientras llega la ruta y su chunk
+                // (EC-768). Misma llave y opciones que `useQuoteOnboardingData`,
+                // que lo encuentra fresco al montar y no lo vuelve a pedir; si
+                // ya está fresco en caché, esto no pide nada.
+                onClick={() => {
+                  void queryClient.prefetchQuery(getQuoteOnboardingDataQueryOptions());
+                }}
                 className="inline-flex items-center gap-2"
               >
                 <EditIcon className="w-4 h-4" aria-hidden="true" />
