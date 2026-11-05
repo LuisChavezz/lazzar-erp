@@ -31,6 +31,18 @@ export const PEDIDO_ESTATUS = {
   CANCELADO: 5,
 } as const;
 
+/**
+ * Valor de `?estatus=` de `GET /ventas/pedidos/` con TODOS los estatus de
+ * `PEDIDO_ESTATUS` menos `excluded` (`"3,4"`). El backend solo filtra por
+ * INCLUSIÓN; derivar la lista de una EXCLUSIÓN sobre el mapa completo hace que
+ * un estatus que se sume al mapa se ofrezca sin tocar a quien lo usa, en vez
+ * de quedar fuera en silencio.
+ */
+export const pedidoEstatusParamExcept = (excluded: readonly number[]): string =>
+  Object.values(PEDIDO_ESTATUS)
+    .filter((estatus) => !excluded.includes(estatus))
+    .join(",");
+
 export const PEDIDO_ESTATUS_CONFIG: Record<number, BadgeConfig> = {
   [PEDIDO_ESTATUS.BORRADOR]: {
     label: "Borrador",
