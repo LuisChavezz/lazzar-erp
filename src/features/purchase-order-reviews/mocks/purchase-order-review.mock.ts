@@ -1,3 +1,6 @@
+// Solo servidor: el page.tsx genera los datos y los pasa por props, así faker
+// no entra al bundle cliente (EC-773).
+import "server-only";
 import { faker } from "@faker-js/faker";
 import type {
   PurchaseOrderReview,

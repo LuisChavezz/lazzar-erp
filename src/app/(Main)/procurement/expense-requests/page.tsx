@@ -1,4 +1,5 @@
 import { ExpensePurchaseRequestList } from "@/src/features/expense-purchase-requests/components/ExpensePurchaseRequestList";
+import { MOCK_EXPENSE_PURCHASE_REQUESTS } from "@/src/features/expense-purchase-requests/mocks/expense-purchase-request.mock";
 
 // Página de solicitudes de compras de gastos — flujo desde el requerimiento hasta el cierre con CxP
 export default function ExpenseRequestsPage() {
@@ -10,7 +11,7 @@ export default function ExpenseRequestsPage() {
           Gestión de solicitudes de gasto: desde el requerimiento y contacto con el proveedor hasta la integración de documentos y cierre con Cobranza
         </p>
       </div>
-      <ExpensePurchaseRequestList />
+      <ExpensePurchaseRequestList data={MOCK_EXPENSE_PURCHASE_REQUESTS} />
     </div>
   );
 }

@@ -7,11 +7,11 @@ import {
   getCedicorNewDevelopmentColumns,
 } from "./CedicorNewDevelopmentColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { MOCK_CEDICOR_NEW_DEVELOPMENT } from "../mocks/cedicor-new-development.mock";
 import {
   FLOW_STEPS,
   FLOW_STATUS_LABELS,
   type FlowStatus,
+  type NewDevelopment,
 } from "../interfaces/cedicor-new-development.interface";
 
 // Tipo ampliado para el valor del filtro
@@ -28,16 +28,20 @@ const FILTROS: { value: FiltroEstatus; label: string }[] = [
   { value: 'cancelado',         label: 'Cancelados' },
 ];
 
+interface CedicorNewDevelopmentListProps {
+  data: NewDevelopment[];
+}
+
 /** Lista principal de órdenes de Nuevo Desarrollo de Producto */
-export function CedicorNewDevelopmentList() {
+export function CedicorNewDevelopmentList({ data }: CedicorNewDevelopmentListProps) {
   const [filtroEstatus, setFiltroEstatus] = useState<FiltroEstatus>('todas');
 
   const columns = useMemo(() => getCedicorNewDevelopmentColumns(), []);
 
   const ordenesFiltradas = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_CEDICOR_NEW_DEVELOPMENT;
-    return MOCK_CEDICOR_NEW_DEVELOPMENT.filter((o) => o.estatus === filtroEstatus);
-  }, [filtroEstatus]);
+    if (filtroEstatus === 'todas') return data;
+    return data.filter((o) => o.estatus === filtroEstatus);
+  }, [data, filtroEstatus]);
 
   return (
     <div className="space-y-4">
@@ -51,8 +55,8 @@ export function CedicorNewDevelopmentList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_CEDICOR_NEW_DEVELOPMENT.length
-              : MOCK_CEDICOR_NEW_DEVELOPMENT.filter((o) => o.estatus === f.value).length;
+              ? data.length
+              : data.filter((o) => o.estatus === f.value).length;
           const isActive = filtroEstatus === f.value;
 
           if (count === 0 && f.value !== 'todas') return null;
@@ -88,11 +92,11 @@ export function CedicorNewDevelopmentList() {
       <DataTable
         columns={withHeaderFilters(
           columns,
-          MOCK_CEDICOR_NEW_DEVELOPMENT,
+          data,
           CEDICOR_NEW_DEVELOPMENT_HEADER_FILTERS,
         )}
         data={ordenesFiltradas}
-        baseDataCount={MOCK_CEDICOR_NEW_DEVELOPMENT.length}
+        baseDataCount={data.length}
         searchPlaceholder="Buscar folio, cliente, producto…"
       />
     </div>

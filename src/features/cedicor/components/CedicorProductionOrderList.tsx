@@ -7,10 +7,10 @@ import {
   getCedicorProductionOrderColumns,
 } from "./CedicorProductionOrderColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { MOCK_CEDICOR_PRODUCTION_ORDERS } from "../mocks/cedicor-production-order.mock";
 import {
   PRODUCTION_ORDER_STEPS,
   PRODUCTION_ORDER_STATUS_LABELS,
+  type ProductionOrder,
   type ProductionOrderStatus,
 } from "../interfaces/cedicor-production-order.interface";
 
@@ -28,16 +28,20 @@ const FILTROS: { value: ProductionOrderFilterValue; label: string }[] = [
   { value: 'cancelado',         label: 'Cancelados' },
 ];
 
+interface CedicorProductionOrderListProps {
+  data: ProductionOrder[];
+}
+
 /** Lista principal de órdenes de producción (resurtido / stock) */
-export function CedicorProductionOrderList() {
+export function CedicorProductionOrderList({ data }: CedicorProductionOrderListProps) {
   const [filtroEstatus, setFiltroEstatus] = useState<ProductionOrderFilterValue>('todas');
 
   const columns = useMemo(() => getCedicorProductionOrderColumns(), []);
 
   const ordenesFiltradas = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_CEDICOR_PRODUCTION_ORDERS;
-    return MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === filtroEstatus);
-  }, [filtroEstatus]);
+    if (filtroEstatus === 'todas') return data;
+    return data.filter((o) => o.estatus === filtroEstatus);
+  }, [data, filtroEstatus]);
 
   return (
     <div className="space-y-4">
@@ -51,8 +55,8 @@ export function CedicorProductionOrderList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_CEDICOR_PRODUCTION_ORDERS.length
-              : MOCK_CEDICOR_PRODUCTION_ORDERS.filter((o) => o.estatus === f.value).length;
+              ? data.length
+              : data.filter((o) => o.estatus === f.value).length;
           const isActive = filtroEstatus === f.value;
 
           if (count === 0 && f.value !== 'todas') return null;
@@ -88,11 +92,11 @@ export function CedicorProductionOrderList() {
       <DataTable
         columns={withHeaderFilters(
           columns,
-          MOCK_CEDICOR_PRODUCTION_ORDERS,
+          data,
           CEDICOR_PRODUCTION_ORDER_HEADER_FILTERS,
         )}
         data={ordenesFiltradas}
-        baseDataCount={MOCK_CEDICOR_PRODUCTION_ORDERS.length}
+        baseDataCount={data.length}
         searchPlaceholder="Buscar folio, cliente, producto…"
       />
     </div>

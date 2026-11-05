@@ -1,4 +1,5 @@
 import { PurchaseOrderReviewList } from "@/src/features/purchase-order-reviews/components/PurchaseOrderReviewList";
+import { MOCK_PURCHASE_ORDER_REVIEWS } from "@/src/features/purchase-order-reviews/mocks/purchase-order-review.mock";
 
 // Página de revisión de pedidos de compra — flujo completo de recepción y cierre
 export default function OrderReviewsPage() {
@@ -10,7 +11,7 @@ export default function OrderReviewsPage() {
           Seguimiento del flujo de compras: desde la solicitud hasta la confirmación de recepción y cierre con CxP
         </p>
       </div>
-      <PurchaseOrderReviewList />
+      <PurchaseOrderReviewList data={MOCK_PURCHASE_ORDER_REVIEWS} />
     </div>
   );
 }

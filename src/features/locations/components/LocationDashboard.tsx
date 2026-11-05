@@ -4,25 +4,25 @@ import { useState, useMemo, useCallback } from "react";
 import { LocationStats } from "./LocationStats";
 import { LocationGrid } from "./LocationGrid";
 import { LocationDetailPanel } from "./LocationDetailPanel";
-import { generarLocationDashboardData } from "../mocks/locations-dashboard.mock";
 import type { LocationSlot, LocationDashboardData } from "../types/location-dashboard.types";
+
+interface LocationDashboardProps {
+  /** Datos mock generados en el servidor por el page.tsx (EC-773). */
+  data: LocationDashboardData;
+}
 
 /**
  * Componente orquestador del panel de ubicaciones.
  *
  * Responsabilidades:
- * - Generar datos mock (listo para sustituir por llamada a API real).
  * - Mantener el estado de la ubicación seleccionada.
  * - Componer las tres secciones: KPIs, grid de zonas, panel de detalle.
+ *
+ * Los datos llegan por props; en el futuro se reemplazan por un hook de datos
+ * real (ej. useLocationsDashboard).
  */
-export function LocationDashboard() {
+export function LocationDashboard({ data: dashboardData }: LocationDashboardProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-
-  // En el futuro, esto se reemplaza por un hook de datos real (ej. useLocationsDashboard)
-  const dashboardData: LocationDashboardData = useMemo(
-    () => generarLocationDashboardData(),
-    [],
-  );
 
   // Obtener el slot seleccionado a partir del ID (para pasar al panel de detalle)
   const selectedSlot: LocationSlot | null = useMemo(() => {
