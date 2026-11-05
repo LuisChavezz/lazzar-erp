@@ -1,6 +1,6 @@
-import { QuoteById } from "../interfaces/quote.interface";
+import type { QuoteDetailViewDetalle } from "../interfaces/quote.interface";
 
-type QuoteDetail = QuoteById["detalles"][number];
+type QuoteDetail = QuoteDetailViewDetalle;
 export type QuoteDetailSize = QuoteDetail["tallas"][number];
 
 export interface EmbroideryGroup {

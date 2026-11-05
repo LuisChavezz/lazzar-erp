@@ -1,10 +1,10 @@
 "use client";
 
 import { ArrowLeftIcon } from "@/src/components/Icons";
-import { QuoteById } from "../interfaces/quote.interface";
+import type { QuoteDetailViewDetalle } from "../interfaces/quote.interface";
 import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "../utils/reflective-labels";
 
-type QuoteDetail = QuoteById["detalles"][number];
+type QuoteDetail = QuoteDetailViewDetalle;
 type ReflectiveConfig = QuoteDetail["tallas"][number]["reflejante_config"][number];
 
 interface ReflectiveGroup {

@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { ArrowLeftIcon, EyeIcon } from "@/src/components/Icons";
-import { QuoteById } from "../interfaces/quote.interface";
+import type { QuoteDetailViewDetalle } from "../interfaces/quote.interface";
 import { buildEmbroideryGroups } from "../utils/quoteProductEmbroideryGroups";
 
-type QuoteDetail = QuoteById["detalles"][number];
+type QuoteDetail = QuoteDetailViewDetalle;
 
 interface QuoteProductEmbroideryViewProps {
   detail: QuoteDetail;

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ChevronDownIcon, EyeIcon } from "@/src/components/Icons";
-import { QuoteById } from "../interfaces/quote.interface";
+import type { QuoteDetailView } from "../interfaces/quote.interface";
+import { hasQuoteLinePrices } from "../utils/quoteAmountVisibility";
 import { getQuoteDetailProductName } from "../utils/quoteDetailsFormatters";
 import {
   getTipoPedidoConfig,
@@ -18,7 +19,7 @@ interface ActiveView {
 }
 
 interface QuoteDetailsProductsProps {
-  details: QuoteById["detalles"];
+  details: QuoteDetailView["detalles"];
   /** Formato de importes en la moneda de la cotización (lo resuelve `QuoteDetails`). */
   formatAmount: (value?: string | number | null) => string;
 }
@@ -28,6 +29,9 @@ const plural = (n: number, singular: string, pluralForm: string) =>
 
 export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProductsProps) => {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
+  // Sin precios (enmascarados por el backend) no hay subtotal que mostrar: se
+  // omiten el subtotal de cada línea y las columnas de precio y subtotal.
+  const showPrices = hasQuoteLinePrices(details);
   // Cada producto es un desplegable: con muchas prendas, la lista se lee como
   // un índice (nombre, piezas, subtotal) y las tallas se abren a demanda. Si
   // solo hay uno, arranca abierto: no hay nada que resumir.
@@ -170,12 +174,14 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                       {plural(piezasLinea, "pieza", "piezas")}
                     </span>
                   </span>
-                  <span
-                    className="font-semibold text-slate-800 dark:text-white"
-                    title="Subtotal de la línea"
-                  >
-                    {formatAmount(subtotalLinea)}
-                  </span>
+                  {showPrices && (
+                    <span
+                      className="font-semibold text-slate-800 dark:text-white"
+                      title="Subtotal de la línea"
+                    >
+                      {formatAmount(subtotalLinea)}
+                    </span>
+                  )}
                   <ChevronDownIcon
                     className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                     aria-hidden="true"
@@ -240,8 +246,12 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                         <th className="px-3 py-2 text-left font-semibold">SKU</th>
                         <th className="px-3 py-2 text-left font-semibold">Talla</th>
                         <th className="px-3 py-2 text-left font-semibold">Cantidad</th>
-                        <th className="px-3 py-2 text-left font-semibold">Precio Unitario</th>
-                        <th className="px-3 py-2 text-left font-semibold">Subtotal</th>
+                        {showPrices && (
+                          <>
+                            <th className="px-3 py-2 text-left font-semibold">Precio Unitario</th>
+                            <th className="px-3 py-2 text-left font-semibold">Subtotal</th>
+                          </>
+                        )}
                         <th className="px-3 py-2 text-left font-semibold">Bordado</th>
                         <th className="px-3 py-2 text-left font-semibold">Reflejante</th>
                         <th className="px-3 py-2 text-left font-semibold">Corte Manga</th>
@@ -263,12 +273,16 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                           </td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.talla_nombre}</td>
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{talla.cantidad}</td>
-                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                            {formatAmount(talla.precio_unitario)}
-                          </td>
-                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                            {formatAmount(Number(talla.precio_unitario) * Number(talla.cantidad))}
-                          </td>
+                          {showPrices && (
+                            <>
+                              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                                {formatAmount(talla.precio_unitario)}
+                              </td>
+                              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                                {formatAmount(Number(talla.precio_unitario) * Number(talla.cantidad))}
+                              </td>
+                            </>
+                          )}
                           <td className="px-3 py-2">
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
