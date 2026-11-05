@@ -102,3 +102,9 @@ test("red, 5xx y otros estados caen al texto genérico", () => {
     PURCHASE_ORDER_CRITICAL_PATH_SAVE_FALLBACK,
   );
 });
+
+test("el respaldo del 403 usa la misma redacción que el backend", () => {
+  expect(PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE).toBe(
+    "No tienes permiso para editar la ruta crítica de la orden de compra.",
+  );
+});
