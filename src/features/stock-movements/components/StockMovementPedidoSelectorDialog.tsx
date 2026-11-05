@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { Button } from "@/src/components/Button";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
+import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 
 export interface SelectedPedido {
   id: number;
@@ -14,65 +16,112 @@ export interface SelectedPedido {
 interface StockMovementPedidoSelectorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Pedido actualmente vinculado (para resaltarlo al reabrir). */
-  selectedPedidoId: number | null;
+  /** Pedido actualmente vinculado (para fijarlo arriba y resaltarlo al reabrir). */
+  selectedPedido: SelectedPedido | null;
   /** Se invoca al confirmar la selección con el pedido elegido. */
   onSelect: (pedido: SelectedPedido) => void;
 }
 
 /**
+ * Lo que el selector necesita de un pedido. Sale de un resultado de la
+ * búsqueda o, para el ya vinculado, de lo que el formulario guardó de él (sin
+ * cliente: el formulario solo conserva el folio).
+ */
+interface PedidoOption {
+  id: number;
+  folio: string | null;
+  cliente: string | null;
+}
+
+const optionLabel = (option: PedidoOption) => option.folio ?? `#${option.id}`;
+
+/**
  * Contenido del selector — se monta solo mientras el diálogo está abierto,
- * de modo que `useOrders()` (`/ventas/pedidos/`) se ejecuta bajo demanda. Este
- * componente (con nombre propio, no una arrow function anónima) es lo que
- * permite llamar el hook aquí y no en `SingleSelectPickerDialogContent`, que
- * es puramente presentacional y no sabe de dónde vienen los `items`.
+ * así que la búsqueda (`GET /ventas/pedidos/?q=&limit=`) corre bajo demanda.
+ *
+ * La selección es *tentativa*: solo se propaga al formulario al pulsar
+ * "Confirmar selección". Se guarda el pedido ENTERO, no su id, para que siga
+ * fijo arriba aunque la búsqueda ya no lo traiga.
  */
 function PedidoSelectorContent({
-  selectedPedidoId,
+  selectedPedido,
   onConfirm,
   onCancel,
 }: {
-  selectedPedidoId: number | null;
+  selectedPedido: SelectedPedido | null;
   onConfirm: (pedido: SelectedPedido) => void;
   onCancel: () => void;
 }) {
-  const { orders, isLoading, isError, hasLoaded } = useOrders();
+  const [tentative, setTentative] = useState<PedidoOption | null>(
+    selectedPedido
+      ? { id: selectedPedido.id, folio: selectedPedido.label, cliente: null }
+      : null,
+  );
+  const { search, setSearch, isSearching, pedidos, total, hasResults, isInitialError, refetch } =
+    usePedidoSearchField();
+  const results: PedidoOption[] = pedidos.map((pedido) => ({
+    id: pedido.id,
+    folio: pedido.folio,
+    cliente: pedido.cliente_nombre,
+  }));
 
   return (
-    <SingleSelectPickerDialogContent<PedidoListItem>
-      title="Seleccionar Pedido"
-      subtitle="Vincula el movimiento a un pedido existente"
-      statusColor="indigo"
-      items={orders}
-      isLoading={isLoading}
-      // Solo un error SIN datos cargados oculta la lista; un refetch fallido
-      // la conserva y avisa por toast (ver `useOrders`).
-      isError={isInitialLoadError(isError, hasLoaded)}
-      loadingTitle="Cargando pedidos"
-      loadingMessage="Obteniendo pedidos disponibles..."
-      errorMessage="Error al cargar los pedidos."
-      searchPlaceholder="Buscar pedido por folio o cliente..."
-      filterPredicate={(order, term) =>
-        (order.folio ?? "").toLowerCase().includes(term) ||
-        (order.cliente_nombre ?? "").toLowerCase().includes(term)
-      }
-      getKey={(order) => order.id}
-      selectedKey={selectedPedidoId}
-      emptyMessage="No hay pedidos disponibles."
-      noResultsMessage="No se encontraron pedidos"
-      renderContent={(order) => (
-        <>
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-            {order.folio}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-            {order.cliente_nombre}
-          </p>
-        </>
-      )}
-      onConfirm={(order) => onConfirm({ id: order.id, label: order.folio ?? `#${order.id}` })}
-      onCancel={onCancel}
-    />
+    <>
+      <DialogHeader
+        title="Seleccionar Pedido"
+        subtitle="Vincula el movimiento a un pedido existente"
+        statusColor="indigo"
+      />
+
+      <ServerSearchSelectList<PedidoOption>
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar pedido por folio, OC o cliente..."
+        results={results}
+        pinned={tentative ? [tentative] : []}
+        getKey={(option) => option.id}
+        isSelected={(option) => option.id === tentative?.id}
+        onSelect={(option) =>
+          setTentative((prev) => (prev?.id === option.id ? null : option))
+        }
+        renderIndicator={renderRadioIndicator}
+        renderContent={(option) => (
+          <>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+              {optionLabel(option)}
+            </p>
+            {option.cliente && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {option.cliente}
+              </p>
+            )}
+          </>
+        )}
+        hasResults={hasResults}
+        isInitialError={isInitialError}
+        isSearching={isSearching}
+        onRetry={() => void refetch()}
+        total={total}
+        emptyMessage="No hay pedidos disponibles."
+        noResultsMessage="No se encontraron pedidos"
+        errorMessage="Error al buscar los pedidos."
+      />
+
+      <div className="flex items-center justify-end gap-3 pt-5">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (tentative) onConfirm({ id: tentative.id, label: optionLabel(tentative) });
+          }}
+          disabled={tentative === null}
+        >
+          Confirmar selección
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -81,17 +130,16 @@ function PedidoSelectorContent({
  *
  * Diálogo de selección única de pedido, apilado ENCIMA del formulario de
  * movimiento (el formulario permanece montado detrás para no perder su estado —
- * ver `StockMovementForm`). Reutiliza el patrón de lista buscable
- * (`SearchableSelectList` + `useOrders`) de `InvoiceOrderSelector`.
+ * ver `StockMovementForm`). Busca en el servidor (`usePedidoSearchField`) en vez
+ * de cargar la lista completa de pedidos.
  *
- * A diferencia de `InvoiceOrderSelector`, la selección es *tentativa*: solo se
- * propaga al formulario al pulsar "Confirmar selección". Cerrar/cancelar no
- * altera nada.
+ * La selección es *tentativa*: solo se propaga al formulario al pulsar
+ * "Confirmar selección". Cerrar/cancelar no altera nada.
  */
 export function StockMovementPedidoSelectorDialog({
   open,
   onOpenChange,
-  selectedPedidoId,
+  selectedPedido,
   onSelect,
 }: StockMovementPedidoSelectorDialogProps) {
   return (
@@ -105,7 +153,7 @@ export function StockMovementPedidoSelectorDialog({
       {/* Se remonta al reabrir para reiniciar la selección tentativa. */}
       {open && (
         <PedidoSelectorContent
-          selectedPedidoId={selectedPedidoId}
+          selectedPedido={selectedPedido}
           onConfirm={(pedido) => {
             onSelect(pedido);
             onOpenChange(false);

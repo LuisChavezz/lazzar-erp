@@ -535,7 +535,7 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
       <StockMovementPedidoSelectorDialog
         open={isPedidoSelectorOpen}
         onOpenChange={setIsPedidoSelectorOpen}
-        selectedPedidoId={selectedPedido?.id ?? null}
+        selectedPedido={selectedPedido}
         onSelect={handleSelectPedido}
       />
     </>

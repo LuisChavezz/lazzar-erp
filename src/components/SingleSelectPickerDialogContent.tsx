@@ -55,7 +55,7 @@ interface SingleSelectPickerDialogContentProps<T> {
  *
  * No incluye el `MainDialog` que lo envuelve ni el gateo de "montar solo
  * mientras `open`": cada selector concreto conserva eso (y, si necesita cargar
- * su propio catálogo bajo demanda como `useOrders()`, el hook que lo hace),
+ * su propio catálogo bajo demanda como `useSpecialOrders()`, el hook que lo hace),
  * porque ese gateo es lo que logra que el fetch sea perezoso — moverlo aquí
  * obligaría a llamar el hook de datos fuera de un componente que se monta
  * condicionalmente, perdiendo esa pereza.
