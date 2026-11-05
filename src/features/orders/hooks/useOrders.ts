@@ -2,26 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getOrders, type OrdersQueryParams } from "../services/actions";
 import { PedidoListItem } from "../interfaces/order.interface";
+import { ORDERS_QUERY_KEY, ordersQueryKey } from "../constants/ordersQueryKeys";
 
-/**
- * Prefijo de TODAS las consultas de `GET /ventas/pedidos/`: la lista completa
- * (`ordersQueryKey`), las búsquedas de los selectores
- * (`["orders", "search", …]`) y cualquier lista paginada que cuelgue de él.
- * Las mutaciones que cambian pedidos invalidan ESTE prefijo, nunca una llave
- * concreta, para refrescar todas las variantes a la vez.
- */
-export const ORDERS_QUERY_KEY = ["orders"] as const;
-
-/**
- * Llave de la lista COMPLETA (sin paginar) de pedidos, con sus filtros si los
- * hay. Va bajo `"full"` y no en el prefijo pelado: así ninguna búsqueda ni
- * página comparte llave con ella, y un `exact: true` sobre esta llave toca solo
- * esta variante. Para invalidar todo, `ORDERS_QUERY_KEY`.
- */
-export const ordersQueryKey = (params?: OrdersQueryParams) =>
-  params
-    ? ([...ORDERS_QUERY_KEY, "full", params] as const)
-    : ([...ORDERS_QUERY_KEY, "full"] as const);
+// Las llaves viven en un módulo puro (sin React) para poder probarlas; se
+// reexportan aquí porque es de donde las importan las mutaciones.
+export { ORDERS_QUERY_KEY, ordersQueryKey };
 
 /**
  * Llave y función de la lista completa de pedidos, en UN solo lugar: las usan

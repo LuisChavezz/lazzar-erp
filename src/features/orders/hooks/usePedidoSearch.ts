@@ -1,41 +1,25 @@
 import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useDebounce } from "@/src/hooks/useDebounce";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
-import { searchOrders, type PedidoSearchParams } from "../services/actions";
-import { ORDERS_QUERY_KEY } from "./useOrders";
+import { searchOrders } from "../services/actions";
+import { pedidoSearchQueryKey } from "../constants/ordersQueryKeys";
+import { toPedidoSearchParams, type PedidoSearchFilters } from "../utils/pedidoSearchParams";
 
 /**
- * Coincidencias que pide un selector por búsqueda. Más que las que cabe
- * revisar a ojo: si no está entre ellas, se acota tecleando.
- */
-export const PEDIDO_SEARCH_LIMIT = 50;
-
-export interface PedidoSearchFilters {
-  /** Término YA debounced y recortado; vacío = sin búsqueda (los más recientes). */
-  q: string;
-  /** Códigos de estatus de INCLUSIÓN separados por coma (`"3,4"`), si el selector acota. */
-  estatus?: string;
-}
-
-const toParams = ({ q, estatus }: PedidoSearchFilters): PedidoSearchParams => ({
-  ...(q ? { q } : {}),
-  ...(estatus ? { estatus } : {}),
-  limit: PEDIDO_SEARCH_LIMIT,
-});
-
-/**
- * Llave y función de una búsqueda de pedidos. Bajo el prefijo `["orders"]`
- * (`ORDERS_QUERY_KEY`): las mutaciones de pedidos, que invalidan ese prefijo,
- * la refrescan; y va bajo `"search"`, aparte de la lista completa
- * (`ordersQueryKey`), porque trae solo una página.
+ * Opciones de una búsqueda de pedidos: llave, función y política de `retry`,
+ * en UN solo lugar. Las usan `usePedidoSearch` y quien prefetchee la misma
+ * búsqueda (el wizard de edición de OC), así que los dos observadores de la
+ * llave comparten petición Y política: un 4xx (`estatus` inválido es un 400
+ * determinista) no se reintenta en ninguno.
  */
 export const pedidoSearchQueryOptions = (filters: PedidoSearchFilters) => {
-  const params = toParams(filters);
+  const params = toPedidoSearchParams(filters);
   return {
-    queryKey: [...ORDERS_QUERY_KEY, "search", params] as const,
+    queryKey: pedidoSearchQueryKey(params),
     queryFn: () => searchOrders(params),
+    retry: retryUnlessClientError,
   };
 };
 
@@ -46,7 +30,6 @@ export const pedidoSearchQueryOptions = (filters: PedidoSearchFilters) => {
  *
  * - `keepPreviousData`: al teclear se conservan los resultados anteriores
  *   mientras llegan los nuevos (`isPlaceholderData`), sin parpadeo.
- * - Un 4xx no se reintenta (`estatus` inválido es un 400 determinista).
  * - `pedidos` son solo las primeras `PEDIDO_SEARCH_LIMIT` coincidencias;
  *   `total` es cuántas hay en el servidor, para avisar que hay más.
  */
@@ -56,7 +39,6 @@ export const usePedidoSearch = (filters: PedidoSearchFilters) => {
       {
         ...pedidoSearchQueryOptions(filters),
         placeholderData: keepPreviousData,
-        retry: retryUnlessClientError,
       },
       {
         toastId: "pedido-search-refetch-error",
