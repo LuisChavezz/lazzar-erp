@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
+import { SelectListRow } from "@/src/components/SelectListRow";
 
 interface SearchableSelectListProps<T> {
   items: T[];
@@ -84,36 +85,16 @@ export function SearchableSelectList<T>({
         ) : (
           filteredItems.map((item) => {
             const selected = isSelected(item);
-            const disabledReason = getItemDisabledReason?.(item) ?? null;
             return (
-              <button
+              <SelectListRow
                 key={getKey(item)}
-                type="button"
-                // Enter y Espacio sobre un `<button>` disparan `click`: con esta
-                // guarda tampoco eligen una fila deshabilitada.
-                onClick={() => {
-                  if (disabledReason === null) onSelect(item);
-                }}
-                aria-disabled={disabledReason !== null ? true : undefined}
-                aria-pressed={selected}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
-                  disabledReason !== null
-                    ? "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/2 opacity-60 cursor-not-allowed"
-                    : selected
-                      ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20 cursor-pointer"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
-                }`}
+                selected={selected}
+                onSelect={() => onSelect(item)}
+                indicator={renderIndicator(selected)}
+                disabledReason={getItemDisabledReason?.(item) ?? null}
               >
-                {renderIndicator(selected)}
-                <div className="min-w-0 flex-1">
-                  {renderContent(item)}
-                  {disabledReason !== null && (
-                    <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      {disabledReason}
-                    </p>
-                  )}
-                </div>
-              </button>
+                {renderContent(item)}
+              </SelectListRow>
             );
           })
         )}
