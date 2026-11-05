@@ -4,67 +4,23 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import {
-  extractPlainDetalleMessage,
-  extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
-  REQUIRED_COLOR_KEY,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { firstDrfMessage, firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
 import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import {
+  extractPedidoMesaControlRejectionMessage,
+  pedidoMesaControlFieldIssues,
+} from "../utils/pedidoMesaControlErrors";
 import type {
   PedidoMesaControlUpdate,
   PedidoMesaControlUpdateResponse,
 } from "../interfaces/pedido-mesa-control.interface";
-
-/**
- * Claves de RECHAZO del endpoint: motivos que el usuario no puede corregir en
- * ningún campo del formulario y que por tanto tienen que llegarle en el toast.
- *
- * Las dos vienen como `ValidationError` de DRF — o sea **HTTP 400 con el
- * mensaje anidado bajo su clave**, no un 403 ni un `{ error }`:
- *
- * - `permiso`: `_require_mesa_control` — "Acción disponible solo para mesa de
- *   control." Es el caso del usuario que tiene `E-MESACONTROL-PEDIDOS` pero no
- *   cumple lo que el backend valida de verdad: ser superuser, `is_admin_empresa`
- *   o tener un rol activo de su empresa cuya clave de departamento sea
- *   EXACTAMENTE `MESACONTROL` (p. ej. `MESACONTROLYVENTAS` se rechaza).
- * - `pedido` / `cotizacion`: el pedido no tiene cotización ligada (o se
- *   borró), así que no hay nada que espejar.
- *
- * `detail` cubre los `APIException` genéricos de DRF, por si aparece otro.
- * NO se incluyen las claves de campo (`detalle`, `pedido.cliente`…): esas ya
- * las pinta `onValidationError` sobre el input correspondiente y repetirlas en
- * el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
- * prenda/proceso, lista completa) y `detalle` cuando llega como mensaje plano
- * (p. ej. el tope de reflejante «Del inventario»): no los pinta ningún campo.
- * `color` (EC-641) va a los DOS lados: el toast muestra el mensaje del backend
- * con los nombres de producto, y `onValidationError` marca las partidas.
- */
-const REJECTION_KEYS = ["permiso", "cotizacion", "detail", REQUIRED_COLOR_KEY] as const;
-
-/**
- * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es de
- * validación de campos. `firstDrfMessage` desenvuelve el `string | string[]`
- * con el que DRF serializa cada valor.
- */
-const extractRejectionMessage = (data: unknown): string | undefined => {
-  const message =
-    extractProcessCompatibilityMessage(data) ??
-    extractPlainDetalleMessage(data) ??
-    firstRejectionMessage(data, REJECTION_KEYS);
-  if (message) return message;
-  if (!data || typeof data !== "object") return undefined;
-  /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string) y
-   * también el bloque de errores de campo de la cabecera (objeto). Solo cuenta
-   * como rechazo cuando trae un mensaje plano. */
-  return firstDrfMessage((data as Record<string, unknown>).pedido);
-};
 
 type UpdatePedidoMesaControlVariables = {
   pedidoId: number;
@@ -171,11 +127,11 @@ export const useUpdatePedidoMesaControl = (
           return;
         }
         if (statusCode === 400 && data) {
-          const issues = extractQuoteValidationIssues(data);
+          const issues = pedidoMesaControlFieldIssues(extractQuoteValidationIssues(data));
           if (issues.length > 0) {
             onValidationError?.(issues);
           }
-          message = extractRejectionMessage(data);
+          message = extractPedidoMesaControlRejectionMessage(data);
         }
       }
       /* `extractErrorMessage` como último eslabón: lee el `{ error: string }`
