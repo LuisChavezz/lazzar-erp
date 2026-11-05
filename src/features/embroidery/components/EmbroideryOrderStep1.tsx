@@ -7,6 +7,7 @@ import { FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
 import { MesaControlProgramadoIndicator } from "@/src/components/MesaControlProgramadoIndicator";
 import { InfoIcon, RefreshIcon, UserIcon } from "@/src/components/Icons";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { useEmbroideryStep1Form } from "../hooks/useEmbroideryStep1Form";
 import type { CreateEmbroideryOrderFormValues } from "../schemas/embroidery-order.schema";
@@ -44,10 +45,11 @@ const PEDIDO_HELP_ID = "embroidery-order-pedido-help";
  * `parseEmbroideryOrderError` para el alta.
  */
 const getCatalogErrorMessage = (error: unknown): string =>
-  (error instanceof AxiosError &&
-  (error.response?.status === 400 || error.response?.status === 403)
-    ? firstDrfFieldMessage(error)
-    : undefined) ?? CATALOG_ERROR_FALLBACK;
+  (isForbiddenError(error)
+    ? forbiddenDetailMessage(error)
+    : error instanceof AxiosError && error.response?.status === 400
+      ? firstDrfFieldMessage(error)
+      : undefined) ?? CATALOG_ERROR_FALLBACK;
 
 /**
  * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja replica el de

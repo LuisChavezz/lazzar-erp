@@ -2,7 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
-import { handleDrfWriteError, isNotFoundError } from "@/src/utils/drfWriteErrors";
+import {
+  forbiddenDetailMessage,
+  handleDrfWriteError,
+  isForbiddenError,
+  isNotFoundError,
+} from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { transferPicking } from "../services/actions";
@@ -44,8 +49,8 @@ export function parseTransferPickingError(
   error: unknown,
   setFieldError: (field: TransferPickingField, message: string) => void,
 ): string | null {
-  if (error instanceof AxiosError && error.response?.status === 403) {
-    return firstDrfFieldMessage(error) ?? TRANSFER_FORBIDDEN_MESSAGE;
+  if (isForbiddenError(error)) {
+    return forbiddenDetailMessage(error) ?? TRANSFER_FORBIDDEN_MESSAGE;
   }
   const data =
     error instanceof AxiosError && error.response?.status === 400 ? error.response.data : undefined;

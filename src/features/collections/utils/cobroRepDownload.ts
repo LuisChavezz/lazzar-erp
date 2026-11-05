@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { COBRO_REP_DOWNLOAD_PERMISSION } from "../constants/collectionPermissions";
 import type { Cobro, CobroRepFileFormat } from "../interfaces/collection.interface";
@@ -65,8 +66,8 @@ export const downloadCobroRepErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
     const status = error.response?.status;
     const data = error.response?.data as { error?: unknown } | undefined;
-    if (status === 403) {
-      return firstDrfFieldMessage(error) ?? "No tienes acceso a Facturama.";
+    if (isForbiddenError(error)) {
+      return forbiddenDetailMessage(error) ?? "No tienes acceso a Facturama.";
     }
     const isTimeout = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
     if (!error.response && !isTimeout) return "No se recibió respuesta del servidor. Intenta de nuevo.";

@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 
 /** Campos del formulario a los que el backend puede atribuir un `400`. */
@@ -136,8 +137,19 @@ export function parseCorteMangaOrderError(error: unknown): ParsedCorteMangaOrder
   // `CORTE_MANGA_ORDER_GENERIC_ERROR`; el banner, "Intenta de nuevo."). Mismo
   // criterio que `useToggleCostCenterActivo` (EC-140).
   if (!(error instanceof AxiosError)) return result;
+  // 403: regla única del módulo (`forbiddenDetailMessage`): su `detail` o su
+  // `non_field_errors`, nunca errores de campo. Sin ninguno, sin `formError`
+  // para que el consumidor ponga su texto fijo.
+  if (isForbiddenError(error)) {
+    const message = forbiddenDetailMessage(error);
+    if (message) {
+      result.formError = message;
+      result.messages.push(message);
+    }
+    return result;
+  }
   const status = error.response?.status;
-  if (status !== 400 && status !== 403 && status !== 409) return result;
+  if (status !== 400 && status !== 409) return result;
 
   const data = error.response?.data;
 
