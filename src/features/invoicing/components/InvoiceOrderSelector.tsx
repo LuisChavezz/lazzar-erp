@@ -1,83 +1,58 @@
 "use client";
 
-import { Loader } from "@/src/components/Loader";
-import { SearchableSelectList } from "@/src/components/SearchableSelectList";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
 import { renderRadioIndicator } from "@/src/components/RadioIndicator";
-import { useOrders } from "@/src/features/orders/hooks/useOrders";
+import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 
 interface InvoiceOrderSelectorProps {
-  /** Id del pedido seleccionado (`0` = ninguno). */
-  selectedOrderId: number;
+  /** Pedido seleccionado (`null` = ninguno): va fijo arriba aunque la búsqueda no lo traiga. */
+  selectedOrder: PedidoListItem | null;
   /** Selecciona un pedido. Selección única: reemplaza cualquier anterior. */
   onSelect: (order: PedidoListItem) => void;
 }
 
 /**
- * Estatus de pedido que NO se facturan: los previos a la autorización
- * (Borrador, Por autorizar) y el cancelado. Lista de EXCLUSIÓN a propósito:
- * cualquier estatus desde la autorización en adelante sigue facturable. El
- * backend no valida el estatus del pedido al facturar.
+ * Estatus de pedido que se facturan: de la autorización en adelante. Los
+ * previos (Borrador, Por autorizar) y el cancelado quedan fuera. Viaja como
+ * `?estatus=` (el backend solo filtra por INCLUSIÓN), así que un estatus nuevo
+ * del backend no aparece hasta sumarlo aquí. El backend no valida el estatus
+ * del pedido al facturar. Los inactivos no los devuelve el listado.
  */
-const NON_INVOICEABLE_STATUSES: readonly number[] = [
-  PEDIDO_ESTATUS.BORRADOR,
-  PEDIDO_ESTATUS.POR_AUTORIZAR,
-  PEDIDO_ESTATUS.CANCELADO,
-];
-
-const isInvoiceable = (order: PedidoListItem) =>
-  order.activo && !NON_INVOICEABLE_STATUSES.includes(order.estatus);
+const INVOICEABLE_ESTATUS = [PEDIDO_ESTATUS.AUTORIZADA, PEDIDO_ESTATUS.EN_PROCESO].join(",");
 
 /**
  * InvoiceOrderSelector
  *
  * Lista buscable de **selección única** de pedidos a facturar (Paso 1 de
- * "Nueva Factura"). Excluye en cliente los pedidos inactivos, los no
- * autorizados aún y los cancelados (ver `NON_INVOICEABLE_STATUSES`). NO
- * puede saber si a un pedido aún le quedan piezas por facturar: el listado no
- * lo expone, así que eso lo dice el Paso 2 con el onboarding del pedido.
- * Reutiliza el patrón de lista buscable de `ProductionOrderStep1`, adaptado a
- * selección única (indicador circular tipo radio en vez de casilla).
+ * "Nueva Factura"). Busca en el servidor (`?q=` por folio, OC o cliente) solo
+ * entre los pedidos facturables (`INVOICEABLE_ESTATUS`). NO puede saber si a
+ * un pedido aún le quedan piezas por facturar: el listado no lo expone, así
+ * que eso lo dice el Paso 2 con el onboarding del pedido.
  */
-export function InvoiceOrderSelector({
-  selectedOrderId,
-  onSelect,
-}: InvoiceOrderSelectorProps) {
-  const { orders: allOrders, isLoading, isError, hasLoaded } = useOrders();
-  const orders = allOrders.filter(isInvoiceable);
-
-  if (isLoading) {
-    return (
-      <Loader
-        title="Cargando pedidos"
-        message="Obteniendo pedidos disponibles..."
-      />
-    );
-  }
-
-  // Solo un error SIN datos cargados oculta la lista; un refetch fallido la
-  // conserva y avisa por toast (ver `useOrders`).
-  if (isInitialLoadError(isError, hasLoaded)) {
-    return (
-      <p className="text-sm text-red-500 p-4">Error al cargar los pedidos.</p>
-    );
-  }
+export function InvoiceOrderSelector({ selectedOrder, onSelect }: InvoiceOrderSelectorProps) {
+  const {
+    search,
+    setSearch,
+    isSearching,
+    pedidos,
+    total,
+    hasResults,
+    isInitialError,
+    refetch,
+  } = usePedidoSearchField({ estatus: INVOICEABLE_ESTATUS });
 
   return (
-    <SearchableSelectList<PedidoListItem>
-      items={orders}
-      searchPlaceholder="Buscar pedido por folio o cliente..."
-      filterPredicate={(order, term) =>
-        (order.folio ?? "").toLowerCase().includes(term) ||
-        (order.cliente_nombre ?? "").toLowerCase().includes(term)
-      }
+    <ServerSearchSelectList<PedidoListItem>
+      search={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Buscar pedido por folio, OC o cliente..."
+      results={pedidos}
+      pinned={selectedOrder ? [selectedOrder] : []}
       getKey={(order) => order.id}
-      isSelected={(order) => order.id === selectedOrderId}
+      isSelected={(order) => order.id === selectedOrder?.id}
       onSelect={onSelect}
-      emptyMessage="No hay pedidos disponibles."
-      noResultsMessage="No se encontraron pedidos"
       renderIndicator={renderRadioIndicator}
       renderContent={(order) => (
         <>
@@ -89,6 +64,14 @@ export function InvoiceOrderSelector({
           </p>
         </>
       )}
+      hasResults={hasResults}
+      isInitialError={isInitialError}
+      isSearching={isSearching}
+      onRetry={() => void refetch()}
+      total={total}
+      emptyMessage="No hay pedidos disponibles."
+      noResultsMessage="No se encontraron pedidos"
+      errorMessage="Error al buscar los pedidos."
     />
   );
 }
