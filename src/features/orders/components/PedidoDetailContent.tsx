@@ -18,6 +18,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
 import { useSampleSkuLinking } from "../hooks/useSampleSkuLinking";
 import {
@@ -250,6 +251,12 @@ export function PedidoDetailContent({
   const pathname = usePathname();
   const router = useRouter();
   const sheet = resolveOrderDetailSheet(rawSheet);
+  // Catálogo SAT de "Información Comercial" (régimen fiscal) pedido desde el
+  // montaje, en paralelo con el pedido: la sección solo se monta cuando el
+  // pedido ya llegó, y pedirlo ahí lo encadenaba detrás (EC-768). Misma llave
+  // que la sección, que lo encuentra fresco (24 h) y no lo vuelve a pedir; sus
+  // respaldos mientras carga no cambian. Solo en la hoja que lo pinta.
+  useSatInfo({ enabled: sheet === "order" });
   // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
   // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
   // de departamento sea exactamente `MESACONTROL`—, así que esto solo gobierna
