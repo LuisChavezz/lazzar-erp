@@ -35,13 +35,17 @@ const QUOTE_RESOURCE_ORDER: Record<QuoteDetailSource, readonly QuoteResource[]> 
 };
 
 /**
- * Recurso fijo de `source`, o `undefined` si `source` tiene respaldo y el
- * recurso solo se conoce al leer (ver `readQuoteResource`).
+ * Recurso del que se leen los comentarios de una cotización: el que sirvió su
+ * detalle (`resolved`) en cuanto se sabe y, mientras tanto, el PRIMERO del
+ * orden de `source`. Así arrancan en paralelo con el detalle también con
+ * respaldo —en el caso común el primero responde—, y solo si el detalle se
+ * resolvió por el segundo se vuelven a leer de ahí. Con un `source` fijo es
+ * siempre ese recurso.
  */
-export const fixedQuoteResource = (source: QuoteDetailSource): QuoteResource | undefined => {
-  const order = QUOTE_RESOURCE_ORDER[source];
-  return order.length === 1 ? order[0] : undefined;
-};
+export const quoteComentariosResource = (
+  source: QuoteDetailSource,
+  resolved: QuoteResource | undefined
+): QuoteResource => resolved ?? QUOTE_RESOURCE_ORDER[source][0];
 
 /**
  * Errores definitivos del detalle de una cotización: el 404 (no existe o no es
