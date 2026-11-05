@@ -1,10 +1,5 @@
 import { LocationDashboard } from "@/src/features/locations/components/LocationDashboard";
-import { generarLocationDashboardData } from "@/src/features/locations/mocks/locations-dashboard.mock";
-
-// Se genera una sola vez por proceso (en el build, al ser página estática): el
-// generador avanza el PRNG sembrado, así que llamarlo en cada render daría datos
-// distintos por petición en desarrollo.
-const LOCATION_DASHBOARD_DATA = generarLocationDashboardData();
+import { MOCK_LOCATION_DASHBOARD } from "@/src/features/locations/mocks/locations-dashboard.mock";
 
 export default function LocationsPage() {
   return (
@@ -15,7 +10,7 @@ export default function LocationsPage() {
         </p>
       </div>
 
-      <LocationDashboard data={LOCATION_DASHBOARD_DATA} />
+      <LocationDashboard data={MOCK_LOCATION_DASHBOARD} />
     </div>
   );
 }

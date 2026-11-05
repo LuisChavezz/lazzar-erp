@@ -265,3 +265,12 @@ export function generarLocationDashboardData(): LocationDashboardData {
     zonas,
   };
 }
+
+// ─── Exportación ──────────────────────────────────────────────────────────────
+
+/**
+ * Datos del panel generados una sola vez, al cargar el módulo y justo después
+ * de `faker.seed(2025)`, como las demás fixtures: así no dependen del estado en
+ * que otro módulo deje el `faker` compartido (EC-773).
+ */
+export const MOCK_LOCATION_DASHBOARD: LocationDashboardData = generarLocationDashboardData();
