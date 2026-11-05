@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { AxiosError, AxiosHeaders } from "axios";
 import {
   ORDERS_QUERY_KEY,
   linkedPedidoAvailabilityQueryKey,
@@ -15,7 +16,10 @@ import {
 } from "@/src/features/orders/utils/pedidoSearchParams";
 import { INVOICEABLE_PEDIDO_ESTATUS } from "@/src/features/invoicing/constants/invoiceablePedidos";
 import { LINKABLE_PEDIDO_ESTATUS } from "@/src/features/purchase-orders/constants/linkablePedidos";
-import { linkedPedidoAvailabilityFromPage } from "@/src/features/purchase-orders/utils/linkedPedidoAvailability";
+import {
+  linkedPedidoLookupFromDetailError,
+  linkedPedidoLookupFromPage,
+} from "@/src/features/purchase-orders/utils/linkedPedidoAvailability";
 
 /**
  * Pruebas unitarias de EC-769: la búsqueda de pedidos de los selectores
@@ -95,40 +99,82 @@ test.describe("llaves de pedidos", () => {
   });
 });
 
-test.describe("linkedPedidoAvailabilityFromPage", () => {
-  const row = (id: number, estatus: number, activo = true) => ({ id, estatus, activo });
+test.describe("linkedPedidoLookupFromPage", () => {
+  const row = (id: number, estatus: number, activo = true) => ({
+    id,
+    estatus,
+    activo,
+    cliente_nombre: `Cliente ${id}`,
+    cliente_razon_social: null,
+  });
 
-  test("viene en la página y es ligable → disponible", () => {
+  test("viene en la página y es ligable → disponible, con su cliente", () => {
     expect(
-      linkedPedidoAvailabilityFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.AUTORIZADA)] }),
-    ).toBe("available");
+      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.AUTORIZADA)] }),
+    ).toEqual({ availability: "available", cliente: "Cliente 7" });
+  });
+
+  test("sin nombre de cliente usa la razón social", () => {
+    expect(
+      linkedPedidoLookupFromPage(7, {
+        count: 1,
+        results: [{ ...row(7, PEDIDO_ESTATUS.AUTORIZADA), cliente_nombre: null, cliente_razon_social: "RS SA" }],
+      }).cliente,
+    ).toBe("RS SA");
   });
 
   test("viene cancelado → no disponible", () => {
     expect(
-      linkedPedidoAvailabilityFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.CANCELADO)] }),
+      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.CANCELADO)] })
+        .availability,
     ).toBe("unavailable");
   });
 
   test("viene inactivo → no disponible", () => {
     expect(
-      linkedPedidoAvailabilityFromPage(7, {
-        count: 1,
-        results: [row(7, PEDIDO_ESTATUS.AUTORIZADA, false)],
-      }),
+      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.AUTORIZADA, false)] })
+        .availability,
     ).toBe("unavailable");
   });
 
   test("no viene y la página trae todas las coincidencias → no disponible", () => {
     expect(
-      linkedPedidoAvailabilityFromPage(7, { count: 1, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] }),
+      linkedPedidoLookupFromPage(7, { count: 1, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] })
+        .availability,
     ).toBe("unavailable");
-    expect(linkedPedidoAvailabilityFromPage(7, { count: 0, results: [] })).toBe("unavailable");
+    expect(linkedPedidoLookupFromPage(7, { count: 0, results: [] }).availability).toBe(
+      "unavailable",
+    );
   });
 
   test("no viene pero hay más coincidencias que la página → no se sabe", () => {
     expect(
-      linkedPedidoAvailabilityFromPage(7, { count: 9, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] }),
+      linkedPedidoLookupFromPage(7, { count: 9, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] })
+        .availability,
     ).toBe("unknown");
+  });
+});
+
+test.describe("linkedPedidoLookupFromDetailError", () => {
+  const httpError = (status: number) =>
+    new AxiosError("fallo", "ERR_BAD_RESPONSE", undefined, undefined, {
+      status,
+      statusText: "",
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+      data: {},
+    });
+
+  test("404 y 403 → no disponible (ya no existe o ya no está al alcance)", () => {
+    expect(linkedPedidoLookupFromDetailError(httpError(404))).toEqual({
+      availability: "unavailable",
+      cliente: null,
+    });
+    expect(linkedPedidoLookupFromDetailError(httpError(403))?.availability).toBe("unavailable");
+  });
+
+  test("5xx o red → sin decidir (el hook lo deja como error)", () => {
+    expect(linkedPedidoLookupFromDetailError(httpError(500))).toBeNull();
+    expect(linkedPedidoLookupFromDetailError(new AxiosError("Network Error", "ERR_NETWORK"))).toBeNull();
   });
 });
