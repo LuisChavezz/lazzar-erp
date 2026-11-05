@@ -68,6 +68,9 @@ export const handleDrfWriteError = <F extends string>(
 export const isNotFoundError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 404;
 
+/** Un proxy o la página de depuración de Django pueden mandar HTML como texto. */
+const looksLikeHtml = (text: string): boolean => /^\s*</.test(text);
+
 /** ¿El error es un 403 de la API? (el usuario no tiene permiso para la acción). */
 export const isForbiddenError = (error: unknown): boolean =>
   error instanceof AxiosError && error.response?.status === 403;
@@ -102,17 +105,24 @@ export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
  * y 409: usarlo en los catálogos de Finanzas cambiaría cómo muestran sus errores
  * de campo. Este solo mira el `403`; el resto conserva su manejo.
  *
- * Solo lee `detail`: es la forma de `PermissionDenied`. Un 403 sin él (cuerpo
- * HTML de un proxy, o llaves con forma de campo) da `undefined` para que el
- * llamador use su propio texto, en vez de mostrar un valor suelto de campo.
+ * Regla ÚNICA del 403 en todo el módulo: `detail` (texto no vacío y que no
+ * sea HTML; es la forma de `PermissionDenied`) → el primer mensaje de
+ * `non_field_errors` → `undefined`, para que el llamador use su propio
+ * respaldo. Nunca el valor de una llave de campo cualquiera: en un 403 no
+ * describe el rechazo. La usan `handleDrfWriteError`, `drfActionErrorMessage`
+ * y los parsers de cada feature.
  */
 export const forbiddenDetailMessage = (error: unknown): string | undefined => {
   if (!isForbiddenError(error)) return undefined;
   const data = (error as AxiosError).response?.data;
-  return data && typeof data === "object"
-    ? firstDrfMessage((data as Record<string, unknown>).detail)
-    : undefined;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  const record = data as Record<string, unknown>;
+  const detail = firstDrfMessage(record.detail);
+  if (detail && detail.trim() && !looksLikeHtml(detail)) return detail;
+  const nonField = firstDrfMessage(record.non_field_errors);
+  return nonField && nonField.trim() && !looksLikeHtml(nonField) ? nonField : undefined;
 };
+
 
 /**
  * ¿El backend RECHAZÓ la acción por una regla de negocio (400, 403 o 409)?
@@ -128,7 +138,8 @@ export const isDrfActionRejection = (error: unknown): boolean => {
 /**
  * Error de una acción sobre un registro (aprobar, rechazar, eliminar, checar).
  * Un 404 significa que otra persona ya lo borró (`notFoundMessage`); un
- * 400/403 trae su `detail` en español. Un 409 (conflicto: el borrado que
+ * 400 trae su `detail` en español y un 403 su motivo (`forbiddenDetailMessage`:
+ * nunca el valor de un campo). Un 409 (conflicto: el borrado que
  * choca con registros que dependen de él, una checada ya registrada) muestra
  * su `detail` cuando es texto, porque es lo único que explica QUÉ chocó. Red
  * y 5xx caen al respaldo.
@@ -144,8 +155,11 @@ export const drfActionErrorMessage = (
   if (!isDrfActionRejection(error)) {
     return fallback;
   }
+  if (isForbiddenError(error)) {
+    return forbiddenDetailMessage(error) ?? fallback;
+  }
   const status = (error as AxiosError).response?.status;
-  if (status === 400 || status === 403) {
+  if (status === 400) {
     return firstDrfFieldMessage(error) ?? fallback;
   }
   // 409

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
+import { drfActionErrorMessage, handleDrfWriteError } from "@/src/utils/drfWriteErrors";
 
 /**
  * Pruebas unitarias de EC-770: `handleDrfWriteError`, el manejo compartido de
@@ -85,4 +85,39 @@ test("404, 409, 5xx y red caen al respaldo", () => {
     FALLBACK,
   );
   expect(handleDrfWriteError(new Error("boom"), FALLBACK, FIELDS)).toBe(FALLBACK);
+});
+
+test("un 403 con solo non_field_errors muestra ese mensaje", () => {
+  const { errors, set } = collectFieldErrors();
+  expect(
+    handleDrfWriteError(axiosError(403, { non_field_errors: ["Sin acceso."], nombre: ["x"] }), FALLBACK, FIELDS, set),
+  ).toBe("Sin acceso.");
+  expect(errors).toEqual({});
+});
+
+test("un 403 con HTML en detail cae al respaldo", () => {
+  expect(handleDrfWriteError(axiosError(403, { detail: "<html>Forbidden</html>" }), FALLBACK, FIELDS)).toBe(
+    FALLBACK,
+  );
+});
+
+// `drfActionErrorMessage`: misma regla del 403; 400, 404 y 409 sin cambios.
+const GONE = "Ya no existe.";
+
+test("acción: un 403 sigue la regla única", () => {
+  expect(drfActionErrorMessage(axiosError(403, { detail: "Sin permiso." }), FALLBACK, GONE)).toBe("Sin permiso.");
+  expect(drfActionErrorMessage(axiosError(403, { non_field_errors: ["Motivo."] }), FALLBACK, GONE)).toBe(
+    "Motivo.",
+  );
+  expect(drfActionErrorMessage(axiosError(403, { campo: ["x"] }), FALLBACK, GONE)).toBe(FALLBACK);
+  expect(drfActionErrorMessage(axiosError(403, "<html>Forbidden</html>"), FALLBACK, GONE)).toBe(FALLBACK);
+  expect(drfActionErrorMessage(axiosError(403, { detail: "<html>" }), FALLBACK, GONE)).toBe(FALLBACK);
+});
+
+test("acción: 400, 404, 409 y 5xx conservan su manejo", () => {
+  expect(drfActionErrorMessage(axiosError(400, { campo: ["Inválido."] }), FALLBACK, GONE)).toBe("Inválido.");
+  expect(drfActionErrorMessage(axiosError(404), FALLBACK, GONE)).toBe(GONE);
+  expect(drfActionErrorMessage(axiosError(409, { detail: "Choca con X." }), FALLBACK, GONE)).toBe("Choca con X.");
+  expect(drfActionErrorMessage(axiosError(409, { detail: ["lista"] }), FALLBACK, GONE)).toBe(FALLBACK);
+  expect(drfActionErrorMessage(axiosError(500, { detail: "Algo." }), FALLBACK, GONE)).toBe(FALLBACK);
 });
