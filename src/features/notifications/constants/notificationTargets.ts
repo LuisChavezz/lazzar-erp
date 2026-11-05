@@ -23,8 +23,9 @@ import {
  * `R-CRM-COTIZACIONES` y `proxy.ts` lo rebotaría—; además una cotización
  * rechazada se consulta, no se edita, desde la campana. El repo ya resolvió
  * esto igual en `search/components/GlobalSearchPalette.tsx`: el diálogo
- * self-fetching `QuoteDetailByIdDialog`. `source` es por `tipo`, porque
- * depende de quién recibe la notificación (ver el mapa de abajo).
+ * self-fetching `QuoteDetailByIdDialog`. `source` es por `tipo` (y, dentro de
+ * un `tipo`, por rol), porque depende de quién recibe la notificación (ver el
+ * mapa de abajo).
  *
  * `route` lleva un `href` con query; su `pathname` es el que se evalúa contra
  * la regla del proxy (ver `resolveNotificationTarget`).
@@ -56,7 +57,10 @@ const pedidoDetailTarget = (pedidoId: number): NotificationTarget => ({
   pathname: pedidoDetailPath(pedidoId),
 });
 
-type TargetResolver = (data: unknown) => NotificationTarget | null;
+type TargetResolver = (
+  data: unknown,
+  user?: PermissionContext | null,
+) => NotificationTarget | null;
 
 /**
  * Mapa `tipo` → destino. Vive SOLO en el frontend: el backend no manda ruta y
@@ -69,29 +73,34 @@ type TargetResolver = (data: unknown) => NotificationTarget | null;
  */
 const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
   /*
-    `source: "mesa-control"` no es una preferencia global de las notificaciones:
-    es propio de ESTE `tipo`. El backend lo emite en un solo punto —el paso a
-    estatus 2 de una cotización— con `crear_notificacion_por_rol(codigo_rol=
-    "MESA-DE-CONTROL", clave_departamento=CLAVE_DEPARTAMENTO_MESA_CONTROL)`, que
-    crea una fila por cada usuario de ese departamento en la empresa y por nadie
-    más. El vendedor que la envió NO la recibe. Como el destinatario no es el
-    vendedor, `/ventas/cotizaciones/{id}/` le responde 404 por el filtro
-    `vendedor=user`; `/ventas/mesa-control/{id}/` acota por empresa y estatus
-    [2, 5], y la cotización acaba de quedar en 2. Un `tipo` futuro que sí pueda
-    llegarle a un vendedor debe declarar `"cotizaciones"` aquí, no heredar esto.
+    El backend la emite en un solo punto —el paso a estatus 2 de una
+    cotización— con `crear_notificacion_por_rol(codigo_rol="MESA-DE-CONTROL",
+    clave_departamento=CLAVE_DEPARTAMENTO_MESA_CONTROL)`: una fila por cada
+    usuario de ese departamento en la empresa, nunca para el vendedor que la
+    envió. El recurso se elige por el ROL del destinatario, con la misma regla
+    con la que el backend acota cada ruta (`ventas.scope`):
 
-    Es un ORDEN, no una restricción: la notificación sobrevive al cambio de
-    estatus —nada la borra al autorizar—, así que al abrir una vieja la
-    cotización ya está en 3 y mesa-control responde 404. Ahí entra el respaldo
-    de `getQuoteDetailById`, que reintenta en `/ventas/cotizaciones/{id}/`: un
-    destinatario `is_admin_empresa` o superuser (nada los excluye del rol
-    MESA-DE-CONTROL) la ve por esa ruta a cualquier estatus.
+    - `role === "admin"` (`is_admin_empresa` o superuser, `getSessionRole`):
+      `/ventas/cotizaciones/{id}/` le muestra toda su empresa a cualquier
+      estatus, que contiene lo que mesa-control le mostraría. Cubre también la
+      notificación vieja —nada la borra al autorizar— cuya cotización ya está
+      en 3, donde mesa-control responde 404.
+    - Cualquier otro: `/ventas/mesa-control/{id}/` (empresa, estatus [2, 5]).
+      `/ventas/cotizaciones/{id}/` filtra `vendedor=user` y casi nunca es suya.
+      Con la cotización ya fuera de [2, 5] no la sirve ninguna de las dos
+      rutas, así que no hay a dónde reintentar.
+
+    Un `tipo` futuro que pueda llegarle a un vendedor debe declarar
+    `"cotizaciones"`, no heredar esto.
   */
-  [TIPO_COTIZACION_EN_REVISION]: (data) => {
+  [TIPO_COTIZACION_EN_REVISION]: (data, user) => {
     const quoteId = readPositiveId(data, "cotizacion_id");
-    return quoteId === null
-      ? null
-      : { kind: "quote-dialog", quoteId, source: "mesa-control" };
+    if (quoteId === null) return null;
+    return {
+      kind: "quote-dialog",
+      quoteId,
+      source: user?.role === "admin" ? "cotizaciones" : "mesa-control",
+    };
   },
   /*
     Destinatario: el VENDEDOR de la cotización (`crear_notificacion_usuario`
@@ -130,7 +139,7 @@ export const resolveNotificationTarget = (
   user?: PermissionContext | null,
 ): NotificationTarget | null => {
   const target =
-    NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data) ?? null;
+    NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data, user) ?? null;
   if (target?.kind === "route" && !canAccessRoute(target.pathname, user)) {
     return null;
   }
