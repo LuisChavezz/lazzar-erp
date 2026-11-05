@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getPedidoTrazabilidad } from "../services/actions";
@@ -27,17 +28,37 @@ export const pedidoTrazabilidadQueryKey = (id: number) =>
  * Un refetch fallido con datos en caché los conserva y avisa por toast
  * (`useHasLoadedQuery`); solo un fallo SIN datos (`isInitialError`) se pinta
  * como error en la sección.
+ *
+ * `enabled` (EC-768): el detalle 360° monta este hook en la PÁGINA, desde el
+ * primer render, para pedirla en paralelo con el pedido, y lo apaga mientras
+ * la hoja activa no es la de Avances. TanStack no aplica `refetchOnMount` al
+ * HABILITAR un observador ya montado (solo pide si la caché está vencida), así
+ * que al pasar de apagado a encendido se relee aquí: cada vez que se abre la
+ * hoja de Avances se lee de nuevo, como cuando la sección montaba su propio
+ * observador. `cancelRefetch: false` se une a una lectura en vuelo en vez de
+ * duplicarla.
  */
-export const usePedidoTrazabilidad = (id: number) => {
+export const usePedidoTrazabilidad = (
+  id: number,
+  { enabled = true }: { enabled?: boolean } = {},
+) => {
+  const isEnabled = enabled && id > 0;
   const { data, isLoading, isError, isFetching, error, errorUpdatedAt, refetch } =
     useQuery<PedidoTrazabilidad>({
       queryKey: pedidoTrazabilidadQueryKey(id),
       // Arrow a propósito: con `getPedidoTrazabilidad` pelado React Query le
       // inyectaría su `QueryFunctionContext` como `id`.
       queryFn: () => getPedidoTrazabilidad(id),
-      enabled: id > 0,
+      enabled: isEnabled,
       refetchOnMount: "always",
     });
+
+  const wasEnabledRef = useRef(isEnabled);
+  useEffect(() => {
+    const wasEnabled = wasEnabledRef.current;
+    wasEnabledRef.current = isEnabled;
+    if (isEnabled && !wasEnabled) void refetch({ cancelRefetch: false });
+  }, [isEnabled, refetch]);
 
   const { hasLoaded, isInitialError } = useHasLoadedQuery({
     data,
@@ -49,3 +70,6 @@ export const usePedidoTrazabilidad = (id: number) => {
 
   return { data, hasLoaded, isInitialError, isLoading, isFetching, error, refetch };
 };
+
+/** Lo que la página entrega a `OrderTraceabilitySection` (dueña única de la consulta). */
+export type PedidoTrazabilidadQuery = ReturnType<typeof usePedidoTrazabilidad>;

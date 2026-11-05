@@ -1,5 +1,6 @@
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { getPedidoEstatusConfig, PEDIDO_ESTATUS } from "../constants/pedidoStatus";
+import type { PedidoTrazabilidadQuery } from "../hooks/usePedidoTrazabilidad";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { OrderDocumentsSection } from "./OrderDocumentsSection";
 import { OrderPickingBySizeSection } from "./OrderPickingBySizeSection";
@@ -15,6 +16,8 @@ interface OrderProgressSheetProps {
   showAccounting: boolean;
   /** Abre un documento (o un folio de surtido) en su diálogo de detalle. */
   onOpenDoc: (doc: OpenOrderDocument) => void;
+  /** Consulta de la trazabilidad, montada por la página desde su primer render. */
+  trazabilidad: PedidoTrazabilidadQuery;
 }
 
 /**
@@ -24,7 +27,12 @@ interface OrderProgressSheetProps {
  * (estado por encima de las hojas), para que cambiar de hoja nunca deje uno
  * huérfano ni abierto donde no corresponde.
  */
-export function OrderProgressSheet({ pedido, showAccounting, onOpenDoc }: OrderProgressSheetProps) {
+export function OrderProgressSheet({
+  pedido,
+  showAccounting,
+  onOpenDoc,
+  trazabilidad,
+}: OrderProgressSheetProps) {
   const folios = pedido.folios_picking ?? [];
   return (
     <div className="space-y-6">
@@ -41,7 +49,7 @@ export function OrderProgressSheet({ pedido, showAccounting, onOpenDoc }: OrderP
       </div>
 
       <OrderTraceabilitySection
-        pedidoId={pedido.id}
+        trazabilidad={trazabilidad}
         // Misma fuente que el badge de arriba (`pedido.estatus`), no el
         // `estatus_label` del endpoint de trazabilidad.
         isCancelled={pedido.estatus === PEDIDO_ESTATUS.CANCELADO}
