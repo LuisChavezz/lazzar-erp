@@ -29,10 +29,22 @@ test("un 403 sin mensaje devuelve undefined para caer al texto de siempre", () =
   expect(forbiddenDetailMessage(axiosError(403, "<html>Forbidden</html>"))).toBeUndefined();
 });
 
-test("un 403 sin detail no toma el valor de otra llave", () => {
-  expect(forbiddenDetailMessage(axiosError(403, { comentarios: ["x"] }))).toBeUndefined();
-  expect(forbiddenDetailMessage(axiosError(403, { non_field_errors: ["y"] }))).toBeUndefined();
+test("regla única del 403: detail, luego non_field_errors, nunca otra llave", () => {
   expect(forbiddenDetailMessage(axiosError(403, { detail: ["En lista."] }))).toBe("En lista.");
+  expect(forbiddenDetailMessage(axiosError(403, { non_field_errors: ["y"] }))).toBe("y");
+  expect(
+    forbiddenDetailMessage(axiosError(403, { detail: "Primero el detail.", non_field_errors: ["y"] })),
+  ).toBe("Primero el detail.");
+  expect(forbiddenDetailMessage(axiosError(403, { comentarios: ["x"] }))).toBeUndefined();
+  expect(forbiddenDetailMessage(axiosError(403, { detail: "   " }))).toBeUndefined();
+});
+
+test("un 403 con HTML en detail o non_field_errors no lo muestra", () => {
+  expect(forbiddenDetailMessage(axiosError(403, { detail: "<h1>Forbidden</h1>" }))).toBeUndefined();
+  expect(
+    forbiddenDetailMessage(axiosError(403, { detail: "<p>x</p>", non_field_errors: ["Sin permiso."] })),
+  ).toBe("Sin permiso.");
+  expect(forbiddenDetailMessage(axiosError(403, ["<html>"]))).toBeUndefined();
 });
 
 test("cualquier otro error devuelve undefined", () => {
