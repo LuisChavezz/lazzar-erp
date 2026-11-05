@@ -32,10 +32,15 @@ function PurchaseOrderSelectorContent({
 }) {
   const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
 
-  // `GET /compras/ordenes/` es plano y no acepta filtros: se filtra en memoria.
-  // Fuera las inactivas, las canceladas y las que no tienen proveedor (el FK es
-  // `SET_NULL`): una factura de proveedor sin proveedor no puede generar su
-  // cuenta por pagar, y una OC cancelada ya no respalda una compra.
+  // Se filtra en memoria sobre la lista COMPLETA, y por eso no busca en el
+  // servidor: fuera las inactivas, las canceladas y las que no tienen
+  // proveedor (el FK es `SET_NULL`). Una factura de proveedor sin proveedor no
+  // puede generar su cuenta por pagar, y una OC cancelada ya no respalda una
+  // compra. `GET /compras/ordenes/` sí pagina y busca (`?search=`), pero no
+  // sabe excluir nada de eso: `?estatus=` acepta UN solo estatus (no una lista
+  // ni una exclusión), y no filtra por `activo` ni por "tiene proveedor".
+  // Excluir en memoria sobre una página de resultados escondería OC válidas
+  // detrás de las descartadas (EC-769).
   // No se puede filtrar aquí por "tiene recepciones": el listado no las trae; el
   // siguiente paso lo dice si la OC elegida no tiene ninguna.
   const disponibles = purchaseOrders.filter(
