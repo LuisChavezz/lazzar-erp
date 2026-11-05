@@ -14,8 +14,9 @@ interface PurchaseOrderCriticalPathFormProps {
   ocId: number;
   data: PurchaseOrderCriticalPath;
   /**
-   * Motivo de solo lectura (OC Cancelada o sin `E-COMPRAS-OC`), o `null` si se
-   * puede editar. Con aviso: campos deshabilitados y sin botón de guardar.
+   * Motivo de solo lectura (OC Cancelada, sin `E-COMPRAS-OC`, o un guardado de
+   * esta apertura que respondió 403), o `null` si se puede editar. Con aviso:
+   * campos deshabilitados y sin botón de guardar.
    */
   readOnlyNotice: string | null;
   onClose: () => void;

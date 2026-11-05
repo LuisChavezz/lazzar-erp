@@ -64,6 +64,12 @@ const NO_PERMISSION_NOTICE = `${PURCHASE_ORDER_CRITICAL_PATH_PERMISSION_SENTENCE
  * caso aquí es UX y el backend la frontera. La Cancelada, en cambio, solo se
  * bloquea aquí: el backend acepta el PATCH en cualquier estatus. El estatus es
  * la FOTO que tomó quien abre.
+ *
+ * También pasa a solo lectura si un guardado responde 403 (`forbiddenOnSave`):
+ * la sesión aún dice `E-COMPRAS-OC` porque sus permisos se fijan al iniciar
+ * sesión, pero el backend ya no lo reconoce y reintentar daría el mismo 403.
+ * Dura lo que dura ESA apertura, y el formulario se vuelve a montar con el
+ * registro guardado, no con lo capturado sin guardar.
  */
 export function PurchaseOrderCriticalPathDialog({
   target,
