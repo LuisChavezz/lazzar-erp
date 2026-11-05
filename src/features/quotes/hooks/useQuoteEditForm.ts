@@ -57,6 +57,7 @@ import { canEditQuote } from "../utils/quoteStatusRules";
 import {
   getQuoteEditLoadState,
   QUOTE_EDIT_REFETCH_ERROR_MESSAGE,
+  quoteLoadErrorKind,
 } from "../utils/quoteEditLoadState";
 import { mapQuoteDetalleToItem } from "../utils/mapQuoteDetalleToItem";
 import { buildMuestraDetalle } from "../utils/buildMuestraDetalle";
@@ -217,8 +218,7 @@ export function useQuoteEditForm(quoteId: number) {
     isLoading: isQuoteLoading,
     isFetching: isQuoteFetching,
     isFetchedAfterMount: isQuoteFetchedAfterMount,
-    isDefinitiveError: isQuoteAccessError,
-    error: quoteError,
+    latestError: latestQuoteError,
     refetch: refetchQuote,
   } = useQuote(quoteId, "cotizaciones", {
     // Aquí lo que se ve son los cambios del usuario, no "datos anteriores": el
@@ -242,9 +242,9 @@ export function useQuoteEditForm(quoteId: number) {
    * el 404/403 de un intento anterior mientras la relectura apenas empieza: con
    * ese error viejo no se avisa ni se redirige (se sigue cargando), porque el
    * acceso pudo cambiar entretanto —p. ej. le transfirieron la cotización—. */
-  /* `useQuote` entrega el 404 y el 403 aparte, como error definitivo
-   * (`isQuoteAccessError`, sin `error`), también en una relectura con datos ya
-   * cargados. */
+  /* Se decide con el error de la ÚLTIMA lectura (`latestError`), no con el
+   * definitivo que `useQuote` recuerda: un 500 después de un 404/403 de antes
+   * es un fallo técnico con reintento, no una denegación. */
   const {
     accessDenied: quoteAccessDenied,
     shouldRedirect: shouldRedirectToQuotesList,
@@ -252,9 +252,8 @@ export function useQuoteEditForm(quoteId: number) {
   } = getQuoteEditLoadState({
     hasQuote: Boolean(quoteData),
     isEditableStatus: isEditableQuoteStatus,
-    isAccessError: isQuoteAccessError,
+    latestErrorKind: quoteLoadErrorKind(latestQuoteError),
     isFetchedAfterMount: isQuoteFetchedAfterMount,
-    hasLoadError: Boolean(quoteError),
   });
 
   const userName = session?.user?.name || "Usuario";

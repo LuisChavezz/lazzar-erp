@@ -1,6 +1,7 @@
 "use client";
 
-import { queryOptions, type QueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
+import { queryOptions, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getQuoteDetailById } from "../services/actions";
 import type { QuoteById } from "../interfaces/quote.interface";
@@ -61,6 +62,11 @@ interface UseQuoteOptions {
  * ante un 404 (`readQuoteResource`).
  *
  * - `resource`: el recurso que sirvió el detalle (`undefined` hasta saberlo).
+ * - `latestError`: el error de la ÚLTIMA lectura (`null` tras una exitosa),
+ *   leído del estado de la consulta. `isDefinitiveError` en cambio sigue en
+ *   `true` hasta una respuesta exitosa aunque el fallo más reciente sea otro;
+ *   quien decide qué hacer con el último fallo (el formulario de edición) usa
+ *   este.
  * - `comentariosResource`: del que leen sus comentarios
  *   (`quoteComentariosResource`): desde el primer render, para que arranquen
  *   junto con el detalle.
@@ -70,9 +76,11 @@ export const useQuote = (
   source: QuoteDetailSource,
   { refetchErrorMessage }: UseQuoteOptions = {}
 ) => {
+  const queryClient = useQueryClient();
+  const options = getQuoteQueryOptions(quoteId, source);
   const { data, ...query } = useGuardedQuery(
     {
-      ...getQuoteQueryOptions(quoteId, source),
+      ...options,
       enabled: Number.isFinite(quoteId) && Number(quoteId) > 0,
     },
     {
@@ -81,10 +89,16 @@ export const useQuote = (
       isDefinitiveError: isQuoteDetailDefinitiveError,
     },
   );
+  const latestError = useSyncExternalStore(
+    (onChange) => queryClient.getQueryCache().subscribe(onChange),
+    () => queryClient.getQueryState(options.queryKey)?.error ?? null,
+    () => null,
+  );
   return {
     ...query,
     data: data?.data,
     resource: data?.resource,
+    latestError,
     comentariosResource: quoteComentariosResource(source, data?.resource),
   };
 };
