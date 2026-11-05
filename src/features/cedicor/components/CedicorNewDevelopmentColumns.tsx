@@ -5,6 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { CedicorNewDevelopmentTimelineDialog } from "./CedicorNewDevelopmentTimelineDialog";
+import { CedicorEstEntregaCell } from "./CedicorEstEntregaCell";
 import type {
   NewDevelopment,
   FlowStatus,
@@ -339,24 +340,12 @@ export function getCedicorNewDevelopmentColumns(): ColumnDef<NewDevelopment>[] {
     col.accessor('fecha_estimada_entrega', {
       header: 'Est. Entrega',
       meta: { label: 'Est. Entrega' },
-      cell: (info) => {
-        const val = info.getValue<string | null>();
-        if (!val) return <span className="text-slate-400 dark:text-slate-600 text-xs">—</span>;
-        const fecha   = new Date(val);
-        const hoy     = new Date();
-        const vencida = fecha < hoy && info.row.original.estatus !== 'despachado_confeccion';
-        return (
-          <span
-            className={`text-xs whitespace-nowrap ${
-              vencida
-                ? 'text-red-500 dark:text-red-400 font-semibold'
-                : 'text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            {fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-          </span>
-        );
-      },
+      cell: (info) => (
+        <CedicorEstEntregaCell
+          value={info.getValue<string | null>()}
+          despachada={info.row.original.estatus === 'despachado_confeccion'}
+        />
+      ),
       size: 120,
     }),
 
