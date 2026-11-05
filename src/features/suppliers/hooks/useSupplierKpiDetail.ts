@@ -14,11 +14,10 @@ import { supplierKpisQueryKey } from "./useSupplierKpis";
  * Una consulta por proveedor y factor: el diálogo solo monta la pestaña activa,
  * así que solo se pide el factor que se ve.
  *
- * `refetchOnMount: "always"`, a diferencia del ranking (`useSupplierKpis`, con
- * `staleTime` de 30 s): el backend calcula estos registros en cada lectura, y
- * con caché el detalle podría ser más viejo que el puntaje que explica (el
- * ranking se relee al volver pasados 30 s, pero un detalle abierto antes
- * seguiría vigente). Leído en cada apertura, nunca es más viejo que el ranking.
+ * `refetchOnMount: "always"`, como `useSupplierKpis`: el backend calcula estos
+ * registros en cada lectura, y el ranking del que se abren también se relee al
+ * montar. Con caché en uno solo de los dos, el detalle podría ser más viejo o
+ * más nuevo que el puntaje que explica; leídos los dos frescos, cuadran.
  *
  * **Un 404 o un 403 es DEFINITIVO** (`isDefinitiveError`): el proveedor se dio
  * de baja o dejó de ser visible desde que cargó el ranking. No se reintenta ni
