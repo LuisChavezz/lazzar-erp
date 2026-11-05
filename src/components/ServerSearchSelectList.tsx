@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
+import { SelectListRow } from "@/src/components/SelectListRow";
 import { LoadingSpinnerIcon } from "@/src/components/Icons";
 
 interface ServerSearchSelectListProps<T> {
@@ -83,20 +84,14 @@ export function ServerSearchSelectList<T>({
   const renderRow = (item: T) => {
     const selected = isSelected(item);
     return (
-      <button
+      <SelectListRow
         key={getKey(item)}
-        type="button"
-        onClick={() => onSelect(item)}
-        aria-pressed={selected}
-        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
-          selected
-            ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-            : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10"
-        }`}
+        selected={selected}
+        onSelect={() => onSelect(item)}
+        indicator={renderIndicator(selected)}
       >
-        {renderIndicator(selected)}
-        <div className="min-w-0 flex-1">{renderContent(item)}</div>
-      </button>
+        {renderContent(item)}
+      </SelectListRow>
     );
   };
 
