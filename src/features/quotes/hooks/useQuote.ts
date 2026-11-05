@@ -1,10 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { queryOptions, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getQuoteDetailById } from "../services/actions";
-import type { QuoteById } from "../interfaces/quote.interface";
 import {
   isQuoteDetailDefinitiveError,
   quoteComentariosResource,
@@ -26,8 +25,8 @@ export type { QuoteDetailSource, QuoteResource };
  *
  * FORMA DE LA CACHÉ: `["quote", id, source]` guarda `{ data, resource }`
  * (`QuoteResourceRead<QuoteById>`), NO un `QuoteById` suelto: el detalle junto
- * con el recurso que lo sirvió, del que leen sus comentarios. Para leerla usa
- * `getQuoteFromCache`; un `setQueryData` debe escribir esa misma forma.
+ * con el recurso que lo sirvió, del que leen sus comentarios. Un
+ * `getQueryData` lee esa forma y un `setQueryData` debe escribirla igual.
  */
 export const getQuoteQueryOptions = (
   quoteId: number | null | undefined,
@@ -37,14 +36,6 @@ export const getQuoteQueryOptions = (
     queryKey: ["quote", quoteId, source],
     queryFn: () => getQuoteDetailById(quoteId!, source),
   });
-
-/** Cotización en caché para `quoteId` y `source`, o `undefined` si no hay. */
-export const getQuoteFromCache = (
-  queryClient: QueryClient,
-  quoteId: number,
-  source: QuoteDetailSource
-): QuoteById | undefined =>
-  queryClient.getQueryData(getQuoteQueryOptions(quoteId, source).queryKey)?.data;
 
 interface UseQuoteOptions {
   /**
@@ -61,7 +52,6 @@ interface UseQuoteOptions {
  * exponen en `isDefinitiveError`. El respaldo entre recursos sigue siendo solo
  * ante un 404 (`readQuoteResource`).
  *
- * - `resource`: el recurso que sirvió el detalle (`undefined` hasta saberlo).
  * - `latestError`: el error de la ÚLTIMA lectura (`null` tras una exitosa),
  *   leído del estado de la consulta. `isDefinitiveError` en cambio sigue en
  *   `true` hasta una respuesta exitosa aunque el fallo más reciente sea otro;
@@ -69,7 +59,7 @@ interface UseQuoteOptions {
  *   este.
  * - `comentariosResource`: del que leen sus comentarios
  *   (`quoteComentariosResource`): desde el primer render, para que arranquen
- *   junto con el detalle.
+ *   junto con el detalle; `undefined` si el detalle no está disponible.
  */
 export const useQuote = (
   quoteId: number | null | undefined,
@@ -97,8 +87,11 @@ export const useQuote = (
   return {
     ...query,
     data: data?.data,
-    resource: data?.resource,
     latestError,
-    comentariosResource: quoteComentariosResource(source, data?.resource),
+    comentariosResource: quoteComentariosResource(
+      source,
+      data?.resource,
+      query.isDefinitiveError
+    ),
   };
 };
