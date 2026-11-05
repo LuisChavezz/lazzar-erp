@@ -76,13 +76,13 @@ export async function readQuoteResource<T>(
   source: QuoteDetailSource
 ): Promise<QuoteResourceRead<T>> {
   const order = QUOTE_RESOURCE_ORDER[source];
-  for (let i = 0; ; i += 1) {
-    const resource = order[i];
+  for (const [index, resource] of order.entries()) {
     try {
       return { data: await readers[resource](id), resource };
     } catch (error) {
-      const isLast = i === order.length - 1;
+      const isLast = index === order.length - 1;
       if (isLast || !isAxiosError(error) || error.response?.status !== 404) throw error;
     }
   }
+  throw new Error(`QuoteDetailSource sin recursos: ${source}`);
 }
