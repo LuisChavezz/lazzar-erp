@@ -23,9 +23,11 @@ export const pedidoTrazabilidadQueryKey = (id: number) =>
  * Trazabilidad de un pedido (`GET /ventas/pedidos/{id}/trazabilidad/`).
  *
  * `refetchOnMount: "always"`: el backend la CALCULA en cada lectura a partir
- * de picking, empaque, embarque, órdenes de trabajo y facturas, y la mayoría de
- * esas altas ocurren en otras pantallas que no la invalidan. Con el `staleTime`
- * global de 15 min, volver al pedido mostraría el avance de hace minutos.
+ * de picking, empaque, embarque, órdenes de trabajo y facturas. Esas altas en
+ * ESTA sesión ya la invalidan (`invalidatePedidoProgress`, desde EC-521); la
+ * relectura al montar cubre las que hacen otros usuarios en otras sesiones,
+ * que con el `staleTime` global de 15 min dejarían ver el avance de hace
+ * minutos al volver al pedido.
  *
  * Un refetch fallido con datos en caché los conserva y avisa por toast
  * (`useHasLoadedQuery`); solo un fallo SIN datos (`isInitialError`) se pinta
