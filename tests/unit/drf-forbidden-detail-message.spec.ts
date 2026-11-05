@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 
 /**
  * Pruebas unitarias de EC-733: `forbiddenDetailMessage` saca el motivo de un
@@ -34,4 +34,12 @@ test("cualquier otro error devuelve undefined", () => {
   expect(forbiddenDetailMessage(axiosError(500, { detail: "Server Error" }))).toBeUndefined();
   expect(forbiddenDetailMessage(new Error("red"))).toBeUndefined();
   expect(forbiddenDetailMessage(null)).toBeUndefined();
+});
+
+test("isForbiddenError solo reconoce un 403 de la API", () => {
+  expect(isForbiddenError(axiosError(403))).toBe(true);
+  expect(isForbiddenError(axiosError(404))).toBe(false);
+  expect(isForbiddenError(axiosError(400))).toBe(false);
+  expect(isForbiddenError(new Error("red"))).toBe(false);
+  expect(isForbiddenError(null)).toBe(false);
 });
