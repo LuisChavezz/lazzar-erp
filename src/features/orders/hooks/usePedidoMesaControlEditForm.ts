@@ -752,8 +752,12 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const router = useRouter();
   const { data: session } = useSession();
   const { data: currencies, isLoading: isCurrenciesLoading } = useCurrencies();
-  const { data: onboardingData, isLoading: isOnboardingLoading } = useQuoteOnboardingData();
-  const { data: satInfo } = useSatInfo();
+  const {
+    data: onboardingData,
+    isLoading: isOnboardingLoading,
+    isError: isOnboardingError,
+  } = useQuoteOnboardingData();
+  const { data: satInfo, isError: isSatInfoError } = useSatInfo();
   // A diferencia de la edición de cotizaciones —que lee `catalogos.tallas`, un
   // campo que el backend nunca envía, y se queda con `[]`—, esta pantalla usa el
   // catálogo global real, como el alta. Sin él, el diálogo de tallas queda
@@ -1131,11 +1135,23 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * Ya hidratado manda el estado del formulario, igual que antes: la
    * hidratación fija ese mismo cliente (misma llave, sin segunda petición) y
    * cualquier cambio posterior del usuario (`handleSelectCustomer`,
-   * `handleReset`) se sigue tal cual. Un pedido que no se va a poder editar por
-   * lo que ya dice su detalle no pide nada.
+   * `handleReset`) se sigue tal cual.
+   *
+   * No se piden cuando YA se sabe que el formulario no se va a hidratar: por lo
+   * que dice el detalle, porque el precheck ya respondió con bloqueos, o porque
+   * onboarding o el catálogo SAT ya fallaron sin datos. Solo cuentan fallos ya
+   * ocurridos: nunca se espera a que el precheck, onboarding o SAT respondan,
+   * que reintroduciría la cascada. Si un bloqueo llega después, queda una
+   * petición de direcciones de más.
    */
   const isPedidoHydrationBlocked =
-    pedidoNotSyncable || pedidoAccountingHidden || pedidoNotEditableStatus || pedidoNotRepresentable;
+    pedidoNotSyncable ||
+    pedidoAccountingHidden ||
+    pedidoNotEditableStatus ||
+    pedidoNotRepresentable ||
+    Boolean(contextoBloqueos) ||
+    (isOnboardingError && !onboardingData) ||
+    (isSatInfoError && !satInfo);
   const addressesCustomerId = extraServicesInitialized
     ? selectedCustomerId
     : (pedidoData?.cliente ?? 0);
