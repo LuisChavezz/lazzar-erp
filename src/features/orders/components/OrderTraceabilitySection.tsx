@@ -13,7 +13,7 @@ import {
   getTrazabilidadPasoLabel,
   getTrazabilidadSemaforoConfig,
 } from "../constants/pedidoTrazabilidad";
-import { usePedidoTrazabilidad } from "../hooks/usePedidoTrazabilidad";
+import type { PedidoTrazabilidadQuery } from "../hooks/usePedidoTrazabilidad";
 import type {
   TrazabilidadEstado,
   TrazabilidadOrden,
@@ -326,7 +326,13 @@ function PedidoTracker({ pasos, pasoActual }: { pasos: TrazabilidadPaso[]; pasoA
 }
 
 interface OrderTraceabilitySectionProps {
-  pedidoId: number;
+  /**
+   * Consulta de la trazabilidad (`usePedidoTrazabilidad`), cuya dueña es la
+   * PÁGINA: la pide desde su montaje, en paralelo con el pedido (EC-768). La
+   * sección no monta un observador propio, que con `refetchOnMount: "always"`
+   * dispararía una segunda lectura al aparecer.
+   */
+  trazabilidad: PedidoTrazabilidadQuery;
   /**
    * Pedido cancelado según el estatus LOCAL del detalle (el mismo que el badge
    * de la cabecera de la hoja), no según `pedido.estatus_label` del endpoint.
@@ -344,8 +350,8 @@ interface OrderTraceabilitySectionProps {
  * el valor del backend tal cual; aquí no se recalcula ningún porcentaje, total
  * ni color.
  *
- * Tiene su propia consulta, así que carga y falla por su cuenta sin tocar el
- * resto de la hoja. Mientras carga o si falla no hay ningún control accionable
+ * Tiene su propia consulta (la monta la página y la recibe por props), así que
+ * carga y falla por su cuenta sin tocar el resto de la hoja. Mientras carga o si falla no hay ningún control accionable
  * salvo "Reintentar".
  *
  * Qué NO se pinta, a propósito:
@@ -357,12 +363,12 @@ interface OrderTraceabilitySectionProps {
  *   Con bases distintas, dos pantallas darían dos cifras para "lo facturado".
  */
 export function OrderTraceabilitySection({
-  pedidoId,
+  trazabilidad,
   isCancelled,
   showAccounting,
   onOpenOrden,
 }: OrderTraceabilitySectionProps) {
-  const { data, isInitialError, isFetching, refetch } = usePedidoTrazabilidad(pedidoId);
+  const { data, isInitialError, isFetching, refetch } = trazabilidad;
 
   if (isInitialError) {
     return (

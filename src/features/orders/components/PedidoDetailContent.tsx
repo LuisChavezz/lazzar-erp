@@ -20,6 +20,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
+import { usePedidoTrazabilidad } from "../hooks/usePedidoTrazabilidad";
 import { useSampleSkuLinking } from "../hooks/useSampleSkuLinking";
 import {
   canEditPedidoMesaControl,
@@ -281,6 +282,14 @@ export function PedidoDetailContent({
   // Ya cancelado, a la espera de que termine la navegación de salida: la página
   // deja de ofrecer acciones y hojas, que volverían a pedir el pedido (404).
   const [cancelled, setCancelled] = useState(false);
+  // Trazabilidad de la hoja de Avances, pedida desde el montaje y en paralelo
+  // con el pedido: la sección solo se monta cuando el pedido ya llegó (EC-768).
+  // Esta es la ÚNICA consulta de la página: la sección la recibe por props.
+  // Apagada en la hoja "Pedido" (no se pinta ahí) y tras cancelar (respondería
+  // 404); al volver a encenderse se relee (`usePedidoTrazabilidad`).
+  const trazabilidad = usePedidoTrazabilidad(numericId, {
+    enabled: sheet === "progress" && !cancelled,
+  });
   // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
   // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
   // sin perderla, y la celda SKU de la tabla ve el mismo avance.
@@ -530,6 +539,7 @@ export function PedidoDetailContent({
           pedido={data}
           showAccounting={showAccounting}
           onOpenDoc={setOpenDoc}
+          trazabilidad={trazabilidad}
         />
       )}
 
