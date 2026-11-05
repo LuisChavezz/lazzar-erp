@@ -50,9 +50,11 @@ test("un 403 sin detail muestra el texto fijo de permiso, no el genérico", () =
   );
 });
 
-test("un 403 no pinta errores de campo", () => {
+test("un 403 sin detail pero con llaves de campo no pinta campos ni muestra su valor", () => {
   const { errors, set } = collectFieldErrors();
-  purchaseOrderCriticalPathSaveErrorMessage(axiosError(403, { comentarios: ["x"] }), set);
+  expect(
+    purchaseOrderCriticalPathSaveErrorMessage(axiosError(403, { comentarios: ["x"] }), set),
+  ).toBe(PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE);
   expect(errors).toEqual({});
 });
 

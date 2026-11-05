@@ -96,9 +96,18 @@ export const isNotFoundOrForbiddenError = (error: unknown): boolean =>
  * Existe aparte de `drfActionErrorMessage` porque ese también remapea 400, 404
  * y 409: usarlo en los catálogos de Finanzas cambiaría cómo muestran sus errores
  * de campo. Este solo mira el `403`; el resto conserva su manejo.
+ *
+ * Solo lee `detail`: es la forma de `PermissionDenied`. Un 403 sin él (cuerpo
+ * HTML de un proxy, o llaves con forma de campo) da `undefined` para que el
+ * llamador use su propio texto, en vez de mostrar un valor suelto de campo.
  */
-export const forbiddenDetailMessage = (error: unknown): string | undefined =>
-  isForbiddenError(error) ? firstDrfFieldMessage(error) : undefined;
+export const forbiddenDetailMessage = (error: unknown): string | undefined => {
+  if (!isForbiddenError(error)) return undefined;
+  const data = (error as AxiosError).response?.data;
+  return data && typeof data === "object"
+    ? firstDrfMessage((data as Record<string, unknown>).detail)
+    : undefined;
+};
 
 /**
  * ¿El backend RECHAZÓ la acción por una regla de negocio (400, 403 o 409)?

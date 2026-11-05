@@ -29,6 +29,12 @@ test("un 403 sin mensaje devuelve undefined para caer al texto de siempre", () =
   expect(forbiddenDetailMessage(axiosError(403, "<html>Forbidden</html>"))).toBeUndefined();
 });
 
+test("un 403 sin detail no toma el valor de otra llave", () => {
+  expect(forbiddenDetailMessage(axiosError(403, { comentarios: ["x"] }))).toBeUndefined();
+  expect(forbiddenDetailMessage(axiosError(403, { non_field_errors: ["y"] }))).toBeUndefined();
+  expect(forbiddenDetailMessage(axiosError(403, { detail: ["En lista."] }))).toBe("En lista.");
+});
+
 test("cualquier otro error devuelve undefined", () => {
   expect(forbiddenDetailMessage(axiosError(400, { detail: "Campo inválido" }))).toBeUndefined();
   expect(forbiddenDetailMessage(axiosError(500, { detail: "Server Error" }))).toBeUndefined();
