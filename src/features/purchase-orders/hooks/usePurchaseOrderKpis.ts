@@ -3,16 +3,7 @@ import { PROCUREMENT_KPI_STALE_TIME } from "@/src/constants/queryCache";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getPurchaseOrderKpis } from "../services/actions";
 import type { PurchaseOrderKpis } from "../interfaces/purchase-order-kpis.interface";
-
-/**
- * Llave DENTRO del prefijo `["purchase-orders"]` (como el historial por
- * proveedor, `["purchase-orders", "by-supplier", …]`): toda mutación que ya
- * invalida ese prefijo —alta, edición, confirmar, cancelar, eliminar, enviar
- * correo, recepciones e inspecciones de calidad— refresca también los
- * indicadores, sin que cada una tenga que acordarse. No choca con el detalle
- * `["purchase-orders", id]`: `id` es numérico.
- */
-export const purchaseOrderKpisQueryKey = ["purchase-orders", "kpis"] as const;
+import { purchaseOrderKpisQueryKey } from "../constants/purchaseOrderKpis";
 
 /**
  * Indicadores de órdenes de compra (`GET /compras/ordenes/kpis/`).
