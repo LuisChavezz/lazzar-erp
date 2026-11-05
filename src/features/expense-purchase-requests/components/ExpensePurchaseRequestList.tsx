@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { MOCK_EXPENSE_PURCHASE_REQUESTS } from "../mocks/expense-purchase-request.mock";
 import { getExpenseRequestColumns } from "./ExpensePurchaseRequestColumns";
 import {
   EXPENSE_REQUEST_STEPS,
   EXPENSE_REQUEST_STATUS_LABELS,
+  type ExpensePurchaseRequest,
   type ExpenseRequestStatus,
 } from "../interfaces/expense-purchase-request.interface";
 
@@ -35,17 +35,21 @@ const FILTRO_ACTIVO_CLS =
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
+interface ExpensePurchaseRequestListProps {
+  data: ExpensePurchaseRequest[];
+}
+
 /** Lista de solicitudes de compras de gastos con filtros por estatus del flujo */
-export function ExpensePurchaseRequestList() {
+export function ExpensePurchaseRequestList({ data }: ExpensePurchaseRequestListProps) {
   const [filtroEstatus, setFiltroEstatus] = useState<ExpenseFilterValue>('todas');
 
   const columns = useMemo(() => getExpenseRequestColumns(), []);
 
   // Datos filtrados según la pestaña activa
   const solicitudesFiltradas = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_EXPENSE_PURCHASE_REQUESTS;
-    return MOCK_EXPENSE_PURCHASE_REQUESTS.filter((r) => r.estatus === filtroEstatus);
-  }, [filtroEstatus]);
+    if (filtroEstatus === 'todas') return data;
+    return data.filter((r) => r.estatus === filtroEstatus);
+  }, [data, filtroEstatus]);
 
   return (
     <div className="space-y-5">
@@ -59,8 +63,8 @@ export function ExpensePurchaseRequestList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_EXPENSE_PURCHASE_REQUESTS.length
-              : MOCK_EXPENSE_PURCHASE_REQUESTS.filter((r) => r.estatus === f.value).length;
+              ? data.length
+              : data.filter((r) => r.estatus === f.value).length;
 
           // Ocultar pestañas sin datos (excepto "Todas")
           if (count === 0 && f.value !== 'todas') return null;
@@ -104,7 +108,7 @@ export function ExpensePurchaseRequestList() {
         columns={columns}
         data={solicitudesFiltradas}
         searchPlaceholder="Buscar folio, proveedor, solicitante..."
-        baseDataCount={MOCK_EXPENSE_PURCHASE_REQUESTS.length}
+        baseDataCount={data.length}
       />
     </div>
   );

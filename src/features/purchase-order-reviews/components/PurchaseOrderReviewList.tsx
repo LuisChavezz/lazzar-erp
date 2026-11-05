@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { getReviewColumns } from "./PurchaseOrderReviewColumns";
-import { MOCK_PURCHASE_ORDER_REVIEWS } from "../mocks/purchase-order-review.mock";
 import {
   REVIEW_STEPS,
   REVIEW_STATUS_LABELS,
+  type PurchaseOrderReview,
   type ReviewStatus,
 } from "../interfaces/purchase-order-review.interface";
 
@@ -32,17 +32,21 @@ const FILTRO_ACTIVO_CLS = 'bg-sky-600 text-white';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
+interface PurchaseOrderReviewListProps {
+  data: PurchaseOrderReview[];
+}
+
 /** Lista principal de revisiones de pedidos de compra con filtros por estatus */
-export function PurchaseOrderReviewList() {
+export function PurchaseOrderReviewList({ data }: PurchaseOrderReviewListProps) {
   const [filtroEstatus, setFiltroEstatus] = useState<ReviewFilterValue>('todas');
 
   const columns = useMemo(() => getReviewColumns(), []);
 
   // Datos filtrados según la pestaña activa
   const revisionesFiltradas = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_PURCHASE_ORDER_REVIEWS;
-    return MOCK_PURCHASE_ORDER_REVIEWS.filter((r) => r.estatus === filtroEstatus);
-  }, [filtroEstatus]);
+    if (filtroEstatus === 'todas') return data;
+    return data.filter((r) => r.estatus === filtroEstatus);
+  }, [data, filtroEstatus]);
 
   return (
     <div className="space-y-5">
@@ -56,8 +60,8 @@ export function PurchaseOrderReviewList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_PURCHASE_ORDER_REVIEWS.length
-              : MOCK_PURCHASE_ORDER_REVIEWS.filter((r) => r.estatus === f.value).length;
+              ? data.length
+              : data.filter((r) => r.estatus === f.value).length;
 
           // Ocultar pestañas sin datos (excepto "Todas")
           if (count === 0 && f.value !== 'todas') return null;
@@ -101,7 +105,7 @@ export function PurchaseOrderReviewList() {
         columns={columns}
         data={revisionesFiltradas}
         searchPlaceholder="Buscar folio, OC, proveedor..."
-        baseDataCount={MOCK_PURCHASE_ORDER_REVIEWS.length}
+        baseDataCount={data.length}
       />
     </div>
   );

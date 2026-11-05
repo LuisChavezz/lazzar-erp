@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { MOCK_PQ_ORDERS } from "../mocks/pq-order.mock";
 import { getPQOrderColumns } from "./PQOrderColumns";
 import {
   PQ_ORDER_STEPS,
   PQ_ORDER_STATUS_LABELS,
+  type PQOrder,
   type PQOrderStatus,
 } from "../interfaces/pq-order.interface";
 
@@ -33,17 +33,21 @@ const FILTRO_ACTIVO_CLS = 'bg-sky-600 text-white dark:bg-sky-500 shadow-sm';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
+interface PQOrderListProps {
+  data: PQOrder[];
+}
+
 /** Lista de Pedidos PQ con filtros por estatus del flujo de surtido */
-export function PQOrderList() {
+export function PQOrderList({ data }: PQOrderListProps) {
   const [filtroEstatus, setFiltroEstatus] = useState<PQFilterValue>('todas');
 
   const columns = useMemo(() => getPQOrderColumns(), []);
 
   // Datos filtrados según la pestaña activa
   const pedidosFiltrados = useMemo(() => {
-    if (filtroEstatus === 'todas') return MOCK_PQ_ORDERS;
-    return MOCK_PQ_ORDERS.filter((p) => p.estatus === filtroEstatus);
-  }, [filtroEstatus]);
+    if (filtroEstatus === 'todas') return data;
+    return data.filter((p) => p.estatus === filtroEstatus);
+  }, [data, filtroEstatus]);
 
   return (
     <div className="space-y-5">
@@ -57,8 +61,8 @@ export function PQOrderList() {
         {FILTROS.map((f) => {
           const count =
             f.value === 'todas'
-              ? MOCK_PQ_ORDERS.length
-              : MOCK_PQ_ORDERS.filter((p) => p.estatus === f.value).length;
+              ? data.length
+              : data.filter((p) => p.estatus === f.value).length;
 
           // Ocultar pestañas sin datos (excepto "Todas")
           if (count === 0 && f.value !== 'todas') return null;

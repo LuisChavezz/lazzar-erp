@@ -1,4 +1,5 @@
 import { PQOrderList } from "@/src/features/pq-orders/components/PQOrderList";
+import { MOCK_PQ_ORDERS } from "@/src/features/pq-orders/mocks/pq-order.mock";
 
 // Página de Pedidos PQ — seguimiento de pedidos de quincena vinculados a órdenes de compra
 export default function PQOrdersPage() {
@@ -10,7 +11,7 @@ export default function PQOrdersPage() {
           Seguimiento de pedidos de quincena vinculados a órdenes de compra: desde la generación hasta el surtido exitoso de materiales en almacén.
         </p>
       </div>
-      <PQOrderList />
+      <PQOrderList data={MOCK_PQ_ORDERS} />
     </div>
   );
 }
