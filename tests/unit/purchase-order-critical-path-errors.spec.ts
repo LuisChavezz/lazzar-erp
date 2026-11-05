@@ -7,6 +7,7 @@ import {
   purchaseOrderCriticalPathSaveErrorMessage,
 } from "@/src/features/purchase-orders/utils/purchaseOrderCriticalPathErrors";
 import type { PurchaseOrderCriticalPathField } from "@/src/features/purchase-orders/schemas/purchase-order-critical-path.schema";
+import { submitPurchaseOrderCriticalPath } from "@/src/features/purchase-orders/utils/purchaseOrderCriticalPathForm";
 
 /**
  * Pruebas unitarias de EC-770: el toast de un PATCH fallido de la ruta crítica
@@ -107,4 +108,37 @@ test("el respaldo del 403 usa la misma redacción que el backend", () => {
   expect(PURCHASE_ORDER_CRITICAL_PATH_FORBIDDEN_MESSAGE).toBe(
     "No tienes permiso para editar la ruta crítica de la orden de compra.",
   );
+});
+
+// Cableado del guardado (`submitPurchaseOrderCriticalPath`, el `onSubmit` del
+// formulario): solo un 403 pasa el diálogo a solo lectura.
+const submitWith = async (outcome: () => Promise<unknown>) => {
+  let forbiddenCalls = 0;
+  await submitPurchaseOrderCriticalPath(outcome, () => {
+    forbiddenCalls += 1;
+  });
+  return forbiddenCalls;
+};
+
+test("un 403 al guardar llama a onForbidden y no rechaza", async () => {
+  expect(
+    await submitWith(() =>
+      Promise.reject(
+        axiosError(403, { detail: "No tienes permiso para editar la ruta crítica de la orden de compra." }),
+      ),
+    ),
+  ).toBe(1);
+  expect(await submitWith(() => Promise.reject(axiosError(403)))).toBe(1);
+});
+
+test("400, 404, 500, red y éxito no llaman a onForbidden", async () => {
+  expect(await submitWith(() => Promise.reject(axiosError(400, { comentarios: ["x"] })))).toBe(0);
+  expect(await submitWith(() => Promise.reject(axiosError(404)))).toBe(0);
+  expect(await submitWith(() => Promise.reject(axiosError(500)))).toBe(0);
+  expect(await submitWith(() => Promise.reject(new AxiosError("Network Error", "ERR_NETWORK")))).toBe(0);
+  expect(await submitWith(() => Promise.resolve({}))).toBe(0);
+});
+
+test("sin onForbidden, un 403 tampoco rechaza", async () => {
+  await expect(submitPurchaseOrderCriticalPath(() => Promise.reject(axiosError(403)))).resolves.toBeUndefined();
 });

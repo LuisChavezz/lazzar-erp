@@ -4,7 +4,6 @@ import { useForm } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
-import { isForbiddenError } from "@/src/utils/drfWriteErrors";
 import type { PurchaseOrderCriticalPath } from "../interfaces/purchase-order-critical-path.interface";
 import {
   PurchaseOrderCriticalPathFields,
@@ -14,6 +13,7 @@ import {
 } from "../schemas/purchase-order-critical-path.schema";
 import {
   buildPurchaseOrderCriticalPathBody,
+  submitPurchaseOrderCriticalPath,
   toPurchaseOrderCriticalPathValues,
 } from "../utils/purchaseOrderCriticalPathForm";
 import { useUpdatePurchaseOrderCriticalPath } from "./useUpdatePurchaseOrderCriticalPath";
@@ -106,14 +106,7 @@ export function usePurchaseOrderCriticalPathForm({
       // El botón ya está deshabilitado sin cambios; esto cubre el Enter.
       if (Object.keys(body).length === 0) return;
 
-      try {
-        await mutateAsync({ ocId, body });
-      } catch (error) {
-        // El toast ya lo dio el hook; los errores por campo quedan bajo su
-        // campo y el formulario conserva lo capturado para reintentar. Un 403
-        // no se arregla reintentando: se avisa para pasar a solo lectura.
-        if (isForbiddenError(error)) onForbidden?.();
-      }
+      await submitPurchaseOrderCriticalPath(() => mutateAsync({ ocId, body }), onForbidden);
     },
   });
 
