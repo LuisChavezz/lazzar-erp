@@ -30,8 +30,8 @@
 import { useCallback, useState } from "react";
 import { usePrefetchQuery, useQuery } from "@tanstack/react-query";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import { ordersQueryOptions } from "@/src/features/orders/hooks/useOrders";
-import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
+import { pedidoSearchQueryOptions } from "@/src/features/orders/hooks/usePedidoSearch";
+import { LINKABLE_PEDIDO_ESTATUS } from "./PurchaseOrderPedidosField";
 import type {
   PurchaseOrder,
   PurchaseOrderDetail,
@@ -84,10 +84,11 @@ export function PurchaseOrderEditStepManager({
   // Pedidos que el Step 1 ofrece para ligar (`PurchaseOrderPedidosField`, que
   // en edición se monta siempre). No dependen del onboarding ni del detalle,
   // pero el campo solo se monta cuando ambos ya llegaron: sin este prefetch,
-  // `/ventas/pedidos/` salía DESPUÉS de esa espera, en cadena (EC-695). Mismas
-  // opciones que `useOrders()` sin filtros (`ordersQueryOptions`), así que el
-  // campo encuentra la respuesta (o la petición en vuelo) en la caché.
-  usePrefetchQuery({ ...ordersQueryOptions(), gcTime: LIST_QUERY_GC_TIME });
+  // `/ventas/pedidos/` salía DESPUÉS de esa espera, en cadena (EC-695). Es la
+  // MISMA consulta que el campo hace al montarse (búsqueda vacía entre los
+  // pedidos que se pueden ligar), así que encuentra la respuesta (o la
+  // petición en vuelo) en la caché.
+  usePrefetchQuery(pedidoSearchQueryOptions({ q: "", estatus: LINKABLE_PEDIDO_ESTATUS }));
 
   // Detalle de la orden — aporta los renglones existentes (con `producto_id`)
   // para sembrar el paso de productos, y el `estatus` que decide el aviso de
