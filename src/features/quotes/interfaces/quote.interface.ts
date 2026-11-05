@@ -211,7 +211,12 @@ export interface QuoteById {
   motivo_rechazo: string | null;
   autorizada_at: string | null;
   cambios_solicitados_at: string | null;
-  aprobado_snapshot: string | null;
+  /**
+   * Foto JSON de la cotización al autorizarla (un objeto, no texto). El front
+   * no la lee: se tipa opaca y opcional para que un cambio de forma en el
+   * backend (o su retiro de la respuesta) no se propague a ningún consumidor.
+   */
+  aprobado_snapshot?: unknown;
   created_at: string;
   updated_at: string;
   persona_pagos: string;
@@ -280,6 +285,51 @@ export interface QuoteById {
     updated_at: string;
   }[];
 }
+
+type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+type QuoteByIdDetalle = QuoteById["detalles"][number];
+type QuoteByIdTalla = QuoteByIdDetalle["tallas"][number];
+type QuoteByIdServicioExtra = QuoteById["servicios_extras"][number];
+
+/**
+ * Claves que `GET /ventas/pedidos/{id}/cotizacion/` QUITA de la respuesta
+ * (no las pone en `null` ni en `0`) a quien no tiene visibilidad contable
+ * (`filtrar_campos_contabilidad_pedido` del backend). Solo las que `QuoteById`
+ * declara.
+ */
+type QuoteMaskedRootKey =
+  | "anticipo_total" | "anticipo_parcial" | "pago_antes_embarque"
+  | "por_confirmar" | "otra_cantidad" | "monto"
+  | "envio" | "programa_bordados" | "bordado_pantalones_extras"
+  | "serigrafia" | "reflejante" | "flete" | "seguros" | "anticipo"
+  | "subtotal" | "descuento_global" | "ieps" | "iva" | "gran_total"
+  | "forma_pago" | "metodo_pago" | "uso_cfdi" | "importe_iva";
+type QuoteMaskedDetalleKey = "precio_unitario" | "costo_unitario" | "subtotal_linea";
+type QuoteMaskedTallaKey = "precio_unitario" | "subtotal_talla";
+
+/**
+ * Cotización tal como la PINTA el detalle de solo lectura (`QuoteDetails`):
+ * `QuoteById` con las claves enmascarables opcionales. `QuoteById` es
+ * asignable a este tipo, así que las pantallas que leen `/cotizaciones/{id}/`
+ * no cambian; solo la lectura desde el pedido 360° puede llegar sin ellas.
+ * `QuoteById` sigue estricto para la edición, el PDF y el correo, que nunca
+ * leen la respuesta enmascarada.
+ */
+export type QuoteDetailView = WithOptional<
+  Omit<QuoteById, "detalles" | "servicios_extras">,
+  QuoteMaskedRootKey
+> & {
+  detalles: QuoteDetailViewDetalle[];
+  servicios_extras: WithOptional<QuoteByIdServicioExtra, "monto">[];
+};
+
+export type QuoteDetailViewTalla = WithOptional<QuoteByIdTalla, QuoteMaskedTallaKey>;
+
+export type QuoteDetailViewDetalle = WithOptional<
+  Omit<QuoteByIdDetalle, "tallas">,
+  QuoteMaskedDetalleKey
+> & { tallas: QuoteDetailViewTalla[] };
 
 /**
  * Respuesta de `POST /ventas/cotizaciones/{id}/enviar-revision/`. `cotizacion`
