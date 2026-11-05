@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { ExportCsvIcon, ExportPdfIcon } from "@/src/components/Icons";
 import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
@@ -24,6 +25,17 @@ import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-ord
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
 
+interface PurchaseOrderViewProps {
+  /**
+   * Llaves EXTRA que "Actualizar datos" de la tabla invalida junto con la
+   * lista (los indicadores que la página monta encima), para que tarjetas y
+   * tabla no muestren cifras de momentos distintos. Mismo mecanismo que
+   * `OrderListView`: llaves y no un callback porque la página es de servidor.
+   * El "Reintentar" del error de la tabla sigue tocando solo la lista.
+   */
+  extraRefetchQueryKeys?: readonly QueryKey[];
+}
+
 /**
  * Listado de órdenes de compra en MODO SERVIDOR: filtros, búsqueda, orden y
  * paginación los resuelve el backend y su estado vive en la URL
@@ -31,8 +43,18 @@ import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-ord
  * `<Suspense>`. El dashboard de Compras y los selectores siguen leyendo el
  * listado completo (`usePurchaseOrders`).
  */
-export function PurchaseOrderView() {
+export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewProps = {}) {
   const purchaseOrdersTable = usePurchaseOrdersTable();
+  const queryClient = useQueryClient();
+  const { onRefetch } = purchaseOrdersTable.tableProps;
+  const handleToolbarRefetch =
+    onRefetch && extraRefetchQueryKeys?.length
+      ? () =>
+          Promise.all([
+            onRefetch(),
+            ...extraRefetchQueryKeys.map((key) => queryClient.invalidateQueries({ queryKey: key })),
+          ])
+      : onRefetch;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Llegar a esta pantalla exige `R-COMPRAS-OC` (ver `routePermissions`); dar
@@ -110,6 +132,7 @@ export function PurchaseOrderView() {
     <DataTable
       columns={columns}
       {...purchaseOrdersTable.tableProps}
+      onRefetch={handleToolbarRefetch}
       // Identidad de la fila por registro, no por posición en la página.
       getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar por folio, referencia o proveedor..."
