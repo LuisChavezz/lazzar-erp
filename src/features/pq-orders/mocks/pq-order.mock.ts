@@ -2,6 +2,7 @@
 // no entra al bundle cliente (EC-773).
 import "server-only";
 import { faker } from "@faker-js/faker";
+import { MOCK_HOY } from "@/src/mocks/mockToday";
 import type {
   PQOrder,
   PQOrderStatus,
@@ -16,10 +17,6 @@ import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // Semilla fija para datos deterministas
 faker.seed(5003);
-
-// "Hoy" fijo para las fechas que faker calcula relativas al momento actual:
-// con la semilla, los datos salen idénticos en cada build (EC-773).
-const HOY = new Date("2025-05-01T00:00:00.000Z");
 
 // ── Catálogos de datos ────────────────────────────────────────────────────────
 
@@ -251,7 +248,7 @@ function generarPedidoPQ(index: number, estatus: PQOrderStatus): PQOrder {
     intentos_surtido,
     observaciones: faker.helpers.arrayElement([
       'Sin observaciones.',
-      `Urgente: requerido para línea de producción del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
+      `Urgente: requerido para línea de producción del ${faker.date.soon({ days: 10, refDate: MOCK_HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
       'Insumo crítico para colección de temporada. Prioridad alta.',
       faker.lorem.sentence(5),
     ]),

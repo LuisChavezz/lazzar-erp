@@ -2,6 +2,7 @@
 // no entra al bundle cliente (EC-773).
 import "server-only";
 import { faker } from "@faker-js/faker";
+import { MOCK_HOY } from "@/src/mocks/mockToday";
 import type {
   PurchaseOrderReview,
   ReviewStatus,
@@ -12,10 +13,6 @@ import { REVIEW_STEPS, REVIEW_STATUS_LABELS } from "../interfaces/purchase-order
 
 // Semilla fija para datos deterministas
 faker.seed(5001);
-
-// "Hoy" fijo para las fechas que faker calcula relativas al momento actual:
-// con la semilla, los datos salen idénticos en cada build (EC-773).
-const HOY = new Date("2025-05-01T00:00:00.000Z");
 
 // ── Catálogos de datos ────────────────────────────────────────────────────────
 
@@ -230,7 +227,7 @@ function generarRevision(index: number, estatus: ReviewStatus): PurchaseOrderRev
   const pasoFolioRT = (REVIEW_STEPS as readonly string[]).indexOf('recepcion_confirmada') + 1;
   const tieneFolioRT = pasoActual >= pasoFolioRT && estatus !== 'cancelado';
   const folioRT = tieneFolioRT
-    ? `RT-${faker.date.past({ years: 1, refDate: HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
+    ? `RT-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
     : null;
 
   // Nota de crédito (solo si tiene folio RT y con cierta probabilidad)

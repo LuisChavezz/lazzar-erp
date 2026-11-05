@@ -2,6 +2,7 @@
 // no entra al bundle cliente (EC-773).
 import "server-only";
 import { faker } from "@faker-js/faker";
+import { MOCK_HOY } from "@/src/mocks/mockToday";
 import type {
   ExpensePurchaseRequest,
   ExpenseRequestStatus,
@@ -16,10 +17,6 @@ import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 // Semilla fija para datos deterministas
 faker.seed(5002);
-
-// "Hoy" fijo para las fechas que faker calcula relativas al momento actual:
-// con la semilla, los datos salen idénticos en cada build (EC-773).
-const HOY = new Date("2025-05-01T00:00:00.000Z");
 
 // ── Catálogos de datos ────────────────────────────────────────────────────────
 
@@ -293,7 +290,7 @@ function generarSolicitud(index: number, estatus: ExpenseRequestStatus): Expense
   const pasoRG = (EXPENSE_REQUEST_STEPS as readonly string[]).indexOf('rg_registrado') + 1;
   const tieneFolioRG = pasoActual >= pasoRG && !esTerminal;
   const folioRG = tieneFolioRG
-    ? `RG-${faker.date.past({ years: 1, refDate: HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
+    ? `RG-${faker.date.past({ years: 1, refDate: MOCK_HOY }).getFullYear()}-${String(faker.number.int({ min: 1, max: 999 })).padStart(3, '0')}`
     : null;
 
   // Aprobador disponible desde paso 5 (pedido_emitido)
@@ -341,7 +338,7 @@ function generarSolicitud(index: number, estatus: ExpenseRequestStatus): Expense
     folio_rg:            folioRG,
     observaciones:       faker.helpers.arrayElement([
       'Sin observaciones.',
-      `Urgente: requerido antes del ${faker.date.soon({ days: 10, refDate: HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
+      `Urgente: requerido antes del ${faker.date.soon({ days: 10, refDate: MOCK_HOY }).toLocaleDateString('es-MX', { timeZone: MEXICO_TIME_ZONE })}.`,
       'Cotización adjunta en expediente físico.',
       faker.lorem.sentence(5),
     ]),
