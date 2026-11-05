@@ -19,6 +19,8 @@ interface PurchaseOrderCriticalPathFormProps {
    */
   readOnlyNotice: string | null;
   onClose: () => void;
+  /** El PATCH respondió 403: quien monta el formulario lo pasa a solo lectura. */
+  onForbidden?: () => void;
 }
 
 /**
@@ -33,10 +35,11 @@ export function PurchaseOrderCriticalPathForm({
   data,
   readOnlyNotice,
   onClose,
+  onForbidden,
 }: PurchaseOrderCriticalPathFormProps) {
   const readOnly = readOnlyNotice !== null;
   const { form, isPending, hasChanges, getError, clearFieldErrors, validateField, handleFormSubmit } =
-    usePurchaseOrderCriticalPathForm({ ocId, data, readOnly });
+    usePurchaseOrderCriticalPathForm({ ocId, data, readOnly, onForbidden });
 
   return (
     // `noValidate`: todas las reglas las muestra Zod con su mensaje, nunca el

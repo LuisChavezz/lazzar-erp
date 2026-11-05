@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
@@ -116,7 +117,11 @@ function CriticalPathDialogContent({
 }) {
   const validId = isValidPurchaseOrderId(target.ocId);
   const { data: authSession, status: sessionStatus } = useSession();
-  const canEdit = hasPermission("E-COMPRAS-OC", authSession?.user);
+  // Un 403 al guardar: la sesión aún dice `E-COMPRAS-OC` pero el backend ya
+  // no lo reconoce. Reintentar daría el mismo 403, así que esta apertura pasa a
+  // solo lectura (la sesión no se refresca: sus permisos se fijan al entrar).
+  const [forbiddenOnSave, setForbiddenOnSave] = useState(false);
+  const canEdit = hasPermission("E-COMPRAS-OC", authSession?.user) && !forbiddenOnSave;
   const readOnlyNotice = isPurchaseOrderCancelled(target.estatus)
     ? CANCELLED_NOTICE
     : canEdit
@@ -187,6 +192,7 @@ function CriticalPathDialogContent({
           data={data}
           readOnlyNotice={readOnlyNotice}
           onClose={onClose}
+          onForbidden={() => setForbiddenOnSave(true)}
         />
       </>
     );
