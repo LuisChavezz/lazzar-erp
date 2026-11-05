@@ -76,22 +76,24 @@ const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
     El backend la emite en un solo punto —el paso a estatus 2 de una
     cotización— con `crear_notificacion_por_rol(codigo_rol="MESA-DE-CONTROL",
     clave_departamento=CLAVE_DEPARTAMENTO_MESA_CONTROL)`: una fila por cada
-    usuario de ese departamento en la empresa, nunca para el vendedor que la
-    envió. El recurso se elige por el ROL del destinatario, con la misma regla
-    con la que el backend acota cada ruta (`ventas.scope`):
+    usuario ACTIVO de ese departamento en la empresa. No excluye a quien la
+    envió, así que un miembro de mesa de control que es el vendedor también la
+    recibe. Y sobrevive al cambio de estatus: nada la borra al autorizar.
+
+    Ningún recurso cubre a todos sus destinatarios (ver `ventas.scope`):
+    `/ventas/mesa-control/{id}/` sirve empresa y estatus [2, 5] a admins y al
+    departamento; `/ventas/cotizaciones/{id}/` sirve la empresa entera a un
+    admin y, a cualquier otro, solo lo que él vendió. Por eso se lee con
+    respaldo ante un 404, y el ROL elige solo el orden —el que acierta a la
+    primera en el caso común—:
 
     - `role === "admin"` (`is_admin_empresa` o superuser, `getSessionRole`):
-      `/ventas/cotizaciones/{id}/` le muestra toda su empresa a cualquier
-      estatus, que contiene lo que mesa-control le mostraría. Cubre también la
-      notificación vieja —nada la borra al autorizar— cuya cotización ya está
-      en 3, donde mesa-control responde 404.
-    - Cualquier otro: `/ventas/mesa-control/{id}/` (empresa, estatus [2, 5]).
-      `/ventas/cotizaciones/{id}/` filtra `vendedor=user` y casi nunca es suya.
-      Con la cotización ya fuera de [2, 5] no la sirve ninguna de las dos
-      rutas, así que no hay a dónde reintentar.
+      primero cotizaciones, que para él contiene lo de mesa-control.
+    - Cualquier otro, o sin sesión cargada todavía (`user` ausente): primero
+      mesa-control; si la cotización ya salió de [2, 5], cotizaciones la sirve
+      a su vendedor y a un admin cuya sesión aún no se leía.
 
-    Un `tipo` futuro que pueda llegarle a un vendedor debe declarar
-    `"cotizaciones"`, no heredar esto.
+    Un `tipo` futuro debe declarar su propio `source`, no heredar este.
   */
   [TIPO_COTIZACION_EN_REVISION]: (data, user) => {
     const quoteId = readPositiveId(data, "cotizacion_id");
@@ -99,7 +101,8 @@ const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
     return {
       kind: "quote-dialog",
       quoteId,
-      source: user?.role === "admin" ? "cotizaciones" : "mesa-control",
+      source:
+        user?.role === "admin" ? "cotizaciones-o-mesa-control" : "mesa-control-o-cotizaciones",
     };
   },
   /*

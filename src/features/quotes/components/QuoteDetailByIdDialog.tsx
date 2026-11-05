@@ -13,8 +13,9 @@ interface QuoteDetailByIdDialogProps {
   /**
    * Recurso por el que `QuoteDetails` lee el detalle y sus comentarios.
    * Obligatorio: el buscador global pasa `"cotizaciones"` (sus resultados
-   * salen de ese mismo alcance), las notificaciones lo eligen por `tipo` y rol,
-   * y el pedido 360° pasa `"cotizaciones-o-mesa-control"` (EC-787).
+   * salen de ese mismo alcance), las notificaciones lo eligen por `tipo` (y
+   * por rol en `cotizacion_en_revision`), y el pedido 360° pasa
+   * `"cotizaciones-o-mesa-control"` (EC-787).
    */
   source: QuoteDetailSource;
   /**
