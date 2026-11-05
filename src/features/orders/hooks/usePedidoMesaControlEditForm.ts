@@ -947,8 +947,13 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    *
    * `_save_pedido_servicios_extras` los empareja por índice POSICIONAL (los
    * guardados en orden de `id`) y, si el arreglo encoge, BORRA los guardados
-   * que sobran al final — sin 400. Esta pantalla no quita servicios guardados
-   * (ver `setExtraServicesGuarded`). No basta con vigilar la longitud: añadir uno
+   * que sobran al final, salvo uno que alguna vez se facturó: ese lo rechaza
+   * con 400 `servicios_extras` ("ya se facturó; no se puede eliminar."). Hoy
+   * gana antes el 409 `factura_detalle_ligado`, que bloquea la edición entera
+   * en cuanto un servicio tiene renglón de factura.
+   *
+   * Esta pantalla no quita servicios guardados (ver `setExtraServicesGuarded`).
+   * No basta con vigilar la longitud: añadir uno
    * y luego borrar uno guardado deja el mismo total y aun así rompe el
    * emparejamiento (el nuevo ocuparía la posición del borrado y le reescribiría
    * el nombre y el monto encima, conservando su id). Por eso se guardan las
@@ -1090,8 +1095,9 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * `setExtraServices` blindado: acepta añadir y editar, rechaza ENCOGER.
    *
    * `QuoteFormContent` entrega el setter crudo a un botón de papelera por fila.
-   * El backend NO rechaza un arreglo más corto: `_save_pedido_servicios_extras`
-   * empareja por posición y borra los guardados que sobran AL FINAL, así que
+   * Un arreglo más corto no es un 400 por sí mismo: `_save_pedido_servicios_extras`
+   * empareja por posición y borra los guardados que sobran AL FINAL (salvo los
+   * facturados alguna vez, que rechaza con 400 `servicios_extras`), así que
    * quitar uno de en medio reescribiría los siguientes sobre la fila equivocada
    * y borraría el último. Se envuelve aquí para que ninguna ruta —incluido ese
    * botón, que además se pinta deshabilitado— quite un servicio guardado.
