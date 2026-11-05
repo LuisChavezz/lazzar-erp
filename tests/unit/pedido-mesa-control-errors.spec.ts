@@ -104,6 +104,26 @@ test.describe("claves que no cambian", () => {
     });
   });
 
+  test("solo se descarta la clave PLANA pedido: sus errores anidados siguen en el formulario", () => {
+    // Anidado: errores de campo de la cabecera, con el alias del formulario.
+    expect(
+      parsePedidoMesaControl400({
+        pedido: {
+          cliente_rfc: ["RFC inválido."],
+          codigo_postal: ["Código postal inexistente."],
+        },
+      }),
+    ).toEqual({
+      issues: [
+        { path: "rfc", message: "RFC inválido." },
+        { path: "codigoPostalEnvio", message: "Código postal inexistente." },
+      ],
+      rejection: undefined,
+    });
+    // Plano: rechazo, solo toast.
+    expect(parsePedidoMesaControl400({ pedido: ["Sin cotización."] }).issues).toEqual([]);
+  });
+
   test("color va al toast Y al formulario, que lo traduce a las partidas", () => {
     expect(parsePedidoMesaControl400({ color: ["Elige el color de: Playera."] })).toEqual({
       issues: [{ path: "color", message: "Elige el color de: Playera." }],
