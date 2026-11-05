@@ -8,18 +8,17 @@ import {
 import { QuoteById } from "../interfaces/quote.interface";
 
 /**
- * Recurso por el que se PREGUNTA PRIMERO, no una elección excluyente: ante un
- * 404 `getQuoteDetailById` reintenta en el otro, que es donde vive el caso raro
- * de cada pantalla (ver ahí el porqué). `"cotizaciones"` es el de siempre;
- * `"mesa-control"` lo pasan las vistas cuyo usuario normalmente no es el
- * vendedor. La forma de la respuesta es la misma en ambos, así que comparten
- * hook, tipo y componente de detalle; solo cambia la clave de caché.
+ * Recurso por el que se lee la cotización; obligatorio, sin valor por omisión
+ * (ver `QuoteDetailSource`). La forma de la respuesta es la misma en todos,
+ * así que comparten hook, tipo y componente de detalle; solo cambia el último
+ * segmento de la clave de caché, y las invalidaciones por `["quote", id]`
+ * alcanzan a todos.
  */
 export type { QuoteDetailSource };
 
 export const getQuoteQueryOptions = (
   quoteId: number | null | undefined,
-  source: QuoteDetailSource = "cotizaciones"
+  source: QuoteDetailSource
 ) =>
   queryOptions<QuoteById>({
     queryKey: ["quote", quoteId, source],
@@ -28,7 +27,7 @@ export const getQuoteQueryOptions = (
 
 export const useQuote = (
   quoteId: number | null | undefined,
-  source: QuoteDetailSource = "cotizaciones"
+  source: QuoteDetailSource
 ) => {
   return useQuery<QuoteById>({
     ...getQuoteQueryOptions(quoteId, source),

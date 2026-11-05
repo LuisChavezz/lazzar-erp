@@ -42,66 +42,62 @@ export const getMesaControlQuoteById = async (
   return response.data;
 };
 
-/** Recurso por el que se pregunta primero al leer el detalle. */
-export type QuoteDetailSource = "cotizaciones" | "mesa-control";
+/** Uno de los dos recursos que sirven una cotización por id. */
+type QuoteResource = "cotizaciones" | "mesa-control";
 
-const QUOTE_DETAIL_READERS: Record<
-  QuoteDetailSource,
-  (id: number) => Promise<QuoteById>
-> = {
+/**
+ * Cómo se lee una cotización por id. Cada pantalla declara el suyo; no hay
+ * valor por omisión, para que ninguna caiga en el respaldo sin pedirlo.
+ *
+ * - `"cotizaciones"`: `/ventas/cotizaciones/{id}/` —su empresa a cualquier
+ *   estatus para `is_admin_empresa`/superuser; para los demás solo las que
+ *   vendieron—. Es la de Ventas, la edición, el buscador global y las
+ *   notificaciones que llegan al vendedor o a un admin.
+ * - `"mesa-control"`: `/ventas/mesa-control/{id}/` —empresa y estatus [2, 5]
+ *   para admins y el departamento de mesa de control; nada para los demás—.
+ *   Es la de las vistas de Mesa de Control, cuyas filas salen de ese alcance.
+ * - `"cotizaciones-o-mesa-control"`: la primera y, SOLO ante un 404, la
+ *   segunda. Exclusiva del pedido 360°, que abre la cotización de un pedido
+ *   para lectores de varios módulos sin que el front sepa cuál de los dos
+ *   alcances le toca a cada uno (la pertenencia a mesa de control es un
+ *   departamento, no viaja en la sesión). Se retira con EC-787, la lectura de
+ *   la cotización con el alcance del pedido.
+ */
+export type QuoteDetailSource = QuoteResource | "cotizaciones-o-mesa-control";
+
+type QuoteResourceReaders<T> = Record<QuoteResource, (id: number) => Promise<T>>;
+
+/**
+ * Lee del recurso que pide `source`. Con `"cotizaciones-o-mesa-control"`, solo
+ * un 404 de la primera activa la segunda: cualquier otro error (401, 403, 5xx)
+ * se propaga tal cual, y si la segunda también da 404 se propaga ese error.
+ */
+async function readQuoteResource<T>(
+  readers: QuoteResourceReaders<T>,
+  id: number,
+  source: QuoteDetailSource
+): Promise<T> {
+  if (source !== "cotizaciones-o-mesa-control") return readers[source](id);
+  try {
+    return await readers.cotizaciones(id);
+  } catch (error) {
+    if (!isAxiosError(error) || error.response?.status !== 404) throw error;
+    return readers["mesa-control"](id);
+  }
+}
+
+const QUOTE_DETAIL_READERS: QuoteResourceReaders<QuoteById> = {
   cotizaciones: getQuoteById,
   "mesa-control": getMesaControlQuoteById,
 };
 
-const OTHER_QUOTE_DETAIL_SOURCE: Record<QuoteDetailSource, QuoteDetailSource> = {
-  cotizaciones: "mesa-control",
-  "mesa-control": "cotizaciones",
-};
-
-/**
- * Detalle de cotización con respaldo en el otro recurso ante un 404.
- *
- * Ninguna de las dos rutas cubre por sí sola a todos los que legítimamente ven
- * una cotización, y los alcances no se contienen entre sí:
- *
- * - `/ventas/cotizaciones/{id}/` filtra por `vendedor` para quien no es
- *   `is_admin_empresa` —404 para mesa de control sobre la cotización de otro—,
- *   pero no mira el estatus.
- * - `/ventas/mesa-control/{id}/` acota por empresa y estatus [2, 5] para TODOS,
- *   admins incluidos: en cuanto la cotización se autoriza (estatus 3) responde
- *   404 aunque quien pregunte sea admin y la viera sin problema por la otra.
- *
- * Por eso el `source` es solo el ORDEN en que se pregunta —el que acierta a la
- * primera en el caso común de cada pantalla—, no una elección excluyente. Solo
- * un 404 activa el respaldo: cualquier otro error (401, 403, 5xx) se propaga
- * tal cual, y si el respaldo también da 404 se propaga el segundo error, que es
- * la respuesta correcta —la cotización no existe o no es visible para nadie que
- * este usuario represente—. El costo es una petición extra únicamente en la
- * ruta de fallo.
- */
+/** Detalle de cotización por el recurso que declara la pantalla (ver `QuoteDetailSource`). */
 export const getQuoteDetailById = (
   id: number,
-  source: QuoteDetailSource = "cotizaciones"
-): Promise<QuoteById> => readWithSourceFallback(QUOTE_DETAIL_READERS, id, source);
-
-/** Pregunta primero a `source` y, solo ante un 404, al otro recurso. */
-async function readWithSourceFallback<T>(
-  readers: Record<QuoteDetailSource, (id: number) => Promise<T>>,
-  id: number,
   source: QuoteDetailSource
-): Promise<T> {
-  try {
-    return await readers[source](id);
-  } catch (error) {
-    if (!isAxiosError(error) || error.response?.status !== 404) throw error;
-    return readers[OTHER_QUOTE_DETAIL_SOURCE[source]](id);
-  }
-}
+): Promise<QuoteById> => readQuoteResource(QUOTE_DETAIL_READERS, id, source);
 
-const QUOTE_COMENTARIOS_READERS: Record<
-  QuoteDetailSource,
-  (id: number) => Promise<QuoteComentario[]>
-> = {
+const QUOTE_COMENTARIOS_READERS: QuoteResourceReaders<QuoteComentario[]> = {
   cotizaciones: async (id) =>
     (await v1_api.get<QuoteComentario[]>(`/ventas/cotizaciones/${id}/comentarios/`)).data,
   "mesa-control": async (id) =>
@@ -110,14 +106,13 @@ const QUOTE_COMENTARIOS_READERS: Record<
 
 /**
  * Historial de rechazos y reenvíos, en orden cronológico. Mismos alcances que
- * el detalle —`/mesa-control/{id}/comentarios/` solo responde en estatus 2 y 5;
- * `/cotizaciones/{id}/comentarios/` filtra por vendedor—, así que usa el mismo
- * respaldo ante un 404 que `getQuoteDetailById`.
+ * el detalle, así que se lee con el MISMO `source` que el detalle al que
+ * acompaña (`QuoteDetails` pasa el suyo a los dos).
  */
 export const getQuoteComentarios = (
   id: number,
-  source: QuoteDetailSource = "cotizaciones"
-): Promise<QuoteComentario[]> => readWithSourceFallback(QUOTE_COMENTARIOS_READERS, id, source);
+  source: QuoteDetailSource
+): Promise<QuoteComentario[]> => readQuoteResource(QUOTE_COMENTARIOS_READERS, id, source);
 
 export const createQuote = async (quote: QuoteCreate): Promise<QuoteCreate> => {
   const response = await v1_api.post<QuoteCreate>("/ventas/cotizaciones/onboarding/", quote);

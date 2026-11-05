@@ -21,7 +21,8 @@ export const useValidateQuoteForReview = () => {
     mutationKey: validateQuoteForReviewMutationKey,
     mutationFn: async (quoteId: number) => {
       const [quoteData, onboardingData] = await Promise.all([
-        queryClient.fetchQuery(getQuoteQueryOptions(quoteId)),
+        // Mismo recurso (y clave) que el formulario de edición: valida al vendedor.
+        queryClient.fetchQuery(getQuoteQueryOptions(quoteId, "cotizaciones")),
         queryClient.fetchQuery(getQuoteOnboardingDataQueryOptions()),
       ]);
 
