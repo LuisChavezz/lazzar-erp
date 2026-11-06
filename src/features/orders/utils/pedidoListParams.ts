@@ -4,6 +4,8 @@ import {
   enumParam,
   monthParam,
   positiveIdParam,
+  type ServerTableDefinition,
+  type ServerTableFilterParams,
   type ServerTableParam,
 } from "@/src/utils/serverTableParams";
 import { PEDIDO_CLASIFICACIONES, PEDIDO_ESTATUS } from "../constants/pedidoStatus";
@@ -122,6 +124,46 @@ export const toPedidoKpisApiParams = (
 ): Record<string, string> => {
   const rest = Object.fromEntries(Object.entries(criteria).filter(([key]) => key !== "ordering"));
   return toPedidoListApiParams(rest) as Record<string, string>;
+};
+
+/** Filtros de la URL que son rangos de importe. */
+const AMOUNT_FILTER_KEYS = ["rango_subtotal", "rango_gran_total"];
+/** Campos de `ordering` que son importes. */
+const AMOUNT_SORT_FIELDS = ["subtotal", "gran_total"];
+
+const sinImportes = new WeakMap<ServerTableDefinition, ServerTableDefinition>();
+
+/**
+ * La misma definición SIN los rangos de importe ni el orden por importe, para
+ * quien no ve importes de pedidos (EC-784): el backend ignora en silencio esos
+ * parámetros para él, así que con la definición completa la URL, el estado
+ * ("filtros activos") y los indicadores dirían que aplican cuando no. Con esta,
+ * un `rango_*` o un `ordering=subtotal` de la URL se trata como ausente: no se
+ * envía y no cuenta como criterio. Misma referencia en cada llamada (la cachea
+ * por definición), para no cambiar de identidad entre renders.
+ */
+export const withoutAmountCriteria = <P extends ServerTableFilterParams>(
+  definition: ServerTableDefinition<P>,
+): ServerTableDefinition<P> => {
+  const cached = sinImportes.get(definition);
+  if (cached) return cached as ServerTableDefinition<P>;
+  const filters = Object.fromEntries(
+    Object.entries(definition.filters).filter(([key]) => !AMOUNT_FILTER_KEYS.includes(key)),
+  ) as P;
+  const stripped: ServerTableDefinition<P> = {
+    ...definition,
+    filters,
+    ...(definition.ordering
+      ? {
+          ordering: {
+            ...definition.ordering,
+            fields: definition.ordering.fields.filter((field) => !AMOUNT_SORT_FIELDS.includes(field)),
+          },
+        }
+      : {}),
+  };
+  sinImportes.set(definition, stripped);
+  return stripped;
 };
 
 // Ordenar por estos campos existe en el backend (`ordering`) y coincide con lo

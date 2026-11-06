@@ -79,6 +79,12 @@ export interface PedidoKpis {
   /** Datetime UTC del cálculo. */
   generado_en: string;
   pedidos_activos: PedidoActiveKpi;
+  /**
+   * Regla de importes de pedidos (contabilidad de ventas o de compras, EC-784);
+   * `false` también para un usuario sin empresa. Sin ella el backend quita
+   * `valor` y `gran_total` del drill-down.
+   */
+  puede_ver_importes: boolean;
   otif: PedidoUntypedKpi;
   lead_time_promedio: PedidoUntypedKpi;
   pedidos_en_riesgo: PedidoUntypedKpi;
