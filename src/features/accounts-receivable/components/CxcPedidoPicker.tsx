@@ -1,10 +1,7 @@
 "use client";
 
-import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
-import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
+import { PedidoServerSelectList } from "@/src/features/orders/components/PedidoServerSelectList";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
-import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 
 interface CxcPedidoPickerProps {
   /** Id del cliente elegido (0 = ninguno). */
@@ -35,16 +32,6 @@ export function CxcPedidoPicker({
   disabled = false,
 }: CxcPedidoPickerProps) {
   const ready = cliente > 0 && moneda > 0;
-  const {
-    search,
-    setSearch,
-    isSearching,
-    pedidos,
-    total,
-    hasResults,
-    isInitialError,
-    refetch,
-  } = usePedidoSearchField({ cliente, moneda, enabled: ready });
 
   return (
     <div className="space-y-1.5">
@@ -64,44 +51,15 @@ export function CxcPedidoPicker({
         )}
       </div>
       {ready ? (
-        <ServerSearchSelectList<PedidoListItem>
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Buscar pedido por folio u OC..."
-          results={pedidos}
-          pinned={selected ? [selected] : []}
-          getKey={(order) => order.id}
-          isSelected={(order) => order.id === selected?.id}
+        <PedidoServerSelectList
+          filters={{ cliente, moneda }}
+          selected={selected}
           onSelect={(order) => {
             if (!disabled) onSelect(order);
           }}
-          renderIndicator={renderRadioIndicator}
-          renderContent={(order) => (
-            <div className="flex items-center justify-between gap-3 min-w-0">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                  {order.folio || "—"}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {order.cliente_nombre || order.cliente_razon_social || "—"}
-                </p>
-              </div>
-              {/* Ausente para quien no ve importes de pedidos: no se pinta. */}
-              {order.gran_total !== undefined && (
-                <span className="shrink-0 tabular-nums text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {formatOrderAmountOrDash(order.gran_total)}
-                </span>
-              )}
-            </div>
-          )}
-          hasResults={hasResults}
-          isInitialError={isInitialError}
-          isSearching={isSearching}
-          onRetry={() => void refetch()}
-          total={total}
+          searchPlaceholder="Buscar pedido por folio u OC..."
           emptyMessage="Sin pedidos para este cliente y moneda."
-          noResultsMessage="No se encontraron pedidos"
-          errorMessage="Error al buscar los pedidos."
+          showAmount
           maxHeightClassName="max-h-48"
         />
       ) : (

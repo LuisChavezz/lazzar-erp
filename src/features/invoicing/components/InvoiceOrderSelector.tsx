@@ -1,8 +1,6 @@
 "use client";
 
-import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
-import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
+import { PedidoServerSelectList } from "@/src/features/orders/components/PedidoServerSelectList";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import { INVOICEABLE_PEDIDO_ESTATUS } from "../constants/invoiceablePedidos";
 
@@ -12,6 +10,8 @@ interface InvoiceOrderSelectorProps {
   /** Selecciona un pedido. Selección única: reemplaza cualquier anterior. */
   onSelect: (order: PedidoListItem) => void;
 }
+
+const INVOICE_PEDIDO_FILTERS = { estatus: INVOICEABLE_PEDIDO_ESTATUS };
 
 /**
  * InvoiceOrderSelector
@@ -23,46 +23,13 @@ interface InvoiceOrderSelectorProps {
  * que eso lo dice el Paso 2 con el onboarding del pedido.
  */
 export function InvoiceOrderSelector({ selectedOrder, onSelect }: InvoiceOrderSelectorProps) {
-  const {
-    search,
-    setSearch,
-    isSearching,
-    pedidos,
-    total,
-    hasResults,
-    isInitialError,
-    refetch,
-  } = usePedidoSearchField({ estatus: INVOICEABLE_PEDIDO_ESTATUS });
-
   return (
-    <ServerSearchSelectList<PedidoListItem>
-      search={search}
-      onSearchChange={setSearch}
-      searchPlaceholder="Buscar pedido por folio, OC o cliente..."
-      results={pedidos}
-      pinned={selectedOrder ? [selectedOrder] : []}
-      getKey={(order) => order.id}
-      isSelected={(order) => order.id === selectedOrder?.id}
+    <PedidoServerSelectList
+      filters={INVOICE_PEDIDO_FILTERS}
+      selected={selectedOrder}
       onSelect={onSelect}
-      renderIndicator={renderRadioIndicator}
-      renderContent={(order) => (
-        <>
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-            {order.folio}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-            {order.cliente_nombre}
-          </p>
-        </>
-      )}
-      hasResults={hasResults}
-      isInitialError={isInitialError}
-      isSearching={isSearching}
-      onRetry={() => void refetch()}
-      total={total}
+      searchPlaceholder="Buscar pedido por folio, OC o cliente..."
       emptyMessage="No hay pedidos disponibles."
-      noResultsMessage="No se encontraron pedidos"
-      errorMessage="Error al buscar los pedidos."
     />
   );
 }
