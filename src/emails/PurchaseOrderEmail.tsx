@@ -8,6 +8,10 @@ import {
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import {
+  NO_DELIVERY_ADDRESS,
+  optionalText,
+} from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
 type PurchaseOrderEmailProps = {
   order: PurchaseOrderDetail;
@@ -94,6 +98,33 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
                   </tr>
                 </tbody>
               </table>
+      </EmailCard>
+
+      {/* A dónde envía el proveedor (EC-796): la dirección de la sucursal de
+          la orden. Mismos datos y textos que el PDF adjunto. */}
+      <EmailCard title="Dirección de entrega">
+        <table className="mt-4 w-full border-collapse text-sm">
+          <tbody>
+            <tr>
+              <td className="py-2 pr-4 text-slate-500">Almacén destino</td>
+              <td className="py-2 font-medium text-slate-900">
+                {optionalText(order.almacen_nombre) ?? "-"}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4 text-slate-500">Dirección</td>
+              <td className="py-2 font-medium text-slate-900">
+                {optionalText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4 text-slate-500">Teléfono</td>
+              <td className="py-2 font-medium text-slate-900">
+                {optionalText(order.sucursal_telefono) ?? "-"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </EmailCard>
 
       <EmailCard title="Productos solicitados">

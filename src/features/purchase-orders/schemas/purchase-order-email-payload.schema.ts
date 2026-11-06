@@ -55,6 +55,13 @@ export const purchaseOrderEmailPayloadSchema = z.object({
   proveedor_nombre: z.string().nullable(),
   proveedor_correo: z.string().nullable(),
   observaciones: z.string().nullable(),
+  // Bloque "Dirección de entrega" (EC-796). Declarados porque `z.object()`
+  // descarta lo que no declara; `.optional()` para no rechazar con un 400 el
+  // payload de un cliente anterior a estos campos (la plantilla pinta su
+  // respaldo, "Dirección de entrega no capturada").
+  almacen_nombre: z.string().nullable().optional(),
+  sucursal_direccion: z.string().nullable().optional(),
+  sucursal_telefono: z.string().nullable().optional(),
   detalles: z.array(purchaseOrderEmailDetalleSchema),
   total_piezas: z.number(),
   /**

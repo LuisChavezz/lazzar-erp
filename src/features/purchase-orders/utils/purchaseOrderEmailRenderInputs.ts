@@ -16,6 +16,9 @@ import { purchaseOrderEmailPayloadSchema } from "../schemas/purchase-order-email
  *   de lo que pinta (cabecera, importes y renglones) ya está en `email`.
  *   El estatus solo decide si lleva la marca de cancelada, así que se compara
  *   esa marca y no el estatus (3 → 4 al recibir no cambia el documento).
+ *   El bloque de entrega del PDF (`almacen_nombre`, `sucursal_direccion`,
+ *   `sucursal_telefono`, EC-796) es el mismo que el del correo y ya viaja en
+ *   `email`, así que no se repite aquí.
  */
 export const purchaseOrderEmailRenderInputs = (order: PurchaseOrderDetail) => {
   const cancelled = isPurchaseOrderCancelled(order.estatus);
