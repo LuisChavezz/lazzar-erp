@@ -202,14 +202,19 @@ export const extractProcessCompatibilityMessage = (data: unknown): string | unde
   extractJoinedRejectionMessage(data, PROCESS_COMPATIBILITY_KEY);
 
 /**
- * `detalle` como RECHAZO plano (`{"detalle": "Partida N: ..."}`, p. ej. el tope
- * de reflejante «Del inventario»). Como arreglo es la lista de errores por
- * renglón, que ya reporta `extractQuoteValidationIssues`.
+ * `detalle` como RECHAZO: un mensaje plano (`{"detalle": "Partida N: ..."}`,
+ * p. ej. el tope de reflejante «Del inventario») o una lista de mensajes
+ * (`{"detalle": ["Este campo es requerido."]}`, el error de la lista entera,
+ * que ningún renglón pinta) (EC-795). Devuelve el primer mensaje que no esté
+ * en blanco. Una lista de OBJETOS es la de errores por renglón, que reporta
+ * `extractQuoteValidationIssues`, y aquí no da nada.
  */
-export const extractPlainDetalleMessage = (data: unknown): string | undefined => {
+export const extractDetalleRejectionMessage = (data: unknown): string | undefined => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
   const { detalle } = data as Record<string, unknown>;
-  return typeof detalle === "string" && detalle.length > 0 ? detalle : undefined;
+  return (Array.isArray(detalle) ? detalle : [detalle]).find(
+    (message): message is string => typeof message === "string" && message.trim().length > 0,
+  );
 };
 
 /**
@@ -230,8 +235,9 @@ export const extractPlainDetalleMessage = (data: unknown): string | undefined =>
  *   de campo de la cabecera, que `firstRejectionMessage` no lee).
  *
  * `detalle` NO está en la lista: se trata aparte porque solo cuenta como
- * rechazo cuando es un string plano (ver `extractPlainDetalleMessage`). Lo
- * mismo `compatibilidad_proceso`, cuya lista se muestra completa.
+ * rechazo cuando trae mensajes, no objetos por renglón (ver
+ * `extractDetalleRejectionMessage`). Lo mismo `compatibilidad_proceso`, cuya
+ * lista se muestra completa.
  */
 const QUOTE_REJECTION_KEYS = [
   "detail",
@@ -245,14 +251,12 @@ const QUOTE_REJECTION_KEYS = [
  * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es solo de
  * validación de campos.
  *
- * `detalle` es ambigua: además del rechazo plano, es la clave del campo lista
- * del serializer, que llega como ARREGLO — de objetos por renglón
- * (`detalle: [{ tallas: [...] }]`) o de strings cuando el error es de la lista
- * entera (`detalle: ["Esta lista no puede estar vacía."]`). Esos son errores
- * de campo y ya los reporta `extractQuoteValidationIssues`; al toast solo va
- * el string plano.
+ * `detalle` es ambigua: además del rechazo, es la clave del campo lista del
+ * serializer. Como arreglo de OBJETOS por renglón (`detalle: [{ tallas: [...] }]`)
+ * son errores de campo y los reporta `extractQuoteValidationIssues`; como
+ * mensaje —plano o en lista— va al toast.
  */
 export const extractQuoteRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ??
-  extractPlainDetalleMessage(data) ??
+  extractDetalleRejectionMessage(data) ??
   firstRejectionMessage(data, QUOTE_REJECTION_KEYS);
