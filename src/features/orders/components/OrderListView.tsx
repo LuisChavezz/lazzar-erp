@@ -6,6 +6,7 @@ import { DataTable, type DataTableVisibleColumn } from '@/src/components/DataTab
 import { Button } from '@/src/components/Button';
 import { ExportCsvIcon, ExportPdfIcon } from '@/src/components/Icons';
 import { usePedidoAmountsVisibility, usePedidosTable } from '../hooks/usePedidosTable';
+import { usePedidoKpis } from '../hooks/usePedidoKpis';
 import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExport';
 import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
 import { MIS_PEDIDOS_TABLE_QUERY_KEY, ORDERS_QUERY_KEY } from '../constants/ordersQueryKeys';
@@ -66,13 +67,19 @@ const useToolbarRefetch = (
 
 /** Mis pedidos (`/sales/orders`). */
 function SalesOrderList({ from, extraRefetchQueryKeys }: ListProps) {
+  // `puede_ver_importes` sale de los indicadores de la página (`kpis/`, la
+  // misma consulta y llave que `PedidoKpisSection`: no es otra petición).
+  // Hasta que llegan, o si nunca cargan, la columna de importe no se monta
+  // (falla cerrado) y los criterios de importe de la URL se envían tal cual.
+  const puedeVerImportes = usePedidoKpis().data?.puede_ver_importes;
   const table = usePedidosTable({
     definition: salesPedidosTable,
     queryKey: MIS_PEDIDOS_TABLE_QUERY_KEY,
     misPedidos: true,
+    puedeVerImportes,
     toastId: 'mis-pedidos-table-refetch-error',
   });
-  const showAmounts = usePedidoAmountsVisibility(table.rows);
+  const showAmounts = puedeVerImportes === true;
   const onRefetch = useToolbarRefetch(table.tableProps.onRefetch, extraRefetchQueryKeys);
 
   // Leyenda del punto de confirmación, integrada en la barra de herramientas
@@ -110,14 +117,22 @@ function SalesOrderList({ from, extraRefetchQueryKeys }: ListProps) {
 
 /** Compras › Pedidos (`/procurement/orders`). */
 function ProcurementOrderList({ from, extraRefetchQueryKeys }: ListProps) {
+  // Esta pantalla no tiene una consulta propia que traiga
+  // `puede_ver_importes`: la pide aparte (`usePedidoAmountsVisibility`).
+  // Mientras no llega, decide con las filas (el listado QUITA los importes a
+  // quien no los ve).
+  const puedeVerImportes = usePedidoAmountsVisibility();
   const table = usePedidosTable({
     definition: procurementPedidosTable,
     queryKey: ORDERS_QUERY_KEY,
+    puedeVerImportes,
     toastId: 'procurement-pedidos-table-refetch-error',
     // EC-694/695: la vista por defecto se conserva 30 min en caché.
     cacheDefaultView: true,
   });
-  const showAmounts = usePedidoAmountsVisibility(table.rows);
+  const showAmounts =
+    puedeVerImportes ??
+    table.rows.some((row) => row.gran_total !== undefined || row.subtotal !== undefined);
   const onRefetch = useToolbarRefetch(table.tableProps.onRefetch, extraRefetchQueryKeys);
 
   // ── Exportar ──────────────────────────────────────────────────────────────

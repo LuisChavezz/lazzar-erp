@@ -22,7 +22,11 @@ import {
 } from "../constants/ordersQueryKeys";
 import type { PedidoListItem } from "../interfaces/order.interface";
 import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
-import { toPedidoKpisApiParams, toPedidoListApiParams } from "../utils/pedidoListParams";
+import {
+  toPedidoKpisApiParams,
+  toPedidoListApiParams,
+  withoutAmountCriteria,
+} from "../utils/pedidoListParams";
 
 // A nivel de módulo: una referencia estable entre renders.
 const pedidosAdapter = limitOffsetAdapter<PedidoListItem>();
@@ -38,6 +42,13 @@ interface UsePedidosTableOptions<P extends ServerTableFilterParams> {
   toastId: string;
   /** Conserva 30 min la vista por defecto (ver `useServerTable`). */
   cacheDefaultView?: boolean;
+  /**
+   * `puede_ver_importes` del usuario, de una consulta que la pantalla ya carga.
+   * Con `false` los rangos y el orden por importe de la URL se tratan como
+   * ausentes (`withoutAmountCriteria`); `undefined` (aún no se sabe, o falló)
+   * deja la definición completa: el backend los ignoraría igual.
+   */
+  puedeVerImportes?: boolean;
 }
 
 /**
@@ -50,13 +61,16 @@ interface UsePedidosTableOptions<P extends ServerTableFilterParams> {
  * leídos de la URL al llamarla.
  */
 export const usePedidosTable = <P extends ServerTableFilterParams>({
-  definition,
+  definition: fullDefinition,
   queryKey,
   misPedidos = false,
   toastId,
   cacheDefaultView,
+  puedeVerImportes,
 }: UsePedidosTableOptions<P>) => {
   const scope = misPedidos ? MIS_PEDIDOS_PARAM : undefined;
+  const definition =
+    puedeVerImportes === false ? withoutAmountCriteria(fullDefinition) : fullDefinition;
   const table = useServerTable({
     definition,
     queryKey,
@@ -113,25 +127,22 @@ export const usePedidoKpisMesa = (criteria: Readonly<Record<string, string>>) =>
 };
 
 /**
- * ¿El usuario ve importes de pedidos? `puede_ver_importes` de `kpis-mesa/` sin
- * filtros (la regla es por usuario: contabilidad de ventas o de compras,
- * EC-784). Es la misma llave que los indicadores de Mesa sin filtros, así que
- * ahí no cuesta otra petición. Mientras no llega, decide con las filas: el
- * listado QUITA `subtotal`/`gran_total` a quien no los ve, así que una fila
- * con importe basta para saberlo. Sin respuesta ni filas, no se muestran.
+ * ¿El usuario ve importes de pedidos? SOLO para Compras › Pedidos, la única
+ * lista sin una consulta propia que traiga `puede_ver_importes` (Mesa lo toma
+ * de su `kpis-mesa/` filtrado y Mis pedidos de su `kpis/`): pide `kpis-mesa/`
+ * sin filtros (la regla es por usuario, EC-784). Devuelve la respuesta del
+ * backend tal cual: `undefined` hasta que llega o si falla.
  */
-export const usePedidoAmountsVisibility = (rows: readonly PedidoListItem[]): boolean => {
+export const usePedidoAmountsVisibility = (): boolean | undefined => {
   const { data } = useGuardedQuery(
     {
       queryKey: pedidoKpisMesaQueryKey({}),
       queryFn: () => getPedidoKpisMesa({}),
     },
-    // Sin toast propio: quien muestra los indicadores ya avisa de sus fallos,
-    // y aquí un fallo solo deja la decisión a las filas.
+    // Sin toast propio: un fallo solo deja la decisión sin respuesta.
     { toastId: "pedido-amounts-visibility", silent: true },
   );
-  if (data !== undefined) return data.puede_ver_importes;
-  return rows.some((row) => row.gran_total !== undefined || row.subtotal !== undefined);
+  return data?.puede_ver_importes;
 };
 
 /**
