@@ -40,8 +40,8 @@ interface PurchaseOrderViewProps {
  * Listado de órdenes de compra en MODO SERVIDOR: filtros, búsqueda, orden y
  * paginación los resuelve el backend y su estado vive en la URL
  * (`usePurchaseOrdersTable`). Por eso la página que lo monta lo envuelve en
- * `<Suspense>`. El dashboard de Compras y los selectores siguen leyendo el
- * listado completo (`usePurchaseOrders`).
+ * `<Suspense>`. El dashboard de Compras lee `kpis/` y el selector de OC de
+ * facturas de proveedor busca en el servidor (`usePurchaseOrderSearchField`).
  */
 export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewProps = {}) {
   const purchaseOrdersTable = usePurchaseOrdersTable();

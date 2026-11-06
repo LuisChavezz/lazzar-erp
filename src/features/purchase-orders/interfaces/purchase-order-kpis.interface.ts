@@ -97,6 +97,78 @@ export type PurchaseOrderOpenKpi = PurchaseOrderOpenKpiAvailable | PurchaseOrder
 export type PurchaseOrderOverdueKpi = PurchaseOrderOverdueKpiAvailable | PurchaseOrderKpiUnavailable;
 export type PurchaseOrderSpendKpi = PurchaseOrderSpendKpiAvailable | PurchaseOrderKpiUnavailable;
 
+/**
+ * Conteos por grupo de estatus del dashboard de Compras (EC-782). "Activas" =
+ * todo menos canceladas (6); "en curso" = parcialmente recibidas (4).
+ */
+export interface PurchaseOrderGroupsKpiAvailable {
+  disponible: true;
+  activas: number;
+  /** Borrador o pendiente de autorización (1-2). */
+  por_autorizar: number;
+  /** Autorizadas, parcialmente recibidas o recibidas (3-5). */
+  autorizadas_o_completadas: number;
+  en_curso: number;
+  recibidas: number;
+  canceladas: number;
+}
+
+/**
+ * Valor de las OC activas (≠ 6) POR MONEDA: Σ `gran_total`. `monto` AUSENTE sin
+ * permiso de importes (`puede_ver_importes: false`).
+ */
+export interface PurchaseOrderActiveValueKpiAvailable {
+  disponible: true;
+  total: number;
+  por_moneda: PurchaseOrderKpiOpenCurrency[];
+}
+
+/** Una OC del top por valor de su moneda. */
+export interface PurchaseOrderKpiTopOrder {
+  id: number;
+  folio: string | null;
+  gran_total: number | string;
+  moneda_codigo: string | null;
+  proveedor_nombre: string | null;
+}
+
+/**
+ * Las 5 OC activas de mayor `gran_total` DENTRO de cada moneda. Sin permiso de
+ * importes llega `{ disponible: false }` completo: el ranking mismo delata
+ * cuáles valen más.
+ */
+export interface PurchaseOrderTopKpiAvailable {
+  disponible: true;
+  monedas: { moneda: string | null; ocs: PurchaseOrderKpiTopOrder[] }[];
+}
+
+/** Una OC en curso (estatus 4) por entregar. */
+export interface PurchaseOrderKpiInProgressOrder {
+  id: number;
+  folio: string | null;
+  proveedor_nombre: string | null;
+  /** Fecha-calendario "AAAA-MM-DD", o `null` (van al final). */
+  fecha_entrega_estimada: string | null;
+}
+
+/** Las 8 OC en estatus 4 con la entrega estimada más próxima. */
+export interface PurchaseOrderInProgressKpiAvailable {
+  disponible: true;
+  drill_down: PurchaseOrderKpiInProgressOrder[];
+  /** Cuántas hay en total (= `ocs_por_grupo.en_curso`). */
+  drill_down_total: number;
+  drill_down_truncado: boolean;
+}
+
+export type PurchaseOrderGroupsKpi = PurchaseOrderGroupsKpiAvailable | PurchaseOrderKpiUnavailable;
+export type PurchaseOrderActiveValueKpi =
+  | PurchaseOrderActiveValueKpiAvailable
+  | PurchaseOrderKpiUnavailable;
+export type PurchaseOrderTopKpi = PurchaseOrderTopKpiAvailable | PurchaseOrderKpiUnavailable;
+export type PurchaseOrderInProgressKpi =
+  | PurchaseOrderInProgressKpiAvailable
+  | PurchaseOrderKpiUnavailable;
+
 export interface PurchaseOrderKpis {
   /** Datetime UTC del cálculo. */
   generado_en: string;
@@ -105,6 +177,11 @@ export interface PurchaseOrderKpis {
   /** Hoy SIEMPRE llega no disponible: solo se tipa la bandera. */
   ciclo_compra: KpiUntypedBlock;
   gasto_por_categoria: PurchaseOrderSpendKpi;
+  /** Dashboard de Compras (EC-782). */
+  ocs_por_grupo: PurchaseOrderGroupsKpi;
+  valor_ocs_activas: PurchaseOrderActiveValueKpi;
+  top_ocs_por_moneda: PurchaseOrderTopKpi;
+  ocs_en_curso_proxima_entrega: PurchaseOrderInProgressKpi;
   /** Siempre llega; `false` también para un usuario sin empresa (ver `canSeeKpiAmounts`). */
   puede_ver_importes: boolean;
 }

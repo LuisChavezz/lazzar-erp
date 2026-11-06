@@ -1,19 +1,17 @@
 "use client";
 
 import { ProcurementRouteSkeleton } from "@/src/components/ProcurementRouteSkeleton";
-import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import { usePurchaseOrderKpis } from "@/src/features/purchase-orders/hooks/usePurchaseOrderKpis";
 import { PurchaseOrderDashboard } from "@/src/features/purchase-orders/components/PurchaseOrderDashboard";
 
 export default function ProcurementDashboardPage() {
-  const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
+  // Los indicadores de OC (`GET /compras/ordenes/kpis/`), no el listado
+  // completo: el backend ya calcula conteos, valor, top 5 y entregas próximas.
+  // Misma llave que las tarjetas de la lista de OC, así que comparten caché.
+  const { data, isInitialError } = usePurchaseOrderKpis();
 
-  // Mismo skeleton que el `loading.tsx` de la ruta: sin spinner intermedio.
-  if (isLoading) {
-    return <ProcurementRouteSkeleton variant="dashboard" />;
-  }
-
-  // Solo si el listado nunca cargó: un refetch fallido conserva el panel y
-  // avisa por toast desde `usePurchaseOrders`.
+  // Solo si nunca cargó: un refetch fallido conserva el panel y avisa por toast
+  // desde `usePurchaseOrderKpis`.
   if (isInitialError) {
     return (
       <div className="px-1 pb-8">
@@ -26,11 +24,16 @@ export default function ProcurementDashboardPage() {
     );
   }
 
+  // Mismo skeleton que el `loading.tsx` de la ruta: sin spinner intermedio.
+  if (!data) {
+    return <ProcurementRouteSkeleton variant="dashboard" />;
+  }
+
   // Sin `<h1>` propio: el encabezado global ya titula la página ("Panel de
   // compras"), y repetirlo empujaba el contenido hacia abajo.
   return (
     <div className="px-1 pb-8 space-y-4 sm:space-y-6">
-      <PurchaseOrderDashboard orders={purchaseOrders} />
+      <PurchaseOrderDashboard kpis={data} />
     </div>
   );
 }

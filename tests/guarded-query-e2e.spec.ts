@@ -4,7 +4,7 @@ import path from "node:path";
 
 /**
  * E2E manual del contrato de `useGuardedQuery` (`src/hooks/useGuardedQuery.ts`),
- * fijado sobre una lista que lo usa: Órdenes de compra (`usePurchaseOrders`).
+ * fijado sobre una lista que lo usa: Órdenes de compra (`usePurchaseOrdersTable`).
  *
  * CÓRRELO AL TOCAR `useGuardedQuery` o `useHasLoadedQuery`: todos los hooks de
  * datos migrados dependen de ese par, así que un cambio ahí afecta a todas sus
