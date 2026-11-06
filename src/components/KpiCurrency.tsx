@@ -10,10 +10,14 @@ import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 /** Frase del ⓘ de todo indicador por moneda: el criterio, igual en todas las pantallas. */
 export const SEPARATE_CURRENCIES_NOTE = "Cada moneda va por separado: los importes de monedas distintas no se suman.";
 
-/** Un bloque de `KpiCurrencyBlocks`: el importe de una moneda y, opcional, el detalle de ESA moneda. */
+/**
+ * Un bloque de `KpiCurrencyBlocks`: el importe de una moneda y, opcional, el
+ * detalle de ESA moneda. `monto` ausente (un hueco del payload) se pinta "—",
+ * no "$0.00".
+ */
 export interface KpiCurrencyBlock {
   moneda: string;
-  monto: number;
+  monto?: number;
   detail?: string;
 }
 
@@ -70,7 +74,7 @@ export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
     <KpiTaggedBlocks
       blocks={blocks.map((block) => ({
         key: block.moneda,
-        value: formatKpiTaggedCurrencyAmount(block.monto, block.moneda),
+        value: block.monto === undefined ? "—" : formatKpiTaggedCurrencyAmount(block.monto, block.moneda),
         tag: block.moneda,
         detail: block.detail,
       }))}

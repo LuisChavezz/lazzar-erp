@@ -10,7 +10,6 @@ import KpiGrid, {
 import {
   KpiCurrencyBlocks,
   KpiMutedValue,
-  KpiTaggedBlocks,
   SEPARATE_CURRENCIES_NOTE,
 } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
@@ -62,13 +61,12 @@ function openCard(kpi: PurchaseOrderOpenKpi, showAmounts: boolean, onOpen: () =>
     // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
     const showCurrencyCount = kpi.por_moneda.length > 1;
     // Un `monto` ausente con permiso es un hueco del payload, no un cero ni
-    // falta de permiso: "—", como en el desglose por estatus.
+    // falta de permiso: `KpiCurrencyBlocks` pinta "—", como el desglose por estatus.
     value = (
-      <KpiTaggedBlocks
+      <KpiCurrencyBlocks
         blocks={kpi.por_moneda.map((fila) => ({
-          key: fila.moneda,
-          value: fila.monto === undefined ? "—" : formatKpiTaggedCurrencyAmount(fila.monto, fila.moneda),
-          tag: fila.moneda,
+          moneda: fila.moneda,
+          monto: fila.monto,
           detail: showCurrencyCount ? `${fila.total} ${plural(fila.total, "OC", "OCs")}` : undefined,
         }))}
       />
