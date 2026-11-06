@@ -400,6 +400,20 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
   };
 };
 
+/**
+ * ¿Es la vista por defecto? Página 1, tamaño de página por defecto, sin
+ * filtros, sin búsqueda y con el orden por defecto (`ordering === null`). Es la
+ * única llave que `useServerTable` conserva más tiempo con `cacheDefaultView`.
+ */
+export const isServerTableDefaultView = (
+  definition: ServerTableDefinition,
+  state: ServerTableState,
+): boolean =>
+  !hasServerTableCriteria(state) &&
+  state.ordering === null &&
+  state.page === 1 &&
+  state.pageSize === serverTableDefaultPageSize(definition);
+
 /** ¿La consulta lleva filtros o búsqueda? (El orden y la página no cuentan.) */
 export const hasServerTableCriteria = (state: ServerTableState): boolean =>
   state.search !== "" || Object.keys(state.filters).length > 0;

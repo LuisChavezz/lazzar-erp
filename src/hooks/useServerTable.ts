@@ -17,7 +17,7 @@ import {
   normalizeServerTableSearch,
   readServerTableState,
   serializeServerTableFilters,
-  serverTableDefaultPageSize,
+  isServerTableDefaultView,
   serverTablePageSizes,
   toServerTableCriteria,
   writeServerTableQuery,
@@ -304,11 +304,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   const request: ServerTableRequest = { ...criteria, ...adapter.paginationParams(page) };
 
   const listKey = [...queryKey, "list", request];
-  const isDefaultView =
-    !hasServerTableCriteria(state) &&
-    state.ordering === null &&
-    state.page === 1 &&
-    state.pageSize === serverTableDefaultPageSize(definition);
+  const isDefaultView = isServerTableDefaultView(definition, state);
   const listKeyHash = hashKey(listKey);
   const query = useGuardedQuery<TResponse | PageGone>(
     {
