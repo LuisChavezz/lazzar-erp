@@ -36,6 +36,8 @@ interface UsePedidosTableOptions<P extends ServerTableFilterParams> {
   /** `?mis_pedidos=true`: solo los pedidos de cotizaciones del usuario. */
   misPedidos?: boolean;
   toastId: string;
+  /** Conserva 30 min la vista por defecto (ver `useServerTable`). */
+  cacheDefaultView?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export const usePedidosTable = <P extends ServerTableFilterParams>({
   queryKey,
   misPedidos = false,
   toastId,
+  cacheDefaultView,
 }: UsePedidosTableOptions<P>) => {
   const scope = misPedidos ? MIS_PEDIDOS_PARAM : undefined;
   const table = useServerTable({
@@ -65,6 +68,7 @@ export const usePedidosTable = <P extends ServerTableFilterParams>({
     toastId,
     refetchErrorMessage: "No se pudieron actualizar los pedidos. Se muestran los datos anteriores.",
     loadErrorMessage: "No se pudieron cargar los pedidos.",
+    cacheDefaultView,
   });
 
   /**

@@ -74,4 +74,6 @@ export const usePurchaseOrderReceiptsTable = () =>
     toastId: "purchase-order-receipts-table-refetch-error",
     refetchErrorMessage:
       "No se pudieron actualizar las recepciones. Se muestran los datos anteriores.",
+    // EC-695: la vista por defecto se conserva 30 min en caché.
+    cacheDefaultView: true,
   });

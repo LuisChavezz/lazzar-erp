@@ -94,6 +94,8 @@ export function OperationsOrderPanel() {
     definition: mesaPedidosTable,
     queryKey: ORDERS_QUERY_KEY,
     toastId: 'mesa-pedidos-table-refetch-error',
+    // EC-694/695: la vista por defecto se conserva 30 min en caché.
+    cacheDefaultView: true,
   });
   const kpis = usePedidoKpisMesa(table.criteria);
   const showAmounts = usePedidoAmountsVisibility(table.rows);
