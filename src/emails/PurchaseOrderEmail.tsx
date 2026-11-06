@@ -8,10 +8,8 @@ import {
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import {
-  NO_DELIVERY_ADDRESS,
-  optionalText,
-} from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { NO_DELIVERY_ADDRESS } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { cleanText } from "@/src/utils/cleanText";
 
 type PurchaseOrderEmailProps = {
   order: PurchaseOrderDetail;
@@ -108,19 +106,19 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
             <tr>
               <td className="py-2 pr-4 text-slate-500">Almacén destino</td>
               <td className="py-2 font-medium text-slate-900">
-                {optionalText(order.almacen_nombre) ?? "-"}
+                {cleanText(order.almacen_nombre) ?? "-"}
               </td>
             </tr>
             <tr>
               <td className="py-2 pr-4 text-slate-500">Dirección</td>
               <td className="py-2 font-medium text-slate-900">
-                {optionalText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
+                {cleanText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
               </td>
             </tr>
             <tr>
               <td className="py-2 pr-4 text-slate-500">Teléfono</td>
               <td className="py-2 font-medium text-slate-900">
-                {optionalText(order.sucursal_telefono) ?? "-"}
+                {cleanText(order.sucursal_telefono) ?? "-"}
               </td>
             </tr>
           </tbody>

@@ -2,7 +2,7 @@
 
 import { InfoField, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import type { PurchaseOrderOnboardingSucursal } from "../interfaces/purchase-order-onboarding.interface";
-import { optionalText } from "../utils/purchaseOrderDelivery";
+import { cleanText } from "@/src/utils/cleanText";
 
 /**
  * Dirección de entrega de la sucursal elegida en el encabezado de la OC
@@ -22,10 +22,10 @@ export function PurchaseOrderDeliveryAddress({
       className={`grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs ${className}`}
     >
       <InfoField label="Dirección de entrega" className="sm:col-span-2">
-        {textOrDash(optionalText(sucursal?.direccion))}
+        {textOrDash(cleanText(sucursal?.direccion))}
       </InfoField>
       <InfoField label="Teléfono">
-        <span className="tabular-nums">{textOrDash(optionalText(sucursal?.telefono))}</span>
+        <span className="tabular-nums">{textOrDash(cleanText(sucursal?.telefono))}</span>
       </InfoField>
     </div>
   );

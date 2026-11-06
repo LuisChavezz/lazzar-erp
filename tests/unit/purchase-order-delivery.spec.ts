@@ -5,8 +5,8 @@ import {
   almacenPutPatch,
   almacenSelectState,
   almacenTrasCambioDeSucursal,
-  optionalText,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { cleanText } from "@/src/utils/cleanText";
 
 /**
  * Pruebas unitarias de EC-796: almacén destino de la OC (alta, edición y
@@ -107,12 +107,12 @@ test.describe("almacenPreseleccionado", () => {
   });
 });
 
-test("optionalText: vacío o solo espacios cuenta como ausente", () => {
-  expect(optionalText("")).toBeNull();
-  expect(optionalText("   ")).toBeNull();
-  expect(optionalText(null)).toBeNull();
-  expect(optionalText(undefined)).toBeNull();
-  expect(optionalText(" 555 ")).toBe("555");
+test("cleanText: vacío o solo espacios cuenta como ausente", () => {
+  expect(cleanText("")).toBeNull();
+  expect(cleanText("   ")).toBeNull();
+  expect(cleanText(null)).toBeNull();
+  expect(cleanText(undefined)).toBeNull();
+  expect(cleanText(" 555 ")).toBe("555");
 });
 
 test.describe("almacenTrasCambioDeSucursal", () => {

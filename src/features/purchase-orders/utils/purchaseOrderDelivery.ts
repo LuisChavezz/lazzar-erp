@@ -9,13 +9,6 @@
 export const NO_DELIVERY_ADDRESS = "Dirección de entrega no capturada";
 
 /**
- * Texto opcional del backend normalizado: `""` o solo espacios cuentan como
- * ausente. El teléfono de la sucursal llega `""` cuando no se capturó.
- */
-export const optionalText = (value: string | null | undefined): string | null =>
-  value?.trim() || null;
-
-/**
  * Almacenes que se pueden elegir para una sucursal: SOLO los suyos. Los que no
  * tienen sucursal (`sucursal_id: null`) se excluyen a propósito: la OC los
  * acepta, pero la recepción los rechaza, así que preseleccionarlos acabaría en
