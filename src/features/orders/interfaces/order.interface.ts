@@ -235,9 +235,10 @@ export interface Order {
  * para que la tabla no pague el shape completo del detalle — mismo precedente
  * que `TransferenciaListItem` vs `TransferenciaDetail`.
  *
- * A diferencia de `Order`, aquí `subtotal` y `gran_total` NO son opcionales: el
- * `list` no pasa por `filtrar_campos_contabilidad_pedido`, así que ambos vienen
- * siempre como string. El resto de campos conserva el tipo de `Order`.
+ * `subtotal` y `gran_total` son opcionales, como en `Order`: el `list` QUITA
+ * ambas claves a quien no ve importes de pedidos (contabilidad de ventas o de
+ * compras, nucleo-erp #947/#963, EC-784). Quien los pinta o los suma debe
+ * tolerar que falten. El resto de campos conserva el tipo de `Order`.
  */
 export interface PedidoListItem {
   id: number;
@@ -246,8 +247,10 @@ export interface PedidoListItem {
   oc: string | null;
   cliente_razon_social: string | null;
   cliente_nombre: string | null;
-  gran_total: string;
-  subtotal: string;
+  /** Ausente sin permiso de importes (ver arriba). */
+  gran_total?: string;
+  /** Ausente sin permiso de importes (ver arriba). */
+  subtotal?: string;
   created_at: string | null;
   fecha_confirmacion: string | null;
   estatus: number;
