@@ -1,96 +1,150 @@
 "use client";
 
+import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { Button } from "@/src/components/Button";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
+import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { usePurchaseOrders } from "@/src/features/purchase-orders/hooks/usePurchaseOrders";
+import { usePurchaseOrderSearchField } from "@/src/features/purchase-orders/hooks/usePurchaseOrderSearch";
 import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
-import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
+import { PURCHASE_ORDER_STATUS } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
+import { purchaseOrderEstatusParamExcept } from "@/src/features/purchase-orders/utils/purchaseOrderSearchParams";
+
+/**
+ * Lo que el formulario ya sabe de la OC elegida: basta para fijarla arriba del
+ * selector aunque la búsqueda no la traiga (issue #262).
+ */
+export interface SelectedPurchaseOrderSummary {
+  id: number;
+  folio: string;
+  proveedorNombre: string;
+}
 
 interface PurchaseOrderSelectorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Id de la OC ya elegida (`0` = ninguna), para resaltarla al abrir. */
-  selectedOcId: number;
+  /** OC ya elegida (`null` = ninguna), fija arriba y resaltada al abrir. */
+  selectedOc: SelectedPurchaseOrderSummary | null;
   /** Se invoca con la OC elegida (objeto completo del listado). */
   onConfirm: (oc: PurchaseOrder) => void;
 }
 
 /**
- * Contenido con el hook de datos — se monta solo mientras el diálogo está
- * abierto, así que el listado de OC se pide bajo demanda. Mismo reparto que
- * `InvoiceSelectorDialog` en notas de crédito.
+ * OC que respaldan una factura de proveedor: no canceladas y con proveedor (el
+ * FK es `SET_NULL`; sin él no se puede generar la cuenta por pagar). Las
+ * inactivas ya las excluye el backend. No se puede filtrar por "tiene
+ * recepciones": el listado no las trae; el siguiente paso lo dice.
+ */
+const SELECTABLE_ESTATUS = purchaseOrderEstatusParamExcept([PURCHASE_ORDER_STATUS.CANCELADA]);
+
+/** Una fila del selector: una OC de la búsqueda, o la ya elegida tal como la guardó el formulario. */
+type OcOption =
+  | { kind: "result"; oc: PurchaseOrder }
+  | { kind: "current"; summary: SelectedPurchaseOrderSummary };
+
+const optionId = (option: OcOption) => (option.kind === "result" ? option.oc.id : option.summary.id);
+
+/**
+ * Contenido con la búsqueda — se monta solo mientras el diálogo está abierto,
+ * así que `GET /compras/ordenes/?search=&estatus=&con_proveedor=true&limit=`
+ * corre bajo demanda. La selección es *tentativa* hasta "Confirmar selección".
  */
 function PurchaseOrderSelectorContent({
-  selectedOcId,
+  selectedOc,
   onConfirm,
   onCancel,
 }: {
-  selectedOcId: number;
+  selectedOc: SelectedPurchaseOrderSummary | null;
   onConfirm: (oc: PurchaseOrder) => void;
   onCancel: () => void;
 }) {
-  const { purchaseOrders, isLoading, isInitialError } = usePurchaseOrders();
-
-  // Se filtra en memoria sobre la lista COMPLETA, y por eso no busca en el
-  // servidor: fuera las inactivas, las canceladas y las que no tienen
-  // proveedor (el FK es `SET_NULL`). Una factura de proveedor sin proveedor no
-  // puede generar su cuenta por pagar, y una OC cancelada ya no respalda una
-  // compra. `GET /compras/ordenes/` sí pagina y busca (`?search=`), pero no
-  // sabe excluir nada de eso: `?estatus=` acepta UN solo estatus (no una lista
-  // ni una exclusión), y no filtra por `activo` ni por "tiene proveedor".
-  // Excluir en memoria sobre una página de resultados escondería OC válidas
-  // detrás de las descartadas (EC-769).
-  // No se puede filtrar aquí por "tiene recepciones": el listado no las trae; el
-  // siguiente paso lo dice si la OC elegida no tiene ninguna.
-  const disponibles = purchaseOrders.filter(
-    (oc) => oc.activo && !isPurchaseOrderCancelled(oc.estatus) && Boolean(oc.proveedor),
+  const [tentative, setTentative] = useState<OcOption | null>(
+    selectedOc ? { kind: "current", summary: selectedOc } : null,
   );
+  const { search, setSearch, isSearching, purchaseOrders, total, hasResults, isInitialError, refetch } =
+    usePurchaseOrderSearchField({ estatus: SELECTABLE_ESTATUS, conProveedor: true });
+  const results: OcOption[] = purchaseOrders.map((oc) => ({ kind: "result", oc }));
 
   return (
-    <SingleSelectPickerDialogContent<PurchaseOrder>
-      title="Seleccionar Orden de Compra"
-      subtitle="La factura toma el proveedor, la moneda y la sucursal de la orden elegida"
-      statusColor="indigo"
-      items={disponibles}
-      isLoading={isLoading}
-      isError={isInitialError}
-      loadingTitle="Cargando órdenes de compra"
-      loadingMessage="Obteniendo las órdenes de compra..."
-      errorMessage="Error al cargar las órdenes de compra."
-      searchPlaceholder="Buscar por folio, proveedor o referencia..."
-      filterPredicate={(oc, term) =>
-        `${oc.folio ?? ""} ${oc.proveedor_nombre ?? ""} ${oc.referencia ?? ""}`
-          .toLowerCase()
-          .includes(term)
-      }
-      getKey={(oc) => oc.id}
-      selectedKey={selectedOcId > 0 ? selectedOcId : null}
-      emptyMessage="No hay órdenes de compra activas, no canceladas y con proveedor."
-      noResultsMessage="No se encontraron órdenes de compra"
-      renderContent={(oc) => (
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {oc.folio ?? `OC #${oc.id}`}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {oc.proveedor_nombre ?? "—"}
-            </p>
-          </div>
-          <div className="shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
-            <p>{oc.estatus_label}</p>
-            <p>
-              {/* `fecha_oc` es fecha-calendario: `timeZone: "UTC"` evita pintar
-                  el día anterior al oeste de Greenwich. */}
-              {formatShortDate(oc.fecha_oc, { timeZone: "UTC" })} · {oc.moneda_codigo}
-            </p>
-          </div>
-        </div>
-      )}
-      onConfirm={onConfirm}
-      onCancel={onCancel}
-    />
+    <>
+      <DialogHeader
+        title="Seleccionar Orden de Compra"
+        subtitle="La factura toma el proveedor, la moneda y la sucursal de la orden elegida"
+        statusColor="indigo"
+      />
+
+      <ServerSearchSelectList<OcOption>
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por folio, proveedor o referencia..."
+        results={results}
+        pinned={tentative ? [tentative] : []}
+        getKey={optionId}
+        isSelected={(option) => optionId(option) === (tentative ? optionId(tentative) : null)}
+        onSelect={setTentative}
+        renderIndicator={renderRadioIndicator}
+        renderContent={(option) =>
+          option.kind === "current" ? (
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {option.summary.folio}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {option.summary.proveedorNombre || "—"} · Elegida
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                  {option.oc.folio ?? `OC #${option.oc.id}`}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {option.oc.proveedor_nombre ?? "—"}
+                </p>
+              </div>
+              <div className="shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
+                <p>{option.oc.estatus_label}</p>
+                <p>
+                  {/* `fecha_oc` es fecha-calendario: `timeZone: "UTC"` evita pintar
+                      el día anterior al oeste de Greenwich. */}
+                  {formatShortDate(option.oc.fecha_oc, { timeZone: "UTC" })} ·{" "}
+                  {option.oc.moneda_codigo}
+                </p>
+              </div>
+            </div>
+          )
+        }
+        hasResults={hasResults}
+        isInitialError={isInitialError}
+        isSearching={isSearching}
+        onRetry={() => void refetch()}
+        total={total}
+        emptyMessage="No hay órdenes de compra no canceladas y con proveedor."
+        noResultsMessage="No se encontraron órdenes de compra"
+        errorMessage="Error al buscar las órdenes de compra."
+      />
+
+      <div className="flex items-center justify-end gap-3 pt-5">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (!tentative) return;
+            // La ya elegida no es un cambio: el formulario la conserva tal cual.
+            if (tentative.kind === "current") onCancel();
+            else onConfirm(tentative.oc);
+          }}
+          disabled={tentative === null}
+        >
+          Confirmar selección
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -105,7 +159,7 @@ function PurchaseOrderSelectorContent({
 export function PurchaseOrderSelectorDialog({
   open,
   onOpenChange,
-  selectedOcId,
+  selectedOc,
   onConfirm,
 }: PurchaseOrderSelectorDialogProps) {
   return (
@@ -118,7 +172,7 @@ export function PurchaseOrderSelectorDialog({
     >
       {open && (
         <PurchaseOrderSelectorContent
-          selectedOcId={selectedOcId}
+          selectedOc={selectedOc}
           onConfirm={(oc) => {
             onConfirm(oc);
             onOpenChange(false);
