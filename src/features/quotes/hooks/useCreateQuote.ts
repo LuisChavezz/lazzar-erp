@@ -24,7 +24,7 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
     mutationFn: (payload) => createQuote(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
-      toast.success("Pedido registrado correctamente");
+      toast.success("Cotización registrada correctamente");
     },
     onError: (error) => {
       // Motivo real del rechazo cuando el backend lo manda fuera de un campo
