@@ -42,7 +42,7 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
           message = extractQuoteRejectionMessage(data);
         }
       }
-      toast.error(message ?? "No se pudo registrar el pedido");
+      toast.error(message ?? "No se pudo registrar la cotización");
     },
   });
 };
