@@ -40,12 +40,14 @@ function activeCard(kpi: PedidoActiveKpi, showAmounts: boolean, onDrillDown: () 
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
   const criterio = "Pedidos autorizados o en proceso de tus cotizaciones";
-  const amountsInfo = `${criterio}; el valor es la suma de sus totales. ${SEPARATE_CURRENCIES_NOTE}`;
+  // El ⓘ depende SOLO del permiso: sin él no habla de totales, ni siquiera sin
+  // pedidos activos.
+  const info = showAmounts
+    ? `${criterio}; el valor es la suma de sus totales. ${SEPARATE_CURRENCIES_NOTE}`
+    : `${criterio}. ${HIDDEN_PEDIDO_AMOUNTS_REASON}`;
   let value: ReactNode;
-  let info: string;
   if (kpi.por_moneda.length === 0) {
     value = <KpiMutedValue>Sin pedidos activos</KpiMutedValue>;
-    info = amountsInfo;
   } else if (showAmounts) {
     // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
     const showCurrencyCount = kpi.por_moneda.length > 1;
@@ -59,10 +61,8 @@ function activeCard(kpi: PedidoActiveKpi, showAmounts: boolean, onDrillDown: () 
         }))}
       />
     );
-    info = amountsInfo;
   } else {
     value = <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>;
-    info = `${criterio}. ${HIDDEN_PEDIDO_AMOUNTS_REASON}`;
   }
   return {
     ...base,
