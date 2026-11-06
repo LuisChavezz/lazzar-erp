@@ -10,7 +10,8 @@
 
 import {
   extractJoinedRejectionMessage,
-  firstRejectionMessage,
+  firstNonBlankDrfMessage,
+  firstNonBlankRejectionMessage,
 } from "@/src/utils/firstDrfMessage";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -211,10 +212,7 @@ export const extractProcessCompatibilityMessage = (data: unknown): string | unde
  */
 export const extractDetalleRejectionMessage = (data: unknown): string | undefined => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
-  const { detalle } = data as Record<string, unknown>;
-  return (Array.isArray(detalle) ? detalle : [detalle]).find(
-    (message): message is string => typeof message === "string" && message.trim().length > 0,
-  );
+  return firstNonBlankDrfMessage((data as Record<string, unknown>).detalle);
 };
 
 /**
@@ -232,7 +230,7 @@ export const extractDetalleRejectionMessage = (data: unknown): string | undefine
  *   la ventana de edición tras autorizarse (`_exigir_acceso_cotizacion_onboarding`).
  * - `empresa`: el usuario no tiene empresa asignada.
  * - `cotizacion`: "Datos inválidos." como mensaje (como objeto son los errores
- *   de campo de la cabecera, que `firstRejectionMessage` no lee).
+ *   de campo de la cabecera, que `firstNonBlankRejectionMessage` no lee).
  *
  * `detalle` NO está en la lista: se trata aparte porque solo cuenta como
  * rechazo cuando trae mensajes, no objetos por renglón (ver
@@ -259,4 +257,4 @@ const QUOTE_REJECTION_KEYS = [
 export const extractQuoteRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ??
   extractDetalleRejectionMessage(data) ??
-  firstRejectionMessage(data, QUOTE_REJECTION_KEYS);
+  firstNonBlankRejectionMessage(data, QUOTE_REJECTION_KEYS);
