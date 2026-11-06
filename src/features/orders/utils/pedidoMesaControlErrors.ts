@@ -7,8 +7,8 @@ import {
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import {
   extractJoinedRejectionMessage,
-  firstDrfMessage,
-  firstRejectionMessage,
+  firstNonBlankDrfMessage,
+  firstNonBlankRejectionMessage,
 } from "@/src/utils/firstDrfMessage";
 
 /**
@@ -38,7 +38,7 @@ export const SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS = 9000;
 
 /**
  * Claves de RECHAZO de `POST /ventas/pedidos/{id}/editar-mesa-control/` que se
- * leen por su PRIMER mensaje (`firstRejectionMessage`): motivos que el usuario
+ * leen por su PRIMER mensaje no vacío (`firstNonBlankRejectionMessage`): motivos que el usuario
  * no puede corregir en ningún campo del formulario y que por tanto tienen que
  * llegarle en el toast.
  *
@@ -120,15 +120,15 @@ const extractRejection = (data: unknown): PedidoMesaControlRejectionToast | unde
     extractProcessCompatibilityMessage(data) ??
     serviciosExtras ??
     extractDetalleRejectionMessage(data) ??
-    firstRejectionMessage(data, REJECTION_KEYS) ??
+    firstNonBlankRejectionMessage(data, REJECTION_KEYS) ??
     /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string)
      * y también el bloque de errores de campo de la cabecera (objeto). Solo
      * cuenta como rechazo cuando trae un mensaje plano. */
     (data && typeof data === "object"
-      ? firstDrfMessage((data as Record<string, unknown>).pedido)
+      ? firstNonBlankDrfMessage((data as Record<string, unknown>).pedido)
       : undefined);
-  // `firstDrfMessage` acepta un string de solo espacios: nunca un toast en blanco.
-  if (!message?.trim()) return undefined;
+  // Todos los lectores descartan los mensajes en blanco: nunca un toast vacío.
+  if (!message) return undefined;
   return message === serviciosExtras && serviciosExtras.includes("\n")
     ? { message, duration: SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS }
     : { message };

@@ -100,3 +100,18 @@ test.describe("detalle como rechazo de la cotización (EC-795)", () => {
     ]);
   });
 });
+
+test.describe("rechazos en blanco de la cotización (code review EC-795)", () => {
+  for (const key of ["cotizacion", "cotizacion_id", "empresa", "detail", "non_field_errors"]) {
+    test(`${key} de solo espacios cae al mensaje genérico, sin toast en blanco`, () => {
+      expect(extractQuoteRejectionMessage({ [key]: " " })).toBeUndefined();
+      expect(extractQuoteRejectionMessage({ [key]: ["  ", ""] })).toBeUndefined();
+    });
+  }
+
+  test("una clave en blanco cede a la siguiente con mensaje", () => {
+    expect(
+      extractQuoteRejectionMessage({ cotizacion_id: ["  "], empresa: "Sin empresa." }),
+    ).toBe("Sin empresa.");
+  });
+});

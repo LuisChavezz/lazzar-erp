@@ -19,6 +19,33 @@ export function firstDrfMessage(value: unknown): string | undefined {
 }
 
 /**
+ * Igual que `firstDrfMessage`, pero descarta también los strings que solo traen
+ * espacios: para el texto de un toast, que nunca debe salir en blanco.
+ */
+export function firstNonBlankDrfMessage(value: unknown): string | undefined {
+  return (Array.isArray(value) ? value : [value]).find(
+    (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+  );
+}
+
+/**
+ * Igual que `firstRejectionMessage`, con `firstNonBlankDrfMessage`: una clave
+ * cuyo mensaje está en blanco se salta y se sigue con la siguiente.
+ */
+export function firstNonBlankRejectionMessage(
+  data: unknown,
+  keys: readonly string[],
+): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const body = data as Record<string, unknown>;
+  for (const key of keys) {
+    const message = firstNonBlankDrfMessage(body[key]);
+    if (message) return message;
+  }
+  return undefined;
+}
+
+/**
  * Primer mensaje de RECHAZO de un cuerpo 400: recorre `keys` en orden y
  * devuelve el primero que `firstDrfMessage` sepa leer, o `undefined` si el
  * cuerpo no es un objeto o ninguna clave trae un mensaje plano.
