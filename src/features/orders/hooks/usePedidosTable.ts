@@ -17,6 +17,7 @@ import {
   getPedidoKpisMesa,
 } from "../services/actions";
 import {
+  PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY,
   pedidoFilterOptionsQueryKey,
   pedidoKpisMesaQueryKey,
 } from "../constants/ordersQueryKeys";
@@ -132,17 +133,28 @@ export const usePedidoKpisMesa = (criteria: Readonly<Record<string, string>>) =>
  * de su `kpis-mesa/` filtrado y Mis pedidos de su `kpis/`): pide `kpis-mesa/`
  * sin filtros (la regla es por usuario, EC-784). Devuelve la respuesta del
  * backend tal cual: `undefined` hasta que llega o si falla.
+ *
+ * Una sola vez por sesión: llave fija (`PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY`) y
+ * `staleTime`/`gcTime` infinitos, así que ni volver a la pantalla, ni cambiar
+ * de filtros, ni las mutaciones de pedidos la vuelven a pedir (el foco de la
+ * ventana tampoco: `refetchOnWindowFocus` es `false` globalmente). Si cambia el
+ * rol del usuario, se refleja al recargar la página o al volver a iniciar sesión.
+ *
+ * TODO(nucleo-erp#978): quitar esta petición cuando `opciones/`, que la
+ * pantalla ya carga, traiga `puede_ver_importes`.
  */
 export const usePedidoAmountsVisibility = (): boolean | undefined => {
   const { data } = useGuardedQuery(
     {
-      queryKey: pedidoKpisMesaQueryKey({}),
-      queryFn: () => getPedidoKpisMesa({}),
+      queryKey: PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY,
+      queryFn: async () => (await getPedidoKpisMesa({})).puede_ver_importes,
+      staleTime: Infinity,
+      gcTime: Infinity,
     },
     // Sin toast propio: un fallo solo deja la decisión sin respuesta.
     { toastId: "pedido-amounts-visibility", silent: true },
   );
-  return data?.puede_ver_importes;
+  return data;
 };
 
 /**
