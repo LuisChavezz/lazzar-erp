@@ -104,6 +104,7 @@ const TOP_LEVEL_REJECTION_KEYS: ReadonlySet<string> = new Set([
  * - `{ persona_pagos: ["Este campo no puede estar en blanco."] }`
  * - `{ cotizacion: { persona_pagos: ["..."] } }`
  * - `{ detalle: [{ tallas: [{ cantidad: ["..."] }] }] }`
+ * - `{ pedido: { telefono_pagos: "..." } }` (string suelto, en cualquier nivel)
  */
 export const extractQuoteValidationIssues = (
   source: unknown,
@@ -147,6 +148,13 @@ export const extractQuoteValidationIssues = (
     return Object.entries(source as Record<string, unknown>).flatMap(([key, value]) =>
       extractQuoteValidationIssues(value, [...path, key])
     );
+  }
+
+  // String suelto ANIDADO (`{"pedido": {"telefono_pagos": "..."}}`): mismo
+  // trato que en el primer nivel. Los strings de una lista no llegan aquí: la
+  // rama de arreglos ya tomó el primero con la ruta de la lista (EC-795).
+  if (typeof source === "string" && source && path.length > 0) {
+    return [{ path: normalizeQuoteValidationPath(path.map(String).join(".")), message: source }];
   }
 
   return [];
