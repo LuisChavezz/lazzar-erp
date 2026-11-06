@@ -123,6 +123,19 @@ export interface PurchaseOrder {
   empresa_nombre: string;
   sucursal: number;
   sucursal_nombre: string;
+  /**
+   * Dirección de entrega para el proveedor (EC-796): la de la sucursal de la
+   * OC, en una línea; `null` si la sucursal no tiene ninguna capturada.
+   */
+  sucursal_direccion: string | null;
+  /** Teléfono de la sucursal. Puede llegar `""` (no capturado): tratarlo como `null`. */
+  sucursal_telefono: string | null;
+  /**
+   * Almacén destino de la recepción (EC-796), id crudo; `null` si no se eligió
+   * (OC anteriores a este campo). WMS lo preselecciona al recibir.
+   */
+  almacen: number | null;
+  almacen_nombre: string | null;
   proveedor: number;
   /**
    * Nombre del proveedor, resuelto por el backend. `null` cuando la orden no
@@ -290,6 +303,12 @@ export type UpdatePurchaseOrderHeader = Pick<
   | "pedidos"
 > & {
   tipo_compra?: TipoCompra;
+  /**
+   * Almacén destino (EC-796). Solo se manda cuando CAMBIÓ respecto de la orden
+   * cargada (`null` lo quita): reenviar uno que quedó inactivo hace que el
+   * backend rechace el PUT completo, y omitirlo lo deja como está.
+   */
+  almacen?: number | null;
 };
 
 /**

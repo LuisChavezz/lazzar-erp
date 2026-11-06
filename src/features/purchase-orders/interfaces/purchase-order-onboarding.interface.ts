@@ -8,10 +8,36 @@ export interface PurchaseOrderOnboardingUser {
   email: string;
 }
 
+/**
+ * Sucursal del catálogo del onboarding. La dirección y el teléfono son
+ * columnas `null=True, blank=True` del backend: pueden llegar `null` o `""`.
+ * `direccion` es la dirección completa en una línea, armada por el backend
+ * (`direccion_sucursal`); `null` si la sucursal no tiene ninguna capturada.
+ */
 export interface PurchaseOrderOnboardingSucursal {
   id_sucursal: number;
   codigo: string;
   nombre: string;
+  direccion: string | null;
+  direccion_linea1: string | null;
+  direccion_linea2: string | null;
+  ciudad: string | null;
+  estado: string | null;
+  cp: string | null;
+  pais: string | null;
+  telefono: string | null;
+}
+
+/**
+ * Almacén del catálogo del onboarding (EC-796): solo los `ACTIVO` de la
+ * empresa, ordenados por `codigo`. `sucursal_id` es nullable en el backend
+ * (almacén sin sucursal); el selector de la OC los excluye.
+ */
+export interface PurchaseOrderOnboardingAlmacen {
+  id_almacen: number;
+  codigo: string;
+  nombre: string;
+  sucursal_id: number | null;
 }
 
 export interface PurchaseOrderOnboardingMoneda {
@@ -22,6 +48,7 @@ export interface PurchaseOrderOnboardingMoneda {
 
 export interface PurchaseOrderOnboardingCatalogos {
   sucursales: PurchaseOrderOnboardingSucursal[];
+  almacenes: PurchaseOrderOnboardingAlmacen[];
   monedas: PurchaseOrderOnboardingMoneda[];
 }
 
@@ -98,6 +125,12 @@ export interface PurchaseOrderOnboardingData {
 export interface PurchaseOrderEncabezados {
   orden_compra: {
     sucursal: number;
+    /**
+     * Almacén destino de la recepción (EC-796). Obligatorio en el alta (regla
+     * del frontend; el backend lo acepta opcional). Nunca `0`: el backend lo
+     * salta en la validación y revienta al guardarlo.
+     */
+    almacen: number;
     proveedor: number;
     moneda: number;
     fecha_vencimiento: string | null;

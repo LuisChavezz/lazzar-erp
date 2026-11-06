@@ -33,6 +33,7 @@ const data: PurchaseOrderOnboardingData = {
   empresa_id: 1,
   catalogos: {
     sucursales: [],
+    almacenes: [],
     monedas: [
       { id: MXN, codigo_iso: "MXN", nombre: "Peso" },
       { id: USD, codigo_iso: "USD", nombre: "Dólar" },
