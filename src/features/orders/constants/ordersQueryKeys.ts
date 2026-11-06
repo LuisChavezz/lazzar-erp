@@ -46,6 +46,14 @@ export const pedidoFilterOptionsQueryKey = (misPedidos: boolean) =>
   [...ORDERS_QUERY_KEY, "opciones", { mis_pedidos: misPedidos }] as const;
 
 /**
+ * Llave de `puede_ver_importes` de Compras › Pedidos (`usePedidoAmountsVisibility`).
+ * Fija (no depende de los filtros de la tabla) y FUERA del prefijo
+ * `["orders"]`: es una regla por usuario que no cambia con las mutaciones de
+ * pedidos, así que invalidar `["orders"]` no debe volver a pedirla.
+ */
+export const PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY = ["pedido-amounts-visibility"] as const;
+
+/**
  * Llave de una búsqueda de pedidos de un selector: bajo el prefijo (la
  * refrescan las mutaciones de pedidos) y bajo `"search"`, aparte de la lista
  * completa, porque trae solo una página.
