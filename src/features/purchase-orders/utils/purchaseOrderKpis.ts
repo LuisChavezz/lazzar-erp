@@ -3,14 +3,16 @@ import type {
   PurchaseOrderKpiStatusBreakdown,
 } from "../interfaces/purchase-order-kpis.interface";
 
+import { canSeeKpiAmounts } from "@/src/utils/kpiAmounts";
+
 /**
- * ¿Puede el usuario ver los importes de un indicador de compras? Lo dice cada
- * respuesta de KPIs de OC, recepciones y proveedores (`puede_ver_importes`,
- * mismo criterio que el filtro contable del listado de OC). Siempre llega, también
- * sin empresa (`false`, backend #860); solo un `true` explícito muestra importes.
+ * `canSeeKpiAmounts` y `HIDDEN_KPI_AMOUNT_TEXT` viven en `src/utils/kpiAmounts`
+ * (los usan también pedidos y clientes); se reexportan aquí para los
+ * importadores de compras. En compras la bandera la manda cada respuesta de
+ * KPIs de OC, recepciones y proveedores (mismo criterio que el filtro contable
+ * del listado de OC) y llega siempre, también sin empresa (`false`, #860).
  */
-export const canSeeKpiAmounts = (puedeVerImportes: boolean | undefined): boolean =>
-  puedeVerImportes === true;
+export { canSeeKpiAmounts, HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
 
 /**
  * ¿Una tarjeta que es SOLO un importe va como "No visible"? Sin permiso el
@@ -23,9 +25,6 @@ export const canSeeKpiAmounts = (puedeVerImportes: boolean | undefined): boolean
  */
 export const isAmountOnlyKpiHidden = (puedeVerImportes: boolean | undefined, sinEmpresa: boolean): boolean =>
   !sinEmpresa && !canSeeKpiAmounts(puedeVerImportes);
-
-/** Lo que ocupa el lugar de un importe que el usuario no puede ver. */
-export const HIDDEN_KPI_AMOUNT_TEXT = "No visible";
 
 /** El porqué, para el ⓘ de la tarjeta. */
 export const HIDDEN_KPI_AMOUNTS_REASON = "No tienes permiso para ver los importes de compras.";

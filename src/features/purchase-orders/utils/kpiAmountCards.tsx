@@ -1,6 +1,6 @@
 import { KPI_MUTED_ICON, type KpiCompactItem } from "@/src/components/KpiGrid";
 import { KpiMutedValue } from "@/src/components/KpiCurrency";
-import { HIDDEN_KPI_AMOUNT_TEXT } from "./purchaseOrderKpis";
+import { HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
 
 /**
  * Tarjeta de un indicador que es SOLO un importe, para quien no puede verlo
