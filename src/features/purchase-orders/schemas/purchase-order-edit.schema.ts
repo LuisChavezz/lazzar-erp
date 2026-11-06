@@ -30,7 +30,8 @@ import { pedidosSchema, referenciaSchema, tipoCompraSchema } from "./purchase-or
  * poder editarse sin obligar a tocar esa fecha. Cambiarla a otra fecha anterior
  * sí se rechaza.
  *
- * El tipo de salida (`z.output`) es asignable a `UpdatePurchaseOrderHeader`.
+ * El tipo de salida (`z.output`) es asignable a `UpdatePurchaseOrderHeader`
+ * salvo `almacen`, que el Step 2 resuelve contra la orden cargada.
  */
 export const createPurchaseOrderEditSchema = (
   fechaGeneracion: string,
@@ -42,6 +43,11 @@ export const createPurchaseOrderEditSchema = (
     sucursal: z
       .number({ message: "La sucursal es requerida" })
       .min(1, "La sucursal es requerida"),
+    // Almacén destino (EC-796): OPCIONAL en la edición, para que una orden
+    // anterior a este campo se pueda editar sin forzar a elegir uno. `0` =
+    // sin almacén; el Step 2 lo traduce a `null` y solo lo manda si cambió
+    // (`almacenPutPatch`).
+    almacen: z.number().int().min(0).default(0),
     proveedor: z
       .number({ message: "El proveedor es requerido" })
       .min(1, "El proveedor es requerido"),
