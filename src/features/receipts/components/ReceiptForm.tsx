@@ -111,7 +111,12 @@ export default function ReceiptForm({
                     error={getError("almacen")}
                   >
                     <option value="0" disabled>
-                      Seleccionar...
+                      {/* Contra una OC el catálogo ya viene filtrado por su
+                          sucursal (EC-796): vacío = la sucursal no tiene
+                          almacenes activos, no que falte cargar. */}
+                      {warehouses.length === 0
+                        ? "No hay almacenes activos en la sucursal de la orden"
+                        : "Seleccionar..."}
                     </option>
                     {warehouses.map((w) => (
                       <option
