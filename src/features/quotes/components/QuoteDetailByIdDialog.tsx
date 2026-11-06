@@ -1,7 +1,6 @@
 "use client";
 
-import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
+import { QuoteDetailDialogShell } from "./QuoteDetailDialogShell";
 import { QuoteDetails } from "./QuoteDetails";
 import type { QuoteDetailSource } from "../hooks/useQuote";
 
@@ -28,19 +27,11 @@ interface QuoteDetailByIdDialogProps {
 }
 
 /**
- * Envoltorio de `QuoteDetails` para abrir una cotización por id (buscador
- * global, notificaciones). `QuoteDetails` NO es un diálogo: es el CONTENIDO que
- * `QuoteRowActionDialogs` mete dentro de un `MainDialog`, y ya es self-fetching por id
- * (`useQuote`) con sus propios estados de carga/error. Este wrapper solo aporta
- * el armazón `MainDialog` con la firma por id que el registro exige —sin action
- * ni hook nuevos, y sin loader propio (lo maneja `QuoteDetails`)—.
- *
- * Chrome replicado de `QuoteRowActionDialogs`: `DialogHeader` + `maxWidth="1000px"`.
- * A diferencia de `QuoteRowActionDialogs` —que tiene la fila y rotula el encabezado
- * con cliente/estatus del pedido— aquí solo se tiene el id, así que el título es
- * fijo ("Detalle de Cotización", sin colgarle un `#id` que se leería como folio
- * de pedido) y el `statusColor` queda en `sky`: el folio, cliente y estatus
- * reales los pinta `QuoteDetails` en el cuerpo al resolver su consulta.
+ * Detalle de una cotización abierta por id desde el buscador global y las
+ * notificaciones: `QuoteDetails` (self-fetching por id con `useQuote`, con sus
+ * propios estados de carga/error) dentro del armazón común
+ * `QuoteDetailDialogShell`. No está en el registro de documentos del pedido:
+ * el 360° usa `PedidoQuoteDetailDialog`, que lee por el pedido.
  */
 export function QuoteDetailByIdDialog({
   orderId,
@@ -50,20 +41,12 @@ export function QuoteDetailByIdDialog({
   onCloseAutoFocus,
 }: QuoteDetailByIdDialogProps) {
   return (
-    <MainDialog
+    <QuoteDetailDialogShell
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      maxWidth="1000px"
-      title={
-        <DialogHeader
-          title="Detalle de Cotización"
-          subtitle="Información completa de la cotización"
-          statusColor="sky"
-        />
-      }
     >
       <QuoteDetails quoteId={orderId ?? 0} source={source} />
-    </MainDialog>
+    </QuoteDetailDialogShell>
   );
 }

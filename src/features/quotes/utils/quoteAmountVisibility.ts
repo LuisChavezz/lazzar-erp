@@ -40,3 +40,31 @@ export const hasQuoteLinePrices = (detalles: QuoteDetailViewDetalle[]): boolean 
 /** ¿Trae el `monto` del servicio extra? Sin él se muestran nombre y cantidad. */
 export const hasServicioMonto = (servicio: QuoteDetailView["servicios_extras"][number]): boolean =>
   has(servicio, "monto");
+
+/**
+ * Subtotal de una talla (`precio_unitario × cantidad`), o `null` si el precio
+ * falta, es `null` o no es un número: entonces no hay subtotal que mostrar y
+ * se pinta el mismo marcador que el precio, nunca un 0 calculado.
+ */
+export const quoteTallaSubtotal = (talla: {
+  precio_unitario?: string | number | null;
+  cantidad: number | string;
+}): number | null => {
+  if (talla.precio_unitario === null || talla.precio_unitario === undefined || talla.precio_unitario === "") {
+    return null;
+  }
+  const precio = Number(talla.precio_unitario);
+  const cantidad = Number(talla.cantidad);
+  return Number.isFinite(precio) && Number.isFinite(cantidad) ? precio * cantidad : null;
+};
+
+/** Subtotal de la línea: `null` si alguna de sus tallas no tiene subtotal. */
+export const quoteLineSubtotal = (detalle: QuoteDetailViewDetalle): number | null => {
+  let total = 0;
+  for (const talla of detalle.tallas) {
+    const subtotal = quoteTallaSubtotal(talla);
+    if (subtotal === null) return null;
+    total += subtotal;
+  }
+  return total;
+};

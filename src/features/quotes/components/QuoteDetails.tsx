@@ -288,6 +288,14 @@ export const QuoteDetailsView = ({ quote, comentarios }: QuoteDetailsViewProps) 
           </DetailGroup>
           )}
 
+          {/* `autorizada_at` no lo enmascara el backend: sin "Importes" se
+              muestra aparte para no perderlo. */}
+          {!showTotals && quote.autorizada_at && (
+            <DetailGroup title="Autorización">
+              <DetailRow label="Autorizada">{formatQuoteDateTime(quote.autorizada_at)}</DetailRow>
+            </DetailGroup>
+          )}
+
           <DetailGroup title="Envío">
             <DetailRow label="Destinatario">{toDisplayValue(quote.destinatario)}</DetailRow>
             <DetailRow label="Empresa">{toDisplayValue(quote.empresa_envio)}</DetailRow>

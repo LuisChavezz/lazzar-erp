@@ -31,8 +31,9 @@ export interface OpenOrderDocument {
 /**
  * Registro de tipos de documento con detalle navegable desde el pedido. La
  * llave es el `doc.tipo`; el valor, el diálogo que lo abre. Todos comparten la
- * MISMA firma (`{ orderId, open, onOpenChange }`) y se auto-abastecen del
- * detalle por id (= `doc.id`), así que se montan de forma uniforme. Un tipo
+ * MISMA firma (`{ orderId, pedidoId, open, onOpenChange }`) y se auto-abastecen
+ * del detalle por id (= `doc.id`), así que se montan de forma uniforme;
+ * `pedidoId` (el pedido 360° que los abre) solo lo usa la cotización. Un tipo
  * ausente del registro queda como texto estático.
  *
  * Mover estos diálogos de hoja no abre acceso a nada nuevo: son los mismos
