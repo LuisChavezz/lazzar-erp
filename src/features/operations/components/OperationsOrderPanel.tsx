@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import KpiGrid, { type KpiCompactItem } from '@/src/components/KpiGrid';
 import {
   CheckCircleIcon,
@@ -9,44 +9,98 @@ import {
   ListaPreciosIcon,
   PedidosIcon,
 } from '@/src/components/Icons';
-import { LIST_QUERY_GC_TIME } from '@/src/constants/queryCache';
-import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
-import { isInitialLoadError } from '@/src/utils/isInitialLoadError';
 import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
-import { useCurrencies } from '@/src/features/currency/hooks/useCurrencies';
-import { valorTotalPorMoneda } from '@/src/features/orders/utils/valorTotalPorMoneda';
-import { ordersQueryKey, useOrders } from '@/src/features/orders/hooks/useOrders';
+import type { CurrencyTotal } from '@/src/utils/currencyTotals';
+import { safeParseAmount } from '@/src/utils/formatCurrency';
+import { hiddenAmountCard } from '@/src/features/purchase-orders/utils/kpiAmountCards';
+import { ORDERS_QUERY_KEY } from '@/src/features/orders/constants/ordersQueryKeys';
+import {
+  usePedidoAmountsVisibility,
+  usePedidoKpisMesa,
+  usePedidosTable,
+} from '@/src/features/orders/hooks/usePedidosTable';
+import type { PedidoKpisMesa } from '@/src/features/orders/interfaces/pedido-list.interface';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
-import { isOrderConfirmed } from '@/src/features/orders/utils/pedidoConfirmacion';
+import { mesaPedidosTable } from '@/src/features/orders/utils/pedidoListParams';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
 import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
 
-// Componente principal de la Mesa de Control de Pedidos.
+/** Valor por moneda de `kpis-mesa/` (código ISO del backend; nunca se suman monedas). */
+const valorPorMoneda = (kpis: PedidoKpisMesa): CurrencyTotal[] =>
+  kpis.por_moneda.map((fila) => ({
+    moneda: fila.moneda,
+    total: safeParseAmount(String(fila.valor ?? 0)),
+    ...(fila.moneda ? {} : { etiqueta: `Moneda ${fila.moneda_id}` }),
+  }));
+
+/**
+ * Tarjetas de Mesa de Control a partir de `kpis-mesa/`, el MISMO conjunto que
+ * la tabla con los mismos filtros y búsqueda. `total` excluye los cancelados
+ * (= por confirmar + confirmados); el conteo `cancelados` del backend no se
+ * pinta. Sin respuesta todavía, cada tarjeta dice "—" en vez de un cero que se
+ * leería como real.
+ */
+const buildKpis = (kpis: PedidoKpisMesa | undefined): KpiCompactItem[] => {
+  const pct = (n: number) => (kpis && kpis.total ? Math.round((n / kpis.total) * 100) : 0);
+  const count = (n: number | undefined) => (n === undefined ? '—' : n.toLocaleString('es-MX'));
+  const valorBase = { label: 'Valor total', icon: ListaPreciosIcon };
+  return [
+    {
+      label: 'Total pedidos',
+      value: count(kpis?.total),
+      icon: PedidosIcon,
+      iconClass: 'text-sky-500',
+      detail: 'En mesa de control · sin cancelados',
+      hideProgress: true,
+    },
+    {
+      label: 'Por confirmar',
+      value: count(kpis?.por_confirmar),
+      icon: ClockIcon,
+      iconClass: 'text-amber-500',
+      progress: pct(kpis?.por_confirmar ?? 0),
+      detail: `${pct(kpis?.por_confirmar ?? 0)}% del total · fecha pendiente`,
+    },
+    {
+      label: 'Confirmados',
+      value: count(kpis?.confirmados),
+      icon: CheckCircleIcon,
+      iconClass: 'text-cyan-500',
+      progress: pct(kpis?.confirmados ?? 0),
+      detail: `${pct(kpis?.confirmados ?? 0)}% del total · con fecha`,
+    },
+    kpis && !kpis.puede_ver_importes
+      ? hiddenAmountCard(valorBase, 'Tu rol no tiene acceso a los importes de los pedidos.')
+      : {
+          ...valorBase,
+          value: kpis ? <CurrencyTotalsValue totals={valorPorMoneda(kpis)} /> : '—',
+          iconClass: 'text-emerald-500',
+          hideProgress: true,
+          info: 'Suma del total con IVA de los pedidos por moneda; cada moneda se muestra por separado.',
+        },
+  ];
+};
+
+/**
+ * Mesa de Control de Pedidos en MODO SERVIDOR: filtros, búsqueda, orden y
+ * página los resuelve el backend y viven en la URL (`mesaPedidosTable`), así
+ * que la página lo envuelve en `<Suspense>`. Los indicadores salen de
+ * `kpis-mesa/` con los mismos criterios que la tabla.
+ */
 export function OperationsOrderPanel() {
-  // Mesa de Control conserva su lista más tiempo en caché (EC-694); la lista
-  // completa (`ordersQueryKey()`) es compartida y los demás consumidores usan
-  // el global.
-  const { orders, isLoading, isError, error, hasLoaded } = useOrders(undefined, {
-    gcTime: LIST_QUERY_GC_TIME,
+  const table = usePedidosTable({
+    definition: mesaPedidosTable,
+    queryKey: ORDERS_QUERY_KEY,
+    toastId: 'mesa-pedidos-table-refetch-error',
   });
-  // El listado solo trae la PK de la moneda (`moneda`); el código ISO sale del
-  // catálogo, con la misma caché (`["currencies"]`) que `OrderCurrencyProvider`.
-  const { data: currencies, isLoading: isLoadingCurrencies } = useCurrencies();
-  // Solo un error SIN datos cargados sustituye las filas; un refetch fallido
-  // conserva tabla y KPIs y avisa por toast (ver `useOrders`).
-  const showError = isInitialLoadError(isError, hasLoaded);
+  const kpis = usePedidoKpisMesa(table.criteria);
+  const showAmounts = usePedidoAmountsVisibility(table.rows);
   const queryClient = useQueryClient();
-  // `exact`: solo la lista completa SIN params de este panel. Las variantes con
-  // filtros (`["orders", "full", params]`, p. ej. "Mis pedidos") y las búsquedas
-  // de los selectores (`["orders", "search", …]`) cuelgan de ella o de su
-  // prefijo y, sin esto, encenderían el spinner de esta tabla. Mismo criterio
-  // que `OrderListView`.
-  const isRefetching = useIsFetching({ queryKey: ordersQueryKey(), exact: true }) > 0;
 
   // El estado del diálogo vive aquí, no en la celda, para que sobreviva si el
-  // renglón sale de la vista filtrada.
+  // renglón sale de la página o de la vista filtrada.
   const [selectedOrderForSchedule, setSelectedOrderForSchedule] =
     useState<PedidoListItem | null>(null);
   // Al cancelarse, la fila SALE del listado: por eso el diálogo vive aquí y se
@@ -54,65 +108,16 @@ export function OperationsOrderPanel() {
   const [selectedOrderForCancel, setSelectedOrderForCancel] =
     useState<PedidoListItem | null>(null);
 
-  const counts = useMemo(() => {
-    const confirmados = orders.filter(isOrderConfirmed).length;
-    // Mientras el catálogo carga, "—" en vez de importes sin símbolo que
-    // cambiarían al llegar. Si falla, cada PK sin símbolo (ver
-    // `valorTotalPorMoneda`): la tarjeta nunca se queda en "—".
-    const valorTotal =
-      isLoadingCurrencies && !currencies ? null : valorTotalPorMoneda(orders, currencies);
-    return {
-      total: orders.length,
-      confirmados,
-      porConfirmar: orders.length - confirmados,
-      valorTotal,
-    };
-  }, [orders, currencies, isLoadingCurrencies]);
-
-  // Porcentaje del total, para que cada tarjeta diga cuánto pesa sin hacer cuentas.
-  const pctOfTotal = (n: number) => (counts.total ? Math.round((n / counts.total) * 100) : 0);
-
-  // Variante compacta de `KpiGrid`: mismo lenguaje que el resto de listados con
-  // indicadores, y en móvil un carrusel de una fila en vez de 4 tarjetas
-  // apiladas encima de la tabla.
-  const kpis: KpiCompactItem[] = [
-    {
-      label: 'Total pedidos',
-      value: counts.total.toString(),
-      icon: PedidosIcon,
-      iconClass: 'text-sky-500',
-      detail: 'En mesa de control',
-      hideProgress: true,
-    },
-    {
-      label: 'Por confirmar',
-      value: counts.porConfirmar.toString(),
-      icon: ClockIcon,
-      iconClass: 'text-amber-500',
-      progress: pctOfTotal(counts.porConfirmar),
-      detail: `${pctOfTotal(counts.porConfirmar)}% del total · fecha pendiente`,
-    },
-    {
-      label: 'Confirmados',
-      value: counts.confirmados.toString(),
-      icon: CheckCircleIcon,
-      iconClass: 'text-cyan-500',
-      progress: pctOfTotal(counts.confirmados),
-      detail: `${pctOfTotal(counts.confirmados)}% del total · con fecha`,
-    },
-    {
-      label: 'Valor total',
-      value: counts.valorTotal ? <CurrencyTotalsValue totals={counts.valorTotal} /> : '—',
-      icon: ListaPreciosIcon,
-      iconClass: 'text-emerald-500',
-      hideProgress: true,
-      info: 'Suma de los pedidos por moneda; cada moneda se muestra por separado.',
-    },
-  ];
-
-  // Solo la clave de este panel: las variantes con filtros no se marcan stale.
-  const handleRefetch = () =>
-    queryClient.invalidateQueries({ queryKey: ordersQueryKey(), exact: true });
+  // "Actualizar datos" relee la lista y los indicadores juntos, para que
+  // tarjetas y tabla no muestren cifras de momentos distintos.
+  const { onRefetch } = table.tableProps;
+  const handleRefetch = onRefetch
+    ? () =>
+        Promise.all([
+          onRefetch(),
+          queryClient.invalidateQueries({ queryKey: [...ORDERS_QUERY_KEY, 'kpis-mesa'] }),
+        ])
+    : undefined;
 
   return (
     // Altura según la ventana y el ancho del listado (`listHeight.ts`): con
@@ -122,27 +127,19 @@ export function OperationsOrderPanel() {
     // mide la container query del umbral.
     <div className={MESA_CONTROL_KPI_LIST.container}>
     <div className={`${MESA_CONTROL_KPI_LIST.panel} flex flex-col gap-4`}>
-      {/* KPIs: ocultos durante la carga y ante un error —no hay datos que
-          resumir y `orders` arranca en `[]`, así que mostrarían ceros que se
-          leerían como reales—, igual que `EmbroideryStats` en su vista. La
-          tabla NO se gatea: se monta siempre y alterna solo su área de datos,
-          de modo que el toolbar sigue visible durante la carga y el error. */}
-      {!isLoading && !showError && (
-        <div className="shrink-0">
-          <KpiGrid compact items={kpis} />
-        </div>
-      )}
+      {/* Indicadores con consulta PROPIA: si fallan, la tabla y su toolbar
+          siguen; un refetch fallido conserva las cifras y avisa por toast. */}
+      <div className="shrink-0">
+        <KpiGrid compact items={buildKpis(kpis.data)} />
+      </div>
 
       <div className={MESA_CONTROL_KPI_LIST.region}>
       <OperationsOrderTable
-        orders={orders}
-        isLoading={isLoading}
-        isError={showError}
-        errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
+        tableProps={table.tableProps}
+        showAmounts={showAmounts}
         onProgramar={setSelectedOrderForSchedule}
         onCancel={setSelectedOrderForCancel}
         onRefetch={handleRefetch}
-        isRefetching={isRefetching}
       />
       </div>
 

@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Loader } from '@/src/components/Loader';
 import { OperationsOrderPanel } from '@/src/features/operations/components/OperationsOrderPanel';
 
 export const metadata: Metadata = {
@@ -25,7 +27,11 @@ export default function OperationsOrdersPage() {
       />
       <h1 className="sr-only">Pedidos - Mesa de Control</h1>
       <section aria-label="Panel de pedidos">
-        <OperationsOrderPanel />
+        {/* El panel lee filtros, búsqueda, orden y página desde la URL con
+            `useSearchParams`, que en Next.js requiere un límite de Suspense. */}
+        <Suspense fallback={<Loader className="py-20" title="Cargando pedidos..." />}>
+          <OperationsOrderPanel />
+        </Suspense>
       </section>
     </main>
   );
