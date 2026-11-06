@@ -6,13 +6,13 @@ import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import type { PedidoVinculado } from "../interfaces/purchase-order.interface";
+import type { PedidoVinculadoOC } from "../interfaces/purchase-order.interface";
 import { LINKABLE_PEDIDO_ESTATUS } from "../constants/linkablePedidos";
 import type {
   PedidoSeleccionado,
   PedidoSelectionMemory,
 } from "../hooks/usePedidoSelectionMemory";
-import { useLinkedPedidoAvailability } from "../hooks/useLinkedPedidoAvailability";
+import { isLinkablePedidoRow } from "../utils/linkedPedidoAvailability";
 
 const MUTED_CLS = "text-slate-500 dark:text-slate-400";
 
@@ -35,7 +35,7 @@ interface PurchaseOrderPedidosFieldProps {
    * Pedidos ya ligados a la orden (`pedidos_vinculados`): dan la etiqueta de
    * un seleccionado que la búsqueda no trae. `[]` en el alta.
    */
-  linkedPedidos?: PedidoVinculado[];
+  linkedPedidos?: PedidoVinculadoOC[];
   /**
    * Folio y cliente de lo que el usuario marcó, guardados al marcar por el
    * step manager (`usePedidoSelectionMemory`): sobreviven a que este campo se
@@ -45,47 +45,37 @@ interface PurchaseOrderPedidosFieldProps {
   error?: FormFieldError;
 }
 
-const NO_LINKED_PEDIDOS: PedidoVinculado[] = [];
+const NO_LINKED_PEDIDOS: PedidoVinculadoOC[] = [];
 
 function ClienteNote({ cliente }: { cliente: string | null }) {
   return cliente ? <span className={`block truncate text-xs ${MUTED_CLS}`}>{cliente}</span> : null;
 }
 
 /**
- * Segunda línea de un pedido YA LIGADO a la orden y aún marcado. Su estado se
- * consulta aparte (`useLinkedPedidoAvailability`), porque la búsqueda del
- * selector nunca trae cancelados:
+ * Segunda línea de un pedido YA LIGADO a la orden y aún marcado. Su estado sale
+ * de `pedidos_vinculados` (`estatus`, `activo`), que incluye los cancelados: la
+ * búsqueda del selector nunca los trae, así que su ausencia ahí no dice nada.
  *
- * - cancelado, dado de baja o fuera del alcance del usuario → aviso (sigue
- *   marcado; desligarlo es decisión del usuario);
- * - la consulta falló → nota neutra: no puede pasar por válido sin verificar,
- *   pero tampoco impide guardar;
+ * - cancelado o dado de baja → aviso (sigue marcado; desligarlo es decisión
+ *   del usuario);
  * - si no, su cliente: el que ya se conocía (`cliente`, de la selección) o el
- *   que trajo la consulta, porque `pedidos_vinculados` no lo incluye.
+ *   de `pedidos_vinculados`.
  */
 function LinkedPedidoNote({
   pedido,
   cliente,
 }: {
-  pedido: PedidoVinculado;
+  pedido: PedidoVinculadoOC;
   cliente: string | null;
 }) {
-  const lookup = useLinkedPedidoAvailability(pedido);
-  if (lookup.availability === "unavailable") {
+  if (!isLinkablePedidoRow(pedido)) {
     return (
       <span className="block truncate text-xs text-amber-600 dark:text-amber-400">
         Ya no está disponible (cancelado o inactivo). Desmárcalo para desligarlo.
       </span>
     );
   }
-  if (lookup.isUnverified) {
-    return (
-      <span className={`block truncate text-xs ${MUTED_CLS}`}>
-        No se pudo verificar su estatus.
-      </span>
-    );
-  }
-  return <ClienteNote cliente={cliente ?? lookup.cliente} />;
+  return <ClienteNote cliente={cliente ?? pedido.cliente_nombre} />;
 }
 
 /**
@@ -96,7 +86,8 @@ function LinkedPedidoNote({
  * - Los seleccionados van FIJOS arriba y la búsqueda nunca los oculta (issue
  *   #262): lo que se guarda siempre está a la vista. Se pintan con lo que se
  *   sabe de ellos: el resultado en que se marcaron (`selection`, que guarda
- *   el step manager) o, para los ya ligados, su folio de `pedidos_vinculados`.
+ *   el step manager) o, para los ya ligados, su folio y cliente de
+ *   `pedidos_vinculados`.
  * - Un ya ligado que se canceló o se dio de baja sigue marcado, con un aviso
  *   (`LinkedPedidoNote`); que la página de búsqueda no lo traiga, por sí
  *   solo, no lo marca como no disponible.
@@ -122,7 +113,7 @@ export function PurchaseOrderPedidosField({
       selection.known.get(id) ?? {
         id,
         folio: linkedById.get(id)?.folio ?? null,
-        cliente: null,
+        cliente: linkedById.get(id)?.cliente_nombre ?? null,
       },
   );
 
