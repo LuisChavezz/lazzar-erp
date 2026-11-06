@@ -9,6 +9,7 @@ export const rejectChangesOperationsQuoteMutationKey = [
 
 export const useRejectChangesOperationsQuote = createOperationsQuoteMutation({
   mutationKey: rejectChangesOperationsQuoteMutationKey,
+  pedidoEffect: "none",
   mutationFn: rejectChangesOperationsQuote,
   successMessage: "Cambios rechazados correctamente",
   errorMessage: "No se pudieron rechazar los cambios de la cotización",

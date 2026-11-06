@@ -15,9 +15,8 @@ import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/h
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
 import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { programarPedido } from "../services/actions";
-import { pedidoDetailQueryKey } from "./usePedidoDetail";
-import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
-import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
+import { invalidatePedidoProgress } from "./invalidatePedidoProgress";
 import {
   isMesaControlPermisoError,
   PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
@@ -83,12 +82,14 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
 
   return useMutation<PedidoProgramarResponse, unknown, ProgramarPedidoVariables>({
     mutationFn: ({ pedidoId, payload }) => programarPedido(pedidoId, payload),
-    onSuccess: (_, { pedidoId }) => {
-      queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
-      queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) });
-      // Paso "Programado" de la trazabilidad.
-      queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    onSuccess: () => {
+      // Solo reescribe `programacion_conf` (no renglones ni totales), así que no
+      // usa `invalidatePedidoLinesRewritten`: ni `pedido-kpis` cambia. Detalle,
+      // "Programar pedido" y el paso "Programado" de la trazabilidad, con la
+      // regla común (`invalidatePedidoProgress`, por raíz), y los listados, que
+      // muestran lo programado.
+      void invalidatePedidoProgress(queryClient);
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       // Los onboardings de OB/OR/OCM exponen `programado` por pedido
       // (`MesaControlProgramadoIndicator`): uno ya abierto debe reflejar la
       // programación nueva sin recargar.

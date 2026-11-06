@@ -9,6 +9,7 @@ export const acceptChangesOperationsQuoteMutationKey = [
 
 export const useAcceptChangesOperationsQuote = createOperationsQuoteMutation({
   mutationKey: acceptChangesOperationsQuoteMutationKey,
+  pedidoEffect: "rewrites",
   mutationFn: acceptChangesOperationsQuote,
   successMessage: "Cambios aplicados correctamente",
   errorMessage: "No se pudieron aplicar los cambios de la cotización",
