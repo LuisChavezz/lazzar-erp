@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import type { NotaCredito, NotaCreditoEstatus } from "../interfaces/credit-note.interface";
@@ -270,21 +270,30 @@ export const reconcileNotaCreditoCfdiErrorMessage = (error: unknown): string => 
   );
 };
 
+/** Cancelación sin confirmar: pudo aplicarse (nota Cancelada y saldo devuelto). */
+export const CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE =
+  "No se pudo confirmar la cancelación: el servidor no respondió a tiempo. Revisa el estatus de la nota antes de reintentar; pudo quedar cancelada.";
+
 /**
  * Mensaje de un fallo de `cancelar/` (EC-761), en el orden de
- * `cancelInvoiceErrorMessage` y con el `403` primero: `forbiddenDetailMessage`
- * (sin `E-FIN-FACTURAS`), el motivo del backend bajo `cfdi` tal cual (timbrado
- * sin confirmar, CFDI de egreso timbrado; DRF lo manda como lista y
- * `drfFieldMessage` lee las dos formas), luego `estatus`, cualquier otro campo
- * (`poliza`) o el `detail` (`404`, `409`) y al final el respaldo genérico.
+ * `cancelInvoiceErrorMessage`. Un `403` solo muestra su motivo
+ * (`forbiddenDetailMessage`, sin `E-FIN-FACTURAS`) o el respaldo, nunca un
+ * campo, como `handleDrfWriteError`. Un fallo sin confirmar (red, timeout,
+ * 5xx) no muestra el cuerpo: la cancelación pudo aplicarse. Si no, el motivo
+ * del backend bajo `cfdi` tal cual (timbrado sin confirmar, CFDI de egreso
+ * timbrado; DRF lo manda como lista y `drfFieldMessage` lee las dos formas),
+ * luego `estatus`, cualquier otro campo (`poliza`) o el `detail` (`404`, `409`)
+ * y al final el respaldo genérico.
  */
 export const cancelNotaCreditoErrorMessage = (error: unknown): string => {
+  const fallback = "Error al cancelar la nota de crédito";
   if (error instanceof PrecheckError) return error.message;
+  if (isForbiddenError(error)) return forbiddenDetailMessage(error) ?? fallback;
+  if (isUnconfirmedFailure(error)) return CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE;
   return (
-    forbiddenDetailMessage(error) ??
     drfFieldMessage(error, "cfdi") ??
     drfFieldMessage(error, "estatus") ??
     firstDrfFieldMessage(error) ??
-    extractErrorMessage(error, "Error al cancelar la nota de crédito")
+    extractErrorMessage(error, fallback)
   );
 };

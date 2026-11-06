@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
-import { cancelNotaCreditoErrorMessage } from "@/src/features/credit-notes/utils/creditNoteErrors";
+import {
+  CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE,
+  cancelNotaCreditoErrorMessage,
+} from "@/src/features/credit-notes/utils/creditNoteErrors";
 
 /**
  * Pruebas unitarias de EC-761: el mensaje de un fallo de
@@ -68,6 +71,23 @@ test("el precheck muestra su propio mensaje; sin cuerpo útil, el genérico", ()
   expect(cancelNotaCreditoErrorMessage(new PrecheckError("La nota NC-1 ya estaba cancelada."))).toBe(
     "La nota NC-1 ya estaba cancelada.",
   );
-  expect(cancelNotaCreditoErrorMessage(httpError(500, "<html>"))).toBe(FALLBACK);
   expect(cancelNotaCreditoErrorMessage(httpError(400, {}))).toBe(FALLBACK);
+});
+
+test("un 403 sin motivo usable cae al genérico, nunca a un campo", () => {
+  expect(cancelNotaCreditoErrorMessage(httpError(403, { cfdi: [TIMBRADA] }))).toBe(FALLBACK);
+  expect(cancelNotaCreditoErrorMessage(httpError(403, { detail: "<html><body>403</body></html>" }))).toBe(
+    FALLBACK,
+  );
+});
+
+test("sin respuesta o con 5xx no se afirma que falló: pudo cancelarse", () => {
+  const config = { headers: new AxiosHeaders() };
+  const timeout = new AxiosError("timeout of 30000ms exceeded", "ECONNABORTED", config);
+  expect(cancelNotaCreditoErrorMessage(timeout)).toBe(CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE);
+  expect(cancelNotaCreditoErrorMessage(httpError(504, "<html>"))).toBe(CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE);
+  // El cuerpo de un 5xx no es del backend: nunca se muestra, aunque traiga cfdi.
+  expect(cancelNotaCreditoErrorMessage(httpError(500, { cfdi: [TIMBRADA] }))).toBe(
+    CREDIT_NOTE_CANCEL_UNCONFIRMED_MESSAGE,
+  );
 });
