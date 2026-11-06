@@ -5,6 +5,8 @@ import {
   almacenPutPatch,
   almacenSelectState,
   almacenTrasCambioDeSucursal,
+  NO_DELIVERY_ADDRESS,
+  purchaseOrderDeliveryRows,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 import { cleanText } from "@/src/utils/cleanText";
 
@@ -132,5 +134,32 @@ test.describe("almacenTrasCambioDeSucursal", () => {
     expect(almacenTrasCambioDeSucursal(1, { sucursal: 1, almacen: null })).toBe(0);
     expect(almacenTrasCambioDeSucursal(1)).toBe(0);
     expect(almacenTrasCambioDeSucursal(1, null)).toBe(0);
+  });
+});
+
+test.describe("purchaseOrderDeliveryRows", () => {
+  test("con datos: los muestra recortados", () => {
+    expect(
+      purchaseOrderDeliveryRows({
+        almacen_nombre: "TELAS",
+        sucursal_direccion: "Toneles 1350, Guadalajara ",
+        sucursal_telefono: "3312345678",
+      }),
+    ).toEqual({ almacen: "TELAS", direccion: "Toneles 1350, Guadalajara", telefono: "3312345678" });
+  });
+
+  test("sin dirección capturada: «Dirección de entrega no capturada»; teléfono \"\" y sin almacén: -", () => {
+    expect(
+      purchaseOrderDeliveryRows({ almacen_nombre: null, sucursal_direccion: null, sucursal_telefono: "" }),
+    ).toEqual({ almacen: "-", direccion: NO_DELIVERY_ADDRESS, telefono: "-" });
+    expect(NO_DELIVERY_ADDRESS).toBe("Dirección de entrega no capturada");
+  });
+
+  test("payload de un cliente anterior (campos ausentes): mismos respaldos", () => {
+    expect(purchaseOrderDeliveryRows({})).toEqual({
+      almacen: "-",
+      direccion: NO_DELIVERY_ADDRESS,
+      telefono: "-",
+    });
   });
 });

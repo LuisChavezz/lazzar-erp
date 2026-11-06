@@ -5,8 +5,27 @@
  * correo y la recepción, para que todos apliquen la misma regla.
  */
 
+import { cleanText } from "@/src/utils/cleanText";
+
 /** Texto del PDF y del correo cuando la sucursal no tiene dirección capturada. */
 export const NO_DELIVERY_ADDRESS = "Dirección de entrega no capturada";
+
+/**
+ * Las tres filas del bloque "Dirección de entrega" del PDF y del correo, ya
+ * con sus respaldos. Un solo lugar para que el cuerpo del correo y el PDF
+ * adjunto digan exactamente lo mismo: `"-"` sin almacén o sin teléfono (el
+ * teléfono llega `""` cuando no se capturó) y {@link NO_DELIVERY_ADDRESS}
+ * sin dirección.
+ */
+export const purchaseOrderDeliveryRows = (order: {
+  almacen_nombre?: string | null;
+  sucursal_direccion?: string | null;
+  sucursal_telefono?: string | null;
+}): { almacen: string; direccion: string; telefono: string } => ({
+  almacen: cleanText(order.almacen_nombre) ?? "-",
+  direccion: cleanText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS,
+  telefono: cleanText(order.sucursal_telefono) ?? "-",
+});
 
 /**
  * Almacenes que se pueden elegir para una sucursal: SOLO los suyos. Los que no
