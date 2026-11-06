@@ -18,6 +18,7 @@ import { formatLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
 import { sumAmounts, visibleCurrencyEntries } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline, UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
+import { isPurchaseOrderKpisSinEmpresa } from "../utils/kpiSinEmpresa";
 
 /** Importe de los indicadores: número JSON (o texto, si cambia el encoder). */
 const amountOf = (value: number | string | undefined) => safeParseAmount(String(value ?? 0));
@@ -306,7 +307,12 @@ export function PurchaseOrderDashboard({ kpis }: PurchaseOrderDashboardProps) {
           {!top.disponible ? (
             <Unavailable
               motivo={
-                kpis.puede_ver_importes
+                // Sin permiso de importes el backend manda un motivo técnico
+                // ("Sin permiso de contabilidad."): se dice en palabras del
+                // usuario. Cualquier otro motivo (p. ej. "Usuario sin empresa
+                // asignada.", que también llega con `puede_ver_importes: false`)
+                // es el del backend tal cual.
+                kpis.puede_ver_importes || isPurchaseOrderKpisSinEmpresa(kpis)
                   ? top.motivo
                   : "Tu rol no tiene acceso a los importes de las órdenes de compra."
               }
