@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -21,9 +23,11 @@ import {
 import { usePedidoProgramarContexto } from "../hooks/usePedidoProgramarContexto";
 import { usePedidoProgramacionForm } from "../hooks/usePedidoProgramacionForm";
 import {
+  extractPedidoNoProgramableMessage,
   isMesaControlPermisoError,
   PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
 } from "../utils/pedidoProgramarErrors";
+import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { PedidoProgramarPartidas } from "./PedidoProgramarPartidas";
 import {
   countCodePoints,
@@ -333,6 +337,19 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
   const { data, isInitialError, isNotFound, error, isFetchedAfterMount } =
     usePedidoProgramarContexto(order.id);
   const sinPermiso = isMesaControlPermisoError(error);
+  const noProgramableMessage = extractPedidoNoProgramableMessage(error);
+  const queryClient = useQueryClient();
+
+  // Pedido cancelado o sin confirmar (EC-750): la fila de la lista estaba
+  // desactualizada. Se releen los listados UNA vez por error (el efecto depende
+  // del objeto de error, que solo cambia con otra lectura fallida) para que la
+  // fila deje de ofrecer "Programar". Sin bucle: la llave de este diálogo no
+  // cuelga de `["orders"]`, así que invalidarlo no vuelve a pedir el contexto.
+  useEffect(() => {
+    if (extractPedidoNoProgramableMessage(error)) {
+      void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+    }
+  }, [error, queryClient]);
 
   const close = () => onOpenChange(false);
 
@@ -365,11 +382,18 @@ export function PedidoProgramacionDialog({ open, onOpenChange, order }: PedidoPr
         />
       ) : isInitialError ? (
         <ErrorState
-          title={sinPermiso ? "Sin permiso" : "Error al cargar el pedido"}
+          title={
+            sinPermiso
+              ? "Sin permiso"
+              : noProgramableMessage
+                ? "No se puede programar"
+                : "Error al cargar el pedido"
+          }
           message={
             sinPermiso
               ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
-              : extractErrorMessage(error, "No se pudo cargar la programación del pedido.")
+              : (noProgramableMessage ??
+                extractErrorMessage(error, "No se pudo cargar la programación del pedido."))
           }
         />
       ) : !isFetchedAfterMount || !data ? (
