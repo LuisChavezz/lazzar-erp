@@ -25,8 +25,8 @@ export const getPolizas = async (): Promise<Poliza[]> => {
  * El cuerpo NO lleva `empresa` (la resuelve el servidor), ni `fecha` (el
  * backend pone la del día), ni `folio_consecutivo`/`usuario_creacion` (los llena el
  * backend), ni el FK padre dentro de cada renglón (`poliza` es de solo lectura
- * en el serializer). `estatus` viaja como el literal `"Borrador"` — ver
- * `CreatePolizaPayload`.
+ * en el serializer), ni `estatus` (el backend lo ignora: la póliza nace en
+ * `Borrador`) — ver `CreatePolizaPayload`.
  *
  * La operación es ATÓMICA (`@transaction.atomic` en `perform_create`): las
  * líneas se crean DESPUÉS del `save()` de la cabecera, así que un movimiento
@@ -55,10 +55,9 @@ export const createPoliza = async (
  *    `{"poliza_detalles": [...]}` si `abs(Σcargo − Σabono) > 0.01`;
  *  - y solo entonces cambia el estatus.
  *
- * Un `PATCH { estatus: "Contabilizada" }` sobre un `Borrador` conseguiría el
- * mismo estatus SIN ninguna de esas comprobaciones (`perform_update` solo
- * bloquea editar una contabilizada o cancelada): esta capa no lo usa nunca —
- * este módulo no hace ningún PATCH.
+ * Un `PATCH { estatus }` no sirve: el backend ignora `estatus` en el alta y en
+ * la edición (solo lectura desde nucleo-erp #935). Este módulo no hace ningún
+ * PATCH.
  */
 export const contabilizarPoliza = async (id: number): Promise<Poliza> => {
   const { data } = await v1_api.post<Poliza>(
