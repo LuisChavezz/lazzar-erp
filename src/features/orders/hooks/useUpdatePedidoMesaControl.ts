@@ -7,9 +7,7 @@ import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteVali
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import type { PedidoMesaControlContexto } from "../interfaces/pedido-mesa-control-contexto.interface";
 import { updatePedidoMesaControl } from "../services/actions";
-import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
-import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
-import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import { invalidatePedidoLinesRewritten } from "./invalidatePedidoLinesRewritten";
 import {
   parsePedidoMesaControl400,
   type PedidoMesaControlRejectionToast,
@@ -78,16 +76,11 @@ export const useUpdatePedidoMesaControl = (
     UpdatePedidoMesaControlVariables
   >({
     mutationFn: ({ pedidoId, payload }) => updatePedidoMesaControl(pedidoId, payload),
-    onSuccess: (_, { pedidoId, cotizacionId }) => {
-      queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
-      // Tallas, cantidades y servicios de "Programar pedido".
-      queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedidoId) });
-      // Las líneas reescritas cambian las piezas de cada paso de la trazabilidad.
-      queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      // Reescribir las líneas puede cambiar lo programado del pedido, que lista
-      // Pedidos de Almacén (y el Paso 1 de Nuevo Surtido).
-      void invalidateScheduledPedidos(queryClient);
+    onSuccess: (_, { cotizacionId }) => {
+      // Reescribe renglones, servicios extras y totales: misma regla que
+      // aceptar cambios en mesa de control (listados, `pedido-kpis`, detalle,
+      // trazabilidad, "Programar pedido" y los programados).
+      void invalidatePedidoLinesRewritten(queryClient);
       // La cotización de origen también cambió en el servidor.
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       if (cotizacionId) {
