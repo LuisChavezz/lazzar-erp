@@ -7,7 +7,7 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
+import { KpiMutedValue, KpiTaggedBlocks, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -17,8 +17,12 @@ import {
   ExclamationTriangleIcon,
   PedidosIcon,
 } from "@/src/components/Icons";
-import { plural } from "@/src/utils/kpiFormat";
-import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
+import {
+  canSeeKpiAmounts,
+  HIDDEN_KPI_AMOUNT_TEXT,
+} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
+import { HIDDEN_PEDIDO_AMOUNTS_REASON, PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { usePedidoKpis } from "../hooks/usePedidoKpis";
 import type { PedidoActiveKpi, PedidoKpis } from "../interfaces/pedido-kpis.interface";
 import { PedidoKpiDrillDownDialog } from "./PedidoKpiDrillDownDialog";
@@ -29,28 +33,46 @@ const SECTION_TITLE = "Indicadores";
  * Pedidos activos: un bloque por moneda con su valor y, en el detalle, el conteo
  * de todas las monedas (un conteo sí se puede sumar; un importe no). Sin meta
  * ni semáforo (el backend no los expone), así que sin insignia y sin barra:
- * "llena" no significaría nada.
+ * "llena" no significaría nada. Sin la regla de importes (`showAmounts`,
+ * EC-784) el backend no manda `valor`: el importe dice "No visible", como las
+ * OCs abiertas de Compras, y el conteo del detalle y el drill-down quedan.
  */
-function activeCard(kpi: PedidoActiveKpi, onDrillDown: () => void): KpiCompactItem {
+function activeCard(kpi: PedidoActiveKpi, showAmounts: boolean, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Pedidos activos", icon: PedidosIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
   }
-  // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
-  const showCurrencyCount = kpi.por_moneda.length > 1;
-  const blocks = kpi.por_moneda.map((moneda) => ({
-    moneda: moneda.moneda,
-    monto: moneda.valor,
-    detail: showCurrencyCount ? `${moneda.total} ${plural(moneda.total, "pedido", "pedidos")}` : undefined,
-  }));
+  const criterio = "Pedidos autorizados o en proceso de tus cotizaciones";
+  const amountsInfo = `${criterio}; el valor es la suma de sus totales. ${SEPARATE_CURRENCIES_NOTE}`;
+  let value: ReactNode;
+  let info: string;
+  if (kpi.por_moneda.length === 0) {
+    value = <KpiMutedValue>Sin pedidos activos</KpiMutedValue>;
+    info = amountsInfo;
+  } else if (showAmounts) {
+    // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
+    const showCurrencyCount = kpi.por_moneda.length > 1;
+    // Un `valor` ausente con permiso es un hueco del payload, no un cero: "—".
+    value = (
+      <KpiTaggedBlocks
+        blocks={kpi.por_moneda.map((moneda) => ({
+          key: moneda.moneda,
+          value: moneda.valor === undefined ? "—" : formatKpiTaggedCurrencyAmount(moneda.valor, moneda.moneda),
+          tag: moneda.moneda,
+          detail: showCurrencyCount ? `${moneda.total} ${plural(moneda.total, "pedido", "pedidos")}` : undefined,
+        }))}
+      />
+    );
+    info = amountsInfo;
+  } else {
+    value = <KpiMutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</KpiMutedValue>;
+    info = `${criterio}. ${HIDDEN_PEDIDO_AMOUNTS_REASON}`;
+  }
   return {
     ...base,
     ...(kpi.total > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value:
-      blocks.length === 0 ? <KpiMutedValue>Sin pedidos activos</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
-    info:
-      "Pedidos autorizados o en proceso de tus cotizaciones; el valor es la suma de sus totales. " +
-      SEPARATE_CURRENCIES_NOTE,
+    value,
+    info,
     hideProgress: true,
     ...(kpi.total > 0 ? { detail: `${kpi.total} ${plural(kpi.total, "pedido activo", "pedidos activos")}` } : {}),
     action: (
@@ -66,7 +88,7 @@ function activeCard(kpi: PedidoActiveKpi, onDrillDown: () => void): KpiCompactIt
 
 function buildCards(data: PedidoKpis, openDrillDown: () => void): KpiCompactItem[] {
   return [
-    activeCard(data.pedidos_activos, openDrillDown),
+    activeCard(data.pedidos_activos, canSeeKpiAmounts(data.puede_ver_importes), openDrillDown),
     // OTIF, lead time y pedidos en riesgo: hoy siempre llegan no disponibles
     // (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.otif, { label: "OTIF", icon: CheckCircleIcon }),
@@ -101,6 +123,7 @@ function PedidoKpisSectionContent() {
       <PedidoKpiDrillDownDialog
         open={isDrillDownOpen}
         kpi={data?.pedidos_activos}
+        showAmounts={canSeeKpiAmounts(data?.puede_ver_importes)}
         onClose={() => setIsDrillDownOpen(false)}
       />
     </>
