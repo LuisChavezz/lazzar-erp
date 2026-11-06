@@ -15,6 +15,7 @@ import { PurchaseOrderVariantLinesPicker } from "./PurchaseOrderVariantLinesPick
 import { PurchaseOrderProductLinesList } from "./PurchaseOrderProductLinesList";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
+import { almacenPutPatch } from "../utils/purchaseOrderDelivery";
 
 interface PurchaseOrderEditStep2Props {
   /** Orden en edición — aporta el `pk` para el PUT. */
@@ -100,7 +101,14 @@ export function PurchaseOrderEditStep2({
     // El PUT refleja la forma del alta: encabezado + renglones del detalle.
     // `pedidos` va SIEMPRE (reemplaza la lista completa); `tipo_compra` solo
     // sin folio. El campo legado `pedido` nunca se manda.
-    const { tipo_compra, ...headerWithoutTipo } = header;
+    // `almacen` solo si cambió respecto de la orden cargada (`null` = lo
+    // quitó el usuario o un cambio de sucursal): reenviar uno que quedó
+    // inactivo haría que el backend rechazara el PUT completo (EC-796).
+    const { tipo_compra, almacen, ...headerRest } = header;
+    const headerWithoutTipo = {
+      ...headerRest,
+      ...almacenPutPatch(almacen, initialData.almacen),
+    };
     const body: UpdatePurchaseOrderBody = isTipoCompraLocked
       ? { ...headerWithoutTipo, detalles: detalle }
       : { ...headerWithoutTipo, tipo_compra, detalles: detalle };

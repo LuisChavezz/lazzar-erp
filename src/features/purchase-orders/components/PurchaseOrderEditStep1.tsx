@@ -15,6 +15,8 @@ import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
+import { almacenSelectState } from "../utils/purchaseOrderDelivery";
+import { PurchaseOrderDeliveryAddress } from "./PurchaseOrderDeliveryAddress";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -104,6 +106,14 @@ export function PurchaseOrderEditStep1({
                   "sucursal",
                   event.target.value,
                 ) as number;
+                // El almacén destino es de UNA sucursal: al cambiarla se suelta
+                // aquí y el PUT lo manda en `null`. El backend no lo limpia por
+                // su cuenta en el PUT, así que sin esto quedaría el almacén de
+                // la sucursal anterior.
+                if (nextValue !== field.state.value) {
+                  form.setFieldValue("almacen", 0);
+                  clearFieldErrors("almacen");
+                }
                 field.handleChange(nextValue);
                 clearFieldErrors("sucursal");
               }}
@@ -115,6 +125,62 @@ export function PurchaseOrderEditStep1({
             />
           )}
         </form.Field>
+
+        {/* ── Almacén destino (EC-796, opcional al editar) ─────────────────
+            Solo los de la sucursal elegida. El guardado en la orden se sigue
+            mostrando aunque ya no esté en el catálogo (p. ej. inactivo), con
+            el nombre que trae la orden; sin cambios, no se reenvía. */}
+        <form.Subscribe
+          selector={(state) => [state.values.sucursal, state.values.almacen] as const}
+        >
+          {([sucursalId, almacenId]) => {
+            const almacen = almacenSelectState({
+              almacenes: onboardingData.catalogos.almacenes,
+              sucursalId,
+              emptyLabel: "Sin almacén destino",
+              selected:
+                initialData.almacen && almacenId === initialData.almacen
+                  ? {
+                      value: initialData.almacen,
+                      label: initialData.almacen_nombre ?? `Almacén #${initialData.almacen}`,
+                    }
+                  : null,
+            });
+            return (
+              <form.Field name="almacen">
+                {(field) => (
+                  <FormSelect
+                    label="Almacén destino"
+                    name={field.name}
+                    value={field.state.value}
+                    options={almacen.options}
+                    disabled={almacen.disabled}
+                    onChange={(event) => {
+                      field.handleChange(coerceNumeric("almacen", event.target.value) as number);
+                      clearFieldErrors("almacen");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("almacen");
+                    }}
+                    error={getError("almacen")}
+                  />
+                )}
+              </form.Field>
+            );
+          }}
+        </form.Subscribe>
+
+        {/* ── Dirección de entrega (solo lectura) ─────────────────────── */}
+        <form.Subscribe selector={(state) => state.values.sucursal}>
+          {(sucursalId) => (
+            <PurchaseOrderDeliveryAddress
+              sucursal={onboardingData.catalogos.sucursales.find(
+                (s) => s.id_sucursal === sucursalId,
+              )}
+            />
+          )}
+        </form.Subscribe>
 
         {/* ── Proveedor ────────────────────────────────────────────────── */}
         <form.Field name="proveedor">

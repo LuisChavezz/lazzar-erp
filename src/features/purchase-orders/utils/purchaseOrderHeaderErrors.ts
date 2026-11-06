@@ -8,6 +8,7 @@ import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
  */
 export const PURCHASE_ORDER_HEADER_FIELDS = [
   "sucursal",
+  "almacen",
   "proveedor",
   "moneda",
   "fecha_vencimiento",

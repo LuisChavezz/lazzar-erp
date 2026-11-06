@@ -42,6 +42,7 @@ interface UsePurchaseOrderEditFormParams {
  */
 export type EditFieldPath =
   | "sucursal"
+  | "almacen"
   | "proveedor"
   | "moneda"
   | "fecha_vencimiento"
@@ -94,6 +95,8 @@ export function usePurchaseOrderEditForm({
     }
     return {
       sucursal: initialData.sucursal,
+      // `0` = sin almacén (órdenes anteriores a EC-796).
+      almacen: initialData.almacen ?? 0,
       proveedor: initialData.proveedor,
       moneda: initialData.moneda,
       fecha_vencimiento: toDateInputValue(initialData.fecha_vencimiento),
@@ -159,7 +162,7 @@ export function usePurchaseOrderEditForm({
 
   /** Coacciona el valor de un select/input a número para los campos numéricos. */
   const coerceNumeric = (path: EditFieldPath, raw: string): string | number => {
-    const numericPaths: EditFieldPath[] = ["sucursal", "proveedor", "moneda"];
+    const numericPaths: EditFieldPath[] = ["sucursal", "almacen", "proveedor", "moneda"];
     if (numericPaths.includes(path)) {
       const n = Number(raw);
       return Number.isNaN(n) ? 0 : n;
