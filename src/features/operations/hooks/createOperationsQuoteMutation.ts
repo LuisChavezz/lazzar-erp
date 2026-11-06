@@ -11,6 +11,11 @@ import {
   OperationsQuoteActionResponse,
 } from "../interfaces/operations-quote.interface";
 import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
+import { PEDIDO_KPIS_QUERY_KEY } from "@/src/features/orders/constants/pedidoKpis";
+import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
+import { pedidoProgramarQueryKey } from "@/src/features/orders/hooks/usePedidoProgramarContexto";
+import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { operationsQuotesQueryKey } from "./useOperationsQuotes";
 
 interface CreateOperationsQuoteMutationParams {
@@ -34,7 +39,7 @@ interface CreateOperationsQuoteMutationParams {
  */
 export const applyOperationsQuoteActionResult = async (
   queryClient: QueryClient,
-  { cotizacion, pedido }: OperationsQuoteActionResponse
+  { cotizacion, pedido, pedido_id }: OperationsQuoteActionResponse
 ) => {
   // La fila se actualiza con lo que respondió la acción ANTES de
   // invalidar: si ese refetch falla, `useOperationsQuotes` conserva la
@@ -64,11 +69,26 @@ export const applyOperationsQuoteActionResult = async (
   queryClient.invalidateQueries({ queryKey: operationsQuotesQueryKey });
   queryClient.invalidateQueries({ queryKey: ["quotes"] });
   queryClient.invalidateQueries({ queryKey: ["quote"] });
-  // Autorizar CREA el pedido (la respuesta lo trae en `pedido`): las listas de
-  // pedidos (Mesa de Control › Pedidos, Mis pedidos, los selectores) ya no
-  // están al día. Las demás acciones no tocan pedidos.
-  if (pedido) {
+  // Autorizar CREA el pedido (la respuesta lo trae en `pedido`) y aceptar
+  // cambios REESCRIBE el existente (renglones, servicios extras y totales; la
+  // respuesta trae solo `pedido_id`): en ambos casos las listas de pedidos
+  // (Mesa de Control › Pedidos, Mis pedidos, los selectores) ya no están al
+  // día. Rechazar y rechazar cambios no tocan el pedido.
+  if (pedido || pedido_id !== undefined) {
     queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+    // Los indicadores de "Mis pedidos" suman `gran_total` y van fuera del prefijo.
+    queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
+  }
+  // El pedido reescrito puede estar en caché con lo anterior. Mismas llaves que
+  // la edición de Mesa de Control (`useUpdatePedidoMesaControl`), que también
+  // reescribe las líneas. Un pedido recién autorizado no tiene nada en caché.
+  if (pedido_id !== undefined) {
+    queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedido_id) });
+    queryClient.invalidateQueries({ queryKey: pedidoProgramarQueryKey(pedido_id) });
+    queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedido_id) });
+    // Lo programado puede cambiar con las líneas: Pedidos de Almacén y el Paso 1
+    // de Nuevo Surtido.
+    void invalidateScheduledPedidos(queryClient);
   }
 };
 
