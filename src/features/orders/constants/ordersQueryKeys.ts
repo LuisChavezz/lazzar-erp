@@ -47,11 +47,16 @@ export const pedidoFilterOptionsQueryKey = (misPedidos: boolean) =>
 
 /**
  * Llave de `puede_ver_importes` de Compras › Pedidos (`usePedidoAmountsVisibility`).
- * Fija (no depende de los filtros de la tabla) y FUERA del prefijo
- * `["orders"]`: es una regla por usuario que no cambia con las mutaciones de
- * pedidos, así que invalidar `["orders"]` no debe volver a pedirla.
+ * No depende de los filtros de la tabla y va FUERA del prefijo `["orders"]`:
+ * es una regla por usuario que no cambia con las mutaciones de pedidos, así
+ * que invalidar `["orders"]` no debe volver a pedirla. Lleva el id del usuario
+ * de la sesión porque la consulta no caduca: si en la misma pestaña entra otro
+ * usuario sin recargar la página (la sesión se cerró en otra pestaña y el login
+ * navega con `router.push`), la caché sobrevive y no debe reutilizar la
+ * bandera del anterior.
  */
-export const PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY = ["pedido-amounts-visibility"] as const;
+export const pedidoAmountsVisibilityQueryKey = (userId: string) =>
+  ["pedido-amounts-visibility", userId] as const;
 
 /**
  * Llave de una búsqueda de pedidos de un selector: bajo el prefijo (la
