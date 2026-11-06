@@ -9,11 +9,8 @@ import {
 } from "@/src/components/Icons";
 import { HIDDEN_PEDIDO_AMOUNTS_REASON } from "@/src/features/orders/constants/pedidoKpis";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
-import {
-  canSeeKpiAmounts,
-  HIDDEN_KPI_AMOUNT_TEXT,
-} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
 import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { ResumenComercial } from "../interfaces/customer.interface";
 

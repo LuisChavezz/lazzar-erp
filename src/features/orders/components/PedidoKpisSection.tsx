@@ -17,10 +17,7 @@ import {
   ExclamationTriangleIcon,
   PedidosIcon,
 } from "@/src/components/Icons";
-import {
-  canSeeKpiAmounts,
-  HIDDEN_KPI_AMOUNT_TEXT,
-} from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
+import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
 import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import { HIDDEN_PEDIDO_AMOUNTS_REASON, PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { usePedidoKpis } from "../hooks/usePedidoKpis";

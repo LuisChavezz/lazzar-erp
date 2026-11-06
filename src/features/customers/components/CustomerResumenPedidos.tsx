@@ -7,9 +7,9 @@ import {
   Section,
 } from "@/src/components/DetailDialogPrimitives";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
-import { canSeeKpiAmounts } from "@/src/features/purchase-orders/utils/purchaseOrderKpis";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canSeeKpiAmounts } from "@/src/utils/kpiAmounts";
 import type { ResumenComercial } from "../interfaces/customer.interface";
 import { buildPedidoEstatusChips } from "../utils/customer-detail";
 
