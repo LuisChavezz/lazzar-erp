@@ -38,8 +38,7 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
-import { NO_DELIVERY_ADDRESS } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
-import { cleanText } from "@/src/utils/cleanText";
+import { purchaseOrderDeliveryRows } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
 /**
  * Texto FIJO de la leyenda/marca de agua de una orden cancelada. Decidido por
@@ -70,6 +69,7 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
   const flete = safeParseAmount(order.flete);
   const seguros = safeParseAmount(order.seguros);
   const ivaPct = safeParseAmount(order.porcentaje_iva);
+  const entrega = purchaseOrderDeliveryRows(order);
 
   return (
     <Document>
@@ -147,17 +147,15 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
             <Text style={s.cardTitle}>DIRECCIÓN DE ENTREGA</Text>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Almacén destino</Text>
-              <Text style={s.infoValue}>{cleanText(order.almacen_nombre) ?? "-"}</Text>
+              <Text style={s.infoValue}>{entrega.almacen}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Dirección</Text>
-              <Text style={s.infoValue}>
-                {cleanText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
-              </Text>
+              <Text style={s.infoValue}>{entrega.direccion}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Teléfono</Text>
-              <Text style={s.infoValue}>{cleanText(order.sucursal_telefono) ?? "-"}</Text>
+              <Text style={s.infoValue}>{entrega.telefono}</Text>
             </View>
           </View>
         </View>

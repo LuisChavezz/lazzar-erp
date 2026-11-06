@@ -8,8 +8,7 @@ import {
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { NO_DELIVERY_ADDRESS } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
-import { cleanText } from "@/src/utils/cleanText";
+import { purchaseOrderDeliveryRows } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
 type PurchaseOrderEmailProps = {
   order: PurchaseOrderDetail;
@@ -56,6 +55,8 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
   // reconcilien contra el mismo `gran_total`.
   const flete = safeParseAmount(order.flete);
   const seguros = safeParseAmount(order.seguros);
+  // Mismas filas y respaldos que el PDF adjunto (EC-796).
+  const entrega = purchaseOrderDeliveryRows(order);
 
   return (
     <BaseEmailLayout
@@ -106,19 +107,19 @@ export const PurchaseOrderEmail = ({ order }: PurchaseOrderEmailProps) => {
             <tr>
               <td className="py-2 pr-4 text-slate-500">Almacén destino</td>
               <td className="py-2 font-medium text-slate-900">
-                {cleanText(order.almacen_nombre) ?? "-"}
+                {entrega.almacen}
               </td>
             </tr>
             <tr>
               <td className="py-2 pr-4 text-slate-500">Dirección</td>
               <td className="py-2 font-medium text-slate-900">
-                {cleanText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
+                {entrega.direccion}
               </td>
             </tr>
             <tr>
               <td className="py-2 pr-4 text-slate-500">Teléfono</td>
               <td className="py-2 font-medium text-slate-900">
-                {cleanText(order.sucursal_telefono) ?? "-"}
+                {entrega.telefono}
               </td>
             </tr>
           </tbody>
