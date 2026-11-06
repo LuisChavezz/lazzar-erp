@@ -4,7 +4,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatKpiCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
-import type { PedidoActiveKpi } from "../interfaces/pedido-kpis.interface";
+import type { PedidoActiveKpi, PedidoKpiActiveOrder } from "../interfaces/pedido-kpis.interface";
 import { OrderBadge } from "./OrderSheetPrimitives";
 import { PedidoFolioLink } from "./PedidoFolioLink";
 
@@ -20,9 +20,10 @@ const NOTE_CLASS = "mt-2 text-xs text-slate-500 dark:text-slate-400";
  * de mayor importe". Sin ellos (EC-784) ordena por `-id`, los más recientes.
  * El orden se lee de los DATOS (si las filas traen `gran_total`), no de la
  * bandera: mostrar los importes sigue la bandera, pero el orden lo eligió el
- * backend según lo que mandó.
+ * backend según lo que mandó. Exportada para las pruebas unitarias
+ * (`tests/unit/order-amounts-hidden.spec.ts`).
  */
-function getDescription(kpi: PedidoActiveKpi | undefined): string {
+export function getDescription(kpi: PedidoActiveKpi | undefined): string {
   if (!kpi?.disponible || kpi.drill_down.length === 0) return "Sin pedidos activos para mostrar.";
   const shown = kpi.drill_down.length;
   const total = kpi.drill_down_total;
@@ -53,6 +54,13 @@ function getMissingCurrenciesNote(kpi: PedidoActiveKpi | undefined): string | nu
   const monedas = missing.length === 1 ? missing[0] : `${missing.slice(0, -1).join(", ")} y ${missing.at(-1)}`;
   return `Los pedidos en ${monedas} no aparecen en esta lista: quedaron fuera de las ${kpi.drill_down.length} filas que se muestran.`;
 }
+
+/**
+ * Total de una fila: solo con permiso explícito y con el monto presente; si no,
+ * "—" (nunca "$0.00"). Exportada para las pruebas unitarias.
+ */
+export const formatDrillDownTotal = (pedido: PedidoKpiActiveOrder, showAmounts: boolean): string =>
+  showAmounts && pedido.gran_total !== undefined ? formatKpiCurrencyAmount(pedido.gran_total, pedido.moneda) : "—";
 
 interface PedidoKpiDrillDownDialogProps {
   open: boolean;
@@ -117,9 +125,7 @@ export function PedidoKpiDrillDownDialog({ open, kpi, showAmounts, onClose }: Pe
                 </td>
                 <td className={TD_CLASS}>{pedido.moneda}</td>
                 <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
-                  {showAmounts && pedido.gran_total !== undefined
-                    ? formatKpiCurrencyAmount(pedido.gran_total, pedido.moneda)
-                    : "—"}
+                  {formatDrillDownTotal(pedido, showAmounts)}
                 </td>
               </tr>
             ))}
