@@ -124,6 +124,15 @@ test.describe("claves que no cambian", () => {
     expect(parsePedidoMesaControl400({ pedido: ["Sin cotización."] }).issues).toEqual([]);
   });
 
+  test("un string suelto anidado bajo pedido llega a su campo (EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({ pedido: { telefono_pagos: "Teléfono inválido." } }),
+    ).toEqual({
+      issues: [{ path: "telefono_pagos", message: "Teléfono inválido." }],
+      rejection: undefined,
+    });
+  });
+
   test("color va al toast Y al formulario, que lo traduce a las partidas", () => {
     expect(parsePedidoMesaControl400({ color: ["Elige el color de: Playera."] })).toEqual({
       issues: [{ path: "color", message: "Elige el color de: Playera." }],
