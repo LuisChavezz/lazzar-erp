@@ -1,6 +1,6 @@
 "use client";
 
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import KpiGrid, { KPI_MUTED_ICON, type KpiItem } from "@/src/components/KpiGrid";
 import {
   ClockIcon,
   FacturacionIcon,
@@ -26,6 +26,11 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
   const ultimo = resumen.ultimo_pedido;
   const ultimoEstatus = ultimo ? getPedidoEstatusConfig(ultimo.estatus) : null;
   const montos = resumen.montos_por_moneda ?? [];
+  const montoBase = {
+    label: "Monto en pedidos",
+    icon: WalletIcon,
+    iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+  };
 
   const items: KpiItem[] = [
     {
@@ -48,14 +53,12 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
     // la tarjeta se queda con su título y dice "No visible", como el "Valor
     // total" de Mesa de Control. Solo un `true` explícito muestra el monto.
     !canSeeKpiAmounts(resumen.puede_ver_importes) ? {
-      label: "Monto en pedidos",
+      ...montoBase,
+      ...KPI_MUTED_ICON,
       subLabel: HIDDEN_PEDIDO_AMOUNTS_REASON,
       value: <MutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</MutedValue>,
-      icon: WalletIcon,
-      iconBgClass: "bg-slate-100 dark:bg-white/5",
-      iconClass: "text-slate-400",
     } : {
-      label: "Monto en pedidos",
+      ...montoBase,
       subLabel: "Sin pedidos cancelados",
       // Una línea por moneda DENTRO de la misma tarjeta. `?? []`: con permiso el
       // contrato da siempre la lista; si faltara, cae en el estado vacío.
@@ -79,8 +82,6 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
             </span>
           ))
         ),
-      icon: WalletIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
       iconClass: "text-emerald-500",
     },
     {
