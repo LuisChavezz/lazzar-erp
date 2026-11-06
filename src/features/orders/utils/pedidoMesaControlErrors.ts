@@ -1,5 +1,5 @@
 import {
-  extractPlainDetalleMessage,
+  extractDetalleRejectionMessage,
   extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
   REQUIRED_COLOR_KEY,
@@ -108,7 +108,7 @@ const extractRejection = (data: unknown): PedidoMesaControlRejectionToast | unde
   const message =
     extractProcessCompatibilityMessage(data) ??
     serviciosExtras ??
-    extractPlainDetalleMessage(data) ??
+    extractDetalleRejectionMessage(data) ??
     firstRejectionMessage(data, REJECTION_KEYS) ??
     /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string)
      * y también el bloque de errores de campo de la cabecera (objeto). Solo
