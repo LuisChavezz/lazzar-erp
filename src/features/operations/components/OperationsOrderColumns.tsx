@@ -195,8 +195,7 @@ const FolioCell = ({
     },
     // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
     // "Revisar inventario". Solo para pedidos confirmados y no cancelados
-    // (EC-748, `canProgramarPedido`). El backend aún no lo valida: lo sigue
-    // EC-750; quitar esta nota cuando se libere.
+    // (EC-748, `canProgramarPedido`).
     {
       label: "Programar",
       icon: CalendarDaysIcon,

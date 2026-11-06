@@ -227,7 +227,8 @@ export const canRecomprarPedido = (estatus: number | null | undefined): boolean 
  * ¿Se ofrece "Programar" en Mesa de Control para este pedido? (EC-748) Solo si
  * está confirmado —la misma regla que el punto de color y el filtro "Por
  * confirmar / Confirmado" (`isOrderConfirmed`: `fecha_confirmacion` no nula)— y
- * no está CANCELADO. Regla de la UI: el backend aún no la valida (EC-750).
+ * no está CANCELADO. El backend aplica la misma regla en `programar/` (EC-750):
+ * una fila desactualizada recibe un 400 con `estatus` o `fecha_confirmacion`.
  */
 export const canProgramarPedido = (
   order: Pick<PedidoListItem, "estatus" | "fecha_confirmacion">,
