@@ -14,19 +14,22 @@ const NOTE_CLASS = "mt-2 text-xs text-slate-500 dark:text-slate-400";
 
 /**
  * "Mostrando X de N" (descripción del diálogo). El backend corta la lista en 20
- * filas y no hay endpoint para el resto, así que no hay "ver todos". Con
- * importes ordena por `gran_total` comparando el número sin convertir monedas:
- * con la lista cortada se dice tal cual, para no afirmar que son "los de mayor
- * importe". Sin ellos (EC-784) ordena por `-id`, los más recientes: decir "por
- * total" sería falso.
+ * filas y no hay endpoint para el resto, así que no hay "ver todos". Cuando
+ * manda importes ordena por `gran_total` comparando el número sin convertir
+ * monedas: con la lista cortada se dice tal cual, para no afirmar que son "los
+ * de mayor importe". Sin ellos (EC-784) ordena por `-id`, los más recientes.
+ * El orden se lee de los DATOS (si las filas traen `gran_total`), no de la
+ * bandera: mostrar los importes sigue la bandera, pero el orden lo eligió el
+ * backend según lo que mandó.
  */
-function getDescription(kpi: PedidoActiveKpi | undefined, showAmounts: boolean): string {
+function getDescription(kpi: PedidoActiveKpi | undefined): string {
   if (!kpi?.disponible || kpi.drill_down.length === 0) return "Sin pedidos activos para mostrar.";
   const shown = kpi.drill_down.length;
   const total = kpi.drill_down_total;
   const pedidos = `${total} ${plural(total, "pedido activo", "pedidos activos")}`;
   if (kpi.drill_down_truncado) {
-    return showAmounts
+    const orderedByTotal = kpi.drill_down.some((pedido) => pedido.gran_total !== undefined);
+    return orderedByTotal
       ? `Mostrando ${shown} de ${pedidos}, ordenados por total sin convertir monedas`
       : `Mostrando los ${shown} más recientes de ${pedidos}`;
   }
@@ -79,7 +82,7 @@ export function PedidoKpiDrillDownDialog({ open, kpi, showAmounts, onClose }: Pe
         if (!open) onClose();
       }}
       title="Pedidos activos"
-      description={getDescription(kpi, showAmounts)}
+      description={getDescription(kpi)}
       maxWidth="720px"
     >
       {rows.length === 0 ? (
