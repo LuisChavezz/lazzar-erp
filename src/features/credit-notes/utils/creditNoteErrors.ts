@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import type { NotaCredito, NotaCreditoEstatus } from "../interfaces/credit-note.interface";
@@ -266,5 +267,24 @@ export const reconcileNotaCreditoCfdiErrorMessage = (error: unknown): string => 
     drfFieldMessage(error, "cfdi") ??
     firstDrfFieldMessage(error) ??
     extractErrorMessage(error, "No se pudo conciliar el timbrado con Facturama.")
+  );
+};
+
+/**
+ * Mensaje de un fallo de `cancelar/` (EC-761), en el orden de
+ * `cancelInvoiceErrorMessage` y con el `403` primero: `forbiddenDetailMessage`
+ * (sin `E-FIN-FACTURAS`), el motivo del backend bajo `cfdi` tal cual (timbrado
+ * sin confirmar, CFDI de egreso timbrado; DRF lo manda como lista y
+ * `drfFieldMessage` lee las dos formas), luego `estatus`, cualquier otro campo
+ * (`poliza`) o el `detail` (`404`, `409`) y al final el respaldo genérico.
+ */
+export const cancelNotaCreditoErrorMessage = (error: unknown): string => {
+  if (error instanceof PrecheckError) return error.message;
+  return (
+    forbiddenDetailMessage(error) ??
+    drfFieldMessage(error, "cfdi") ??
+    drfFieldMessage(error, "estatus") ??
+    firstDrfFieldMessage(error) ??
+    extractErrorMessage(error, "Error al cancelar la nota de crédito")
   );
 };
