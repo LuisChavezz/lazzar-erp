@@ -2,10 +2,7 @@
 
 import { FormSubmitButton, FormSecondaryButton } from "@/src/components/FormButtons";
 import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-onboarding.interface";
-import type {
-  PurchaseOrder,
-  UpdatePurchaseOrderBody,
-} from "../interfaces/purchase-order.interface";
+import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import type { PurchaseOrderLinesState } from "../hooks/usePurchaseOrderLines";
 import { useUpdatePurchaseOrder } from "../hooks/useUpdatePurchaseOrder";
@@ -15,10 +12,14 @@ import { PurchaseOrderVariantLinesPicker } from "./PurchaseOrderVariantLinesPick
 import { PurchaseOrderProductLinesList } from "./PurchaseOrderProductLinesList";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
 import { onboardingMonedaCodigo } from "../utils/onboardingMonedaCodigo";
-import { almacenPutPatch } from "../utils/purchaseOrderDelivery";
+import { buildPurchaseOrderUpdateBody } from "../utils/buildPurchaseOrderUpdateBody";
 
 interface PurchaseOrderEditStep2Props {
-  /** Orden en edición — aporta el `pk` para el PUT. */
+  /**
+   * Orden en edición: la FOTO fresca del detalle con la que se sembró el
+   * Step 1 (no la fila del listado). Aporta el `pk` y el almacén guardado
+   * contra el que se decide si `almacen` cambió.
+   */
   initialData: PurchaseOrder;
   /** Encabezado capturado en el Step 1. */
   header: PurchaseOrderEditHeader;
@@ -98,20 +99,14 @@ export function PurchaseOrderEditStep2({
 
     const detalle = buildPurchaseOrderDetalle(lines);
 
-    // El PUT refleja la forma del alta: encabezado + renglones del detalle.
-    // `pedidos` va SIEMPRE (reemplaza la lista completa); `tipo_compra` solo
-    // sin folio. El campo legado `pedido` nunca se manda.
-    // `almacen` solo si cambió respecto de la orden cargada (`null` = lo
-    // quitó el usuario o un cambio de sucursal): reenviar uno que quedó
-    // inactivo haría que el backend rechazara el PUT completo (EC-796).
-    const { tipo_compra, almacen, ...headerRest } = header;
-    const headerWithoutTipo = {
-      ...headerRest,
-      ...almacenPutPatch(almacen, initialData.almacen),
-    };
-    const body: UpdatePurchaseOrderBody = isTipoCompraLocked
-      ? { ...headerWithoutTipo, detalles: detalle }
-      : { ...headerWithoutTipo, tipo_compra, detalles: detalle };
+    // El PUT refleja la forma del alta: encabezado + renglones del detalle
+    // (reglas de cada campo en `buildPurchaseOrderUpdateBody`).
+    const body = buildPurchaseOrderUpdateBody({
+      header,
+      loaded: initialData,
+      isTipoCompraLocked,
+      detalles: detalle,
+    });
     update(
       { pk: initialData.id, body },
       { onSuccess: () => onSuccess() },

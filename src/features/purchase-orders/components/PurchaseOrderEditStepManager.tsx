@@ -319,7 +319,10 @@ export function PurchaseOrderEditStepManager({
           <div className={currentStep === "step-2" ? undefined : "hidden"}>
             <PurchaseOrderEditStep2
               key={linesResets}
-              initialData={initialData}
+              // La FOTO, igual que el Step 1: contra la fila del listado (hasta
+              // 15 min de caché) un almacén sin cambios parecería cambiado y
+              // se reenviaría (EC-796).
+              initialData={snapshot}
               header={header}
               isTipoCompraLocked={isTipoCompraLocked}
               onboardingData={onboardingData}
