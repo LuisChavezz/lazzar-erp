@@ -1,4 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  mutationOptions,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { reconcileInvoiceCfdi } from "../services/actions";
 import type { Invoice, InvoiceCfdiReconcileResponse } from "../interfaces/invoice.interface";
@@ -8,6 +13,7 @@ import {
 } from "../utils/invoiceStamping";
 import { fetchFreshInvoice, invalidateInvoiceBaseQueries } from "./invoiceActionMutation";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
+import { toastWarning } from "@/src/utils/toastWarning";
 
 /** Candado de la conciliación, ÚNICO por factura (ver `useReconcileInvoiceCfdi`). */
 export const reconcileInvoiceCfdiMutationKey = (invoiceId: number) =>
@@ -23,9 +29,9 @@ export type ReconcileInvoiceCfdiResult =
   | { outcome: "not-pending"; invoice: Invoice };
 
 /**
- * Concilia contra Facturama el timbrado sin confirmar de UNA factura
- * (`POST /finanzas/facturas/{id}/conciliar-cfdi/`, EC-709). Mismo esquema que
- * `useStampInvoice`:
+ * Mutación que concilia contra Facturama el timbrado sin confirmar de UNA
+ * factura (`POST /finanzas/facturas/{id}/conciliar-cfdi/`, EC-709). Mismo
+ * esquema que `useStampInvoice`:
  *
  * - Candado contra el doble envío: la mutación misma, con `mutationKey` POR
  *   FACTURA (`useMutationLock`).
@@ -36,16 +42,19 @@ export type ReconcileInvoiceCfdiResult =
  *   Conciliar no toca estatus, CxC, póliza ni el avance del pedido (ninguna
  *   vista del pedido lee el timbre de sus facturas), así que no se invalida.
  *
+ * Con `aviso` (EC-761) el CFDI quedó vigente ante el SAT aunque la factura esté
+ * cancelada o eliminada: en lugar del toast de éxito se muestra ese aviso del
+ * backend tal cual, como advertencia. No se distinguen casos por su texto.
+ *
  * Errores: toast con el motivo del backend bajo `cfdi`, tal cual
  * (`reconcileInvoiceCfdiErrorMessage`).
  */
-export const useReconcileInvoiceCfdi = (invoiceId: number) => {
-  const queryClient = useQueryClient();
-  const mutationKey = reconcileInvoiceCfdiMutationKey(invoiceId);
-  const { isRunning: isReconciling, isIdle } = useMutationLock(mutationKey);
-
-  const mutation = useMutation<ReconcileInvoiceCfdiResult, unknown, void>({
-    mutationKey,
+export const reconcileInvoiceCfdiMutationOptions = (
+  queryClient: QueryClient,
+  invoiceId: number,
+) =>
+  mutationOptions<ReconcileInvoiceCfdiResult, unknown, void>({
+    mutationKey: reconcileInvoiceCfdiMutationKey(invoiceId),
     mutationFn: async () => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isInvoiceStampPending(current)) return { outcome: "not-pending", invoice: current };
@@ -58,7 +67,11 @@ export const useReconcileInvoiceCfdi = (invoiceId: number) => {
         toast.error(`La factura ${label} ya no tiene un timbrado pendiente de confirmación.`);
         return;
       }
-      const { resultado, factura } = result.response;
+      const { resultado, aviso, factura } = result.response;
+      if (aviso) {
+        toastWarning(aviso);
+        return;
+      }
       const label = factura.folio || `#${factura.id}`;
       if (resultado === "timbrado") {
         toast.success(
@@ -82,6 +95,17 @@ export const useReconcileInvoiceCfdi = (invoiceId: number) => {
         sentRequest: result?.outcome !== "not-pending",
       }),
   });
+
+/**
+ * Hook de `reconcileInvoiceCfdiMutationOptions` (ahí el detalle) con el
+ * candado por factura.
+ */
+export const useReconcileInvoiceCfdi = (invoiceId: number) => {
+  const queryClient = useQueryClient();
+  const mutationOpts = reconcileInvoiceCfdiMutationOptions(queryClient, invoiceId);
+  const { isRunning: isReconciling, isIdle } = useMutationLock(mutationOpts.mutationKey);
+
+  const mutation = useMutation(mutationOpts);
 
   /**
    * Dispara la conciliación salvo que ya haya una en vuelo para ESTA factura

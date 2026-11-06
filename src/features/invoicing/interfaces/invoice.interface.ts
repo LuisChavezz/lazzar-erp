@@ -124,10 +124,15 @@ export interface Invoice {
  * - `liberado`: no existía; queda sin UUID y se puede volver a timbrar o
  *   cancelar.
  * El estatus no cambia en ninguno de los dos.
+ *
+ * `aviso` (nucleo-erp #937, texto desde #945): `null`, salvo con `timbrado`
+ * sobre una factura cancelada o eliminada, cuyo CFDI quedó vigente ante el
+ * SAT. Es texto para el usuario final, escrito por el backend: se muestra tal
+ * cual. Con `liberado` siempre es `null`.
  */
 export type InvoiceCfdiReconcileResponse =
-  | { resultado: "timbrado"; factura: Invoice }
-  | { resultado: "liberado"; factura: Invoice };
+  | { resultado: "timbrado"; aviso: string | null; factura: Invoice }
+  | { resultado: "liberado"; aviso: null; factura: Invoice };
 
 /**
  * Respuesta de `POST /finanzas/facturas/{id}/emitir/`: la factura ya `Emitida`
