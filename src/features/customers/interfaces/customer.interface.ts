@@ -76,7 +76,11 @@ export interface ResumenComercialPedido {
   fecha: string;
   estatus: number;
   estatus_display: string;
-  gran_total: number;
+  /**
+   * AUSENTE (la clave no viene) para quien no ve importes de pedidos
+   * (`resumen_comercial.puede_ver_importes: false`, EC-784): no es un cero.
+   */
+  gran_total?: number;
   /** Código ISO 4217 (p.ej. "MXN"). */
   moneda: string;
 }
@@ -117,8 +121,18 @@ export interface ResumenComercial {
    * Disperso: un estatus sin pedidos no aparece (no viene en 0).
    */
   pedidos_por_estatus: Record<string, number>;
-  /** Suma de `gran_total` por moneda, EXCLUYENDO pedidos cancelados. */
-  montos_por_moneda: ResumenComercialMonto[];
+  /**
+   * Suma de `gran_total` por moneda, EXCLUYENDO pedidos cancelados. AUSENTE (la
+   * clave no viene) para quien no ve importes de pedidos (`puede_ver_importes`).
+   */
+  montos_por_moneda?: ResumenComercialMonto[];
+  /**
+   * Regla de importes de pedidos (contabilidad de ventas o de compras, EC-784).
+   * Sin ella el backend quita `montos_por_moneda` y el `gran_total` de
+   * `pedidos_recientes` y `ultimo_pedido`; conteos, folios y fechas quedan.
+   * Opcional por defensa: solo un `true` explícito muestra importes.
+   */
+  puede_ver_importes?: boolean;
   ultimo_pedido: ResumenComercialPedido | null;
   /** Hasta 5, del más reciente al más antiguo. */
   pedidos_recientes: ResumenComercialPedido[];
