@@ -33,6 +33,7 @@ import type {
   PurchaseOrderDetalle,
   PurchaseOrderReceipt,
 } from "../interfaces/purchase-order.interface";
+import { optionalText } from "../utils/purchaseOrderDelivery";
 
 // ── Chrome de las rejillas ────────────────────────────────────────────────────
 // Clases propias del diálogo y NO el `InfoGrid` de `DetailDialogPrimitives`: ese
@@ -495,6 +496,19 @@ export function PurchaseOrderDetailDialog({
                 </InfoField>
                 <InfoField label="Sucursal">
                   {textOrDash(purchaseOrder.sucursal_nombre)}
+                </InfoField>
+                {/* Destino de la recepción y dirección de entrega para el
+                    proveedor (EC-796): la de la sucursal de la orden. */}
+                <InfoField label="Almacén destino">
+                  {textOrDash(purchaseOrder.almacen_nombre)}
+                </InfoField>
+                <InfoField label="Dirección de entrega">
+                  {textOrDash(optionalText(purchaseOrder.sucursal_direccion))}
+                </InfoField>
+                <InfoField label="Teléfono de entrega">
+                  <span className="tabular-nums">
+                    {textOrDash(optionalText(purchaseOrder.sucursal_telefono))}
+                  </span>
                 </InfoField>
                 <InfoField label="Elaboró">
                   {textOrDash(purchaseOrder.usuario_nombre)}
