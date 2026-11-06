@@ -179,15 +179,10 @@ export interface CreatePolizaDetallePayload {
  * `folio_consecutivo` y `usuario_creacion` (los llena el backend), `activo` (su
  * default es correcto) y los tres campos calculados.
  *
- * ─── `estatus` SIEMPRE ES `"Borrador"` ───────────────────────────────────────
- *
- * No es una opción del formulario: es un tipo literal. `perform_update` NO tiene
- * máquina de estados, así que un `estatus` escrito por el cliente —en el POST o
- * en un PATCH— contabilizaría la póliza SALTÁNDOSE la validación de cuadre de
- * `PolizaService.validar_suma_cero`. Contabilizar pasa SIEMPRE por
- * `POST /{id}/contabilizar/` y cancelar por `POST /{id}/cancelar/`; ninguna otra
- * ruta escribe este campo. Se manda explícito (en vez de omitirlo y confiar en
- * el default del modelo) para que el literal quede a la vista en el payload.
+ * Tampoco lleva `estatus`: el backend lo ignora en el alta y en el PATCH (es de
+ * solo lectura desde nucleo-erp #935). La póliza nace en `Borrador` y solo
+ * cambia con `POST /{id}/contabilizar/` (que exige el cuadre) y
+ * `POST /{id}/cancelar/`.
  */
 export interface CreatePolizaPayload {
   sucursal: number;
@@ -195,6 +190,5 @@ export interface CreatePolizaPayload {
   folio: string;
   tipo: PolizaTipo;
   concepto: string | null;
-  estatus: "Borrador";
   poliza_detalles: CreatePolizaDetallePayload[];
 }

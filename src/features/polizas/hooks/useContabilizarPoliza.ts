@@ -8,10 +8,9 @@ const FALLBACK = "Error al contabilizar la póliza";
 /**
  * Contabiliza una póliza: `POST /finanzas/polizas/{id}/contabilizar/`.
  *
- * ES LA ÚNICA VÍA. Nunca un `PATCH { estatus: "Contabilizada" }`: sobre un
- * `Borrador`, `perform_update` guardaría el estatus SIN ejecutar
- * `PolizaService.validar_suma_cero`, dejando contabilizada una póliza
- * descuadrada. Ver `services/actions.ts`.
+ * ES LA ÚNICA VÍA: el backend ignora un `estatus` escrito en el alta o en un
+ * PATCH (solo lectura desde nucleo-erp #935), así que contabilizar siempre pasa
+ * por `PolizaService.validar_suma_cero`. Ver `services/actions.ts`.
  *
  * SIN actualización optimista, a diferencia de `useCancelarPoliza` (y por el
  * mismo motivo que `useEmitirNotaCredito`): es la operación que CIERRA el
