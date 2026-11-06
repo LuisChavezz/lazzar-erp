@@ -15,7 +15,7 @@ import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
-import { almacenSelectState } from "../utils/purchaseOrderDelivery";
+import { almacenSelectState, almacenTrasCambioDeSucursal } from "../utils/purchaseOrderDelivery";
 import { PurchaseOrderDeliveryAddress } from "./PurchaseOrderDeliveryAddress";
 
 interface PurchaseOrderEditStep1Props {
@@ -109,9 +109,10 @@ export function PurchaseOrderEditStep1({
                 // El almacén destino es de UNA sucursal: al cambiarla se suelta
                 // aquí y el PUT lo manda en `null`. El backend no lo limpia por
                 // su cuenta en el PUT, así que sin esto quedaría el almacén de
-                // la sucursal anterior.
+                // la sucursal anterior. Al volver a la sucursal de la orden
+                // regresa el guardado (y el PUT no lo manda).
                 if (nextValue !== field.state.value) {
-                  form.setFieldValue("almacen", 0);
+                  form.setFieldValue("almacen", almacenTrasCambioDeSucursal(nextValue, initialData));
                   clearFieldErrors("almacen");
                 }
                 field.handleChange(nextValue);
