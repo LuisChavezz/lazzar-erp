@@ -159,6 +159,10 @@ test.describe("claves que no cambian", () => {
     });
   });
 
+  test("un cuerpo lista de primer nivel no marca el formulario (code review EC-795)", () => {
+    expect(parsePedidoMesaControl400(["Mensaje."])).toEqual({ issues: [], rejection: undefined });
+  });
+
   test("color va al toast Y al formulario, que lo traduce a las partidas", () => {
     expect(parsePedidoMesaControl400({ color: ["Elige el color de: Playera."] })).toEqual({
       issues: [{ path: "color", message: "Elige el color de: Playera." }],
