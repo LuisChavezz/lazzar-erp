@@ -16,6 +16,8 @@ import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import { useProveedorMonedaChange } from "../hooks/useProveedorMonedaChange";
 import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
+import { almacenSelectState } from "../utils/purchaseOrderDelivery";
+import { PurchaseOrderDeliveryAddress } from "./PurchaseOrderDeliveryAddress";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
@@ -181,6 +183,13 @@ function Step1Form({
                   "orden_compra.sucursal",
                   event.target.value,
                 ) as number;
+                // El almacén destino es de UNA sucursal: al cambiarla se suelta
+                // aquí (no en un efecto, mismo criterio que el tipo de compra),
+                // para no enviar un almacén de la sucursal anterior.
+                if (nextValue !== field.state.value) {
+                  form.setFieldValue("orden_compra.almacen", 0);
+                  clearFieldErrors("orden_compra.almacen");
+                }
                 field.handleChange(nextValue);
                 clearFieldErrors("orden_compra.sucursal");
               }}
@@ -192,6 +201,56 @@ function Step1Form({
             />
           )}
         </form.Field>
+
+        {/* ── Almacén destino (EC-796) ─────────────────────────────────────
+            A qué almacén entra lo que se reciba contra la orden; solo los de
+            la sucursal elegida. */}
+        <form.Subscribe selector={(state) => state.values.orden_compra.sucursal}>
+          {(sucursalId) => {
+            const almacen = almacenSelectState({
+              almacenes: onboardingData.catalogos.almacenes,
+              sucursalId,
+              emptyLabel: "Seleccionar almacén…",
+            });
+            return (
+              <form.Field name="orden_compra.almacen">
+                {(field) => (
+                  <FormSelect
+                    label="Almacén destino"
+                    className={COMPACT_FIELD_CLS}
+                    name={field.name}
+                    value={field.state.value}
+                    options={almacen.options}
+                    disabled={almacen.disabled}
+                    onChange={(event) => {
+                      field.handleChange(
+                        coerceNumeric("orden_compra.almacen", event.target.value) as number,
+                      );
+                      clearFieldErrors("orden_compra.almacen");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("orden_compra.almacen");
+                    }}
+                    error={getError("orden_compra.almacen")}
+                  />
+                )}
+              </form.Field>
+            );
+          }}
+        </form.Subscribe>
+
+        {/* ── Dirección de entrega (solo lectura) ─────────────────────── */}
+        <form.Subscribe selector={(state) => state.values.orden_compra.sucursal}>
+          {(sucursalId) => (
+            <PurchaseOrderDeliveryAddress
+              className="sm:col-span-2"
+              sucursal={onboardingData.catalogos.sucursales.find(
+                (s) => s.id_sucursal === sucursalId,
+              )}
+            />
+          )}
+        </form.Subscribe>
 
         {/* ── Proveedor ────────────────────────────────────────────────── */}
         <form.Field name="orden_compra.proveedor">
