@@ -3,7 +3,7 @@
 import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { LayersIcon } from "@/src/components/Icons";
-import { skuOrNull } from "@/src/features/orders/utils/orderLines";
+import { cleanText } from "@/src/utils/cleanText";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import {
   embroideryLineProductoNombre,
@@ -105,8 +105,8 @@ export function EmbroideryOrderLinesTable({
             const checked = checkedIds.has(id);
             // Una línea sin producto de catálogo ya lleva su SKU en el nombre
             // (`embroideryLineProductoNombre`); repetirlo aquí sería ruido.
-            const sku = hasNoCatalogProduct(row) ? null : skuOrNull(row.sku);
-            const skuProscai = skuOrNull(row.sku_proscai);
+            const sku = hasNoCatalogProduct(row) ? null : cleanText(row.sku);
+            const skuProscai = cleanText(row.sku_proscai);
             // Clave AUSENTE (backend anterior al campo) → no se pinta; `null`
             // (talla sin variante) → "—". El backend suma todos los almacenes
             // de la EMPRESA, no solo la sucursal.

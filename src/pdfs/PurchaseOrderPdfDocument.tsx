@@ -38,10 +38,8 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
-import {
-  NO_DELIVERY_ADDRESS,
-  optionalText,
-} from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { NO_DELIVERY_ADDRESS } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { cleanText } from "@/src/utils/cleanText";
 
 /**
  * Texto FIJO de la leyenda/marca de agua de una orden cancelada. Decidido por
@@ -149,17 +147,17 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
             <Text style={s.cardTitle}>DIRECCIÓN DE ENTREGA</Text>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Almacén destino</Text>
-              <Text style={s.infoValue}>{optionalText(order.almacen_nombre) ?? "-"}</Text>
+              <Text style={s.infoValue}>{cleanText(order.almacen_nombre) ?? "-"}</Text>
             </View>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Dirección</Text>
               <Text style={s.infoValue}>
-                {optionalText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
+                {cleanText(order.sucursal_direccion) ?? NO_DELIVERY_ADDRESS}
               </Text>
             </View>
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Teléfono</Text>
-              <Text style={s.infoValue}>{optionalText(order.sucursal_telefono) ?? "-"}</Text>
+              <Text style={s.infoValue}>{cleanText(order.sucursal_telefono) ?? "-"}</Text>
             </View>
           </View>
         </View>

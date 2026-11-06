@@ -11,7 +11,7 @@ import type {
   EmbroideryOnboardingDetalle,
   EmbroideryOrderDetalleOverride,
 } from "../interfaces/embroidery.interface";
-import { skuOrNull } from "@/src/features/orders/utils/orderLines";
+import { cleanText } from "@/src/utils/cleanText";
 import { buildEmbroideryOrderPayload } from "../utils/buildEmbroideryOrderPayload";
 import { useEmbroideryOnboarding } from "./useEmbroideryOnboarding";
 import {
@@ -60,7 +60,7 @@ export const embroideryLineProductoNombre = (
 ): string => {
   if (row.producto_nombre) return row.producto_nombre;
   if (row.producto_id !== null) return `Producto #${row.producto_id}`;
-  const sku = skuOrNull(row.sku);
+  const sku = cleanText(row.sku);
   return sku
     ? `Sin producto de catálogo · ${sku}`
     : `Sin producto de catálogo · línea #${row.pedido_detalle_talla_id}`;
