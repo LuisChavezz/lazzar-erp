@@ -35,6 +35,26 @@ export const enumParam = <const T extends string>(
   serialize: (value) => value,
 });
 
+/**
+ * Uno o varios de una lista cerrada de textos, separados por coma (`?estatus=3,4`,
+ * `?clasificacion=A,B`), para los endpoints que aceptan un CSV. Todo o nada: un
+ * solo elemento fuera de la lista (o vacío) invalida el valor entero, porque el
+ * backend responde 400 por él. Los repetidos se quitan y el orden es el de
+ * `values`, así que `"4,3"` y `"3,4"` son el mismo filtro (y la misma llave).
+ * Un solo valor (`"3"`) es válido: un filtro de encabezado de selección única
+ * escribe exactamente eso.
+ */
+export const csvEnumParam = <const T extends string>(
+  values: readonly T[],
+): ServerTableParam<T[]> => ({
+  parse: (raw) => {
+    const parts = raw.split(",");
+    if (parts.some((part) => !(values as readonly string[]).includes(part))) return null;
+    return values.filter((value) => parts.includes(value));
+  },
+  serialize: (value) => value.join(","),
+});
+
 /** Id entero positivo (una FK: cliente, vendedor). Solo dígitos. */
 export const positiveIdParam: ServerTableParam<number> = {
   parse: (raw) => parsePositiveId(raw),
