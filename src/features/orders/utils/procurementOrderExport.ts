@@ -3,18 +3,20 @@ import { formatOrderAmountOrDash } from "./orderAmountFormat";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoListItem } from "../interfaces/order.interface";
+import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
 
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado de
  * "Pedidos" en Compras (`useProcurementOrderCsvExport`/
- * `useProcurementOrderPdfExport`). La columna "folio" es un widget compuesto
+ * `useProcurementOrderPdfExport`), sobre los renglones de
+ * `GET /ventas/pedidos/exportar/`. La columna "folio" es un widget compuesto
  * pensado para pantalla (punto de estatus + folio + OC como mini-pill, ver
  * `ProcurementOrderColumns`), no para una celda de reporte — aquí se arma su
  * propia representación de texto por `column.id`. Mismo criterio que
  * `purchaseOrderExport.ts`.
  */
 export const getProcurementOrderColumnText = (
-  order: PedidoListItem,
+  order: PedidoExportRow,
   column: DataTableVisibleColumn<PedidoListItem>,
 ): string => {
   switch (column.id) {

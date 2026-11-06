@@ -1,23 +1,22 @@
 'use client';
 
-import { type ColumnDef, type FilterFn } from '@tanstack/react-table';
+import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRightIcon } from '@/src/components/Icons';
-import { ColumnHeaderFilter, type ColumnFilterOption } from '@/src/components/ColumnHeaderFilter';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import { parseLocalDate } from '@/src/utils/formatDate';
-import {
-  buildMonthFilterOptions,
-  matchesMonthFilter,
-  matchesRangeFilter,
-  type RangeFilterOption,
-} from '@/src/utils/columnFilterOptions';
 import type { PedidoListItem } from '../interfaces/order.interface';
-import { PEDIDO_ESTATUS_CONFIG, getPedidoEstatusBadge } from '../constants/pedidoStatus';
+import { getPedidoEstatusBadge } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { PedidoFolioLink } from './PedidoFolioLink';
+import {
+  PedidoCatalogHeaderFilter,
+  PedidoEstatusHeaderFilter,
+  PedidoRangeHeaderFilter,
+} from './PedidoHeaderFilters';
+import { GRAN_TOTAL_RANGE_OPTIONS } from '../utils/pedidoListParams';
 
 /**
  * Columnas de "Pedidos" vistos desde Compras/SCM (`GET /ventas/pedidos/`,
@@ -25,9 +24,10 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  * `PurchaseOrderColumns.tsx` (folio como elemento principal con su estatus
  * reducido a un punto de color, referencia secundaria como mini-pill, sin
  * columna de Acciones cuando no hay más acción que "ver detalle" — el folio
- * ya navega) y el mismo patrón de filtro de encabezado que
- * `SalesOrderColumns.tsx` (`ColumnHeaderFilter`, estado NATIVO de columna de
- * TanStack).
+ * ya navega). Tabla en MODO SERVIDOR: `meta.serverSort` es el campo de
+ * `ordering` del backend (`procurementPedidosTable`) y `meta.serverFilter`, la
+ * clave del filtro; las opciones son fijas o salen de `opciones/`
+ * (`PedidoHeaderFilters`), nunca de las filas.
  *
  * NO reusa `createOrderColumns` de `SharedOrderColumns.tsx` a propósito:
  * aquella sigue sirviendo a Mesa de Control (que añade Confirmar
@@ -44,114 +44,22 @@ export interface ProcurementOrderColumnsOptions {
   /** Llave `?from=` del detalle 360° que abre el folio. */
   from: PedidoDetailOrigin;
   /**
-   * Opciones de los filtros de Cliente, Fecha y Fecha confirmada, que salen de
-   * la lista completa (`buildProcurementOrderFilterOptions`): la tabla es de
-   * modo cliente y tiene todos los pedidos en memoria.
+   * ¿El usuario ve importes de pedidos? Sin permiso el backend quita
+   * `gran_total` e ignora su filtro y su orden: la columna no se monta.
    */
-  filterOptions: ProcurementOrderFilterOptions;
+  showAmounts: boolean;
 }
-
-export interface ProcurementOrderFilterOptions {
-  clientes: ColumnFilterOption[];
-  fechas: ColumnFilterOption[];
-  fechasConfirmacion: ColumnFilterOption[];
-}
-
-const ALL_OPTION: ColumnFilterOption = { value: undefined, label: 'Todos' };
-
-/**
- * Opciones de los filtros de encabezado que dependen de los datos: un cliente
- * por id (dos razones sociales iguales no se mezclan) y un mes por cada mes
- * presente en las fechas.
- */
-export function buildProcurementOrderFilterOptions(
-  orders: PedidoListItem[],
-): ProcurementOrderFilterOptions {
-  const clientes = new Map<number, string>();
-  for (const order of orders) {
-    const nombre = order.cliente_razon_social || order.cliente_nombre;
-    if (nombre && !clientes.has(order.cliente)) clientes.set(order.cliente, nombre);
-  }
-  return {
-    clientes: [
-      ALL_OPTION,
-      ...Array.from(clientes.entries())
-        .sort(([, a], [, b]) => a.localeCompare(b))
-        .map(([id, nombre]) => ({ value: String(id), label: nombre })),
-    ],
-    fechas: [ALL_OPTION, ...buildMonthFilterOptions(orders.map((order) => order.created_at))],
-    fechasConfirmacion: [
-      ALL_OPTION,
-      ...buildMonthFilterOptions(
-        orders.map((order) => order.fecha_confirmacion),
-        'Sin confirmar',
-      ),
-    ],
-  };
-}
-
-/**
- * Rangos del filtro de Total. Sin símbolo de moneda, igual que la celda: la
- * fila solo trae el id de `moneda` (ver `orderAmountFormat.ts`).
- */
-const TOTAL_RANGES: RangeFilterOption[] = [
-  { value: 'cero', label: 'Sin importe (0.00)', max: 0.005 },
-  { value: 'hasta-10k', label: 'Hasta 10,000', min: 0.005, max: 10_000 },
-  { value: '10k-100k', label: '10,000 – 100,000', min: 10_000, max: 100_000 },
-  { value: 'mas-100k', label: 'Más de 100,000', min: 100_000 },
-];
-
-const TOTAL_FILTER_OPTIONS: ColumnFilterOption[] = [
-  ALL_OPTION,
-  ...TOTAL_RANGES.map(({ value, label }) => ({ value, label })),
-];
-
-/** Encabezado con su filtro, para no repetir el mismo marcado en cada columna. */
-function FilterHeader({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span>{title}</span>
-      {children}
-    </div>
-  );
-}
-
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: 'Todos' },
-  ...Object.entries(PEDIDO_ESTATUS_CONFIG).map(([id, cfg]) => ({
-    value: id,
-    label: cfg.label,
-    dotClassName: cfg.dot,
-  })),
-];
-
-/** Filtro EXACTO sobre `row.original.estatus` — el valor crudo, no la etiqueta traducida. */
-const estatusFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
-  if (!filterValue) return true;
-  return String(row.original.estatus) === filterValue;
-};
 
 export function createProcurementOrderColumns({
   from,
-  filterOptions,
+  showAmounts,
 }: ProcurementOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
-  return [
+  const columns: ColumnDef<PedidoListItem, unknown>[] = [
     {
       id: 'folio',
       accessorKey: 'folio',
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Folio</span>
-          <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus del pedido" />
-        </div>
-      ),
-      filterFn: estatusFilterFn,
+      meta: { label: 'Folio', serverSort: 'folio', serverFilter: 'estatus' },
+      header: ({ column }) => <PedidoEstatusHeaderFilter column={column} title="Folio" />,
       size: 190,
       cell: ({ row }) => {
         const order = row.original;
@@ -195,20 +103,17 @@ export function createProcurementOrderColumns({
     {
       id: 'cliente',
       accessorKey: 'cliente_razon_social',
-      meta: { label: 'Cliente' },
-      header: ({ column }) => (
-        <FilterHeader title="Cliente">
-          <ColumnHeaderFilter
-            column={column}
-            options={filterOptions.clientes}
-            label="cliente"
-            searchable={{ placeholder: 'Buscar cliente…' }}
-          />
-        </FilterHeader>
-      ),
       // Por id de cliente, no por el nombre que se muestra.
-      filterFn: (row, _columnId, filterValue) =>
-        !filterValue || String(row.original.cliente) === filterValue,
+      meta: { label: 'Cliente', serverSort: 'cliente_razon_social', serverFilter: 'cliente' },
+      header: ({ column }) => (
+        <PedidoCatalogHeaderFilter
+          column={column}
+          title="Cliente"
+          catalog="cliente"
+          label="cliente"
+          searchPlaceholder="Buscar cliente…"
+        />
+      ),
       size: 220,
       cell: ({ row }) => {
         const order = row.original;
@@ -230,14 +135,10 @@ export function createProcurementOrderColumns({
     {
       id: 'created_at',
       accessorKey: 'created_at',
-      meta: { label: 'Fecha' },
+      meta: { label: 'Fecha', serverSort: 'created_at', serverFilter: 'mes' },
       header: ({ column }) => (
-        <FilterHeader title="Fecha">
-          <ColumnHeaderFilter column={column} options={filterOptions.fechas} label="mes" />
-        </FilterHeader>
+        <PedidoCatalogHeaderFilter column={column} title="Fecha" catalog="mes" label="mes" />
       ),
-      filterFn: (row, _columnId, filterValue) =>
-        matchesMonthFilter(row.original.created_at, filterValue),
       size: 120,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
@@ -248,25 +149,24 @@ export function createProcurementOrderColumns({
         );
       },
     },
-    // `accessorFn` que colapsa `null` a `''` — mismo motivo que documenta
-    // `SharedOrderColumns.tsx`: los pedidos por confirmar por definición no
-    // tienen `fecha_confirmacion`, y dejarlo en `undefined` en la primera
-    // fila sacaría la columna de la búsqueda global.
     {
+      // Opciones de `opciones/`: un mes por cada mes con confirmaciones y
+      // "Sin confirmar" (`?mes_confirmacion=sin_confirmar`).
       id: 'fecha_confirmacion',
       accessorFn: (order) => order.fecha_confirmacion ?? '',
-      meta: { label: 'Fecha confirmada' },
+      meta: {
+        label: 'Fecha confirmada',
+        serverSort: 'fecha_confirmacion',
+        serverFilter: 'mes_confirmacion',
+      },
       header: ({ column }) => (
-        <FilterHeader title="Fecha confirmada">
-          <ColumnHeaderFilter
-            column={column}
-            options={filterOptions.fechasConfirmacion}
-            label="mes de confirmación"
-          />
-        </FilterHeader>
+        <PedidoCatalogHeaderFilter
+          column={column}
+          title="Fecha confirmada"
+          catalog="mes_confirmacion"
+          label="mes de confirmación"
+        />
       ),
-      filterFn: (row, _columnId, filterValue) =>
-        matchesMonthFilter(row.original.fecha_confirmacion, filterValue),
       size: 160,
       cell: ({ row }) => {
         const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
@@ -277,28 +177,35 @@ export function createProcurementOrderColumns({
         );
       },
     },
-    {
+  ];
+
+  if (showAmounts) {
+    columns.push({
       id: 'gran_total',
       accessorKey: 'gran_total',
       header: ({ column }) => (
-        <FilterHeader title="Total">
-          <ColumnHeaderFilter
-            column={column}
-            options={TOTAL_FILTER_OPTIONS}
-            label="rango de total"
-            menuAlign="end"
-          />
-        </FilterHeader>
+        <PedidoRangeHeaderFilter
+          column={column}
+          title="Total"
+          label="rango de total"
+          options={GRAN_TOTAL_RANGE_OPTIONS}
+          menuAlign="end"
+        />
       ),
-      meta: { align: "right", label: 'Total' },
-      filterFn: (row, _columnId, filterValue) =>
-        matchesRangeFilter(TOTAL_RANGES, row.original.gran_total, filterValue),
+      meta: {
+        align: 'right',
+        label: 'Total',
+        serverSort: 'gran_total',
+        serverFilter: 'rango_gran_total',
+      },
       size: 130,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">
           {formatOrderAmountOrDash(row.original.gran_total)}
         </span>
       ),
-    },
-  ];
+    });
+  }
+
+  return columns;
 }
