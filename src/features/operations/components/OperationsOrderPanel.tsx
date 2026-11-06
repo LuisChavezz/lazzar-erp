@@ -15,6 +15,7 @@ import type { CurrencyTotal } from '@/src/utils/currencyTotals';
 import { safeParseAmount } from '@/src/utils/formatCurrency';
 import { hiddenAmountCard } from '@/src/features/purchase-orders/utils/kpiAmountCards';
 import { ORDERS_QUERY_KEY } from '@/src/features/orders/constants/ordersQueryKeys';
+import { HIDDEN_PEDIDO_AMOUNTS_REASON } from '@/src/features/orders/constants/pedidoKpis';
 import { usePedidoKpisMesa, usePedidosTable } from '@/src/features/orders/hooks/usePedidosTable';
 import type { PedidoKpisMesa } from '@/src/features/orders/interfaces/pedido-list.interface';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
@@ -68,7 +69,7 @@ const buildKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
       detail: `${pct(kpis.confirmados)}% del total · con fecha`,
     },
     !kpis.puede_ver_importes
-      ? hiddenAmountCard(valorBase, 'Tu rol no tiene acceso a los importes de los pedidos.')
+      ? hiddenAmountCard(valorBase, HIDDEN_PEDIDO_AMOUNTS_REASON)
       : {
           ...valorBase,
           value: <CurrencyTotalsValue totals={valorPorMoneda(kpis)} />,
