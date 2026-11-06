@@ -15,8 +15,8 @@ import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
-import { almacenSelectState, almacenTrasCambioDeSucursal } from "../utils/purchaseOrderDelivery";
-import { PurchaseOrderDeliveryAddress } from "./PurchaseOrderDeliveryAddress";
+import { almacenTrasCambioDeSucursal } from "../utils/purchaseOrderDelivery";
+import { PurchaseOrderAlmacenField } from "./PurchaseOrderAlmacenField";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -127,59 +127,41 @@ export function PurchaseOrderEditStep1({
           )}
         </form.Field>
 
-        {/* ── Almacén destino (EC-796, opcional al editar) ─────────────────
-            Solo los de la sucursal elegida. El guardado en la orden se sigue
-            mostrando aunque ya no esté en el catálogo (p. ej. inactivo), con
-            el nombre que trae la orden; sin cambios, no se reenvía. */}
-        <form.Subscribe
-          selector={(state) => [state.values.sucursal, state.values.almacen] as const}
-        >
-          {([sucursalId, almacenId]) => {
-            const almacen = almacenSelectState({
-              almacenes: onboardingData.catalogos.almacenes,
-              sucursalId,
-              emptyLabel: "Sin almacén destino",
-              selected:
-                initialData.almacen && almacenId === initialData.almacen
-                  ? {
-                      value: initialData.almacen,
-                      label: initialData.almacen_nombre ?? `Almacén #${initialData.almacen}`,
-                    }
-                  : null,
-            });
-            return (
-              <form.Field name="almacen">
-                {(field) => (
-                  <FormSelect
-                    label="Almacén destino"
-                    name={field.name}
-                    value={field.state.value}
-                    options={almacen.options}
-                    disabled={almacen.disabled}
-                    onChange={(event) => {
-                      field.handleChange(coerceNumeric("almacen", event.target.value) as number);
-                      clearFieldErrors("almacen");
-                    }}
-                    onBlur={() => {
-                      field.handleBlur();
-                      validateField("almacen");
-                    }}
-                    error={getError("almacen")}
-                  />
-                )}
-              </form.Field>
-            );
-          }}
-        </form.Subscribe>
-
-        {/* ── Dirección de entrega (solo lectura) ─────────────────────── */}
+        {/* ── Almacén destino (opcional al editar) + dirección de entrega ──
+            (EC-796). El guardado en la orden se sigue mostrando aunque ya no
+            esté en el catálogo (p. ej. inactivo), con el nombre que trae la
+            orden; sin cambios, no se reenvía. */}
         <form.Subscribe selector={(state) => state.values.sucursal}>
           {(sucursalId) => (
-            <PurchaseOrderDeliveryAddress
-              sucursal={onboardingData.catalogos.sucursales.find(
-                (s) => s.id_sucursal === sucursalId,
+            <form.Field name="almacen">
+              {(field) => (
+                <PurchaseOrderAlmacenField
+                  name={field.name}
+                  sucursalId={sucursalId}
+                  value={field.state.value ?? 0}
+                  onChange={(next) => {
+                    field.handleChange(next);
+                    clearFieldErrors("almacen");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("almacen");
+                  }}
+                  error={getError("almacen")}
+                  almacenes={onboardingData.catalogos.almacenes}
+                  sucursales={onboardingData.catalogos.sucursales}
+                  emptyLabel="Sin almacén destino"
+                  saved={
+                    initialData.almacen
+                      ? {
+                          value: initialData.almacen,
+                          label: initialData.almacen_nombre ?? `Almacén #${initialData.almacen}`,
+                        }
+                      : null
+                  }
+                />
               )}
-            />
+            </form.Field>
           )}
         </form.Subscribe>
 
