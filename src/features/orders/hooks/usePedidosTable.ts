@@ -1,6 +1,7 @@
 "use client";
 
 import { keepPreviousData, type QueryKey } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { useServerTable, type ServerTableRequest } from "@/src/hooks/useServerTable";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
@@ -17,7 +18,7 @@ import {
   getPedidoKpisMesa,
 } from "../services/actions";
 import {
-  PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY,
+  pedidoAmountsVisibilityQueryKey,
   pedidoFilterOptionsQueryKey,
   pedidoKpisMesaQueryKey,
 } from "../constants/ordersQueryKeys";
@@ -134,7 +135,8 @@ export const usePedidoKpisMesa = (criteria: Readonly<Record<string, string>>) =>
  * sin filtros (la regla es por usuario, EC-784). Devuelve la respuesta del
  * backend tal cual: `undefined` hasta que llega o si falla.
  *
- * Una sola vez por sesión: llave fija (`PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY`) y
+ * Una sola vez por sesión: llave por usuario (`pedidoAmountsVisibilityQueryKey`,
+ * deshabilitada hasta que la sesión trae su id) y
  * `staleTime`/`gcTime` infinitos, así que ni volver a la pantalla, ni cambiar
  * de filtros, ni las mutaciones de pedidos la vuelven a pedir (el foco de la
  * ventana tampoco: `refetchOnWindowFocus` es `false` globalmente). Si cambia el
@@ -144,9 +146,11 @@ export const usePedidoKpisMesa = (criteria: Readonly<Record<string, string>>) =>
  * pantalla ya carga, traiga `puede_ver_importes`.
  */
 export const usePedidoAmountsVisibility = (): boolean | undefined => {
+  const userId = useSession().data?.user?.id;
   const { data } = useGuardedQuery(
     {
-      queryKey: PEDIDO_AMOUNTS_VISIBILITY_QUERY_KEY,
+      queryKey: pedidoAmountsVisibilityQueryKey(userId ?? ""),
+      enabled: Boolean(userId),
       queryFn: async () => (await getPedidoKpisMesa({})).puede_ver_importes,
       staleTime: Infinity,
       gcTime: Infinity,
