@@ -582,7 +582,9 @@ export default function SupplierInvoiceForm({ onSuccess }: SupplierInvoiceFormPr
       <PurchaseOrderSelectorDialog
         open={isOcPickerOpen}
         onOpenChange={setIsOcPickerOpen}
-        selectedOcId={oc}
+        selectedOc={
+          oc > 0 ? { id: oc, folio: ocFolio, proveedorNombre: proveedorNombre } : null
+        }
         onConfirm={handleOcChange}
       />
       <ReceptionSelectorDialog
