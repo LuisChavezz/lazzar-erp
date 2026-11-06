@@ -49,20 +49,12 @@ const extractRejectionMessage = (data: unknown): string | undefined =>
  * ruta y aquí las rutas ya coinciden con las del formulario —
  * `programaciones` (suma excedida) y `programaciones.N.destino` /
  * `programaciones.N.cantidad` / `programaciones.N.comentarios` (por renglón)—.
+ * Acepta el mensaje como lista o como string suelto.
  */
-const extractProgramacionIssues = (data: unknown): QuoteValidationIssue[] => {
-  const issues = extractQuoteValidationIssues(data).filter(
+const extractProgramacionIssues = (data: unknown): QuoteValidationIssue[] =>
+  extractQuoteValidationIssues(data).filter(
     (issue) => issue.path === "programaciones" || issue.path.startsWith("programaciones."),
   );
-  /* `extractQuoteValidationIssues` solo reconoce mensajes dentro de un ARRAY.
-   * El serializer envuelve el de la suma en lista, pero si llegara como string
-   * plano se perdería sin este respaldo. */
-  const flat = (data as Record<string, unknown> | null)?.programaciones;
-  if (typeof flat === "string" && flat.length > 0) {
-    issues.push({ path: "programaciones", message: flat });
-  }
-  return issues;
-};
 
 type ProgramarPedidoVariables = {
   pedidoId: number;

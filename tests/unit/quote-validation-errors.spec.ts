@@ -177,3 +177,11 @@ test.describe("lista mixta de detalle (code review EC-795)", () => {
     ]);
   });
 });
+
+test.describe("programaciones de Programar pedido (code review EC-795)", () => {
+  test("el string suelto de la suma da UN solo error, sin respaldo duplicado", () => {
+    expect(
+      extractQuoteValidationIssues({ programaciones: "La suma excede el total." }),
+    ).toEqual([{ path: "programaciones", message: "La suma excede el total." }]);
+  });
+});
