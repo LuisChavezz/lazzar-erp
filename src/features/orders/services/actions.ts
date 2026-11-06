@@ -24,6 +24,11 @@ import type {
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
 import type { PedidoKpis } from "../interfaces/pedido-kpis.interface";
+import type {
+  PedidoExportRow,
+  PedidoFilterOptions,
+  PedidoKpisMesa,
+} from "../interfaces/pedido-list.interface";
 
 
 /** Filtros de query string aceptados por `GET /ventas/pedidos/`. */
@@ -38,6 +43,53 @@ export const getOrders = async (params?: OrdersQueryParams): Promise<PedidoListI
   const response = await v1_api.get<PedidoListItem[]>("/ventas/pedidos/", { params });
   return response.data;
 }
+
+/**
+ * Una página del listado de pedidos en MODO SERVIDOR (`useServerTable`):
+ * `?limit=&offset=` (tope 500) más los filtros, búsqueda (`q`) y `ordering` ya
+ * traducidos a los nombres del endpoint (`toPedidoListApiParams`). Con `limit`
+ * el backend responde el sobre paginado; sin él, el arreglo completo.
+ */
+export const getOrdersPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<PedidoListItem>> => {
+  const response = await v1_api.get<PaginatedListResponse<PedidoListItem>>("/ventas/pedidos/", {
+    params,
+  });
+  return response.data;
+};
+
+/**
+ * Indicadores de Mesa de Control (`GET /ventas/pedidos/kpis-mesa/`) con los
+ * MISMOS filtros y búsqueda que la tabla (sin paginación ni orden).
+ */
+export const getPedidoKpisMesa = async (
+  params: Record<string, string>,
+): Promise<PedidoKpisMesa> => {
+  const response = await v1_api.get<PedidoKpisMesa>("/ventas/pedidos/kpis-mesa/", { params });
+  return response.data;
+};
+
+/**
+ * Catálogos de los filtros de encabezado (`GET /ventas/pedidos/opciones/`) sobre
+ * todo el conjunto visible. Solo acepta `mis_pedidos`: cualquier otro parámetro
+ * responde 400, así que nunca se le mandan los filtros activos.
+ */
+export const getPedidoFilterOptions = async (params: {
+  mis_pedidos?: "true";
+}): Promise<PedidoFilterOptions> => {
+  const response = await v1_api.get<PedidoFilterOptions>("/ventas/pedidos/opciones/", { params });
+  return response.data;
+};
+
+/**
+ * Exportación (`GET /ventas/pedidos/exportar/`): el conjunto filtrado y
+ * ordenado completo, sin paginar, con los mismos parámetros que la tabla.
+ */
+export const exportOrders = async (params: Record<string, string>): Promise<PedidoExportRow[]> => {
+  const response = await v1_api.get<PedidoExportRow[]>("/ventas/pedidos/exportar/", { params });
+  return response.data;
+};
 
 /**
  * Filtros de la búsqueda de pedidos de los selectores. Solo los que

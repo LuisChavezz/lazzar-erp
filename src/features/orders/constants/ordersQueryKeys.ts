@@ -21,6 +21,31 @@ export const ordersQueryKey = (params?: OrdersQueryParams) =>
     : ([...ORDERS_QUERY_KEY, "full"] as const);
 
 /**
+ * Prefijo de la tabla de "Mis pedidos" en modo servidor. Va aparte del de Mesa
+ * de Control y Compras (que comparten `ORDERS_QUERY_KEY`) porque su
+ * `?mis_pedidos=true` lo añade la acción y no viaja en los parámetros de la
+ * tabla: con el mismo prefijo, las dos listas compartirían llave. Sigue bajo
+ * `["orders"]`, así que las mutaciones de pedidos la refrescan.
+ */
+export const MIS_PEDIDOS_TABLE_QUERY_KEY = [...ORDERS_QUERY_KEY, "mis-pedidos"] as const;
+
+/**
+ * Llave de los indicadores de Mesa de Control (`kpis-mesa/`) con los filtros de
+ * la tabla: bajo el prefijo, así que cancelar, editar o programar un pedido los
+ * refresca junto con la lista.
+ */
+export const pedidoKpisMesaQueryKey = (params: Record<string, string>) =>
+  [...ORDERS_QUERY_KEY, "kpis-mesa", params] as const;
+
+/**
+ * Llave de los catálogos de los filtros de encabezado (`opciones/`), con o sin
+ * `mis_pedidos`. Bajo el prefijo: un pedido nuevo o editado puede traer un
+ * cliente, vendedor o mes que antes no estaba.
+ */
+export const pedidoFilterOptionsQueryKey = (misPedidos: boolean) =>
+  [...ORDERS_QUERY_KEY, "opciones", { mis_pedidos: misPedidos }] as const;
+
+/**
  * Llave de una búsqueda de pedidos de un selector: bajo el prefijo (la
  * refrescan las mutaciones de pedidos) y bajo `"search"`, aparte de la lista
  * completa, porque trae solo una página.
