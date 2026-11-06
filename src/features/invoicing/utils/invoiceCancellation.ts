@@ -33,8 +33,8 @@ export const canCancelInvoice = (
 /**
  * Explicación de "Cancelar factura" deshabilitado con un timbrado sin
  * confirmar (`cfdi_pendiente`): puede haber un CFDI vigente ante el SAT que
- * `cancelar/` no cancelaría, porque la factura no tiene `cfdi_uuid` (y el
- * backend no lo rechaza).
+ * `cancelar/` no cancelaría, porque la factura no tiene `cfdi_uuid`. El backend
+ * también la rechaza (`400 {"cfdi": [...]}`); el front lo explica antes.
  */
 export const INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE =
   "No se puede cancelar mientras el timbrado está pendiente de confirmación. Usa \"Conciliar con Facturama\" en el detalle de la factura.";
