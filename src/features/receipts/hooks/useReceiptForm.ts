@@ -82,14 +82,11 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
   const allWarehouses = onboardingData?.catalogos.almacenes ?? [];
-  // Contra una OC solo se ofrecen los almacenes de SU sucursal (EC-796), que
-  // son los únicos que el backend acepta al recibir; los que no tienen
-  // sucursal también los rechaza, así que quedan fuera. Las órdenes de
-  // producción siguen viendo el catálogo completo.
-  const warehouses =
-    candidate.type === "compra"
-      ? almacenesDeSucursal(allWarehouses, candidate.order.sucursal_id)
-      : allWarehouses;
+  // Solo se ofrecen los almacenes de la sucursal de la orden (EC-796), que
+  // son los únicos que el backend acepta al recibir, sea OC u OP (compara
+  // contra `oc.sucursal` u `op.sucursal`); los que no tienen sucursal también
+  // los rechaza, así que quedan fuera.
+  const warehouses = almacenesDeSucursal(allWarehouses, candidate.order.sucursal_id);
 
   // Almacén destino elegido en la OC, si está entre los ofrecidos. Se calcula
   // UNA vez al montar (el formulario se monta de nuevo con cada orden elegida):
