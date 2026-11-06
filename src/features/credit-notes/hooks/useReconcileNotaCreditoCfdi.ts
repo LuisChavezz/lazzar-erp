@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useMutationLock } from "@/src/hooks/useMutationLock";
-import { toastWarning } from "@/src/utils/toastWarning";
+import { announceCfdiReconcileResult } from "@/src/utils/announceCfdiReconcileResult";
 import { conciliarCfdiNotaCredito } from "../services/actions";
 import type {
   NotaCredito,
@@ -43,7 +43,7 @@ export type ReconcileNotaCreditoCfdiResult =
  *
  * Con `aviso` (EC-761) el CFDI de egreso quedó vigente ante el SAT aunque la
  * nota esté cancelada: en lugar del toast de éxito se muestra ese aviso del
- * backend tal cual, como advertencia. No se distinguen casos por su texto.
+ * backend tal cual, como advertencia (`announceCfdiReconcileResult`).
  */
 export const reconcileNotaCreditoCfdiMutationOptions = (
   queryClient: QueryClient,
@@ -64,22 +64,13 @@ export const reconcileNotaCreditoCfdiMutationOptions = (
         return;
       }
       const { resultado, aviso, nota_credito: nota } = result.response;
-      if (aviso) {
-        toastWarning(aviso);
-        return;
-      }
-      const label = nota.folio || `#${nota.id}`;
-      if (resultado === "timbrado") {
-        toast.success(
-          nota.cfdi_uuid
-            ? `El CFDI de la nota ${label} sí existía en Facturama: la nota ya está timbrada. UUID ${nota.cfdi_uuid}`
-            : `El CFDI de la nota ${label} sí existía en Facturama: la nota ya está timbrada.`,
-        );
-        return;
-      }
-      toast.success(
-        `Facturama no tenía ningún CFDI de la nota ${label}: se liberó el timbrado pendiente.`,
-      );
+      announceCfdiReconcileResult({
+        resultado,
+        aviso,
+        noun: "nota",
+        label: nota.folio || `#${nota.id}`,
+        cfdiUuid: nota.cfdi_uuid,
+      });
     },
     onError: (error) => {
       logUnexpectedError(error);

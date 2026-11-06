@@ -13,7 +13,7 @@ import {
 } from "../utils/invoiceStamping";
 import { fetchFreshInvoice, invalidateInvoiceBaseQueries } from "./invoiceActionMutation";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { toastWarning } from "@/src/utils/toastWarning";
+import { announceCfdiReconcileResult } from "@/src/utils/announceCfdiReconcileResult";
 
 /** Candado de la conciliación, ÚNICO por factura (ver `useReconcileInvoiceCfdi`). */
 export const reconcileInvoiceCfdiMutationKey = (invoiceId: number) =>
@@ -44,7 +44,7 @@ export type ReconcileInvoiceCfdiResult =
  *
  * Con `aviso` (EC-761) el CFDI quedó vigente ante el SAT aunque la factura esté
  * cancelada o eliminada: en lugar del toast de éxito se muestra ese aviso del
- * backend tal cual, como advertencia. No se distinguen casos por su texto.
+ * backend tal cual, como advertencia (`announceCfdiReconcileResult`).
  *
  * Errores: toast con el motivo del backend bajo `cfdi`, tal cual
  * (`reconcileInvoiceCfdiErrorMessage`).
@@ -68,22 +68,13 @@ export const reconcileInvoiceCfdiMutationOptions = (
         return;
       }
       const { resultado, aviso, factura } = result.response;
-      if (aviso) {
-        toastWarning(aviso);
-        return;
-      }
-      const label = factura.folio || `#${factura.id}`;
-      if (resultado === "timbrado") {
-        toast.success(
-          factura.cfdi_uuid
-            ? `El CFDI de la factura ${label} sí existía en Facturama: la factura ya está timbrada. UUID ${factura.cfdi_uuid}`
-            : `El CFDI de la factura ${label} sí existía en Facturama: la factura ya está timbrada.`,
-        );
-        return;
-      }
-      toast.success(
-        `Facturama no tenía ningún CFDI de la factura ${label}: se liberó el timbrado pendiente.`,
-      );
+      announceCfdiReconcileResult({
+        resultado,
+        aviso,
+        noun: "factura",
+        label: factura.folio || `#${factura.id}`,
+        cfdiUuid: factura.cfdi_uuid,
+      });
     },
     onError: (error) => {
       toast.error(
