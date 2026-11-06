@@ -7,8 +7,6 @@ import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
-import { useOrders } from "@/src/features/orders/hooks/useOrders";
-import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
 import {
   RegisterPendingInvoiceSchema,
   type RegisterPendingInvoiceFormValues,
@@ -66,19 +64,16 @@ export function useRegisterPendingInvoiceForm({
     isLoading: isLoadingCurrencies,
     isError: isErrorCurrencies,
   } = useCurrencies();
-  const { orders, isLoading: isLoadingOrders, isError: isErrorOrders } = useOrders();
-
-  const isLoadingCatalogs =
-    isLoadingCustomers || isLoadingCurrencies || isLoadingOrders;
+  // Los pedidos ya no son un catálogo: se buscan en el servidor por cliente y
+  // moneda (`CxcPedidoPicker`), así que no bloquean el formulario.
+  const isLoadingCatalogs = isLoadingCustomers || isLoadingCurrencies;
   // Si cualquier catálogo falla, el formulario no puede armarse con selects
   // válidos: se expone para que el diálogo muestre un estado de error en vez de
   // renderizar el formulario con dropdowns vacíos (que se confundirían con
   // catálogos legítimamente vacíos). Clientes ya llega filtrado (`useCustomers`
-  // expone `isInitialError`); monedas y pedidos siguen con su `isError` crudo,
-  // así que un refetch fallido de esos dos todavía cambia el formulario por el
-  // error. Pendiente en #239.
-  const isErrorCatalogs =
-    isErrorCustomers || isErrorCurrencies || isErrorOrders;
+  // expone `isInitialError`); monedas sigue con su `isError` crudo, así que un
+  // refetch fallido todavía cambia el formulario por el error. Pendiente en #239.
+  const isErrorCatalogs = isErrorCustomers || isErrorCurrencies;
 
   // ─── Opciones derivadas ──────────────────────────────────────────────────
   const customerOptions = useMemo<SelectOption[]>(
@@ -110,39 +105,6 @@ export function useRegisterPendingInvoiceForm({
     moneda > 0
       ? (currencies.find((c) => c.id === moneda && c.activo)?.codigo_iso ?? null)
       : null;
-
-  /**
-   * Un pedido es seleccionable si está activo (mismo criterio de "no eliminado"
-   * que aplican `customerOptions`/`currencyOptions` con su bandera `activo`).
-   * `Order.estatus` es un código numérico sin significado decodificado en el
-   * frontend —no hay enum que lo mapee—, así que el guard correcto y no
-   * especulativo es la bandera booleana `activo`, no un valor mágico de estatus.
-   */
-  const isSelectableOrder = (o: PedidoListItem): boolean => o.activo;
-
-  /**
-   * Devuelve los pedidos seleccionables que coinciden con el cliente y la moneda
-   * elegidos. El `Order` incluye ambas FK (`cliente`, `moneda`), por lo que el
-   * filtro es cliente-side y no requiere un endpoint nuevo. Sin cliente+moneda no
-   * se ofrece ningún pedido.
-   */
-  const getPedidoOptions = (cliente: number, moneda: number): SelectOption[] => {
-    if (cliente < 1 || moneda < 1) return [];
-    return orders
-      .filter(
-        (o: PedidoListItem) =>
-          isSelectableOrder(o) && o.cliente === cliente && o.moneda === moneda,
-      )
-      .map((o) => ({ value: o.id, label: `${o.folio} · ${o.cliente_nombre}` }));
-  };
-
-  /**
-   * Devuelve el pedido completo (para auto-llenar los montos al seleccionarlo).
-   * Aplica el mismo guard `isSelectableOrder` que `getPedidoOptions`, de modo que
-   * un id obsoleto de un pedido inactivo nunca auto-llena el formulario.
-   */
-  const findPedido = (pedido: number): PedidoListItem | undefined =>
-    orders.find((o: PedidoListItem) => o.id === pedido && isSelectableOrder(o));
 
   // ─── Estado de errores ───────────────────────────────────────────────────
   const {
@@ -245,8 +207,6 @@ export function useRegisterPendingInvoiceForm({
     customerOptions,
     currencyOptions,
     getCurrencyCode,
-    getPedidoOptions,
-    findPedido,
     getError,
     clearFieldErrors,
     handleFormSubmit,

@@ -33,12 +33,18 @@ export const pedidoSearchQueryOptions = (filters: PedidoSearchFilters) => {
  * - `pedidos` son solo las primeras `PEDIDO_SEARCH_LIMIT` coincidencias;
  *   `total` es cuántas hay en el servidor, para avisar que hay más.
  */
-export const usePedidoSearch = (filters: PedidoSearchFilters) => {
+export const usePedidoSearch = (
+  filters: PedidoSearchFilters,
+  { enabled = true }: { enabled?: boolean } = {},
+) => {
   const { data, hasLoaded, isInitialError, error, isFetching, isPlaceholderData, refetch } =
     useGuardedQuery(
       {
         ...pedidoSearchQueryOptions(filters),
-        placeholderData: keepPreviousData,
+        enabled,
+        // Sin `enabled` no hay resultados que conservar: v5 aplicaría el
+        // placeholder también a la consulta deshabilitada.
+        placeholderData: enabled ? keepPreviousData : undefined,
       },
       {
         toastId: "pedido-search-refetch-error",
@@ -70,10 +76,15 @@ const PEDIDO_SEARCH_DEBOUNCE_MS = 350;
  * camino, así que lo pintado es de la anterior). Lo que esperan las props de
  * `ServerSearchSelectList`.
  */
-export const usePedidoSearchField = ({ estatus }: { estatus?: string } = {}) => {
+export const usePedidoSearchField = ({
+  estatus,
+  cliente,
+  moneda,
+  enabled = true,
+}: Omit<PedidoSearchFilters, "q"> & { enabled?: boolean } = {}) => {
   const [search, setSearch] = useState("");
   const { term, isDebouncing } = useServerSearchTerm(search, PEDIDO_SEARCH_DEBOUNCE_MS);
-  const query = usePedidoSearch({ q: term, estatus });
+  const query = usePedidoSearch({ q: term, estatus, cliente, moneda }, { enabled });
   const isSearching = query.isPlaceholderData || isDebouncing;
   return { search, setSearch, isSearching, ...query };
 };

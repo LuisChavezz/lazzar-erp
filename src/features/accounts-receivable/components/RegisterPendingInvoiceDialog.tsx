@@ -34,6 +34,7 @@ import { requiresTipoCambio } from "@/src/utils/tipoCambio";
 import { useRegisterPendingInvoiceForm } from "../hooks/useRegisterPendingInvoiceForm";
 import { MONEY_REGEX, toCents } from "../schemas/register-pending-invoice.schema";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import { CxcPedidoPicker } from "./CxcPedidoPicker";
 
 function RegisterPendingInvoiceForm({
   onClose,
@@ -50,8 +51,6 @@ function RegisterPendingInvoiceForm({
     customerOptions,
     currencyOptions,
     getCurrencyCode,
-    getPedidoOptions,
-    findPedido,
     getError,
     clearFieldErrors,
     handleFormSubmit,
@@ -76,8 +75,12 @@ function RegisterPendingInvoiceForm({
   const amountPrefix = monedaCodigo || undefined;
   const amountClass = amountPrefix ? `${COMPACT_FIELD_CLS} pl-10!` : COMPACT_FIELD_CLS;
 
-  const pedidoOptions = getPedidoOptions(clienteValue, monedaValue);
-  const pedidoDisabled = clienteValue < 1 || monedaValue < 1;
+  // El pedido elegido completo: lo pinta fijo el selector (puede no venir en la
+  // página de búsqueda) y de él salen los importes. El formulario guarda su id.
+  const [selectedPedido, setSelectedPedido] = useState<PedidoListItem | null>(null);
+  // El pedido elegido no trae importes (rol sin contabilidad de ventas ni de
+  // compras, EC-784): no se autollenan y se avisa para capturarlos a mano.
+  const [pedidoSinImportes, setPedidoSinImportes] = useState(false);
 
   // Total esperado (subtotal − descuento + impuestos), solo cuando el subtotal
   // es un monto válido. Sirve de guía; la validación real corre en el submit.
@@ -131,13 +134,20 @@ function RegisterPendingInvoiceForm({
    * cruzada total = subtotal − descuento + impuestos del schema se cumpla exacta
    * para cualquier pedido, ya que `total` siempre es `gran_total`.
    */
-  const applyPedidoAmounts = (order: PedidoListItem) => {
-    // `PedidoListItem.subtotal`/`gran_total` son strings SIEMPRE presentes: el
-    // `PedidoListSerializer` los devuelve en sus 14 campos para cualquier usuario
-    // (a diferencia del retrieve, donde sí se filtran por rol contable). Por eso
-    // no hay guard de ausencia aquí —con el tipo actual sería código muerto—.
+  const applyPedidoAmounts = (order: PedidoListItem): boolean => {
+    // El listado QUITA `subtotal`/`gran_total` a quien no ve importes de
+    // pedidos (EC-784). Sin alguno de los dos (o con uno que no es un monto) no
+    // se autollena nada: `toCents` de un ausente daría NaN.
     const subtotal = order.subtotal;
     const total = order.gran_total;
+    if (
+      subtotal === undefined ||
+      total === undefined ||
+      !MONEY_REGEX.test(subtotal) ||
+      !MONEY_REGEX.test(total)
+    ) {
+      return false;
+    }
     const deltaCents = toCents(total) - toCents(subtotal);
     const descuento = deltaCents < 0 ? (-deltaCents / 100).toFixed(2) : "0.00";
     const impuestos = deltaCents > 0 ? (deltaCents / 100).toFixed(2) : "0.00";
@@ -149,28 +159,25 @@ function RegisterPendingInvoiceForm({
     clearFieldErrors("descuento");
     clearFieldErrors("impuestos");
     clearFieldErrors("total");
+    return true;
   };
 
   // ── Acoplamiento pedido → importes (fuente única) ────────────────────────
   // Todo cambio de pedido pasa por aquí: auto-llena los importes desde el pedido
-  // seleccionado, o los limpia si no hay pedido (id 0) o el pedido no es
-  // seleccionable. Lo invocan los tres onChange que tocan el pedido.
-  const syncAmountsForPedido = (pedidoId: number) => {
-    const order = pedidoId > 0 ? findPedido(pedidoId) : undefined;
-    if (order) {
-      applyPedidoAmounts(order);
-    } else {
-      clearAmountFields();
-    }
+  // elegido, o los limpia si no hay pedido o el pedido no trae importes.
+  const selectPedido = (order: PedidoListItem | null) => {
+    setSelectedPedido(order);
+    form.setFieldValue("pedido", order?.id ?? 0);
+    clearFieldErrors("pedido");
+    const applied = order ? applyPedidoAmounts(order) : false;
+    if (!applied) clearAmountFields();
+    setPedidoSinImportes(order !== null && !applied);
   };
 
   // Cliente y moneda son las FK que filtran los pedidos: al cambiar cualquiera,
-  // el pedido elegido deja de ser válido, así que se resetea a 0 y sus importes
-  // se limpian. Fuente única para los onChange de cliente y moneda.
-  const resetPedido = () => {
-    form.setFieldValue("pedido", 0);
-    syncAmountsForPedido(0);
-  };
+  // el pedido elegido deja de ser válido, así que se quita y sus importes se
+  // limpian. Fuente única para los onChange de cliente y moneda.
+  const resetPedido = () => selectPedido(null);
 
   if (isLoadingCatalogs) {
     return (
@@ -293,41 +300,29 @@ function RegisterPendingInvoiceForm({
           )}
         </FormSection>
 
-        {/* Pedido (opcional, filtrado por cliente + moneda), folio y vencimiento. */}
+        {/* Pedido (opcional, buscado por cliente + moneda), folio y vencimiento. */}
         <FormSection title="Factura">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-            <form.Field name="pedido">
-              {(field) => (
-                <FormSelect
-                  label="Pedido (opcional)"
-                  name={field.name}
-                  value={field.state.value}
-                  disabled={pedidoDisabled}
-                  options={[
-                    {
-                      value: 0,
-                      label: pedidoDisabled
-                        ? "Selecciona cliente y moneda primero..."
-                        : pedidoOptions.length === 0
-                          ? "Sin pedidos para este cliente y moneda"
-                          : "Sin pedido",
-                    },
-                    ...pedidoOptions,
-                  ]}
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
-                    const pedidoId = Number.isNaN(next) ? 0 : next;
-                    field.handleChange(pedidoId);
-                    clearFieldErrors("pedido");
-                    syncAmountsForPedido(pedidoId);
-                  }}
-                  onBlur={field.handleBlur}
-                  error={getError("pedido")}
-                  className={COMPACT_FIELD_CLS}
-                />
-              )}
-            </form.Field>
-
+          <div className="space-y-1">
+            <CxcPedidoPicker
+              cliente={clienteValue}
+              moneda={monedaValue}
+              selected={selectedPedido}
+              onSelect={selectPedido}
+              onClear={() => selectPedido(null)}
+              disabled={isPending}
+            />
+            {getError("pedido")?.message && (
+              <p role="alert" className="ml-1 text-xs text-red-500">
+                {getError("pedido")?.message}
+              </p>
+            )}
+            {pedidoSinImportes && (
+              <p role="status" className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                Tu rol no ve los importes de los pedidos: captura los importes a mano.
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
             <form.Field name="folio">
               {(field) => (
                 <FormInput
@@ -522,7 +517,16 @@ function RegisterPendingInvoiceForm({
 
       {/* ── Acciones ───────────────────────────────────────────────────── */}
       <div className="flex items-center justify-end gap-3 pt-5">
-        <FormCancelButton onClick={handleReset} disabled={isPending} />
+        <FormCancelButton
+          onClick={() => {
+            // Mismo candado que `handleReset`: durante un envío no se limpia nada.
+            if (submitLockRef.current) return;
+            handleReset();
+            setSelectedPedido(null);
+            setPedidoSinImportes(false);
+          }}
+          disabled={isPending}
+        />
         <FormSubmitButton isPending={isPending} loadingLabel="Registrando...">
           Registrar CxC
         </FormSubmitButton>
