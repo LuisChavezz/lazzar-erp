@@ -32,10 +32,9 @@ import { POLIZA_TIPOS, type Poliza } from "../interfaces/poliza.interface";
  *
  * Se llama distinto a propósito. Es la INTENCIÓN del botón que se pulsó, y
  * decide dos cosas: qué reglas aplica el `superRefine` de abajo y si, después de
- * crear, el formulario encadena la acción `contabilizar`. El `estatus` que viaja
- * en el POST es SIEMPRE el literal `"Borrador"` (ver `CreatePolizaPayload`):
- * mandar `"Contabilizada"` la dejaría contabilizada SIN pasar por la validación
- * de cuadre, porque `perform_create` guarda el valor tal cual.
+ * crear, el formulario encadena la acción `contabilizar`. El POST no lleva
+ * `estatus` (ver `CreatePolizaPayload`): el backend lo ignora (solo lectura
+ * desde nucleo-erp #935) y la póliza nace en `Borrador`.
  */
 
 const MONEY_MESSAGE = "Importe inválido (usa hasta 2 decimales)";
