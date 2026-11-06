@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Loader } from '@/src/components/Loader';
 import { OrderListView } from '@/src/features/orders/components/OrderListView';
 import { PedidoKpisSection } from '@/src/features/orders/components/PedidoKpisSection';
 import { PEDIDO_KPIS_QUERY_KEY } from '@/src/features/orders/constants/pedidoKpis';
@@ -19,12 +21,15 @@ export default function SalesOrdersPage() {
           sección, así que la lista y su toolbar no dependen de ellos. */}
       <PedidoKpisSection />
       <section aria-label="Lista de pedidos">
-        <OrderListView
-          from="sales"
-          params={{ mis_pedidos: 'true' }}
-          variant="sales"
-          extraRefetchQueryKeys={EXTRA_REFETCH_QUERY_KEYS}
-        />
+        {/* La lista lee filtros, búsqueda, orden y página desde la URL con
+            `useSearchParams`, que en Next.js requiere un límite de Suspense. */}
+        <Suspense fallback={<Loader className="py-20" title="Cargando pedidos..." />}>
+          <OrderListView
+            from="sales"
+            variant="sales"
+            extraRefetchQueryKeys={EXTRA_REFETCH_QUERY_KEYS}
+          />
+        </Suspense>
       </section>
     </main>
   );
