@@ -21,6 +21,21 @@ export interface PedidoVinculado {
 }
 
 /**
+ * Elemento de `pedidos_vinculados` de una orden de compra: además de
+ * `{ id, folio }`, el estado del pedido y su cliente (nucleo-erp #969, EC-782),
+ * de la misma fila que ya trae el prefetch. Incluye los pedidos CANCELADOS o
+ * dados de baja (`activo: false`): así la OC avisa de un ligado que ya no está
+ * disponible sin consultar cada pedido aparte.
+ */
+export interface PedidoVinculadoOC extends PedidoVinculado {
+  /** `Pedido.estatus` (`PEDIDO_ESTATUS`, 5 = cancelado). */
+  estatus: number;
+  /** `false` = dado de baja (cancelar un pedido también lo deja inactivo). */
+  activo: boolean;
+  cliente_nombre: string | null;
+}
+
+/**
  * Tipo de compra de la orden. Decide la serie del folio al confirmarla
  * (`aceptar`): `MP` (materia prima, el default del backend) o `PT` (producto
  * terminado). Se deriva del mapa de etiquetas de
@@ -163,7 +178,7 @@ export interface PurchaseOrder {
    */
   pedidos: number[];
   /** Los mismos pedidos que `pedidos`, ya con su folio. Mismo aviso de orden. */
-  pedidos_vinculados: PedidoVinculado[];
+  pedidos_vinculados: PedidoVinculadoOC[];
   tipo_compra: TipoCompra;
   /** Etiqueta del backend para `tipo_compra` ("Materia prima"/"Producto terminado"). */
   tipo_compra_label: string;

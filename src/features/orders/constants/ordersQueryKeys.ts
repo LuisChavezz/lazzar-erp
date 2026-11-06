@@ -52,11 +52,3 @@ export const pedidoFilterOptionsQueryKey = (misPedidos: boolean) =>
  */
 export const pedidoSearchQueryKey = (params: PedidoSearchParams) =>
   [...ORDERS_QUERY_KEY, "search", params] as const;
-
-/**
- * Llave de la disponibilidad de UN pedido ya ligado a una orden de compra
- * (`useLinkedPedidoAvailability`): bajo el prefijo, así que la refrescan las
- * mutaciones que cancelan o cambian pedidos.
- */
-export const linkedPedidoAvailabilityQueryKey = (id: number, folio: string | null) =>
-  [...ORDERS_QUERY_KEY, "linked-availability", id, folio] as const;

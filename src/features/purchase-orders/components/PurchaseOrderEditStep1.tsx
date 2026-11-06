@@ -274,8 +274,8 @@ export function PurchaseOrderEditStep1({
         </form.Field>
 
         {/* ── Pedidos (opcional, varios) ───────────────────────────────────
-            `pedidos_vinculados` da el folio de los ya ligados que no estén
-            entre las opciones (cancelados o inactivos): siguen marcados. */}
+            `pedidos_vinculados` da folio, cliente y estado de los ya ligados:
+            un cancelado o inactivo sigue marcado, con su aviso. */}
         <form.Field name="pedidos">
           {(field) => (
             <PurchaseOrderPedidosField

@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { AxiosError, AxiosHeaders } from "axios";
 import {
   ORDERS_QUERY_KEY,
-  linkedPedidoAvailabilityQueryKey,
+  MIS_PEDIDOS_TABLE_QUERY_KEY,
+  pedidoFilterOptionsQueryKey,
+  pedidoKpisMesaQueryKey,
   ordersQueryKey,
   pedidoSearchQueryKey,
 } from "@/src/features/orders/constants/ordersQueryKeys";
@@ -16,10 +17,7 @@ import {
 } from "@/src/features/orders/utils/pedidoSearchParams";
 import { INVOICEABLE_PEDIDO_ESTATUS } from "@/src/features/invoicing/constants/invoiceablePedidos";
 import { LINKABLE_PEDIDO_ESTATUS } from "@/src/features/purchase-orders/constants/linkablePedidos";
-import {
-  linkedPedidoLookupFromDetailError,
-  linkedPedidoLookupFromPage,
-} from "@/src/features/purchase-orders/utils/linkedPedidoAvailability";
+import { isLinkablePedidoRow } from "@/src/features/purchase-orders/utils/linkedPedidoAvailability";
 
 /**
  * Pruebas unitarias de EC-769: la búsqueda de pedidos de los selectores
@@ -43,6 +41,17 @@ test.describe("toPedidoSearchParams", () => {
   test("un `estatus` vacío no viaja", () => {
     expect(toPedidoSearchParams({ q: "x", estatus: "" })).toEqual({
       q: "x",
+      limit: PEDIDO_SEARCH_LIMIT,
+    });
+  });
+
+  test("manda `cliente` y `moneda` solo con un id positivo (CxC pendiente)", () => {
+    expect(toPedidoSearchParams({ q: "", cliente: 12, moneda: 3 })).toEqual({
+      cliente: 12,
+      moneda: 3,
+      limit: PEDIDO_SEARCH_LIMIT,
+    });
+    expect(toPedidoSearchParams({ q: "", cliente: 0, moneda: 0 })).toEqual({
       limit: PEDIDO_SEARCH_LIMIT,
     });
   });
@@ -75,7 +84,9 @@ test.describe("llaves de pedidos", () => {
       ordersQueryKey(),
       ordersQueryKey({ mis_pedidos: "true" }),
       pedidoSearchQueryKey(toPedidoSearchParams({ q: "" })),
-      linkedPedidoAvailabilityQueryKey(1, "P-1"),
+      MIS_PEDIDOS_TABLE_QUERY_KEY,
+      pedidoKpisMesaQueryKey({ confirmado: "true" }),
+      pedidoFilterOptionsQueryKey(true),
     ]) {
       expect(key.slice(0, ORDERS_QUERY_KEY.length)).toEqual([...ORDERS_QUERY_KEY]);
     }
@@ -90,82 +101,18 @@ test.describe("llaves de pedidos", () => {
   });
 });
 
-test.describe("linkedPedidoLookupFromPage", () => {
-  const row = (id: number, estatus: number, activo = true) => ({
-    id,
-    estatus,
-    activo,
-    cliente_nombre: `Cliente ${id}`,
-    cliente_razon_social: null,
+test.describe("isLinkablePedidoRow (pedidos_vinculados de la OC)", () => {
+  test("activo y no cancelado → se puede seguir ligando", () => {
+    expect(isLinkablePedidoRow({ estatus: PEDIDO_ESTATUS.AUTORIZADA, activo: true })).toBe(true);
+    expect(isLinkablePedidoRow({ estatus: PEDIDO_ESTATUS.BORRADOR, activo: true })).toBe(true);
   });
 
-  test("viene en la página y es ligable → disponible, con su cliente", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.AUTORIZADA)] }),
-    ).toEqual({ availability: "available", cliente: "Cliente 7" });
+  test("cancelado → no disponible, aunque siga activo (legado)", () => {
+    expect(isLinkablePedidoRow({ estatus: PEDIDO_ESTATUS.CANCELADO, activo: true })).toBe(false);
+    expect(isLinkablePedidoRow({ estatus: PEDIDO_ESTATUS.CANCELADO, activo: false })).toBe(false);
   });
 
-  test("sin nombre de cliente usa la razón social", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, {
-        count: 1,
-        results: [{ ...row(7, PEDIDO_ESTATUS.AUTORIZADA), cliente_nombre: null, cliente_razon_social: "RS SA" }],
-      }).cliente,
-    ).toBe("RS SA");
-  });
-
-  test("viene cancelado → no disponible", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.CANCELADO)] })
-        .availability,
-    ).toBe("unavailable");
-  });
-
-  test("viene inactivo → no disponible", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, { count: 1, results: [row(7, PEDIDO_ESTATUS.AUTORIZADA, false)] })
-        .availability,
-    ).toBe("unavailable");
-  });
-
-  test("no viene y la página trae todas las coincidencias → no disponible", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, { count: 1, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] })
-        .availability,
-    ).toBe("unavailable");
-    expect(linkedPedidoLookupFromPage(7, { count: 0, results: [] }).availability).toBe(
-      "unavailable",
-    );
-  });
-
-  test("no viene pero hay más coincidencias que la página → no se sabe", () => {
-    expect(
-      linkedPedidoLookupFromPage(7, { count: 9, results: [row(8, PEDIDO_ESTATUS.AUTORIZADA)] })
-        .availability,
-    ).toBe("unknown");
-  });
-});
-
-test.describe("linkedPedidoLookupFromDetailError", () => {
-  const httpError = (status: number) =>
-    new AxiosError("fallo", "ERR_BAD_RESPONSE", undefined, undefined, {
-      status,
-      statusText: "",
-      headers: {},
-      config: { headers: new AxiosHeaders() },
-      data: {},
-    });
-
-  test("404 y 403 → no disponible (ya no existe o ya no está al alcance)", () => {
-    expect(linkedPedidoLookupFromDetailError(httpError(404))).toEqual({
-      availability: "unavailable",
-      cliente: null,
-    });
-    expect(linkedPedidoLookupFromDetailError(httpError(403))?.availability).toBe("unavailable");
-  });
-
-  test("5xx o red → sin decidir (el hook lo deja como error)", () => {
-    expect(linkedPedidoLookupFromDetailError(httpError(500))).toBeNull();
-    expect(linkedPedidoLookupFromDetailError(new AxiosError("Network Error", "ERR_NETWORK"))).toBeNull();
+  test("dado de baja → no disponible", () => {
+    expect(isLinkablePedidoRow({ estatus: PEDIDO_ESTATUS.EN_PROCESO, activo: false })).toBe(false);
   });
 });
