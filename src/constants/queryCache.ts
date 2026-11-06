@@ -8,6 +8,13 @@
  * parámetro (p. ej. existencias por almacén)—, que con un `gcTime` largo se
  * acumularían en memoria.
  *
+ * Excepción en las listas en modo servidor (`useServerTable`, opción
+ * `cacheDefaultView`): Mesa de Control, Compras › Pedidos y Recepciones de OC
+ * lo aplican SOLO a la llave de su vista por defecto (página 1, sin filtros,
+ * sin búsqueda, orden por defecto), que equivale a la única llave por pantalla
+ * que cacheaban EC-694/695; cada combinación de filtros, búsqueda o página
+ * conserva el global.
+ *
  * Una query toma el mayor `gcTime` de los observadores que la montaron, así
  * que en las llaves compartidas con otros módulos (la lista completa de pedidos,
  * `ordersQueryKey()`) solo lo pasan

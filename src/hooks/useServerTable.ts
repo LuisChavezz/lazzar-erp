@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { hashKey, partialMatchKey, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import type { DataTableServerMode } from "@/src/components/DataTable";
+import { LIST_QUERY_GC_TIME } from "@/src/constants/queryCache";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
@@ -16,6 +17,7 @@ import {
   normalizeServerTableSearch,
   readServerTableState,
   serializeServerTableFilters,
+  serverTableDefaultPageSize,
   serverTablePageSizes,
   toServerTableCriteria,
   writeServerTableQuery,
@@ -63,6 +65,17 @@ interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TR
    * el mismo momento. Por defecto, el comportamiento del `QueryClient`.
    */
   refetchOnMount?: "always";
+  /**
+   * `true` conserva en caché `LIST_QUERY_GC_TIME` (30 min) SOLO la consulta de
+   * la vista por defecto (página 1, tamaño de página por defecto, sin filtros,
+   * sin búsqueda y con el orden por defecto): lo mismo que EC-694/695 cacheaban,
+   * una llave por pantalla. Las demás combinaciones conservan el `gcTime`
+   * global, para no acumular en memoria una llave por filtro o búsqueda. No
+   * cambia `staleTime`, así que volver a la vista por defecto dentro de los 15
+   * min globales no la relee; las mutaciones la siguen refrescando al
+   * invalidar el prefijo. Por defecto, `false`: el comportamiento de siempre.
+   */
+  cacheDefaultView?: boolean;
 }
 
 // Referencia estable para "sin filas": un `[]` nuevo por render haría creer a
@@ -125,6 +138,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   disabledMessage = "Aún no se ha hecho la consulta.",
   searchDebounceMs = 300,
   refetchOnMount,
+  cacheDefaultView = false,
 }: UseServerTableOptions<P, TResponse, TRow>) {
   const queryClient = useQueryClient();
   const pathname = usePathname();
@@ -290,6 +304,11 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   const request: ServerTableRequest = { ...criteria, ...adapter.paginationParams(page) };
 
   const listKey = [...queryKey, "list", request];
+  const isDefaultView =
+    !hasServerTableCriteria(state) &&
+    state.ordering === null &&
+    state.page === 1 &&
+    state.pageSize === serverTableDefaultPageSize(definition);
   const listKeyHash = hashKey(listKey);
   const query = useGuardedQuery<TResponse | PageGone>(
     {
@@ -312,6 +331,9 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
       },
       enabled,
       ...(refetchOnMount ? { refetchOnMount } : {}),
+      // Solo si se pidió y solo en la vista por defecto: un `gcTime: undefined`
+      // explícito pisaría el global.
+      ...(cacheDefaultView && isDefaultView ? { gcTime: LIST_QUERY_GC_TIME } : {}),
       // Un 4xx es determinista (un filtro que el backend rechaza): no se reintenta.
       retry: retryUnlessClientError,
       // Mientras llega la consulta nueva se conservan las filas anteriores,

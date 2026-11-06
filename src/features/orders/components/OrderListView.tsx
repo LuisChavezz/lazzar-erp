@@ -114,6 +114,8 @@ function ProcurementOrderList({ from, extraRefetchQueryKeys }: ListProps) {
     definition: procurementPedidosTable,
     queryKey: ORDERS_QUERY_KEY,
     toastId: 'procurement-pedidos-table-refetch-error',
+    // EC-694/695: la vista por defecto se conserva 30 min en caché.
+    cacheDefaultView: true,
   });
   const showAmounts = usePedidoAmountsVisibility(table.rows);
   const onRefetch = useToolbarRefetch(table.tableProps.onRefetch, extraRefetchQueryKeys);
