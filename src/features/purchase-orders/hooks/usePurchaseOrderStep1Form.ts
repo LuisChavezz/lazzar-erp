@@ -163,7 +163,6 @@ export function usePurchaseOrderStep1Form({
   ): string | number => {
     const numericPaths: Step1FieldPath[] = [
       "orden_compra.sucursal",
-      "orden_compra.almacen",
       "orden_compra.proveedor",
       "orden_compra.moneda",
     ];

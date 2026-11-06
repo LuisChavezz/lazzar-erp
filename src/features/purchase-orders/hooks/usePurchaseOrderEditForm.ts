@@ -162,7 +162,7 @@ export function usePurchaseOrderEditForm({
 
   /** Coacciona el valor de un select/input a número para los campos numéricos. */
   const coerceNumeric = (path: EditFieldPath, raw: string): string | number => {
-    const numericPaths: EditFieldPath[] = ["sucursal", "almacen", "proveedor", "moneda"];
+    const numericPaths: EditFieldPath[] = ["sucursal", "proveedor", "moneda"];
     if (numericPaths.includes(path)) {
       const n = Number(raw);
       return Number.isNaN(n) ? 0 : n;
