@@ -102,3 +102,14 @@ export const almacenSelectState = ({
   }
   return { options: [{ value: 0, label: emptyLabel }, ...own, ...extra], disabled: false };
 };
+
+/**
+ * Almacén que queda al cambiar la sucursal del encabezado (`0` = ninguno). El
+ * almacén es de UNA sucursal, así que se suelta; pero si la sucursal vuelve a
+ * la de la orden cargada (`loaded`, solo en la edición), regresa el almacén
+ * guardado: A → B → A no debe quitarle el destino a la orden en silencio.
+ */
+export const almacenTrasCambioDeSucursal = (
+  nextSucursal: number,
+  loaded?: { sucursal: number; almacen: number | null } | null,
+): number => (loaded && nextSucursal === loaded.sucursal ? (loaded.almacen ?? 0) : 0);

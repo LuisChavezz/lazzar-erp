@@ -4,6 +4,7 @@ import {
   almacenPreseleccionado,
   almacenPutPatch,
   almacenSelectState,
+  almacenTrasCambioDeSucursal,
   optionalText,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
@@ -112,4 +113,24 @@ test("optionalText: vacío o solo espacios cuenta como ausente", () => {
   expect(optionalText(null)).toBeNull();
   expect(optionalText(undefined)).toBeNull();
   expect(optionalText(" 555 ")).toBe("555");
+});
+
+test.describe("almacenTrasCambioDeSucursal", () => {
+  const loaded = { sucursal: 1, almacen: 4 };
+
+  test("a otra sucursal: se suelta", () => {
+    expect(almacenTrasCambioDeSucursal(61, loaded)).toBe(0);
+  });
+
+  test("de vuelta a la sucursal de la orden: regresa el guardado (A → B → A)", () => {
+    expect(almacenTrasCambioDeSucursal(1, loaded)).toBe(4);
+    // Con el almacén restaurado, el PUT no lo manda.
+    expect(almacenPutPatch(almacenTrasCambioDeSucursal(1, loaded), loaded.almacen)).toEqual({});
+  });
+
+  test("orden sin almacén o alta (sin orden cargada): queda en 0", () => {
+    expect(almacenTrasCambioDeSucursal(1, { sucursal: 1, almacen: null })).toBe(0);
+    expect(almacenTrasCambioDeSucursal(1)).toBe(0);
+    expect(almacenTrasCambioDeSucursal(1, null)).toBe(0);
+  });
 });
