@@ -9,7 +9,10 @@ import {
   UNKNOWN_COLOR_AFTER_400_MESSAGE,
 } from "@/src/features/quotes/utils/requiredColor";
 import { getVariantSizes } from "@/src/features/quotes/utils/variantSizes";
-import { extractQuoteValidationIssues } from "@/src/features/quotes/utils/quoteValidationErrors";
+import {
+  extractQuoteFormIssues,
+  extractQuoteValidationIssues,
+} from "@/src/features/quotes/utils/quoteValidationErrors";
 
 /**
  * Pruebas unitarias de EC-641: qué partidas exigen color (misma regla que
@@ -172,14 +175,17 @@ test.describe("extractQuoteValidationIssues con strings de primer nivel", () => 
   });
 
   test("las claves de rechazo como string no se vuelven errores de campo", () => {
+    // Cada flujo descarta SUS claves de rechazo (las que lee su toast):
+    // `permiso` y `pedido` son de Mesa de Control (ver
+    // pedido-mesa-control-errors.spec.ts), no de la cotización.
     expect(
-      extractQuoteValidationIssues({
+      extractQuoteFormIssues({
         detail: "x",
         non_field_errors: "x",
         detalle: "Partida 1: tope",
-        permiso: "x",
         cotizacion: "x",
-        pedido: "x",
+        cotizacion_id: "x",
+        empresa: "x",
         compatibilidad_proceso: "x",
       }),
     ).toEqual([]);
