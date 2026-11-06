@@ -163,6 +163,38 @@ test.describe("claves que no cambian", () => {
     expect(parsePedidoMesaControl400(["Mensaje."])).toEqual({ issues: [], rejection: undefined });
   });
 
+  test("non_field_errors anidado en pedido va al toast y no se pierde (code review EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({
+        pedido: { non_field_errors: ["Motivo."], persona_pagos: ["Requerido"] },
+      }),
+    ).toEqual({
+      issues: [{ path: "persona_pagos", message: "Requerido" }],
+      rejection: { message: "Motivo." },
+    });
+  });
+
+  test("permiso es rechazo de Mesa de Control aunque Cotizaciones no lo lea (code review EC-795)", () => {
+    expect(parsePedidoMesaControl400({ permiso: "Solo mesa de control." })).toEqual({
+      issues: [],
+      rejection: { message: "Solo mesa de control." },
+    });
+  });
+
+  test("servicios_extras mixto: el mensaje al toast y el renglón a su campo (code review EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({
+        servicios_extras: [ELIMINADO, { monto: ["Debe ser mayor o igual a 0."] }],
+      }),
+    ).toEqual({
+      issues: [
+        { path: "servicios_extras", message: ELIMINADO },
+        { path: "servicios_extras.1.monto", message: "Debe ser mayor o igual a 0." },
+      ],
+      rejection: { message: ELIMINADO },
+    });
+  });
+
   test("color va al toast Y al formulario, que lo traduce a las partidas", () => {
     expect(parsePedidoMesaControl400({ color: ["Elige el color de: Playera."] })).toEqual({
       issues: [{ path: "color", message: "Elige el color de: Playera." }],

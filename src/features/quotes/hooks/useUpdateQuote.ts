@@ -7,7 +7,7 @@ import { updateQuote } from "../services/actions";
 import type { QuoteCreate, QuoteById } from "../interfaces/quote.interface";
 import {
   extractQuoteRejectionMessage,
-  extractQuoteValidationIssues,
+  extractQuoteFormIssues,
   type QuoteValidationIssue,
 } from "../utils/quoteValidationErrors";
 
@@ -41,7 +41,7 @@ export const useUpdateQuote = ({ onValidationError }: UseUpdateQuoteOptions = {}
         const statusCode = error.response?.status;
         const data = error.response?.data;
         if (statusCode === 400 && data) {
-          const issues = extractQuoteValidationIssues(data);
+          const issues = extractQuoteFormIssues(data);
           if (issues.length > 0) {
             onValidationError?.(issues);
           }
