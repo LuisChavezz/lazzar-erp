@@ -142,6 +142,12 @@ export const extractQuoteValidationIssues = (
       );
   }
 
+  // Un cuerpo que no es objeto (`["Mensaje."]`, el `ValidationError("...")`
+  // suelto de una vista) no trae rutas de campo: ningún issue.
+  if (path.length === 0) {
+    return [];
+  }
+
   if (Array.isArray(source)) {
     const stringMessages = source.filter((item): item is string => typeof item === "string");
 

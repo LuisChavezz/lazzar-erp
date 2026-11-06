@@ -115,3 +115,11 @@ test.describe("rechazos en blanco de la cotización (code review EC-795)", () =>
     ).toBe("Sin empresa.");
   });
 });
+
+test.describe("cuerpo 400 que no es objeto (code review EC-795)", () => {
+  test("una lista de primer nivel no produce errores de campo", () => {
+    expect(extractQuoteValidationIssues(["Mensaje."])).toEqual([]);
+    expect(extractQuoteValidationIssues([{ campo: ["x"] }])).toEqual([]);
+    expect(extractQuoteValidationIssues("Mensaje.")).toEqual([]);
+  });
+});
