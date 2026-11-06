@@ -7,7 +7,7 @@ import KpiGrid, {
   KpiGridSkeleton,
   type KpiCompactItem,
 } from "@/src/components/KpiGrid";
-import { KpiMutedValue, KpiTaggedBlocks, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
+import { KpiCurrencyBlocks, KpiMutedValue, SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { KpiDrillDownButton } from "@/src/components/KpiDrillDownButton";
 import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
@@ -18,7 +18,7 @@ import {
   PedidosIcon,
 } from "@/src/components/Icons";
 import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
-import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
+import { plural } from "@/src/utils/kpiFormat";
 import { HIDDEN_PEDIDO_AMOUNTS_REASON, PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { usePedidoKpis } from "../hooks/usePedidoKpis";
 import type { PedidoActiveKpi, PedidoKpis } from "../interfaces/pedido-kpis.interface";
@@ -49,13 +49,12 @@ function activeCard(kpi: PedidoActiveKpi, showAmounts: boolean, onDrillDown: () 
   } else if (showAmounts) {
     // Con una sola moneda su conteo es el del detalle: no se repite en el bloque.
     const showCurrencyCount = kpi.por_moneda.length > 1;
-    // Un `valor` ausente con permiso es un hueco del payload, no un cero: "—".
+    // Un `valor` ausente con permiso es un hueco del payload: `KpiCurrencyBlocks` pinta "—".
     value = (
-      <KpiTaggedBlocks
+      <KpiCurrencyBlocks
         blocks={kpi.por_moneda.map((moneda) => ({
-          key: moneda.moneda,
-          value: moneda.valor === undefined ? "—" : formatKpiTaggedCurrencyAmount(moneda.valor, moneda.moneda),
-          tag: moneda.moneda,
+          moneda: moneda.moneda,
+          monto: moneda.valor,
           detail: showCurrencyCount ? `${moneda.total} ${plural(moneda.total, "pedido", "pedidos")}` : undefined,
         }))}
       />
