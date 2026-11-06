@@ -22,7 +22,11 @@ const MutedValue = ({ children }: { children: string }) => (
   </span>
 );
 
-export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) => {
+/**
+ * Tarjetas del resumen comercial. Exportada para las pruebas unitarias
+ * (`tests/unit/order-amounts-hidden.spec.ts`).
+ */
+export function buildResumenKpiItems(resumen: ResumenComercial): KpiItem[] {
   const ultimo = resumen.ultimo_pedido;
   const ultimoEstatus = ultimo ? getPedidoEstatusConfig(ultimo.estatus) : null;
   const montos = resumen.montos_por_moneda ?? [];
@@ -32,7 +36,7 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
     iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
   };
 
-  const items: KpiItem[] = [
+  return [
     {
       label: "Pedidos",
       subLabel: "Total, incluye cancelados",
@@ -112,9 +116,11 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
       iconClass: "text-amber-500",
     },
   ];
+}
 
-  return <KpiGrid items={items} />;
-};
+export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) => (
+  <KpiGrid items={buildResumenKpiItems(resumen)} />
+);
 
 /** Marcador de carga de los KPIs mientras se muestra la fila del listado. */
 export const CustomerResumenKpisSkeleton = () => (

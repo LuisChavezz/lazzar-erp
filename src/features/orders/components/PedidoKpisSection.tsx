@@ -82,7 +82,8 @@ function activeCard(kpi: PedidoActiveKpi, showAmounts: boolean, onDrillDown: () 
   };
 }
 
-function buildCards(data: PedidoKpis, openDrillDown: () => void): KpiCompactItem[] {
+/** Exportada para las pruebas unitarias (`tests/unit/order-amounts-hidden.spec.ts`). */
+export function buildCards(data: PedidoKpis, openDrillDown: () => void): KpiCompactItem[] {
   return [
     activeCard(data.pedidos_activos, canSeeKpiAmounts(data.puede_ver_importes), openDrillDown),
     // OTIF, lead time y pedidos en riesgo: hoy siempre llegan no disponibles

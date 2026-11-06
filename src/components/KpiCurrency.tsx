@@ -69,12 +69,16 @@ export function KpiTaggedBlocks({ blocks }: { blocks: KpiTaggedBlock[] }) {
  * código, y debajo (si lo hay) el detalle de esa moneda (`KpiTaggedBlocks` con
  * el importe formateado en su moneda).
  */
+/** Texto de un bloque de `KpiCurrencyBlocks`: el importe en su moneda, o "—" si falta. */
+export const formatKpiCurrencyBlockValue = (block: KpiCurrencyBlock): string =>
+  block.monto === undefined ? "—" : formatKpiTaggedCurrencyAmount(block.monto, block.moneda);
+
 export function KpiCurrencyBlocks({ blocks }: { blocks: KpiCurrencyBlock[] }) {
   return (
     <KpiTaggedBlocks
       blocks={blocks.map((block) => ({
         key: block.moneda,
-        value: block.monto === undefined ? "—" : formatKpiTaggedCurrencyAmount(block.monto, block.moneda),
+        value: formatKpiCurrencyBlockValue(block),
         tag: block.moneda,
         detail: block.detail,
       }))}
