@@ -63,7 +63,7 @@ test.describe("rechazo servicios_extras", () => {
 });
 
 test.describe("claves de rechazo: toast sin error de formulario invisible", () => {
-  for (const key of ["permiso", "cotizacion", "detail"]) {
+  for (const key of ["permiso", "cotizacion", "detail", "non_field_errors", "detalle"]) {
     test(`${key} como lista va al toast con su primer mensaje y no al formulario`, () => {
       expect(parsePedidoMesaControl400({ [key]: ["Motivo.", "Otro."] })).toEqual({
         issues: [],
@@ -89,6 +89,32 @@ test.describe("claves de rechazo: toast sin error de formulario invisible", () =
 
   test("permiso de solo espacios cae al mensaje genérico (sin toast en blanco)", () => {
     expect(parsePedidoMesaControl400({ permiso: ["   "] }).rejection).toBeUndefined();
+  });
+
+  test("detalle en lista salta los mensajes en blanco (EC-795)", () => {
+    expect(parsePedidoMesaControl400({ detalle: ["  ", "Este campo es requerido."] })).toEqual({
+      issues: [],
+      rejection: { message: "Este campo es requerido." },
+    });
+  });
+
+  test("detalle como lista de objetos sigue yendo a las partidas, no al toast", () => {
+    expect(
+      parsePedidoMesaControl400({ detalle: [{}, { precio_unitario: ["Debe ser positivo"] }] }),
+    ).toEqual({
+      issues: [{ path: "items.1.precio", message: "Debe ser positivo" }],
+      rejection: undefined,
+    });
+  });
+
+  test("compatibilidad_proceso gana a non_field_errors y a detalle en lista", () => {
+    expect(
+      parsePedidoMesaControl400({
+        compatibilidad_proceso: ["A no admite bordado."],
+        non_field_errors: ["Motivo."],
+        detalle: ["Otro."],
+      }),
+    ).toEqual({ issues: [], rejection: { message: "A no admite bordado." } });
   });
 });
 

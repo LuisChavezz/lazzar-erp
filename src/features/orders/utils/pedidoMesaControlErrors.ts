@@ -54,34 +54,45 @@ export const SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS = 9000;
  *   borró), así que no hay nada que espejar. (`pedido` se lee aparte: también
  *   es la clave de los errores de campo de la cabecera.)
  *
- * `detail` cubre los `APIException` genéricos de DRF, por si aparece otro.
- * NO se incluyen las claves de campo (`detalle`, `pedido.cliente`…): esas ya
- * las pinta `onValidationError` sobre el input correspondiente y repetirlas en
- * el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
+ * `detail` y `non_field_errors` cubren los genéricos de DRF, por si aparecen
+ * (EC-795: hoy el endpoint no emite `non_field_errors`; se cubre por defensa).
+ * NO se incluyen las claves de campo (`detalle.N.*`, `pedido.cliente`…): esas
+ * ya las pinta `onValidationError` sobre el input correspondiente y repetirlas
+ * en el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
  * prenda/proceso, lista completa), `servicios_extras` (lista completa, ver
- * arriba) y `detalle` cuando llega como mensaje plano (p. ej. el tope de
- * reflejante «Del inventario»): no los pinta ningún campo.
+ * arriba) y `detalle` cuando trae mensajes —plano, p. ej. el tope de reflejante
+ * «Del inventario», o en lista—: no los pinta ningún campo.
  * `color` (EC-641) va a los DOS lados: el toast muestra el mensaje del backend
  * con los nombres de producto, y `onValidationError` marca las partidas.
  */
-const REJECTION_KEYS = ["permiso", "cotizacion", "detail", REQUIRED_COLOR_KEY] as const;
+const REJECTION_KEYS = [
+  "permiso",
+  "cotizacion",
+  "detail",
+  "non_field_errors",
+  REQUIRED_COLOR_KEY,
+] as const;
 
 /**
  * Rutas de error que solo van al TOAST: las claves de rechazo de primer nivel
- * que ningún control del formulario pinta. `extractQuoteValidationIssues`
- * convierte una de estas claves en un error de campo cuando llega como LISTA
- * (`{"permiso": ["..."]}` → ruta `permiso`), y ese error marcaba el árbol y
- * hacía scroll sin mostrar nada. Se descartan porque `extractRejection` ya
- * lee cada una de estas claves para el toast.
+ * que ningún control del formulario pinta. Un error de campo en una de ellas
+ * marcaba el árbol y hacía scroll sin mostrar nada; se descartan porque
+ * `extractRejection` ya las lee para el toast.
+ *
+ * `extractQuoteValidationIssues` ya no entrega las suyas cuando traen un
+ * mensaje (string o lista); aquí quedan explícitas, junto con
+ * `servicios_extras`, que esa función no conoce como rechazo.
  *
  * Queda FUERA `color`: el formulario lo traduce a las partidas sin color
  * (`getServerColorIssues`). `compatibilidad_proceso` ya lo descarta el propio
- * extractor, y como string suelto las demás ya se ignoraban.
+ * extractor.
  */
 const TOAST_ONLY_PATHS: ReadonlySet<string> = new Set([
   "permiso",
   "cotizacion",
   "detail",
+  "non_field_errors",
+  "detalle",
   "pedido",
   SERVICIOS_EXTRAS_REJECTION_KEY,
 ]);
