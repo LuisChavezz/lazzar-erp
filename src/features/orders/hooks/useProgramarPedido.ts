@@ -18,7 +18,9 @@ import { programarPedido } from "../services/actions";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { invalidatePedidoProgress } from "./invalidatePedidoProgress";
 import {
+  extractPedidoNoProgramableMessage,
   isMesaControlPermisoError,
+  PEDIDO_NO_PROGRAMABLE_KEYS,
   PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
 } from "../utils/pedidoProgramarErrors";
 import type {
@@ -31,6 +33,8 @@ import type {
  * y por eso van al toast. Mismo criterio que `useUpdatePedidoMesaControl`:
  *
  * - `detail`: `APIException` genéricos de DRF.
+ * - `estatus` / `fecha_confirmacion`: el pedido está CANCELADO o sin confirmar
+ *   (`PEDIDO_NO_PROGRAMABLE_KEYS`, EC-750). Solo desde una fila desactualizada.
  *
  * El 400 de `permiso` (`_require_mesa_control`, no un 403) no pasa por aquí:
  * `onError` lo traduce antes con `isMesaControlPermisoError`.
@@ -38,7 +42,7 @@ import type {
  * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
  * muestra completa.
  */
-const REJECTION_KEYS = ["detail"] as const;
+const REJECTION_KEYS = ["detail", ...PEDIDO_NO_PROGRAMABLE_KEYS] as const;
 
 const extractRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ?? firstRejectionMessage(data, REJECTION_KEYS);
@@ -108,6 +112,12 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
           message = isMesaControlPermisoError(error)
             ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
             : extractRejectionMessage(data);
+          // Pedido cancelado o sin confirmar: la fila de la lista estaba
+          // desactualizada. Se releen los listados para que deje de ofrecer
+          // "Programar" (EC-781).
+          if (extractPedidoNoProgramableMessage(error)) {
+            queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+          }
         }
         // `get_object` acota por empresa: un pedido ajeno responde 404.
         if (statusCode === 404) {
