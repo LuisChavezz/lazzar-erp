@@ -16,9 +16,10 @@ import { getPurchaseOrdersPage } from "../services/actions";
  * Prefijo de las consultas de órdenes de compra. La tabla vive en
  * `["purchase-orders", "list", params]`, así que las mutaciones que ya
  * invalidan `["purchase-orders"]` la refrescan (todas las páginas y filtros)
- * sin escribir su caché. El listado completo del dashboard y del selector de
- * OC de facturas de proveedor vive en `["purchase-orders", "full"]`
- * (`usePurchaseOrders`).
+ * sin escribir su caché. Del mismo prefijo cuelgan los indicadores
+ * (`["purchase-orders", "kpis"]`, también del dashboard de Compras) y la
+ * búsqueda del selector de OC de facturas de proveedor
+ * (`["purchase-orders", "search", params]`).
  */
 export const PURCHASE_ORDERS_KEY = ["purchase-orders"] as const;
 

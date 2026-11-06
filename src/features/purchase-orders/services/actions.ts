@@ -21,20 +21,11 @@ import {
 } from "../interfaces/purchase-order-onboarding.interface";
 
 /**
- * Listado COMPLETO, sin `?limit=`: el backend responde el arreglo plano. Lo
- * usan el dashboard de Compras y los selectores, que necesitan todas las
- * órdenes; la tabla del listado usa `getPurchaseOrdersPage`.
- */
-export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
-  const response = await v1_api.get<PurchaseOrder[]>("/compras/ordenes/");
-  return response.data;
-}
-
-/**
  * Una PÁGINA del listado (`?limit=&offset=` → `{count, next, previous,
  * results}`), con los filtros, la búsqueda y el orden de la tabla en modo
- * servidor (`usePurchaseOrdersTable`). Sin `limit` el mismo endpoint responde
- * el arreglo completo: por eso son dos acciones.
+ * servidor (`usePurchaseOrdersTable`) o de la búsqueda de un selector
+ * (`usePurchaseOrderSearchField`). Sin `limit` el mismo endpoint respondería el
+ * arreglo completo: nadie lo pide así.
  */
 export const getPurchaseOrdersPage = async (
   params: Record<string, string | number>,

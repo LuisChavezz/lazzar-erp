@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, type ComponentType, type ReactNode, type SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import Link from "next/link";
-import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import type {
+  PurchaseOrderKpis,
+  PurchaseOrderKpiTopOrder,
+} from "../interfaces/purchase-order-kpis.interface";
 import {
   ComprasIcon,
   ClockIcon,
@@ -13,20 +16,13 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { plural } from "@/src/utils/plural";
-import { groupByCurrency, sumAmounts, sumByCurrency, visibleCurrencyEntries } from "@/src/utils/currencyTotals";
+import { sumAmounts, visibleCurrencyEntries } from "@/src/utils/currencyTotals";
 import { formatCurrencyTotalsInline, UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
-import {
-  isPurchaseOrderAuthorizedOrComplete,
-  isPurchaseOrderCancelled,
-  isPurchaseOrderDraft,
-  isPurchaseOrderPartiallyReceived,
-  isPurchaseOrderPending,
-} from "../constants/purchaseOrderStatus";
 
-/** Moneda de la orden para agrupar sus importes; `null` (sin símbolo) si llegara vacía. */
-const monedaDe = (order: PurchaseOrder): string | null => order.moneda_codigo || null;
+/** Importe de los indicadores: número JSON (o texto, si cambia el encoder). */
+const amountOf = (value: number | string | undefined) => safeParseAmount(String(value ?? 0));
 
-/** Detalle de una OC (la ruta exige `R-COMPRAS-OC`, el mismo permiso que da este listado). */
+/** Detalle de una OC (la ruta exige `R-COMPRAS-OC`, el mismo permiso que da este panel). */
 const orderHref = (id: number) => `/procurement/purchase-orders/${id}`;
 
 // ─── Tarjeta de indicador ────────────────────────────────────────────────────
@@ -108,7 +104,7 @@ function Panel({
 }
 
 /** Renglón que abre el detalle de la OC: toda la fila es el enlace, con ">" al final. */
-function OrderRow({ order, children }: { order: PurchaseOrder; children: ReactNode }) {
+function OrderRow({ order, children }: { order: { id: number }; children: ReactNode }) {
   return (
     <Link
       href={orderHref(order.id)}
@@ -124,98 +120,63 @@ function OrderRow({ order, children }: { order: PurchaseOrder; children: ReactNo
   );
 }
 
+/** Mensaje de un bloque que el backend no puede dar (sin empresa, sin permiso). */
+function Unavailable({ motivo }: { motivo: string }) {
+  return (
+    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6 px-3">{motivo}</p>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 interface PurchaseOrderDashboardProps {
-  orders: PurchaseOrder[];
+  /** `GET /compras/ordenes/kpis/`: el backend calcula todo sobre las OC de la empresa. */
+  kpis: PurchaseOrderKpis;
 }
 
-export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) {
-  // Agregaciones derivadas de los datos
-  const stats = useMemo(() => {
-    // Las canceladas (estatus 6) siguen llegando en el listado, pero ya no son
-    // órdenes "activas": no cuentan en el total, en el valor ni en el Top 5.
-    // `total` es además el denominador de las barras de progreso, así que las
-    // proporciones también quedan sobre las activas.
-    const activas = orders.filter((o) => !isPurchaseOrderCancelled(o.estatus));
-    const total = activas.length;
-    // `safeParseAmount` y no `Number()`: `total` puede venir AUSENTE de la
-    // respuesta (filtro por rol), y `Number(undefined)` contaminaría la suma
-    // entera con `NaN`. Un importe no visible cuenta como 0 en el agregado.
-    //
-    // Un total POR MONEDA (EC-601): el listado puede traer órdenes en MXN y en
-    // USD, y sumarlas exigiría un tipo de cambio que el backend no expone aquí.
-    const totalValue = sumByCurrency(activas, monedaDe, (o) => safeParseAmount(o.total));
-    // Sin permiso de contabilidad el backend QUITA la clave `total` de todas
-    // las filas (no la manda en 0): el valor no es cero sino no visible, así
-    // que se muestra "—" en vez de "$0".
-    const totalOculto = activas.length > 0 && activas.every((o) => o.total === undefined);
+/**
+ * Panel de Compras sobre `GET /compras/ordenes/kpis/` (EC-782): conteos por
+ * grupo de estatus, valor de las activas por moneda, top 5 por moneda y las 8
+ * OC en curso más próximas a entregar. Nada se calcula aquí sobre un listado:
+ * antes se bajaba la lista completa de OC para sumarla en memoria.
+ *
+ * El valor es `gran_total` (antes `total`, sin IVA). Sin permiso de importes el
+ * backend quita los montos y devuelve el top como `{ disponible: false }`: el
+ * valor dice "—" y el panel del top explica por qué.
+ */
+export function PurchaseOrderDashboard({ kpis }: PurchaseOrderDashboardProps) {
+  const grupos = kpis.ocs_por_grupo.disponible ? kpis.ocs_por_grupo : null;
+  const valor = kpis.valor_ocs_activas.disponible ? kpis.valor_ocs_activas : null;
+  const enCurso = kpis.ocs_en_curso_proxima_entrega;
+  const top = kpis.top_ocs_por_moneda;
 
-    const pendientes = orders.filter((o) => isPurchaseOrderPending(o.estatus)).length;
-    const autorizadasOCompletadas = orders.filter((o) =>
-      isPurchaseOrderAuthorizedOrComplete(o.estatus),
-    ).length;
-    const canceladas = orders.filter((o) => isPurchaseOrderCancelled(o.estatus)).length;
-    const borradores = orders.filter((o) => isPurchaseOrderDraft(o.estatus)).length;
+  // `activas` (todo menos canceladas) es el denominador de las barras.
+  const total = grupos?.activas ?? 0;
+  const count = (n: number | undefined) => (n === undefined ? "—" : n);
+  const pctOf = (n: number | undefined) => (n !== undefined && total > 0 ? (n / total) * 100 : 0);
 
-    // Órdenes en curso: autorizadas con recepciones PARCIALES, es decir, la
-    // mercancía ya está entrando pero la orden todavía no cierra.
-    //
-    // Antes este bloque contaba `o.tracking`, un campo que nunca existió en el
-    // backend: el KPI marcaba siempre 0 y el panel siempre salía vacío. El
-    // estatus 4 es el dato real equivalente.
-    const enCurso = orders.filter((o) => isPurchaseOrderPartiallyReceived(o.estatus));
+  // Sin permiso el backend QUITA `monto` (no lo manda en 0): no es cero sino no
+  // visible, así que "—" en vez de "$0". Un total POR MONEDA (EC-601).
+  const valorOculto = !valor || valor.por_moneda.some((fila) => fila.monto === undefined);
+  const totalValue = (valor?.por_moneda ?? []).map((fila) => ({
+    moneda: fila.moneda || null,
+    total: amountOf(fila.monto),
+  }));
 
-    // Las 8 más próximas a entregar. Las que no tienen fecha estimada van al
-    // fondo (no se pueden priorizar) en vez de encabezar el orden alfabético.
-    const critical = [...enCurso]
-      .sort((a, b) => {
-        const etaA = a.fecha_entrega_estimada ?? "";
-        const etaB = b.fecha_entrega_estimada ?? "";
-        if (!etaA) return etaB ? 1 : 0;
-        if (!etaB) return -1;
-        return etaA.localeCompare(etaB);
-      })
-      .slice(0, 8);
-
-    // Top 5 por valor total DENTRO de cada moneda (EC-601): un importe en USD
-    // no se compara con uno en MXN. Mismo criterio que `totalValue` para el
-    // ausente.
-    // Las monedas cuyas órdenes suman cero se ocultan si otra tiene importe
-    // (`visibleCurrencyEntries`); si todas dan cero —p. ej. el rol oculta
-    // `total`— se conservan todas, con su "—" por fila.
-    const rankings = groupByCurrency(activas, monedaDe).map(({ moneda, items }) => ({
-      moneda,
-      suma: sumAmounts(items.map((o) => safeParseAmount(o.total))),
-      orders: [...items]
-        .sort((a, b) => safeParseAmount(b.total) - safeParseAmount(a.total))
-        .slice(0, 5),
-    }));
-    const { visibles: rankingsConImporte, showCodes: topPorMoneda } = visibleCurrencyEntries(
-      rankings,
-      (ranking) => ranking.suma,
-    );
-    const topByValue = rankingsConImporte.length > 0 ? rankingsConImporte : rankings;
-
-    return {
-      total,
-      totalValue,
-      totalOculto,
-      pendientes,
-      autorizadasOCompletadas,
-      canceladas,
-      borradores,
-      enCurso: enCurso.length,
-      critical,
-      topByValue,
-      // Varias monedas en las órdenes: cada ranking lleva su código, aunque
-      // quede uno solo a la vista (`visibleCurrencyEntries`).
-      topPorMoneda,
-    };
-  }, [orders]);
-
-  const enAutorizacion = stats.borradores + stats.pendientes;
-  const pctOf = (n: number) => (stats.total > 0 ? (n / stats.total) * 100 : 0);
+  // Las monedas cuyas OC suman cero se ocultan si otra tiene importe
+  // (`visibleCurrencyEntries`); si todas dan cero se conservan todas.
+  const rankings = top.disponible
+    ? top.monedas.map(({ moneda, ocs }) => ({
+        moneda,
+        suma: sumAmounts(ocs.map((oc) => amountOf(oc.gran_total))),
+        orders: ocs,
+      }))
+    : [];
+  const { visibles: rankingsConImporte, showCodes: topPorMoneda } = visibleCurrencyEntries(
+    rankings,
+    (ranking) => ranking.suma,
+  );
+  const topByValue = rankingsConImporte.length > 0 ? rankingsConImporte : rankings;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -226,34 +187,34 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           icon={ComprasIcon}
           accentText="text-sky-500"
           accentSoftBg="bg-sky-50 dark:bg-sky-500/10"
-          value={<span className={BIG_NUMBER_CLS}>{stats.total}</span>}
+          value={<span className={BIG_NUMBER_CLS}>{count(grupos?.activas)}</span>}
           detail={
             <span className="tabular-nums">
-              {stats.totalOculto
+              {valorOculto
                 ? "—"
-                : formatCurrencyTotalsInline(stats.totalValue, { maximumFractionDigits: 0 })}{" "}
+                : formatCurrencyTotalsInline(totalValue, { maximumFractionDigits: 0 })}{" "}
               valor total
             </span>
           }
-          progress={100}
+          progress={grupos ? 100 : undefined}
         />
         <KpiTile
           label="En curso"
           icon={EmbarquesIcon}
           accentText="text-indigo-500"
           accentSoftBg="bg-indigo-50 dark:bg-indigo-500/10"
-          value={<span className={BIG_NUMBER_CLS}>{stats.enCurso}</span>}
+          value={<span className={BIG_NUMBER_CLS}>{count(grupos?.en_curso)}</span>}
           detail="Con recepción parcial registrada"
-          progress={pctOf(stats.enCurso)}
+          progress={pctOf(grupos?.en_curso)}
         />
         <KpiTile
           label="Por autorizar"
           icon={ClockIcon}
           accentText="text-amber-500"
           accentSoftBg="bg-amber-50 dark:bg-amber-500/10"
-          value={<span className={BIG_NUMBER_CLS}>{enAutorizacion}</span>}
+          value={<span className={BIG_NUMBER_CLS}>{count(grupos?.por_autorizar)}</span>}
           detail="Borrador o pendiente de autorización"
-          progress={pctOf(enAutorizacion)}
+          progress={pctOf(grupos?.por_autorizar)}
         />
         <KpiTile
           label="Cierre"
@@ -264,9 +225,9 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             // `flex-wrap`: en móvil, si las dos cifras no caben lado a lado,
             // la de canceladas baja en vez de salirse de la tarjeta.
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <span className={BIG_NUMBER_CLS}>{stats.autorizadasOCompletadas}</span>
+              <span className={BIG_NUMBER_CLS}>{count(grupos?.autorizadas_o_completadas)}</span>
               <span className="text-lg sm:text-xl font-bold text-red-500 dark:text-red-400 tabular-nums">
-                {stats.canceladas}
+                {count(grupos?.canceladas)}
                 <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide">
                   canceladas
                 </span>
@@ -274,7 +235,7 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
             </div>
           }
           detail="Autorizadas o completadas"
-          progress={pctOf(stats.autorizadasOCompletadas)}
+          progress={pctOf(grupos?.autorizadas_o_completadas)}
         />
       </div>
 
@@ -285,35 +246,47 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           title="Órdenes en curso"
           subtitle="Con recepción parcial, por entrega estimada"
           aside={
-            <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" aria-hidden="true" />
-              {stats.critical.length} {plural(stats.critical.length, "activa", "activas")}
-            </span>
+            enCurso.disponible ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400" aria-hidden="true" />
+                {enCurso.drill_down_total} {plural(enCurso.drill_down_total, "activa", "activas")}
+              </span>
+            ) : undefined
           }
         >
-          {stats.critical.length > 0 ? (
-            stats.critical.map((order) => (
-              <OrderRow key={order.id} order={order}>
-                <div className="flex-1 min-w-0">
-                  {/* `folio` es nullable mientras el backend no lo asigna;
-                      sin respaldo la fila quedaba sin identificador visible. */}
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                    {order.folio ?? `#${order.id}`}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {order.proveedor_nombre ?? "—"}
-                  </p>
-                </div>
-                {order.fecha_entrega_estimada && (
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA</p>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
-                      {formatLocalDate(order.fecha_entrega_estimada)}
+          {!enCurso.disponible ? (
+            <Unavailable motivo={enCurso.motivo} />
+          ) : enCurso.drill_down.length > 0 ? (
+            <>
+              {enCurso.drill_down.map((order) => (
+                <OrderRow key={order.id} order={order}>
+                  <div className="flex-1 min-w-0">
+                    {/* `folio` es nullable mientras el backend no lo asigna;
+                        sin respaldo la fila quedaba sin identificador visible. */}
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                      {order.folio ?? `#${order.id}`}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {order.proveedor_nombre ?? "—"}
                     </p>
                   </div>
-                )}
-              </OrderRow>
-            ))
+                  {order.fecha_entrega_estimada && (
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA</p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+                        {formatLocalDate(order.fecha_entrega_estimada)}
+                      </p>
+                    </div>
+                  )}
+                </OrderRow>
+              ))}
+              {enCurso.drill_down_truncado && (
+                <p className="px-3 pt-1 pb-2 text-xs text-slate-500 dark:text-slate-400">
+                  Se muestran las {enCurso.drill_down.length} más próximas de{" "}
+                  {enCurso.drill_down_total}.
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
               Sin órdenes con recepción parcial
@@ -325,55 +298,29 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
         <Panel
           title="Top 5 por valor"
           subtitle={
-            stats.topPorMoneda
+            topPorMoneda
               ? "Órdenes activas de mayor importe, por moneda"
               : "Órdenes activas de mayor importe"
           }
         >
-          {stats.topByValue.length > 0 ? (
-            <div className={stats.topByValue.length > 1 ? "space-y-3" : undefined}>
-              {stats.topByValue.map((group) => {
-                // El máximo es el de SU moneda: las barras no comparan monedas
-                // distintas. `> 0`: si el rol oculta `total`, todo vale 0.
-                const maxValue = safeParseAmount(group.orders[0]?.total);
-                return (
-                  <div key={group.moneda ?? UNKNOWN_CURRENCY_TAG}>
-                    {stats.topPorMoneda && (
-                      <p className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {group.moneda ?? UNKNOWN_CURRENCY_TAG}
-                      </p>
-                    )}
-                    {group.orders.map((order, idx) => {
-                      const pct = maxValue > 0 ? (safeParseAmount(order.total) / maxValue) * 100 : 0;
-                      return (
-                        <OrderRow key={order.id} order={order}>
-                          <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-slate-100 dark:bg-white/10 text-[11px] font-bold text-slate-500 dark:text-slate-300 tabular-nums">
-                            {idx + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline justify-between gap-2">
-                              {/* El Top 5 SÍ puede incluir una orden todavía sin folio. */}
-                              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                                {order.folio ?? `#${order.id}`}
-                              </span>
-                              {/* En la moneda de LA ORDEN, y "—" si no es visible */}
-                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums shrink-0">
-                                {formatMoneyValueOrDash(order.total, order.moneda_codigo, { maximumFractionDigits: 0 })}
-                              </span>
-                            </div>
-                            <div className="mt-1 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500/70">
-                              <div className="h-full bg-current rounded-full" style={{ width: `${pct}%` }} />
-                            </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-                              {order.proveedor_nombre ?? "—"}
-                            </p>
-                          </div>
-                        </OrderRow>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+          {!top.disponible ? (
+            <Unavailable
+              motivo={
+                kpis.puede_ver_importes
+                  ? top.motivo
+                  : "Tu rol no tiene acceso a los importes de las órdenes de compra."
+              }
+            />
+          ) : topByValue.length > 0 ? (
+            <div className={topByValue.length > 1 ? "space-y-3" : undefined}>
+              {topByValue.map((group) => (
+                <TopGroup
+                  key={group.moneda ?? UNKNOWN_CURRENCY_TAG}
+                  moneda={group.moneda}
+                  orders={group.orders}
+                  showCode={topPorMoneda}
+                />
+              ))}
             </div>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
@@ -382,6 +329,58 @@ export function PurchaseOrderDashboard({ orders }: PurchaseOrderDashboardProps) 
           )}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+/** Ranking de UNA moneda: las barras comparan solo contra el máximo de su moneda. */
+function TopGroup({
+  moneda,
+  orders,
+  showCode,
+}: {
+  moneda: string | null;
+  orders: PurchaseOrderKpiTopOrder[];
+  showCode: boolean;
+}) {
+  const maxValue = amountOf(orders[0]?.gran_total);
+  return (
+    <div>
+      {showCode && (
+        <p className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {moneda ?? UNKNOWN_CURRENCY_TAG}
+        </p>
+      )}
+      {orders.map((order, idx) => {
+        const pct = maxValue > 0 ? (amountOf(order.gran_total) / maxValue) * 100 : 0;
+        return (
+          <OrderRow key={order.id} order={order}>
+            <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-slate-100 dark:bg-white/10 text-[11px] font-bold text-slate-500 dark:text-slate-300 tabular-nums">
+              {idx + 1}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-2">
+                {/* El Top 5 SÍ puede incluir una orden todavía sin folio. */}
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                  {order.folio ?? `#${order.id}`}
+                </span>
+                {/* En la moneda de LA ORDEN */}
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums shrink-0">
+                  {formatMoneyValueOrDash(order.gran_total, order.moneda_codigo, {
+                    maximumFractionDigits: 0,
+                  })}
+                </span>
+              </div>
+              <div className="mt-1 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden text-sky-500/70">
+                <div className="h-full bg-current rounded-full" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                {order.proveedor_nombre ?? "—"}
+              </p>
+            </div>
+          </OrderRow>
+        );
+      })}
     </div>
   );
 }
