@@ -4,6 +4,8 @@ import {
   hasQuotePaymentInfo,
   hasQuoteTotals,
   hasServicioMonto,
+  quoteLineSubtotal,
+  quoteTallaSubtotal,
 } from "@/src/features/quotes/utils/quoteAmountVisibility";
 import type {
   QuoteDetailView,
@@ -82,5 +84,27 @@ test.describe("hasServicioMonto", () => {
   test("distingue clave ausente de monto en cero", () => {
     expect(hasServicioMonto({ nombre: "Envío", monto: "0.00" } as unknown as Servicio)).toBe(true);
     expect(hasServicioMonto({ nombre: "Envío", cantidad: 1 } as unknown as Servicio)).toBe(false);
+  });
+});
+
+test.describe("quoteTallaSubtotal / quoteLineSubtotal", () => {
+  test("precio presente: precio × cantidad", () => {
+    expect(quoteTallaSubtotal({ precio_unitario: "10.50", cantidad: 3 })).toBe(31.5);
+    expect(
+      quoteLineSubtotal(detalle([{ precio_unitario: "10", cantidad: 2 }, { precio_unitario: "5", cantidad: 1 }])),
+    ).toBe(25);
+  });
+
+  test("precio null, ausente o no numérico: sin subtotal, nunca un 0 calculado", () => {
+    expect(quoteTallaSubtotal({ precio_unitario: null, cantidad: 5 })).toBeNull();
+    expect(quoteTallaSubtotal({ cantidad: 5 })).toBeNull();
+    expect(quoteTallaSubtotal({ precio_unitario: "abc", cantidad: 5 })).toBeNull();
+    expect(
+      quoteLineSubtotal(detalle([{ precio_unitario: "10", cantidad: 2 }, { precio_unitario: null, cantidad: 5 }])),
+    ).toBeNull();
+  });
+
+  test("precio en cero sí es un subtotal (0 real)", () => {
+    expect(quoteTallaSubtotal({ precio_unitario: "0.00", cantidad: 4 })).toBe(0);
   });
 });

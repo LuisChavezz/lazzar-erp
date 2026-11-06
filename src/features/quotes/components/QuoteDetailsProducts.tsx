@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { ChevronDownIcon, EyeIcon } from "@/src/components/Icons";
 import type { QuoteDetailView } from "../interfaces/quote.interface";
-import { hasQuoteLinePrices } from "../utils/quoteAmountVisibility";
+import {
+  hasQuoteLinePrices,
+  quoteLineSubtotal,
+  quoteTallaSubtotal,
+} from "../utils/quoteAmountVisibility";
 import { getQuoteDetailProductName } from "../utils/quoteDetailsFormatters";
 import {
   getTipoPedidoConfig,
@@ -101,10 +105,8 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
           (acc, talla) => acc + (Number(talla.cantidad) || 0),
           0,
         );
-        const subtotalLinea = detalle.tallas.reduce(
-          (acc, talla) => acc + Number(talla.precio_unitario) * Number(talla.cantidad),
-          0,
-        );
+        // `null` (alguna talla sin precio) se pinta como "-", nunca como 0.
+        const subtotalLinea = quoteLineSubtotal(detalle);
 
         return (
           <div
@@ -279,7 +281,7 @@ export const QuoteDetailsProducts = ({ details, formatAmount }: QuoteDetailsProd
                                 {formatAmount(talla.precio_unitario)}
                               </td>
                               <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                                {formatAmount(Number(talla.precio_unitario) * Number(talla.cantidad))}
+                                {formatAmount(quoteTallaSubtotal(talla))}
                               </td>
                             </>
                           )}
