@@ -23,13 +23,17 @@ const PAGE_SIZE = 100;
  */
 export function StockReportView() {
   const [almacenId, setAlmacenId] = useState<number | null>(null);
-  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
-  const warehousePreselection = useWarehousePreselection(almacenId, setAlmacenId);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   // `page` se reinicia a 1 al cambiar de almacén o de rango: un contexto de
   // consulta nuevo no debe reanudar en una página vieja.
   const [page, setPage] = useState(1);
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  // Un almacén nuevo es un contexto nuevo: vuelve a la página 1.
+  const warehousePreselection = useWarehousePreselection(almacenId, (id) => {
+    setAlmacenId(id);
+    setPage(1);
+  });
 
   const gateComplete =
     almacenId !== null && fechaInicio !== null && fechaFinal !== null;
