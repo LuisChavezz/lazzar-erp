@@ -388,6 +388,21 @@ export function useQuoteEditForm(quoteId: number) {
   const form = useForm({
     defaultValues: initialFormValues ?? emptyValues,
     onSubmit: async ({ value }) => {
+      // La sucursal sale del registro o del contexto, no de un campo: se revisa
+      // ANTES que el resto, como en el alta, para no hacer corregir todo el
+      // formulario y bloquear al final (EC-753).
+      if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        return;
+      }
+      const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
+      if (sucursal === null) {
+        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
+          id: "quote-sin-sucursal",
+        });
+        return;
+      }
+
       // Con "Usar el mismo teléfono" se validan y envían los teléfonos derivados.
       const parsed = quoteSubmitSchema.safeParse({
         ...withMirroredShippingPhones(value),
@@ -422,18 +437,6 @@ export function useQuoteEditForm(quoteId: number) {
       }
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
-
-      if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
-        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
-        return;
-      }
-      const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
-      if (sucursal === null) {
-        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
-          id: "quote-sin-sucursal",
-        });
-        return;
-      }
 
       setErrorTree({});
       const normalizedItems = (parsed.data.items ?? []).map(normalizeItem);
