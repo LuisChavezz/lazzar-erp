@@ -24,7 +24,7 @@ const VIEW_OPTIONS: { value: QuoteView; label: string; Icon: typeof ListIcon }[]
  *   preservar su estado interno (filtros, posiciones DnD, búsqueda, paginación).
  *
  * Esto elimina el costo de inicialización del tablero (DnD setup, cómputo de
- * filtros, suscripción adicional a useQuotes) del render inicial de la página.
+ * columnas, consulta de `tablero/`) del render inicial de la página.
  *
  * useTransition marca el cambio de vista como no urgente para no bloquear la UI.
  */

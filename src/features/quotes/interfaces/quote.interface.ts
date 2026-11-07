@@ -79,28 +79,6 @@ export interface Quote {
   moneda_codigo: string | null;
 }
 
-/**
- * Campos por los que `GET /ventas/cotizaciones/` acepta ordenar (whitelist del
- * backend en `CotizacionViewSet.get_queryset`). Sin `ordering`, el backend usa
- * `-created_at` con `-id` como desempate.
- */
-export type QuoteOrdering =
-  | "id"
-  | "-id"
-  | "created_at"
-  | "-created_at"
-  | "updated_at"
-  | "-updated_at"
-  | "gran_total"
-  | "-gran_total"
-  | "estatus"
-  | "-estatus";
-
-/** Parámetros de consulta (todos opcionales) de `GET /ventas/cotizaciones/`. */
-export interface QuoteQueryParams {
-  ordering?: QuoteOrdering;
-}
-
 export interface QuoteById {
   id: number;
   estatus_label: string;

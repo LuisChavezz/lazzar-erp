@@ -7,12 +7,10 @@ import {
   type QuoteResourceReaders,
 } from "../utils/quoteResource";
 import {
-  Quote,
   QuoteById,
   QuoteComentario,
   QuoteCreate,
   QuoteOnboardingData,
-  QuoteQueryParams,
   QuoteSubmitForReviewResponse,
 } from "../interfaces/quote.interface";
 import type {
@@ -22,11 +20,6 @@ import type {
   QuoteListResponse,
 } from "../interfaces/quote-list.interface";
 
-
-export const getQuotes = async (params?: QuoteQueryParams): Promise<Quote[]> => {
-  const response = await v1_api.get<Quote[]>("/ventas/cotizaciones/", { params });
-  return response.data;
-};
 
 // ─── Listado en modo servidor (EC-811) ─────────────────────────────────────────
 
