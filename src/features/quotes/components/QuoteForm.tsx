@@ -388,10 +388,11 @@ export function QuoteFormContent({
             <form.Field name="agente">
               {(field) => <input type="hidden" name={field.name} value={field.state.value} readOnly />}
             </form.Field>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <form.Field name="tipo_pedido">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Tipo de Pedido"
                     options={tiposPedidoOptions}
                     // Bloqueado por ahora en "Pedido de venta". El select se deja
@@ -417,6 +418,7 @@ export function QuoteFormContent({
                 <form.Field name="clasificacion">
                   {(field) => (
                     <FormSelect
+                      className={COMPACT_FIELD_CLS}
                       label="Clasificación"
                       options={CLASIFICACION_OPTIONS}
                       name={field.name}
@@ -450,7 +452,7 @@ export function QuoteFormContent({
                     forceUppercase={false}
                     readOnly
                     tabIndex={-1}
-                    className={READ_ONLY_INPUT_CLS}
+                    className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
