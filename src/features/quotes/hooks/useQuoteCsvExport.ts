@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Quote } from "../interfaces/quote.interface";
-import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
 const escapeCsv = (value: string | number | boolean | null | undefined) => {
@@ -105,14 +106,14 @@ export const buildQuotesCsv = (quotes: Quote[], columns: DataTableVisibleColumn<
 };
 
 /**
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
- * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
- * orden viejos tras un refetch que no cambiaba el número de filas.
+ * CSV del listado en MODO SERVIDOR: AL EXPORTAR (no al montar) `getRows` trae
+ * TODAS las filas de los criterios vigentes (filtros, búsqueda y orden),
+ * página por página desde el backend (`fetchAllRows` de `useServerTable`): la
+ * tabla solo tiene la página visible. `useServerExport` muestra el progreso,
+ * ignora un doble disparo y avisa si falla.
  */
 export const useQuoteCsvExport = (
-  tableRef: RefObject<DataTableHandle<Quote> | null>,
+  getRows: () => Promise<Quote[]>,
   columns: DataTableVisibleColumn<Quote>[]
 ) => {
   const columnsRef = useRef(columns);
@@ -121,19 +122,25 @@ export const useQuoteCsvExport = (
     columnsRef.current = columns;
   }, [columns]);
 
-  const exportToCsv = useCallback(() => {
+  const runExport = useServerExport(getRows, "quotes-export-csv");
+
+  const exportToCsv = useCallback(async () => {
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
-    const csvContent = buildQuotesCsv(tableRef.current?.getFilteredRows() ?? [], exportColumns);
-    const blob = new Blob([`\uFEFF${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+    await runExport((rows) => {
+      const csvContent = buildQuotesCsv(rows, exportColumns);
+      const blob = new Blob([`\uFEFF${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `quotes-${today}.csv`);
     });
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `quotes-${today}.csv`);
-  }, [tableRef]);
+  }, [runExport]);
 
   useEffect(() => {
-    const handleExport = () => exportToCsv();
+    const handleExport = () => {
+      void exportToCsv();
+    };
     document.addEventListener("quotes:exportCSV", handleExport);
     return () => {
       document.removeEventListener("quotes:exportCSV", handleExport);

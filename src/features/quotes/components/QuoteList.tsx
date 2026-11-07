@@ -1,38 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { getQuoteColumns, getQuoteHeaderFilters } from "./QuoteColumns";
+import { getQuoteColumns } from "./QuoteColumns";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { useQuotes } from "../hooks/useQuotes";
+import { useQuotesTable } from "../hooks/useQuotesTable";
 import { hasPermission } from "@/src/utils/permissions";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
+// A nivel de módulo: las columnas no dependen de nada del render.
+const quoteColumns = getQuoteColumns();
+
+/**
+ * Listado de cotizaciones de Ventas en MODO SERVIDOR (`useQuotesTable`):
+ * filtros, búsqueda, orden y página los resuelve el backend y viven en la
+ * URL, así que la página lo envuelve en `<Suspense>`. Las exportaciones piden
+ * al backend TODAS las filas de los criterios vigentes al hacer clic.
+ */
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
-  const {
-    quotes,
-    isLoading: isOrdersLoading,
-    isInitialError: isErrorQuotes,
-    error: quotesError,
-  } = useQuotes();
-  // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
-  // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
-  const tableRef = useRef<DataTableHandle<Quote>>(null);
+  const table = useQuotesTable();
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
   const isSessionLoading = sessionStatus === "loading";
   // Gatea "+ Nueva cotización". Es el código de ALTA, no el de lectura de la
@@ -40,8 +35,8 @@ export const QuoteList = () => {
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  useQuoteCsvExport(tableRef, visibleColumns);
-  useQuotePdfExport(tableRef, visibleColumns);
+  useQuoteCsvExport(table.fetchAllRows, visibleColumns);
+  useQuotePdfExport(table.fetchAllRows, visibleColumns);
 
   // Acciones de fila (menú del chip #id): la LISTA es dueña de las mutaciones
   // y de los diálogos; la celda solo señala qué acción se eligió (por
@@ -56,27 +51,21 @@ export const QuoteList = () => {
   const isValidatingReview = busy.some((b) => b.kind === "validateReview");
   const isTableBusy = isRejectingOrder || isValidatingReview;
 
-  // Columnas estáticas: callbacks y "en curso" van por `QuoteRowActionsProvider`
-  // (sin `useMemo`: el React Compiler memoiza el componente). Las opciones de
-  // los filtros de encabezado se arman con el listado COMPLETO (modo cliente).
-  const columns = withHeaderFilters(getQuoteColumns(), quotes, getQuoteHeaderFilters(quotes));
-
   return (
     <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
-      <QuoteRowActionDialogs quotes={quotes} {...dialogs} />
+      <QuoteRowActionDialogs quotes={table.rows} {...dialogs} />
       <DataTable
-        ref={tableRef}
-        columns={columns}
-        data={quotes}
-        baseDataCount={quotes.length}
-        searchPlaceholder="Buscar por #, cliente o estatus..."
+        columns={quoteColumns}
+        {...table.tableProps}
+        // Búsqueda del backend: OC, cliente (razón social, nombre o RFC) y el
+        // número de cotización EXACTO.
+        searchPlaceholder="Buscar por #, OC o cliente..."
+        // Identidad de la fila por registro, no por posición en la página.
         getRowId={(row) => String(row.id)}
         onVisibleColumnsChange={setVisibleColumns}
-        isLoading={isOrdersLoading}
-        isError={isErrorQuotes}
+        emptyMessage="Aún no hay cotizaciones"
         errorTitle="Error al cargar cotizaciones"
-        errorMessage={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
         loadingTitle={

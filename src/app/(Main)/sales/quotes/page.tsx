@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
+import { Loader } from "@/src/components/Loader";
 import { QuoteStats } from "@/src/features/quotes/components/QuoteStats";
 import { QuoteViewSwitcher } from "@/src/features/quotes/components/QuoteViewSwitcher";
 
@@ -33,7 +35,11 @@ export default function QuotesPage() {
       {/* Listado / Tablero Kanban — con selector de vista */}
       <section aria-labelledby="quotes-view-heading">
         <h2 id="quotes-view-heading" className="sr-only">Cotizaciones</h2>
-        <QuoteViewSwitcher />
+        {/* El listado lee y escribe su estado (filtros, orden, página) en la URL
+            con `useSearchParams`, que en Next.js requiere un límite de Suspense. */}
+        <Suspense fallback={<Loader className="py-20" title="Cargando cotizaciones..." />}>
+          <QuoteViewSwitcher />
+        </Suspense>
       </section>
     </main>
   );
