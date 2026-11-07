@@ -131,8 +131,14 @@ export const parseProgramarPedidoError = (error: unknown): ProgramarPedidoErrorR
           (PEDIDO_NO_PROGRAMABLE_KEYS as readonly string[]).includes(rejection.key);
       }
     }
-    // `get_object` acota por empresa: un pedido ajeno responde 404.
-    if (statusCode === 404) message = PEDIDO_PROGRAMAR_NOT_FOUND_MESSAGE;
+    // `get_object` acota por empresa y excluye los pedidos inactivos: responde
+    // 404 a un pedido ajeno y también a uno CANCELADO (`cancelar/` deja
+    // `activo=false`). En el segundo caso la fila de la lista estaba
+    // desactualizada, así que se releen los listados.
+    if (statusCode === 404) {
+      message = PEDIDO_PROGRAMAR_NOT_FOUND_MESSAGE;
+      refreshOrders = true;
+    }
   }
   /* Con errores de campo y sin rechazo, el detalle ya está marcado en el
    * formulario: el toast solo lo anuncia. Sin este caso caería a
