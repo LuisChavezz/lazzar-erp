@@ -1,18 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
 import { toastWarning } from "@/src/utils/toastWarning";
-import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
-import { cancelInvoice } from "../services/actions";
+import { useMutationLock } from "@/src/hooks/useMutationLock";
 import type { Invoice, InvoiceCancelResponse } from "../interfaces/invoice.interface";
 import {
-  cancelInvoiceErrorMessage,
   cancelledInvoiceCfdiNotCancellableMessage,
   isCancelledInvoiceCfdiCancellable,
   isInvoiceCfdiCancelled,
 } from "../utils/invoiceCancellation";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
-import { cancelInvoiceMutationKey } from "./useCancelInvoice";
+import {
+  cancelInvoiceMutationErrorMessage,
+  cancelInvoiceMutationKey,
+  postInvoiceCancel,
+} from "./useCancelInvoice";
 
 /**
  * Resultado de cancelar el CFDI de una factura ya `Cancelada`.
@@ -62,13 +63,10 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       if (!isCancelledInvoiceCfdiCancellable(current)) {
         return { outcome: "not-cancellable", invoice: current };
       }
-      try {
-        return { outcome: "done", invoice: await cancelInvoice({ id: invoiceId }) };
-      } catch (error) {
-        const message = cancelacionPendienteMessage(error);
-        if (message) return { outcome: "requested", message };
-        throw error;
-      }
+      const posted = await postInvoiceCancel({ id: invoiceId });
+      return posted.outcome === "requested"
+        ? posted
+        : { outcome: "done", invoice: posted.invoice };
     },
     onSuccess: (result) => {
       if (result.outcome === "requested") {
@@ -89,9 +87,7 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       }
     },
     onError: (error) => {
-      toast.error(
-        error instanceof PrecheckError ? error.message : cancelInvoiceErrorMessage(error),
-      );
+      toast.error(cancelInvoiceMutationErrorMessage(error));
     },
     onSettled: (result) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
