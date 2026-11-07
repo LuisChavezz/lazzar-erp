@@ -73,9 +73,35 @@ const stampedSinceShown = (current: Invoice, shownStamped: boolean): boolean =>
 const requestedSinceShown = (current: Invoice, shownRequested: boolean): boolean =>
   !shownRequested && isInvoiceCfdiCancellationRequested(current);
 
-/** Mensaje de un fallo: el del precheck tal cual, o el del backend. */
-const errorMessageOf = (error: unknown): string =>
+/**
+ * Mensaje de un fallo de una cancelación: el del precheck tal cual, o el del
+ * backend. Compartido con `useCancelCancelledInvoiceCfdi` (mismo endpoint).
+ */
+export const cancelInvoiceMutationErrorMessage = (error: unknown): string =>
   error instanceof PrecheckError ? error.message : cancelInvoiceErrorMessage(error);
+
+/**
+ * `POST cancelar/` con la cancelación solicitada separada: un `400` con la
+ * llave `cancelacion_pendiente` (`cancelacionPendienteMessage`) es el
+ * resultado `requested`, no un error; cualquier otro fallo se propaga.
+ * Compartido con `useCancelCancelledInvoiceCfdi` (mismo endpoint).
+ */
+export const postInvoiceCancel = async (
+  args: Parameters<typeof cancelInvoice>[0],
+): Promise<
+  | { outcome: "posted"; invoice: Awaited<ReturnType<typeof cancelInvoice>> }
+  | { outcome: "requested"; message: string }
+> => {
+  try {
+    return { outcome: "posted", invoice: await cancelInvoice(args) };
+  } catch (error) {
+    const message = cancelacionPendienteMessage(error);
+    if (message) return { outcome: "requested", message };
+    throw error;
+  }
+};
+
+const errorMessageOf = cancelInvoiceMutationErrorMessage;
 
 /**
  * Cancela UNA factura (`POST /finanzas/facturas/{id}/cancelar/`).
@@ -139,13 +165,10 @@ export const useCancelInvoice = (invoiceId: number) => {
       ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
-      try {
-        return { outcome: "cancelled", invoice: await cancelInvoice({ id: invoiceId, motivo }) };
-      } catch (error) {
-        const message = cancelacionPendienteMessage(error);
-        if (message) return { outcome: "requested", message };
-        throw error;
-      }
+      const posted = await postInvoiceCancel({ id: invoiceId, motivo });
+      return posted.outcome === "requested"
+        ? posted
+        : { outcome: "cancelled", invoice: posted.invoice };
     },
     onSuccess: (result) => {
       if (result.outcome === "requested") {
