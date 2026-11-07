@@ -3,10 +3,7 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { capitalize } from "@/src/utils/capitalize";
-import { quoteAmountSortingFn } from "@/src/features/quotes/utils/quoteAmountSorting";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
 import {
@@ -15,6 +12,7 @@ import {
   QUOTE_STATUS_FALLBACK_CLS,
 } from "../constants/quoteStatus";
 import { useQuoteActionItems } from "./QuoteCardActions";
+import { QuoteClienteHeaderFilter, QuoteEstatusHeaderFilter } from "./QuoteHeaderFilters";
 
 const columnHelper = createColumnHelper<Quote>();
 
@@ -83,11 +81,17 @@ function PendingDataCell() {
 }
 
 /**
- * Columnas del listado de cotizaciones. No reciben nada: callbacks y "en
- * curso" llegan al menú por `QuoteRowActionsProvider`; si viajaran por aquí,
- * cada cambio de "en curso" recrearía las columnas y remontaría todas las
- * celdas. El estado de los diálogos vive en `QuoteList`, nunca dentro de la
- * celda (se desmonta al ordenar/filtrar).
+ * Columnas del listado de cotizaciones, en MODO SERVIDOR: `meta.serverSort` es
+ * el campo de `ordering` del backend (`quotesTable`) y `meta.serverFilter`, la
+ * clave del filtro; las opciones de los filtros las pintan los encabezados
+ * (`QuoteHeaderFilters`) desde catálogos, nunca desde las filas. Una columna
+ * sin `serverSort` no ordena. `meta.label` nombra la columna en el selector y
+ * en las exportaciones cuando el encabezado es un componente.
+ *
+ * No reciben nada: callbacks y "en curso" llegan al menú por
+ * `QuoteRowActionsProvider`; si viajaran por aquí, cada cambio de "en curso"
+ * recrearía las columnas y remontaría todas las celdas. El estado de los
+ * diálogos vive en `QuoteList`, nunca dentro de la celda.
  *
  * Alineación: la resuelve `DataTable` con `meta.align` (izquierda por
  * defecto; importes y piezas a la derecha), así que aquí NO se ponen clases
@@ -95,29 +99,32 @@ function PendingDataCell() {
  */
 export const getQuoteColumns = () =>
   [
+    // El `#id` filtra por estatus (su badge) y ordena por id.
     columnHelper.accessor("id", {
-      header: "Cotización",
+      header: ({ column }) => <QuoteEstatusHeaderFilter column={column} title="Cotización" />,
+      meta: { label: "Cotización", serverSort: "id", serverFilter: "estatus" },
       size: 150,
       cell: (info) => <QuoteIdCell quote={info.row.original} />,
     }),
     // El estatus se pinta bajo el `#id`; esta columna, OCULTA por defecto, lo
-    // mantiene en la búsqueda global (por su nombre, no por el número) y en
-    // el selector de columnas.
+    // deja en el selector de columnas y en las exportaciones (por su nombre).
+    // Ordena por el NÚMERO del estatus (lo que ordena el backend), no por su
+    // nombre.
     columnHelper.accessor((row) => getQuoteStatusLabel(row), {
       id: "estatus",
       header: "Estatus",
-      meta: { hiddenByDefault: true },
+      meta: { hiddenByDefault: true, serverSort: "estatus" },
       cell: (info) => <QuoteStatusBadge quote={info.row.original} />,
     }),
     // El VALOR de la columna es la razón social cruda, tal como la manda el
-    // backend: es lo que leen las exportaciones CSV/PDF (por `accessorFn`) y
-    // lo que indexa la búsqueda (`?? ""`: un `null` en la primera fila la
-    // sacaría de la búsqueda, ver la trampa en `DataTable`). El formato de
-    // pantalla vive SOLO en la celda. El `id` es el de antes de EC-752, el
-    // que usa el PDF para darle su ancho (`getColumnWeight`).
+    // backend: es lo que leen las exportaciones CSV/PDF (por `accessorFn`).
+    // El formato de pantalla vive SOLO en la celda. El `id` es el de antes de
+    // EC-752, el que usa el PDF para darle su ancho (`getColumnWeight`).
+    // Filtra por el id del cliente (o "Sin cliente"), no por el texto.
     columnHelper.accessor((row) => row.cliente_razon_social ?? "", {
       id: "cliente_razon_social",
-      header: "Razón social",
+      header: ({ column }) => <QuoteClienteHeaderFilter column={column} title="Razón social" />,
+      meta: { label: "Razón social", serverSort: "cliente__razon_social", serverFilter: "cliente" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300">
           {getQuoteClienteLabel(info.row.original) || "—"}
@@ -137,6 +144,7 @@ export const getQuoteColumns = () =>
     }),
     columnHelper.accessor("created_at", {
       header: "Fecha",
+      meta: { serverSort: "created_at" },
       cell: ({ row }) => (
         <span className="text-slate-600 dark:text-slate-300">
           {formatQuoteDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
@@ -151,9 +159,9 @@ export const getQuoteColumns = () =>
     columnHelper.accessor("importe_sin_iva", {
       id: "importeSinIva",
       header: "Importe sin IVA",
-      meta: { align: "right" },
-      // Agrupa por moneda y ordena el importe dentro de cada una (EC-618).
-      sortingFn: quoteAmountSortingFn,
+      // El backend agrupa por moneda y ordena el importe dentro de cada una
+      // (EC-618, EC-811).
+      meta: { align: "right", serverSort: "importe_sin_iva" },
       cell: ({ row }) => (
         <span className="tabular-nums text-slate-500 dark:text-slate-400">
           {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}
@@ -167,61 +175,3 @@ export const getQuoteColumns = () =>
       cell: PendingDataCell,
     }),
   ] as ColumnDef<Quote>[];
-
-/**
- * Rótulo de la opción de cliente del filtro: el texto de la celda
- * (`getQuoteClienteLabel`) y, SOLO si otro cliente distinto de las filas tiene
- * el mismo texto, su id para distinguirlos ("Acme sa de cv (cliente #10)").
- * El listado no trae el RFC del cliente, así que el calificador es el id.
- */
-export const getQuoteClienteFilterLabel = (quotes: Quote[]) => {
-  const idsByLabel = new Map<string, Set<number>>();
-  for (const quote of quotes) {
-    if (quote.cliente == null) continue;
-    const label = getQuoteClienteLabel(quote);
-    const ids = idsByLabel.get(label) ?? new Set<number>();
-    ids.add(quote.cliente);
-    idsByLabel.set(label, ids);
-  }
-  return (quote: Quote): string => {
-    const label = getQuoteClienteLabel(quote);
-    if (quote.cliente == null) return label;
-    return (idsByLabel.get(label)?.size ?? 0) > 1 ? `${label} (cliente #${quote.cliente})` : label;
-  };
-};
-
-/**
- * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * - El `#id` filtra por `estatus` (su badge), con ficha "Estatus: …": el
- *   catálogo completo de `QUOTE_STATUS_CONFIG` en su orden, con su punto, y al
- *   final cada estatus de las filas que el front no conoce, rotulado con
- *   `getQuoteStatusLabel` (el mismo texto que su badge).
- * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
- *   crudo `cliente` y se rotulan como la celda (`getQuoteClienteLabel`, con su
- *   respaldo `Cliente #N`), así dos homónimos no se mezclan; cuando dos o más
- *   clientes comparten el texto, solo esas opciones llevan su id
- *   (`getQuoteClienteFilterLabel`). Un borrador puede guardarse sin cliente:
- *   esas filas tienen su opción "Sin cliente", fijada arriba. Con buscador: el
- *   catálogo es largo.
- *
- * Es una factoría sobre las filas porque saber si un texto se repite exige
- * ver el listado completo, no solo la fila.
- */
-export const getQuoteHeaderFilters = (
-  quotes: Quote[],
-): Partial<Record<string, HeaderFilterSpec<Quote>>> => ({
-  id: {
-    type: "options",
-    filterLabel: "estatus",
-    get: (r) => r.estatus,
-    options: optionsFromConfig(QUOTE_STATUS_CONFIG),
-    label: getQuoteStatusLabel,
-  },
-  cliente_razon_social: {
-    type: "distinct",
-    get: (r) => r.cliente,
-    label: getQuoteClienteFilterLabel(quotes),
-    searchable: true,
-    emptyOption: "Sin cliente",
-  },
-});

@@ -1,24 +1,31 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { harness } from "./support/headerFilterHarness";
 import {
   getQuoteClienteLabel,
   getQuoteColumns,
-  getQuoteHeaderFilters,
 } from "@/src/features/quotes/components/QuoteColumns";
 import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
-import { getQuoteStatusLabel, QUOTE_STATUS_CONFIG } from "@/src/features/quotes/constants/quoteStatus";
+import { getQuoteStatusLabel } from "@/src/features/quotes/constants/quoteStatus";
 import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
+import {
+  getRecentQuotesRange,
+  quoteClienteParam,
+  quotesTable,
+  QUOTE_ESTATUS_VALUES,
+} from "@/src/features/quotes/utils/quoteListParams";
+import { buildQuoteClienteFilterOptions } from "@/src/features/quotes/utils/quoteFilterOptions";
+import {
+  readServerTableState,
+  toServerTableCriteria,
+} from "@/src/utils/serverTableParams";
 
 /**
- * Pruebas unitarias de EC-752 sobre el listado de cotizaciones de Ventas: las
- * opciones y el `filterFn` de cada filtro de encabezado, y el texto que la
- * búsqueda global indexa. Se leen las columnas ya envueltas, sin renderizar.
+ * Pruebas unitarias del listado de cotizaciones de Ventas en MODO SERVIDOR
+ * (EC-809): el contrato de la tabla con `GET /ventas/cotizaciones/`, las
+ * opciones del filtro de cliente que salen de `opciones/` y lo que siguen
+ * leyendo las exportaciones.
  */
-
-const labels = (options: { label: string }[]) => options.map((o) => o.label);
 
 const quote = (overrides: Partial<Quote>): Quote =>
   ({
@@ -31,94 +38,114 @@ const quote = (overrides: Partial<Quote>): Quote =>
     ...overrides,
   }) as Quote;
 
-const rows = [
-  quote({ id: 1, estatus: 1, cliente: 10, cliente_razon_social: "ACME SA DE CV" }),
-  quote({ id: 2, estatus: 2, cliente: 11, cliente_razon_social: "", cliente_nombre: "Taller Norte" }),
-  quote({ id: 3, estatus: 5, cliente: 12 }),
-  // Estatus que el front no conoce: con su etiqueta del backend, y sin ella.
-  quote({ id: 4, estatus: 7, estatus_label: "ARCHIVADA", cliente: 10, cliente_razon_social: "ACME SA DE CV" }),
-  quote({ id: 5, estatus: 8, estatus_label: "", cliente: 13, cliente_razon_social: "ACME SA DE CV" }),
-  // Borrador guardado sin cliente: el listado lo trae con `cliente: null`.
-  quote({ id: 6, estatus: 1, cliente: null, cliente_nombre: null, cliente_razon_social: null }),
-];
+const criteriaOf = (query: Record<string, string>) =>
+  toServerTableCriteria(
+    quotesTable,
+    readServerTableState(quotesTable, (key) => query[key] ?? null),
+  );
 
-const t = harness<Quote>(
-  withHeaderFilters(getQuoteColumns() as ColumnDef<Quote, unknown>[], rows, getQuoteHeaderFilters(rows)),
-  rows,
-);
-
-test.describe("filtro de estatus (en el #id)", () => {
-  test("el catálogo completo en su orden, con punto, y al final los desconocidos", () => {
-    const options = t.options("id");
-    expect(labels(options)).toEqual([
-      "Todos",
-      "Borrador",
-      "Por Autorizar",
-      "Autorizada",
-      "Rechazada",
-      "Cambios Solicitados",
-      "Archivada",
-      "Estatus 8",
-    ]);
-    // Cada opción del catálogo lleva el punto de su config.
-    for (const [value, cfg] of Object.entries(QUOTE_STATUS_CONFIG)) {
-      expect(options.find((o) => o.value === value)?.dotClassName).toBe(cfg.dot);
+test.describe("contrato de la tabla con el backend", () => {
+  test("cada columna ordena y filtra por claves que la definición conoce", () => {
+    const fields = quotesTable.ordering?.fields ?? [];
+    const filterKeys = Object.keys(quotesTable.filters);
+    const metas = getQuoteColumns().map((column) => ({
+      // `accessor("id")` no declara `id`: lo toma de su `accessorKey`.
+      id: column.id ?? ("accessorKey" in column ? String(column.accessorKey) : ""),
+      ...(column.meta ?? {}),
+    }));
+    for (const meta of metas) {
+      if (meta.serverSort) expect(fields).toContain(meta.serverSort);
+      if (meta.serverFilter) expect(filterKeys).toContain(meta.serverFilter);
     }
-    expect(t.column("id").meta?.filterLabel).toBe("Estatus");
+    const byId = Object.fromEntries(metas.map((meta) => [meta.id, meta]));
+    expect(byId.id).toMatchObject({ serverSort: "id", serverFilter: "estatus" });
+    expect(byId.cliente_razon_social).toMatchObject({
+      serverSort: "cliente__razon_social",
+      serverFilter: "cliente",
+    });
+    expect(byId.importeSinIva).toMatchObject({ serverSort: "importe_sin_iva" });
+    expect(byId.estatus).toMatchObject({ serverSort: "estatus", hiddenByDefault: true });
+    // Sin orden en el servidor: no se ofrece ordenar.
+    expect(byId.piezas?.serverSort).toBeUndefined();
   });
 
-  test("filtra por el estatus crudo, también uno desconocido", () => {
-    expect(t.matching("id", "2").map((r) => r.id)).toEqual([2]);
-    expect(t.matching("id", "1").map((r) => r.id)).toEqual([1, 6]);
-    expect(t.matching("id", "7").map((r) => r.id)).toEqual([4]);
-    // Un estatus del catálogo sin filas no deja ninguna.
-    expect(t.matching("id", "3")).toEqual([]);
+  test("vista por defecto: el orden del backend con -id de desempate", () => {
+    expect(criteriaOf({})).toEqual({ ordering: "-created_at,-id" });
+  });
+
+  test("estatus: uno o varios del catálogo; uno desconocido invalida el valor", () => {
+    expect(QUOTE_ESTATUS_VALUES).toEqual(["1", "2", "3", "4", "5"]);
+    expect(criteriaOf({ estatus: "2" })).toMatchObject({ estatus: "2" });
+    expect(criteriaOf({ estatus: "4,1" })).toMatchObject({ estatus: "1,4" });
+    expect(criteriaOf({ estatus: "2,9" }).estatus).toBeUndefined();
+  });
+
+  test("cliente: un id positivo o sin_cliente; lo demás no se envía", () => {
+    expect(quoteClienteParam.parse("47")).toBe(47);
+    expect(quoteClienteParam.parse("sin_cliente")).toBe("sin_cliente");
+    expect(quoteClienteParam.parse("0")).toBeNull();
+    expect(quoteClienteParam.parse("abc")).toBeNull();
+    expect(criteriaOf({ cliente: "sin_cliente" })).toMatchObject({ cliente: "sin_cliente" });
+    expect(criteriaOf({ cliente: "-3" }).cliente).toBeUndefined();
+  });
+
+  test("búsqueda por q y orden por importe con desempate", () => {
+    expect(criteriaOf({ q: "  acme " })).toMatchObject({ q: "acme" });
+    expect(criteriaOf({ ordering: "-importe_sin_iva" })).toMatchObject({
+      ordering: "-importe_sin_iva,-id",
+    });
+    // Un campo fuera de la lista blanca vuelve al orden por defecto.
+    expect(criteriaOf({ ordering: "gran_total" })).toMatchObject({ ordering: "-created_at,-id" });
   });
 });
 
-test.describe("filtro de cliente", () => {
-  test("opciones de las filas, por id, con el texto de la celda y su respaldo", () => {
-    // Dos clientes (10 y 13) con la misma razón social son DOS opciones: el
-    // filtro compara el id, así que los homónimos no se mezclan, y SOLO esas
-    // llevan el id del cliente para distinguirlas; las únicas quedan limpias.
-    expect(labels(t.options("cliente_razon_social"))).toEqual([
-      "Todos",
-      "Sin cliente",
-      "Acme sa de cv (cliente #10)",
-      "Acme sa de cv (cliente #13)",
-      "Cliente #12",
-      "Taller Norte",
+test.describe("opciones del filtro de cliente (opciones/)", () => {
+  test("Sin cliente primero, el casing de la celda y el id solo en homónimos", () => {
+    const options = buildQuoteClienteFilterOptions([
+      { value: 10, label: "ACME SA DE CV" },
+      { value: 13, label: "ACME SA DE CV" },
+      { value: 11, label: "Taller Norte" },
+      { value: 12, label: "  " },
+      { value: "sin_cliente", label: "Sin cliente" },
     ]);
-    expect(t.matching("cliente_razon_social", "10").map((r) => r.id)).toEqual([1, 4]);
-    expect(t.matching("cliente_razon_social", "13").map((r) => r.id)).toEqual([5]);
+    expect(options).toEqual([
+      { value: "sin_cliente", label: "Sin cliente" },
+      { value: "10", label: "Acme sa de cv (cliente #10)" },
+      { value: "13", label: "Acme sa de cv (cliente #13)" },
+      { value: "11", label: "Taller norte" },
+      { value: "12", label: "Cliente #12" },
+    ]);
   });
 
-  test("el borrador sin cliente tiene su opción y no indexa un texto inventado", () => {
-    const sinCliente = t.options("cliente_razon_social")[1];
-    expect(t.matching("cliente_razon_social", sinCliente.value as string).map((r) => r.id)).toEqual([6]);
-    expect(t.cellText("cliente_razon_social", rows[5])).toBe("");
+  test("sin la marca del backend no hay opción Sin cliente", () => {
+    expect(buildQuoteClienteFilterOptions([{ value: 1, label: "Uno" }])).toEqual([
+      { value: "1", label: "Uno" },
+    ]);
   });
+});
 
-  test("es buscable", () => {
-    expect(t.column("cliente_razon_social").meta?.headerFilter?.searchable).toEqual({
-      placeholder: "Buscar razón social…",
+test.describe("rango de los últimos 30 días", () => {
+  test("hoy incluido, en el día local", () => {
+    expect(getRecentQuotesRange(new Date(2026, 10, 7, 23, 30))).toEqual({
+      fecha_desde: "2026-10-09",
+      fecha_hasta: "2026-11-07",
+    });
+    // Cruza de año sin desbordar.
+    expect(getRecentQuotesRange(new Date(2026, 0, 5, 0, 5))).toEqual({
+      fecha_desde: "2025-12-07",
+      fecha_hasta: "2026-01-05",
     });
   });
 });
 
-test.describe("texto que indexa la búsqueda global", () => {
-  test("el estatus por su nombre, no por el número", () => {
-    expect(t.cellText("estatus", rows[1])).toBe("Por Autorizar");
-    expect(t.cellText("estatus", rows[3])).toBe("Archivada");
-    expect(t.cellText("estatus", rows[4])).toBe("Estatus 8");
-    expect(t.column("estatus").meta?.hiddenByDefault).toBe(true);
-  });
-
-  test("el cliente por su razón social cruda, como antes de EC-752", () => {
-    expect(t.cellText("cliente_razon_social", rows[0])).toBe("ACME SA DE CV");
-    // El formato de pantalla (y su respaldo) queda en la celda.
-    expect(getQuoteClienteLabel(rows[2])).toBe("Cliente #12");
-    expect(getQuoteClienteLabel(rows[1])).toBe("Taller Norte");
+test.describe("texto del cliente en la celda", () => {
+  test("razón social con casing, nombre o respaldo; vacío sin cliente", () => {
+    expect(getQuoteClienteLabel(quote({ cliente_razon_social: "ACME SA DE CV" }))).toBe("Acme sa de cv");
+    expect(getQuoteClienteLabel(quote({ cliente: 12 }))).toBe("Cliente #12");
+    expect(getQuoteClienteLabel(quote({ cliente_nombre: "Taller Norte" }))).toBe("Taller Norte");
+    expect(
+      getQuoteClienteLabel(quote({ cliente: null, cliente_nombre: null, cliente_razon_social: null })),
+    ).toBe("");
   });
 });
 
@@ -137,7 +164,11 @@ test.describe("exportación de la razón social", () => {
     const visible: DataTableVisibleColumn<Quote>[] = [
       { id: "cliente_razon_social", header: "Razón social", accessorFn: column.accessorFn },
     ];
-    expect(buildQuotesCsv([rows[0], rows[5]], visible)).toBe(
+    const rows = [
+      quote({ id: 1, cliente_razon_social: "ACME SA DE CV" }),
+      quote({ id: 6, cliente: null, cliente_nombre: null, cliente_razon_social: null }),
+    ];
+    expect(buildQuotesCsv(rows, visible)).toBe(
       // La columna "Moneda" la agrega siempre el CSV (EC-618).
       ["Razón social,Moneda", "ACME SA DE CV,", ","].join("\n"),
     );
