@@ -88,7 +88,7 @@ export function OperationsQuoteActionDialogs({
   // por debajo, la respuesta de error del backend es la fuente de verdad.
   const snapshotEstatus = snapshot.operationsQuote.estatus;
   const canAuthorizeOperationsQuote =
-    canManageOperationsQuoteAuthorization(snapshotEstatus) && snapshotEstatus === 2;
+    canManageOperationsQuoteAuthorization(snapshotEstatus);
   const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(snapshotEstatus);
   const isOpen = (kind: OperationsQuoteRowAction) => dialog?.kind === kind;
   const handleOpenChange = (open: boolean) => {
