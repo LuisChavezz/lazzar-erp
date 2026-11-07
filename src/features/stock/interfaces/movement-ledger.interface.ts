@@ -2,7 +2,8 @@
  * Contrato de `GET /inventarios/movimientos/auxiliar/` (Auxiliar de
  * movimientos: kardex de una variante). Fuente: `inventarios/api/auxiliar.py`
  * y la acción `auxiliar` de `MovimientoOperacionViewSet` (nucleo-erp PR #798;
- * `hay_mas`, alcance por sucursal y 400 en ids no numéricos desde el PR #810).
+ * `hay_mas`, alcance por sucursal y 400 en ids no numéricos desde el PR #810;
+ * documento `FACTURA` y tope de renglones `results_truncado` desde e8442f7).
  *
  * Cantidades: strings decimales con 4 decimales ("10.0000"). Costos: strings
  * con 2 decimales y SIN moneda. `fecha`: datetime ISO (UTC).
@@ -20,6 +21,7 @@ export type MovementLedgerDocumento =
   | "TRANSFERENCIA"
   | "ORDEN_PRODUCCION"
   | "AJUSTE"
+  | "FACTURA"
   | "PEDIDO"
   | "MOVIMIENTO_MANUAL";
 
@@ -84,7 +86,13 @@ export interface MovementLedgerResolved {
   opciones: [];
   /** Solo las opciones se recortan. */
   hay_mas: false;
+  /** Totales y saldos de TODO el rango, aunque `results` venga recortado. */
   resumen: MovementLedgerSummary;
+  /**
+   * `results` trae solo los `MOVEMENT_LEDGER_MAX_ROWS` renglones más recientes
+   * del rango (los últimos de la lista cronológica): hubo más.
+   */
+  results_truncado: boolean;
   results: MovementLedgerRow[];
 }
 
@@ -106,6 +114,12 @@ export type MovementLedgerResponse = MovementLedgerResolved | MovementLedgerOpti
  * si hay más coincidencias lo dice `hay_mas`, no el largo de `opciones`.
  */
 export const MOVEMENT_LEDGER_MAX_OPTIONS = 20;
+
+/**
+ * Renglones que el backend devuelve por omisión (`LIMITE_RENGLONES`). Solo para
+ * el aviso: si hubo recorte lo dice `results_truncado`.
+ */
+export const MOVEMENT_LEDGER_MAX_ROWS = 500;
 
 /** Se manda `q` o `producto_variante` (si van los dos, el backend ignora `q`). */
 export type MovementLedgerTarget =

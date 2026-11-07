@@ -4,11 +4,13 @@ import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Button } from "@/src/components/Button";
 import { DataTable } from "@/src/components/DataTable";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger";
 import {
   isResolvedMovementLedger,
   MOVEMENT_LEDGER_MAX_OPTIONS,
+  MOVEMENT_LEDGER_MAX_ROWS,
   type MovementLedgerTarget,
   type MovementLedgerVariant,
 } from "@/src/features/stock/interfaces/movement-ledger.interface";
@@ -222,6 +224,15 @@ export function MovementLedgerView() {
             >
               <MovementLedgerSummary variante={resolved.variante} resumen={resolved.resumen} />
             </div>
+          )}
+
+          {/* El backend corta el kardex en los renglones más recientes; los
+              totales y saldos siguen siendo los del rango completo. */}
+          {resolved?.results_truncado && (
+            <SectionErrorNotice
+              title={`Solo se muestran los ${MOVEMENT_LEDGER_MAX_ROWS} movimientos más recientes`}
+              message={`El rango tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${MOVEMENT_LEDGER_MAX_ROWS} más recientes. Los totales y los saldos sí consideran todos. Acota el rango de fechas para ver los anteriores.`}
+            />
           )}
 
           {/* `DataTable` queda montado (alterna solo su cuerpo). Filas en el
