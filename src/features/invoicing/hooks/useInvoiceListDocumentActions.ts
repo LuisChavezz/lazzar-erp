@@ -54,6 +54,10 @@ export interface InvoiceRowActionsContextValue {
   canCancel: (invoice: InvoiceListRow) => boolean;
   /** Abre el diálogo de cancelación, que vive en `InvoiceList` (no en la celda). */
   onCancel: (invoice: InvoiceListRow) => void;
+  /** ¿Se ofrece "Cancelar CFDI ante el SAT" en esta fila? (`canCancelCancelledInvoiceCfdi`). */
+  canCancelCfdi: (invoice: InvoiceListRow) => boolean;
+  /** Abre el diálogo de cancelación del CFDI, que vive en `InvoiceList`. */
+  onCancelCfdi: (invoice: InvoiceListRow) => void;
 }
 
 const { Provider, useRowActionsContext } =
@@ -86,7 +90,7 @@ export const useInvoiceRowActionsContext = useRowActionsContext;
  */
 export function useInvoiceListDocumentActions(): Omit<
   InvoiceRowActionsContextValue,
-  "canCancel" | "onCancel"
+  "canCancel" | "onCancel" | "canCancelCfdi" | "onCancelCfdi"
 > & {
   /** Sesión del diálogo de confirmación del correo (`useSendEmailConfirmation`). */
   emailDialog: SendEmailDialogSession<PreparedInvoiceEmail> | null;

@@ -47,6 +47,8 @@ import {
   INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL,
   INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE,
   INVOICE_CFDI_VALID_LABEL,
+  CANCEL_CANCELLED_INVOICE_CFDI_LABEL,
+  canCancelCancelledInvoiceCfdi,
   canCancelInvoice,
   getInvoiceCancelBlockReason,
   isInvoiceCfdiCancellationRequested,
@@ -72,6 +74,7 @@ import {
 } from "../utils/invoiceCurrency";
 import { InvoiceConceptsSection } from "./InvoiceConceptsSection";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
+import { CancelledInvoiceCfdiCancelDialog } from "./CancelledInvoiceCfdiCancelDialog";
 import { InvoiceStampDialog } from "./InvoiceStampDialog";
 import { InvoiceCfdiReconcileDialog } from "./InvoiceCfdiReconcileDialog";
 import { InvoiceEmitDialog } from "./InvoiceEmitDialog";
@@ -131,6 +134,9 @@ function InvoiceDocumentActions({
   const canReconcile = canReconcileInvoiceCfdi(invoice, user);
   const canCancel = !stampPending && canCancelInvoice(invoice, user);
   const cancelBlockReason = canCancel ? getInvoiceCancelBlockReason(invoice) : null;
+  // Ya `Cancelada` con el CFDI vigente: solo se cancela el CFDI ante el SAT (EC-764).
+  // Nunca coincide con `canCancel` (Borrador o Emitida).
+  const canCancelCfdi = canCancelCancelledInvoiceCfdi(invoice, user);
   const canStamp = !stampPending && canStampInvoice(invoice, user);
   const stampBlockReason =
     canStamp && isInvoiceTipoCambioMissing(invoice)
@@ -168,6 +174,18 @@ function InvoiceDocumentActions({
           label="Cancelar factura"
           className="text-rose-600! dark:text-rose-400!"
           renderDialog={(dialog) => <InvoiceCancelDialog invoice={invoice} {...dialog} />}
+        />
+        {/* "Cancelar CFDI ante el SAT": factura ya `Cancelada`, activa, con el CFDI
+            vigente y sin timbrado pendiente (`canCancelCancelledInvoiceCfdi`). En el
+            ERP no cambia nada más. */}
+        <DocumentActionWithDialog
+          offered={canCancelCfdi}
+          icon={BanIcon}
+          label={CANCEL_CANCELLED_INVOICE_CFDI_LABEL}
+          className="text-rose-600! dark:text-rose-400!"
+          renderDialog={(dialog) => (
+            <CancelledInvoiceCfdiCancelDialog invoice={invoice} {...dialog} />
+          )}
         />
         {/* "Timbrar": solo con `E-FIN-FACTURAS` y una `Emitida` activa sin CFDI ni
             timbrado pendiente (`canStampInvoice`); fuera de MXN sin tipo de cambio,
@@ -292,11 +310,12 @@ function InvoiceTipoCambioTile({ invoice }: { invoice: Invoice }) {
  * cancelarla en el ERP; "Cancelar factura" sigue habilitado para completarlo.
  * Con la cancelación solicitada y pendiente de que el receptor la acepte
  * (`isInvoiceCfdiCancellationRequested`) muestra ese estado. En una `Emitida`,
- * "Cancelar factura" vuelve a consultar al SAT; en una `Cancelada` el ERP no
- * ofrece cómo reintentar, así que solo se agrega la nota de que su CFDI no se
- * canceló ante el SAT.
+ * "Cancelar factura" vuelve a consultar al SAT; en una `Cancelada` se agrega la
+ * nota de que su CFDI no se canceló ante el SAT, y "Cancelar CFDI ante el SAT"
+ * vuelve a consultarlo.
  * Una `Cancelada` con UUID y SIN `cfdi_cancelado` (cancelada antes de que
- * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente, sin acción.
+ * `cancelar/` cancelara el CFDI) muestra que el CFDI sigue vigente; se cancela
+ * con "Cancelar CFDI ante el SAT" (`canCancelCancelledInvoiceCfdi`).
  * Salen del retrieve: el desglose no trae ningún campo de timbrado.
  *
  * Va como bloque bajo los mosaicos de la cabecera y no como `InfoTile`: el

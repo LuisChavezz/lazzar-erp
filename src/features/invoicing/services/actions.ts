@@ -96,9 +96,11 @@ export const createInvoiceFromOnboarding = async (
  * Cancela una factura `Borrador` o `Emitida`
  * (`POST /finanzas/facturas/{id}/cancelar/`, responde `200` con la factura
  * completa y `contrapoliza_id`). `motivo` es opcional y solo se manda si trae
- * texto: el backend lo agrega a `observaciones`. Cancelar una ya cancelada
- * responde `200` sin efecto. El error se deja propagar (p. ej. el `400` bajo
- * `estatus` si tiene notas de crédito emitidas).
+ * texto: el backend lo agrega a `observaciones`. En una ya `Cancelada` con el
+ * CFDI vigente solo cancela el CFDI ante el SAT y descarta `motivo`
+ * (`useCancelCancelledInvoiceCfdi`, que no lo manda); en cualquier otra ya
+ * cancelada responde `200` sin efecto. El error se deja propagar (p. ej. el
+ * `400` bajo `estatus` si tiene notas de crédito emitidas).
  */
 export const cancelInvoice = async ({
   id,

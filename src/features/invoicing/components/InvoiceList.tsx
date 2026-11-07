@@ -11,8 +11,9 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { getInvoiceColumns, getInvoiceHeaderFilters } from "./InvoiceColumns";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { InvoiceCancelDialog } from "./InvoiceCancelDialog";
+import { CancelledInvoiceCfdiCancelDialog } from "./CancelledInvoiceCfdiCancelDialog";
 import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
-import { canCancelInvoice } from "../utils/invoiceCancellation";
+import { canCancelCancelledInvoiceCfdi, canCancelInvoice } from "../utils/invoiceCancellation";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { useInvoices } from "../hooks/useInvoices";
@@ -38,6 +39,8 @@ export const InvoiceList = () => {
   // Factura a cancelar. El diálogo vive aquí y no en la celda: al quedar
   // Cancelada, un filtro de estatus puede sacar la fila de la tabla.
   const [invoiceToCancel, setInvoiceToCancel] = useState<InvoiceListRow | null>(null);
+  // Factura Cancelada cuyo CFDI vigente se cancela ante el SAT (EC-764); mismo motivo.
+  const [invoiceCfdiToCancel, setInvoiceCfdiToCancel] = useState<InvoiceListRow | null>(null);
 
   // Solo se trata como error "de pantalla completa" cuando la consulta nunca
   // cargó con éxito; un error de refetch transitorio no debe descartar la
@@ -51,6 +54,9 @@ export const InvoiceList = () => {
     ...documentActions,
     canCancel: (invoice: InvoiceListRow) => canCancelInvoice(invoice, session?.user),
     onCancel: setInvoiceToCancel,
+    canCancelCfdi: (invoice: InvoiceListRow) =>
+      canCancelCancelledInvoiceCfdi(invoice, session?.user),
+    onCancelCfdi: setInvoiceCfdiToCancel,
   };
 
   // Las opciones de los filtros de encabezado se arman con el listado completo.
@@ -94,6 +100,13 @@ export const InvoiceList = () => {
         open={invoiceToCancel !== null}
         onOpenChange={(open) => {
           if (!open) setInvoiceToCancel(null);
+        }}
+      />
+      <CancelledInvoiceCfdiCancelDialog
+        invoice={invoiceCfdiToCancel}
+        open={invoiceCfdiToCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setInvoiceCfdiToCancel(null);
         }}
       />
       {/* Confirmación del correo: vive aquí y no en la celda, como la
