@@ -11,7 +11,7 @@ import {
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { getQuoteColumns, QUOTE_HEADER_FILTERS } from "./QuoteColumns";
+import { getQuoteColumns, getQuoteHeaderFilters } from "./QuoteColumns";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
@@ -58,7 +58,7 @@ export const QuoteList = () => {
   // Columnas estáticas: callbacks y "en curso" van por `QuoteRowActionsProvider`
   // (sin `useMemo`: el React Compiler memoiza el componente). Las opciones de
   // los filtros de encabezado se arman con el listado COMPLETO (modo cliente).
-  const columns = withHeaderFilters(getQuoteColumns(), quotes, QUOTE_HEADER_FILTERS);
+  const columns = withHeaderFilters(getQuoteColumns(), quotes, getQuoteHeaderFilters(quotes));
 
   return (
     <QuoteRowActionsProvider value={{ onAction, busy }}>

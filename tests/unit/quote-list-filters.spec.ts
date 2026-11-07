@@ -5,8 +5,10 @@ import { harness } from "./support/headerFilterHarness";
 import {
   getQuoteClienteLabel,
   getQuoteColumns,
-  QUOTE_HEADER_FILTERS,
+  getQuoteHeaderFilters,
 } from "@/src/features/quotes/components/QuoteColumns";
+import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { getQuoteStatusLabel, QUOTE_STATUS_CONFIG } from "@/src/features/quotes/constants/quoteStatus";
 import type { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 
@@ -41,7 +43,7 @@ const rows = [
 ];
 
 const t = harness<Quote>(
-  withHeaderFilters(getQuoteColumns() as ColumnDef<Quote, unknown>[], rows, QUOTE_HEADER_FILTERS),
+  withHeaderFilters(getQuoteColumns() as ColumnDef<Quote, unknown>[], rows, getQuoteHeaderFilters(rows)),
   rows,
 );
 
@@ -77,27 +79,28 @@ test.describe("filtro de estatus (en el #id)", () => {
 test.describe("filtro de cliente", () => {
   test("opciones de las filas, por id, con el texto de la celda y su respaldo", () => {
     // Dos clientes (10 y 13) con la misma razón social son DOS opciones: el
-    // filtro compara el id, así que los homónimos no se mezclan.
-    expect(labels(t.options("cliente"))).toEqual([
+    // filtro compara el id, así que los homónimos no se mezclan, y SOLO esas
+    // llevan el id del cliente para distinguirlas; las únicas quedan limpias.
+    expect(labels(t.options("cliente_razon_social"))).toEqual([
       "Todos",
       "Sin cliente",
-      "Acme sa de cv",
-      "Acme sa de cv",
+      "Acme sa de cv (cliente #10)",
+      "Acme sa de cv (cliente #13)",
       "Cliente #12",
       "Taller Norte",
     ]);
-    expect(t.matching("cliente", "10").map((r) => r.id)).toEqual([1, 4]);
-    expect(t.matching("cliente", "13").map((r) => r.id)).toEqual([5]);
+    expect(t.matching("cliente_razon_social", "10").map((r) => r.id)).toEqual([1, 4]);
+    expect(t.matching("cliente_razon_social", "13").map((r) => r.id)).toEqual([5]);
   });
 
   test("el borrador sin cliente tiene su opción y no indexa un texto inventado", () => {
-    const sinCliente = t.options("cliente")[1];
-    expect(t.matching("cliente", sinCliente.value as string).map((r) => r.id)).toEqual([6]);
-    expect(t.cellText("cliente", rows[5])).toBe("");
+    const sinCliente = t.options("cliente_razon_social")[1];
+    expect(t.matching("cliente_razon_social", sinCliente.value as string).map((r) => r.id)).toEqual([6]);
+    expect(t.cellText("cliente_razon_social", rows[5])).toBe("");
   });
 
   test("es buscable", () => {
-    expect(t.column("cliente").meta?.headerFilter?.searchable).toEqual({
+    expect(t.column("cliente_razon_social").meta?.headerFilter?.searchable).toEqual({
       placeholder: "Buscar razón social…",
     });
   });
@@ -111,9 +114,33 @@ test.describe("texto que indexa la búsqueda global", () => {
     expect(t.column("estatus").meta?.hiddenByDefault).toBe(true);
   });
 
-  test("el cliente con el mismo texto que la celda y el filtro", () => {
-    expect(t.cellText("cliente", rows[2])).toBe("Cliente #12");
+  test("el cliente por su razón social cruda, como antes de EC-752", () => {
+    expect(t.cellText("cliente_razon_social", rows[0])).toBe("ACME SA DE CV");
+    // El formato de pantalla (y su respaldo) queda en la celda.
+    expect(getQuoteClienteLabel(rows[2])).toBe("Cliente #12");
     expect(getQuoteClienteLabel(rows[1])).toBe("Taller Norte");
+  });
+});
+
+/**
+ * Las exportaciones leen el valor de la columna (`accessorFn`), no la celda:
+ * la razón social sale tal como la manda el backend, y el `id` es el que el
+ * PDF usa para darle su ancho.
+ */
+test.describe("exportación de la razón social", () => {
+  const column = getQuoteColumns().find((c) => c.id === "cliente_razon_social") as ColumnDef<
+    Quote,
+    unknown
+  > & { accessorFn: (row: Quote, index: number) => unknown };
+
+  test("el CSV lleva la razón social cruda (y vacía sin cliente)", () => {
+    const visible: DataTableVisibleColumn<Quote>[] = [
+      { id: "cliente_razon_social", header: "Razón social", accessorFn: column.accessorFn },
+    ];
+    expect(buildQuotesCsv([rows[0], rows[5]], visible)).toBe(
+      // La columna "Moneda" la agrega siempre el CSV (EC-618).
+      ["Razón social,Moneda", "ACME SA DE CV,", ","].join("\n"),
+    );
   });
 });
 
