@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { keepPreviousData, useQueries, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getQuoteBoard, getQuotesPage } from "../services/actions";
 import {
+  quoteBoardColumnBatchesQueryKey,
   quoteBoardColumnQueryKey,
-  quoteBoardPageQueryKey,
   quoteBoardQueryKey,
 } from "../constants/quotesQueryKeys";
 import { KANBAN_COLUMNS } from "../constants/kanbanColumns";
@@ -41,6 +41,68 @@ export interface QuoteBoardColumnState {
 }
 
 const EMPTY_COLUMN = { total: 0, results: [] as Quote[] };
+
+/** Offsets de las tandas de "cargar más": 20, 40, 60… */
+const batchOffsets = (batches: number) =>
+  Array.from({ length: batches }, (_, index) => QUOTE_BOARD_BATCH_SIZE * (index + 1));
+
+/**
+ * "Cargar más" de UNA columna: una sola `useGuardedQuery` con todas las tandas
+ * pedidas (`["quotes", "tablero-columna", params, N, tandas]`), así un refetch
+ * fallido conserva lo cargado y avisa por toast, como cualquier otra lista.
+ *
+ * - Pedir una tanda más estrena llave: la consulta reutiliza las páginas de la
+ *   llave anterior (en caché) y solo pide la nueva (`?estatus=N&limit=20&offset=k`).
+ *   Mientras llega, se muestran las anteriores (`keepPreviousData`).
+ * - Un refetch de la MISMA llave (la invalidación de `["quotes"]`) relee todas
+ *   las tandas, en paralelo.
+ * - Si falla la tanda nueva, la columna sigue con las páginas que ya tenía y
+ *   ofrece reintentar.
+ */
+const useBoardColumnBatches = (
+  params: Record<string, string>,
+  estatus: number,
+  batches: number,
+) => {
+  const queryClient = useQueryClient();
+  const key = quoteBoardColumnBatchesQueryKey(params, estatus, batches);
+  const previousKey = quoteBoardColumnBatchesQueryKey(params, estatus, batches - 1);
+  const query = useGuardedQuery(
+    {
+      queryKey: key,
+      enabled: batches > 0,
+      placeholderData: keepPreviousData,
+      queryFn: async (): Promise<QuoteListResponse[]> => {
+        const isRefetch = queryClient.getQueryData(key) !== undefined;
+        const reused = isRefetch ? [] : (queryClient.getQueryData<QuoteListResponse[]>(previousKey) ?? []);
+        const missing = batchOffsets(batches).slice(reused.length);
+        const fetched = await Promise.all(
+          missing.map((offset) =>
+            getQuotesPage({ ...params, estatus: String(estatus), limit: QUOTE_BOARD_BATCH_SIZE, offset }),
+          ),
+        );
+        return [...reused, ...fetched];
+      },
+    },
+    {
+      toastId: `quote-board-column-${estatus}-refetch-error`,
+      errorMessage: "No se pudieron actualizar las cotizaciones de una columna. Se muestran las anteriores.",
+    },
+  );
+  const isLoadingMore = batches > 0 && query.isFetching && (query.isPlaceholderData || !query.data);
+  const loadMoreFailed = batches > 0 && query.isInitialError && !query.isFetching;
+  // Con la tanda nueva fallida, las que ya estaban (llave anterior).
+  const pages =
+    query.data ??
+    (loadMoreFailed ? queryClient.getQueryData<QuoteListResponse[]>(previousKey) : undefined) ??
+    [];
+  return {
+    pages: batches > 0 ? pages : [],
+    isLoadingMore,
+    loadMoreFailed,
+    retry: () => void query.refetch(),
+  };
+};
 
 /**
  * Tablero de cotizaciones en MODO SERVIDOR (EC-809):
@@ -87,19 +149,14 @@ export const useQuoteBoard = (search: string) => {
   });
   const batches = extra.key === paramsKey ? extra.batches : {};
 
-  const pageSpecs = KANBAN_COLUMNS.flatMap((column) =>
-    Array.from({ length: batches[column.estatus] ?? 0 }, (_, index) => ({
-      estatus: column.estatus,
-      offset: QUOTE_BOARD_BATCH_SIZE * (index + 1),
-    })),
-  );
-  const pages = useQueries({
-    queries: pageSpecs.map(({ estatus, offset }) => ({
-      queryKey: quoteBoardPageQueryKey(params, estatus, offset),
-      queryFn: () =>
-        getQuotesPage({ ...params, estatus: String(estatus), limit: QUOTE_BOARD_BATCH_SIZE, offset }),
-    })),
-  });
+  // Una consulta por columna, en el orden fijo de `KANBAN_COLUMNS` (5
+  // llamadas explícitas: las reglas de los hooks no admiten un bucle).
+  const extra1 = useBoardColumnBatches(params, KANBAN_COLUMNS[0].estatus, batches[KANBAN_COLUMNS[0].estatus] ?? 0);
+  const extra2 = useBoardColumnBatches(params, KANBAN_COLUMNS[1].estatus, batches[KANBAN_COLUMNS[1].estatus] ?? 0);
+  const extra3 = useBoardColumnBatches(params, KANBAN_COLUMNS[2].estatus, batches[KANBAN_COLUMNS[2].estatus] ?? 0);
+  const extra4 = useBoardColumnBatches(params, KANBAN_COLUMNS[3].estatus, batches[KANBAN_COLUMNS[3].estatus] ?? 0);
+  const extra5 = useBoardColumnBatches(params, KANBAN_COLUMNS[4].estatus, batches[KANBAN_COLUMNS[4].estatus] ?? 0);
+  const extras = [extra1, extra2, extra3, extra4, extra5];
 
   const addBatch = (estatus: number) =>
     setExtra((current) => {
@@ -107,29 +164,20 @@ export const useQuoteBoard = (search: string) => {
       return { key: paramsKey, batches: { ...base, [estatus]: (base[estatus] ?? 0) + 1 } };
     });
 
-  const columns: QuoteBoardColumnState[] = KANBAN_COLUMNS.map((config) => {
+  const columns: QuoteBoardColumnState[] = KANBAN_COLUMNS.map((config, index) => {
     const column =
       board.data?.columnas.find((candidate) => candidate.estatus === config.estatus) ?? EMPTY_COLUMN;
-    const columnPages = pageSpecs
-      .map((spec, index) => ({ spec, query: pages[index] }))
-      .filter(({ spec }) => spec.estatus === config.estatus)
-      .map(({ query }) => query);
-    const loadedPages = columnPages
-      .map((query) => query.data)
-      .filter((page): page is QuoteListResponse => page !== undefined);
-    const rows = mergeBoardColumnRows(column.results, loadedPages);
-    const last = columnPages.at(-1);
-    const isLoadingMore = last !== undefined && last.data === undefined && last.isFetching;
-    const loadMoreFailed = last !== undefined && last.data === undefined && last.isError && !last.isFetching;
+    const more = extras[index];
+    const rows = mergeBoardColumnRows(column.results, more.pages);
     return {
       estatus: config.estatus,
       total: column.total,
       rows,
-      canLoadMore: rows.length < column.total && !isLoadingMore && !loadMoreFailed,
-      isLoadingMore,
-      loadMoreFailed,
+      canLoadMore: rows.length < column.total && !more.isLoadingMore && !more.loadMoreFailed,
+      isLoadingMore: more.isLoadingMore,
+      loadMoreFailed: more.loadMoreFailed,
       loadMore: () => addBatch(config.estatus),
-      retryLoadMore: () => void last?.refetch(),
+      retryLoadMore: more.retry,
     };
   });
 
@@ -147,15 +195,15 @@ export const useQuoteBoard = (search: string) => {
       queryClient.cancelQueries({ queryKey: sourcePagesKey }),
     ]);
     const previousBoard = queryClient.getQueryData<QuoteBoard>(boardKey);
-    const previousPages = queryClient.getQueriesData<QuoteListResponse>({ queryKey: sourcePagesKey });
+    const previousPages = queryClient.getQueriesData<QuoteListResponse[]>({ queryKey: sourcePagesKey });
     if (previousBoard) {
       queryClient.setQueryData<QuoteBoard>(
         boardKey,
         moveQuoteInBoard(previousBoard, quote, sourceEstatus, target),
       );
     }
-    queryClient.setQueriesData<QuoteListResponse>({ queryKey: sourcePagesKey }, (page) =>
-      removeQuoteFromPage(page, quote.id),
+    queryClient.setQueriesData<QuoteListResponse[]>({ queryKey: sourcePagesKey }, (pages) =>
+      pages?.map((page) => removeQuoteFromPage(page, quote.id) ?? page),
     );
     return () => {
       if (previousBoard) queryClient.setQueryData(boardKey, previousBoard);
