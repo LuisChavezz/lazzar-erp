@@ -58,9 +58,11 @@ export interface StaleEstadoRowDialogMessages<E extends string | number> {
 /**
  * Sin baja lógica pero con `estado` de negocio (aprobaciones, pagos): la
  * acción espera un estado concreto (`"pendiente"` para aprobar, o el estado
- * con que se abrió la confirmación).
+ * con que se abrió la confirmación). La firma pública acota `E` a texto; el
+ * tipo admite también un entero para que la implementación comparta un solo
+ * `estadoChanged(string | number)` con la variante de `statusField`, sin cast.
  */
-interface StaleEstadoRowDialogArgs<E extends string> extends StaleRowDialogBase {
+interface StaleEstadoRowDialogArgs<E extends string | number> extends StaleRowDialogBase {
   target: { estado: E } | null;
   expectedEstado: E;
   expectedActivo?: undefined;
@@ -120,7 +122,7 @@ export function getStaleRowDialogNotice(
   args:
     | StaleActivoRowDialogArgs
     | StaleGoneRowDialogArgs
-    | StaleEstadoRowDialogArgs<string>
+    | StaleEstadoRowDialogArgs<string | number>
     | StaleStatusFieldRowDialogArgs<Record<string, string | number>, string>
 ): StaleRowDialogNotice | null {
   const { resource, targetId, target, isBusy, messages } = args;
@@ -135,8 +137,7 @@ export function getStaleRowDialogNotice(
     if (estado === args.expectedEstado) return null;
     return {
       key: `${resource}-stale-${targetId}-${estado}`,
-      // El valor sale del mismo campo que tipó `estadoChanged` (por firma).
-      message: (args.messages.estadoChanged as (estado: string | number) => string)(estado),
+      message: args.messages.estadoChanged(estado),
     };
   }
   const { expectedActivo, messages: activoMessages } = args as
