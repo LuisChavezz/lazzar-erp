@@ -74,11 +74,13 @@ export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForRev
 
 interface QuoteRowDialogBase {
   /**
-   * Foto de la cotización al abrir. `QuoteRowActionDialogs` la usa solo como
-   * respaldo si el registro ya no está en la consulta (p. ej. lo borraron);
-   * mientras exista, resuelve el dato vivo por id.
+   * Foto de la cotización al abrir. `QuoteRowActionDialogs` resuelve encima
+   * su estatus VIVO (`useLiveQuoteStatus`): lo cargado por la vista y el
+   * detalle leído al abrir; sin cambio en ninguno, vale la foto.
    */
   quote: Quote;
+  /** Momento (ms) en que se abrió: lo leído antes no dice nada del estado de ahora. */
+  openedAt: number;
 }
 
 export type QuoteRowDialogState = QuoteRowDialogBase & { kind: QuoteRowDialogKind };
@@ -97,7 +99,7 @@ export type QuoteRowDialogState = QuoteRowDialogBase & { kind: QuoteRowDialogKin
  *
  * Uso: `const { onAction, busy, dialogs } = useQuoteRowActions();` — `onAction`
  * y `busy` bajan al menú; `dialogs` se pasa a `<QuoteRowActionDialogs>` junto
- * con la lista completa de cotizaciones para resolver el registro vivo.
+ * con las filas que la vista tiene cargadas (ver `useLiveQuoteStatus`).
  */
 export function useQuoteRowActions() {
   const router = useRouter();
@@ -144,7 +146,7 @@ export function useQuoteRowActions() {
       case "view":
         dialogTurnRef.current++;
         email.invalidate();
-        setDialog({ kind: "view", quote });
+        setDialog({ kind: "view", quote, openedAt: Date.now() });
         return;
       case "edit":
         router.push(`/sales/quotes/${quote.id}/edit`);
@@ -165,14 +167,14 @@ export function useQuoteRowActions() {
         if (!canManageQuoteAuthorization(quote.estatus)) return;
         dialogTurnRef.current++;
         email.invalidate();
-        setDialog({ kind: action, quote });
+        setDialog({ kind: action, quote, openedAt: Date.now() });
         return;
       case "submitForReview": {
         const turn = ++dialogTurnRef.current;
         email.invalidate();
         const status = await review.validateBeforeSendToReview(quote.id);
         if (status === "valid" && turn === dialogTurnRef.current) {
-          setDialog({ kind: "submitForReview", quote });
+          setDialog({ kind: "submitForReview", quote, openedAt: Date.now() });
         }
         return;
       }

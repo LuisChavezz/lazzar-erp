@@ -54,7 +54,7 @@ export const QuoteList = () => {
   return (
     <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
-      <QuoteRowActionDialogs quotes={table.rows} {...dialogs} />
+      <QuoteRowActionDialogs loadedRows={table.rows} {...dialogs} />
       <DataTable
         columns={quoteColumns}
         {...table.tableProps}
