@@ -9,7 +9,7 @@ const EDITABLE_QUOTE_STATUSES = new Set([1, 3, 4]);
 // 4 (rechazada) vuelve a revisión directamente, con un comentario opcional
 // para mesa de control (ver `acceptsResendComment`).
 const REVIEWABLE_QUOTE_STATUSES = new Set([1, 4]);
-const REJECTED_QUOTE_STATUS = 4;
+export const REJECTED_QUOTE_STATUS = 4;
 const CHANGES_REQUESTED_QUOTE_STATUSES = new Set([5]);
 /** 2 (En revisión, "Por Autorizar" en la app): espera la decisión de mesa de control. */
 export const PENDING_AUTHORIZATION_QUOTE_STATUS = 2;
