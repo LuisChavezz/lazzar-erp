@@ -6,7 +6,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { FormSection } from "@/src/components/FormSection";
 import {
   FormCancelButton,
   FormSecondaryButton,
@@ -468,39 +469,41 @@ export function QuoteFormContent({
           </div>
 
           <div className="flex-1 self-start w-full space-y-6">
-            <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                  Datos de Facturación
-                </span>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
-                  onClick={() => setIsCustomerDialogOpen(true)}
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Agregar nuevo cliente
-                </button>
-                <MainDialog
-                  title={
-                    <DialogHeader
-                      title="Alta de Cliente"
-                      subtitle="Registra un nuevo cliente"
-                      statusColor="emerald"
-                    />
-                  }
-                  open={isCustomerDialogOpen}
-                  onOpenChange={setIsCustomerDialogOpen}
-                  maxWidth="900px"
-                >
-                  {isCustomerDialogOpen ? (
-                    <LazyCustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
-                  ) : null}
-                </MainDialog>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FormSection
+              title="Datos de Facturación"
+              action={
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
+                    onClick={() => setIsCustomerDialogOpen(true)}
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Agregar nuevo cliente
+                  </button>
+                  <MainDialog
+                    title={
+                      <DialogHeader
+                        title="Alta de Cliente"
+                        subtitle="Registra un nuevo cliente"
+                        statusColor="emerald"
+                      />
+                    }
+                    open={isCustomerDialogOpen}
+                    onOpenChange={setIsCustomerDialogOpen}
+                    maxWidth="900px"
+                  >
+                    {isCustomerDialogOpen ? (
+                      <LazyCustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
+                    ) : null}
+                  </MainDialog>
+                </>
+              }
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
                 <div data-error-anchor="clienteBusqueda">
                   <CustomerSearchDropdown
+                    className={COMPACT_FIELD_CLS}
                     label="Cliente"
                     placeholder="Buscar Cliente..."
                     value={clienteSearchTerm}
@@ -513,6 +516,7 @@ export function QuoteFormContent({
                 <form.Field name="clienteNombre">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Nombre del Cliente"
                       placeholder="Nombre"
                       forceUppercase={false}
@@ -532,10 +536,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="razonSocial">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Razón Social"
                       placeholder="Razón Social"
                       forceUppercase={false}
@@ -557,6 +562,7 @@ export function QuoteFormContent({
                 <form.Field name="rfc">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="RFC"
                       placeholder="RFC"
                       forceUppercase={false}
@@ -578,6 +584,7 @@ export function QuoteFormContent({
                 <form.Field name="regimenFiscal">
                   {(field) => (
                     <FormSelect
+                      className={COMPACT_FIELD_CLS}
                       label="Régimen Fiscal"
                       options={regimenFiscalOptions}
                       disabled
@@ -596,10 +603,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="direccionFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Dirección Fiscal"
                       placeholder="Dirección Fiscal"
                       forceUppercase={false}
@@ -621,6 +629,7 @@ export function QuoteFormContent({
                 <form.Field name="coloniaFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Colonia"
                       placeholder="Colonia"
                       forceUppercase={false}
@@ -642,6 +651,7 @@ export function QuoteFormContent({
                 <form.Field name="codigoPostalFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="C.P."
                       placeholder="C.P."
                       forceUppercase={false}
@@ -661,10 +671,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="ciudadFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Ciudad"
                       placeholder="Ciudad"
                       forceUppercase={false}
@@ -686,6 +697,7 @@ export function QuoteFormContent({
                 <form.Field name="estadoFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Estado"
                       placeholder="Estado"
                       forceUppercase={false}
@@ -705,20 +717,18 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-            </div>
+            </FormSection>
 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-start">
-          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
-              Forma de pago y contacto para envío de facturas
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-6 items-start relative z-10">
+          <FormSection title="Forma de pago y contacto para envío de facturas">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <form.Field name="persona_pagos">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Persona Pagos"
                     placeholder="Persona Pagos"
                     forceUppercase
@@ -739,6 +749,7 @@ export function QuoteFormContent({
               <form.Field name="correo_facturas">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Correo Facturas"
                     placeholder="correo@empresa.com"
                     forceUppercase={false}
@@ -759,6 +770,7 @@ export function QuoteFormContent({
               <form.Field name="telefono_pagos">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Teléfono Pagos"
                     placeholder="Teléfono"
                     type="tel"
@@ -780,6 +792,7 @@ export function QuoteFormContent({
               <form.Field name="oc">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="O.C."
                     placeholder="Orden de compra"
                     forceUppercase
@@ -800,6 +813,7 @@ export function QuoteFormContent({
               <form.Field name="forma_pago">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Forma de Pago"
                     options={formasPagoOptions}
                     name={field.name}
@@ -819,6 +833,7 @@ export function QuoteFormContent({
               <form.Field name="metodo_pago">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Método de Pago"
                     options={metodosPagoOptions}
                     name={field.name}
@@ -838,6 +853,7 @@ export function QuoteFormContent({
               <form.Field name="uso_cfdi">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Uso de CFDI"
                     options={usoCfdiOptions}
                     name={field.name}
@@ -873,15 +889,13 @@ export function QuoteFormContent({
                 )}
               </form.Field>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm h-fit">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
-              Condiciones de pago
-            </h3>
+          <FormSection title="Condiciones de pago">
             <form.Field name="condicionPago">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Condición"
                   options={paymentConditionOptions.map((option) => ({
                     value: option.value,
@@ -907,12 +921,12 @@ export function QuoteFormContent({
             </form.Field>
             <form.Field name="condicionPagoMonto">
               {(field) => (
-                <div className="mt-6">
+                <div>
                   <FormInput
                     label="Especificar monto"
                     type="number"
                     placeholder={formatQuoteAmount(0, monedaCodigo)}
-                    className="text-right"
+                    className={`${COMPACT_FIELD_CLS} text-right`}
                     forceUppercase={false}
                     disabled={watchedCondicionPago !== "otra_cantidad"}
                     name={field.name}
@@ -931,7 +945,7 @@ export function QuoteFormContent({
                 </div>
               )}
             </form.Field>
-          </div>
+          </FormSection>
         </div>
       </section>
 
