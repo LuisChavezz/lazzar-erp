@@ -13,6 +13,7 @@ import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
 import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog";
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
+import { useLiveQuoteStatus } from "../hooks/useLiveQuoteStatus";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
 import { getQuoteDialogStatusColor } from "../constants/quoteStatus";
 import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
@@ -30,12 +31,11 @@ const QuoteDetails = dynamic(
 
 interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
   /**
-   * Lista COMPLETA de la consulta (sin filtrar): el diálogo resuelve por id
-   * la cotización viva, así sigue correcto aunque la fila haya salido de la
-   * vista filtrada o cambiado de estatus mientras estaba abierto. Si el
-   * registro ya no existe, usa la foto tomada al abrir.
+   * Filas que la vista tiene CARGADAS (la página del listado, las columnas
+   * del tablero). Ya no son todas las cotizaciones: que una fila no esté aquí
+   * NO significa que cambió de estatus (ver `useLiveQuoteStatus`).
    */
-  quotes: Quote[];
+  loadedRows: readonly Quote[];
 }
 
 /**
@@ -44,7 +44,7 @@ interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
  * handlers vienen de `useQuoteRowActions`; el registro se resuelve aquí.
  */
 export function QuoteRowActionDialogs({
-  quotes,
+  loadedRows,
   dialog,
   onClose,
   onAuthorize,
@@ -55,10 +55,16 @@ export function QuoteRowActionDialogs({
   isSubmittingForReview,
   reviewValidation,
 }: QuoteRowActionDialogsProps) {
+  // Estatus VIVO: lo cargado por la vista y, para autorizar y rechazar (los
+  // que dependen de que siga "Por autorizar"), el detalle leído al abrir. Sin
+  // cambio en ninguno, la foto. `null`: ya no existe o ya no es visible.
+  const checksStatus = dialog?.kind === "authorize" || dialog?.kind === "reject";
+  const liveStatus = useLiveQuoteStatus(dialog, loadedRows, checksStatus);
   const quote = dialog
-    ? (quotes.find((q) => q.id === dialog.quote.id) ?? dialog.quote)
+    ? { ...dialog.quote, estatus: liveStatus?.estatus ?? dialog.quote.estatus }
     : null;
-  const canManageAuthorization = quote ? canManageQuoteAuthorization(quote.estatus) : false;
+  const canManageAuthorization =
+    quote && liveStatus !== null ? canManageQuoteAuthorization(quote.estatus) : false;
   const handleOpenChange = (open: boolean) => {
     if (!open) onClose();
   };
@@ -81,9 +87,10 @@ export function QuoteRowActionDialogs({
 
   // Rechazo: copia tomada al ABRIR (la fila del menú) para el texto, y
   // diálogo siempre montado con `open` controlado para que anime al cerrar.
-  // Si la fila viva deja de estar pendiente mientras está abierto, el diálogo
-  // se cierra con aviso (`liveQuote`); lo que la caché aún no ve lo decide el
-  // 400 `cotizacion` del backend.
+  // Si el estatus vivo deja de ser "Por autorizar" mientras está abierto, el
+  // diálogo se cierra con aviso (`liveQuote`); "ya no existe" solo lo dice el
+  // detalle (404/403), nunca que la fila haya salido de la página. Lo que
+  // ninguna fuente ve todavía lo decide el 400 `cotizacion` del backend.
   const isRejectOpen = dialog?.kind === "reject";
   const rejectSession = useDialogSession(isRejectOpen, isRejectOpen ? dialog.quote : null);
 
@@ -133,9 +140,13 @@ export function QuoteRowActionDialogs({
           key={rejectSession.id}
           open={isRejectOpen}
           quote={rejectSession.snapshot}
-          // Fila viva del listado COMPLETO de Ventas: si cambió de estatus por
-          // fuera, el diálogo se cierra con aviso.
-          liveQuote={quotes.find((q) => q.id === rejectSession.snapshot?.id) ?? null}
+          // Estatus vivo (ver arriba); con otro diálogo ya abierto, el de la
+          // foto: este solo anima su cierre.
+          liveQuote={
+            isRejectOpen && liveStatus !== undefined
+              ? liveStatus
+              : { estatus: rejectSession.snapshot.estatus }
+          }
           onClose={onClose}
         />
       )}

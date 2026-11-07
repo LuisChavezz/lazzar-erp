@@ -415,7 +415,7 @@ export function QuoteKanbanBoard() {
         quoteId={validationQuoteId ?? pendingDrop?.quote.id ?? 0}
         errors={reviewValidationErrors}
       />
-      <QuoteRowActionDialogs quotes={quotes} {...cardDialogs} />
+      <QuoteRowActionDialogs loadedRows={quotes} {...cardDialogs} />
 
     </div>
     </QuoteRowActionsProvider>
