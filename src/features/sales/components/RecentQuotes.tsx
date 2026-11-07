@@ -1,13 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { OrderStatusPathIcon } from "@/src/components/Icons";
 import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
+import { useRecentQuotes } from "@/src/features/quotes/hooks/useRecentQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
@@ -29,24 +29,6 @@ const LazyQuoteDetails = dynamic(
     ),
   }
 );
-
-const parseOrderDate = (value?: string | null) => {
-  if (!value) return null;
-  const normalizedValue = value.trim();
-  if (!normalizedValue) return null;
-  if (normalizedValue.includes("/")) {
-    const [rawDatePart, rawTimePart] = normalizedValue.split(" ");
-    const [day, month, year] = rawDatePart.split("/").map((part) => Number(part));
-    if (!day || !month || !year) return null;
-    const [hours = 0, minutes = 0, seconds = 0] = (rawTimePart ?? "")
-      .split(":")
-      .map((part) => Number(part));
-    const parsedDate = new Date(year, month - 1, day, hours || 0, minutes || 0, seconds || 0);
-    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-  }
-  const parsedDate = new Date(normalizedValue);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-};
 
 const getStatusIconConfig = (status: number) => {
   if (status === 4) {
@@ -74,23 +56,12 @@ const getStatusIconConfig = (status: number) => {
 };
 
 export const RecentQuotes = () => {
-  const { quotes, isLoading, isInitialError: isErrorQuotes } = useQuotes();
+  // Ya vienen ordenadas y recortadas por el backend (`?limit=3`, orden por
+  // defecto: más reciente primero).
+  const { quotes: recentQuotes, isLoading, isInitialError: isErrorQuotes } = useRecentQuotes();
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
 
-  const recentQuotes = useMemo(() => {
-    return [...quotes]
-      .sort((a, b) => {
-        const aDate = parseOrderDate(a.created_at)?.getTime() ?? 0;
-        const bDate = parseOrderDate(b.created_at)?.getTime() ?? 0;
-        return bDate - aDate;
-      })
-      .slice(0, 3);
-  }, [quotes]);
-
-  const selectedQuote = useMemo(
-    () => quotes.find((quote) => quote.id === selectedQuoteId) ?? null,
-    [quotes, selectedQuoteId]
-  );
+  const selectedQuote = recentQuotes.find((quote) => quote.id === selectedQuoteId) ?? null;
 
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full min-h-88">
