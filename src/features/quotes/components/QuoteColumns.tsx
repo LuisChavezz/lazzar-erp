@@ -23,12 +23,16 @@ const columnHelper = createColumnHelper<Quote>();
  * Texto del cliente: la razón social (con el casing de la app), o el nombre
  * comercial si no viene, o `Cliente #N` si el listado no trae ninguno de los
  * dos. Es el MISMO texto en la celda, la búsqueda global y la opción del
- * filtro (que compara contra el id crudo `cliente`).
+ * filtro (que compara contra el id crudo `cliente`). Un borrador SIN cliente
+ * (`cliente: null`) da `""`: es un dato real, no un nombre sin resolver, así
+ * que la celda pinta «—» y la búsqueda no indexa un texto inventado.
  */
 export const getQuoteClienteLabel = (quote: Quote): string =>
-  capitalize(quote.cliente_razon_social?.trim() ?? "") ||
-  quote.cliente_nombre?.trim() ||
-  `Cliente #${quote.cliente}`;
+  quote.cliente == null
+    ? ""
+    : capitalize(quote.cliente_razon_social?.trim() ?? "") ||
+      quote.cliente_nombre?.trim() ||
+      `Cliente #${quote.cliente}`;
 
 /**
  * Badge de estatus de una cotización: color de `QUOTE_STATUS_CONFIG` (fuente
@@ -110,7 +114,7 @@ export const getQuoteColumns = () =>
       id: "cliente",
       header: "Razón social",
       cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300">{info.getValue()}</span>
+        <span className="text-slate-600 dark:text-slate-300">{info.getValue() || "—"}</span>
       ),
     }),
     columnHelper.display({
@@ -165,8 +169,9 @@ export const getQuoteColumns = () =>
  *   `getQuoteStatusLabel` (el mismo texto que su badge).
  * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
  *   crudo `cliente` y se rotulan como la celda (`getQuoteClienteLabel`, con su
- *   respaldo `Cliente #N`), así dos homónimos no se mezclan. Es obligatorio en
- *   el modelo: no hay opción "Sin cliente". Con buscador: el catálogo es largo.
+ *   respaldo `Cliente #N`), así dos homónimos no se mezclan. Un borrador puede
+ *   guardarse sin cliente: esas filas tienen su opción "Sin cliente", fijada
+ *   arriba. Con buscador: el catálogo es largo.
  */
 export const QUOTE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Quote>>> = {
   id: {
@@ -181,5 +186,6 @@ export const QUOTE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Quote
     get: (r) => r.cliente,
     label: getQuoteClienteLabel,
     searchable: true,
+    emptyOption: "Sin cliente",
   },
 };

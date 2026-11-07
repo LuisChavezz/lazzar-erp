@@ -173,7 +173,7 @@ export const RecentQuotes = () => {
           title={
             <DialogHeader
               title={`Detalles de la cotización #${selectedQuote.id}`}
-              subtitle={selectedQuote.cliente_nombre || selectedQuote.cliente_razon_social}
+              subtitle={selectedQuote.cliente_nombre || selectedQuote.cliente_razon_social || "Sin cliente"}
               statusColor={getQuoteDialogStatusColor(selectedQuote.estatus)}
             />
           }

@@ -116,7 +116,7 @@ const CardContent = memo(function CardContent({
       {/* Cliente */}
       <h3
         className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug mb-0.5 line-clamp-2"
-        title={quote.cliente_nombre}
+        title={quote.cliente_nombre ?? undefined}
       >
         {quote.cliente_nombre}
       </h3>

@@ -44,9 +44,14 @@ export interface Quote {
    * respaldo para valores fuera de rango. Se tipa por completitud del contrato.
    */
   tipo_pedido_label: string;
-  cliente: number;
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * PK del cliente; `null` en un borrador guardado sin cliente (visto en vivo
+   * en EC-752: el listado trae esos borradores con `cliente` y sus nombres en
+   * `null`).
+   */
+  cliente: number | null;
+  cliente_nombre: string | null;
+  cliente_razon_social: string | null;
   oc: string;
   uso_cfdi: string;
   gran_total: string;
