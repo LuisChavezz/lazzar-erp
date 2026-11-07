@@ -65,14 +65,15 @@ export function QuoteEditForm({ quoteId }: QuoteEditFormProps) {
     <QuoteFormContent
       {...formProps}
       submitLabel="Guardar Cambios"
+      successVariant="edit"
       headerBadge={isRecompra ? <RecompraBadge /> : undefined}
       capabilities={QUOTE_FORM_CAPABILITIES.editQuote}
       muestraCompanyId={quoteCompanyId}
-      // Solo sin sucursal en el registro NI en el workspace (`isSucursalMissing`):
-      // una cotización con sucursal se guarda con la suya aunque el workspace
-      // tenga otra o ninguna, y avisar ahí sería falso.
+      // Solo sin sucursal en el registro NI en el workspace: lo decide
+      // `isSucursalMissing` y nada más (`visible`). Una cotización con sucursal
+      // se guarda con la suya aunque el workspace tenga otra o ninguna.
       topNotice={
-        isSucursalMissing ? <WorkspaceBranchNotice documento={QUOTE_SUCURSAL_DOCUMENT} /> : undefined
+        <WorkspaceBranchNotice documento={QUOTE_SUCURSAL_DOCUMENT} visible={isSucursalMissing} />
       }
     />
   );
