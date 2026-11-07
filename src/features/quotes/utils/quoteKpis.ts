@@ -1,4 +1,4 @@
-import { sortByMoneda } from "@/src/utils/currencyTotals";
+import { createCurrencyTotals } from "@/src/utils/currencyTotals";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { QuoteKpis } from "../interfaces/quote-list.interface";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS, REJECTED_QUOTE_STATUS } from "./quoteStatusRules";
@@ -34,21 +34,20 @@ export interface QuoteCurrencyAmount {
  * bloque y no entra.
  */
 export const getQuoteAmountsExcludingRejected = (kpis: QuoteKpis): QuoteCurrencyAmount[] => {
-  const byMoneda = new Map<string | null, { cents: number; cotizaciones: number }>();
+  // Importes con el acumulador de EC-601 (centavos enteros, orden por código);
+  // el conteo por moneda va aparte: `createCurrencyTotals` solo suma importes.
+  const totals = createCurrencyTotals();
+  const counts = new Map<string | null, number>();
   for (const block of kpis.por_estatus) {
     if (block.estatus === REJECTED_QUOTE_STATUS) continue;
     for (const entry of block.por_moneda) {
-      const current = byMoneda.get(entry.moneda) ?? { cents: 0, cotizaciones: 0 };
-      current.cents += Math.round(safeParseAmount(entry.gran_total) * 100);
-      current.cotizaciones += entry.total;
-      byMoneda.set(entry.moneda, current);
+      totals.add(entry.moneda, safeParseAmount(entry.gran_total));
+      counts.set(entry.moneda, (counts.get(entry.moneda) ?? 0) + entry.total);
     }
   }
-  return sortByMoneda(
-    [...byMoneda].map(([moneda, { cents, cotizaciones }]) => ({
-      moneda,
-      monto: cents / 100,
-      cotizaciones,
-    })),
-  );
+  return totals.list().map(({ moneda, total }) => ({
+    moneda,
+    monto: total,
+    cotizaciones: counts.get(moneda) ?? 0,
+  }));
 };
