@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEventHandler } from "react";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
@@ -237,7 +238,15 @@ export function useQuoteForm() {
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  /**
+   * Candado del envío (EC-753). Se toma de forma SÍNCRONA al enviar
+   * (`runWithSubmitLock`), antes de la validación asíncrona de TanStack Form, y
+   * se suelta cuando el envío termina, con cualquier resultado. Así un Enter y
+   * un clic en el mismo tick mandan UNA sola petición: el `useState` que había
+   * antes no lo garantizaba, porque el segundo disparo leía todavía el valor
+   * del render anterior.
+   */
+  const submitLockRef = useRef(false);
   const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
@@ -957,22 +966,16 @@ export function useQuoteForm() {
     }, false);
   };
 
-  // Submit controlado para evitar dobles envíos y estados pendientes colgados.
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
+  // Submit controlado para evitar dobles envíos (ver `submitLockRef`).
+  const handleFormSubmit: FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (isSubmittingForm) {
-      return;
-    }
-    setIsSubmittingForm(true);
-    try {
-      await Promise.resolve(form.handleSubmit());
-    } finally {
-      setIsSubmittingForm(false);
-    }
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit());
   };
 
   const handleReset = () => {
+    // Con un envío en curso no se toca el formulario que se está enviando.
+    if (submitLockRef.current) return;
     form.reset(emptyValues);
     crossRules.resetCrossRules();
     setExtraServices([]);
@@ -991,9 +994,11 @@ export function useQuoteForm() {
     router.push("/sales/quotes");
   };
 
+  // Suscrito (y no `form.state.isSubmitting`, que no vuelve a renderizar) para
+  // que el botón muestre "Guardando..." también mientras se valida.
+  const isFormSubmitting = useStore(form.baseStore, (state) => state.isSubmitting);
   const isPending =
-    isSubmittingForm ||
-    form.state.isSubmitting ||
+    isFormSubmitting ||
     isCreatingQuote ||
     isCreationSuccessVisible ||
     isRouteTransitioning;
