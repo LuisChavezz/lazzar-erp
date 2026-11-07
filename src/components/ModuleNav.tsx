@@ -8,7 +8,8 @@ import { NavigationMenu } from "radix-ui";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
-import { hasPermission, meetsPermissionRequirement } from "@/src/utils/permissions";
+import { meetsPermissionRequirement } from "@/src/utils/permissions";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 import {
   filterVisibleRouteSections,
   findActiveRouteSection,
@@ -289,13 +290,13 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     (item) => item.showInSidebar !== false
   );
 
-  // El crumb raíz enlaza al landing del módulo, que el proxy protege con el
-  // permiso de MÓDULO. Tras la granularización un usuario puede tener una
-  // sección sin tener el módulo (p. ej. R-WMS-PICKING sin R-WMS): sin este
-  // filtro se le ofrecería un crumb que solo lo rebota a "/".
-  const canSeeModuleRoot = activeGroup.permission
-    ? hasPermission(activeGroup.permission, session?.user)
-    : true;
+  // El crumb raíz enlaza al landing del módulo. Se pregunta con la MISMA regla
+  // que aplica el proxy a esa ruta (`canAccessRoute`), no con el permiso del
+  // grupo: tras la granularización un usuario puede tener una sección sin el
+  // módulo (p. ej. R-WMS-PICKING sin R-WMS) y la regla decide si la portada lo
+  // deja entrar. Hoy solo difieren en `/system`, cuya portada también acepta
+  // R-CORE-REPORTES; en los demás módulos la regla es el permiso del grupo.
+  const canSeeModuleRoot = canAccessRoute(activeGroup.modulePath, session?.user);
 
   // Con sub-grupos, un menú por sub-grupo; la visibilidad (permiso por hoja +
   // poda de sub-grupos vacíos) y el sub-grupo activo salen del helper compartido.

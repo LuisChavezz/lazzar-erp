@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { hasPermission } from "@/src/utils/permissions";
 import { isPlausibleDateKey } from "@/src/utils/plausibleDateKey";
 
 /**
@@ -32,4 +34,31 @@ test.describe("isPlausibleDateKey (movido a src/utils)", () => {
     expect(isPlausibleDateKey("2026-09-16")).toBe(true);
     expect(isPlausibleDateKey("2026-02-30")).toBe(false);
   });
+});
+
+/**
+ * El icono de inicio de `ModuleNav` decide con `canAccessRoute(modulePath)`.
+ * Fuera de `/system` debe dar EXACTAMENTE lo mismo que el permiso del grupo
+ * que usaba antes, para cualquier código de cualquier módulo.
+ */
+test.describe("raíz de módulo en ModuleNav", () => {
+  const codes = [
+    ...new Set(
+      appRouteGroups.flatMap((g) => [...getGroupAccessPermissions(g), ...(g.permission ? [g.permission] : [])]),
+    ),
+  ];
+  const users = [
+    { role: "admin", permissions: [] },
+    { role: "user", permissions: [] },
+    ...codes.map((code) => ({ role: "user", permissions: [code] })),
+  ];
+
+  for (const group of appRouteGroups.filter((g) => g.key !== "system")) {
+    test(`${group.key}: la regla de su portada coincide con el permiso del grupo`, () => {
+      for (const u of users) {
+        const before = group.permission ? hasPermission(group.permission, u as never) : true;
+        expect(canAccessRoute(group.modulePath, u as never), `${u.role} ${u.permissions.join("")}`).toBe(before);
+      }
+    });
+  }
 });
