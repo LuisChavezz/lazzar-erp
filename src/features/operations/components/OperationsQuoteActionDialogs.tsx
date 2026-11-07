@@ -19,6 +19,7 @@ import type { OperationsQuote } from "../interfaces/operations-quote.interface";
 import type { OperationsQuoteRowAction } from "./OperationsQuoteColumns";
 import { RejectQuoteDialog } from "./RejectQuoteDialog";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -103,7 +104,7 @@ export function OperationsQuoteActionDialogs({
           key={session.id}
           open={isOpen("view")}
           onOpenChange={handleOpenChange}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${id}`}

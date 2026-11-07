@@ -31,6 +31,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 
 const OperationsQuoteDetails = dynamic(
@@ -332,7 +333,7 @@ export const PendingApprovalQueue = () => {
           onOpenChange={(open) => {
             if (!open) setActiveOperationsQuote(null);
           }}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${activeOperationsQuote.id}`}

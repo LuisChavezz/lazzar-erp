@@ -11,6 +11,7 @@ import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { capitalize } from "@/src/utils/capitalize";
 
@@ -168,7 +169,7 @@ export const RecentQuotes = () => {
               setSelectedQuoteId(null);
             }
           }}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${selectedQuote.id}`}

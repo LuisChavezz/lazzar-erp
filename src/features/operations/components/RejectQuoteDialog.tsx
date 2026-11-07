@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { AxiosError } from "axios";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
@@ -88,7 +89,7 @@ export function RejectQuoteDialog({ open, quote, onClose }: RejectQuoteDialogPro
     <MainDialog
       open={open}
       onOpenChange={handleOpenChange}
-      maxWidth="520px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={false}
       title="Rechazar cotización"
       description={`Se rechazará la cotización #${quote.id}${

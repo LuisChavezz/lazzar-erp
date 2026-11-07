@@ -15,6 +15,7 @@ import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
 import { getQuoteDialogStatusColor } from "../constants/quoteStatus";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 // ─── Carga diferida del panel de detalles ─────────────────────────────────────
 const QuoteDetails = dynamic(
@@ -87,7 +88,7 @@ export function QuoteRowActionDialogs({
           key={`view-${quote.id}`}
           open
           onOpenChange={handleOpenChange}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${quote.id}`}
