@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getStockReport } from "../services/actions";
 import type {
   StockReportParams,
@@ -17,12 +18,19 @@ import { STOCK_REPORT_QUERY_KEY } from "@/src/constants/stockQueryKeys";
  * entre páginas ya traídas no vuelve a consultar. `keepPreviousData` mantiene
  * visible la página anterior mientras llega la nueva, evitando el parpadeo a
  * pantalla de carga.
+ *
+ * Va por `useGuardedQuery`: `isInitialError` solo es cierto si ESTOS
+ * parámetros nunca cargaron (un refetch fallido conserva los datos y avisa
+ * con un toast); no se expone el `isError` crudo.
  */
 export const useStockReport = (params: StockReportParams | null) => {
-  return useQuery<StockReportResponse>({
-    queryKey: [...STOCK_REPORT_QUERY_KEY, params],
-    queryFn: () => getStockReport(params as StockReportParams),
-    enabled: params !== null,
-    placeholderData: keepPreviousData,
-  });
+  return useGuardedQuery<StockReportResponse>(
+    {
+      queryKey: [...STOCK_REPORT_QUERY_KEY, params],
+      queryFn: () => getStockReport(params as StockReportParams),
+      enabled: params !== null,
+      placeholderData: keepPreviousData,
+    },
+    { toastId: "stock-report-refetch-error" },
+  );
 };
