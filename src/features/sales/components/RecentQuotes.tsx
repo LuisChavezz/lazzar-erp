@@ -11,6 +11,7 @@ import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { capitalize } from "@/src/utils/capitalize";
 
 // Carga dinámica del componente de detalles de cotización para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
@@ -59,7 +60,7 @@ const getStatusIconConfig = (status: number) => {
       iconPath: "M5 13l4 4L19 7",
     };
   }
-  if (status === 2) {
+  if (status === PENDING_AUTHORIZATION_QUOTE_STATUS) {
     return {
       iconClassName: "text-amber-500",
       iconPath: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
