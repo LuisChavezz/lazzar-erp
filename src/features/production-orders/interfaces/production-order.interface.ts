@@ -93,9 +93,14 @@ export interface ProductionOrderOnboarding {
 
 // ── Create onboarding ────────────────────────────────────────────────────────
 
-/** Renglón del detalle de una orden de producción (una variante a fabricar). */
+/**
+ * Renglón del detalle de una orden de producción. Lleva UNA de las dos
+ * variantes: de catálogo (`producto_variante_id`) o de producción
+ * (`variante_produccion_id`, muestra sin alta en catálogo; el BOM sale de ella).
+ */
 export interface CreateProductionOrderDetalle {
-  producto_variante_id: number;
+  producto_variante_id?: number;
+  variante_produccion_id?: number;
   cantidad: number;
   unidad: number;
   observaciones: string;
@@ -116,6 +121,8 @@ export interface CreateProductionOrderBody {
   prioridad: number;
   observaciones: string;
   pedido?: number;
+  /** Proveedor maquilero. Se omite cuando la orden es interna. */
+  centro_confeccion?: number;
   orden_produccion_detalle: CreateProductionOrderDetalle[];
 }
 
@@ -127,6 +134,21 @@ export interface CreateProductionOrderResponse {
   consumo_produccion_id: number;
   movimiento_inventario_id: number;
   movimiento_id: number;
+}
+
+/** Variante de producción (`GET /produccion/variantes-produccion/`). */
+export interface ProductionVariantOption {
+  id: number;
+  sku: string;
+  nombre: string;
+  talla_nombre: string | null;
+  color_nombre: string | null;
+  pedido_detalle: number | null;
+  pedido_id: number | null;
+  pedido_folio: string | null;
+  /** Ya tiene variante de catálogo: entonces se elige desde el catálogo. */
+  aplica_catalogo: boolean;
+  tiene_bom: boolean;
 }
 
 // ── GET /produccion/orden-produccion/ ────────────────────────────────────────
@@ -185,8 +207,27 @@ export interface ProductionOrderListItem {
   fecha_fin: string | null;
   activo: boolean;
   pedido: number | null;
+  /** Folio del pedido; `null` sin pedido. */
+  pedido_folio?: string | null;
   sucursal: number;
+  /**
+   * Campos de la vista principal. Opcionales: pedidos al backend; sin ellos su
+   * celda muestra "—".
+   */
+  /** Maquilero (proveedor) que confecciona; `null` = se hace en casa. */
+  centro_confeccion?: { id: number; nombre: string } | null;
+  /** Fecha del pedido ligado (`YYYY-MM-DD`). */
+  fecha_pedido?: string | null;
+  /** Fecha en que vence: la `fecha_compromiso` del pedido (`YYYY-MM-DD`). */
+  fecha_vence?: string | null;
+  /** Piezas totales de la orden. */
+  cantidad_total?: number;
+  /** Estado de cada etapa de la ruta crítica, solo informativo. */
+  ruta_critica?: Record<RutaCriticaEtapa, RutaCriticaEstado>;
 }
+
+export type RutaCriticaEtapa = "desarrollo" | "telas_avios" | "trazo" | "corte" | "produccion";
+export type RutaCriticaEstado = "pendiente" | "en_proceso" | "completo";
 
 /**
  * Orden de producción completa, tal como la devuelve el retrieve

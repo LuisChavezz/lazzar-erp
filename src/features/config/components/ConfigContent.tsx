@@ -1,5 +1,6 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -170,9 +171,9 @@ export function ConfigContent() {
                     <button
                       type="button"
                       onClick={handleGroupBack}
-                      className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className={BACK_BUTTON_CLASS}
                     >
-                      <ArrowLeftIcon className="w-4 h-4" />
+                      <ArrowLeftIcon className={BACK_ARROW_CLASS} />
                       <span className="text-sm font-medium">Volver al menú</span>
                     </button>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">

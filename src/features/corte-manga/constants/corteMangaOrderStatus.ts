@@ -123,3 +123,17 @@ export const corteMangaOrderPriorityFallback = (
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
   dot: "bg-slate-400",
 });
+
+/** Badge de cobertura del pedido (mismo criterio que reflejante y bordado). */
+export const CORTE_MANGA_ORDER_COVERAGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {
+  true: {
+    label: "Completa",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  false: {
+    label: "Parcial",
+    cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
+    dot: "bg-sky-500",
+  },
+};

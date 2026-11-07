@@ -1,18 +1,14 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, LayersIcon, SliceIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
-import {
-  EmptyLines,
-  InfoField,
-  InfoGrid,
-  Section,
-  textOrDash,
-} from "@/src/components/DetailDialogPrimitives";
-import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
+import { InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOrderSheets";
+import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
@@ -22,14 +18,24 @@ import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
+  CORTE_MANGA_ORDER_COVERAGE_CONFIG,
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
   corteMangaOrderPriorityFallback,
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
-import { useCorteMangaOrderDetail } from "../hooks/useCorteMangaOrderDetail";
+import {
+  corteMangaOrderDetailQueryKey,
+  useCorteMangaOrderDetail,
+} from "../hooks/useCorteMangaOrderDetail";
+import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups";
+import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/components/WorkOrderAvancesSection";
 import { useUpdateCorteMangaOrder } from "../hooks/useUpdateCorteMangaOrder";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
-import type { CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
+import type {
+  CorteMangaOrderLine,
+  CorteMangaOrderSibling,
+} from "../interfaces/corte-manga-order.interface";
+import { StatusBadge } from "@/src/components/StatusBadge";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -63,65 +69,55 @@ const sumarPiezas = (items: CorteMangaOrderLine[]): number =>
     0,
   );
 
-// ── Artículos de la orden ────────────────────────────────────────────────────
+// ── Prendas de la orden ──────────────────────────────────────────────────────
+
+const CORTE_MANGA_AVANCE_CONFIG = {
+  endpoint: "/produccion/corte-manga-avances/",
+  orderField: "ocm",
+  verbo: "cortadas",
+  listQueryKey: ["corte-manga-orders"],
+};
 
 /**
- * Renglones de la orden.
- *
- * Es una tabla propia y NO `LineItemsTable` (el chrome que usa el diálogo): ese
- * contenedor acota el alto a `max-h-72` con scroll interno, que es lo correcto
- * dentro de un diálogo y lo contrario de lo que quiere una página — aquí los
- * renglones se leen de corrido.
- *
- * Las mismas CUATRO columnas del diálogo, y no más: OCM no tiene el contexto de
- * parcialidad por línea que bordado y reflejante sí traen
- * (`cantidad_pedido`/`cantidad_asignada`/`cantidad_pendiente` no existen en este
- * contrato), así que "Cantidad" es la única cifra por renglón. Tampoco hay
- * popover de configuración: `configuracion` se tipa `unknown` porque es un
- * `JSONField` de forma libre que nadie ha fijado, y pintar una forma que el
- * backend no garantiza es justo el defecto que ese `unknown` previene.
+ * Prendas agrupadas por prenda + color. Programado / Pedido / Pendiente y SKU
+ * aparecen solos en cuanto el backend los mande (hoy la OCM no los expone).
  */
-const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
-  if (items.length === 0) {
-    return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
-  }
+const CorteMangaGarments = ({ items }: { items: CorteMangaOrderLine[] }) => (
+  <WorkOrderGarmentGroups
+    items={items}
+    toLine={(linea) => ({
+      id: linea.id,
+      productoId: linea.producto,
+      producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+      color: linea.color_nombre,
+      talla: linea.talla_nombre,
+      cantidad: linea.cantidad,
+      sku: linea.sku,
+      programado: linea.cantidad_asignada,
+      pedido: linea.cantidad_pedido,
+      pendiente: linea.cantidad_pendiente,
+    })}
+  />
+);
 
-  return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-      <table className="min-w-full text-xs">
-        <thead className="bg-slate-50 dark:bg-white/5">
-          <tr className="text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-2 text-left font-semibold">Producto</th>
-            <th className="px-3 py-2 text-left font-semibold">Talla</th>
-            <th className="px-3 py-2 text-left font-semibold">Color</th>
-            <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((linea) => (
-            <tr
-              key={linea.id}
-              className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-            >
-              <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                {textOrDash(linea.producto_nombre)}
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                {textOrDash(linea.talla_nombre)}
-              </td>
-              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                {textOrDash(linea.color_nombre)}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
-                {formatQuantityValue(linea.cantidad)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+/** Las otras OCM activas del mismo pedido, cada una enlazada a su página. */
+const SiblingOrders = ({ items }: { items: CorteMangaOrderSibling[] }) => (
+  <ul className="space-y-1 text-xs">
+    {items.map((hermana) => (
+      <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        <Link
+          href={`/manufacturing/corte-manga/${hermana.id}`}
+          className="font-mono font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+        >
+          {hermana.folio_ocm || `Orden #${hermana.id}`}
+        </Link>
+        <span className="tabular-nums text-slate-500 dark:text-slate-400">
+          {formatShortDate(hermana.fecha_inicio)} · {formatShortTime(hermana.fecha_inicio)}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -165,9 +161,9 @@ export function CorteMangaOrderPageContent({
   const BackLink = (
     <Link
       href={BACK.href}
-      className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+      className={BACK_BUTTON_CLASS}
     >
-      <ArrowLeftIcon className="w-4 h-4" />
+      <ArrowLeftIcon className={BACK_ARROW_CLASS} />
       <span className="text-sm font-medium">{BACK.label}</span>
     </Link>
   );
@@ -224,129 +220,132 @@ export function CorteMangaOrderPageContent({
 
   return (
     <div className="w-full space-y-6">
-      {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 flex flex-wrap items-center gap-3">
-        {BackLink}
-        {isTerminal && <OrderChip>Orden cancelada · solo lectura</OrderChip>}
-      </div>
+      <WorkOrderTopBar
+        backLink={BackLink}
+        readOnlyLabel={isTerminal ? "Orden cancelada · solo lectura" : null}
+      />
 
-      {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                {data.folio_ocm || `Orden #${data.id}`}
-              </h1>
-            </div>
-          </div>
-          {/* Sin badge de cobertura, a diferencia de bordado y reflejante: OCM
-              no publica los campos que lo alimentan. */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
-            <InfoField label="Alta">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_inicio)} ·{" "}
-                {formatShortTime(data.fecha_inicio)}
-              </span>
-            </InfoField>
-            {/* `fecha_fin` es de solo lectura: la sella el backend al pasar a
-                Completado y la limpia al reabrir la orden.
-                `formatShortDate`/`formatShortTime` resuelven `null` al guion. */}
-            <InfoField label="Fin">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
-              </span>
-            </InfoField>
-            <InfoField label="Total piezas">
-              <span className="tabular-nums font-semibold">
-                {formatQuantityValue(sumarPiezas(data.detalles))}
-              </span>
-            </InfoField>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── 2. Información general ────────────────────────────────────── */}
-        <Section title="Información general">
-          <InfoGrid>
-            <InfoField label="Pedido">
-              {/* `pedido_vinculado` es OPCIONAL aquí (ver la nota del tipo), así
-                  que la rama de texto no es teórica. */}
-              <PedidoVinculadoFolio
-                pedidoVinculado={data.pedido_vinculado}
-                pedidoFolio={data.pedido_folio}
-                from="corte-manga"
-              />
-            </InfoField>
-            <InfoField label="Estatus">
-              <WorkOrderStatusSelect
-                currentStatus={data.estatus_corte}
-                statusDisplay={data.estatus_corte_display}
-                statusEntry={corteMangaStatusEntry}
-                onStatusChange={(next) =>
-                  updateOrder.mutate({ estatus_corte: next })
-                }
-                isPending={updateOrder.isPending}
-                // El caso Cancelado lo resuelve el propio selector (se queda sin
-                // destinos); aquí solo se le añade el de permisos.
-                readOnly={!canEdit}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <WorkOrderPrioritySelect
-                value={data.prioridad}
-                config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-                fallback={corteMangaOrderPriorityFallback}
-                onChange={(prioridad) => updateOrder.mutate({ prioridad })}
-                isPending={updateOrder.isPending}
-                readOnly={isReadOnly}
-              />
-            </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {isReadOnly ? (
-                textOrDash(data.observaciones)
-              ) : (
-                <InlineObservationsField
-                  value={data.observaciones}
-                  onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
+      {/* ── 1. La orden ─────────────────────────────────────────────────── */}
+      <SheetSection
+        icon={<SliceIcon className="w-5 h-5" />}
+        title="Orden de Corte de Manga"
+        subtitle="Datos de la orden, su origen y quién la trabaja."
+        badges={
+          data.cobertura_completa !== undefined ? (
+            <StatusBadge
+              status={String(data.cobertura_completa)}
+              config={CORTE_MANGA_ORDER_COVERAGE_CONFIG}
+            />
+          ) : undefined
+        }
+      >
+        <div className="flex flex-col xl:flex-row gap-6">
+          <SheetPanel title="Orden" className="shrink-0 w-full xl:w-80">
+            {/* El folio es el único <h1> de la página. */}
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6 break-all">
+              {data.folio_ocm || `Orden #${data.id}`}
+            </h1>
+            <div className="space-y-4 text-xs">
+              <InfoField label="Estatus">
+                <WorkOrderStatusSelect
+                  currentStatus={data.estatus_corte}
+                  statusDisplay={data.estatus_corte_display}
+                  statusEntry={corteMangaStatusEntry}
+                  onStatusChange={(next) => updateOrder.mutate({ estatus_corte: next })}
                   isPending={updateOrder.isPending}
+                  readOnly={!canEdit}
                 />
-              )}
-            </InfoField>
-          </InfoGrid>
-        </Section>
+              </InfoField>
+              <InfoField label="Prioridad">
+                <WorkOrderPrioritySelect
+                  value={data.prioridad}
+                  config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
+                  fallback={corteMangaOrderPriorityFallback}
+                  onChange={(prioridad) => updateOrder.mutate({ prioridad })}
+                  isPending={updateOrder.isPending}
+                  readOnly={isReadOnly}
+                />
+              </InfoField>
+              <div className="grid grid-cols-2 gap-4">
+                <InfoField label="Alta">
+                  <span className="tabular-nums">
+                    {formatShortDate(data.fecha_inicio)} · {formatShortTime(data.fecha_inicio)}
+                  </span>
+                </InfoField>
+                {/* `fecha_fin` la sella el backend al completar; `null` → guion. */}
+                <InfoField label="Fin">
+                  <span className="tabular-nums">
+                    {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
+                  </span>
+                </InfoField>
+              </div>
+            </div>
+          </SheetPanel>
 
-        {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
-            backend devuelve (`*_nombre`); los ids crudos no se pintan porque no
-            le dicen nada al usuario. `usuario_nombre` llega `null` solo en las
-            filas históricas de la generación automática desde ventas, que no
-            asignaba operador. */}
-        <Section title="Origen">
-          <InfoGrid>
-            <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
-            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
-            <InfoField label="Operador asignado">
-              {textOrDash(data.usuario_nombre)}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-      </div>
+          <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
+            <InfoGrid>
+              <InfoField label="Pedido">
+                <PedidoVinculadoFolio
+                  pedidoVinculado={data.pedido_vinculado}
+                  pedidoFolio={data.pedido_folio}
+                  from="corte-manga"
+                />
+              </InfoField>
+              <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
+              <InfoField label="Total piezas">
+                <span className="tabular-nums font-semibold">{formatQuantityValue(data.cantidad_cubierta ?? sumarPiezas(data.detalles))}</span>
+              </InfoField>
+              <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
+              <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+              <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+                {isReadOnly ? (
+                  textOrDash(data.observaciones)
+                ) : (
+                  <InlineObservationsField
+                    value={data.observaciones}
+                    onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+            </InfoGrid>
+          </SheetPanel>
+        </div>
+      </SheetSection>
 
-      {/* ── 4. Artículos de la orden ────────────────────────────────────── */}
-      <Section title={`Artículos de la orden (${data.detalles.length})`}>
-        {/* El desglose NO es el del pedido completo: el backend solo itemiza las
-            líneas que ESTA orden toca. A diferencia de bordado y reflejante,
-            aquí no hay bloque de cobertura con el que contrastarlo, así que
-            decirlo es la única salvaguarda contra leer esta tabla como el total
-            contratado por el pedido. */}
-        <p className="-mt-2 mb-3 text-[11px] text-slate-500 dark:text-slate-400">
-          Solo se muestran los artículos que cubre esta orden. Si el pedido tiene otras
-          prendas por cortar, no se listan aquí.
-        </p>
-        <LineasTable items={data.detalles} />
-      </Section>
+      {/* ── 2. Cobertura del pedido (solo si el backend la manda) ──────── */}
+      {data.cantidad_contratada !== undefined && data.cantidad_cubierta !== undefined && (
+        <WorkOrderCoverageSheet
+          cubierta={data.cantidad_cubierta}
+          contratada={data.cantidad_contratada}
+          completa={Boolean(data.cobertura_completa)}
+          coverageConfig={CORTE_MANGA_ORDER_COVERAGE_CONFIG}
+          servicio="corte de manga"
+          siblingsCount={data.otras_ordenes_del_pedido?.length ?? 0}
+          siblings={<SiblingOrders items={data.otras_ordenes_del_pedido ?? []} />}
+        />
+      )}
+
+      {/* ── 3. Prendas de la orden ─────────────────────────────────────── */}
+      <SheetSection
+        icon={<LayersIcon className="w-5 h-5" />}
+        title="Prendas de la orden"
+        subtitle="Toca una prenda para ver sus tallas. Solo se listan las de esta orden."
+      >
+        <CorteMangaGarments items={data.detalles} />
+      </SheetSection>
+
+      {/* ── 5. Avance ──────────────────────────────────────────────────── */}
+      <WorkOrderAvancesSection
+        config={CORTE_MANGA_AVANCE_CONFIG}
+        orderId={data.id}
+        detailQueryKey={corteMangaOrderDetailQueryKey(data.id)}
+        piezasOrden={data.cantidad_cubierta ?? Math.floor(sumarPiezas(data.detalles))}
+        canEdit={canEdit}
+        isTerminal={isTerminal}
+        avances={data.avances}
+        resumen_avance={data.resumen_avance}
+      />
     </div>
   );
 }

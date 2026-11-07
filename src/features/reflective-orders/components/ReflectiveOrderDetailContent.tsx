@@ -1,20 +1,15 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, InfoIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, InfoIcon, LayersIcon, RulerIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import {
-  EmptyLines,
-  InfoField,
-  InfoGrid,
-  Section,
-  SectionTitle,
-  textOrDash,
-} from "@/src/components/DetailDialogPrimitives";
-import { OrderChip } from "@/src/features/orders/components/OrderSheetPrimitives";
+import { InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOrderSheets";
+import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
@@ -23,14 +18,18 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import { pluralForQuantity } from "@/src/utils/plural";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
   REFLECTIVE_ORDER_PRIORITY_CONFIG,
   reflectiveOrderPriorityFallback,
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
-import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
+import {
+  reflectiveOrderDetailQueryKey,
+  useReflectiveOrderDetail,
+} from "../hooks/useReflectiveOrderDetail";
+import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups";
+import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/components/WorkOrderAvancesSection";
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
@@ -55,14 +54,6 @@ const BACK = {
 };
 
 /**
- * Cantidad que puede llegar `null` del backend → guion largo. Las tres
- * cantidades de parcialidad por línea lo hacen cuando el renglón no cruza con
- * el mapa de parcialidad del pedido (clave `(pedido_detalle, talla)`).
- */
-const quantityOrDash = (value: number | null) =>
-  value === null ? "—" : formatQuantityValue(value);
-
-/**
  * `metros` es un `FloatField(default=0)`: cuando nadie lo captura llega `0`, no
  * `null`. Un "0" pintado como número se lee como una medición real ("esta orden
  * no lleva cinta"), que es falso — nadie lo calcula todavía. Se trata el cero
@@ -75,130 +66,62 @@ const quantityOrDash = (value: number | null) =>
 const metrosOrDash = (metros: number): string =>
   Number.isFinite(metros) && metros !== 0 ? `${formatQuantityValue(metros)} m` : "—";
 
-// ── Artículos de la orden ────────────────────────────────────────────────────
+// ── Prendas de la orden ──────────────────────────────────────────────────────
+
+const REFLECTIVE_AVANCE_CONFIG = {
+  endpoint: "/produccion/reflejante-avances/",
+  orderField: "orden_r",
+  verbo: "reflejadas",
+  listQueryKey: ["reflective-orders"],
+};
 
 /**
- * Renglones de la orden.
- *
- * Es una tabla propia y NO `LineItemsTable` (el chrome que usa el diálogo): ese
- * contenedor acota el alto a `max-h-72` con scroll interno, que es lo correcto
- * dentro de un diálogo y lo contrario de lo que quiere una página — aquí los
- * renglones se leen de corrido, y el único scroll es el horizontal que ya usan
- * `PedidoDetailContent` y la página de bordado.
- *
- * Las cuatro cantidades hablan de cosas distintas y la cabecera lo dice, porque
- * confundirlas es el error que este desglose existe para evitar:
- *  - "En esta orden" (`cantidad`) → lo que programa ESTE documento.
- *  - "Programado" (`cantidad_asignada`) → lo que llevan TODAS las OR activas del
- *    pedido sobre esa línea, esta incluida. Es ≥ la anterior.
- *  - "Pedido" (`cantidad_pedido`) y "Pendiente" (`cantidad_pendiente`) → el
- *    contrato y su saldo.
- * La columna propia de la orden va resaltada; las otras tres, atenuadas: son
- * contexto del pedido, no de este documento.
- *
- * `tipo_reflejante`, `posicion` y `metros` conservan su `"—"` por renglón (la
- * convención de Packing/Shipping/Picking, y no la excepción de bordado de
- * omitir columnas vacías) porque NO están vacías para el 100% de los renglones:
- * `tipo_reflejante`/`posicion` los puebla la generación automática desde ventas
- * y solo quedan en `null` cuando la orden se creó desde este módulo, cuyo
- * service construye el detalle sin ellos. Varían por ORIGEN de la orden, que es
- * exactamente el caso que la convención del `"—"` resuelve. `metros` es el
- * único constante (`0` por las dos rutas); se muestra igual, por coherencia con
- * las otras dos del mismo grupo.
- *
- * OJO: los dos escalares describen SOLO el primer reflejante del renglón. El
- * arreglo completo —hasta tres reflejantes, con dos materiales distintos en la
- * misma prenda— vive en el popover de la celda del producto (ver
- * `resolveReflectiveLineConfigs`), no en estas columnas.
+ * Prendas agrupadas por prenda + color. Las cuatro cantidades (En esta orden,
+ * Programado, Pedido, Pendiente) y las columnas propias del reflejante se
+ * conservan en el desglose por talla. `tipo_reflejante` y `posicion` describen
+ * solo el PRIMER reflejante del renglón; el arreglo completo vive en el popover.
  */
-const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
-  if (items.length === 0) {
-    return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-      <table className="min-w-full text-xs">
-        <thead className="bg-slate-50 dark:bg-white/5">
-          <tr className="text-slate-500 dark:text-slate-400">
-            <th className="px-3 py-2 text-left font-semibold">Producto</th>
-            <th className="px-3 py-2 text-left font-semibold">Talla</th>
-            <th className="px-3 py-2 text-left font-semibold">Color</th>
-            <th className="px-3 py-2 text-left font-semibold">Tipo</th>
-            <th className="px-3 py-2 text-left font-semibold">Posición</th>
-            <th className="px-3 py-2 text-right font-semibold">Metros</th>
-            <th className="px-3 py-2 text-right font-semibold">En esta orden</th>
-            <th className="px-3 py-2 text-right font-semibold">Programado</th>
-            <th className="px-3 py-2 text-right font-semibold">Pedido</th>
-            <th className="px-3 py-2 text-right font-semibold">Pendiente</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((linea) => {
-            // TODOS los reflejantes del renglón. Prefiere `configuracion` (la
-            // foto congelada al emitir la orden) y cae a la lectura en vivo solo
-            // cuando no la hay —órdenes anteriores a la migración—. Ver
-            // `resolveReflectiveLineConfigs`, que es el resolvedor propio de
-            // este módulo: aquí el config es un ARREGLO, no el objeto de
-            // bordado, así que el helper de aquel NO sirve.
-            const configs = resolveReflectiveLineConfigs(linea);
-
-            return (
-              <tr
-                key={linea.id}
-                className="border-t border-slate-100 dark:border-white/10 align-top hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-              >
-                <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                  {textOrDash(linea.producto_nombre)}
-                  {configs.length > 0 && (
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <ReflectiveLineConfigPopover
-                        configs={configs}
-                        productoNombre={
-                          linea.producto_nombre ?? `Producto #${linea.producto}`
-                        }
-                        tallaNombre={linea.talla_nombre}
-                        colorNombre={linea.color_nombre}
-                      />
-                      <ReflectiveConfigCountBadge configs={configs} />
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                  {textOrDash(linea.talla_nombre)}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                  {textOrDash(linea.color_nombre)}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                  {textOrDash(linea.tipo_reflejante)}
-                </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                  {textOrDash(linea.posicion)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap text-slate-600 dark:text-slate-300">
-                  {metrosOrDash(linea.metros)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                  {formatQuantityValue(linea.cantidad)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_asignada)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_pedido)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                  {quantityOrDash(linea.cantidad_pendiente)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+const ReflectiveGarments = ({ items }: { items: ReflectiveOrderDetailLine[] }) => (
+  <WorkOrderGarmentGroups
+    items={items}
+    toLine={(linea) => ({
+      id: linea.id,
+      productoId: linea.producto,
+      producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+      color: linea.color_nombre,
+      talla: linea.talla_nombre,
+      cantidad: linea.cantidad,
+      sku: linea.sku,
+      programado: linea.cantidad_asignada,
+      pedido: linea.cantidad_pedido,
+      pendiente: linea.cantidad_pendiente,
+    })}
+    columns={[
+      {
+        key: "reflejante",
+        label: "Reflejante",
+        render: (linea) => {
+          const configs = resolveReflectiveLineConfigs(linea);
+          if (configs.length === 0) return "—";
+          return (
+            <span className="flex flex-wrap items-center gap-1.5">
+              <ReflectiveLineConfigPopover
+                configs={configs}
+                productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+                tallaNombre={linea.talla_nombre}
+                colorNombre={linea.color_nombre}
+              />
+              <ReflectiveConfigCountBadge configs={configs} />
+            </span>
+          );
+        },
+      },
+      { key: "tipo", label: "Tipo", render: (linea) => textOrDash(linea.tipo_reflejante) },
+      { key: "posicion", label: "Posición", render: (linea) => textOrDash(linea.posicion) },
+      { key: "metros", label: "Metros", align: "right", render: (linea) => metrosOrDash(linea.metros) },
+    ]}
+  />
+);
 
 /**
  * Las otras OR activas del mismo pedido.
@@ -255,9 +178,9 @@ export function ReflectiveOrderDetailContent({
   const BackLink = (
     <Link
       href={BACK.href}
-      className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+      className={BACK_BUTTON_CLASS}
     >
-      <ArrowLeftIcon className="w-4 h-4" />
+      <ArrowLeftIcon className={BACK_ARROW_CLASS} />
       <span className="text-sm font-medium">{BACK.label}</span>
     </Link>
   );
@@ -306,13 +229,6 @@ export function ReflectiveOrderDetailContent({
     );
   }
 
-  // Solo para mostrar: `cantidad_contratada` puede ser 0 (pedido sin líneas de
-  // reflejante vivas) y dividir daría "∞%".
-  const porcentaje =
-    data.cantidad_contratada > 0
-      ? Math.round((data.cantidad_cubierta / data.cantidad_contratada) * 100)
-      : null;
-
   // Cancelada (`7`): el backend responde `400` a cualquier `PATCH`, así que la
   // ficha entera pasa a solo lectura. Se suma la falta de permiso en una sola
   // bandera para que ningún control quede editable por olvidar una condición.
@@ -321,189 +237,144 @@ export function ReflectiveOrderDetailContent({
 
   return (
     <div className="w-full space-y-6">
-      {/* ── Barra superior con "Volver" ─────────────────────────────────── */}
-      <div className="sticky top-0 z-10 py-2 flex flex-wrap items-center gap-3">
-        {BackLink}
-        {isTerminal && <OrderChip>Orden cancelada · solo lectura</OrderChip>}
-      </div>
+      <WorkOrderTopBar
+        backLink={BackLink}
+        readOnlyLabel={isTerminal ? "Orden cancelada · solo lectura" : null}
+      />
 
-      {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                {data.folio_reflejante || `Orden #${data.id}`}
-              </h1>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs shrink-0">
-            <InfoField label="Alta">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_inicio)} ·{" "}
-                {formatShortTime(data.fecha_inicio)}
-              </span>
-            </InfoField>
-            {/* `fecha_fin` es de solo lectura: la sella el backend al pasar a
-                Completado y la limpia al reabrir la orden.
-                `formatShortDate`/`formatShortTime` resuelven `null` al guion. */}
-            <InfoField label="Fin">
-              <span className="tabular-nums">
-                {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
-              </span>
-            </InfoField>
-            {/* `cantidad_cubierta` y NO la suma cruda de `detalles[].cantidad`:
-                son el mismo concepto —piezas que programa ESTA orden— pero el
-                backend publica la suya con PISO deliberado (`math.floor`, para
-                no sobre-reportar cobertura) y `OrdenReflejanteDetalle.cantidad`
-                es un `FloatField`. Sumar en crudo pintaría "9.6" aquí y
-                "9 de 10 · 90%" en el bloque de cobertura de abajo: dos cifras
-                del mismo dato en la misma pantalla. Mismo criterio ya fijado en
-                la página de bordado. */}
-            <InfoField label="Total piezas">
-              <span className="tabular-nums font-semibold">
-                {formatQuantityValue(data.cantidad_cubierta)}
-              </span>
-            </InfoField>
-            <InfoField label="Cobertura">
-              <StatusBadge
-                status={String(data.cobertura_completa)}
-                config={REFLECTIVE_ORDER_COVERAGE_CONFIG}
-              />
-            </InfoField>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── 2. Información general ────────────────────────────────────── */}
-        <Section title="Información general">
-          <InfoGrid>
-            <InfoField label="Pedido">
-              <PedidoVinculadoFolio
-                pedidoVinculado={data.pedido_vinculado}
-                pedidoFolio={data.pedido_folio}
-                from="reflective"
-              />
-            </InfoField>
-            <InfoField label="Estatus">
-              <WorkOrderStatusSelect
-                currentStatus={data.estatus_reflejante}
-                statusDisplay={data.estatus_reflejante_display}
-                statusEntry={reflectiveStatusEntry}
-                onStatusChange={(next) =>
-                  updateOrder.mutate({ estatus_reflejante: next })
-                }
-                isPending={updateOrder.isPending}
-                // El caso Cancelado lo resuelve el propio selector (se queda sin
-                // destinos); aquí solo se le añade el de permisos.
-                readOnly={!canEdit}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <WorkOrderPrioritySelect
-                value={data.prioridad}
-                config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-                fallback={reflectiveOrderPriorityFallback}
-                onChange={(prioridad) => updateOrder.mutate({ prioridad })}
-                isPending={updateOrder.isPending}
-                readOnly={isReadOnly}
-              />
-            </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
-              {isReadOnly ? (
-                textOrDash(data.observaciones)
-              ) : (
-                <InlineObservationsField
-                  value={data.observaciones}
-                  onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
-                  isPending={updateOrder.isPending}
-                />
-              )}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-
-        {/* ── 3. Origen ─────────────────────────────────────────────────── */}
-        {/* Empresa / sucursal / usuario con el NOMBRE ya resuelto que el
-            backend devuelve (`*_nombre`, vía `source=` + `SerializerMethodField`);
-            los ids crudos no se pintan porque no le dicen nada al usuario.
-            `usuario_nombre` llega `null` en las órdenes generadas
-            automáticamente desde ventas, que no asignan operador. */}
-        <Section title="Origen">
-          <InfoGrid>
-            <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
-            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
-            <InfoField label="Operador asignado">
-              {textOrDash(data.usuario_nombre)}
-            </InfoField>
-          </InfoGrid>
-        </Section>
-      </div>
-
-      {/* ── 4. Cobertura del pedido ─────────────────────────────────────── */}
-      <Section title="Cobertura del pedido">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/10 text-xs">
+      {/* ── 1. La orden ─────────────────────────────────────────────────── */}
+      <SheetSection
+        icon={<RulerIcon className="w-5 h-5" />}
+        title="Orden de Reflejante"
+        subtitle="Datos de la orden, su origen y quién la trabaja."
+        badges={
           <StatusBadge
             status={String(data.cobertura_completa)}
             config={REFLECTIVE_ORDER_COVERAGE_CONFIG}
           />
-          <span className="tabular-nums text-slate-700 dark:text-slate-200">
-            <span className="font-semibold">
-              {formatQuantityValue(data.cantidad_cubierta)}
-            </span>{" "}
-            de {formatQuantityValue(data.cantidad_contratada)}{" "}
-            {pluralForQuantity(data.cantidad_contratada, "pieza contratada", "piezas contratadas")} por
-            el pedido
-            {porcentaje !== null && ` · ${porcentaje}%`}
-          </span>
-          {!data.cobertura_completa && (
-            <span className="text-slate-500 dark:text-slate-400">
-              El resto puede programarse en otras órdenes de reflejante.
-            </span>
-          )}
+        }
+      >
+        <div className="flex flex-col xl:flex-row gap-6">
+          <SheetPanel title="Orden" className="shrink-0 w-full xl:w-80">
+            {/* El folio es el único <h1> de la página. */}
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-mono mb-6 break-all">
+              {data.folio_reflejante || `Orden #${data.id}`}
+            </h1>
+            <div className="space-y-4 text-xs">
+              <InfoField label="Estatus">
+                <WorkOrderStatusSelect
+                  currentStatus={data.estatus_reflejante}
+                  statusDisplay={data.estatus_reflejante_display}
+                  statusEntry={reflectiveStatusEntry}
+                  onStatusChange={(next) => updateOrder.mutate({ estatus_reflejante: next })}
+                  isPending={updateOrder.isPending}
+                  readOnly={!canEdit}
+                />
+              </InfoField>
+              <InfoField label="Prioridad">
+                <WorkOrderPrioritySelect
+                  value={data.prioridad}
+                  config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
+                  fallback={reflectiveOrderPriorityFallback}
+                  onChange={(prioridad) => updateOrder.mutate({ prioridad })}
+                  isPending={updateOrder.isPending}
+                  readOnly={isReadOnly}
+                />
+              </InfoField>
+              <div className="grid grid-cols-2 gap-4">
+                <InfoField label="Alta">
+                  <span className="tabular-nums">
+                    {formatShortDate(data.fecha_inicio)} · {formatShortTime(data.fecha_inicio)}
+                  </span>
+                </InfoField>
+                {/* `fecha_fin` la sella el backend al completar; `null` → guion. */}
+                <InfoField label="Fin">
+                  <span className="tabular-nums">
+                    {formatShortDate(data.fecha_fin)} · {formatShortTime(data.fecha_fin)}
+                  </span>
+                </InfoField>
+              </div>
+            </div>
+          </SheetPanel>
+
+          <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
+            <InfoGrid>
+              <InfoField label="Pedido">
+                <PedidoVinculadoFolio
+                  pedidoVinculado={data.pedido_vinculado}
+                  pedidoFolio={data.pedido_folio}
+                  from="reflective"
+                />
+              </InfoField>
+              <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
+              <InfoField label="Total piezas">
+                <span className="tabular-nums font-semibold">{formatQuantityValue(data.cantidad_cubierta)}</span>
+              </InfoField>
+              <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
+              <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+              <InfoField label="Observaciones" className="col-span-2 md:col-span-3">
+                {isReadOnly ? (
+                  textOrDash(data.observaciones)
+                ) : (
+                  <InlineObservationsField
+                    value={data.observaciones}
+                    onSave={(observaciones) => updateOrder.mutateAsync({ observaciones })}
+                    isPending={updateOrder.isPending}
+                  />
+                )}
+              </InfoField>
+            </InfoGrid>
+          </SheetPanel>
         </div>
+      </SheetSection>
 
-        {/* Reparto aproximado — solo cuando el backend lo marca; sin el gate
-            sería un estado vacío permanente. */}
-        {data.reparto_por_talla_aproximado && (
-          <div
-            role="note"
-            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-          >
-            <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
-              El pedido tiene piezas programadas sin talla identificable. El total por
-              producto es exacto, pero el reparto <strong>por talla</strong> que se
-              muestra abajo es aproximado.
-            </p>
-          </div>
-        )}
+      {/* ── 2. Cobertura del pedido ─────────────────────────────────────── */}
+      <WorkOrderCoverageSheet
+        cubierta={data.cantidad_cubierta}
+        contratada={data.cantidad_contratada}
+        completa={data.cobertura_completa}
+        coverageConfig={REFLECTIVE_ORDER_COVERAGE_CONFIG}
+        servicio="reflejante"
+        siblingsCount={data.otras_ordenes_del_pedido.length}
+        siblings={<SiblingOrders items={data.otras_ordenes_del_pedido} />}
+        notice={
+          // Reparto aproximado — solo cuando el backend lo marca.
+          data.reparto_por_talla_aproximado ? (
+            <div
+              role="note"
+              className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
+            >
+              <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
+                El pedido tiene piezas programadas sin talla identificable. El total por
+                producto es exacto, pero el reparto <strong>por talla</strong> que se
+                muestra abajo es aproximado.
+              </p>
+            </div>
+          ) : undefined
+        }
+      />
 
-        {/* Otras OR del mismo pedido — solo si las hay. */}
-        {data.otras_ordenes_del_pedido.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-            <SectionTitle>
-              Otras órdenes de este pedido ({data.otras_ordenes_del_pedido.length})
-            </SectionTitle>
-            <SiblingOrders items={data.otras_ordenes_del_pedido} />
-          </div>
-        )}
-      </Section>
+      {/* ── 3. Prendas de la orden ─────────────────────────────────────── */}
+      <SheetSection
+        icon={<LayersIcon className="w-5 h-5" />}
+        title="Prendas de la orden"
+        subtitle="Toca una prenda para ver sus tallas. Solo se listan las de esta orden."
+      >
+        <ReflectiveGarments items={data.detalles} />
+      </SheetSection>
 
-      {/* ── 5. Artículos de la orden ────────────────────────────────────── */}
-      <Section title={`Artículos de la orden (${data.detalles.length})`}>
-        {/* El desglose NO es el del pedido completo: el backend solo itemiza las
-            líneas que ESTA orden toca, así que las demás líneas de reflejante
-            del pedido no aparecen aquí ni siquiera en cero. Decirlo evita leer
-            la suma de la columna "Pedido" como el total contratado — que es el
-            del bloque de cobertura de arriba. */}
-        <p className="-mt-2 mb-3 text-[11px] text-slate-500 dark:text-slate-400">
-          Solo se muestran los artículos que cubre esta orden. Si el pedido tiene otras
-          prendas por reflejar, no se listan aquí.
-        </p>
-        <LineasTable items={data.detalles} />
-      </Section>
+      {/* ── 6. Avance ──────────────────────────────────────────────────── */}
+      <WorkOrderAvancesSection
+        config={REFLECTIVE_AVANCE_CONFIG}
+        orderId={data.id}
+        detailQueryKey={reflectiveOrderDetailQueryKey(data.id)}
+        piezasOrden={data.cantidad_cubierta}
+        canEdit={canEdit}
+        isTerminal={isTerminal}
+        avances={data.avances}
+        resumen_avance={data.resumen_avance}
+      />
     </div>
   );
 }

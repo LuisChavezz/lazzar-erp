@@ -8,6 +8,15 @@ import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { RouteIcon, ViewIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { PEDIDO_LINK_VISIBLE_CLASS, PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import {
+  CantidadCell,
+  CentroConfeccionCell,
+  FechaCell,
+  RUTA_CRITICA_ETAPAS,
+  RutaCriticaTracker,
+  VenceCell,
+} from "./ProductionOrderListCells";
 import {
   PRODUCTION_ORDER_PRIORITY_CONFIG,
   PRODUCTION_ORDER_STATUS_CONFIG,
@@ -71,6 +80,11 @@ export function getProductionOrderColumns(
   onViewDetails: (id: number) => void,
   onOpenCriticalPath: (row: ProductionOrderListItem) => void,
 ): ColumnDef<ProductionOrderListItem, unknown>[] {
+  // El listado solo trae el PK del pedido: el folio sale de `pedido_folio`
+  // cuando el backend lo mande; mientras, `Pedido #id` (ya enlaza al 360°).
+  const pedidoFolioOf = (row: ProductionOrderListItem) =>
+    row.pedido == null ? '' : row.pedido_folio || `Pedido #${row.pedido}`;
+
   return [
     // Folio OP: es el menú de acciones de la fila (con ">") y lleva el estatus
     // a su lado; sin columnas aparte de "Estatus" ni "Acciones".
@@ -85,6 +99,81 @@ export function getProductionOrderColumns(
         />
       ),
     }),
+
+    // Pedido ligado: enlace al detalle 360° sin abrir la OP.
+    columnHelper.accessor((row) => pedidoFolioOf(row), {
+      id: 'pedido',
+      header: 'Pedido',
+      size: 140,
+      cell: ({ row, getValue }) => {
+        const pedidoId = row.original.pedido;
+        if (pedidoId == null) {
+          return <span className="text-xs text-slate-400 dark:text-slate-500">Sin pedido</span>;
+        }
+        // En azul y subrayado punteado desde el inicio: se nota que lleva al pedido.
+        return (
+          <PedidoFolioLink
+            pedidoId={pedidoId}
+            folio={getValue()}
+            from="production-orders"
+            tone="accent"
+            className={PEDIDO_LINK_VISIBLE_CLASS}
+          />
+        );
+      },
+    }),
+
+    // Centro de confección (maquilero o interno).
+    columnHelper.accessor((row) => (row.centro_confeccion === null ? 'Interno' : row.centro_confeccion?.nombre ?? ''), {
+      id: 'centro_confeccion',
+      header: 'Centro de confección',
+      size: 170,
+      cell: ({ row }) => <CentroConfeccionCell order={row.original} />,
+    }),
+
+    columnHelper.accessor((row) => row.fecha_pedido ?? undefined, {
+      id: 'fecha_pedido',
+      header: 'Fecha pedido',
+      size: 115,
+      sortUndefined: 'last',
+      enableGlobalFilter: false,
+      cell: ({ row }) => <FechaCell value={row.original.fecha_pedido} />,
+    }),
+
+    columnHelper.accessor((row) => row.fecha_vence ?? undefined, {
+      id: 'fecha_vence',
+      header: 'Vence',
+      size: 110,
+      sortUndefined: 'last',
+      enableGlobalFilter: false,
+      cell: ({ row }) => <VenceCell value={row.original.fecha_vence} />,
+    }),
+
+    columnHelper.accessor((row) => row.cantidad_total, {
+      id: 'cantidad_total',
+      header: 'Cantidad',
+      size: 100,
+      sortUndefined: 'last',
+      enableGlobalFilter: false,
+      meta: { align: 'right' },
+      cell: ({ row }) => <CantidadCell value={row.original.cantidad_total} />,
+    }),
+
+    // Ruta crítica: avance por etapa, ordena por etapas completas.
+    columnHelper.accessor(
+      (row) =>
+        row.ruta_critica
+          ? RUTA_CRITICA_ETAPAS.filter(({ key }) => row.ruta_critica?.[key] === 'completo').length
+          : undefined,
+      {
+        id: 'ruta_critica',
+        header: 'Ruta crítica',
+        size: 150,
+        sortUndefined: 'last',
+        enableGlobalFilter: false,
+        cell: ({ row }) => <RutaCriticaTracker order={row.original} />,
+      },
+    ),
 
     // Prioridad
     //
@@ -153,26 +242,6 @@ export function getProductionOrderColumns(
       },
     }),
 
-    // Activo
-    columnHelper.accessor('activo', {
-      header: 'Activo',
-      size: 80,
-      cell: ({ getValue }) => {
-        const val = getValue();
-        return (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${
-              val
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-500/10 dark:text-zinc-400'
-            }`}
-          >
-            {val ? 'Sí' : 'No'}
-          </span>
-        );
-      },
-    }),
-
   ] as ColumnDef<ProductionOrderListItem, unknown>[];
 }
 
@@ -198,5 +267,4 @@ export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilte
   },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
   fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha fin" },
-  activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
 };

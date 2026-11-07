@@ -4,6 +4,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { pedidoDetailHref, type PedidoDetailOrigin } from "../constants/pedidoDetailOrigins";
 
+/**
+ * Estilo de un folio de pedido que debe VERSE clicable sin pasar el mouse
+ * (azul + subrayado punteado). Va con `tone="accent"`.
+ */
+export const PEDIDO_LINK_VISIBLE_CLASS =
+  "font-mono text-sm font-semibold text-sky-600 dark:text-sky-400 underline decoration-dotted underline-offset-4";
+
 const HOVER_CLASS = {
   muted: "hover:text-sky-600 dark:hover:text-sky-400",
   accent: "hover:text-sky-700 dark:hover:text-sky-300",

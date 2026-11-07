@@ -1,3 +1,4 @@
+import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
 
 /**
@@ -81,6 +82,12 @@ export type CorteMangaOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
  */
 export interface CorteMangaOrderLine {
   id: number;
+  /** SKU de la variante. Opcional: pedido al backend. */
+  sku?: string | null;
+  /** Parcialidad por línea, como bordado y reflejante. Opcionales: pedidos al backend. */
+  cantidad_pedido?: number | null;
+  cantidad_asignada?: number | null;
+  cantidad_pendiente?: number | null;
   /** FK a la orden de corte de manga contenedora (`OrdenesCorteManga.id`). */
   ocm: number;
   pedido_detalle: number;
@@ -134,7 +141,26 @@ export interface CorteMangaOrderLine {
  * `folio_ocm` en la misma tabla. El folio se muestra tal cual llega, sin
  * normalizar ni validar.
  */
-export interface CorteMangaOrder {
+/** Otra OCM activa del mismo pedido. */
+export interface CorteMangaOrderSibling {
+  id: number;
+  folio_ocm?: string | null;
+  fecha_inicio: string;
+}
+
+export interface CorteMangaOrder extends WorkOrderAvanceFields {
+  /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). Opcional: pedida al backend. */
+  fecha_pedido?: string | null;
+  /** `fecha_compromiso` del pedido (`YYYY-MM-DD`). Opcional: pedida al backend. */
+  fecha_vence?: string | null;
+  /**
+   * Cobertura del pedido, como bordado y reflejante. Solo en el retrieve;
+   * opcionales porque el listado no las trae.
+   */
+  cantidad_cubierta?: number;
+  cantidad_contratada?: number;
+  cobertura_completa?: boolean;
+  otras_ordenes_del_pedido?: CorteMangaOrderSibling[];
   id: number;
   folio_ocm: string;
   estatus_corte: CorteMangaOrderStatus;

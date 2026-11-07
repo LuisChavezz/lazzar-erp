@@ -18,6 +18,7 @@ import {
   isTallaPendingCatalogAlta,
 } from "../utils/catalogAlta";
 import { getLineSkuStatus } from "../utils/lineSkuStatus";
+import { TallaAvance } from "./TallaAvance";
 
 /**
  * Servicios de UNA talla: los chips compartidos con el detalle de pedido
@@ -126,14 +127,20 @@ function CatalogAltaButton({
 
 /**
  * Celda "SKU catálogo" de una talla: el SKU si ya está en catálogo,
- * "Pendiente" si tiene SKU de producción sin alta, "—" si no tiene SKU.
+ * "No aplica" si tiene SKU de producción sin alta (no toda muestra va a
+ * catálogo; si después se decide, la línea conserva "Dar de alta en
+ * catálogo"), "—" si no tiene SKU.
  */
 function TallaCatalogSku({ talla }: { talla: SpecialOrderTalla }) {
   if (talla.sku_catalogo) {
     return <span className="font-mono">{talla.sku_catalogo}</span>;
   }
   if (isTallaPendingCatalogAlta(talla)) {
-    return <span className="text-amber-700 dark:text-amber-400">Pendiente</span>;
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+        No aplica
+      </span>
+    );
   }
   return <span className="text-slate-400 dark:text-slate-500">—</span>;
 }
@@ -191,6 +198,22 @@ function LineSkuStatus({
   );
 }
 
+/** Pastilla de estado del SKU de la línea, para el encabezado plegado. */
+function LineSkuPill({ line }: { line: SpecialOrderLine }) {
+  const status = getLineSkuStatus(line);
+  if (status.kind === "generated") {
+    return <span className={skuStatusPillClass("emerald")}>SKU completos</span>;
+  }
+  if (status.kind === "pending") {
+    return (
+      <span className={skuStatusPillClass(status.partial ? "amber" : "slate")}>
+        {status.partial ? "SKU incompletos" : "Sin SKU"}
+      </span>
+    );
+  }
+  return null;
+}
+
 /**
  * Líneas de muestra del pedido: una tarjeta por línea (producto externo +
  * color · total de piezas) con su tabla de tallas. Patrón de `PedidoLineas`,
@@ -212,62 +235,91 @@ export function SpecialOrderLines({
   return (
     <div className="space-y-4">
       {detalles.map((line) => (
-        <div
+        <details
           key={line.id}
-          className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 overflow-hidden"
+          open={getLineSkuStatus(line).kind !== "generated"}
+          className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 overflow-hidden"
         >
-          {/* Fila SIN wrap: la descripción ocupa el espacio restante y parte su
-              texto en su propia columna; el grupo derecho no se encoge ni baja,
-              y se alinea arriba para quedar a la altura de la primera línea.
-              Bajo `sm` el grupo derecho (~240px) no deja columna útil para el
-              texto en una tarjeta de teléfono, así que ocupa su propia primera
-              fila, pegado a la derecha, y la descripción va debajo a todo el
-              ancho (`flex-col-reverse`: el orden del DOM no cambia). Con estado
-              de SKU, alta en catálogo y piezas a la vez el grupo no cabe en un
-              teléfono: se parte en renglones alineados a la derecha
-              (`flex-wrap` + `max-w-full`) en vez de salirse de la tarjeta. */}
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 sm:flex-1 min-w-0">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words">
-                {line.producto_nombre_externo || "—"}
-              </span>
-              {line.color_nombre && (
-                <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-sm">
-                  {line.color_nombre}
-                </span>
-              )}
-              <span
-                className={`basis-full text-xs ${
-                  line.categoria_producto
-                    ? "text-slate-600 dark:text-slate-300"
-                    : "text-slate-400 dark:text-slate-500"
-                }`}
+          {/* Encabezado plegable: nombre (recortado a dos renglones; completo
+              al abrir), color, categoría, estado del SKU, tallas y piezas. Las
+              acciones viven dentro, para que un clic en ellas no pliegue la
+              tarjeta. */}
+          <summary className="flex cursor-pointer list-none items-start gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-90"
+              fill="currentColor"
+            >
+              <path d="M7.2 4.7a.75.75 0 0 1 1.06 0l4.77 4.77a.75.75 0 0 1 0 1.06l-4.77 4.77a.75.75 0 1 1-1.06-1.06L11.44 10 7.2 5.76a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p
+                className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words line-clamp-2 group-open:line-clamp-none"
+                title={line.producto_nombre_externo || undefined}
               >
-                <span className="text-slate-400 dark:text-slate-500">Categoría: </span>
-                {line.categoria_producto?.nombre ?? "Sin categoría de producto"}
-              </span>
+                {line.producto_nombre_externo || "—"}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {line.color_nombre && (
+                  <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-white/10 px-2.5 py-0.5 font-medium text-slate-700 dark:text-slate-300">
+                    {line.color_nombre}
+                  </span>
+                )}
+                <span
+                  className={
+                    line.categoria_producto
+                      ? "text-slate-600 dark:text-slate-300"
+                      : "text-slate-400 dark:text-slate-500"
+                  }
+                >
+                  {line.categoria_producto?.nombre ?? "Sin categoría"}
+                </span>
+                <LineSkuPill line={line} />
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {line.tallas.map((talla) => (
+                  <span
+                    key={talla.id}
+                    title={talla.sku_produccion ? `SKU ${talla.sku_produccion}` : "Sin SKU"}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${
+                      talla.sku_produccion
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                        : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300"
+                    }`}
+                  >
+                    <span className="font-medium">{talla.talla_nombre || "—"}</span>
+                    <span className="tabular-nums font-semibold">
+                      {formatQuantityValue(talla.cantidad)}
+                    </span>
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 max-w-full shrink-0 self-end sm:self-auto">
+            <div className="shrink-0 text-right">
+              <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                {formatQuantityValue(totalPiezas(line.tallas))}
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">piezas</p>
+            </div>
+          </summary>
+
+          {/* Acciones de la línea (alta de SKU, alta en catálogo). */}
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-slate-100 dark:border-white/10 px-4 py-2 empty:hidden">
+            {/* "SKU generados" ya se lee en el encabezado: aquí solo la acción. */}
+            {getLineSkuStatus(line).kind !== "generated" && (
               <LineSkuStatus
                 line={line}
                 canGenerateSkus={canGenerateSkus}
                 onGenerateSkus={onGenerateSkus}
               />
-              <CatalogAltaButton
-                pedidoId={pedidoId}
-                line={line}
-                canGenerateSkus={canGenerateSkus}
-                onAltaCatalogo={onAltaCatalogo}
-              />
-              <div className="text-right">
-                <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-white">
-                  {formatQuantityValue(totalPiezas(line.tallas))} pzas
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  {line.tallas.length} talla{line.tallas.length === 1 ? "" : "s"}
-                </p>
-              </div>
-            </div>
+            )}
+            <CatalogAltaButton
+              pedidoId={pedidoId}
+              line={line}
+              canGenerateSkus={canGenerateSkus}
+              onAltaCatalogo={onAltaCatalogo}
+            />
           </div>
 
           <div className="p-3">
@@ -286,6 +338,7 @@ export function SpecialOrderLines({
                       <th className="px-3 py-2 text-left font-semibold">SKU</th>
                       <th className="px-3 py-2 text-left font-semibold">SKU catálogo</th>
                       <th className="px-3 py-2 text-left font-semibold">Servicios</th>
+                      <th className="px-3 py-2 text-left font-semibold">Avance</th>
                       <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
                     </tr>
                   </thead>
@@ -307,6 +360,9 @@ export function SpecialOrderLines({
                         <td className="px-3 py-2">
                           <TallaServices talla={talla} line={line} />
                         </td>
+                        <td className="px-3 py-2">
+                          <TallaAvance talla={talla} />
+                        </td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white whitespace-nowrap">
                           {formatQuantityValue(talla.cantidad)}
                         </td>
@@ -317,7 +373,7 @@ export function SpecialOrderLines({
               </div>
             )}
           </div>
-        </div>
+        </details>
       ))}
     </div>
   );

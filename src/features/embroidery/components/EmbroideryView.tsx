@@ -1,9 +1,11 @@
 "use client";
+import { isTerminalStatus } from "../constants/embroideryStatusTransitions";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -63,6 +65,12 @@ export function EmbroideryView() {
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useEmbroideryOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
+
+  // "En curso" / "Terminadas" (completadas y canceladas), sin salir de la página.
+  const [vista, setVista] = useState<"curso" | "terminadas">("curso");
+  const terminadas = orders.filter((order) => isTerminalStatus(order.estatus_bordado));
+  const enCurso = orders.filter((order) => !(isTerminalStatus(order.estatus_bordado)));
+  const rows = vista === "terminadas" ? terminadas : enCurso;
   // "Ver Detalles" navega a la página de detalle de la orden; ya no abre el
   // diálogo sobre esta misma tabla (ver `EmbroideryOrderColumns`). El diálogo
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
@@ -82,9 +90,19 @@ export function EmbroideryView() {
           durante la carga y el error. */}
       {!isLoading && !showError && <EmbroideryStats items={orders} />}
 
+      <ListTabs
+        ariaLabel="Vista de órdenes de bordado"
+        value={vista}
+        onChange={setVista}
+        isReady={hasLoaded}
+        tabs={[
+          { key: "curso", label: "En curso", count: enCurso.length },
+          { key: "terminadas", label: "Terminadas", count: terminadas.length },
+        ]}
+      />
       <DataTable
-        columns={withHeaderFilters(columns, orders, EMBROIDERYORDER_HEADER_FILTERS)}
-        data={orders}
+        columns={withHeaderFilters(columns, rows, EMBROIDERYORDER_HEADER_FILTERS)}
+        data={rows}
         searchPlaceholder="Buscar folio, pedido u observaciones..."
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}
@@ -103,7 +121,7 @@ export function EmbroideryView() {
         // quedaría ahí y no vería la orden que acaba de crear, pese al toast
         // que le nombra el folio. `orders.length` solo cambia al aparecer o
         // desaparecer una orden, no al reordenar.
-        paginationResetKey={orders.length}
+        paginationResetKey={`${vista}-${orders.length}`}
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar las órdenes de bordado"

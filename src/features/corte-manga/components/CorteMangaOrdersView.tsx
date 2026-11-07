@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -89,6 +90,12 @@ export function CorteMangaOrdersView() {
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useCorteMangaOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
+
+  // "En curso" / "Terminadas" (completadas y canceladas), sin salir de la página.
+  const [vista, setVista] = useState<"curso" | "terminadas">("curso");
+  const terminadas = orders.filter((order) => order.estatus_corte === 5 || order.estatus_corte === 7);
+  const enCurso = orders.filter((order) => !(order.estatus_corte === 5 || order.estatus_corte === 7));
+  const rows = vista === "terminadas" ? terminadas : enCurso;
   // "Ver Detalles" NAVEGA a la página de detalle; ya no abre el diálogo, que
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
@@ -108,9 +115,19 @@ export function CorteMangaOrdersView() {
           visible durante la carga y el error. */}
       {!isLoading && !showError && <CorteMangaOrderStats items={orders} />}
 
+      <ListTabs
+        ariaLabel="Vista de órdenes de corte de manga"
+        value={vista}
+        onChange={setVista}
+        isReady={hasLoaded}
+        tabs={[
+          { key: "curso", label: "En curso", count: enCurso.length },
+          { key: "terminadas", label: "Terminadas", count: terminadas.length },
+        ]}
+      />
       <DataTable
-        columns={withHeaderFilters(columns, orders, CORTEMANGAORDER_HEADER_FILTERS)}
-        data={orders}
+        columns={withHeaderFilters(columns, rows, CORTEMANGAORDER_HEADER_FILTERS)}
+        data={rows}
         searchPlaceholder="Buscar folio, pedido, sucursal, operador u observaciones..."
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}
@@ -129,7 +146,7 @@ export function CorteMangaOrdersView() {
         // quedaría ahí y no vería la orden que acaba de crear, pese al toast
         // que le nombra el folio. `orders.length` solo cambia al aparecer o
         // desaparecer una orden, no al reordenar.
-        paginationResetKey={orders.length}
+        paginationResetKey={`${vista}-${orders.length}`}
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar las órdenes de corte de manga"

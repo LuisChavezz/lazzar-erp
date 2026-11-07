@@ -7,7 +7,8 @@ import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { PEDIDO_LINK_VISIBLE_CLASS, PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { getWorkOrderProgressColumns, sumDetalles } from "@/src/features/work-order-avances/components/workOrderListColumns";
 import {
   CORTE_MANGA_ORDER_PRIORITY_CONFIG,
   corteMangaOrderPriorityFallback,
@@ -116,8 +117,18 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
         pedidoId={info.row.original.pedido}
         folio={info.getValue()}
         from="corte-manga"
+        tone="accent"
+        className={PEDIDO_LINK_VISIBLE_CLASS}
       />
     ),
+  }),
+  // Fecha pedido, Vence, Cantidad y Avance (ver `getWorkOrderProgressColumns`).
+  ...getWorkOrderProgressColumns<CorteMangaOrder>({
+    fechaPedido: (row) => row.fecha_pedido,
+    fechaVence: (row) => row.fecha_vence,
+    piezas: (row) => sumDetalles(row.detalles),
+    resumen: (row) => row.resumen_avance,
+    verbo: "cortadas",
   }),
   columnHelper.accessor("prioridad", {
     header: "Prioridad",

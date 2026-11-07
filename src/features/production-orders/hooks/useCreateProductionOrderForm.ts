@@ -7,6 +7,7 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import { useCreateProductionOrder } from "@/src/features/production-orders/hooks/useCreateProductionOrder";
+import type { OpSkuOption } from "../utils/opSkuOptions";
 import {
   CreateProductionOrderFormSchema,
   type CreateProductionOrderFormValues,
@@ -17,8 +18,8 @@ interface UseCreateProductionOrderFormParams {
   prioridad: number;
   /** Observaciones generales capturadas en el Paso 1. */
   observaciones: string;
-  /** Variantes seleccionadas en el Paso 1 — siembran el detalle por defecto. */
-  selectedVariantIds: number[];
+  /** SKU seleccionados en el Paso 1 — siembran el detalle por defecto. */
+  selectedSkus: OpSkuOption[];
   /** Called after the orden de producción is created successfully. */
   onSuccess: () => void;
 }
@@ -41,13 +42,18 @@ function findUnidadPiezaId(
   return match?.id ?? 0;
 }
 
-/** Construye un renglón de detalle por defecto para una variante seleccionada. */
+/**
+ * Renglón de detalle por defecto para un SKU elegido. Solo lleva la llave de su
+ * tipo: la otra queda `undefined` y no viaja en el JSON.
+ */
 function buildDetalle(
-  producto_variante_id: number,
+  option: OpSkuOption,
   unidad: number,
 ): CreateProductionOrderFormValues["orden_produccion_detalle"][number] {
   return {
-    producto_variante_id,
+    ...(option.kind === "catalogo"
+      ? { producto_variante_id: option.id }
+      : { variante_produccion_id: option.id }),
     cantidad: 1,
     unidad, // siempre "pz — Pieza"; el schema exige una unidad > 0
     observaciones: "",
@@ -72,7 +78,7 @@ function buildDetalle(
 export function useCreateProductionOrderForm({
   prioridad,
   observaciones,
-  selectedVariantIds,
+  selectedSkus,
   onSuccess,
 }: UseCreateProductionOrderFormParams) {
   // Empresa y sucursal activas — mismo patrón que el resto de formularios.
@@ -95,8 +101,8 @@ export function useCreateProductionOrderForm({
       sucursal: selectedBranch?.id ?? 0,
       prioridad,
       observaciones,
-      orden_produccion_detalle: selectedVariantIds.map((id) =>
-        buildDetalle(id, unidadPiezaId),
+      orden_produccion_detalle: selectedSkus.map((option) =>
+        buildDetalle(option, unidadPiezaId),
       ),
     } as CreateProductionOrderFormValues,
     onSubmit: async ({ value }) => {
@@ -136,11 +142,11 @@ export function useCreateProductionOrderForm({
     },
   });
 
-  /** Siembra `orden_produccion_detalle` a partir de las variantes elegidas. */
-  const seedDetalle = (ids: number[]) => {
+  /** Siembra `orden_produccion_detalle` a partir de los SKU elegidos (mismo orden). */
+  const seedDetalle = (options: OpSkuOption[]) => {
     form.setFieldValue(
       "orden_produccion_detalle",
-      ids.map((id) => buildDetalle(id, unidadPiezaId)),
+      options.map((option) => buildDetalle(option, unidadPiezaId)),
     );
   };
 

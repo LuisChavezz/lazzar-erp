@@ -122,6 +122,16 @@ export interface EmbroideryOrderLine {
 export interface EmbroideryOrder {
   id: number;
   folio_bordado: string;
+  /**
+   * Para la vista principal. Opcionales: pedidos al backend; sin ellos la
+   * celda muestra "—" (la cantidad cae a la suma de `detalles`).
+   */
+  /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). */
+  fecha_pedido?: string | null;
+  /** `fecha_compromiso` del pedido (`YYYY-MM-DD`). */
+  fecha_vence?: string | null;
+  /** Avance de la orden, misma forma que el detalle (`ResumenAvance`). */
+  resumen_avance?: ResumenAvance;
   estatus_bordado: EmbroideryOrderStatus;
   /**
    * Etiqueta ya resuelta de `estatus_bordado`, que el backend devuelve en el
@@ -235,6 +245,11 @@ export interface EmbroideryOrderDetailLine extends EmbroideryOrderLine {
   cantidad_asignada: number | null;
   /** Saldo de la línea: `cantidad_pedido - cantidad_asignada`. */
   cantidad_pendiente: number | null;
+  /**
+   * SKU de la variante (producto + color + talla). Opcional: pedido al
+   * backend; mientras no llegue no se pinta nada.
+   */
+  sku?: string | null;
   /**
    * Ubicaciones LEÍDAS EN VIVO de la `PedidoDetalleTalla` de origen: el
    * serializer las resuelve con `(pedido_detalle_id, talla_id)` contra

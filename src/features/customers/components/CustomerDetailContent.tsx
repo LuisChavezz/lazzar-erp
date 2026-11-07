@@ -1,5 +1,6 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, ExclamationTriangleIcon } from "@/src/components/Icons";
@@ -26,9 +27,9 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
       <button
         type="button"
         onClick={() => router.replace("/sales/customers")}
-        className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+        className={BACK_BUTTON_CLASS}
       >
-        <ArrowLeftIcon className="w-4 h-4" />
+        <ArrowLeftIcon className={BACK_ARROW_CLASS} />
         <span className="text-sm font-medium">Volver</span>
       </button>
     </div>

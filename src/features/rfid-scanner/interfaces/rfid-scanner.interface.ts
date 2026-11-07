@@ -34,7 +34,7 @@
 export interface RfidScan {
   /** `RfidScan.pk`. Único y estable: es la identidad de fila de la tabla. */
   id: number;
-  /** EPC crudo tal como lo reportó el lector (hex, mayúsculas o minúsculas). */
+  /** EPC tal como lo reportó el lector, en hex y mayúsculas (EC-786). */
   epc: string;
   /**
    * ISO-8601 con offset. Se llama `timestamp` en la respuesta aunque la
@@ -57,6 +57,8 @@ export interface RfidScan {
   talla?: string | null;
   /** `EtiquetaRFIDDetalle.serial` — es CharField, no entero ("0001"). */
   serial?: string | null;
+  /** Estado de la etiqueta leída (`"LEIDO"`). Solo en lecturas con match (EC-786). */
+  estado?: string | null;
 }
 
 /** Respuesta de `GET /wms/etiquetas-rfid/scans/` (sin `debug_get`). */

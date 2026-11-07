@@ -18,7 +18,7 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  * llegara el detalle nuevo dejaría registrar contra el total viejo (el backend
  * no impone el tope).
  *
- * No invalida el listado (no pinta datos de avance). El pedido, con
+ * Invalida el listado: el backend cambia el estatus al guardar el avance. El pedido, con
  * `invalidatePedidoProgress`, como toda mutación que cambia su avance.
  */
 export const useCreateAvance = () => {
@@ -31,6 +31,8 @@ export const useCreateAvance = () => {
       // Se espera solo el detalle de la OB: su `resumen_avance` es el tope del
       // diálogo. El pedido, sin esperar (ver `invalidatePedidoProgress`).
       void invalidatePedidoProgress(queryClient);
+      // El backend actualiza el estatus con el avance: refresca también el listado.
+      void queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(variables.ob),
       });

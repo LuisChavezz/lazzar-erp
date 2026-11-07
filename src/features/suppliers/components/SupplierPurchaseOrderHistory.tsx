@@ -4,7 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { DataTable } from "@/src/components/DataTable";
 import { UrlDateInput } from "@/src/components/UrlDateInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { Section } from "@/src/components/DetailDialogPrimitives";
+import { ShoppingCart } from "lucide-react";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -121,7 +121,16 @@ export default function SupplierPurchaseOrderHistory({
   const montos = resumen ? sumMontosPorMoneda(resumen.monto_por_moneda) : [];
 
   return (
-    <Section title="Historial de órdenes de compra">
+    <section className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 shrink-0 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
+          <ShoppingCart className="w-5 h-5" aria-hidden="true" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-slate-900 dark:text-white text-lg">Historial de órdenes de compra</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Toca un folio para abrir la orden.</p>
+        </div>
+      </div>
       <div className="space-y-4">
         {/* ── Filtros (servidor) ──────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -236,6 +245,6 @@ export default function SupplierPurchaseOrderHistory({
           loadingAriaLabel="Cargando historial de órdenes de compra"
         />
       </div>
-    </Section>
+    </section>
   );
 }

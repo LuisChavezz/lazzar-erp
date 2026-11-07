@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -81,6 +82,12 @@ export function ReflectiveOrdersView() {
   // cargó con éxito; un refetch fallido con datos en caché conserva la tabla y
   // avisa por toast (ver `useReflectiveOrders`).
   const showError = isInitialLoadError(isError, hasLoaded);
+
+  // "En curso" / "Terminadas" (completadas y canceladas), sin salir de la página.
+  const [vista, setVista] = useState<"curso" | "terminadas">("curso");
+  const terminadas = orders.filter((order) => order.estatus_reflejante === 5 || order.estatus_reflejante === 7);
+  const enCurso = orders.filter((order) => !(order.estatus_reflejante === 5 || order.estatus_reflejante === 7));
+  const rows = vista === "terminadas" ? terminadas : enCurso;
   // "Ver Detalles" NAVEGA a la página de detalle; ya no abre el diálogo, que
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
@@ -102,9 +109,19 @@ export function ReflectiveOrdersView() {
           durante la carga y el error. */}
       {!isLoading && !showError && <ReflectiveOrderStats items={orders} />}
 
+      <ListTabs
+        ariaLabel="Vista de órdenes de reflejante"
+        value={vista}
+        onChange={setVista}
+        isReady={hasLoaded}
+        tabs={[
+          { key: "curso", label: "En curso", count: enCurso.length },
+          { key: "terminadas", label: "Terminadas", count: terminadas.length },
+        ]}
+      />
       <DataTable
-        columns={withHeaderFilters(columns, orders, REFLECTIVEORDER_HEADER_FILTERS)}
-        data={orders}
+        columns={withHeaderFilters(columns, rows, REFLECTIVEORDER_HEADER_FILTERS)}
+        data={rows}
         searchPlaceholder="Buscar folio, pedido, operador u observaciones..."
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}
@@ -123,7 +140,7 @@ export function ReflectiveOrdersView() {
         // quedaría ahí y no vería la orden que acaba de crear, pese al toast
         // que le nombra el folio. `orders.length` solo cambia al aparecer o
         // desaparecer una orden, no al reordenar.
-        paginationResetKey={orders.length}
+        paginationResetKey={`${vista}-${orders.length}`}
         isLoading={isLoading}
         isError={showError}
         errorTitle="Error al cargar las órdenes de reflejante"

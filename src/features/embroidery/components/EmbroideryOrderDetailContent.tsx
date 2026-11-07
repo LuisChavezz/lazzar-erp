@@ -1,8 +1,9 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, ScissorsIcon, TrendingUpIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, LayersIcon, ScissorsIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -30,6 +31,7 @@ import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
 import { EmbroideryProveedorSelect } from "./EmbroideryProveedorSelect";
 import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
 import { EmbroideryAvancesHistory } from "./EmbroideryAvancesHistory";
+import { EmbroideryOrderGarmentGroups } from "./EmbroideryOrderGarmentGroups";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
@@ -101,9 +103,9 @@ export function EmbroideryOrderDetailContent({
   const BackLink = (
     <Link
       href={BACK.href}
-      className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+      className={BACK_BUTTON_CLASS}
     >
-      <ArrowLeftIcon className="w-4 h-4" />
+      <ArrowLeftIcon className={BACK_ARROW_CLASS} />
       <span className="text-sm font-medium">{BACK.label}</span>
     </Link>
   );
@@ -372,6 +374,17 @@ export function EmbroideryOrderDetailContent({
             )}
           </SheetPanel>
         </div>
+      </SheetSection>
+
+      {/* ── 3. Prendas de la orden ──────────────────────────────────────── */}
+      {/* `detalles` ya viene en el retrieve: solo las líneas que toca ESTA
+          orden, agrupadas por prenda + color con las tallas desplegables. */}
+      <SheetSection
+        icon={<LayersIcon className="w-5 h-5" />}
+        title="Prendas de la orden"
+        subtitle="Toca una prenda para ver sus tallas. Solo se listan las de esta orden."
+      >
+        <EmbroideryOrderGarmentGroups items={data.detalles} />
       </SheetSection>
 
       {/* ── 4. Resumen de avance ────────────────────────────────────────── */}

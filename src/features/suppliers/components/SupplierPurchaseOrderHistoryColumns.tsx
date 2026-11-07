@@ -37,7 +37,7 @@ export const getSupplierPurchaseOrderHistoryColumns = (
             proveedor: supplierId,
             filters,
           })}
-          className="font-mono text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+          className="font-mono font-semibold text-sky-600 dark:text-sky-400 underline decoration-dotted underline-offset-4 hover:decoration-solid hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer"
           title="Ver detalle"
         >
           {getValue()}
