@@ -4,6 +4,7 @@ import {
   formatSatCancelMotive,
   getLockedSatCancelMotive,
   isSatCancelMotive,
+  isSatCancelMotiveLockedElsewhere,
   type SatCancelMotive,
 } from "@/src/constants/satCancelMotives";
 import {
@@ -14,11 +15,11 @@ import {
   cancelInvoiceErrorMessage,
   getInvoiceCancelCfdiNotice,
   getInvoiceLockedSatCancelMotive,
-  isSatCancelMotiveLockedElsewhere,
   willInvoiceCancelReachSat,
 } from "@/src/features/invoicing/utils/invoiceCancellation";
 import {
   cancelCobroRepErrorMessage,
+  getCobroRepCancelPrecheck,
   getCobroRepLockedSatCancelMotive,
 } from "@/src/features/collections/utils/cobroRepCancellation";
 import type { CobroActionTrigger } from "@/src/features/collections/hooks/useCobroAction";
@@ -117,19 +118,58 @@ test.describe("motivo fijo", () => {
     ).toBeNull();
   });
 
-  test("el precheck detiene solo si el motivo fijo es otro que el elegido", () => {
+  test("regla compartida: detiene solo si el motivo fijo es otro que el elegido", () => {
+    expect(isSatCancelMotiveLockedElsewhere("03", "02")).toBe(true);
+    expect(isSatCancelMotiveLockedElsewhere("03", "03")).toBe(false);
+    expect(isSatCancelMotiveLockedElsewhere(null, "02")).toBe(false);
+    // Sin motivo elegido la llamada no iba al SAT: nada que comparar.
+    expect(isSatCancelMotiveLockedElsewhere("03", null)).toBe(false);
+  });
+
+  test("factura: el listado sin la reserva no fija nada; el retrieve con ella sí", () => {
     const inFlight03 = {
       cfdi_cancelacion_solicitada: false,
       cfdi_cancelacion_motivo: "03",
       cfdi_cancelacion_en_curso_desde: "2026-11-07T10:00:00Z",
     };
-    expect(isSatCancelMotiveLockedElsewhere(inFlight03, "02")).toBe(true);
-    expect(isSatCancelMotiveLockedElsewhere(inFlight03, "03")).toBe(false);
-    // Sin motivo elegido la llamada no iba al SAT: nada que comparar.
-    expect(isSatCancelMotiveLockedElsewhere(inFlight03, null)).toBe(false);
+    expect(isSatCancelMotiveLockedElsewhere(getInvoiceLockedSatCancelMotive(inFlight03), "02")).toBe(true);
     expect(
-      isSatCancelMotiveLockedElsewhere({ cfdi_cancelacion_solicitada: false, cfdi_cancelacion_motivo: "03" }, "02"),
+      isSatCancelMotiveLockedElsewhere(
+        getInvoiceLockedSatCancelMotive({ cfdi_cancelacion_solicitada: false, cfdi_cancelacion_motivo: "03" }),
+        "02",
+      ),
     ).toBe(false);
+  });
+});
+
+test.describe("precheck de cancelar REP", () => {
+  const cobro = {
+    rep_uuid: UUID,
+    rep_facturama_id: "fact-1",
+    rep_cancelacion_solicitada: false,
+    rep_cancelacion_motivo: null as string | null,
+    rep_cancelacion_en_curso_desde: null as string | null,
+  };
+
+  test("sin motivo fijo deja hacer el POST", () => {
+    expect(getCobroRepCancelPrecheck(cobro, "03")).toBeNull();
+  });
+
+  test("motivo fijo en otro: se detiene sin POST para reconfirmar", () => {
+    const pending02 = { ...cobro, rep_cancelacion_solicitada: true, rep_cancelacion_motivo: "02" };
+    expect(getCobroRepCancelPrecheck(pending02, "03")).toBe("needs-confirmation");
+    const inFlight03 = { ...cobro, rep_cancelacion_motivo: "03", rep_cancelacion_en_curso_desde: "2026-11-07T10:00:00Z" };
+    expect(getCobroRepCancelPrecheck(inFlight03, "02")).toBe("needs-confirmation");
+  });
+
+  test("motivo fijo igual al elegido: sigue al POST", () => {
+    const pending02 = { ...cobro, rep_cancelacion_solicitada: true, rep_cancelacion_motivo: null };
+    expect(getCobroRepCancelPrecheck(pending02, "02")).toBeNull();
+  });
+
+  test("sin REP cancelable gana sobre el motivo", () => {
+    const sinRep = { ...cobro, rep_uuid: null, rep_cancelacion_solicitada: true, rep_cancelacion_motivo: "02" };
+    expect(getCobroRepCancelPrecheck(sinRep, "03")).toBe("not-cancellable");
   });
 });
 

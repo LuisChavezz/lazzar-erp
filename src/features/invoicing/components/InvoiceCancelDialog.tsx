@@ -7,13 +7,15 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { SatCancelMotiveSelect } from "@/src/components/SatCancelMotiveSelect";
-import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
+import {
+  SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelInvoice } from "../hooks/useCancelInvoice";
 import {
   getInvoiceCancelCfdiNotice,
   getInvoiceLockedSatCancelMotive,
-  INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
   isInvoiceCfdiCancellationRequested,
   willInvoiceCancelReachSat,
 } from "../utils/invoiceCancellation";
@@ -214,7 +216,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
               ? STAMPED_SINCE_OPENED_MESSAGE
               : !cancellationRequested && isInvoiceCfdiCancellationRequested(fresh)
                 ? REQUESTED_SINCE_OPENED_MESSAGE
-                : INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
+                : SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
           );
         },
         onError: setSubmitError,

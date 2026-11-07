@@ -14,9 +14,12 @@ import {
   isInvoiceCancellable,
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
-  isSatCancelMotiveLockedElsewhere,
+  getInvoiceLockedSatCancelMotive,
 } from "../utils/invoiceCancellation";
-import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
+import {
+  isSatCancelMotiveLockedElsewhere,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
 import {
@@ -173,7 +176,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       if (
         stampedSinceShown(current, shownStamped) ||
         requestedSinceShown(current, shownRequested) ||
-        isSatCancelMotiveLockedElsewhere(current, motivoSat)
+        isSatCancelMotiveLockedElsewhere(getInvoiceLockedSatCancelMotive(current), motivoSat)
       ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
@@ -192,7 +195,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       if (outcome === "not-cancellable") {
         toast.error(
           invoice.estatus === INVOICE_STATUS.CANCELADA
-            ? `La factura ${label} ya estaba cancelada; no se registró el motivo.`
+            ? `La factura ${label} ya estaba cancelada; no se guardó la nota interna.`
             : (getInvoiceCancelBlockReason(invoice) ??
               `La factura ${label} ya no puede cancelarse.`),
         );

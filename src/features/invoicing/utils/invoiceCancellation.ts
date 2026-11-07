@@ -138,26 +138,6 @@ export const getInvoiceLockedSatCancelMotive = (invoice: {
     inFlightSince: invoice.cfdi_cancelacion_en_curso_desde,
   });
 
-/**
- * ¿Hay que detener la cancelación para volver a confirmar porque el motivo SAT
- * quedó fijo en otro distinto del elegido? Pasa cuando, después de abrir el
- * diálogo, se pidió la cancelación o quedó un intento sin respuesta (el
- * listado no trae esa reserva): el backend rechazaría el motivo elegido. Sin
- * motivo elegido (`null`: la llamada no iba al SAT) no detiene nada.
- */
-export const isSatCancelMotiveLockedElsewhere = (
-  current: Parameters<typeof getInvoiceLockedSatCancelMotive>[0],
-  chosen: SatCancelMotive | null,
-): boolean => {
-  if (chosen === null) return false;
-  const locked = getInvoiceLockedSatCancelMotive(current);
-  return locked !== null && locked !== chosen;
-};
-
-/** Aviso cuando el precheck encontró el motivo SAT fijo en otro después de abrir el diálogo. */
-export const INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE =
-  "El motivo de cancelación ante el SAT quedó fijo después de abrir este diálogo. Revisa el motivo y confirma de nuevo.";
-
 /** Estado del CFDI en la cabecera del detalle cuando `cfdi_cancelado`. */
 export const INVOICE_CFDI_CANCELLED_LABEL = "Cancelado ante el SAT";
 

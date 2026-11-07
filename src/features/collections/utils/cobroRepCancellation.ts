@@ -4,7 +4,11 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
-import { getLockedSatCancelMotive, type SatCancelMotive } from "@/src/constants/satCancelMotives";
+import {
+  getLockedSatCancelMotive,
+  isSatCancelMotiveLockedElsewhere,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import type { Cobro } from "../interfaces/collection.interface";
 import { isActionOutcomeUnknown } from "./actionOutcome";
 import { cobroLabel } from "./collection.utils";
@@ -56,6 +60,24 @@ export const getCobroRepLockedSatCancelMotive = (
     motive: cobro.rep_cancelacion_motivo,
     inFlightSince: cobro.rep_cancelacion_en_curso_desde,
   });
+
+/**
+ * Qué decide el precheck de "Cancelar REP" con el cobro FRESCO, antes del POST:
+ * `not-cancellable` (ya no hay REP cancelable), `needs-confirmation` (el motivo
+ * SAT quedó fijo en otro distinto del elegido después de abrir el diálogo,
+ * igual que en facturas) o `null` (se puede hacer el POST).
+ */
+export const getCobroRepCancelPrecheck = (
+  current: Parameters<typeof isCobroRepCancellable>[0] &
+    Parameters<typeof getCobroRepLockedSatCancelMotive>[0],
+  motivoSat: SatCancelMotive,
+): "not-cancellable" | "needs-confirmation" | null => {
+  if (!isCobroRepCancellable(current)) return "not-cancellable";
+  if (isSatCancelMotiveLockedElsewhere(getCobroRepLockedSatCancelMotive(current), motivoSat)) {
+    return "needs-confirmation";
+  }
+  return null;
+};
 
 /** ¿Se ofrece "Cancelar REP" a ESTE usuario para ESTE cobro? */
 export const canCancelCobroRep = (

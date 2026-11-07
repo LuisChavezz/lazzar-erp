@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { StampConfirmDialog } from "@/src/components/StampConfirmDialog";
 import { SatCancelMotiveSelect } from "@/src/components/SatCancelMotiveSelect";
-import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
+import {
+  SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCancelledInvoiceCfdi } from "../hooks/useCancelCancelledInvoiceCfdi";
 import {
   CANCEL_CANCELLED_INVOICE_CFDI_LABEL,
   CANCELLED_INVOICE_CFDI_ALREADY_REQUESTED_MESSAGE,
   getInvoiceLockedSatCancelMotive,
-  INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
   isInvoiceCfdiCancellationRequested,
 } from "../utils/invoiceCancellation";
 
@@ -121,7 +123,7 @@ export function CancelledInvoiceCfdiCancelDialog({
                 notice:
                   !requested && isInvoiceCfdiCancellationRequested(invoice)
                     ? REQUESTED_SINCE_OPENED_MESSAGE
-                    : INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
+                    : SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
               }),
           },
         );

@@ -56,3 +56,20 @@ export const getLockedSatCancelMotive = ({
   if (!motive) return LEGACY_SAT_CANCEL_MOTIVE;
   return isSatCancelMotive(motive) ? motive : null;
 };
+
+/**
+ * ¿Hay que detener una cancelación para volver a confirmar porque el motivo SAT
+ * quedó FIJO (`locked`, de `getLockedSatCancelMotive` sobre el registro fresco)
+ * en otro distinto del elegido? Pasa cuando, después de abrir el diálogo, se
+ * pidió la cancelación o quedó un intento sin respuesta: el backend rechazaría
+ * el motivo elegido con 400. Sin motivo elegido (`null`: la llamada no iba al
+ * SAT) no detiene nada. Regla única para facturas y REP.
+ */
+export const isSatCancelMotiveLockedElsewhere = (
+  locked: SatCancelMotive | null,
+  chosen: SatCancelMotive | null,
+): boolean => chosen !== null && locked !== null && locked !== chosen;
+
+/** Aviso del diálogo cuando el precheck encontró el motivo fijo en otro después de abrirlo. */
+export const SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE =
+  "El motivo de cancelación ante el SAT quedó fijo después de abrir este diálogo. Revisa el motivo y confirma de nuevo.";

@@ -8,9 +8,12 @@ import {
   isCancelledInvoiceCfdiCancellable,
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
-  isSatCancelMotiveLockedElsewhere,
+  getInvoiceLockedSatCancelMotive,
 } from "../utils/invoiceCancellation";
-import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
+import {
+  isSatCancelMotiveLockedElsewhere,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
 import {
   cancelInvoiceMutationErrorMessage,
@@ -92,7 +95,7 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       }
       if (
         (!shownRequested && isInvoiceCfdiCancellationRequested(current)) ||
-        isSatCancelMotiveLockedElsewhere(current, motivoSat)
+        isSatCancelMotiveLockedElsewhere(getInvoiceLockedSatCancelMotive(current), motivoSat)
       ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
