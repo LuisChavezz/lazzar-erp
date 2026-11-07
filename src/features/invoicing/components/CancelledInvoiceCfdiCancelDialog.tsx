@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
+import { StampConfirmDialog } from "@/src/components/StampConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCancelledInvoiceCfdi } from "../hooks/useCancelCancelledInvoiceCfdi";
 import {
@@ -30,8 +30,8 @@ interface CancelledInvoiceCfdiCancelDialogProps {
  * este caso) y el texto dice que en el ERP no cambia nada más.
  *
  * Lo monta el dueño de la vista (`InvoiceList`, `InvoiceMainSheet`), no la
- * celda. No se cierra a media petición (`isIdle()`, síncrono) y se cierra al
- * TERMINAR con cualquier resultado, como las confirmaciones del timbrado: el
+ * celda. Usa la confirmación del timbrado (`StampConfirmDialog`): no se cierra
+ * a media petición y se cierra al TERMINAR con cualquier resultado. El
  * toast dice qué pasó y, ante una falla de red o de Facturama, el refetch
  * muestra el estado real del CFDI antes de reintentar.
  */
@@ -47,11 +47,6 @@ export function CancelledInvoiceCfdiCancelDialog({
 
   const { cancelCfdi, isCancelling, isIdle } = useCancelCancelledInvoiceCfdi(target?.id ?? 0);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next && !isIdle()) return;
-    onOpenChange(next);
-  };
-
   const description =
     `La factura ${invoiceLabel} ya está cancelada en el ERP, pero su CFDI sigue vigente ante el SAT. ` +
     "Se cancelará solo el CFDI ante el SAT, con motivo 02 (comprobante emitido con errores sin relación). " +
@@ -59,16 +54,16 @@ export function CancelledInvoiceCfdiCancelDialog({
     (requested ? ` ${CANCELLED_INVOICE_CFDI_ALREADY_REQUESTED_MESSAGE}` : "");
 
   return (
-    <ConfirmDialog
+    <StampConfirmDialog
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       title={CANCEL_CANCELLED_INVOICE_CFDI_LABEL}
       description={description}
-      confirmText={isCancelling ? "Cancelando CFDI…" : "Cancelar CFDI"}
-      cancelText="Volver"
+      confirmText="Cancelar CFDI"
+      busyText="Cancelando CFDI…"
       confirmColor="red"
-      closeOnConfirm={false}
-      busy={isCancelling}
+      isStamping={isCancelling}
+      isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;
         cancelCfdi({ onSettled: () => onOpenChange(false) });
