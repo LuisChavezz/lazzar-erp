@@ -98,7 +98,7 @@ export function QuoteRowActionDialogs({
           title={
             <DialogHeader
               title={`Detalles de la cotización #${quote.id}`}
-              subtitle={quote.cliente_nombre || quote.cliente_razon_social}
+              subtitle={quote.cliente_nombre || quote.cliente_razon_social || "Sin cliente"}
               statusColor={getQuoteDialogStatusColor(quote.estatus)}
             />
           }

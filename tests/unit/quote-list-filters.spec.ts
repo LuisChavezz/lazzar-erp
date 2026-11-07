@@ -36,6 +36,8 @@ const rows = [
   // Estatus que el front no conoce: con su etiqueta del backend, y sin ella.
   quote({ id: 4, estatus: 7, estatus_label: "ARCHIVADA", cliente: 10, cliente_razon_social: "ACME SA DE CV" }),
   quote({ id: 5, estatus: 8, estatus_label: "", cliente: 13, cliente_razon_social: "ACME SA DE CV" }),
+  // Borrador guardado sin cliente: el listado lo trae con `cliente: null`.
+  quote({ id: 6, estatus: 1, cliente: null, cliente_nombre: null, cliente_razon_social: null }),
 ];
 
 const t = harness<Quote>(
@@ -65,6 +67,7 @@ test.describe("filtro de estatus (en el #id)", () => {
 
   test("filtra por el estatus crudo, también uno desconocido", () => {
     expect(t.matching("id", "2").map((r) => r.id)).toEqual([2]);
+    expect(t.matching("id", "1").map((r) => r.id)).toEqual([1, 6]);
     expect(t.matching("id", "7").map((r) => r.id)).toEqual([4]);
     // Un estatus del catálogo sin filas no deja ninguna.
     expect(t.matching("id", "3")).toEqual([]);
@@ -77,6 +80,7 @@ test.describe("filtro de cliente", () => {
     // filtro compara el id, así que los homónimos no se mezclan.
     expect(labels(t.options("cliente"))).toEqual([
       "Todos",
+      "Sin cliente",
       "Acme sa de cv",
       "Acme sa de cv",
       "Cliente #12",
@@ -84,6 +88,12 @@ test.describe("filtro de cliente", () => {
     ]);
     expect(t.matching("cliente", "10").map((r) => r.id)).toEqual([1, 4]);
     expect(t.matching("cliente", "13").map((r) => r.id)).toEqual([5]);
+  });
+
+  test("el borrador sin cliente tiene su opción y no indexa un texto inventado", () => {
+    const sinCliente = t.options("cliente")[1];
+    expect(t.matching("cliente", sinCliente.value as string).map((r) => r.id)).toEqual([6]);
+    expect(t.cellText("cliente", rows[5])).toBe("");
   });
 
   test("es buscable", () => {
