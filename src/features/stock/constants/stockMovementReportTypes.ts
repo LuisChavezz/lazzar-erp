@@ -1,4 +1,4 @@
-import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/components/StockMovementsColumns";
+import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/constants/movementTypes";
 import type { StockMovementReportType } from "../interfaces/stock-movement-report.interface";
 
 /**

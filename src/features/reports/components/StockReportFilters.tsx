@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
-import { DateParamInput } from "@/src/features/attendance/components/DateParamInput";
+import { DateParamInput } from "@/src/components/DateParamInput";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.

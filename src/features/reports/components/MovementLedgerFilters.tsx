@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
-import { DateParamInput } from "@/src/features/attendance/components/DateParamInput";
+import { DateParamInput } from "@/src/components/DateParamInput";
 import { SearchIcon } from "@/src/components/Icons";
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
 

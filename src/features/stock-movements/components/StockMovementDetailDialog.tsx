@@ -3,7 +3,7 @@
 import { HistoryIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { useStockMovementDetail } from "@/src/features/stock-movements/hooks/useStockMovementDetail";
-import { MOVEMENT_TYPE_CONFIG } from "./StockMovementsColumns";
+import { MOVEMENT_TYPE_CONFIG } from "../constants/movementTypes";
 import type { StockMovementDetailItem } from "@/src/features/stock-movements/interfaces/stock-movements.interface";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
