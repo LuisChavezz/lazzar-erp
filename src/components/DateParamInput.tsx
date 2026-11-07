@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { isPlausibleDateKey } from "../utils/dateInputs";
+import { isPlausibleDateKey } from "@/src/utils/plausibleDateKey";
 
 interface DateParamInputProps {
   label: string;
   name: string;
-  /** Valor vigente (el de la URL). */
+  /** Valor vigente (el de la URL o el del estado de la vista). */
   value: string;
   /** Escribe en la URL: un día plausible y aceptado, o "" si se vació. */
   onCommit: (value: string) => void;

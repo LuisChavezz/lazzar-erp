@@ -15,9 +15,9 @@ import {
 } from "../hooks/useAttendanceRowActions";
 import { useAttendanceRecordDialogs } from "../hooks/useAttendanceRecordDialogs";
 import { buildAttendanceRows } from "../utils/attendanceRows";
-import { isPlausibleDateKey } from "../utils/dateInputs";
+import { isPlausibleDateKey } from "@/src/utils/plausibleDateKey";
 import { getHistoryColumns, HISTORY_HEADER_FILTERS } from "./AttendanceColumns";
-import { DateParamInput } from "./DateParamInput";
+import { DateParamInput } from "@/src/components/DateParamInput";
 import { AttendanceRecordDialogs } from "./AttendanceRecordDialogs";
 
 interface AttendanceHistoryViewProps {

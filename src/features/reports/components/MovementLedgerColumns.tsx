@@ -220,10 +220,7 @@ export const MOVEMENT_LEDGER_HEADER_FILTERS: Partial<
   documento: {
     type: "options",
     get: (r) => r.documento,
-    options: Object.entries(MOVEMENT_LEDGER_DOCUMENTO_LABELS).map(([value, label]) => ({
-      value,
-      label: label as string,
-    })),
+    options: Object.entries(MOVEMENT_LEDGER_DOCUMENTO_LABELS).map(([value, label]) => ({ value, label })),
   },
   almacen: {
     type: "distinct",

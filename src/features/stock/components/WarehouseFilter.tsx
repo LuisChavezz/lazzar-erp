@@ -48,7 +48,7 @@ export function WarehouseFilter({
   error,
   className = "",
 }: WarehouseFilterProps) {
-  const { data: warehouses = [], isLoading, isFetching, isInitialError, refetch } = useWarehouses();
+  const { data: warehouses = [], isLoading, isInitialError, refetch } = useWarehouses();
   const errorId = useId();
 
   // Solo almacenes activos, alfabéticos por nombre (misma convención que
@@ -165,20 +165,16 @@ export function WarehouseFilter({
                     </span>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
-                    disabled={isFetching}
-                    // Mantiene el menú abierto: la lista aparece en cuanto llega.
+                    // Mantiene el menú abierto: mientras reintenta, el menú
+                    // pasa a "Cargando almacenes..." (la consulta vuelve a
+                    // `pending`) y la lista aparece en cuanto llega.
                     onSelect={(event) => {
                       event.preventDefault();
                       void refetch();
                     }}
                     className="cursor-pointer! text-xs"
                   >
-                    <span className="flex items-center gap-2 text-xs font-semibold">
-                      {isFetching && (
-                        <LoadingSpinnerIcon className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                      )}
-                      {isFetching ? "Reintentando..." : "Reintentar"}
-                    </span>
+                    <span className="text-xs font-semibold">Reintentar</span>
                   </DropdownMenu.Item>
                 </>
               )}
