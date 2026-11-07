@@ -7,7 +7,7 @@ import {
   OrdenesIcon,
 } from "@/src/components/Icons";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
-import { useQuoteKpiSummary } from "@/src/features/quotes/hooks/useQuoteKpiSummary";
+import { useRecentQuoteKpis } from "@/src/features/quotes/hooks/useQuoteKpiSummary";
 import { buildRecentQuotesCard } from "@/src/features/quotes/components/QuoteKpiCards";
 
 /**
@@ -15,14 +15,14 @@ import { buildRecentQuotesCard } from "@/src/features/quotes/components/QuoteKpi
  * `KpiGrid` (el de Pedidos, Mesa de Control, Compras y Clientes).
  *
  * "Cotizaciones · 30 días" es la MISMA tarjeta y la misma consulta que en
- * `/sales/quotes` (`useQuoteKpiSummary` → `kpis/` con `fecha_desde`/
+ * `/sales/quotes` (`useRecentQuoteKpis` → `kpis/` con `fecha_desde`/
  * `fecha_hasta`): reemplaza al "Pedidos del mes", que contaba cotizaciones de
  * la lista completa con un rótulo de pedidos. Las tarjetas de clientes y de
  * pedidos críticos no son de este cambio: conservan sus datos y textos.
  */
 export const SalesKpiGrid = () => {
   const { customers, isLoading: isCustomersLoading } = useCustomers();
-  const { recent } = useQuoteKpiSummary();
+  const recent = useRecentQuoteKpis();
 
   const totalCustomers = customers.length;
   const customersValue = isCustomersLoading ? "—" : String(totalCustomers);
