@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/react";
 import { plural } from "@/src/utils/plural";
-import { Quote } from "../interfaces/quote.interface";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import type { QuoteBoardColumnState } from "../hooks/useQuoteBoard";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { ColumnPaginator } from "./ColumnPaginator";
 import { KanbanColumnConfig } from "../constants/kanbanColumns";
@@ -14,12 +15,15 @@ export type { KanbanColumnConfig };
 export { KANBAN_COLUMNS } from "../constants/kanbanColumns";
 
 // ─── Tamaño de página por columna ─────────────────────────────────────────────
+// Presentación de 4 tarjetas por página SOBRE las filas cargadas; las tandas
+// del servidor son de 20 (`QUOTE_BOARD_BATCH_SIZE`).
 const PAGE_SIZE = 4;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface QuoteKanbanColumnProps {
   config: KanbanColumnConfig;
-  quotes: Quote[];
+  /** Total del servidor, filas cargadas y "cargar más" (`useQuoteBoard`). */
+  column: QuoteBoardColumnState;
   /** IDs de cotizaciones con mutación pendiente (actualización de estatus en curso) */
   pendingIds?: Set<number>;
   /** ID de la cotización que regresa a la columna tras cancelar un arrastre */
@@ -31,7 +35,7 @@ interface QuoteKanbanColumnProps {
 // ─── Componente ───────────────────────────────────────────────────────────────
 export function QuoteKanbanColumn({
   config,
-  quotes,
+  column,
   pendingIds,
   returningId,
   isInteractionDisabled = false,
@@ -42,21 +46,28 @@ export function QuoteKanbanColumn({
     disabled: isInteractionDisabled || config.estatus !== PENDING_AUTHORIZATION_QUOTE_STATUS,
   });
   const [page, setPage] = useState(0);
+  const { rows, total } = column;
 
-  const totalPages = Math.max(1, Math.ceil(quotes.length / PAGE_SIZE));
+  // Las páginas cubren el TOTAL del servidor, no solo lo cargado: avanzar a
+  // una página sin filas cargadas pide la siguiente tanda.
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Clamp derivado en lugar de useEffect — evita cascadas de render
   const currentPage = Math.min(page, totalPages - 1);
 
-  const pageSlice = useMemo(
-    () => quotes.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
-    [quotes, currentPage]
-  );
+  const pageSlice = rows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  // La página pide filas que aún no están cargadas.
+  const isPageIncomplete =
+    pageSlice.length < PAGE_SIZE && rows.length < total && currentPage * PAGE_SIZE + pageSlice.length < total;
 
-  const hasPagination = quotes.length > PAGE_SIZE;
+  const hasPagination = total > PAGE_SIZE;
 
-  const handlePrev = () => setPage((p) => Math.max(0, p - 1));
-  const handleNext = () => setPage((p) => Math.min(totalPages - 1, p + 1));
+  const handlePrev = () => setPage(Math.max(0, currentPage - 1));
+  const handleNext = () => {
+    const next = Math.min(totalPages - 1, currentPage + 1);
+    if ((next + 1) * PAGE_SIZE > rows.length && column.canLoadMore) column.loadMore();
+    setPage(next);
+  };
 
   return (
     <div
@@ -99,9 +110,9 @@ export function QuoteKanbanColumn({
             "ml-2 min-w-5.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-center",
             config.badgeClass,
           ].join(" ")}
-          aria-label={`${quotes.length} ${plural(quotes.length, "cotización", "cotizaciones")}`}
+          aria-label={`${total} ${plural(total, "cotización", "cotizaciones")}`}
         >
-          {quotes.length}
+          {total}
         </span>
       </div>
 
@@ -126,7 +137,7 @@ export function QuoteKanbanColumn({
           isDropTarget ? config.dropActiveClass : "",
         ].join(" ")}
       >
-        {quotes.length === 0 ? (
+        {total === 0 && rows.length === 0 ? (
           <div
             className={[
               "flex items-center justify-center h-24 rounded-xl border-2 border-dashed",
@@ -139,15 +150,43 @@ export function QuoteKanbanColumn({
             {isDropTarget ? "Soltar aquí" : "Sin cotizaciones"}
           </div>
         ) : (
-          pageSlice.map((quote) => (
-            <QuoteKanbanCard
-              key={quote.id}
-              quote={quote}
-              isPending={pendingIds?.has(quote.id) ?? false}
-              isReturning={returningId === quote.id}
-              isInteractionDisabled={isInteractionDisabled}
-            />
-          ))
+          <>
+            {pageSlice.map((quote) => (
+              <QuoteKanbanCard
+                key={quote.id}
+                quote={quote}
+                isPending={pendingIds?.has(quote.id) ?? false}
+                isReturning={returningId === quote.id}
+                isInteractionDisabled={isInteractionDisabled}
+              />
+            ))}
+            {isPageIncomplete && column.isLoadingMore && (
+              <div role="status" aria-label={`Cargando más cotizaciones de ${config.label}`}>
+                <LoadingSkeleton className="h-24 rounded-2xl" />
+              </div>
+            )}
+            {isPageIncomplete && column.loadMoreFailed && (
+              <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-3 text-xs text-red-700 dark:text-red-300">
+                No se pudieron cargar más cotizaciones.{" "}
+                <button
+                  type="button"
+                  onClick={column.retryLoadMore}
+                  className="font-semibold underline cursor-pointer"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
+            {isPageIncomplete && column.canLoadMore && (
+              <button
+                type="button"
+                onClick={column.loadMore}
+                className="w-full rounded-xl border border-dashed border-slate-300 dark:border-slate-700 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer"
+              >
+                Cargar más
+              </button>
+            )}
+          </>
         )}
       </div>
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useTransition, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/dom";
 import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Loader } from "@/src/components/Loader";
-import { useQuotes } from "../hooks/useQuotes";
+import { useDebounce } from "@/src/hooks/useDebounce";
+import { useQuoteBoard } from "../hooks/useQuoteBoard";
 import { useSubmitQuoteForReview } from "../hooks/useSubmitQuoteForReview";
 import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 import { useQuoteReviewValidationFlow } from "../hooks/useQuoteReviewValidationFlow";
@@ -32,7 +33,6 @@ import { plural } from "@/src/utils/plural";
 import { ErrorState } from "@/src/components/ErrorState";
 
 // ─── Tipos locales ────────────────────────────────────────────────────────────
-type ColumnMap = Record<number, Quote[]>;
 /** Datos del arrastre pendiente de confirmación */
 interface PendingDrop {
   quote: Quote;
@@ -41,24 +41,20 @@ interface PendingDrop {
   targetLabel: string;
   targetConfig: KanbanColumnConfig;
 }
-// ─── Inicializa el mapa de columnas desde el array plano de cotizaciones ───────
-function buildColumnMap(quotes: Quote[]): ColumnMap {
-  const map: ColumnMap = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-  for (const quote of quotes) {
-    const key = quote.estatus in map ? quote.estatus : 1;
-    map[key].push(quote);
-  }
-  return map;
-}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
+/**
+ * Tablero de cotizaciones en MODO SERVIDOR (`useQuoteBoard`): `tablero/` trae
+ * el total y las primeras filas de cada estatus, y cada columna carga más con
+ * el listado. La búsqueda viaja como `q`. Las columnas se leen SIEMPRE de la
+ * caché (no hay copia local), así que cualquier invalidación de `["quotes"]`
+ * —también las autorizaciones de Mesa de Control— se ve aunque antes se haya
+ * arrastrado una tarjeta.
+ */
 export function QuoteKanbanBoard() {
-  const {
-    quotes,
-    isLoading,
-    isInitialError: isErrorQuotes,
-    error: quotesError,
-  } = useQuotes();
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
+  const board = useQuoteBoard(debouncedSearch);
   const { data: session } = useSession();
 
   // ─── Mutación de envío a revisión ────────────────────────────────────────
@@ -85,7 +81,7 @@ export function QuoteKanbanBoard() {
   } = useQuoteRowActions();
 
   // ─── Estado local del tablero ─────────────────────────────────────────────
-  const [columnMap, setColumnMap] = useState<ColumnMap | null>(null);
+  // Solo lo del arrastre: las columnas viven en la caché de `useQuoteBoard`.
   const [activeQuote, setActiveQuote] = useState<Quote | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
@@ -95,8 +91,6 @@ export function QuoteKanbanBoard() {
   // comentario).
   const dropDialog = useDialogSession(!!pendingDrop, pendingDrop);
   const [returningId, setReturningId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [, startTransition] = useTransition();
 
   // Refs para controlar el diálogo de confirmación sin race conditions
   const dropConfirmedRef = useRef(false);
@@ -120,157 +114,106 @@ export function QuoteKanbanBoard() {
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  // ─── Mapa de columnas resuelto: DnD + búsqueda ───────────────────────────
-  const resolvedMap = useMemo<ColumnMap>(() => {
-    // Base: posiciones DnD si existen, si no las del servidor
-    const base = columnMap ?? buildColumnMap(quotes);
-    const q = searchQuery.trim().toLowerCase();
-
-    const result: ColumnMap = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-    for (const [key, cards] of Object.entries(base)) {
-      result[Number(key)] = cards.filter(
-        (c) =>
-          !q ||
-          c.cliente_nombre?.toLowerCase().includes(q) ||
-          c.cliente_razon_social?.toLowerCase().includes(q) ||
-          String(c.id).includes(q) ||
-          (c.oc?.toLowerCase().includes(q) ?? false)
-      );
-    }
-    return result;
-  }, [columnMap, quotes, searchQuery]);
-
-  // ─── Total visible (sumando todas las columnas ya filtradas) ──────────────
-  const visibleTotal = useMemo(
-    () => Object.values(resolvedMap).reduce((acc, col) => acc + col.length, 0),
-    [resolvedMap]
-  );
+  // ─── Total del servidor con la búsqueda vigente (suma de las columnas) ───
+  const visibleTotal = board.columns.reduce((acc, column) => acc + column.total, 0);
 
   // ─── Handler: inicio de arrastre ─────────────────────────────────────────
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      if (isValidatingReview) return;
-      const sourceId = event.operation.source?.id;
-      if (!sourceId) return;
-      const found = quotes.find((q) => String(q.id) === String(sourceId)) ?? null;
-      setActiveQuote(found);
-    },
-    [isValidatingReview, quotes]
-  );
+  const handleDragStart = (event: DragStartEvent) => {
+    if (isValidatingReview) return;
+    const sourceId = event.operation.source?.id;
+    if (!sourceId) return;
+    setActiveQuote(board.loadedRows.find((q) => String(q.id) === String(sourceId)) ?? null);
+  };
 
   // ─── Handler: fin de arrastre ─────────────────────────────────────────────
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      setActiveQuote(null);
-      if (event.canceled) return;
-      if (isValidatingReview) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveQuote(null);
+    if (event.canceled) return;
+    if (isValidatingReview) return;
 
-      const sourceId = event.operation.source?.id;
-      const targetId = event.operation.target?.id;
-      if (!sourceId || !targetId) return;
+    const sourceId = event.operation.source?.id;
+    const targetId = event.operation.target?.id;
+    if (!sourceId || !targetId) return;
 
-      // Solo se permite soltar en la columna "Por Autorizar" (estatus 2)
-      const targetCol = KANBAN_COLUMNS.find(
-        (c) => c.id === String(targetId) && c.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS
-      );
-      if (!targetCol) return;
+    // Solo se permite soltar en la columna "Por Autorizar" (estatus 2)
+    const targetCol = KANBAN_COLUMNS.find(
+      (c) => c.id === String(targetId) && c.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS
+    );
+    if (!targetCol) return;
 
-      const currentMap = columnMap ?? buildColumnMap(quotes);
-      let movedQuote: Quote | undefined;
-      let sourceColEstatus: number | undefined;
+    const sourceColumn = board.columns.find((column) =>
+      column.rows.some((q) => String(q.id) === String(sourceId))
+    );
+    const movedQuote = sourceColumn?.rows.find((q) => String(q.id) === String(sourceId));
+    if (!movedQuote || !sourceColumn) return;
+    if (sourceColumn.estatus === targetCol.estatus) return;
+    // Solo se mueven las que pueden enviarse a revisión: Borrador (1) y
+    // Rechazada (4). Desde 4 el diálogo ofrece el comentario opcional.
+    if (!isQuoteReviewableStatus(sourceColumn.estatus)) return;
 
-      for (const [estatusKey, cards] of Object.entries(currentMap)) {
-        const found = cards.find((q) => String(q.id) === String(sourceId));
-        if (found) {
-          movedQuote = found;
-          sourceColEstatus = Number(estatusKey);
-          break;
-        }
-      }
+    const validationStatus = await validateBeforeSendToReview(movedQuote.id);
+    if (validationStatus !== "valid") {
+      triggerReturnAnimation(movedQuote.id);
+      return;
+    }
 
-      if (!movedQuote || sourceColEstatus === undefined) return;
-      if (sourceColEstatus === targetCol.estatus) return;
-      // Solo se mueven las que pueden enviarse a revisión: Borrador (1) y
-      // Rechazada (4). Desde 4 el diálogo ofrece el comentario opcional.
-      if (!isQuoteReviewableStatus(sourceColEstatus)) return;
-
-      const validationStatus = await validateBeforeSendToReview(movedQuote.id);
-      if (validationStatus !== "valid") {
-        triggerReturnAnimation(movedQuote.id);
-        return;
-      }
-
-      // Mostrar diálogo de confirmación antes de aplicar el cambio
-      setPendingDrop({
-        quote: movedQuote,
-        sourceEstatus: sourceColEstatus,
-        targetEstatus: targetCol.estatus,
-        targetLabel: targetCol.label,
-        targetConfig: targetCol,
-      });
-    },
-    [columnMap, isValidatingReview, quotes, triggerReturnAnimation, validateBeforeSendToReview]
-  );
+    // Mostrar diálogo de confirmación antes de aplicar el cambio
+    setPendingDrop({
+      quote: movedQuote,
+      sourceEstatus: sourceColumn.estatus,
+      targetEstatus: targetCol.estatus,
+      targetLabel: targetCol.label,
+      targetConfig: targetCol,
+    });
+  };
 
   // ─── Confirmar el arrastre: actualización optimista + mutación ────────────
-  const handleDropConfirm = useCallback((comentario?: string) => {
+  // La tarjeta se mueve en la CACHÉ del tablero, con los conteos de las dos
+  // columnas (`moveQuote`); al terminar, `useSubmitQuoteForReview` invalida
+  // `["quotes"]` y el servidor reconcilia. Si falla, se restaura lo de antes.
+  const handleDropConfirm = async (comentario?: string) => {
     if (!pendingDrop) return;
     dropConfirmedRef.current = true;
 
     const { quote: movedQuote, sourceEstatus, targetEstatus, targetLabel } = pendingDrop;
-    const currentMap = columnMap ?? buildColumnMap(quotes);
-
-    const nextMap: ColumnMap = {
-      ...currentMap,
-      [sourceEstatus]: currentMap[sourceEstatus].filter((q) => q.id !== movedQuote.id),
-      [targetEstatus]: [
-        ...currentMap[targetEstatus],
-        { ...movedQuote, estatus: targetEstatus, estatus_label: targetLabel },
-      ],
-    };
-
-    startTransition(() => setColumnMap(nextMap));
     setPendingIds((prev) => new Set(prev).add(movedQuote.id));
     setPendingDrop(null);
 
+    const clearPending = () =>
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(movedQuote.id);
+        return next;
+      });
+
+    const rollback = await board.moveQuote(movedQuote, sourceEstatus, {
+      estatus: targetEstatus,
+      label: targetLabel,
+    });
     submitQuoteForReviewMutation.mutate({ id: movedQuote.id, comentario }, {
-      onSuccess: () => {
-        setPendingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(movedQuote.id);
-          return next;
-        });
-      },
+      onSuccess: clearPending,
       onError: () => {
-        // Revertir al mapa anterior en caso de error
-        setColumnMap(currentMap);
-        setPendingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(movedQuote.id);
-          return next;
-        });
+        rollback();
+        clearPending();
       },
     });
-  }, [pendingDrop, columnMap, quotes, submitQuoteForReviewMutation]);
+  };
 
   // ─── Cancelar el arrastre: animar la tarjeta de regreso a su columna ──────
-  const handleDropDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        if (!dropConfirmedRef.current && pendingDrop) {
-          // El usuario canceló — activar la animación de retorno
-          const quoteId = pendingDrop.quote.id;
-          setPendingDrop(null);
-          triggerReturnAnimation(quoteId);
-        }
-        dropConfirmedRef.current = false;
+  const handleDropDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!dropConfirmedRef.current && pendingDrop) {
+        // El usuario canceló — activar la animación de retorno
+        const quoteId = pendingDrop.quote.id;
+        setPendingDrop(null);
+        triggerReturnAnimation(quoteId);
       }
-    },
-    [pendingDrop, triggerReturnAnimation]
-  );
+      dropConfirmedRef.current = false;
+    }
+  };
 
   // ─── Estado de carga ───────────────────────────────────────────────────────
-  if (isLoading) {
+  if (board.isLoading) {
     return (
       <div className="flex flex-col gap-4 mt-6">
         <div className="h-10 w-full max-w-sm rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse" />
@@ -289,15 +232,15 @@ export function QuoteKanbanBoard() {
   }
 
   // ─── Carga inicial fallida ─────────────────────────────────────────────────
-  // Solo si las cotizaciones nunca cargaron: sin esto el tablero se pintaba con
-  // todas las columnas vacías, igual que si no hubiera cotizaciones. Un refetch
-  // fallido conserva las tarjetas y avisa por toast desde `useQuotes`.
-  if (isErrorQuotes) {
+  // Solo si el tablero nunca cargó: sin esto se pintaba con todas las columnas
+  // vacías, igual que si no hubiera cotizaciones. Un refetch fallido conserva
+  // las tarjetas y avisa por toast desde `useQuoteBoard`.
+  if (board.isInitialError) {
     return (
       <div className="mt-6">
         <ErrorState
           title="Error al cargar cotizaciones"
-          message={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
+          message={extractErrorMessage(board.error, "No se pudo cargar la información.")}
         />
       </div>
     );
@@ -308,13 +251,13 @@ export function QuoteKanbanBoard() {
     <div
       className="mt-6 flex flex-col gap-4"
       aria-label="Tablero de cotizaciones"
-      aria-busy={isValidatingReview}
+      aria-busy={isValidatingReview || board.isTransitioning}
     >
       {/* Barra de herramientas */}
       <KanbanToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Buscar cotización..."
+        searchPlaceholder="Buscar por #, OC o cliente..."
         actionButton={
           canCreateQuote ? (
             <Link
@@ -335,14 +278,8 @@ export function QuoteKanbanBoard() {
             {visibleTotal}
           </span>{" "}
           {plural(visibleTotal, "cotización", "cotizaciones")}
-          {searchQuery && (
-            <span className="text-slate-400 dark:text-slate-500">
-              {" "}de{" "}
-              <span className="font-medium text-slate-600 dark:text-slate-400">
-                {quotes.length}
-              </span>{" "}
-              {plural(quotes.length, "total", "totales")}
-            </span>
+          {debouncedSearch && (
+            <span className="text-slate-400 dark:text-slate-500"> con la búsqueda</span>
           )}
           {" "}— arrastra las cotizaciones en <strong>Borrador</strong> o <strong>Rechazada</strong> a <strong>Por Autorizar</strong> para enviar a revisión
         </p>
@@ -359,15 +296,20 @@ export function QuoteKanbanBoard() {
       <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* Columnas horizontales con scroll — items-stretch iguala la altura a la columna más larga */}
         <div
-          className="flex items-stretch gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
+          className={[
+            "flex items-stretch gap-4 overflow-x-auto pb-4 snap-x snap-mandatory transition-opacity",
+            board.isTransitioning ? "opacity-60" : "",
+          ].join(" ")}
           role="list"
           aria-label="Columnas del tablero"
         >
-          {KANBAN_COLUMNS.map((col) => (
+          {KANBAN_COLUMNS.map((col, index) => (
             <div key={col.id} className="snap-start flex flex-col" role="listitem">
               <QuoteKanbanColumn
+                // Otra búsqueda vuelve a la primera página de cada columna.
+                key={`${col.id}-${debouncedSearch}`}
                 config={col}
-                quotes={resolvedMap[col.estatus] ?? []}
+                column={board.columns[index]}
                 pendingIds={pendingIds}
                 returningId={returningId}
                 isInteractionDisabled={isValidatingReview}
@@ -415,10 +357,9 @@ export function QuoteKanbanBoard() {
         quoteId={validationQuoteId ?? pendingDrop?.quote.id ?? 0}
         errors={reviewValidationErrors}
       />
-      <QuoteRowActionDialogs loadedRows={quotes} {...cardDialogs} />
+      <QuoteRowActionDialogs loadedRows={board.loadedRows} {...cardDialogs} />
 
     </div>
     </QuoteRowActionsProvider>
   );
 }
-
