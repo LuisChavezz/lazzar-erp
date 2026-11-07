@@ -36,6 +36,18 @@ interface ConfirmDialogProps {
    * Sin esta prop el diálogo es exactamente el de siempre.
    */
   confirmationWord?: string;
+  /**
+   * Contenido extra entre la descripción y los botones (p. ej. un selector que
+   * la confirmación necesita). Vive dentro de `Dialog.Content`, así que se
+   * desmonta al cerrar; el estado que deba leer `onConfirm` lo guarda quien
+   * usa el diálogo. Sin esta prop el diálogo es exactamente el de siempre.
+   */
+  children?: React.ReactNode;
+  /**
+   * Deshabilita Confirmar (además de `busy` y `confirmationWord`), p. ej.
+   * mientras falta un dato obligatorio de `children`. No afecta a Cancelar.
+   */
+  confirmDisabled?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -52,6 +64,8 @@ export function ConfirmDialog({
   closeOnConfirm = true,
   busy = false,
   confirmationWord,
+  children,
+  confirmDisabled = false,
   open,
   onOpenChange
 }: ConfirmDialogProps) {
@@ -75,6 +89,8 @@ export function ConfirmDialog({
           {description}
         </Dialog.Description>
 
+        {children}
+
         {/* Componente aparte para que el texto tecleado viva en un estado que
             se monta y desmonta con `Dialog.Content`: Radix lo desmonta al
             cerrar, así que el campo queda vacío en cada apertura sin importar
@@ -88,6 +104,7 @@ export function ConfirmDialog({
           closeOnConfirm={closeOnConfirm}
           busy={busy}
           confirmationWord={confirmationWord}
+          confirmDisabled={confirmDisabled}
         />
       </Dialog.Content>
     </Dialog.Root>
@@ -95,7 +112,7 @@ export function ConfirmDialog({
 }
 
 type ConfirmDialogActionsProps = Required<
-  Pick<ConfirmDialogProps, "onConfirm" | "confirmText" | "cancelText" | "confirmColor" | "closeOnConfirm" | "busy">
+  Pick<ConfirmDialogProps, "onConfirm" | "confirmText" | "cancelText" | "confirmColor" | "closeOnConfirm" | "busy" | "confirmDisabled">
 > &
   Pick<ConfirmDialogProps, "confirmationWord">;
 
@@ -107,6 +124,7 @@ function ConfirmDialogActions({
   closeOnConfirm,
   busy,
   confirmationWord,
+  confirmDisabled,
 }: ConfirmDialogActionsProps) {
   const inputId = useId();
   const [typedWord, setTypedWord] = useState("");
@@ -137,7 +155,7 @@ function ConfirmDialogActions({
       onClick={onConfirm}
       variant="solid"
       color={confirmColor}
-      disabled={busy || !isWordMatched}
+      disabled={busy || !isWordMatched || confirmDisabled}
     >
       {confirmText}
     </Button>
@@ -159,7 +177,7 @@ function ConfirmDialogActions({
           onKeyDown={(event) => {
             if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
             event.preventDefault();
-            if (isWordMatched && !busy) confirmButtonRef.current?.click();
+            if (isWordMatched && !busy && !confirmDisabled) confirmButtonRef.current?.click();
           }}
           disabled={busy}
           spellCheck={false}

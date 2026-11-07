@@ -14,7 +14,12 @@ import {
   isInvoiceCancellable,
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
+  getInvoiceLockedSatCancelMotive,
 } from "../utils/invoiceCancellation";
+import {
+  isSatCancelMotiveLockedElsewhere,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
 import {
@@ -31,9 +36,10 @@ export const cancelInvoiceMutationKey = (invoiceId: number) =>
  * Resultado de cancelar. `not-cancellable`: el retrieve previo encontró la
  * factura ya `Cancelada` (u otra que dejó de ser cancelable, p. ej. eliminada
  * o con el timbrado pendiente de confirmación) y NO se hizo el POST.
- * `needs-confirmation`: después de abrir el diálogo la factura se timbró, o
- * su cancelación quedó solicitada, y el diálogo no lo avisaba; NO se hizo el
- * POST y hay que volver a confirmar con la factura fresca.
+ * `needs-confirmation`: después de abrir el diálogo la factura se timbró, su
+ * cancelación quedó solicitada, o su motivo SAT quedó fijo en otro distinto
+ * del elegido, y el diálogo no lo avisaba; NO se hizo el POST y hay que
+ * volver a confirmar con la factura fresca.
  * `requested`: el SAT dejó la cancelación pendiente de que el receptor la
  * acepte (`cancelacion_pendiente`). No es un éxito, pero tampoco un fallo: la
  * factura sigue en su `estatus`, el backend guardó
@@ -46,9 +52,15 @@ export type CancelInvoiceResult =
   | { outcome: "needs-confirmation"; invoice: Invoice }
   | { outcome: "requested"; message: string };
 
-/** Lo que manda el diálogo: la nota y qué decía su aviso del CFDI. */
+/** Lo que manda el diálogo: la nota, el motivo SAT y qué decía su aviso del CFDI. */
 interface CancelInvoiceVariables {
   motivo?: string;
+  /**
+   * Motivo SAT elegido (o el fijo), obligatorio cuando el diálogo mostraba un
+   * CFDI vigente (`willInvoiceCancelReachSat`); `null` cuando no iba al SAT.
+   * Requerido a propósito: omitirlo no compila.
+   */
+  motivoSat: SatCancelMotive | null;
   /** ¿El diálogo mostraba la factura timbrada (con el aviso del SAT)? */
   shownStamped: boolean;
   /** ¿El diálogo mostraba la cancelación ya solicitada (con su aviso)? */
@@ -121,7 +133,9 @@ const errorMessageOf = cancelInvoiceMutationErrorMessage;
  * POST: el resultado `needs-confirmation` le pasa al diálogo la factura fresca
  * para que muestre el aviso y pida confirmar de nuevo (`stampedSinceShown`).
  * Igual si su cancelación quedó solicitada después de abrirlo
- * (`requestedSinceShown`).
+ * (`requestedSinceShown`), o si su motivo SAT quedó fijo en otro distinto del
+ * elegido (`isSatCancelMotiveLockedElsewhere`: el listado no trae la reserva
+ * de un intento sin respuesta y el backend respondería 400).
  * Esa comparación vive aquí y no en `fetchFreshInvoice`, que es compartido con
  * el timbrado y solo trae y cachea el retrieve: qué vio el usuario es una
  * regla de la cancelación.
@@ -143,7 +157,7 @@ const errorMessageOf = cancelInvoiceMutationErrorMessage;
  *
  * Errores: el mensaje del backend tal cual (`cancelInvoiceErrorMessage`: el
  * `400` de `cfdi` cuando el SAT o Facturama no cancelaron el CFDI o no
- * respondieron, o el de `estatus` por notas de crédito), en un toast y en el
+ * respondieron, el de `motivo_sat`, o el de `estatus` por notas de crédito), en un toast y en el
  * `onError` de la llamada, para que el diálogo lo muestre también. Esos `400`
  * no guardan nada.
  */
@@ -154,18 +168,19 @@ export const useCancelInvoice = (invoiceId: number) => {
 
   const mutation = useMutation<CancelInvoiceResult, unknown, CancelInvoiceVariables>({
     mutationKey,
-    mutationFn: async ({ motivo, shownStamped, shownRequested }) => {
+    mutationFn: async ({ motivo, motivoSat, shownStamped, shownRequested }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isInvoiceCancellable(current) || getInvoiceCancelBlockReason(current) !== null) {
         return { outcome: "not-cancellable", invoice: current };
       }
       if (
         stampedSinceShown(current, shownStamped) ||
-        requestedSinceShown(current, shownRequested)
+        requestedSinceShown(current, shownRequested) ||
+        isSatCancelMotiveLockedElsewhere(getInvoiceLockedSatCancelMotive(current), motivoSat)
       ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
-      const posted = await postInvoiceCancel({ id: invoiceId, motivo });
+      const posted = await postInvoiceCancel({ id: invoiceId, motivo, motivoSat });
       return posted.outcome === "requested"
         ? posted
         : { outcome: "cancelled", invoice: posted.invoice };
@@ -180,7 +195,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       if (outcome === "not-cancellable") {
         toast.error(
           invoice.estatus === INVOICE_STATUS.CANCELADA
-            ? `La factura ${label} ya estaba cancelada; no se registró el motivo.`
+            ? `La factura ${label} ya estaba cancelada; no se guardó la nota interna.`
             : (getInvoiceCancelBlockReason(invoice) ??
               `La factura ${label} ya no puede cancelarse.`),
         );
@@ -228,12 +243,13 @@ export const useCancelInvoice = (invoiceId: number) => {
    * diálogo mostraba la factura timbrada / la cancelación ya solicitada.
    * `onSuccess` corre solo si terminó sin error y sin pedir reconfirmación
    * (incluida la cancelación solicitada, `requested`, que también cierra el
-   * diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se timbró, o
-   * su cancelación quedó solicitada, después de abrirlo; `onError`, el mismo
+   * diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se timbró,
+   * su cancelación quedó solicitada o su motivo SAT quedó fijo después de
+   * abrirlo; `onError`, el mismo
    * mensaje que el toast.
    */
   const cancel = (
-    { motivo, shownStamped, shownRequested }: CancelInvoiceVariables,
+    variables: CancelInvoiceVariables,
     options: {
       onSuccess?: () => void;
       onNeedsConfirmation?: (invoice: Invoice) => void;
@@ -241,16 +257,13 @@ export const useCancelInvoice = (invoiceId: number) => {
     } = {},
   ) => {
     if (!isIdle()) return;
-    mutation.mutate(
-      { motivo, shownStamped, shownRequested },
-      {
-        onSuccess: (result) =>
-          result.outcome === "needs-confirmation"
-            ? options.onNeedsConfirmation?.(result.invoice)
-            : options.onSuccess?.(),
-        onError: (error) => options.onError?.(errorMessageOf(error)),
-      },
-    );
+    mutation.mutate(variables, {
+      onSuccess: (result) =>
+        result.outcome === "needs-confirmation"
+          ? options.onNeedsConfirmation?.(result.invoice)
+          : options.onSuccess?.(),
+      onError: (error) => options.onError?.(errorMessageOf(error)),
+    });
   };
 
   return { cancel, isCancelling, isIdle };

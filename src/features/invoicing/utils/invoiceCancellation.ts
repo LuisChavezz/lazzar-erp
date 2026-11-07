@@ -3,6 +3,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { getLockedSatCancelMotive, type SatCancelMotive } from "@/src/constants/satCancelMotives";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
 import { isInvoiceStamped } from "./invoiceStamping";
@@ -84,7 +85,7 @@ export const INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE =
 
 /** Aviso del diálogo: timbrada y con el CFDI aún vigente, `cancelar/` llama primero al SAT. */
 export const INVOICE_CANCEL_SAT_FIRST_MESSAGE =
-  "Primero se cancelará el CFDI ante el SAT con motivo 02 (comprobante emitido con errores sin relación). Si el SAT no lo cancela, la factura no cambia.";
+  "Primero se cancelará el CFDI ante el SAT con el motivo que elijas. Si el SAT no lo cancela, la factura no cambia.";
 
 /** Aviso del diálogo: el SAT ya canceló el CFDI, falta la parte del ERP (no se vuelve a llamar al SAT). */
 export const INVOICE_CANCEL_ERP_ONLY_MESSAGE =
@@ -108,6 +109,34 @@ export const getInvoiceCancelCfdiNotice = (invoice: {
     ? INVOICE_CANCEL_ALREADY_REQUESTED_MESSAGE
     : INVOICE_CANCEL_SAT_FIRST_MESSAGE;
 };
+
+/**
+ * ¿`cancelar/` va a cancelar un CFDI VIGENTE ante el SAT? Timbrada y sin
+ * `cfdi_cancelado`: es el caso en que el backend exige `motivo_sat` y el
+ * diálogo muestra el selector. Con el CFDI ya cancelado el backend se salta
+ * el SAT; sin timbrar no hay CFDI.
+ */
+export const willInvoiceCancelReachSat = (invoice: {
+  cfdi_uuid?: string | null;
+  cfdi_cancelado?: boolean;
+}): boolean => isInvoiceStamped(invoice) && !isInvoiceCfdiCancelled(invoice);
+
+/**
+ * Motivo SAT FIJO de la cancelación del CFDI (`getLockedSatCancelMotive`), o
+ * `null` si se puede elegir: con la cancelación solicitada o con un intento
+ * en curso o sin respuesta (`cfdi_cancelacion_en_curso_desde`, solo en el
+ * retrieve). Sirve la fila del listado (sin la reserva) y el retrieve.
+ */
+export const getInvoiceLockedSatCancelMotive = (invoice: {
+  cfdi_cancelacion_solicitada?: boolean;
+  cfdi_cancelacion_motivo?: string | null;
+  cfdi_cancelacion_en_curso_desde?: string | null;
+}): SatCancelMotive | null =>
+  getLockedSatCancelMotive({
+    requested: invoice.cfdi_cancelacion_solicitada,
+    motive: invoice.cfdi_cancelacion_motivo,
+    inFlightSince: invoice.cfdi_cancelacion_en_curso_desde,
+  });
 
 /** Estado del CFDI en la cabecera del detalle cuando `cfdi_cancelado`. */
 export const INVOICE_CFDI_CANCELLED_LABEL = "Cancelado ante el SAT";
@@ -141,8 +170,9 @@ export const CANCEL_CANCELLED_INVOICE_CFDI_LABEL = "Cancelar CFDI ante el SAT";
  * si el receptor ya la aceptó.
  *
  * Para esa factura, `cancelar/` solo cancela el CFDI y regresa antes de tocar
- * el ERP: no cambia estatus, CxC, inventario ni póliza, y descarta el
- * `motivo`. Los flags desconocidos (`undefined`) cuentan como NO elegibles:
+ * el ERP: no cambia estatus, CxC, inventario ni póliza. Exige `motivo_sat`
+ * como cualquier cancelación de un CFDI vigente; la nota interna `motivo`, si
+ * se manda, la guarda en `observaciones` (EC-806). Los flags desconocidos (`undefined`) cuentan como NO elegibles:
  * ante la duda no se ofrece una acción irreversible. Nunca coincide con
  * `isInvoiceCancellable` (Borrador o Emitida), así que las dos acciones no
  * aparecen juntas.
@@ -198,8 +228,10 @@ export const CANCELLED_INVOICE_CFDI_ALREADY_REQUESTED_MESSAGE =
 
 /**
  * Mensaje de un fallo de `cancelar/`. El backend pone el motivo bajo `cfdi`
- * (el SAT o Facturama no cancelaron el CFDI, o no respondieron) o bajo
- * `estatus` (notas de crédito emitidas), como string o como lista;
+ * (el SAT o Facturama no cancelaron el CFDI o no respondieron, otra
+ * cancelación en curso, CFDI sin id de Facturama), bajo `motivo_sat` (falta,
+ * no es del catálogo o no es el ya fijado, EC-806) o bajo `estatus` (notas de
+ * crédito emitidas), como string o como lista;
  * `drfFieldMessage` lee las dos formas. Ninguno de esos `400` guarda nada. El
  * caso en que el receptor debe aceptar llega bajo `cancelacion_pendiente` y no
  * es un fallo: `useCancelInvoice` lo separa antes
@@ -210,6 +242,7 @@ export const CANCELLED_INVOICE_CFDI_ALREADY_REQUESTED_MESSAGE =
  */
 export const cancelInvoiceErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "cfdi") ??
+  drfFieldMessage(error, "motivo_sat") ??
   drfFieldMessage(error, "estatus") ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo cancelar la factura.");

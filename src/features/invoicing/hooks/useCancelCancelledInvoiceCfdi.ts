@@ -8,7 +8,12 @@ import {
   isCancelledInvoiceCfdiCancellable,
   isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
+  getInvoiceLockedSatCancelMotive,
 } from "../utils/invoiceCancellation";
+import {
+  isSatCancelMotiveLockedElsewhere,
+  type SatCancelMotive,
+} from "@/src/constants/satCancelMotives";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
 import {
   cancelInvoiceMutationErrorMessage,
@@ -21,8 +26,9 @@ import {
  * `not-cancellable`: el retrieve previo encontró la factura ya no elegible
  * (CFDI cancelado, timbrado pendiente, eliminada…) y NO se hizo el POST.
  * `needs-confirmation`: la cancelación quedó solicitada DESPUÉS de abrir el
- * diálogo, que no avisaba que confirmar vuelve a consultar al SAT; NO se hizo
- * el POST y el diálogo pide confirmar de nuevo con la factura fresca.
+ * diálogo, que no avisaba que confirmar vuelve a consultar al SAT, o el motivo
+ * SAT quedó fijo en otro distinto del elegido; NO se hizo el POST y el
+ * diálogo pide confirmar de nuevo con la factura fresca.
  * `done`: hubo POST con `200`; la respuesta dice si el CFDI quedó cancelado.
  * `requested`: el SAT dejó la cancelación pendiente de que el receptor la
  * acepte (`400` con `cancelacion_pendiente`; el backend SÍ guardó
@@ -37,6 +43,14 @@ type CancelCancelledInvoiceCfdiResult =
 const labelOf = (invoice: { id: number; folio: string | null }) =>
   invoice.folio || `#${invoice.id}`;
 
+/** Lo que manda el diálogo. Los dos campos son obligatorios: omitir uno no compila. */
+interface CancelCancelledInvoiceCfdiVariables {
+  /** ¿El diálogo mostraba la cancelación ya solicitada (con su aviso)? */
+  shownRequested: boolean;
+  /** Motivo SAT elegido, o el fijo: este caso siempre cancela un CFDI vigente. */
+  motivoSat: SatCancelMotive;
+}
+
 /**
  * Cancela ante el SAT el CFDI vigente de una factura que YA está `Cancelada`
  * en el ERP (EC-764), con el mismo `POST /finanzas/facturas/{id}/cancelar/`.
@@ -48,10 +62,13 @@ const labelOf = (invoice: { id: number; folio: string | null }) =>
  * - Antes del POST, el retrieve FRESCO: si ya no es elegible
  *   (`isCancelledInvoiceCfdiCancellable`) no hay POST y se dice por qué; si
  *   la cancelación quedó solicitada después de abrir el diálogo
- *   (`shownRequested` falso), tampoco: `needs-confirmation`, como en
- *   `useCancelInvoice`. Un CFDI que ya estaba cancelado es un aviso ℹ️, no
+ *   (`shownRequested` falso) o el motivo SAT quedó fijo en otro distinto del
+ *   elegido (`isSatCancelMotiveLockedElsewhere`), tampoco: `needs-confirmation`,
+ *   como en `useCancelInvoice`. Un CFDI que ya estaba cancelado es un aviso ℹ️, no
  *   un error: lo que se buscaba ya ocurrió.
- * - Sin `motivo`: el backend lo descarta en este caso.
+ * - Manda `motivo_sat` (obligatorio: siempre cancela un CFDI vigente). No
+ *   manda la nota interna `motivo`: el diálogo no la pide (el backend sí la
+ *   guardaría en `observaciones` desde EC-806).
  * - Un `200` no basta: el backend también responde `200` sin efecto. Solo
  *   `cfdi_cancelado === true` en la respuesta es éxito; si no, se avisa que
  *   no se confirmó.
@@ -68,18 +85,21 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
   const mutation = useMutation<
     CancelCancelledInvoiceCfdiResult,
     unknown,
-    { shownRequested: boolean }
+    CancelCancelledInvoiceCfdiVariables
   >({
     mutationKey,
-    mutationFn: async ({ shownRequested }) => {
+    mutationFn: async ({ shownRequested, motivoSat }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isCancelledInvoiceCfdiCancellable(current)) {
         return { outcome: "not-cancellable", invoice: current };
       }
-      if (!shownRequested && isInvoiceCfdiCancellationRequested(current)) {
+      if (
+        (!shownRequested && isInvoiceCfdiCancellationRequested(current)) ||
+        isSatCancelMotiveLockedElsewhere(getInvoiceLockedSatCancelMotive(current), motivoSat)
+      ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
-      const posted = await postInvoiceCancel({ id: invoiceId });
+      const posted = await postInvoiceCancel({ id: invoiceId, motivoSat });
       return posted.outcome === "requested"
         ? posted
         : { outcome: "done", invoice: posted.invoice };
@@ -121,17 +141,17 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTA factura
    * (consulta síncrona a la caché). `shownRequested`: si el diálogo mostraba
-   * la cancelación ya solicitada. `onDone` corre al terminar con cualquier
+   * la cancelación ya solicitada; `motivoSat`: el motivo que va al SAT. `onDone` corre al terminar con cualquier
    * resultado salvo `needs-confirmation`, que en su lugar pasa la factura
    * fresca a `onNeedsConfirmation`.
    */
   const cancelCfdi = (
-    { shownRequested }: { shownRequested: boolean },
+    variables: CancelCancelledInvoiceCfdiVariables,
     options: { onDone?: () => void; onNeedsConfirmation?: (invoice: Invoice) => void } = {},
   ) => {
     if (!isIdle()) return;
     mutation.mutate(
-      { shownRequested },
+      variables,
       {
         onSuccess: (result) =>
           result.outcome === "needs-confirmation"

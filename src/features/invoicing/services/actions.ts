@@ -1,5 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
 import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
+import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import type {
   Invoice,
   InvoiceCancelResponse,
@@ -96,22 +97,35 @@ export const createInvoiceFromOnboarding = async (
  * Cancela una factura `Borrador` o `Emitida`
  * (`POST /finanzas/facturas/{id}/cancelar/`, responde `200` con la factura
  * completa y `contrapoliza_id`). `motivo` es opcional y solo se manda si trae
- * texto: el backend lo agrega a `observaciones`. En una ya `Cancelada` con el
- * CFDI vigente solo cancela el CFDI ante el SAT y descarta `motivo`
- * (`useCancelCancelledInvoiceCfdi`, que no lo manda); en cualquier otra ya
- * cancelada responde `200` sin efecto. El error se deja propagar (p. ej. el
- * `400` bajo `estatus` si tiene notas de crédito emitidas).
+ * texto: el backend lo agrega a `observaciones`. `motivo_sat` ("02" | "03")
+ * es el motivo que va al SAT (EC-806): obligatorio cuando la llamada cancela
+ * un CFDI vigente, sin valor por defecto. En una ya `Cancelada` con el CFDI
+ * vigente solo cancela el CFDI ante el SAT (`useCancelCancelledInvoiceCfdi`;
+ * ahí `motivo` también se guardaría, pero ese diálogo no pide nota); en
+ * cualquier otra ya cancelada responde `200` sin efecto. El error se deja
+ * propagar (p. ej. el `400` bajo `estatus` si tiene notas de crédito emitidas,
+ * o bajo `motivo_sat`).
  */
 export const cancelInvoice = async ({
   id,
   motivo,
+  motivoSat,
 }: {
   id: number;
   motivo?: string;
+  /**
+   * Motivo SAT (`motivo_sat`), obligatorio cuando la llamada cancela un CFDI
+   * vigente; `null` cuando no va al SAT (sin timbrar o CFDI ya cancelado) y
+   * entonces no se manda.
+   */
+  motivoSat: SatCancelMotive | null;
 }): Promise<InvoiceCancelResponse> => {
   const { data } = await v1_api.post<InvoiceCancelResponse>(
     `/finanzas/facturas/${id}/cancelar/`,
-    motivo ? { motivo } : {},
+    {
+      ...(motivo ? { motivo } : {}),
+      ...(motivoSat ? { motivo_sat: motivoSat } : {}),
+    },
   );
   return data;
 };
