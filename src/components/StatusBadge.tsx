@@ -7,8 +7,12 @@ export interface StatusBadgeConfigEntry {
 interface StatusBadgeProps {
   status: string;
   config: Record<string, StatusBadgeConfigEntry>;
-  /** Estilo aplicado cuando `status` no tiene entrada en `config`. */
-  defaultConfig?: StatusBadgeConfigEntry;
+  /**
+   * Estilo aplicado cuando `status` no tiene entrada en `config`. Los campos
+   * que no traiga (p. ej. solo `cls` y `label`) los completa el neutro de este
+   * componente, así ningún consumidor repite su punto o su color.
+   */
+  defaultConfig?: Partial<StatusBadgeConfigEntry>;
 }
 
 const FALLBACK_CFG: StatusBadgeConfigEntry = {
@@ -22,7 +26,7 @@ const FALLBACK_CFG: StatusBadgeConfigEntry = {
  * estatus no se comparten entre dominios, solo la presentación.
  */
 export function StatusBadge({ status, config, defaultConfig }: StatusBadgeProps) {
-  const cfg = config[status] ?? defaultConfig ?? FALLBACK_CFG;
+  const cfg = config[status] ?? { ...FALLBACK_CFG, ...defaultConfig };
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}

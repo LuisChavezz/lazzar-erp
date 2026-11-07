@@ -41,9 +41,6 @@ export const QUOTE_STATUS_CONFIG: Record<number, QuoteStatusConfigEntry> = Objec
 export const QUOTE_STATUS_FALLBACK_CLS =
   "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
 
-/** Punto del estatus neutro: el mismo gris que Borrador y que `StatusBadge`. */
-export const QUOTE_STATUS_FALLBACK_DOT = "bg-slate-400";
-
 /**
  * Entrada de un estatus que llega del backend, o `undefined` si no la hay.
  * `Object.hasOwn` (no indexado directo) para que un valor como `constructor`
