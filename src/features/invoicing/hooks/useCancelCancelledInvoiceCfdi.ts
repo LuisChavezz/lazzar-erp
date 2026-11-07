@@ -6,6 +6,7 @@ import type { Invoice, InvoiceCancelResponse } from "../interfaces/invoice.inter
 import {
   cancelledInvoiceCfdiNotCancellableMessage,
   isCancelledInvoiceCfdiCancellable,
+  isInvoiceCfdiCancellationRequested,
   isInvoiceCfdiCancelled,
 } from "../utils/invoiceCancellation";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
@@ -19,6 +20,9 @@ import {
  * Resultado de cancelar el CFDI de una factura ya `Cancelada`.
  * `not-cancellable`: el retrieve previo encontró la factura ya no elegible
  * (CFDI cancelado, timbrado pendiente, eliminada…) y NO se hizo el POST.
+ * `needs-confirmation`: la cancelación quedó solicitada DESPUÉS de abrir el
+ * diálogo, que no avisaba que confirmar vuelve a consultar al SAT; NO se hizo
+ * el POST y el diálogo pide confirmar de nuevo con la factura fresca.
  * `done`: hubo POST con `200`; la respuesta dice si el CFDI quedó cancelado.
  * `requested`: el SAT dejó la cancelación pendiente de que el receptor la
  * acepte (`400` con `cancelacion_pendiente`; el backend SÍ guardó
@@ -26,6 +30,7 @@ import {
  */
 type CancelCancelledInvoiceCfdiResult =
   | { outcome: "not-cancellable"; invoice: Invoice }
+  | { outcome: "needs-confirmation"; invoice: Invoice }
   | { outcome: "done"; invoice: InvoiceCancelResponse }
   | { outcome: "requested"; message: string };
 
@@ -41,7 +46,10 @@ const labelOf = (invoice: { id: number; folio: string | null }) =>
  * - Candado: el MISMO `mutationKey` por factura que `useCancelInvoice` (es el
  *   mismo endpoint).
  * - Antes del POST, el retrieve FRESCO: si ya no es elegible
- *   (`isCancelledInvoiceCfdiCancellable`) no hay POST y se dice por qué.
+ *   (`isCancelledInvoiceCfdiCancellable`) no hay POST y se dice por qué; si
+ *   la cancelación quedó solicitada después de abrir el diálogo
+ *   (`shownRequested` falso), tampoco: `needs-confirmation`, como en
+ *   `useCancelInvoice`.
  * - Sin `motivo`: el backend lo descarta en este caso.
  * - Un `200` no basta: el backend también responde `200` sin efecto. Solo
  *   `cfdi_cancelado === true` en la respuesta es éxito; si no, se avisa que
@@ -56,12 +64,19 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
   const mutationKey = cancelInvoiceMutationKey(invoiceId);
   const { isRunning: isCancelling, isIdle } = useMutationLock(mutationKey);
 
-  const mutation = useMutation<CancelCancelledInvoiceCfdiResult, unknown, void>({
+  const mutation = useMutation<
+    CancelCancelledInvoiceCfdiResult,
+    unknown,
+    { shownRequested: boolean }
+  >({
     mutationKey,
-    mutationFn: async () => {
+    mutationFn: async ({ shownRequested }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isCancelledInvoiceCfdiCancellable(current)) {
         return { outcome: "not-cancellable", invoice: current };
+      }
+      if (!shownRequested && isInvoiceCfdiCancellationRequested(current)) {
+        return { outcome: "needs-confirmation", invoice: current };
       }
       const posted = await postInvoiceCancel({ id: invoiceId });
       return posted.outcome === "requested"
@@ -78,6 +93,8 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
         toast.error(cancelledInvoiceCfdiNotCancellableMessage(invoice));
         return;
       }
+      // El diálogo muestra el aviso y pide confirmar de nuevo; no hay toast.
+      if (outcome === "needs-confirmation") return;
       if (isInvoiceCfdiCancelled(invoice)) {
         toast.success(`CFDI de la factura ${labelOf(invoice)} cancelado ante el SAT.`);
       } else {
@@ -91,7 +108,8 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
     },
     onSettled: (result) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      if (result?.outcome !== "not-cancellable") {
+      // Sin POST, el precheck acaba de escribir el retrieve en la caché.
+      if (result?.outcome !== "not-cancellable" && result?.outcome !== "needs-confirmation") {
         queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
       }
     },
@@ -99,12 +117,26 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
 
   /**
    * Dispara la cancelación salvo que ya haya una en vuelo para ESTA factura
-   * (consulta síncrona a la caché). `onSettled` corre al terminar, con
-   * cualquier resultado.
+   * (consulta síncrona a la caché). `shownRequested`: si el diálogo mostraba
+   * la cancelación ya solicitada. `onDone` corre al terminar con cualquier
+   * resultado salvo `needs-confirmation`, que en su lugar pasa la factura
+   * fresca a `onNeedsConfirmation`.
    */
-  const cancelCfdi = (options: { onSettled?: () => void } = {}) => {
+  const cancelCfdi = (
+    { shownRequested }: { shownRequested: boolean },
+    options: { onDone?: () => void; onNeedsConfirmation?: (invoice: Invoice) => void } = {},
+  ) => {
     if (!isIdle()) return;
-    mutation.mutate(undefined, { onSettled: options.onSettled });
+    mutation.mutate(
+      { shownRequested },
+      {
+        onSuccess: (result) =>
+          result.outcome === "needs-confirmation"
+            ? options.onNeedsConfirmation?.(result.invoice)
+            : options.onDone?.(),
+        onError: () => options.onDone?.(),
+      },
+    );
   };
 
   return { cancelCfdi, isCancelling, isIdle };
