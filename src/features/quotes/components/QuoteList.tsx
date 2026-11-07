@@ -49,11 +49,12 @@ export const QuoteList = () => {
   const { onAction, busy, dialogs } = useQuoteRowActions();
   // Overlay de la tabla: trabajo en curso leído de la MutationCache (`busy`),
   // el mismo que acota el menú de cada fila; vale venga de esta vista o de
-  // otra (el tablero comparte las claves).
-  const isAuthorizingOrder = busy.some((b) => b.kind === "authorize");
+  // otra (el tablero comparte las claves). Autorizar NO lo enciende: su
+  // confirmación ya queda abierta y bloqueada con "Autorizando..." mientras
+  // la petición viaja, y el overlay repetía el mismo estado detrás.
   const isRejectingOrder = busy.some((b) => b.kind === "reject");
   const isValidatingReview = busy.some((b) => b.kind === "validateReview");
-  const isTableBusy = isAuthorizingOrder || isRejectingOrder || isValidatingReview;
+  const isTableBusy = isRejectingOrder || isValidatingReview;
 
   // Columnas estáticas: callbacks y "en curso" van por `QuoteRowActionsProvider`
   // (sin `useMemo`: el React Compiler memoiza el componente). Las opciones de
@@ -79,11 +80,7 @@ export const QuoteList = () => {
         loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
         loadingTitle={
-          isValidatingReview
-            ? "Validando cotización"
-            : isRejectingOrder
-              ? "Rechazando cotización"
-              : "Autorizando cotización"
+          isValidatingReview ? "Validando cotización" : "Rechazando cotización"
         }
         loadingMessage={
           isValidatingReview
