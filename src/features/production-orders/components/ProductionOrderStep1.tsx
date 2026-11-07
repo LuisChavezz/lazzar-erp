@@ -9,9 +9,16 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
 import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
+import { useProductionVariants } from "../hooks/useProductionVariants";
+import { useMaquileros } from "@/src/features/suppliers/hooks/useMaquileros";
+import {
+  catalogOption,
+  matchesOpSkuOption,
+  productionOption,
+  type OpSkuOption,
+} from "../utils/opSkuOptions";
 import {
   ProductionOrderPedidoSelectorDialog,
   type SelectedProductionOrderPedido,
@@ -23,7 +30,10 @@ export interface ProductionOrderStep1Data {
   observaciones: string;
   /** Pedido especial vinculado (opcional); `null` = sin pedido. */
   pedido: SelectedProductionOrderPedido | null;
-  variantIds: number[];
+  /** SKU elegidos (catálogo y muestras), en el orden en que se eligieron. */
+  skus: OpSkuOption[];
+  /** Proveedor maquilero; `null` = se confecciona en casa. */
+  centroConfeccion: number | null;
 }
 
 /**
@@ -68,7 +78,26 @@ export function ProductionOrderStep1({
   onNext,
   onBack,
 }: ProductionOrderStep1Props) {
-  const { productVariants, isLoading, isInitialError } = useProductVariants(true);
+  // TODOS los SKU: el catálogo completo más las muestras SIN alta en catálogo
+  // (variantes de producción; las que ya tienen alta salen en el catálogo).
+  // La lista con BOM marca cuáles del catálogo se pueden fabricar; las de
+  // producción traen `tiene_bom`. Sin BOM se muestran pero no se eligen.
+  const { productVariants, isLoading, isInitialError } = useProductVariants();
+  const {
+    productionVariants,
+    isLoading: isLoadingProduccion,
+    isInitialError: isProduccionError,
+  } = useProductionVariants();
+  const {
+    productVariants: variantsConBom,
+    isLoading: isLoadingBom,
+    isInitialError: isBomError,
+  } = useProductVariants(true);
+  const conBomIds = new Set(variantsConBom.map((variant) => variant.id));
+  const options: OpSkuOption[] = [
+    ...productionVariants.filter((variant) => !variant.aplica_catalogo).map(productionOption),
+    ...productVariants.map((variant) => catalogOption(variant, conBomIds.has(variant.id))),
+  ];
 
   const [prioridad, setPrioridad] = useState<number>(
     initialData?.prioridad ?? 0,
@@ -80,21 +109,26 @@ export function ProductionOrderStep1({
     initialData?.pedido ?? null,
   );
   const [isPedidoSelectorOpen, setIsPedidoSelectorOpen] = useState(false);
+  const { maquileros, isLoading: isLoadingMaquileros } = useMaquileros();
+  const [centroConfeccion, setCentroConfeccion] = useState<number | null>(
+    initialData?.centroConfeccion ?? null,
+  );
   // La etiqueta no envuelve ningún control (son botones que abren un diálogo):
   // cada botón la referencia vía `aria-describedby` para exponer el contexto.
   const pedidoLabelId = useId();
-  const [selectedIds, setSelectedIds] = useState<number[]>(
-    initialData?.variantIds ?? [],
-  );
+  const [selected, setSelected] = useState<OpSkuOption[]>(initialData?.skus ?? []);
+  const isChosen = (option: OpSkuOption) => selected.some((s) => s.key === option.key);
 
-  const toggleVariant = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+  const toggleSku = (option: OpSkuOption) => {
+    setSelected((prev) =>
+      prev.some((s) => s.key === option.key)
+        ? prev.filter((s) => s.key !== option.key)
+        : [...prev, option],
     );
   };
 
   // ── Loading state ─────────────────────────────────────────────────────
-  if (isLoading) {
+  if (isLoading || isLoadingBom || isLoadingProduccion) {
     return (
       <Loader
         title="Cargando variantes"
@@ -106,7 +140,7 @@ export function ProductionOrderStep1({
   // ── Error state ───────────────────────────────────────────────────────
   // Solo si el catálogo nunca cargó: un refetch fallido conserva la lista (y
   // la selección) y avisa por toast desde `useProductVariants`.
-  if (isInitialError) {
+  if (isInitialError || isBomError || isProduccionError) {
     return (
       <p className="text-sm text-red-500 p-4">
         Error al cargar las variantes de producto.
@@ -114,12 +148,12 @@ export function ProductionOrderStep1({
     );
   }
 
-  const selectedCount = selectedIds.length;
+  const selectedCount = selected.length;
   const canAdvance = selectedCount > 0 && prioridad > 0;
 
   const handleNext = () => {
     if (!canAdvance) return;
-    onNext({ prioridad, observaciones, pedido, variantIds: selectedIds });
+    onNext({ prioridad, observaciones, pedido, skus: selected, centroConfeccion });
   };
 
   return (
@@ -201,6 +235,36 @@ export function ProductionOrderStep1({
 
       </div>
 
+      {/* Quién confecciona: en casa o un maquilero (proveedor). */}
+      <FormSelect
+        label="Centro de confección"
+        name="centro_confeccion"
+        className="py-2!"
+        value={centroConfeccion ?? ""}
+        disabled={isLoadingMaquileros}
+        onChange={(event) =>
+          setCentroConfeccion(event.target.value === "" ? null : Number(event.target.value))
+        }
+      >
+        <option value="" className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+          Interno (se confecciona en casa)
+        </option>
+        {maquileros.map((supplier) => (
+          <option
+            key={supplier.id}
+            value={supplier.id}
+            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
+          >
+            {supplier.nombre}
+          </option>
+        ))}
+      </FormSelect>
+      {!isLoadingMaquileros && maquileros.length === 0 && (
+        <p className="-mt-2 ml-1 text-[11px] text-slate-500 dark:text-slate-400">
+          Aún no hay maquileros. Márcalos en Compras → Proveedores → detalle → «Maquilero».
+        </p>
+      )}
+
       {/* Observaciones generales (opcionales) en una línea */}
       <FormTextarea
         label="Observaciones generales"
@@ -228,24 +292,40 @@ export function ProductionOrderStep1({
       </div>
 
       {/* Search + scrollable multi-select list */}
-      <SearchableSelectList<ProductVariant>
-        items={productVariants}
+      <SearchableSelectList<OpSkuOption>
+        items={options}
+        pinSelected
+        debounceMs={250}
+        maxVisible={100}
+        getItemDisabledReason={(option) =>
+          option.tieneBom ? null : "Sin lista de materiales (BOM): no se puede fabricar todavía"
+        }
         searchPlaceholder="Buscar variante por nombre, SKU, código Proscai o SKU de producción..."
-        filterPredicate={(variant, term) => matchesProductVariantSearch(variant, term)}
-        getKey={(variant) => variant.id}
-        isSelected={(variant) => selectedIds.includes(variant.id)}
-        onSelect={(variant) => toggleVariant(variant.id)}
+        filterPredicate={(option, term) => matchesOpSkuOption(option, term, matchesProductVariantSearch)}
+        getKey={(option) => option.key}
+        isSelected={isChosen}
+        onSelect={toggleSku}
         emptyMessage="No hay variantes de producto disponibles."
         noResultsMessage="No se encontraron variantes"
         renderIndicator={renderCheckboxIndicator}
-        renderContent={(variant) => (
+        renderContent={(option) => (
           <>
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {variant.nombre}
+              {option.nombre}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              <span className="min-w-0 truncate">{variant.sku}</span>
-              <ProductVariantCodeBadges variant={variant} />
+              <span className="min-w-0 truncate">{option.sku}</span>
+              {(option.kind === "produccion" || option.variant?.sku_produccion) && (
+                <span className="shrink-0 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                  {option.kind === "produccion" ? "Muestra · sin catálogo" : "Muestra"}
+                </span>
+              )}
+              {option.pedidoFolio && (
+                <span className="shrink-0 font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                  {option.pedidoFolio}
+                </span>
+              )}
+              {option.variant && <ProductVariantCodeBadges variant={option.variant} />}
             </p>
           </>
         )}

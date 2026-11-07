@@ -6,12 +6,20 @@ import { z } from "zod";
  * resuelve la lista de materiales (BOM) automáticamente a partir de
  * `producto_variante_id`.
  */
-export const CreateProductionOrderDetalleSchema = z.object({
-  producto_variante_id: z.number().int().positive(),
-  cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
-  unidad: z.number().int().positive("Selecciona una unidad"),
-  observaciones: z.string(),
-});
+export const CreateProductionOrderDetalleSchema = z
+  .object({
+    // Una de las dos: variante de catálogo o variante de producción (muestra).
+    producto_variante_id: z.number().int().positive().optional(),
+    variante_produccion_id: z.number().int().positive().optional(),
+    cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
+    unidad: z.number().int().positive("Selecciona una unidad"),
+    observaciones: z.string(),
+  })
+  .refine(
+    (detalle) =>
+      (detalle.producto_variante_id === undefined) !== (detalle.variante_produccion_id === undefined),
+    { message: "Cada renglón lleva una sola variante" },
+  );
 
 /**
  * Cuerpo completo para crear una orden de producción
@@ -33,6 +41,8 @@ export const CreateProductionOrderFormSchema = z.object({
   prioridad: z.number().int().positive("La prioridad es requerida"),
   observaciones: z.string(),
   pedido: z.number().int().positive().optional(),
+  /** Proveedor maquilero; ausente = interno. */
+  centro_confeccion: z.number().int().positive().optional(),
   orden_produccion_detalle: z
     .array(CreateProductionOrderDetalleSchema)
     .min(1, "Agrega al menos un producto"),

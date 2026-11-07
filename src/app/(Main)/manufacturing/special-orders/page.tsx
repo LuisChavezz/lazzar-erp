@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SpecialOrdersView } from "@/src/features/special-orders/components/SpecialOrdersView";
 
 export const metadata: Metadata = {
-  title: "Pedidos Especiales | Producción | ERP",
+  title: "Fabricación Especial | Producción | ERP",
 };
 
 // Página de Pedidos especiales — módulo de manufactura

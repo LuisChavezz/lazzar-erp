@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { SearchInput } from "@/src/components/SearchInput";
 import { SelectListRow } from "@/src/components/SelectListRow";
+import { useDebounce } from "@/src/hooks/useDebounce";
 
 interface SearchableSelectListProps<T> {
   items: T[];
@@ -37,6 +38,17 @@ interface SearchableSelectListProps<T> {
    * elegir, igual que siempre.
    */
   getItemDisabledReason?: (item: T) => string | null;
+  /**
+   * OPCIONAL. Milisegundos que espera el filtrado tras la última tecla, para
+   * catálogos grandes (miles de ítems). Sin la prop filtra en cada tecla.
+   */
+  debounceMs?: number;
+  /**
+   * OPCIONAL. Máximo de filas que se pintan; el resto se ofrece buscando. Los
+   * seleccionados fijados (`pinSelected`) siempre se pintan. Sin la prop se
+   * pintan todas.
+   */
+  maxVisible?: number;
 }
 
 /**
@@ -59,11 +71,15 @@ export function SearchableSelectList<T>({
   noResultsMessage,
   pinSelected = false,
   getItemDisabledReason,
+  debounceMs = 0,
+  maxVisible,
 }: SearchableSelectListProps<T>) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, debounceMs);
+  const effectiveSearch = debounceMs > 0 ? debouncedSearch : search;
 
   const filteredItems = useMemo(() => {
-    const term = search.toLowerCase().trim();
+    const term = effectiveSearch.toLowerCase().trim();
     if (!pinSelected) {
       if (!term) return items;
       return items.filter((item) => filterPredicate(item, term));
@@ -71,7 +87,14 @@ export function SearchableSelectList<T>({
     const selected = items.filter((item) => isSelected(item));
     const rest = items.filter((item) => !isSelected(item));
     return [...selected, ...(term ? rest.filter((item) => filterPredicate(item, term)) : rest)];
-  }, [items, search, filterPredicate, pinSelected, isSelected]);
+  }, [items, effectiveSearch, filterPredicate, pinSelected, isSelected]);
+
+  const pinnedCount = pinSelected ? items.filter((item) => isSelected(item)).length : 0;
+  const visibleItems =
+    maxVisible !== undefined && filteredItems.length > maxVisible + pinnedCount
+      ? filteredItems.slice(0, maxVisible + pinnedCount)
+      : filteredItems;
+  const hiddenCount = filteredItems.length - visibleItems.length;
 
   return (
     <div className="flex flex-col gap-3">
@@ -83,7 +106,7 @@ export function SearchableSelectList<T>({
         ) : filteredItems.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">{noResultsMessage}</p>
         ) : (
-          filteredItems.map((item) => {
+          visibleItems.map((item) => {
             const selected = isSelected(item);
             return (
               <SelectListRow
@@ -97,6 +120,11 @@ export function SearchableSelectList<T>({
               </SelectListRow>
             );
           })
+        )}
+        {hiddenCount > 0 && (
+          <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-2">
+            Mostrando {visibleItems.length} de {filteredItems.length}. Escribe para encontrar el resto.
+          </p>
         )}
       </div>
     </div>

@@ -26,6 +26,38 @@ export interface SpecialOrderListItem {
   clasificacion: string | null;
   /** Datetime ISO con offset (medianoche local, p. ej. `…T00:00:00-06:00`) o `null`. */
   fecha_confirmacion: string | null;
+  /**
+   * Avance del alta de SKU, para leerlo sin entrar al detalle. Opcionales:
+   * pedidos al backend; sin ellos la columna "SKU" muestra "—".
+   *  - `tallas_total`: tallas con cantidad > 0 de las líneas de muestra.
+   *  - `tallas_con_sku`: de esas, las que ya tienen `sku_produccion`.
+   *  - `tallas_en_catalogo`: de esas, las que ya tienen `sku_catalogo`.
+   */
+  tallas_total?: number;
+  tallas_con_sku?: number;
+  tallas_en_catalogo?: number;
+  /**
+   * Lo que el ingeniero de producto necesita para priorizar. Opcionales:
+   * pedidos al backend; sin ellos su columna no se muestra.
+   */
+  /** Fecha compromiso de entrega (`YYYY-MM-DD`) o `null`. */
+  fecha_compromiso?: string | null;
+  /** Líneas de muestra (prendas) del pedido. */
+  prendas_total?: number;
+  /** Piezas de las tallas con cantidad > 0. */
+  piezas_total?: number;
+  /** Servicios que lleva alguna talla del pedido. */
+  servicios?: { bordado: boolean; reflejante: boolean; corte_manga: boolean };
+  /** OP activas ligadas al pedido (vacío si aún no hay). */
+  ordenes_produccion?: SpecialOrderOpRef[];
+}
+
+/** OP ligada a un pedido especial, para la columna "OP". */
+export interface SpecialOrderOpRef {
+  op_id: number;
+  folio_op: string;
+  estatus_op: number;
+  estatus_op_display: string;
 }
 
 /**
@@ -49,8 +81,29 @@ export type SpecialOrderBordadoConfig = {
 };
 
 /** Talla de una línea especial (`PedidoDetalleTallaEspecialSerializer`). Sin precios. */
+/** Programado contra realizado de un servicio, en piezas. */
+export interface SpecialOrderServiceProgress {
+  programado: number;
+  realizado: number;
+}
+
+/**
+ * Avance de producción de la talla. Cada servicio es `null` si la talla no lo
+ * lleva. En reflejante y corte de manga los avances se capturan por orden, así
+ * que el backend reparte `realizado` entre tallas en proporción a lo programado.
+ */
+export interface SpecialOrderTallaAvance {
+  /** Piezas surtidas por picking. */
+  surtido: number;
+  bordado: SpecialOrderServiceProgress | null;
+  reflejante: SpecialOrderServiceProgress | null;
+  corte_manga: SpecialOrderServiceProgress | null;
+}
+
 export interface SpecialOrderTalla {
   id: number;
+  /** Opcional: un backend anterior no lo trae. */
+  avance?: SpecialOrderTallaAvance;
   talla_nombre: string;
   cantidad: number;
   /**

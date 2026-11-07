@@ -1,5 +1,6 @@
 "use client";
 
+import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, FacturacionIcon, RefreshIcon, TrendingUpIcon, WarningFilledIcon } from "@/src/components/Icons";
@@ -62,9 +63,9 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
   const BackLink = (
     <Link
       href={back.href}
-      className="inline-flex items-center gap-2 text-slate-500 hover:text-sky-500 transition-colors px-4 py-2 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10"
+      className={BACK_BUTTON_CLASS}
     >
-      <ArrowLeftIcon className="w-4 h-4" />
+      <ArrowLeftIcon className={BACK_ARROW_CLASS} />
       <span className="text-sm font-medium">{back.label}</span>
     </Link>
   );

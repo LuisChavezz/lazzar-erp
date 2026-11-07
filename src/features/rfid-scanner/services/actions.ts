@@ -12,11 +12,10 @@ import type {
  * Sin params: los que acepta (`?epc=`) solo alimentan `debug_get`, que esta
  * pantalla no consume.
  *
- * El backend toma las 50 lecturas más recientes de TODA la tabla (`RfidScan`
- * no tiene empresa) y, para quien no es superusuario, DESCARTA las que no
- * cruzan con una etiqueta impresa de su empresa/sucursales. Así que un
- * no-superusuario puede recibir menos de 50 —o ninguna— aunque haya lecturas
- * en base; solo el superusuario ve el lote completo, coincidan o no.
+ * El backend devuelve las 50 lecturas más recientes, coincidan o no: las que
+ * no cruzan con una etiqueta impresa llegan con `match_impresion: false` (p.
+ * ej. tags ajenos `3035…`) en vez de descartarse (EC-786). Los EPC llegan en
+ * mayúsculas.
  */
 export const fetchRfidScans = async (): Promise<RfidScansResponse> => {
   const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/");

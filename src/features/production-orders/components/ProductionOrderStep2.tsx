@@ -10,12 +10,12 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import type { OpSkuOption } from "../utils/opSkuOptions";
 import type { CreateProductionOrderFormApi } from "@/src/features/production-orders/hooks/useCreateProductionOrderForm";
 
 interface ProductionOrderStep2Props {
-  /** Variantes seleccionadas en el Paso 1 — para titular cada tarjeta. */
-  selectedVariants: ProductVariant[];
+  /** SKU seleccionados en el Paso 1, en el mismo orden que el detalle. */
+  selectedSkus: OpSkuOption[];
   /** Instancia de TanStack Form (vive en el step manager). */
   form: CreateProductionOrderFormApi;
   /** El catálogo de unidades (que fija la unidad del detalle) aún carga. */
@@ -124,7 +124,7 @@ function BomMaterialsSection({
  * obtenida con {@link useBomBulk} — sólo lectura. El submit lo dispara `onConfirm`.
  */
 export function ProductionOrderStep2({
-  selectedVariants,
+  selectedSkus,
   form,
   isLoadingUnits,
   isUnidadPiezaMissing,
@@ -134,16 +134,11 @@ export function ProductionOrderStep2({
   onConfirm,
   isSubmitting,
 }: ProductionOrderStep2Props) {
-  // Mapa id → variante para titular cada tarjeta por su `producto_variante_id`.
-  const variantById = useMemo(() => {
-    const map = new Map<number, ProductVariant>();
-    selectedVariants.forEach((variant) => map.set(variant.id, variant));
-    return map;
-  }, [selectedVariants]);
-
+  // El BOM masivo solo cubre variantes de catálogo; el de una muestra lo
+  // resuelve el backend desde la variante de producción.
   const selectedVariantIds = useMemo(
-    () => selectedVariants.map((v) => v.id),
-    [selectedVariants],
+    () => selectedSkus.filter((s) => s.kind === "catalogo").map((s) => s.id),
+    [selectedSkus],
   );
 
   const { data: bomData, isLoading: isLoadingBom } =
@@ -192,10 +187,11 @@ export function ProductionOrderStep2({
         <form.Field name="orden_produccion_detalle" mode="array">
           {(arrayField) =>
             arrayField.state.value.map((item, index) => {
-              const variant = variantById.get(item.producto_variante_id);
+              // El detalle se sembró en el mismo orden que `selectedSkus`.
+              const sku = selectedSkus[index];
               return (
                 <div
-                  key={`${item.producto_variante_id}-${index}`}
+                  key={sku?.key ?? index}
                   className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-4"
                 >
                   {/* Encabezado de la variante (solo lectura) */}
@@ -204,12 +200,16 @@ export function ProductionOrderStep2({
                       {index + 1}
                     </span>
                     <h4 className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                      {variant?.nombre ??
-                        `Variante #${item.producto_variante_id}`}
+                      {sku?.nombre ?? `Variante #${item.producto_variante_id ?? item.variante_produccion_id}`}
                     </h4>
-                    {variant?.sku && (
+                    {sku?.sku && (
                       <span className="text-xs font-mono text-slate-400 dark:text-slate-500 truncate">
-                        {variant.sku}
+                        {sku.sku}
+                      </span>
+                    )}
+                    {sku?.kind === "produccion" && (
+                      <span className="shrink-0 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                        Muestra
                       </span>
                     )}
                   </div>
@@ -264,10 +264,16 @@ export function ProductionOrderStep2({
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       Materiales
                     </h5>
-                    <BomMaterialsSection
-                      bomItem={bomByVariantId.get(item.producto_variante_id)}
-                      isLoading={isLoadingBom}
-                    />
+                    {item.producto_variante_id === undefined ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Se toman de la lista de materiales de la muestra al crear la orden.
+                      </p>
+                    ) : (
+                      <BomMaterialsSection
+                        bomItem={bomByVariantId.get(item.producto_variante_id)}
+                        isLoading={isLoadingBom}
+                      />
+                    )}
                   </div>
                 </div>
               );

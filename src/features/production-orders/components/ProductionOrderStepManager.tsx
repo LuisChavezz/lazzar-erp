@@ -13,8 +13,6 @@
 
 import { useCallback, useState } from "react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
 import { useCreateProductionOrderForm } from "@/src/features/production-orders/hooks/useCreateProductionOrderForm";
 import {
   ProductionOrderStep1,
@@ -60,13 +58,6 @@ export function ProductionOrderStepManager({
   const [step1Data, setStep1Data] = useState<ProductionOrderStep1Data | null>(
     null,
   );
-  const [selectedVariants, setSelectedVariants] = useState<ProductVariant[]>(
-    [],
-  );
-
-  // Catálogo de variantes (con BOM) — ya cacheado por el Paso 1, así que no
-  // genera una petición adicional. Sirve para titular las tarjetas del Paso 2.
-  const { productVariants } = useProductVariants(true);
 
   // El form vive en el step manager: el Paso 2 sólo dispara su submit vía
   // `onConfirm`. La cabecera y el detalle capturados en el Paso 1 se inyectan
@@ -82,7 +73,7 @@ export function ProductionOrderStepManager({
   } = useCreateProductionOrderForm({
       prioridad: step1Data?.prioridad ?? 0,
       observaciones: step1Data?.observaciones ?? "",
-      selectedVariantIds: step1Data?.variantIds ?? [],
+      selectedSkus: step1Data?.skus ?? [],
       onSuccess,
     });
 
@@ -90,20 +81,17 @@ export function ProductionOrderStepManager({
   const handleProductsSelected = useCallback(
     (data: ProductionOrderStep1Data) => {
       setStep1Data(data);
-      setSelectedVariants(
-        productVariants.filter((variant) =>
-          data.variantIds.includes(variant.id),
-        ),
-      );
       form.setFieldValue("prioridad", data.prioridad);
       form.setFieldValue("observaciones", data.observaciones);
       // `undefined` (no `null`) sin pedido: el schema lo trata como ausente y la
       // clave no llega al body.
       form.setFieldValue("pedido", data.pedido?.id);
-      seedDetalle(data.variantIds);
+      // Interno = clave ausente.
+      form.setFieldValue("centro_confeccion", data.centroConfeccion ?? undefined);
+      seedDetalle(data.skus);
       setCurrentStep("configure-products");
     },
-    [form, productVariants, seedDetalle],
+    [form, seedDetalle],
   );
 
   return (
@@ -126,7 +114,7 @@ export function ProductionOrderStepManager({
 
         {currentStep === "configure-products" && step1Data && (
           <ProductionOrderStep2
-            selectedVariants={selectedVariants}
+            selectedSkus={step1Data.skus}
             form={form}
             isLoadingUnits={isLoadingUnits}
             isUnidadPiezaMissing={isUnidadPiezaMissing}

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { ListTabs } from "@/src/components/ListTabs";
+import { isClosedProductionOrderStatus } from "../constants/productionOrderStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -61,6 +63,13 @@ export function ProductionOrderList() {
   // pantalla completa" si nunca cargó. Mismo patrón que `PurchaseOrderReceiptList`.
   const showError = isInitialLoadError(isError, hasLoaded);
 
+  // "En curso" / "Terminadas" (completadas y canceladas), sin salir de la página.
+  const [vista, setVista] = useState<"curso" | "terminadas">("curso");
+  const all = data ?? [];
+  const terminadas = all.filter((row) => isClosedProductionOrderStatus(row.estatus_op));
+  const enCurso = all.filter((row) => !isClosedProductionOrderStatus(row.estatus_op));
+  const rows = vista === "terminadas" ? terminadas : enCurso;
+
   // Los indicadores tienen consulta propia que ninguna mutación de OP
   // invalida: el refresco de la tabla y el alta los refrescan también, para
   // que tarjetas y tabla no muestren cifras de momentos distintos. Aquí y no
@@ -77,10 +86,22 @@ export function ProductionOrderList() {
           `R-PRODUCCION-OP` (`routePermissions`), igual que `EmbroideryStats`. */}
       <ProductionOrderKpisSection />
 
+      <div className="flex flex-col gap-3">
+      <ListTabs
+        ariaLabel="Vista de órdenes de producción"
+        value={vista}
+        onChange={setVista}
+        isReady={hasLoaded}
+        tabs={[
+          { key: "curso", label: "En curso", count: enCurso.length },
+          { key: "terminadas", label: "Terminadas", count: terminadas.length },
+        ]}
+      />
       <DataTable
-        columns={withHeaderFilters(columns, data ?? [], PRODUCTION_ORDER_HEADER_FILTERS)}
-        data={data ?? []}
-        baseDataCount={data?.length ?? 0}
+        columns={withHeaderFilters(columns, rows, PRODUCTION_ORDER_HEADER_FILTERS)}
+        data={rows}
+        baseDataCount={rows.length}
+        paginationResetKey={vista}
         searchPlaceholder="Buscar..."
         isLoadingOverlay={isRefetching}
         onRefetch={() => Promise.all([refetch(), invalidateKpis()])}
@@ -103,6 +124,7 @@ export function ProductionOrderList() {
           ) : undefined
         }
       />
+      </div>
 
       <CreateProductionOrderDialog
         open={isCreateOpen}

@@ -8,7 +8,8 @@ import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { PEDIDO_LINK_VISIBLE_CLASS, PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { getWorkOrderProgressColumns, sumDetalles } from "@/src/features/work-order-avances/components/workOrderListColumns";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
   EMBROIDERY_STATUS_CONFIG,
@@ -82,15 +83,6 @@ const FolioCell = ({
  * `string | null`).
  */
 export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) => [
-  columnHelper.accessor("fecha_inicio", {
-    header: "Alta",
-    sortingFn: "datetime",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-200">
-        {formatShortDate(info.getValue())}
-      </span>
-    ),
-  }),
   // El folio es el menú de acciones de la fila (con ">") y lleva el estatus a
   // su lado: sin columnas aparte de "Estatus" ni "Acciones".
   columnHelper.accessor("folio_bordado", {
@@ -121,7 +113,47 @@ export const getEmbroideryOrderColumns = (onViewDetails: (id: number) => void) =
         pedidoId={info.row.original.pedido}
         folio={info.getValue()}
         from="embroidery"
+        tone="accent"
+        className={PEDIDO_LINK_VISIBLE_CLASS}
       />
+    ),
+  }),
+  // Centro de confección: el maquilero (proveedor) o "Interno".
+  columnHelper.accessor((row) => row.proveedor_nombre ?? "Interno", {
+    id: "centro_confeccion",
+    header: "Centro",
+    cell: ({ row }) =>
+      row.original.proveedor_nombre ? (
+        <span className="text-sm text-slate-700 dark:text-slate-200 line-clamp-2">
+          {row.original.proveedor_nombre}
+        </span>
+      ) : (
+        <span className="inline-flex rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+          Interno
+        </span>
+      ),
+  }),
+  // Fecha pedido, Vence, Cantidad y Avance (ver `getWorkOrderProgressColumns`).
+  ...getWorkOrderProgressColumns<EmbroideryOrder>({
+    fechaPedido: (row) => row.fecha_pedido,
+    fechaVence: (row) => row.fecha_vence,
+    piezas: (row) => sumDetalles(row.detalles),
+    // Bordado cuenta en `cantidad_bordada_total`.
+    resumen: (row) =>
+      row.resumen_avance && {
+        cantidad_programada: row.resumen_avance.cantidad_programada,
+        cantidad_realizada_total: row.resumen_avance.cantidad_bordada_total,
+        porcentaje_avance: row.resumen_avance.porcentaje_avance,
+      },
+    verbo: "bordadas",
+  }),
+  columnHelper.accessor("fecha_inicio", {
+    header: "Alta",
+    sortingFn: "datetime",
+    cell: (info) => (
+      <span className="text-sm text-slate-700 dark:text-slate-200">
+        {formatShortDate(info.getValue())}
+      </span>
     ),
   }),
   // Resumen de `detalles`: cuántos renglones y cuántas piezas suman. `cantidad`

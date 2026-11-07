@@ -1,3 +1,5 @@
+import type { WorkOrderResumenAvance } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
+import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
 
 /**
@@ -123,6 +125,16 @@ export interface ReflectiveOrderLine {
 export interface ReflectiveOrder {
   id: number;
   folio_reflejante: string;
+  /**
+   * Para la vista principal. Opcionales: pedidos al backend; sin ellos la
+   * celda muestra "—" (la cantidad cae a la suma de `detalles`).
+   */
+  /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). */
+  fecha_pedido?: string | null;
+  /** `fecha_compromiso` del pedido (`YYYY-MM-DD`). */
+  fecha_vence?: string | null;
+  /** Programado contra realizado de la orden. */
+  resumen_avance?: WorkOrderResumenAvance;
   estatus_reflejante: ReflectiveOrderStatus;
   /**
    * Etiqueta ya resuelta de `estatus_reflejante`, que el backend devuelve en el
@@ -235,6 +247,8 @@ export interface ReflectiveOrder {
  * criterio que `EmbroideryOrderDetailLine` con `foto`/`notas`.
  */
 export interface ReflectiveOrderDetailLine extends ReflectiveOrderLine {
+  /** SKU de la variante. Opcional: pedido al backend. */
+  sku?: string | null;
   /**
    * Piezas contratadas por el pedido en ESTA línea.
    *
@@ -327,7 +341,9 @@ export interface ReflectiveOrderSibling {
  * y de las órdenes hermanas, y además puede no existir (el enlace del 409 abre
  * por un id que quizá no está en la lista cargada).
  */
-export interface ReflectiveOrderDetail extends Omit<ReflectiveOrder, "detalles"> {
+export interface ReflectiveOrderDetail
+  extends Omit<ReflectiveOrder, "detalles">,
+    WorkOrderAvanceFields {
   detalles: ReflectiveOrderDetailLine[];
   /** Las demás OR activas del mismo pedido. Vacío si esta es la única. */
   otras_ordenes_del_pedido: ReflectiveOrderSibling[];

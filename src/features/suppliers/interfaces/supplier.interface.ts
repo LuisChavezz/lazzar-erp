@@ -22,6 +22,8 @@ export interface Supplier {
   sat_forma_pago: FormaPago["id_sat_forma_pago"];
   sat_metodo_pago: MetodoPago["id_sat_metodo_pago"];
   moneda: Currency["id"];
+  /** Confecciona órdenes de producción (centro de confección externo). */
+  es_maquilero?: boolean;
 }
 
 /**

@@ -85,6 +85,20 @@ export const updateSupplier = async (id: number, supplierData: SupplierUpdate): 
   return response.data;
 }
 
+/** Marca o desmarca al proveedor como maquilero (`PATCH`, solo ese campo). */
+export const setSupplierMaquilero = async (id: number, es_maquilero: boolean): Promise<Supplier> => {
+  const response = await v1_api.patch<Supplier>(`/terceros/proveedores/${id}/`, { es_maquilero });
+  return response.data;
+};
+
+/** Proveedores marcados como maquileros (centros de confección). */
+export const getMaquileros = async (): Promise<Supplier[]> => {
+  const response = await v1_api.get<Supplier[]>("/terceros/proveedores/", {
+    params: { es_maquilero: true },
+  });
+  return response.data;
+};
+
 export const deleteSupplier = async (id: number): Promise<void> => {
   await v1_api.delete(`/terceros/proveedores/${id}/`);
 }

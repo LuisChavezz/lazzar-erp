@@ -26,6 +26,8 @@ export const useDeleteAvance = (obId: number) => {
       // Se espera solo el detalle de la OB: su `resumen_avance` es el tope del
       // diálogo. El pedido, sin esperar (ver `invalidatePedidoProgress`).
       void invalidatePedidoProgress(queryClient);
+      // El backend actualiza el estatus con el avance: refresca también el listado.
+      void queryClient.invalidateQueries({ queryKey: ["embroidery-orders"] });
       return queryClient.invalidateQueries({
         queryKey: embroideryOrderDetailQueryKey(obId),
       });

@@ -177,6 +177,7 @@ export function EmbroideryAvancesHistory({
         title="Eliminar avance"
         description="¿Eliminar este registro de avance? Esta acción no se puede deshacer."
         confirmText="Eliminar"
+        confirmationWord="ELIMINAR"
         onConfirm={() => {
           // `avanceToDelete` está capturado del render con el diálogo abierto,
           // así que su id es válido aunque el cierre resetee el estado.

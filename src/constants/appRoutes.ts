@@ -502,6 +502,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       { key: "operation", label: "Operación" },
       { key: "inventory", label: "Inventario" },
       { key: "catalog", label: "Catálogo" },
+      { key: "analytics", label: "Indicadores" },
     ],
     items: [
       // ── Operación ───────────────────────────────────────────────────────────
@@ -542,7 +543,7 @@ export const appRouteGroups: AppRouteGroup[] = [
       },
       {
         key: "manufacturing-special-orders",
-        label: "Pedidos Especiales",
+        label: "Fabricación Especial",
         path: "/manufacturing/special-orders",
         icon: SpecialOrdersIcon,
         description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
@@ -586,6 +587,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Igual que Productos: cae en la regla de módulo `/manufacturing`.
         permission: "R-PRODUCCION",
         section: "catalog",
+      },
+      // ── Indicadores ─────────────────────────────────────────────────────────
+      {
+        // Antes era el landing del módulo; ahora `/manufacturing` muestra los
+        // accesos (como Mesa de Control) y el resumen vive aquí.
+        key: "manufacturing-dashboard",
+        label: "Dashboard",
+        path: "/manufacturing/dashboard",
+        icon: DashboardIcon,
+        description: "Resumen operativo de los procesos de producción y bordado.",
+        permission: "R-PRODUCCION",
+        section: "analytics",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
