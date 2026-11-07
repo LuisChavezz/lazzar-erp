@@ -61,7 +61,10 @@ export const routePermissions: Array<{
     ],
   },
 
-  // ── Panel de Control (Core) ───────────────────────────────────────────────
+  // ── Panel de Control ──────────────────────────────────────────────────────
+  // Cubre por prefijo las tres rutas de reporte (`/system/reports/existencias`,
+  // `/movimientos`, `/auxiliar`). `/system/reports` en sí redirige a `/system`
+  // (`next.config.ts`).
   { prefix: "/system/reports", permission: "R-CORE-REPORTES" },
   { prefix: "/system", permission: "R-CORE" },
 

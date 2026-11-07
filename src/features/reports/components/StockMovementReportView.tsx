@@ -1,10 +1,9 @@
 "use client";
 
-import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
-import { ArrowLeftIcon, DownloadIcon } from "@/src/components/Icons";
+import { DownloadIcon } from "@/src/components/Icons";
 import { StockMovementReportFilters } from "./StockMovementReportFilters";
 import { StockMovementReportSummary } from "./StockMovementReportSummary";
 import { stockMovementReportColumns } from "./StockMovementReportColumns";
@@ -17,20 +16,13 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
 const PAGE_SIZE = 100;
 
-interface StockMovementReportViewProps {
-  /** Vuelve al menú de reportes (reinicia `selectedReport` en la página). */
-  onBack: () => void;
-}
-
 /**
  * Flujo completo del Reporte de Movimientos: gate (tipo + rango de fechas,
  * almacén opcional) → resumen → tabla paginada en servidor → exportación PDF del
- * conjunto completo. Espejo estructural del flujo de existencias que vive en
- * `page.tsx`, extraído aquí como componente autónomo para (a) mantener el diff
- * de `page.tsx` mínimo y aditivo y (b) que el estado del gate se reinicie solo
- * al desmontar/volver a montar (volver al selector limpia todo sin trabajo extra).
+ * conjunto completo. Espejo estructural de `StockReportView`. Vive en su propia
+ * ruta (`/system/reports/movimientos`).
  */
-export function StockMovementReportView({ onBack }: StockMovementReportViewProps) {
+export function StockMovementReportView() {
   const [tipoMovimiento, setTipoMovimiento] =
     useState<StockMovementReportType | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
@@ -110,20 +102,10 @@ export function StockMovementReportView({ onBack }: StockMovementReportViewProps
 
   return (
     <div className="w-full space-y-8">
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className={BACK_BUTTON_CLASS}
-        >
-          <ArrowLeftIcon className={BACK_ARROW_CLASS} />
-          <span className="text-sm font-medium">Volver a reportes</span>
-        </button>
-        <p className="text-slate-500 dark:text-slate-400">
-          Reporte de movimientos por periodo. Selecciona un tipo de movimiento y
-          un rango de fechas para generarlo (el almacén es opcional).
-        </p>
-      </div>
+      <p className="text-slate-500 dark:text-slate-400">
+        Reporte de movimientos por periodo. Selecciona un tipo de movimiento y
+        un rango de fechas para generarlo (el almacén es opcional).
+      </p>
 
       <StockMovementReportFilters
         tipoMovimiento={tipoMovimiento}
