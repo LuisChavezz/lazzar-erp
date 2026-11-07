@@ -6,11 +6,16 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
+import { SatCancelMotiveSelect } from "@/src/components/SatCancelMotiveSelect";
+import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelInvoice } from "../hooks/useCancelInvoice";
 import {
   getInvoiceCancelCfdiNotice,
+  getInvoiceLockedSatCancelMotive,
+  INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
   isInvoiceCfdiCancellationRequested,
+  willInvoiceCancelReachSat,
 } from "../utils/invoiceCancellation";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
 import {
@@ -22,7 +27,8 @@ import {
  * Lo mínimo para cancelar y nombrar la factura y avisar de su CFDI; sirve
  * tanto la fila del listado como el retrieve (los dos traen los flags del
  * CFDI). Sin `cfdi_cancelado`, una timbrada muestra el aviso de "primero el
- * SAT".
+ * SAT". `cfdi_cancelacion_en_curso_desde` solo viene en el retrieve: desde el
+ * listado, un intento en curso lo detecta el precheck de `useCancelInvoice`.
  */
 export interface InvoiceCancelTarget {
   id: number;
@@ -30,6 +36,8 @@ export interface InvoiceCancelTarget {
   cfdi_uuid: string | null;
   cfdi_cancelado?: boolean;
   cfdi_cancelacion_solicitada?: boolean;
+  cfdi_cancelacion_motivo?: string | null;
+  cfdi_cancelacion_en_curso_desde?: string | null;
 }
 
 interface InvoiceCancelDialogProps {
@@ -54,9 +62,13 @@ interface InvoiceCancelDialogProps {
  * backend tal cual (además del toast).
  *
  * En una factura timbrada avisa que `cancelar/` cancela primero el CFDI ante
- * el SAT (motivo 02, fijo) o, si el SAT ya lo canceló, que solo falta la parte
- * del ERP (`getInvoiceCancelCfdiNotice`). La nota interna NO va al SAT: el
- * backend solo la agrega a `observaciones`. Si la factura se timbró después de
+ * el SAT o, si el SAT ya lo canceló, que solo falta la parte del ERP
+ * (`getInvoiceCancelCfdiNotice`). Cuando va a cancelar un CFDI vigente
+ * (`willInvoiceCancelReachSat`) pide el motivo SAT (`SatCancelMotiveSelect`,
+ * obligatorio y sin valor por defecto; fijo y bloqueado si ya hay una
+ * solicitud pendiente o un intento sin respuesta) y lo manda como
+ * `motivo_sat` (EC-808). La nota interna NO va al SAT: el backend solo la
+ * agrega a `observaciones`. Si la factura se timbró después de
  * abrir el diálogo (sin ese aviso), `useCancelInvoice` no hace el POST: el
  * formulario pasa a mostrar la factura fresca con el aviso del SAT y pide
  * confirmar de nuevo.
@@ -123,6 +135,9 @@ const STAMPED_SINCE_OPENED_MESSAGE =
 const REQUESTED_SINCE_OPENED_MESSAGE =
   "La cancelación del CFDI se solicitó después de abrir este diálogo. Revisa el aviso y confirma de nuevo.";
 
+/** Validación del selector al confirmar sin motivo. */
+const MOTIVO_SAT_REQUIRED_MESSAGE = "Elige el motivo de cancelación ante el SAT.";
+
 interface InvoiceCancelFormProps {
   /** La factura como estaba al abrir el diálogo. */
   target: InvoiceCancelTarget;
@@ -135,7 +150,12 @@ interface InvoiceCancelFormProps {
    * fallo, para mostrarlos dentro del diálogo.
    */
   onSubmit: (
-    variables: { motivo: string | undefined; shownStamped: boolean; shownRequested: boolean },
+    variables: {
+      motivo: string | undefined;
+      motivoSat: SatCancelMotive | null;
+      shownStamped: boolean;
+      shownRequested: boolean;
+    },
     callbacks: {
       onNeedsConfirmation: (invoice: InvoiceCancelTarget) => void;
       onError: (message: string) => void;
@@ -147,41 +167,54 @@ interface InvoiceCancelFormProps {
  * Contenido del diálogo; se monta nuevo en cada apertura (`key`), así que la
  * nota, el error y la factura mostrada arrancan desde el `target` de esa
  * apertura. `shown` es lo que el usuario ve: pasa a la factura fresca si se
- * timbró, o su cancelación quedó solicitada, después de abrir. El campo sigue llamándose `motivo` porque es el
- * nombre del backend.
+ * timbró, su cancelación quedó solicitada o su motivo SAT quedó fijo después
+ * de abrir. El campo de la nota sigue llamándose `motivo` porque es el nombre
+ * del backend; el motivo SAT es otro (`motivoSat`).
  */
 function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCancelFormProps) {
   const [shown, setShown] = useState(target);
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState<string | null>(null);
+  const [motivoSat, setMotivoSat] = useState<SatCancelMotive | null>(null);
+  const [motivoSatError, setMotivoSatError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [reconfirmNotice, setReconfirmNotice] = useState<string | null>(null);
   const cfdiNotice = getInvoiceCancelCfdiNotice(shown);
   const cancellationRequested = isInvoiceCfdiCancellationRequested(shown);
   const motivoId = `invoice-cancel-motivo-${shown.id}`;
   const motivoHelpId = `${motivoId}-help`;
+  const reachesSat = willInvoiceCancelReachSat(shown);
+  const lockedMotivoSat = getInvoiceLockedSatCancelMotive(shown);
+  const effectiveMotivoSat = lockedMotivoSat ?? motivoSat;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsed = CancelInvoiceFormSchema.safeParse({ motivo });
+    const missingMotivoSat = reachesSat && effectiveMotivoSat === null;
+    if (missingMotivoSat) setMotivoSatError(MOTIVO_SAT_REQUIRED_MESSAGE);
     if (!parsed.success) {
       setMotivoError(parsed.error.issues[0]?.message ?? "Motivo inválido");
-      return;
     }
+    if (!parsed.success || missingMotivoSat) return;
     setSubmitError(null);
     setReconfirmNotice(null);
     onSubmit(
       {
         motivo: parsed.data.motivo || undefined,
+        motivoSat: reachesSat ? effectiveMotivoSat : null,
         shownStamped: isInvoiceStamped(shown),
         shownRequested: cancellationRequested,
       },
       {
         onNeedsConfirmation: (fresh) => {
           setShown(fresh);
-          // Lo que cambió: si ya se mostraba timbrada, fue la solicitud.
+          // Lo que cambió: el timbrado, la solicitud o, si no, el motivo fijo.
           setReconfirmNotice(
-            isInvoiceStamped(shown) ? REQUESTED_SINCE_OPENED_MESSAGE : STAMPED_SINCE_OPENED_MESSAGE,
+            !isInvoiceStamped(shown)
+              ? STAMPED_SINCE_OPENED_MESSAGE
+              : !cancellationRequested && isInvoiceCfdiCancellationRequested(fresh)
+                ? REQUESTED_SINCE_OPENED_MESSAGE
+                : INVOICE_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
           );
         },
         onError: setSubmitError,
@@ -203,6 +236,19 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
         <p className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           {cfdiNotice}
         </p>
+      )}
+      {reachesSat && (
+        <SatCancelMotiveSelect
+          id={`invoice-cancel-motivo-sat-${shown.id}`}
+          value={motivoSat}
+          lockedMotive={lockedMotivoSat}
+          disabled={isPending}
+          error={motivoSatError}
+          onChange={(next) => {
+            setMotivoSat(next);
+            setMotivoSatError(null);
+          }}
+        />
       )}
       <FormTextarea
         id={motivoId}
