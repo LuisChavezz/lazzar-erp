@@ -2,14 +2,6 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
-import {
-  extractProcessCompatibilityMessage,
-  extractQuoteValidationIssues,
-  type QuoteValidationIssue,
-} from "@/src/features/quotes/utils/quoteValidationErrors";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
 import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
@@ -17,48 +9,12 @@ import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useSche
 import { programarPedido } from "../services/actions";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { invalidatePedidoProgress } from "./invalidatePedidoProgress";
-import {
-  extractPedidoNoProgramableMessage,
-  isMesaControlPermisoError,
-  PEDIDO_NO_PROGRAMABLE_KEYS,
-  PEDIDO_PROGRAMAR_PERMISO_MESSAGE,
-} from "../utils/pedidoProgramarErrors";
+import { parseProgramarPedidoError } from "../utils/pedidoProgramarErrors";
+import type { QuoteValidationIssue } from "@/src/features/quotes/utils/quoteValidationErrors";
 import type {
   PedidoProgramarPayload,
   PedidoProgramarResponse,
 } from "../interfaces/pedido-programacion.interface";
-
-/**
- * Claves de RECHAZO: motivos que no corresponden a ningún campo del formulario
- * y por eso van al toast. Mismo criterio que `useUpdatePedidoMesaControl`:
- *
- * - `detail`: `APIException` genéricos de DRF.
- * - `estatus` / `fecha_confirmacion`: el pedido está CANCELADO o sin confirmar
- *   (`PEDIDO_NO_PROGRAMABLE_KEYS`, EC-750). Solo desde una fila desactualizada.
- *
- * El 400 de `permiso` (`_require_mesa_control`, no un 403) no pasa por aquí:
- * `onError` lo traduce antes con `isMesaControlPermisoError`.
- *
- * Además `compatibilidad_proceso` (matriz prenda/proceso): una lista que se
- * muestra completa.
- */
-const REJECTION_KEYS = ["detail", ...PEDIDO_NO_PROGRAMABLE_KEYS] as const;
-
-const extractRejectionMessage = (data: unknown): string | undefined =>
-  extractProcessCompatibilityMessage(data) ?? firstRejectionMessage(data, REJECTION_KEYS);
-
-/**
- * Errores de campo del 400. Reusa `extractQuoteValidationIssues` (el mismo
- * normalizador que la edición de Mesa de Control): DRF anida los errores por
- * ruta y aquí las rutas ya coinciden con las del formulario —
- * `programaciones` (suma excedida) y `programaciones.N.destino` /
- * `programaciones.N.cantidad` / `programaciones.N.comentarios` (por renglón)—.
- * Acepta el mensaje como lista o como string suelto.
- */
-const extractProgramacionIssues = (data: unknown): QuoteValidationIssue[] =>
-  extractQuoteValidationIssues(data).filter(
-    (issue) => issue.path === "programaciones" || issue.path.startsWith("programaciones."),
-  );
 
 type ProgramarPedidoVariables = {
   pedidoId: number;
@@ -98,42 +54,12 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
       toast.success("Programación del pedido guardada");
     },
     onError: (error) => {
-      let message: string | undefined;
-      let hasFieldIssues = false;
-      if (error instanceof AxiosError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-        if (statusCode === 400 && data) {
-          const issues = extractProgramacionIssues(data);
-          if (issues.length > 0) {
-            hasFieldIssues = true;
-            onValidationError?.(issues);
-          }
-          message = isMesaControlPermisoError(error)
-            ? PEDIDO_PROGRAMAR_PERMISO_MESSAGE
-            : extractRejectionMessage(data);
-          // Pedido cancelado o sin confirmar: la fila de la lista estaba
-          // desactualizada. Se releen los listados para que deje de ofrecer
-          // "Programar" (EC-781).
-          if (extractPedidoNoProgramableMessage(error)) {
-            queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
-          }
-        }
-        // `get_object` acota por empresa: un pedido ajeno responde 404.
-        if (statusCode === 404) {
-          message = "El pedido no existe o no pertenece a tu empresa.";
-        }
-      }
-      /* Con errores de campo y sin rechazo, el detalle ya está marcado en el
-       * formulario: el toast solo lo anuncia. Sin este caso caería a
-       * `extractErrorMessage`, que devolvería "Request failed with status code
-       * 400". */
-      toast.error(
-        message ??
-          (hasFieldIssues
-            ? "Revisa la programación: hay errores marcados."
-            : extractErrorMessage(error, "No se pudo guardar la programación")),
-      );
+      const { issues, message, refreshOrders } = parseProgramarPedidoError(error);
+      if (issues.length > 0) onValidationError?.(issues);
+      // Pedido no programable: la fila de la lista estaba desactualizada. Se
+      // releen los listados para que deje de ofrecer "Programar" (EC-781).
+      if (refreshOrders) queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      toast.error(message);
     },
   });
 };
