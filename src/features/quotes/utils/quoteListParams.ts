@@ -42,8 +42,9 @@ export const QUOTE_ORDERING_FIELDS = [
  *
  * - `estatus` acepta uno o varios (CSV): el filtro del encabezado escribe uno,
  *   y una URL con varios (`?estatus=1,4`) sigue valiendo.
- * - Orden por defecto `-created_at` con `-id` de desempate: el mismo del
- *   backend sin `?ordering=` y el del tablero.
+ * - Orden por defecto: el del backend sin `?ordering=` (`-created_at` con los
+ *   nulos al final, luego `-id`), el mismo del tablero; no se envía. Al elegir
+ *   un orden se envía con `-id` de desempate.
  */
 export const quotesTable = defineServerTable({
   filters: {
@@ -55,6 +56,10 @@ export const quotesTable = defineServerTable({
     fields: QUOTE_ORDERING_FIELDS,
     default: "-created_at",
     tiebreaker: "-id",
+    // Sin orden elegido no se envía `ordering`: el del backend pone las
+    // cotizaciones sin `created_at` al final (como `tablero/` y su "cargar
+    // más"), y `?ordering=-created_at` las pondría primero.
+    omitDefault: true,
   },
 });
 
