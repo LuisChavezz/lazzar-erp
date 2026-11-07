@@ -10,6 +10,7 @@ import {
   isCobroRepCancellable,
 } from "../utils/cobroRepCancellation";
 import { cobroLabel } from "../utils/collection.utils";
+import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import { useCobroAction } from "./useCobroAction";
 
 /** Candado de la cancelación del REP, ÚNICO por cobro (ver `useCancelCobroRep`). */
@@ -22,7 +23,8 @@ export const cancelCobroRepMutationKey = (cobroId: number) => ["cancel-cobro-rep
  *   se hizo el POST.
  * - `requested`: el SAT dejó la cancelación pendiente de que el receptor la
  *   acepte (`cancelacion_pendiente`). No es un éxito, pero tampoco un fallo: el
- *   REP sigue vigente, el backend no guardó nada y `message` es su texto tal cual.
+ *   REP sigue vigente, el backend guardó `rep_cancelacion_solicitada` y el
+ *   motivo (que queda fijo para el reintento) y `message` es su texto tal cual.
  */
 export type CancelCobroRepResult =
   | { outcome: "cancelled"; cobro: Cobro }
@@ -36,6 +38,10 @@ export type CancelCobroRepResult =
  *
  * - Antes del POST pide el retrieve FRESCO: si ya no tiene un REP cancelable
  *   (`isCobroRepCancellable`), NO hace el POST.
+ * - Manda el motivo SAT del diálogo (`motivo_sat`, EC-808): obligatorio en el
+ *   disparador (`cancelRep({ variables: { motivoSat }, ... })`). Si el motivo
+ *   quedó fijo en otro después de abrir el diálogo, el backend responde 400
+ *   `motivo_sat` con el motivo fijo, que se muestra tal cual.
  * - Al TERMINAR, con cualquier resultado, relee `["cobros"]`: es la única caché
  *   que pinta el REP (detalle y columna del listado de cobros, y la sección
  *   "Cobros" del detalle de CxC, que lee el mismo listado). Cancelar el REP no
@@ -44,13 +50,16 @@ export type CancelCobroRepResult =
 export const useCancelCobroRep = (cobroId: number) => {
   const queryClient = useQueryClient();
 
-  const { trigger: cancelRep, isRunning: isCancellingRep, isIdle } = useCobroAction<CancelCobroRepResult>({
+  const { trigger: cancelRep, isRunning: isCancellingRep, isIdle } = useCobroAction<
+    CancelCobroRepResult,
+    { motivoSat: SatCancelMotive }
+  >({
     mutationKey: cancelCobroRepMutationKey(cobroId),
     cobroId,
-    run: async (current) => {
+    run: async (current, { motivoSat }) => {
       if (!isCobroRepCancellable(current)) return { outcome: "not-cancellable", cobro: current };
       try {
-        return { outcome: "cancelled", cobro: await cancelCobroRep(cobroId) };
+        return { outcome: "cancelled", cobro: await cancelCobroRep({ id: cobroId, motivoSat }) };
       } catch (error) {
         const message = cancelacionPendienteMessage(error);
         if (message) return { outcome: "requested", cobro: current, message };

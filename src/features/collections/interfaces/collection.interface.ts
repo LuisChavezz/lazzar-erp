@@ -108,6 +108,18 @@ export interface Cobro {
   rep_pendiente: boolean;
   /** `true` mientras la cancelación del REP espera la aceptación del receptor. */
   rep_cancelacion_solicitada: boolean;
+  /**
+   * Motivo SAT ("02" | "03") de la última solicitud de cancelación del REP
+   * (EC-806); `null` si nunca se pidió. Fijo mientras está solicitada o hay un
+   * intento en curso (`getCobroRepLockedSatCancelMotive`).
+   */
+  rep_cancelacion_motivo: string | null;
+  /**
+   * Reserva de la cancelación del REP ante el SAT (EC-806): fijada antes de
+   * llamar a Facturama, limpia con una respuesta definitiva; sin respuesta se
+   * queda y el motivo sigue fijo.
+   */
+  rep_cancelacion_en_curso_desde: string | null;
   /** UUID del REP ya cancelado ante el SAT (trazabilidad); null si no hay. */
   rep_cancelado_uuid: string | null;
   /** Datetime de la cancelación del REP ante el SAT. */
