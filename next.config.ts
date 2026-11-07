@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
         destination: "/wms/shipping",
         permanent: true,
       },
+      // El menú de reportes se volvió el landing del módulo (cada reporte
+      // tiene su ruta). No permanente: un 308 queda en la caché del navegador
+      // y `/system/reports` podría volver a ser una página.
+      {
+        source: "/system/reports",
+        destination: "/system",
+        permanent: false,
+      },
     ];
   },
   images: {

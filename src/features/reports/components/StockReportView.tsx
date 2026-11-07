@@ -1,16 +1,12 @@
 "use client";
 
-import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
-import { ArrowLeftIcon, DownloadIcon } from "@/src/components/Icons";
-import { ReportSelector, type ReportId } from "@/src/features/reports/components/ReportSelector";
-import { StockMovementReportView } from "@/src/features/reports/components/StockMovementReportView";
-import { MovementLedgerView } from "@/src/features/reports/components/MovementLedgerView";
-import { StockReportFilters } from "@/src/features/reports/components/StockReportFilters";
-import { StockReportSummary } from "@/src/features/reports/components/StockReportSummary";
-import { stockReportColumns } from "@/src/features/reports/components/StockReportColumns";
+import { DownloadIcon } from "@/src/components/Icons";
+import { StockReportFilters } from "./StockReportFilters";
+import { StockReportSummary } from "./StockReportSummary";
+import { stockReportColumns } from "./StockReportColumns";
 import { useStockReport } from "@/src/features/stock/hooks/useStockReport";
 import { useExportStockReportPdf } from "@/src/features/stock/hooks/useExportStockReportPdf";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -19,20 +15,18 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
 const PAGE_SIZE = 100;
 
-export default function ReportsPage() {
+/**
+ * Reporte de existencias por periodo: gate (almacén + rango de fechas) →
+ * resumen → tabla paginada en servidor → exportación PDF del conjunto
+ * completo. Vive en su propia ruta (`/system/reports/existencias`).
+ */
+export function StockReportView() {
   const [almacenId, setAlmacenId] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   // `page` se reinicia a 1 al cambiar de almacén o de rango: un contexto de
   // consulta nuevo no debe reanudar en una página vieja.
   const [page, setPage] = useState(1);
-
-  // Navegación de sub-vista por estado local (Opción A), como el flujo
-  // "elegir → entrar → volver" de `ConfigContent` (que también usa estado, no
-  // URL). Con `null` se muestra el menú de reportes; al elegir uno se entra a su
-  // flujo. "movimientos" y "auxiliar" tienen su propia vista; el flujo que
-  // sigue en esta página es el de "existencias".
-  const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
 
   const gateComplete =
     almacenId !== null && fechaInicio !== null && fechaFinal !== null;
@@ -77,17 +71,6 @@ export default function ReportsPage() {
     setPage(1);
   };
 
-  // Volver al menú de reportes: reinicia el gate para que reentrar empiece
-  // limpio (en el gate, no a mitad de una consulta). Con el almacén en `null`,
-  // `gateComplete` es false y `useStockReport` queda deshabilitado.
-  const handleBackToSelector = () => {
-    setSelectedReport(null);
-    setAlmacenId(null);
-    setFechaInicio(null);
-    setFechaFinal(null);
-    setPage(1);
-  };
-
   // Exportación a PDF del reporte COMPLETO (todas las páginas del periodo), no
   // la página visible. Usa el contexto de filtros actual, no `data.results`.
   const { mutate: exportPdf, isPending: isExporting } = useExportStockReportPdf();
@@ -102,51 +85,12 @@ export default function ReportsPage() {
     });
   };
 
-  // Menú de reportes (Opción A): antes de cualquier flujo, se elige el reporte.
-  // El early-return va DESPUÉS de todos los hooks (Reglas de Hooks intactas); con
-  // el gate incompleto, `useStockReport` ya está deshabilitado, así que el menú
-  // no dispara ninguna consulta.
-  if (selectedReport === null) {
-    return (
-      <div className="w-full space-y-8">
-        <div>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Selecciona un reporte para consultarlo.
-          </p>
-        </div>
-        <ReportSelector onSelectReport={setSelectedReport} />
-      </div>
-    );
-  }
-
-  // ── Flujo del Reporte de Movimientos ────────────────────────────────────────
-  // Vista autónoma con su propio estado (tipo/almacén/fechas/página).
-  if (selectedReport === "movimientos") {
-    return <StockMovementReportView onBack={handleBackToSelector} />;
-  }
-
-  // ── Flujo del Auxiliar de movimientos (kardex de un SKU) ────────────────────
-  if (selectedReport === "auxiliar") {
-    return <MovementLedgerView onBack={handleBackToSelector} />;
-  }
-
-  // ── Flujo del Reporte de Existencias (idéntico al previo, ahora tras el menú) ─
   return (
     <div className="w-full space-y-8">
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={handleBackToSelector}
-          className={BACK_BUTTON_CLASS}
-        >
-          <ArrowLeftIcon className={BACK_ARROW_CLASS} />
-          <span className="text-sm font-medium">Volver a reportes</span>
-        </button>
-        <p className="text-slate-500 dark:text-slate-400">
-          Reporte de existencias por periodo. Selecciona un almacén y un rango
-          de fechas para generarlo.
-        </p>
-      </div>
+      <p className="text-slate-500 dark:text-slate-400">
+        Reporte de existencias por periodo. Selecciona un almacén y un rango
+        de fechas para generarlo.
+      </p>
 
       <StockReportFilters
         almacenId={almacenId}

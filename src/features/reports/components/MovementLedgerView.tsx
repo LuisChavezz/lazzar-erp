@@ -1,11 +1,9 @@
 "use client";
 
-import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Button } from "@/src/components/Button";
 import { DataTable } from "@/src/components/DataTable";
-import { ArrowLeftIcon } from "@/src/components/Icons";
 import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger";
 import {
   isResolvedMovementLedger,
@@ -20,11 +18,6 @@ import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
 import { getMovementLedgerColumns } from "./MovementLedgerColumns";
-
-interface MovementLedgerViewProps {
-  /** Vuelve al menú de reportes. */
-  onBack: () => void;
-}
 
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
 type MovementLedgerField = "q" | "almacen" | "fecha_inicio" | "fecha_final";
@@ -57,7 +50,7 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerRejectedParam): strin
  * página. Sus filas y los totales solo se muestran con un kardex vigente de los
  * filtros elegidos.
  */
-export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
+export function MovementLedgerView() {
   const [target, setTarget] = useState<MovementLedgerTarget | null>(null);
   const [searchedText, setSearchedText] = useState("");
   // Variante que resolvió la búsqueda por `q` vigente. Se recuerda aparte de
@@ -158,21 +151,11 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
 
   return (
     <div className="w-full space-y-8">
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className={BACK_BUTTON_CLASS}
-        >
-          <ArrowLeftIcon className={BACK_ARROW_CLASS} />
-          <span className="text-sm font-medium">Volver a reportes</span>
-        </button>
-        <p className="text-slate-500 dark:text-slate-400">
-          Auxiliar de movimientos (kardex) de un SKU. Busca por SKU, SKU de
-          producción o descripción; el almacén y el rango de fechas son
-          opcionales.
-        </p>
-      </div>
+      <p className="text-slate-500 dark:text-slate-400">
+        Auxiliar de movimientos (kardex) de un SKU. Busca por SKU, SKU de
+        producción o descripción; el almacén y el rango de fechas son
+        opcionales.
+      </p>
 
       <MovementLedgerFilters
         initialSearch={searchedText}
