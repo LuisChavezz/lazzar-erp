@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { StampConfirmDialog } from "@/src/components/StampConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useCancelCancelledInvoiceCfdi } from "../hooks/useCancelCancelledInvoiceCfdi";
@@ -23,6 +24,10 @@ interface CancelledInvoiceCfdiCancelDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Aviso cuando el precheck encontró la cancelación solicitada después de abrir el diálogo. */
+const REQUESTED_SINCE_OPENED_MESSAGE =
+  "La cancelación del CFDI se solicitó después de abrir este diálogo. Revisa el aviso y confirma de nuevo.";
+
 /**
  * Confirmación de "Cancelar CFDI ante el SAT" para una factura que YA está
  * `Cancelada` en el ERP y cuyo CFDI sigue vigente (EC-764). Distinto de
@@ -33,7 +38,9 @@ interface CancelledInvoiceCfdiCancelDialogProps {
  * celda. Usa la confirmación del timbrado (`StampConfirmDialog`): no se cierra
  * a media petición y se cierra al TERMINAR con cualquier resultado. El
  * toast dice qué pasó y, ante una falla de red o de Facturama, el refetch
- * muestra el estado real del CFDI antes de reintentar.
+ * muestra el estado real del CFDI antes de reintentar. Si la cancelación quedó
+ * solicitada después de abrirlo, el hook no hace el POST: el diálogo sigue
+ * abierto con la factura fresca, su aviso y una nota, y pide confirmar de nuevo.
  */
 export function CancelledInvoiceCfdiCancelDialog({
   invoice,
@@ -41,13 +48,20 @@ export function CancelledInvoiceCfdiCancelDialog({
   onOpenChange,
 }: CancelledInvoiceCfdiCancelDialogProps) {
   const session = useDialogSession(open, invoice);
-  const target = session.snapshot;
+  // Factura fresca de ESTA apertura cuando hubo que reconfirmar (`needs-confirmation`).
+  const [fresh, setFresh] = useState<{
+    sessionId: number;
+    invoice: CancelledInvoiceCfdiCancelTarget;
+  } | null>(null);
+  const reconfirm = fresh !== null && fresh.sessionId === session.id;
+  const target = reconfirm ? fresh.invoice : session.snapshot;
   const invoiceLabel = target ? target.folio || `#${target.id}` : "";
   const requested = target ? isInvoiceCfdiCancellationRequested(target) : false;
 
   const { cancelCfdi, isCancelling, isIdle } = useCancelCancelledInvoiceCfdi(target?.id ?? 0);
 
   const description =
+    (reconfirm ? `${REQUESTED_SINCE_OPENED_MESSAGE} ` : "") +
     `La factura ${invoiceLabel} ya está cancelada en el ERP, pero su CFDI sigue vigente ante el SAT. ` +
     "Se cancelará solo el CFDI ante el SAT, con motivo 02 (comprobante emitido con errores sin relación). " +
     "En el ERP no cambia nada más: ni el estatus de la factura, ni su cuenta por cobrar, ni el inventario, ni las pólizas." +
@@ -66,7 +80,14 @@ export function CancelledInvoiceCfdiCancelDialog({
       isIdle={isIdle}
       onConfirm={() => {
         if (!target) return;
-        cancelCfdi({ onSettled: () => onOpenChange(false) });
+        const sessionId = session.id;
+        cancelCfdi(
+          { shownRequested: requested },
+          {
+            onDone: () => onOpenChange(false),
+            onNeedsConfirmation: (invoice) => setFresh({ sessionId, invoice }),
+          },
+        );
       }}
     />
   );
