@@ -35,7 +35,11 @@ import {
   getSinSucursalMessage,
   WORKSPACE_BRANCH_LOADING_MESSAGE,
 } from "../../workspace/utils/workspaceBranchMessages";
-import { QUOTE_SUCURSAL_DOCUMENT, resolveQuoteSucursal } from "../utils/quoteSucursal";
+import {
+  isQuoteSucursalMissing,
+  QUOTE_SUCURSAL_DOCUMENT,
+  resolveQuoteSucursal,
+} from "../utils/quoteSucursal";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
@@ -1178,6 +1182,14 @@ export function useQuoteEditForm(quoteId: number) {
     /* Empresa bajo la que se guarda la cotización: acota las categorías que
      * ofrece el alta de muestras (QuoteEditForm la pasa a QuoteFormContent). */
     quoteCompanyId: quoteData?.empresa,
+    // Registro sin sucursal y workspace sin una válida: el guardado se bloquea
+    // (`onSubmit`) y el wrapper lo avisa desde el principio.
+    isSucursalMissing:
+      Boolean(quoteData) &&
+      isQuoteSucursalMissing(quoteData?.sucursal, {
+        branchId: workspaceBranchId,
+        isLoading: isWorkspaceBranchLoading,
+      }),
     isQuoteRetrying: isQuoteFetching,
     retryQuoteLoad: refetchQuote,
     /* Solo de lectura, para el badge de la cabecera (QuoteEditForm). No entra
