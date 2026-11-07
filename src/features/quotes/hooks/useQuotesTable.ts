@@ -4,7 +4,7 @@ import { useServerTable } from "@/src/hooks/useServerTable";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
 import { getQuoteFilterOptions, getQuotesPage } from "../services/actions";
-import { QUOTE_FILTER_OPTIONS_QUERY_KEY, QUOTES_TABLE_QUERY_KEY } from "../constants/quotesQueryKeys";
+import { QUOTE_FILTER_OPTIONS_QUERY_KEY, QUOTES_QUERY_KEY } from "../constants/quotesQueryKeys";
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteListResponse } from "../interfaces/quote-list.interface";
 import { quotesTable } from "../utils/quoteListParams";
@@ -26,7 +26,8 @@ const quotesAdapter = limitOffsetAdapter<Quote>();
 export const useQuotesTable = () =>
   useServerTable<typeof quotesTable.filters, QuoteListResponse, Quote>({
     definition: quotesTable,
-    queryKey: QUOTES_TABLE_QUERY_KEY,
+    // `useServerTable` le agrega `"list"` y los parámetros de la página.
+    queryKey: QUOTES_QUERY_KEY,
     queryFn: getQuotesPage,
     adapter: quotesAdapter,
     toastId: "quotes-table-refetch-error",

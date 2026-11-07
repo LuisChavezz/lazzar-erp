@@ -1,3 +1,4 @@
+import { toLocalDateKey } from "@/src/utils/formatDate";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import {
   csvEnumParam,
@@ -63,13 +64,6 @@ export const quotesTable = defineServerTable({
   },
 });
 
-/** `yyyy-mm-dd` del día LOCAL de `date` (no el de UTC). */
-const toLocalIsoDate = (date: Date): string => {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-};
-
 /** Días que abarca el indicador "Cotizaciones · 30 días", hoy incluido. */
 export const QUOTE_RECENT_DAYS = 30;
 
@@ -80,5 +74,5 @@ export const QUOTE_RECENT_DAYS = 30;
  */
 export const getRecentQuotesRange = (now: Date): { fecha_desde: string; fecha_hasta: string } => {
   const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (QUOTE_RECENT_DAYS - 1));
-  return { fecha_desde: toLocalIsoDate(from), fecha_hasta: toLocalIsoDate(now) };
+  return { fecha_desde: toLocalDateKey(from), fecha_hasta: toLocalDateKey(now) };
 };

@@ -52,9 +52,3 @@ export const getQuoteAmountsExcludingRejected = (kpis: QuoteKpis): QuoteCurrency
     })),
   );
 };
-
-/** Cotizaciones que entran en el importe (todas menos las rechazadas). */
-export const getQuoteCountExcludingRejected = (kpis: QuoteKpis): number =>
-  kpis.por_estatus
-    .filter((block) => block.estatus !== REJECTED_QUOTE_STATUS)
-    .reduce((sum, block) => sum + block.total, 0);

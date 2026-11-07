@@ -58,7 +58,7 @@ export function QuoteKanbanColumn({
   const pageSlice = rows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   // La página pide filas que aún no están cargadas.
   const isPageIncomplete =
-    pageSlice.length < PAGE_SIZE && rows.length < total && currentPage * PAGE_SIZE + pageSlice.length < total;
+    pageSlice.length < PAGE_SIZE && currentPage * PAGE_SIZE + pageSlice.length < total;
 
   const hasPagination = total > PAGE_SIZE;
 

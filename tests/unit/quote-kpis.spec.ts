@@ -3,7 +3,6 @@ import type { QuoteKpis } from "@/src/features/quotes/interfaces/quote-list.inte
 import {
   getPendingAuthorizationCount,
   getQuoteAmountsExcludingRejected,
-  getQuoteCountExcludingRejected,
 } from "@/src/features/quotes/utils/quoteKpis";
 
 /**
@@ -55,7 +54,6 @@ test("importe por moneda sin las rechazadas, en centavos y con sin moneda al fin
     { moneda: "USD", monto: 10, cotizaciones: 1 },
     { moneda: null, monto: 5, cotizaciones: 1 },
   ]);
-  expect(getQuoteCountExcludingRejected(kpis)).toBe(5);
 });
 
 test("sin cotizaciones no hay monedas", () => {
