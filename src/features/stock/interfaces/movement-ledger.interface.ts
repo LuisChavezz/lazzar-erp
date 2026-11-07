@@ -89,8 +89,8 @@ export interface MovementLedgerResolved {
   /** Totales y saldos de TODO el rango, aunque `results` venga recortado. */
   resumen: MovementLedgerSummary;
   /**
-   * `results` trae solo los `MOVEMENT_LEDGER_MAX_ROWS` renglones más recientes
-   * del rango (los últimos de la lista cronológica): hubo más.
+   * `results` trae solo los renglones más recientes del periodo (los últimos de
+   * la lista cronológica; 500 salvo que se mande `limite`): hubo más.
    */
   results_truncado: boolean;
   results: MovementLedgerRow[];
@@ -114,12 +114,6 @@ export type MovementLedgerResponse = MovementLedgerResolved | MovementLedgerOpti
  * si hay más coincidencias lo dice `hay_mas`, no el largo de `opciones`.
  */
 export const MOVEMENT_LEDGER_MAX_OPTIONS = 20;
-
-/**
- * Renglones que el backend devuelve por omisión (`LIMITE_RENGLONES`). Solo para
- * el aviso: si hubo recorte lo dice `results_truncado`.
- */
-export const MOVEMENT_LEDGER_MAX_ROWS = 500;
 
 /** Se manda `q` o `producto_variante` (si van los dos, el backend ignora `q`). */
 export type MovementLedgerTarget =
