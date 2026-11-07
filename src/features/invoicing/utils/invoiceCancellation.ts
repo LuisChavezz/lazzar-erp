@@ -119,13 +119,82 @@ export const INVOICE_CFDI_CANCELLED_ERP_PENDING_MESSAGE =
 /**
  * Estado del CFDI en la cabecera de una factura `Cancelada` con `cfdi_uuid` y
  * SIN `cfdi_cancelado` (p. ej. cancelada antes de que `cancelar/` cancelara el
- * CFDI ante el SAT): el CFDI sigue vigente y el ERP no ofrece cómo cancelarlo.
+ * CFDI ante el SAT): el CFDI sigue vigente. Se cancela con "Cancelar CFDI ante
+ * el SAT" (`canCancelCancelledInvoiceCfdi`).
  */
 export const INVOICE_CFDI_VALID_LABEL = "Vigente ante el SAT";
 
 /** Nota de la cabecera para ese caso. */
 export const INVOICE_CFDI_VALID_AFTER_ERP_CANCEL_MESSAGE =
   "La factura se canceló en el ERP, pero su CFDI no se canceló ante el SAT.";
+
+// ── CFDI vigente de una factura ya Cancelada (EC-764) ────────────────────────
+
+/** Etiqueta de la acción en el menú del listado y en la cabecera del detalle. */
+export const CANCEL_CANCELLED_INVOICE_CFDI_LABEL = "Cancelar CFDI ante el SAT";
+
+/**
+ * ¿Se ofrece cancelar ante el SAT el CFDI de una factura que YA está
+ * `Cancelada` en el ERP? Solo si está activa, tiene `cfdi_uuid`, el CFDI no
+ * está cancelado y no hay un timbrado sin confirmar. Incluye la cancelación ya
+ * solicitada (`cfdi_cancelacion_solicitada`): volver a pedirla consulta al SAT
+ * si el receptor ya la aceptó.
+ *
+ * Para esa factura, `cancelar/` solo cancela el CFDI y regresa antes de tocar
+ * el ERP: no cambia estatus, CxC, inventario ni póliza, y descarta el
+ * `motivo`. Los flags desconocidos (`undefined`) cuentan como NO elegibles:
+ * ante la duda no se ofrece una acción irreversible. Nunca coincide con
+ * `isInvoiceCancellable` (Borrador o Emitida), así que las dos acciones no
+ * aparecen juntas.
+ */
+export const isCancelledInvoiceCfdiCancellable = (invoice: {
+  activo?: boolean;
+  estatus: InvoiceEstatus | string;
+  cfdi_uuid?: string | null;
+  cfdi_cancelado?: boolean;
+  cfdi_pendiente?: boolean;
+}): boolean =>
+  invoice.activo === true &&
+  invoice.estatus === INVOICE_STATUS.CANCELADA &&
+  isInvoiceStamped(invoice) &&
+  invoice.cfdi_cancelado === false &&
+  invoice.cfdi_pendiente === false;
+
+/** `isCancelledInvoiceCfdiCancellable` + permiso (`FINANCE_WRITE_PERMISSION`). */
+export const canCancelCancelledInvoiceCfdi = (
+  invoice: Parameters<typeof isCancelledInvoiceCfdiCancellable>[0],
+  user: PermissionContext | null | undefined,
+): boolean =>
+  hasPermission(FINANCE_WRITE_PERMISSION, user) && isCancelledInvoiceCfdiCancellable(invoice);
+
+/**
+ * Por qué el retrieve fresco ya no deja cancelar el CFDI de esa factura (el
+ * precheck de `useCancelCancelledInvoiceCfdi` no hace el POST).
+ */
+export const cancelledInvoiceCfdiNotCancellableMessage = (invoice: {
+  id: number;
+  folio: string | null;
+  activo?: boolean;
+  estatus: InvoiceEstatus | string;
+  cfdi_uuid?: string | null;
+  cfdi_cancelado?: boolean;
+  cfdi_pendiente?: boolean;
+}): string => {
+  const label = invoice.folio || `#${invoice.id}`;
+  if (isInvoiceCfdiCancelled(invoice)) {
+    return `El CFDI de la factura ${label} ya estaba cancelado ante el SAT.`;
+  }
+  if (invoice.cfdi_pendiente === true) return INVOICE_CANCEL_BLOCKED_BY_PENDING_STAMP_MESSAGE;
+  if (invoice.activo !== true) {
+    return `La factura ${label} fue eliminada; su CFDI ya no puede cancelarse desde el ERP.`;
+  }
+  if (!isInvoiceStamped(invoice)) return `La factura ${label} no tiene un CFDI timbrado.`;
+  return `La factura ${label} ya no está cancelada en el ERP; recarga para ver su estado.`;
+};
+
+/** Aviso del diálogo con la cancelación ya solicitada: confirmar vuelve a consultar al SAT. */
+export const CANCELLED_INVOICE_CFDI_ALREADY_REQUESTED_MESSAGE =
+  "La cancelación del CFDI ya se solicitó y está pendiente de que el receptor la acepte. Si confirmas, se volverá a consultar al SAT si ya la aceptó.";
 
 /**
  * Mensaje de un fallo de `cancelar/`. El backend pone el motivo bajo `cfdi`
