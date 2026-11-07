@@ -12,6 +12,7 @@ import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
 import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { capitalize } from "@/src/utils/capitalize";
 
@@ -59,9 +60,13 @@ export const RecentQuotes = () => {
   // Ya vienen ordenadas y recortadas por el backend (`?limit=3`, orden por
   // defecto: más reciente primero).
   const { quotes: recentQuotes, isLoading, isInitialError: isErrorQuotes } = useRecentQuotes();
-  const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
-
-  const selectedQuote = recentQuotes.find((quote) => quote.id === selectedQuoteId) ?? null;
+  // La cotización elegida se guarda COMPLETA, no por id: la lista solo trae
+  // las 3 más recientes, y un refetch (otra cotización creada) la sacaría de
+  // ahí con el diálogo abierto. `useDialogSession` conserva la copia de la
+  // apertura mientras el diálogo anima su cierre.
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const dialogSession = useDialogSession(selectedQuote !== null, selectedQuote);
+  const dialogQuote = dialogSession.snapshot;
 
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full min-h-88">
@@ -106,7 +111,7 @@ export const RecentQuotes = () => {
               <button
                 key={quote.id}
                 type="button"
-                onClick={() => setSelectedQuoteId(quote.id)}
+                onClick={() => setSelectedQuote(quote)}
                 className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer group text-left"
               >
                 <div className="flex items-center gap-3">
@@ -132,24 +137,25 @@ export const RecentQuotes = () => {
             );
           })}
       </div>
-      {selectedQuote ? (
+      {dialogQuote ? (
         <MainDialog
-          open={selectedQuoteId !== null}
+          key={dialogSession.id}
+          open={selectedQuote !== null}
           onOpenChange={(open) => {
             if (!open) {
-              setSelectedQuoteId(null);
+              setSelectedQuote(null);
             }
           }}
           maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
-              title={`Detalles de la cotización #${selectedQuote.id}`}
-              subtitle={selectedQuote.cliente_nombre || selectedQuote.cliente_razon_social || "Sin cliente"}
-              statusColor={getQuoteDialogStatusColor(selectedQuote.estatus)}
+              title={`Detalles de la cotización #${dialogQuote.id}`}
+              subtitle={dialogQuote.cliente_nombre || dialogQuote.cliente_razon_social || "Sin cliente"}
+              statusColor={getQuoteDialogStatusColor(dialogQuote.estatus)}
             />
           }
         >
-          <LazyQuoteDetails quoteId={selectedQuote.id} source="cotizaciones" />
+          <LazyQuoteDetails quoteId={dialogQuote.id} source="cotizaciones" />
         </MainDialog>
       ) : null}
     </section>
