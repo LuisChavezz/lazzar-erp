@@ -21,6 +21,7 @@ import {
   isInvoicePdfNonFiscal,
 } from "../utils/invoiceStamping";
 import {
+  CANCEL_CANCELLED_INVOICE_CFDI_LABEL,
   INVOICE_CFDI_CANCELLATION_REQUESTED_HINT,
   INVOICE_CFDI_CANCELLATION_REQUESTED_LABEL,
   getInvoiceCancelBlockReason,
@@ -58,13 +59,17 @@ import {
  * motivo debajo, y el precheck de `useCancelInvoice` lo vuelve a revisar con
  * el retrieve fresco al confirmar.
  *
+ * "Cancelar CFDI ante el SAT" (EC-764) es para una factura YA `Cancelada` con
+ * el CFDI vigente (`canCancelCancelledInvoiceCfdi`); nunca aparece junto a
+ * "Cancelar factura". También solo abre su diálogo, que vive en `InvoiceList`.
+ *
  * Con la cancelación del CFDI solicitada y pendiente de que el receptor la
  * acepte, junto al estatus va el reloj compartido
  * (`CancellationRequestedIndicator`). Es un estado válido, no uno obsoleto.
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
-  const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel } =
+  const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel, canCancelCfdi, onCancelCfdi } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
@@ -98,6 +103,12 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       visible: canCancel(invoice),
       disabled: cancelBlockReason !== null,
       description: cancelBlockReason ?? undefined,
+    },
+    {
+      label: CANCEL_CANCELLED_INVOICE_CFDI_LABEL,
+      icon: BanIcon,
+      onSelect: () => onCancelCfdi(invoice),
+      visible: canCancelCfdi(invoice),
     },
   ];
 
