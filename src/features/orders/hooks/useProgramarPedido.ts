@@ -56,8 +56,9 @@ export const useProgramarPedido = ({ onValidationError }: UseProgramarPedidoOpti
     onError: (error) => {
       const { issues, message, refreshOrders } = parseProgramarPedidoError(error);
       if (issues.length > 0) onValidationError?.(issues);
-      // Pedido no programable: la fila de la lista estaba desactualizada. Se
-      // releen los listados para que deje de ofrecer "Programar" (EC-781).
+      // 404 (pedido cancelado) o 400 de pedido sin confirmar: la fila de la
+      // lista estaba desactualizada. Se releen los listados para que deje de
+      // ofrecer "Programar" (EC-781).
       if (refreshOrders) queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       toast.error(message);
     },
