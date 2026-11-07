@@ -11,6 +11,7 @@ import { useStockMovementReport } from "@/src/features/stock/hooks/useStockMovem
 import { useExportStockMovementReportPdf } from "@/src/features/stock/hooks/useExportStockMovementReportPdf";
 import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
 // Tamaño de página del endpoint (fijo). Alimenta el cálculo de páginas totales
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
@@ -26,6 +27,8 @@ export function StockMovementReportView() {
   const [tipoMovimiento, setTipoMovimiento] =
     useState<StockMovementReportType | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  const warehousePreselection = useWarehousePreselection(almacenId, setAlmacenId);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   // `page` se reinicia a 1 al cambiar cualquier filtro: un contexto de consulta
@@ -70,6 +73,7 @@ export function StockMovementReportView() {
   };
 
   const handleAlmacenChange = (id: number | null) => {
+    warehousePreselection.settle();
     setAlmacenId(id);
     setPage(1);
   };
