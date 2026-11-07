@@ -247,3 +247,45 @@ test.describe("getStaleRowDialogNotice con statusField", () => {
     expect(typeof call).toBe("function");
   });
 });
+
+/**
+ * EC-752: el `estatus` de una cotización es un ENTERO. El rechazo espera el 2
+ * (pendiente de autorización) y avisa si la fila viva cambió o ya no está.
+ */
+test.describe("getStaleRowDialogNotice con statusField numérico", () => {
+  const quoteMessages = {
+    gone: "La cotización #7 ya no está pendiente de autorización. Se actualizó el listado.",
+    estadoChanged: (estatus: number) => `La cotización #7 cambió a ${estatus}.`,
+  };
+  const args = (target: { estatus: number } | null, isBusy = false) => ({
+    resource: "quote-reject",
+    targetId: 7,
+    target,
+    statusField: "estatus" as const,
+    expectedEstado: 2,
+    isBusy,
+    messages: quoteMessages,
+  });
+
+  test("sigue pendiente: el diálogo sigue", () => {
+    expect(getStaleRowDialogNotice(args({ estatus: 2 }))).toBeNull();
+  });
+
+  test("cambió de estatus: aviso con el número en la key", () => {
+    expect(getStaleRowDialogNotice(args({ estatus: 3 }))).toEqual({
+      key: "quote-reject-stale-7-3",
+      message: "La cotización #7 cambió a 3.",
+    });
+  });
+
+  test("ya no está en la consulta del dueño: aviso de `gone`", () => {
+    expect(getStaleRowDialogNotice(args(null))).toEqual({
+      key: "quote-reject-stale-7-gone",
+      message: quoteMessages.gone,
+    });
+  });
+
+  test("con el rechazo propio en vuelo no se decide", () => {
+    expect(getStaleRowDialogNotice(args({ estatus: 4 }, true))).toBeNull();
+  });
+});
