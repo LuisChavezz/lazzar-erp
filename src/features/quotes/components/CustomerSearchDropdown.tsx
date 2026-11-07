@@ -33,6 +33,11 @@ interface CustomerSearchDropdownProps<C extends CustomerSearchOption> {
    * primero, para que el tope de filas nunca lo deje fuera.
    */
   selectedId?: C["id"];
+  /**
+   * Clases extra del `<input>` (se pasan a `FormInput`), p. ej.
+   * `COMPACT_FIELD_CLS` para que el campo mida lo mismo que sus vecinos.
+   */
+  className?: string;
 }
 
 /** Tope de clientes pintados; el resto se alcanza escribiendo más. */
@@ -60,6 +65,7 @@ export function CustomerSearchDropdown<C extends CustomerSearchOption>({
   error,
   clearOption,
   selectedId,
+  className,
 }: CustomerSearchDropdownProps<C>) {
   const [isOpen, setIsOpen] = useState(false);
   // Opción a la que se llegó con las flechas; -1 = ninguna (ver `highlightedIndex`).
@@ -152,6 +158,7 @@ export function CustomerSearchDropdown<C extends CustomerSearchOption>({
         label={label}
         placeholder={placeholder}
         variant="ghostSearch"
+        className={className}
         value={value}
         role="combobox"
         aria-autocomplete="list"
