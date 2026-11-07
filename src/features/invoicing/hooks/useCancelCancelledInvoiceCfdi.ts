@@ -49,7 +49,8 @@ const labelOf = (invoice: { id: number; folio: string | null }) =>
  *   (`isCancelledInvoiceCfdiCancellable`) no hay POST y se dice por qué; si
  *   la cancelación quedó solicitada después de abrir el diálogo
  *   (`shownRequested` falso), tampoco: `needs-confirmation`, como en
- *   `useCancelInvoice`.
+ *   `useCancelInvoice`. Un CFDI que ya estaba cancelado es un aviso ℹ️, no
+ *   un error: lo que se buscaba ya ocurrió.
  * - Sin `motivo`: el backend lo descarta en este caso.
  * - Un `200` no basta: el backend también responde `200` sin efecto. Solo
  *   `cfdi_cancelado === true` en la respuesta es éxito; si no, se avisa que
@@ -90,7 +91,9 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       }
       const { outcome, invoice } = result;
       if (outcome === "not-cancellable") {
-        toast.error(cancelledInvoiceCfdiNotCancellableMessage(invoice));
+        const message = cancelledInvoiceCfdiNotCancellableMessage(invoice);
+        if (isInvoiceCfdiCancelled(invoice)) toast(message, { icon: "ℹ️" });
+        else toast.error(message);
         return;
       }
       // El diálogo muestra el aviso y pide confirmar de nuevo; no hay toast.
