@@ -13,7 +13,6 @@ import {
   getQuoteStatusLabel,
   QUOTE_STATUS_CONFIG,
   QUOTE_STATUS_FALLBACK_CLS,
-  QUOTE_STATUS_FALLBACK_DOT,
 } from "../constants/quoteStatus";
 import { useQuoteActionItems } from "./QuoteCardActions";
 
@@ -45,8 +44,8 @@ function QuoteStatusBadge({ quote }: { quote: Quote }) {
       status={String(quote.estatus)}
       config={QUOTE_STATUS_CONFIG}
       defaultConfig={{
+        // El punto lo completa el neutro de `StatusBadge`.
         cls: QUOTE_STATUS_FALLBACK_CLS,
-        dot: QUOTE_STATUS_FALLBACK_DOT,
         label: getQuoteStatusLabel(quote),
       }}
     />
