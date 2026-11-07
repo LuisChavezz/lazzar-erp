@@ -66,7 +66,11 @@ export const routePermissions: Array<{
   // `/movimientos`, `/auxiliar`). `/system/reports` en sí redirige a `/system`
   // (`next.config.ts`).
   { prefix: "/system/reports", permission: "R-CORE-REPORTES" },
-  { prefix: "/system", permission: "R-CORE" },
+  // La portada acepta cualquiera de los códigos del grupo
+  // (`getGroupAccessPermissions`), los mismos que muestran su tarjeta en Inicio
+  // y su item en el sidebar: quien solo tiene Reportes llega al índice, que ya
+  // le lista únicamente lo que puede abrir. La portada no consulta el backend.
+  { prefix: "/system", permission: ["R-CORE", "R-CORE-REPORTES"] },
 
   // ── CRM y Ventas ──────────────────────────────────────────────────────────
   { prefix: "/sales/customers", permission: "R-CRM-CLIENTES" },
