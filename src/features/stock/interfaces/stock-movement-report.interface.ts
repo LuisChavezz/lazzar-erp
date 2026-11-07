@@ -2,15 +2,19 @@
 // backend (`/inventarios/movimientos/reporte-movimientos-periodo/`).
 //
 // DIFERENCIAS con existencias: este endpoint (a) exige un `tipo_movimiento`
-// (ENTRADA/SALIDA/AJUSTE) y (b) tiene `almacen_id` OPCIONAL. Ninguno de los dos
+// (ENTRADA/SALIDA/AJUSTE/TRANSFERENCIA) y (b) tiene `almacen_id` OPCIONAL. Ninguno de los dos
 // endpoints impone un máximo de `page_size` (confirmado mediante inspección del
 // código del backend, fuente de DRF y verificación en tiempo de ejecución —
 // page_size=100000 se respeta sin recorte en ambos), lo que simplifica la
 // exportación completa de ambos reportes (ver `getFullStockReport` /
 // `getFullStockMovementReport`).
 
-/** Tipos de movimiento que acepta el reporte (no incluye TRASPASO). */
-export type StockMovementReportType = "ENTRADA" | "SALIDA" | "AJUSTE";
+/**
+ * Tipos de movimiento que acepta el reporte (`MovimientoInventario`). La
+ * transferencia se llama `TRANSFERENCIA`, no `TRASPASO` como en la auditoría de
+ * existencias (`StockMovement`).
+ */
+export type StockMovementReportType = "ENTRADA" | "SALIDA" | "AJUSTE" | "TRANSFERENCIA";
 
 /**
  * Una fila del reporte de movimientos. Es una entidad PROPIA del endpoint de
@@ -29,9 +33,11 @@ export interface StockMovementReportRow {
   movimiento_detalle_id: number;
   tipo_movimiento: StockMovementReportType;
   fecha_movimiento: string;
-  almacen_id: number;
-  almacen_codigo: string;
-  almacen_nombre: string;
+  // `null` cuando el backend no puede derivar el almacén del detalle (sin
+  // ubicación, recepción ni ajuste de los que tomarlo).
+  almacen_id: number | null;
+  almacen_codigo: string | null;
+  almacen_nombre: string | null;
   ubicacion_id: number | null;
   ubicacion_nombre: string | null;
   producto_id: number;
@@ -47,11 +53,14 @@ export interface StockMovementReportRow {
   costo_total: string;
   pedido_id: number | null;
   pedido_folio: string | null;
+  transferencia_id: number | null;
+  transferencia_folio: string | null;
   recepcion_id: number | null;
   ajuste_inventario_id: number | null;
   op_id: number | null;
-  usuario_id: number;
-  usuario_nombre: string;
+  // `null` en un movimiento sin usuario.
+  usuario_id: number | null;
+  usuario_nombre: string | null;
   observaciones: string | null;
   comentarios: string | null;
   motivo_ajuste: string | null;
