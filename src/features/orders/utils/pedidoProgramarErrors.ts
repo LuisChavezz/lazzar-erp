@@ -1,10 +1,13 @@
 import { AxiosError } from "axios";
+import type { QueryClient } from "@tanstack/react-query";
 import {
   extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
   type QuoteValidationIssue,
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import {
   firstNonBlankDrfMessage,
   firstNonBlankRejectionMessage,
@@ -154,3 +157,33 @@ export const parseProgramarPedidoError = (error: unknown): ProgramarPedidoErrorR
         : extractErrorMessage(error, "No se pudo guardar la programación")),
   };
 };
+
+/**
+ * ¿El error de `GET .../programar/` dice que la fila de la lista que ofreció
+ * "Programar" estaba desactualizada? Un 404 (pedido CANCELADO: `cancelar/`
+ * deja `activo=false` y el endpoint lo excluye) o el 400 de pedido no
+ * programable (sin confirmar; `estatus` solo por defensa).
+ */
+export const isStaleProgramarRowError = (error: unknown): boolean =>
+  isNotFoundError(error) || extractPedidoNoProgramableMessage(error) !== undefined;
+
+/**
+ * Envuelve la lectura del contexto de "Programar pedido": si falla porque la
+ * fila estaba desactualizada, relee los listados de pedidos y vuelve a lanzar
+ * el error. Va en el `queryFn` y no en un efecto: corre UNA vez por lectura
+ * fallida (StrictMode no repite un `queryFn`, y los 4xx no se reintentan) y lo
+ * hereda cualquier consumidor de la consulta. Sin bucle: la llave del contexto
+ * no cuelga de `["orders"]`.
+ */
+export const withStaleProgramarRowRefresh =
+  <T>(queryClient: Pick<QueryClient, "invalidateQueries">, load: () => Promise<T>) =>
+  async (): Promise<T> => {
+    try {
+      return await load();
+    } catch (error) {
+      if (isStaleProgramarRowError(error)) {
+        void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      }
+      throw error;
+    }
+  };
