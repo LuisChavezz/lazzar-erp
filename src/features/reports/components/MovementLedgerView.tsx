@@ -10,7 +10,6 @@ import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger"
 import {
   isResolvedMovementLedger,
   MOVEMENT_LEDGER_MAX_OPTIONS,
-  MOVEMENT_LEDGER_MAX_ROWS,
   type MovementLedgerTarget,
   type MovementLedgerVariant,
 } from "@/src/features/stock/interfaces/movement-ledger.interface";
@@ -51,7 +50,8 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerRejectedParam): strin
  *
  * La tabla queda montada en cuanto hay una búsqueda (rango a medias, opciones,
  * carga, error o vacío): así conserva columnas visibles, búsqueda interna y
- * página. Sus filas y los totales solo se muestran con un kardex vigente de los
+ * página mientras se trate de la misma variante; al llegar el kardex de otra
+ * se remonta. Sus filas y los totales solo se muestran con un kardex vigente de los
  * filtros elegidos.
  */
 export function MovementLedgerView() {
@@ -90,6 +90,13 @@ export function MovementLedgerView() {
   const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
   const optionsResponse = current && !isResolvedMovementLedger(current) ? current : undefined;
   const rows = resolved?.results ?? [];
+  // Variante cuyo kardex muestra la tabla. Ajuste durante el render: cambia
+  // solo cuando llega el kardex de OTRA variante (no mientras carga).
+  const [shownVariantId, setShownVariantId] = useState<number | null>(null);
+  const resolvedId = resolved?.variante.producto_variante_id ?? null;
+  if (resolvedId !== null && resolvedId !== shownVariantId) {
+    setShownVariantId(resolvedId);
+  }
   const options = optionsResponse?.opciones;
   const hasOptions = options !== undefined && options.length > 0;
   const hasMoreOptions = optionsResponse?.hay_mas ?? false;
@@ -227,17 +234,25 @@ export function MovementLedgerView() {
           )}
 
           {/* El backend corta el kardex en los renglones más recientes; los
-              totales y saldos siguen siendo los del rango completo. */}
+              totales y saldos siguen siendo los del periodo completo. */}
           {resolved?.results_truncado && (
             <SectionErrorNotice
-              title={`Solo se muestran los ${MOVEMENT_LEDGER_MAX_ROWS} movimientos más recientes`}
-              message={`El rango tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${MOVEMENT_LEDGER_MAX_ROWS} más recientes. Los totales y los saldos sí consideran todos. Acota el rango de fechas para ver los anteriores.`}
+              title={`Solo se muestran los ${resolved.results.length.toLocaleString("es-MX")} movimientos más recientes`}
+              message={
+                fechaInicio !== null
+                  ? `El rango tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${resolved.results.length.toLocaleString("es-MX")} más recientes. Los totales y los saldos sí consideran todos. Acota el rango de fechas para ver los anteriores.`
+                  : `El historial tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${resolved.results.length.toLocaleString("es-MX")} más recientes. Los totales y los saldos sí consideran todos. Elige un rango de fechas para ver los anteriores.`
+              }
             />
           )}
 
           {/* `DataTable` queda montado (alterna solo su cuerpo). Filas en el
-              orden del backend: ninguna columna ordena. */}
+              orden del backend: ninguna columna ordena. Se remonta al pasar a
+              OTRA variante: filtros de encabezado, búsqueda interna y página
+              eran de la anterior (un filtro de documento o de almacén podía
+              dejar vacía la tabla de una variante que sí tiene movimientos). */}
           <DataTable
+            key={shownVariantId ?? "sin-variante"}
             columns={withHeaderFilters(getMovementLedgerColumns(), rows, MOVEMENT_LEDGER_HEADER_FILTERS)}
             data={rows}
             searchPlaceholder="Buscar en los movimientos..."
