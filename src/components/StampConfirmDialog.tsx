@@ -20,12 +20,15 @@ interface StampConfirmDialogProps {
   confirmText?: string;
   /** Texto del botón mientras la petición está en vuelo. Por defecto "Timbrando…". */
   busyText?: string;
+  /** Color del botón de confirmar. Por defecto "blue" (timbrar); "red" para una cancelación. */
+  confirmColor?: "blue" | "red";
 }
 
 /**
  * Confirmación del TIMBRADO de un CFDI (facturas, notas de crédito), un acto
  * fiscal irreversible. También la usa "Conciliar con Facturama" (EC-709), con
  * su propio `confirmText`/`busyText`: el mismo cierre guardado por `isIdle()`.
+ * Y "Cancelar CFDI ante el SAT" (EC-764), con `confirmColor="red"`.
  *
  * Mientras la petición está en vuelo no se puede cerrar ni reenviar: Confirmar
  * y Volver quedan deshabilitados (`busy`) y Esc y el clic fuera se ignoran. El
@@ -49,6 +52,7 @@ export function StampConfirmDialog({
   onConfirm,
   confirmText = "Timbrar",
   busyText = "Timbrando…",
+  confirmColor = "blue",
 }: StampConfirmDialogProps) {
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado debe verse.
@@ -64,7 +68,7 @@ export function StampConfirmDialog({
       description={description}
       confirmText={isStamping ? busyText : confirmText}
       cancelText="Volver"
-      confirmColor="blue"
+      confirmColor={confirmColor}
       closeOnConfirm={false}
       busy={isStamping}
       onConfirm={onConfirm}
