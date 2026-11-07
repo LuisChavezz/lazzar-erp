@@ -9,6 +9,7 @@ import {
   OrdenesIcon,
 } from "@/src/components/Icons";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { visibleCurrencyEntries } from "@/src/utils/currencyTotals";
 import { formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import type { QuoteKpis } from "../interfaces/quote-list.interface";
 import {
@@ -100,8 +101,9 @@ const formatAmount = ({ moneda, monto }: QuoteCurrencyAmount): string =>
   moneda ? formatKpiTaggedCurrencyAmount(monto, moneda) : formatMoneyValue(monto, null);
 
 /**
- * Importe por moneda sin las rechazadas: un bloque por moneda con su código
- * (o "Sin moneda") y, con más de una, cuántas cotizaciones aporta cada una.
+ * Importe por moneda sin las rechazadas: un bloque por moneda con importe, con
+ * su código (o "Sin moneda") y, con más de una, cuántas cotizaciones aporta
+ * cada una.
  */
 export const buildQuoteAmountCard = (source: QuoteKpiSource): KpiCompactItem => {
   const base = {
@@ -113,10 +115,16 @@ export const buildQuoteAmountCard = (source: QuoteKpiSource): KpiCompactItem => 
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: UNAVAILABLE_REASON };
   }
   if (!source.data) return { ...base, ...KPI_MUTED_ICON, value: PLACEHOLDER, hideProgress: true };
-  const amounts = getQuoteAmountsExcludingRejected(source.data);
+  // Qué monedas se ven, con el criterio de EC-601 (`visibleCurrencyEntries`):
+  // las que suman cero se ocultan si otra tiene importe; si todas dan cero
+  // queda la única moneda, o ninguna (y entonces un 0 sin símbolo).
+  const allAmounts = getQuoteAmountsExcludingRejected(source.data);
+  const { visibles: amounts } = visibleCurrencyEntries(allAmounts, (amount) => amount.monto);
   let value: ReactNode;
-  if (amounts.length === 0) {
+  if (allAmounts.length === 0) {
     value = <KpiMutedValue>Sin cotizaciones</KpiMutedValue>;
+  } else if (amounts.length === 0) {
+    value = formatMoneyValue(0, null);
   } else {
     const showCount = amounts.length > 1;
     value = (
@@ -134,7 +142,7 @@ export const buildQuoteAmountCard = (source: QuoteKpiSource): KpiCompactItem => 
   }
   return {
     ...base,
-    ...(amounts.length > 0 ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
+    ...(amounts.some((amount) => amount.monto !== 0) ? { iconClass: "text-violet-500" } : KPI_MUTED_ICON),
     value,
     hideProgress: true,
   };
