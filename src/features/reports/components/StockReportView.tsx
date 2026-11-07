@@ -10,6 +10,7 @@ import { stockReportColumns } from "./StockReportColumns";
 import { useStockReport } from "@/src/features/stock/hooks/useStockReport";
 import { useExportStockReportPdf } from "@/src/features/stock/hooks/useExportStockReportPdf";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
 // Tamaño de página del endpoint (fijo). Alimenta el cálculo de páginas totales
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
@@ -22,6 +23,8 @@ const PAGE_SIZE = 100;
  */
 export function StockReportView() {
   const [almacenId, setAlmacenId] = useState<number | null>(null);
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  const warehousePreselection = useWarehousePreselection(almacenId, setAlmacenId);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   // `page` se reinicia a 1 al cambiar de almacén o de rango: un contexto de
@@ -58,6 +61,7 @@ export function StockReportView() {
       data.fecha_final !== fechaFinal);
 
   const handleAlmacenChange = (id: number | null) => {
+    warehousePreselection.settle();
     setAlmacenId(id);
     setPage(1);
   };

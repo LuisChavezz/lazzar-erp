@@ -19,6 +19,7 @@ import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
 import { getMovementLedgerColumns, MOVEMENT_LEDGER_HEADER_FILTERS } from "./MovementLedgerColumns";
+import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
 type MovementLedgerField = "q" | "almacen" | "fecha_inicio" | "fecha_final";
@@ -59,6 +60,8 @@ export function MovementLedgerView() {
   // siguiente cambio de filtro, que debe ir ya por `producto_variante`.
   const [resolvedVariantId, setResolvedVariantId] = useState<number | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  const warehousePreselection = useWarehousePreselection(almacenId, setAlmacenId);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -117,6 +120,7 @@ export function MovementLedgerView() {
   };
 
   const handleAlmacenChange = (id: number | null) => {
+    warehousePreselection.settle();
     pinResolvedVariant();
     setAlmacenId(id);
   };
