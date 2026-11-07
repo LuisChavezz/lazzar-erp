@@ -1,4 +1,4 @@
-import { createCurrencyTotals, type CurrencyTotal } from "@/src/utils/currencyTotals";
+import { sortByMoneda } from "@/src/utils/currencyTotals";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { QuoteKpis } from "../interfaces/quote-list.interface";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS, REJECTED_QUOTE_STATUS } from "./quoteStatusRules";
@@ -17,21 +17,40 @@ export const getQuoteKpiStatusCount = (kpis: QuoteKpis, estatus: number): number
 export const getPendingAuthorizationCount = (kpis: QuoteKpis): number =>
   getQuoteKpiStatusCount(kpis, PENDING_AUTHORIZATION_QUOTE_STATUS);
 
+/** Importe y conteo de UNA moneda (`moneda: null` = sin moneda). */
+export interface QuoteCurrencyAmount {
+  moneda: string | null;
+  /** Suma de `gran_total`, con 2 decimales exactos (sumada en centavos). */
+  monto: number;
+  /** Cotizaciones que aportan a ese importe. */
+  cotizaciones: number;
+}
+
 /**
  * Importe por moneda de las cotizaciones SIN contar las rechazadas: la suma de
  * `por_estatus[].por_moneda` de todos los estatus salvo el 4, agrupada por
- * código (`null` = sin moneda, al final). Importes de monedas distintas nunca
- * se suman entre sí. Un estatus fuera del catálogo no trae bloque y no entra.
+ * código y ordenada por código (sin moneda al final). Importes de monedas
+ * distintas nunca se suman entre sí. Un estatus fuera del catálogo no trae
+ * bloque y no entra.
  */
-export const getQuoteAmountsExcludingRejected = (kpis: QuoteKpis): CurrencyTotal[] => {
-  const totals = createCurrencyTotals();
+export const getQuoteAmountsExcludingRejected = (kpis: QuoteKpis): QuoteCurrencyAmount[] => {
+  const byMoneda = new Map<string | null, { cents: number; cotizaciones: number }>();
   for (const block of kpis.por_estatus) {
     if (block.estatus === REJECTED_QUOTE_STATUS) continue;
-    for (const moneda of block.por_moneda) {
-      totals.add(moneda.moneda, safeParseAmount(moneda.gran_total));
+    for (const entry of block.por_moneda) {
+      const current = byMoneda.get(entry.moneda) ?? { cents: 0, cotizaciones: 0 };
+      current.cents += Math.round(safeParseAmount(entry.gran_total) * 100);
+      current.cotizaciones += entry.total;
+      byMoneda.set(entry.moneda, current);
     }
   }
-  return totals.list();
+  return sortByMoneda(
+    [...byMoneda].map(([moneda, { cents, cotizaciones }]) => ({
+      moneda,
+      monto: cents / 100,
+      cotizaciones,
+    })),
+  );
 };
 
 /** Cotizaciones que entran en el importe (todas menos las rechazadas). */
