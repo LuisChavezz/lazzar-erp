@@ -179,8 +179,7 @@ const OperationsQuoteIdCell = ({
   const isRejectingChangesOperationsQuote = busy.rejectChanges.includes(operationsQuote.id);
 
   const canAuthorizeOperationsQuote =
-    canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
-    operationsQuote.estatus === 2;
+    canManageOperationsQuoteAuthorization(operationsQuote.estatus);
   const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
     operationsQuote.estatus
   );
