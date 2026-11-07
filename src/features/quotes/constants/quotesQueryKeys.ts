@@ -28,7 +28,7 @@ export const quoteBoardQueryKey = (params: Readonly<Record<string, string>>) =>
 
 /**
  * Las páginas de "cargar más" de UNA columna del tablero, con los mismos
- * filtros que el tablero (prefijo de `quoteBoardPageQueryKey`). Segmento propio
+ * filtros que el tablero (prefijo de `quoteBoardColumnBatchesQueryKey`). Segmento propio
  * (`"tablero-columna"`) y no bajo `"tablero"`: así la llave del tablero no es
  * prefijo de las columnas y escribir una no toca la otra.
  */
@@ -37,12 +37,12 @@ export const quoteBoardColumnQueryKey = (
   estatus: number,
 ) => [...QUOTES_QUERY_KEY, "tablero-columna", params, estatus] as const;
 
-/** Una página de "cargar más" (`?estatus=N&limit=&offset=` del listado). */
-export const quoteBoardPageQueryKey = (
+/** Las tandas pedidas de "cargar más" de una columna (todas en una consulta). */
+export const quoteBoardColumnBatchesQueryKey = (
   params: Readonly<Record<string, string>>,
   estatus: number,
-  offset: number,
-) => [...quoteBoardColumnQueryKey(params, estatus), offset] as const;
+  batches: number,
+) => [...quoteBoardColumnQueryKey(params, estatus), batches] as const;
 
 /** Las más recientes del dashboard de `/sales`. */
 export const RECENT_QUOTES_QUERY_KEY = [...QUOTES_QUERY_KEY, "recientes"] as const;
