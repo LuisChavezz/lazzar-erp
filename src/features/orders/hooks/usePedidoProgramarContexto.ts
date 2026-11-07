@@ -1,10 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { PEDIDO_PROGRAMAR_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getPedidoProgramarContexto } from "../services/actions";
+import { withStaleProgramarRowRefresh } from "../utils/pedidoProgramarErrors";
 import type { PedidoProgramarContexto } from "../interfaces/pedido-programacion.interface";
 
 /**
@@ -31,13 +33,18 @@ export const pedidoProgramarQueryKey = (pedidoId: number) =>
  * permiso tampoco se reintenta (`retryUnlessClientError`) y llega como
  * `isInitialError` + `error`. Un refetch fallido con datos (una invalidación
  * con el diálogo abierto) conserva el formulario y avisa por toast.
+ *
+ * Un 404 o un 400 de pedido no programable dicen que la fila que ofreció
+ * "Programar" estaba desactualizada: el `queryFn` relee los listados de
+ * pedidos (`withStaleProgramarRowRefresh`, EC-781).
  */
 export const usePedidoProgramarContexto = (pedidoId: number) => {
+  const queryClient = useQueryClient();
   const { data, isInitialError, isDefinitiveError, isFetchedAfterMount, error } =
     useGuardedQuery<PedidoProgramarContexto>(
       {
         queryKey: pedidoProgramarQueryKey(pedidoId),
-        queryFn: () => getPedidoProgramarContexto(pedidoId),
+        queryFn: withStaleProgramarRowRefresh(queryClient, () => getPedidoProgramarContexto(pedidoId)),
         enabled: pedidoId > 0,
         retry: retryUnlessClientError,
         refetchOnMount: "always",
