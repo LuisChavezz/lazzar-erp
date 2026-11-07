@@ -31,17 +31,21 @@ export const isMesaControlPermisoError = (error: unknown): boolean => {
 
 /**
  * Claves del 400 de "pedido no programable" de `GET` y `PATCH .../programar/`
- * (EC-750, `_exigir_programable`), en el orden en que las valida el backend:
- * primero CANCELADO (`estatus`) y luego sin confirmar (`fecha_confirmacion`);
- * si aplican las dos, solo llega `estatus`. Cada una trae una lista con un
- * mensaje. Solo se alcanzan desde una fila desactualizada: `canProgramarPedido`
- * ya oculta "Programar" para esos pedidos.
+ * (EC-750, `_exigir_programable`), en el orden en que las valida el backend.
+ * Cada una trae una lista con un mensaje.
+ *
+ * - `fecha_confirmacion`: el pedido no está confirmado. Es la que se alcanza:
+ *   una fila desactualizada cuya confirmación se vació después de cargarla.
+ * - `estatus`: el pedido está CANCELADO. Se maneja solo por defensa: `cancelar/`
+ *   deja `activo=false` y `programar/` excluye los pedidos inactivos, así que un
+ *   pedido cancelado responde **404**, no este 400.
  */
 export const PEDIDO_NO_PROGRAMABLE_KEYS = ["estatus", "fecha_confirmacion"] as const;
 
 /**
  * Mensaje del backend si el error es el 400 de pedido no programable
- * (cancelado o sin confirmar); `undefined` en cualquier otro caso.
+ * (`PEDIDO_NO_PROGRAMABLE_KEYS`); `undefined` en cualquier otro caso, incluido
+ * el 404 de un pedido cancelado.
  */
 export const extractPedidoNoProgramableMessage = (error: unknown): string | undefined => {
   if (!(error instanceof AxiosError) || error.response?.status !== 400) return undefined;
@@ -54,7 +58,8 @@ export const extractPedidoNoProgramableMessage = (error: unknown): string | unde
  * `useUpdatePedidoMesaControl`:
  *
  * - `detail`: `APIException` genéricos de DRF.
- * - `PEDIDO_NO_PROGRAMABLE_KEYS`: pedido no programable (EC-750).
+ * - `PEDIDO_NO_PROGRAMABLE_KEYS`: pedido sin confirmar (o, por defensa,
+ *   cancelado; ver la constante).
  *
  * El 400 de `permiso` (`_require_mesa_control`, no un 403) no pasa por aquí:
  * se traduce antes con `isMesaControlPermisoError`. Además
