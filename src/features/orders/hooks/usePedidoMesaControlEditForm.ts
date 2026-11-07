@@ -5,8 +5,7 @@ import { AxiosError } from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEventHandler } from "react";
-import { runWithSubmitLock } from "@/src/utils/actionLocks";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import toast from "react-hot-toast";
 
 import type { Customer } from "@/src/features/customers/interfaces/customer.interface";
@@ -939,23 +938,16 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   /**
-   * Candado del envío (EC-753). Se toma de forma SÍNCRONA al enviar
-   * (`runWithSubmitLock`), antes de la validación asíncrona de TanStack Form, y
-   * se suelta cuando el envío termina, con cualquier resultado. Así un Enter y
-   * un clic en el mismo tick mandan UNA sola petición: el `useState` que había
-   * antes no lo garantizaba, porque el segundo disparo leía todavía el valor
-   * del render anterior.
+   * Salida tras un guardado correcto: `onSubmit` la marca justo antes del
+   * `router.push` al detalle, con el candado todavía tomado, y
+   * `useFormSubmitLock` deja de enviar. El formulario sigue montado durante la
+   * navegación; lo que esto cubre son los envíos PROGRAMÁTICOS en ese hueco
+   * (`requestSubmit()`…). Un Enter del teclado ya no llega: "Guardar cambios
+   * del pedido" sigue deshabilitado y el navegador no hace el envío implícito
+   * con el botón por defecto deshabilitado. Se declara antes de `useForm`
+   * porque su `onSubmit` la escribe.
    */
-  const submitLockRef = useRef(false);
-  /**
-   * Se marca en el MISMO instante en que el guardado lanza la navegación al
-   * detalle. Tras guardar, el formulario sigue montado durante el
-   * `router.push` y el candado ya se soltó: sin esto, un Enter en un campo
-   * reenviaría el PUT. Es un ref y no `isRouteTransitioning` porque ese
-   * estado solo llega al cierre de `handleFormSubmit` en el render siguiente,
-   * y un evento de teclado puede colarse antes.
-   */
-  const isLeavingRef = useRef(false);
+  const leavingRef = useRef(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
@@ -1544,7 +1536,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         return;
       }
 
-      isLeavingRef.current = true;
+      leavingRef.current = true;
       setIsRouteTransitioning(true);
       router.push(`/orders/${pedidoId}?from=operations`);
     },
@@ -2016,17 +2008,14 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * al confirmar); sin diálogo quedaban consecutivas y se pagaba dos veces el
    * `safeParse` completo del formulario en cada pulsación de Guardar.
    */
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    // Guardado ya hecho y navegando al detalle: nada que reenviar.
-    if (isRouteTransitioning || isLeavingRef.current) return;
-    void runWithSubmitLock(submitLockRef, () => form.handleSubmit());
-  };
+  // Candado del envío, guarda del reinicio y "Guardando..." (EC-753).
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
 
   const handleReset = () => {
     // Con un envío en curso no se toca el formulario que se está enviando.
-    if (submitLockRef.current) return;
+    if (isSubmitLocked()) return;
     if (initialFormValues) {
       form.reset(initialFormValues);
       crossRules.resetCrossRules();
@@ -2057,9 +2046,6 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     router.push(`/orders/${pedidoId}?from=operations`);
   };
 
-  // Suscrito (y no `form.state.isSubmitting`, que no vuelve a renderizar) para
-  // que el botón muestre "Guardando..." también mientras se valida.
-  const isFormSubmitting = useStore(form.baseStore, (state) => state.isSubmitting);
   const isPending = isFormSubmitting || isUpdatingPedido || isRouteTransitioning;
 
   const itemErrors = getError("items");
