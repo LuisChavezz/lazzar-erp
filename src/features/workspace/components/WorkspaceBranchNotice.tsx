@@ -19,16 +19,25 @@ import {
  *
  * `verbo` es la acción bloqueada que nombran el título y el mensaje; sin él,
  * "guardar" (los textos de siempre).
+ *
+ * `visible` (opcional) es para un llamador que YA decidió si falta la sucursal
+ * con una regla propia (la edición de cotización solo avisa si el registro
+ * tampoco trae una): entonces se pinta según `visible` y la consulta solo
+ * elige el texto (lista fallida o sin sucursal). Sin `visible`, el aviso
+ * decide como siempre a partir del workspace.
  */
 export function WorkspaceBranchNotice({
   documento,
   verbo,
+  visible,
 }: {
   documento: WorkspaceBranchDocument;
   verbo?: string;
+  visible?: boolean;
 }) {
   const { branchId, isLoading, isError } = useValidWorkspaceBranchId();
-  if (branchId !== null || isLoading) return null;
+  const isVisible = visible ?? (branchId === null && !isLoading);
+  if (!isVisible) return null;
   return (
     <SectionErrorNotice
       title={getSinSucursalTitle(verbo)}
