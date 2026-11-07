@@ -4,7 +4,6 @@ import KpiGrid, { KPI_MUTED_ICON, type KpiCompactItem } from "@/src/components/K
 import {
   ClientesIcon,
   TrendingUpIcon,
-  OrdenesIcon,
 } from "@/src/components/Icons";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useCustomerKpis } from "@/src/features/customers/hooks/useCustomerKpis";
@@ -27,9 +26,9 @@ import { buildRecentQuotesCard } from "@/src/features/quotes/components/QuoteKpi
  * `ventana_dias`. Antes mostraba el total de clientes con un rótulo de "Últimos
  * 30 días".
  *
- * "Nuevos este mes" y "Pedidos críticos" siguen como estaban: ningún endpoint
- * da hoy esos valores (el listado de clientes no filtra por fecha de alta, y
- * `pedidos/kpis/` reporta `pedidos_en_riesgo` como no disponible).
+ * "Nuevos este mes" sigue como estaba: ningún endpoint da hoy ese valor (el
+ * listado de clientes no filtra por fecha de alta). "Pedidos críticos" se quitó
+ * hasta EC-818.
  */
 
 /** Clientes activos del backend; "—" mientras carga y "No disponible" si no llega. */
@@ -71,14 +70,8 @@ export const SalesKpiGrid = () => {
       hideProgress: true,
     },
     buildRecentQuotesCard({ data: recent.data, isInitialError: recent.isInitialError }),
-    {
-      label: "Pedidos críticos",
-      value: isCustomersLoading ? "—" : "0",
-      icon: OrdenesIcon,
-      ...KPI_MUTED_ICON,
-      detail: "Atención inmediata",
-      hideProgress: true,
-    },
+    // "Pedidos críticos" vuelve con EC-818: hoy `pedidos/kpis/` reporta
+    // `pedidos_en_riesgo` como no disponible y la tarjeta mostraba un 0 fijo.
   ];
 
   return <KpiGrid compact items={items} />;
