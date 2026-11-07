@@ -2,9 +2,11 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import type { MovementLedgerRow } from "@/src/features/stock/interfaces/movement-ledger.interface";
 import { formatAmountNoCurrency, formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import {
   MOVEMENT_LEDGER_DOCUMENTO_LABELS,
   MOVEMENT_LEDGER_EFECTO_CONFIG,
@@ -200,3 +202,33 @@ export const getMovementLedgerColumns = (): ColumnDef<MovementLedgerRow>[] => [
     ),
   },
 ];
+
+/**
+ * Filtros de encabezado del auxiliar (`withHeaderFilters`): la tabla pagina en
+ * cliente, así que filtran el kardex completo que ya está en memoria. Filtrar
+ * no recalcula nada: `saldo` y `saldo_almacen` siguen siendo los del backend.
+ */
+export const MOVEMENT_LEDGER_HEADER_FILTERS: Partial<
+  Record<string, HeaderFilterSpec<MovementLedgerRow>>
+> = {
+  tm: {
+    type: "options",
+    filterLabel: "tipo de movimiento",
+    get: (r) => r.tm,
+    options: optionsFromConfig(MOVEMENT_LEDGER_TM_CONFIG),
+  },
+  documento: {
+    type: "options",
+    get: (r) => r.documento,
+    options: Object.entries(MOVEMENT_LEDGER_DOCUMENTO_LABELS).map(([value, label]) => ({
+      value,
+      label: label as string,
+    })),
+  },
+  almacen: {
+    type: "distinct",
+    get: (r) => r.almacen_id,
+    label: (r) => almacenLabel(r),
+    emptyOption: "Sin almacén",
+  },
+};

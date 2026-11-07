@@ -4,6 +4,7 @@ import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Button } from "@/src/components/Button";
 import { DataTable } from "@/src/components/DataTable";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger";
 import {
   isResolvedMovementLedger,
@@ -17,7 +18,7 @@ import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
-import { getMovementLedgerColumns } from "./MovementLedgerColumns";
+import { getMovementLedgerColumns, MOVEMENT_LEDGER_HEADER_FILTERS } from "./MovementLedgerColumns";
 
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
 type MovementLedgerField = "q" | "almacen" | "fecha_inicio" | "fecha_final";
@@ -83,6 +84,7 @@ export function MovementLedgerView() {
   const current = rangeComplete && !isInitialError ? ledger : undefined;
   const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
   const optionsResponse = current && !isResolvedMovementLedger(current) ? current : undefined;
+  const rows = resolved?.results ?? [];
   const options = optionsResponse?.opciones;
   const hasOptions = options !== undefined && options.length > 0;
   const hasMoreOptions = optionsResponse?.hay_mas ?? false;
@@ -221,8 +223,8 @@ export function MovementLedgerView() {
           {/* `DataTable` queda montado (alterna solo su cuerpo). Filas en el
               orden del backend: ninguna columna ordena. */}
           <DataTable
-            columns={getMovementLedgerColumns()}
-            data={resolved?.results ?? []}
+            columns={withHeaderFilters(getMovementLedgerColumns(), rows, MOVEMENT_LEDGER_HEADER_FILTERS)}
+            data={rows}
             searchPlaceholder="Buscar en los movimientos..."
             emptyMessage={emptyMessage}
             isLoadingOverlay={isPlaceholderData}

@@ -28,6 +28,8 @@ interface WarehouseFilterProps {
    * el `error` de `FormInput`.
    */
   error?: string;
+  /** Clases extra del botón (p. ej. `COMPACT_FIELD_CLS` en una barra de filtros compacta). */
+  className?: string;
 }
 
 /**
@@ -39,7 +41,13 @@ interface WarehouseFilterProps {
  * un filtro opcional (reporte de movimientos).
  *
  */
-export function WarehouseFilter({ value, onChange, allowClear = false, error }: WarehouseFilterProps) {
+export function WarehouseFilter({
+  value,
+  onChange,
+  allowClear = false,
+  error,
+  className = "",
+}: WarehouseFilterProps) {
   const { data: warehouses = [], isLoading } = useWarehouses();
   const errorId = useId();
 
@@ -78,7 +86,7 @@ export function WarehouseFilter({ value, onChange, allowClear = false, error }: 
             aria-describedby={error ? errorId : undefined}
             className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-white dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40 ${
               error ? "border-red-500" : "border-slate-300 hover:border-brand-500 dark:border-slate-700"
-            }`}
+            } ${className}`}
           >
             <WarehouseIcon
               className="h-4 w-4 text-sky-500 dark:text-sky-400"
