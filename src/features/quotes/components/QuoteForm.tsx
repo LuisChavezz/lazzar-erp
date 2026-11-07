@@ -505,7 +505,9 @@ export function QuoteFormContent({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
                 <div data-error-anchor="clienteBusqueda">
                   <CustomerSearchDropdown
-                    className={COMPACT_FIELD_CLS}
+                    // Su variante (`ghostSearch`) ya es `py-2` pero con `text-xl`:
+                    // sin bajar la letra mediría 46px junto a vecinos de 38px.
+                    className={`${COMPACT_FIELD_CLS} text-sm!`}
                     label="Cliente"
                     placeholder="Buscar Cliente..."
                     value={clienteSearchTerm}
