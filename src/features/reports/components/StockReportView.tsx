@@ -34,7 +34,7 @@ export function StockReportView() {
   const gateComplete =
     almacenId !== null && fechaInicio !== null && fechaFinal !== null;
 
-  const { data, isLoading, isError, isFetching, isPlaceholderData, error, refetch } =
+  const { data, isLoading, isInitialError, isFetching, isPlaceholderData, error, refetch } =
     useStockReport(
       gateComplete
         ? {
@@ -131,18 +131,15 @@ export function StockReportView() {
           {/* `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y
               alterna solo su cuerpo), así que su toolbar y `actionButton`
               ("Exportar a PDF") siguen disponibles durante la carga o un
-              error. `isError` se calcula como `isError && !data`: si un
-              refetch en segundo plano (cambio de página/refresco) falla pero
-              `keepPreviousData` conserva la última respuesta buena, se
-              mantiene esa vista en lugar de reemplazarla por la pantalla de
-              error — mismo criterio que antes, expresado como guard tipo
-              `hasLoaded`. Paginación de servidor: `data.results` ya es solo
-              la página actual; `DataTable` no la recorta y cablea su pager a
-              `setPage`. */}
+              error. `isInitialError` (de `useGuardedQuery`) solo es cierto
+              si estos parámetros nunca cargaron: un refetch en segundo plano
+              que falla conserva la última respuesta buena y avisa con un
+              toast, en lugar de reemplazarla por la pantalla de error.
+              Paginación de servidor: `data.results` ya es solo la página
+              actual; `DataTable` no la recorta y cablea su pager a `setPage`. */}
           <DataTable
             columns={stockReportColumns}
             data={data?.results ?? []}
-            searchPlaceholder="Buscar por SKU, producto o color..."
             emptyMessage="No se encontraron existencias para el almacén y el periodo seleccionados."
             actionButton={
               <Button
@@ -178,7 +175,7 @@ export function StockReportView() {
             onRefetch={() => refetch()}
             isRefetching={isFetching}
             isLoading={isLoading}
-            isError={isError && !data}
+            isError={isInitialError}
             errorTitle="Error al generar el reporte"
             errorMessage={extractErrorMessage(error, "No se pudo generar el reporte.")}
             loadingAriaLabel="Generando reporte"

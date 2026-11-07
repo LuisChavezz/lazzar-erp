@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import type { FormFieldError } from "@/src/utils/getFieldError";
 import { isPlausibleDateKey } from "../utils/dateInputs";
 
 interface DateParamInputProps {
@@ -15,6 +16,10 @@ interface DateParamInputProps {
   isAcceptable?: (value: string) => boolean;
   min?: string;
   max?: string;
+  /** Clases extra del input (p. ej. `COMPACT_FIELD_CLS`). */
+  className?: string;
+  /** Error del campo (p. ej. un 400 del backend), como el de `FormInput`. */
+  error?: FormFieldError;
 }
 
 /**
@@ -39,6 +44,8 @@ export function DateParamInput({
   isAcceptable = () => true,
   min,
   max,
+  className = "",
+  error,
 }: DateParamInputProps) {
   const [draft, setDraft] = useState(value);
   const [syncedValue, setSyncedValue] = useState(value);
@@ -54,7 +61,8 @@ export function DateParamInput({
       label={label}
       type="date"
       name={name}
-      className="dark:scheme-dark"
+      className={`dark:scheme-dark ${className}`}
+      error={error}
       min={min}
       max={max}
       value={draft}

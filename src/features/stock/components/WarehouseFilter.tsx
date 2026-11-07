@@ -48,7 +48,7 @@ export function WarehouseFilter({
   error,
   className = "",
 }: WarehouseFilterProps) {
-  const { data: warehouses = [], isLoading } = useWarehouses();
+  const { data: warehouses = [], isLoading, isFetching, isInitialError, refetch } = useWarehouses();
   const errorId = useId();
 
   // Solo almacenes activos, alfabéticos por nombre (misma convención que
@@ -156,7 +156,34 @@ export function WarehouseFilter({
                 </DropdownMenu.Item>
               ))}
 
-              {activeWarehouses.length === 0 && (
+              {/* La lista nunca cargó: no es que no haya almacenes. */}
+              {isInitialError && (
+                <>
+                  <DropdownMenu.Item disabled className="text-xs">
+                    <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                      No se pudieron cargar los almacenes
+                    </span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    disabled={isFetching}
+                    // Mantiene el menú abierto: la lista aparece en cuanto llega.
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      void refetch();
+                    }}
+                    className="cursor-pointer! text-xs"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-semibold">
+                      {isFetching && (
+                        <LoadingSpinnerIcon className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      )}
+                      {isFetching ? "Reintentando..." : "Reintentar"}
+                    </span>
+                  </DropdownMenu.Item>
+                </>
+              )}
+
+              {!isInitialError && activeWarehouses.length === 0 && (
                 <DropdownMenu.Item disabled className="text-xs">
                   <span className="text-xs font-medium text-slate-400">
                     No hay almacenes disponibles

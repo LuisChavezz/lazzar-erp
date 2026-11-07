@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getStockMovementReport } from "../services/actions";
 import type {
   StockMovementReportParams,
@@ -22,10 +23,13 @@ import { STOCK_MOVEMENT_REPORT_QUERY_KEY } from "@/src/constants/stockQueryKeys"
 export const useStockMovementReport = (
   params: StockMovementReportParams | null,
 ) => {
-  return useQuery<StockMovementReportResponse>({
-    queryKey: [...STOCK_MOVEMENT_REPORT_QUERY_KEY, params],
-    queryFn: () => getStockMovementReport(params as StockMovementReportParams),
-    enabled: params !== null,
-    placeholderData: keepPreviousData,
-  });
+  return useGuardedQuery<StockMovementReportResponse>(
+    {
+      queryKey: [...STOCK_MOVEMENT_REPORT_QUERY_KEY, params],
+      queryFn: () => getStockMovementReport(params as StockMovementReportParams),
+      enabled: params !== null,
+      placeholderData: keepPreviousData,
+    },
+    { toastId: "stock-movement-report-refetch-error" },
+  );
 };
