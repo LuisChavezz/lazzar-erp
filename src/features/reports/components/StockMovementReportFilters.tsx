@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { FormSelect } from "@/src/components/FormSelect";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
@@ -66,6 +67,7 @@ export function StockMovementReportFilters({
         <div className="w-52">
           <FormSelect
             label="Tipo de movimiento"
+            className={COMPACT_FIELD_CLS}
             value={tipoMovimiento ?? ""}
             onChange={(e) =>
               onTipoChange(
@@ -104,12 +106,18 @@ export function StockMovementReportFilters({
         {/* Almacén: OPCIONAL. Sin selección ⇒ el reporte incluye todos.
             `allowClear` habilita "Todos los almacenes" para volver a `null`
             sin perder el tipo de movimiento ni el rango de fechas. */}
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
+        <WarehouseFilter
+          value={almacenId}
+          onChange={onAlmacenChange}
+          allowClear
+          className={COMPACT_FIELD_CLS}
+        />
 
         <div className="w-44">
           <FormInput
             label="Desde"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaInicio ?? ""}
             // `max` impide elegir un inicio posterior al fin ya seleccionado.
             max={fechaFinal ?? undefined}
@@ -121,6 +129,7 @@ export function StockMovementReportFilters({
           <FormInput
             label="Hasta"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaFinal ?? ""}
             // `min` impide elegir un fin anterior al inicio ya seleccionado.
             min={fechaInicio ?? undefined}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
@@ -55,12 +56,13 @@ export function StockReportFilters({
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-end gap-4">
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} />
+        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} className={COMPACT_FIELD_CLS} />
 
         <div className="w-44">
           <FormInput
             label="Desde"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaInicio ?? ""}
             // `max` impide elegir un inicio posterior al fin ya seleccionado.
             max={fechaFinal ?? undefined}
@@ -72,6 +74,7 @@ export function StockReportFilters({
           <FormInput
             label="Hasta"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaFinal ?? ""}
             // `min` impide elegir un fin anterior al inicio ya seleccionado.
             min={fechaInicio ?? undefined}

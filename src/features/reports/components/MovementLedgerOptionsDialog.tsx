@@ -1,6 +1,7 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -44,7 +45,7 @@ export function MovementLedgerOptionsDialog({
     : `${options.length} coincidencias de "${query}". Elige una para ver su auxiliar.`;
 
   return (
-    <MainDialog open={open} onOpenChange={onOpenChange} title="" maxWidth="640px" showCloseButton={false}>
+    <MainDialog open={open} onOpenChange={onOpenChange} title="" maxWidth={DIALOG_WIDTH_FORM} showCloseButton={false}>
       {/* Se remonta al reabrir para reiniciar la selección tentativa. */}
       {open && (
         <SingleSelectPickerDialogContent<MovementLedgerVariant>

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { SearchIcon } from "@/src/components/Icons";
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
 
@@ -81,6 +82,7 @@ export function MovementLedgerFilters({
             <FormInput
               label="SKU o descripción"
               type="search"
+              className={COMPACT_FIELD_CLS}
               placeholder="SKU, SKU de producción o descripción"
               value={draft}
               onChange={(e) => {
@@ -102,12 +104,19 @@ export function MovementLedgerFilters({
         </form>
 
         {/* Almacén OPCIONAL: sin selección, todos los almacenes. */}
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear error={almacenError} />
+        <WarehouseFilter
+          value={almacenId}
+          onChange={onAlmacenChange}
+          allowClear
+          error={almacenError}
+          className={COMPACT_FIELD_CLS}
+        />
 
         <div className="w-44">
           <FormInput
             label="Desde"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaInicio ?? ""}
             max={fechaFinal ?? undefined}
             onChange={(e) => emitDateRange(e.target.value || null, fechaFinal)}
@@ -119,6 +128,7 @@ export function MovementLedgerFilters({
           <FormInput
             label="Hasta"
             type="date"
+            className={COMPACT_FIELD_CLS}
             value={fechaFinal ?? ""}
             min={fechaInicio ?? undefined}
             onChange={(e) => emitDateRange(fechaInicio, e.target.value || null)}
