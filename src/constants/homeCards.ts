@@ -16,9 +16,9 @@ const defaultCardClassName =
 export const homeCards = [
   {
     icon: DashboardIcon,
-    title: "Panel de Control (Core)",
-    description: "Empresas, usuarios, seguridad y catálogos base del sistema.",
-    footerText: "Configurar estructura",
+    title: "Panel de Control",
+    description: "Reportes del sistema: existencias, movimientos y auxiliar de inventario.",
+    footerText: "Ver reportes",
     href: "/system",
     accentClass: "text-sky-600 dark:text-sky-400",
     accentBgClass: "bg-sky-50 dark:bg-sky-500/10",

@@ -151,15 +151,15 @@ const defineSectionedGroup = <const SectionKey extends string>(
 export const appRouteGroups: AppRouteGroup[] = [
   defineSectionedGroup({
     key: "system",
-    label: "Configuración del sistema",
-    description: "Catálogos base, seguridad y administración del sistema.",
+    label: "Panel de Control",
+    description: "Reportes del sistema.",
     permission: "R-CORE",
-    moduleLabel: "Panel de Control (Core)",
+    moduleLabel: "Panel de Control",
     modulePath: "/system",
-    moduleDescription: "Empresas, usuarios, seguridad y catálogos base del sistema.",
+    moduleDescription: "Reportes del sistema: existencias, movimientos y auxiliar de inventario.",
     moduleIcon: DashboardIcon,
     showInHome: true,
-    sections: [{ key: "reports", label: "Reportes" }],
+    sections: [{ key: "reports", label: "Reportes de inventario" }],
     items: [
       // Una ruta por reporte, todas con el código de Reportes: la regla
       // `/system/reports` de `routePermissions` las cubre por prefijo.
