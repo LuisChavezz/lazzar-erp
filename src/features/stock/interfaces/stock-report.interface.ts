@@ -11,14 +11,17 @@
 /** Una fila del reporte: existencias de una variante en un almacén. */
 export interface StockReportRow {
   almacen_id: number;
-  almacen_codigo: string;
-  almacen_nombre: string;
-  producto_id: number;
-  producto_variante_id: number;
-  producto_nombre: string;
-  sku: string;
-  color: string;
-  talla: string;
+  // El resto de la identidad puede llegar `null`: el renglón sale de la
+  // existencia y de la auditoría, y un producto sin variante no trae SKU,
+  // color ni talla.
+  almacen_codigo: string | null;
+  almacen_nombre: string | null;
+  producto_id: number | null;
+  producto_variante_id: number | null;
+  producto_nombre: string | null;
+  sku: string | null;
+  color: string | null;
+  talla: string | null;
   // Cantidades y costos llegan como strings decimales del backend
   // (p. ej. "10.0000"); no se convierten aquí.
   existencia_inicial: string;
@@ -55,7 +58,9 @@ export interface StockReportResponse {
   //    consulta. Reflejan el periodo completo. ──────────────────────────────
   fecha_inicio: string;
   fecha_final: string;
-  filtros: { almacen_id: number };
+  // Sin almacenes en el alcance del usuario (p. ej. un almacén ajeno), el
+  // backend responde vacío y `filtros` no trae `almacen_id`.
+  filtros: { almacen_id?: number };
   resumen: StockReportSummary;
   resumen_por_almacen: StockReportSummaryByWarehouse[];
 }

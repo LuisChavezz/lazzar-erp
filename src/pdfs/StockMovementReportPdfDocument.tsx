@@ -13,10 +13,8 @@
  */
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { StockMovementReportResponse } from "@/src/features/stock/interfaces/stock-movement-report.interface";
-// Se reutiliza el MISMO mapa de etiquetas por tipo de movimiento del módulo de
-// movimientos (usado también por `StockMovementReportColumns`), en vez de
-// re-declararlo aquí.
-import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/components/StockMovementsColumns";
+// Mismo mapa de etiquetas que `StockMovementReportColumns`.
+import { stockMovementReportTypeLabel } from "@/src/features/stock/constants/stockMovementReportTypes";
 import { formatMoneyValue, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate, formatShortDate } from "@/src/utils/formatDate";
 import { stockMovementReportPdfStyles as s } from "./StockMovementReportPdfStyles";
@@ -40,8 +38,7 @@ export const StockMovementReportPdfDocument = ({
 }: StockMovementReportPdfDocumentProps) => {
   const { resumen, results } = report;
 
-  const tipoLabel =
-    MOVEMENT_TYPE_CONFIG[report.tipo_movimiento]?.label ?? report.tipo_movimiento;
+  const tipoLabel = stockMovementReportTypeLabel(report.tipo_movimiento);
 
   // El almacén es opcional: la respuesta solo trae `filtros.almacen_id` (sin
   // nombre). Igual que `StockReportPdfDocument`, el nombre se resuelve desde
@@ -168,7 +165,7 @@ export const StockMovementReportPdfDocument = ({
                   </Text>
                 </View>
                 <Text style={[s.tableCell, s.colTipo]}>
-                  {MOVEMENT_TYPE_CONFIG[row.tipo_movimiento]?.label ?? row.tipo_movimiento}
+                  {stockMovementReportTypeLabel(row.tipo_movimiento)}
                 </Text>
                 <Text style={[s.tableCell, s.colProducto]}>
                   {row.producto_nombre || row.producto_base_nombre || "—"}

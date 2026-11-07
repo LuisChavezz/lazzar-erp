@@ -8,6 +8,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
+import { STOCK_MOVEMENT_REPORT_TYPE_CONFIG } from "@/src/features/stock/constants/stockMovementReportTypes";
 import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 
 interface StockMovementReportFiltersProps {
@@ -82,24 +83,15 @@ export function StockMovementReportFilters({
             >
               Selecciona un tipo
             </option>
-            <option
-              value="ENTRADA"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Entrada
-            </option>
-            <option
-              value="SALIDA"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Salida
-            </option>
-            <option
-              value="AJUSTE"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Ajuste
-            </option>
+            {Object.entries(STOCK_MOVEMENT_REPORT_TYPE_CONFIG).map(([value, cfg]) => (
+              <option
+                key={value}
+                value={value}
+                className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+              >
+                {cfg.label}
+              </option>
+            ))}
           </FormSelect>
         </div>
 
