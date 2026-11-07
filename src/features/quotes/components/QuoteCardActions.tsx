@@ -29,8 +29,9 @@ interface QuoteCardActionsProps {
 }
 
 /**
- * Menú de acciones para una cotización.
- * Compartido entre el listado (QuoteColumns) y las cards del tablero kanban.
+ * Menú de acciones para una cotización en las cards del tablero kanban; el
+ * listado pinta las MISMAS acciones (`useQuoteActionItems`) desde su celda de
+ * folio (`FolioActionMenu`).
  *
  * Solo SEÑALA intención: no tiene mutaciones ni diálogos propios. Esos viven
  * en la vista (`useQuoteRowActions` + `QuoteRowActionDialogs`), porque un
@@ -41,6 +42,16 @@ interface QuoteCardActionsProps {
  * contexto desde la vista dueña — ver `QuoteRowActionsProvider`.
  */
 export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardActionsProps) {
+  const items = useQuoteActionItems(quote);
+  return <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} trigger={trigger} />;
+}
+
+/**
+ * Acciones del menú de una cotización, con "Ver detalle" siempre primero.
+ * Compartidas por el tablero (`QuoteCardActions`) y el listado
+ * (`QuoteColumns`), para que ambas vistas ofrezcan exactamente lo mismo.
+ */
+export function useQuoteActionItems(quote: Quote): ActionMenuItem[] {
   const { onAction, busy } = useQuoteRowActionsContext();
   const isAuthorizing = isQuoteRowBusy(busy, "authorize", quote.id);
   const isRejecting = isQuoteRowBusy(busy, "reject", quote.id);
@@ -56,7 +67,7 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
 
   const items: ActionMenuItem[] = [
     {
-      label: "Ver detalles",
+      label: "Ver detalle",
       icon: ViewIcon,
       onSelect: () => onAction("view", quote),
     },
@@ -120,5 +131,5 @@ export function QuoteCardActions({ quote, align = "end", trigger }: QuoteCardAct
     },
   ];
 
-  return <ActionMenu items={items} ariaLabel="Acciones de cotización" align={align} trigger={trigger} />;
+  return items;
 }

@@ -11,7 +11,8 @@ import {
 } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
-import { quoteColumns } from "./QuoteColumns";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { getQuoteColumns, QUOTE_HEADER_FILTERS } from "./QuoteColumns";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
@@ -59,16 +60,22 @@ export const QuoteList = () => {
   // contexto, para que `quoteColumns` siga siendo un arreglo estático).
   const { onAction, busy, dialogs } = useQuoteRowActions();
 
+  // Columnas estáticas: callbacks y "en curso" van por `QuoteRowActionsProvider`
+  // (sin `useMemo`: el React Compiler memoiza el componente). Las opciones de
+  // los filtros de encabezado se arman con el listado COMPLETO (modo cliente).
+  const columns = withHeaderFilters(getQuoteColumns(), quotes, QUOTE_HEADER_FILTERS);
+
   return (
     <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
       <QuoteRowActionDialogs quotes={quotes} {...dialogs} />
       <DataTable
         ref={tableRef}
-        columns={quoteColumns}
+        columns={columns}
         data={quotes}
         baseDataCount={quotes.length}
-        searchPlaceholder="Filtra resultados de la tabla"
+        searchPlaceholder="Buscar por #, cliente o estatus..."
+        getRowId={(row) => String(row.id)}
         onVisibleColumnsChange={setVisibleColumns}
         isLoading={isOrdersLoading}
         isError={isErrorQuotes}
