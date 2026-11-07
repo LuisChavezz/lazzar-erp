@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import {
   DataTable,
@@ -20,11 +19,8 @@ import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRo
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useQuotes } from "../hooks/useQuotes";
-import { approveOperationsQuoteMutationKey } from "../../operations/hooks/useApproveOperationsQuote";
-import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -38,14 +34,6 @@ export const QuoteList = () => {
   // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
   const tableRef = useRef<DataTableHandle<Quote>>(null);
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
-  const isAuthorizingOrder =
-    useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
-  const isRejectingOrder =
-    useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
-  const isValidatingReview =
-    useIsMutating({ mutationKey: validateQuoteForReviewMutationKey }) > 0;
-  const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
-  const isTableBusy = isUpdatingOrderStatus || isValidatingReview;
   const isSessionLoading = sessionStatus === "loading";
   // Gatea "+ Nueva cotización". Es el código de ALTA, no el de lectura de la
   // sección: ver el listado (`R-CRM-COTIZACIONES`, lo exige la ruta) no
@@ -59,6 +47,13 @@ export const QuoteList = () => {
   // y de los diálogos; la celda solo señala qué acción se eligió (por
   // contexto, para que `quoteColumns` siga siendo un arreglo estático).
   const { onAction, busy, dialogs } = useQuoteRowActions();
+  // Overlay de la tabla: trabajo en curso leído de la MutationCache (`busy`),
+  // el mismo que acota el menú de cada fila; vale venga de esta vista o de
+  // otra (el tablero comparte las claves).
+  const isAuthorizingOrder = busy.some((b) => b.kind === "authorize");
+  const isRejectingOrder = busy.some((b) => b.kind === "reject");
+  const isValidatingReview = busy.some((b) => b.kind === "validateReview");
+  const isTableBusy = isAuthorizingOrder || isRejectingOrder || isValidatingReview;
 
   // Columnas estáticas: callbacks y "en curso" van por `QuoteRowActionsProvider`
   // (sin `useMemo`: el React Compiler memoiza el componente). Las opciones de

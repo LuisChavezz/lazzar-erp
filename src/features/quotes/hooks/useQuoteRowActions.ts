@@ -9,6 +9,7 @@ import {
 } from "../../operations/hooks/useApproveOperationsQuote";
 import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import {
   prepareQuoteEmailMutationKey,
   sendQuoteEmailMutationKey,
@@ -109,7 +110,17 @@ export function useQuoteRowActions() {
   // al terminar de prepararse, y también respeta el turno.
   const dialogTurnRef = useRef(0);
 
-  const approve = useApproveOperationsQuote();
+  // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de
+  // cada llamada; los callbacks por llamada de `mutate` solo corren para la
+  // última.
+  const { mutateAsync: approveAsync } = useApproveOperationsQuote();
+  // Candado SÍNCRONO por cotización para autorizar (`useRowActionLock`): el
+  // "en curso" de la MutationCache llega en un render posterior, así que el
+  // segundo clic de un doble clic lo encontraría libre y mandaría otro
+  // `autorizar/`. La ref del candado ya está tomada en ese clic, y su
+  // `guardClose` deja la confirmación abierta y bloqueada (Esc, "Cancelar",
+  // clic fuera) hasta que la petición termina.
+  const authorizeLock = useRowActionLock();
   // Rechazar no tiene mutación aquí: la posee `RejectQuoteDialog` (motivo
   // obligatorio, errores bajo el campo). Su "en curso" se lee de la caché.
   const prepareEmail = usePrepareQuoteEmail();
@@ -172,6 +183,8 @@ export function useQuoteRowActions() {
   // de cada mutación), igual que cuando los hooks vivían en la celda — ver
   // `usePendingQuoteIds` para por qué se lee de la caché y no de la instancia.
   const authorizing = usePendingQuoteIds(approveOperationsQuoteMutationKey);
+  const isAuthorizeBusy = (quoteId: number) =>
+    authorizing.includes(quoteId) || authorizeLock.isPending(quoteId);
   const rejecting = usePendingQuoteIds(rejectOperationsQuoteMutationKey);
   // Preparar ("Preparando…") y enviar ("Enviando…", solo tras confirmar) se
   // distinguen en el menú; las dos deshabilitan repetir la acción.
@@ -193,11 +206,34 @@ export function useQuoteRowActions() {
   const dialogs = {
     dialog,
     onClose: () => setDialog(null),
-    onAuthorize: (quoteId: number) => approve.mutate(quoteId),
+    onAuthorize: (quoteId: number) => {
+      // Ya en vuelo (doble clic, o reabrir tras cerrar mientras sigue
+      // pendiente): no se vuelve a mandar.
+      if (authorizing.includes(quoteId) || !authorizeLock.acquire(quoteId)) return;
+      approveAsync(quoteId)
+        // El hook ya avisó del error con su toast; aquí solo se evita el
+        // rechazo no manejado de la promesa.
+        .catch(() => {})
+        .finally(() => {
+          authorizeLock.release(quoteId);
+          // Solo cierra SU confirmación: si el usuario ya abrió otra cosa, no
+          // se toca.
+          setDialog((current) =>
+            current?.kind === "authorize" && current.quote.id === quoteId ? null : current
+          );
+        });
+    },
+    /**
+     * Props de cierre bloqueado de la confirmación de autorizar
+     * (`guardClose`): `busy` también con el "en curso" de la MutationCache,
+     * que sobrevive a un remontaje de la vista.
+     */
+    authorizeGuard: (quoteId: number) =>
+      authorizeLock.guardClose(quoteId, () => setDialog(null), authorizing.includes(quoteId)),
+    isAuthorizeBusy,
     onSubmitForReview: (quoteId: number, comentario?: string) =>
       submitForReview.mutate({ id: quoteId, comentario }),
     emailDialog: email.dialog,
-    isAuthorizing: approve.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {
       open: review.isReviewValidationDialogOpen,
