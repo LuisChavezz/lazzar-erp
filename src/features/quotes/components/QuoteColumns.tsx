@@ -109,11 +109,19 @@ export const getQuoteColumns = () =>
       meta: { hiddenByDefault: true },
       cell: (info) => <QuoteStatusBadge quote={info.row.original} />,
     }),
-    columnHelper.accessor((row) => getQuoteClienteLabel(row), {
-      id: "cliente",
+    // El VALOR de la columna es la razón social cruda, tal como la manda el
+    // backend: es lo que leen las exportaciones CSV/PDF (por `accessorFn`) y
+    // lo que indexa la búsqueda (`?? ""`: un `null` en la primera fila la
+    // sacaría de la búsqueda, ver la trampa en `DataTable`). El formato de
+    // pantalla vive SOLO en la celda. El `id` es el de antes de EC-752, el
+    // que usa el PDF para darle su ancho (`getColumnWeight`).
+    columnHelper.accessor((row) => row.cliente_razon_social ?? "", {
+      id: "cliente_razon_social",
       header: "Razón social",
       cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300">{info.getValue() || "—"}</span>
+        <span className="text-slate-600 dark:text-slate-300">
+          {getQuoteClienteLabel(info.row.original) || "—"}
+        </span>
       ),
     }),
     columnHelper.display({
@@ -161,6 +169,28 @@ export const getQuoteColumns = () =>
   ] as ColumnDef<Quote>[];
 
 /**
+ * Rótulo de la opción de cliente del filtro: el texto de la celda
+ * (`getQuoteClienteLabel`) y, SOLO si otro cliente distinto de las filas tiene
+ * el mismo texto, su id para distinguirlos ("Acme sa de cv (cliente #10)").
+ * El listado no trae el RFC del cliente, así que el calificador es el id.
+ */
+export const getQuoteClienteFilterLabel = (quotes: Quote[]) => {
+  const idsByLabel = new Map<string, Set<number>>();
+  for (const quote of quotes) {
+    if (quote.cliente == null) continue;
+    const label = getQuoteClienteLabel(quote);
+    const ids = idsByLabel.get(label) ?? new Set<number>();
+    ids.add(quote.cliente);
+    idsByLabel.set(label, ids);
+  }
+  return (quote: Quote): string => {
+    const label = getQuoteClienteLabel(quote);
+    if (quote.cliente == null) return label;
+    return (idsByLabel.get(label)?.size ?? 0) > 1 ? `${label} (cliente #${quote.cliente})` : label;
+  };
+};
+
+/**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
  * - El `#id` filtra por `estatus` (su badge), con ficha "Estatus: …": el
  *   catálogo completo de `QUOTE_STATUS_CONFIG` en su orden, con su punto, y al
@@ -168,11 +198,18 @@ export const getQuoteColumns = () =>
  *   `getQuoteStatusLabel` (el mismo texto que su badge).
  * - El cliente es un FK: sus opciones salen de las filas, comparan contra el id
  *   crudo `cliente` y se rotulan como la celda (`getQuoteClienteLabel`, con su
- *   respaldo `Cliente #N`), así dos homónimos no se mezclan. Un borrador puede
- *   guardarse sin cliente: esas filas tienen su opción "Sin cliente", fijada
- *   arriba. Con buscador: el catálogo es largo.
+ *   respaldo `Cliente #N`), así dos homónimos no se mezclan; cuando dos o más
+ *   clientes comparten el texto, solo esas opciones llevan su id
+ *   (`getQuoteClienteFilterLabel`). Un borrador puede guardarse sin cliente:
+ *   esas filas tienen su opción "Sin cliente", fijada arriba. Con buscador: el
+ *   catálogo es largo.
+ *
+ * Es una factoría sobre las filas porque saber si un texto se repite exige
+ * ver el listado completo, no solo la fila.
  */
-export const QUOTE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Quote>>> = {
+export const getQuoteHeaderFilters = (
+  quotes: Quote[],
+): Partial<Record<string, HeaderFilterSpec<Quote>>> => ({
   id: {
     type: "options",
     filterLabel: "estatus",
@@ -180,11 +217,11 @@ export const QUOTE_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Quote
     options: optionsFromConfig(QUOTE_STATUS_CONFIG),
     label: getQuoteStatusLabel,
   },
-  cliente: {
+  cliente_razon_social: {
     type: "distinct",
     get: (r) => r.cliente,
-    label: getQuoteClienteLabel,
+    label: getQuoteClienteFilterLabel(quotes),
     searchable: true,
     emptyOption: "Sin cliente",
   },
-};
+});
