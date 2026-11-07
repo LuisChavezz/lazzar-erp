@@ -44,9 +44,10 @@ interface OperationsQuoteActionDialogsProps {
   dialog: OperationsQuoteDialogState | null;
   onClose: () => void;
   /**
-   * Listado completo de la consulta: solo para el color de estatus del
-   * encabezado de "Ver detalles" (fila viva, o la foto si ya salió). La
-   * elegibilidad de las acciones se evalúa sobre la foto, no aquí.
+   * Listado completo de la consulta: para el color de estatus del encabezado
+   * de "Ver detalles" (fila viva, o la foto si ya salió) y para el aviso de
+   * fila desactualizada del rechazo (`RejectQuoteDialog.liveQuote`). La
+   * elegibilidad de las demás acciones se evalúa sobre la foto, no aquí.
    */
   operationsQuotes: OperationsQuote[];
 }
@@ -149,6 +150,9 @@ export function OperationsQuoteActionDialogs({
           key={session.id}
           open={isOpen("reject")}
           quote={snapshot.operationsQuote}
+          // Fila viva de ESTA consulta (mesa de control solo trae 2 y 5): si
+          // ya no está, se cerró por fuera y el diálogo avisa.
+          liveQuote={operationsQuotes.find((row) => row.id === id) ?? null}
           onClose={onClose}
         />
       );

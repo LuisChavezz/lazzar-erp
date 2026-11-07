@@ -69,7 +69,7 @@ export function QuoteRowActionDialogs({
   // se limpia aquí. Sin esto quedaba vivo y, si un refetch posterior volvía a
   // hacer autorizable la cotización, el diálogo reaparecía sin que nadie lo
   // pidiera.
-  // Solo AUTORIZAR: el rechazo no se re-verifica en el cliente (ver abajo).
+  // Solo AUTORIZAR: el rechazo hace su propia verificación (ver abajo).
   // Mientras la autorización PROPIA está en vuelo no se decide: la cierra el
   // `finally` de `onAuthorize` cuando termina, con su toast.
   const authorizeBusy = dialog?.kind === "authorize" && isAuthorizeBusy(dialog.quote.id);
@@ -79,10 +79,11 @@ export function QuoteRowActionDialogs({
     if (authorizationLost) onClose();
   }, [authorizationLost, onClose]);
 
-  // Rechazo: copia tomada al ABRIR (la fila del menú), no el registro vivo, y
+  // Rechazo: copia tomada al ABRIR (la fila del menú) para el texto, y
   // diálogo siempre montado con `open` controlado para que anime al cerrar.
-  // Si el estatus cambia mientras está abierto, el 400 `cotizacion` del
-  // backend es la fuente de verdad (el diálogo se cierra con su mensaje).
+  // Si la fila viva deja de estar pendiente mientras está abierto, el diálogo
+  // se cierra con aviso (`liveQuote`); lo que la caché aún no ve lo decide el
+  // 400 `cotizacion` del backend.
   const isRejectOpen = dialog?.kind === "reject";
   const rejectSession = useDialogSession(isRejectOpen, isRejectOpen ? dialog.quote : null);
 
@@ -132,6 +133,9 @@ export function QuoteRowActionDialogs({
           key={rejectSession.id}
           open={isRejectOpen}
           quote={rejectSession.snapshot}
+          // Fila viva del listado COMPLETO de Ventas: si cambió de estatus por
+          // fuera, el diálogo se cierra con aviso.
+          liveQuote={quotes.find((q) => q.id === rejectSession.snapshot?.id) ?? null}
           onClose={onClose}
         />
       )}

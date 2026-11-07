@@ -377,6 +377,11 @@ export const PendingApprovalQueue = () => {
           key={rejectSession.id}
           open={isRejectOpen}
           quote={rejectSession.snapshot}
+          // Fila viva de la consulta de mesa de control (la misma que arma la
+          // cola): si ya no está, se cerró por fuera y el diálogo avisa.
+          liveQuote={
+            operationsQuotes.find((row) => row.id === rejectSession.snapshot?.id) ?? null
+          }
           onClose={() => setPendingOperationsQuoteAction(null)}
         />
       )}
