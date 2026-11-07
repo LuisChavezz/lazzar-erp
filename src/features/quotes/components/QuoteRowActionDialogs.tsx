@@ -48,9 +48,10 @@ export function QuoteRowActionDialogs({
   dialog,
   onClose,
   onAuthorize,
+  authorizeGuard,
+  isAuthorizeBusy,
   onSubmitForReview,
   emailDialog,
-  isAuthorizing,
   isSubmittingForReview,
   reviewValidation,
 }: QuoteRowActionDialogsProps) {
@@ -69,7 +70,11 @@ export function QuoteRowActionDialogs({
   // hacer autorizable la cotización, el diálogo reaparecía sin que nadie lo
   // pidiera.
   // Solo AUTORIZAR: el rechazo no se re-verifica en el cliente (ver abajo).
-  const authorizationLost = dialog?.kind === "authorize" && !canManageAuthorization;
+  // Mientras la autorización PROPIA está en vuelo no se decide: la cierra el
+  // `finally` de `onAuthorize` cuando termina, con su toast.
+  const authorizeBusy = dialog?.kind === "authorize" && isAuthorizeBusy(dialog.quote.id);
+  const authorizationLost =
+    dialog?.kind === "authorize" && !canManageAuthorization && !authorizeBusy;
   useEffect(() => {
     if (authorizationLost) onClose();
   }, [authorizationLost, onClose]);
@@ -108,11 +113,14 @@ export function QuoteRowActionDialogs({
       {dialog?.kind === "authorize" && quote && (
         <ConfirmDialog
           key={`authorize-${quote.id}`}
-          open={canManageAuthorization}
-          onOpenChange={handleOpenChange}
+          open={canManageAuthorization || authorizeBusy}
+          // En vuelo queda abierta y bloqueada (ver `authorizeGuard`); la
+          // cierra `onAuthorize` al terminar.
+          {...authorizeGuard(quote.id)}
+          closeOnConfirm={false}
           title="Autorizar pedido"
           description={`¿Deseas autorizar el pedido #${quote.id}?`}
-          confirmText={isAuthorizing ? "Autorizando..." : "Autorizar"}
+          confirmText={authorizeBusy ? "Autorizando..." : "Autorizar"}
           confirmColor="blue"
           onConfirm={() => {
             if (canManageAuthorization) onAuthorize(quote.id);
