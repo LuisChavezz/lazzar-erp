@@ -7,6 +7,7 @@ import { Quote } from "../interfaces/quote.interface";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { ColumnPaginator } from "./ColumnPaginator";
 import { KanbanColumnConfig } from "../constants/kanbanColumns";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "../utils/quoteStatusRules";
 
 // ─── Reexporta para compatibilidad con importadores existentes ─────────────────
 export type { KanbanColumnConfig };
@@ -38,7 +39,7 @@ export function QuoteKanbanColumn({
   // Solo la columna "Por Autorizar" (estatus 2) acepta drops
   const { ref, isDropTarget } = useDroppable({
     id: config.id,
-    disabled: isInteractionDisabled || config.estatus !== 2,
+    disabled: isInteractionDisabled || config.estatus !== PENDING_AUTHORIZATION_QUOTE_STATUS,
   });
   const [page, setPage] = useState(0);
 

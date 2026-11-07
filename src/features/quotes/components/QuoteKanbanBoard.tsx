@@ -20,7 +20,10 @@ import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import { QuoteKanbanCard } from "./QuoteKanbanCard";
 import { QuoteReviewValidationDialog } from "./QuoteReviewValidationDialog";
 import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
-import { isQuoteReviewableStatus } from "../utils/quoteStatusRules";
+import {
+  isQuoteReviewableStatus,
+  PENDING_AUTHORIZATION_QUOTE_STATUS,
+} from "../utils/quoteStatusRules";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { hasPermission } from "@/src/utils/permissions";
@@ -168,7 +171,7 @@ export function QuoteKanbanBoard() {
 
       // Solo se permite soltar en la columna "Por Autorizar" (estatus 2)
       const targetCol = KANBAN_COLUMNS.find(
-        (c) => c.id === String(targetId) && c.estatus === 2
+        (c) => c.id === String(targetId) && c.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS
       );
       if (!targetCol) return;
 

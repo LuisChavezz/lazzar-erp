@@ -31,6 +31,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -89,7 +90,7 @@ export const PendingApprovalQueue = () => {
   const pendingOperationsQuotes = useMemo(
     () =>
       operationsQuotes
-        .filter((operationsQuote) => operationsQuote.estatus === 2)
+        .filter((operationsQuote) => operationsQuote.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS)
         .sort(
           (firstOperationsQuote, secondOperationsQuote) =>
             new Date(firstOperationsQuote.created_at).getTime() -

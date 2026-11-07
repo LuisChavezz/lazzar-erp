@@ -6,6 +6,7 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { FacturacionIcon, OrdenesIcon, TrendingUpIcon } from "../../../components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { useQuotes } from "../hooks/useQuotes";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "../utils/quoteStatusRules";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { ErrorState } from "@/src/components/ErrorState";
 
@@ -18,7 +19,7 @@ export const QuoteStats = () => {
 
     for (const quote of quotes) {
       totalOrdersAmount += Number(quote.gran_total) || 0;
-      if (quote.estatus === 2) {
+      if (quote.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS) {
         pendingAuthorizationCount += 1;
       }
     }

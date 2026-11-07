@@ -5,13 +5,16 @@ import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { PedidosIcon, RejectIcon } from "@/src/components/Icons";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 
 export const OperationsQuoteStats = () => {
   const { operationsQuotes, isLoading } = useOperationsQuotes();
 
   const pendingApprovalCount = useMemo(
     () =>
-      operationsQuotes.filter((operationsQuote) => operationsQuote.estatus === 2)
+      operationsQuotes.filter(
+        (operationsQuote) => operationsQuote.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS
+      )
         .length,
     [operationsQuotes]
   );
