@@ -48,7 +48,7 @@ import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
 import { AssignColorDialog } from "./AssignColorDialog";
 import { buildProductByIdMap, getMissingColorState } from "../utils/requiredColor";
-import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
+import { QuoteCreationSuccessMessage, type QuoteSuccessVariant } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 
 const LazyCustomerForm = dynamic(
@@ -155,6 +155,11 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
    * permiten capturar muestras; ausente ⇒ sin filtro.
    */
   muestraCompanyId?: number;
+  /**
+   * Qué dice la vista de éxito tras guardar: "creada" (alta, por defecto) o
+   * "actualizada" (edición de cotización).
+   */
+  successVariant?: QuoteSuccessVariant;
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición
@@ -249,6 +254,7 @@ export function QuoteFormContent({
   headerBadge,
   topNotice,
   muestraCompanyId,
+  successVariant = "create",
 }: QuoteFormContentProps) {
   // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
   const productCategoryById = buildProductCategoryMap(products);
@@ -325,7 +331,7 @@ export function QuoteFormContent({
   if (isCreationSuccessVisible) {
     return (
       <div className={routeTransitionClass}>
-        <QuoteCreationSuccessMessage />
+        <QuoteCreationSuccessMessage variant={successVariant} />
       </div>
     );
   }
