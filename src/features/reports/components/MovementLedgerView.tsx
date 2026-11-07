@@ -62,8 +62,6 @@ export function MovementLedgerView() {
   // siguiente cambio de filtro, que debe ir ya por `producto_variante`.
   const [resolvedVariantId, setResolvedVariantId] = useState<number | null>(null);
   const [almacenId, setAlmacenId] = useState<number | null>(null);
-  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
-  const warehousePreselection = useWarehousePreselection(almacenId, setAlmacenId);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -116,6 +114,13 @@ export function MovementLedgerView() {
       setTarget({ producto_variante: resolvedVariantId });
     }
   };
+
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  // Igual que un cambio manual, fija antes la variante ya resuelta.
+  const warehousePreselection = useWarehousePreselection(almacenId, (id) => {
+    pinResolvedVariant();
+    setAlmacenId(id);
+  });
 
   const handleSearch = (q: string) => {
     setTarget({ q });
