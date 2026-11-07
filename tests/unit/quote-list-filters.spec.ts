@@ -69,8 +69,12 @@ test.describe("contrato de la tabla con el backend", () => {
     expect(byId.piezas?.serverSort).toBeUndefined();
   });
 
-  test("vista por defecto: el orden del backend con -id de desempate", () => {
-    expect(criteriaOf({})).toEqual({ ordering: "-created_at,-id" });
+  test("vista por defecto: no se envía ordering (rige el del backend, nulos al final)", () => {
+    expect(criteriaOf({})).toEqual({});
+    // Elegir otra vez el orden por defecto es lo mismo: sin ordering.
+    expect(criteriaOf({ ordering: "-created_at" })).toEqual({});
+    // Ascendente sí se envía, con desempate.
+    expect(criteriaOf({ ordering: "created_at" })).toEqual({ ordering: "created_at,-id" });
   });
 
   test("estatus: uno o varios del catálogo; uno desconocido invalida el valor", () => {
@@ -94,8 +98,8 @@ test.describe("contrato de la tabla con el backend", () => {
     expect(criteriaOf({ ordering: "-importe_sin_iva" })).toMatchObject({
       ordering: "-importe_sin_iva,-id",
     });
-    // Un campo fuera de la lista blanca vuelve al orden por defecto.
-    expect(criteriaOf({ ordering: "gran_total" })).toMatchObject({ ordering: "-created_at,-id" });
+    // Un campo fuera de la lista blanca vuelve al orden por defecto (sin enviar).
+    expect(criteriaOf({ ordering: "gran_total" }).ordering).toBeUndefined();
   });
 });
 

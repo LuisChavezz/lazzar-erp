@@ -142,6 +142,15 @@ export interface ServerTableDefinition<
      * vigente ya es por ese campo.
      */
     tiebreaker?: string;
+    /**
+     * `true`: sin orden elegido por el usuario NO se envía `ordering` y rige el
+     * del backend. Para un endpoint cuyo orden por defecto no se puede expresar
+     * con `?ordering=` (cotizaciones: `-created_at` con los nulos AL FINAL,
+     * mientras `?ordering=-created_at` los pone primero). `default` sigue
+     * diciendo qué orden es ese, para el encabezado y el ciclo de clics. Por
+     * defecto `false`: el comportamiento de siempre.
+     */
+    omitDefault?: boolean;
   };
   /**
    * Pares de filtros de fecha (`dateParam`) que forman un RANGO: `from` no
@@ -386,7 +395,10 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
   definition: ServerTableDefinition<P>,
   state: ServerTableState<P>,
 ): Record<string, string> => {
-  const ordering = effectiveServerTableOrdering(definition, state.ordering);
+  const ordering =
+    definition.ordering?.omitDefault && state.ordering === null
+      ? null
+      : effectiveServerTableOrdering(definition, state.ordering);
   const tiebreaker = definition.ordering?.tiebreaker;
   const orderingField = (value: string) => value.replace(/^-/, "");
   const sentOrdering =
