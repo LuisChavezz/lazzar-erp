@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getQuoteQueryOptions } from "./useQuote";
 import type { Quote } from "../interfaces/quote.interface";
@@ -58,7 +58,14 @@ export const useLiveQuoteStatus = (
     silent: true,
     isDefinitiveError: isQuoteDetailDefinitiveError,
   });
-  const subscribe = (onChange: () => void) => queryClient.getQueryCache().subscribe(onChange);
+  // Solo los eventos de ESTA consulta: escuchar toda la caché avisaba también
+  // cuando otro componente crea una consulta en su render (los comentarios de
+  // "Ver detalle"), y React reportaba un setState durante el render ajeno.
+  const queryHash = hashKey(options.queryKey);
+  const subscribe = (onChange: () => void) =>
+    queryClient.getQueryCache().subscribe((event) => {
+      if (event.query.queryHash === queryHash) onChange();
+    });
   const dataUpdatedAt = useSyncExternalStore(
     subscribe,
     () => queryClient.getQueryState(options.queryKey)?.dataUpdatedAt ?? 0,
