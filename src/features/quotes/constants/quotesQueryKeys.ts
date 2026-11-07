@@ -9,12 +9,6 @@
  */
 export const QUOTES_QUERY_KEY = ["quotes"] as const;
 
-/**
- * Prefijo de la tabla en modo servidor: `useServerTable` le agrega
- * `"list"` y los parámetros de la página.
- */
-export const QUOTES_TABLE_QUERY_KEY = QUOTES_QUERY_KEY;
-
 /** `opciones/`: catálogo del filtro de cliente (todo lo visible, sin filtros). */
 export const QUOTE_FILTER_OPTIONS_QUERY_KEY = [...QUOTES_QUERY_KEY, "opciones"] as const;
 
