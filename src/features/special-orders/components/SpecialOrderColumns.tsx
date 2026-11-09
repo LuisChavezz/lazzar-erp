@@ -13,6 +13,7 @@ import { parseLocalDate } from "@/src/utils/formatDate";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
+import { ServiciosCell } from "./ServiceOrdersTracking";
 import { EntregaCell, getSiguientePaso, OpsCell, PreOrdenCell, SiguientePasoCell, TrabajoCell } from "./SpecialOrderPriorityCells";
 
 /**
@@ -25,6 +26,7 @@ export const OPTIONAL_COLUMN_FIELDS: Record<string, (order: SpecialOrderRow) => 
   siguiente_paso: (o) => getSiguientePaso(o) ?? undefined,
   ordenes_produccion: (o) => o.ordenes_produccion,
   pre_orden: (o) => o.pre_orden,
+  ordenes_servicio: (o) => o.ordenes_servicio,
 };
 
 /**
@@ -179,6 +181,15 @@ export const getSpecialOrderColumns = ({
     enableGlobalFilter: false,
     size: 160,
     cell: ({ row }) => <PreOrdenCell order={row.original} />,
+  },
+  {
+    id: "ordenes_servicio",
+    accessorFn: (order) =>
+      Object.values(order.ordenes_servicio ?? {}).flat().map((o) => o.folio).join(" "),
+    header: "Servicios",
+    enableSorting: false,
+    size: 170,
+    cell: ({ row }) => <ServiciosCell order={row.original} />,
   },
   {
     // Las OP del pedido; el folio se puede buscar.

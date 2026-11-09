@@ -28,6 +28,7 @@ import { CatalogAltaConfirmDialog } from "./CatalogAltaConfirmDialog";
 import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
 import { SpecialOrderSummary } from "./SpecialOrderSummary";
+import { ServiceOrdersSection } from "./ServiceOrdersTracking";
 
 // Destino fijo del "Volver": la ruta cuelga de `/manufacturing` y solo se
 // alcanza desde el listado del propio módulo (mismo criterio que
@@ -224,6 +225,9 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           </p>
         </SheetSection>
       ) : null}
+
+      {/* ── 4. Servicios: bordado, reflejante y corte de manga ────────── */}
+      <ServiceOrdersSection order={data} />
 
       <SampleSkuOnboardingDialog
         pedidoId={data.id}
