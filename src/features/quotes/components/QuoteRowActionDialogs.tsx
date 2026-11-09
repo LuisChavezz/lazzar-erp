@@ -16,6 +16,7 @@ import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
 import { useLiveQuoteStatus } from "../hooks/useLiveQuoteStatus";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
 import { getQuoteDialogStatusColor } from "../constants/quoteStatus";
+import { getQuoteClienteLabel } from "../utils/quoteClienteLabel";
 import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 // ─── Carga diferida del panel de detalles ─────────────────────────────────────
@@ -105,7 +106,7 @@ export function QuoteRowActionDialogs({
           title={
             <DialogHeader
               title={`Detalles de la cotización #${quote.id}`}
-              subtitle={quote.cliente_nombre || quote.cliente_razon_social || "Sin cliente"}
+              subtitle={getQuoteClienteLabel(quote)}
               statusColor={getQuoteDialogStatusColor(quote.estatus)}
             />
           }

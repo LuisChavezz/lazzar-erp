@@ -3,7 +3,6 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { capitalize } from "@/src/utils/capitalize";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
 import {
@@ -11,25 +10,11 @@ import {
   QUOTE_STATUS_CONFIG,
   QUOTE_STATUS_FALLBACK_CLS,
 } from "../constants/quoteStatus";
+import { getQuoteClienteLabel } from "../utils/quoteClienteLabel";
 import { useQuoteActionItems } from "./QuoteCardActions";
 import { QuoteClienteHeaderFilter, QuoteEstatusHeaderFilter } from "./QuoteHeaderFilters";
 
 const columnHelper = createColumnHelper<Quote>();
-
-/**
- * Texto del cliente: la razón social (con el casing de la app), o el nombre
- * comercial si no viene, o `Cliente #N` si el listado no trae ninguno de los
- * dos. Es el MISMO texto en la celda, la búsqueda global y la opción del
- * filtro (que compara contra el id crudo `cliente`). Un borrador SIN cliente
- * (`cliente: null`) da `""`: es un dato real, no un nombre sin resolver, así
- * que la celda pinta «—» y la búsqueda no indexa un texto inventado.
- */
-export const getQuoteClienteLabel = (quote: Quote): string =>
-  quote.cliente == null
-    ? ""
-    : capitalize(quote.cliente_razon_social?.trim() ?? "") ||
-      quote.cliente_nombre?.trim() ||
-      `Cliente #${quote.cliente}`;
 
 /**
  * Badge de estatus de una cotización: color de `QUOTE_STATUS_CONFIG` (fuente
@@ -125,9 +110,17 @@ export const getQuoteColumns = () =>
       id: "cliente_razon_social",
       header: ({ column }) => <QuoteClienteHeaderFilter column={column} title="Razón social" />,
       meta: { label: "Razón social", serverSort: "cliente__razon_social", serverFilter: "cliente" },
+      // Texto de pantalla: la convención única (`getQuoteClienteLabel`, EC-810),
+      // con "Sin cliente" atenuado en un borrador sin cliente.
       cell: (info) => (
-        <span className="text-slate-600 dark:text-slate-300">
-          {getQuoteClienteLabel(info.row.original) || "—"}
+        <span
+          className={
+            info.row.original.cliente == null
+              ? "text-slate-400 dark:text-slate-500"
+              : "text-slate-600 dark:text-slate-300"
+          }
+        >
+          {getQuoteClienteLabel(info.row.original)}
         </span>
       ),
     }),

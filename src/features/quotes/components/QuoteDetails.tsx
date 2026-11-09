@@ -10,6 +10,7 @@ import { useQuoteComentarios } from "../hooks/useQuoteComentarios";
 import { QuoteDetailsProducts } from "./QuoteDetailsProducts";
 import { formatQuoteAmount } from "../utils/formatQuoteAmount";
 import { RecompraBadge } from "./RecompraBadge";
+import { getQuoteClienteContacto, getQuoteClienteLabel } from "../utils/quoteClienteLabel";
 import type { QuoteDetailView } from "../interfaces/quote.interface";
 import {
   hasQuotePaymentInfo,
@@ -113,6 +114,7 @@ export const QuoteDetailsView = ({ quote, comentarios }: QuoteDetailsViewProps) 
   const showPaymentInfo = hasQuotePaymentInfo(quote);
 
   const statusClassName = getStatusStyles(quote);
+  const clienteContacto = getQuoteClienteContacto(quote);
   const currency = findCurrency(currencies, quote.moneda);
   // Mientras el catálogo carga o si la PK no aparece, "-" (nunca el id crudo).
   const currencyLabel = currency ? getCurrencyLabel(currency) : null;
@@ -152,12 +154,15 @@ export const QuoteDetailsView = ({ quote, comentarios }: QuoteDetailsViewProps) 
               </span>
               {quote.recompra && <RecompraBadge />}
             </div>
+            {/* Cliente: la razón social y, debajo, el contacto rotulado (EC-810) */}
             <p className="mt-1.5 text-xl font-bold text-slate-900 dark:text-white truncate">
-              {toDisplayValue(quote.cliente_nombre || quote.cliente_razon_social)}
+              {getQuoteClienteLabel(quote)}
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-              {toDisplayValue(quote.cliente_razon_social)}
-            </p>
+            {clienteContacto && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                Contacto: {clienteContacto}
+              </p>
+            )}
           </div>
           <div className="text-right">
             {showTotals && (

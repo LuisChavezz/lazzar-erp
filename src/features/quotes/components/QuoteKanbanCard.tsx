@@ -4,6 +4,7 @@ import { memo } from "react";
 import { useDraggable } from "@dnd-kit/react";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
+import { getQuoteClienteContacto, getQuoteClienteLabel } from "../utils/quoteClienteLabel";
 import { QuoteCardActions } from "./QuoteCardActions";
 import { KANBAN_COLUMNS, KanbanColumnConfig } from "../constants/kanbanColumns";
 import {
@@ -54,6 +55,8 @@ const CardContent = memo(function CardContent({
 
   const gran_total = formatQuoteAmountOrDash(quote.gran_total, quote.moneda_codigo);
   const fecha = formatQuoteDateTime(quote.created_at, "d MMM yyyy");
+  const clienteLabel = getQuoteClienteLabel(quote);
+  const clienteContacto = getQuoteClienteContacto(quote);
 
   return (
     <div
@@ -113,24 +116,26 @@ const CardContent = memo(function CardContent({
         )}
       </div>
 
-      {/* Cliente */}
+      {/* Cliente: la razón social (convención de EC-810) y, debajo, el contacto rotulado */}
       <h3
-        className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug mb-0.5 line-clamp-2"
-        title={quote.cliente_nombre ?? undefined}
+        className={`text-sm font-semibold leading-snug mb-0.5 line-clamp-2 ${
+          quote.cliente == null
+            ? "text-slate-400 dark:text-slate-500"
+            : "text-slate-800 dark:text-slate-100"
+        }`}
+        title={clienteLabel}
       >
-        {quote.cliente_nombre}
+        {clienteLabel}
       </h3>
 
-      {/* Razón social */}
-      {quote.cliente_razon_social &&
-        quote.cliente_razon_social !== quote.cliente_nombre && (
-          <p
-            className="text-xs text-slate-500 dark:text-slate-400 truncate mb-2"
-            title={quote.cliente_razon_social}
-          >
-            {quote.cliente_razon_social}
-          </p>
-        )}
+      {clienteContacto && (
+        <p
+          className="text-xs text-slate-500 dark:text-slate-400 truncate mb-2"
+          title={`Contacto: ${clienteContacto}`}
+        >
+          Contacto: {clienteContacto}
+        </p>
+      )}
 
       {/* Divider */}
       <div className="my-2.5 h-px bg-slate-100 dark:bg-slate-700/40" />
@@ -188,7 +193,7 @@ export const QuoteKanbanCard = memo(function QuoteKanbanCard({
   return (
     <div
       ref={ref}
-      aria-label={`Cotización #${quote.id} — ${quote.cliente_nombre}`}
+      aria-label={`Cotización #${quote.id} — ${getQuoteClienteLabel(quote)}`}
       className={
         isReturning
           ? "rounded-2xl ring-2 ring-amber-400 dark:ring-amber-500 transition-shadow duration-300"
