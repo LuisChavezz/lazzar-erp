@@ -31,8 +31,12 @@ const SECTION_TITLE = "Indicadores";
  * Ventas por cliente: un bloque por moneda con el total facturado, los clientes
  * facturados y la concentración del top. Sin meta ni semáforo (el backend no
  * los expone): sin insignia y sin barra.
+ *
+ * `allCustomers` es `puede_ver_cartera_de_todos` (EC-789): con él la facturación
+ * cubre todos los clientes de la empresa; sin él (o si no llega), solo los del
+ * usuario.
  */
-function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactItem {
+function salesCard(kpi: CustomerSalesKpi, allCustomers: boolean, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Ventas por cliente", icon: TrendingUpIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -53,7 +57,8 @@ function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactIt
     ...(hasSales ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
     value: blocks.length === 0 ? <KpiMutedValue>Sin facturación</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
     info:
-      "Facturas emitidas y vigentes (sin borradores ni canceladas) de los clientes que puedes ver; " +
+      "Facturas emitidas y vigentes (sin borradores ni canceladas) de " +
+      (allCustomers ? "todos los clientes de la empresa; " : "los clientes que puedes ver; ") +
       `el detalle muestra los clientes que más concentran la facturación. ${SEPARATE_CURRENCIES_NOTE}`,
     hideProgress: true,
     action: (
@@ -166,7 +171,9 @@ function buildCards(
   openDrillDown: (kind: CustomerKpiDrillDownKind) => void,
 ): KpiCompactItem[] {
   return [
-    salesCard(data.ventas_por_cliente, () => openDrillDown("ventas_por_cliente")),
+    salesCard(data.ventas_por_cliente, data.puede_ver_cartera_de_todos === true, () =>
+      openDrillDown("ventas_por_cliente"),
+    ),
     activeCard(data.clientes_activos, () => openDrillDown("clientes_activos")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.reclamos_devoluciones, { label: "Tasa de reclamos o devoluciones", icon: ReceiptIcon }),
