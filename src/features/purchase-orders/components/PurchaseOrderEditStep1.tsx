@@ -15,6 +15,8 @@ import { PurchaseOrderPedidosField } from "./PurchaseOrderPedidosField";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
+import { almacenTrasCambioDeSucursal } from "../utils/purchaseOrderDelivery";
+import { PurchaseOrderAlmacenField } from "./PurchaseOrderAlmacenField";
 
 interface PurchaseOrderEditStep1Props {
   /** Orden existente que se edita, leída fresca del detalle (pre-puebla el formulario). */
@@ -104,6 +106,15 @@ export function PurchaseOrderEditStep1({
                   "sucursal",
                   event.target.value,
                 ) as number;
+                // El almacén destino es de UNA sucursal: al cambiarla se suelta
+                // aquí y el PUT lo manda en `null`. El backend no lo limpia por
+                // su cuenta en el PUT, así que sin esto quedaría el almacén de
+                // la sucursal anterior. Al volver a la sucursal de la orden
+                // regresa el guardado (y el PUT no lo manda).
+                if (nextValue !== field.state.value) {
+                  form.setFieldValue("almacen", almacenTrasCambioDeSucursal(nextValue, initialData));
+                  clearFieldErrors("almacen");
+                }
                 field.handleChange(nextValue);
                 clearFieldErrors("sucursal");
               }}
@@ -115,6 +126,44 @@ export function PurchaseOrderEditStep1({
             />
           )}
         </form.Field>
+
+        {/* ── Almacén destino (opcional al editar) + dirección de entrega ──
+            (EC-796). El guardado en la orden se sigue mostrando aunque ya no
+            esté en el catálogo (p. ej. inactivo), con el nombre que trae la
+            orden; sin cambios, no se reenvía. */}
+        <form.Subscribe selector={(state) => state.values.sucursal}>
+          {(sucursalId) => (
+            <form.Field name="almacen">
+              {(field) => (
+                <PurchaseOrderAlmacenField
+                  name={field.name}
+                  sucursalId={sucursalId}
+                  value={field.state.value ?? 0}
+                  onChange={(next) => {
+                    field.handleChange(next);
+                    clearFieldErrors("almacen");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("almacen");
+                  }}
+                  error={getError("almacen")}
+                  almacenes={onboardingData.catalogos.almacenes}
+                  sucursales={onboardingData.catalogos.sucursales}
+                  emptyLabel="Sin almacén destino"
+                  saved={
+                    initialData.almacen
+                      ? {
+                          value: initialData.almacen,
+                          label: initialData.almacen_nombre ?? `Almacén #${initialData.almacen}`,
+                        }
+                      : null
+                  }
+                />
+              )}
+            </form.Field>
+          )}
+        </form.Subscribe>
 
         {/* ── Proveedor ────────────────────────────────────────────────── */}
         <form.Field name="proveedor">
@@ -274,8 +323,8 @@ export function PurchaseOrderEditStep1({
         </form.Field>
 
         {/* ── Pedidos (opcional, varios) ───────────────────────────────────
-            `pedidos_vinculados` da el folio de los ya ligados que no estén
-            entre las opciones (cancelados o inactivos): siguen marcados. */}
+            `pedidos_vinculados` da folio, cliente y estado de los ya ligados:
+            un cancelado o inactivo sigue marcado, con su aviso. */}
         <form.Field name="pedidos">
           {(field) => (
             <PurchaseOrderPedidosField

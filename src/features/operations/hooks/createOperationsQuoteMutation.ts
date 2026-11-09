@@ -3,18 +3,37 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { drfActionErrorMessage } from "@/src/utils/drfWriteErrors";
+import {
+  drfActionErrorMessage,
+  isDrfActionRejection,
+  isNotFoundError,
+} from "@/src/utils/drfWriteErrors";
 import { extractProcessCompatibilityMessage } from "@/src/features/quotes/utils/quoteValidationErrors";
 import { KANBAN_COLUMNS } from "@/src/features/quotes/constants/kanbanColumns";
 import {
   OperationsQuote,
   OperationsQuoteActionResponse,
 } from "../interfaces/operations-quote.interface";
-import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
+import {
+  invalidatePedidoLinesRewritten,
+  invalidatePedidoLists,
+} from "@/src/features/orders/hooks/invalidatePedidoLinesRewritten";
 import { operationsQuotesQueryKey } from "./useOperationsQuotes";
+
+/**
+ * Qué le hace la acción al pedido de la cotización, según el backend:
+ * `autorizar` lo CREA, `aceptar-cambios` REESCRIBE sus renglones, servicios
+ * extras y totales, y `rechazar` / `rechazar-cambios` no lo tocan.
+ */
+export type OperationsQuotePedidoEffect = "creates" | "rewrites" | "none";
 
 interface CreateOperationsQuoteMutationParams {
   mutationKey: readonly unknown[];
+  /**
+   * Solo se usa en el error: en el éxito la respuesta ya dice qué pasó
+   * (`pedido` o `pedido_id`), pero un error sin respuesta no lo dice.
+   */
+  pedidoEffect: OperationsQuotePedidoEffect;
   mutationFn: (operationsQuoteId: number) => Promise<OperationsQuoteActionResponse>;
   successMessage: string;
   /** Respaldo cuando el error no trae un mensaje aprovechable (red, 5xx). */
@@ -34,7 +53,7 @@ interface CreateOperationsQuoteMutationParams {
  */
 export const applyOperationsQuoteActionResult = async (
   queryClient: QueryClient,
-  { cotizacion, pedido }: OperationsQuoteActionResponse
+  { cotizacion, pedido, pedido_id }: OperationsQuoteActionResponse
 ) => {
   // La fila se actualiza con lo que respondió la acción ANTES de
   // invalidar: si ese refetch falla, `useOperationsQuotes` conserva la
@@ -64,16 +83,41 @@ export const applyOperationsQuoteActionResult = async (
   queryClient.invalidateQueries({ queryKey: operationsQuotesQueryKey });
   queryClient.invalidateQueries({ queryKey: ["quotes"] });
   queryClient.invalidateQueries({ queryKey: ["quote"] });
-  // Autorizar CREA el pedido (la respuesta lo trae en `pedido`): las listas de
-  // pedidos (Mesa de Control › Pedidos, Mis pedidos, los selectores) ya no
-  // están al día. Las demás acciones no tocan pedidos.
-  if (pedido) {
-    queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+  // Autorizar CREA el pedido (la respuesta lo trae en `pedido`): cambian los
+  // listados de pedidos y sus indicadores. Aceptar cambios REESCRIBE el
+  // existente (renglones, servicios extras y totales; la respuesta trae solo
+  // `pedido_id`): además, su detalle, trazabilidad, programación y los
+  // programados. Rechazar y rechazar cambios no tocan el pedido.
+  if (pedido_id !== undefined) {
+    void invalidatePedidoLinesRewritten(queryClient);
+  } else if (pedido) {
+    void invalidatePedidoLists(queryClient);
   }
+};
+
+/**
+ * Error de una acción que toca el pedido: si el backend RECHAZÓ la acción
+ * (400, 403 o 409, o 404 porque la cotización ya no está), nada cambió. Si no
+ * se sabe (red caída, 5xx, el reintento tras refrescar el token falló), el
+ * backend pudo haberla aplicado: se invalida lo mismo que en el éxito, sin id
+ * de pedido porque la respuesta no llegó (las dos reglas invalidan por raíz).
+ */
+export const invalidatePedidosAfterFailedAction = (
+  queryClient: QueryClient,
+  error: unknown,
+  pedidoEffect: OperationsQuotePedidoEffect,
+) => {
+  if (pedidoEffect === "none" || isDrfActionRejection(error) || isNotFoundError(error)) {
+    return;
+  }
+  void (pedidoEffect === "rewrites"
+    ? invalidatePedidoLinesRewritten(queryClient)
+    : invalidatePedidoLists(queryClient));
 };
 
 export const createOperationsQuoteMutation = ({
   mutationKey,
+  pedidoEffect,
   mutationFn,
   successMessage,
   errorMessage,
@@ -106,6 +150,7 @@ export const createOperationsQuoteMutation = ({
         queryClient.invalidateQueries({ queryKey: operationsQuotesQueryKey });
         queryClient.invalidateQueries({ queryKey: ["quotes"] });
         queryClient.invalidateQueries({ queryKey: ["quote", operationsQuoteId] });
+        invalidatePedidosAfterFailedAction(queryClient, error, pedidoEffect);
       },
     });
   };

@@ -27,7 +27,8 @@ type QuoteReviewValidationInput = Omit<QuoteFormValues, "items" | "iva"> & {
    * revisión de una cotización anterior al IVA fijo que traiga 8 o 0.
    */
   iva: number;
-  cliente: number;
+  /** `null` en un borrador sin cliente: el schema lo trata como 0 ("Se requiere un cliente asociado"). */
+  cliente: number | null;
   items: QuoteItem[];
 };
 type QuoteReviewValidationIssue = {

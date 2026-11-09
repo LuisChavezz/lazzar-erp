@@ -1,11 +1,11 @@
 "use client";
 
-import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Button } from "@/src/components/Button";
 import { DataTable } from "@/src/components/DataTable";
-import { ArrowLeftIcon } from "@/src/components/Icons";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useMovementLedger } from "@/src/features/stock/hooks/useMovementLedger";
 import {
   isResolvedMovementLedger,
@@ -19,12 +19,8 @@ import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { MovementLedgerFilters } from "./MovementLedgerFilters";
 import { MovementLedgerOptionsDialog } from "./MovementLedgerOptionsDialog";
 import { MovementLedgerSummary } from "./MovementLedgerSummary";
-import { getMovementLedgerColumns } from "./MovementLedgerColumns";
-
-interface MovementLedgerViewProps {
-  /** Vuelve al menú de reportes. */
-  onBack: () => void;
-}
+import { getMovementLedgerColumns, MOVEMENT_LEDGER_HEADER_FILTERS } from "./MovementLedgerColumns";
+import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
 /** Campos de la barra de filtros que el backend puede rechazar con un 400. */
 type MovementLedgerField = "q" | "almacen" | "fecha_inicio" | "fecha_final";
@@ -54,10 +50,11 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerRejectedParam): strin
  *
  * La tabla queda montada en cuanto hay una búsqueda (rango a medias, opciones,
  * carga, error o vacío): así conserva columnas visibles, búsqueda interna y
- * página. Sus filas y los totales solo se muestran con un kardex vigente de los
+ * página mientras se trate de la misma variante; al llegar el kardex de otra
+ * se remonta. Sus filas y los totales solo se muestran con un kardex vigente de los
  * filtros elegidos.
  */
-export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
+export function MovementLedgerView() {
   const [target, setTarget] = useState<MovementLedgerTarget | null>(null);
   const [searchedText, setSearchedText] = useState("");
   // Variante que resolvió la búsqueda por `q` vigente. Se recuerda aparte de
@@ -90,6 +87,14 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   const current = rangeComplete && !isInitialError ? ledger : undefined;
   const resolved = current && isResolvedMovementLedger(current) ? current : undefined;
   const optionsResponse = current && !isResolvedMovementLedger(current) ? current : undefined;
+  const rows = resolved?.results ?? [];
+  // Variante cuyo kardex muestra la tabla. Ajuste durante el render: cambia
+  // solo cuando llega el kardex de OTRA variante (no mientras carga).
+  const [shownVariantId, setShownVariantId] = useState<number | null>(null);
+  const resolvedId = resolved?.variante.producto_variante_id ?? null;
+  if (resolvedId !== null && resolvedId !== shownVariantId) {
+    setShownVariantId(resolvedId);
+  }
   const options = optionsResponse?.opciones;
   const hasOptions = options !== undefined && options.length > 0;
   const hasMoreOptions = optionsResponse?.hay_mas ?? false;
@@ -110,6 +115,13 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
     }
   };
 
+  // Almacén de la sucursal del workspace, solo si es el único (ver el hook).
+  // Igual que un cambio manual, fija antes la variante ya resuelta.
+  const warehousePreselection = useWarehousePreselection(almacenId, (id) => {
+    pinResolvedVariant();
+    setAlmacenId(id);
+  });
+
   const handleSearch = (q: string) => {
     setTarget({ q });
     setSearchedText(q);
@@ -122,6 +134,7 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
   };
 
   const handleAlmacenChange = (id: number | null) => {
+    warehousePreselection.settle();
     pinResolvedVariant();
     setAlmacenId(id);
   };
@@ -158,21 +171,11 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
 
   return (
     <div className="w-full space-y-8">
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className={BACK_BUTTON_CLASS}
-        >
-          <ArrowLeftIcon className={BACK_ARROW_CLASS} />
-          <span className="text-sm font-medium">Volver a reportes</span>
-        </button>
-        <p className="text-slate-500 dark:text-slate-400">
-          Auxiliar de movimientos (kardex) de un SKU. Busca por SKU, SKU de
-          producción o descripción; el almacén y el rango de fechas son
-          opcionales.
-        </p>
-      </div>
+      <p className="text-slate-500 dark:text-slate-400">
+        Auxiliar de movimientos (kardex) de un SKU. Busca por SKU, SKU de
+        producción o descripción; el almacén y el rango de fechas son
+        opcionales.
+      </p>
 
       <MovementLedgerFilters
         initialSearch={searchedText}
@@ -235,11 +238,28 @@ export function MovementLedgerView({ onBack }: MovementLedgerViewProps) {
             </div>
           )}
 
+          {/* El backend corta el kardex en los renglones más recientes; los
+              totales y saldos siguen siendo los del periodo completo. */}
+          {resolved?.results_truncado && (
+            <SectionErrorNotice
+              title={`Solo se muestran los ${resolved.results.length.toLocaleString("es-MX")} movimientos más recientes`}
+              message={
+                fechaInicio !== null
+                  ? `El rango tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${resolved.results.length.toLocaleString("es-MX")} más recientes. Los totales y los saldos sí consideran todos. Acota el rango de fechas para ver los anteriores.`
+                  : `El historial tiene ${resolved.resumen.total_registros.toLocaleString("es-MX")} movimientos y la tabla muestra solo los ${resolved.results.length.toLocaleString("es-MX")} más recientes. Los totales y los saldos sí consideran todos. Elige un rango de fechas para ver los anteriores.`
+              }
+            />
+          )}
+
           {/* `DataTable` queda montado (alterna solo su cuerpo). Filas en el
-              orden del backend: ninguna columna ordena. */}
+              orden del backend: ninguna columna ordena. Se remonta al pasar a
+              OTRA variante: filtros de encabezado, búsqueda interna y página
+              eran de la anterior (un filtro de documento o de almacén podía
+              dejar vacía la tabla de una variante que sí tiene movimientos). */}
           <DataTable
-            columns={getMovementLedgerColumns()}
-            data={resolved?.results ?? []}
+            key={shownVariantId ?? "sin-variante"}
+            columns={withHeaderFilters(getMovementLedgerColumns(), rows, MOVEMENT_LEDGER_HEADER_FILTERS)}
+            data={rows}
             searchPlaceholder="Buscar en los movimientos..."
             emptyMessage={emptyMessage}
             isLoadingOverlay={isPlaceholderData}

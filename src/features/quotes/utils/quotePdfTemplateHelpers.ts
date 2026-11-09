@@ -12,6 +12,7 @@ import {
 } from "./quoteEmailTemplateHelpers";
 import type { QuoteEmailDetailRow } from "./quoteEmailTemplateHelpers";
 import { createQuoteAmountFormatter, formatQuoteDateTime } from "./quoteDetailsFormatters";
+import { getQuoteClienteLabel } from "./quoteClienteLabel";
 
 // ---------------------------------------------------------------------------
 // Tipos de addons por detalle (bordados, reflejantes, corte de manga)
@@ -139,7 +140,9 @@ export const buildQuotePdfModel = (
   const detailRows = buildQuoteEmailDetailRows(quote);
 
   return {
-    customerName: quote.cliente_nombre || quote.cliente_razon_social || "-",
+    // Subtítulo y pie del PDF: la convención única (EC-810). Los renglones
+    // rotulados "Razón social" y "Nombre del cliente" leen sus campos crudos.
+    customerName: getQuoteClienteLabel(quote),
     formattedDate: formatQuoteDateTime(quote.created_at, "d 'de' MMMM yyyy"),
     totalPieces: getQuoteTotalPieces(quote),
     shippingAddress: getQuoteShippingAddress(quote),

@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEventHandler } from "react";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import toast from "react-hot-toast";
 
 import type { Customer } from "@/src/features/customers/interfaces/customer.interface";
@@ -937,7 +937,17 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  /**
+   * Salida tras un guardado correcto: `onSubmit` la marca justo antes del
+   * `router.push` al detalle, con el candado todavía tomado, y
+   * `useFormSubmitLock` deja de enviar. El formulario sigue montado durante la
+   * navegación; lo que esto cubre son los envíos PROGRAMÁTICOS en ese hueco
+   * (`requestSubmit()`…). Un Enter del teclado ya no llega: "Guardar cambios
+   * del pedido" sigue deshabilitado y el navegador no hace el envío implícito
+   * con el botón por defecto deshabilitado. Se declara antes de `useForm`
+   * porque su `onSubmit` la escribe.
+   */
+  const leavingRef = useRef(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
   const [customerSelectedFromSearch, setCustomerSelectedFromSearch] = useState(false);
@@ -1526,6 +1536,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
         return;
       }
 
+      leavingRef.current = true;
       setIsRouteTransitioning(true);
       router.push(`/orders/${pedidoId}?from=operations`);
     },
@@ -1997,20 +2008,14 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
    * al confirmar); sin diálogo quedaban consecutivas y se pagaba dos veces el
    * `safeParse` completo del formulario en cada pulsación de Guardar.
    */
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (isSubmittingForm || isUpdatingPedido) return;
-
-    setIsSubmittingForm(true);
-    try {
-      await Promise.resolve(form.handleSubmit());
-    } finally {
-      setIsSubmittingForm(false);
-    }
-  };
+  // Candado del envío, guarda del reinicio y "Guardando..." (EC-753).
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
 
   const handleReset = () => {
+    // Con un envío en curso no se toca el formulario que se está enviando.
+    if (isSubmitLocked()) return;
     if (initialFormValues) {
       form.reset(initialFormValues);
       crossRules.resetCrossRules();
@@ -2041,8 +2046,7 @@ export function usePedidoMesaControlEditForm(pedidoId: number) {
     router.push(`/orders/${pedidoId}?from=operations`);
   };
 
-  const isPending =
-    isSubmittingForm || form.state.isSubmitting || isUpdatingPedido || isRouteTransitioning;
+  const isPending = isFormSubmitting || isUpdatingPedido || isRouteTransitioning;
 
   const itemErrors = getError("items");
   const tipoPedidoError = getError("tipo_pedido");

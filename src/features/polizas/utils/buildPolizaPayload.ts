@@ -9,13 +9,6 @@ import type {
  * `POST /finanzas/polizas/`.
  *
  * Traducciones del formulario → contrato del API:
- *  - `estatus` viaja SIEMPRE como el literal `"Borrador"`, sin importar qué
- *    botón se pulsó. El `estatus_objetivo` de los valores del formulario NO se
- *    mapea a este campo: contabilizar es una ACCIÓN
- *    (`POST /{id}/contabilizar/`), nunca un valor escrito en el alta ni en un
- *    PATCH. Mandar `"Contabilizada"` aquí dejaría la póliza contabilizada sin
- *    pasar por `validar_suma_cero`, porque `perform_create` guarda el estatus
- *    tal cual lo recibe. Ver `CreatePolizaPayload` y `contabilizarPoliza`.
  *  - los ids de catálogo opcionales usan `0` como centinela de "sin
  *    seleccionar" y viajan como `null` (el backend los declara nullable). Aplica
  *    al `centro_costo` de la cabecera y al de cada movimiento.
@@ -40,6 +33,10 @@ import type {
  *  - `fecha` — el backend pone la del día al crear (`default=timezone.localdate`);
  *    esta pantalla no ofrece capturarla.
  *  - `folio_consecutivo` y `usuario_creacion` — los llena el backend.
+ *  - `estatus` — el backend lo ignora en el alta y en el PATCH (solo lectura
+ *    desde nucleo-erp #935): la póliza nace en `Borrador` y solo cambia con
+ *    `contabilizar/` (que exige el cuadre) y `cancelar/`. El `estatus_objetivo`
+ *    del formulario decide si después se llama a `contabilizarPoliza`.
  *  - `activo` — su default (`True`) es el correcto y esta pantalla no da de baja.
  *  - los campos calculados (`total_cargos`, `total_abonos`, `cuadre_correcto`):
  *    la póliza NO tiene un total de cabecera, sus totales SE DERIVAN de los
@@ -76,8 +73,6 @@ export function buildPolizaPayload(values: PolizaFormValues): CreatePolizaPayloa
     folio: values.folio.trim().toUpperCase(),
     tipo: values.tipo,
     concepto: optional(values.concepto),
-    // Literal, no derivado del formulario. Ver la nota de arriba.
-    estatus: "Borrador",
     poliza_detalles,
   };
 }

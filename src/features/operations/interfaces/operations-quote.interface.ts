@@ -82,8 +82,14 @@ export interface OperationsQuote {
   estatus_label: string;
   detalles: OperationsQuoteDetail[];
   servicios_extras: OperationsQuoteExtraService[];
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
+  cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
+  cliente_razon_social: string | null;
   /**
    * Pedido generado a partir de esta cotización, resuelto por el backend con un
    * `Subquery` sobre `Pedido` (ver `_apply_filters` en `CotizacionViewSet`).
@@ -155,7 +161,8 @@ export interface OperationsQuote {
   /** Nombre del vendedor. Opcional: pedido al backend; sin él se ve "—". */
   vendedor_nombre?: string | null;
   sucursal: number;
-  cliente: number;
+  /** PK del cliente; `null` en un borrador guardado sin cliente (EC-810). */
+  cliente: number | null;
   oportunidad: number | null;
   /** PK de la moneda; `null` en un borrador sin moneda elegida (EC-617). */
   moneda: number | null;
@@ -172,7 +179,9 @@ export interface OperationsQuote {
  * `cotizacion` llega con `CotizacionSerializer` —el modelo plano, sin
  * `estatus_label`, `cliente_nombre`, `pedido_id` ni lo demás que el listado
  * deriva aparte—. Solo se tipa lo que se usa. `pedido` solo viene al autorizar,
- * que es cuando nace.
+ * que es cuando nace. `pedido_id` solo viene al aceptar cambios: la acción
+ * reescribe los renglones, servicios extras y totales de ese pedido.
+ * `rechazar` y `rechazar-cambios` no traen ninguno de los dos.
  *
  * `motivo_rechazo` va aparte del `Pick`: lo trae la cotización de la acción,
  * pero NO la fila del listado, así que no se declara en `OperationsQuote`.
@@ -183,4 +192,5 @@ export interface OperationsQuoteActionResponse {
     "id" | "estatus" | "autorizada_at" | "cambios_solicitados_at" | "updated_at"
   > & { motivo_rechazo: string | null };
   pedido?: { id: number; folio: string | null };
+  pedido_id?: number;
 }

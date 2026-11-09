@@ -19,6 +19,8 @@ import type { OperationsQuote } from "../interfaces/operations-quote.interface";
 import type { OperationsQuoteRowAction } from "./OperationsQuoteColumns";
 import { RejectQuoteDialog } from "./RejectQuoteDialog";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -43,9 +45,10 @@ interface OperationsQuoteActionDialogsProps {
   dialog: OperationsQuoteDialogState | null;
   onClose: () => void;
   /**
-   * Listado completo de la consulta: solo para el color de estatus del
-   * encabezado de "Ver detalles" (fila viva, o la foto si ya salió). La
-   * elegibilidad de las acciones se evalúa sobre la foto, no aquí.
+   * Listado completo de la consulta: para el color de estatus del encabezado
+   * de "Ver detalles" (fila viva, o la foto si ya salió) y para el aviso de
+   * fila desactualizada del rechazo (`RejectQuoteDialog.liveQuote`). La
+   * elegibilidad de las demás acciones se evalúa sobre la foto, no aquí.
    */
   operationsQuotes: OperationsQuote[];
 }
@@ -88,7 +91,7 @@ export function OperationsQuoteActionDialogs({
   // por debajo, la respuesta de error del backend es la fuente de verdad.
   const snapshotEstatus = snapshot.operationsQuote.estatus;
   const canAuthorizeOperationsQuote =
-    canManageOperationsQuoteAuthorization(snapshotEstatus) && snapshotEstatus === 2;
+    canManageOperationsQuoteAuthorization(snapshotEstatus);
   const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(snapshotEstatus);
   const isOpen = (kind: OperationsQuoteRowAction) => dialog?.kind === kind;
   const handleOpenChange = (open: boolean) => {
@@ -103,14 +106,11 @@ export function OperationsQuoteActionDialogs({
           key={session.id}
           open={isOpen("view")}
           onOpenChange={handleOpenChange}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${id}`}
-              subtitle={
-                snapshot.operationsQuote.cliente_nombre ||
-                snapshot.operationsQuote.cliente_razon_social
-              }
+              subtitle={getQuoteClienteLabel(snapshot.operationsQuote)}
               statusColor={getQuoteDialogStatusColor(operationsQuote.estatus)}
             />
           }
@@ -148,6 +148,9 @@ export function OperationsQuoteActionDialogs({
           key={session.id}
           open={isOpen("reject")}
           quote={snapshot.operationsQuote}
+          // Fila viva de ESTA consulta (mesa de control solo trae 2 y 5): si
+          // ya no está, se cerró por fuera y el diálogo avisa.
+          liveQuote={operationsQuotes.find((row) => row.id === id) ?? null}
           onClose={onClose}
         />
       );

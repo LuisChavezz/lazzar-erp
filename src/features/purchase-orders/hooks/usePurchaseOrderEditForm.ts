@@ -42,6 +42,7 @@ interface UsePurchaseOrderEditFormParams {
  */
 export type EditFieldPath =
   | "sucursal"
+  | "almacen"
   | "proveedor"
   | "moneda"
   | "fecha_vencimiento"
@@ -94,6 +95,8 @@ export function usePurchaseOrderEditForm({
     }
     return {
       sucursal: initialData.sucursal,
+      // `0` = sin almacén (órdenes anteriores a EC-796).
+      almacen: initialData.almacen ?? 0,
       proveedor: initialData.proveedor,
       moneda: initialData.moneda,
       fecha_vencimiento: toDateInputValue(initialData.fecha_vencimiento),

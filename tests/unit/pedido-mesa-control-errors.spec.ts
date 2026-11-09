@@ -63,7 +63,7 @@ test.describe("rechazo servicios_extras", () => {
 });
 
 test.describe("claves de rechazo: toast sin error de formulario invisible", () => {
-  for (const key of ["permiso", "cotizacion", "detail"]) {
+  for (const key of ["permiso", "cotizacion", "detail", "non_field_errors", "detalle"]) {
     test(`${key} como lista va al toast con su primer mensaje y no al formulario`, () => {
       expect(parsePedidoMesaControl400({ [key]: ["Motivo.", "Otro."] })).toEqual({
         issues: [],
@@ -89,6 +89,32 @@ test.describe("claves de rechazo: toast sin error de formulario invisible", () =
 
   test("permiso de solo espacios cae al mensaje genérico (sin toast en blanco)", () => {
     expect(parsePedidoMesaControl400({ permiso: ["   "] }).rejection).toBeUndefined();
+  });
+
+  test("detalle en lista salta los mensajes en blanco (EC-795)", () => {
+    expect(parsePedidoMesaControl400({ detalle: ["  ", "Este campo es requerido."] })).toEqual({
+      issues: [],
+      rejection: { message: "Este campo es requerido." },
+    });
+  });
+
+  test("detalle como lista de objetos sigue yendo a las partidas, no al toast", () => {
+    expect(
+      parsePedidoMesaControl400({ detalle: [{}, { precio_unitario: ["Debe ser positivo"] }] }),
+    ).toEqual({
+      issues: [{ path: "items.1.precio", message: "Debe ser positivo" }],
+      rejection: undefined,
+    });
+  });
+
+  test("compatibilidad_proceso gana a non_field_errors y a detalle en lista", () => {
+    expect(
+      parsePedidoMesaControl400({
+        compatibilidad_proceso: ["A no admite bordado."],
+        non_field_errors: ["Motivo."],
+        detalle: ["Otro."],
+      }),
+    ).toEqual({ issues: [], rejection: { message: "A no admite bordado." } });
   });
 });
 
@@ -122,6 +148,51 @@ test.describe("claves que no cambian", () => {
     });
     // Plano: rechazo, solo toast.
     expect(parsePedidoMesaControl400({ pedido: ["Sin cotización."] }).issues).toEqual([]);
+  });
+
+  test("un string suelto anidado bajo pedido llega a su campo (EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({ pedido: { telefono_pagos: "Teléfono inválido." } }),
+    ).toEqual({
+      issues: [{ path: "telefono_pagos", message: "Teléfono inválido." }],
+      rejection: undefined,
+    });
+  });
+
+  test("un cuerpo lista de primer nivel no marca el formulario (code review EC-795)", () => {
+    expect(parsePedidoMesaControl400(["Mensaje."])).toEqual({ issues: [], rejection: undefined });
+  });
+
+  test("non_field_errors anidado en pedido va al toast y no se pierde (code review EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({
+        pedido: { non_field_errors: ["Motivo."], persona_pagos: ["Requerido"] },
+      }),
+    ).toEqual({
+      issues: [{ path: "persona_pagos", message: "Requerido" }],
+      rejection: { message: "Motivo." },
+    });
+  });
+
+  test("permiso es rechazo de Mesa de Control aunque Cotizaciones no lo lea (code review EC-795)", () => {
+    expect(parsePedidoMesaControl400({ permiso: "Solo mesa de control." })).toEqual({
+      issues: [],
+      rejection: { message: "Solo mesa de control." },
+    });
+  });
+
+  test("servicios_extras mixto: el mensaje al toast y el renglón a su campo (code review EC-795)", () => {
+    expect(
+      parsePedidoMesaControl400({
+        servicios_extras: [ELIMINADO, { monto: ["Debe ser mayor o igual a 0."] }],
+      }),
+    ).toEqual({
+      issues: [
+        { path: "servicios_extras", message: ELIMINADO },
+        { path: "servicios_extras.1.monto", message: "Debe ser mayor o igual a 0." },
+      ],
+      rejection: { message: ELIMINADO },
+    });
   });
 
   test("color va al toast Y al formulario, que lo traduce a las partidas", () => {

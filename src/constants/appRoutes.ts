@@ -28,7 +28,7 @@ import {
   ListaPreciosIcon,
   OrdenesIcon,
   PedidosIcon,
-  ReportesIcon,
+  HistoryIcon,
   SettingsIcon,
   TasksIcon,
   OperationsIcon,
@@ -149,27 +149,49 @@ const defineSectionedGroup = <const SectionKey extends string>(
 ): AppRouteGroup => ({ ...group, sections: [...group.sections] });
 
 export const appRouteGroups: AppRouteGroup[] = [
-  {
+  defineSectionedGroup({
     key: "system",
-    label: "Configuración del sistema",
-    description: "Catálogos base, seguridad y administración del sistema.",
+    label: "Panel de Control",
+    description: "Reportes del sistema.",
     permission: "R-CORE",
-    moduleLabel: "Panel de Control (Core)",
+    moduleLabel: "Panel de Control",
     modulePath: "/system",
-    moduleDescription: "Empresas, usuarios, seguridad y catálogos base del sistema.",
+    moduleDescription: "Reportes del sistema: existencias, movimientos y auxiliar de inventario.",
     moduleIcon: DashboardIcon,
     showInHome: true,
+    sections: [{ key: "reports", label: "Reportes de inventario" }],
     items: [
+      // Una ruta por reporte, todas con el código de Reportes: la regla
+      // `/system/reports` de `routePermissions` las cubre por prefijo.
       {
-        key: "system-reports",
-        label: "Reportes",
-        path: "/system/reports",
-        icon: ReportesIcon,
-        description: "Tablero de reportes operativos, financieros y comerciales.",
+        key: "system-reports-stock",
+        label: "Reporte de Existencias",
+        path: "/system/reports/existencias",
+        icon: ExistenciasIcon,
+        description: "Entradas, salidas y existencias por almacén y periodo.",
         permission: "R-CORE-REPORTES",
+        section: "reports",
+      },
+      {
+        key: "system-reports-movements",
+        label: "Reporte de Movimientos",
+        path: "/system/reports/movimientos",
+        icon: HistoryIcon,
+        description: "Entradas, salidas, ajustes y transferencias registrados por periodo.",
+        permission: "R-CORE-REPORTES",
+        section: "reports",
+      },
+      {
+        key: "system-reports-ledger",
+        label: "Auxiliar de Movimientos",
+        path: "/system/reports/auxiliar",
+        icon: LayersIcon,
+        description: "Kardex de un SKU: cada movimiento con su saldo corrido.",
+        permission: "R-CORE-REPORTES",
+        section: "reports",
       },
     ],
-  },
+  }),
   {
     key: "sales",
     label: "CRM y ventas",

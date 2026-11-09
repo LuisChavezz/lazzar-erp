@@ -22,13 +22,14 @@ const ordersQueryOptions = (params?: OrdersQueryParams) => ({
 });
 
 /**
- * Lista COMPLETA de pedidos. Solo para las vistas que todavía derivan algo del
- * conjunto entero (Mesa de Control, Compras › Pedidos, Programados, Mis
- * pedidos, CxC pendiente); un selector que solo busca un pedido usa
- * `usePedidoSearch`, que pide una página al servidor.
+ * Lista COMPLETA de pedidos (con filtros, sin paginar). Hoy solo la usa
+ * "Pedidos programados" (`ScheduledOrdersPanel`), que aplana los pedidos a sus
+ * parcialidades en memoria. Mesa de Control, Compras › Pedidos y Mis pedidos
+ * son listas en modo servidor (`usePedidosTable`), y un selector que solo busca
+ * un pedido usa `usePedidoSearch`, que pide una página al servidor.
  *
  * `gcTime`: opcional, para que un consumidor alargue la vida en caché de la
- * lista (Compras y Mesa de Control pasan `LIST_QUERY_GC_TIME`); sin él, el global.
+ * lista (`LIST_QUERY_GC_TIME`); sin él, el global.
  */
 export const useOrders = (params?: OrdersQueryParams, { gcTime }: { gcTime?: number } = {}) => {
   const { data, isLoading, isError, errorUpdatedAt, error } = useQuery<PedidoListItem[]>({

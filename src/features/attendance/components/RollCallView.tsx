@@ -26,7 +26,7 @@ import { getRollCallColumns, ROLL_CALL_HEADER_FILTERS } from "./RollCallColumns"
 import { AttendanceRecordDialogs } from "./AttendanceRecordDialogs";
 import type { CheckInKind } from "../interfaces/attendance.interface";
 import { CheckInTimeDialog } from "./CheckInTimeDialog";
-import { DateParamInput } from "./DateParamInput";
+import { DateParamInput } from "@/src/components/DateParamInput";
 
 interface RollCallViewProps {
   /** Día del pase de lista ("YYYY-MM-DD", nunca futuro). */

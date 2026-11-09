@@ -6,18 +6,15 @@ import { createElement } from "react";
 import { render, toPlainText } from "@react-email/render";
 import QuoteEmail from "@/src/emails/QuoteEmail";
 import type { QuoteById } from "../../interfaces/quote.interface";
+import { getQuoteClienteLabel } from "../../utils/quoteClienteLabel";
 
 /**
- * Resuelve el nombre mas representativo del cliente para usarlo en asunto y contenido.
- */
-const getQuoteCustomerName = (quote: QuoteById) =>
-  quote.cliente_razon_social || quote.cliente_nombre || `cliente ${quote.cliente}`;
-
-/**
- * Construye el asunto del correo a partir del identificador y nombre del cliente.
+ * Construye el asunto del correo a partir del identificador y el nombre del
+ * cliente con la convención única (`getQuoteClienteLabel`, EC-810). El cuerpo
+ * sigue nombrando al contacto.
  */
 export const buildQuoteEmailSubject = (quote: QuoteById) =>
-  `Cotizacion #${quote.id} - ${getQuoteCustomerName(quote)}`;
+  `Cotizacion #${quote.id} - ${getQuoteClienteLabel(quote)}`;
 
 /**
  * Renderiza la plantilla React Email a HTML y genera su equivalente en texto plano.

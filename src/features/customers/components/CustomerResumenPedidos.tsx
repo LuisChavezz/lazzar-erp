@@ -7,9 +7,10 @@ import {
   Section,
 } from "@/src/components/DetailDialogPrimitives";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import type { ResumenComercial } from "../interfaces/customer.interface";
+import { canSeeKpiAmounts } from "@/src/utils/kpiAmounts";
+import type { ResumenComercial, ResumenComercialPedido } from "../interfaces/customer.interface";
 import { buildPedidoEstatusChips } from "../utils/customer-detail";
 
 const EstatusPill = ({ label, className }: { label: string; className: string }) => (
@@ -20,8 +21,17 @@ const EstatusPill = ({ label, className }: { label: string; className: string })
   </span>
 );
 
+/**
+ * Total de un pedido reciente: sin la regla de importes (EC-784) el backend no
+ * manda `gran_total`, y un ausente es "—", no un "$0.00" engañoso. Exportada
+ * para las pruebas unitarias (`tests/unit/order-amounts-hidden.spec.ts`).
+ */
+export const formatResumenPedidoTotal = (pedido: ResumenComercialPedido, showAmounts: boolean): string =>
+  formatMoneyValueOrDash(showAmounts ? pedido.gran_total : undefined, pedido.moneda);
+
 export const CustomerResumenPedidos = ({ resumen }: { resumen: ResumenComercial }) => {
   const chips = buildPedidoEstatusChips(resumen.pedidos_por_estatus);
+  const showAmounts = canSeeKpiAmounts(resumen.puede_ver_importes);
 
   return (
     <div className="space-y-6">
@@ -78,7 +88,7 @@ export const CustomerResumenPedidos = ({ resumen }: { resumen: ResumenComercial 
                     <EstatusPill label={estatus.label} className={estatus.className} />
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
-                    {formatMoneyValue(pedido.gran_total, pedido.moneda)}
+                    {formatResumenPedidoTotal(pedido, showAmounts)}
                   </td>
                 </tr>
               );

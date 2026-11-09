@@ -1,11 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { cancelarNotaCredito } from "../services/actions";
 import type { NotaCredito } from "../interfaces/credit-note.interface";
 import { invalidateCreditNoteQueries } from "./invalidateCreditNoteQueries";
-import { logUnexpectedError } from "../utils/creditNoteErrors";
+import { cancelNotaCreditoErrorMessage, logUnexpectedError } from "../utils/creditNoteErrors";
 import { getCreditNoteCancelBlockReason } from "../utils/creditNoteStamping";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
@@ -17,8 +15,10 @@ import { fetchFreshNotaCredito } from "./fetchFreshNotaCredito";
  * Mismo molde que `useCancelPago`: optimismo de cambio de ESTATUS (no de
  * borrado) — cancelar → instantánea → marcar la fila → revertir en `onError` →
  * invalidar en `onSettled`. Aquí el optimismo sí es adecuado (a diferencia de
- * `useEmitirNotaCredito`): la acción es idempotente y no tiene precondiciones de
- * negocio que el backend pueda rechazar.
+ * `useEmitirNotaCredito`): la acción es idempotente y sus precondiciones de
+ * negocio (sin CFDI timbrado ni timbrado pendiente) se revisan antes del POST
+ * sobre la nota fresca; el backend las vuelve a exigir y, si cambiaron entre
+ * tanto, responde `400 {"cfdi": [...]}` y el optimista se revierte.
  *
  * El registro NUNCA sale del listado: solo cambia su `estatus` a `Cancelada`,
  * por eso el optimista MARCA la fila en vez de filtrarla.
@@ -46,8 +46,9 @@ export const useCancelNotaCredito = () => {
     mutationFn: async (id: number) => {
       // Retrieve FRESCO antes del POST: el listado puede tener hasta 15 min y
       // otra sesión pudo emitir (y con eso timbrar) o cancelar la nota. El
-      // backend acepta cancelar una nota timbrada y deja su CFDI vigente ante
-      // el SAT (#612), así que esta guarda no puede leer la caché.
+      // backend rechaza cancelar una nota timbrada o con el timbrado pendiente
+      // (`400 {"cfdi": [...]}`, #612 y #904); la guarda lo detecta antes, con
+      // un mensaje propio, en vez de esperar ese rechazo.
       const current = await fetchFreshNotaCredito(queryClient, id);
       const label = current.folio || `#${current.id}`;
       if (current.estatus === "Cancelada") {
@@ -82,14 +83,7 @@ export const useCancelNotaCredito = () => {
         queryClient.setQueryData(["credit-notes"], context.previousNotas);
       }
       logUnexpectedError(err);
-      toast.error(
-        err instanceof PrecheckError
-          ? err.message
-          : // Un `403` trae en `detail` el motivo del backend (p. ej. sin
-            // `E-FIN-FACTURAS`); `extractErrorMessage` solo lee `{ error }`.
-            (forbiddenDetailMessage(err) ??
-            extractErrorMessage(err, "Error al cancelar la nota de crédito")),
-      );
+      toast.error(cancelNotaCreditoErrorMessage(err));
     },
     // Se devuelve una promesa para que la mutación siga "pending" hasta que el
     // refetch de la nota termine: así el listado nunca muestra un estado

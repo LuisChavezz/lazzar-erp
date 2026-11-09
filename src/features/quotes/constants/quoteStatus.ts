@@ -1,5 +1,6 @@
 import type { DialogHeaderStatusColor } from "@/src/constants/dialogStatusColors";
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { capitalize } from "@/src/utils/capitalize";
 import { KANBAN_COLUMNS } from "./kanbanColumns";
 
 /**
@@ -59,3 +60,21 @@ export const getQuoteStatusConfig = (
 export const getQuoteDialogStatusColor = (
   estatus: number | null | undefined,
 ): DialogHeaderStatusColor => getQuoteStatusConfig(estatus)?.dialogColor ?? "slate";
+
+/**
+ * Nombre visible del estatus de una cotización: el de la config para los
+ * estatus conocidos; para uno que el front no conoce, el `estatus_label` del
+ * backend (que llega en mayúsculas, "EN REVISION") con el casing de la app y,
+ * si tampoco viene, `Estatus N`. Es el MISMO texto en el badge, la búsqueda
+ * global y la opción del filtro de encabezado.
+ */
+export const getQuoteStatusLabel = (quote: {
+  estatus: number | null | undefined;
+  estatus_label?: string | null;
+}): string => {
+  const known = getQuoteStatusConfig(quote.estatus)?.label;
+  if (known) return known;
+  const backendLabel = quote.estatus_label?.trim();
+  if (backendLabel) return capitalize(backendLabel);
+  return quote.estatus == null ? "Sin estatus" : `Estatus ${quote.estatus}`;
+};

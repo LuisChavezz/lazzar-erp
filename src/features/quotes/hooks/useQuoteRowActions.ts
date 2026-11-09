@@ -9,6 +9,7 @@ import {
 } from "../../operations/hooks/useApproveOperationsQuote";
 import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import {
   prepareQuoteEmailMutationKey,
   sendQuoteEmailMutationKey,
@@ -73,11 +74,13 @@ export type QuoteRowDialogKind = "view" | "authorize" | "reject" | "submitForRev
 
 interface QuoteRowDialogBase {
   /**
-   * Foto de la cotización al abrir. `QuoteRowActionDialogs` la usa solo como
-   * respaldo si el registro ya no está en la consulta (p. ej. lo borraron);
-   * mientras exista, resuelve el dato vivo por id.
+   * Foto de la cotización al abrir. `QuoteRowActionDialogs` resuelve encima
+   * su estatus VIVO (`useLiveQuoteStatus`): lo cargado por la vista y el
+   * detalle leído al abrir; sin cambio en ninguno, vale la foto.
    */
   quote: Quote;
+  /** Momento (ms) en que se abrió: lo leído antes no dice nada del estado de ahora. */
+  openedAt: number;
 }
 
 export type QuoteRowDialogState = QuoteRowDialogBase & { kind: QuoteRowDialogKind };
@@ -96,7 +99,7 @@ export type QuoteRowDialogState = QuoteRowDialogBase & { kind: QuoteRowDialogKin
  *
  * Uso: `const { onAction, busy, dialogs } = useQuoteRowActions();` — `onAction`
  * y `busy` bajan al menú; `dialogs` se pasa a `<QuoteRowActionDialogs>` junto
- * con la lista completa de cotizaciones para resolver el registro vivo.
+ * con las filas que la vista tiene cargadas (ver `useLiveQuoteStatus`).
  */
 export function useQuoteRowActions() {
   const router = useRouter();
@@ -109,7 +112,17 @@ export function useQuoteRowActions() {
   // al terminar de prepararse, y también respeta el turno.
   const dialogTurnRef = useRef(0);
 
-  const approve = useApproveOperationsQuote();
+  // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de
+  // cada llamada; los callbacks por llamada de `mutate` solo corren para la
+  // última.
+  const { mutateAsync: approveAsync } = useApproveOperationsQuote();
+  // Candado SÍNCRONO por cotización para autorizar (`useRowActionLock`): el
+  // "en curso" de la MutationCache llega en un render posterior, así que el
+  // segundo clic de un doble clic lo encontraría libre y mandaría otro
+  // `autorizar/`. La ref del candado ya está tomada en ese clic, y su
+  // `guardClose` deja la confirmación abierta y bloqueada (Esc, "Cancelar",
+  // clic fuera) hasta que la petición termina.
+  const authorizeLock = useRowActionLock();
   // Rechazar no tiene mutación aquí: la posee `RejectQuoteDialog` (motivo
   // obligatorio, errores bajo el campo). Su "en curso" se lee de la caché.
   const prepareEmail = usePrepareQuoteEmail();
@@ -133,7 +146,7 @@ export function useQuoteRowActions() {
       case "view":
         dialogTurnRef.current++;
         email.invalidate();
-        setDialog({ kind: "view", quote });
+        setDialog({ kind: "view", quote, openedAt: Date.now() });
         return;
       case "edit":
         router.push(`/sales/quotes/${quote.id}/edit`);
@@ -154,14 +167,14 @@ export function useQuoteRowActions() {
         if (!canManageQuoteAuthorization(quote.estatus)) return;
         dialogTurnRef.current++;
         email.invalidate();
-        setDialog({ kind: action, quote });
+        setDialog({ kind: action, quote, openedAt: Date.now() });
         return;
       case "submitForReview": {
         const turn = ++dialogTurnRef.current;
         email.invalidate();
         const status = await review.validateBeforeSendToReview(quote.id);
         if (status === "valid" && turn === dialogTurnRef.current) {
-          setDialog({ kind: "submitForReview", quote });
+          setDialog({ kind: "submitForReview", quote, openedAt: Date.now() });
         }
         return;
       }
@@ -172,6 +185,8 @@ export function useQuoteRowActions() {
   // de cada mutación), igual que cuando los hooks vivían en la celda — ver
   // `usePendingQuoteIds` para por qué se lee de la caché y no de la instancia.
   const authorizing = usePendingQuoteIds(approveOperationsQuoteMutationKey);
+  const isAuthorizeBusy = (quoteId: number) =>
+    authorizing.includes(quoteId) || authorizeLock.isPending(quoteId);
   const rejecting = usePendingQuoteIds(rejectOperationsQuoteMutationKey);
   // Preparar ("Preparando…") y enviar ("Enviando…", solo tras confirmar) se
   // distinguen en el menú; las dos deshabilitan repetir la acción.
@@ -193,11 +208,34 @@ export function useQuoteRowActions() {
   const dialogs = {
     dialog,
     onClose: () => setDialog(null),
-    onAuthorize: (quoteId: number) => approve.mutate(quoteId),
+    onAuthorize: (quoteId: number) => {
+      // Ya en vuelo (doble clic, o reabrir tras cerrar mientras sigue
+      // pendiente): no se vuelve a mandar.
+      if (authorizing.includes(quoteId) || !authorizeLock.acquire(quoteId)) return;
+      approveAsync(quoteId)
+        // El hook ya avisó del error con su toast; aquí solo se evita el
+        // rechazo no manejado de la promesa.
+        .catch(() => {})
+        .finally(() => {
+          authorizeLock.release(quoteId);
+          // Solo cierra SU confirmación: si el usuario ya abrió otra cosa, no
+          // se toca.
+          setDialog((current) =>
+            current?.kind === "authorize" && current.quote.id === quoteId ? null : current
+          );
+        });
+    },
+    /**
+     * Props de cierre bloqueado de la confirmación de autorizar
+     * (`guardClose`): `busy` también con el "en curso" de la MutationCache,
+     * que sobrevive a un remontaje de la vista.
+     */
+    authorizeGuard: (quoteId: number) =>
+      authorizeLock.guardClose(quoteId, () => setDialog(null), authorizing.includes(quoteId)),
+    isAuthorizeBusy,
     onSubmitForReview: (quoteId: number, comentario?: string) =>
       submitForReview.mutate({ id: quoteId, comentario }),
     emailDialog: email.dialog,
-    isAuthorizing: approve.isPending,
     isSubmittingForReview: submitForReview.isPending,
     reviewValidation: {
       open: review.isReviewValidationDialogOpen,

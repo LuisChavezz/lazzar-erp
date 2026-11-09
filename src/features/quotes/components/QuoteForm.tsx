@@ -6,7 +6,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
-import { READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "@/src/constants/formStyles";
+import { FormSection } from "@/src/components/FormSection";
 import {
   FormCancelButton,
   FormSecondaryButton,
@@ -47,7 +48,7 @@ import { EditReflectiveDialog } from "./EditReflectiveDialog";
 import { EditSizesDialog } from "./EditSizesDialog";
 import { AssignColorDialog } from "./AssignColorDialog";
 import { buildProductByIdMap, getMissingColorState } from "../utils/requiredColor";
-import { QuoteCreationSuccessMessage } from "./QuoteCreationSuccessMessage";
+import { QuoteCreationSuccessMessage, type QuoteSuccessVariant } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 
 const LazyCustomerForm = dynamic(
@@ -154,6 +155,11 @@ export type QuoteFormContentProps = QuoteFormHookResult & {
    * permiten capturar muestras; ausente ⇒ sin filtro.
    */
   muestraCompanyId?: number;
+  /**
+   * Qué dice la vista de éxito tras guardar: "creada" (alta, por defecto) o
+   * "actualizada" (edición de cotización).
+   */
+  successVariant?: QuoteSuccessVariant;
 };
 
 // Componente de contenido del formulario — reutilizable por creación y edición
@@ -248,6 +254,7 @@ export function QuoteFormContent({
   headerBadge,
   topNotice,
   muestraCompanyId,
+  successVariant = "create",
 }: QuoteFormContentProps) {
   // Categoría de cada partida de catálogo, para la matriz prenda/proceso.
   const productCategoryById = buildProductCategoryMap(products);
@@ -324,7 +331,7 @@ export function QuoteFormContent({
   if (isCreationSuccessVisible) {
     return (
       <div className={routeTransitionClass}>
-        <QuoteCreationSuccessMessage />
+        <QuoteCreationSuccessMessage variant={successVariant} />
       </div>
     );
   }
@@ -387,10 +394,11 @@ export function QuoteFormContent({
             <form.Field name="agente">
               {(field) => <input type="hidden" name={field.name} value={field.state.value} readOnly />}
             </form.Field>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <form.Field name="tipo_pedido">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Tipo de Pedido"
                     options={tiposPedidoOptions}
                     // Bloqueado por ahora en "Pedido de venta". El select se deja
@@ -416,6 +424,7 @@ export function QuoteFormContent({
                 <form.Field name="clasificacion">
                   {(field) => (
                     <FormSelect
+                      className={COMPACT_FIELD_CLS}
                       label="Clasificación"
                       options={CLASIFICACION_OPTIONS}
                       name={field.name}
@@ -449,7 +458,7 @@ export function QuoteFormContent({
                     forceUppercase={false}
                     readOnly
                     tabIndex={-1}
-                    className={READ_ONLY_INPUT_CLS}
+                    className={`${COMPACT_FIELD_CLS} ${READ_ONLY_INPUT_CLS}`}
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -468,39 +477,43 @@ export function QuoteFormContent({
           </div>
 
           <div className="flex-1 self-start w-full space-y-6">
-            <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                  Datos de Facturación
-                </span>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
-                  onClick={() => setIsCustomerDialogOpen(true)}
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Agregar nuevo cliente
-                </button>
-                <MainDialog
-                  title={
-                    <DialogHeader
-                      title="Alta de Cliente"
-                      subtitle="Registra un nuevo cliente"
-                      statusColor="emerald"
-                    />
-                  }
-                  open={isCustomerDialogOpen}
-                  onOpenChange={setIsCustomerDialogOpen}
-                  maxWidth="900px"
-                >
-                  {isCustomerDialogOpen ? (
-                    <LazyCustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
-                  ) : null}
-                </MainDialog>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FormSection
+              title="Datos de Facturación"
+              action={
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 text-xs font-semibold cursor-pointer text-sky-600 hover:text-sky-700"
+                    onClick={() => setIsCustomerDialogOpen(true)}
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Agregar nuevo cliente
+                  </button>
+                  <MainDialog
+                    title={
+                      <DialogHeader
+                        title="Alta de Cliente"
+                        subtitle="Registra un nuevo cliente"
+                        statusColor="emerald"
+                      />
+                    }
+                    open={isCustomerDialogOpen}
+                    onOpenChange={setIsCustomerDialogOpen}
+                    maxWidth="900px"
+                  >
+                    {isCustomerDialogOpen ? (
+                      <LazyCustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
+                    ) : null}
+                  </MainDialog>
+                </>
+              }
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
                 <div data-error-anchor="clienteBusqueda">
                   <CustomerSearchDropdown
+                    // Su variante (`ghostSearch`) ya es `py-2` pero con `text-xl`:
+                    // sin bajar la letra mediría 46px junto a vecinos de 38px.
+                    className={`${COMPACT_FIELD_CLS} text-sm!`}
                     label="Cliente"
                     placeholder="Buscar Cliente..."
                     value={clienteSearchTerm}
@@ -513,6 +526,7 @@ export function QuoteFormContent({
                 <form.Field name="clienteNombre">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Nombre del Cliente"
                       placeholder="Nombre"
                       forceUppercase={false}
@@ -532,10 +546,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="razonSocial">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Razón Social"
                       placeholder="Razón Social"
                       forceUppercase={false}
@@ -557,6 +572,7 @@ export function QuoteFormContent({
                 <form.Field name="rfc">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="RFC"
                       placeholder="RFC"
                       forceUppercase={false}
@@ -578,6 +594,7 @@ export function QuoteFormContent({
                 <form.Field name="regimenFiscal">
                   {(field) => (
                     <FormSelect
+                      className={COMPACT_FIELD_CLS}
                       label="Régimen Fiscal"
                       options={regimenFiscalOptions}
                       disabled
@@ -596,10 +613,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="direccionFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Dirección Fiscal"
                       placeholder="Dirección Fiscal"
                       forceUppercase={false}
@@ -621,6 +639,7 @@ export function QuoteFormContent({
                 <form.Field name="coloniaFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Colonia"
                       placeholder="Colonia"
                       forceUppercase={false}
@@ -642,6 +661,7 @@ export function QuoteFormContent({
                 <form.Field name="codigoPostalFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="C.P."
                       placeholder="C.P."
                       forceUppercase={false}
@@ -661,10 +681,11 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
                 <form.Field name="ciudadFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Ciudad"
                       placeholder="Ciudad"
                       forceUppercase={false}
@@ -686,6 +707,7 @@ export function QuoteFormContent({
                 <form.Field name="estadoFiscal">
                   {(field) => (
                     <FormInput
+                      className={COMPACT_FIELD_CLS}
                       label="Estado"
                       placeholder="Estado"
                       forceUppercase={false}
@@ -705,20 +727,18 @@ export function QuoteFormContent({
                   )}
                 </form.Field>
               </div>
-            </div>
+            </FormSection>
 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-start">
-          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
-              Forma de pago y contacto para envío de facturas
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-6 items-start relative z-10">
+          <FormSection title="Forma de pago y contacto para envío de facturas">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <form.Field name="persona_pagos">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Persona Pagos"
                     placeholder="Persona Pagos"
                     forceUppercase
@@ -739,6 +759,7 @@ export function QuoteFormContent({
               <form.Field name="correo_facturas">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Correo Facturas"
                     placeholder="correo@empresa.com"
                     forceUppercase={false}
@@ -759,6 +780,7 @@ export function QuoteFormContent({
               <form.Field name="telefono_pagos">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Teléfono Pagos"
                     placeholder="Teléfono"
                     type="tel"
@@ -780,6 +802,7 @@ export function QuoteFormContent({
               <form.Field name="oc">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="O.C."
                     placeholder="Orden de compra"
                     forceUppercase
@@ -800,6 +823,7 @@ export function QuoteFormContent({
               <form.Field name="forma_pago">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Forma de Pago"
                     options={formasPagoOptions}
                     name={field.name}
@@ -819,6 +843,7 @@ export function QuoteFormContent({
               <form.Field name="metodo_pago">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Método de Pago"
                     options={metodosPagoOptions}
                     name={field.name}
@@ -838,6 +863,7 @@ export function QuoteFormContent({
               <form.Field name="uso_cfdi">
                 {(field) => (
                   <FormSelect
+                    className={COMPACT_FIELD_CLS}
                     label="Uso de CFDI"
                     options={usoCfdiOptions}
                     name={field.name}
@@ -873,15 +899,13 @@ export function QuoteFormContent({
                 )}
               </form.Field>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="bg-slate-50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm h-fit">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-4">
-              Condiciones de pago
-            </h3>
+          <FormSection title="Condiciones de pago">
             <form.Field name="condicionPago">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Condición"
                   options={paymentConditionOptions.map((option) => ({
                     value: option.value,
@@ -907,12 +931,12 @@ export function QuoteFormContent({
             </form.Field>
             <form.Field name="condicionPagoMonto">
               {(field) => (
-                <div className="mt-6">
+                <div>
                   <FormInput
                     label="Especificar monto"
                     type="number"
                     placeholder={formatQuoteAmount(0, monedaCodigo)}
-                    className="text-right"
+                    className={`${COMPACT_FIELD_CLS} text-right`}
                     forceUppercase={false}
                     disabled={watchedCondicionPago !== "otra_cantidad"}
                     name={field.name}
@@ -931,7 +955,7 @@ export function QuoteFormContent({
                 </div>
               )}
             </form.Field>
-          </div>
+          </FormSection>
         </div>
       </section>
 
@@ -950,7 +974,12 @@ export function QuoteFormContent({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+        </div>
+
+        <FormSection
+          title="Destinatario y dirección"
+          action={
+            <>
               {/* Selector de direcciones guardadas del cliente — visible solo cuando hay cliente con direcciones */}
               {hasCustomerSelected && customerAddresses.length > 0 && (
                 <div className="w-56">
@@ -982,364 +1011,376 @@ export function QuoteFormContent({
                   </FormSelect>
                 </div>
               )}
-            <form.Field name="enviarDomicilioFiscal">
-              {(field) => (
-                <label className={`inline-flex items-center gap-2 text-xs font-medium transition-opacity ${
-                  !hasCustomerSelected
-                    ? "text-slate-400 dark:text-slate-600 opacity-50 cursor-not-allowed"
-                    : "text-slate-600 dark:text-slate-300 cursor-pointer"
-                }`}>
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+              <form.Field name="enviarDomicilioFiscal">
+                {(field) => (
+                  <label className={`inline-flex items-center gap-2 text-xs font-medium transition-opacity ${
+                    !hasCustomerSelected
+                      ? "text-slate-400 dark:text-slate-600 opacity-50 cursor-not-allowed"
+                      : "text-slate-600 dark:text-slate-300 cursor-pointer"
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+                      name={field.name}
+                      checked={Boolean(field.state.value)}
+                      disabled={!hasCustomerSelected}
+                      onChange={(event) => {
+                        field.handleChange(event.target.checked);
+                        clearFieldErrors("enviarDomicilioFiscal");
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    Enviar al domicilio fiscal
+                  </label>
+                )}
+              </form.Field>
+              <form.Field name="usarMismoTelefono">
+                {(field) => (
+                  <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      name={field.name}
+                      checked={Boolean(field.state.value)}
+                      onChange={(event) => {
+                        // Al desmarcarla, los teléfonos de envío quedan editables
+                        // con lo último que mostraban (el de "Teléfono pagos").
+                        if (!event.target.checked) {
+                          form.setFieldValue("telefonoEnvio", watchedTelefonoPagos ?? "");
+                          form.setFieldValue("celularEnvio", watchedTelefonoPagos ?? "");
+                          clearFieldErrors("telefonoEnvio");
+                          clearFieldErrors("celularEnvio");
+                        }
+                        field.handleChange(event.target.checked);
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    Usar el mismo teléfono
+                  </label>
+                )}
+              </form.Field>
+              <form.Field name="embarcarConOtrosPedidos">
+                {(field) => (
+                  <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      name={field.name}
+                      checked={Boolean(field.state.value)}
+                      onChange={(event) => {
+                        field.handleChange(event.target.checked);
+                        clearFieldErrors("embarcarConOtrosPedidos");
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    Embarcar con otras cotizaciones
+                  </label>
+                )}
+              </form.Field>
+            </>
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
+            <div className="lg:col-span-1">
+              <form.Field name="destinatario">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Destinatario"
+                    placeholder="Nombre completo"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
                     name={field.name}
-                    checked={Boolean(field.state.value)}
-                    disabled={!hasCustomerSelected}
+                    value={field.state.value}
                     onChange={(event) => {
-                      field.handleChange(event.target.checked);
-                      clearFieldErrors("enviarDomicilioFiscal");
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("destinatario");
                     }}
-                    onBlur={field.handleBlur}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("destinatario", field.state.value);
+                    }}
+                    error={getError("destinatario")}
                   />
-                  Enviar al domicilio fiscal
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="usarMismoTelefono">
-              {(field) => (
-                <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="empresaEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Empresa"
+                    placeholder="Razón Social"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
                     name={field.name}
-                    checked={Boolean(field.state.value)}
+                    value={field.state.value}
                     onChange={(event) => {
-                      // Al desmarcarla, los teléfonos de envío quedan editables
-                      // con lo último que mostraban (el de "Teléfono pagos").
-                      if (!event.target.checked) {
-                        form.setFieldValue("telefonoEnvio", watchedTelefonoPagos ?? "");
-                        form.setFieldValue("celularEnvio", watchedTelefonoPagos ?? "");
-                        clearFieldErrors("telefonoEnvio");
-                        clearFieldErrors("celularEnvio");
-                      }
-                      field.handleChange(event.target.checked);
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("empresaEnvio");
                     }}
-                    onBlur={field.handleBlur}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("empresaEnvio", field.state.value);
+                    }}
+                    error={getError("empresaEnvio")}
                   />
-                  Usar el mismo teléfono
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="embarcarConOtrosPedidos">
-              {(field) => (
-                <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="telefonoEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Teléfono"
+                    placeholder="Teléfono"
+                    type="tel"
+                    forceUppercase={false}
+                    // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
+                    // "Teléfono pagos" (derivado, no copiado), donde vive su error.
+                    disabled={Boolean(watchedUsarMismoTelefono)}
                     name={field.name}
-                    checked={Boolean(field.state.value)}
+                    value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
                     onChange={(event) => {
-                      field.handleChange(event.target.checked);
-                      clearFieldErrors("embarcarConOtrosPedidos");
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("telefonoEnvio");
                     }}
-                    onBlur={field.handleBlur}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("telefonoEnvio", field.state.value);
+                    }}
+                    error={watchedUsarMismoTelefono ? undefined : getError("telefonoEnvio")}
                   />
-                  Embarcar con otras cotizaciones
-                </label>
-              )}
-            </form.Field>
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="celularEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Celular"
+                    placeholder="Celular"
+                    type="tel"
+                    forceUppercase={false}
+                    // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
+                    // "Teléfono pagos" (derivado, no copiado), donde vive su error.
+                    disabled={Boolean(watchedUsarMismoTelefono)}
+                    name={field.name}
+                    value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("celularEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("celularEnvio", field.state.value);
+                    }}
+                    error={watchedUsarMismoTelefono ? undefined : getError("celularEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="md:col-span-2 lg:col-span-2">
+              <form.Field name="direccionEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Dirección"
+                    placeholder="Calle y número"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("direccionEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("direccionEnvio", field.state.value);
+                    }}
+                    error={getError("direccionEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="coloniaEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Colonia"
+                    placeholder="Colonia"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("coloniaEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("coloniaEnvio", field.state.value);
+                    }}
+                    error={getError("coloniaEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="codigoPostalEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Código Postal"
+                    placeholder="C.P."
+                    forceUppercase={false}
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("codigoPostalEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("codigoPostalEnvio", field.state.value);
+                    }}
+                    error={getError("codigoPostalEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="ciudadEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Ciudad"
+                    placeholder="Ciudad"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("ciudadEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("ciudadEnvio", field.state.value);
+                    }}
+                    error={getError("ciudadEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="lg:col-span-1">
+              <form.Field name="estadoEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Estado"
+                    placeholder="Estado"
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("estadoEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("estadoEnvio", field.state.value);
+                    }}
+                    error={getError("estadoEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
+            <div className="md:col-span-2 lg:col-span-2">
+              <form.Field name="referenciasEnvio">
+                {(field) => (
+                  <FormInput
+                    className={COMPACT_FIELD_CLS}
+                    label="Referencias adicionales"
+                    placeholder="Entre calles, etc."
+                    forceUppercase
+                    disabled={Boolean(watchedEnviarDomicilioFiscal)}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearFieldErrors("referenciasEnvio");
+                    }}
+                    onBlur={() => {
+                      field.handleBlur();
+                      validateField("referenciasEnvio", field.state.value);
+                    }}
+                    error={getError("referenciasEnvio")}
+                  />
+                )}
+              </form.Field>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-1">
-            <form.Field name="destinatario">
+          <div className="space-y-3">
+            <form.Field name="embarque_parcial">
+              {(field) => (
+                <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    name={field.name}
+                    checked={Boolean(field.state.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.checked);
+                      clearFieldErrors("embarque_parcial");
+                      // La casilla decide si los comentarios son obligatorios:
+                      // reevalúa el error que la regla deja bajo ellos.
+                      revalidateCrossRule("embarque_parcial", event.target.checked);
+                    }}
+                    onBlur={field.handleBlur}
+                  />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                      Embarque parcial
+                    </p>
+                    <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">
+                      Es posible embarcar parcialidad facturada de lo disponible en inventario.
+                    </p>
+                  </div>
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="comentarios_parcialidad">
               {(field) => (
                 <FormInput
-                  label="Destinatario"
-                  placeholder="Nombre completo"
+                  className={COMPACT_FIELD_CLS}
+                  label="Comentarios parcialidad"
+                  placeholder="Especificaciones para el envío parcial..."
                   forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
                   name={field.name}
                   value={field.state.value}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
-                    clearFieldErrors("destinatario");
+                    clearFieldErrors("comentarios_parcialidad");
                   }}
                   onBlur={() => {
                     field.handleBlur();
-                    validateField("destinatario", field.state.value);
+                    validateField("comentarios_parcialidad", field.state.value);
                   }}
-                  error={getError("destinatario")}
+                  error={getError("comentarios_parcialidad")}
                 />
               )}
             </form.Field>
           </div>
-          <div className="lg:col-span-1">
-            <form.Field name="empresaEnvio">
-              {(field) => (
-                <FormInput
-                  label="Empresa"
-                  placeholder="Razón Social"
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("empresaEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("empresaEnvio", field.state.value);
-                  }}
-                  error={getError("empresaEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="telefonoEnvio">
-              {(field) => (
-                <FormInput
-                  label="Teléfono"
-                  placeholder="Teléfono"
-                  type="tel"
-                  forceUppercase={false}
-                  // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
-                  // "Teléfono pagos" (derivado, no copiado), donde vive su error.
-                  disabled={Boolean(watchedUsarMismoTelefono)}
-                  name={field.name}
-                  value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("telefonoEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("telefonoEnvio", field.state.value);
-                  }}
-                  error={watchedUsarMismoTelefono ? undefined : getError("telefonoEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="celularEnvio">
-              {(field) => (
-                <FormInput
-                  label="Celular"
-                  placeholder="Celular"
-                  type="tel"
-                  forceUppercase={false}
-                  // Solo "Usar el mismo teléfono" lo bloquea: entonces muestra el de
-                  // "Teléfono pagos" (derivado, no copiado), donde vive su error.
-                  disabled={Boolean(watchedUsarMismoTelefono)}
-                  name={field.name}
-                  value={watchedUsarMismoTelefono ? (watchedTelefonoPagos ?? "") : field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("celularEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("celularEnvio", field.state.value);
-                  }}
-                  error={watchedUsarMismoTelefono ? undefined : getError("celularEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="md:col-span-2 lg:col-span-2">
-            <form.Field name="direccionEnvio">
-              {(field) => (
-                <FormInput
-                  label="Dirección"
-                  placeholder="Calle y número"
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("direccionEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("direccionEnvio", field.state.value);
-                  }}
-                  error={getError("direccionEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="coloniaEnvio">
-              {(field) => (
-                <FormInput
-                  label="Colonia"
-                  placeholder="Colonia"
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("coloniaEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("coloniaEnvio", field.state.value);
-                  }}
-                  error={getError("coloniaEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="codigoPostalEnvio">
-              {(field) => (
-                <FormInput
-                  label="Código Postal"
-                  placeholder="C.P."
-                  forceUppercase={false}
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("codigoPostalEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("codigoPostalEnvio", field.state.value);
-                  }}
-                  error={getError("codigoPostalEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="ciudadEnvio">
-              {(field) => (
-                <FormInput
-                  label="Ciudad"
-                  placeholder="Ciudad"
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("ciudadEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("ciudadEnvio", field.state.value);
-                  }}
-                  error={getError("ciudadEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="lg:col-span-1">
-            <form.Field name="estadoEnvio">
-              {(field) => (
-                <FormInput
-                  label="Estado"
-                  placeholder="Estado"
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("estadoEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("estadoEnvio", field.state.value);
-                  }}
-                  error={getError("estadoEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-          <div className="md:col-span-2 lg:col-span-2">
-            <form.Field name="referenciasEnvio">
-              {(field) => (
-                <FormInput
-                  label="Referencias adicionales"
-                  placeholder="Entre calles, etc."
-                  forceUppercase
-                  disabled={Boolean(watchedEnviarDomicilioFiscal)}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearFieldErrors("referenciasEnvio");
-                  }}
-                  onBlur={() => {
-                    field.handleBlur();
-                    validateField("referenciasEnvio", field.state.value);
-                  }}
-                  error={getError("referenciasEnvio")}
-                />
-              )}
-            </form.Field>
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-4">
-          <form.Field name="embarque_parcial">
-            {(field) => (
-              <label className="flex items-start gap-3 rounded-2xl cursor-pointer border border-amber-100 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 p-4">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                  name={field.name}
-                  checked={Boolean(field.state.value)}
-                  onChange={(event) => {
-                    field.handleChange(event.target.checked);
-                    clearFieldErrors("embarque_parcial");
-                    // La casilla decide si los comentarios son obligatorios:
-                    // reevalúa el error que la regla deja bajo ellos.
-                    revalidateCrossRule("embarque_parcial", event.target.checked);
-                  }}
-                  onBlur={field.handleBlur}
-                />
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
-                    Embarque parcial
-                  </p>
-                  <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">
-                    Es posible embarcar parcialidad facturada de lo disponible en inventario.
-                  </p>
-                </div>
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="comentarios_parcialidad">
-            {(field) => (
-              <FormInput
-                label="Comentarios parcialidad"
-                placeholder="Especificaciones para el envío parcial..."
-                forceUppercase
-                name={field.name}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  clearFieldErrors("comentarios_parcialidad");
-                }}
-                onBlur={() => {
-                  field.handleBlur();
-                  validateField("comentarios_parcialidad", field.state.value);
-                }}
-                error={getError("comentarios_parcialidad")}
-              />
-            )}
-          </form.Field>
-        </div>
+        </FormSection>
       </section>
 
       <section data-error-anchor="items" className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col h-125">

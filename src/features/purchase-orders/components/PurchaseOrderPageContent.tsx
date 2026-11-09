@@ -53,6 +53,7 @@ import {
   resolvePurchaseOrderBack,
   type PurchaseOrderBackParams,
 } from "../constants/purchaseOrderDetailOrigins";
+import { cleanText } from "@/src/utils/cleanText";
 
 /** Campos financieros que consume {@link TotalsFooter}, recortados de la cabecera. */
 type OrderTotals = Pick<
@@ -910,6 +911,17 @@ export function PurchaseOrderPageContent({
               no le dicen nada al usuario. */}
           <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
           <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
+          {/* Destino de lo que se reciba y a dónde envía el proveedor
+              (EC-796): la dirección es la de la sucursal de la orden. */}
+          <InfoField label="Almacén destino">{textOrDash(data.almacen_nombre)}</InfoField>
+          <InfoField label="Dirección de entrega">
+            {textOrDash(cleanText(data.sucursal_direccion))}
+          </InfoField>
+          <InfoField label="Teléfono de entrega">
+            <span className="tabular-nums">
+              {textOrDash(cleanText(data.sucursal_telefono))}
+            </span>
+          </InfoField>
           <InfoField label="Elaboró">{textOrDash(data.usuario_nombre)}</InfoField>
           {/* La moneda contextualiza TODOS los importes de la página, así que
               se muestra aunque los importes en sí no sean visibles. */}

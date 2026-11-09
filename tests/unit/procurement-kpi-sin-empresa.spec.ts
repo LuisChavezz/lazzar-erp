@@ -60,6 +60,27 @@ const ocConEmpresa = (puede: boolean): PurchaseOrderKpis => ({
   gasto_por_categoria: puede
     ? { disponible: true, categorias: [{ categoria: "TELAS", moneda: "MXN", monto: 87514.81 }] }
     : SIN_PERMISO,
+  ocs_por_grupo: {
+    disponible: true,
+    activas: 17,
+    por_autorizar: 6,
+    autorizadas_o_completadas: 11,
+    en_curso: 2,
+    recibidas: 1,
+    canceladas: 3,
+  },
+  valor_ocs_activas: {
+    disponible: true,
+    total: 17,
+    por_moneda: [{ moneda: "MXN", total: 17, ...(puede ? { monto: 32430.06 } : {}) }],
+  },
+  top_ocs_por_moneda: puede ? { disponible: true, monedas: [] } : SIN_PERMISO,
+  ocs_en_curso_proxima_entrega: {
+    disponible: true,
+    drill_down: [],
+    drill_down_total: 2,
+    drill_down_truncado: false,
+  },
   puede_ver_importes: puede,
 });
 const ocSinEmpresa: PurchaseOrderKpis = {
@@ -68,6 +89,10 @@ const ocSinEmpresa: PurchaseOrderKpis = {
   ocs_vencidas_sin_recibir: SIN_EMPRESA,
   ciclo_compra: SIN_EMPRESA,
   gasto_por_categoria: SIN_EMPRESA,
+  ocs_por_grupo: SIN_EMPRESA,
+  valor_ocs_activas: SIN_EMPRESA,
+  top_ocs_por_moneda: SIN_EMPRESA,
+  ocs_en_curso_proxima_entrega: SIN_EMPRESA,
   puede_ver_importes: false,
 };
 

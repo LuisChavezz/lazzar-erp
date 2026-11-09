@@ -1,5 +1,6 @@
 import {
-  extractPlainDetalleMessage,
+  extractDetalleRejectionMessage,
+  extractHeaderNonFieldMessage,
   extractProcessCompatibilityMessage,
   extractQuoteValidationIssues,
   REQUIRED_COLOR_KEY,
@@ -7,8 +8,7 @@ import {
 } from "@/src/features/quotes/utils/quoteValidationErrors";
 import {
   extractJoinedRejectionMessage,
-  firstDrfMessage,
-  firstRejectionMessage,
+  firstNonBlankRejectionMessage,
 } from "@/src/utils/firstDrfMessage";
 
 /**
@@ -38,7 +38,7 @@ export const SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS = 9000;
 
 /**
  * Claves de RECHAZO de `POST /ventas/pedidos/{id}/editar-mesa-control/` que se
- * leen por su PRIMER mensaje (`firstRejectionMessage`): motivos que el usuario
+ * leen por su PRIMER mensaje no vacío (`firstNonBlankRejectionMessage`): motivos que el usuario
  * no puede corregir en ningún campo del formulario y que por tanto tienen que
  * llegarle en el toast.
  *
@@ -51,40 +51,50 @@ export const SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS = 9000;
  *   o tener un rol activo de su empresa cuya clave de departamento sea
  *   EXACTAMENTE `MESACONTROL` (p. ej. `MESACONTROLYVENTAS` se rechaza).
  * - `pedido` / `cotizacion`: el pedido no tiene cotización ligada (o se
- *   borró), así que no hay nada que espejar. (`pedido` se lee aparte: también
- *   es la clave de los errores de campo de la cabecera.)
+ *   borró), así que no hay nada que espejar. (`pedido` también es la clave de
+ *   los errores de campo de la cabecera, ver abajo.)
  *
- * `detail` cubre los `APIException` genéricos de DRF, por si aparece otro.
- * NO se incluyen las claves de campo (`detalle`, `pedido.cliente`…): esas ya
- * las pinta `onValidationError` sobre el input correspondiente y repetirlas en
- * el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
+ * `detail` y `non_field_errors` cubren los genéricos de DRF, por si aparecen
+ * (EC-795: hoy el endpoint no los emite; se cubre por defensa). El
+ * `non_field_errors` anidado en la cabecera (`pedido.non_field_errors`) lo lee
+ * `extractHeaderNonFieldMessage`.
+ * NO se incluyen las claves de campo (`detalle.N.*`, `pedido.cliente`…): esas
+ * ya las pinta `onValidationError` sobre el input correspondiente y repetirlas
+ * en el toast sería ruido. Sí son rechazo `compatibilidad_proceso` (matriz
  * prenda/proceso, lista completa), `servicios_extras` (lista completa, ver
- * arriba) y `detalle` cuando llega como mensaje plano (p. ej. el tope de
- * reflejante «Del inventario»): no los pinta ningún campo.
+ * arriba) y `detalle` cuando trae mensajes —plano, p. ej. el tope de reflejante
+ * «Del inventario», o en lista—: no los pinta ningún campo.
  * `color` (EC-641) va a los DOS lados: el toast muestra el mensaje del backend
  * con los nombres de producto, y `onValidationError` marca las partidas.
  */
-const REJECTION_KEYS = ["permiso", "cotizacion", "detail", REQUIRED_COLOR_KEY] as const;
-
-/**
- * Rutas de error que solo van al TOAST: las claves de rechazo de primer nivel
- * que ningún control del formulario pinta. `extractQuoteValidationIssues`
- * convierte una de estas claves en un error de campo cuando llega como LISTA
- * (`{"permiso": ["..."]}` → ruta `permiso`), y ese error marcaba el árbol y
- * hacía scroll sin mostrar nada. Se descartan porque `extractRejection` ya
- * lee cada una de estas claves para el toast.
- *
- * Queda FUERA `color`: el formulario lo traduce a las partidas sin color
- * (`getServerColorIssues`). `compatibilidad_proceso` ya lo descarta el propio
- * extractor, y como string suelto las demás ya se ignoraban.
- */
-const TOAST_ONLY_PATHS: ReadonlySet<string> = new Set([
+const REJECTION_KEYS = [
   "permiso",
   "cotizacion",
   "detail",
+  "non_field_errors",
+  REQUIRED_COLOR_KEY,
+  /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string)
+   * y también el bloque de errores de campo de la cabecera (objeto), que
+   * `firstNonBlankRejectionMessage` no lee. Solo cuenta como rechazo cuando
+   * trae un mensaje. */
   "pedido",
+] as const;
+
+/**
+ * Claves que, con un mensaje (string o lista de strings), solo van al TOAST:
+ * `extractQuoteValidationIssues` no las convierte en error de campo, porque
+ * ningún control las pinta (marcaban el árbol y hacían scroll sin mostrar
+ * nada). Son exactamente las que lee `extractRejection`, salvo `color`: el
+ * formulario lo traduce a las partidas sin color (`getServerColorIssues`).
+ * Como lista de objetos (`servicios_extras: [{monto: [...]}]`,
+ * `detalle: [{...}]`) u objeto (`pedido: {...}`) siguen siendo errores de
+ * campo. `non_field_errors` cubre también el anidado en `pedido`.
+ */
+const FORM_REJECTION_KEYS = [
+  ...REJECTION_KEYS.filter((key) => key !== REQUIRED_COLOR_KEY),
+  "detalle",
   SERVICIOS_EXTRAS_REJECTION_KEY,
-]);
+];
 
 export interface PedidoMesaControlRejectionToast {
   message: string;
@@ -108,16 +118,11 @@ const extractRejection = (data: unknown): PedidoMesaControlRejectionToast | unde
   const message =
     extractProcessCompatibilityMessage(data) ??
     serviciosExtras ??
-    extractPlainDetalleMessage(data) ??
-    firstRejectionMessage(data, REJECTION_KEYS) ??
-    /* `pedido` es ambigua: la usa el rechazo por falta de cotización (string)
-     * y también el bloque de errores de campo de la cabecera (objeto). Solo
-     * cuenta como rechazo cuando trae un mensaje plano. */
-    (data && typeof data === "object"
-      ? firstDrfMessage((data as Record<string, unknown>).pedido)
-      : undefined);
-  // `firstDrfMessage` acepta un string de solo espacios: nunca un toast en blanco.
-  if (!message?.trim()) return undefined;
+    extractDetalleRejectionMessage(data) ??
+    firstNonBlankRejectionMessage(data, REJECTION_KEYS) ??
+    extractHeaderNonFieldMessage(data);
+  // Todos los lectores descartan los mensajes en blanco: nunca un toast vacío.
+  if (!message) return undefined;
   return message === serviciosExtras && serviciosExtras.includes("\n")
     ? { message, duration: SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS }
     : { message };
@@ -129,8 +134,6 @@ const extractRejection = (data: unknown): PedidoMesaControlRejectionToast | unde
  * Es LA función que llama el hook, así que es la que prueban los tests.
  */
 export const parsePedidoMesaControl400 = (data: unknown): PedidoMesaControl400 => ({
-  issues: extractQuoteValidationIssues(data).filter(
-    (issue) => !TOAST_ONLY_PATHS.has(issue.path),
-  ),
+  issues: extractQuoteValidationIssues(data, { rejectionKeys: FORM_REJECTION_KEYS }),
   rejection: extractRejection(data),
 });

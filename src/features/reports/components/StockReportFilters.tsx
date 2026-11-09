@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FormInput } from "@/src/components/FormInput";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
+import { DateParamInput } from "@/src/components/DateParamInput";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
@@ -55,27 +56,30 @@ export function StockReportFilters({
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-end gap-4">
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} />
+        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} className={COMPACT_FIELD_CLS} />
 
+        {/* Solo se propagan días completos con año plausible (ver
+            `DateParamInput`): teclear el año no consulta con cada dígito. Vaciar
+            un campo se confirma al salir de él. */}
         <div className="w-44">
-          <FormInput
+          <DateParamInput
             label="Desde"
-            type="date"
+            name="fecha_inicio"
+            className={COMPACT_FIELD_CLS}
             value={fechaInicio ?? ""}
-            // `max` impide elegir un inicio posterior al fin ya seleccionado.
             max={fechaFinal ?? undefined}
-            onChange={(e) => emitDateRange(e.target.value || null, fechaFinal)}
+            onCommit={(value) => emitDateRange(value || null, fechaFinal)}
           />
         </div>
 
         <div className="w-44">
-          <FormInput
+          <DateParamInput
             label="Hasta"
-            type="date"
+            name="fecha_final"
+            className={COMPACT_FIELD_CLS}
             value={fechaFinal ?? ""}
-            // `min` impide elegir un fin anterior al inicio ya seleccionado.
             min={fechaInicio ?? undefined}
-            onChange={(e) => emitDateRange(fechaInicio, e.target.value || null)}
+            onCommit={(value) => emitDateRange(fechaInicio, value || null)}
           />
         </div>
       </div>

@@ -9,8 +9,7 @@ const EDITABLE_QUOTE_STATUSES = new Set([1, 3, 4]);
 // 4 (rechazada) vuelve a revisión directamente, con un comentario opcional
 // para mesa de control (ver `acceptsResendComment`).
 const REVIEWABLE_QUOTE_STATUSES = new Set([1, 4]);
-const REJECTED_QUOTE_STATUS = 4;
-const AUTHORIZABLE_QUOTE_STATUSES = new Set([2, 5]);
+export const REJECTED_QUOTE_STATUS = 4;
 const CHANGES_REQUESTED_QUOTE_STATUSES = new Set([5]);
 /** 2 (En revisión, "Por Autorizar" en la app): espera la decisión de mesa de control. */
 export const PENDING_AUTHORIZATION_QUOTE_STATUS = 2;
@@ -44,11 +43,17 @@ export const isQuoteReviewableStatus = (
 export const acceptsResendComment = (status: number | null | undefined): boolean =>
   status === REJECTED_QUOTE_STATUS;
 
+/**
+ * ¿Se puede AUTORIZAR o RECHAZAR? Solo en 2 (pendiente de autorización): el
+ * backend acepta `autorizar/` y `rechazar/` únicamente en ese estatus (400
+ * `cotizacion` en cualquier otro). El 5 (cambios solicitados) NO entra: se
+ * resuelve con aceptar/rechazar cambios (`canAcceptQuoteChanges`). Antes
+ * esta regla aceptaba {2, 5} y Ventas ofrecía Autorizar/Rechazar sobre un 5
+ * que el backend rechazaba (EC-752).
+ */
 export const canManageQuoteAuthorization = (
   status: number | null | undefined
-): boolean => {
-  return typeof status === "number" && AUTHORIZABLE_QUOTE_STATUSES.has(status);
-};
+): boolean => status === PENDING_AUTHORIZATION_QUOTE_STATUS;
 
 export const canAcceptQuoteChanges = (
   status: number | null | undefined

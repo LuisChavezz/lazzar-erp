@@ -9,3 +9,10 @@
  * tabla también refresque las tarjetas.
  */
 export const PEDIDO_KPIS_QUERY_KEY = ["pedido-kpis"] as const;
+
+/**
+ * Por qué un importe de pedidos va como "No visible" (`HIDDEN_KPI_AMOUNT_TEXT`):
+ * el usuario no cumple la regla de importes de pedidos (`puede_ver_importes`,
+ * EC-784). La usan Mis pedidos, Mesa de Control y el resumen del cliente.
+ */
+export const HIDDEN_PEDIDO_AMOUNTS_REASON = "Tu rol no tiene acceso a los importes de los pedidos.";

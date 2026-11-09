@@ -14,6 +14,11 @@ export const PurchaseOrderEncabezadosSchema = z.object({
     sucursal: z
       .number({ message: "La sucursal es requerida" })
       .min(1, "La sucursal es requerida"),
+    // Almacén destino de la recepción (EC-796): obligatorio en el alta por
+    // decisión de negocio, aunque el backend lo acepte opcional.
+    almacen: z
+      .number({ message: "El almacén destino es requerido" })
+      .min(1, "El almacén destino es requerido"),
     proveedor: z
       .number({ message: "El proveedor es requerido" })
       .min(1, "El proveedor es requerido"),

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getMexicoFortnightRange, getMexicoTodayDate } from "@/src/utils/mexicoTime";
-import { isPlausibleDateKey } from "../utils/dateInputs";
+import { isPlausibleDateKey } from "@/src/utils/plausibleDateKey";
 
 export type AttendanceTab = "pase" | "historial";
 

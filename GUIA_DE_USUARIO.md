@@ -46,7 +46,7 @@ La selección se guarda en el **store de workspace** y en una cookie (`erp_works
 Una vez dentro del sistema, la interfaz se organiza en:
 
 - **Sidebar lateral** (`Sidebar`): la navegación está organizada por **módulos de negocio** y es **contextual** (cambia según dónde te encuentres):
-  - En **Inicio** y **Configuración** se muestran los módulos principales: **Panel de Control (Core)**, **CRM y Ventas**, **Mesa de Control**, **Operaciones de Almacén**, **Compras y SCM**, **Manufactura (Producción)**, **Finanzas y Contabilidad** y **Capital Humano**.
+  - En **Inicio** y **Configuración** se muestran los módulos principales: **Panel de Control**, **CRM y Ventas**, **Mesa de Control**, **Operaciones de Almacén**, **Compras y SCM**, **Manufactura (Producción)**, **Finanzas y Contabilidad** y **Capital Humano**.
   - Al entrar a un módulo, el menú muestra sus secciones internas. Por ejemplo, en **Operaciones de Almacén** verás sus sub-grupos Operación, Inventario y RFID.
   - En la parte inferior, un bloque **Ajustes** agrupa el perfil/seguridad de la cuenta y la **Configuración** del sistema.
   - Cada módulo y sección se muestra según los **permisos** del usuario.
@@ -160,7 +160,7 @@ Los módulos operativos, comerciales y financieros se organizan por **dominio de
   - **Contabilidad**: Pólizas (`/finance/polizas`), Plan de Cuentas (`/finance/chart-of-accounts`) y Centros de Costo (`/finance/cost-centers`).
   - **Maestros**: Clientes (`/finance/accounting-customers`).
   - Además, Lista de Precios (`/finance/price-lists`).
-- **Panel de Control (Core)** (`/system`): Reportes (`/system/reports`).
+- **Panel de Control** (`/system`), con un sub-grupo **Reportes de inventario**: Reporte de Existencias (`/system/reports/existencias`), Reporte de Movimientos (`/system/reports/movimientos`) y Auxiliar de Movimientos (`/system/reports/auxiliar`).
 - **Capital Humano** (`/hr`), organizada en sub-grupos:
   - **Organización**: Empleados (`/hr/employees`), Áreas (`/hr/areas`), Puestos (`/hr/positions`) y Turnos (`/hr/shifts`).
   - **Administración Laboral**: Contratos (`/hr/contracts`), Calendarios (`/hr/calendars`), Vacaciones (`/hr/vacations`) y Permisos y Ausencias (`/hr/absences`).

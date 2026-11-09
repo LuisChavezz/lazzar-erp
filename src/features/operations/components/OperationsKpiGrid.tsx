@@ -11,6 +11,7 @@ import {
 } from "@/src/components/Icons";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { useOperationsQuotes } from "../hooks/useOperationsQuotes";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const OperationsKpiGrid = () => {
@@ -18,7 +19,7 @@ export const OperationsKpiGrid = () => {
 
   const stats = useMemo(() => {
     const pending = operationsQuotes.filter(
-      (operationsQuote) => operationsQuote.estatus === 2
+      (operationsQuote) => operationsQuote.estatus === PENDING_AUTHORIZATION_QUOTE_STATUS
     ).length;
     const approved = operationsQuotes.filter(
       (operationsQuote) => operationsQuote.estatus === 3

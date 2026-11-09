@@ -1,14 +1,16 @@
 "use client";
 
-import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
+import KpiGrid, { KPI_MUTED_ICON, type KpiItem } from "@/src/components/KpiGrid";
 import {
   ClockIcon,
   FacturacionIcon,
   PedidosIcon,
   WalletIcon,
 } from "@/src/components/Icons";
+import { HIDDEN_PEDIDO_AMOUNTS_REASON } from "@/src/features/orders/constants/pedidoKpis";
 import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canSeeKpiAmounts, HIDDEN_KPI_AMOUNT_TEXT } from "@/src/utils/kpiAmounts";
 import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import type { ResumenComercial } from "../interfaces/customer.interface";
 
@@ -20,11 +22,21 @@ const MutedValue = ({ children }: { children: string }) => (
   </span>
 );
 
-export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) => {
+/**
+ * Tarjetas del resumen comercial. Exportada para las pruebas unitarias
+ * (`tests/unit/order-amounts-hidden.spec.ts`).
+ */
+export function buildResumenKpiItems(resumen: ResumenComercial): KpiItem[] {
   const ultimo = resumen.ultimo_pedido;
   const ultimoEstatus = ultimo ? getPedidoEstatusConfig(ultimo.estatus) : null;
+  const montos = resumen.montos_por_moneda ?? [];
+  const montoBase = {
+    label: "Monto en pedidos",
+    icon: WalletIcon,
+    iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
+  };
 
-  const items: KpiItem[] = [
+  return [
     {
       label: "Pedidos",
       subLabel: "Total, incluye cancelados",
@@ -41,15 +53,24 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
       iconBgClass: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
       iconClass: "text-fuchsia-500",
     },
-    {
-      label: "Monto en pedidos",
+    // Sin la regla de importes (EC-784) el backend no manda `montos_por_moneda`:
+    // la tarjeta se queda con su título y dice "No visible", como el "Valor
+    // total" de Mesa de Control. Solo un `true` explícito muestra el monto.
+    !canSeeKpiAmounts(resumen.puede_ver_importes) ? {
+      ...montoBase,
+      ...KPI_MUTED_ICON,
+      subLabel: HIDDEN_PEDIDO_AMOUNTS_REASON,
+      value: <MutedValue>{HIDDEN_KPI_AMOUNT_TEXT}</MutedValue>,
+    } : {
+      ...montoBase,
       subLabel: "Sin pedidos cancelados",
-      // Una línea por moneda DENTRO de la misma tarjeta.
+      // Una línea por moneda DENTRO de la misma tarjeta. `?? []`: con permiso el
+      // contrato da siempre la lista; si faltara, cae en el estado vacío.
       value:
-        resumen.montos_por_moneda.length === 0 ? (
+        montos.length === 0 ? (
           <MutedValue>Sin montos registrados</MutedValue>
         ) : (
-          resumen.montos_por_moneda.map((monto) => (
+          montos.map((monto) => (
             <span
               key={monto.moneda}
               className="flex items-baseline justify-between gap-3 tabular-nums"
@@ -65,8 +86,6 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
             </span>
           ))
         ),
-      icon: WalletIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
       iconClass: "text-emerald-500",
     },
     {
@@ -97,9 +116,11 @@ export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) 
       iconClass: "text-amber-500",
     },
   ];
+}
 
-  return <KpiGrid items={items} />;
-};
+export const CustomerResumenKpis = ({ resumen }: { resumen: ResumenComercial }) => (
+  <KpiGrid items={buildResumenKpiItems(resumen)} />
+);
 
 /** Marcador de carga de los KPIs mientras se muestra la fila del listado. */
 export const CustomerResumenKpisSkeleton = () => (

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PedidoListItem } from "../interfaces/order.interface";
+import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
 import { getProcurementOrderColumnText } from "../utils/procurementOrderExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 
@@ -12,7 +14,7 @@ const escapeCsv = (value: string) => {
 };
 
 const buildCsv = (
-  orders: PedidoListItem[],
+  orders: PedidoExportRow[],
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
   const headers = columns.map((column) => column.header);
@@ -23,20 +25,17 @@ const buildCsv = (
 };
 
 /**
- * Exporta el listado VISIBLE de pedidos (Compras/SCM, `OrderListView` con
- * `variant="procurement"`) a un CSV que Excel abre directamente. Mismo
- * patrón que `usePurchaseOrderCsvExport`/`useQuoteCsvExport`: refs para no
- * reconstruir el listener en cada render, disparo por `CustomEvent`
- * (`procurement-orders:exportCSV`) para no acoplar el botón con el hook.
+ * Exporta a un CSV que Excel abre directamente los pedidos de Compras › Pedidos
+ * (modo servidor). Mismo patrón que `usePurchaseOrderCsvExport`: refs para no
+ * reconstruir el listener en cada render y disparo por `CustomEvent`
+ * (`procurement-orders:exportCSV`).
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODO el conjunto de los criterios vigentes de la
+ * tabla (búsqueda, filtros y orden) desde `GET /ventas/pedidos/exportar/`: la
+ * tabla en modo servidor solo tiene la página visible.
  */
 export const useProcurementOrderCsvExport = (
-  tableRef: RefObject<DataTableHandle<PedidoListItem> | null>,
+  getRows: () => Promise<PedidoExportRow[]>,
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
   const columnsRef = useRef(columns);
@@ -45,19 +44,26 @@ export const useProcurementOrderCsvExport = (
     columnsRef.current = columns;
   }, [columns]);
 
-  const exportToCsv = useCallback(() => {
-    if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], columnsRef.current);
-    // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
-    const blob = new Blob([`﻿${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+  const runExport = useServerExport(getRows, "procurement-orders-export-csv");
+
+  const exportToCsv = useCallback(async () => {
+    const exportColumns = columnsRef.current;
+    if (exportColumns.length === 0) return;
+    await runExport((rows) => {
+      const csvContent = buildCsv(rows, exportColumns);
+      // BOM (`﻿`) para que Excel detecte UTF-8 y no rompa acentos/ñ.
+      const blob = new Blob([`﻿${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const today = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `pedidos-${today}.csv`);
     });
-    const today = new Date().toISOString().split("T")[0];
-    downloadBlob(blob, `pedidos-${today}.csv`);
-  }, [tableRef]);
+  }, [runExport]);
 
   useEffect(() => {
-    const handleExport = () => exportToCsv();
+    const handleExport = () => {
+      void exportToCsv();
+    };
     document.addEventListener("procurement-orders:exportCSV", handleExport);
     return () => {
       document.removeEventListener("procurement-orders:exportCSV", handleExport);

@@ -13,6 +13,10 @@ import type {
   ReceiptCreatePurchaseOrderDetalle,
   ReceiptCreateProductionOrderDetalle,
 } from "../interfaces/receipt-onboarding.interface";
+import {
+  almacenesDeSucursal,
+  almacenPreseleccionado,
+} from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
@@ -77,7 +81,21 @@ function reduceDetalle<D extends { id: number }, T>(
 export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
-  const warehouses = onboardingData?.catalogos.almacenes ?? [];
+  const allWarehouses = onboardingData?.catalogos.almacenes ?? [];
+  // Solo se ofrecen los almacenes de la sucursal de la orden (EC-796), que
+  // son los únicos que el backend acepta al recibir, sea OC u OP (compara
+  // contra `oc.sucursal` u `op.sucursal`); los que no tienen sucursal también
+  // los rechaza, así que quedan fuera.
+  const warehouses = almacenesDeSucursal(allWarehouses, candidate.order.sucursal_id);
+
+  // Almacén destino elegido en la OC, si está entre los ofrecidos. Se calcula
+  // UNA vez al montar (el formulario se monta de nuevo con cada orden elegida):
+  // un refetch del catálogo nunca pisa lo que el usuario haya elegido después.
+  const [almacenInicial] = useState(() =>
+    candidate.type === "compra"
+      ? almacenPreseleccionado(candidate.order.almacen_id, warehouses)
+      : 0,
+  );
 
   // ── Mutación ──────────────────────────────────────────────────────────
   const createReceiptMutation = useCreateReceipt();
@@ -93,14 +111,14 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   // ── Valores por defecto ───────────────────────────────────────────────
   const defaultValues = useMemo<ReceiptFormValues>(
     () => ({
-      almacen: 0,
+      almacen: almacenInicial,
       serie_codigo: "",
       remision: "",
       factura_referencia: "",
       observaciones: "",
       cantidades: {},
     }),
-    [],
+    [almacenInicial],
   );
 
   // ── Limpia error de un campo ──────────────────────────────────────────

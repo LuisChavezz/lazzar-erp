@@ -2,9 +2,9 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { StockMovementReportRow } from "@/src/features/stock/interfaces/stock-movement-report.interface";
-// Se reutiliza el MISMO mapa de estilos por tipo de movimiento del módulo de
-// movimientos (badge con punto de color), en vez de re-declararlo.
-import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/components/StockMovementsColumns";
+// Estilos del módulo de movimientos con las etiquetas del reporte (que llama
+// `TRANSFERENCIA` a lo que allá es `TRASPASO`).
+import { STOCK_MOVEMENT_REPORT_TYPE_CONFIG } from "@/src/features/stock/constants/stockMovementReportTypes";
 import { formatMoneyValue, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 
@@ -52,7 +52,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
     meta: { label: "Tipo Movimiento" },
     cell: ({ row }) => {
       const tipo = row.original.tipo_movimiento;
-      const cfg = MOVEMENT_TYPE_CONFIG[tipo] ?? {
+      const cfg = STOCK_MOVEMENT_REPORT_TYPE_CONFIG[tipo] ?? {
         label: tipo,
         dot: "bg-slate-400",
         badgeClass:

@@ -44,9 +44,20 @@ export interface Quote {
    * respaldo para valores fuera de rango. Se tipa por completitud del contrato.
    */
   tipo_pedido_label: string;
-  cliente: number;
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * PK del cliente; `null` en un borrador guardado sin cliente (visto en vivo
+   * en EC-752: el listado trae esos borradores con `cliente` y sus nombres en
+   * `null`).
+   */
+  cliente: number | null;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
+  cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
+  cliente_razon_social: string | null;
   oc: string;
   uso_cfdi: string;
   gran_total: string;
@@ -72,28 +83,6 @@ export interface Quote {
    * siempre viene en el listado (EC-617).
    */
   moneda_codigo: string | null;
-}
-
-/**
- * Campos por los que `GET /ventas/cotizaciones/` acepta ordenar (whitelist del
- * backend en `CotizacionViewSet.get_queryset`). Sin `ordering`, el backend usa
- * `-created_at` con `-id` como desempate.
- */
-export type QuoteOrdering =
-  | "id"
-  | "-id"
-  | "created_at"
-  | "-created_at"
-  | "updated_at"
-  | "-updated_at"
-  | "gran_total"
-  | "-gran_total"
-  | "estatus"
-  | "-estatus";
-
-/** Parámetros de consulta (todos opcionales) de `GET /ventas/cotizaciones/`. */
-export interface QuoteQueryParams {
-  ordering?: QuoteOrdering;
 }
 
 export interface QuoteById {
@@ -187,8 +176,14 @@ export interface QuoteById {
     color_nombre: string | null;
     color_codigo_hex: string | null;
   }[];
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
+  cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
+  cliente_razon_social: string | null;
   estatus: number;
   /**
    * Campo del modelo `Cotizacion` expuesto por el serializer (`fields="__all__"`).
@@ -271,7 +266,8 @@ export interface QuoteById {
   vendedor: number;
   /** Nullable en el backend (`Cotizacion.sucursal`, `null=True`). */
   sucursal: number | null;
-  cliente: number;
+  /** PK del cliente; `null` en un borrador guardado sin cliente (EC-810). */
+  cliente: number | null;
   oportunidad: number | null;
   moneda: number;
   servicios_extras: {

@@ -1,106 +1,52 @@
 "use client";
 
-import { useMemo } from "react";
-import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
-import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { FacturacionIcon, OrdenesIcon, TrendingUpIcon } from "../../../components/Icons";
-import { formatCurrency } from "@/src/utils/formatCurrency";
-import { useQuotes } from "../hooks/useQuotes";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { ErrorState } from "@/src/components/ErrorState";
+import KpiGrid, { KpiGridSkeleton } from "@/src/components/KpiGrid";
+import { KpiSectionErrorBoundary } from "@/src/components/KpiSectionErrorBoundary";
+import { QUOTES_QUERY_KEY } from "../constants/quotesQueryKeys";
+import { useQuoteKpiSummary } from "../hooks/useQuoteKpiSummary";
+import {
+  buildPendingAuthorizationCard,
+  buildQuoteAmountCard,
+  buildQuoteTotalCard,
+  buildRecentQuotesCard,
+} from "./QuoteKpiCards";
 
-export const QuoteStats = () => {
-  const { quotes, isLoading, isInitialError: isErrorQuotes, error: quotesError } = useQuotes();
-
-  const metrics = useMemo(() => {
-    let totalOrdersAmount = 0;
-    let pendingAuthorizationCount = 0;
-
-    for (const quote of quotes) {
-      totalOrdersAmount += Number(quote.gran_total) || 0;
-      if (quote.estatus === 2) {
-        pendingAuthorizationCount += 1;
-      }
-    }
-
-    return {
-      totalQuotes: quotes.length,
-      totalOrdersAmount,
-      pendingAuthorizationCount,
-    };
-  }, [quotes]);
-
-  const items: KpiItem[] = useMemo(() => [
-    {
-      label: "Cotizaciones",
-      value: String(metrics.totalQuotes),
-      icon: OrdenesIcon,
-      iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
-      iconClass: "text-sky-500",
-      subLabel: "Últimos 30 días",
-      status: "positive",
-    },
-    {
-      label: "Nuevos este mes",
-      value: String(metrics.totalQuotes),
-      icon: TrendingUpIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
-      iconClass: "text-emerald-500",
-      subLabel: "Cotizaciones nuevas",
-      status: "positive",
-    },
-    {
-      label: "Total de cotizaciones",
-      // Sin símbolo: suma cotizaciones de cualquier moneda (EC-606); se
-      // reemplazará por un KPI del backend.
-      value: formatCurrency(metrics.totalOrdersAmount, null),
-      icon: FacturacionIcon,
-      iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
-      iconClass: "text-amber-500",
-      subLabel: "Suma de totales",
-      status: "positive",
-    },
-    {
-      label: "Por autorizar",
-      value: metrics.pendingAuthorizationCount.toLocaleString("es-MX"),
-      icon: OrdenesIcon,
-      iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
-      iconClass: "text-sky-500",
-      subLabel: "Cotizaciones pendientes",
-      status: "neutral",
-    },
-  ], [metrics.pendingAuthorizationCount, metrics.totalOrdersAmount, metrics.totalQuotes]);
-
-  if (isLoading) {
-    return (
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando estadísticas de cotizaciones"
-      >
-        <LoadingSkeleton className="h-32 rounded-xl" />
-        <LoadingSkeleton className="h-32 rounded-xl" />
-        <LoadingSkeleton className="h-32 rounded-xl" />
-        <LoadingSkeleton className="h-32 rounded-xl" />
-      </div>
-    );
+function QuoteStatsContent() {
+  const { all, recent } = useQuoteKpiSummary();
+  // Hasta la primera respuesta del total, el skeleton de la grilla compacta
+  // (mismo alto, sin salto); después cada tarjeta resuelve su propio estado.
+  if (!all.data && !all.isInitialError) {
+    return <KpiGridSkeleton compact count={4} label="Cargando indicadores de cotizaciones" />;
   }
-
-  // Solo si las cotizaciones nunca cargaron: sin esto las tarjetas mostraban
-  // ceros, igual que si no hubiera cotizaciones.
-  if (isErrorQuotes) {
-    return (
-      <ErrorState
-        title="Error al cargar las estadísticas de cotizaciones"
-        message={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
-      />
-    );
-  }
-
+  const allSource = { data: all.data, isInitialError: all.isInitialError };
   return (
-    <div className="w-full">
-      <KpiGrid items={items} />
-    </div>
+    <KpiGrid
+      compact
+      items={[
+        buildQuoteTotalCard(allSource),
+        buildPendingAuthorizationCard(allSource),
+        buildQuoteAmountCard(allSource),
+        buildRecentQuotesCard({ data: recent.data, isInitialError: recent.isInitialError }),
+      ]}
+    />
   );
-};
+}
+
+/**
+ * Indicadores de cotizaciones de `/sales/quotes`, del backend (`kpis/`, dos
+ * lecturas en paralelo: todo y los últimos 30 días): total, por autorizar,
+ * importe por moneda sin las rechazadas y cotizaciones de 30 días. Aquí no se
+ * cuenta nada sobre filas cargadas: el listado solo tiene una página.
+ *
+ * Cada tarjeta carga y falla por su cuenta ("—" / "No disponible"), y la
+ * sección tiene su propio límite de error: si el payload cambia de forma y el
+ * render lanza, se pinta un aviso aquí y el listado sigue usable.
+ */
+export const QuoteStats = () => (
+  <KpiSectionErrorBoundary
+    queryKey={[...QUOTES_QUERY_KEY, "kpis"]}
+    message="Ocurrió un error al mostrar los indicadores. El listado de cotizaciones sigue disponible."
+  >
+    <QuoteStatsContent />
+  </KpiSectionErrorBoundary>
+);

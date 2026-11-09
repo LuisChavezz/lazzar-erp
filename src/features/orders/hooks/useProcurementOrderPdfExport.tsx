@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useCallback, useEffect, useRef } from "react";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PedidoListItem } from "../interfaces/order.interface";
+import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
 import { getProcurementOrderColumnText } from "../utils/procurementOrderExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
-import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 /** Ancho relativo de cada columna en el PDF — Folio/Cliente llevan texto más largo. */
 const getColumnWeight = (column: DataTableVisibleColumn<PedidoListItem>): number => {
@@ -18,7 +18,7 @@ const createProcurementOrdersPdfDocument = (
     typeof import("@react-pdf/renderer"),
     "Document" | "Page" | "Text" | "View" | "StyleSheet"
   >,
-  orders: PedidoListItem[],
+  orders: PedidoExportRow[],
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
@@ -202,19 +202,18 @@ const createProcurementOrdersPdfDocument = (
 };
 
 /**
- * Exporta el listado VISIBLE de pedidos (Compras/SCM) a PDF. Mismo patrón
- * que `usePurchaseOrderPdfExport`/`useQuotePdfExport`: `@react-pdf/renderer`
- * se importa dinámicamente (solo al exportar) y el disparo llega por un
- * `CustomEvent` propio (`procurement-orders:exportPDF`).
+ * Exporta a PDF los pedidos de Compras › Pedidos (modo servidor). Mismo patrón
+ * que `usePurchaseOrderPdfExport`: `@react-pdf/renderer` se importa
+ * dinámicamente (solo al exportar) y el disparo llega por un `CustomEvent`
+ * propio (`procurement-orders:exportPDF`).
  *
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas de TODAS las páginas que `DataTable` expone por `ref`
- * (`getFilteredRows`), leídas en ese instante — así el archivo no se queda
- * en la página visible ni con valores previos a un refetch.
+ * `getRows` trae, AL EXPORTAR, TODO el conjunto de los criterios vigentes de la
+ * tabla (búsqueda, filtros y orden) desde `GET /ventas/pedidos/exportar/`: la
+ * tabla en modo servidor solo tiene la página visible. Las columnas son las
+ * visibles de la tabla.
  */
 export const useProcurementOrderPdfExport = (
-  tableRef: RefObject<DataTableHandle<PedidoListItem> | null>,
+  getRows: () => Promise<PedidoExportRow[]>,
   columns: DataTableVisibleColumn<PedidoListItem>[],
 ) => {
   const columnsRef = useRef(columns);
@@ -223,12 +222,14 @@ export const useProcurementOrderPdfExport = (
     columnsRef.current = columns;
   }, [columns]);
 
+  const runExport = useServerExport(getRows, "procurement-orders-export-pdf");
+
   const exportToPdf = useCallback(async () => {
-    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
-    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
-    // rechazada sin aviso para el usuario.
-    try {
-      if (columnsRef.current.length === 0) return;
+    const exportColumns = columnsRef.current;
+    if (exportColumns.length === 0) return;
+    // `runExport` muestra el progreso y convierte cualquier fallo (la petición
+    // o el chunk de react-pdf) en un toast de error.
+    await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
       const pdfDocument = createProcurementOrdersPdfDocument(
         {
@@ -238,16 +239,14 @@ export const useProcurementOrderPdfExport = (
           View: renderer.View,
           StyleSheet: renderer.StyleSheet,
         },
-        tableRef.current?.getFilteredRows() ?? [],
-        columnsRef.current,
+        rows,
+        exportColumns,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
       const today = new Date().toISOString().split("T")[0];
       downloadBlob(blob, `pedidos-${today}.pdf`);
-    } catch (error) {
-      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
-    }
-  }, [tableRef]);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

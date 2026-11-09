@@ -1,87 +1,75 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useIsMutating } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
-import { quoteColumns } from "./QuoteColumns";
+import { getQuoteColumns } from "./QuoteColumns";
 import { QuoteRowActionDialogs } from "./QuoteRowActionDialogs";
 import { useQuoteCsvExport } from "../hooks/useQuoteCsvExport";
 import { useQuotePdfExport } from "../hooks/useQuotePdfExport";
 import { QuoteRowActionsProvider, useQuoteRowActions } from "../hooks/useQuoteRowActions";
 import { Quote } from "../interfaces/quote.interface";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { useQuotes } from "../hooks/useQuotes";
-import { approveOperationsQuoteMutationKey } from "../../operations/hooks/useApproveOperationsQuote";
-import { rejectOperationsQuoteMutationKey } from "../../operations/hooks/useRejectOperationsQuote";
+import { useQuotesTable } from "../hooks/useQuotesTable";
 import { hasPermission } from "@/src/utils/permissions";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { validateQuoteForReviewMutationKey } from "../hooks/useValidateQuoteForReview";
 
+// A nivel de módulo: las columnas no dependen de nada del render.
+const quoteColumns = getQuoteColumns();
+
+/**
+ * Listado de cotizaciones de Ventas en MODO SERVIDOR (`useQuotesTable`):
+ * filtros, búsqueda, orden y página los resuelve el backend y viven en la
+ * URL, así que la página lo envuelve en `<Suspense>`. Las exportaciones piden
+ * al backend TODAS las filas de los criterios vigentes al hacer clic.
+ */
 export const QuoteList = () => {
   const { data: session, status: sessionStatus } = useSession();
-  const {
-    quotes,
-    isLoading: isOrdersLoading,
-    isInitialError: isErrorQuotes,
-    error: quotesError,
-  } = useQuotes();
-  // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
-  // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
-  const tableRef = useRef<DataTableHandle<Quote>>(null);
+  const table = useQuotesTable();
   const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Quote>[]>([]);
-  const isAuthorizingOrder =
-    useIsMutating({ mutationKey: approveOperationsQuoteMutationKey }) > 0;
-  const isRejectingOrder =
-    useIsMutating({ mutationKey: rejectOperationsQuoteMutationKey }) > 0;
-  const isValidatingReview =
-    useIsMutating({ mutationKey: validateQuoteForReviewMutationKey }) > 0;
-  const isUpdatingOrderStatus = isAuthorizingOrder || isRejectingOrder;
-  const isTableBusy = isUpdatingOrderStatus || isValidatingReview;
   const isSessionLoading = sessionStatus === "loading";
   // Gatea "+ Nueva cotización". Es el código de ALTA, no el de lectura de la
   // sección: ver el listado (`R-CRM-COTIZACIONES`, lo exige la ruta) no
   // habilita a crear.
   const canCreateQuote = hasPermission("C-CRM-COTIZACIONES", session?.user);
 
-  useQuoteCsvExport(tableRef, visibleColumns);
-  useQuotePdfExport(tableRef, visibleColumns);
+  useQuoteCsvExport(table.fetchAllRows, visibleColumns);
+  useQuotePdfExport(table.fetchAllRows, visibleColumns);
 
   // Acciones de fila (menú del chip #id): la LISTA es dueña de las mutaciones
   // y de los diálogos; la celda solo señala qué acción se eligió (por
   // contexto, para que `quoteColumns` siga siendo un arreglo estático).
   const { onAction, busy, dialogs } = useQuoteRowActions();
+  // Overlay de la tabla: trabajo en curso leído de la MutationCache (`busy`),
+  // el mismo que acota el menú de cada fila; vale venga de esta vista o de
+  // otra (el tablero comparte las claves). Autorizar NO lo enciende: su
+  // confirmación ya queda abierta y bloqueada con "Autorizando..." mientras
+  // la petición viaja, y el overlay repetía el mismo estado detrás.
+  const isRejectingOrder = busy.some((b) => b.kind === "reject");
+  const isValidatingReview = busy.some((b) => b.kind === "validateReview");
+  const isTableBusy = isRejectingOrder || isValidatingReview;
 
   return (
     <QuoteRowActionsProvider value={{ onAction, busy }}>
     <div className="min-h-165">
-      <QuoteRowActionDialogs quotes={quotes} {...dialogs} />
+      <QuoteRowActionDialogs loadedRows={table.rows} {...dialogs} />
       <DataTable
-        ref={tableRef}
         columns={quoteColumns}
-        data={quotes}
-        baseDataCount={quotes.length}
-        searchPlaceholder="Filtra resultados de la tabla"
+        {...table.tableProps}
+        // Búsqueda del backend: OC, cliente (razón social, nombre o RFC) y el
+        // número de cotización EXACTO.
+        searchPlaceholder="Buscar por #, OC o cliente..."
+        // Identidad de la fila por registro, no por posición en la página.
+        getRowId={(row) => String(row.id)}
         onVisibleColumnsChange={setVisibleColumns}
-        isLoading={isOrdersLoading}
-        isError={isErrorQuotes}
+        emptyMessage="Aún no hay cotizaciones"
         errorTitle="Error al cargar cotizaciones"
-        errorMessage={extractErrorMessage(quotesError, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando cotizaciones"
         isLoadingOverlay={isTableBusy}
         loadingTitle={
-          isValidatingReview
-            ? "Validando cotización"
-            : isRejectingOrder
-              ? "Rechazando cotización"
-              : "Autorizando cotización"
+          isValidatingReview ? "Validando cotización" : "Rechazando cotización"
         }
         loadingMessage={
           isValidatingReview

@@ -19,6 +19,7 @@ import {
 import {
   buildOperationsQuoteFilterOptions,
   getOperationsQuoteColumns,
+  getOperationsQuoteSearchText,
   OperationsQuoteRowActionsProvider,
   type OperationsQuoteRowAction,
   type OperationsQuoteRowBusy,
@@ -72,6 +73,8 @@ export const OperationsQuoteList = () => {
         data={operationsQuotes}
         baseDataCount={operationsQuotes.length}
         searchPlaceholder="Buscar cotización operativa..."
+        // Busca también por el contacto del cliente, que ninguna columna muestra.
+        getRowSearchText={getOperationsQuoteSearchText}
         fillHeight
         fillHeightBodyClassName={MESA_CONTROL_LIST.body}
         onRefetch={refetch}

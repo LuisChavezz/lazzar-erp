@@ -4,7 +4,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatKpiCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
-import type { PedidoActiveKpi } from "../interfaces/pedido-kpis.interface";
+import type { PedidoActiveKpi, PedidoKpiActiveOrder } from "../interfaces/pedido-kpis.interface";
 import { OrderBadge } from "./OrderSheetPrimitives";
 import { PedidoFolioLink } from "./PedidoFolioLink";
 
@@ -14,26 +14,36 @@ const NOTE_CLASS = "mt-2 text-xs text-slate-500 dark:text-slate-400";
 
 /**
  * "Mostrando X de N" (descripción del diálogo). El backend corta la lista en 20
- * filas y no hay endpoint para el resto, así que no hay "ver todos". Ordena por
- * `gran_total` comparando el número sin convertir monedas: con la lista cortada
- * se dice tal cual, para no afirmar que son "los de mayor importe".
+ * filas y no hay endpoint para el resto, así que no hay "ver todos". Cuando
+ * manda importes ordena por `gran_total` comparando el número sin convertir
+ * monedas: con la lista cortada se dice tal cual, para no afirmar que son "los
+ * de mayor importe". Sin ellos (EC-784) ordena por `-id`, los más recientes.
+ * El orden se lee de los DATOS (si las filas traen `gran_total`), no de la
+ * bandera: mostrar los importes sigue la bandera, pero el orden lo eligió el
+ * backend según lo que mandó. Exportada para las pruebas unitarias
+ * (`tests/unit/order-amounts-hidden.spec.ts`).
  */
-function getDescription(kpi: PedidoActiveKpi | undefined): string {
+export function getDescription(kpi: PedidoActiveKpi | undefined): string {
   if (!kpi?.disponible || kpi.drill_down.length === 0) return "Sin pedidos activos para mostrar.";
   const shown = kpi.drill_down.length;
   const total = kpi.drill_down_total;
   const pedidos = `${total} ${plural(total, "pedido activo", "pedidos activos")}`;
   if (kpi.drill_down_truncado) {
-    return `Mostrando ${shown} de ${pedidos}, ordenados por total sin convertir monedas`;
+    const orderedByTotal = kpi.drill_down.some((pedido) => pedido.gran_total !== undefined);
+    return orderedByTotal
+      ? `Mostrando ${shown} de ${pedidos}, ordenados por total sin convertir monedas`
+      : `Mostrando los ${shown} más recientes de ${pedidos}`;
   }
   return `Mostrando ${shown} de ${pedidos}`;
 }
 
 /**
  * Aviso cuando el corte deja fuera TODOS los pedidos de una moneda que la
- * tarjeta sí muestra (el backend ordena por `gran_total` sin convertir, así que
- * una moneda de importes chicos puede no entrar en las 20 filas). Sin corte, o
- * con todas las monedas presentes en la lista, no hay aviso.
+ * tarjeta cuenta (con importes el backend ordena por `gran_total` sin
+ * convertir, así que una moneda de importes chicos puede no entrar en las 20
+ * filas; sin importes ordena por recientes y puede pasar lo mismo con una
+ * moneda de pedidos viejos). Sin corte, o con todas las monedas presentes en
+ * la lista, no hay aviso.
  */
 function getMissingCurrenciesNote(kpi: PedidoActiveKpi | undefined): string | null {
   if (!kpi?.disponible || !kpi.drill_down_truncado) return null;
@@ -45,19 +55,32 @@ function getMissingCurrenciesNote(kpi: PedidoActiveKpi | undefined): string | nu
   return `Los pedidos en ${monedas} no aparecen en esta lista: quedaron fuera de las ${kpi.drill_down.length} filas que se muestran.`;
 }
 
+/**
+ * Total de una fila: solo con permiso explícito y con el monto presente; si no,
+ * "—" (nunca "$0.00"). Exportada para las pruebas unitarias.
+ */
+export const formatDrillDownTotal = (pedido: PedidoKpiActiveOrder, showAmounts: boolean): string =>
+  showAmounts && pedido.gran_total !== undefined ? formatKpiCurrencyAmount(pedido.gran_total, pedido.moneda) : "—";
+
 interface PedidoKpiDrillDownDialogProps {
   open: boolean;
   /** Bloque ACTUAL de la consulta: un refetch con el diálogo abierto se refleja sin reabrirlo. */
   kpi: PedidoActiveKpi | undefined;
+  /**
+   * Regla de importes de pedidos (`puede_ver_importes`, EC-784). Sin ella el
+   * backend no manda `gran_total` y la columna Total dice "—".
+   */
+  showAmounts: boolean;
   onClose: () => void;
 }
 
 /**
  * Drill-down de "Pedidos activos": las filas que devolvió el backend, cada una
  * con enlace al detalle 360° (`?from=sales`, cuyo "Volver" regresa a Mis
- * pedidos). Cada importe va con el símbolo y el código de la moneda de SU pedido.
+ * pedidos). Cada importe va con el símbolo y el código de la moneda de SU pedido;
+ * uno ausente (sin permiso, o un hueco del payload) es "—", no un cero.
  */
-export function PedidoKpiDrillDownDialog({ open, kpi, onClose }: PedidoKpiDrillDownDialogProps) {
+export function PedidoKpiDrillDownDialog({ open, kpi, showAmounts, onClose }: PedidoKpiDrillDownDialogProps) {
   const rows = kpi?.disponible ? kpi.drill_down : [];
   const missingCurrenciesNote = getMissingCurrenciesNote(kpi);
   return (
@@ -102,7 +125,7 @@ export function PedidoKpiDrillDownDialog({ open, kpi, onClose }: PedidoKpiDrillD
                 </td>
                 <td className={TD_CLASS}>{pedido.moneda}</td>
                 <td className={`${TD_CLASS} text-right tabular-nums whitespace-nowrap`}>
-                  {formatKpiCurrencyAmount(pedido.gran_total, pedido.moneda)}
+                  {formatDrillDownTotal(pedido, showAmounts)}
                 </td>
               </tr>
             ))}

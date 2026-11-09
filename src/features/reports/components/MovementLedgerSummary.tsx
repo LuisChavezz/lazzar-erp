@@ -2,11 +2,12 @@
 
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
-import { InfoField, InfoGrid, Section, textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { InfoTile, InfoTileGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
   DownloadIcon,
   HistoryIcon,
   InventariosIcon,
+  LayersIcon,
   UploadIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
@@ -81,21 +82,34 @@ export function MovementLedgerSummary({ variante, resumen }: MovementLedgerSumma
 
   return (
     <div className="space-y-6">
-      <Section
-        title={variante.sku}
-        action={
-          variante.activo ? undefined : (
-            <StatusBadge status="inactivo" config={ACTIVO_INACTIVO_CFG} />
-          )
-        }
+      <section
+        aria-labelledby="movement-ledger-variant"
+        className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 md:p-6"
       >
-        <InfoGrid>
-          <InfoField label="SKU de producción">{textOrDash(variante.sku_produccion)}</InfoField>
-          <InfoField label="Descripción">{textOrDash(variante.descripcion)}</InfoField>
-          <InfoField label="Color">{textOrDash(variante.color)}</InfoField>
-          <InfoField label="Talla">{textOrDash(variante.talla)}</InfoField>
-        </InfoGrid>
-      </Section>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <LayersIcon className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Variante
+            </p>
+            <h2
+              id="movement-ledger-variant"
+              className="truncate text-lg font-bold text-slate-900 dark:text-white font-display"
+            >
+              {variante.sku}
+            </h2>
+          </div>
+          {!variante.activo && <StatusBadge status="inactivo" config={ACTIVO_INACTIVO_CFG} />}
+        </div>
+        <InfoTileGrid>
+          <InfoTile label="SKU de producción">{textOrDash(variante.sku_produccion)}</InfoTile>
+          <InfoTile label="Descripción">{textOrDash(variante.descripcion)}</InfoTile>
+          <InfoTile label="Color">{textOrDash(variante.color)}</InfoTile>
+          <InfoTile label="Talla">{textOrDash(variante.talla)}</InfoTile>
+        </InfoTileGrid>
+      </section>
 
       <KpiGrid items={items} />
     </div>

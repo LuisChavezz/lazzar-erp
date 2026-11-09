@@ -1,22 +1,9 @@
 "use client";
 
-import { type ColumnDef, type FilterFn } from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import {
-  ColumnHeaderFilter,
-  FilterHeader,
-  type ColumnFilterOption,
-} from "@/src/components/ColumnHeaderFilter";
-import {
-  ALL_FILTER_OPTION,
-  buildDistinctFilterOptions,
-  buildMonthFilterOptions,
-  matchesMonthFilter,
-  matchesRangeFilter,
-  type RangeFilterOption,
-} from "@/src/utils/columnFilterOptions";
 import {
   BanIcon,
   CalendarDaysIcon,
@@ -39,6 +26,15 @@ import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/p
 import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
 import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
 import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
+import {
+  PedidoCatalogHeaderFilter,
+  PedidoConfirmadoHeaderFilter,
+  PedidoRangeHeaderFilter,
+} from "@/src/features/orders/components/PedidoHeaderFilters";
+import {
+  PIEZAS_RANGE_OPTIONS,
+  SUBTOTAL_RANGE_OPTIONS,
+} from "@/src/features/orders/utils/pedidoListParams";
 
 /**
  * Columnas de Pedidos en Mesa de Control. NO reusa `createOrderColumns` de
@@ -52,73 +48,6 @@ export interface OperationsOrderColumnCallbacks {
   onProgramar: (order: PedidoListItem) => void;
   onCancel: (order: PedidoListItem) => void;
 }
-
-const CONFIRMATION_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "por_confirmar", label: "Por confirmar", dotClassName: "bg-amber-500" },
-  { value: "confirmado", label: "Confirmado", dotClassName: "bg-cyan-500" },
-];
-
-// ─── Filtros de encabezado de las demás columnas ──────────────────────────────
-// La lista completa vive en memoria: las opciones de cliente, vendedor, mes y
-// clasificación salen de sus filas; piezas e importe usan rangos fijos. El
-// importe va sin símbolo, igual que la celda (la fila solo trae el id de
-// moneda, ver `orderAmountFormat.ts`).
-
-export interface OperationsOrderFilterOptions {
-  clientes: ColumnFilterOption[];
-  vendedores: ColumnFilterOption[];
-  meses: ColumnFilterOption[];
-  clasificaciones: ColumnFilterOption[];
-}
-
-export function buildOperationsOrderFilterOptions(
-  orders: PedidoListItem[],
-): OperationsOrderFilterOptions {
-  return {
-    clientes: [
-      ALL_FILTER_OPTION,
-      ...buildDistinctFilterOptions(orders, (o) => o.cliente, (o) => o.cliente_razon_social),
-    ],
-    vendedores: [
-      ALL_FILTER_OPTION,
-      ...buildDistinctFilterOptions(orders, (o) => o.vendedor_nombre),
-    ],
-    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(orders.map((o) => o.created_at))],
-    clasificaciones: [
-      ALL_FILTER_OPTION,
-      ...buildDistinctFilterOptions(
-        orders,
-        (o) => o.clasificacion,
-        (o) => getPedidoClasificacionLabel(o.clasificacion),
-      ),
-    ],
-  };
-}
-
-const PIEZAS_RANGES: RangeFilterOption[] = [
-  { value: "1-50", label: "1 a 50 piezas", max: 51 },
-  { value: "51-500", label: "51 a 500 piezas", min: 51, max: 501 },
-  { value: "mas-500", label: "Más de 500 piezas", min: 501 },
-];
-
-const IMPORTE_RANGES: RangeFilterOption[] = [
-  { value: "hasta-10k", label: "Hasta 10,000", max: 10_000 },
-  { value: "10k-100k", label: "10,000 – 100,000", min: 10_000, max: 100_000 },
-  { value: "mas-100k", label: "Más de 100,000", min: 100_000 },
-];
-
-const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
-  ALL_FILTER_OPTION,
-  ...ranges.map(({ value, label }) => ({ value, label })),
-];
-
-const EMPTY_FILTER_OPTIONS: OperationsOrderFilterOptions = {
-  clientes: [ALL_FILTER_OPTION],
-  vendedores: [ALL_FILTER_OPTION],
-  meses: [ALL_FILTER_OPTION],
-  clasificaciones: [ALL_FILTER_OPTION],
-};
 
 /**
  * Piezas ya programadas: suma de `cantidad` de las parcialidades guardadas en
@@ -245,31 +174,6 @@ export const getMuestrasLabel = (
 
 const MUESTRA_BADGE_CLASS = getTipoPedidoConfig(TIPO_PEDIDO.MUESTRA).className;
 
-/**
- * Opciones de muestras dentro del filtro de Piezas (un solo embudo): "con" es
- * lo mismo que `?con_muestras=true` del backend; aquí se filtra en memoria.
- */
-const MUESTRAS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: "muestras-con", label: "Con muestras", dotClassName: "bg-violet-500" },
-  { value: "muestras-solo", label: "Solo muestras", dotClassName: "bg-violet-500" },
-  { value: "muestras-sin", label: "Sin muestras", dotClassName: "bg-slate-400" },
-];
-
-/** `null` si `filterValue` no es una opción de muestras (es un rango). */
-const matchesMuestrasFilter = (order: PedidoListItem, filterValue: string): boolean | null => {
-  const label = getMuestrasLabel(order);
-  if (filterValue === "muestras-con") return label !== null;
-  if (filterValue === "muestras-solo") return label === "Solo muestras";
-  if (filterValue === "muestras-sin") return label === null;
-  return null;
-};
-
-const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
-  if (!filterValue) return true;
-  const confirmed = isOrderConfirmed(row.original);
-  return filterValue === "confirmado" ? confirmed : !confirmed;
-};
-
 const FolioCell = ({
   order,
   onProgramar,
@@ -291,8 +195,7 @@ const FolioCell = ({
     },
     // Tallas con stock y faltante + parcialidades: sustituye también al antiguo
     // "Revisar inventario". Solo para pedidos confirmados y no cancelados
-    // (EC-748, `canProgramarPedido`). El backend aún no lo valida: lo sigue
-    // EC-750; quitar esta nota cuando se libere.
+    // (EC-748, `canProgramarPedido`).
     {
       label: "Programar",
       icon: CalendarDaysIcon,
@@ -383,49 +286,52 @@ const FolioCell = ({
   );
 };
 
+export interface OperationsOrderColumnsOptions {
+  /**
+   * ¿El usuario ve importes de pedidos? Sin permiso el backend quita
+   * `subtotal` e ignora su filtro y su orden: la columna no se monta.
+   */
+  showAmounts: boolean;
+}
+
+/**
+ * Columnas de la tabla de Mesa de Control en MODO SERVIDOR: `meta.serverSort`
+ * es el campo de `ordering` del backend (lista blanca en `mesaPedidosTable`) y
+ * `meta.serverFilter`, la clave del filtro. Las opciones de los filtros son
+ * fijas o salen de `opciones/` (`PedidoHeaderFilters`), nunca de las filas.
+ */
 export function buildOperationsOrderColumns(
   callbacks: OperationsOrderColumnCallbacks,
-  filterOptions: OperationsOrderFilterOptions = EMPTY_FILTER_OPTIONS,
+  { showAmounts }: OperationsOrderColumnsOptions,
 ): ColumnDef<PedidoListItem, unknown>[] {
-  return [
+  const columns: ColumnDef<PedidoListItem, unknown>[] = [
     {
       id: "folio",
       accessorKey: "folio",
-      filterFn: confirmationFilterFn,
       // Punto + folio (`P-00000-2026` en mono) + chevron miden ~124px; con el
       // ancho por defecto (150px, 118 útiles) la celda se partía en dos
       // líneas y el punto quedaba encima del folio. Mismo ancho que el folio
       // de `SalesOrderColumns.tsx`.
       size: 190,
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Folio</span>
-          <ColumnHeaderFilter
-            column={column}
-            options={CONFIRMATION_FILTER_OPTIONS}
-            label="estado de confirmación"
-          />
-        </div>
-      ),
+      meta: { label: "Folio", serverSort: "folio", serverFilter: "confirmado" },
+      header: ({ column }) => <PedidoConfirmadoHeaderFilter column={column} title="Folio" />,
       cell: ({ row }) => <FolioCell order={row.original} {...callbacks} />,
     },
     {
       id: "razon_social",
       accessorKey: "cliente_razon_social",
       size: 240,
-      meta: { label: "Razón social" },
+      // Por id de cliente: dos razones sociales iguales no se mezclan.
+      meta: { label: "Razón social", serverSort: "cliente_razon_social", serverFilter: "cliente" },
       header: ({ column }) => (
-        <FilterHeader
-          title="Razón social"
+        <PedidoCatalogHeaderFilter
           column={column}
-          options={filterOptions.clientes}
+          title="Razón social"
+          catalog="cliente"
           label="razón social"
-          searchable={{ placeholder: "Buscar cliente…" }}
+          searchPlaceholder="Buscar cliente…"
         />
       ),
-      // Por id de cliente: dos razones sociales iguales no se mezclan.
-      filterFn: (row, _columnId, filterValue) =>
-        !filterValue || String(row.original.cliente) === filterValue,
       cell: ({ row }) => (
         <span
           className="block text-sm text-slate-600 dark:text-slate-300 truncate"
@@ -436,23 +342,24 @@ export function buildOperationsOrderColumns(
       ),
     },
     {
-      // Todas las tallas, muestras incluidas (EC-571).
+      // Todas las tallas, muestras incluidas (EC-571). El filtro junta rangos
+      // de piezas y muestras en un solo embudo (`rango_piezas`).
       id: "piezas",
       accessorKey: "piezas",
+      meta: {
+        align: "right",
+        label: "Piezas",
+        serverSort: "piezas",
+        serverFilter: "rango_piezas",
+      },
       header: ({ column }) => (
-        <FilterHeader
-          title="Piezas"
+        <PedidoRangeHeaderFilter
           column={column}
-          options={[...rangeOptions(PIEZAS_RANGES), ...MUESTRAS_FILTER_OPTIONS]}
+          title="Piezas"
           label="piezas o muestras"
+          options={PIEZAS_RANGE_OPTIONS}
         />
       ),
-      meta: { align: "right", label: "Piezas" },
-      filterFn: (row, _columnId, filterValue) =>
-        (filterValue && matchesMuestrasFilter(row.original, filterValue)) ??
-        matchesRangeFilter(PIEZAS_RANGES, row.original.piezas, filterValue),
-      sortingFn: "basic",
-      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300">
           {row.original.piezas}
@@ -461,45 +368,41 @@ export function buildOperationsOrderColumns(
     },
     {
       // Piezas ya programadas por Mesa de Control; "—" si aún no se programa.
+      // SIN orden: la celda suma las parcialidades válidas (enteras positivas,
+      // `getPedidoProgramadoProgress`) y el `piezas_programadas` del backend
+      // suma cualquier cantidad numérica y no viene en la respuesta, así que
+      // ordenar por él no coincidiría con lo que se ve.
       id: "programado",
       accessorFn: (order) => getPiezasProgramadas(order) ?? undefined,
       header: "Programado",
       meta: { align: "right", label: "Programado" },
-      sortUndefined: "last",
-      enableGlobalFilter: false,
       size: 150,
       cell: ({ row }) => <ProgramadoCell order={row.original} />,
     },
     {
-      // Piezas surtidas por WMS (pickings); "—" hasta que el backend lo mande.
+      // Piezas surtidas por WMS (pickings): la misma anotación que ordena.
       id: "surtido",
       accessorFn: (order) => order.piezas_surtidas,
       header: "Surtido",
-      meta: { align: "right", label: "Surtido" },
-      sortUndefined: "last",
-      enableGlobalFilter: false,
+      meta: { align: "right", label: "Surtido", serverSort: "piezas_surtidas" },
       size: 150,
       cell: ({ row }) => <SurtidoCell order={row.original} />,
     },
     {
       // Vendedor de la cotización de origen; `null` sin cotización (EC-571).
+      // Filtra por id del vendedor (`opciones/`), no por el nombre que se ve.
       id: "vendedor",
-      // Vacío → `undefined` para que `sortUndefined: "last"` lo deje al final.
       accessorFn: (order) => order.vendedor_nombre || undefined,
-      meta: { label: "Vendedor" },
+      meta: { label: "Vendedor", serverSort: "vendedor_nombre", serverFilter: "vendedor" },
       header: ({ column }) => (
-        <FilterHeader
-          title="Vendedor"
+        <PedidoCatalogHeaderFilter
           column={column}
-          options={filterOptions.vendedores}
+          title="Vendedor"
+          catalog="vendedor"
           label="vendedor"
-          searchable={{ placeholder: "Buscar vendedor…" }}
+          searchPlaceholder="Buscar vendedor…"
         />
       ),
-      filterFn: (row, _columnId, filterValue) =>
-        !filterValue || row.original.vendedor_nombre === filterValue,
-      sortUndefined: "last",
-      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="block text-sm text-slate-600 dark:text-slate-300 truncate max-w-45">
           {row.original.vendedor_nombre || "—"}
@@ -509,12 +412,10 @@ export function buildOperationsOrderColumns(
     {
       id: "created_at",
       accessorKey: "created_at",
-      meta: { label: "Fecha" },
+      meta: { label: "Fecha", serverSort: "created_at", serverFilter: "mes" },
       header: ({ column }) => (
-        <FilterHeader title="Fecha" column={column} options={filterOptions.meses} label="mes" />
+        <PedidoCatalogHeaderFilter column={column} title="Fecha" catalog="mes" label="mes" />
       ),
-      filterFn: (row, _columnId, filterValue) =>
-        matchesMonthFilter(row.original.created_at, filterValue),
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
@@ -526,57 +427,61 @@ export function buildOperationsOrderColumns(
     },
     {
       // Misma etiqueta que el detalle del pedido y que Programación
-      // (`getPedidoClasificacionLabel`). Ordena por código; sin clasificación, al final.
+      // (`getPedidoClasificacionLabel`). Ordena por código.
       id: "clasificacion",
       accessorFn: (order) => order.clasificacion || undefined,
-      meta: { label: "Clasificación" },
+      meta: { label: "Clasificación", serverSort: "clasificacion", serverFilter: "clasificacion" },
       header: ({ column }) => (
-        <FilterHeader
-          title="Clasificación"
+        <PedidoCatalogHeaderFilter
           column={column}
-          options={filterOptions.clasificaciones}
+          title="Clasificación"
+          catalog="clasificacion"
           label="clasificación"
         />
       ),
-      filterFn: (row, _columnId, filterValue) =>
-        !filterValue || row.original.clasificacion === filterValue,
       // Etiqueta más larga: "X - Solo para facturar", igual que en Programación.
       size: 180,
-      sortUndefined: "last",
-      enableGlobalFilter: false,
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {getPedidoClasificacionLabel(row.original.clasificacion)}
         </span>
       ),
     },
-    {
+  ];
+
+  if (showAmounts) {
+    columns.push({
       id: "importe_sin_iva",
       accessorKey: "subtotal",
       header: ({ column }) => (
-        <FilterHeader
-          title="Importe sin IVA"
+        <PedidoRangeHeaderFilter
           column={column}
-          options={rangeOptions(IMPORTE_RANGES)}
+          title="Importe sin IVA"
           label="rango de importe"
+          options={SUBTOTAL_RANGE_OPTIONS}
           menuAlign="end"
         />
       ),
-      meta: { align: "right", label: "Importe sin IVA" },
-      filterFn: (row, _columnId, filterValue) =>
-        matchesRangeFilter(IMPORTE_RANGES, row.original.subtotal, filterValue),
+      meta: {
+        align: "right",
+        label: "Importe sin IVA",
+        serverSort: "subtotal",
+        serverFilter: "rango_subtotal",
+      },
       cell: ({ row }) => (
         <span className="tabular-nums text-sm font-semibold text-slate-700 dark:text-slate-200">
           {formatOrderAmountOrDash(row.original.subtotal)}
         </span>
       ),
-    },
-    {
-      // PLACEHOLDER: `PedidoListItem` no expone código postal.
-      id: "cp",
-      header: "C.P.",
-      enableSorting: false,
-      cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
-    },
-  ];
+    });
+  }
+
+  columns.push({
+    // PLACEHOLDER: `PedidoListItem` no expone código postal.
+    id: "cp",
+    header: "C.P.",
+    cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+  });
+
+  return columns;
 }

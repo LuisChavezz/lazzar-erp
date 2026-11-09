@@ -6,8 +6,9 @@ import { AccountingCustomer } from "../interfaces/accounting-customer.interface"
  *
  * Sin parámetro el backend devuelve SOLO los activos; `?activo=false`, solo los
  * dados de baja (nucleo-erp #799). No hay forma de pedir ambos a la vez. Se
- * manda exactamente `activo=false` o nada: el backend toma CUALQUIER otro valor
- * no reconocido como `false`, así que nunca se le pasa un valor libre.
+ * manda exactamente `activo=false` o nada: un valor vacío cuenta como si no
+ * viniera y cualquier otro valor no booleano responde `400` (nucleo-erp #935,
+ * #945), así que nunca se le pasa un valor libre.
  */
 export const getAccountingCustomers = async (
   { activo }: { activo: boolean } = { activo: true },

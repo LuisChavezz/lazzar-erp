@@ -1,39 +1,57 @@
 "use client";
 
-import { ColumnDef, FilterFn } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import { Quote } from "../interfaces/quote.interface";
 import { formatQuoteDateTime, formatQuoteAmountOrDash } from "../utils/quoteDetailsFormatters";
-import { quoteAmountSortingFn } from "@/src/features/quotes/utils/quoteAmountSorting";
-import { capitalize } from "@/src/utils/capitalize";
-import { ChevronRightIcon } from "@/src/components/Icons";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
-import { KANBAN_COLUMNS } from "../constants/kanbanColumns";
-import { QuoteCardActions } from "./QuoteCardActions";
+import {
+  getQuoteStatusLabel,
+  QUOTE_STATUS_CONFIG,
+  QUOTE_STATUS_FALLBACK_CLS,
+} from "../constants/quoteStatus";
+import { getQuoteClienteLabel } from "../utils/quoteClienteLabel";
+import { useQuoteActionItems } from "./QuoteCardActions";
+import { QuoteClienteHeaderFilter, QuoteEstatusHeaderFilter } from "./QuoteHeaderFilters";
+
+const columnHelper = createColumnHelper<Quote>();
 
 /**
- * Mismo mapeo estatus → color/label que ya usa el tablero Kanban
- * (`KANBAN_COLUMNS`): Borrador/Por Autorizar/Autorizada/Rechazada/Cambios
- * Solicitados. Reutilizarlo evita una segunda fuente de verdad para los
- * mismos 5 colores.
+ * Badge de estatus de una cotización: color de `QUOTE_STATUS_CONFIG` (fuente
+ * única, derivada del tablero) y, para un estatus que el front no conoce, el
+ * neutro con su nombre resuelto (`getQuoteStatusLabel`), nunca el número crudo.
  */
-function getQuoteStatusConfig(estatus: number) {
-  return KANBAN_COLUMNS.find((col) => col.estatus === estatus);
+function QuoteStatusBadge({ quote }: { quote: Quote }) {
+  return (
+    <StatusBadge
+      status={String(quote.estatus)}
+      config={QUOTE_STATUS_CONFIG}
+      defaultConfig={{
+        // El punto lo completa el neutro de `StatusBadge`.
+        cls: QUOTE_STATUS_FALLBACK_CLS,
+        label: getQuoteStatusLabel(quote),
+      }}
+    />
+  );
 }
 
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  ...KANBAN_COLUMNS.map((col) => ({
-    value: String(col.estatus),
-    label: col.label,
-    dotClassName: col.accentDot,
-  })),
-];
-
-/** El id de estatus es el filtrable real; la columna Cotización no lo muestra como texto, solo como punto de color. */
-const estatusFilterFn: FilterFn<Quote> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.estatus) === filterValue;
-};
+/**
+ * Celda del identificador (esquema de un solo estatus): la cotización no
+ * tiene folio propio, así que su `#id` ES el menú de la fila
+ * (`FolioActionMenu`, modo folio) y debajo va su estatus. Las acciones son
+ * las mismas del tablero (`useQuoteActionItems`, "Ver detalle" primero);
+ * callbacks y "en curso" llegan por contexto (`QuoteRowActionsProvider`).
+ */
+function QuoteIdCell({ quote }: { quote: Quote }) {
+  const items = useQuoteActionItems(quote);
+  return (
+    <FolioActionMenu
+      folio={`#${quote.id}`}
+      items={items}
+      status={<QuoteStatusBadge quote={quote} />}
+    />
+  );
+}
 
 /**
  * Clasificación / C.P. son PLACEHOLDER a propósito, pedidos explícitamente
@@ -48,118 +66,105 @@ function PendingDataCell() {
 }
 
 /**
- * Alineación: la resuelve `DataTable` a nivel de `<th>`/`<td>` con
- * `meta.align` (izquierda por defecto; importes y piezas a la derecha), así
- * que aquí NO se ponen clases `text-*`/`w-full` en encabezados ni celdas (un
- * `w-full` en el encabezado empujaría la flecha de orden al borde).
+ * Columnas del listado de cotizaciones, en MODO SERVIDOR: `meta.serverSort` es
+ * el campo de `ordering` del backend (`quotesTable`) y `meta.serverFilter`, la
+ * clave del filtro; las opciones de los filtros las pintan los encabezados
+ * (`QuoteHeaderFilters`) desde catálogos, nunca desde las filas. Una columna
+ * sin `serverSort` no ordena. `meta.label` nombra la columna en el selector y
+ * en las exportaciones cuando el encabezado es un componente.
  *
- * Arreglo ESTÁTICO a propósito (sin factoría con callbacks): la celda de
- * Cotización solo señala la acción elegida a la vista por contexto
- * (`QuoteRowActionsProvider`); el estado de los diálogos vive en `QuoteList`,
- * nunca dentro de la celda (se desmonta al ordenar/filtrar). Si los callbacks
- * viajaran por aquí, cada cambio de "en curso" recrearía las columnas y
- * remontaría todas las celdas.
+ * No reciben nada: callbacks y "en curso" llegan al menú por
+ * `QuoteRowActionsProvider`; si viajaran por aquí, cada cambio de "en curso"
+ * recrearía las columnas y remontaría todas las celdas. El estado de los
+ * diálogos vive en `QuoteList`, nunca dentro de la celda.
+ *
+ * Alineación: la resuelve `DataTable` con `meta.align` (izquierda por
+ * defecto; importes y piezas a la derecha), así que aquí NO se ponen clases
+ * `text-*`/`w-full` en encabezados ni celdas.
  */
-export const quoteColumns: ColumnDef<Quote>[] = [
-  {
-    accessorKey: "id",
-    meta: { label: "Cotización" },
-    filterFn: estatusFilterFn,
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Cotización</span>
-        <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-      </div>
-    ),
-    size: 150,
-    // Sin columna Acciones aparte: el menú (Ver detalles/Editar/Enviar a
-    // revisión/…) cuelga de este mismo botón vía `QuoteCardActions.trigger`
-    // — un chip con fondo, ícono y flecha SIEMPRE visible (no solo al hover),
-    // para que se note de inmediato que tiene una función propia. El punto de
-    // color (mismo mapeo que el tablero Kanban) va AFUERA del botón, como en
-    // Pedidos: es indicador, no parte de la acción.
-    cell: ({ row }) => {
-      const statusConfig = getQuoteStatusConfig(row.original.estatus);
-      return (
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2.5 w-2.5 rounded-full shrink-0 ${statusConfig?.accentDot ?? "bg-slate-400"}`}
-            role="img"
-            aria-label={statusConfig?.label ?? "Sin estatus"}
-            title={statusConfig?.label ?? "Sin estatus"}
-          />
-          <QuoteCardActions
-            quote={row.original}
-            align="start"
-            trigger={
-              <button
-                type="button"
-                aria-label={`Ver acciones de la cotización #${row.original.id}`}
-                className="group inline-flex items-center gap-1.5 rounded-lg bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 font-mono font-bold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
-              >
-                #{row.original.id}
-                <ChevronRightIcon
-                  className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"
-                  aria-hidden="true"
-                />
-              </button>
-            }
-          />
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "cliente_razon_social",
-    header: "Razón social",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {capitalize(row.original.cliente_razon_social)}
-      </span>
-    ),
-  },
-  {
-    id: "piezas",
-    header: "Piezas",
-    meta: { align: "right" },
-    size: 80,
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {row.original.piezas}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "created_at",
-    header: "Fecha",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {formatQuoteDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
-      </span>
-    ),
-  },
-  {
-    id: "clasificacion",
-    header: "Clasificación",
-    cell: PendingDataCell,
-  },
-  {
-    id: "importeSinIva",
-    accessorKey: "importe_sin_iva",
-    header: "Importe sin IVA",
-    meta: { align: "right" },
-    // Agrupa por moneda y ordena el importe dentro de cada una (EC-618).
-    sortingFn: quoteAmountSortingFn,
-    cell: ({ row }) => (
-      <span className="text-slate-500 dark:text-slate-400">
-        {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}
-      </span>
-    ),
-  },
-  {
-    id: "codigoPostal",
-    header: "C.P.",
-    size: 80,
-    cell: PendingDataCell,
-  },
-];
+export const getQuoteColumns = () =>
+  [
+    // El `#id` filtra por estatus (su badge) y ordena por id.
+    columnHelper.accessor("id", {
+      header: ({ column }) => <QuoteEstatusHeaderFilter column={column} title="Cotización" />,
+      meta: { label: "Cotización", serverSort: "id", serverFilter: "estatus" },
+      size: 150,
+      cell: (info) => <QuoteIdCell quote={info.row.original} />,
+    }),
+    // El estatus se pinta bajo el `#id`; esta columna, OCULTA por defecto, lo
+    // deja en el selector de columnas y en las exportaciones (por su nombre).
+    // Ordena por el NÚMERO del estatus (lo que ordena el backend), no por su
+    // nombre.
+    columnHelper.accessor((row) => getQuoteStatusLabel(row), {
+      id: "estatus",
+      header: "Estatus",
+      meta: { hiddenByDefault: true, serverSort: "estatus" },
+      cell: (info) => <QuoteStatusBadge quote={info.row.original} />,
+    }),
+    // El VALOR de la columna es la razón social cruda, tal como la manda el
+    // backend: es lo que leen las exportaciones CSV/PDF (por `accessorFn`).
+    // El formato de pantalla vive SOLO en la celda. El `id` es el de antes de
+    // EC-752, el que usa el PDF para darle su ancho (`getColumnWeight`).
+    // Filtra por el id del cliente (o "Sin cliente"), no por el texto.
+    columnHelper.accessor((row) => row.cliente_razon_social ?? "", {
+      id: "cliente_razon_social",
+      header: ({ column }) => <QuoteClienteHeaderFilter column={column} title="Razón social" />,
+      meta: { label: "Razón social", serverSort: "cliente__razon_social", serverFilter: "cliente" },
+      // Texto de pantalla: la convención única (`getQuoteClienteLabel`, EC-810),
+      // con "Sin cliente" atenuado en un borrador sin cliente.
+      cell: (info) => (
+        <span
+          className={
+            info.row.original.cliente == null
+              ? "text-slate-400 dark:text-slate-500"
+              : "text-slate-600 dark:text-slate-300"
+          }
+        >
+          {getQuoteClienteLabel(info.row.original)}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: "piezas",
+      header: "Piezas",
+      meta: { align: "right" },
+      size: 80,
+      cell: ({ row }) => (
+        <span className="tabular-nums text-slate-500 dark:text-slate-400">
+          {row.original.piezas}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("created_at", {
+      header: "Fecha",
+      meta: { serverSort: "created_at" },
+      cell: ({ row }) => (
+        <span className="text-slate-600 dark:text-slate-300">
+          {formatQuoteDateTime(row.original.created_at, "d MMM yyyy, HH:mm")}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: "clasificacion",
+      header: "Clasificación",
+      cell: PendingDataCell,
+    }),
+    columnHelper.accessor("importe_sin_iva", {
+      id: "importeSinIva",
+      header: "Importe sin IVA",
+      // El backend agrupa por moneda y ordena el importe dentro de cada una
+      // (EC-618, EC-811).
+      meta: { align: "right", serverSort: "importe_sin_iva" },
+      cell: ({ row }) => (
+        <span className="tabular-nums text-slate-500 dark:text-slate-400">
+          {formatQuoteAmountOrDash(row.original.importe_sin_iva, row.original.moneda_codigo)}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: "codigoPostal",
+      header: "C.P.",
+      size: 80,
+      cell: PendingDataCell,
+    }),
+  ] as ColumnDef<Quote>[];

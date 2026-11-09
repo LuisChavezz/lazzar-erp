@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEventHandler } from "react";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
@@ -34,7 +34,11 @@ import {
   getSinSucursalMessage,
   WORKSPACE_BRANCH_LOADING_MESSAGE,
 } from "../../workspace/utils/workspaceBranchMessages";
-import { QUOTE_SUCURSAL_DOCUMENT, resolveQuoteSucursal } from "../utils/quoteSucursal";
+import {
+  isQuoteSucursalMissing,
+  QUOTE_SUCURSAL_DOCUMENT,
+  resolveQuoteSucursal,
+} from "../utils/quoteSucursal";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
 import { useQuote } from "./useQuote";
@@ -272,7 +276,13 @@ export function useQuoteEditForm(quoteId: number) {
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  /**
+   * Salida tras un guardado correcto: `onSubmit` la marca antes de que el
+   * candado se suelte y `useFormSubmitLock` deja de enviar (ver su doc: cubre
+   * envíos programáticos, no un Enter). Se declara antes de `useForm` porque
+   * su `onSubmit` la escribe.
+   */
+  const leavingRef = useRef(false);
   const [isEditSuccessVisible, setIsEditSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
@@ -325,7 +335,7 @@ export function useQuoteEditForm(quoteId: number) {
     }
 
     setSelectedCustomerId(quoteData.cliente || 0);
-    setCustomerSelectedFromSearch(quoteData.cliente > 0);
+    setCustomerSelectedFromSearch((quoteData.cliente ?? 0) > 0);
     setExtraServices(
       (quoteData.servicios_extras ?? []).map((s) => ({
         id: String(s.id),
@@ -378,6 +388,21 @@ export function useQuoteEditForm(quoteId: number) {
   const form = useForm({
     defaultValues: initialFormValues ?? emptyValues,
     onSubmit: async ({ value }) => {
+      // La sucursal sale del registro o del contexto, no de un campo: se revisa
+      // ANTES que el resto, como en el alta, para no hacer corregir todo el
+      // formulario y bloquear al final (EC-753).
+      if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
+        return;
+      }
+      const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
+      if (sucursal === null) {
+        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
+          id: "quote-sin-sucursal",
+        });
+        return;
+      }
+
       // Con "Usar el mismo teléfono" se validan y envían los teléfonos derivados.
       const parsed = quoteSubmitSchema.safeParse({
         ...withMirroredShippingPhones(value),
@@ -412,18 +437,6 @@ export function useQuoteEditForm(quoteId: number) {
       }
       // Inalcanzable (un schema fallido siempre trae issues); estrecha el tipo.
       if (!parsed.success) return;
-
-      if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
-        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
-        return;
-      }
-      const sucursal = resolveQuoteSucursal(quoteData?.sucursal, workspaceBranchId);
-      if (sucursal === null) {
-        toast.error(getSinSucursalMessage(isWorkspaceBranchError, QUOTE_SUCURSAL_DOCUMENT), {
-          id: "quote-sin-sucursal",
-        });
-        return;
-      }
 
       setErrorTree({});
       const normalizedItems = (parsed.data.items ?? []).map(normalizeItem);
@@ -633,6 +646,8 @@ export function useQuoteEditForm(quoteId: number) {
         return;
       }
 
+      // Un reenvío ahora repetiría la misma edición (ver `leavingRef`).
+      leavingRef.current = true;
       setIsEditSuccessVisible(true);
       setIsRouteTransitioning(true);
       router.push("/sales/quotes");
@@ -1032,20 +1047,15 @@ export function useQuoteEditForm(quoteId: number) {
     );
   };
 
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (isSubmittingForm) return;
-    setIsSubmittingForm(true);
-    try {
-      await Promise.resolve(form.handleSubmit());
-    } finally {
-      setIsSubmittingForm(false);
-    }
-  };
+  // Candado del envío, guarda del reinicio y "Guardando..." (EC-753).
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
 
   // Al limpiar se restablece al estado inicial de la cotización cargada (no a valores vacíos)
   const handleReset = () => {
+    // Con un envío en curso no se toca el formulario que se está enviando.
+    if (isSubmitLocked()) return;
     if (initialFormValues) {
       form.reset(initialFormValues);
       crossRules.resetCrossRules();
@@ -1071,7 +1081,7 @@ export function useQuoteEditForm(quoteId: number) {
     router.push("/sales/quotes");
   };
 
-  const isPending = isSubmittingForm || form.state.isSubmitting || isUpdatingQuote || isEditSuccessVisible || isRouteTransitioning;
+  const isPending = isFormSubmitting || isUpdatingQuote || isEditSuccessVisible || isRouteTransitioning;
 
   const itemErrors = getError("items");
   const tipoPedidoError = getError("tipo_pedido");
@@ -1170,6 +1180,14 @@ export function useQuoteEditForm(quoteId: number) {
     /* Empresa bajo la que se guarda la cotización: acota las categorías que
      * ofrece el alta de muestras (QuoteEditForm la pasa a QuoteFormContent). */
     quoteCompanyId: quoteData?.empresa,
+    // Registro sin sucursal y workspace sin una válida: el guardado se bloquea
+    // (`onSubmit`) y el wrapper lo avisa desde el principio.
+    isSucursalMissing:
+      Boolean(quoteData) &&
+      isQuoteSucursalMissing(quoteData?.sucursal, {
+        branchId: workspaceBranchId,
+        isLoading: isWorkspaceBranchLoading,
+      }),
     isQuoteRetrying: isQuoteFetching,
     retryQuoteLoad: refetchQuote,
     /* Solo de lectura, para el badge de la cabecera (QuoteEditForm). No entra

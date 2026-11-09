@@ -184,7 +184,12 @@ export interface EmitirNotaCreditoPayload {
  * la nota completa (`NotaCreditoSerializer`, el mismo del retrieve), ya sin
  * `cfdi_pendiente`. `timbrado`: el CFDI existía y ya trae `cfdi_uuid`;
  * `liberado`: no existía y queda sin UUID. El estatus no cambia.
+ *
+ * `aviso` (nucleo-erp #937, texto desde #945): `null`, salvo con `timbrado`
+ * sobre una nota cancelada, cuyo CFDI de egreso quedó vigente ante el SAT. Es
+ * texto para el usuario final, escrito por el backend: se muestra tal cual.
+ * Con `liberado` siempre es `null`.
  */
 export type NotaCreditoCfdiReconcileResponse =
-  | { resultado: "timbrado"; nota_credito: NotaCredito }
-  | { resultado: "liberado"; nota_credito: NotaCredito };
+  | { resultado: "timbrado"; aviso: string | null; nota_credito: NotaCredito }
+  | { resultado: "liberado"; aviso: null; nota_credito: NotaCredito };

@@ -35,6 +35,26 @@ export const enumParam = <const T extends string>(
   serialize: (value) => value,
 });
 
+/**
+ * Uno o varios de una lista cerrada de textos, separados por coma (`?estatus=3,4`,
+ * `?clasificacion=A,B`), para los endpoints que aceptan un CSV. Todo o nada: un
+ * solo elemento fuera de la lista (o vacío) invalida el valor entero, porque el
+ * backend responde 400 por él. Los repetidos se quitan y el orden es el de
+ * `values`, así que `"4,3"` y `"3,4"` son el mismo filtro (y la misma llave).
+ * Un solo valor (`"3"`) es válido: un filtro de encabezado de selección única
+ * escribe exactamente eso.
+ */
+export const csvEnumParam = <const T extends string>(
+  values: readonly T[],
+): ServerTableParam<T[]> => ({
+  parse: (raw) => {
+    const parts = raw.split(",");
+    if (parts.some((part) => !(values as readonly string[]).includes(part))) return null;
+    return values.filter((value) => parts.includes(value));
+  },
+  serialize: (value) => value.join(","),
+});
+
 /** Id entero positivo (una FK: cliente, vendedor). Solo dígitos. */
 export const positiveIdParam: ServerTableParam<number> = {
   parse: (raw) => parsePositiveId(raw),
@@ -122,6 +142,15 @@ export interface ServerTableDefinition<
      * vigente ya es por ese campo.
      */
     tiebreaker?: string;
+    /**
+     * `true`: sin orden elegido por el usuario NO se envía `ordering` y rige el
+     * del backend. Para un endpoint cuyo orden por defecto no se puede expresar
+     * con `?ordering=` (cotizaciones: `-created_at` con los nulos AL FINAL,
+     * mientras `?ordering=-created_at` los pone primero). `default` sigue
+     * diciendo qué orden es ese, para el encabezado y el ciclo de clics. Por
+     * defecto `false`: el comportamiento de siempre.
+     */
+    omitDefault?: boolean;
   };
   /**
    * Pares de filtros de fecha (`dateParam`) que forman un RANGO: `from` no
@@ -366,7 +395,10 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
   definition: ServerTableDefinition<P>,
   state: ServerTableState<P>,
 ): Record<string, string> => {
-  const ordering = effectiveServerTableOrdering(definition, state.ordering);
+  const ordering =
+    definition.ordering?.omitDefault && state.ordering === null
+      ? null
+      : effectiveServerTableOrdering(definition, state.ordering);
   const tiebreaker = definition.ordering?.tiebreaker;
   const orderingField = (value: string) => value.replace(/^-/, "");
   const sentOrdering =
@@ -379,6 +411,20 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
     ...(sentOrdering !== null ? { ordering: sentOrdering } : {}),
   };
 };
+
+/**
+ * ¿Es la vista por defecto? Página 1, tamaño de página por defecto, sin
+ * filtros, sin búsqueda y con el orden por defecto (`ordering === null`). Es la
+ * única llave que `useServerTable` conserva más tiempo con `cacheDefaultView`.
+ */
+export const isServerTableDefaultView = (
+  definition: ServerTableDefinition,
+  state: ServerTableState,
+): boolean =>
+  !hasServerTableCriteria(state) &&
+  state.ordering === null &&
+  state.page === 1 &&
+  state.pageSize === serverTableDefaultPageSize(definition);
 
 /** ¿La consulta lleva filtros o búsqueda? (El orden y la página no cuentan.) */
 export const hasServerTableCriteria = (state: ServerTableState): boolean =>

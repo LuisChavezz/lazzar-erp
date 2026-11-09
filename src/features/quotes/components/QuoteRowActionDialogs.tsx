@@ -13,8 +13,11 @@ import { QuoteSubmitForReviewDialog } from "./QuoteSubmitForReviewDialog";
 import { RejectQuoteDialog } from "../../operations/components/RejectQuoteDialog";
 import type { Quote } from "../interfaces/quote.interface";
 import type { QuoteRowActionDialogsState } from "../hooks/useQuoteRowActions";
+import { useLiveQuoteStatus } from "../hooks/useLiveQuoteStatus";
 import { canManageQuoteAuthorization } from "../utils/quoteStatusRules";
 import { getQuoteDialogStatusColor } from "../constants/quoteStatus";
+import { getQuoteClienteLabel } from "../utils/quoteClienteLabel";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 // ─── Carga diferida del panel de detalles ─────────────────────────────────────
 const QuoteDetails = dynamic(
@@ -29,12 +32,11 @@ const QuoteDetails = dynamic(
 
 interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
   /**
-   * Lista COMPLETA de la consulta (sin filtrar): el diálogo resuelve por id
-   * la cotización viva, así sigue correcto aunque la fila haya salido de la
-   * vista filtrada o cambiado de estatus mientras estaba abierto. Si el
-   * registro ya no existe, usa la foto tomada al abrir.
+   * Filas que la vista tiene CARGADAS (la página del listado, las columnas
+   * del tablero). Ya no son todas las cotizaciones: que una fila no esté aquí
+   * NO significa que cambió de estatus (ver `useLiveQuoteStatus`).
    */
-  quotes: Quote[];
+  loadedRows: readonly Quote[];
 }
 
 /**
@@ -43,20 +45,27 @@ interface QuoteRowActionDialogsProps extends QuoteRowActionDialogsState {
  * handlers vienen de `useQuoteRowActions`; el registro se resuelve aquí.
  */
 export function QuoteRowActionDialogs({
-  quotes,
+  loadedRows,
   dialog,
   onClose,
   onAuthorize,
+  authorizeGuard,
+  isAuthorizeBusy,
   onSubmitForReview,
   emailDialog,
-  isAuthorizing,
   isSubmittingForReview,
   reviewValidation,
 }: QuoteRowActionDialogsProps) {
+  // Estatus VIVO: lo cargado por la vista y, para autorizar y rechazar (los
+  // que dependen de que siga "Por autorizar"), el detalle leído al abrir. Sin
+  // cambio en ninguno, la foto. `null`: ya no existe o ya no es visible.
+  const checksStatus = dialog?.kind === "authorize" || dialog?.kind === "reject";
+  const liveStatus = useLiveQuoteStatus(dialog, loadedRows, checksStatus);
   const quote = dialog
-    ? (quotes.find((q) => q.id === dialog.quote.id) ?? dialog.quote)
+    ? { ...dialog.quote, estatus: liveStatus?.estatus ?? dialog.quote.estatus }
     : null;
-  const canManageAuthorization = quote ? canManageQuoteAuthorization(quote.estatus) : false;
+  const canManageAuthorization =
+    quote && liveStatus !== null ? canManageQuoteAuthorization(quote.estatus) : false;
   const handleOpenChange = (open: boolean) => {
     if (!open) onClose();
   };
@@ -67,16 +76,22 @@ export function QuoteRowActionDialogs({
   // se limpia aquí. Sin esto quedaba vivo y, si un refetch posterior volvía a
   // hacer autorizable la cotización, el diálogo reaparecía sin que nadie lo
   // pidiera.
-  // Solo AUTORIZAR: el rechazo no se re-verifica en el cliente (ver abajo).
-  const authorizationLost = dialog?.kind === "authorize" && !canManageAuthorization;
+  // Solo AUTORIZAR: el rechazo hace su propia verificación (ver abajo).
+  // Mientras la autorización PROPIA está en vuelo no se decide: la cierra el
+  // `finally` de `onAuthorize` cuando termina, con su toast.
+  const authorizeBusy = dialog?.kind === "authorize" && isAuthorizeBusy(dialog.quote.id);
+  const authorizationLost =
+    dialog?.kind === "authorize" && !canManageAuthorization && !authorizeBusy;
   useEffect(() => {
     if (authorizationLost) onClose();
   }, [authorizationLost, onClose]);
 
-  // Rechazo: copia tomada al ABRIR (la fila del menú), no el registro vivo, y
+  // Rechazo: copia tomada al ABRIR (la fila del menú) para el texto, y
   // diálogo siempre montado con `open` controlado para que anime al cerrar.
-  // Si el estatus cambia mientras está abierto, el 400 `cotizacion` del
-  // backend es la fuente de verdad (el diálogo se cierra con su mensaje).
+  // Si el estatus vivo deja de ser "Por autorizar" mientras está abierto, el
+  // diálogo se cierra con aviso (`liveQuote`); "ya no existe" solo lo dice el
+  // detalle (404/403), nunca que la fila haya salido de la página. Lo que
+  // ninguna fuente ve todavía lo decide el 400 `cotizacion` del backend.
   const isRejectOpen = dialog?.kind === "reject";
   const rejectSession = useDialogSession(isRejectOpen, isRejectOpen ? dialog.quote : null);
 
@@ -87,11 +102,11 @@ export function QuoteRowActionDialogs({
           key={`view-${quote.id}`}
           open
           onOpenChange={handleOpenChange}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
               title={`Detalles de la cotización #${quote.id}`}
-              subtitle={quote.cliente_nombre || quote.cliente_razon_social}
+              subtitle={getQuoteClienteLabel(quote)}
               statusColor={getQuoteDialogStatusColor(quote.estatus)}
             />
           }
@@ -107,11 +122,14 @@ export function QuoteRowActionDialogs({
       {dialog?.kind === "authorize" && quote && (
         <ConfirmDialog
           key={`authorize-${quote.id}`}
-          open={canManageAuthorization}
-          onOpenChange={handleOpenChange}
+          open={canManageAuthorization || authorizeBusy}
+          // En vuelo queda abierta y bloqueada (ver `authorizeGuard`); la
+          // cierra `onAuthorize` al terminar.
+          {...authorizeGuard(quote.id)}
+          closeOnConfirm={false}
           title="Autorizar pedido"
           description={`¿Deseas autorizar el pedido #${quote.id}?`}
-          confirmText={isAuthorizing ? "Autorizando..." : "Autorizar"}
+          confirmText={authorizeBusy ? "Autorizando..." : "Autorizar"}
           confirmColor="blue"
           onConfirm={() => {
             if (canManageAuthorization) onAuthorize(quote.id);
@@ -123,6 +141,13 @@ export function QuoteRowActionDialogs({
           key={rejectSession.id}
           open={isRejectOpen}
           quote={rejectSession.snapshot}
+          // Estatus vivo (ver arriba); con otro diálogo ya abierto, el de la
+          // foto: este solo anima su cierre.
+          liveQuote={
+            isRejectOpen && liveStatus !== undefined
+              ? liveStatus
+              : { estatus: rejectSession.snapshot.estatus }
+          }
           onClose={onClose}
         />
       )}

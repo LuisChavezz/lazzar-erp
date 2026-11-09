@@ -38,6 +38,7 @@ import {
 import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
+import { purchaseOrderDeliveryRows } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 
 /**
  * Texto FIJO de la leyenda/marca de agua de una orden cancelada. Decidido por
@@ -68,6 +69,7 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
   const flete = safeParseAmount(order.flete);
   const seguros = safeParseAmount(order.seguros);
   const ivaPct = safeParseAmount(order.porcentaje_iva);
+  const entrega = purchaseOrderDeliveryRows(order);
 
   return (
     <Document>
@@ -132,6 +134,28 @@ export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProp
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Entrega estimada</Text>
               <Text style={s.infoValue}>{formatLocalDate(order.fecha_entrega_estimada)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Entrega (EC-796): a dónde envía el proveedor ──
+            La dirección es la de la sucursal de la orden; sin capturar se dice
+            explícitamente, en vez de un guion que pasaría por dato vacío. Una
+            fila (`twoCol`) para que la tarjeta crezca a lo ancho, no a lo alto. */}
+        <View style={s.twoCol} wrap={false}>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>DIRECCIÓN DE ENTREGA</Text>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Almacén destino</Text>
+              <Text style={s.infoValue}>{entrega.almacen}</Text>
+            </View>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Dirección</Text>
+              <Text style={s.infoValue}>{entrega.direccion}</Text>
+            </View>
+            <View style={s.infoRow}>
+              <Text style={s.infoLabel}>Teléfono</Text>
+              <Text style={s.infoValue}>{entrega.telefono}</Text>
             </View>
           </View>
         </View>

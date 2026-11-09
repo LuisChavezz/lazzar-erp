@@ -7,18 +7,50 @@ import {
   type QuoteResourceReaders,
 } from "../utils/quoteResource";
 import {
-  Quote,
   QuoteById,
   QuoteComentario,
   QuoteCreate,
   QuoteOnboardingData,
-  QuoteQueryParams,
   QuoteSubmitForReviewResponse,
 } from "../interfaces/quote.interface";
+import type {
+  QuoteBoard,
+  QuoteFilterOptions,
+  QuoteKpis,
+  QuoteListResponse,
+} from "../interfaces/quote-list.interface";
 
 
-export const getQuotes = async (params?: QuoteQueryParams): Promise<Quote[]> => {
-  const response = await v1_api.get<Quote[]>("/ventas/cotizaciones/", { params });
+// ─── Listado en modo servidor (EC-811) ─────────────────────────────────────────
+
+/** Una página del listado (`?limit=&offset=`, filtros, `q` y `ordering`). */
+export const getQuotesPage = async (
+  params: Record<string, string | number>,
+): Promise<QuoteListResponse> => {
+  const response = await v1_api.get<QuoteListResponse>("/ventas/cotizaciones/", { params });
+  return response.data;
+};
+
+/** Catálogo del filtro de cliente; no acepta parámetros (un desconocido → 400). */
+export const getQuoteFilterOptions = async (): Promise<QuoteFilterOptions> => {
+  const response = await v1_api.get<QuoteFilterOptions>("/ventas/cotizaciones/opciones/");
+  return response.data;
+};
+
+/**
+ * Conteos por estatus e importes por moneda con los filtros del listado. Solo
+ * filtros: `ordering`, `limit` u `offset` responden 400.
+ */
+export const getQuoteKpis = async (params: Record<string, string>): Promise<QuoteKpis> => {
+  const response = await v1_api.get<QuoteKpis>("/ventas/cotizaciones/kpis/", { params });
+  return response.data;
+};
+
+/** Las 5 columnas del tablero con sus primeras `por_columna` filas; sin `ordering`. */
+export const getQuoteBoard = async (
+  params: Record<string, string | number>,
+): Promise<QuoteBoard> => {
+  const response = await v1_api.get<QuoteBoard>("/ventas/cotizaciones/tablero/", { params });
   return response.data;
 };
 

@@ -1,10 +1,9 @@
 'use client';
 
-import { type ColumnDef, type FilterFn } from '@tanstack/react-table';
+import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRightIcon } from '@/src/components/Icons';
-import { ColumnHeaderFilter } from '@/src/components/ColumnHeaderFilter';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
@@ -12,6 +11,7 @@ import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { getPedidoClasificacionLabel } from '../constants/pedidoStatus';
 import { PedidoFolioLink } from './PedidoFolioLink';
+import { PedidoCatalogHeaderFilter, PedidoConfirmadoHeaderFilter } from './PedidoHeaderFilters';
 
 /**
  * Columnas de "Mis pedidos" (Ventas, `GET /ventas/pedidos/`). NO reusa
@@ -21,13 +21,11 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  * Compras, WMS y Mesa de Control siguen usando la tabla compartida sin
  * cambios — ver `OrderListView` (`variant`).
  *
- * El filtro de estado vive AQUÍ, en el propio encabezado de Folio
- * (`ColumnHeaderFilter`), en vez del panel genérico de chips de `DataTable`
- * (`filterConfig`) — `OrderListView` ya no le pasa `filterConfig` en esta
- * variante. Usa el estado NATIVO de columna de TanStack
- * (`column.getFilterValue`/`setFilterValue`), habilitado en `DataTable.tsx`
- * vía `columnFilters`; no depende de nada que `DataTable` tenga que
- * exponerle aparte.
+ * Tabla en MODO SERVIDOR (`salesPedidosTable`): el filtro de confirmación
+ * (`?confirmado=`) vive en el encabezado de Folio y el de mes (`?mes=`, con
+ * opciones de `opciones/?mis_pedidos=true`) en el de Fecha; `meta.serverSort`
+ * es el campo de `ordering` del backend. El backend no busca en fechas: el
+ * filtro de mes sustituye a la búsqueda por fecha de la tabla en memoria.
  *
  * Piezas, Vendedor y Clasificación leen `PedidoListItem` (`piezas`,
  * `vendedor_nombre`, `clasificacion`; la clasificación con la misma etiqueta
@@ -39,55 +37,30 @@ import { PedidoFolioLink } from './PedidoFolioLink';
  * por la columna. Todas llevan `meta: { hideOnMobile: true }` para no competir
  * por espacio en pantallas angostas.
  *
- * "Importe sin IVA" SÍ es dato real: `PedidoListItem.subtotal` — a
- * diferencia de `Order`, en el listado nunca es opcional (no pasa por el
- * filtro contable), así que no hace falta el fallback `?? undefined`.
+ * "Importe sin IVA" es `PedidoListItem.subtotal`, que el listado QUITA a
+ * quien no ve importes de pedidos: sin permiso la columna no se monta.
  */
 export interface SalesOrderColumnsOptions {
   /** Llave `?from=` del detalle 360° que abre el folio. */
   from: PedidoDetailOrigin;
+  /** ¿El usuario ve importes de pedidos? (columna, orden por importe). */
+  showAmounts: boolean;
 }
 
 function PendingDataCell() {
   return <span className="text-[13px] text-slate-300 dark:text-slate-600">—</span>;
 }
 
-const CONFIRMATION_FILTER_OPTIONS = [
-  { value: undefined, label: 'Todos' },
-  { value: 'por_confirmar', label: 'Por confirmar', dotClassName: 'bg-amber-500' },
-  { value: 'confirmado', label: 'Confirmado', dotClassName: 'bg-cyan-500' },
-];
-
-/**
- * `filterFn` del propio TanStack ignora el valor accedido de la columna
- * (`folio`) y evalúa directamente `row.original`: el estado de confirmación
- * es un campo DERIVADO (`isOrderConfirmed`), no algo que la columna Folio
- * exponga como su propio valor.
- */
-const confirmationFilterFn: FilterFn<PedidoListItem> = (row, _columnId, filterValue) => {
-  if (!filterValue) return true;
-  const confirmed = isOrderConfirmed(row.original);
-  return filterValue === 'confirmado' ? confirmed : !confirmed;
-};
-
 export function createSalesOrderColumns({
   from,
+  showAmounts,
 }: SalesOrderColumnsOptions): ColumnDef<PedidoListItem, unknown>[] {
-  return [
+  const columns: ColumnDef<PedidoListItem, unknown>[] = [
     {
       id: 'folio',
       accessorKey: 'folio',
-      header: ({ column }) => (
-        <div className="flex items-center gap-1.5">
-          <span>Folio</span>
-          <ColumnHeaderFilter
-            column={column}
-            options={CONFIRMATION_FILTER_OPTIONS}
-            label="estado de confirmación"
-          />
-        </div>
-      ),
-      filterFn: confirmationFilterFn,
+      meta: { label: 'Folio', serverSort: 'folio', serverFilter: 'confirmado' },
+      header: ({ column }) => <PedidoConfirmadoHeaderFilter column={column} title="Folio" />,
       size: 190,
       cell: ({ row }) => {
         const order = row.original;
@@ -129,6 +102,7 @@ export function createSalesOrderColumns({
       id: 'cliente',
       accessorKey: 'cliente_razon_social',
       header: 'Razón social',
+      meta: { label: 'Razón social', serverSort: 'cliente_razon_social' },
       size: 220,
       cell: ({ row }) => {
         const order = row.original;
@@ -152,9 +126,7 @@ export function createSalesOrderColumns({
       accessorKey: 'piezas',
       header: 'Piezas',
       size: 90,
-      sortingFn: 'basic',
-      enableGlobalFilter: false,
-      meta: { align: "right", hideOnMobile: true },
+      meta: { align: "right", label: 'Piezas', hideOnMobile: true, serverSort: 'piezas' },
       cell: ({ row }) => (
         <span className="text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
           {row.original.piezas}
@@ -167,9 +139,8 @@ export function createSalesOrderColumns({
       accessorFn: (order) => order.vendedor_nombre || undefined,
       header: 'Vendedor',
       size: 150,
-      sortUndefined: 'last',
-      enableGlobalFilter: false,
-      meta: { hideOnMobile: true },
+      // El backend deja los vacíos al final en ambos sentidos.
+      meta: { label: 'Vendedor', hideOnMobile: true, serverSort: 'vendedor_nombre' },
       cell: ({ row }) => (
         <span className="block text-[13px] text-slate-700 dark:text-slate-200 truncate max-w-37.5">
           {row.original.vendedor_nombre || '—'}
@@ -179,8 +150,17 @@ export function createSalesOrderColumns({
     {
       id: 'created_at',
       accessorKey: 'created_at',
-      header: 'Fecha',
-      size: 110,
+      meta: { label: 'Fecha', serverSort: 'created_at', serverFilter: 'mes' },
+      header: ({ column }) => (
+        <PedidoCatalogHeaderFilter
+          column={column}
+          title="Fecha"
+          catalog="mes"
+          label="mes"
+          misPedidos
+        />
+      ),
+      size: 120,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
         return (
@@ -197,9 +177,7 @@ export function createSalesOrderColumns({
       header: 'Clasificación',
       // Etiqueta más larga: "X - Solo para facturar", igual que en Programación.
       size: 180,
-      sortUndefined: 'last',
-      enableGlobalFilter: false,
-      meta: { hideOnMobile: true },
+      meta: { label: 'Clasificación', hideOnMobile: true, serverSort: 'clasificacion' },
       cell: ({ row }) => (
         <span className="text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
           {getPedidoClasificacionLabel(row.original.clasificacion)}
@@ -207,24 +185,29 @@ export function createSalesOrderColumns({
       ),
     },
     {
+      id: 'codigo_postal',
+      header: 'C.P.',
+      size: 80,
+      meta: { hideOnMobile: true },
+      cell: PendingDataCell,
+    },
+  ];
+
+  if (showAmounts) {
+    // Antes de C.P., como siempre estuvo.
+    columns.splice(columns.length - 1, 0, {
       id: 'subtotal',
       accessorKey: 'subtotal',
       header: 'Importe sin IVA',
-      meta: { align: "right" },
+      meta: { align: "right", label: 'Importe sin IVA', serverSort: 'subtotal' },
       size: 140,
       cell: ({ row }) => (
         <span className="tabular-nums text-[13px] font-semibold text-slate-700 dark:text-slate-200">
           {formatOrderAmountOrDash(row.original.subtotal)}
         </span>
       ),
-    },
-    {
-      id: 'codigo_postal',
-      header: 'C.P.',
-      size: 80,
-      enableSorting: false,
-      meta: { hideOnMobile: true },
-      cell: PendingDataCell,
-    },
-  ];
+    });
+  }
+
+  return columns;
 }

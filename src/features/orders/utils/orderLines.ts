@@ -1,4 +1,5 @@
 import type { PedidoDetalleLinea, PedidoDetalleTalla } from "../interfaces/order.interface";
+import { cleanText } from "@/src/utils/cleanText";
 
 /**
  * Nombre visible de una línea. `producto_nombre` llega AUSENTE (no `null`) en
@@ -36,12 +37,9 @@ export type SampleSkuTallaState = "none" | "linkable" | "linked" | "orphan" | "o
 
 type SampleSkuFields = Pick<PedidoDetalleTalla, "sku_muestra" | "sku_produccion">;
 
-/** `undefined` (backend anterior al campo) y la cadena vacía cuentan como `null`. */
-export const skuOrNull = (value: string | null | undefined): string | null => value?.trim() || null;
-
 export function sampleSkuTallaState(talla: SampleSkuFields): SampleSkuTallaState {
-  const produccion = skuOrNull(talla.sku_produccion);
-  const muestra = skuOrNull(talla.sku_muestra);
+  const produccion = cleanText(talla.sku_produccion);
+  const muestra = cleanText(talla.sku_muestra);
   if (muestra === null) return produccion === null ? "none" : "linkable";
   if (produccion === null) return "orphan";
   return produccion === muestra ? "linked" : "out_of_sync";
@@ -92,7 +90,7 @@ export function sampleSkuLineSummary(
   const linkableIds: number[] = [];
   for (const talla of linea.tallas) {
     const state = sampleSkuTallaState(talla);
-    if (skuOrNull(talla.sku_produccion) !== null) withSku += 1;
+    if (cleanText(talla.sku_produccion) !== null) withSku += 1;
     if (state === "linked") linked += 1;
     if (state === "linkable") linkableIds.push(talla.id);
     if (state === "orphan" || state === "out_of_sync") review += 1;

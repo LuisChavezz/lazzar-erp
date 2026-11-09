@@ -10,7 +10,8 @@
 
 import {
   extractJoinedRejectionMessage,
-  firstRejectionMessage,
+  firstNonBlankDrfMessage,
+  firstNonBlankRejectionMessage,
 } from "@/src/utils/firstDrfMessage";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -81,75 +82,130 @@ export const normalizeQuoteValidationPath = (rawPath: string): string => {
 };
 
 /**
- * Claves de primer nivel que, como string suelto, son un RECHAZO del documento
- * y no un error de campo: las leen `extractQuoteRejectionMessage` y el
- * `extractRejectionMessage` de la edición de pedido para el toast.
- * `detalle` y `pedido` solo son rechazo como string; como lista u objeto son
- * los errores por renglón o de la cabecera y se recorren como siempre.
+ * Claves de cabecera del documento: como OBJETO traen los errores de campo de
+ * la cabecera (`pedido.*` en Mesa de Control, `cotizacion.*` en Cotizaciones).
  */
-const TOP_LEVEL_REJECTION_KEYS: ReadonlySet<string> = new Set([
-  "detail",
-  "non_field_errors",
-  "detalle",
-  "permiso",
-  "cotizacion",
-  "pedido",
-]);
+const HEADER_KEYS: ReadonlySet<string> = new Set(["pedido", "cotizacion"]);
+
+const NON_FIELD_ERRORS_KEY = "non_field_errors";
 
 /**
- * Recorre recursivamente el objeto de errores del backend y extrae todos
- * los mensajes como una lista plana de `QuoteValidationIssue`.
+ * ¿Un string o una lista SOLO de mensajes? Una lista con objetos es la de
+ * errores por renglón (`detalle: [{...}]`, `servicios_extras: [{...}]`).
+ */
+const isRejectionMessage = (value: unknown): boolean =>
+  typeof value === "string" ||
+  (Array.isArray(value) && value.every((item) => typeof item === "string"));
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+export interface QuoteValidationIssuesOptions {
+  /**
+   * Claves de primer nivel que el TOAST del llamador lee como rechazo: cuando
+   * traen un mensaje (string o lista de strings) no son un error de campo,
+   * porque ningún control las pinta (marcaban el árbol y hacían scroll sin
+   * mostrar nada). Como lista de objetos u objeto se recorren como siempre.
+   * Si incluye `non_field_errors`, también descarta el `non_field_errors`
+   * anidado en la cabecera (`pedido.non_field_errors`), que el llamador lee
+   * con `extractHeaderNonFieldMessage`.
+   *
+   * Cada flujo pasa LAS SUYAS, las mismas que lee su toast: una clave que se
+   * descartara aquí sin que el toast la leyera se perdería en los dos lados.
+   */
+  rejectionKeys?: readonly string[];
+}
+
+/**
+ * Extrae del cuerpo 400 los errores de campo como una lista plana de
+ * `QuoteValidationIssue`, con la ruta del formulario.
  *
  * El backend puede devolver errores como:
  * - `{ persona_pagos: ["Este campo no puede estar en blanco."] }`
  * - `{ cotizacion: { persona_pagos: ["..."] } }`
  * - `{ detalle: [{ tallas: [{ cantidad: ["..."] }] }] }`
+ * - `{ pedido: { telefono_pagos: "..." } }` (string suelto, en cualquier nivel;
+ *   el backend desplegado manda así los de primer nivel, p. ej. `{"color": "..."}`)
+ *
+ * `compatibilidad_proceso` es siempre un RECHAZO (va al toast entero, ver
+ * `extractProcessCompatibilityMessage`), no un error de un campo. Un cuerpo
+ * que no es objeto (`["Mensaje."]`, el `ValidationError("...")` suelto de una
+ * vista) no trae rutas de campo: ningún issue.
  */
 export const extractQuoteValidationIssues = (
   source: unknown,
-  path: Array<string | number> = []
+  { rejectionKeys = [] }: QuoteValidationIssuesOptions = {}
 ): QuoteValidationIssue[] => {
-  // `compatibilidad_proceso` es un RECHAZO (va al toast entero, ver
-  // `extractProcessCompatibilityMessage`), no un error de un campo.
-  if (path.length === 0 && source && typeof source === "object" && !Array.isArray(source)) {
-    return Object.entries(source as Record<string, unknown>)
-      .filter(([key]) => key !== PROCESS_COMPATIBILITY_KEY)
-      .flatMap(([key, value]) =>
-        // El backend desplegado manda los errores de campo de primer nivel como
-        // string suelto (`{"color": "..."}`), no como lista: se aceptan igual.
-        // Las claves de RECHAZO quedan fuera: esas van al toast, no a un campo.
-        typeof value === "string"
-          ? value && !TOP_LEVEL_REJECTION_KEYS.has(key)
-            ? [{ path: normalizeQuoteValidationPath(key), message: value }]
-            : []
-          : extractQuoteValidationIssues(value, [key])
-      );
-  }
+  if (!isPlainObject(source)) return [];
+  const rejections = new Set(rejectionKeys);
+  const dropHeaderNonField = rejections.has(NON_FIELD_ERRORS_KEY);
 
+  return Object.entries(source)
+    .filter(([key]) => key !== PROCESS_COMPATIBILITY_KEY)
+    .filter(([key, value]) => !(rejections.has(key) && isRejectionMessage(value)))
+    .flatMap(([key, value]) => {
+      if (dropHeaderNonField && HEADER_KEYS.has(key) && isPlainObject(value)) {
+        return Object.entries(value)
+          .filter(([field]) => field !== NON_FIELD_ERRORS_KEY)
+          .flatMap(([field, error]) => collectIssues(error, [key, field]));
+      }
+      return collectIssues(value, [key]);
+    });
+};
+
+/** Recorrido recursivo bajo una clave de primer nivel. */
+const collectIssues = (
+  source: unknown,
+  path: Array<string | number>
+): QuoteValidationIssue[] => {
   if (Array.isArray(source)) {
     const stringMessages = source.filter((item): item is string => typeof item === "string");
 
-    if (stringMessages.length > 0 && path.length > 0) {
-      return [
-        {
-          path: normalizeQuoteValidationPath(path.map(String).join(".")),
-          message: stringMessages[0],
-        },
-      ];
-    }
+    // Los objetos de la lista (errores por renglón) se recorren aunque la lista
+    // también traiga un mensaje suelto: no se pierden los de un renglón.
+    const itemIssues = source.flatMap((item, index) =>
+      typeof item === "string" ? [] : collectIssues(item, [...path, index])
+    );
+    return stringMessages.length > 0
+      ? [
+          {
+            path: normalizeQuoteValidationPath(path.map(String).join(".")),
+            message: stringMessages[0],
+          },
+          ...itemIssues,
+        ]
+      : itemIssues;
+  }
 
-    return source.flatMap((item, index) =>
-      extractQuoteValidationIssues(item, [...path, index])
+  if (isPlainObject(source)) {
+    return Object.entries(source).flatMap(([key, value]) =>
+      collectIssues(value, [...path, key])
     );
   }
 
-  if (source && typeof source === "object") {
-    return Object.entries(source as Record<string, unknown>).flatMap(([key, value]) =>
-      extractQuoteValidationIssues(value, [...path, key])
-    );
+  // String suelto: mismo trato que una lista con un mensaje (EC-795).
+  if (typeof source === "string" && source) {
+    return [{ path: normalizeQuoteValidationPath(path.map(String).join(".")), message: source }];
   }
 
   return [];
+};
+
+/**
+ * Primer mensaje no vacío del `non_field_errors` anidado en la cabecera
+ * (`{"pedido": {"non_field_errors": [...]}}`, el error de un `validate()` del
+ * serializer de cabecera): un rechazo del documento, no de un campo.
+ */
+export const extractHeaderNonFieldMessage = (data: unknown): string | undefined => {
+  if (!isPlainObject(data)) return undefined;
+  for (const key of HEADER_KEYS) {
+    const header = data[key];
+    const message = isPlainObject(header)
+      ? firstNonBlankDrfMessage(header[NON_FIELD_ERRORS_KEY])
+      : undefined;
+    if (message) return message;
+  }
+  return undefined;
 };
 
 // ─── Mensaje de rechazo ────────────────────────────────────────────────────────
@@ -180,14 +236,16 @@ export const extractProcessCompatibilityMessage = (data: unknown): string | unde
   extractJoinedRejectionMessage(data, PROCESS_COMPATIBILITY_KEY);
 
 /**
- * `detalle` como RECHAZO plano (`{"detalle": "Partida N: ..."}`, p. ej. el tope
- * de reflejante «Del inventario»). Como arreglo es la lista de errores por
- * renglón, que ya reporta `extractQuoteValidationIssues`.
+ * `detalle` como RECHAZO: un mensaje plano (`{"detalle": "Partida N: ..."}`,
+ * p. ej. el tope de reflejante «Del inventario») o una lista de mensajes
+ * (`{"detalle": ["Este campo es requerido."]}`, el error de la lista entera,
+ * que ningún renglón pinta) (EC-795). Devuelve el primer mensaje que no esté
+ * en blanco. Una lista de OBJETOS es la de errores por renglón, que reporta
+ * `extractQuoteValidationIssues`, y aquí no da nada.
  */
-export const extractPlainDetalleMessage = (data: unknown): string | undefined => {
+export const extractDetalleRejectionMessage = (data: unknown): string | undefined => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
-  const { detalle } = data as Record<string, unknown>;
-  return typeof detalle === "string" && detalle.length > 0 ? detalle : undefined;
+  return firstNonBlankDrfMessage((data as Record<string, unknown>).detalle);
 };
 
 /**
@@ -201,25 +259,43 @@ export const extractPlainDetalleMessage = (data: unknown): string | undefined =>
  *   color, categoría de producto o dirección inválidos). Llega como mensaje
  *   PLANO, sin índice de renglón, así que no hay input sobre el cual pintarlo.
  * - `detail` / `non_field_errors`: los genéricos de DRF.
+ * - `cotizacion_id`: la cotización no existe, no es del usuario o ya salió de
+ *   la ventana de edición tras autorizarse (`_exigir_acceso_cotizacion_onboarding`).
+ * - `empresa`: el usuario no tiene empresa asignada.
+ * - `cotizacion`: "Datos inválidos." como mensaje (como objeto son los errores
+ *   de campo de la cabecera, que `firstNonBlankRejectionMessage` no lee).
  *
  * `detalle` NO está en la lista: se trata aparte porque solo cuenta como
- * rechazo cuando es un string plano (ver `extractPlainDetalleMessage`). Lo
- * mismo `compatibilidad_proceso`, cuya lista se muestra completa.
+ * rechazo cuando trae mensajes, no objetos por renglón (ver
+ * `extractDetalleRejectionMessage`). Lo mismo `compatibilidad_proceso`, cuya
+ * lista se muestra completa.
  */
-const QUOTE_REJECTION_KEYS = ["detail", "non_field_errors"] as const;
+const QUOTE_REJECTION_KEYS = [
+  "detail",
+  "non_field_errors",
+  "cotizacion_id",
+  "empresa",
+  "cotizacion",
+] as const;
 
 /**
  * Primer mensaje de rechazo del cuerpo 400, o `undefined` si el 400 es solo de
  * validación de campos.
  *
- * `detalle` es ambigua: además del rechazo plano, es la clave del campo lista
- * del serializer, que llega como ARREGLO — de objetos por renglón
- * (`detalle: [{ tallas: [...] }]`) o de strings cuando el error es de la lista
- * entera (`detalle: ["Esta lista no puede estar vacía."]`). Esos son errores
- * de campo y ya los reporta `extractQuoteValidationIssues`; al toast solo va
- * el string plano.
+ * `detalle` es ambigua: además del rechazo, es la clave del campo lista del
+ * serializer. Como arreglo de OBJETOS por renglón (`detalle: [{ tallas: [...] }]`)
+ * son errores de campo y los reporta `extractQuoteValidationIssues`; como
+ * mensaje —plano o en lista— va al toast.
  */
 export const extractQuoteRejectionMessage = (data: unknown): string | undefined =>
   extractProcessCompatibilityMessage(data) ??
-  extractPlainDetalleMessage(data) ??
-  firstRejectionMessage(data, QUOTE_REJECTION_KEYS);
+  extractDetalleRejectionMessage(data) ??
+  firstNonBlankRejectionMessage(data, QUOTE_REJECTION_KEYS) ??
+  extractHeaderNonFieldMessage(data);
+
+/**
+ * Errores de campo del 400 del alta/edición de cotización: descarta
+ * exactamente lo que lee `extractQuoteRejectionMessage` para el toast.
+ */
+export const extractQuoteFormIssues = (data: unknown): QuoteValidationIssue[] =>
+  extractQuoteValidationIssues(data, { rejectionKeys: [...QUOTE_REJECTION_KEYS, "detalle"] });

@@ -28,6 +28,8 @@ interface WarehouseFilterProps {
    * el `error` de `FormInput`.
    */
   error?: string;
+  /** Clases extra del botón (p. ej. `COMPACT_FIELD_CLS` en una barra de filtros compacta). */
+  className?: string;
 }
 
 /**
@@ -39,8 +41,14 @@ interface WarehouseFilterProps {
  * un filtro opcional (reporte de movimientos).
  *
  */
-export function WarehouseFilter({ value, onChange, allowClear = false, error }: WarehouseFilterProps) {
-  const { data: warehouses = [], isLoading } = useWarehouses();
+export function WarehouseFilter({
+  value,
+  onChange,
+  allowClear = false,
+  error,
+  className = "",
+}: WarehouseFilterProps) {
+  const { data: warehouses = [], isLoading, isInitialError, refetch } = useWarehouses();
   const errorId = useId();
 
   // Solo almacenes activos, alfabéticos por nombre (misma convención que
@@ -78,7 +86,7 @@ export function WarehouseFilter({ value, onChange, allowClear = false, error }: 
             aria-describedby={error ? errorId : undefined}
             className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-white dark:bg-black/20 dark:text-slate-200 dark:hover:bg-black/40 ${
               error ? "border-red-500" : "border-slate-300 hover:border-brand-500 dark:border-slate-700"
-            }`}
+            } ${className}`}
           >
             <WarehouseIcon
               className="h-4 w-4 text-sky-500 dark:text-sky-400"
@@ -148,7 +156,30 @@ export function WarehouseFilter({ value, onChange, allowClear = false, error }: 
                 </DropdownMenu.Item>
               ))}
 
-              {activeWarehouses.length === 0 && (
+              {/* La lista nunca cargó: no es que no haya almacenes. */}
+              {isInitialError && (
+                <>
+                  <DropdownMenu.Item disabled className="text-xs">
+                    <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                      No se pudieron cargar los almacenes
+                    </span>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    // Mantiene el menú abierto: mientras reintenta, el menú
+                    // pasa a "Cargando almacenes..." (la consulta vuelve a
+                    // `pending`) y la lista aparece en cuanto llega.
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      void refetch();
+                    }}
+                    className="cursor-pointer! text-xs"
+                  >
+                    <span className="text-xs font-semibold">Reintentar</span>
+                  </DropdownMenu.Item>
+                </>
+              )}
+
+              {!isInitialError && activeWarehouses.length === 0 && (
                 <DropdownMenu.Item disabled className="text-xs">
                   <span className="text-xs font-medium text-slate-400">
                     No hay almacenes disponibles

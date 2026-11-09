@@ -1,62 +1,48 @@
 'use client';
 
-import { useMemo } from 'react';
 import { DataTable } from '@/src/components/DataTable';
-import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
+import type { usePedidosTable } from '@/src/features/orders/hooks/usePedidosTable';
 import {
   buildOperationsOrderColumns,
-  buildOperationsOrderFilterOptions,
   type OperationsOrderColumnCallbacks,
 } from './OperationsOrderColumns';
 import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
 
 interface OperationsOrderTableProps extends OperationsOrderColumnCallbacks {
-  orders: PedidoListItem[];
-  onRefetch?: () => void | Promise<unknown>;
-  isRefetching?: boolean;
-  isLoading?: boolean;
-  isError?: boolean;
-  errorMessage?: string;
+  /** `tableProps` de `usePedidosTable` (modo servidor). */
+  tableProps: ReturnType<typeof usePedidosTable>['tableProps'];
+  /** ¿Se montan la columna, el filtro y el orden de importe? */
+  showAmounts: boolean;
+  /** "Actualizar datos": la lista y los indicadores juntos. */
+  onRefetch?: () => Promise<unknown>;
 }
 
-// Tabla de la Mesa de Control de Pedidos — usa DataTable con columnas dedicadas
+/**
+ * Tabla de la Mesa de Control de Pedidos en MODO SERVIDOR. Se monta SIEMPRE:
+ * carga, error y vacío los alterna `DataTable` en su cuerpo, con el toolbar y
+ * los filtros de encabezado montados.
+ */
 export function OperationsOrderTable({
-  orders,
+  tableProps,
+  showAmounts,
   onProgramar,
   onCancel,
   onRefetch,
-  isRefetching,
-  isLoading,
-  isError,
-  errorMessage,
 }: OperationsOrderTableProps) {
-  // Los callbacks son estables; el useMemo evita recrear el array de columnas
-  // en cada render del componente padre.
-  const columns = useMemo(
-    () =>
-      buildOperationsOrderColumns(
-        { onProgramar, onCancel },
-        buildOperationsOrderFilterOptions(orders),
-      ),
-    [onProgramar, onCancel, orders],
-  );
+  const columns = buildOperationsOrderColumns({ onProgramar, onCancel }, { showAmounts });
 
   return (
     <DataTable
       columns={columns}
-      data={orders}
-      baseDataCount={orders.length}
+      {...tableProps}
+      onRefetch={onRefetch ?? tableProps.onRefetch}
+      // Identidad de la fila por registro, no por posición en la página.
+      getRowId={(row) => String(row.id)}
       searchPlaceholder="Buscar por folio, cliente u OC..."
       fillHeight
       fillHeightBodyClassName={MESA_CONTROL_KPI_LIST.body}
-      onRefetch={onRefetch}
-      isRefetching={isRefetching}
-      isLoadingOverlay={isRefetching}
-      isLoading={isLoading}
-      isError={isError}
+      emptyMessage="No hay pedidos en mesa de control"
       errorTitle="Error al cargar pedidos"
-      errorMessage={errorMessage}
-      onErrorRetry={onRefetch ? () => void onRefetch() : undefined}
       loadingAriaLabel="Cargando pedidos"
     />
   );

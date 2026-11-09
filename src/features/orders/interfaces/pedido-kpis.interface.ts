@@ -29,8 +29,11 @@ export interface PedidoKpiActiveOrder {
    * la de `getPedidoEstatusConfig(estatus)`, igual que el resto de pedidos.
    */
   estatus_label: string;
-  /** NÚMERO JSON (no string como en el listado), en la moneda `moneda` del pedido. */
-  gran_total: number;
+  /**
+   * NÚMERO JSON (no string como en el listado), en la moneda `moneda` del pedido.
+   * AUSENTE (la clave no viene) con `puede_ver_importes: false` (EC-784).
+   */
+  gran_total?: number;
   cliente_nombre: string | null;
   /** Código ISO de la moneda del pedido ("MXN", "USD"…); catálogo abierto. */
   moneda: string;
@@ -39,11 +42,13 @@ export interface PedidoKpiActiveOrder {
 /**
  * Pedidos activos de UNA moneda. `valor` es `Sum(gran_total)` de esos pedidos
  * (número JSON); los de otra moneda van en su propia fila y nunca se suman.
+ * `valor` AUSENTE (la clave no viene) con `puede_ver_importes: false` (EC-784);
+ * el conteo `total` queda.
  */
 export interface PedidoActiveKpiCurrency {
   moneda: string;
   total: number;
-  valor: number;
+  valor?: number;
 }
 
 export interface PedidoActiveKpiAvailable {
@@ -53,8 +58,9 @@ export interface PedidoActiveKpiAvailable {
   /** Una fila por moneda, ordenada por código; vacía sin pedidos activos. */
   por_moneda: PedidoActiveKpiCurrency[];
   /**
-   * Como MÁXIMO 20 filas, ordenadas por `-gran_total, -id` sin convertir
-   * monedas, sin paginación.
+   * Como MÁXIMO 20 filas, sin paginación. Con importes, ordenadas por
+   * `-gran_total, -id` sin convertir monedas; sin ellos, por `-id` (las más
+   * recientes): ordenar por un monto oculto delataría los pedidos más grandes.
    */
   drill_down: PedidoKpiActiveOrder[];
   /** Total de pedidos del drill-down (igual a `total`). */
@@ -79,6 +85,12 @@ export interface PedidoKpis {
   /** Datetime UTC del cálculo. */
   generado_en: string;
   pedidos_activos: PedidoActiveKpi;
+  /**
+   * Regla de importes de pedidos (contabilidad de ventas o de compras, EC-784);
+   * `false` también para un usuario sin empresa. Sin ella el backend quita
+   * `valor` y `gran_total` del drill-down.
+   */
+  puede_ver_importes: boolean;
   otif: PedidoUntypedKpi;
   lead_time_promedio: PedidoUntypedKpi;
   pedidos_en_riesgo: PedidoUntypedKpi;

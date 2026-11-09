@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { acceptsResendComment } from "../utils/quoteStatusRules";
@@ -60,7 +61,7 @@ export function QuoteSubmitForReviewDialog({
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="520px"
+      maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={false}
       title="Reenviar a revisión"
       description={`La cotización #${quoteId} volverá a "Por Autorizar" y no podrá editarse mientras esté en revisión.`}

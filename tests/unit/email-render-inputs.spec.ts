@@ -99,6 +99,10 @@ test("OC: cualquier dato que se pinta en el correo o el PDF aborta", () => {
     withLine({ precio: "2.00" }),
     withLine({ descuento: "1.00" }),
     withLine({ producto_variante_talla: "M" }),
+    // Bloque de entrega (EC-796): lo pintan el correo y el PDF.
+    { ...order, almacen_nombre: "OTRO ALMACÉN" },
+    { ...order, sucursal_direccion: "Otra calle 1, CDMX" },
+    { ...order, sucursal_telefono: "5555555555" },
   ]) {
     expect(aborts(purchaseOrderEmailRenderInputs, order, changed as PurchaseOrderDetail)).toBe(true);
   }

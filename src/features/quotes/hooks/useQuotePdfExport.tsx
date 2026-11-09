@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
@@ -8,10 +8,9 @@ import {
   formatQuoteExportTotal,
   QUOTE_EXPORT_TOTAL_FIELD,
 } from "../utils/quoteExportTotals";
-import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
-import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { useServerExport } from "@/src/hooks/useServerExport";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -352,14 +351,15 @@ const createQuotesPdfDocument = (
 };
 
 /**
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas filtradas y
- * ordenadas que `DataTable` expone por `ref` (`getFilteredRows`), leídas en
- * ese instante. Guardar una copia en un ref dejaba en el archivo valores y
- * orden viejos tras un refetch que no cambiaba el número de filas.
+ * PDF del listado en MODO SERVIDOR: AL EXPORTAR (no al montar) `getRows` trae
+ * TODAS las filas de los criterios vigentes, página por página desde el
+ * backend (`fetchAllRows` de `useServerTable`): la tabla solo tiene la página
+ * visible. `useServerExport` muestra el progreso, ignora un doble disparo y
+ * avisa si falla el pedido de filas o el render del PDF (p. ej. al descargar
+ * el chunk de react-pdf).
  */
 export const useQuotePdfExport = (
-  tableRef: RefObject<DataTableHandle<Quote> | null>,
+  getRows: () => Promise<Quote[]>,
   columns: DataTableVisibleColumn<Quote>[]
 ) => {
   const columnsRef = useRef(columns);
@@ -368,13 +368,12 @@ export const useQuotePdfExport = (
     columnsRef.current = columns;
   }, [columns]);
 
+  const runExport = useServerExport(getRows, "quotes-export-pdf");
+
   const exportToPdf = useCallback(async () => {
-    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
-    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
-    // rechazada sin aviso para el usuario.
-    try {
-      const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
-      if (exportColumns.length === 0) return;
+    const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
+    if (exportColumns.length === 0) return;
+    await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
       const pdfDocument = createQuotesPdfDocument(
         {
@@ -384,16 +383,14 @@ export const useQuotePdfExport = (
           View: renderer.View,
           StyleSheet: renderer.StyleSheet,
         },
-        tableRef.current?.getFilteredRows() ?? [],
+        rows,
         exportColumns
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
       const today = new Date().toISOString().split("T")[0];
       downloadBlob(blob, `quotes-${today}.pdf`);
-    } catch (error) {
-      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
-    }
-  }, [tableRef]);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

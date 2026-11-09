@@ -16,6 +16,8 @@ import { useTipoCompraChange } from "../hooks/useTipoCompraChange";
 import { useProveedorMonedaChange } from "../hooks/useProveedorMonedaChange";
 import { onboardingLoadErrorMessage } from "../utils/onboardingLoadError";
 import type { PedidoSelectionMemory } from "../hooks/usePedidoSelectionMemory";
+import { almacenTrasCambioDeSucursal } from "../utils/purchaseOrderDelivery";
+import { PurchaseOrderAlmacenField } from "./PurchaseOrderAlmacenField";
 
 export function PurchaseOrderOnboardingStep1({
   initialValues,
@@ -181,6 +183,13 @@ function Step1Form({
                   "orden_compra.sucursal",
                   event.target.value,
                 ) as number;
+                // El almacén destino es de UNA sucursal: al cambiarla se suelta
+                // aquí (no en un efecto, mismo criterio que el tipo de compra),
+                // para no enviar un almacén de la sucursal anterior.
+                if (nextValue !== field.state.value) {
+                  form.setFieldValue("orden_compra.almacen", almacenTrasCambioDeSucursal(nextValue));
+                  clearFieldErrors("orden_compra.almacen");
+                }
                 field.handleChange(nextValue);
                 clearFieldErrors("orden_compra.sucursal");
               }}
@@ -192,6 +201,37 @@ function Step1Form({
             />
           )}
         </form.Field>
+
+        {/* ── Almacén destino + dirección de entrega (EC-796) ──────────────
+            A qué almacén entra lo que se reciba contra la orden (solo los de
+            la sucursal elegida) y a dónde envía el proveedor. */}
+        <form.Subscribe selector={(state) => state.values.orden_compra.sucursal}>
+          {(sucursalId) => (
+            <form.Field name="orden_compra.almacen">
+              {(field) => (
+                <PurchaseOrderAlmacenField
+                  name={field.name}
+                  sucursalId={sucursalId}
+                  value={field.state.value}
+                  onChange={(next) => {
+                    field.handleChange(next);
+                    clearFieldErrors("orden_compra.almacen");
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    validateField("orden_compra.almacen");
+                  }}
+                  error={getError("orden_compra.almacen")}
+                  almacenes={onboardingData.catalogos.almacenes}
+                  sucursales={onboardingData.catalogos.sucursales}
+                  emptyLabel="Seleccionar almacén…"
+                  selectClassName={COMPACT_FIELD_CLS}
+                  addressClassName="sm:col-span-2"
+                />
+              )}
+            </form.Field>
+          )}
+        </form.Subscribe>
 
         {/* ── Proveedor ────────────────────────────────────────────────── */}
         <form.Field name="orden_compra.proveedor">

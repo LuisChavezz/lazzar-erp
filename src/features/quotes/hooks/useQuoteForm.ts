@@ -4,7 +4,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEventHandler } from "react";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
@@ -237,7 +237,13 @@ export function useQuoteForm() {
   const [isAddProductsOpen, setIsAddProductsOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  /**
+   * Salida tras un guardado correcto: `onSubmit` la marca antes de que el
+   * candado se suelte y `useFormSubmitLock` deja de enviar (ver su doc: cubre
+   * envíos programáticos, no un Enter). Se declara antes de `useForm` porque
+   * su `onSubmit` la escribe.
+   */
+  const leavingRef = useRef(false);
   const [isCreationSuccessVisible, setIsCreationSuccessVisible] = useState(false);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(0);
@@ -528,6 +534,9 @@ export function useQuoteForm() {
         return;
       }
 
+      // Antes de vaciar el formulario: un envío que llegara ahora mandaría el
+      // formulario vacío, que es un borrador válido (ver `leavingRef`).
+      leavingRef.current = true;
       setIsCreationSuccessVisible(true);
       setIsRouteTransitioning(true);
 
@@ -957,22 +966,14 @@ export function useQuoteForm() {
     }, false);
   };
 
-  // Submit controlado para evitar dobles envíos y estados pendientes colgados.
-  const handleFormSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (isSubmittingForm) {
-      return;
-    }
-    setIsSubmittingForm(true);
-    try {
-      await Promise.resolve(form.handleSubmit());
-    } finally {
-      setIsSubmittingForm(false);
-    }
-  };
+  // Candado del envío, guarda del reinicio y "Guardando..." (EC-753).
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
 
   const handleReset = () => {
+    // Con un envío en curso no se toca el formulario que se está enviando.
+    if (isSubmitLocked()) return;
     form.reset(emptyValues);
     crossRules.resetCrossRules();
     setExtraServices([]);
@@ -992,8 +993,7 @@ export function useQuoteForm() {
   };
 
   const isPending =
-    isSubmittingForm ||
-    form.state.isSubmitting ||
+    isFormSubmitting ||
     isCreatingQuote ||
     isCreationSuccessVisible ||
     isRouteTransitioning;

@@ -38,6 +38,7 @@ interface UsePurchaseOrderStep1FormParams {
  */
 export type Step1FieldPath =
   | "orden_compra.sucursal"
+  | "orden_compra.almacen"
   | "orden_compra.proveedor"
   | "orden_compra.moneda"
   | "orden_compra.fecha_vencimiento"
@@ -106,6 +107,7 @@ export function usePurchaseOrderStep1Form({
         : {
             orden_compra: {
               sucursal: findDefaultSucursalId(onboardingData, workspaceBranchId),
+              almacen: 0,
               proveedor: 0,
               moneda: 0,
               fecha_vencimiento: "",

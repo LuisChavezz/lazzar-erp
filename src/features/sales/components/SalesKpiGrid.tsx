@@ -1,107 +1,78 @@
 "use client";
 
-import KpiGrid, { KpiItem } from "@/src/components/KpiGrid";
+import KpiGrid, { KPI_MUTED_ICON, type KpiCompactItem } from "@/src/components/KpiGrid";
 import {
   ClientesIcon,
   TrendingUpIcon,
-  PedidosIcon,
-  OrdenesIcon,
 } from "@/src/components/Icons";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
-import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
+import { useCustomerKpis } from "@/src/features/customers/hooks/useCustomerKpis";
+import type { CustomerKpis } from "@/src/features/customers/interfaces/customer-kpis.interface";
+import { useRecentQuoteKpis } from "@/src/features/quotes/hooks/useQuoteKpiSummary";
+import { buildRecentQuotesCard } from "@/src/features/quotes/components/QuoteKpiCards";
 
-const parseOrderCreatedAt = (value?: string | null) => {
-  if (!value) return null;
-  const normalizedValue = value.trim();
-  if (!normalizedValue) return null;
+/**
+ * Indicadores del dashboard de Ventas (`/sales`), en el diseño compacto de
+ * `KpiGrid` (el de Pedidos, Mesa de Control, Compras y Clientes).
+ *
+ * "Cotizaciones · 30 días" es la MISMA tarjeta y la misma consulta que en
+ * `/sales/quotes` (`useRecentQuoteKpis` → `kpis/` con `fecha_desde`/
+ * `fecha_hasta`): reemplaza al "Pedidos del mes", que contaba cotizaciones de
+ * la lista completa con un rótulo de pedidos.
+ *
+ * "Clientes activos" es el `clientes_activos` de `GET /terceros/clientes/kpis/`
+ * (la consulta de los indicadores de Clientes, `useCustomerKpis`): clientes con
+ * algún pedido vigente en la ventana del backend, cuyo largo viene en
+ * `ventana_dias`. Antes mostraba el total de clientes con un rótulo de "Últimos
+ * 30 días".
+ *
+ * "Nuevos este mes" sigue como estaba: ningún endpoint da hoy ese valor (el
+ * listado de clientes no filtra por fecha de alta). "Pedidos críticos" se quitó
+ * hasta EC-818.
+ */
 
-  if (normalizedValue.includes("/")) {
-    const [rawDatePart, rawTimePart] = normalizedValue.split(" ");
-    const [day, month, year] = rawDatePart.split("/").map((part) => Number(part));
-    if (!day || !month || !year) return null;
-    const [hours = 0, minutes = 0, seconds = 0] = (rawTimePart ?? "")
-      .split(":")
-      .map((part) => Number(part));
-    const date = new Date(year, month - 1, day, hours || 0, minutes || 0, seconds || 0);
-    return Number.isNaN(date.getTime()) ? null : date;
+/** Clientes activos del backend; "—" mientras carga y "No disponible" si no llega. */
+function activeCustomersCard(data: CustomerKpis | undefined, isInitialError: boolean): KpiCompactItem {
+  const base = { label: "Clientes Activos", icon: ClientesIcon };
+  if (isInitialError) {
+    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: "No se pudieron cargar los indicadores de clientes." };
   }
+  if (!data) return { ...base, ...KPI_MUTED_ICON, value: "—", hideProgress: true };
+  const kpi = data.clientes_activos;
+  if (!kpi.disponible) return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
+  return {
+    ...base,
+    ...(kpi.activos > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
+    value: kpi.activos.toLocaleString("es-MX"),
+    detail: `Últimos ${kpi.ventana_dias} días · de ${kpi.total.toLocaleString("es-MX")}`,
+    info: kpi.criterio,
+    hideProgress: true,
+  };
+}
 
-  const isoOnlyDateMatch = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoOnlyDateMatch) {
-    const [, yearRaw, monthRaw, dayRaw] = isoOnlyDateMatch;
-    const year = Number(yearRaw);
-    const month = Number(monthRaw);
-    const day = Number(dayRaw);
-    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  const date = new Date(normalizedValue);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const getLast30DaysOrdersCount = (quotes: Quote[], now: Date) => {
-  const rangeStart = new Date(now);
-  rangeStart.setHours(0, 0, 0, 0);
-  rangeStart.setDate(rangeStart.getDate() - 29);
-
-  const rangeEnd = new Date(now);
-  rangeEnd.setHours(23, 59, 59, 999);
-
-  return quotes.filter((quote) => {
-    const createdAt = parseOrderCreatedAt(quote.created_at);
-    return createdAt ? createdAt >= rangeStart && createdAt <= rangeEnd : false;
-  }).length;
-};
-
+/** Indicadores del dashboard de Ventas; ver la nota de arriba. */
 export const SalesKpiGrid = () => {
   const { customers, isLoading: isCustomersLoading } = useCustomers();
-  const { quotes, isLoading: isOrdersLoading } = useQuotes();
+  const recent = useRecentQuoteKpis();
+  const customerKpis = useCustomerKpis();
 
-  const now = new Date();
   const totalCustomers = customers.length;
-  const activeOrdersLast30Days = getLast30DaysOrdersCount(quotes, now);
-  const isLoading = isCustomersLoading || isOrdersLoading;
+  const customersValue = isCustomersLoading ? "—" : String(totalCustomers);
 
-  const items: KpiItem[] = [
-    {
-      label: "Clientes Activos",
-      value: isLoading ? "..." : String(totalCustomers),
-      icon: ClientesIcon,
-      iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
-      iconClass: "text-sky-500",
-      subLabel: "Últimos 30 días",
-      status: "positive",
-    },
+  const items: KpiCompactItem[] = [
+    activeCustomersCard(customerKpis.data, customerKpis.isInitialError),
     {
       label: "Nuevos este mes",
-      value: isLoading ? "..." : String(totalCustomers),
+      value: customersValue,
       icon: TrendingUpIcon,
-      iconBgClass: "bg-emerald-50 dark:bg-emerald-500/10",
-      iconClass: "text-emerald-500",
-      subLabel: "Clientes nuevos",
-      status: "positive",
+      ...(totalCustomers > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
+      detail: "Clientes nuevos",
+      hideProgress: true,
     },
-    {
-      label: "Pedidos del mes",
-      value: isLoading ? "..." : String(activeOrdersLast30Days),
-      icon: PedidosIcon,
-      iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
-      iconClass: "text-sky-500",
-      subLabel: "Activos",
-      status: "positive",
-    },
-    {
-      label: "Pedidos críticos",
-      value: isLoading ? "..." : "0",
-      icon: OrdenesIcon,
-      iconBgClass: "bg-rose-50 dark:bg-rose-500/10",
-      iconClass: "text-rose-500",
-      subLabel: "Atención inmediata",
-      status: "negative",
-    },
+    buildRecentQuotesCard({ data: recent.data, isInitialError: recent.isInitialError }),
+    // "Pedidos críticos" vuelve con EC-818: hoy `pedidos/kpis/` reporta
+    // `pedidos_en_riesgo` como no disponible y la tarjeta mostraba un 0 fijo.
   ];
 
-  return <KpiGrid items={items} />;
+  return <KpiGrid compact items={items} />;
 };

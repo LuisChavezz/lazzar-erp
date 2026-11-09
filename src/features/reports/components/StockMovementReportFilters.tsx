@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FormInput } from "@/src/components/FormInput";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
+import { DateParamInput } from "@/src/components/DateParamInput";
 import { FormSelect } from "@/src/components/FormSelect";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
+import { STOCK_MOVEMENT_REPORT_TYPE_CONFIG } from "@/src/features/stock/constants/stockMovementReportTypes";
 import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 
 interface StockMovementReportFiltersProps {
@@ -66,6 +68,7 @@ export function StockMovementReportFilters({
         <div className="w-52">
           <FormSelect
             label="Tipo de movimiento"
+            className={COMPACT_FIELD_CLS}
             value={tipoMovimiento ?? ""}
             onChange={(e) =>
               onTipoChange(
@@ -80,51 +83,50 @@ export function StockMovementReportFilters({
             >
               Selecciona un tipo
             </option>
-            <option
-              value="ENTRADA"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Entrada
-            </option>
-            <option
-              value="SALIDA"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Salida
-            </option>
-            <option
-              value="AJUSTE"
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Ajuste
-            </option>
+            {Object.entries(STOCK_MOVEMENT_REPORT_TYPE_CONFIG).map(([value, cfg]) => (
+              <option
+                key={value}
+                value={value}
+                className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+              >
+                {cfg.label}
+              </option>
+            ))}
           </FormSelect>
         </div>
 
         {/* Almacén: OPCIONAL. Sin selección ⇒ el reporte incluye todos.
             `allowClear` habilita "Todos los almacenes" para volver a `null`
             sin perder el tipo de movimiento ni el rango de fechas. */}
-        <WarehouseFilter value={almacenId} onChange={onAlmacenChange} allowClear />
+        <WarehouseFilter
+          value={almacenId}
+          onChange={onAlmacenChange}
+          allowClear
+          className={COMPACT_FIELD_CLS}
+        />
 
+        {/* Solo se propagan días completos con año plausible (ver
+            `DateParamInput`): teclear el año no consulta con cada dígito. Vaciar
+            un campo se confirma al salir de él. */}
         <div className="w-44">
-          <FormInput
+          <DateParamInput
             label="Desde"
-            type="date"
+            name="fecha_inicio"
+            className={COMPACT_FIELD_CLS}
             value={fechaInicio ?? ""}
-            // `max` impide elegir un inicio posterior al fin ya seleccionado.
             max={fechaFinal ?? undefined}
-            onChange={(e) => emitDateRange(e.target.value || null, fechaFinal)}
+            onCommit={(value) => emitDateRange(value || null, fechaFinal)}
           />
         </div>
 
         <div className="w-44">
-          <FormInput
+          <DateParamInput
             label="Hasta"
-            type="date"
+            name="fecha_final"
+            className={COMPACT_FIELD_CLS}
             value={fechaFinal ?? ""}
-            // `min` impide elegir un fin anterior al inicio ya seleccionado.
             min={fechaInicio ?? undefined}
-            onChange={(e) => emitDateRange(fechaInicio, e.target.value || null)}
+            onCommit={(value) => emitDateRange(fechaInicio, value || null)}
           />
         </div>
       </div>

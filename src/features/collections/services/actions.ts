@@ -1,3 +1,4 @@
+import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import { v1_api } from "@/src/api/v1.api";
 import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
@@ -51,16 +52,26 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
 
 /**
  * Cancela el REP del cobro ante el SAT vía Facturama
- * (`POST /finanzas/cobros/{id}/cancelar-rep/`). El endpoint no lee el cuerpo:
- * va vacío, y el motivo SAT (02) lo fija el backend. Responde el cobro completo
+ * (`POST /finanzas/cobros/{id}/cancelar-rep/`) con el motivo SAT elegido
+ * (`motivo_sat`, "02" | "03", obligatorio y sin valor por defecto, EC-806).
+ * Responde el cobro completo
  * con `rep_uuid`, `rep_facturama_id` y `rep_fecha_timbrado` en null y
  * `rep_pendiente` en false; no toca saldos, banco, póliza ni el `estatus` del
  * cobro. Los errores llegan como `{ rep: [...] }` o, si el receptor debe
- * aceptar la cancelación, como `{ cancelacion_pendiente: [...] }` (ver
- * `cancelCobroRepErrorMessage`).
+ * aceptar la cancelación, como `{ cancelacion_pendiente: [...] }`; sin
+ * respuesta de Facturama, `{ rep_incierto }`; con el motivo faltante, inválido
+ * o distinto del ya fijado, `{ motivo_sat }` (ver `cancelCobroRepErrorMessage`).
  */
-export const cancelCobroRep = async (id: number): Promise<Cobro> => {
-  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar-rep/`);
+export const cancelCobroRep = async ({
+  id,
+  motivoSat,
+}: {
+  id: number;
+  motivoSat: SatCancelMotive;
+}): Promise<Cobro> => {
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar-rep/`, {
+    motivo_sat: motivoSat,
+  });
   return data;
 };
 

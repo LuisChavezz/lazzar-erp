@@ -7,7 +7,7 @@ import { createQuote } from "../services/actions";
 import type { QuoteCreate } from "../interfaces/quote.interface";
 import {
   extractQuoteRejectionMessage,
-  extractQuoteValidationIssues,
+  extractQuoteFormIssues,
   type QuoteValidationIssue,
 } from "../utils/quoteValidationErrors";
 
@@ -24,7 +24,7 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
     mutationFn: (payload) => createQuote(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
-      toast.success("Pedido registrado correctamente");
+      toast.success("Cotización registrada correctamente");
     },
     onError: (error) => {
       // Motivo real del rechazo cuando el backend lo manda fuera de un campo
@@ -35,14 +35,14 @@ export const useCreateQuote = ({ onValidationError }: UseCreateQuoteOptions = {}
         const data = error.response?.data;
 
         if (statusCode === 400 && data) {
-          const issues = extractQuoteValidationIssues(data);
+          const issues = extractQuoteFormIssues(data);
           if (issues.length > 0) {
             onValidationError?.(issues);
           }
           message = extractQuoteRejectionMessage(data);
         }
       }
-      toast.error(message ?? "No se pudo registrar el pedido");
+      toast.error(message ?? "No se pudo registrar la cotización");
     },
   });
 };

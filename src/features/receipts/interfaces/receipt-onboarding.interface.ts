@@ -9,7 +9,8 @@ export interface ReceiptOnboardingWarehouse {
   id_almacen: number;
   codigo: string;
   nombre: string;
-  sucursal_id: number;
+  // FK nullable en el backend (almacén sin sucursal).
+  sucursal_id: number | null;
   requiere_ubicacion: boolean;
 }
 
@@ -74,6 +75,11 @@ export interface ReceiptOnboardingPurchaseOrder {
   proveedor_id: number;
   proveedor_nombre: string;
   sucursal_id: number;
+  /**
+   * Almacén destino elegido en la OC (EC-796), o `null`. Solo sugiere: el
+   * formulario lo preselecciona si es de la sucursal de la OC, y sigue editable.
+   */
+  almacen_id: number | null;
   fecha_oc: string;
   detalle: ReceiptOnboardingPurchaseOrderDetalle[];
 }

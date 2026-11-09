@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 
 interface CobroActionConfirmDialogProps {
@@ -26,6 +26,10 @@ interface CobroActionConfirmDialogProps {
    * tarde, tras el aviso de React Query; esta vale desde el mismo clic.
    */
   isIdle: () => boolean;
+  /** Contenido extra entre la descripción y los botones (ver `ConfirmDialog`). */
+  children?: ReactNode;
+  /** Deshabilita Confirmar, p. ej. mientras falta un dato de `children`. */
+  confirmDisabled?: boolean;
 }
 
 /**
@@ -49,6 +53,8 @@ export function CobroActionConfirmDialog({
   run,
   isRunning,
   isIdle,
+  children,
+  confirmDisabled = false,
 }: CobroActionConfirmDialogProps) {
   const handleOpenChange = (next: boolean) => {
     // No se cierra a media petición: el resultado debe verse. Se lee el
@@ -68,12 +74,15 @@ export function CobroActionConfirmDialog({
       confirmColor={confirmColor}
       closeOnConfirm={false}
       busy={isRunning}
+      confirmDisabled={confirmDisabled}
       onConfirm={() => {
         if (!run) return;
         // Cierre directo, sin pasar por `handleOpenChange`: al terminar, el
         // `isRunning` capturado en este render todavía no se actualizó.
         run({ onSettled: () => onOpenChange(false) });
       }}
-    />
+    >
+      {children}
+    </ConfirmDialog>
   );
 }

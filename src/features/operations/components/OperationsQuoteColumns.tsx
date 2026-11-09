@@ -24,6 +24,13 @@ import {
   ViewIcon,
 } from "@/src/components/Icons";
 import { capitalize } from "@/src/utils/capitalize";
+import { joinRowSearchText } from "@/src/utils/rowSearchText";
+import {
+  buildQuoteClienteFilterOptions,
+  buildQuoteClienteOptionsFromRows,
+  matchesQuoteClienteFilter,
+} from "@/src/features/quotes/utils/quoteFilterOptions";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
 import {
   buildQuoteCurrencyFilterOptions,
   matchesQuoteCurrencyFilter,
@@ -69,7 +76,8 @@ const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue)
 // piezas e importe usan rangos fijos.
 
 export interface OperationsQuoteFilterOptions {
-  razonesSociales: ColumnFilterOption[];
+  /** Un cliente por id (EC-810): dos clientes homónimos son dos opciones. */
+  clientes: ColumnFilterOption[];
   meses: ColumnFilterOption[];
   codigosPostales: ColumnFilterOption[];
   monedas: ColumnFilterOption[];
@@ -79,13 +87,9 @@ export function buildOperationsQuoteFilterOptions(
   quotes: OperationsQuote[],
 ): OperationsQuoteFilterOptions {
   return {
-    razonesSociales: [
+    clientes: [
       ALL_FILTER_OPTION,
-      ...buildDistinctFilterOptions(
-        quotes,
-        (q) => q.cliente_razon_social,
-        (q) => capitalize(q.cliente_razon_social),
-      ),
+      ...buildQuoteClienteFilterOptions(buildQuoteClienteOptionsFromRows(quotes)),
     ],
     meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(quotes.map((q) => q.created_at))],
     codigosPostales: [
@@ -117,7 +121,7 @@ const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
 ];
 
 const EMPTY_FILTER_OPTIONS: OperationsQuoteFilterOptions = {
-  razonesSociales: [ALL_FILTER_OPTION],
+  clientes: [ALL_FILTER_OPTION],
   meses: [ALL_FILTER_OPTION],
   codigosPostales: [ALL_FILTER_OPTION],
   monedas: [ALL_FILTER_OPTION],
@@ -179,8 +183,7 @@ const OperationsQuoteIdCell = ({
   const isRejectingChangesOperationsQuote = busy.rejectChanges.includes(operationsQuote.id);
 
   const canAuthorizeOperationsQuote =
-    canManageOperationsQuoteAuthorization(operationsQuote.estatus) &&
-    operationsQuote.estatus === 2;
+    canManageOperationsQuoteAuthorization(operationsQuote.estatus);
   const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
     operationsQuote.estatus
   );
@@ -297,13 +300,36 @@ const OperationsQuoteIdCell = ({
  * porque los filtros de encabezado necesitan opciones construidas con TODO el
  * listado; las acciones de fila siguen yendo por contexto.
  */
+/** Folio visible de la cotización: `#00295`. */
+const getOperationsQuoteFolio = (operationsQuote: OperationsQuote): string =>
+  `#${String(operationsQuote.id).padStart(5, "0")}`;
+
+/**
+ * Texto en que busca el buscador de la lista (`getRowSearchText` de
+ * `DataTable`): los mismos valores que antes leía la búsqueda por columnas
+ * (folio, razón social cruda, piezas, fecha, vendedor, C.P., importe y
+ * moneda) más el CONTACTO del cliente (`cliente_nombre`), que ninguna columna
+ * muestra pero sí la cola de autorización y los diálogos (EC-810).
+ */
+export const getOperationsQuoteSearchText = (operationsQuote: OperationsQuote): string =>
+  joinRowSearchText([
+    getOperationsQuoteFolio(operationsQuote),
+    operationsQuote.cliente_razon_social,
+    operationsQuote.cliente_nombre,
+    operationsQuote.piezas,
+    operationsQuote.created_at,
+    operationsQuote.vendedor_nombre,
+    operationsQuote.codigo_postal,
+    operationsQuote.importe_sin_iva,
+    operationsQuote.moneda_codigo,
+  ]);
+
 export const getOperationsQuoteColumns = (
   filterOptions: OperationsQuoteFilterOptions = EMPTY_FILTER_OPTIONS,
 ): ColumnDef<OperationsQuote>[] => [
   {
     id: "id",
-    accessorFn: (operationsQuote) =>
-      `#${String(operationsQuote.id).padStart(5, "0")}`,
+    accessorFn: getOperationsQuoteFolio,
     meta: { label: "Cotización" },
     filterFn: estatusFilterFn,
     header: ({ column }) => (
@@ -317,23 +343,34 @@ export const getOperationsQuoteColumns = (
     // botón, igual que en `QuoteColumns.tsx` (Ventas).
     cell: ({ row }) => <OperationsQuoteIdCell operationsQuote={row.original} />,
   },
+  // Cliente (EC-810). El VALOR de la columna es la razón social cruda (lo que
+  // lee el orden; la búsqueda va por `getOperationsQuoteSearchText`). La celda pinta
+  // la convención única (`getQuoteClienteLabel`) y el filtro va por id del
+  // cliente, no por texto.
   {
-    accessorKey: "cliente_razon_social",
+    id: "cliente_razon_social",
+    accessorFn: (row) => row.cliente_razon_social ?? "",
     meta: { label: "Razón social" },
     header: ({ column }) => (
       <FilterHeader
         title="Razón social"
         column={column}
-        options={filterOptions.razonesSociales}
-        label="razón social"
-        searchable={{ placeholder: "Buscar razón social…" }}
+        options={filterOptions.clientes}
+        label="cliente"
+        searchable={{ placeholder: "Buscar cliente…" }}
       />
     ),
     filterFn: (row, _columnId, filterValue) =>
-      !filterValue || row.original.cliente_razon_social === filterValue,
+      matchesQuoteClienteFilter(row.original, filterValue),
     cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {capitalize(row.original.cliente_razon_social)}
+      <span
+        className={
+          row.original.cliente == null
+            ? "text-slate-400 dark:text-slate-500"
+            : "text-slate-600 dark:text-slate-300"
+        }
+      >
+        {getQuoteClienteLabel(row.original)}
       </span>
     ),
   },

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { capitalize } from "@/src/utils/capitalize";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { HistoryIcon, ChevronRightIcon } from "@/src/components/Icons";
 import {
@@ -114,7 +115,7 @@ export const RecentActivityFeed = () => {
                     {/* Cliente */}
                     <td className="px-6 py-3.5 max-w-48">
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                        {operationsQuote.cliente_nombre}
+                        {getQuoteClienteLabel(operationsQuote)}
                       </p>
                       {operationsQuote.oc && (
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">

@@ -71,7 +71,7 @@ export interface Invoice {
   /**
    * Folio fiscal del CFDI; `null` mientras no se timbre. Solo lo escribe
    * `POST /finanzas/facturas/{id}/timbrar/` (solo lectura en la API). Cancelar
-   * la factura cancela su CFDI ante el SAT (motivo 02) pero NO limpia este campo.
+   * la factura cancela su CFDI ante el SAT (con el `motivo_sat` elegido) pero NO limpia este campo.
    */
   cfdi_uuid: string | null;
   /** Id del CFDI en Facturama; `null` mientras no se timbre. */
@@ -102,6 +102,19 @@ export interface Invoice {
    */
   cfdi_cancelacion_solicitada: boolean;
   /**
+   * Motivo SAT ("02" | "03") de la última solicitud de cancelación del CFDI
+   * (EC-806); `null` si nunca se pidió. Queda fijo mientras la cancelación
+   * está solicitada o hay un intento en curso (`getInvoiceLockedSatCancelMotive`).
+   * Lo traen el retrieve y el listado. Se valida con `isSatCancelMotive`.
+   */
+  cfdi_cancelacion_motivo: string | null;
+  /**
+   * Reserva de la cancelación ante el SAT (EC-806): se fija antes de llamar a
+   * Facturama y se limpia con una respuesta definitiva; si Facturama no
+   * respondió se queda y el motivo sigue fijo. SOLO lo trae el retrieve.
+   */
+  cfdi_cancelacion_en_curso_desde: string | null;
+  /**
    * Pesos por unidad de `moneda` (`DecimalField(18, 6)`, string con 6
    * decimales: "18.250000"); `null` mientras no se capture. Solo lo trae el
    * retrieve (ni el listado ni el desglose). En MXN el backend lo ignora (usa
@@ -124,10 +137,15 @@ export interface Invoice {
  * - `liberado`: no existía; queda sin UUID y se puede volver a timbrar o
  *   cancelar.
  * El estatus no cambia en ninguno de los dos.
+ *
+ * `aviso` (nucleo-erp #937, texto desde #945): `null`, salvo con `timbrado`
+ * sobre una factura cancelada o eliminada, cuyo CFDI quedó vigente ante el
+ * SAT. Es texto para el usuario final, escrito por el backend: se muestra tal
+ * cual. Con `liberado` siempre es `null`.
  */
 export type InvoiceCfdiReconcileResponse =
-  | { resultado: "timbrado"; factura: Invoice }
-  | { resultado: "liberado"; factura: Invoice };
+  | { resultado: "timbrado"; aviso: string | null; factura: Invoice }
+  | { resultado: "liberado"; aviso: null; factura: Invoice };
 
 /**
  * Respuesta de `POST /finanzas/facturas/{id}/emitir/`: la factura ya `Emitida`
@@ -193,8 +211,13 @@ export interface InvoiceListRow {
    * `cfdi_fecha_timbrado` solo vienen en el retrieve.
    */
   cfdi_uuid: string | null;
-  /** Mismos flags del CFDI que el retrieve (ver `Invoice`). */
+  /**
+   * Mismos flags del CFDI que el retrieve (ver `Invoice`). El listado NO trae
+   * `cfdi_cancelacion_en_curso_desde`: un intento en curso lo detecta el
+   * precheck de la cancelación con el retrieve fresco.
+   */
   cfdi_cancelacion_solicitada: boolean;
+  cfdi_cancelacion_motivo: string | null;
   cfdi_cancelado: boolean;
   cfdi_pendiente: boolean;
 }

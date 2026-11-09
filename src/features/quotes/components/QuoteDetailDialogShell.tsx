@@ -3,6 +3,7 @@
 import type React from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 
 interface QuoteDetailDialogShellProps {
   open: boolean;
@@ -15,7 +16,7 @@ interface QuoteDetailDialogShellProps {
 /**
  * Armazón común del detalle de cotización abierto por id: título fijo
  * ("Detalle de Cotización", sin `#id` que se leería como folio de pedido),
- * `statusColor` `sky` y `maxWidth="1000px"`, replicados de
+ * `statusColor` `sky` y el ancho de detalle (`DIALOG_WIDTH_DETAIL`), replicados de
  * `QuoteRowActionDialogs`. Lo usan `QuoteDetailByIdDialog` (buscador global,
  * notificaciones) y `PedidoQuoteDetailDialog` (pedido 360°); cada uno pone su
  * contenido.
@@ -31,7 +32,7 @@ export function QuoteDetailDialogShell({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      maxWidth="1000px"
+      maxWidth={DIALOG_WIDTH_DETAIL}
       title={
         <DialogHeader
           title="Detalle de Cotización"

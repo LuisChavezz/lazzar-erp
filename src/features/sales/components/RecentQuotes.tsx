@@ -1,16 +1,20 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
 import { OrderStatusPathIcon } from "@/src/components/Icons";
 import { formatQuoteAmountOrDash } from "@/src/features/quotes/utils/quoteDetailsFormatters";
-import { useQuotes } from "@/src/features/quotes/hooks/useQuotes";
+import { useRecentQuotes } from "@/src/features/quotes/hooks/useRecentQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
+import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { capitalize } from "@/src/utils/capitalize";
 
 // Carga dinámica del componente de detalles de cotización para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
@@ -28,24 +32,6 @@ const LazyQuoteDetails = dynamic(
   }
 );
 
-const parseOrderDate = (value?: string | null) => {
-  if (!value) return null;
-  const normalizedValue = value.trim();
-  if (!normalizedValue) return null;
-  if (normalizedValue.includes("/")) {
-    const [rawDatePart, rawTimePart] = normalizedValue.split(" ");
-    const [day, month, year] = rawDatePart.split("/").map((part) => Number(part));
-    if (!day || !month || !year) return null;
-    const [hours = 0, minutes = 0, seconds = 0] = (rawTimePart ?? "")
-      .split(":")
-      .map((part) => Number(part));
-    const parsedDate = new Date(year, month - 1, day, hours || 0, minutes || 0, seconds || 0);
-    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-  }
-  const parsedDate = new Date(normalizedValue);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-};
-
 const getStatusIconConfig = (status: number) => {
   if (status === 4) {
     return {
@@ -59,7 +45,7 @@ const getStatusIconConfig = (status: number) => {
       iconPath: "M5 13l4 4L19 7",
     };
   }
-  if (status === 2) {
+  if (status === PENDING_AUTHORIZATION_QUOTE_STATUS) {
     return {
       iconClassName: "text-amber-500",
       iconPath: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
@@ -72,23 +58,16 @@ const getStatusIconConfig = (status: number) => {
 };
 
 export const RecentQuotes = () => {
-  const { quotes, isLoading, isInitialError: isErrorQuotes } = useQuotes();
-  const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
-
-  const recentQuotes = useMemo(() => {
-    return [...quotes]
-      .sort((a, b) => {
-        const aDate = parseOrderDate(a.created_at)?.getTime() ?? 0;
-        const bDate = parseOrderDate(b.created_at)?.getTime() ?? 0;
-        return bDate - aDate;
-      })
-      .slice(0, 3);
-  }, [quotes]);
-
-  const selectedQuote = useMemo(
-    () => quotes.find((quote) => quote.id === selectedQuoteId) ?? null,
-    [quotes, selectedQuoteId]
-  );
+  // Ya vienen ordenadas y recortadas por el backend (`?limit=3`, orden por
+  // defecto: más reciente primero).
+  const { quotes: recentQuotes, isLoading, isInitialError: isErrorQuotes } = useRecentQuotes();
+  // La cotización elegida se guarda COMPLETA, no por id: la lista solo trae
+  // las 3 más recientes, y un refetch (otra cotización creada) la sacaría de
+  // ahí con el diálogo abierto. `useDialogSession` conserva la copia de la
+  // apertura mientras el diálogo anima su cierre.
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const dialogSession = useDialogSession(selectedQuote !== null, selectedQuote);
+  const dialogQuote = dialogSession.snapshot;
 
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full min-h-88">
@@ -133,7 +112,7 @@ export const RecentQuotes = () => {
               <button
                 key={quote.id}
                 type="button"
-                onClick={() => setSelectedQuoteId(quote.id)}
+                onClick={() => setSelectedQuote(quote)}
                 className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer group text-left"
               >
                 <div className="flex items-center gap-3">
@@ -144,7 +123,7 @@ export const RecentQuotes = () => {
                     <div className="text-xs font-bold text-slate-800 dark:text-white">
                       {`OC${quote.oc}` || `PED-${quote.id}`}
                     </div>
-                    <div className="text-[10px] text-slate-500">{quote.cliente_razon_social}</div>
+                    <div className="text-[10px] text-slate-500">{getQuoteClienteLabel(quote)}</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -159,24 +138,25 @@ export const RecentQuotes = () => {
             );
           })}
       </div>
-      {selectedQuote ? (
+      {dialogQuote ? (
         <MainDialog
-          open={selectedQuoteId !== null}
+          key={dialogSession.id}
+          open={selectedQuote !== null}
           onOpenChange={(open) => {
             if (!open) {
-              setSelectedQuoteId(null);
+              setSelectedQuote(null);
             }
           }}
-          maxWidth="1000px"
+          maxWidth={DIALOG_WIDTH_DETAIL}
           title={
             <DialogHeader
-              title={`Detalles de la cotización #${selectedQuote.id}`}
-              subtitle={selectedQuote.cliente_nombre || selectedQuote.cliente_razon_social}
-              statusColor={getQuoteDialogStatusColor(selectedQuote.estatus)}
+              title={`Detalles de la cotización #${dialogQuote.id}`}
+              subtitle={getQuoteClienteLabel(dialogQuote)}
+              statusColor={getQuoteDialogStatusColor(dialogQuote.estatus)}
             />
           }
         >
-          <LazyQuoteDetails quoteId={selectedQuote.id} source="cotizaciones" />
+          <LazyQuoteDetails quoteId={dialogQuote.id} source="cotizaciones" />
         </MainDialog>
       ) : null}
     </section>

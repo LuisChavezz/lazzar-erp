@@ -53,6 +53,7 @@ export const MOVEMENT_LEDGER_DOCUMENTO_LABELS: Record<MovementLedgerDocumento, s
   TRANSFERENCIA: "Transferencia",
   ORDEN_PRODUCCION: "Orden de producción",
   AJUSTE: "Ajuste",
+  FACTURA: "Factura",
   PEDIDO: "Pedido",
   MOVIMIENTO_MANUAL: "Movimiento manual",
 };
