@@ -7,9 +7,7 @@ import { StockReportSummary } from "./StockReportSummary";
 import { stockReportColumns } from "./StockReportColumns";
 import { StockReportExportButtons } from "./StockReportExportButtons";
 import { useStockReport } from "@/src/features/stock/hooks/useStockReport";
-import { useExportStockReport } from "@/src/features/stock/hooks/useExportStockReport";
-import type { StockReportExportFormat } from "@/src/features/stock/utils/stockReportExport";
-import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
+import { useStockReportExport } from "@/src/features/stock/hooks/useStockReportExports";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
@@ -81,22 +79,13 @@ export function StockReportView() {
   };
 
   // Descarga del reporte COMPLETO (todas las páginas del periodo), no la página
-  // visible, generada por el backend. Usa el contexto de filtros actual, no
-  // `data.results`. El código del almacén (para el nombre del archivo) sale de
-  // la misma lista que ya cargó el selector.
-  const pdfExport = useExportStockReport("pdf");
-  const xlsxExport = useExportStockReport("xlsx");
-  const { data: warehouses } = useWarehouses();
-  const handleExport = (formato: StockReportExportFormat) => {
-    // Los checks de null estrechan los tipos a `number`/`string` (equivalen a
-    // `gateComplete`, que siempre es cierto cuando estos botones están visibles).
-    if (almacenId === null || fechaInicio === null || fechaFinal === null) return;
-    const codigo = warehouses?.find((w) => w.id_almacen === almacenId)?.codigo;
-    (formato === "pdf" ? pdfExport : xlsxExport).exportReport({
-      params: { almacen_id: almacenId, fecha_inicio: fechaInicio, fecha_final: fechaFinal },
-      codigo,
-    });
-  };
+  // visible, generada por el backend con los filtros actuales. Los checks de
+  // null estrechan los tipos (equivalen a `gateComplete`).
+  const reportExport = useStockReportExport(
+    almacenId !== null && fechaInicio !== null && fechaFinal !== null
+      ? { almacen_id: almacenId, fecha_inicio: fechaInicio, fecha_final: fechaFinal }
+      : null,
+  );
 
   return (
     <div className="w-full space-y-8">
@@ -152,8 +141,8 @@ export function StockReportView() {
             emptyMessage="No se encontraron existencias para el almacén y el periodo seleccionados."
             actionButton={
               <StockReportExportButtons
-                isExporting={{ pdf: pdfExport.isExporting, xlsx: xlsxExport.isExporting }}
-                onExport={handleExport}
+                isExporting={reportExport.isExporting}
+                onExport={reportExport.exportReport}
               />
             }
             serverPagination={{

@@ -7,9 +7,7 @@ import { StockMovementReportSummary } from "./StockMovementReportSummary";
 import { stockMovementReportColumns } from "./StockMovementReportColumns";
 import { StockReportExportButtons } from "./StockReportExportButtons";
 import { useStockMovementReport } from "@/src/features/stock/hooks/useStockMovementReport";
-import { useExportStockMovementReport } from "@/src/features/stock/hooks/useExportStockMovementReport";
-import type { StockReportExportFormat } from "@/src/features/stock/utils/stockReportExport";
-import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
+import { useStockMovementReportExport } from "@/src/features/stock/hooks/useStockReportExports";
 import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
@@ -93,31 +91,19 @@ export function StockMovementReportView() {
   };
 
   // Descarga del reporte COMPLETO (todas las páginas del periodo), no la página
-  // visible, generada por el backend. Usa el contexto de filtros actual, no
-  // `data.results`. Sin almacén ("Todos los almacenes") no viaja `almacen_id`,
-  // igual que en la consulta de la pantalla.
-  const pdfExport = useExportStockMovementReport("pdf");
-  const xlsxExport = useExportStockMovementReport("xlsx");
-  const { data: warehouses } = useWarehouses();
-  const handleExport = (formato: StockReportExportFormat) => {
-    // Los checks de null estrechan los tipos (equivalen a `gateComplete`, que
-    // siempre es cierto cuando estos botones están visibles).
-    if (tipoMovimiento === null || fechaInicio === null || fechaFinal === null)
-      return;
-    const codigo =
-      almacenId === null
-        ? undefined
-        : warehouses?.find((w) => w.id_almacen === almacenId)?.codigo;
-    (formato === "pdf" ? pdfExport : xlsxExport).exportReport({
-      params: {
-        tipo_movimiento: tipoMovimiento,
-        fecha_inicio: fechaInicio,
-        fecha_final: fechaFinal,
-        almacen_id: almacenId ?? undefined,
-      },
-      codigo,
-    });
-  };
+  // visible, generada por el backend con los filtros actuales. Sin almacén
+  // ("Todos los almacenes") no viaja `almacen_id`, igual que en la consulta de
+  // la pantalla. Los checks de null estrechan los tipos (equivalen a `gateComplete`).
+  const reportExport = useStockMovementReportExport(
+    tipoMovimiento !== null && fechaInicio !== null && fechaFinal !== null
+      ? {
+          tipo_movimiento: tipoMovimiento,
+          fecha_inicio: fechaInicio,
+          fecha_final: fechaFinal,
+          almacen_id: almacenId ?? undefined,
+        }
+      : null,
+  );
 
   return (
     <div className="w-full space-y-8">
@@ -176,8 +162,8 @@ export function StockMovementReportView() {
             emptyMessage="No se encontraron movimientos para el tipo, almacén y periodo seleccionados."
             actionButton={
               <StockReportExportButtons
-                isExporting={{ pdf: pdfExport.isExporting, xlsx: xlsxExport.isExporting }}
-                onExport={handleExport}
+                isExporting={reportExport.isExporting}
+                onExport={reportExport.exportReport}
               />
             }
             serverPagination={{

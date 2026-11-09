@@ -16,7 +16,7 @@ import type {
   StockMovementReportParams,
   StockMovementReportResponse,
 } from "../interfaces/stock-movement-report.interface";
-import type { StockReportExportFormat } from "../utils/stockReportExport";
+import type { ReportFile, StockReportExportFormat } from "../utils/stockReportExport";
 import type {
   MovementLedgerParams,
   MovementLedgerResponse,
@@ -96,27 +96,43 @@ export const getStockReport = async (
 };
 
 /**
- * Reporte de existencias COMPLETO en PDF o XLSX, generado por el backend
- * (`reporte-existencias-periodo/exportar/`, EC-814) con los mismos filtros,
- * alcance y cálculo que el JSON de la pantalla, sin paginar. A diferencia del
- * JSON, el almacén es obligatorio (sin él responde 400 `almacen`). Pide el
- * cuerpo como `blob`; si falla, `readBlobErrorBody` deja el JSON del error en
- * `response.data` para que el hook muestre el motivo.
+ * Descarga un reporte COMPLETO en PDF o XLSX desde su `exportar/` (EC-814):
+ * mismos filtros, alcance y cálculo que el JSON de la pantalla, sin paginar.
+ * Pide el cuerpo como `blob`; si falla, `readBlobErrorBody` deja el JSON del
+ * error en `response.data` para que el hook muestre el motivo. Devuelve también
+ * el `Content-Disposition` cuando el navegador lo puede leer (CORS aún no lo
+ * expone, EC-824).
  */
-export const exportStockReport = async (
-  params: StockReportExportParams,
+const getReportFile = async (
+  url: string,
+  params: object,
   formato: StockReportExportFormat,
-): Promise<Blob> => {
+): Promise<ReportFile> => {
   try {
-    const { data } = await v1_api.get<Blob>(
-      "/inventarios/existencias/reporte-existencias-periodo/exportar/",
-      { params: { ...params, formato }, responseType: "blob" },
-    );
-    return data;
+    const response = await v1_api.get<Blob>(url, {
+      params: { ...params, formato },
+      responseType: "blob",
+    });
+    const header: unknown = response.headers?.["content-disposition"];
+    return {
+      blob: response.data,
+      contentDisposition: typeof header === "string" ? header : undefined,
+    };
   } catch (error) {
     throw await readBlobErrorBody(error);
   }
 };
+
+/**
+ * Reporte de existencias por periodo en PDF o XLSX
+ * (`reporte-existencias-periodo/exportar/`). A diferencia del JSON, el almacén
+ * es obligatorio (sin él responde 400 `almacen`).
+ */
+export const exportStockReport = (
+  params: StockReportExportParams,
+  formato: StockReportExportFormat,
+): Promise<ReportFile> =>
+  getReportFile("/inventarios/existencias/reporte-existencias-periodo/exportar/", params, formato);
 
 // ─── Reporte de movimientos de inventario por periodo ────────────────────────
 
@@ -139,25 +155,16 @@ export const getStockMovementReport = async (
 };
 
 /**
- * Reporte de movimientos COMPLETO en PDF o XLSX, generado por el backend
- * (`reporte-movimientos-periodo/exportar/`, EC-814). Mismo contrato que
- * `exportStockReport`, con el almacén opcional: sin `almacen_id` el archivo
- * trae todos los almacenes del alcance, igual que la pantalla.
+ * Reporte de movimientos por periodo en PDF o XLSX
+ * (`reporte-movimientos-periodo/exportar/`). El almacén es opcional: sin
+ * `almacen_id` el archivo trae todos los almacenes del alcance, igual que la
+ * pantalla.
  */
-export const exportStockMovementReport = async (
+export const exportStockMovementReport = (
   params: StockMovementReportExportParams,
   formato: StockReportExportFormat,
-): Promise<Blob> => {
-  try {
-    const { data } = await v1_api.get<Blob>(
-      "/inventarios/movimientos/reporte-movimientos-periodo/exportar/",
-      { params: { ...params, formato }, responseType: "blob" },
-    );
-    return data;
-  } catch (error) {
-    throw await readBlobErrorBody(error);
-  }
-};
+): Promise<ReportFile> =>
+  getReportFile("/inventarios/movimientos/reporte-movimientos-periodo/exportar/", params, formato);
 
 // ─── Auxiliar de movimientos (kardex de una variante) ────────────────────────
 
