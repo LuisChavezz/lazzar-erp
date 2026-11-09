@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { compareAsc, isAfter, parseISO } from "date-fns";
 import { GoogleCalendarIcon, ChevronRightIcon } from "@/src/components/Icons";
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
@@ -10,7 +9,7 @@ import { useGoogleCalendarStore } from "../stores/google-calendar.store";
 import { EmptyUpcomingEvents } from "./EmptyUpcomingEvents";
 import { EventItem } from "./EventItem";
 import type { GoogleCalendarEvent } from "../interfaces/google.interface";
-import { canAccessRoute } from "@/src/utils/routeAccess";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 
 const SALES_CALENDAR_PATH = "/sales/calendar";
 
@@ -31,8 +30,10 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
   const { data, isLoading } = useGoogleCalendarEvents();
   const selectedEventId = useGoogleCalendarStore((s) => s.selectedEventId);
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
-  const { data: session } = useSession();
-  const showViewAll = !hideViewAll && canAccessRoute(SALES_CALENDAR_PATH, session?.user);
+  // Mientras la sesión resuelve, el hueco del enlace (el mismo de la carga).
+  const { isPending: isAccessPending, canOpen } = useRouteAccess();
+  const showViewAll = !hideViewAll && canOpen(SALES_CALENDAR_PATH);
+  const showViewAllSkeleton = !hideViewAll && isAccessPending;
 
   const upcomingEvents = useMemo<GoogleCalendarEvent[]>(() => {
     if (!data?.events) return [];
@@ -51,7 +52,7 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
             <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
           </div>
-          {showViewAll && (
+          {!hideViewAll && (
             <div className="w-16" aria-hidden="true">
               <div className="h-4 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
             </div>
@@ -73,6 +74,11 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
           <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
           <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
         </div>
+        {showViewAllSkeleton && (
+          <div className="w-16" aria-hidden="true">
+            <div className="h-4 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+          </div>
+        )}
         {showViewAll && (
           <Link
             href={SALES_CALENDAR_PATH}

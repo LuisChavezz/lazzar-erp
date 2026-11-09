@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { ChevronRightIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { formatAmountNoCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { canAccessRoute } from "@/src/utils/routeAccess";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH, opportunityDetailPath } from "../constants/opportunityRoutes";
 import {
@@ -79,8 +78,10 @@ function RecentOpportunityRow({
  */
 export const RecentOpportunities = () => {
   const { opportunities, isInitialError, isFetching, refetch } = useRecentOpportunities();
-  const { data: session } = useSession();
-  const canOpenOpportunities = canAccessRoute(OPPORTUNITIES_LIST_PATH, session?.user);
+  // Mientras la sesión resuelve: hueco en "Ver todas" y nombres sin enlace
+  // (mismo tamaño), sin salto al llegar los permisos.
+  const { isPending: isAccessPending, canOpen } = useRouteAccess();
+  const canOpenOpportunities = canOpen(OPPORTUNITIES_LIST_PATH);
 
   return (
     <section
@@ -94,6 +95,11 @@ export const RecentOpportunities = () => {
           </div>
           <h2 className="font-bold text-slate-800 dark:text-white text-sm">Oportunidades recientes</h2>
         </div>
+        {isAccessPending && (
+          <div className="w-20" aria-hidden="true">
+            <LoadingSkeleton className="h-4 rounded-full!" />
+          </div>
+        )}
         {canOpenOpportunities && (
           <Link
             href={OPPORTUNITIES_LIST_PATH}

@@ -4,11 +4,11 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
-import { canAccessRoute } from "@/src/utils/routeAccess";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { hasPermission } from "@/src/utils/permissions";
 
 // Carga dinámica del formulario de cliente para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
@@ -22,21 +22,33 @@ const LazyCustomerForm = dynamic(
   }
 );
 
+// Hueco de un acceso mientras la sesión resuelve: mismo marco y alto que el real.
+const TileSkeleton = () => (
+  <div
+    aria-hidden="true"
+    className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5"
+  >
+    <LoadingSkeleton className="h-6 w-6! mb-2 rounded-lg!" />
+    <LoadingSkeleton className="h-[15px] w-16! rounded-full!" />
+  </div>
+);
+
 export const QuickActions = () => {
   const router = useRouter();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   // Un acceso solo se ofrece si la regla del proxy deja abrir su destino
   // (EC-813): el alta exige `C-CRM-COTIZACIONES` y el listado,
-  // `R-CRM-COTIZACIONES`, que un usuario con `R-CRM` puede no tener.
-  const { data: session } = useSession();
-  const canOpenNewQuote = canAccessRoute("/sales/quotes/new", session?.user);
-  const canOpenQuotes = canAccessRoute("/sales/quotes", session?.user);
+  // `R-CRM-COTIZACIONES`, que un usuario con `R-CRM` puede no tener. Mientras
+  // la sesión resuelve, cada acceso condicionado es un hueco del mismo tamaño.
+  const { isPending, canOpen, user } = useRouteAccess();
+  const canOpenNewQuote = canOpen("/sales/quotes/new");
+  const canOpenQuotes = canOpen("/sales/quotes");
   // Alta de cliente: el mismo código que el botón de alta de `CustomerList`.
   // Tras crearlo solo se lleva al listado si el proxy deja abrirlo
   // (`R-CRM-CLIENTES`); si no, se queda aquí con el aviso de guardado del
   // propio formulario.
-  const canCreateCustomer = hasPermission("C-CRM-CLIENTES", session?.user);
-  const canOpenCustomers = canAccessRoute("/sales/customers", session?.user);
+  const canCreateCustomer = !isPending && hasPermission("C-CRM-CLIENTES", user);
+  const canOpenCustomers = canOpen("/sales/customers");
 
   const handleCustomerCreated = () => {
     setIsCustomerDialogOpen(false);
@@ -52,6 +64,7 @@ export const QuickActions = () => {
         Accesos Rápidos
       </h2>
       <div className="grid grid-cols-2 gap-3">
+        {isPending && Array.from({ length: 3 }, (_, index) => <TileSkeleton key={index} />)}
         {canOpenNewQuote && (
           <Link
             href="/sales/quotes/new"
