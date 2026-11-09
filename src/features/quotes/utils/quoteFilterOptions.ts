@@ -1,4 +1,4 @@
-import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
+import { buildDistinctFilterOptions, type ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import { SIN_CLIENTE, type QuoteClienteOption } from "../interfaces/quote-list.interface";
 import { getQuoteClienteLabel, SIN_CLIENTE_LABEL, type QuoteClienteFields } from "./quoteClienteLabel";
 
@@ -45,20 +45,21 @@ export const buildQuoteClienteFilterOptions = (
  * cargado, en el mismo formato que `opciones/`: ordenadas por etiqueta (y
  * por id en homónimos) y con la marca "Sin cliente" si alguna no tiene.
  * Para un listado que filtra en memoria y no tiene `opciones/`.
+ *
+ * La deduplicación y el orden son los de `buildDistinctFilterOptions`, que
+ * descarta las filas sin cliente (valor `null`); se entra ordenado por id
+ * para que su orden estable deje a los homónimos por id.
  */
 export const buildQuoteClienteOptionsFromRows = (
   rows: readonly QuoteClienteFields[],
 ): QuoteClienteOption[] => {
-  const byId = new Map<number, string>();
-  let hasSinCliente = false;
-  for (const row of rows) {
-    if (row.cliente == null) hasSinCliente = true;
-    else if (!byId.has(row.cliente)) byId.set(row.cliente, getQuoteClienteLabel(row));
-  }
-  const clientes: QuoteClienteOption[] = [...byId]
-    .sort(([idA, a], [idB, b]) => a.localeCompare(b, "es", { sensitivity: "base" }) || idA - idB)
-    .map(([value, label]) => ({ value, label }));
-  return hasSinCliente
+  const byId = [...rows].sort((a, b) => (a.cliente ?? 0) - (b.cliente ?? 0));
+  const clientes: QuoteClienteOption[] = buildDistinctFilterOptions(
+    byId,
+    (row) => row.cliente,
+    getQuoteClienteLabel,
+  ).map(({ value, label }) => ({ value: Number(value), label }));
+  return rows.some((row) => row.cliente == null)
     ? [...clientes, { value: SIN_CLIENTE, label: SIN_CLIENTE_LABEL }]
     : clientes;
 };
