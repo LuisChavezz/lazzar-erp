@@ -2,6 +2,7 @@
 "use client"
 
 import { useSession } from "next-auth/react";
+import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
@@ -25,6 +26,7 @@ const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | un
 
 export const HomedGrid = () => {
   const { data: session, status } = useSession();
+  const { phase: recoveryPhase } = useSessionRecovery();
   const visibleHomeCards = homeCards.flatMap((card) => {
     const href = cardHref(card, session?.user);
     return href ? [{ ...card, href }] : [];
@@ -47,6 +49,24 @@ export const HomedGrid = () => {
             aria-hidden="true"
           />
         ))}
+      </div>
+    );
+  }
+
+  // Sin ningún módulo abrible: se explica en lugar de dejar el Home en blanco.
+  // Solo con la sesión leída: si se está recuperando o falló, la falta de
+  // tarjetas no dice nada de sus permisos (el sidebar ya avisa con "Reintentar").
+  if (visibleHomeCards.length === 0 && session?.user && recoveryPhase === "idle") {
+    return (
+      <div className="max-w-xl mx-auto py-12">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-white/5 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            No tienes módulos asignados
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Contacta a tu administrador para que te asigne los permisos que necesitas.
+          </p>
+        </div>
       </div>
     );
   }
