@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
+import { getSidebarItems } from "@/src/utils/getSidebarItems";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getVisibleRouteSections } from "@/src/utils/routeSections";
 
@@ -61,4 +62,26 @@ test.describe("getModuleEntryHref", () => {
       }
     });
   }
+});
+
+test.describe("item de módulo del sidebar global (EC-813)", () => {
+  const moduleHref = (permissions: string[], label: string, pathname = "/") =>
+    getSidebarItems(user(permissions), pathname)
+      .flatMap((section) => section.items)
+      .find((item) => item.label === label)?.href;
+
+  test("con solo una sección lleva a esa sección, también desde Configuración", () => {
+    expect(moduleHref(["R-WMS-PICKING"], group("wms").moduleLabel)).toBe("/wms/picking");
+    expect(moduleHref(["R-CRM-PEDIDOS"], group("sales").moduleLabel, "/config")).toBe("/sales/orders");
+  });
+
+  test("con el código de módulo, o R-CORE-REPORTES en el Panel de Control, a la portada", () => {
+    expect(moduleHref(["R-WMS"], group("wms").moduleLabel)).toBe("/wms");
+    expect(moduleHref(["R-CORE-REPORTES"], group("system").moduleLabel)).toBe("/system");
+  });
+
+  test("con solo el código de una hoja oculta el módulo no se ofrece", () => {
+    expect(getGroupAccessPermissions(group("sales"))).not.toContain("C-CRM-COTIZACIONES");
+    expect(moduleHref(["C-CRM-COTIZACIONES"], group("sales").moduleLabel)).toBeUndefined();
+  });
 });

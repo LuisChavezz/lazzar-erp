@@ -1,6 +1,6 @@
 import type React from "react";
 import { HomeIcon } from "../components/Icons";
-import { appRouteGroups, getGroupAccessPermissions } from "./appRoutes";
+import { appRouteGroups, getGroupAccessPermissions, type AppRouteGroup } from "./appRoutes";
 import type { PermissionRequirement } from "../utils/permissions";
 
 export interface SidebarItem {
@@ -15,6 +15,13 @@ export interface SidebarItem {
    * el de cualquiera de sus secciones (ver `getGroupAccessPermissions`).
    */
   permissionAnyOf?: string[];
+  /**
+   * Items de MÓDULO: su grupo. `href` es entonces solo el valor por defecto
+   * (`modulePath`); el destino real para el usuario lo resuelve
+   * `getSidebarItems` con `getModuleEntryHref` (EC-813), porque la portada
+   * exige el código de módulo y quien solo tiene una sección sería rebotado.
+   */
+  entryGroup?: AppRouteGroup;
 }
 
 export interface SidebarSection {
@@ -50,6 +57,7 @@ const mapGroupToSidebarItem = (group: (typeof appRouteGroups)[number]): SidebarI
   href: group.modulePath,
   icon: group.moduleIcon,
   permissionAnyOf: getGroupAccessPermissions(group),
+  entryGroup: group,
 });
 
 const getActiveGroup = (pathname: string) =>

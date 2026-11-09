@@ -1,5 +1,6 @@
 import { getSidebarSectionsByPath, type SidebarItem } from "../constants/sidebarItems";
 import { PermissionContext } from "../interfaces/permission-context.interface";
+import { getModuleEntryHref } from "./moduleEntry";
 import { hasAnyPermission, meetsPermissionRequirement } from "./permissions";
 
 /**
@@ -16,6 +17,19 @@ const canSeeItem = (item: SidebarItem, context?: PermissionContext | null) => {
   return item.permission ? meetsPermissionRequirement(item.permission, context) : true;
 };
 
+/**
+ * El acceso tal como se le pinta al usuario, o `null` si no se le ofrece. Un
+ * item de MÓDULO lleva al destino de `getModuleEntryHref` (la portada o, si el
+ * proxy no lo deja entrar en ella, su primera sección abrible) y no se ofrece
+ * si no hay ninguno.
+ */
+const resolveItem = (item: SidebarItem, context?: PermissionContext | null): SidebarItem | null => {
+  if (!canSeeItem(item, context)) return null;
+  if (!item.entryGroup) return item;
+  const href = getModuleEntryHref(item.entryGroup, context);
+  return href ? { ...item, href } : null;
+};
+
 export const getSidebarItems = (
   context?: PermissionContext | null,
   pathname: string = "/"
@@ -23,7 +37,10 @@ export const getSidebarItems = (
   getSidebarSectionsByPath(pathname)
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canSeeItem(item, context)),
+      items: section.items.flatMap((item) => {
+        const resolved = resolveItem(item, context);
+        return resolved ? [resolved] : [];
+      }),
     }))
     .filter((section) => section.items.length > 0);
 
