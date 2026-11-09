@@ -50,7 +50,13 @@ export interface Quote {
    * `null`).
    */
   cliente: number | null;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
   cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
   cliente_razon_social: string | null;
   oc: string;
   uso_cfdi: string;
@@ -170,8 +176,14 @@ export interface QuoteById {
     color_nombre: string | null;
     color_codigo_hex: string | null;
   }[];
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
+  cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
+  cliente_razon_social: string | null;
   estatus: number;
   /**
    * Campo del modelo `Cotizacion` expuesto por el serializer (`fields="__all__"`).
