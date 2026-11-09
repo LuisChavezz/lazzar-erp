@@ -25,6 +25,12 @@ import {
 } from "@/src/components/Icons";
 import { capitalize } from "@/src/utils/capitalize";
 import {
+  buildQuoteClienteFilterOptions,
+  buildQuoteClienteOptionsFromRows,
+  matchesQuoteClienteFilter,
+} from "@/src/features/quotes/utils/quoteFilterOptions";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
+import {
   buildQuoteCurrencyFilterOptions,
   matchesQuoteCurrencyFilter,
 } from "@/src/features/quotes/utils/quoteCurrencyFilter";
@@ -69,7 +75,8 @@ const estatusFilterFn: FilterFn<OperationsQuote> = (row, _columnId, filterValue)
 // piezas e importe usan rangos fijos.
 
 export interface OperationsQuoteFilterOptions {
-  razonesSociales: ColumnFilterOption[];
+  /** Un cliente por id (EC-810): dos clientes homónimos son dos opciones. */
+  clientes: ColumnFilterOption[];
   meses: ColumnFilterOption[];
   codigosPostales: ColumnFilterOption[];
   monedas: ColumnFilterOption[];
@@ -79,13 +86,9 @@ export function buildOperationsQuoteFilterOptions(
   quotes: OperationsQuote[],
 ): OperationsQuoteFilterOptions {
   return {
-    razonesSociales: [
+    clientes: [
       ALL_FILTER_OPTION,
-      ...buildDistinctFilterOptions(
-        quotes,
-        (q) => q.cliente_razon_social,
-        (q) => capitalize(q.cliente_razon_social),
-      ),
+      ...buildQuoteClienteFilterOptions(buildQuoteClienteOptionsFromRows(quotes)),
     ],
     meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(quotes.map((q) => q.created_at))],
     codigosPostales: [
@@ -117,7 +120,7 @@ const rangeOptions = (ranges: RangeFilterOption[]): ColumnFilterOption[] => [
 ];
 
 const EMPTY_FILTER_OPTIONS: OperationsQuoteFilterOptions = {
-  razonesSociales: [ALL_FILTER_OPTION],
+  clientes: [ALL_FILTER_OPTION],
   meses: [ALL_FILTER_OPTION],
   codigosPostales: [ALL_FILTER_OPTION],
   monedas: [ALL_FILTER_OPTION],
@@ -316,25 +319,49 @@ export const getOperationsQuoteColumns = (
     // botón, igual que en `QuoteColumns.tsx` (Ventas).
     cell: ({ row }) => <OperationsQuoteIdCell operationsQuote={row.original} />,
   },
+  // Cliente (EC-810). El VALOR de la columna es la razón social cruda (lo que
+  // leen la búsqueda y el orden; `?? ""` para que un `null` en la primera fila
+  // no la saque de la búsqueda, ver la trampa en `DataTable`). La celda pinta
+  // la convención única (`getQuoteClienteLabel`) y el filtro va por id del
+  // cliente, no por texto.
   {
-    accessorKey: "cliente_razon_social",
+    id: "cliente_razon_social",
+    accessorFn: (row) => row.cliente_razon_social ?? "",
     meta: { label: "Razón social" },
     header: ({ column }) => (
       <FilterHeader
         title="Razón social"
         column={column}
-        options={filterOptions.razonesSociales}
-        label="razón social"
-        searchable={{ placeholder: "Buscar razón social…" }}
+        options={filterOptions.clientes}
+        label="cliente"
+        searchable={{ placeholder: "Buscar cliente…" }}
       />
     ),
     filterFn: (row, _columnId, filterValue) =>
-      !filterValue || row.original.cliente_razon_social === filterValue,
+      matchesQuoteClienteFilter(row.original, filterValue),
     cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {capitalize(row.original.cliente_razon_social)}
+      <span
+        className={
+          row.original.cliente == null
+            ? "text-slate-400 dark:text-slate-500"
+            : "text-slate-600 dark:text-slate-300"
+        }
+      >
+        {getQuoteClienteLabel(row.original)}
       </span>
     ),
+  },
+  // Contacto del cliente SOLO para la búsqueda global: buscar a la persona que
+  // muestran la cola y los diálogos encuentra su cotización. Nunca se ve: oculta
+  // de inicio y fuera de "Mostrar/Ocultar" (`enableHiding: false`); la búsqueda
+  // de TanStack recorre también las columnas ocultas.
+  {
+    id: "cliente_contacto",
+    accessorFn: (row) => row.cliente_nombre ?? "",
+    header: "Contacto",
+    meta: { label: "Contacto", hiddenByDefault: true },
+    enableHiding: false,
+    enableSorting: false,
   },
   {
     accessorKey: "piezas",

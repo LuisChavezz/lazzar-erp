@@ -13,11 +13,13 @@ import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { getQuoteStatusLabel } from "@/src/features/quotes/constants/quoteStatus";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
+import { formatQuoteClienteDe } from "@/src/features/quotes/utils/quoteClienteLabel";
 import { useRejectOperationsQuote } from "../hooks/useRejectOperationsQuote";
 import { quoteRejectSchema } from "../schemas/quote-reject.schema";
 
 export interface RejectQuoteDialogTarget {
   id: number;
+  cliente: number | null;
   cliente_nombre?: string | null;
   cliente_razon_social?: string | null;
 }
@@ -138,8 +140,6 @@ export function RejectQuoteDialog({ open, quote, liveQuote, onClose }: RejectQuo
       .finally(() => rowLock.release(quote.id));
   };
 
-  const cliente = quote.cliente_nombre || quote.cliente_razon_social;
-
   return (
     <MainDialog
       open={open}
@@ -147,9 +147,9 @@ export function RejectQuoteDialog({ open, quote, liveQuote, onClose }: RejectQuo
       maxWidth={DIALOG_WIDTH_FORM}
       showCloseButton={false}
       title="Rechazar cotización"
-      description={`Se rechazará la cotización #${quote.id}${
-        cliente ? ` de ${cliente}` : ""
-      }. El vendedor verá el motivo y podrá corregirla y reenviarla a revisión.`}
+      description={`Se rechazará la cotización #${quote.id}${formatQuoteClienteDe(
+        quote,
+      )}. El vendedor verá el motivo y podrá corregirla y reenviarla a revisión.`}
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-1">
         <FormTextarea

@@ -33,6 +33,10 @@ import type { OperationsQuote } from "@/src/features/operations/interfaces/opera
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
 import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
+import {
+  formatQuoteClienteDe,
+  getQuoteClienteLabel,
+} from "@/src/features/quotes/utils/quoteClienteLabel";
 
 const OperationsQuoteDetails = dynamic(
   () =>
@@ -216,7 +220,7 @@ export const PendingApprovalQueue = () => {
                     key={operationsQuote.id}
                     role="button"
                     tabIndex={isProcessing ? -1 : 0}
-                    aria-label={`Ver detalles de cotización #${String(operationsQuote.id).padStart(5, "0")} de ${operationsQuote.cliente_nombre}`}
+                    aria-label={`Ver detalles de cotización #${String(operationsQuote.id).padStart(5, "0")}${formatQuoteClienteDe(operationsQuote)}`}
                     onClick={() =>
                       !isProcessing && setActiveOperationsQuote(operationsQuote)
                     }
@@ -250,7 +254,7 @@ export const PendingApprovalQueue = () => {
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {operationsQuote.cliente_nombre}
+                        {getQuoteClienteLabel(operationsQuote)}
                       </p>
                       {operationsQuote.oc && (
                         <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
@@ -337,10 +341,7 @@ export const PendingApprovalQueue = () => {
           title={
             <DialogHeader
               title={`Detalles de la cotización #${activeOperationsQuote.id}`}
-              subtitle={
-                activeOperationsQuote.cliente_nombre ||
-                activeOperationsQuote.cliente_razon_social
-              }
+              subtitle={getQuoteClienteLabel(activeOperationsQuote)}
               statusColor={getQuoteDialogStatusColor(activeOperationsQuote.estatus)}
             />
           }
@@ -362,9 +363,9 @@ export const PendingApprovalQueue = () => {
           pendingOperationsQuoteAction
             ? `¿Confirmas autorizar la cotización #${String(
                 pendingOperationsQuoteAction.operationsQuote.id
-              ).padStart(5, "0")} de ${
-                pendingOperationsQuoteAction.operationsQuote.cliente_nombre
-              }?`
+              ).padStart(5, "0")}${formatQuoteClienteDe(
+                pendingOperationsQuoteAction.operationsQuote,
+              )}?`
             : ""
         }
         onConfirm={handleConfirmApprove}
