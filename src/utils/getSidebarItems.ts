@@ -1,33 +1,25 @@
 import { getSidebarSectionsByPath, type SidebarItem } from "../constants/sidebarItems";
 import { PermissionContext } from "../interfaces/permission-context.interface";
 import { getModuleEntryHref } from "./moduleEntry";
-import { hasAnyPermission, meetsPermissionRequirement } from "./permissions";
+import { meetsPermissionRequirement } from "./permissions";
 
 /**
- * ¿Se le muestra este acceso al usuario?
+ * El acceso tal como se le pinta al usuario, o `null` si no se le ofrece.
  *
- * `permissionAnyOf` (items de MÓDULO) se satisface con CUALQUIERA de sus
- * códigos; `permission` (sub-rutas) exige ese código exacto, o uno de la lista
- * si es un arreglo (lectura jerárquica de Finanzas). Sin código, visible.
- */
-const canSeeItem = (item: SidebarItem, context?: PermissionContext | null) => {
-  if (item.permissionAnyOf?.length) {
-    return hasAnyPermission(item.permissionAnyOf, context);
-  }
-  return item.permission ? meetsPermissionRequirement(item.permission, context) : true;
-};
-
-/**
- * El acceso tal como se le pinta al usuario, o `null` si no se le ofrece. Un
- * item de MÓDULO lleva al destino de `getModuleEntryHref` (la portada o, si el
- * proxy no lo deja entrar en ella, su primera sección abrible) y no se ofrece
- * si no hay ninguno.
+ * - Item de MÓDULO (`entryGroup`): se ofrece si y solo si tiene destino de
+ *   entrada (`getModuleEntryHref`: la portada o, si el proxy no lo deja entrar
+ *   en ella, su primera sección abrible), y lleva a ese destino. Visibilidad y
+ *   destino salen así de la misma regla (EC-813).
+ * - Resto: `permission` exige ese código, o uno de la lista si es un arreglo
+ *   (lectura jerárquica de Finanzas). Sin código, visible.
  */
 const resolveItem = (item: SidebarItem, context?: PermissionContext | null): SidebarItem | null => {
-  if (!canSeeItem(item, context)) return null;
-  if (!item.entryGroup) return item;
-  const href = getModuleEntryHref(item.entryGroup, context);
-  return href ? { ...item, href } : null;
+  if (item.entryGroup) {
+    const href = getModuleEntryHref(item.entryGroup, context);
+    return href ? { ...item, href } : null;
+  }
+  if (item.permission && !meetsPermissionRequirement(item.permission, context)) return null;
+  return item;
 };
 
 export const getSidebarItems = (
@@ -45,8 +37,9 @@ export const getSidebarItems = (
     .filter((section) => section.items.length > 0);
 
 /**
- * ¿La visibilidad de este acceso depende de los permisos de la sesión? Mismo
- * criterio que `canSeeItem`: sin código, se ve siempre (p. ej. "Inicio").
+ * ¿La visibilidad de este acceso depende de los permisos de la sesión? Sin
+ * código, se ve siempre (p. ej. "Inicio"); con él, es un skeleton mientras la
+ * sesión carga.
  */
 export const sidebarItemRequiresPermission = (item: SidebarItem) =>
   Boolean(item.permissionAnyOf?.length || item.permission);
