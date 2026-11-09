@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { useClientNow } from "@/src/hooks/useClientNow";
-import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrderStatus";
-import { SemaforoBadge } from "@/src/features/pre-orders/components/PreOrderTracking";
+import { PreOrderTrackerMini } from "@/src/features/pre-orders/components/PreOrderTracker";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { getMexicoTodayDate, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
@@ -149,12 +148,9 @@ export function PreOrdenCell({ order }: { order: SpecialOrderListItem }) {
     <Link
       href={`/manufacturing/pre-orders/${pre.id}`}
       title="Ver pre-orden"
-      className="inline-flex flex-col items-start gap-1 hover:opacity-80"
+      className="inline-flex hover:opacity-80"
     >
-      <StatusBadge status={pre.estatus} config={PRE_ORDER_STATUS_CFG} />
-      {pre.estatus !== "convertida" && pre.estatus !== "cancelada" && pre.semaforo && (
-        <SemaforoBadge semaforo={pre.semaforo} />
-      )}
+      <PreOrderTrackerMini estatus={pre.estatus} late={pre.semaforo === "rojo"} />
     </Link>
   );
 }
