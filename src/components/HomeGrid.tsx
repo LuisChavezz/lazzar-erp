@@ -4,6 +4,7 @@
 import { useSession } from "next-auth/react";
 import { hasAnyPermission } from "@/src/utils/permissions";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { homeCards } from "@/src/constants/homeCards";
@@ -22,19 +23,14 @@ const cardAccessPermissions = (card: (typeof homeCards)[number]): string[] => {
 };
 
 /**
- * Destino de la tarjeta para `user`: la portada del módulo si puede abrirla y,
- * si no (p. ej. solo `R-PRODUCCION-OP` sin `R-PRODUCCION`), la primera sección
- * del menú que sí puede abrir. Sin esto, la tarjeta visible por permiso de
- * sección mandaría a una ruta que el proxy rebota al Home. `null` si no hay
- * ninguna abrible.
+ * Destino de la tarjeta para `user`: el mismo que el resto de entradas al
+ * módulo (`getModuleEntryHref`). Una tarjeta sin grupo en `appRouteGroups`
+ * solo lleva a su `href` si puede abrirlo. `null` si no hay ninguna abrible.
  */
 const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | undefined) => {
-  if (canAccessRoute(card.href, user)) return card.href;
   const group = appRouteGroups.find((item) => item.modulePath === card.href);
-  return (
-    group?.items.find((item) => item.showInSidebar !== false && canAccessRoute(item.path, user))
-      ?.path ?? null
-  );
+  if (group) return getModuleEntryHref(group, user);
+  return canAccessRoute(card.href, user) ? card.href : null;
 };
 
 export const HomedGrid = () => {
