@@ -7,6 +7,7 @@ import MobileSidebar from "./MobileSidebar";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
+import SidebarModuleHeader from "./SidebarModuleHeader";
 import SidebarSessionNotice from "./SidebarSessionNotice";
 import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
@@ -57,11 +58,6 @@ export default function Sidebar() {
 
   // Ancho del panel interior y del aside
   const panelWidthClass = isPinned ? "w-72" : "w-20 group-hover/sidebar:w-72";
-
-  // Visibilidad de etiquetas de texto (nombre de marca, labels de items)
-  const labelClass = isPinned
-    ? "opacity-100 transition-opacity duration-200 absolute left-14"
-    : "opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 absolute left-14";
 
   // Visibilidad del nombre de marca en la sección del logo
   const brandLabelClass = isPinned
@@ -130,30 +126,14 @@ export default function Sidebar() {
                         <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                       </div>
                       <div className="space-y-2">
-                        {isPending ? (
-                          <SidebarItemSkeleton variant="desktop" />
-                        ) : moduleItem.href ? (
-                          <Link
-                            href={moduleItem.href}
-                            aria-label={moduleItem.label}
-                            className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${moduleItem.isActive
-                                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                                : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-                              }`}
-                          >
-                            <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                            <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
-                              {moduleItem.label}
-                            </span>
-                          </Link>
-                        ) : (
-                          <div className="flex items-center gap-4 px-3 py-3 rounded-xl relative text-slate-500 dark:text-white">
-                            <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                            <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
-                              {moduleItem.label}
-                            </span>
-                          </div>
-                        )}
+                        <SidebarModuleHeader
+                          label={moduleItem.label}
+                          icon={moduleItem.icon}
+                          href={moduleItem.href}
+                          isPending={isPending}
+                          isActive={moduleItem.isActive}
+                          variant="desktop"
+                        />
                         <div className={sectionLabelClass}>
                           <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {moduleLabel}

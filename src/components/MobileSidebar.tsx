@@ -1,12 +1,12 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
+import SidebarModuleHeader from "./SidebarModuleHeader";
 import SidebarSessionNotice from "./SidebarSessionNotice";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { UserMenu } from "./UserMenu";
@@ -121,32 +121,15 @@ export default function MobileSidebar() {
                       <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                     </div>
                     <div className="space-y-2">
-                      {isPending ? (
-                        <SidebarItemSkeleton variant="mobile" />
-                      ) : moduleItem.href ? (
-                        <Link
-                          href={moduleItem.href}
-                          aria-label={moduleItem.label}
-                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${
-                            moduleItem.isActive
-                              ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                              : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-                          }`}
-                          onClick={() => setIsMobileOpen(false)}
-                        >
-                          <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                          <span className="font-medium text-sm whitespace-nowrap">
-                            {moduleItem.label}
-                          </span>
-                        </Link>
-                      ) : (
-                        <div className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-white">
-                          <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                          <span className="font-medium text-sm whitespace-nowrap">
-                            {moduleItem.label}
-                          </span>
-                        </div>
-                      )}
+                      <SidebarModuleHeader
+                        label={moduleItem.label}
+                        icon={moduleItem.icon}
+                        href={moduleItem.href}
+                        isPending={isPending}
+                        isActive={moduleItem.isActive}
+                        variant="mobile"
+                        onNavigate={() => setIsMobileOpen(false)}
+                      />
                       <div className="px-4">
                         <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
                           {moduleLabel}
