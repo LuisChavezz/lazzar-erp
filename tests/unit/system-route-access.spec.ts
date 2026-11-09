@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
+import { appRouteGroups } from "@/src/constants/appRoutes";
 import { canAccessRoute } from "@/src/utils/routeAccess";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasPermission, permissionRequirementCodes } from "@/src/utils/permissions";
 import { isPlausibleDateKey } from "@/src/utils/plausibleDateKey";
 
 /**
@@ -37,16 +37,27 @@ test.describe("isPlausibleDateKey (movido a src/utils)", () => {
 });
 
 /**
- * El icono de inicio de `ModuleNav` decide con `canAccessRoute(modulePath)`.
- * Fuera de `/system` debe dar EXACTAMENTE lo mismo que el permiso del grupo
- * que usaba antes, para cualquier código de cualquier módulo.
+ * Las entradas al módulo (`getModuleEntryHref`, también el icono de inicio de
+ * `ModuleNav`) llevan a la portada si `canAccessRoute(modulePath)` lo permite.
+ * Fuera de `/system` esa regla debe dar EXACTAMENTE lo mismo que el permiso
+ * del grupo, para cualquier código de cualquier módulo.
  */
 test.describe("raíz de módulo en ModuleNav", () => {
+  // Códigos de TODAS las hojas, también las ocultas (`showInSidebar: false`,
+  // p. ej. `C-CRM-COTIZACIONES` del alta): `getGroupAccessPermissions` ya no
+  // las cuenta (EC-813) y la matriz no debe perderlas.
   const codes = [
     ...new Set(
-      appRouteGroups.flatMap((g) => [...getGroupAccessPermissions(g), ...(g.permission ? [g.permission] : [])]),
+      appRouteGroups.flatMap((g) => [
+        ...(g.permission ? [g.permission] : []),
+        ...g.items.flatMap((item) => (item.permission ? permissionRequirementCodes(item.permission) : [])),
+      ]),
     ),
   ];
+
+  test("la matriz incluye los códigos de hojas ocultas", () => {
+    expect(codes).toContain("C-CRM-COTIZACIONES");
+  });
   const users = [
     { role: "admin", permissions: [] },
     { role: "user", permissions: [] },

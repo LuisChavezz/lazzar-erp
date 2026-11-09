@@ -119,10 +119,20 @@ export interface AppRouteGroup {
  * sidebar) con `hasAnyPermission`. Usar solo `group.permission` dejaría sin
  * enlace a quien tenga una sección pero no el módulo, que es justo la
  * granularidad que persigue el catálogo.
+ *
+ * Solo cuentan las hojas NAVEGABLES (`showInSidebar !== false`), las mismas
+ * entre las que `getModuleEntryHref` busca destino (EC-813). Una hoja oculta
+ * (alta, detalle) no se abre desde el menú: con solo su código (p. ej.
+ * `C-CRM-COTIZACIONES`) el módulo se ofrecería sin ningún sitio al que llevar.
  */
 export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
   ...new Set(
-    [group.permission, ...group.items.flatMap((item) => (item.permission ? permissionRequirementCodes(item.permission) : []))].filter(
+    [
+      group.permission,
+      ...group.items
+        .filter((item) => item.showInSidebar !== false)
+        .flatMap((item) => (item.permission ? permissionRequirementCodes(item.permission) : [])),
+    ].filter(
       (permission): permission is string => Boolean(permission)
     )
   ),

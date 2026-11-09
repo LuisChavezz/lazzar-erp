@@ -16,6 +16,8 @@ import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
 import { capitalize } from "@/src/utils/capitalize";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 
 // Carga dinámica del componente de detalles de cotización para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
 const LazyQuoteDetails = dynamic(
@@ -68,18 +70,29 @@ export const RecentQuotes = () => {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const dialogSession = useDialogSession(selectedQuote !== null, selectedQuote);
   const dialogQuote = dialogSession.snapshot;
+  // "Ver todos" solo si la regla del proxy deja abrir el listado (EC-813).
+  // Mientras la sesión resuelve, un hueco en su lugar (sin salto al llegar).
+  const { isPending: isAccessPending, canOpen } = useRouteAccess();
+  const canOpenQuotes = canOpen("/sales/quotes");
 
   return (
     <section className="bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6 flex flex-col h-full min-h-88">
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-bold text-slate-800 dark:text-white text-sm">Cotizaciones Recientes</h3>
-        <Link
-          href="/sales/quotes"
-          aria-label="Ver todas las cotizaciones"
-          className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors"
-        >
-          Ver todos
-        </Link>
+        {isAccessPending && (
+          <div className="w-16" aria-hidden="true">
+            <LoadingSkeleton className="h-4 rounded-full!" />
+          </div>
+        )}
+        {canOpenQuotes && (
+          <Link
+            href="/sales/quotes"
+            aria-label="Ver todas las cotizaciones"
+            className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors"
+          >
+            Ver todos
+          </Link>
+        )}
       </div>
       <div className="flex-1 min-h-52 space-y-4">
         {isLoading ? (

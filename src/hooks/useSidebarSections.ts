@@ -29,6 +29,7 @@ export const useSidebarSections = (pathname: string) => {
   const { user, isPending, isUnavailable, retry } = useSidebarSession();
   return {
     sections: getSidebarSectionsForSession(pathname, user, isPending),
+    user,
     isPending,
     isUnavailable,
     retry,

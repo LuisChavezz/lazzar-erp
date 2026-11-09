@@ -31,8 +31,13 @@ const SECTION_TITLE = "Indicadores";
  * Ventas por cliente: un bloque por moneda con el total facturado, los clientes
  * facturados y la concentración del top. Sin meta ni semáforo (el backend no
  * los expone): sin insignia y sin barra.
+ *
+ * `allCustomers` es `puede_ver_cartera_de_todos` (EC-789): con él la facturación
+ * cubre todos los clientes de la empresa; sin él (o si no llega), solo los que
+ * tiene asignados el usuario (Mesa de Control ve todos los clientes, pero no su
+ * facturación).
  */
-function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactItem {
+function salesCard(kpi: CustomerSalesKpi, allCustomers: boolean, onDrillDown: () => void): KpiCompactItem {
   const base = { label: "Ventas por cliente", icon: TrendingUpIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -53,7 +58,8 @@ function salesCard(kpi: CustomerSalesKpi, onDrillDown: () => void): KpiCompactIt
     ...(hasSales ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
     value: blocks.length === 0 ? <KpiMutedValue>Sin facturación</KpiMutedValue> : <KpiCurrencyBlocks blocks={blocks} />,
     info:
-      "Facturas emitidas y vigentes (sin borradores ni canceladas) de los clientes que puedes ver; " +
+      "Facturas emitidas y vigentes (sin borradores ni canceladas) de " +
+      (allCustomers ? "todos los clientes de la empresa; " : "los clientes que tienes asignados; ") +
       `el detalle muestra los clientes que más concentran la facturación. ${SEPARATE_CURRENCIES_NOTE}`,
     hideProgress: true,
     action: (
@@ -101,13 +107,15 @@ function activeCard(kpi: CustomerActiveKpi, onDrillDown: () => void): KpiCompact
 /**
  * Saldo vencido por antigüedad: un bloque por moneda con su saldo y el conteo
  * por tramo; los montos por tramo y el saldo sin fecha de vencimiento van en el
- * ⓘ (no caben en la tarjeta). El conteo global sí cruza monedas.
+ * ⓘ (no caben en la tarjeta). El conteo global sí cruza monedas. Como en
+ * `salesCard`, `allCustomers` (`puede_ver_cartera_de_todos`) decide si el ⓘ
+ * dice que cubre toda la empresa o solo los clientes asignados.
  */
-function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompactItem {
+function carteraCard(kpi: CustomerCarteraKpi, allCustomers: boolean, onDrillDown: () => void): KpiCompactItem {
   // "(general)": es el agregado del listado, para no confundirlo con la
-  // antigüedad de saldos de UN cliente que muestra su detalle. No dice "todos
-  // los clientes" porque el alcance depende del rol (un vendedor solo ve los
-  // suyos).
+  // antigüedad de saldos de UN cliente que muestra su detalle. El RÓTULO no
+  // dice "todos los clientes" porque el alcance depende del rol; el ⓘ sí lo
+  // dice, según `allCustomers`.
   const base = { label: "Antigüedad de cartera (general)", icon: WalletIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -138,6 +146,9 @@ function carteraCard(kpi: CustomerCarteraKpi, onDrillDown: () => void): KpiCompa
     sinVencimiento.length > 0
       ? `Saldo sin fecha de vencimiento (no se cuenta como vencido) — ${sinVencimiento.join(" · ")}.`
       : null,
+    allCustomers
+      ? "Cubre todos los clientes de la empresa."
+      : "Cubre los clientes que tienes asignados.",
     "Sin cuentas de facturas canceladas o dadas de baja.",
     SEPARATE_CURRENCIES_NOTE,
   ]
@@ -165,12 +176,14 @@ function buildCards(
   data: CustomerKpis,
   openDrillDown: (kind: CustomerKpiDrillDownKind) => void,
 ): KpiCompactItem[] {
+  // Un solo conjunto para facturación y cartera en el backend (EC-789).
+  const allCustomers = data.puede_ver_cartera_de_todos === true;
   return [
-    salesCard(data.ventas_por_cliente, () => openDrillDown("ventas_por_cliente")),
+    salesCard(data.ventas_por_cliente, allCustomers, () => openDrillDown("ventas_por_cliente")),
     activeCard(data.clientes_activos, () => openDrillDown("clientes_activos")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.reclamos_devoluciones, { label: "Tasa de reclamos o devoluciones", icon: ReceiptIcon }),
-    carteraCard(data.cartera_antiguedad, () => openDrillDown("cartera_antiguedad")),
+    carteraCard(data.cartera_antiguedad, allCustomers, () => openDrillDown("cartera_antiguedad")),
   ];
 }
 

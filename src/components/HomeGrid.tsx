@@ -2,45 +2,32 @@
 "use client"
 
 import { useSession } from "next-auth/react";
-import { hasAnyPermission } from "@/src/utils/permissions";
+import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
+import { appRouteGroups } from "@/src/constants/appRoutes";
 import { homeCards } from "@/src/constants/homeCards";
 import TiltCard from "./TiltCard";
 
 /**
- * Permisos que hacen visible la tarjeta de un módulo: el del propio módulo más
- * el de cada una de sus secciones. Sin esto, quien tuviera solo una sección
- * (p. ej. `R-CRM-CLIENTES` sin `R-CRM`) vería el Home vacío y no tendría por
- * dónde entrar. `card.permission` es el respaldo si la tarjeta no corresponde a
- * ningún grupo de `appRouteGroups`.
- */
-const cardAccessPermissions = (card: (typeof homeCards)[number]): string[] => {
-  const group = appRouteGroups.find((item) => item.modulePath === card.href);
-  return group ? getGroupAccessPermissions(group) : [card.permission];
-};
-
-/**
- * Destino de la tarjeta para `user`: la portada del módulo si puede abrirla y,
- * si no (p. ej. solo `R-PRODUCCION-OP` sin `R-PRODUCCION`), la primera sección
- * del menú que sí puede abrir. Sin esto, la tarjeta visible por permiso de
- * sección mandaría a una ruta que el proxy rebota al Home. `null` si no hay
- * ninguna abrible.
+ * Destino de la tarjeta para `user`: el mismo que el resto de entradas al
+ * módulo (`getModuleEntryHref`), así quien solo tiene una sección (p. ej.
+ * `R-CRM-CLIENTES` sin `R-CRM`) entra por ella. Una tarjeta sin grupo en
+ * `appRouteGroups` solo lleva a su `href` si puede abrirlo. `null` si no hay
+ * ninguna abrible: la tarjeta no se muestra (visibilidad y destino salen de la
+ * misma regla, EC-813).
  */
 const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | undefined) => {
-  if (canAccessRoute(card.href, user)) return card.href;
   const group = appRouteGroups.find((item) => item.modulePath === card.href);
-  return (
-    group?.items.find((item) => item.showInSidebar !== false && canAccessRoute(item.path, user))
-      ?.path ?? null
-  );
+  if (group) return getModuleEntryHref(group, user);
+  return canAccessRoute(card.href, user) ? card.href : null;
 };
 
 export const HomedGrid = () => {
   const { data: session, status } = useSession();
+  const { phase: recoveryPhase } = useSessionRecovery();
   const visibleHomeCards = homeCards.flatMap((card) => {
-    if (!hasAnyPermission(cardAccessPermissions(card), session?.user)) return [];
     const href = cardHref(card, session?.user);
     return href ? [{ ...card, href }] : [];
   });
@@ -62,6 +49,24 @@ export const HomedGrid = () => {
             aria-hidden="true"
           />
         ))}
+      </div>
+    );
+  }
+
+  // Sin ningún módulo abrible: se explica en lugar de dejar el Home en blanco.
+  // Solo con la sesión leída: si se está recuperando o falló, la falta de
+  // tarjetas no dice nada de sus permisos (el sidebar ya avisa con "Reintentar").
+  if (visibleHomeCards.length === 0 && session?.user && recoveryPhase === "idle") {
+    return (
+      <div className="max-w-xl mx-auto py-12">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-white/5 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            No tienes módulos asignados
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Contacta a tu administrador para que te asigne los permisos que necesitas.
+          </p>
+        </div>
       </div>
     );
   }

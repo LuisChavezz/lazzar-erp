@@ -1,18 +1,19 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CloseIcon, LogoIcon, MenuIcon } from "./Icons";
 import SidebarItem from "./SidebarItem";
 import SidebarItemSkeleton from "./SidebarItemSkeleton";
 import SidebarModuleItems from "./SidebarModuleItems";
+import SidebarModuleHeader from "./SidebarModuleHeader";
 import SidebarSessionNotice from "./SidebarSessionNotice";
 import { Notifications } from "../features/notifications/components/Notifications";
 import { UserMenu } from "./UserMenu";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { mainGroupKeys } from "@/src/constants/sidebarItems";
 import { useSidebarSections } from "@/src/hooks/useSidebarSections";
+import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { SidebarEntry } from "@/src/utils/getSidebarItems";
 
 export default function MobileSidebar() {
@@ -21,6 +22,7 @@ export default function MobileSidebar() {
   // Mismo estado y secciones que `Sidebar` (ver `useSidebarSections`).
   const {
     sections: availableSections,
+    user,
     isPending,
     isUnavailable,
     retry,
@@ -36,13 +38,18 @@ export default function MobileSidebar() {
   );
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
+  // Cabecera del módulo activo. Lleva al mismo destino que el resto de entradas
+  // (`getModuleEntryHref`, EC-813): la portada exige el código de módulo y
+  // quien solo tiene una sección sería rebotado al Home. `href` es `null`
+  // mientras carga la sesión (skeleton) o si no hay destino abrible (sin enlace).
   const moduleItem =
     activeGroup && mainGroupKeys.has(activeGroup.key)
       ? {
-          label: activeGroup.moduleLabel,
-          href: activeGroup.modulePath,
-          icon: activeGroup.moduleIcon,
-        }
+        label: activeGroup.moduleLabel,
+        href: isPending ? null : getModuleEntryHref(activeGroup, user),
+        icon: activeGroup.moduleIcon,
+        isActive: pathname === activeGroup.modulePath,
+      }
       : null;
 
   return (
@@ -114,21 +121,15 @@ export default function MobileSidebar() {
                       <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                     </div>
                     <div className="space-y-2">
-                      <Link
+                      <SidebarModuleHeader
+                        label={moduleItem.label}
+                        icon={moduleItem.icon}
                         href={moduleItem.href}
-                        aria-label={moduleItem.label}
-                        className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${
-                          pathname === moduleItem.href
-                            ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                            : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-                        }`}
-                        onClick={() => setIsMobileOpen(false)}
-                      >
-                        <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                        <span className="font-medium text-sm whitespace-nowrap">
-                          {moduleItem.label}
-                        </span>
-                      </Link>
+                        isPending={isPending}
+                        isActive={moduleItem.isActive}
+                        variant="mobile"
+                        onNavigate={() => setIsMobileOpen(false)}
+                      />
                       <div className="px-4">
                         <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
                           {moduleLabel}
@@ -144,7 +145,7 @@ export default function MobileSidebar() {
                         ) : (
                           section.items
                             .slice(1)
-                            .filter((item) => item.href !== moduleItem.href)
+                            .filter((item) => item.href !== activeGroup?.modulePath)
                             .map((item, itemIndex) => (
                               <Fragment key={itemIndex}>{renderItem(item)}</Fragment>
                             ))

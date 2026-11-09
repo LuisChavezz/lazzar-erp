@@ -7,6 +7,7 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { formatAmountNoCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { plural } from "@/src/utils/kpiFormat";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import {
   ESTADO_OPORTUNIDAD_VALUES,
   ESTADO_PERDIDA,
@@ -96,6 +97,11 @@ interface OpportunityFunnelProps {
 export const OpportunityFunnel = ({ params, filter, compact = false }: OpportunityFunnelProps) => {
   const { embudo, isInitialError, isFetching, isPlaceholderData, refetch } =
     useOpportunitiesEmbudo(params);
+  // Los enlaces al listado solo si la regla del proxy lo deja abrir (EC-813).
+  // Mientras la sesión resuelve, las barras se ven sin enlace y "Ver
+  // oportunidades" es un hueco del mismo alto.
+  const { isPending: isAccessPending, canOpen } = useRouteAccess();
+  const canOpenOpportunities = canOpen(OPPORTUNITIES_LIST_PATH);
 
   // Solo cuenta en pantallas angostas (ver las clases `lg:`); no se guarda.
   const [isExpanded, setIsExpanded] = useState(false);
@@ -156,7 +162,7 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
 
     return (
       <li key={estado} className={separatorCls}>
-        {!isKnownEstado(estado) ? (
+        {!isKnownEstado(estado) || (!filter && !canOpenOpportunities) ? (
           <div role="group" aria-label={name} className="px-2 py-1.5">
             {content}
           </div>
@@ -280,7 +286,12 @@ export const OpportunityFunnel = ({ params, filter, compact = false }: Opportuni
       )}
       </div>
 
-      {compact && (
+      {compact && isAccessPending && (
+        <div className="mt-auto pt-3" aria-hidden="true">
+          <LoadingSkeleton className="h-4 w-28! rounded-full!" />
+        </div>
+      )}
+      {compact && canOpenOpportunities && (
         <div className="mt-auto pt-3">
           <Link
             href={OPPORTUNITIES_LIST_PATH}
