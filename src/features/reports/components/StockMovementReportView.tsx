@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { Button } from "@/src/components/Button";
-import { DownloadIcon } from "@/src/components/Icons";
 import { StockMovementReportFilters } from "./StockMovementReportFilters";
 import { StockMovementReportSummary } from "./StockMovementReportSummary";
 import { stockMovementReportColumns } from "./StockMovementReportColumns";
+import { StockReportExportButtons } from "./StockReportExportButtons";
 import { useStockMovementReport } from "@/src/features/stock/hooks/useStockMovementReport";
-import { useExportStockMovementReportPdf } from "@/src/features/stock/hooks/useExportStockMovementReportPdf";
+import { useExportStockMovementReport } from "@/src/features/stock/hooks/useExportStockMovementReport";
+import type { StockReportExportFormat } from "@/src/features/stock/utils/stockReportExport";
+import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
@@ -19,8 +20,8 @@ const PAGE_SIZE = 100;
 
 /**
  * Flujo completo del Reporte de Movimientos: gate (tipo + rango de fechas,
- * almacén opcional) → resumen → tabla paginada en servidor → exportación PDF del
- * conjunto completo. Espejo estructural de `StockReportView`. Vive en su propia
+ * almacén opcional) → resumen → tabla paginada en servidor → descarga en PDF o
+ * Excel del conjunto completo (la genera el backend). Espejo estructural de `StockReportView`. Vive en su propia
  * ruta (`/system/reports/movimientos`).
  */
 export function StockMovementReportView() {
@@ -91,20 +92,30 @@ export function StockMovementReportView() {
     setPage(1);
   };
 
-  // Exportación a PDF del reporte COMPLETO (todas las páginas del periodo), no
-  // la página visible. Usa el contexto de filtros actual, no `data.results`.
-  const { mutate: exportPdf, isPending: isExporting } =
-    useExportStockMovementReportPdf();
-  const handleExportPdf = () => {
+  // Descarga del reporte COMPLETO (todas las páginas del periodo), no la página
+  // visible, generada por el backend. Usa el contexto de filtros actual, no
+  // `data.results`. Sin almacén ("Todos los almacenes") no viaja `almacen_id`,
+  // igual que en la consulta de la pantalla.
+  const pdfExport = useExportStockMovementReport("pdf");
+  const xlsxExport = useExportStockMovementReport("xlsx");
+  const { data: warehouses } = useWarehouses();
+  const handleExport = (formato: StockReportExportFormat) => {
     // Los checks de null estrechan los tipos (equivalen a `gateComplete`, que
-    // siempre es cierto cuando este botón está visible).
+    // siempre es cierto cuando estos botones están visibles).
     if (tipoMovimiento === null || fechaInicio === null || fechaFinal === null)
       return;
-    exportPdf({
-      tipo_movimiento: tipoMovimiento,
-      fecha_inicio: fechaInicio,
-      fecha_final: fechaFinal,
-      almacen_id: almacenId ?? undefined,
+    const codigo =
+      almacenId === null
+        ? undefined
+        : warehouses?.find((w) => w.id_almacen === almacenId)?.codigo;
+    (formato === "pdf" ? pdfExport : xlsxExport).exportReport({
+      params: {
+        tipo_movimiento: tipoMovimiento,
+        fecha_inicio: fechaInicio,
+        fecha_final: fechaFinal,
+        almacen_id: almacenId ?? undefined,
+      },
+      codigo,
     });
   };
 
@@ -152,7 +163,7 @@ export function StockMovementReportView() {
 
           {/* `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y
               alterna solo su cuerpo), así que su toolbar y `actionButton`
-              ("Exportar a PDF") siguen disponibles durante la carga o un
+              ("PDF" / "Excel") siguen disponibles durante la carga o un
               error. `isInitialError` (de `useGuardedQuery`) solo es cierto
               si estos parámetros nunca cargaron: un refetch en segundo plano
               que falla conserva la última respuesta buena y avisa con un
@@ -164,16 +175,10 @@ export function StockMovementReportView() {
             data={data?.results ?? []}
             emptyMessage="No se encontraron movimientos para el tipo, almacén y periodo seleccionados."
             actionButton={
-              <Button
-                variant="secondary"
-                leftIcon={<DownloadIcon className="w-4 h-4 shrink-0" />}
-                onClick={handleExportPdf}
-                disabled={isExporting}
-                aria-label="Exportar el reporte completo a PDF"
-                title="Exportar todo el reporte (todas las páginas) a PDF"
-              >
-                {isExporting ? "Generando PDF..." : "Exportar a PDF"}
-              </Button>
+              <StockReportExportButtons
+                isExporting={{ pdf: pdfExport.isExporting, xlsx: xlsxExport.isExporting }}
+                onExport={handleExport}
+              />
             }
             serverPagination={{
               pageCount: Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE)),

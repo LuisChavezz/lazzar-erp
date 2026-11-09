@@ -2,12 +2,9 @@
 // backend (`/inventarios/movimientos/reporte-movimientos-periodo/`).
 //
 // DIFERENCIAS con existencias: este endpoint (a) exige un `tipo_movimiento`
-// (ENTRADA/SALIDA/AJUSTE/TRANSFERENCIA) y (b) tiene `almacen_id` OPCIONAL. Ninguno de los dos
-// endpoints impone un máximo de `page_size` (confirmado mediante inspección del
-// código del backend, fuente de DRF y verificación en tiempo de ejecución —
-// page_size=100000 se respeta sin recorte en ambos), lo que simplifica la
-// exportación completa de ambos reportes (ver `getFullStockReport` /
-// `getFullStockMovementReport`).
+// (ENTRADA/SALIDA/AJUSTE/TRANSFERENCIA) y (b) tiene `almacen_id` OPCIONAL. La
+// exportación completa (PDF/XLSX) la genera el backend en
+// `reporte-movimientos-periodo/exportar/` (ver `exportStockMovementReport`).
 
 /**
  * Tipos de movimiento que acepta el reporte (`MovimientoInventario`). La
@@ -104,3 +101,9 @@ export interface StockMovementReportParams {
   page?: number;
   page_size?: number;
 }
+
+/**
+ * Parámetros de `reporte-movimientos-periodo/exportar/` (EC-819): los mismos
+ * filtros sin la paginación, porque el archivo trae el reporte completo.
+ */
+export type StockMovementReportExportParams = Omit<StockMovementReportParams, "page" | "page_size">;
