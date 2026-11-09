@@ -48,6 +48,28 @@ const readPositiveId = (data: unknown, key: string): number | null => {
     : null;
 };
 
+/**
+ * Avisos del flujo de pre-órdenes (`pre_orden_<evento>`: creada, lista,
+ * regreso, semáforo rojo…). `data.url` trae la ruta del BACKEND
+ * (`/produccion/pre-ordenes/13`); de ella solo se toma el id, validado, y se
+ * arma la ruta del front. Sin id válido no hay destino.
+ */
+const TIPO_PRE_ORDEN_PREFIX = "pre_orden_";
+
+const preOrdenTarget = (data: unknown): NotificationTarget | null => {
+  const direct = readPositiveId(data, "pre_orden_id") ?? readPositiveId(data, "pre_orden");
+  let id = direct;
+  if (id === null && typeof data === "object" && data !== null) {
+    const url = (data as Record<string, unknown>).url;
+    const match = typeof url === "string" ? /\/pre-ordenes\/(\d+)\/?$/.exec(url) : null;
+    const parsed = match ? Number(match[1]) : NaN;
+    id = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+  if (id === null) return null;
+  const pathname = `/manufacturing/pre-orders/${id}`;
+  return { kind: "route", href: pathname, pathname };
+};
+
 /** Origen del detalle 360° cuando se llega desde la campana. */
 const PEDIDO_DETAIL_FROM: PedidoDetailOrigin = "notifications";
 
@@ -142,7 +164,8 @@ export const resolveNotificationTarget = (
   user?: PermissionContext | null,
 ): NotificationTarget | null => {
   const target =
-    NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data, user) ?? null;
+    NOTIFICATION_TARGETS[notificacion.tipo]?.(notificacion.data, user) ??
+    (notificacion.tipo.startsWith(TIPO_PRE_ORDEN_PREFIX) ? preOrdenTarget(notificacion.data) : null);
   if (target?.kind === "route" && !canAccessRoute(target.pathname, user)) {
     return null;
   }
@@ -161,6 +184,9 @@ const NOTIFICATION_ICON_VARIANTS: Record<string, NotificationIconVariant> = {
   [TIPO_COTIZACION_EN_REVISION]: "info",
   [TIPO_COTIZACION_AUTORIZADA]: "success",
   [TIPO_COTIZACION_RECHAZADA]: "error",
+  pre_orden_lista: "success",
+  pre_orden_regreso: "error",
+  pre_orden_semaforo_rojo: "error",
 };
 
 export const resolveNotificationIconVariant = (
