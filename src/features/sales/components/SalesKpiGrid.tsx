@@ -6,10 +6,16 @@ import {
   TrendingUpIcon,
 } from "@/src/components/Icons";
 import { useCustomerKpis } from "@/src/features/customers/hooks/useCustomerKpis";
-import type { CustomerKpis } from "@/src/features/customers/interfaces/customer-kpis.interface";
+import type {
+  CustomerActiveKpiAvailable,
+  CustomerKpis,
+  CustomerKpiUnavailable,
+  CustomerNewKpi,
+  CustomerNewKpiAvailable,
+} from "@/src/features/customers/interfaces/customer-kpis.interface";
 import { useRecentQuoteKpis } from "@/src/features/quotes/hooks/useQuoteKpiSummary";
 import { buildRecentQuotesCard } from "@/src/features/quotes/components/QuoteKpiCards";
-import { getMonthLabel } from "@/src/utils/quincena";
+import { formatCalendarMonth } from "@/src/utils/formatDate";
 
 /**
  * Indicadores del dashboard de Ventas (`/sales`), en el diseño compacto de
@@ -33,53 +39,64 @@ import { getMonthLabel } from "@/src/utils/quincena";
  * EC-818.
  */
 
-/** Clientes activos del backend; "—" mientras carga y "No disponible" si no llega. */
-function activeCustomersCard(data: CustomerKpis | undefined, isInitialError: boolean): KpiCompactItem {
-  const base = { label: "Clientes Activos", icon: ClientesIcon };
-  if (isInitialError) {
-    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: "No se pudieron cargar los indicadores de clientes." };
-  }
+/**
+ * Tarjeta de un bloque de `clientes/kpis/`. Los estados comunes viven aquí:
+ * "—" mientras carga, "No disponible" si la consulta nunca cargó, si el bloque
+ * llega con `disponible: false` (su `motivo` va al ⓘ) o si no llega (un backend
+ * sin ese bloque no tira la página); `build` solo pinta el bloque disponible.
+ */
+function customerKpiCard<T extends { disponible: true }>(
+  base: Pick<KpiCompactItem, "label" | "icon">,
+  data: CustomerKpis | undefined,
+  isInitialError: boolean,
+  pick: (data: CustomerKpis) => T | CustomerKpiUnavailable | undefined,
+  build: (kpi: T) => Omit<KpiCompactItem, "label" | "icon">,
+): KpiCompactItem {
+  const unavailable = (reason: string): KpiCompactItem => ({ ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: reason });
+  if (isInitialError) return unavailable("No se pudieron cargar los indicadores de clientes.");
   if (!data) return { ...base, ...KPI_MUTED_ICON, value: "—", hideProgress: true };
-  const kpi = data.clientes_activos;
-  if (!kpi.disponible) return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
-  return {
-    ...base,
-    ...(kpi.activos > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
-    value: kpi.activos.toLocaleString("es-MX"),
-    detail: `Últimos ${kpi.ventana_dias} días · de ${kpi.total.toLocaleString("es-MX")}`,
-    info: kpi.criterio,
-    hideProgress: true,
-  };
+  const kpi = pick(data);
+  if (!kpi) return unavailable("El servidor no envió este indicador.");
+  if (!kpi.disponible) return unavailable(kpi.motivo);
+  return { ...base, ...build(kpi) };
+}
+
+/** Clientes activos del backend. */
+function activeCustomersCard(data: CustomerKpis | undefined, isInitialError: boolean): KpiCompactItem {
+  return customerKpiCard(
+    { label: "Clientes Activos", icon: ClientesIcon },
+    data,
+    isInitialError,
+    (kpis) => kpis.clientes_activos,
+    (kpi: CustomerActiveKpiAvailable) => ({
+      ...(kpi.activos > 0 ? { iconClass: "text-sky-500" } : KPI_MUTED_ICON),
+      value: kpi.activos.toLocaleString("es-MX"),
+      detail: `Últimos ${kpi.ventana_dias} días · de ${kpi.total.toLocaleString("es-MX")}`,
+      info: kpi.criterio,
+      hideProgress: true,
+    }),
+  );
 }
 
 /**
- * "Noviembre 2026" a partir del `mes` del backend ("YYYY-MM"), sin pasar por
- * `Date`: el mes lo fija el backend en hora de México y no se recalcula aquí.
- * `null` si no tiene esa forma.
+ * Clientes nuevos del mes. El rótulo sale del `mes` del backend: el mes no se
+ * recalcula aquí.
  */
-function monthLabel(mes: string): string | null {
-  const match = /^(\d{4})-(\d{2})$/.exec(mes);
-  const name = match ? getMonthLabel(Number(match[2])) : "";
-  return match && name ? `${name} ${match[1]}` : null;
-}
-
-/** Clientes nuevos del mes; mismos estados que `activeCustomersCard`. */
 function newCustomersCard(data: CustomerKpis | undefined, isInitialError: boolean): KpiCompactItem {
-  const base = { label: "Nuevos este mes", icon: TrendingUpIcon };
-  if (isInitialError) {
-    return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: "No se pudieron cargar los indicadores de clientes." };
-  }
-  if (!data) return { ...base, ...KPI_MUTED_ICON, value: "—", hideProgress: true };
-  const kpi = data.clientes_nuevos;
-  if (!kpi.disponible) return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
-  return {
-    ...base,
-    ...(kpi.total > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
-    value: kpi.total.toLocaleString("es-MX"),
-    detail: monthLabel(kpi.mes) ?? "Clientes nuevos",
-    info: kpi.criterio,
-    hideProgress: true,
-  };
+  return customerKpiCard(
+    { label: "Nuevos este mes", icon: TrendingUpIcon },
+    data,
+    isInitialError,
+    // Opcional a propósito: contra un backend sin EC-817 el bloque no viene.
+    (kpis): CustomerNewKpi | undefined => kpis.clientes_nuevos,
+    (kpi: CustomerNewKpiAvailable) => ({
+      ...(kpi.total > 0 ? { iconClass: "text-emerald-500" } : KPI_MUTED_ICON),
+      value: kpi.total.toLocaleString("es-MX"),
+      detail: formatCalendarMonth(kpi.mes) ?? "Clientes nuevos",
+      info: kpi.criterio,
+      hideProgress: true,
+    }),
+  );
 }
 
 /** Indicadores del dashboard de Ventas; ver la nota de arriba. */
