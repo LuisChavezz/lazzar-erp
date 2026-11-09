@@ -16,6 +16,8 @@ interface UseCreateBomFormParams {
   productoVarianteId: number;
   /** Product ids selected in Step 2 — one `materia_prima_detalle` row each. */
   componentIds: number[];
+  /** Material → unidad del catálogo (`unidad_id`). */
+  unitById?: ReadonlyMap<number, number | null>;
   /** Called after the lista de materiales is created successfully. */
   onSuccess: () => void;
 }
@@ -35,6 +37,7 @@ interface UseCreateBomFormParams {
 export function useCreateBomForm({
   productoVarianteId,
   componentIds,
+  unitById,
   onSuccess,
 }: UseCreateBomFormParams) {
   // Empresa activa — mismo patrón que el resto de formularios.
@@ -57,7 +60,8 @@ export function useCreateBomForm({
         variante_produccion: null,
         componente,
         cantidad: 1,
-        unidad: 0,
+        // La unidad del catálogo, si el material ya tiene; si no, se elige.
+        unidad: unitById?.get(componente) ?? 0,
         obligatorio: true,
         observaciones: "",
       })),

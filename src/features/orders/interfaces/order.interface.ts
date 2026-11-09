@@ -1,3 +1,4 @@
+import type { PreOrderRef } from "@/src/features/pre-orders/interfaces/pre-order.interface";
 // El `estado` de un folio de picking es el MISMO enum que el del módulo WMS
 // (`PickingEstado`), así que se importa en vez de redeclararse: son el mismo
 // campo del mismo modelo servido por dos endpoints, y duplicar la unión los
@@ -393,6 +394,8 @@ export interface PedidoDetalleLinea {
    * contable. Nunca se deriva en el cliente recortando un `variante_sku`.
    */
   sku_base: string | null;
+  /** Código Proscai del producto. Opcional: el backend aún no lo manda en la línea. */
+  cod_proscai?: string | null;
   color: number | null;
   color_nombre: string | null;
   /** Color en hex (ej. `"#000000"`) — se pinta como swatch junto al nombre. */
@@ -538,6 +541,11 @@ export interface PedidoDetail extends Order {
    * puede no traer y reventar con "Cannot read properties of undefined".
    */
   tracker_picking?: PedidoTrackerPicking;
+  /**
+   * Pre-orden de producción. Solo en el detalle; `null` si no tiene o la única
+   * está cancelada. Opcional por despliegues anteriores del backend.
+   */
+  pre_orden?: PreOrderRef | null;
   /**
    * Historial de pickings del pedido (el backend excluye los cancelados).
    * Opcional por el mismo motivo que `tracker_picking`; la UI cae a `[]`.

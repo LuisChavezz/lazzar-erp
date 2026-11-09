@@ -27,8 +27,9 @@ interface SampleSkuOnboardingStep2Props {
 /**
  * Paso 2 del alta de SKU de muestra: consumo de cada material elegido.
  *
- * Un renglón por material con `cantidad` (por pieza), `unidad`, `desperdicio`
- * (%) y `obligatorio`. Lo capturado aquí se envía UNA vez y el backend lo
+ * Una FILA por material (se captura de corrido con Tab): `cantidad` (por
+ * pieza), `unidad` (fija si el material ya la trae), `desperdicio` (%) y
+ * `obligatorio`. Lo capturado aquí se envía UNA vez y el backend lo
  * replica en la lista de materiales de cada talla, por eso el resumen final
  * dice cuántos SKU se van a crear y cuál será el de cada talla
  * (`getSampleSkuPreview`). Si el alta fallaría con seguridad por un color sin
@@ -61,7 +62,8 @@ export function SampleSkuOnboardingStep2({
     return <Loader title="Preparando configuración" message="Cargando catálogos..." />;
   }
 
-  const productNameById = new Map(products.map((product) => [product.id, product.nombre]));
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const unitById = new Map(units.map((unit) => [unit.id, unit]));
   const activeUnits = units.filter((unit) => unit.activo);
   // El backend crea un SKU por cada talla con cantidad (> 0): son las filas de la vista previa.
   const totalSkus = skuPreview.rows.length;
@@ -87,39 +89,58 @@ export function SampleSkuOnboardingStep2({
         </p>
       )}
 
-      <div className="flex flex-col gap-4 max-h-88 overflow-y-auto pr-1">
-        <form.Field name="materia_prima_detalle" mode="array">
-          {(arrayField) =>
-            arrayField.state.value.map((item, index) => {
-              const rowError = getError(`materia_prima_detalle.${index}`);
-              return (
-                <div
-                  key={item.componente}
-                  className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-500/20 px-2 text-xs font-bold text-sky-700 dark:text-sky-300">
-                        {index + 1}
-                      </span>
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                        {productNameById.get(item.componente) ?? `Material #${item.componente}`}
-                      </h4>
+      <div className="rounded-2xl border border-slate-200 dark:border-white/10">
+        {/* Una fila por material, para capturar de corrido con Tab. */}
+        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_7rem_6.5rem_5.5rem_3.5rem] gap-3 border-b border-slate-200 dark:border-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span>Material</span>
+          <span className="text-right">Por pieza</span>
+          <span>Unidad</span>
+          <span className="text-right">Desp. %</span>
+          <span className="text-center">Oblig.</span>
+        </div>
+        <div className="max-h-88 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
+          <form.Field name="materia_prima_detalle" mode="array">
+            {(arrayField) =>
+              arrayField.state.value.map((item, index) => {
+                const rowError = getError(`materia_prima_detalle.${index}`);
+                const product = productById.get(item.componente);
+                // Con unidad en el catálogo, el backend la toma: no se elige.
+                const fixedUnitId = product?.unidad_id ?? null;
+                const fixedUnitLabel =
+                  product?.unidad_abreviatura ||
+                  product?.unidad_nombre ||
+                  (fixedUnitId ? unitById.get(fixedUnitId)?.clave : undefined);
+                const name = product?.nombre ?? `Material #${item.componente}`;
+                return (
+                  <div
+                    key={item.componente}
+                    className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem_5.5rem_3.5rem] items-center gap-3 px-4 py-3"
+                  >
+                    <div className="col-span-2 sm:col-span-1 min-w-0">
+                      <p
+                        className="text-sm font-semibold text-slate-800 dark:text-white truncate"
+                        title={name}
+                      >
+                        {name}
+                      </p>
+                      {product?.codigo && (
+                        <p className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                          {product.codigo}
+                        </p>
+                      )}
+                      {rowError && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">{rowError.message}</p>
+                      )}
                     </div>
-                    {rowError && (
-                      <p className="text-xs text-red-600 mt-1 font-medium">{rowError.message}</p>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <form.Field name={`materia_prima_detalle[${index}].cantidad`}>
                       {(field) => (
                         <FormInput
-                          label="Cantidad por pieza"
+                          aria-label={`Cantidad por pieza de ${name}`}
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
-                          className="tabular-nums"
+                          className="tabular-nums text-right"
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
@@ -132,10 +153,18 @@ export function SampleSkuOnboardingStep2({
                     </form.Field>
 
                     <form.Field name={`materia_prima_detalle[${index}].unidad`}>
-                      {(field) => (
-                        <div>
+                      {(field) =>
+                        fixedUnitId && field.state.value === fixedUnitId ? (
+                          // La unidad viene del material: no se elige, así no hay error posible.
+                          <p
+                            className="flex min-h-11 items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                            title={`${product?.unidad_nombre ?? fixedUnitLabel} (unidad del material)`}
+                          >
+                            {fixedUnitLabel}
+                          </p>
+                        ) : (
                           <FormSelect
-                            label="Unidad"
+                            aria-label={`Unidad de ${name}`}
                             name={field.name}
                             value={field.state.value}
                             onChange={(event) => {
@@ -145,7 +174,7 @@ export function SampleSkuOnboardingStep2({
                             error={getError(`materia_prima_detalle.${index}.unidad`)}
                           >
                             <option value="0" disabled>
-                              Seleccionar...
+                              Elegir
                             </option>
                             {activeUnits.map((unit) => (
                               <option
@@ -157,21 +186,18 @@ export function SampleSkuOnboardingStep2({
                               </option>
                             ))}
                           </FormSelect>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 ml-1">
-                            La cantidad debe estar en la unidad de inventario del material.
-                          </p>
-                        </div>
-                      )}
+                        )
+                      }
                     </form.Field>
 
                     <form.Field name={`materia_prima_detalle[${index}].desperdicio`}>
                       {(field) => (
                         <FormInput
-                          label="Desperdicio (%)"
+                          aria-label={`Desperdicio (%) de ${name}`}
                           type="text"
                           inputMode="decimal"
                           placeholder="0"
-                          className="tabular-nums"
+                          className="tabular-nums text-right"
                           name={field.name}
                           value={field.state.value}
                           onChange={(event) => {
@@ -185,24 +211,28 @@ export function SampleSkuOnboardingStep2({
 
                     <form.Field name={`materia_prima_detalle[${index}].obligatorio`}>
                       {(field) => (
-                        <FormToggle
-                          label="Obligatorio"
-                          description={
-                            field.state.value ? "Material obligatorio" : "Material opcional"
-                          }
-                          name={field.name}
-                          checked={field.state.value}
-                          onChange={(event) => field.handleChange(event.target.checked)}
-                          error={getError(`materia_prima_detalle.${index}.obligatorio`)}
-                        />
+                        <label className="flex min-h-11 items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name={field.name}
+                            checked={field.state.value}
+                            onChange={(event) => field.handleChange(event.target.checked)}
+                            aria-label={`${name}: obligatorio`}
+                            className="h-4 w-4 accent-sky-600 cursor-pointer"
+                          />
+                          <span className="sm:hidden">Obligatorio</span>
+                        </label>
                       )}
                     </form.Field>
                   </div>
-                </div>
-              );
-            })
-          }
-        </form.Field>
+                );
+              })
+            }
+          </form.Field>
+        </div>
+        <p className="border-t border-slate-200 dark:border-white/10 px-4 py-2 text-[11px] text-slate-500 dark:text-slate-400">
+          Cantidad por pieza, en la unidad de inventario del material.
+        </p>
       </div>
 
       <form.Field name="alta_catalogo">

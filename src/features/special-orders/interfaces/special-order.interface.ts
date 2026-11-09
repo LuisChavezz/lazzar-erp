@@ -53,6 +53,30 @@ export interface SpecialOrderListItem {
   ordenes_produccion?: SpecialOrderOpRef[];
   /** Pre-orden de producción del pedido; `null` si aún no tiene (nace con el BOM). */
   pre_orden?: PreOrderRef | null;
+  /** Órdenes ACTIVAS de bordado, reflejante y corte de manga del pedido (puede haber varias por tipo). */
+  ordenes_servicio?: {
+    bordado: ServiceOrderRef[];
+    reflejante: ServiceOrderRef[];
+    corte_manga: ServiceOrderRef[];
+  };
+}
+
+/** Orden de servicio (OB/OR/OCM) ligada a un pedido especial. */
+export interface ServiceOrderRef {
+  id: number;
+  folio: string;
+  /** Código numérico; los pasos viven en `constants/serviceSteps`. */
+  estatus: number;
+  estatus_display: string;
+  /** La del PEDIDO (= `fecha_vence` en los listados de OB/OR/OCM); la orden no tiene propia. */
+  fecha_compromiso: string | null;
+  /** Operador asignado. */
+  asignado: string | null;
+  /** Maquilero; solo bordado. */
+  proveedor?: string | null;
+  /** Estatus en que estaba al detenerse; `null` si no está detenida o se detuvo antes de guardarse. */
+  estatus_previo?: number | null;
+  estatus_previo_display?: string | null;
 }
 
 /** OP ligada a un pedido especial, para la columna "OP". */

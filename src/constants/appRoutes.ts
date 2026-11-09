@@ -549,6 +549,28 @@ export const appRouteGroups: AppRouteGroup[] = [
     items: [
       // ── Operación ───────────────────────────────────────────────────────────
       {
+        key: "manufacturing-special-orders",
+        label: "Fabricación Especial",
+        path: "/manufacturing/special-orders",
+        icon: SpecialOrdersIcon,
+        description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
+        // Sin código de sección propio en el catálogo de permisos: igual que
+        // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
+        // `/manufacturing` de `routePermissions`.
+        permission: "R-PRODUCCION",
+        section: "operation",
+      },
+      {
+        key: "manufacturing-pre-orders",
+        label: "Pre-órdenes",
+        path: "/manufacturing/pre-orders",
+        icon: OrdenesIcon,
+        description: "Materiales que necesita cada pedido especial antes de su OP: almacén valida, compras surte y producción crea la orden.",
+        // Cae en la regla de módulo `/manufacturing` (R-PRODUCCION).
+        permission: "R-PRODUCCION",
+        section: "operation",
+      },
+      {
         key: "manufacturing-production-orders",
         label: "Órdenes de Producción",
         path: "/manufacturing/production-orders",
@@ -581,28 +603,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
         permission: "R-PRODUCCION-CM",
-        section: "operation",
-      },
-      {
-        key: "manufacturing-special-orders",
-        label: "Fabricación Especial",
-        path: "/manufacturing/special-orders",
-        icon: SpecialOrdersIcon,
-        description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
-        // Sin código de sección propio en el catálogo de permisos: igual que
-        // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
-        // `/manufacturing` de `routePermissions`.
-        permission: "R-PRODUCCION",
-        section: "operation",
-      },
-      {
-        key: "manufacturing-pre-orders",
-        label: "Pre-órdenes",
-        path: "/manufacturing/pre-orders",
-        icon: OrdenesIcon,
-        description: "Materiales que necesita cada pedido especial antes de su OP: almacén valida, compras surte y producción crea la orden.",
-        // Cae en la regla de módulo `/manufacturing` (R-PRODUCCION).
-        permission: "R-PRODUCCION",
         section: "operation",
       },
       // ── Inventario ──────────────────────────────────────────────────────────

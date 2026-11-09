@@ -36,10 +36,14 @@ interface UseSampleSkuOnboardingFormParams {
 }
 
 /** Defaults del backend: desperdicio 0, obligatorio `true`. */
-const newMaterialRow = (componente: number): SampleSkuOnboardingMaterialFormValues => ({
+const newMaterialRow = (
+  componente: number,
+  unidad: number | null,
+): SampleSkuOnboardingMaterialFormValues => ({
   componente,
   cantidad: "",
-  unidad: 0,
+  // La unidad del producto, si la tiene; si no, el usuario la elige.
+  unidad: unidad ?? 0,
   desperdicio: "0",
   obligatorio: true,
 });
@@ -180,13 +184,13 @@ export function useSampleSkuOnboardingForm({
    * los errores: los índices por renglón dejan de corresponder, y el color ya
    * se validó para llegar aquí.
    */
-  const setMaterials = (componentIds: number[]) => {
+  const setMaterials = (componentIds: number[], unitById?: ReadonlyMap<number, number | null>) => {
     const current = form.getFieldValue("materia_prima_detalle");
     form.setFieldValue(
       "materia_prima_detalle",
       componentIds.map(
         (componente) =>
-          current.find((row) => row.componente === componente) ?? newMaterialRow(componente),
+          current.find((row) => row.componente === componente) ?? newMaterialRow(componente, unitById?.get(componente) ?? null),
       ),
     );
     setErrors({});

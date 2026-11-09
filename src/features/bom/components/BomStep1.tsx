@@ -38,13 +38,19 @@ export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) 
 
   const filteredProducts = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return products;
-    return products.filter(
-      (product) =>
-        product.nombre.toLowerCase().includes(term) ||
-        (product.descripcion ?? "").toLowerCase().includes(term),
-    );
-  }, [products, search]);
+    const matches = !term
+      ? products
+      : products.filter(
+          (product) =>
+            product.nombre.toLowerCase().includes(term) ||
+            (product.codigo ?? "").toLowerCase().includes(term) ||
+            (product.descripcion ?? "").toLowerCase().includes(term),
+        );
+    // Lo elegido queda arriba aunque la búsqueda lo filtre: nunca se confirma
+    // una selección invisible.
+    const chosen = products.filter((product) => selectedIds.includes(product.id));
+    return [...chosen, ...matches.filter((product) => !selectedIds.includes(product.id))];
+  }, [products, search, selectedIds]);
 
   const toggleProduct = (id: number) => {
     setSelectedIds((prev) =>
@@ -89,7 +95,7 @@ export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) 
       <SearchInput
         value={search}
         onChange={setSearch}
-        placeholder="Buscar por nombre o descripción..."
+        placeholder="Buscar por nombre o código..."
       />
 
       {/* Selected count */}
@@ -132,8 +138,13 @@ export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) 
 
                 {/* Product info */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                    {product.nombre}
+                  <p className="flex items-baseline gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    <span className="truncate">{product.nombre}</span>
+                    {product.codigo && (
+                      <span className="shrink-0 text-xs font-medium tabular-nums text-slate-400">
+                        {product.codigo}
+                      </span>
+                    )}
                   </p>
                   {product.descripcion && (
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">

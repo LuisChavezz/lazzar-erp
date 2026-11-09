@@ -35,7 +35,7 @@ const columns = [
   columnHelper.accessor((row) => row.pedido_folio ?? "", {
     id: "pedido_folio",
     header: "Pedido",
-    size: 150,
+    size: 120,
     cell: ({ row }) => (
       <Link href={`/manufacturing/pre-orders/${row.original.id}`} className={LINK_CLASS} title="Ver pre-orden">
         {row.original.pedido_folio || `#${row.original.pedido}`}
@@ -45,7 +45,7 @@ const columns = [
   columnHelper.accessor((row) => row.cliente_nombre ?? "", {
     id: "cliente_nombre",
     header: "Cliente",
-    size: 200,
+    size: 170,
     cell: ({ row }) => (
       <span className="text-sm text-slate-700 dark:text-slate-200 line-clamp-2">
         {textOrDash(row.original.cliente_nombre)}
@@ -82,7 +82,7 @@ const columns = [
   columnHelper.accessor((row) => row.fecha_compromiso ?? undefined, {
     id: "fecha_compromiso",
     header: "Compromiso",
-    size: 120,
+    size: 110,
     enableGlobalFilter: false,
     sortUndefined: "last",
     cell: ({ row }) => (
@@ -94,7 +94,7 @@ const columns = [
   columnHelper.accessor((row) => row.fecha_estimada_material ?? undefined, {
     id: "fecha_estimada_material",
     header: "Llega material",
-    size: 120,
+    size: 110,
     enableGlobalFilter: false,
     sortUndefined: "last",
     cell: ({ row }) => (
@@ -108,7 +108,7 @@ const columns = [
   columnHelper.accessor((row) => row.materiales_faltantes, {
     id: "materiales_faltantes",
     header: "Faltan",
-    size: 80,
+    size: 70,
     enableGlobalFilter: false,
     sortUndefined: "last",
     meta: { align: "right" },
@@ -125,7 +125,7 @@ const columns = [
   columnHelper.accessor((row) => row.dias_en_estatus, {
     id: "dias_en_estatus",
     header: "Días aquí",
-    size: 90,
+    size: 80,
     enableGlobalFilter: false,
     sortUndefined: "last",
     meta: { align: "right" },
@@ -137,7 +137,7 @@ const columns = [
   }),
   columnHelper.accessor("piezas_total", {
     header: "Piezas",
-    size: 90,
+    size: 75,
     enableGlobalFilter: false,
     meta: { align: "right" },
     cell: (info) => <span className="tabular-nums text-sm">{formatQuantityValue(info.getValue())}</span>,
@@ -145,7 +145,7 @@ const columns = [
   columnHelper.accessor((row) => row.op_folio ?? "", {
     id: "op_folio",
     header: "OP",
-    size: 130,
+    size: 110,
     cell: ({ row }) =>
       row.original.op ? (
         <Link href={`/manufacturing/production-orders/${row.original.op}`} className={LINK_CLASS}>

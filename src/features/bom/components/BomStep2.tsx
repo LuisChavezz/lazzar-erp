@@ -45,10 +45,16 @@ export function BomStep2({
   onBack,
   onSuccess,
 }: BomStep2Props) {
-  const { form, isSubmitting, getError, clearError, handleFormSubmit } =
-    useCreateBomForm({ productoVarianteId, componentIds, onSuccess });
-
   const { products, isLoading: isLoadingProducts } = useProducts(2);
+  const { form, isSubmitting, getError, clearError, handleFormSubmit } =
+    useCreateBomForm({
+      productoVarianteId,
+      componentIds,
+      // `useProducts(2)` ya está en caché desde el Paso 1.
+      unitById: new Map(products.map((product) => [product.id, product.unidad_id ?? null])),
+      onSuccess,
+    });
+
   const { units, isLoading: isLoadingUnits } = useUnitsOfMeasure();
 
   // Mapa id → nombre para titular cada tarjeta de material.
@@ -57,6 +63,7 @@ export function BomStep2({
     products.forEach((product) => map.set(product.id, product.nombre));
     return map;
   }, [products]);
+  const productById = new Map(products.map((product) => [product.id, product]));
 
   if (isLoadingProducts || isLoadingUnits) {
     return (
@@ -129,7 +136,26 @@ export function BomStep2({
 
                   {/* Unidad */}
                   <form.Field name={`materia_prima_detalle[${index}].unidad`}>
-                    {(field) => (
+                    {(field) => {
+                      const product = productById.get(item.componente);
+                      const fixedUnitId = product?.unidad_id ?? null;
+                      if (fixedUnitId && field.state.value === fixedUnitId) {
+                        // Unidad del material: el backend la toma, no se elige.
+                        return (
+                          <div>
+                            <span className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                              Unidad
+                            </span>
+                            <p className="py-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                              {product?.unidad_nombre ?? product?.unidad_abreviatura}
+                              {product?.unidad_abreviatura && product?.unidad_nombre
+                                ? ` (${product.unidad_abreviatura})`
+                                : ""}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return (
                       <FormSelect
                         label="Unidad"
                         name={field.name}
@@ -155,7 +181,8 @@ export function BomStep2({
                           </option>
                         ))}
                       </FormSelect>
-                    )}
+                      );
+                    }}
                   </form.Field>
 
                   {/* Obligatorio */}

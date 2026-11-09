@@ -54,3 +54,16 @@ export const getPreOrderHistory = async (id: number): Promise<PreOrderHistoryEve
   const response = await v1_api.get<PreOrderHistoryEvent[]>(`${BASE}${id}/historial/`);
   return response.data;
 };
+
+export interface PreOrderSummary {
+  urgentes: number;
+  por_validar: number;
+  en_compra: number;
+  listas: number;
+}
+
+/** Contadores para el badge del menú lateral. */
+export const getPreOrderSummary = async (): Promise<PreOrderSummary> => {
+  const response = await v1_api.get<PreOrderSummary>(`${BASE}resumen/`);
+  return response.data;
+};
