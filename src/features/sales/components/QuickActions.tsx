@@ -7,8 +7,9 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { ClockIcon, ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
+import { ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { hasPermission } from "@/src/utils/permissions";
 
 // Carga dinámica del formulario de cliente para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
 const LazyCustomerForm = dynamic(
@@ -30,10 +31,16 @@ export const QuickActions = () => {
   const { data: session } = useSession();
   const canOpenNewQuote = canAccessRoute("/sales/quotes/new", session?.user);
   const canOpenQuotes = canAccessRoute("/sales/quotes", session?.user);
+  // Alta de cliente: el mismo código que el botón de alta de `CustomerList`.
+  // Tras crearlo solo se lleva al listado si el proxy deja abrirlo
+  // (`R-CRM-CLIENTES`); si no, se queda aquí con el aviso de guardado del
+  // propio formulario.
+  const canCreateCustomer = hasPermission("C-CRM-CLIENTES", session?.user);
+  const canOpenCustomers = canAccessRoute("/sales/customers", session?.user);
 
   const handleCustomerCreated = () => {
     setIsCustomerDialogOpen(false);
-    router.push("/sales/customers");
+    if (canOpenCustomers) router.push("/sales/customers");
   };
 
   return (
@@ -55,49 +62,45 @@ export const QuickActions = () => {
             <span className="text-[10px] font-medium">Nueva Cotización</span>
           </Link>
         )}
-        <>
-          <button
-            type="button"
-            aria-label="Agregar cliente"
-            onClick={() => setIsCustomerDialogOpen(true)}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group cursor-pointer"
-          >
-            <ClientesIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
-            <span className="text-[10px] font-medium">Agregar cliente</span>
-          </button>
-          <MainDialog
-            title={
-              <DialogHeader
-                title="Alta de Cliente"
-                subtitle="Registra un nuevo cliente"
-                statusColor="emerald"
-              />
-            }
-            open={isCustomerDialogOpen}
-            onOpenChange={setIsCustomerDialogOpen}
-            maxWidth="900px"
-          >
-            {isCustomerDialogOpen ? <LazyCustomerForm onCreated={handleCustomerCreated} /> : null}
-          </MainDialog>
-        </>
+        {canCreateCustomer && (
+          <>
+            <button
+              type="button"
+              aria-label="Agregar cliente"
+              onClick={() => setIsCustomerDialogOpen(true)}
+              className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all group cursor-pointer"
+            >
+              <ClientesIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+              <span className="text-[10px] font-medium">Agregar cliente</span>
+            </button>
+            <MainDialog
+              title={
+                <DialogHeader
+                  title="Alta de Cliente"
+                  subtitle="Registra un nuevo cliente"
+                  statusColor="emerald"
+                />
+              }
+              open={isCustomerDialogOpen}
+              onOpenChange={setIsCustomerDialogOpen}
+              maxWidth="900px"
+            >
+              {isCustomerDialogOpen ? <LazyCustomerForm onCreated={handleCustomerCreated} /> : null}
+            </MainDialog>
+          </>
+        )}
         {canOpenQuotes && (
           <Link
             href="/sales/quotes"
-            aria-label="Crear pedido"
+            aria-label="Ver cotizaciones"
             className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
           >
             <PedidosIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-amber-500 transition-colors" aria-hidden="true" />
-            <span className="text-[10px] font-medium">Pedidos</span>
+            {/* Lleva al listado de cotizaciones (de ahí salen los pedidos): el
+                nombre visible y el accesible dicen lo mismo que el destino. */}
+            <span className="text-[10px] font-medium">Cotizaciones</span>
           </Link>
         )}
-        <Link
-          href="#"
-          aria-label="Ver actividad"
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-purple-600 dark:hover:text-purple-400 border border-slate-100 dark:border-white/5 hover:border-purple-200 dark:hover:border-purple-500/20 transition-all group"
-        >
-          <ClockIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-purple-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Actividad</span>
-        </Link>
       </div>
     </section>
   );
