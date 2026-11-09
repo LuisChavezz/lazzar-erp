@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
+import { useProducts } from "@/src/features/products/hooks/useProducts";
 import type {
   SampleProductionVariant,
   SpecialOrderLine,
@@ -46,6 +47,8 @@ export function SampleSkuOnboardingStepManager({
   // resultado hasta que se cierre a mano (no se cierra solo al terminar).
   const [result, setResult] = useState<SampleProductionVariant[] | null>(null);
 
+  // Mismo `useProducts(2)` que el Paso 1 (misma caché): da la unidad de cada material.
+  const { products } = useProducts(2);
   const onboarding = useSampleSkuOnboardingForm({
     pedidoId,
     line,
@@ -82,7 +85,10 @@ export function SampleSkuOnboardingStepManager({
           onboarding={onboarding}
           initialSelectedIds={materials.map((row) => row.componente)}
           onNext={(componentIds) => {
-            onboarding.setMaterials(componentIds);
+            onboarding.setMaterials(
+              componentIds,
+              new Map(products.map((product) => [product.id, product.unidad_id ?? null])),
+            );
             setCurrentStep("configure-materials");
           }}
           onClose={onClose}

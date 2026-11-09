@@ -11,6 +11,15 @@ export interface Product {
   empresa: number;
   categoria_producto: ProductCategory["id"];
   unidad_medida: UnitOfMeasure["id"] | null;
+  /**
+   * Unidad de inventario resuelta por el backend (`/catalogo/producto/`).
+   * `null` si el material aún no tiene: entonces se elige al capturar el BOM
+   * y el backend se la guarda. Opcionales por respuestas viejas en caché.
+   */
+  unidad_id?: number | null;
+  unidad_nombre?: string | null;
+  /** Corta, p. ej. "m" o "pz". */
+  unidad_abreviatura?: string | null;
   impuesto: Tax["id"] | null;
   sat_prodserv: SatProdservCode["id_sat_prodserv"] | null;
   sat_unidad: SatUnitCode["id_sat_unidad"] | null;
