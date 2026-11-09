@@ -212,7 +212,8 @@ export const getOperationsCustomerColumns = (
   },
   {
     // Fecha del último pedido (`fecha_ultima_compra`, pedida al backend). Sin
-    // el campo o sin compras, "—"; al ordenar, los vacíos van al final.
+    // el campo o sin compras, "Sin compras" (mismo texto que la opción del
+    // filtro para esas filas); al ordenar, los vacíos van al final.
     id: "ultima_compra",
     accessorFn: (row) => row.fecha_ultima_compra || undefined,
     header: ({ column }) => (
@@ -235,7 +236,7 @@ export const getOperationsCustomerColumns = (
           {formatFechaCalendario(row.original.fecha_ultima_compra)}
         </span>
       ) : (
-        <span className="text-slate-400 dark:text-slate-600">—</span>
+        <span className="text-slate-400 dark:text-slate-600 whitespace-nowrap">Sin compras</span>
       ),
   },
 ];
