@@ -54,3 +54,9 @@ export const createOcFromNeeds = async (body: {
   );
   return response.data;
 };
+
+/** Contador para el badge del menú lateral. */
+export const getNeedsSummary = async (): Promise<{ pendientes: number }> => {
+  const response = await v1_api.get<{ pendientes: number }>("/compras/necesidades/resumen/");
+  return response.data;
+};
