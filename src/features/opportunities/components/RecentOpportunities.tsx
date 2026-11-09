@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ChevronRightIcon, TrendingUpIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { formatAmountNoCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { OPPORTUNITIES_LIST_PATH, opportunityDetailPath } from "../constants/opportunityRoutes";
 import {
@@ -18,20 +20,32 @@ import { OpportunityName } from "./OpportunityName";
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 const TH_CLS = "px-6 py-3 font-semibold";
 
-function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
+function RecentOpportunityRow({
+  opportunity,
+  canOpenDetail,
+}: {
+  opportunity: Opportunity;
+  canOpenDetail: boolean;
+}) {
   // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro.
   const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
 
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-white/2 transition-colors">
       <td className="px-6 py-3">
-        <Link
-          href={opportunityDetailPath(opportunity.id)}
-          title="Ver detalle"
-          className="font-semibold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <OpportunityName opportunity={opportunity} />
-        </Link>
+        {canOpenDetail ? (
+          <Link
+            href={opportunityDetailPath(opportunity.id)}
+            title="Ver detalle"
+            className="font-semibold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <OpportunityName opportunity={opportunity} />
+          </Link>
+        ) : (
+          <span className="font-semibold text-slate-800 dark:text-white">
+            <OpportunityName opportunity={opportunity} />
+          </span>
+        )}
       </td>
       <td className="px-6 py-3 text-slate-600 dark:text-slate-300">
         {opportunity.cliente_nombre || <span className={MUTED_CLS}>Sin cliente</span>}
@@ -59,10 +73,14 @@ function RecentOpportunityRow({ opportunity }: { opportunity: Opportunity }) {
 /**
  * Las oportunidades más recientes del usuario, para la portada de Ventas
  * (`useRecentOpportunities`). Cada una enlaza a su detalle y "Ver todas", al
- * listado. Tiene su propia carga y su propio error con reintento.
+ * listado. Tiene su propia carga y su propio error con reintento. Los enlaces
+ * solo se ofrecen si la regla del proxy deja abrir el listado (y por prefijo,
+ * el detalle), EC-813.
  */
 export const RecentOpportunities = () => {
   const { opportunities, isInitialError, isFetching, refetch } = useRecentOpportunities();
+  const { data: session } = useSession();
+  const canOpenOpportunities = canAccessRoute(OPPORTUNITIES_LIST_PATH, session?.user);
 
   return (
     <section
@@ -76,17 +94,19 @@ export const RecentOpportunities = () => {
           </div>
           <h2 className="font-bold text-slate-800 dark:text-white text-sm">Oportunidades recientes</h2>
         </div>
-        <Link
-          href={OPPORTUNITIES_LIST_PATH}
-          className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors flex items-center gap-1 group rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-          aria-label="Ver todas las oportunidades"
-        >
-          Ver todas
-          <ChevronRightIcon
-            className="w-3 h-3 group-hover:translate-x-0.5 transition-transform"
-            aria-hidden="true"
-          />
-        </Link>
+        {canOpenOpportunities && (
+          <Link
+            href={OPPORTUNITIES_LIST_PATH}
+            className="text-xs text-sky-600 hover:text-sky-500 font-bold uppercase tracking-wider transition-colors flex items-center gap-1 group rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            aria-label="Ver todas las oportunidades"
+          >
+            Ver todas
+            <ChevronRightIcon
+              className="w-3 h-3 group-hover:translate-x-0.5 transition-transform"
+              aria-hidden="true"
+            />
+          </Link>
+        )}
       </div>
 
       {isInitialError ? (
@@ -121,7 +141,11 @@ export const RecentOpportunities = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/10">
               {opportunities.map((opportunity) => (
-                <RecentOpportunityRow key={opportunity.id} opportunity={opportunity} />
+                <RecentOpportunityRow
+                  key={opportunity.id}
+                  opportunity={opportunity}
+                  canOpenDetail={canOpenOpportunities}
+                />
               ))}
             </tbody>
           </table>

@@ -4,9 +4,11 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ClockIcon, ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 
 // Carga dinámica del formulario de cliente para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
 const LazyCustomerForm = dynamic(
@@ -22,6 +24,12 @@ const LazyCustomerForm = dynamic(
 export const QuickActions = () => {
   const router = useRouter();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  // Un acceso solo se ofrece si la regla del proxy deja abrir su destino
+  // (EC-813): el alta exige `C-CRM-COTIZACIONES` y el listado,
+  // `R-CRM-COTIZACIONES`, que un usuario con `R-CRM` puede no tener.
+  const { data: session } = useSession();
+  const canOpenNewQuote = canAccessRoute("/sales/quotes/new", session?.user);
+  const canOpenQuotes = canAccessRoute("/sales/quotes", session?.user);
 
   const handleCustomerCreated = () => {
     setIsCustomerDialogOpen(false);
@@ -37,14 +45,16 @@ export const QuickActions = () => {
         Accesos Rápidos
       </h2>
       <div className="grid grid-cols-2 gap-3">
-        <Link
-          href="/sales/quotes/new"
-          aria-label="Crear nueva cotización"
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
-        >
-          <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Nueva Cotización</span>
-        </Link>
+        {canOpenNewQuote && (
+          <Link
+            href="/sales/quotes/new"
+            aria-label="Crear nueva cotización"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-900/10 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-100 dark:border-white/5 hover:border-sky-200 dark:hover:border-sky-500/20 transition-all group"
+          >
+            <PlusIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden="true" />
+            <span className="text-[10px] font-medium">Nueva Cotización</span>
+          </Link>
+        )}
         <>
           <button
             type="button"
@@ -70,14 +80,16 @@ export const QuickActions = () => {
             {isCustomerDialogOpen ? <LazyCustomerForm onCreated={handleCustomerCreated} /> : null}
           </MainDialog>
         </>
-        <Link
-          href="/sales/quotes"
-          aria-label="Crear pedido"
-          className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
-        >
-          <PedidosIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-amber-500 transition-colors" aria-hidden="true" />
-          <span className="text-[10px] font-medium">Pedidos</span>
-        </Link>
+        {canOpenQuotes && (
+          <Link
+            href="/sales/quotes"
+            aria-label="Crear pedido"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-amber-900/10 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-100 dark:border-white/5 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all group"
+          >
+            <PedidosIcon className="w-6 h-6 mb-2 text-slate-400 group-hover:text-amber-500 transition-colors" aria-hidden="true" />
+            <span className="text-[10px] font-medium">Pedidos</span>
+          </Link>
+        )}
         <Link
           href="#"
           aria-label="Ver actividad"
