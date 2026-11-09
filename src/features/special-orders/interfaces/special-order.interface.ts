@@ -1,3 +1,4 @@
+import type { PreOrderRef } from "@/src/features/pre-orders/interfaces/pre-order.interface";
 import type { EmbroideryOnboardingUbicacion } from "@/src/features/embroidery/interfaces/embroidery.interface";
 import type { ReflectiveLineConfigEntry } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
 
@@ -50,6 +51,8 @@ export interface SpecialOrderListItem {
   servicios?: { bordado: boolean; reflejante: boolean; corte_manga: boolean };
   /** OP activas ligadas al pedido (vacío si aún no hay). */
   ordenes_produccion?: SpecialOrderOpRef[];
+  /** Pre-orden de producción del pedido; `null` si aún no tiene (nace con el BOM). */
+  pre_orden?: PreOrderRef | null;
 }
 
 /** OP ligada a un pedido especial, para la columna "OP". */

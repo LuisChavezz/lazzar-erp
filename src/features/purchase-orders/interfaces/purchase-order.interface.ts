@@ -185,6 +185,10 @@ export interface PurchaseOrder {
   pedido: number | null;
   /** Folio del pedido LEGADO (`pedido`); doblemente nullable. Ver `pedido`. */
   pedido_folio: string | null;
+  /** Pre-orden de producción que originó la OC (faltantes de material), o `null`. */
+  pre_orden_id?: number | null;
+  /** Pre-órdenes que surte la OC (consolidada o del flujo anterior). */
+  pre_ordenes?: number[];
   /**
    * Ids de TODOS los pedidos ligados a la orden (`[]` si ninguno). El backend
    * NO garantiza su orden: no hay un pedido "principal".

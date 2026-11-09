@@ -4,7 +4,9 @@ import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButton
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, LayersIcon, SpecialOrdersIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, LayersIcon, OrdenesIcon, SpecialOrdersIcon } from "@/src/components/Icons";
+import { PreOrderSheet } from "@/src/features/pre-orders/components/PreOrderSheet";
+import { usePreOrderByPedido } from "@/src/features/pre-orders/hooks/usePreOrders";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { InfoField } from "@/src/components/DetailDialogPrimitives";
@@ -60,6 +62,7 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
   // exige además el DEPARTAMENTO Producción, que la sesión no trae, así que un
   // usuario puede ver la acción y recibir el rechazo al enviar (el diálogo lo
   // explica).
+  const preOrden = usePreOrderByPedido(isValidId ? numericId : null);
   const { data: session } = useSession();
   const canGenerateSkus = hasPermission("R-PRODUCCION", session?.user);
 
@@ -205,6 +208,22 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
           onAltaCatalogo={(line) => setCatalogAlta({ lineId: line.id, open: true })}
         />
       </SheetSection>
+
+      {/* ── 3. Pre-orden: materiales antes de la OP ───────────────────── */}
+      {preOrden ? (
+        <PreOrderSheet preOrderId={preOrden.id} />
+      ) : preOrden === null ? (
+        <SheetSection
+          icon={<OrdenesIcon className="w-5 h-5" />}
+          title="Pre-orden de producción"
+          subtitle="Se crea sola cuando las muestras tienen lista de materiales (BOM)."
+        >
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Este pedido aún no tiene pre-orden. Si sus muestras ya tenían BOM antes de este
+            cambio, se generará en cuanto se edite su lista de materiales.
+          </p>
+        </SheetSection>
+      ) : null}
 
       <SampleSkuOnboardingDialog
         pedidoId={data.id}

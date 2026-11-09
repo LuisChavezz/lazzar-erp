@@ -430,6 +430,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         section: "operation",
       },
       {
+        key: "procurement-purchase-needs",
+        label: "Necesidades de compra",
+        path: "/procurement/purchase-needs",
+        icon: OrdenesIcon,
+        description: "Faltantes de material de las pre-órdenes de producción, agrupados por material para crear una sola orden de compra.",
+        // Cae en la regla de módulo `/procurement` (R-COMPRAS).
+        permission: "R-COMPRAS",
+        section: "operation",
+      },
+      {
         key: "procurement-orders",
         label: "Órdenes de Compra",
         path: "/procurement/purchase-orders",
@@ -582,6 +592,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Sin código de sección propio en el catálogo de permisos: igual que
         // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
         // `/manufacturing` de `routePermissions`.
+        permission: "R-PRODUCCION",
+        section: "operation",
+      },
+      {
+        key: "manufacturing-pre-orders",
+        label: "Pre-órdenes",
+        path: "/manufacturing/pre-orders",
+        icon: OrdenesIcon,
+        description: "Materiales que necesita cada pedido especial antes de su OP: almacén valida, compras surte y producción crea la orden.",
+        // Cae en la regla de módulo `/manufacturing` (R-PRODUCCION).
         permission: "R-PRODUCCION",
         section: "operation",
       },

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { useClientNow } from "@/src/hooks/useClientNow";
+import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrderStatus";
+import { SemaforoBadge } from "@/src/features/pre-orders/components/PreOrderTracking";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { getMexicoTodayDate, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
@@ -95,6 +97,8 @@ type Paso = { label: string; cls: string };
 
 const PASO = {
   sku: { label: "Generar SKU", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" },
+  validar: { label: "Validar existencias", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" },
+  material: { label: "Esperando material", cls: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" },
   op: { label: "Crear OP", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300" },
   produccion: { label: "En producción", cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" },
   terminado: { label: "OP cerradas", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" },
@@ -108,7 +112,19 @@ export const getSiguientePaso = (order: SpecialOrderListItem): Paso | null => {
   const { tallas_total: total, tallas_con_sku: conSku, ordenes_produccion: ops } = order;
   if (total !== undefined && conSku !== undefined && total > 0 && conSku < total) return PASO.sku;
   if (ops === undefined) return null;
-  if (ops.length === 0) return PASO.op;
+  if (ops.length === 0) {
+    // Con pre-orden, el paso lo marca su estatus: almacén valida, compras
+    // surte y, con todo el material, ya se puede crear la OP.
+    switch (order.pre_orden?.estatus) {
+      case "pendiente_validar":
+        return PASO.validar;
+      case "faltan_materiales":
+      case "en_compra":
+        return PASO.material;
+      default:
+        return PASO.op;
+    }
+  }
   return ops.every((op) => isClosedProductionOrderStatus(op.estatus_op)) ? PASO.terminado : PASO.produccion;
 };
 
@@ -119,6 +135,27 @@ export function SiguientePasoCell({ order }: { order: SpecialOrderListItem }) {
     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${paso.cls}`}>
       {paso.label}
     </span>
+  );
+}
+
+/** Estatus de la pre-orden con enlace a su página; "Sin pre-orden" si aún no hay. */
+export function PreOrdenCell({ order }: { order: SpecialOrderListItem }) {
+  const pre = order.pre_orden;
+  if (pre === undefined) return DASH;
+  if (pre === null) {
+    return <span className="text-xs text-slate-400 dark:text-slate-500">Sin pre-orden</span>;
+  }
+  return (
+    <Link
+      href={`/manufacturing/pre-orders/${pre.id}`}
+      title="Ver pre-orden"
+      className="inline-flex flex-col items-start gap-1 hover:opacity-80"
+    >
+      <StatusBadge status={pre.estatus} config={PRE_ORDER_STATUS_CFG} />
+      {pre.estatus !== "convertida" && pre.estatus !== "cancelada" && pre.semaforo && (
+        <SemaforoBadge semaforo={pre.semaforo} />
+      )}
+    </Link>
   );
 }
 

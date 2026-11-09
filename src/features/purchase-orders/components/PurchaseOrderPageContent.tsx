@@ -754,6 +754,16 @@ export function PurchaseOrderPageContent({
                   ),
                 }}
               />
+              {(data.pre_ordenes ?? (data.pre_orden_id ? [data.pre_orden_id] : [])).map((preOrdenId) => (
+                <Link
+                  key={preOrdenId}
+                  href={`/manufacturing/pre-orders/${preOrdenId}`}
+                  title="Ver pre-orden de producción"
+                  className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300 underline decoration-dotted underline-offset-4"
+                >
+                  Pre-orden #{preOrdenId}
+                </Link>
+              ))}
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 truncate">
               {textOrDash(data.proveedor_nombre)}
