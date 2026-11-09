@@ -161,7 +161,8 @@ export interface OperationsQuote {
   /** Nombre del vendedor. Opcional: pedido al backend; sin él se ve "—". */
   vendedor_nombre?: string | null;
   sucursal: number;
-  cliente: number;
+  /** PK del cliente; `null` en un borrador guardado sin cliente (EC-810). */
+  cliente: number | null;
   oportunidad: number | null;
   /** PK de la moneda; `null` en un borrador sin moneda elegida (EC-617). */
   moneda: number | null;
