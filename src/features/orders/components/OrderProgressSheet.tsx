@@ -6,6 +6,7 @@ import { OrderDocumentsSection } from "./OrderDocumentsSection";
 import { OrderPickingBySizeSection } from "./OrderPickingBySizeSection";
 import { OrderPickingFoliosSection } from "./OrderPickingFoliosSection";
 import { OrderPickingProgressSection } from "./OrderPickingProgressSection";
+import { OrderPreOrderSection } from "./OrderPreOrderSection";
 import { OrderBadge } from "./OrderSheetPrimitives";
 import { OrderTraceabilitySection } from "./OrderTraceabilitySection";
 import type { OpenOrderDocument } from "./orderDocumentDialogs";
@@ -56,6 +57,7 @@ export function OrderProgressSheet({
         showAccounting={showAccounting}
         onOpenOrden={onOpenDoc}
       />
+      <OrderPreOrderSection preOrden={pedido.pre_orden} />
       <OrderPickingProgressSection tracker={pedido.tracker_picking} />
       <OrderPickingBySizeSection detalles={pedido.detalles} />
       <OrderPickingFoliosSection folios={folios} onOpenFolio={onOpenDoc} />
