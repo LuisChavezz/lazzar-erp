@@ -9,7 +9,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
-import { canAccessRoute } from "@/src/utils/routeAccess";
+import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import {
   filterVisibleRouteSections,
   findActiveRouteSection,
@@ -290,13 +290,12 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     (item) => item.showInSidebar !== false
   );
 
-  // El crumb raíz enlaza al landing del módulo. Se pregunta con la MISMA regla
-  // que aplica el proxy a esa ruta (`canAccessRoute`), no con el permiso del
-  // grupo: tras la granularización un usuario puede tener una sección sin el
-  // módulo (p. ej. R-WMS-PICKING sin R-WMS) y la regla decide si la portada lo
-  // deja entrar. Hoy solo difieren en `/system`, cuya portada también acepta
-  // R-CORE-REPORTES; en los demás módulos la regla es el permiso del grupo.
-  const canSeeModuleRoot = canAccessRoute(activeGroup.modulePath, session?.user);
+  // La casita lleva al mismo destino que el resto de entradas al módulo
+  // (`getModuleEntryHref`, EC-813): la portada si la regla del proxy lo deja
+  // entrar (`/system` también acepta R-CORE-REPORTES, EC-626) y, si no —p. ej.
+  // R-WMS-PICKING sin R-WMS—, su primera sección abrible. El Home queda como
+  // respaldo mientras carga la sesión o si no hay ninguna.
+  const moduleRootHref = getModuleEntryHref(activeGroup, session?.user) ?? "/";
 
   // Con sub-grupos, un menú por sub-grupo; la visibilidad (permiso por hoja +
   // poda de sub-grupos vacíos) y el sub-grupo activo salen del helper compartido.
@@ -357,7 +356,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
         />
       )}
       <Link
-        href={canSeeModuleRoot ? activeGroup.modulePath : "/"}
+        href={moduleRootHref}
         aria-label={activeGroup.moduleLabel}
         aria-current={isModuleRootActive ? "page" : undefined}
         title={activeGroup.moduleLabel}

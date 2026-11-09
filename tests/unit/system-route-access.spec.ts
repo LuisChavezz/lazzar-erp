@@ -37,9 +37,10 @@ test.describe("isPlausibleDateKey (movido a src/utils)", () => {
 });
 
 /**
- * El icono de inicio de `ModuleNav` decide con `canAccessRoute(modulePath)`.
- * Fuera de `/system` debe dar EXACTAMENTE lo mismo que el permiso del grupo
- * que usaba antes, para cualquier código de cualquier módulo.
+ * Las entradas al módulo (`getModuleEntryHref`, también el icono de inicio de
+ * `ModuleNav`) llevan a la portada si `canAccessRoute(modulePath)` lo permite.
+ * Fuera de `/system` esa regla debe dar EXACTAMENTE lo mismo que el permiso
+ * del grupo, para cualquier código de cualquier módulo.
  */
 test.describe("raíz de módulo en ModuleNav", () => {
   const codes = [
