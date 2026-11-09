@@ -11,6 +11,7 @@ import { useRecentQuotes } from "@/src/features/quotes/hooks/useRecentQuotes";
 import { Quote } from "@/src/features/quotes/interfaces/quote.interface";
 import { getStatusStyles } from "@/src/features/quotes/utils/getStatusStyle";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
+import { getQuoteClienteLabel } from "@/src/features/quotes/utils/quoteClienteLabel";
 import { DIALOG_WIDTH_DETAIL } from "@/src/constants/dialogWidths";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { PENDING_AUTHORIZATION_QUOTE_STATUS } from "@/src/features/quotes/utils/quoteStatusRules";
@@ -122,7 +123,7 @@ export const RecentQuotes = () => {
                     <div className="text-xs font-bold text-slate-800 dark:text-white">
                       {`OC${quote.oc}` || `PED-${quote.id}`}
                     </div>
-                    <div className="text-[10px] text-slate-500">{quote.cliente_razon_social}</div>
+                    <div className="text-[10px] text-slate-500">{getQuoteClienteLabel(quote)}</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -150,7 +151,7 @@ export const RecentQuotes = () => {
           title={
             <DialogHeader
               title={`Detalles de la cotización #${dialogQuote.id}`}
-              subtitle={dialogQuote.cliente_nombre || dialogQuote.cliente_razon_social || "Sin cliente"}
+              subtitle={getQuoteClienteLabel(dialogQuote)}
               statusColor={getQuoteDialogStatusColor(dialogQuote.estatus)}
             />
           }
