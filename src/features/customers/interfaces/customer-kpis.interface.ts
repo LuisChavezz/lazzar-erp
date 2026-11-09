@@ -3,14 +3,23 @@
  * backend en cada lectura. Aquí no se recalcula nada; la UI pinta los valores
  * tal cual.
  *
- * El alcance depende del ROL (superusuario: todas las empresas; admin de
- * empresa o Mesa de Control: toda su empresa; el resto: los clientes que tiene
- * asignados), así que no siempre son "los clientes del usuario". El endpoint
- * no acepta parámetros (cualquiera responde 400) y no expone metas ni semáforo.
+ * Todo se acota a la empresa ACTIVA del usuario, superusuario incluido
+ * (EC-798). Dentro de ella hay dos alcances:
+ * - Clientes (`clientes_activos`, `clientes_nuevos`): superusuario, admin de
+ *   empresa, Mesa de Control y Contabilidad cuentan todos los clientes de la
+ *   empresa; el resto, solo los que tiene asignados.
+ * - Facturación y cartera (`ventas_por_cliente`, `cartera_antiguedad`, EC-789):
+ *   todos los clientes de la empresa solo con `puede_ver_cartera_de_todos`
+ *   (superusuario, admin de empresa y Contabilidad); el resto, Mesa de Control
+ *   incluida, solo sus clientes asignados. No se omite ningún importe: cambia
+ *   el conjunto de clientes sobre el que se suman.
+ * El endpoint no acepta parámetros (cualquiera responde 400) y no expone metas
+ * ni semáforo.
  *
  * Cada bloque es una unión discriminada sobre `disponible`: CUALQUIERA de los
- * cuatro puede llegar como `{ disponible: false, motivo }` (p. ej. un usuario
- * sin empresa recibe los cuatro así). La UI decide solo por esa bandera.
+ * cinco puede llegar como `{ disponible: false, motivo }` (un usuario sin
+ * empresa recibe los cinco así, y sin `puede_ver_cartera_de_todos`). La UI
+ * decide solo por esa bandera.
  *
  * Importes POR MONEDA (`por_moneda`): solo vienen las monedas con datos, por
  * código ISO en orden alfabético, y `[]` sin datos. No hay ningún total de
@@ -85,6 +94,27 @@ export interface CustomerActiveKpiAvailable {
   };
 }
 
+/**
+ * Clientes activos dados de alta en el mes calendario en curso, en hora del
+ * centro de México (EC-817). Solo un conteo: sin importes ni drill-down. Los
+ * clientes sin fecha de alta (anteriores al historial) no cuentan en ningún mes.
+ */
+export interface CustomerNewKpiAvailable {
+  disponible: true;
+  /** Regla del backend en texto. */
+  criterio: string;
+  total: number;
+  /** Mes que se cuenta, "YYYY-MM". */
+  mes: string;
+  /**
+   * Primer y último día del mes, "YYYY-MM-DD", ambos inclusivos. Fechas-calendario:
+   * no pasarlas por `new Date()`, que las lee como medianoche UTC y en México
+   * caen en el día anterior.
+   */
+  desde: string;
+  hasta: string;
+}
+
 /** Cuentas vencidas de un tramo de días: conteo y suma de saldo. */
 export interface CustomerKpiCarteraBucket {
   total: number;
@@ -141,13 +171,21 @@ export interface CustomerCarteraKpiAvailable {
 
 export type CustomerSalesKpi = CustomerSalesKpiAvailable | CustomerKpiUnavailable;
 export type CustomerActiveKpi = CustomerActiveKpiAvailable | CustomerKpiUnavailable;
+export type CustomerNewKpi = CustomerNewKpiAvailable | CustomerKpiUnavailable;
 export type CustomerCarteraKpi = CustomerCarteraKpiAvailable | CustomerKpiUnavailable;
 
 export interface CustomerKpis {
   /** Datetime UTC del cálculo. */
   generado_en: string;
+  /**
+   * `true`: facturación y cartera cubren todos los clientes de la empresa;
+   * `false`: solo los asignados al usuario (EC-789). AUSENTE si el usuario no
+   * tiene empresa (todos los bloques llegan no disponibles).
+   */
+  puede_ver_cartera_de_todos?: boolean;
   ventas_por_cliente: CustomerSalesKpi;
   clientes_activos: CustomerActiveKpi;
+  clientes_nuevos: CustomerNewKpi;
   /**
    * Hoy SIEMPRE llega no disponible. Su forma disponible aún no existe en el
    * contrato: solo se tipa la bandera (el bloque genérico de `KpiGrid`).
