@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { readBlobErrorBody } from "@/src/utils/readBlobErrorBody";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { StockItem } from "../interfaces/stock.interface";
 import type {
@@ -6,13 +7,16 @@ import type {
   StockPorAlmacenResumen,
 } from "../interfaces/stock-por-almacen.interface";
 import type {
+  StockReportExportParams,
   StockReportParams,
   StockReportResponse,
 } from "../interfaces/stock-report.interface";
 import type {
+  StockMovementReportExportParams,
   StockMovementReportParams,
   StockMovementReportResponse,
 } from "../interfaces/stock-movement-report.interface";
+import type { StockReportExportFormat } from "../utils/stockReportExport";
 import type {
   MovementLedgerParams,
   MovementLedgerResponse,
@@ -75,35 +79,6 @@ export const getStockPorAlmacenResumen = async (
 };
 
 /**
- * Resuelve el reporte COMPLETO (todas las filas del periodo) para un endpoint
- * de reporte paginado en UNA sola petición con `page_size` deliberadamente
- * enorme. Compartido por `getFullStockReport`/`getFullStockMovementReport`:
- * ambos endpoints tienen exactamente el mismo contrato de "sin tope de
- * `page_size`" y la misma salvaguarda de fallar fuerte si el backend, pese a
- * no documentar un tope, paginara y devolviera menos filas que `count` (el PDF
- * saldría INCOMPLETO en silencio si no se detectara).
- */
-const fetchFullPaginatedReport = async <
-  TParams,
-  TResponse extends { count: number; next: string | null; previous: string | null; results: unknown[] },
->(
-  fetchFn: (params: TParams & { page: number; page_size: number }) => Promise<TResponse>,
-  params: TParams,
-  pageSize: number,
-): Promise<TResponse> => {
-  const response = await fetchFn({ ...params, page: 1, page_size: pageSize });
-
-  if (response.results.length < response.count) {
-    throw new Error(
-      "El servidor devolvió el reporte paginado y no se pudieron traer todas las filas. Intenta acotar el periodo y exporta de nuevo.",
-    );
-  }
-
-  // Conjunto totalmente materializado: `next`/`previous` ya no aplican.
-  return { ...response, next: null, previous: null };
-};
-
-/**
  * Reporte de existencias por periodo (paginado del lado del servidor).
  *
  * Envía todos los parámetros como query params; axios omite los `undefined`,
@@ -120,26 +95,28 @@ export const getStockReport = async (
   return data;
 };
 
-// El backend ya NO topa `page_size` en este endpoint (confirmado, misma
-// situación que movimientos). Por eso la exportación COMPLETA se resuelve en
-// UNA sola petición con un `page_size` deliberadamente enorme: sin tope no hay
-// múltiples páginas que mezclar, lo que elimina de raíz el riesgo de condición
-// de carrera (que el inventario cambie entre peticiones) y la aritmética de
-// páginas del enfoque por tandas que este endpoint usaba antes. Mismo valor
-// que `STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE`: ningún periodo/almacén
-// realista (incluidos los ~40,000 filas observados) se acerca a este número.
-const STOCK_REPORT_EXPORT_PAGE_SIZE = 100_000;
-
 /**
- * Reporte de existencias COMPLETO para el contexto de filtros dado: trae TODAS
- * las filas del periodo en una sola petición. Pensado para la exportación a
- * PDF. Los campos NO paginados (`resumen`, `resumen_por_almacen`, fechas,
- * etc.) ya reflejan el periodo completo (no dependen de la página).
+ * Reporte de existencias COMPLETO en PDF o XLSX, generado por el backend
+ * (`reporte-existencias-periodo/exportar/`, EC-814) con los mismos filtros,
+ * alcance y cálculo que el JSON de la pantalla, sin paginar. A diferencia del
+ * JSON, el almacén es obligatorio (sin él responde 400 `almacen`). Pide el
+ * cuerpo como `blob`; si falla, `readBlobErrorBody` deja el JSON del error en
+ * `response.data` para que el hook muestre el motivo.
  */
-export const getFullStockReport = async (
-  params: Omit<StockReportParams, "page" | "page_size">,
-): Promise<StockReportResponse> =>
-  fetchFullPaginatedReport(getStockReport, params, STOCK_REPORT_EXPORT_PAGE_SIZE);
+export const exportStockReport = async (
+  params: StockReportExportParams,
+  formato: StockReportExportFormat,
+): Promise<Blob> => {
+  try {
+    const { data } = await v1_api.get<Blob>(
+      "/inventarios/existencias/reporte-existencias-periodo/exportar/",
+      { params: { ...params, formato }, responseType: "blob" },
+    );
+    return data;
+  } catch (error) {
+    throw await readBlobErrorBody(error);
+  }
+};
 
 // ─── Reporte de movimientos de inventario por periodo ────────────────────────
 
@@ -161,33 +138,26 @@ export const getStockMovementReport = async (
   return data;
 };
 
-// Este endpoint tampoco impone un máximo de `page_size` (mismo caso que
-// existencias — confirmado mediante inspección del código del backend, fuente
-// de DRF y verificación en tiempo de ejecución: ninguno de los dos endpoints
-// recorta page_size=100000). Por eso la exportación COMPLETA se resuelve en UNA
-// sola petición con un `page_size` deliberadamente enorme: sin tope no hay
-// múltiples páginas que mezclar, lo que elimina de raíz el riesgo de condición
-// de carrera (que el inventario cambie entre peticiones) y la aritmética de
-// páginas del enfoque por tandas. Se eligió un techo alto en lugar de "sin
-// límite" para acotar el tamaño de la respuesta a algo razonable para la
-// memoria del navegador; ningún periodo/tipo/almacén realista se acerca a este
-// número.
-const STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE = 100_000;
-
 /**
- * Reporte de movimientos COMPLETO para el contexto de filtros dado: trae TODAS
- * las filas del periodo en una sola petición. Pensado para la exportación a
- * PDF. Los campos NO paginados (`resumen`, fechas, `tipo_movimiento`,
- * `filtros`) ya reflejan el periodo completo (no dependen de la página).
+ * Reporte de movimientos COMPLETO en PDF o XLSX, generado por el backend
+ * (`reporte-movimientos-periodo/exportar/`, EC-814). Mismo contrato que
+ * `exportStockReport`, con el almacén opcional: sin `almacen_id` el archivo
+ * trae todos los almacenes del alcance, igual que la pantalla.
  */
-export const getFullStockMovementReport = async (
-  params: Omit<StockMovementReportParams, "page" | "page_size">,
-): Promise<StockMovementReportResponse> =>
-  fetchFullPaginatedReport(
-    getStockMovementReport,
-    params,
-    STOCK_MOVEMENT_REPORT_EXPORT_PAGE_SIZE,
-  );
+export const exportStockMovementReport = async (
+  params: StockMovementReportExportParams,
+  formato: StockReportExportFormat,
+): Promise<Blob> => {
+  try {
+    const { data } = await v1_api.get<Blob>(
+      "/inventarios/movimientos/reporte-movimientos-periodo/exportar/",
+      { params: { ...params, formato }, responseType: "blob" },
+    );
+    return data;
+  } catch (error) {
+    throw await readBlobErrorBody(error);
+  }
+};
 
 // ─── Auxiliar de movimientos (kardex de una variante) ────────────────────────
 

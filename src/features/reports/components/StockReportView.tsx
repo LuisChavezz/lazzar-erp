@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
-import { Button } from "@/src/components/Button";
-import { DownloadIcon } from "@/src/components/Icons";
 import { StockReportFilters } from "./StockReportFilters";
 import { StockReportSummary } from "./StockReportSummary";
 import { stockReportColumns } from "./StockReportColumns";
+import { StockReportExportButtons } from "./StockReportExportButtons";
 import { useStockReport } from "@/src/features/stock/hooks/useStockReport";
-import { useExportStockReportPdf } from "@/src/features/stock/hooks/useExportStockReportPdf";
+import { useExportStockReport } from "@/src/features/stock/hooks/useExportStockReport";
+import type { StockReportExportFormat } from "@/src/features/stock/utils/stockReportExport";
+import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
 
@@ -18,8 +19,8 @@ const PAGE_SIZE = 100;
 
 /**
  * Reporte de existencias por periodo: gate (almacén + rango de fechas) →
- * resumen → tabla paginada en servidor → exportación PDF del conjunto
- * completo. Vive en su propia ruta (`/system/reports/existencias`).
+ * resumen → tabla paginada en servidor → descarga en PDF o Excel del
+ * conjunto completo (la genera el backend). Vive en su propia ruta (`/system/reports/existencias`).
  */
 export function StockReportView() {
   const [almacenId, setAlmacenId] = useState<number | null>(null);
@@ -79,17 +80,21 @@ export function StockReportView() {
     setPage(1);
   };
 
-  // Exportación a PDF del reporte COMPLETO (todas las páginas del periodo), no
-  // la página visible. Usa el contexto de filtros actual, no `data.results`.
-  const { mutate: exportPdf, isPending: isExporting } = useExportStockReportPdf();
-  const handleExportPdf = () => {
+  // Descarga del reporte COMPLETO (todas las páginas del periodo), no la página
+  // visible, generada por el backend. Usa el contexto de filtros actual, no
+  // `data.results`. El código del almacén (para el nombre del archivo) sale de
+  // la misma lista que ya cargó el selector.
+  const pdfExport = useExportStockReport("pdf");
+  const xlsxExport = useExportStockReport("xlsx");
+  const { data: warehouses } = useWarehouses();
+  const handleExport = (formato: StockReportExportFormat) => {
     // Los checks de null estrechan los tipos a `number`/`string` (equivalen a
-    // `gateComplete`, que siempre es cierto cuando este botón está visible).
+    // `gateComplete`, que siempre es cierto cuando estos botones están visibles).
     if (almacenId === null || fechaInicio === null || fechaFinal === null) return;
-    exportPdf({
-      almacen_id: almacenId,
-      fecha_inicio: fechaInicio,
-      fecha_final: fechaFinal,
+    const codigo = warehouses?.find((w) => w.id_almacen === almacenId)?.codigo;
+    (formato === "pdf" ? pdfExport : xlsxExport).exportReport({
+      params: { almacen_id: almacenId, fecha_inicio: fechaInicio, fecha_final: fechaFinal },
+      codigo,
     });
   };
 
@@ -134,7 +139,7 @@ export function StockReportView() {
 
           {/* `DataTable` se monta SIEMPRE (recibe `isLoading`/`isError` y
               alterna solo su cuerpo), así que su toolbar y `actionButton`
-              ("Exportar a PDF") siguen disponibles durante la carga o un
+              ("PDF" / "Excel") siguen disponibles durante la carga o un
               error. `isInitialError` (de `useGuardedQuery`) solo es cierto
               si estos parámetros nunca cargaron: un refetch en segundo plano
               que falla conserva la última respuesta buena y avisa con un
@@ -146,16 +151,10 @@ export function StockReportView() {
             data={data?.results ?? []}
             emptyMessage="No se encontraron existencias para el almacén y el periodo seleccionados."
             actionButton={
-              <Button
-                variant="secondary"
-                leftIcon={<DownloadIcon className="w-4 h-4 shrink-0" />}
-                onClick={handleExportPdf}
-                disabled={isExporting}
-                aria-label="Exportar el reporte completo a PDF"
-                title="Exportar todo el reporte (todas las páginas) a PDF"
-              >
-                {isExporting ? "Generando PDF..." : "Exportar a PDF"}
-              </Button>
+              <StockReportExportButtons
+                isExporting={{ pdf: pdfExport.isExporting, xlsx: xlsxExport.isExporting }}
+                onExport={handleExport}
+              />
             }
             serverPagination={{
               pageCount: Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE)),
