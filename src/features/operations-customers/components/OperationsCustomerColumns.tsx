@@ -78,6 +78,9 @@ const presenceFilter =
 /** Teléfono visible de la fila: el fijo o, si no hay, el celular. */
 export const telefonoDe = (customer: OperationsCustomer) => customer.telefono || customer.celular;
 
+/** Texto de los clientes sin compras: lo usan la celda y la opción del filtro. */
+const SIN_COMPRAS_LABEL = "Sin compras";
+
 export interface OperationsCustomerFilterOptions {
   estados: ColumnFilterOption[];
   /** Meses con compras y, si algún cliente no tiene, "Sin compras". */
@@ -93,7 +96,7 @@ export function buildOperationsCustomerFilterOptions(
       ALL_FILTER_OPTION,
       ...buildMonthFilterOptions(
         customers.map((c) => c.fecha_ultima_compra),
-        "Sin compras",
+        SIN_COMPRAS_LABEL,
       ),
     ],
   };
@@ -211,9 +214,9 @@ export const getOperationsCustomerColumns = (
     ),
   },
   {
-    // Fecha del último pedido (`fecha_ultima_compra`, pedida al backend). Sin
-    // el campo o sin compras, "Sin compras" (mismo texto que la opción del
-    // filtro para esas filas); al ordenar, los vacíos van al final.
+    // Fecha de la última compra (`fecha_ultima_compra`). `null` = sin compras:
+    // la celda muestra `SIN_COMPRAS_LABEL`, el mismo texto que la opción del
+    // filtro para esas filas; al ordenar, van al final.
     id: "ultima_compra",
     accessorFn: (row) => row.fecha_ultima_compra || undefined,
     header: ({ column }) => (
@@ -231,12 +234,14 @@ export const getOperationsCustomerColumns = (
     sortUndefined: "last",
     enableGlobalFilter: false,
     cell: ({ row }) =>
-      row.original.fecha_ultima_compra ? (
+      row.original.fecha_ultima_compra === null ? (
+        <span className="text-slate-400 dark:text-slate-600 whitespace-nowrap">
+          {SIN_COMPRAS_LABEL}
+        </span>
+      ) : (
         <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {formatFechaCalendario(row.original.fecha_ultima_compra)}
         </span>
-      ) : (
-        <span className="text-slate-400 dark:text-slate-600 whitespace-nowrap">Sin compras</span>
       ),
   },
 ];

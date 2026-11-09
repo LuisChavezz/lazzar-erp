@@ -17,8 +17,9 @@ export interface OperationsCustomer
   celular: string | null;
   contacto: string | null;
   /**
-   * Fecha del último pedido del cliente (ISO). Opcional: pedida al backend;
-   * mientras no llegue, la columna muestra "—".
+   * Fecha de la última compra real del cliente (`"YYYY-MM-DD"`). El backend
+   * siempre la envía; `null` = el cliente no tiene compras y la columna
+   * muestra «Sin compras».
    */
-  fecha_ultima_compra?: string | null;
+  fecha_ultima_compra: string | null;
 }
