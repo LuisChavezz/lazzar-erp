@@ -113,9 +113,9 @@ function activeCard(kpi: CustomerActiveKpi, onDrillDown: () => void): KpiCompact
  */
 function carteraCard(kpi: CustomerCarteraKpi, allCustomers: boolean, onDrillDown: () => void): KpiCompactItem {
   // "(general)": es el agregado del listado, para no confundirlo con la
-  // antigüedad de saldos de UN cliente que muestra su detalle. No dice "todos
-  // los clientes" porque el alcance depende del rol (un vendedor solo ve los
-  // suyos).
+  // antigüedad de saldos de UN cliente que muestra su detalle. El RÓTULO no
+  // dice "todos los clientes" porque el alcance depende del rol; el ⓘ sí lo
+  // dice, según `allCustomers`.
   const base = { label: "Antigüedad de cartera (general)", icon: WalletIcon };
   if (!kpi.disponible) {
     return { ...base, ...KPI_MUTED_ICON, value: null, unavailableReason: kpi.motivo };
@@ -176,16 +176,14 @@ function buildCards(
   data: CustomerKpis,
   openDrillDown: (kind: CustomerKpiDrillDownKind) => void,
 ): KpiCompactItem[] {
+  // Un solo conjunto para facturación y cartera en el backend (EC-789).
+  const allCustomers = data.puede_ver_cartera_de_todos === true;
   return [
-    salesCard(data.ventas_por_cliente, data.puede_ver_cartera_de_todos === true, () =>
-      openDrillDown("ventas_por_cliente"),
-    ),
+    salesCard(data.ventas_por_cliente, allCustomers, () => openDrillDown("ventas_por_cliente")),
     activeCard(data.clientes_activos, () => openDrillDown("clientes_activos")),
     // Hoy siempre llega no disponible (ver `buildUntypedKpiCard`).
     buildUntypedKpiCard(data.reclamos_devoluciones, { label: "Tasa de reclamos o devoluciones", icon: ReceiptIcon }),
-    carteraCard(data.cartera_antiguedad, data.puede_ver_cartera_de_todos === true, () =>
-      openDrillDown("cartera_antiguedad"),
-    ),
+    carteraCard(data.cartera_antiguedad, allCustomers, () => openDrillDown("cartera_antiguedad")),
   ];
 }
 
