@@ -2,30 +2,20 @@
 "use client"
 
 import { useSession } from "next-auth/react";
-import { hasAnyPermission } from "@/src/utils/permissions";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
+import { appRouteGroups } from "@/src/constants/appRoutes";
 import { homeCards } from "@/src/constants/homeCards";
 import TiltCard from "./TiltCard";
 
 /**
- * Permisos que hacen visible la tarjeta de un módulo: el del propio módulo más
- * el de cada una de sus secciones. Sin esto, quien tuviera solo una sección
- * (p. ej. `R-CRM-CLIENTES` sin `R-CRM`) vería el Home vacío y no tendría por
- * dónde entrar. `card.permission` es el respaldo si la tarjeta no corresponde a
- * ningún grupo de `appRouteGroups`.
- */
-const cardAccessPermissions = (card: (typeof homeCards)[number]): string[] => {
-  const group = appRouteGroups.find((item) => item.modulePath === card.href);
-  return group ? getGroupAccessPermissions(group) : [card.permission];
-};
-
-/**
  * Destino de la tarjeta para `user`: el mismo que el resto de entradas al
- * módulo (`getModuleEntryHref`). Una tarjeta sin grupo en `appRouteGroups`
- * solo lleva a su `href` si puede abrirlo. `null` si no hay ninguna abrible.
+ * módulo (`getModuleEntryHref`), así quien solo tiene una sección (p. ej.
+ * `R-CRM-CLIENTES` sin `R-CRM`) entra por ella. Una tarjeta sin grupo en
+ * `appRouteGroups` solo lleva a su `href` si puede abrirlo. `null` si no hay
+ * ninguna abrible: la tarjeta no se muestra (visibilidad y destino salen de la
+ * misma regla, EC-813).
  */
 const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | undefined) => {
   const group = appRouteGroups.find((item) => item.modulePath === card.href);
@@ -36,7 +26,6 @@ const cardHref = (card: (typeof homeCards)[number], user: PermissionContext | un
 export const HomedGrid = () => {
   const { data: session, status } = useSession();
   const visibleHomeCards = homeCards.flatMap((card) => {
-    if (!hasAnyPermission(cardAccessPermissions(card), session?.user)) return [];
     const href = cardHref(card, session?.user);
     return href ? [{ ...card, href }] : [];
   });

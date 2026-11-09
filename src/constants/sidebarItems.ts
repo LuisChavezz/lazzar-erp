@@ -10,16 +10,17 @@ export interface SidebarItem {
   /** Un código, o un arreglo que se cumple con CUALQUIERA (ver `AppRouteItem.permission`). */
   permission?: PermissionRequirement;
   /**
-   * Alternativa a `permission`: basta con tener UNO de estos códigos. La usan
-   * los items de MÓDULO, alcanzables tanto con el permiso del módulo como con
-   * el de cualquiera de sus secciones (ver `getGroupAccessPermissions`).
+   * Items de MÓDULO: los códigos que pueden darle acceso (el del módulo y los
+   * de sus secciones navegables, `getGroupAccessPermissions`). Solo marca que
+   * su visibilidad depende de la sesión (skeleton mientras carga); la decide
+   * `entryGroup`.
    */
   permissionAnyOf?: string[];
   /**
    * Items de MÓDULO: su grupo. `href` es entonces solo el valor por defecto
-   * (`modulePath`); el destino real para el usuario lo resuelve
-   * `getSidebarItems` con `getModuleEntryHref` (EC-813), porque la portada
-   * exige el código de módulo y quien solo tiene una sección sería rebotado.
+   * (`modulePath`); `getSidebarItems` resuelve con `getModuleEntryHref` el
+   * destino real y si se ofrece (EC-813): la portada exige el código de módulo
+   * y quien solo tiene una sección sería rebotado.
    */
   entryGroup?: AppRouteGroup;
 }
