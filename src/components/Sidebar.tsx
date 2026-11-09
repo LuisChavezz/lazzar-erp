@@ -12,6 +12,7 @@ import { LogoIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "./Icons";
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { mainGroupKeys } from "@/src/constants/sidebarItems";
 import { useSidebarSections } from "@/src/hooks/useSidebarSections";
+import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { SidebarEntry } from "@/src/utils/getSidebarItems";
 import { useSidebar } from "./SidebarProvider";
 
@@ -22,6 +23,7 @@ export default function Sidebar() {
   // `useSidebarSections`, compartido con `MobileSidebar`.
   const {
     sections: availableSections,
+    user,
     isPending,
     isUnavailable,
     retry,
@@ -37,12 +39,17 @@ export default function Sidebar() {
   );
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
+  // Cabecera del módulo activo. Lleva al mismo destino que el resto de entradas
+  // (`getModuleEntryHref`, EC-813): la portada exige el código de módulo y
+  // quien solo tiene una sección sería rebotado al Home. `href` es `null`
+  // mientras carga la sesión (skeleton) o si no hay destino abrible (sin enlace).
   const moduleItem =
     activeGroup && mainGroupKeys.has(activeGroup.key)
       ? {
         label: activeGroup.moduleLabel,
-        href: activeGroup.modulePath,
+        href: isPending ? null : getModuleEntryHref(activeGroup, user),
         icon: activeGroup.moduleIcon,
+        isActive: pathname === activeGroup.modulePath,
       }
       : null;
 
@@ -123,19 +130,30 @@ export default function Sidebar() {
                         <div className="h-px bg-slate-200/80 dark:bg-white/10 mx-2 my-2" />
                       </div>
                       <div className="space-y-2">
-                        <Link
-                          href={moduleItem.href}
-                          aria-label={moduleItem.label}
-                          className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${pathname === moduleItem.href
-                              ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
-                              : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
-                            }`}
-                        >
-                          <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
-                          <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
-                            {moduleItem.label}
-                          </span>
-                        </Link>
+                        {isPending ? (
+                          <SidebarItemSkeleton variant="desktop" />
+                        ) : moduleItem.href ? (
+                          <Link
+                            href={moduleItem.href}
+                            aria-label={moduleItem.label}
+                            className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative ${moduleItem.isActive
+                                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                                : "hover:bg-sky-50 dark:hover:bg-sky-500/10 text-slate-500 dark:text-white hover:text-sky-600 dark:hover:text-sky-300"
+                              }`}
+                          >
+                            <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
+                            <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
+                              {moduleItem.label}
+                            </span>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-4 px-3 py-3 rounded-xl relative text-slate-500 dark:text-white">
+                            <moduleItem.icon className="w-6 h-6 shrink-0" aria-hidden="true" />
+                            <span title={moduleItem.label} className={`font-medium text-sm truncate right-3 ${labelClass}`}>
+                              {moduleItem.label}
+                            </span>
+                          </div>
+                        )}
                         <div className={sectionLabelClass}>
                           <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {moduleLabel}
@@ -147,7 +165,7 @@ export default function Sidebar() {
                           ) : (
                             section.items
                               .slice(1)
-                              .filter((item) => item.href !== moduleItem.href)
+                              .filter((item) => item.href !== activeGroup?.modulePath)
                               .map((item, itemIndex) => (
                                 <Fragment key={itemIndex}>{renderItem(item)}</Fragment>
                               ))
