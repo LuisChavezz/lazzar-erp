@@ -49,6 +49,7 @@ import {
   type DataTableServerFilters,
 } from "./DataTableModeContext";
 import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
+import { rowSearchTextTableOptions } from "@/src/utils/rowSearchText";
 
 export type DataTableVisibleColumn<TData> = {
   id: string;
@@ -230,6 +231,16 @@ interface DataTableOwnProps<TData, TValue> {
    */
   searchAlwaysExpanded?: boolean;
   actionButton?: React.ReactNode;
+  /**
+   * Opcional, solo en modo cliente: el texto en que busca el buscador para
+   * cada fila (contiene, sin distinguir mayúsculas). Sustituye a la búsqueda
+   * por columnas, así que debe incluir TODO lo que la lista quiera hacer
+   * buscable, también campos que ninguna columna muestra (p. ej. el contacto
+   * del cliente en Mesa de Control). Une los campos con `joinRowSearchText`
+   * (`src/utils/rowSearchText.ts`). Sin esta prop la búsqueda es exactamente
+   * la de siempre: el valor de cada columna.
+   */
+  getRowSearchText?: (row: TData) => string;
   filterConfig?: DataTableFilterConfig[];
   onActiveFiltersChange?: (filters: DataTableActiveFilter[]) => void;
   onRefetch?: () => void | Promise<unknown>;
@@ -382,6 +393,7 @@ interface DataTableOwnProps<TData, TValue> {
  */
 type DataTableClientOnlyKeys =
   | "serverPagination"
+  | "getRowSearchText"
   | "filterConfig"
   | "onActiveFiltersChange"
   | "paginationResetKey"
@@ -455,6 +467,7 @@ export function DataTable<TData, TValue>({
   searchAlwaysExpanded = true,
   actionButton,
   filterConfig,
+  getRowSearchText,
   onActiveFiltersChange,
   onRefetch,
   isRefetching,
@@ -746,6 +759,9 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Solo con `getRowSearchText`: la búsqueda compara contra el texto de la
+    // fila. Sin la prop no se añade ninguna opción (búsqueda por columnas).
+    ...(getRowSearchText && !isServerMode ? rowSearchTextTableOptions(getRowSearchText) : {}),
     // Solo en modo servidor: sin `server` no se añade ninguna opción y la
     // tabla queda configurada exactamente igual que antes.
     ...(isServerMode

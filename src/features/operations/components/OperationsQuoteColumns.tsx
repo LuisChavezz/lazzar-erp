@@ -24,6 +24,7 @@ import {
   ViewIcon,
 } from "@/src/components/Icons";
 import { capitalize } from "@/src/utils/capitalize";
+import { joinRowSearchText } from "@/src/utils/rowSearchText";
 import {
   buildQuoteClienteFilterOptions,
   buildQuoteClienteOptionsFromRows,
@@ -299,13 +300,36 @@ const OperationsQuoteIdCell = ({
  * porque los filtros de encabezado necesitan opciones construidas con TODO el
  * listado; las acciones de fila siguen yendo por contexto.
  */
+/** Folio visible de la cotización: `#00295`. */
+const getOperationsQuoteFolio = (operationsQuote: OperationsQuote): string =>
+  `#${String(operationsQuote.id).padStart(5, "0")}`;
+
+/**
+ * Texto en que busca el buscador de la lista (`getRowSearchText` de
+ * `DataTable`): los mismos valores que antes leía la búsqueda por columnas
+ * (folio, razón social cruda, piezas, fecha, vendedor, C.P., importe y
+ * moneda) más el CONTACTO del cliente (`cliente_nombre`), que ninguna columna
+ * muestra pero sí la cola de autorización y los diálogos (EC-810).
+ */
+export const getOperationsQuoteSearchText = (operationsQuote: OperationsQuote): string =>
+  joinRowSearchText([
+    getOperationsQuoteFolio(operationsQuote),
+    operationsQuote.cliente_razon_social,
+    operationsQuote.cliente_nombre,
+    operationsQuote.piezas,
+    operationsQuote.created_at,
+    operationsQuote.vendedor_nombre,
+    operationsQuote.codigo_postal,
+    operationsQuote.importe_sin_iva,
+    operationsQuote.moneda_codigo,
+  ]);
+
 export const getOperationsQuoteColumns = (
   filterOptions: OperationsQuoteFilterOptions = EMPTY_FILTER_OPTIONS,
 ): ColumnDef<OperationsQuote>[] => [
   {
     id: "id",
-    accessorFn: (operationsQuote) =>
-      `#${String(operationsQuote.id).padStart(5, "0")}`,
+    accessorFn: getOperationsQuoteFolio,
     meta: { label: "Cotización" },
     filterFn: estatusFilterFn,
     header: ({ column }) => (
@@ -320,8 +344,7 @@ export const getOperationsQuoteColumns = (
     cell: ({ row }) => <OperationsQuoteIdCell operationsQuote={row.original} />,
   },
   // Cliente (EC-810). El VALOR de la columna es la razón social cruda (lo que
-  // leen la búsqueda y el orden; `?? ""` para que un `null` en la primera fila
-  // no la saque de la búsqueda, ver la trampa en `DataTable`). La celda pinta
+  // lee el orden; la búsqueda va por `getOperationsQuoteSearchText`). La celda pinta
   // la convención única (`getQuoteClienteLabel`) y el filtro va por id del
   // cliente, no por texto.
   {
@@ -350,18 +373,6 @@ export const getOperationsQuoteColumns = (
         {getQuoteClienteLabel(row.original)}
       </span>
     ),
-  },
-  // Contacto del cliente SOLO para la búsqueda global: buscar a la persona que
-  // muestran la cola y los diálogos encuentra su cotización. Nunca se ve: oculta
-  // de inicio y fuera de "Mostrar/Ocultar" (`enableHiding: false`); la búsqueda
-  // de TanStack recorre también las columnas ocultas.
-  {
-    id: "cliente_contacto",
-    accessorFn: (row) => row.cliente_nombre ?? "",
-    header: "Contacto",
-    meta: { label: "Contacto", hiddenByDefault: true },
-    enableHiding: false,
-    enableSorting: false,
   },
   {
     accessorKey: "piezas",
