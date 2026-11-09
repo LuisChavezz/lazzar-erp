@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { compareAsc, isAfter, parseISO } from "date-fns";
 import { GoogleCalendarIcon, ChevronRightIcon } from "@/src/components/Icons";
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
@@ -9,6 +10,9 @@ import { useGoogleCalendarStore } from "../stores/google-calendar.store";
 import { EmptyUpcomingEvents } from "./EmptyUpcomingEvents";
 import { EventItem } from "./EventItem";
 import type { GoogleCalendarEvent } from "../interfaces/google.interface";
+import { canAccessRoute } from "@/src/utils/routeAccess";
+
+const SALES_CALENDAR_PATH = "/sales/calendar";
 
 // --- Componente principal ---
 
@@ -19,12 +23,16 @@ import type { GoogleCalendarEvent } from "../interfaces/google.interface";
  * sobre un evento, lo selecciona en la store para visualizar su detalle.
  *
  * `hideViewAll` oculta el enlace "Ver todo": lo pasa `GoogleCalendar`, donde el
- * panel ya vive dentro del calendario completo (sea cual sea el módulo).
+ * panel ya vive dentro del calendario completo (sea cual sea el módulo). El
+ * enlace tampoco se ofrece si la regla del proxy no deja abrir el calendario de
+ * Ventas (`R-CRM-CALENDAR`, EC-813).
  */
 export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: boolean }) => {
   const { data, isLoading } = useGoogleCalendarEvents();
   const selectedEventId = useGoogleCalendarStore((s) => s.selectedEventId);
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
+  const { data: session } = useSession();
+  const showViewAll = !hideViewAll && canAccessRoute(SALES_CALENDAR_PATH, session?.user);
 
   const upcomingEvents = useMemo<GoogleCalendarEvent[]>(() => {
     if (!data?.events) return [];
@@ -43,7 +51,7 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
             <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
           </div>
-          {!hideViewAll && (
+          {showViewAll && (
             <div className="w-16" aria-hidden="true">
               <div className="h-4 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
             </div>
@@ -65,9 +73,9 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
           <GoogleCalendarIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
           <h3 className="font-bold text-slate-800 dark:text-white text-sm">Próximos eventos</h3>
         </div>
-        {!hideViewAll && (
+        {showViewAll && (
           <Link
-            href="/sales/calendar"
+            href={SALES_CALENDAR_PATH}
             className="inline-flex items-center gap-0.5 text-[0.68rem] font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
             aria-label="Ver calendario completo"
           >
