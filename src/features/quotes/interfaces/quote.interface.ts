@@ -266,7 +266,8 @@ export interface QuoteById {
   vendedor: number;
   /** Nullable en el backend (`Cotizacion.sucursal`, `null=True`). */
   sucursal: number | null;
-  cliente: number;
+  /** PK del cliente; `null` en un borrador guardado sin cliente (EC-810). */
+  cliente: number | null;
   oportunidad: number | null;
   moneda: number;
   servicios_extras: {

@@ -335,7 +335,7 @@ export function useQuoteEditForm(quoteId: number) {
     }
 
     setSelectedCustomerId(quoteData.cliente || 0);
-    setCustomerSelectedFromSearch(quoteData.cliente > 0);
+    setCustomerSelectedFromSearch((quoteData.cliente ?? 0) > 0);
     setExtraServices(
       (quoteData.servicios_extras ?? []).map((s) => ({
         id: String(s.id),
