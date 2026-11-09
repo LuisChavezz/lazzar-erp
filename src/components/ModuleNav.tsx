@@ -10,6 +10,7 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "./
 import { appRouteGroups } from "@/src/constants/appRoutes";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
+import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
 import {
   filterVisibleRouteSections,
   findActiveRouteSection,
@@ -157,6 +158,7 @@ interface ModuleNavProps {
 export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNavProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { phase: recoveryPhase } = useSessionRecovery();
 
   const navRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -293,9 +295,12 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   // La casita lleva al mismo destino que el resto de entradas al módulo
   // (`getModuleEntryHref`, EC-813): la portada si la regla del proxy lo deja
   // entrar (`/system` también acepta R-CORE-REPORTES, EC-626) y, si no —p. ej.
-  // R-WMS-PICKING sin R-WMS—, su primera sección abrible. El Home queda como
-  // respaldo mientras carga la sesión o si no hay ninguna.
-  const moduleRootHref = getModuleEntryHref(activeGroup, session?.user) ?? "/";
+  // R-WMS-PICKING sin R-WMS—, su primera sección abrible. Igual que la cabecera
+  // del módulo en el sidebar: skeleton mientras la sesión carga o se recupera
+  // y, sin destino, un icono no interactivo (nunca un enlace al Home con el
+  // nombre del módulo).
+  const isRootPending = isLoading || recoveryPhase === "recovering";
+  const moduleRootHref = isRootPending ? null : getModuleEntryHref(activeGroup, session?.user);
 
   // Con sub-grupos, un menú por sub-grupo; la visibilidad (permiso por hoja +
   // poda de sub-grupos vacíos) y el sub-grupo activo salen del helper compartido.
@@ -355,19 +360,32 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
           onClick={() => handleSectionChange("")}
         />
       )}
-      <Link
-        href={moduleRootHref}
-        aria-label={activeGroup.moduleLabel}
-        aria-current={isModuleRootActive ? "page" : undefined}
-        title={activeGroup.moduleLabel}
-        className={`flex shrink-0 items-center justify-center rounded p-0.5 transition-colors ${
-          isModuleRootActive
-            ? "text-sky-600 dark:text-sky-300"
-            : "text-slate-400 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-300"
-        }`}
-      >
-        <HomeIcon className="h-3.5 w-3.5" />
-      </Link>
+      {isRootPending ? (
+        <div className="flex shrink-0 items-center justify-center p-0.5" aria-hidden="true">
+          <LoadingSkeleton className="h-3.5 w-3.5! rounded!" />
+        </div>
+      ) : moduleRootHref ? (
+        <Link
+          href={moduleRootHref}
+          aria-label={activeGroup.moduleLabel}
+          aria-current={isModuleRootActive ? "page" : undefined}
+          title={activeGroup.moduleLabel}
+          className={`flex shrink-0 items-center justify-center rounded p-0.5 transition-colors ${
+            isModuleRootActive
+              ? "text-sky-600 dark:text-sky-300"
+              : "text-slate-400 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-300"
+          }`}
+        >
+          <HomeIcon className="h-3.5 w-3.5" />
+        </Link>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="flex shrink-0 items-center justify-center p-0.5 text-slate-300 dark:text-slate-600"
+        >
+          <HomeIcon className="h-3.5 w-3.5" />
+        </span>
+      )}
 
       <div
         ref={scrollRef}
