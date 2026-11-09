@@ -153,3 +153,20 @@ export const formatShortDateTime = (
   if (date === "—") return "—";
   return `${date} · ${formatShortTime(value)}`;
 };
+
+const CALENDAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+const MONTH_NAME_FORMAT = new Intl.DateTimeFormat("es-MX", { month: "long", timeZone: "UTC" });
+
+/**
+ * Mes-calendario "YYYY-MM" (p. ej. el `mes` de un KPI del backend) como
+ * "Noviembre 2026". El año sale del texto y el nombre del mes de `Intl` sobre
+ * el día 1 en UTC, formateado en UTC: no depende de la zona del navegador y no
+ * pasa por `new Date("YYYY-MM-DD")`, que en México cae en el día anterior.
+ * `null` si el valor no es exactamente "YYYY-MM" con mes 01–12.
+ */
+export const formatCalendarMonth = (value: string | null | undefined): string | null => {
+  const match = CALENDAR_MONTH_PATTERN.exec(value ?? "");
+  if (!match) return null;
+  const name = MONTH_NAME_FORMAT.format(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${match[1]}`;
+};
