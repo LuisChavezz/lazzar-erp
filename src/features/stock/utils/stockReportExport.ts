@@ -48,8 +48,8 @@ const almacenFileNamePart = (almacenId: number | null | undefined, codigo: strin
 const rangoFileNamePart = (fechaInicio: string, fechaFinal: string) => `${fechaInicio}-a-${fechaFinal}`;
 
 /**
- * CORS no expone `Content-Disposition`, así que el navegador no puede leer el
- * nombre que manda el backend; este lo replica:
+ * Nombre de respaldo cuando el navegador no puede leer el `Content-Disposition`
+ * del backend (hoy CORS no lo expone, EC-824); replica el del backend:
  * `reporte-existencias-{código}-{fecha_inicio}-a-{fecha_final}.{pdf|xlsx}`.
  */
 export const stockReportFileName = ({
@@ -87,6 +87,45 @@ export const stockMovementReportFileName = ({
   formato: StockReportExportFormat;
 }): string =>
   `reporte-movimientos-${slugifyFileNamePart(tipoMovimiento)}-${almacenFileNamePart(almacenId, codigo)}-${rangoFileNamePart(fechaInicio, fechaFinal)}.${formato}`;
+
+/**
+ * Archivo que entrega `exportar/`: el cuerpo y, si el navegador la puede leer,
+ * la cabecera `Content-Disposition` con el nombre que puso el backend.
+ */
+export interface ReportFile {
+  blob: Blob;
+  contentDisposition: string | undefined;
+}
+
+/** Último segmento de una ruta, sin `.`/`..` ni vacíos: el nombre nunca trae carpetas. */
+const safeFileName = (name: string): string | undefined => {
+  const base = name.split(/[\\/]/).pop()?.trim() ?? "";
+  return base && base !== "." && base !== ".." ? base : undefined;
+};
+
+/**
+ * Nombre del archivo según `Content-Disposition`: primero `filename*=` (RFC
+ * 5987, `UTF-8''` con codificación por porcentaje) y luego `filename=` (con o
+ * sin comillas). `undefined` si la cabecera falta (hoy CORS no la expone,
+ * EC-824) o no trae un nombre legible: quien llama usa entonces su propio
+ * nombre (`stockReportFileName` / `stockMovementReportFileName`).
+ */
+export const fileNameFromContentDisposition = (header: string | null | undefined): string | undefined => {
+  if (!header) return undefined;
+  const extended = /filename\*\s*=\s*([\w-]*)'[^']*'([^;]+)/i.exec(header);
+  if (extended && /^utf-8$/i.test(extended[1])) {
+    try {
+      const name = safeFileName(decodeURIComponent(extended[2].trim().replace(/^"(.*)"$/, "$1")));
+      if (name) return name;
+    } catch {
+      // Codificación por porcentaje inválida: se intenta con `filename=`.
+    }
+  }
+  const plain = /(?:^|;)\s*filename\s*=\s*(?:"((?:\\.|[^"\\])*)"|([^;]*))/i.exec(header);
+  if (!plain) return undefined;
+  const raw = plain[1] !== undefined ? plain[1].replace(/\\(.)/g, "$1") : plain[2];
+  return safeFileName(raw);
+};
 
 /**
  * Mensaje del fallo de una exportación, con el cuerpo ya decodificado por
