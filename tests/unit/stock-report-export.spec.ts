@@ -118,7 +118,7 @@ test.describe("stockReportExportErrorMessage", () => {
     ).toBe("tipo_movimiento es requerido y debe ser ENTRADA, SALIDA, AJUSTE o TRANSFERENCIA.");
   });
 
-  test("non_field_errors y detail ganan a un campo; un mensaje en blanco se salta", () => {
+  test("detail y non_field_errors ganan a un campo (orden de firstDrfFieldMessage)", () => {
     expect(
       stockReportExportErrorMessage(
         httpError(400, { almacen: ALMACEN, non_field_errors: ["Periodo inválido."] }),
@@ -126,8 +126,8 @@ test.describe("stockReportExportErrorMessage", () => {
       ),
     ).toBe("Periodo inválido.");
     expect(
-      stockReportExportErrorMessage(httpError(400, { fecha_inicio: "  ", almacen: ALMACEN }), "pdf"),
-    ).toBe(ALMACEN);
+      stockReportExportErrorMessage(httpError(400, { almacen: ALMACEN, detail: "Filtro inválido." }), "pdf"),
+    ).toBe("Filtro inválido.");
   });
 
   test("una clave desconocida con mensaje también se muestra", () => {
@@ -141,6 +141,21 @@ test.describe("stockReportExportErrorMessage", () => {
       stockReportExportErrorMessage(httpError(403, { detail: "No tienes permiso." }), "pdf"),
     ).toBe("No tienes permiso.");
     expect(stockReportExportErrorMessage(httpError(403, {}), "pdf")).toBe(
+      "No tienes permiso para descargar este reporte.",
+    );
+  });
+
+  test("5xx con motivo en el cuerpo (detail o error) lo muestra", () => {
+    expect(
+      stockReportExportErrorMessage(httpError(503, { detail: "Servicio en mantenimiento." }), "pdf"),
+    ).toBe("Servicio en mantenimiento.");
+    expect(
+      stockReportExportErrorMessage(httpError(500, { error: "No se pudo renderizar el PDF." }), "pdf"),
+    ).toBe("No se pudo renderizar el PDF.");
+  });
+
+  test("403 con un campo suelto no lo muestra: solo detail (regla del 403)", () => {
+    expect(stockReportExportErrorMessage(httpError(403, { almacen: ["x"] }), "pdf")).toBe(
       "No tienes permiso para descargar este reporte.",
     );
   });
@@ -167,3 +182,4 @@ test.describe("stockReportExportErrorMessage", () => {
     expect(stockReportExportErrorMessage("raro", "pdf")).toBe("No se pudo descargar el reporte en PDF.");
   });
 });
+
