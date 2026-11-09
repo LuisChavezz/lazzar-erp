@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  getQuoteClienteLabel,
-  getQuoteColumns,
-} from "@/src/features/quotes/components/QuoteColumns";
+import { getQuoteColumns } from "@/src/features/quotes/components/QuoteColumns";
 import { buildQuotesCsv } from "@/src/features/quotes/hooks/useQuoteCsvExport";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { getQuoteStatusLabel } from "@/src/features/quotes/constants/quoteStatus";
@@ -104,7 +101,7 @@ test.describe("contrato de la tabla con el backend", () => {
 });
 
 test.describe("opciones del filtro de cliente (opciones/)", () => {
-  test("Sin cliente primero, el casing de la celda y el id solo en homónimos", () => {
+  test("Sin cliente primero, el texto tal cual y el id solo en homónimos", () => {
     const options = buildQuoteClienteFilterOptions([
       { value: 10, label: "ACME SA DE CV" },
       { value: 13, label: "ACME SA DE CV" },
@@ -114,9 +111,9 @@ test.describe("opciones del filtro de cliente (opciones/)", () => {
     ]);
     expect(options).toEqual([
       { value: "sin_cliente", label: "Sin cliente" },
-      { value: "10", label: "Acme sa de cv (cliente #10)" },
-      { value: "13", label: "Acme sa de cv (cliente #13)" },
-      { value: "11", label: "Taller norte" },
+      { value: "10", label: "ACME SA DE CV (cliente #10)" },
+      { value: "13", label: "ACME SA DE CV (cliente #13)" },
+      { value: "11", label: "Taller Norte" },
       { value: "12", label: "Cliente #12" },
     ]);
   });
@@ -139,17 +136,6 @@ test.describe("rango de los últimos 30 días", () => {
       fecha_desde: "2025-12-07",
       fecha_hasta: "2026-01-05",
     });
-  });
-});
-
-test.describe("texto del cliente en la celda", () => {
-  test("razón social con casing, nombre o respaldo; vacío sin cliente", () => {
-    expect(getQuoteClienteLabel(quote({ cliente_razon_social: "ACME SA DE CV" }))).toBe("Acme sa de cv");
-    expect(getQuoteClienteLabel(quote({ cliente: 12 }))).toBe("Cliente #12");
-    expect(getQuoteClienteLabel(quote({ cliente_nombre: "Taller Norte" }))).toBe("Taller Norte");
-    expect(
-      getQuoteClienteLabel(quote({ cliente: null, cliente_nombre: null, cliente_razon_social: null })),
-    ).toBe("");
   });
 });
 

@@ -82,8 +82,14 @@ export interface OperationsQuote {
   estatus_label: string;
   detalles: OperationsQuoteDetail[];
   servicios_extras: OperationsQuoteExtraService[];
-  cliente_nombre: string;
-  cliente_razon_social: string;
+  /**
+   * El CONTACTO del cliente (`cliente.nombre`, "Nombre de contacto" en el alta
+   * de clientes), no un nombre comercial; `null` sin cliente. Para mostrar el
+   * cliente usa `getQuoteClienteLabel` (`utils/quoteClienteLabel.ts`, EC-810).
+   */
+  cliente_nombre: string | null;
+  /** La empresa (`cliente.razon_social`): puede venir en blanco; `null` sin cliente. */
+  cliente_razon_social: string | null;
   /**
    * Pedido generado a partir de esta cotización, resuelto por el backend con un
    * `Subquery` sobre `Pedido` (ver `_apply_filters` en `CotizacionViewSet`).
