@@ -2,7 +2,6 @@ import { isAxiosError } from "axios";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { firstNonBlankRejectionMessage } from "@/src/utils/firstDrfMessage";
 import type { StockMovementReportType } from "../interfaces/stock-movement-report.interface";
 
 /**
@@ -90,27 +89,15 @@ export const stockMovementReportFileName = ({
   `reporte-movimientos-${slugifyFileNamePart(tipoMovimiento)}-${almacenFileNamePart(almacenId, codigo)}-${rangoFileNamePart(fechaInicio, fechaFinal)}.${formato}`;
 
 /**
- * Claves de los 400 de `exportar/`, en el orden en que se muestran: las
- * generales de DRF primero y luego cada parámetro que valida el backend
- * (`formato`, fechas, `almacen` en existencias, `tipo_movimiento` en
- * movimientos). Cualquier otra clave cae en `firstDrfFieldMessage`.
- */
-const EXPORT_REJECTION_KEYS = [
-  "detail",
-  "non_field_errors",
-  "formato",
-  "fecha_inicio",
-  "fecha_final",
-  "almacen",
-  "tipo_movimiento",
-] as const;
-
-/**
  * Mensaje del fallo de una exportación, con el cuerpo ya decodificado por
  * `readBlobErrorBody` (la petición pide `blob`, así que el JSON del error llega
- * como Blob). `extractErrorMessage` solo lee `{ error }` y estos errores son de
- * campo DRF (`{"almacen": "..."}`), así que sin esta función el usuario vería el
- * genérico en lugar del motivo del backend.
+ * como Blob). Los rechazos del backend son errores de campo DRF
+ * (`{"almacen": "..."}`), que `extractErrorMessage` no lee, así que primero va
+ * `firstDrfFieldMessage`. El 403 sigue la regla del proyecto
+ * (`forbiddenDetailMessage`: `detail`, nunca una llave de campo). En un 5xx se
+ * muestra el motivo del cuerpo si lo trae (`detail`/`error`) y, si no, un
+ * aviso del servidor; sin cuerpo legible (HTML que `readBlobErrorBody`
+ * descartó), el respaldo de la operación.
  */
 export const stockReportExportErrorMessage = (
   error: unknown,
@@ -126,16 +113,9 @@ export const stockReportExportErrorMessage = (
   if (isForbiddenError(error)) {
     return forbiddenDetailMessage(error) ?? "No tienes permiso para descargar este reporte.";
   }
-  const status = error.response.status;
-  if (status >= 500) {
-    return "El servidor no pudo generar el reporte. Intenta de nuevo en unos momentos.";
-  }
-  const data = error.response.data;
-  // Sin cuerpo legible (p. ej. una página HTML que `readBlobErrorBody` descartó).
-  if (data === undefined || data === null || data === "") return fallback;
-  return (
-    firstNonBlankRejectionMessage(data, EXPORT_REJECTION_KEYS) ??
-    firstDrfFieldMessage(error) ??
-    extractErrorMessage(error, fallback)
-  );
+  const statusFallback =
+    error.response.status >= 500
+      ? "El servidor no pudo generar el reporte. Intenta de nuevo en unos momentos."
+      : fallback;
+  return firstDrfFieldMessage(error) ?? extractErrorMessage(error, statusFallback);
 };
