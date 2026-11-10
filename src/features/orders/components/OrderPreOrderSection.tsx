@@ -6,8 +6,7 @@ import { OrdenesIcon } from "@/src/components/Icons";
 import { PreOrderTracker } from "@/src/features/pre-orders/components/PreOrderTracker";
 import { SemaforoBadge } from "@/src/features/pre-orders/components/PreOrderTracking";
 import type { PreOrderRef } from "@/src/features/pre-orders/interfaces/pre-order.interface";
-import { formatShortDate } from "@/src/utils/formatDate";
-import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { SheetSection } from "./OrderSheetPrimitives";
 
@@ -56,7 +55,7 @@ export function OrderPreOrderSection({ preOrden }: { preOrden?: PreOrderRef | nu
             <span>
               Llega material:{" "}
               <span className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
-                {formatShortDate(preOrden.fecha_estimada_material, { timeZone: MEXICO_TIME_ZONE })}
+                {formatShortCalendarDate(preOrden.fecha_estimada_material)}
               </span>
             </span>
           )}

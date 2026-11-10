@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ScissorsIcon } from "@/src/components/Icons";
 import { StepTracker, StepTrackerMini } from "@/src/components/StepTracker";
 import { SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
-import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { SERVICE_KEYS, SERVICE_STEPS, serviceProgress, type ServiceKey } from "../constants/serviceSteps";
 import type { ServiceOrderRef, SpecialOrderListItem } from "../interfaces/special-order.interface";
 
@@ -107,7 +106,7 @@ function ServiceOrderRow({ serviceKey, order }: { serviceKey: ServiceKey; order:
             <span>
               Compromiso:{" "}
               <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
-                {formatShortDate(order.fecha_compromiso, { timeZone: MEXICO_TIME_ZONE })}
+                {formatShortCalendarDate(order.fecha_compromiso)}
               </span>
             </span>
           )}
