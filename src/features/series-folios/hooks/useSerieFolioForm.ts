@@ -4,7 +4,6 @@ import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useCreateSerieFolio } from "./useCreateSerieFolio";
 import { useUpdateSerieFolio } from "./useUpdateSerieFolio";
@@ -16,6 +15,7 @@ import {
   isFolioRangeValid,
 } from "../schemas/serie-folio.schema";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 
 interface UseSerieFolioFormParams {
   onSuccess: () => void;
@@ -31,9 +31,11 @@ type SerieFolioFormField = keyof SerieFolioFormValues;
 const SUCURSAL_SIN_ELEGIR = 0;
 
 export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolioFormParams) {
-  // Obtiene empresa y sucursal activa para inicializar el formulario y catálogo de sucursales.
+  // Empresa de la sesión para el catálogo de sucursales, y sucursal del
+  // workspace VALIDADA contra ese catálogo para el valor inicial: la persistida
+  // puede estar obsoleta o ser de otra empresa (`useValidWorkspaceBranchId`).
   const companyId = useSessionCompanyId();
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
+  const { branchId: workspaceBranchId } = useValidWorkspaceBranchId();
   const {
     branches,
     isLoading: isLoadingBranches,
@@ -67,9 +69,9 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
       separador: "",
       incluir_anio: false,
       reiniciar_anual: false,
-      sucursal: selectedBranch?.id ?? SUCURSAL_SIN_ELEGIR,
+      sucursal: workspaceBranchId ?? SUCURSAL_SIN_ELEGIR,
     }),
-    [selectedBranch?.id]
+    [workspaceBranchId]
   );
 
   // Deriva valores para edición a partir de la entidad seleccionada.
