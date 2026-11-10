@@ -7,11 +7,12 @@ import { getMyCompanies } from "@/src/features/companies/services/actions";
  * conserva las empresas y avisa por toast (`useGuardedQuery`). `refetch` es
  * para el "Reintentar" de esa carga inicial fallida.
  */
-export const useMyCompanies = () => {
+export const useMyCompanies = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const { data, isLoading: loading, isInitialError, refetch } = useGuardedQuery(
     {
       queryKey: ["my-companies"],
       queryFn: () => getMyCompanies(),
+      enabled,
     },
     { toastId: "my-companies-refetch-error" },
   );

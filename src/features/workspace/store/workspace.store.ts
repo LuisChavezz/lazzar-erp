@@ -8,13 +8,27 @@ import { Branch } from "../../branches/interfaces/branch.interface";
  * datos desde EC-798. Un store del cliente podía mostrar y mandar una empresa
  * distinta de la que el backend servía.
  */
+/** Nombre y RFC para MOSTRAR la empresa de la sesión, ligados a su id. */
+export interface CompanyLabel {
+  id: number;
+  name: string;
+  rfc: string | null;
+}
+
 interface WorkspaceState {
   selectedBranch: Branch | null;
+  /**
+   * Nombre de la empresa de la sesión, guardado al resolverlo en `mis-empresas/`
+   * para no volver a pedir esa lista en cada carga solo por el nombre. Vale solo
+   * mientras su `id` sea el de la sesión (`useSessionCompanyDetails`).
+   */
+  companyLabel: CompanyLabel | null;
   availableBranches: Branch[];
   branchSwitching: boolean;
   hasHydrated: boolean;
   /** Fija la sucursal (`null` = "continuar sin sucursal"). */
   setBranch: (branch: Branch | null) => void;
+  setCompanyLabel: (label: CompanyLabel) => void;
   setAvailableBranches: (branches: Branch[]) => void;
   updateBranch: (branch: Branch) => void;
   clearWorkspace: () => void;
@@ -26,6 +40,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     persist(
       (set, get) => ({
         selectedBranch: null,
+        companyLabel: null,
         availableBranches: [],
         branchSwitching: false,
         hasHydrated: false,
@@ -42,6 +57,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }
         },
         
+        setCompanyLabel: (companyLabel) => set({ companyLabel }),
+
         setAvailableBranches: (branches) =>
           set({ availableBranches: branches }),
 
@@ -60,7 +77,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         },
         
         clearWorkspace: () =>
-          set({ selectedBranch: null, availableBranches: [], branchSwitching: false }),
+          set({ selectedBranch: null, companyLabel: null, availableBranches: [], branchSwitching: false }),
       }),
       { // Nombre del storage para persistencia
         name: "workspace-storage",
