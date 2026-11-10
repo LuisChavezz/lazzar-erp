@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
@@ -387,7 +388,7 @@ export const useQuotePdfExport = (
         exportColumns
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalTodayDate();
       downloadBlob(blob, `quotes-${today}.pdf`);
     });
   }, [runExport]);
