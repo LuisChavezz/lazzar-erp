@@ -7,24 +7,11 @@ import {
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /**
- * Fechas-calendario que se veían un día antes en México (EC-558). Corre con la
- * zona del proceso en `America/Mexico_City` (UTC-6), donde se manifiesta el
- * bug; Node relee `process.env.TZ` al asignarlo. Se restaura al terminar para
- * no afectar a otras pruebas del mismo worker.
+ * Fechas-calendario que se veían un día antes en México (EC-558). La suite
+ * corre en `America/Mexico_City` (UTC-6), donde se manifiesta el bug: lo fija
+ * `playwright.unit.config.ts` para todos los workers.
  */
 test.describe("fechas-calendario en America/Mexico_City", () => {
-  let previousTz: string | undefined;
-
-  test.beforeAll(() => {
-    previousTz = process.env.TZ;
-    process.env.TZ = MEXICO_TIME_ZONE;
-  });
-
-  test.afterAll(() => {
-    if (previousTz === undefined) delete process.env.TZ;
-    else process.env.TZ = previousTz;
-  });
-
   test("la zona del proceso es la de México", () => {
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(MEXICO_TIME_ZONE);
     expect(new Date(2026, 6, 14).getTimezoneOffset()).toBe(360);

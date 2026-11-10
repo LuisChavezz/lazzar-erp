@@ -4,18 +4,6 @@ import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /** "Fecha Captura" al editar una cotización: día local de `created_at` (EC-558). */
 test.describe("quoteCaptureDateKey en America/Mexico_City", () => {
-  let previousTz: string | undefined;
-
-  test.beforeAll(() => {
-    previousTz = process.env.TZ;
-    process.env.TZ = MEXICO_TIME_ZONE;
-  });
-
-  test.afterAll(() => {
-    if (previousTz === undefined) delete process.env.TZ;
-    else process.env.TZ = previousTz;
-  });
-
   test("la zona del proceso es la de México", () => {
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(MEXICO_TIME_ZONE);
   });
