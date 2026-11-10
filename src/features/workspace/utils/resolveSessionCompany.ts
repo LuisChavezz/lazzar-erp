@@ -1,9 +1,10 @@
 import type { SessionCompanySyncStatus } from "@/src/features/auth/stores/sessionCompanySync.store";
+import type { SessionRecoveryPhase } from "@/src/features/auth/components/SessionRecoveryProvider";
 
 /** Estado de la empresa de la sesión (EC-842), sin la acción de reintento. */
 export type ResolvedSessionCompany =
   | { status: "ready"; companyId: number }
-  | { status: "none" | "loading" | "unknown"; companyId: null };
+  | { status: "none" | "loading" | "unknown" | "session-error"; companyId: null };
 
 /**
  * Resuelve la empresa de la sesión a partir del valor del token y del estado de
@@ -19,17 +20,25 @@ export type ResolvedSessionCompany =
  *
  * `sync` es el estado de la relectura de ESTE usuario e intento: quien llama
  * pasa `"pending"` si la relectura vigente es de otro usuario o intento.
+ *
+ * Sin sesión autenticada es `loading`, salvo que `SessionRecoveryProvider` haya
+ * agotado sus reintentos (`recoveryPhase: "exhausted"`): entonces
+ * `session-error`, para no dejar un loader eterno (se ofrece reintentar).
  */
 export function resolveSessionCompany({
   authenticated,
   empresa,
   sync,
+  recoveryPhase = "idle",
 }: {
   authenticated: boolean;
   empresa: number | null | undefined;
   sync: SessionCompanySyncStatus;
+  recoveryPhase?: SessionRecoveryPhase;
 }): ResolvedSessionCompany {
-  if (!authenticated) return { status: "loading", companyId: null };
+  if (!authenticated) {
+    return { status: recoveryPhase === "exhausted" ? "session-error" : "loading", companyId: null };
+  }
   if (typeof empresa === "number") return { status: "ready", companyId: empresa };
   if (empresa === null) {
     return { status: sync === "pending" ? "loading" : "none", companyId: null };

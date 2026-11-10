@@ -318,9 +318,11 @@ export function GlobalSearchPalette() {
           >
             {sessionCompany.status === "none" ? (
               <NoCompanyState compact />
-            ) : sessionCompany.status === "unknown" ? (
+            ) : sessionCompany.status === "unknown" || sessionCompany.status === "session-error" ? (
               <div className="flex flex-col items-center gap-3 px-3 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                No se pudo confirmar la empresa de tu usuario.
+                {sessionCompany.status === "session-error"
+                  ? "No se pudo cargar tu sesión."
+                  : "No se pudo confirmar la empresa de tu usuario."}
                 <button
                   type="button"
                   onClick={sessionCompany.retry}

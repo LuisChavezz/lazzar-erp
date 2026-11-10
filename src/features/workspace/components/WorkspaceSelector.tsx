@@ -49,7 +49,7 @@ export default function WorkspaceSelector() {
       </div>
 
       <div className="w-full">
-        {sessionCompany.status === "unknown" && (
+        {(sessionCompany.status === "unknown" || sessionCompany.status === "session-error") && (
           <ErrorDisplay
             title="No se pudo confirmar la empresa de tu usuario."
             onRetry={sessionCompany.retry}
