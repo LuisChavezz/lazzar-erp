@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { quoteCaptureDateKey } from "../utils/quoteCaptureDate";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
@@ -149,7 +150,7 @@ const mapQuoteByIdToFormValues = (
     referenciarOcFactura: false,
     condicionPago: reverseMapCondicionPago(quote),
     condicionPagoMonto: Number(quote.monto) || 0,
-    fecha: todayStr,
+    fecha: quoteCaptureDateKey(quote.created_at, todayStr),
     agente: userName,
     // Valor inicial nada más: en cuanto hay partidas lo sobrescribe
     // `deriveTipoPedido`, igual que en el alta. Como el mapeo ya rehidrata las
