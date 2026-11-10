@@ -266,7 +266,9 @@ export function useQuoteEditForm(quoteId: number) {
   const sellerName = userName;
   const todayStr = getLocalTodayDate();
   const formRef = useRef<HTMLFormElement | null>(null);
-  const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
+  // Sin "hoy" en `fecha` mientras carga la cotización: la Fecha Captura real
+  // (`created_at`) llega con `form.reset`, y mostrar hoy antes sería un salto.
+  const emptyValues = useMemo(() => createEmptyValues("", userName), [userName]);
 
   const customers = useMemo(
     () => onboardingData?.busqueda.clientes ?? [],
@@ -1215,7 +1217,9 @@ export function useQuoteEditForm(quoteId: number) {
     isPending,
     sellerName,
     userName,
-    todayStr,
+    // La vista cae en `todayStr` cuando `fecha` está vacía; en edición no hay
+    // respaldo que mostrar (el de `created_at` vacío ya va en `fecha`).
+    todayStr: "",
     tiposPedidoOptions,
     paymentConditionOptions: PAYMENT_CONDITION_OPTIONS,
     regimenFiscalOptions,
