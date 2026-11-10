@@ -5,19 +5,16 @@ import {
   sessionCompanySyncKey,
   useSessionCompanySyncStore,
 } from "@/src/features/auth/stores/sessionCompanySync.store";
+import { resolveSessionCompany } from "../utils/resolveSessionCompany";
 
 /**
  * Empresa del workspace (EC-842): la de la sesión, que es la única con la que
  * el backend acota los datos desde EC-798. Nunca sale del store ni de
- * `mis-empresas/`.
+ * `mis-empresas/`. Las reglas de cada estado viven en `resolveSessionCompany`.
  *
- * - `ready`: hay empresa (`companyId`). Se usa en cuanto llega en el token; la
- *   relectura de `/auth/user/` la corrige después si cambió.
- * - `none`: el usuario no tiene empresa asignada. Solo se afirma cuando la
- *   relectura de este arranque lo confirmó (o no se pudo hacer y el token lo
- *   dice), para no mostrar "sin empresa" a quien acaban de asignársela.
- * - `loading`: aún no se sabe (sesión cargando, token anterior a EC-842 sin la
- *   clave, o `null` pendiente de confirmar).
+ * - `ready`: hay empresa (`companyId`).
+ * - `none`: el usuario no tiene empresa asignada (confirmado).
+ * - `loading`: aún no se sabe.
  * - `unknown`: token sin la clave y la relectura falló; `retry` la repite.
  *   Nunca se trata como "sin empresa".
  */
@@ -33,24 +30,18 @@ export function useSessionCompany(): SessionCompany {
   const attempt = useSessionCompanySyncStore((state) => state.attempt);
   const retry = useSessionCompanySyncStore((state) => state.retry);
 
-  if (status !== "authenticated" || !session?.user) {
-    return { status: "loading", companyId: null };
-  }
+  const user = status === "authenticated" ? session?.user : undefined;
+  const isCurrentSync = !!user && syncKey === sessionCompanySyncKey(user.id, attempt);
 
-  const empresa = session.user.empresa;
-  if (typeof empresa === "number") return { status: "ready", companyId: empresa };
+  const resolved = resolveSessionCompany({
+    authenticated: !!user,
+    empresa: user?.empresa,
+    sync: isCurrentSync ? syncStatus : "pending",
+  });
 
-  const isCurrentSync = syncKey === sessionCompanySyncKey(session.user.id, attempt);
-  const sync = isCurrentSync ? syncStatus : "pending";
-
-  if (empresa === null) {
-    return sync === "pending" ? { status: "loading", companyId: null } : { status: "none", companyId: null };
-  }
-
-  // Token anterior a EC-842: sin la clave.
-  return sync === "failed"
-    ? { status: "unknown", companyId: null, retry }
-    : { status: "loading", companyId: null };
+  if (resolved.status === "unknown") return { status: "unknown", companyId: null, retry };
+  if (resolved.status === "ready") return resolved;
+  return { status: resolved.status, companyId: null };
 }
 
 /** Id de la empresa de la sesión, o `null` mientras no haya una confirmada. */
