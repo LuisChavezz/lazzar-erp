@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import {
   ListaMaterialFormSchema,
   type ListaMaterialFormValues,
@@ -41,7 +41,7 @@ export function useCreateBomForm({
   onSuccess,
 }: UseCreateBomFormParams) {
   // Empresa activa — mismo patrón que el resto de formularios.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
 
   const { mutateAsync: createListaMaterial, isPending } =
     useCreateListaMaterial();
@@ -51,7 +51,7 @@ export function useCreateBomForm({
 
   const form = useForm({
     defaultValues: {
-      empresa: selectedCompany.id ?? 0,
+      empresa: companyId ?? 0,
       producto_variante: productoVarianteId,
       variante_produccion: null,
       version: 1,

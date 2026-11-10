@@ -22,7 +22,6 @@ import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { useContracts } from "@/src/features/contracts/hooks/useContracts";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import {
   PayrollFormSchema,
   sumPayrollLines,
@@ -48,6 +47,7 @@ import { useUpdatePayroll } from "./useUpdatePayroll";
 import { PAYROLL_KEY_ROOT } from "./usePayrolls";
 import { verifyPayrollPendiente } from "./verifyPayrollPendiente";
 import { payrollEstadoChangedMessage } from "./payrollErrorMessages";
+import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
 
 const LINE_ERROR_PREFIX = "detalles";
 
@@ -134,7 +134,8 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
   const queryClient = useQueryClient();
 
   // ── Catálogos ────────────────────────────────────────────────────────────
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const { sessionCompany, name: companyName } = useSessionCompanyDetails();
+  const companyId = sessionCompany.companyId;
   const {
     employees,
     isLoading: isLoadingEmployees,
@@ -144,7 +145,7 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
     branches,
     isLoading: isLoadingBranches,
     isInitialError: isErrorBranches,
-  } = useCompanyBranches(selectedCompany.id);
+  } = useCompanyBranches(companyId);
   const {
     contracts,
     isLoading: isLoadingContracts,
@@ -436,11 +437,10 @@ export function usePayrollForm({ onSuccess, payrollToEdit, defaultQuincena }: Us
     sucursalId === null
       ? "Selecciona un empleado"
       : (branchNameById.get(sucursalId) ?? `Sucursal #${sucursalId}`);
-  const companyName = selectedCompany.nombre_comercial || selectedCompany.razon_social;
   const empresaLabel =
     empresaId === null
       ? "Selecciona un empleado"
-      : empresaId === selectedCompany.id && companyName
+      : empresaId === companyId && companyName
         ? companyName
         : `Empresa #${empresaId}`;
 

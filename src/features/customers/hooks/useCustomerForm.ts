@@ -15,7 +15,7 @@ import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
 import { getCustomerFormFields } from "./customerErrorMessages";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 
 interface UseCustomerFormParams {
@@ -99,7 +99,7 @@ export function useCustomerForm({
   includeCredit = false,
 }: UseCustomerFormParams) {
   // Contexto de empresa activa y catálogos SAT requeridos por el formulario.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
   const { data: satInfo, isLoading: isSatInfoLoading } = useSatInfo();
   const isEditing = Boolean(customerToEdit?.id);
   const formRef = useRef<HTMLFormElement>(null);
@@ -244,7 +244,7 @@ export function useCustomerForm({
         return;
       }
 
-      if (!selectedCompany.id) {
+      if (!companyId) {
         toast.error("Selecciona una empresa para continuar");
         return;
       }
@@ -270,7 +270,7 @@ export function useCustomerForm({
         }
 
         const updatePayload: CustomerCreate = {
-          empresa: customerToEdit.empresa ?? selectedCompany.id,
+          empresa: customerToEdit.empresa ?? companyId,
           ...rest,
           ...changedCredit,
         };
@@ -296,7 +296,7 @@ export function useCustomerForm({
       }
 
       const createPayload: CustomerCreate = {
-        empresa: selectedCompany.id,
+        empresa: companyId,
         ...rest,
         ...(includeCredit ? credit : {}),
       };

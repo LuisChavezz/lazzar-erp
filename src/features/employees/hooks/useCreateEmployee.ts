@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { createEmployee } from "../services/actions";
 import { EmployeeCreate } from "../interfaces/employee.interface";
 import { EmployeeServerErrorField } from "../schemas/employee.schema";
@@ -14,9 +14,9 @@ type SetEmployeeError = (
 export const useCreateEmployee = (setError?: SetEmployeeError) => {
   const queryClient = useQueryClient();
 
-  // La empresa no se captura en el formulario: se toma del workspace activo,
+  // La empresa no se captura en el formulario: se toma de la sesión (EC-842),
   // igual que en el alta de puestos y de sucursales.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   return useMutation({
     mutationFn: (values: EmployeeCreate) =>

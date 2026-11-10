@@ -24,7 +24,7 @@ import { useEmployees } from "@/src/features/employees/hooks/useEmployees";
 import { getInactiveEmployeeLookup } from "@/src/features/employees/utils/inactiveEmployees";
 import { getEmployeeFullName } from "@/src/features/employees/utils/employeeName";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import type { Payroll } from "../interfaces/payroll.interface";
 
 import { usePayrolls } from "../hooks/usePayrolls";
@@ -85,8 +85,8 @@ export default function PayrollList() {
     periodo_fin__lte: range.periodo_fin,
   });
   const { employees } = useEmployees();
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const { branches } = useCompanyBranches(selectedCompany.id);
+  const companyId = useSessionCompanyId();
+  const { branches } = useCompanyBranches(companyId);
   const { mutate: cancelPayroll, isPending: isCancelling } = useCancelPayroll();
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol "admin". `E-RH` genera, crea

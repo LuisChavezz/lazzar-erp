@@ -8,7 +8,7 @@ import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { useSerieFolios } from "../hooks/useSerieFolios";
 import { getSerieFolioColumns, SerieFolioRow } from "./SerieFolioColumns";
@@ -20,8 +20,8 @@ export default function SerieFolioList() {
   const [selectedSerieFolio, setSelectedSerieFolio] = useState<SerieFolio | null>(null);
   const { data: seriesFolios, isLoading, isError, error } = useSerieFolios();
   const { data: session } = useSession();
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const { branches } = useCompanyBranches(selectedCompany.id);
+  const companyId = useSessionCompanyId();
+  const { branches } = useCompanyBranches(companyId);
 
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código

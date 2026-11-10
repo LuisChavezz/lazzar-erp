@@ -3,7 +3,7 @@ import { registerUser } from "../services/actions";
 import { UserFormValues } from "../schemas/user.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 type SetUserError = (
   field: keyof UserFormValues,
@@ -12,7 +12,7 @@ type SetUserError = (
 
 export const useRegisterUser = (setError?: SetUserError) => {
   const queryClient = useQueryClient();
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   return useMutation({
     mutationKey: ["register-user"],

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { ProductVariantFormSchema, ProductVariantFormValues } from "../schemas/product-variant.schema";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useProducts } from "../../products/hooks/useProducts";
 import { useProduct } from "../../products/hooks/useProduct";
 import { useColors } from "../../colors/hooks/useColors";
@@ -18,6 +17,7 @@ import {
   VARIANT_PRODUCT_TYPE_IDS,
   productRequiresTalla,
 } from "../constants/variantProductTypes";
+import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
 
 const TALLA_REQUIRED_MESSAGE = "La talla es requerida";
 const PRODUCT_LOADING_MESSAGE =
@@ -40,8 +40,9 @@ export function useProductVariantForm({
   onSuccess,
   productVariantToEdit,
 }: UseProductVariantFormParams) {
-  // Obtiene la empresa seleccionada para enviar el payload correcto.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  // Empresa de la sesión (EC-842): la que va en el payload y la que se muestra.
+  const { sessionCompany, name: companyName } = useSessionCompanyDetails();
+  const companyId = sessionCompany.companyId;
 
   // Carga catálogos necesarios para construir los selectores.
   // EC-249: productos PT y COMPRAS en UNA consulta (`?tipo_id=1,3`). Su llave
@@ -229,7 +230,7 @@ export function useProductVariantForm({
         if (isEditing && productVariantToEdit) {
           await updateProductVariant({
             id: productVariantToEdit.id,
-            empresa: productVariantToEdit.empresa ?? selectedCompany.id!,
+            empresa: productVariantToEdit.empresa ?? companyId!,
             ...payloadValues,
           });
           form.reset(editValues);
@@ -238,7 +239,7 @@ export function useProductVariantForm({
         }
 
         await createProductVariant({
-          empresa: selectedCompany.id!,
+          empresa: companyId!,
           ...payloadValues,
         });
 
@@ -382,7 +383,7 @@ export function useProductVariantForm({
     form,
     formRef,
     formKey,
-    selectedCompany,
+    companyName,
     isEditing,
     isPending,
     keepCreating,

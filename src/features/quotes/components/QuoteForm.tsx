@@ -29,7 +29,6 @@ import { CustomerSearchDropdown } from "./CustomerSearchDropdown";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { plural } from "@/src/utils/plural";
 import { useQuoteForm } from "../hooks/useQuoteForm";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { WorkspaceBranchNotice } from "../../workspace/components/WorkspaceBranchNotice";
 import { QUOTE_SUCURSAL_DOCUMENT } from "../utils/quoteSucursal";
 import { IVA_TASA_FIJA } from "../constants/iva";
@@ -50,6 +49,7 @@ import { AssignColorDialog } from "./AssignColorDialog";
 import { buildProductByIdMap, getMissingColorState } from "../utils/requiredColor";
 import { QuoteCreationSuccessMessage, type QuoteSuccessVariant } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 const LazyCustomerForm = dynamic(
   () => import("../../customers/components/CustomerForm"),
@@ -2407,14 +2407,14 @@ export function QuoteFormContent({
 export default function QuoteForm() {
   const hookResult = useQuoteForm();
   // Misma empresa con la que `useQuoteForm` arma el payload (`pedido.empresa`).
-  const selectedCompanyId = useWorkspaceStore((state) => state.selectedCompany?.id);
+  const selectedCompanyId = useSessionCompanyId();
   // Sin sucursal válida el guardado se bloquea (`useQuoteForm`); se avisa desde
   // el principio y no solo al pulsar Guardar. Misma consulta en caché que el hook.
   return (
     <QuoteFormContent
       {...hookResult}
       capabilities={QUOTE_FORM_CAPABILITIES.createQuote}
-      muestraCompanyId={selectedCompanyId}
+      muestraCompanyId={selectedCompanyId ?? undefined}
       topNotice={<WorkspaceBranchNotice documento={QUOTE_SUCURSAL_DOCUMENT} />}
     />
   );

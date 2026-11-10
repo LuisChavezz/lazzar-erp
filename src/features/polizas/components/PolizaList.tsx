@@ -19,7 +19,7 @@ import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
 import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters";
@@ -104,8 +104,8 @@ export default function PolizaList() {
   // resuelve ninguno). Se piden aquí —y no dentro del diálogo— para que abrir
   // varias pólizas seguidas no dispare una consulta por apertura; las tres
   // comparten caché con las que usa el formulario de alta.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const { branches } = useCompanyBranches(selectedCompany.id);
+  const companyId = useSessionCompanyId();
+  const { branches } = useCompanyBranches(companyId);
   // Mismos parámetros que el formulario de alta, para compartir su entrada de
   // caché en vez de abrir una segunda con otro filtro.
   const { cuentasContables } = useChartOfAccounts({

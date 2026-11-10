@@ -3,7 +3,7 @@ import { updateUser as updateUserService } from "../services/actions";
 import { UserFormValues } from "../schemas/user.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UpdateUserVariables {
   id: number;
@@ -17,7 +17,7 @@ type SetUserError = (
 
 export const useUpdateUser = (setError?: SetUserError) => {
   const queryClient = useQueryClient();
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   return useMutation({
     mutationKey: ["update-user"],

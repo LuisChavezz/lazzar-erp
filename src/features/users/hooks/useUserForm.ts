@@ -11,6 +11,7 @@ import { User } from "../interfaces/user.interface";
 import { useRegisterUser } from "./useRegisterUser";
 import { useUpdateUser } from "./useUpdateUser";
 import { UserFormSchema, UserFormValues } from "../schemas/user.schema";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UseUserFormParams {
   onSuccess: () => void;
@@ -21,7 +22,7 @@ type UserFormField = keyof UserFormValues;
 
 export function useUserForm({ onSuccess, userToEdit }: UseUserFormParams) {
   // Obtiene contexto de empresa/sucursal para cargar catálogos y prefijar valores.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
   const selectedBranchId = useWorkspaceStore((state) => state.selectedBranch?.id ?? 0);
   const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
   const { data: roles = [], isLoading: isLoadingRoles } = useRoles();

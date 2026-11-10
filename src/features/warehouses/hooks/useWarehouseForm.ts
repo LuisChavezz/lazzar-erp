@@ -9,6 +9,7 @@ import { useCreateWarehouse } from "./useCreateWarehouse";
 import { useUpdateWarehouse } from "./useUpdateWarehouse";
 import { Warehouse } from "../interfaces/warehouse.interface";
 import { WarehouseFormSchema, WarehouseFormValues } from "../schemas/warehouse.schema";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UseWarehouseFormParams {
   onSuccess: () => void;
@@ -20,7 +21,7 @@ const CODE_PREFIX = "ALM-";
 
 export function useWarehouseForm({ onSuccess, warehouseToEdit }: UseWarehouseFormParams) {
   // Lee el contexto activo para obtener empresa y sucursal seleccionadas en workspace.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
   const selectedBranchId = useWorkspaceStore((state) => state.selectedBranch?.id ?? 0);
   const { branches, isLoading: isLoadingBranches } = useCompanyBranches(companyId);
   const isEditing = Boolean(warehouseToEdit?.id_almacen);

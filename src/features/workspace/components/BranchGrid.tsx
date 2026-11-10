@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, MapPinIcon } from "@/src/components/Icons";
+import { MapPinIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { Branch } from "@/src/features/branches/interfaces/branch.interface";
 import NoBranchesState from "./NoBranchesState";
@@ -7,9 +7,7 @@ interface BranchGridProps {
   branches: Branch[];
   branchesLoading: boolean;
   isLoading: boolean;
-  selectedCompanyId: number | null;
   onSelect: (id: number) => void;
-  onBack: () => void;
   onContinueWithoutBranch: () => void;
 }
 
@@ -17,31 +15,11 @@ export default function BranchGrid({
   branches,
   branchesLoading,
   isLoading,
-  selectedCompanyId,
   onSelect,
-  onBack,
   onContinueWithoutBranch,
 }: BranchGridProps) {
   return (
-    <div
-      className={`
-        w-full transition-all duration-500 ease-in-out
-        ${
-          selectedCompanyId
-            ? "opacity-100 translate-y-0 relative"
-            : "opacity-0 translate-y-10 pointer-events-none absolute top-0 left-0"
-        }
-      `}
-    >
-      {/* Botón Volver */}
-      <button
-        onClick={onBack}
-        className="mb-8 flex items-center gap-2 cursor-pointer text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors group px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 w-fit"
-      >
-        <ArrowLeftIcon className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-        <span>Volver a empresas</span>
-      </button>
-
+    <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {branchesLoading ? (
           <div className="col-span-full flex justify-center py-12">
@@ -72,7 +50,7 @@ export default function BranchGrid({
               </button>
             ))}
 
-            {branches.length === 0 && selectedCompanyId && (
+            {branches.length === 0 && (
               <NoBranchesState onContinue={onContinueWithoutBranch} />
             )}
           </>
