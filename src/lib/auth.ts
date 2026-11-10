@@ -4,6 +4,7 @@ import { api } from "@/src/api/api";
 import type { MfaLoginUser } from "@/src/features/auth/interfaces/auth.interface";
 import { authSecret } from "./authSecret";
 import { getRefreshedTokenRole, getSessionRole } from "./sessionRole";
+import { applyEmpresaUpdate, parseSessionEmpresa } from "./sessionEmpresa";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -64,6 +65,10 @@ export const authOptions: NextAuthOptions = {
             is_admin_empresa:
               typeof user.is_admin_empresa === "boolean" ? user.is_admin_empresa : undefined,
             is_superuser: typeof user.is_superuser === "boolean" ? user.is_superuser : undefined,
+            /* La empresa con la que el backend acota todo (EC-798). Se escribe
+             * SIEMPRE, con `null` explícito si el usuario no tiene: una clave
+             * ausente queda reservada para los tokens anteriores a EC-842. */
+            empresa: parseSessionEmpresa(user.empresa) ?? null,
           };
         } catch {
           /* Token inválido/caducado, backend caído o respuesta inesperada:
@@ -78,13 +83,21 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
         token.permissions = user.permissions;
         token.is_admin_empresa = user.is_admin_empresa;
         token.is_superuser = user.is_superuser;
+        token.empresa = user.empresa ?? null;
         token.sub = user.id || token.sub;
+      }
+      /* `useSession().update({ empresa })` de `SessionCompanySync`: el cliente
+       * relee `/auth/user/` al cargar la app y, si la empresa cambió, la
+       * sincroniza aquí sin esperar a un nuevo inicio de sesión. Solo se acepta
+       * `empresa` (ver `applyEmpresaUpdate`). */
+      if (trigger === "update") {
+        token = applyEmpresaUpdate(token, session);
       }
       /* Este callback corre en CADA lectura de la sesión, no solo al iniciarla:
        * así un token emitido con una regla de rol anterior se corrige sin
@@ -99,6 +112,8 @@ export const authOptions: NextAuthOptions = {
         session.user.permissions = token.permissions;
         session.user.is_admin_empresa = token.is_admin_empresa;
         session.user.is_superuser = token.is_superuser;
+        // Ausente en un token anterior a EC-842: se deja ausente ("no se sabe").
+        if (token.empresa !== undefined) session.user.empresa = token.empresa;
       }
       return session;
     },
