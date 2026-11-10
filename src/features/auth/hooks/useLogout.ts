@@ -1,8 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { signOut } from "next-auth/react";
-// import toast from "react-hot-toast";
 import { logout } from "../services/actions";
-import { clearUserScopedClientState } from "../utils/clientSessionState";
+import { clearUserScopedClientState, signOutToLogin } from "../utils/clientSessionState";
 
 export const useLogout = () => {
   const mutation = useMutation({
@@ -13,15 +11,10 @@ export const useLogout = () => {
       await logout();
     },
     retry: 0,
-    onSuccess: async () => {
-      await signOut({ callbackUrl: "/auth/login" });
-    },
-    onError: async () => {
-      /* Si la petición al servidor falla, cerramos la sesión local de todos modos
-       * para evitar dejar al usuario en un estado inconsistente */
-      // toast.error("Hubo un problema al cerrar sesión en el servidor. Cerrando sesión localmente.");
-      await signOut({ callbackUrl: "/auth/login" });
-    },
+    /* Con o sin éxito del backend se cierra la sesión local y se navega a login:
+     * si la petición falla, el usuario no debe quedar en un estado inconsistente.
+     * `signOutToLogin` navega aunque el propio `signOut` falle. */
+    onSettled: () => signOutToLogin(),
   });
 
   return {

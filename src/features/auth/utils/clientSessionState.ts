@@ -1,3 +1,4 @@
+import { signOut } from "next-auth/react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
 
@@ -23,4 +24,22 @@ import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCo
 export const clearUserScopedClientState = () => {
   useWorkspaceStore.getState().clearWorkspace();
   clearWorkspaceCookie();
+};
+
+const LOGIN_PATH = "/auth/login";
+
+/**
+ * Cierra la sesión de NextAuth y lleva a `/auth/login` con una carga completa.
+ *
+ * `signOut` hace fetch a /api/auth/* (csrf + signout) y solo DESPUÉS asigna
+ * `window.location`. Si ese fetch falla, la promesa se rechaza sin navegar y la
+ * pestaña quedaría en estado zombi (sesión aparentemente viva, todas las
+ * llamadas en 401, sin salida): por eso la redirección a mano como respaldo.
+ */
+export const signOutToLogin = async (): Promise<void> => {
+  try {
+    await signOut({ callbackUrl: LOGIN_PATH });
+  } catch {
+    window.location.href = LOGIN_PATH;
+  }
 };
