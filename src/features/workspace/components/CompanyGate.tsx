@@ -32,6 +32,16 @@ export function CompanyGate({ children }: { children: React.ReactNode }) {
     case "none":
       content = <NoCompanyState />;
       break;
+    case "session-error":
+      // Mismo texto y misma ronda de recuperación que el aviso del sidebar.
+      content = (
+        <ErrorDisplay
+          title="No se pudo cargar tu sesión."
+          message="Sin ella no se pueden cargar estos datos."
+          onRetry={sessionCompany.retry}
+        />
+      );
+      break;
     case "unknown":
       content = (
         <ErrorDisplay

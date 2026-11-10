@@ -53,4 +53,24 @@ test.describe("resolveSessionCompany", () => {
     // Y si la sincronización le quitó la empresa, pasa a none (no se queda en la anterior).
     expect(resolveSessionCompany({ authenticated: true, empresa: null, sync: "done" }).status).toBe("none");
   });
+
+  test("sin sesión y con la recuperación agotada es session-error, no un loader eterno", () => {
+    expect(
+      resolveSessionCompany({ authenticated: false, empresa: undefined, sync: "pending", recoveryPhase: "exhausted" }),
+    ).toEqual({ status: "session-error", companyId: null });
+  });
+
+  test("sin sesión mientras la recuperación reintenta sigue en loading", () => {
+    for (const recoveryPhase of ["idle", "recovering"] as const) {
+      expect(
+        resolveSessionCompany({ authenticated: false, empresa: undefined, sync: "pending", recoveryPhase }).status,
+      ).toBe("loading");
+    }
+  });
+
+  test("con sesión autenticada la fase de recuperación no cuenta", () => {
+    expect(
+      resolveSessionCompany({ authenticated: true, empresa: 3, sync: "done", recoveryPhase: "exhausted" }),
+    ).toEqual({ status: "ready", companyId: 3 });
+  });
 });
