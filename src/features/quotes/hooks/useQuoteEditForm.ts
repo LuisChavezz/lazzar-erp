@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import toast from "react-hot-toast";
 import type { Customer } from "../../customers/interfaces/customer.interface";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
@@ -262,7 +263,7 @@ export function useQuoteEditForm(quoteId: number) {
 
   const userName = session?.user?.name || "Usuario";
   const sellerName = userName;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalTodayDate();
   const formRef = useRef<HTMLFormElement | null>(null);
   const emptyValues = useMemo(() => createEmptyValues(todayStr, userName), [todayStr, userName]);
 
