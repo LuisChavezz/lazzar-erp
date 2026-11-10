@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import { useCreateProductionOrder } from "@/src/features/production-orders/hooks/useCreateProductionOrder";
 import type { OpSkuOption } from "../utils/opSkuOptions";
@@ -12,7 +11,10 @@ import {
   CreateProductionOrderFormSchema,
   type CreateProductionOrderFormValues,
 } from "@/src/features/production-orders/schemas/create-production-order.schema";
-import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
+import { getSinSucursalMessage, WORKSPACE_BRANCH_LOADING_MESSAGE, type WorkspaceBranchDocument } from "@/src/features/workspace/utils/workspaceBranchMessages";
+import { getSessionCompanyBlockMessage } from "@/src/features/workspace/utils/sessionCompanyMessages";
 
 interface UseCreateProductionOrderFormParams {
   /** Prioridad seleccionada en el Paso 1. */
@@ -76,15 +78,27 @@ function buildDetalle(
  * (prioridad, observaciones) y el detalle por variante los inyecta el step
  * manager al avanzar desde el Paso 1 (`setFieldValue` / {@link seedDetalle}).
  */
+/** Textos del aviso de "sin sucursal" para la orden de producción. */
+const OP_SUCURSAL_DOCUMENT: WorkspaceBranchDocument = {
+  asignarA: "a la orden de producción",
+  guardar: "la orden de producción",
+};
+
 export function useCreateProductionOrderForm({
   prioridad,
   observaciones,
   selectedSkus,
   onSuccess,
 }: UseCreateProductionOrderFormParams) {
-  // Empresa y sucursal activas — mismo patrón que el resto de formularios.
-  const companyId = useSessionCompanyId();
-  const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
+  // Empresa de la sesión (EC-842) y sucursal del workspace validada contra las
+  // del usuario. El backend toma la empresa de `user.empresa` (400 sin ella) y
+  // rechaza una sucursal inexistente o ajena, así que sin ambas no se envía.
+  const sessionCompany = useSessionCompany();
+  const {
+    branchId: workspaceBranchId,
+    isLoading: isWorkspaceBranchLoading,
+    isError: isWorkspaceBranchError,
+  } = useValidWorkspaceBranchId();
 
   const { mutateAsync: createProductionOrder, isPending } =
     useCreateProductionOrder();
@@ -98,8 +112,6 @@ export function useCreateProductionOrderForm({
 
   const form = useForm({
     defaultValues: {
-      empresa: companyId ?? 0,
-      sucursal: selectedBranch?.id ?? 0,
       prioridad,
       observaciones,
       orden_produccion_detalle: selectedSkus.map((option) =>
@@ -107,7 +119,26 @@ export function useCreateProductionOrderForm({
       ),
     } as CreateProductionOrderFormValues,
     onSubmit: async ({ value }) => {
-      const parsed = CreateProductionOrderFormSchema.safeParse(value);
+      // Empresa y sucursal se toman al enviar (no al montar), del contexto.
+      if (sessionCompany.status !== "ready") {
+        toast.error(getSessionCompanyBlockMessage(sessionCompany.status), { id: "op-sin-empresa" });
+        return;
+      }
+      if (isWorkspaceBranchLoading) {
+        toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "op-sin-sucursal" });
+        return;
+      }
+      if (workspaceBranchId === null) {
+        toast.error(getSinSucursalMessage(isWorkspaceBranchError, OP_SUCURSAL_DOCUMENT), {
+          id: "op-sin-sucursal",
+        });
+        return;
+      }
+      const parsed = CreateProductionOrderFormSchema.safeParse({
+        ...value,
+        empresa: sessionCompany.companyId,
+        sucursal: workspaceBranchId,
+      });
 
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};
@@ -120,7 +151,7 @@ export function useCreateProductionOrderForm({
         setErrors(nextErrors);
 
         // `empresa` / `sucursal` no tienen campo visible en el Paso 2 (vienen
-        // del workspace) y `pedido` se elige en el Paso 1: si fallan, avísalo
+        // de la sesión y del workspace) y `pedido` se elige en el Paso 1: si fallan, avísalo
         // por toast para no dejar al usuario sin feedback al confirmar.
         const headerError =
           nextErrors["empresa"] ??

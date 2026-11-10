@@ -391,6 +391,15 @@ export function useQuoteEditForm(quoteId: number) {
       // La sucursal sale del registro o del contexto, no de un campo: se revisa
       // ANTES que el resto, como en el alta, para no hacer corregir todo el
       // formulario y bloquear al final (EC-753).
+      // `empresa` es la del registro; sin ella no hay qué enviar (el backend
+      // tampoco deja editar una cotización sin empresa).
+      const empresa = quoteData?.empresa;
+      if (empresa == null) {
+        toast.error("Esta cotización no tiene empresa asignada; no se puede guardar.", {
+          id: "quote-sin-empresa",
+        });
+        return;
+      }
       if (!quoteData?.sucursal && isWorkspaceBranchLoading) {
         toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
         return;
@@ -560,7 +569,7 @@ export function useQuoteEditForm(quoteId: number) {
 
       const quoteUpdatePayload: QuoteCreate = {
         pedido: {
-          empresa: quoteData?.empresa ?? 1,
+          empresa,
           sucursal,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1,

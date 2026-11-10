@@ -4,12 +4,14 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import {
   ListaMaterialFormSchema,
   type ListaMaterialFormValues,
 } from "@/src/features/bom/schemas/bom.schema";
 import { useCreateListaMaterial } from "@/src/features/bom/hooks/useCreateListaMaterial";
+import toast from "react-hot-toast";
+import { getSessionCompanyBlockMessage } from "@/src/features/workspace/utils/sessionCompanyMessages";
 
 interface UseCreateBomFormParams {
   /** Variant selected in Step 1 — becomes `producto_variante`. */
@@ -40,8 +42,9 @@ export function useCreateBomForm({
   unitById,
   onSuccess,
 }: UseCreateBomFormParams) {
-  // Empresa activa — mismo patrón que el resto de formularios.
-  const companyId = useSessionCompanyId();
+  // Empresa de la sesión (EC-842). El backend la toma de `user.empresa` y
+  // responde 400 sin ella, así que sin empresa confirmada no se envía.
+  const sessionCompany = useSessionCompany();
 
   const { mutateAsync: createListaMaterial, isPending } =
     useCreateListaMaterial();
@@ -51,7 +54,6 @@ export function useCreateBomForm({
 
   const form = useForm({
     defaultValues: {
-      empresa: companyId ?? 0,
       producto_variante: productoVarianteId,
       variante_produccion: null,
       version: 1,
@@ -67,7 +69,16 @@ export function useCreateBomForm({
       })),
     } as ListaMaterialFormValues,
     onSubmit: async ({ value }) => {
-      const parsed = ListaMaterialFormSchema.safeParse(value);
+      if (sessionCompany.status !== "ready") {
+        toast.error(getSessionCompanyBlockMessage(sessionCompany.status), { id: "bom-sin-empresa" });
+        return;
+      }
+      // La empresa se toma al enviar (no al montar): si la sesión aún cargaba
+      // al abrir el asistente, el valor inicial habría quedado vacío.
+      const parsed = ListaMaterialFormSchema.safeParse({
+        ...value,
+        empresa: sessionCompany.companyId,
+      });
 
       if (!parsed.success) {
         const nextErrors: Record<string, string> = {};

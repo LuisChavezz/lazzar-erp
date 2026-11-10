@@ -24,6 +24,12 @@ interface UseSerieFolioFormParams {
 
 type SerieFolioFormField = keyof SerieFolioFormValues;
 
+/**
+ * Valor de la opción deshabilitada "Seleccionar..." del select de sucursal. No
+ * es un respaldo: el schema (`min(1)`) lo rechaza y obliga a elegir una.
+ */
+const SUCURSAL_SIN_ELEGIR = 0;
+
 export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolioFormParams) {
   // Obtiene empresa y sucursal activa para inicializar el formulario y catálogo de sucursales.
   const companyId = useSessionCompanyId();
@@ -61,7 +67,7 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
       separador: "",
       incluir_anio: false,
       reiniciar_anual: false,
-      sucursal: selectedBranch?.id ?? 0,
+      sucursal: selectedBranch?.id ?? SUCURSAL_SIN_ELEGIR,
     }),
     [selectedBranch?.id]
   );
