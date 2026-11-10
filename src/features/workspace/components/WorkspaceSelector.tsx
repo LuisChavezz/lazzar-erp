@@ -10,8 +10,8 @@ import NoCompanyState from "./NoCompanyState";
 export default function WorkspaceSelector() {
   const {
     sessionCompany,
-    company,
     companyName,
+    companyRfc,
     isLoading,
     availableBranches,
     branchesLoading,
@@ -71,7 +71,7 @@ export default function WorkspaceSelector() {
           <>
             {/* La empresa no se elige (EC-842): es la de la sesión, bloqueada
                 hasta que exista un endpoint para cambiarla (EC-843). */}
-            <LockedCompanyCard name={companyName} rfc={company?.rfc} />
+            <LockedCompanyCard name={companyName} rfc={companyRfc} />
             <BranchGrid
               branches={availableBranches}
               branchesLoading={branchesLoading}

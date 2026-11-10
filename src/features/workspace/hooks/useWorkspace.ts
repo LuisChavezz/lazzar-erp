@@ -32,7 +32,7 @@ const setWorkspaceCookie = () => {
 export const useWorkspace = () => {
   const router = useRouter();
   const { data: session } = useSession();
-  const { sessionCompany, company, name: companyName } = useSessionCompanyDetails();
+  const { sessionCompany, name: companyName, rfc: companyRfc } = useSessionCompanyDetails();
   const companyId = sessionCompany.companyId;
   const setBranch = useWorkspaceStore((state) => state.setBranch);
   const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
@@ -97,8 +97,8 @@ export const useWorkspace = () => {
 
   return {
     sessionCompany,
-    company,
     companyName,
+    companyRfc,
     isLoading,
     availableBranches,
     branchesLoading,
