@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Quote } from "../interfaces/quote.interface";
@@ -99,7 +99,8 @@ const createQuotesPdfDocument = (
     "Document" | "Page" | "Text" | "View" | "StyleSheet"
   >,
   quotes: Quote[],
-  columns: DataTableVisibleColumn<Quote>[]
+  columns: DataTableVisibleColumn<Quote>[],
+  now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
 
@@ -235,7 +236,7 @@ const createQuotesPdfDocument = (
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX", {
+  const today = now.toLocaleDateString("es-MX", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -376,6 +377,7 @@ export const useQuotePdfExport = (
     if (exportColumns.length === 0) return;
     await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
+      const now = new Date();
       const pdfDocument = createQuotesPdfDocument(
         {
           Document: renderer.Document,
@@ -385,11 +387,11 @@ export const useQuotePdfExport = (
           StyleSheet: renderer.StyleSheet,
         },
         rows,
-        exportColumns
+        exportColumns,
+        now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `quotes-${today}.pdf`);
+      downloadBlob(blob, datedFileName("quotes", "pdf", now));
     });
   }, [runExport]);
 

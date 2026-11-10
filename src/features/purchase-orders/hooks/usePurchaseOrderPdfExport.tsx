@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
@@ -21,6 +21,7 @@ const createPurchaseOrdersPdfDocument = (
   >,
   orders: PurchaseOrder[],
   columns: DataTableVisibleColumn<PurchaseOrder>[],
+  now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
 
@@ -125,7 +126,7 @@ const createPurchaseOrdersPdfDocument = (
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX", {
+  const today = now.toLocaleDateString("es-MX", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -230,6 +231,7 @@ export const usePurchaseOrderPdfExport = (
     if (exportColumns.length === 0) return;
     await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
+      const now = new Date();
       const pdfDocument = createPurchaseOrdersPdfDocument(
         {
           Document: renderer.Document,
@@ -240,10 +242,10 @@ export const usePurchaseOrderPdfExport = (
         },
         rows,
         exportColumns,
+        now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `ordenes-compra-${today}.pdf`);
+      downloadBlob(blob, datedFileName("ordenes-compra", "pdf", now));
     });
   }, [runExport]);
 

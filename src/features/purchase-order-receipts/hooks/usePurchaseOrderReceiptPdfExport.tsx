@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
@@ -20,6 +20,7 @@ const createPurchaseOrderReceiptsPdfDocument = (
   >,
   receipts: PurchaseOrderReceipt[],
   columns: DataTableVisibleColumn<PurchaseOrderReceipt>[],
+  now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
 
@@ -124,7 +125,7 @@ const createPurchaseOrderReceiptsPdfDocument = (
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX", {
+  const today = now.toLocaleDateString("es-MX", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -228,6 +229,7 @@ export const usePurchaseOrderReceiptPdfExport = (
     if (columnsRef.current.length === 0) return;
     await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
+      const now = new Date();
       const pdfDocument = createPurchaseOrderReceiptsPdfDocument(
         {
           Document: renderer.Document,
@@ -238,10 +240,10 @@ export const usePurchaseOrderReceiptPdfExport = (
         },
         rows,
         columnsRef.current,
+        now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `recepciones-${today}.pdf`);
+      downloadBlob(blob, datedFileName("recepciones", "pdf", now));
     });
   }, [runExport]);
 
