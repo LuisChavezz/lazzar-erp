@@ -28,7 +28,13 @@ import type { GlobalSearchResponse } from "../interfaces/global-search.interface
  * por `isQueryEnabled` ANTES de pintar resultados, o al borrar el texto se
  * verían los de la búsqueda previa.
  */
-export const useGlobalSearch = (query: string) => {
+export const useGlobalSearch = (
+  query: string,
+  {
+    /** `false` mientras la empresa de la sesión no esté confirmada (EC-842). */
+    enabled = true,
+  }: { enabled?: boolean } = {},
+) => {
   const trimmedQuery = query.trim();
   const debouncedQuery = useDebounce(trimmedQuery, SEARCH_DEBOUNCE_MS);
 
@@ -45,7 +51,7 @@ export const useGlobalSearch = (query: string) => {
     queryKey: ["global-search", debouncedQuery, SEARCH_RESULTS_PER_GROUP],
     queryFn: () =>
       getGlobalSearch({ q: debouncedQuery, limit: SEARCH_RESULTS_PER_GROUP }),
-    enabled: isQueryEnabled,
+    enabled: enabled && isQueryEnabled,
     placeholderData: keepPreviousData,
     // Una búsqueda es una foto del momento: hereda por defecto los 15 min de
     // `staleTime` del QueryClient, y con eso repetir un término dentro de esa

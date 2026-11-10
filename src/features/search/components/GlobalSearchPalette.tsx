@@ -9,6 +9,8 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getEstadoOportunidadCfg } from "@/src/features/opportunities/constants/opportunityChoices";
 import { QuoteDetailByIdDialog } from "@/src/features/quotes/components/QuoteDetailByIdDialog";
 import { useGlobalSearch } from "../hooks/useGlobalSearch";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
+import NoCompanyState from "@/src/features/workspace/components/NoCompanyState";
 import { useGlobalSearchModal } from "../hooks/useGlobalSearchModal";
 import {
   SEARCH_MIN_NAME_LENGTH,
@@ -43,6 +45,9 @@ export function GlobalSearchPalette() {
   const { isOpen, close } = useGlobalSearchModal();
   const router = useRouter();
   const { data: session } = useSession();
+  // Sin empresa asignada el backend no devuelve nada que buscar (EC-798): se
+  // avisa en lugar de "Sin resultados", y no se busca hasta confirmarla.
+  const sessionCompany = useSessionCompany();
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -88,7 +93,7 @@ export function GlobalSearchPalette() {
     isFetching,
     isError,
     error,
-  } = useGlobalSearch(query);
+  } = useGlobalSearch(query, { enabled: sessionCompany.status === "ready" });
 
   // El backend manda VACÍO el grupo de una entidad que el usuario puede ver pero
   // que no casa con el término. Se oculta: es solo presentación —quién ve qué ya
@@ -303,7 +308,20 @@ export function GlobalSearchPalette() {
             id="global-search-results"
             className="max-h-[min(60vh,26rem)] overflow-y-auto p-2"
           >
-            {!isQueryEnabled ? (
+            {sessionCompany.status === "none" ? (
+              <NoCompanyState compact />
+            ) : sessionCompany.status === "unknown" ? (
+              <div className="flex flex-col items-center gap-3 px-3 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                No se pudo confirmar la empresa de tu usuario.
+                <button
+                  type="button"
+                  onClick={sessionCompany.retry}
+                  className="cursor-pointer rounded-lg px-3 py-1.5 font-medium text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : !isQueryEnabled ? (
               <p className="px-3 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
                 Escribe al menos {minLength} caracteres para buscar.
               </p>
@@ -311,7 +329,9 @@ export function GlobalSearchPalette() {
               <p className="m-1 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                 {extractErrorMessage(error, "No se pudo buscar. Intenta de nuevo.")}
               </p>
-            ) : isLoading || (totalResults === 0 && data?.q !== debouncedQuery) ? (
+            ) : sessionCompany.status === "loading" ||
+              isLoading ||
+              (totalResults === 0 && data?.q !== debouncedQuery) ? (
               // `|| …data.q`: con `keepPreviousData`, si la búsqueda ANTERIOR
               // quedó vacía, sus datos siguen ahí mientras vuela la nueva, y el
               // vacío diría "Sin resultados para <término nuevo>" antes de que
