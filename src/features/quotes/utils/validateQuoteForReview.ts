@@ -17,6 +17,7 @@ import {
   QUOTE_REVIEW_FIELD_LABELS,
 } from "../schemas/quote-review.schema";
 import { mapQuoteDetalleToItem } from "./mapQuoteDetalleToItem";
+import { quoteCaptureDateKey } from "./quoteCaptureDate";
 import { IVA_TASA_FIJA } from "../constants/iva";
 import { ANTICIPO_MAYOR_AL_TOTAL_MESSAGE, isAnticipoMayorAlTotal } from "./quoteAmounts";
 
@@ -161,7 +162,7 @@ const mapQuoteToReviewValidationInput = (
     referenciarOcFactura: false,
     condicionPago: reverseMapCondicionPago(quote),
     condicionPagoMonto: Number(quote.monto) || 0,
-    fecha: quote.created_at ? quote.created_at.slice(0, 10) : "",
+    fecha: quoteCaptureDateKey(quote.created_at, ""),
     agente: onboardingData.vendedor.username || "",
     tipo_pedido: readOptionalNumberProperty(quote, "tipo_pedido"),
     destinatario: quote.destinatario || "",
