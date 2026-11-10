@@ -23,7 +23,6 @@ import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
 import { useShifts } from "@/src/features/shifts/hooks/useShifts";
@@ -31,6 +30,8 @@ import { getEstadoCivilLabel, getSexoLabel } from "../constants/employeeChoices"
 import { useEmployee } from "../hooks/useEmployee";
 import { getEmployeeFullName } from "../utils/employeeName";
 import EmployeeForm from "./EmployeeForm";
+import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 // Destino del "Volver". Fijo, sin mapa `?from=`: la ruta cuelga de `/hr`, exige
 // `R-RH` y hoy solo se alcanza desde el listado del propio módulo.
@@ -60,7 +61,7 @@ export const EmployeeDetailContent = ({ employeeId }: EmployeeDetailContentProps
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Mismos catálogos que el listado para resolver los FK (IDs crudos).
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  const { branches: availableBranches } = useCompanyBranches(useSessionCompanyId());
   const { departments } = useDepartments();
   const { positions } = usePositions();
   const { shifts } = useShifts();

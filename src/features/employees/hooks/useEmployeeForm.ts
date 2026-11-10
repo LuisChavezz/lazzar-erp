@@ -6,7 +6,6 @@ import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import {
@@ -65,14 +64,12 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const sucursalId = isEditing ? (employeeToEdit?.sucursal ?? null) : workspaceBranchId;
   // Nombre de la sucursal para el campo de solo lectura. `mis-sucursales` (y
   // no `/nucleo/sucursales/`, que expone la PK como `id_sucursal`); al editar,
-  // la del empleado puede no estar entre las del usuario: se cae a las del
-  // workspace y, al final, al id.
+  // la del empleado puede no estar entre las del usuario: se cae al id.
   const { branches } = useCompanyBranches(companyId);
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const sucursalLabel =
     sucursalId === null
       ? ""
-      : ([...branches, ...availableBranches].find((branch) => branch.id === sucursalId)?.nombre ??
+      : (branches.find((branch) => branch.id === sucursalId)?.nombre ??
         `Sucursal #${sucursalId}`);
   /** Alta sin sucursal válida (ya resuelta): el formulario avisa y no guarda. */
   const isSucursalMissing = !isEditing && !isLoadingWorkspaceBranch && workspaceBranchId === null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useWorkspaceStore } from "../store/workspace.store";
@@ -35,7 +35,6 @@ export const useWorkspace = () => {
   const { sessionCompany, name: companyName, rfc: companyRfc } = useSessionCompanyDetails();
   const companyId = sessionCompany.companyId;
   const setBranch = useWorkspaceStore((state) => state.setBranch);
-  const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const [isLoading, setIsLoading] = useState(false); // Indicador de carga para la selección de sucursal
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
@@ -64,11 +63,6 @@ export const useWorkspace = () => {
 
   // Sucursales del usuario en la empresa de la sesión
   const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(companyId);
-
-  // Sync available branches to store
-  useEffect(() => {
-    setAvailableBranches(availableBranches);
-  }, [availableBranches, setAvailableBranches]);
 
   // Handle branch selection
   const handleBranchSelect = (branchId: number) => {
