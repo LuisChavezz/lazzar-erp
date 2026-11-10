@@ -1,60 +1,58 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import ModuleNav from "@/src/components/ModuleNav";
 import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
+import { isCompanyGatedPath } from "@/src/constants/companyGatedRoutes";
 import { useSessionCompany } from "../hooks/useSessionCompany";
 import NoCompanyState from "./NoCompanyState";
 
-interface CompanyGateProps {
-  children: React.ReactNode;
-  /**
-   * Prefijos de ruta que NO dependen de la empresa (p. ej. calendario y correos
-   * de Google en Ventas): se renderizan siempre.
-   */
-  exempt?: readonly string[];
-}
-
-const matchesPrefix = (pathname: string, prefix: string) =>
-  pathname === prefix || pathname.startsWith(`${prefix}/`);
-
 /**
- * Gate de empresa de un grupo de módulos (EC-842). Desde EC-798 el backend acota
- * ventas, finanzas y terceros SOLO por `user.empresa`: sin empresa, cada lista
- * saldría vacía sin explicar por qué. Este gate, puesto en el layout del grupo,
- * no monta las páginas (ni sus consultas) hasta confirmar la empresa de la
- * sesión, y si el usuario no tiene muestra el aviso en su lugar.
+ * Gate de empresa de (Main) (EC-842). Montado UNA vez en el layout; qué rutas
+ * bloquea lo decide `companyGatedRoutes`. En una ruta bloqueada no monta la
+ * página (ni sus consultas) hasta confirmar la empresa de la sesión, y si el
+ * usuario no tiene muestra el aviso en su lugar.
  *
- * Solo reemplaza el contenido de la ruta: el `ModuleNav` del layout sigue
- * visible. Con empresa, renderiza a los hijos tal cual (las tablas conservan
- * sus propios estados de carga y error).
+ * Mientras bloquea pinta el `ModuleNav` del módulo de la ruta (lo deduce de la
+ * ruta; `/orders` no tiene), para que el aviso quede bajo la navegación como en
+ * cualquier página del módulo. Con empresa renderiza a los hijos tal cual (las
+ * tablas conservan sus propios estados de carga y error).
  *
  * UX, no control de acceso: el backend es quien acota cada petición.
  */
-export function CompanyGate({ children, exempt }: CompanyGateProps) {
+export function CompanyGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const sessionCompany = useSessionCompany();
 
-  if (exempt?.some((prefix) => matchesPrefix(pathname, prefix))) return children;
+  if (!isCompanyGatedPath(pathname) || sessionCompany.status === "ready") return children;
 
+  let content: React.ReactNode;
   switch (sessionCompany.status) {
-    case "ready":
-      return children;
     case "none":
-      return <NoCompanyState />;
+      content = <NoCompanyState />;
+      break;
     case "unknown":
-      return (
+      content = (
         <ErrorDisplay
           title="No se pudo confirmar la empresa de tu usuario."
           message="Sin ella no se pueden cargar estos datos."
           onRetry={sessionCompany.retry}
         />
       );
+      break;
     default:
-      return (
+      content = (
         <div className="flex justify-center py-16" role="status" aria-label="Cargando">
           <Loader />
         </div>
       );
   }
+
+  return (
+    <div className="w-full space-y-6">
+      <ModuleNav />
+      {content}
+    </div>
+  );
 }

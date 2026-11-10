@@ -6,6 +6,7 @@ import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SessionRecoveryProvider } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { SessionCompanySync } from "@/src/features/auth/components/SessionCompanySync";
+import { CompanyGate } from "@/src/features/workspace/components/CompanyGate";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
 import { GlobalSearchProvider } from "@/src/features/search/components/GlobalSearchProvider";
@@ -62,7 +63,11 @@ export default function MainLayout({
               className="flex-1 w-full overflow-y-auto px-6 pb-6 pt-20 md:px-12 md:pb-12 md:pt-0"
               style={{ scrollbarGutter: "stable both-edges" }}
             >
-              <BranchChangeLoader>{children}</BranchChangeLoader>
+              <BranchChangeLoader>
+                {/* Aviso de "sin empresa asignada" en las rutas de
+                    `companyGatedRoutes` (EC-842). */}
+                <CompanyGate>{children}</CompanyGate>
+              </BranchChangeLoader>
             </main>
           </div>
         </div>
