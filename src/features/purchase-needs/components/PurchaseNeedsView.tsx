@@ -21,9 +21,6 @@ import type { PurchaseNeedGroup } from "../utils/normalizeNeedGroup";
 const LINK_CLASS =
   "font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 underline decoration-dotted underline-offset-4";
 
-const fecha = (value: string | null | undefined) =>
-  formatShortCalendarDate(value);
-
 /**
  * Días de calendario (México) que faltan para una fecha `YYYY-MM-DD`
  * (negativo = vencida). `null` durante el prerender (`useClientNow`).
@@ -177,7 +174,7 @@ export function PurchaseNeedsView() {
                             : undefined
                       }
                     >
-                      {fecha(g.fechaMasUrgente)}
+                      {formatShortCalendarDate(g.fechaMasUrgente)}
                     </span>
                   </Stat>
                   <Stat label="Existencia">{g.existencia === null ? "—" : formatQuantityValue(g.existencia)}</Stat>
@@ -236,7 +233,7 @@ export function PurchaseNeedsView() {
                                 )}
                               </td>
                               <td className="py-2 tabular-nums text-slate-600 dark:text-slate-300">
-                                {fecha(n.fecha_requerida)}
+                                {formatShortCalendarDate(n.fecha_requerida)}
                               </td>
                               <td className="py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
                                 {formatQuantityValue(n.cantidad)} {n.unidad ?? g.unidad ?? ""}
