@@ -7,22 +7,7 @@ import { useWorkspaceStore } from "../store/workspace.store";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { loginRedirects } from "@/src/constants/routePermissions";
 import { useSessionCompanyDetails } from "./useSessionCompanyDetails";
-
-/**
- * Escribe la cookie de selección de workspace con atributos idénticos en todos
- * los flujos (con o sin sucursal) — un único punto de escritura evita que el
- * endurecimiento dependa de mantener dos cadenas sincronizadas a mano.
- *
- * Solo UX (no es control de acceso: el backend acota los datos por la
- * empresa/sucursal real del usuario) — `proxy.ts` únicamente comprueba su
- * existencia. `Secure` es seguro de añadir (todos los entornos desplegados son
- * HTTPS). No se marca `HttpOnly`: se escribe vía `document.cookie`, y esa API
- * del navegador no puede fijar cookies `HttpOnly` en absoluto (requeriría
- * emitirla como Set-Cookie desde el servidor), así que el atributo no aplica.
- */
-const setWorkspaceCookie = () => {
-  document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax; Secure"; // Expira en 1 semana
-};
+import { setWorkspaceCookie } from "../utils/workspaceCookie";
 
 /**
  * Flujo de /select-branch. La empresa NO se elige (EC-842): es la de la sesión,
