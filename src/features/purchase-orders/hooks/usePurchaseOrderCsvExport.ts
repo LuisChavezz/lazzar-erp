@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
@@ -57,7 +58,7 @@ export const usePurchaseOrderCsvExport = (
       const blob = new Blob([`﻿${csvContent}`], {
         type: "text/csv;charset=utf-8;",
       });
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalTodayDate();
       downloadBlob(blob, `ordenes-compra-${today}.csv`);
     });
   }, [runExport]);

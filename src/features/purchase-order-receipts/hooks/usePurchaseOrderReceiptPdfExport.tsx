@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PurchaseOrderReceipt } from "../interfaces/purchase-order-receipt.interface";
@@ -239,7 +240,7 @@ export const usePurchaseOrderReceiptPdfExport = (
         columnsRef.current,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalTodayDate();
       downloadBlob(blob, `recepciones-${today}.pdf`);
     });
   }, [runExport]);

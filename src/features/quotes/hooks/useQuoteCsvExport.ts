@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import { Quote } from "../interfaces/quote.interface";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
@@ -132,7 +133,7 @@ export const useQuoteCsvExport = (
       const blob = new Blob([`\uFEFF${csvContent}`], {
         type: "text/csv;charset=utf-8;",
       });
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalTodayDate();
       downloadBlob(blob, `quotes-${today}.csv`);
     });
   }, [runExport]);

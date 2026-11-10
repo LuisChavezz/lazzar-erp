@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { getLocalTodayDate } from "@/src/utils/formatDate";
 import { Customer } from "../interfaces/customer.interface";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -245,7 +246,7 @@ export const useCustomerPdfExport = (
         columnsRef.current
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalTodayDate();
       downloadBlob(blob, `clientes-${today}.pdf`);
     } catch (error) {
       toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
