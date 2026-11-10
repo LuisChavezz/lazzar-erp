@@ -62,7 +62,14 @@ export const useWorkspace = () => {
   };
 
   // Sucursales del usuario en la empresa de la sesión
-  const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(companyId);
+  // Un fallo de `mis-sucursales` NO es "sin sucursales": se expone aparte para
+  // mostrar el error con reintento en vez de ofrecer entrar sin sucursal.
+  const {
+    branches: availableBranches,
+    isLoading: branchesLoading,
+    isInitialError: isErrorBranches,
+    refetch: refetchBranches,
+  } = useCompanyBranches(companyId);
 
   // Handle branch selection
   const handleBranchSelect = (branchId: number) => {
@@ -96,6 +103,8 @@ export const useWorkspace = () => {
     isLoading,
     availableBranches,
     branchesLoading,
+    isErrorBranches,
+    retryBranches: () => void refetchBranches(),
     handleBranchSelect,
     handleContinueWithoutBranch,
   };

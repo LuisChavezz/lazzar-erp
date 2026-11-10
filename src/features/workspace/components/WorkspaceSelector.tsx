@@ -15,6 +15,8 @@ export default function WorkspaceSelector() {
     isLoading,
     availableBranches,
     branchesLoading,
+    isErrorBranches,
+    retryBranches,
     handleBranchSelect,
     handleContinueWithoutBranch,
   } = useWorkspace();
@@ -72,13 +74,21 @@ export default function WorkspaceSelector() {
             {/* La empresa no se elige (EC-842): es la de la sesión, bloqueada
                 hasta que exista un endpoint para cambiarla (EC-843). */}
             <LockedCompanyCard name={companyName} rfc={companyRfc} />
-            <BranchGrid
-              branches={availableBranches}
-              branchesLoading={branchesLoading}
-              isLoading={isLoading}
-              onSelect={handleBranchSelect}
-              onContinueWithoutBranch={handleContinueWithoutBranch}
-            />
+            {isErrorBranches ? (
+              <ErrorDisplay
+                title="No se pudieron cargar tus sucursales."
+                message="Revisa tu conexión e inténtalo de nuevo."
+                onRetry={retryBranches}
+              />
+            ) : (
+              <BranchGrid
+                branches={availableBranches}
+                branchesLoading={branchesLoading}
+                isLoading={isLoading}
+                onSelect={handleBranchSelect}
+                onContinueWithoutBranch={handleContinueWithoutBranch}
+              />
+            )}
           </>
         )}
       </div>
