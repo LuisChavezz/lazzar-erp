@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import {
   HORA_RANGE_MESSAGE,
   ShiftFormFields,
@@ -32,7 +32,7 @@ export function useShiftForm({ onSuccess, shiftToEdit }: UseShiftFormParams) {
   const isEditing = Boolean(shiftToEdit?.id);
 
   // Empresa del workspace activo: se exige para dar de alta un turno.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   // Conserva referencia al form para scroll superior suave al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);

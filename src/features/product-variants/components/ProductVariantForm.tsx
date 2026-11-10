@@ -25,7 +25,7 @@ export default function ProductVariantForm({
     form,
     formRef,
     formKey,
-    selectedCompany,
+    companyName,
     isEditing,
     isPending,
     keepCreating,
@@ -239,7 +239,7 @@ export default function ProductVariantForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <FormInput
                     label="Empresa"
-                    placeholder={selectedCompany?.nombre_comercial || selectedCompany?.razon_social || "Empresa activa"}
+                    placeholder={companyName ?? "Empresa de tu usuario"}
                   readOnly
                   tabIndex={-1}
                   className={READ_ONLY_INPUT_CLS}

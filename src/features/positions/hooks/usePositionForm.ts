@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useAreas } from "@/src/features/areas/hooks/useAreas";
 import { PositionFormSchema, PositionFormValues } from "../schemas/position.schema";
 import { useCreatePosition } from "./useCreatePosition";
@@ -24,7 +24,7 @@ export function usePositionForm({ onSuccess, positionToEdit }: UsePositionFormPa
   const isEditing = Boolean(positionToEdit?.id);
 
   // Empresa del workspace activo: se exige para dar de alta un puesto.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   // Catálogo de áreas que alimenta el select del FK opcional.
   const { areas, isLoading: isLoadingAreas, isInitialError: isErrorAreas } = useAreas();

@@ -8,7 +8,7 @@ import {
   createProductCategoryFormSchema,
   ProductCategoryFormValues,
 } from "../schemas/product-category.schema";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useCreateProductCategory } from "./useCreateProductCategory";
 import { useUpdateProductCategory } from "./useUpdateProductCategory";
 import { ProductCategory } from "../interfaces/product-category.interface";
@@ -25,7 +25,7 @@ export function useProductCategoryForm({
   categoryToEdit,
 }: UseProductCategoryFormParams) {
   // Obtiene empresa activa para construir payloads de creación y edición.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
 
   // Determina el modo del formulario para conservar el flujo original.
   const isEditing = Boolean(categoryToEdit?.id);
@@ -178,7 +178,7 @@ export function useProductCategoryForm({
         if (isEditing && categoryToEdit) {
           await updateCategory({
             id: categoryToEdit.id,
-            empresa: categoryToEdit.empresa ?? selectedCompany.id!,
+            empresa: categoryToEdit.empresa ?? companyId!,
             nombre: value.nombre,
             linea: value.linea,
             codigo: value.codigo,
@@ -187,7 +187,7 @@ export function useProductCategoryForm({
           form.reset(editValues);
         } else {
           await createCategory({
-            empresa: selectedCompany.id!,
+            empresa: companyId!,
             nombre: value.nombre,
             linea: value.linea,
             codigo: value.codigo,

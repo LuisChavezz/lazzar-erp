@@ -35,7 +35,7 @@ import { SupplierFormSchema, SupplierFormValues } from "../schemas/supplier.sche
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useCurrencies } from "../../currency/hooks/useCurrencies";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useCreateSupplier } from "./useCreateSupplier";
 import { useUpdateSupplier } from "./useUpdateSupplier";
 
@@ -99,10 +99,8 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
 
   // ── Contexto de empresa activa ──────────────────────────────────────────
   // Sigue el mismo patrón que useProductForm y useCustomerForm.
-  // selectedCompany.id se usa como "empresa" SOLO en el payload de creación.
-  const selectedCompany = useWorkspaceStore(
-    (state) => state.selectedCompany
-  );
+  // companyId se usa como "empresa" SOLO en el payload de creación.
+  const companyId = useSessionCompanyId();
 
   // ── Modo edición ─────────────────────────────────────────────────────────
   const isEditing = Boolean(supplierToEdit?.id);
@@ -353,7 +351,7 @@ export function useSupplierForm({ onSuccess, supplierToEdit, isRfcVerified = fal
       // 7. Ejecuta la mutación de creación.
       const createdSupplier = await createSupplier({
         ...payload,
-        empresa: selectedCompany.id!,
+        empresa: companyId!,
       });
 
       // 8. Si la mutación falló, se detiene aquí.

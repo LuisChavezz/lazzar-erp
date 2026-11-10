@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useWorkspaceStore } from "../store/workspace.store";
-import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
 import { loginRedirects } from "@/src/constants/routePermissions";
+import { useSessionCompanyDetails } from "./useSessionCompanyDetails";
 
 /**
  * Escribe la cookie de selección de workspace con atributos idénticos en todos
@@ -24,20 +24,18 @@ const setWorkspaceCookie = () => {
   document.cookie = "erp_workspace_id=true; path=/; max-age=604800; SameSite=Lax; Secure"; // Expira en 1 semana
 };
 
+/**
+ * Flujo de /select-branch. La empresa NO se elige (EC-842): es la de la sesión,
+ * con la que el backend acota todo, y el paso de empresa queda bloqueado hasta
+ * que exista un endpoint para cambiarla (EC-843). Solo se elige la sucursal.
+ */
 export const useWorkspace = () => {
   const router = useRouter();
   const { data: session } = useSession();
-  // `error` solo llega si las empresas NUNCA cargaron (ver `useMyCompanies`):
-  // un refetch fallido conserva la lista y avisa por toast.
-  const {
-    companies,
-    loading: companiesLoading,
-    error: companiesError,
-    refetch: refetchCompanies,
-  } = useMyCompanies(); // Obtener las empresas del usuario
-  const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
+  const { sessionCompany, company, name: companyName } = useSessionCompanyDetails();
+  const companyId = sessionCompany.companyId;
+  const setBranch = useWorkspaceStore((state) => state.setBranch);
   const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null); // ID de la empresa seleccionada
   const [isLoading, setIsLoading] = useState(false); // Indicador de carga para la selección de sucursal
   const isAdmin = session?.user?.role === "admin";
   const permissions = session?.user?.permissions ?? [];
@@ -64,74 +62,47 @@ export const useWorkspace = () => {
     router.push(redirectPath);
   };
 
-  // Fetch branches based on selected company (custom hook)
-  const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(selectedCompanyId);
+  // Sucursales del usuario en la empresa de la sesión
+  const { branches: availableBranches, isLoading: branchesLoading } = useCompanyBranches(companyId);
 
   // Sync available branches to store
   useEffect(() => {
     setAvailableBranches(availableBranches);
   }, [availableBranches, setAvailableBranches]);
 
-  // Handle company selection
-  const handleCompanySelect = (companyId: number) => {
-    setSelectedCompanyId(companyId);
-  };
-
   // Handle branch selection
   const handleBranchSelect = (branchId: number) => {
-    setIsLoading(true);
-    
-    // Guardar selección en el store
-    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
     const selectedBranch = availableBranches.find(b => b.id === branchId);
-    
-    // Guardar en el store y redirigir si ambos están disponibles
-    if (selectedCompany && selectedBranch) {  
-      setWorkspace(selectedCompany, selectedBranch);
-    }
+    if (!companyId || !selectedBranch) return;
 
-    if (selectedCompany) {
-      setWorkspaceCookie();
-    }
-
+    setIsLoading(true);
+    setBranch(selectedBranch);
+    setWorkspaceCookie();
     redirectAfterWorkspaceSelection();
   };
 
-  // Handle back to company selection
-  const handleBack = () => {
-    setSelectedCompanyId(null);
-  };
-
-  // Handle continue without branch selection
+  /**
+   * Entrar sin sucursal: cuando la empresa no tiene sucursales para el usuario,
+   * o cuando el usuario no tiene empresa asignada (cada módulo afectado muestra
+   * entonces su aviso de "sin empresa asignada").
+   */
   const handleContinueWithoutBranch = () => {
-     const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+    if (sessionCompany.status !== "ready" && sessionCompany.status !== "none") return;
 
-     if (!selectedCompany) {
-       console.error("Selected company not found");
-       return;
-     }
-
-     setIsLoading(true);
-
-     // Guardar en el store y establecer cookie
-     setWorkspace(selectedCompany);
-     setWorkspaceCookie();
-
-     redirectAfterWorkspaceSelection();
+    setIsLoading(true);
+    setBranch(null);
+    setWorkspaceCookie();
+    redirectAfterWorkspaceSelection();
   };
 
   return {
-    companies,
-    companiesLoading,
-    isErrorCompanies: companiesError !== null,
-    retryCompanies: () => void refetchCompanies(),
-    selectedCompanyId,
+    sessionCompany,
+    company,
+    companyName,
     isLoading,
     availableBranches,
     branchesLoading,
-    handleCompanySelect,
     handleBranchSelect,
-    handleBack,
-    handleContinueWithoutBranch
+    handleContinueWithoutBranch,
   };
 };

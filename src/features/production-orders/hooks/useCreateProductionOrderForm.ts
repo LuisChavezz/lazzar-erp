@@ -12,6 +12,7 @@ import {
   CreateProductionOrderFormSchema,
   type CreateProductionOrderFormValues,
 } from "@/src/features/production-orders/schemas/create-production-order.schema";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UseCreateProductionOrderFormParams {
   /** Prioridad seleccionada en el Paso 1. */
@@ -82,7 +83,7 @@ export function useCreateProductionOrderForm({
   onSuccess,
 }: UseCreateProductionOrderFormParams) {
   // Empresa y sucursal activas — mismo patrón que el resto de formularios.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
 
   const { mutateAsync: createProductionOrder, isPending } =
@@ -97,7 +98,7 @@ export function useCreateProductionOrderForm({
 
   const form = useForm({
     defaultValues: {
-      empresa: selectedCompany.id ?? 0,
+      empresa: companyId ?? 0,
       sucursal: selectedBranch?.id ?? 0,
       prioridad,
       observaciones,

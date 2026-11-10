@@ -15,6 +15,7 @@ import {
   SerieFolioFormValues,
   isFolioRangeValid,
 } from "../schemas/serie-folio.schema";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UseSerieFolioFormParams {
   onSuccess: () => void;
@@ -25,13 +26,13 @@ type SerieFolioFormField = keyof SerieFolioFormValues;
 
 export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolioFormParams) {
   // Obtiene empresa y sucursal activa para inicializar el formulario y catálogo de sucursales.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
   const {
     branches,
     isLoading: isLoadingBranches,
     isInitialError: isErrorBranches,
-  } = useCompanyBranches(selectedCompany.id);
+  } = useCompanyBranches(companyId);
 
   // Determina si se está editando una serie existente.
   const isEditing = Boolean(serieFolioToEdit?.id_serie_folio);

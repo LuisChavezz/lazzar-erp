@@ -16,7 +16,7 @@ import {
   type QuincenaRange,
 } from "@/src/utils/quincena";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import { WorkspaceBranchNotice } from "@/src/features/workspace/components/WorkspaceBranchNotice";
 import { getEmployees } from "@/src/features/employees/services/actions";
@@ -99,10 +99,10 @@ export function GeneratePayrollDialog({
   onClose,
   onGenerated,
 }: GeneratePayrollDialogProps) {
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
   // Misma consulta (en caché) que `useValidWorkspaceBranchId`: solo para
   // rotular la sucursal.
-  const { branches } = useCompanyBranches(selectedCompany.id);
+  const { branches } = useCompanyBranches(companyId);
   const gate = getGenerateBranchGate(useValidWorkspaceBranchId());
   const sucursalValue = gate.status === "ready" ? gate.branchId : 0;
 

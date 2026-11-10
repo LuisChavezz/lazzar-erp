@@ -3,27 +3,24 @@
 import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { useWorkspace } from "../hooks/useWorkspace";
-import CompanyGrid from "./CompanyGrid";
 import BranchGrid from "./BranchGrid";
+import LockedCompanyCard from "./LockedCompanyCard";
+import NoCompanyState from "./NoCompanyState";
 
 export default function WorkspaceSelector() {
   const {
-    companies,
-    companiesLoading,
-    isErrorCompanies,
-    retryCompanies,
-    selectedCompanyId,
+    sessionCompany,
+    company,
+    companyName,
     isLoading,
     availableBranches,
     branchesLoading,
-    handleCompanySelect,
     handleBranchSelect,
-    handleBack,
     handleContinueWithoutBranch,
   } = useWorkspace();
 
-  // Mostrar loader mientras se cargan las empresas o se está seleccionando una sucursal
-  if (companiesLoading || isLoading) {
+  // Mostrar loader mientras se confirma la empresa o se está seleccionando una sucursal
+  if (sessionCompany.status === "loading" || isLoading) {
     return (
       <div className="flex w-full items-center justify-center flex-col gap-4">
         <Loader />
@@ -38,48 +35,52 @@ export default function WorkspaceSelector() {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 flex flex-col items-center">
-      {/* Header Dinámico */}
-      <div
-        className={`transition-all duration-500 ease-in-out text-center mb-12 ${
-          selectedCompanyId ? "transform -translate-y-4" : ""
-        }`}
-      >
+      <div className="text-center mb-12">
         <h2 className="text-4xl md:text-5xl text-slate-900 dark:text-white font-medium brand-font mb-4">
-          {selectedCompanyId
-            ? "Selecciona una Sucursal"
-            : "Bienvenido de nuevo"}
+          {sessionCompany.status === "ready" ? "Selecciona una Sucursal" : "Bienvenido de nuevo"}
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 text-lg">
-          {selectedCompanyId
-            ? "Elige la ubicación donde trabajarás hoy"
-            : "Selecciona la empresa para comenzar"}
-        </p>
+        {sessionCompany.status === "ready" && (
+          <p className="text-slate-500 dark:text-slate-400 text-lg">
+            Elige la ubicación donde trabajarás hoy
+          </p>
+        )}
       </div>
 
-      <div className="w-full grid grid-cols-1 relative">
-        {/* Si las empresas nunca cargaron, un error con reintento en vez del
-            aviso de "sin empresas" de `CompanyGrid`, que queda solo para una
-            carga correcta que vino vacía. */}
-        {isErrorCompanies ? (
-          <ErrorDisplay title="No se pudieron cargar tus empresas." onRetry={retryCompanies} />
-        ) : (
-          <CompanyGrid
-            companies={companies}
-            selectedCompanyId={selectedCompanyId}
-            loading={companiesLoading}
-            onSelect={handleCompanySelect}
+      <div className="w-full">
+        {sessionCompany.status === "unknown" && (
+          <ErrorDisplay
+            title="No se pudo confirmar la empresa de tu usuario."
+            onRetry={sessionCompany.retry}
           />
         )}
 
-        <BranchGrid
-          branches={availableBranches}
-          branchesLoading={branchesLoading}
-          isLoading={isLoading}
-          selectedCompanyId={selectedCompanyId}
-          onSelect={handleBranchSelect}
-          onBack={handleBack}
-          onContinueWithoutBranch={handleContinueWithoutBranch}
-        />
+        {sessionCompany.status === "none" && (
+          <NoCompanyState
+            action={
+              <button
+                onClick={handleContinueWithoutBranch}
+                className="px-6 py-2.5 cursor-pointer bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-sky-500/20"
+              >
+                Continuar
+              </button>
+            }
+          />
+        )}
+
+        {sessionCompany.status === "ready" && (
+          <>
+            {/* La empresa no se elige (EC-842): es la de la sesión, bloqueada
+                hasta que exista un endpoint para cambiarla (EC-843). */}
+            <LockedCompanyCard name={companyName} rfc={company?.rfc} />
+            <BranchGrid
+              branches={availableBranches}
+              branchesLoading={branchesLoading}
+              isLoading={isLoading}
+              onSelect={handleBranchSelect}
+              onContinueWithoutBranch={handleContinueWithoutBranch}
+            />
+          </>
+        )}
       </div>
     </div>
   );

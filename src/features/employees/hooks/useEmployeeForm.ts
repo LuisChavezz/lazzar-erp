@@ -25,6 +25,7 @@ import {
 import { useCreateEmployee } from "./useCreateEmployee";
 import { useUpdateEmployee } from "./useUpdateEmployee";
 import { Employee, EmployeeCreate } from "../interfaces/employee.interface";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 interface UseEmployeeFormParams {
   onSuccess: () => void;
@@ -50,7 +51,7 @@ export function useEmployeeForm({ onSuccess, employeeToEdit }: UseEmployeeFormPa
   const isEditing = Boolean(employeeToEdit?.id);
 
   // Empresa del workspace activo: se exige para dar de alta un empleado.
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   // La sucursal NO se captura (EC-623). Al crear es la del workspace, solo si
   // es válida entre las sucursales del usuario (`useValidWorkspaceBranchId`,

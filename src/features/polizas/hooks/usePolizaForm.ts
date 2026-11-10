@@ -32,6 +32,7 @@ import {
 import { useCreatePoliza } from "./useCreatePoliza";
 import { useChartOfAccounts } from "@/src/features/chart-of-accounts/hooks/useChartOfAccounts";
 import { useCostCenters } from "@/src/features/cost-centers/hooks/useCostCenters";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 const LINE_ERROR_PREFIX = "poliza_detalles";
 
@@ -70,9 +71,9 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   // Nombre de la sucursal para el campo de solo lectura: `mis-sucursales` (la
   // misma consulta en caché que valida el id) y, de respaldo, las del
   // workspace; al final, el id.
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
+  const companyId = useSessionCompanyId();
   const availableBranches = useWorkspaceStore((state) => state.availableBranches);
-  const { branches } = useCompanyBranches(selectedCompany.id);
+  const { branches } = useCompanyBranches(companyId);
   const sucursalLabel =
     sucursalId === null
       ? ""

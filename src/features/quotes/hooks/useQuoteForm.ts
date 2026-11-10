@@ -34,7 +34,6 @@ import {
 } from "../utils/quoteFormErrorTree";
 import { TIPO_PEDIDO } from "../../orders/constants/pedidoStatus";
 import { IVA_TASA_FIJA } from "../constants/iva";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
 import { useValidWorkspaceBranchId } from "../../workspace/hooks/useValidWorkspaceBranchId";
 import {
   getSinSucursalMessage,
@@ -58,6 +57,7 @@ import { withMirroredShippingPhones } from "../utils/shippingPhones";
 import { EMPTY_MATRIZ } from "../utils/processCompatibility";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 type QuoteField = keyof QuoteFormValues;
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
@@ -176,8 +176,8 @@ export function useQuoteForm() {
   // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
   // alarga la espera que el formulario ya hacía por las otras consultas.
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
-  const selectedCompanyId = selectedCompany?.id || 1; // Fallback
+  const companyId = useSessionCompanyId();
+  const selectedCompanyId = companyId || 1; // Fallback
   // Sucursal del payload: la del workspace, solo si es válida (ver
   // `useValidWorkspaceBranchId`).
   const {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { getInventoryPipeline } from "../services/actions";
 import { mapInventoryPipelineRows } from "../utils/inventory-pipeline.utils";
 import type {
@@ -11,7 +11,7 @@ import { INVENTORY_PIPELINE_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Reporte de existencias, producción y compras (ver `getInventoryPipeline`),
- * acotado a la empresa del workspace. Llave `["inventory-pipeline", companyId]`
+ * acotado a la empresa de la sesión. Llave `["inventory-pipeline", companyId]`
  * y deshabilitado sin empresa — mismo patrón que `useCompanyBranches`.
  *
  * `staleTime: 0` solo aquí (el global es de 15 min): es una foto del momento
@@ -28,7 +28,7 @@ import { INVENTORY_PIPELINE_QUERY_KEY } from "@/src/constants/stockQueryKeys";
  * tabla). Mismo patrón que `useCorteMangaOrders`.
  */
 export const useInventoryPipeline = () => {
-  const companyId = useWorkspaceStore((state) => state.selectedCompany.id);
+  const companyId = useSessionCompanyId();
 
   const query = useQuery<InventoryPipelineResultadoApi[], Error, InventoryPipelineRow[]>({
     queryKey: [...INVENTORY_PIPELINE_QUERY_KEY, companyId],

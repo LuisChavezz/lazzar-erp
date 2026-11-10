@@ -1,21 +1,47 @@
 "use client";
 
+import { useEffect } from "react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
-import { BancosIcon, BuildingIcon, CheckCircleIcon, ChevronDownIcon } from "./Icons";
+import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
+import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { pickValidBranchId } from "@/src/features/workspace/utils/pickValidBranchId";
+import { BancosIcon, BuildingIcon, CheckCircleIcon, ChevronDownIcon, LockIcon } from "./Icons";
 import { DropdownMenu } from "@radix-ui/themes";
 import { Branch } from "../features/branches/interfaces/branch.interface";
 import { LoadingSpinnerIcon } from "./Icons";
 
 export const WorkspaceInfo = () => {
   const hasHydrated = useWorkspaceStore((state) => state.hasHydrated);
-  const selectedCompany = useWorkspaceStore((state) => state.selectedCompany);
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
-  const setWorkspace = useWorkspaceStore((state) => state.setWorkspace);
+  const setBranch = useWorkspaceStore((state) => state.setBranch);
+  const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const branchSwitching = useWorkspaceStore((state) => state.branchSwitching);
+  // La empresa es la de la sesión (EC-842), de solo lectura hasta EC-843.
+  const { sessionCompany, name: companyName } = useSessionCompanyDetails();
+  const companyId = sessionCompany.companyId;
+  // Las sucursales se piden SIEMPRE para la empresa de la sesión: la lista
+  // persistida en el store pudo quedar de otra empresa.
+  const {
+    branches: availableBranches,
+    isLoading: branchesLoading,
+    isInitialError: branchesError,
+  } = useCompanyBranches(companyId);
+  const branchesSettled = !!companyId && !branchesLoading && !branchesError;
 
-  // Mostrar un estado de carga mientras se hidrata el store para evitar parpadeos o estados inconsistentes
-  if (!hasHydrated) {
+  useEffect(() => {
+    if (branchesSettled) setAvailableBranches(availableBranches);
+  }, [branchesSettled, availableBranches, setAvailableBranches]);
+
+  // Una sucursal persistida que no es de la empresa de la sesión (la empresa
+  // cambió, o se eligió con el selector anterior a EC-842) se descarta.
+  const staleBranch =
+    branchesSettled && !!selectedBranch && pickValidBranchId(selectedBranch.id, availableBranches) === null;
+  useEffect(() => {
+    if (staleBranch) setBranch(null);
+  }, [staleBranch, setBranch]);
+
+  // Mostrar un estado de carga mientras se hidrata el store o se confirma la empresa
+  if (!hasHydrated || sessionCompany.status === "loading" || (companyId && !companyName)) {
     return (
       <div
         className="flex min-w-[18rem] items-center gap-3"
@@ -27,15 +53,21 @@ export const WorkspaceInfo = () => {
     );
   }
 
-  if (!selectedCompany?.id) {
+  if (sessionCompany.status === "none") {
+    return (
+      <span className="text-xs italic text-slate-400" title="Pide a un administrador que te asigne una empresa.">
+        Sin empresa asignada
+      </span>
+    );
+  }
+
+  if (sessionCompany.status !== "ready") {
     return null;
   }
 
-  const companyName = selectedCompany.nombre_comercial || selectedCompany.razon_social;
-
   const handleBranchSelect = (branch: Branch) => {
     if (branchSwitching) return;
-    setWorkspace(selectedCompany, branch);
+    setBranch(branch);
   };
 
   return (
@@ -48,11 +80,15 @@ export const WorkspaceInfo = () => {
 
       <div className="flex items-center gap-3">
         {/* Company */}
-        <div className="flex items-center gap-1.5">
+        <div
+          className="flex items-center gap-1.5"
+          title="Empresa asignada a tu usuario. Por ahora no se puede cambiar."
+        >
           <span className="max-w-44 truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
             {companyName}
           </span>
           <BancosIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+          <LockIcon className="w-3 h-3 text-slate-400" aria-label="Empresa bloqueada" />
         </div>
 
         {/* Separator */}
