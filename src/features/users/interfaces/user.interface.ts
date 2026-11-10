@@ -10,7 +10,8 @@ export interface User {
   last_name: string;
   is_active: boolean;
   estatus: string;
-  empresa: Company["id"];
+  /** `null` si el usuario no tiene empresa asignada. */
+  empresa: Company["id"] | null;
   sucursal_default: Branch["id"];
   sucursales: Branch["id"][];
   departamentos: number[];

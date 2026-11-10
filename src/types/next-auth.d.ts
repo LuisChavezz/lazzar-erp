@@ -9,6 +9,12 @@ declare module "next-auth" {
     permissions?: string[];
     is_admin_empresa?: boolean;
     is_superuser?: boolean;
+    /**
+     * Empresa del usuario (`empresa` de `/auth/user/`): pk, `null` si no tiene,
+     * ausente en un token anterior a EC-842 ("no se sabe", nunca "sin
+     * empresa"). Ver `src/lib/sessionEmpresa.ts`.
+     */
+    empresa?: number | null;
   }
 
   interface Session {
@@ -22,6 +28,12 @@ declare module "next-auth" {
        */
       is_admin_empresa?: boolean;
       is_superuser?: boolean;
+      /**
+       * Empresa del usuario (`empresa` de `/auth/user/`): pk, `null` si no tiene,
+       * ausente en un token anterior a EC-842 ("no se sabe", nunca "sin
+       * empresa"). Ver `src/lib/sessionEmpresa.ts`.
+       */
+      empresa?: number | null;
     } & DefaultSession["user"];
   }
 }
@@ -32,5 +44,6 @@ declare module "next-auth/jwt" {
     permissions?: string[];
     is_admin_empresa?: boolean;
     is_superuser?: boolean;
+    empresa?: number | null;
   }
 }

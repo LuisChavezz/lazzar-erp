@@ -105,8 +105,9 @@ export interface MfaLoginUser {
   last_name: string;
   is_active: boolean;
   estatus: string;
-  empresa: number;
-  sucursal_default: number;
+  /** pk de la empresa del usuario; `null` si no tiene (es la que acota todo en el backend). */
+  empresa: number | null;
+  sucursal_default: number | null;
   sucursales: number[];
   departamentos: number[];
   telefono: string;
@@ -114,7 +115,11 @@ export interface MfaLoginUser {
   is_admin_empresa: boolean;
   is_superuser: boolean;
   is_staff: boolean;
-  empresa_id: number;
+  /**
+   * Mismo valor que `empresa`, pero el schema lo publica como string
+   * (SerializerMethodField). Usar `empresa`.
+   */
+  empresa_id: number | string | null;
   nombre_completo: string;
   es_admin: boolean;
   permisos: Permission[];

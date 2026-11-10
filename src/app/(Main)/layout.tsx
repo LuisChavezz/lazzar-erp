@@ -5,6 +5,7 @@ import Sidebar from "@/src/components/Sidebar";
 import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SessionRecoveryProvider } from "@/src/features/auth/components/SessionRecoveryProvider";
+import { SessionCompanySync } from "@/src/features/auth/components/SessionCompanySync";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
 import { GlobalSearchProvider } from "@/src/features/search/components/GlobalSearchProvider";
@@ -38,6 +39,8 @@ export default function MainLayout({
   return (
     <SessionThemeProvider>
       <SessionRecoveryProvider>
+      {/* Relee la empresa del usuario en `/auth/user/` al cargar la app (EC-842). */}
+      <SessionCompanySync />
       <SettingsModalProvider>
         {/* Envuelve al header (su disparador) y a todas las páginas: monta la
             paleta de búsqueda una sola vez para todas las rutas de (Main). */}
