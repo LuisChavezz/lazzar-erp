@@ -48,6 +48,7 @@ export function GlobalSearchPalette() {
   // Sin empresa asignada el backend no devuelve nada que buscar (EC-798): se
   // avisa en lugar de "Sin resultados", y no se busca hasta confirmarla.
   const sessionCompany = useSessionCompany();
+  const isCompanyReady = sessionCompany.status === "ready";
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -93,13 +94,19 @@ export function GlobalSearchPalette() {
     isFetching,
     isError,
     error,
-  } = useGlobalSearch(query, { enabled: sessionCompany.status === "ready" });
+  } = useGlobalSearch(query, { enabled: isCompanyReady });
 
   // El backend manda VACÍO el grupo de una entidad que el usuario puede ver pero
   // que no casa con el término. Se oculta: es solo presentación —quién ve qué ya
   // lo decidió el backend—, y un encabezado sin filas no informa nada. Todo lo
-  // de abajo (índice plano, render, vacío) parte de ESTA lista.
-  const groups = receivedGroups.filter((group) => group.resultados.length > 0);
+  // de abajo (índice plano, render, vacío, teclado) parte de ESTA lista.
+  //
+  // Sin empresa confirmada la lista queda VACÍA aunque `keepPreviousData`
+  // conserve una búsqueda anterior: la paleta muestra otro estado y ni el render
+  // ni el teclado (Enter, flechas) deben llegar a esos resultados en caché.
+  const groups = isCompanyReady
+    ? receivedGroups.filter((group) => group.resultados.length > 0)
+    : [];
 
   // Longitudes mínimas: manda el servidor; las constantes solo cubren el hueco
   // hasta que llega la primera respuesta.
@@ -180,7 +187,8 @@ export function GlobalSearchPalette() {
   // ── Navegación por teclado ──────────────────────────────────────────────────
   // Escape lo maneja Radix (cierra el diálogo), no hace falta interceptarlo.
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (totalResults === 0) return;
+    // Sin empresa confirmada no hay resultados que navegar (ver `groups`).
+    if (!isCompanyReady || totalResults === 0) return;
 
     // Las flechas usan la forma funcional —y acotan `prev` ellas mismas— para no
     // perder pulsaciones: con el teclado repitiendo, dos `keydown` pueden
