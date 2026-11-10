@@ -21,10 +21,13 @@ export const parseLocalDate = (
 };
 
 /**
- * Fecha de HOY como "yyyy-mm-dd" en la zona horaria LOCAL.
+ * Fecha de HOY como "yyyy-mm-dd" en la zona horaria LOCAL del navegador (no
+ * en la de México: para el día del backend usa `getMexicoTodayDate`).
  *
  * No usa `toISOString()`: ese devuelve el día en UTC, que en México (UTC-6) a
- * partir de las 18:00 locales ya es mañana.
+ * partir de las 18:00 locales ya es mañana. `now` (por omisión, el momento
+ * actual) permite fijar el instante, p. ej. para derivar de UNO solo la fecha
+ * de un documento y la de su nombre de archivo, o en pruebas.
  */
 export const getLocalTodayDate = (now: Date = new Date()): string => toLocalDateKey(now);
 
