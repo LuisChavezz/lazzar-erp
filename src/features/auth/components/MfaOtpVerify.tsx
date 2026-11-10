@@ -7,13 +7,13 @@ import {
   type ClipboardEvent,
   type ChangeEvent,
 } from "react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import { ArrowLeftIcon, LoadingSpinnerIcon, ShieldCheckIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { useConfirmMfa } from "../hooks/useConfirmMfa";
 import { useMfaLogin } from "../hooks/useMfaLogin";
+import { enterNewSession } from "../utils/clientSessionState";
 
 const OTP_LENGTH = 6;
 
@@ -36,7 +36,6 @@ export default function MfaOtpVerify({
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(OTP_LENGTH).fill(null));
   const confirmMfaMutation = useConfirmMfa();
   const mfaLoginMutation = useMfaLogin();
-  const router = useRouter();
   /* Cubre el tiempo entre que la mutación termina y la sesión de NextAuth queda establecida */
   const [isCreatingSession, setIsCreatingSession] = useState(false);
 
@@ -74,7 +73,9 @@ export default function MfaOtpVerify({
           return;
         }
 
-        router.push("/select-branch");
+        // `isCreatingSession` sigue en `true` hasta que la carga completa
+        // reemplaza la página.
+        enterNewSession();
         onSuccess?.();
 
       } catch {

@@ -6,7 +6,7 @@ import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCo
  * Borra el estado del cliente que pertenece al USUARIO de la sesión (EC-848):
  * el workspace persistido (sucursal elegida y nombre de la empresa) y la cookie
  * `erp_workspace_id`. Corre en los dos cierres de sesión (`useLogout` y el 401
- * forzado de `v1_api`).
+ * forzado de `v1_api`) y al entrar con una sesión nueva (`enterNewSession`).
  *
  * No toca la caché de TanStack Query: vive solo en memoria, y todos esos
  * caminos terminan en una carga completa de la página que la descarta.
@@ -42,4 +42,21 @@ export const signOutToLogin = async (): Promise<void> => {
   } catch {
     window.location.href = LOGIN_PATH;
   }
+};
+
+const POST_LOGIN_PATH = "/select-branch";
+
+/**
+ * Entra a la app con la sesión recién creada: limpia el estado del usuario
+ * anterior y navega con una carga COMPLETA, no con `router.push`. Si la sesión
+ * anterior caducó sin cerrarla, la pestaña conserva en memoria la caché de
+ * TanStack Query de ese usuario; la carga completa la descarta.
+ *
+ * Sin el workspace anterior, el proxy deja pasar solo a `/select-branch`, que
+ * no lo necesita: lee la empresa de la sesión y escribe sucursal y cookie al
+ * elegir.
+ */
+export const enterNewSession = () => {
+  clearUserScopedClientState();
+  window.location.assign(POST_LOGIN_PATH);
 };
