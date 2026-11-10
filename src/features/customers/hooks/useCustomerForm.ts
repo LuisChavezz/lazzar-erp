@@ -15,8 +15,9 @@ import { Customer, CustomerCreate } from "../interfaces/customer.interface";
 import { useCreateCustomer } from "./useCreateCustomer";
 import { useUpdateCustomer } from "./useUpdateCustomer";
 import { getCustomerFormFields } from "./customerErrorMessages";
-import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
+import { getSessionCompanyBlockMessage } from "@/src/features/workspace/utils/sessionCompanyMessages";
 
 interface UseCustomerFormParams {
   onSuccess?: () => void;
@@ -99,7 +100,7 @@ export function useCustomerForm({
   includeCredit = false,
 }: UseCustomerFormParams) {
   // Contexto de empresa activa y catálogos SAT requeridos por el formulario.
-  const companyId = useSessionCompanyId();
+  const sessionCompany = useSessionCompany();
   const { data: satInfo, isLoading: isSatInfoLoading } = useSatInfo();
   const isEditing = Boolean(customerToEdit?.id);
   const formRef = useRef<HTMLFormElement>(null);
@@ -244,8 +245,8 @@ export function useCustomerForm({
         return;
       }
 
-      if (!companyId) {
-        toast.error("Selecciona una empresa para continuar");
+      if (sessionCompany.status !== "ready") {
+        toast.error(getSessionCompanyBlockMessage(sessionCompany.status), { id: "customer-sin-empresa" });
         return;
       }
 
@@ -270,7 +271,7 @@ export function useCustomerForm({
         }
 
         const updatePayload: CustomerCreate = {
-          empresa: customerToEdit.empresa ?? companyId,
+          empresa: customerToEdit.empresa ?? sessionCompany.companyId,
           ...rest,
           ...changedCredit,
         };
@@ -296,7 +297,7 @@ export function useCustomerForm({
       }
 
       const createPayload: CustomerCreate = {
-        empresa: companyId,
+        empresa: sessionCompany.companyId,
         ...rest,
         ...(includeCredit ? credit : {}),
       };

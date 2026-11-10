@@ -57,7 +57,8 @@ import { withMirroredShippingPhones } from "../utils/shippingPhones";
 import { EMPTY_MATRIZ } from "../utils/processCompatibility";
 import { useSatInfo } from "../../sat/hooks/useSatInfo";
 import { useSizes } from "../../sizes/hooks/useSizes";
-import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
+import { getSessionCompanyBlockMessage } from "@/src/features/workspace/utils/sessionCompanyMessages";
 
 type QuoteField = keyof QuoteFormValues;
 type OnboardingCustomer = QuoteOnboardingData["busqueda"]["clientes"][number];
@@ -176,8 +177,9 @@ export function useQuoteForm() {
   // ella —sus tallas salen de las variantes del onboarding—, así que esto solo
   // alarga la espera que el formulario ya hacía por las otras consultas.
   const { sizes, isLoading: isSizesLoading, isInitialError: isErrorSizes } = useSizes();
-  const companyId = useSessionCompanyId();
-  const selectedCompanyId = companyId || 1; // Fallback
+  // Empresa de la sesión (EC-842). Sin ella no se guarda: el backend descarta
+  // `pedido.empresa` y usa `user.empresa`, que sin empresa responde 400.
+  const sessionCompany = useSessionCompany();
   // Sucursal del payload: la del workspace, solo si es válida (ver
   // `useValidWorkspaceBranchId`).
   const {
@@ -277,8 +279,13 @@ export function useQuoteForm() {
   const form = useForm({
     defaultValues: emptyValues,
     onSubmit: async ({ value }) => {
-      // La sucursal sale del contexto, no de un campo: se revisa ANTES que el
-      // resto para no hacer corregir todo el formulario y bloquear al final.
+      // Empresa y sucursal salen del contexto, no de un campo: se revisan ANTES
+      // que el resto para no hacer corregir todo el formulario y bloquear al final.
+      if (sessionCompany.status !== "ready") {
+        toast.error(getSessionCompanyBlockMessage(sessionCompany.status), { id: "quote-sin-empresa" });
+        return;
+      }
+      const empresa = sessionCompany.companyId;
       if (isWorkspaceBranchLoading) {
         toast.error(WORKSPACE_BRANCH_LOADING_MESSAGE, { id: "quote-sin-sucursal" });
         return;
@@ -454,7 +461,7 @@ export function useQuoteForm() {
 
       const quoteCreatePayload: QuoteCreate = {
         pedido: {
-          empresa: selectedCompanyId || 1, // Fallback safe si no hay empresa en workspace
+          empresa,
           sucursal,
           cliente: selectedCustomerId > 0 ? selectedCustomerId : null,
           moneda: parsed.data.moneda || 1, // Fallback si no viene moneda
