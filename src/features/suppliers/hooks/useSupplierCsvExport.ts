@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
@@ -53,8 +53,7 @@ export const useSupplierCsvExport = (
       const blob = new Blob([`﻿${csvContent}`], {
         type: "text/csv;charset=utf-8;",
       });
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `proveedores-${today}.csv`);
+      downloadBlob(blob, datedFileName("proveedores", "csv"));
     });
   }, [runExport]);
 

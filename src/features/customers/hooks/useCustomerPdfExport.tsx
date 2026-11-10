@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import { Customer } from "../interfaces/customer.interface";
 import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -40,7 +40,8 @@ const createCustomersPdfDocument = (
     "Document" | "Page" | "Text" | "View" | "StyleSheet"
   >,
   customers: Customer[],
-  columns: DataTableVisibleColumn<Customer>[]
+  columns: DataTableVisibleColumn<Customer>[],
+  now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
   const columnWidth = `${(100 / columns.length).toFixed(1)}%`;
@@ -141,7 +142,7 @@ const createCustomersPdfDocument = (
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX", {
+  const today = now.toLocaleDateString("es-MX", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -234,6 +235,7 @@ export const useCustomerPdfExport = (
     try {
       if (columnsRef.current.length === 0) return;
       const renderer = await import("@react-pdf/renderer");
+      const now = new Date();
       const pdfDocument = createCustomersPdfDocument(
         {
           Document: renderer.Document,
@@ -243,11 +245,11 @@ export const useCustomerPdfExport = (
           StyleSheet: renderer.StyleSheet,
         },
         tableRef.current?.getFilteredRows() ?? [],
-        columnsRef.current
+        columnsRef.current,
+        now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `clientes-${today}.pdf`);
+      downloadBlob(blob, datedFileName("clientes", "pdf", now));
     } catch (error) {
       toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { getLocalTodayDate } from "@/src/utils/formatDate";
+import { datedFileName } from "@/src/utils/datedFileName";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import type { PedidoListItem } from "../interfaces/order.interface";
@@ -21,6 +21,7 @@ const createProcurementOrdersPdfDocument = (
   >,
   orders: PedidoExportRow[],
   columns: DataTableVisibleColumn<PedidoListItem>[],
+  now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
 
@@ -125,7 +126,7 @@ const createProcurementOrdersPdfDocument = (
     },
   });
 
-  const today = new Date().toLocaleDateString("es-MX", {
+  const today = now.toLocaleDateString("es-MX", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -232,6 +233,7 @@ export const useProcurementOrderPdfExport = (
     // o el chunk de react-pdf) en un toast de error.
     await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
+      const now = new Date();
       const pdfDocument = createProcurementOrdersPdfDocument(
         {
           Document: renderer.Document,
@@ -242,10 +244,10 @@ export const useProcurementOrderPdfExport = (
         },
         rows,
         exportColumns,
+        now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
-      const today = getLocalTodayDate();
-      downloadBlob(blob, `pedidos-${today}.pdf`);
+      downloadBlob(blob, datedFileName("pedidos", "pdf", now));
     });
   }, [runExport]);
 
