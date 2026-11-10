@@ -6,6 +6,7 @@ import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SessionRecoveryProvider } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { SessionCompanySync } from "@/src/features/auth/components/SessionCompanySync";
+import { SessionUserWatcher } from "@/src/features/auth/components/SessionUserWatcher";
 import { CompanyGate } from "@/src/features/workspace/components/CompanyGate";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
 import { SettingsModalProvider } from "@/src/features/settings/components/SettingsModalProvider";
@@ -40,6 +41,8 @@ export default function MainLayout({
   return (
     <SessionThemeProvider>
       <SessionRecoveryProvider>
+      {/* Recarga la pestaña si su sesión pasa a otro usuario (EC-848). */}
+      <SessionUserWatcher />
       {/* Relee la empresa del usuario en `/auth/user/` al cargar la app (EC-842). */}
       <SessionCompanySync />
       <SettingsModalProvider>
