@@ -6,7 +6,9 @@ import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCo
  * Borra el estado del cliente que pertenece al USUARIO de la sesión (EC-848):
  * el workspace persistido (sucursal elegida y nombre de la empresa) y la cookie
  * `erp_workspace_id`. Corre en los dos cierres de sesión (`useLogout` y el 401
- * forzado de `v1_api`) y al entrar con una sesión nueva (`enterNewSession`).
+ * forzado de `v1_api`), al montar el login (`LoginStepManager`, donde ya no
+ * queda nada de la sesión anterior montado que lo reescriba) y al entrar con
+ * una sesión nueva (`enterNewSession`).
  *
  * No toca la caché de TanStack Query: vive solo en memoria, y todos esos
  * caminos terminan en una carga completa de la página que la descarta.

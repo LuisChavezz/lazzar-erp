@@ -1,12 +1,12 @@
 "use client";
 
-import { startTransition, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import LoginForm from "./LoginForm";
 import type { LoginSuccessResponse, MfaCreateResponse } from "../interfaces/auth.interface";
-import { enterNewSession } from "../utils/clientSessionState";
+import { clearUserScopedClientState, enterNewSession } from "../utils/clientSessionState";
 
 /**
  * Los pasos de MFA no forman parte de la vista inicial de credenciales: solo
@@ -78,6 +78,16 @@ function StepPanel({ visible, direction, children }: StepPanelProps) {
  *  2. Agregar un <StepPanel> adicional con su componente correspondiente.
  */
 export default function LoginStepManager() {
+  /* El login solo se sirve SIN sesión (el proxy manda a "/" a quien ya la
+   * tiene), así que el workspace guardado es de una sesión que terminó. Los
+   * cierres de sesión ya lo limpian, pero mientras `signOut` espera sus fetch
+   * la página anterior sigue montada y `useSessionCompanyDetails` vuelve a
+   * escribir el nombre de la empresa desde su caché; aquí ya no queda nada
+   * montado que lo reescriba. Cubre también la sesión que caduca sin cierre. */
+  useEffect(() => {
+    clearUserScopedClientState();
+  }, []);
+
   const [step, setStep] = useState<LoginStep>("credentials");
   const [mountedSteps, setMountedSteps] = useState<Record<LoginStep, boolean>>({
     credentials: true,
