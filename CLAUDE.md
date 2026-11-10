@@ -35,6 +35,8 @@ Adding a top-level module means touching **five** files:
 4. `src/constants/homeCards.ts` — Home page cards (Home reads from here, **not** from `appRouteGroups`)
 5. `src/constants/sidebarItems.ts` — the `mainGroupKeys` Set (a group absent from this Set won't appear in the global sidebar)
 
+If the module shows data the backend scopes by `user.empresa` (ventas, finanzas, terceros, compras), also add its route prefixes to `src/constants/companyGatedRoutes.ts`: the single `CompanyGate` in the `(Main)` layout reads it to hold the page until the session company is confirmed and to show "sin empresa asignada" instead of empty tables (EC-842). Rules are first-match, so exceptions go before the general prefix; matching uses `matchesRoutePrefix` (`src/utils/`), shared with `routePermissions`.
+
 ### Feature Module Structure
 
 `src/features/` holds 55+ modules. Each follows:
@@ -121,7 +123,7 @@ NextAuth uses `CredentialsProvider` with JWT strategy. The browser handles the f
   - Error copy comes from `extractErrorMessage(error, fallback)` (reads the backend's `{ error: string }`) and `firstDrfMessage(value)` (unwraps DRF field errors that arrive as `string | string[]`). Don't hand-roll these again.
 - **Global client state**: Zustand v5 with `devtools` + `persist` middleware
   - `useThemeStore` (`src/stores/theme.store.ts`) — light/dark/system theme, persisted in localStorage
-  - `useWorkspaceStore` (`src/features/workspace/store/workspace.store.ts`) — selected branch/company, persisted. `branchSwitching` flag auto-resets after 1800ms and drives `BranchChangeLoader`
+  - `useWorkspaceStore` (`src/features/workspace/store/workspace.store.ts`) — selected branch (plus the cached company name), persisted. It does **not** hold the company: the workspace company is the session's `empresa` (EC-842), read with `useSessionCompany` / `useSessionCompanyId` (`src/features/workspace/hooks/`); branches come from `useCompanyBranches(useSessionCompanyId())`. `branchSwitching` flag auto-resets after 1800ms and drives `BranchChangeLoader`
 
 ### Forms
 
