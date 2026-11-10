@@ -1,12 +1,12 @@
 "use client";
 
 import { startTransition, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import LoginForm from "./LoginForm";
 import type { LoginSuccessResponse, MfaCreateResponse } from "../interfaces/auth.interface";
+import { enterNewSession } from "../utils/clientSessionState";
 
 /**
  * Los pasos de MFA no forman parte de la vista inicial de credenciales: solo
@@ -78,7 +78,6 @@ function StepPanel({ visible, direction, children }: StepPanelProps) {
  *  2. Agregar un <StepPanel> adicional con su componente correspondiente.
  */
 export default function LoginStepManager() {
-  const router = useRouter();
   const [step, setStep] = useState<LoginStep>("credentials");
   const [mountedSteps, setMountedSteps] = useState<Record<LoginStep, boolean>>({
     credentials: true,
@@ -155,7 +154,9 @@ export default function LoginStepManager() {
         return;
       }
 
-      router.push("/select-branch");
+      // `isCreatingSession` sigue en `true`: el botón queda ocupado hasta que la
+      // carga completa reemplaza la página.
+      enterNewSession();
     } catch {
       toast.error("Error inesperado al iniciar sesión.");
       setIsCreatingSession(false);
