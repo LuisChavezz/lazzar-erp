@@ -1,6 +1,7 @@
 import { routePermissions } from "../constants/routePermissions";
 import type { PermissionContext } from "../interfaces/permission-context.interface";
 import { hasAnyPermission } from "./permissions";
+import { matchesRoutePrefix } from "./matchesRoutePrefix";
 
 /**
  * Regla de `routePermissions` que gobierna `pathname`, con la MISMA búsqueda
@@ -9,7 +10,7 @@ import { hasAnyPermission } from "./permissions";
  */
 export function findRoutePermissionRule(pathname: string) {
   return routePermissions.find(
-    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    ({ prefix }) => matchesRoutePrefix(pathname, prefix),
   );
 }
 

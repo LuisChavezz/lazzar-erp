@@ -16,6 +16,7 @@ import { useSidebarSections } from "@/src/hooks/useSidebarSections";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { SidebarEntry } from "@/src/utils/getSidebarItems";
 import { useSidebar } from "./SidebarProvider";
+import { matchesRoutePrefix } from "@/src/utils/matchesRoutePrefix";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -36,7 +37,7 @@ export default function Sidebar() {
       <SidebarItem item={item} variant="desktop" />
     );
   const activeGroup = appRouteGroups.find(
-    (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
+    (group) => matchesRoutePrefix(pathname, group.modulePath)
   );
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;

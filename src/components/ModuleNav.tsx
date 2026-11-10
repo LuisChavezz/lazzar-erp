@@ -17,6 +17,7 @@ import {
   getRouteSections,
   type RouteSection,
 } from "@/src/utils/routeSections";
+import { matchesRoutePrefix } from "@/src/utils/matchesRoutePrefix";
 
 /** Retardo de apertura por hover (`delayDuration` de NavigationMenu). */
 const HOVER_OPEN_DELAY_MS = 100;
@@ -276,12 +277,10 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
     ? appRouteGroups.find((group) => group.key === moduleKey)
     : modulePath
       ? appRouteGroups.find(
-          (group) =>
-            group.modulePath === modulePath || modulePath.startsWith(`${group.modulePath}/`)
+          (group) => matchesRoutePrefix(modulePath, group.modulePath)
         )
       : appRouteGroups.find(
-          (group) =>
-            pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
+          (group) => matchesRoutePrefix(pathname, group.modulePath)
         );
 
   if (!activeGroup) {
@@ -335,7 +334,7 @@ export default function ModuleNav({ moduleKey, modulePath, className }: ModuleNa
   });
 
   const isActive = (href: string, isRoot: boolean) =>
-    isRoot ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+    isRoot ? pathname === href : matchesRoutePrefix(pathname, href);
 
   const isModuleRootActive = pathname === activeGroup.modulePath;
 

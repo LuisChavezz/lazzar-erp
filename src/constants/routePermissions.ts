@@ -4,8 +4,8 @@ import { FINANCE_READ_PERMISSION, financeSectionReadPermissions } from "./financ
  * Mapa de ruta → permiso requerido, evaluado por `src/proxy.ts`.
  *
  * ORDEN SIGNIFICATIVO. El proxy resuelve la regla con `find()`, que devuelve la
- * PRIMERA coincidencia, y compara con `pathname === prefix ||
- * pathname.startsWith(`${prefix}/`)`. De ahí dos consecuencias:
+ * PRIMERA coincidencia, y compara con `matchesRoutePrefix` (ruta exacta o
+ * sub-ruta `prefix/...`). De ahí dos consecuencias:
  *
  *   1. Las reglas de SECCIÓN deben ir ANTES que la regla de MÓDULO. Si
  *      "/procurement" apareciera primero, ninguna de sus secciones se

@@ -1,6 +1,7 @@
 import type { AppRouteGroup, AppRouteItem } from "../constants/appRoutes";
 import type { PermissionContext } from "../interfaces/permission-context.interface";
 import { meetsPermissionRequirement } from "./permissions";
+import { matchesRoutePrefix } from "./matchesRoutePrefix";
 
 /** Sub-grupo de navegación con las hojas que le tocan. */
 export interface RouteSection {
@@ -125,7 +126,7 @@ export const findActiveRouteSection = (
 
   for (const section of sections) {
     for (const item of section.items) {
-      const matches = pathname === item.path || pathname.startsWith(`${item.path}/`);
+      const matches = matchesRoutePrefix(pathname, item.path);
       if (matches && item.path.length > longestMatch) {
         activeSection = section;
         longestMatch = item.path.length;

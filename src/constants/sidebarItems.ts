@@ -2,6 +2,7 @@ import type React from "react";
 import { HomeIcon } from "../components/Icons";
 import { appRouteGroups, getGroupAccessPermissions, type AppRouteGroup } from "./appRoutes";
 import type { PermissionRequirement } from "../utils/permissions";
+import { matchesRoutePrefix } from "@/src/utils/matchesRoutePrefix";
 
 export interface SidebarItem {
   label: string;
@@ -63,8 +64,7 @@ const mapGroupToSidebarItem = (group: (typeof appRouteGroups)[number]): SidebarI
 
 const getActiveGroup = (pathname: string) =>
   appRouteGroups.find(
-    (group) =>
-      pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
+    (group) => matchesRoutePrefix(pathname, group.modulePath)
   );
 
 export const getSidebarItemsByPath = (pathname: string): SidebarItem[] => {

@@ -15,6 +15,7 @@ import { mainGroupKeys } from "@/src/constants/sidebarItems";
 import { useSidebarSections } from "@/src/hooks/useSidebarSections";
 import { getModuleEntryHref } from "@/src/utils/moduleEntry";
 import type { SidebarEntry } from "@/src/utils/getSidebarItems";
+import { matchesRoutePrefix } from "@/src/utils/matchesRoutePrefix";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function MobileSidebar() {
       <SidebarItem item={item} variant="mobile" setIsMobileOpen={setIsMobileOpen} />
     );
   const activeGroup = appRouteGroups.find(
-    (group) => pathname === group.modulePath || pathname.startsWith(`${group.modulePath}/`)
+    (group) => matchesRoutePrefix(pathname, group.modulePath)
   );
   const moduleLabel =
     activeGroup && mainGroupKeys.has(activeGroup.key) ? activeGroup.moduleLabel : null;
