@@ -92,7 +92,8 @@ export interface Poliza {
   /**
    * FK a `nucleo.Empresa`. La resuelve el SERVIDOR
    * (`EmpresaResueltaEnServidorMixin` + `_resolve_empresa`): el campo es de solo
-   * lectura para todo usuario que no sea superusuario, así que NUNCA se envía.
+   * lectura para todo usuario, superusuario incluido desde EC-798, así que NUNCA
+   * se envía.
    */
   empresa: number;
   /** FK a `nucleo.Sucursal`. REQUERIDO en el alta (la columna es NOT NULL). */

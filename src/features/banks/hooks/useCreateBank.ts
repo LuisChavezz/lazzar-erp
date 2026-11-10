@@ -29,7 +29,8 @@ export const useCreateBank = (setError?: SetBankError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             // El 400 puede traer llaves que NO son campos del formulario (p. ej.
-            // `empresa`, cuando un superusuario intenta crear sin especificarla).
+            // `empresa`, cuando el usuario no tiene empresa asignada: desde
+            // EC-798 la resuelve el servidor para todos, superusuario incluido).
             // Esas no tienen dónde pintarse; el toast de abajo las cubre.
             const fieldKey = key as keyof BankFormValues;
             const errorMessages = validationErrors[key];

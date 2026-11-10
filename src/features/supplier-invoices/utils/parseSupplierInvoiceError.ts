@@ -89,7 +89,8 @@ const FIELD_HINTS: Partial<
 
 /**
  * Llaves de raíz sin campo en pantalla: se pintan en el banner.
- *  - `empresa`: solo la escribe un superusuario.
+ *  - `empresa`: nadie la escribe (desde EC-798 la resuelve el servidor,
+ *    superusuario incluido); llega, p. ej., si el usuario no tiene empresa.
  *  - `estatus`: rechazos de ciclo de vida.
  *  - `factura_proveedor`: reglas de `CuentaPorPagarService` al generar/revivir la
  *    CxP (p. ej. una CxP cancelada con pagos aplicados).

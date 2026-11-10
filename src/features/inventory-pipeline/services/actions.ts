@@ -8,8 +8,9 @@ import type {
  * Reporte de existencias, producción y compras por producto
  * (`GET /inventarios/existencias/reporte-existencias-produccion-compras/`).
  *
- * Se acota a la empresa del workspace con `empresa_id` (mismo parámetro y misma
- * fuente que `getCompanyBranches`). El backend filtra con ella los almacenes de
+ * Se acota a la empresa de la sesión con `empresa_id` (mismo parámetro y misma
+ * fuente que `getCompanyBranches`). Este endpoint de inventarios no entró en
+ * EC-798: el backend aún respeta el `empresa_id` que se le manda. El backend filtra con ella los almacenes de
  * producto terminado y deriva de ESOS almacenes las empresas con que filtra las
  * OP y las OC, así que disponible, en OP y compras quedan en el mismo alcance.
  * Sin ella, un usuario con varias empresas vería la suma de todas.

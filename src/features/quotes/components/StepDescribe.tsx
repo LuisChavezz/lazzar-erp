@@ -82,9 +82,10 @@ export const StepDescribe = memo(function StepDescribe({
   const sizesQuery = useSizes();
   const isLoadingCategories = categoriesQuery.isLoading || sizesQuery.isLoading;
   const isErrorCategories = categoriesQuery.isInitialError || sizesQuery.isInitialError;
-  // Alcance de UI, no validación: el endpoint devuelve a un superusuario las
-  // categorías de TODAS las empresas, y aquí solo tienen sentido las de la
-  // empresa bajo la que se guarda la cotización.
+  // Alcance de UI, no validación: el catálogo (`/catalogo/`, fuera de EC-798)
+  // todavía devuelve a un superusuario las categorías de TODAS las empresas, y
+  // aquí solo tienen sentido las de la empresa de la sesión, bajo la que el
+  // backend guarda la cotización.
   const companyCategories =
     companyId == null
       ? categoriesQuery.categories
