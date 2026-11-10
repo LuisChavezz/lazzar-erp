@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { useCompanyBranches } from "../../branches/hooks/useCompanyBranches";
@@ -189,6 +189,18 @@ export function useSerieFolioForm({ onSuccess, serieFolioToEdit }: UseSerieFolio
       }
     },
   });
+
+  // La sucursal del workspace se valida de forma asíncrona (catálogo y sesión):
+  // si llega después de montar, `defaultValues` ya no se aplica cuando el
+  // formulario se tocó. Se rellena aquí, solo en un alta y solo mientras el
+  // usuario no haya elegido una (el campo sigue en "Seleccionar..."). Nunca
+  // pisa una elección: "Seleccionar..." está deshabilitada y no se puede volver
+  // a ella a mano.
+  useEffect(() => {
+    if (isEditing || workspaceBranchId === null) return;
+    if (form.getFieldValue("sucursal") !== SUCURSAL_SIN_ELEGIR) return;
+    form.setFieldValue("sucursal", workspaceBranchId, { dontUpdateMeta: true });
+  }, [isEditing, workspaceBranchId, form]);
 
   // Ejecuta validación puntual en blur para el campo modificado.
   const validateField = (field: SerieFolioFormField, value: SerieFolioFormValues[SerieFolioFormField]) => {
