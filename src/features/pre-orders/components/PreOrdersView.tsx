@@ -7,8 +7,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
-import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { usePreOrders } from "../hooks/usePreOrders";
 import { SemaforoBadge } from "./PreOrderTracking";
 import { isUrgentPreOrder, PreOrderTrackerMini } from "./PreOrderTracker";
@@ -87,7 +86,7 @@ const columns = [
     sortUndefined: "last",
     cell: ({ row }) => (
       <span className="tabular-nums text-sm text-slate-700 dark:text-slate-200">
-        {formatShortDate(row.original.fecha_compromiso, { timeZone: MEXICO_TIME_ZONE })}
+        {formatShortCalendarDate(row.original.fecha_compromiso)}
       </span>
     ),
   }),
@@ -100,7 +99,7 @@ const columns = [
     cell: ({ row }) => (
       <span className="tabular-nums text-sm text-slate-700 dark:text-slate-200">
         {row.original.fecha_estimada_material
-          ? formatShortDate(row.original.fecha_estimada_material, { timeZone: MEXICO_TIME_ZONE })
+          ? formatShortCalendarDate(row.original.fecha_estimada_material)
           : "—"}
       </span>
     ),

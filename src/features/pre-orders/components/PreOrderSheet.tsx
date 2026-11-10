@@ -16,8 +16,7 @@ import {
   SheetSection,
 } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
-import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { usePreOrderDetail } from "../hooks/usePreOrders";
 import { usePreOrderActions } from "../hooks/usePreOrderActions";
 import {
@@ -116,14 +115,14 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
             <div className="flex gap-1">
               <dt>Compromiso:</dt>
               <dd className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                {formatShortDate(data.fecha_compromiso, { timeZone: MEXICO_TIME_ZONE })}
+                {formatShortCalendarDate(data.fecha_compromiso)}
               </dd>
             </div>
             <div className="flex gap-1">
               <dt>Material estimado:</dt>
               <dd className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
                 {data.fecha_estimada_material
-                  ? formatShortDate(data.fecha_estimada_material, { timeZone: MEXICO_TIME_ZONE })
+                  ? formatShortCalendarDate(data.fecha_estimada_material)
                   : "Sin fecha"}
               </dd>
             </div>

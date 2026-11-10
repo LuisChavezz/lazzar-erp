@@ -10,8 +10,8 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { useClientNow } from "@/src/hooks/useClientNow";
 import { formatCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
-import { getMexicoTodayDate, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
+import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { useSuppliers } from "@/src/features/suppliers/hooks/useSuppliers";
 import { NEED_STATUS_CFG } from "@/src/features/pre-orders/components/PreOrderTracking";
 import { useCreateOcFromNeeds, usePurchaseNeedGroups } from "../hooks/usePurchaseNeeds";
@@ -22,7 +22,7 @@ const LINK_CLASS =
   "font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 underline decoration-dotted underline-offset-4";
 
 const fecha = (value: string | null | undefined) =>
-  value ? formatShortDate(value, { timeZone: MEXICO_TIME_ZONE }) : "—";
+  formatShortCalendarDate(value);
 
 /**
  * Días de calendario (México) que faltan para una fecha `YYYY-MM-DD`
