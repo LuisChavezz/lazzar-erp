@@ -15,7 +15,6 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useDepartments } from "@/src/features/departments/hooks/useDepartments";
 import { usePositions } from "@/src/features/positions/hooks/usePositions";
 import { getColumns, EMPLOYEE_HEADER_FILTERS } from "./EmployeeColumns";
@@ -28,6 +27,8 @@ import { EmployeeRowActionsProvider, usePendingEmployeeIds } from "../hooks/useE
 import { getEmployeeFullName } from "../utils/employeeName";
 import type { StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { buildEmployeeRows, getStaleEmployeeDialogNotice } from "../utils/employeeRows";
+import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 export default function EmployeeList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -46,9 +47,9 @@ export default function EmployeeList() {
   // otro componente (el Toaster).
   const [staleNotice, setStaleNotice] = useState<StaleRowDialogNotice | null>(null);
 
-  // Catálogos para resolver los FK de las columnas. Las sucursales ya están en
-  // el workspace (no dispara otra petición), igual que en `WarehouseList`.
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  // Catálogos para resolver los FK de las columnas. Las sucursales son las del
+  // usuario en la empresa de la sesión (`mis-sucursales`, en caché).
+  const { branches: availableBranches } = useCompanyBranches(useSessionCompanyId());
   const { departments } = useDepartments();
   const { positions } = usePositions();
 

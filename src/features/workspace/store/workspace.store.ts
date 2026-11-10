@@ -23,13 +23,11 @@ interface WorkspaceState {
    * mientras su `id` sea el de la sesión (`useSessionCompanyDetails`).
    */
   companyLabel: CompanyLabel | null;
-  availableBranches: Branch[];
   branchSwitching: boolean;
   hasHydrated: boolean;
   /** Fija la sucursal (`null` = "continuar sin sucursal"). */
   setBranch: (branch: Branch | null) => void;
   setCompanyLabel: (label: CompanyLabel) => void;
-  setAvailableBranches: (branches: Branch[]) => void;
   updateBranch: (branch: Branch) => void;
   clearWorkspace: () => void;
   setHasHydrated: (hasHydrated: boolean) => void;
@@ -41,7 +39,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       (set, get) => ({
         selectedBranch: null,
         companyLabel: null,
-        availableBranches: [],
         branchSwitching: false,
         hasHydrated: false,
 
@@ -59,16 +56,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         
         setCompanyLabel: (companyLabel) => set({ companyLabel }),
 
-        setAvailableBranches: (branches) =>
-          set({ availableBranches: branches }),
-
         setHasHydrated: (hasHydrated) => set({ hasHydrated }),
 
         updateBranch: (updatedBranch) => {
           set((state) => ({
-            availableBranches: state.availableBranches.map((b) =>
-              b.id == updatedBranch.id ? updatedBranch : b
-            ),
             selectedBranch:
               state.selectedBranch?.id == updatedBranch.id
                 ? updatedBranch
@@ -77,17 +68,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         },
         
         clearWorkspace: () =>
-          set({ selectedBranch: null, companyLabel: null, availableBranches: [], branchSwitching: false }),
+          set({ selectedBranch: null, companyLabel: null, branchSwitching: false }),
       }),
       { // Nombre del storage para persistencia
         name: "workspace-storage",
-        /* v1 (EC-842): se dejó de guardar `selectedCompany`. La migración la
-         * descarta del almacenamiento de versiones anteriores para que nada
-         * vuelva a leerla. */
-        version: 1,
+        /* EC-842: v1 dejó de guardar `selectedCompany` (la empresa sale de la
+         * sesión) y v2 `availableBranches` (copia de la caché de TanStack Query:
+         * las sucursales se leen con `useCompanyBranches(useSessionCompanyId())`).
+         * La migración descarta ambas del almacenamiento anterior para que nada
+         * vuelva a leerlas. */
+        version: 2,
         migrate: (persisted) => {
           const rest = { ...((persisted ?? {}) as Record<string, unknown>) };
           delete rest.selectedCompany;
+          delete rest.availableBranches;
           return rest as Partial<WorkspaceState>;
         },
         onRehydrateStorage: () => (state, error) => {

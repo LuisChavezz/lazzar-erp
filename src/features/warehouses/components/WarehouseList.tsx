@@ -10,13 +10,15 @@ import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import WarehouseForm from "./WarehouseForm";
 import { useWarehouses } from "../hooks/useWarehouses";
-import { useWorkspaceStore } from "../../workspace/store/workspace.store";
+import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 
 export default function WarehouseList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const { data: warehouses, isLoading, isInitialError, error } = useWarehouses();
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
+  // Sucursales del usuario en la empresa de la sesión, para nombrar la columna.
+  const { branches: availableBranches } = useCompanyBranches(useSessionCompanyId());
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código

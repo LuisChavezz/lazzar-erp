@@ -8,7 +8,6 @@ import toast from "react-hot-toast";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { fieldNameFromIssuePath } from "@/src/utils/fieldNameFromIssuePath";
-import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useValidWorkspaceBranchId } from "@/src/features/workspace/hooks/useValidWorkspaceBranchId";
 import {
@@ -69,15 +68,13 @@ export function usePolizaForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     isError: isErrorWorkspaceBranch,
   } = useValidWorkspaceBranchId();
   // Nombre de la sucursal para el campo de solo lectura: `mis-sucursales` (la
-  // misma consulta en caché que valida el id) y, de respaldo, las del
-  // workspace; al final, el id.
+  // misma consulta en caché que valida el id); si no está, el id.
   const companyId = useSessionCompanyId();
-  const availableBranches = useWorkspaceStore((state) => state.availableBranches);
   const { branches } = useCompanyBranches(companyId);
   const sucursalLabel =
     sucursalId === null
       ? ""
-      : ([...branches, ...availableBranches].find((branch) => branch.id === sucursalId)?.nombre ??
+      : (branches.find((branch) => branch.id === sucursalId)?.nombre ??
         `Sucursal #${sucursalId}`);
   /** Sin sucursal válida (ya resuelta): el formulario avisa y no guarda. */
   const isSucursalMissing = !isLoadingWorkspaceBranch && sucursalId === null;

@@ -14,23 +14,17 @@ export const WorkspaceInfo = () => {
   const hasHydrated = useWorkspaceStore((state) => state.hasHydrated);
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
   const setBranch = useWorkspaceStore((state) => state.setBranch);
-  const setAvailableBranches = useWorkspaceStore((state) => state.setAvailableBranches);
   const branchSwitching = useWorkspaceStore((state) => state.branchSwitching);
   // La empresa es la de la sesión (EC-842), de solo lectura hasta EC-843.
   const { sessionCompany, name: companyName } = useSessionCompanyDetails();
   const companyId = sessionCompany.companyId;
-  // Las sucursales se piden SIEMPRE para la empresa de la sesión: la lista
-  // persistida en el store pudo quedar de otra empresa.
+  // Sucursales del usuario en la empresa de la sesión.
   const {
     branches: availableBranches,
     isLoading: branchesLoading,
     isInitialError: branchesError,
   } = useCompanyBranches(companyId);
   const branchesSettled = !!companyId && !branchesLoading && !branchesError;
-
-  useEffect(() => {
-    if (branchesSettled) setAvailableBranches(availableBranches);
-  }, [branchesSettled, availableBranches, setAvailableBranches]);
 
   // Una sucursal persistida que no es de la empresa de la sesión (la empresa
   // cambió, o se eligió con el selector anterior a EC-842) se descarta.
