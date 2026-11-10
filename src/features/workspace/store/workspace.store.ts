@@ -13,6 +13,11 @@ export interface CompanyLabel {
   id: number;
   name: string;
   rfc: string | null;
+  /**
+   * Cuándo se leyó de `mis-empresas/` (ms). Pasada la vigencia se revalida
+   * (`resolveCompanyLabel`). Ausente en lo guardado antes de que existiera.
+   */
+  fetchedAt?: number;
 }
 
 interface WorkspaceState {
@@ -28,6 +33,7 @@ interface WorkspaceState {
   /** Fija la sucursal (`null` = "continuar sin sucursal"). */
   setBranch: (branch: Branch | null) => void;
   setCompanyLabel: (label: CompanyLabel) => void;
+  clearCompanyLabel: () => void;
   updateBranch: (branch: Branch) => void;
   clearWorkspace: () => void;
   setHasHydrated: (hasHydrated: boolean) => void;
@@ -55,6 +61,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         },
         
         setCompanyLabel: (companyLabel) => set({ companyLabel }),
+
+        clearCompanyLabel: () => set({ companyLabel: null }),
 
         setHasHydrated: (hasHydrated) => set({ hasHydrated }),
 

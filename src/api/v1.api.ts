@@ -1,6 +1,7 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 import { signOut } from "next-auth/react";
 import { refreshToken } from "@/src/features/auth/services/actions";
+import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 
 // Extiende la config de axios para soportar el flag de reintento y evitar bucles
 interface RetryableConfig extends InternalAxiosRequestConfig {
@@ -46,6 +47,9 @@ const forceSignOut = async (): Promise<void> => {
   if (typeof window === "undefined" || isSigningOut) return;
 
   isSigningOut = true;
+  // El nombre de empresa guardado no debe sobrevivir a la sesión (EC-842),
+  // igual que en el cierre de sesión explícito (`useLogout` → `clearWorkspace`).
+  useWorkspaceStore.getState().clearCompanyLabel();
   try {
     await signOut({ callbackUrl: "/auth/login" });
   } catch {
