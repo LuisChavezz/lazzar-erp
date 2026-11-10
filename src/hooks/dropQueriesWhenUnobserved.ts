@@ -12,8 +12,9 @@ import type { Query, QueryClient } from "@tanstack/react-query";
  * siguen montadas conservan el último dato y no se piden.
  *
  * La suscripción a la caché se suelta cuando ya no queda ninguna por quitar,
- * también si otra cosa las quitó antes (`queryClient.clear()` al cerrar
- * sesión): así no queda escuchando, ni retiene las consultas, toda la sesión.
+ * también si otra cosa las quitó antes (p. ej. un `removeQueries`): así no
+ * queda escuchando, ni retiene las consultas, toda la sesión. Cerrar sesión no
+ * pasa por aquí: recarga la página y descarta la caché entera (EC-848).
  */
 export const dropQueriesWhenUnobserved = (queryClient: QueryClient, queries: Query[]) => {
   const queryCache = queryClient.getQueryCache();
