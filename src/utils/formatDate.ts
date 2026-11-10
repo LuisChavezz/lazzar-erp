@@ -26,7 +26,7 @@ export const parseLocalDate = (
  * No usa `toISOString()`: ese devuelve el día en UTC, que en México (UTC-6) a
  * partir de las 18:00 locales ya es mañana.
  */
-export const getLocalTodayDate = (): string => toLocalDateKey(new Date());
+export const getLocalTodayDate = (now: Date = new Date()): string => toLocalDateKey(now);
 
 /** Día calendario LOCAL de un `Date` como "yyyy-mm-dd" (sin pasar por UTC). */
 export const toLocalDateKey = (date: Date): string => {
@@ -109,6 +109,11 @@ export const formatLocalDateRange = (range: { fecha_inicio: string; fecha_fin: s
  * e hidratación. Omítelo para timestamps reales (con hora) donde se quiere
  * el día en la zona horaria del usuario — p.ej. junto con una hora mostrada
  * por separado.
+ *
+ * `timeZone: MEXICO_TIME_ZONE` solo vale para DATETIMES. Con un string
+ * "YYYY-MM-DD" (`DateField`) `new Date` lo lee como medianoche UTC, que en
+ * México es el día anterior: para fechas-calendario usa
+ * `formatShortCalendarDate`.
  */
 export const formatShortDate = (
   value: string | Date | null | undefined,
@@ -124,6 +129,16 @@ export const formatShortDate = (
     ...(options.timeZone ? { timeZone: options.timeZone } : {}),
   });
 };
+
+/**
+ * Fecha-calendario como "14 jul 2026" (mismo formato que `formatShortDate`)
+ * sin correr el día: un "YYYY-MM-DD" se lee como ese día en la zona local
+ * (`parseLocalDate`), no como medianoche UTC. Un datetime con hora se acepta
+ * igual que en `formatLocalDate` y se muestra el día en la zona del usuario.
+ * Devuelve "—" para valores vacíos o que no parseen.
+ */
+export const formatShortCalendarDate = (value: string | null | undefined): string =>
+  formatShortDate(parseLocalDate(value));
 
 /**
  * Formatea la HORA (hh:mm, es-MX) de un timestamp real con offset propio —
