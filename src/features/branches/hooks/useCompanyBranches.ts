@@ -8,7 +8,7 @@ import { getCompanyBranches } from "../services/actions";
  * regla. Mismo contrato que `useProducts`.
  */
 export const useCompanyBranches = (companyId: number | null | undefined) => {
-  const { data, isLoading, isInitialError, error } = useGuardedQuery(
+  const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery(
     {
       queryKey: ["branches", companyId],
       queryFn: () => getCompanyBranches(companyId!),
@@ -24,5 +24,7 @@ export const useCompanyBranches = (companyId: number | null | undefined) => {
     isLoading,
     isInitialError,
     error,
+    /** Para el "Reintentar" de una carga inicial fallida. */
+    refetch,
   };
 };
