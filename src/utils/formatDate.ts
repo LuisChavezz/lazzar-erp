@@ -135,10 +135,13 @@ export const formatShortDate = (
  * sin correr el día: un "YYYY-MM-DD" se lee como ese día en la zona local
  * (`parseLocalDate`), no como medianoche UTC. Un datetime con hora se acepta
  * igual que en `formatLocalDate` y se muestra el día en la zona del usuario.
- * Devuelve "—" para valores vacíos o que no parseen.
+ * Devuelve "—" para valores vacíos o que no parseen, incluidas las fechas
+ * imposibles ("2026-02-30"), que `parseLocalDate` desbordaría a otro día.
  */
-export const formatShortCalendarDate = (value: string | null | undefined): string =>
-  formatShortDate(parseLocalDate(value));
+export const formatShortCalendarDate = (value: string | null | undefined): string => {
+  if (value && !value.includes("T") && !isValidDateKey(value)) return "—";
+  return formatShortDate(parseLocalDate(value));
+};
 
 /**
  * Formatea la HORA (hh:mm, es-MX) de un timestamp real con offset propio —

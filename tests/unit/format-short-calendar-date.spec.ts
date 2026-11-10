@@ -63,6 +63,12 @@ test.describe("fechas-calendario en America/Mexico_City", () => {
     expect(formatShortCalendarDate("sin fecha")).toBe("—");
   });
 
+  test("— para fechas imposibles en vez de desbordar a otro día", () => {
+    expect(formatShortCalendarDate("2026-02-30")).toBe("—");
+    expect(formatShortCalendarDate("2026-13-01")).toBe("—");
+    expect(formatShortCalendarDate("2026-04-31")).toBe("—");
+  });
+
   test("hoy local después de las 18:00 sigue siendo hoy", () => {
     // 19:30 del 14 en México = 01:30 UTC del 15: `toISOString()` ya da mañana.
     const tarde = new Date("2026-07-14T19:30:00-06:00");
