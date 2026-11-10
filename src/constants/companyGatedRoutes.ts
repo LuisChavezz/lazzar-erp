@@ -1,3 +1,5 @@
+import { matchesRoutePrefix } from "../utils/matchesRoutePrefix";
+
 /**
  * Rutas que dependen de la empresa de la sesión (EC-842), evaluadas por
  * `CompanyGate` en el layout de (Main).
@@ -8,7 +10,7 @@
  * confirmar la empresa, y si el usuario no tiene muestra el aviso.
  *
  * ORDEN SIGNIFICATIVO, igual que `routePermissions`: se toma la PRIMERA regla
- * cuyo prefijo coincide (`pathname === prefix || pathname.startsWith(`${prefix}/`)`),
+ * cuyo prefijo coincide (`matchesRoutePrefix`),
  * así que las excepciones (`gated: false`) van ANTES que la regla más general
  * que las contiene. Una ruta que no coincide con ninguna regla no se bloquea.
  *
@@ -45,9 +47,6 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   { prefix: "/operations/inventory-pipeline", gated: true },
 ];
 
-const matchesPrefix = (pathname: string, prefix: string) =>
-  pathname === prefix || pathname.startsWith(`${prefix}/`);
-
 /** `true` si la ruta depende de la empresa de la sesión. */
 export const isCompanyGatedPath = (pathname: string): boolean =>
-  companyGatedRoutes.find((rule) => matchesPrefix(pathname, rule.prefix))?.gated ?? false;
+  companyGatedRoutes.find((rule) => matchesRoutePrefix(pathname, rule.prefix))?.gated ?? false;

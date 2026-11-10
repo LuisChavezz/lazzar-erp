@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { type SidebarItem as SidebarItemType } from "../constants/sidebarItems";
 import { useSidebar } from "./SidebarProvider";
 import SidebarItemBadge, { BADGE_PATHS } from "./SidebarItemBadge";
+import { matchesRoutePrefix } from "@/src/utils/matchesRoutePrefix";
 
 interface SidebarItemProps {
   item: SidebarItemType;
@@ -25,7 +26,7 @@ export default function SidebarItem({
   const isActive =
     (item.href === "/")
       ? pathname === "/"
-      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      : matchesRoutePrefix(pathname, item.href);
 
   const hasBadge = BADGE_PATHS.has(item.href);
   const labelClass = isPinned ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100";
