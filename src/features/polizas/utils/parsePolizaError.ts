@@ -136,8 +136,9 @@ export function parsePolizaError(
   const estatus = firstDrfMessage(record.estatus);
   if (estatus) pushFormError(estatus);
 
-  // `empresa` solo puede llegar si el usuario es superusuario (el resto de
-  // usuarios ni siquiera puede escribirla). No hay campo donde pintarla.
+  // `empresa` no la escribe nadie (desde EC-798 la resuelve el servidor,
+  // superusuario incluido), pero el backend puede rechazar con esa llave, p. ej.
+  // un usuario sin empresa asignada. No hay campo donde pintarla.
   const empresa = firstDrfMessage(record.empresa);
   if (empresa) pushFormError(empresa);
 

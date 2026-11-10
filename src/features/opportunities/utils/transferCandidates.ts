@@ -18,9 +18,11 @@ const CLAVES_DEPARTAMENTO_VENTAS = new Set(["VENTAS", "MESACONTROLYVENTAS"]);
  * no se infiere el departamento de `codigo` ni `nombre`.
  *
  * No se compara la empresa: la oportunidad no la trae. Para un administrador
- * de empresa el catálogo de roles ya viene acotado a la suya; un superusuario
- * puede ver usuarios de Ventas de otras empresas, y el backend los rechaza con
- * un 400 en `vendedor` que se pinta bajo el selector.
+ * de empresa el catálogo de roles ya viene acotado a la suya. A un superusuario
+ * el catálogo de usuarios (`/usuarios/`, fuera de EC-798) todavía le lista los
+ * de todas las empresas, aunque la oportunidad ya solo puede ser de la suya: el
+ * backend rechaza a un vendedor de otra empresa con un 400 en `vendedor` que se
+ * pinta bajo el selector.
  */
 export const isTransferCandidate = (
   user: User,

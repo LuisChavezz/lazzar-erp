@@ -18,7 +18,12 @@ export interface User {
   telefono: string;
   avatar_url: string | null;
   is_admin_empresa: boolean;
-  /** Superusuario de la plataforma: ve los datos de todas las empresas. */
+  /**
+   * Superusuario de la plataforma. Desde EC-798, ventas, finanzas, terceros y
+   * compras lo acotan a su propia `empresa`, como a cualquier usuario; otros
+   * módulos del backend (catálogo, usuarios, inventarios, WMS, RH, producción)
+   * todavía le muestran todas las empresas.
+   */
   is_superuser: boolean;
   date_joined: string;
   last_login: string | null;

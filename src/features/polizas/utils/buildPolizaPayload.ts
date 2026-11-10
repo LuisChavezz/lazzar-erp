@@ -28,8 +28,8 @@ import type {
  *
  * Nunca incluye:
  *  - `empresa` — la resuelve el servidor (`EmpresaResueltaEnServidorMixin` la
- *    declara de solo lectura para todo usuario no superusuario, y
- *    `perform_create` la pasa a `serializer.save()`).
+ *    declara de solo lectura para todo usuario, superusuario incluido desde
+ *    EC-798, y `perform_create` la pasa a `serializer.save()`).
  *  - `fecha` — el backend pone la del día al crear (`default=timezone.localdate`);
  *    esta pantalla no ofrece capturarla.
  *  - `folio_consecutivo` y `usuario_creacion` — los llena el backend.
