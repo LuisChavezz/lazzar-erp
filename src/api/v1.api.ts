@@ -1,7 +1,9 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import { signOut } from "next-auth/react";
 import { refreshToken } from "@/src/features/auth/services/actions";
-import { clearUserScopedClientState } from "@/src/features/auth/utils/clientSessionState";
+import {
+  clearUserScopedClientState,
+  signOutToLogin,
+} from "@/src/features/auth/utils/clientSessionState";
 
 // Extiende la config de axios para soportar el flag de reintento y evitar bucles
 interface RetryableConfig extends InternalAxiosRequestConfig {
@@ -32,16 +34,14 @@ const notifyQueue = (error?: Error): void => {
 /**
  * Cierra la sesión de forma garantizada.
  *
- * `signOut` de NextAuth hace fetch a /api/auth/* (csrf + signout) y solo DESPUÉS
- * asigna window.location. Si ese fetch falla —el mismo fallo de red que produce
- * los CLIENT_FETCH_ERROR de /api/auth/session— la promesa se rechaza y sin este
- * try/catch la excepción escapaba del interceptor: no había redirect y el flag
- * quedaba en `true` de forma permanente, dejando la pestaña en estado zombi
- * (sesión aparentemente viva, todas las llamadas en 401, sin salida).
+ * `signOutToLogin` navega a login aunque el propio `signOut` falle (el mismo
+ * fallo de red que produce los CLIENT_FETCH_ERROR de /api/auth/session): sin
+ * ese respaldo no había redirect y la pestaña quedaba en estado zombi (sesión
+ * aparentemente viva, todas las llamadas en 401, sin salida).
  *
- * Por eso: fallback duro con window.location.href y reset del latch en `finally`
- * (la redirección ya habrá comenzado; si la página sobrevive, el latch queda
- * limpio para el siguiente 401 en vez de bloquearlo para siempre).
+ * El latch se suelta en `finally` (la redirección ya habrá comenzado; si la
+ * página sobrevive, queda limpio para el siguiente 401 en vez de bloquearlo
+ * para siempre).
  */
 const forceSignOut = async (): Promise<void> => {
   if (typeof window === "undefined" || isSigningOut) return;
@@ -51,10 +51,7 @@ const forceSignOut = async (): Promise<void> => {
   // workspace del usuario no debe sobrevivir a su sesión (EC-842, EC-848).
   clearUserScopedClientState();
   try {
-    await signOut({ callbackUrl: "/auth/login" });
-  } catch {
-    // El propio signOut falló (error de red) → forzar la redirección a mano
-    window.location.href = "/auth/login";
+    await signOutToLogin();
   } finally {
     isSigningOut = false;
   }
