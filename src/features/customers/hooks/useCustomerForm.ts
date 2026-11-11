@@ -321,11 +321,18 @@ export function useCustomerForm({
         return;
       }
 
-      if (onCreated || onSuccess) leavingRef.current = true;
+      // Quien monta el formulario cierra su diálogo: el formulario se desmonta
+      // al terminar la animación y no hace falta vaciarlo. Vaciarlo antes
+      // dejaba el correo en blanco y el aviso de Facturama parpadeaba en el
+      // diálogo que se cerraba. Sin quien lo cierre, se vacía para otra alta.
+      const leaving = Boolean(onCreated || onSuccess);
+      if (leaving) leavingRef.current = true;
       onCreated?.(createdCustomer);
-      form.reset(emptyValues);
-      setClientErrors({});
-      setServerErrors({});
+      if (!leaving) {
+        form.reset(emptyValues);
+        setClientErrors({});
+        setServerErrors({});
+      }
       onSuccess?.();
     },
   });
