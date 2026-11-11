@@ -9,6 +9,8 @@ import {
   SIN_COMPRAS_LABEL,
 } from "@/src/features/customers/utils/customerList";
 import type { CustomerListItem } from "@/src/features/customers/interfaces/customer.interface";
+import { getCustomerColumnText } from "@/src/features/customers/utils/customerExport";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 
 /**
  * EC-754: listado de clientes de Ventas en modo servidor contra
@@ -86,5 +88,27 @@ test.describe("findCustomerInListPages", () => {
     client.setQueryData(["customers"], [row(3)]);
     client.setQueryData(["customers", "list", { limit: 20, offset: 40 }], { serverTablePageGone: true });
     expect(findCustomerInListPages(client, "3")).toBeUndefined();
+  });
+});
+
+test.describe("getCustomerColumnText (exportaciones)", () => {
+  const column = (id: string) => ({ id, header: id }) as DataTableVisibleColumn<CustomerListItem>;
+  const customer = {
+    id: 5,
+    razon_social: "ACME SA",
+    telefono: null,
+    fecha_ultima_compra: null,
+  } as unknown as CustomerListItem;
+
+  test("Última Compra sale con el mismo texto que la celda", () => {
+    expect(getCustomerColumnText(customer, column("ultima_compra"))).toBe(SIN_COMPRAS_LABEL);
+    expect(
+      getCustomerColumnText({ ...customer, fecha_ultima_compra: "2026-07-14" }, column("ultima_compra")),
+    ).toBe(formatUltimaCompra("2026-07-14"));
+  });
+
+  test("las demás columnas leen el campo de su id; vacío es cadena vacía", () => {
+    expect(getCustomerColumnText(customer, column("razon_social"))).toBe("ACME SA");
+    expect(getCustomerColumnText(customer, column("telefono"))).toBe("");
   });
 });

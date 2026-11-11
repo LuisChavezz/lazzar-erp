@@ -1,62 +1,43 @@
 "use client";
 
-import { ColumnDef, FilterFn } from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
-import { Customer } from "../interfaces/customer.interface";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import {
-  ChevronRightIcon,
   DireccionesIcon,
   EditIcon,
   ExclamationTriangleIcon,
   MapPinIcon,
-  ViewIcon,
-} from "../../../components/Icons";
+} from "@/src/components/Icons";
+import type { CustomerListItem } from "../interfaces/customer.interface";
 import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
+import { formatUltimaCompra } from "../utils/customerList";
+
+/** Ruta del detalle: la misma para el enlace "Ver detalle" de la fila. */
+export const customerDetailHref = (customer: Pick<CustomerListItem, "id">) =>
+  `/sales/customers/${customer.id}`;
+
+interface CustomerRowCallbacks {
+  onEdit: (customer: CustomerListItem) => void;
+  onAddAddress: (customer: CustomerListItem) => void;
+  onViewAddresses: (customer: CustomerListItem) => void;
+}
 
 /**
- * Mismo patrón que `QuoteColumns`/`SalesOrderColumns`: el filtro de estatus
- * vive en el propio encabezado de Razón Social (ícono estilo Excel), no en el
- * panel genérico de chips de `DataTable` — consistente con el resto de listas
- * de CRM y Ventas que ya llevan su estado como punto de color embebido.
+ * Primera columna: la razón social ES el menú de la fila (`FolioActionMenu`,
+ * modo nombre), con "Ver detalle" como primera acción y enlace real (clic medio
+ * abre otra pestaña). Sin punto de `activo`: el listado solo trae activos (la
+ * baja es lógica), así que no distinguiría nada. Al lado, el aviso de Facturama
+ * como ícono con el texto completo en el tooltip (igual que la cancelación
+ * solicitada de `InvoiceColumns`); la cabecera del detalle lo dice entero.
  */
-const ESTATUS_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: "Todos" },
-  { value: "true", label: "Activo", dotClassName: "bg-emerald-500" },
-  { value: "false", label: "Inactivo", dotClassName: "bg-slate-400" },
-];
-
-const estatusFilterFn: FilterFn<Customer> = (row, _columnId, filterValue) => {
-  if (filterValue === undefined) return true;
-  return String(row.original.activo) === filterValue;
-};
-
-// Sin columnas separadas de Estatus/Acciones: el punto de color (mismo
-// patrón que `QuoteColumns`) y el menú completo (Ver Detalles/Editar/
-// Direcciones/Agregar Dirección) cuelgan de la propia Razón Social, que
-// funciona como trigger — un cliente no necesita competir por espacio con
-// una columna de "⋮" ni con el texto "Activo"/"Inactivo".
 const RazonSocialCell = ({
   customer,
   onEdit,
   onAddAddress,
   onViewAddresses,
-}: {
-  customer: Customer;
-  onEdit: (customer: Customer) => void;
-  onAddAddress: (customer: Customer) => void;
-  onViewAddresses: (customer: Customer) => void;
-}) => {
-  const router = useRouter();
+}: CustomerRowCallbacks & { customer: CustomerListItem }) => {
   const items: ActionMenuItem[] = [
-    {
-      label: "Ver Detalles",
-      icon: ViewIcon,
-      // Sin sembrar la caché del detalle: `useCustomer` toma la fila del
-      // listado como `placeholderData` y siempre pide el detalle real.
-      onSelect: () => router.push(`/sales/customers/${customer.id}`),
-    },
     {
       label: "Editar",
       icon: EditIcon,
@@ -66,6 +47,8 @@ const RazonSocialCell = ({
       permission: "E-CRM-CLIENTES",
     },
     {
+      // Sin código propio: el listado de direcciones es de solo lectura sin
+      // E-CRM-CLIENTES (ver `CustomerList`).
       label: "Direcciones",
       icon: DireccionesIcon,
       onSelect: () => onViewAddresses(customer),
@@ -83,34 +66,15 @@ const RazonSocialCell = ({
   const facturamaNotice = getFacturamaVerificationNotice(customer);
 
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`h-2.5 w-2.5 rounded-full shrink-0 ${customer.activo ? "bg-emerald-500" : "bg-slate-400"}`}
-        role="img"
-        aria-label={customer.activo ? "Activo" : "Inactivo"}
-        title={customer.activo ? "Activo" : "Inactivo"}
-      />
-      <ActionMenu
+    <div className="flex items-center gap-2 min-w-0">
+      <FolioActionMenu
+        name={customer.razon_social}
+        // Sin sembrar la caché del detalle: `useCustomer` toma la fila de esta
+        // página como `placeholderData` y siempre pide el detalle real.
+        detail={{ href: customerDetailHref(customer) }}
         items={items}
-        ariaLabel="Acciones de cliente"
-        align="start"
-        trigger={
-          <button
-            type="button"
-            className="group inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer text-left"
-            title="Ver acciones"
-          >
-            {customer.razon_social}
-            <ChevronRightIcon
-              className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all shrink-0"
-              aria-hidden="true"
-            />
-          </button>
-        }
       />
       {facturamaNotice && (
-        // Ícono y no texto, igual que la cancelación solicitada de `InvoiceColumns`:
-        // el texto completo (qué falta) va en el tooltip y en la cabecera del detalle.
         <span
           className="inline-flex shrink-0 text-amber-600 dark:text-amber-400"
           role="img"
@@ -124,20 +88,27 @@ const RazonSocialCell = ({
   );
 };
 
-export const getCustomerColumns = (
-  onEdit: (customer: Customer) => void,
-  onAddAddress: (customer: Customer) => void,
-  onViewAddresses: (customer: Customer) => void
-): ColumnDef<Customer>[] => [
+const textCell = (value: string | null | undefined) => (
+  <span className="text-slate-600 dark:text-slate-300">{value || "—"}</span>
+);
+
+/**
+ * Tabla en MODO SERVIDOR (`useCustomersTable`): el backend busca, ordena y
+ * pagina. `meta.serverSort` es el campo de `ordering` de cada columna (lista
+ * blanca en `customersTable`). Sin filtros de encabezado: el endpoint no acepta
+ * filtros. Los `id` de columna son los que leen las exportaciones
+ * (`getCustomerColumnText`).
+ */
+export const getCustomerColumns = ({
+  onEdit,
+  onAddAddress,
+  onViewAddresses,
+}: CustomerRowCallbacks): ColumnDef<CustomerListItem>[] => [
   {
+    id: "razon_social",
     accessorKey: "razon_social",
-    filterFn: estatusFilterFn,
-    header: ({ column }) => (
-      <div className="flex items-center gap-1.5">
-        <span>Razón social</span>
-        <ColumnHeaderFilter column={column} options={ESTATUS_FILTER_OPTIONS} label="estatus" />
-      </div>
-    ),
+    header: "Razón social",
+    meta: { label: "Razón social", serverSort: "razon_social" },
     cell: ({ row }) => (
       <RazonSocialCell
         customer={row.original}
@@ -148,41 +119,44 @@ export const getCustomerColumns = (
     ),
   },
   {
+    id: "nombre",
     accessorKey: "nombre",
     header: "Contacto",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("nombre")}
-      </span>
-    ),
+    meta: { label: "Contacto", serverSort: "nombre" },
+    cell: ({ row }) => textCell(row.original.nombre),
   },
   {
+    id: "telefono",
     accessorKey: "telefono",
     header: "Teléfono",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("telefono")}
-      </span>
-    ),
+    meta: { label: "Teléfono", serverSort: "telefono" },
+    cell: ({ row }) => textCell(row.original.telefono),
   },
   {
+    id: "correo",
     accessorKey: "correo",
     header: "Correo",
-    cell: ({ row }) => (
-      <span className="text-slate-600 dark:text-slate-300">
-        {row.getValue("correo")}
-      </span>
-    ),
+    meta: { label: "Correo", serverSort: "correo" },
+    cell: ({ row }) => textCell(row.original.correo),
   },
   {
-    // PLACEHOLDER a propósito: `Customer` (listado de `GET
-    // /ventas/clientes/`) todavía no expone la fecha de última compra. Fija
-    // en "—" en todas las filas hasta que el backend la agregue; ese día,
-    // reemplazar por un `cell` normal con `accessorKey`/`accessorFn`. Mismo
-    // patrón que "C.P." en `SalesOrderColumns.tsx`.
+    // Día de la última venta real (`fecha_ultima_compra`, EC-853); `null` =
+    // "Sin compras", que al ordenar va al final en ambas direcciones.
     id: "ultima_compra",
+    accessorKey: "fecha_ultima_compra",
     header: "Última Compra",
-    enableSorting: false,
-    cell: () => <span className="text-slate-400 dark:text-slate-600">—</span>,
+    meta: { label: "Última Compra", serverSort: "fecha_ultima_compra" },
+    cell: ({ row }) => {
+      const value = row.original.fecha_ultima_compra;
+      return (
+        <span
+          className={`whitespace-nowrap ${
+            value === null ? "text-slate-400 dark:text-slate-500" : "text-slate-600 dark:text-slate-300"
+          }`}
+        >
+          {formatUltimaCompra(value)}
+        </span>
+      );
+    },
   },
 ];

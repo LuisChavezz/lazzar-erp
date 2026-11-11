@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Loader } from "@/src/components/Loader";
 import { CustomerKpisSection } from "@/src/features/customers/components/CustomerKpisSection";
 import { CustomerList } from "@/src/features/customers/components/CustomerList";
 
@@ -8,7 +10,12 @@ export default function CustomersPage() {
           sección, así que la lista y su toolbar no dependen de ellos. */}
       <CustomerKpisSection />
 
-      <CustomerList />
+      {/* `CustomerList` lee búsqueda, orden y página desde la URL con
+          `useSearchParams`, que en Next.js requiere un límite de Suspense en
+          el árbol superior. */}
+      <Suspense fallback={<Loader className="py-20" title="Cargando clientes..." />}>
+        <CustomerList />
+      </Suspense>
     </div>
   );
 }
