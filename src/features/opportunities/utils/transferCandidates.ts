@@ -17,12 +17,11 @@ const CLAVES_DEPARTAMENTO_VENTAS = new Set(["VENTAS", "MESACONTROLYVENTAS"]);
  * Solo se mira `clave_departamento` (el backend la guarda ya canonicalizada);
  * no se infiere el departamento de `codigo` ni `nombre`.
  *
- * No se compara la empresa: la oportunidad no la trae. Para un administrador
- * de empresa el catálogo de roles ya viene acotado a la suya. A un superusuario
- * el catálogo de usuarios (`/usuarios/`, fuera de EC-798) todavía le lista los
- * de todas las empresas, aunque la oportunidad ya solo puede ser de la suya: el
- * backend rechaza a un vendedor de otra empresa con un 400 en `vendedor` que se
- * pinta bajo el selector.
+ * No se compara la empresa: la oportunidad no la trae, y no hace falta. El
+ * catálogo de usuarios (`/usuarios/`) viene acotado a la empresa activa para
+ * todos, también para el superusuario desde EC-843, igual que la oportunidad.
+ * Si aun así llegara un vendedor de otra empresa, el backend lo rechaza con un
+ * 400 en `vendedor` que se pinta bajo el selector.
  */
 export const isTransferCandidate = (
   user: User,
