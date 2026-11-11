@@ -11,6 +11,7 @@ import {
   enterNewSession,
   POST_LOGIN_PATH,
 } from "../utils/clientSessionState";
+import { stripLoginCredentialParams } from "../utils/loginUrlCredentials";
 
 /**
  * Los pasos de MFA no forman parte de la vista inicial de credenciales: solo
@@ -82,6 +83,15 @@ function StepPanel({ visible, direction, children }: StepPanelProps) {
  *  2. Agregar un <StepPanel> adicional con su componente correspondiente.
  */
 export default function LoginStepManager() {
+  /* Una URL de login que ya trae credenciales (historial, autocompletado o un
+   * marcador de cuando el envío nativo las ponía ahí) se limpia al montar: así
+   * no sigue en la barra de direcciones ni viaja como Referer en las
+   * peticiones siguientes. El resto del query se conserva (EC-863). */
+  useEffect(() => {
+    const cleanPath = stripLoginCredentialParams(window.location.href);
+    if (cleanPath !== null) window.history.replaceState(null, "", cleanPath);
+  }, []);
+
   /* Sin sesión, el workspace guardado es de una sesión que terminó. Los cierres
    * de sesión ya lo limpian, pero mientras `signOut` espera sus fetch la página
    * anterior sigue montada y `useSessionCompanyDetails` vuelve a escribir el
