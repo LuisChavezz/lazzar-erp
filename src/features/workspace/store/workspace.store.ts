@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { Branch } from "../../branches/interfaces/branch.interface";
+import { rehydrateOnStorageWrites } from "@/src/stores/rehydrateOnStorageWrites";
 
 /**
  * Sucursal del workspace. La EMPRESA ya no vive aquí (EC-842): sale de la
@@ -83,15 +84,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         /* EC-842: v1 dejó de guardar `selectedCompany` (la empresa sale de la
          * sesión) y v2 `availableBranches` (copia de la caché de TanStack Query:
          * las sucursales se leen con `useCompanyBranches(useSessionCompanyId())`).
-         * La migración descarta ambas del almacenamiento anterior para que nada
-         * vuelva a leerlas. */
-        version: 2,
-        migrate: (persisted) => {
-          const rest = { ...((persisted ?? {}) as Record<string, unknown>) };
-          delete rest.selectedCompany;
-          delete rest.availableBranches;
-          return rest as Partial<WorkspaceState>;
-        },
+         * v3 (EC-847) deja de guardar el estado transitorio de la pestaña
+         * (`branchSwitching`, `hasHydrated`): un `branchSwitching: true`
+         * guardado por una recarga dentro de los 1800 ms del cambio de sucursal
+         * dejaba `BranchChangeLoader` atorado en la carga siguiente. La
+         * migración descarta todo eso del almacenamiento anterior. */
+        version: 3,
+        migrate: (persisted) => migrateWorkspaceStorage(persisted),
+        partialize: ({ selectedBranch, companyLabel }) => ({ selectedBranch, companyLabel }),
         onRehydrateStorage: () => (state, error) => {
           if (!error) {
             state?.setHasHydrated(true);
@@ -104,3 +104,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }
   )
 );
+
+/** Lo único que el store guarda desde v3. */
+export type PersistedWorkspace = Pick<WorkspaceState, "selectedBranch" | "companyLabel">;
+
+/**
+ * Cualquier versión anterior → v3: solo sucursal y nombre de la empresa. Lo
+ * demás que guardaban (`selectedCompany`, `availableBranches`,
+ * `branchSwitching`, `hasHydrated`) se descarta.
+ */
+export function migrateWorkspaceStorage(persisted: unknown): PersistedWorkspace {
+  const state = (persisted ?? {}) as Partial<PersistedWorkspace>;
+  return { selectedBranch: state.selectedBranch ?? null, companyLabel: state.companyLabel ?? null };
+}
+
+// Lo que otra pestaña escribe (p. ej. la limpieza al cambiar de empresa o al
+// cerrar sesión) llega a esta en vez de que su estado en memoria lo deshaga.
+rehydrateOnStorageWrites(useWorkspaceStore.persist, "workspace-storage");
