@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { getFiscalAddress } from "../services/actions";
 
 /**
@@ -13,12 +14,15 @@ export const fiscalAddressQueryKey = (companyId: number | null) =>
 
 /**
  * Opciones de la consulta, compartidas por la vista y por la relectura al abrir
- * el diálogo de edición (`useFiscalAddressDialogLoad`).
+ * el diálogo de edición (`useFiscalAddressDialogLoad`). Un 4xx no se reintenta:
+ * es la respuesta definitiva del backend (p. ej. el 400 de un usuario sin
+ * empresa activa).
  */
 export const fiscalAddressQueryOptions = (companyId: number | null) =>
   queryOptions({
     queryKey: fiscalAddressQueryKey(companyId),
     queryFn: ({ signal }) => getFiscalAddress(signal),
+    retry: retryUnlessClientError,
   });
 
 /**
@@ -28,7 +32,7 @@ export const fiscalAddressQueryOptions = (companyId: number | null) =>
  */
 export const useCompanyFiscalAddress = () => {
   const companyId = useSessionCompanyId();
-  const { data, isLoading, isInitialError, refetch } = useGuardedQuery(
+  const { data, isLoading, isFetching, isInitialError, error, refetch } = useGuardedQuery(
     { ...fiscalAddressQueryOptions(companyId), enabled: companyId !== null },
     { toastId: "fiscal-address-refetch-error" },
   );
@@ -37,7 +41,9 @@ export const useCompanyFiscalAddress = () => {
     companyId,
     fiscalAddress: data,
     isLoading,
+    isFetching,
     isInitialError,
+    error,
     refetch,
   };
 };

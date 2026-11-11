@@ -7,10 +7,11 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { ErrorState } from "@/src/components/ErrorState";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { useFiscalAddressDialogLoad } from "../hooks/useFiscalAddressDialogLoad";
 import { fiscalAddressLoadErrorMessage } from "../utils/fiscalAddressForm";
 import FiscalAddressForm from "./FiscalAddressForm";
-import { MapPinIcon, EditIcon, BuildingIcon, RefreshIcon } from "@/src/components/Icons";
+import { MapPinIcon, EditIcon, BuildingIcon } from "@/src/components/Icons";
 import {
   DEFAULT_FISCAL_COUNTRY,
   FiscalAddress,
@@ -20,14 +21,13 @@ import {
  * ¿Ya se capturó algo? El backend responde siempre los nueve campos; una
  * empresa sin domicilio los trae vacíos salvo `pais`, que vale `MEX` por omisión.
  */
-const orDash = (value: string) => (value.trim() ? value : <span className="text-slate-400 italic">-</span>);
-
 const hasCapturedAddress = (address: FiscalAddress) =>
   Object.entries(address).some(([field, value]) => field !== "pais" && value.trim() !== "");
 
 export const FiscalAddressDetails = () => {
   // Domicilio fiscal de la empresa de la sesión, leído del backend (EC-860).
-  const { companyId, fiscalAddress, isLoading, isInitialError, refetch } = useCompanyFiscalAddress();
+  const { companyId, fiscalAddress, isLoading, isFetching, isInitialError, error, refetch } =
+    useCompanyFiscalAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   // Al abrir se relee el domicilio: el formulario parte del valor actual, no
   // de la caché (que pudo quedar vieja frente a otra pestaña u otro admin).
@@ -121,20 +121,12 @@ export const FiscalAddressDetails = () => {
           message="La dirección fiscal es de la empresa activa; tu sesión todavía no tiene una."
         />
       ) : isInitialError ? (
-        <div className="space-y-3">
-          <ErrorState
-            title="No se pudo cargar la dirección fiscal"
-            message="Revisa tu conexión e inténtalo de nuevo."
-          />
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="inline-flex items-center gap-2 px-4 py-2 cursor-pointer rounded-full text-sm font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20"
-          >
-            <RefreshIcon className="w-4 h-4" />
-            Reintentar
-          </button>
-        </div>
+        <SectionErrorNotice
+          title="No se pudo cargar la dirección fiscal"
+          message={fiscalAddressLoadErrorMessage(error)}
+          onRetry={() => void refetch()}
+          isRetrying={isFetching}
+        />
       ) : isLoading || fiscalAddress === undefined ? (
         <LoadingSkeleton className="h-72" />
       ) : !hasAddress ? (
@@ -169,7 +161,7 @@ export const FiscalAddressDetails = () => {
                       Calle
                   </label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white wrap-break-word">
-                      {orDash(fiscalAddress.calle)}
+                      {textOrDash(fiscalAddress.calle)}
                   </p>
               </div>
 
@@ -178,7 +170,7 @@ export const FiscalAddressDetails = () => {
                       Número Exterior
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {orDash(fiscalAddress.numero_exterior)}
+                      {textOrDash(fiscalAddress.numero_exterior)}
                   </p>
               </div>
 
@@ -187,7 +179,7 @@ export const FiscalAddressDetails = () => {
                       Número Interior
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {orDash(fiscalAddress.numero_interior)}
+                      {textOrDash(fiscalAddress.numero_interior)}
                   </p>
               </div>
 
@@ -196,7 +188,7 @@ export const FiscalAddressDetails = () => {
                       Colonia
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {orDash(fiscalAddress.colonia)}
+                      {textOrDash(fiscalAddress.colonia)}
                   </p>
               </div>
 
@@ -209,7 +201,7 @@ export const FiscalAddressDetails = () => {
                       {fiscalAddress.codigo_postal}
                     </div>
                   ) : (
-                    <p className="text-base font-medium">{orDash("")}</p>
+                    <p className="text-base font-medium text-slate-900 dark:text-white">{textOrDash("")}</p>
                   )}
               </div>
             </div>
@@ -231,7 +223,7 @@ export const FiscalAddressDetails = () => {
                       Municipio / Alcaldía
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {orDash(fiscalAddress.municipio)}
+                      {textOrDash(fiscalAddress.municipio)}
                   </p>
               </div>
 
@@ -240,7 +232,7 @@ export const FiscalAddressDetails = () => {
                       Estado
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {orDash(fiscalAddress.estado)}
+                      {textOrDash(fiscalAddress.estado)}
                   </p>
               </div>
 
@@ -249,7 +241,7 @@ export const FiscalAddressDetails = () => {
                       País
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                      {orDash(fiscalAddress.pais)}
+                      {textOrDash(fiscalAddress.pais)}
                       {fiscalAddress.pais === DEFAULT_FISCAL_COUNTRY && <span className="text-lg">🇲🇽</span>}
                   </p>
               </div>
