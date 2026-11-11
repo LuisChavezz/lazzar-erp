@@ -5,22 +5,45 @@
  * - `order` ("Pedido"): el pedido con el formato de la cotización. Es la hoja
  *   por defecto y NO se escribe en la URL.
  * - `progress` ("Avances"): surtido y documentos relacionados.
+ * - `history` ("Historial", EC-854): la línea de tiempo de la bitácora de
+ *   documentos (el pedido y sus derivados). Solo existe para quien puede leer
+ *   la bitácora (`R-CORE` o `R-CORE-REPORTES`); sin ese permiso
+ *   `?sheet=history` cae en `order`, como cualquier valor desconocido.
  *
  * Cualquier otro valor (o ninguno) cae en `order`.
  */
 export const ORDER_DETAIL_SHEET_PARAM = "sheet";
 
-export const ORDER_DETAIL_SHEETS = ["order", "progress"] as const;
+export const ORDER_DETAIL_SHEETS = ["order", "progress", "history"] as const;
 
 export type OrderDetailSheet = (typeof ORDER_DETAIL_SHEETS)[number];
 
 export const DEFAULT_ORDER_DETAIL_SHEET: OrderDetailSheet = "order";
 
-/** Valor crudo de la URL → hoja. Desconocido o ausente → hoja por defecto. */
-export function resolveOrderDetailSheet(value: string | undefined): OrderDetailSheet {
+/** Hoja que solo ve quien puede leer la bitácora de documentos. */
+export const ORDER_HISTORY_SHEET: OrderDetailSheet = "history";
+
+/**
+ * Hojas que se le ofrecen al usuario, en el orden del selector. "Historial"
+ * solo con `canSeeHistory`.
+ */
+export function availableOrderDetailSheets(canSeeHistory: boolean): readonly OrderDetailSheet[] {
+  return canSeeHistory
+    ? ORDER_DETAIL_SHEETS
+    : ORDER_DETAIL_SHEETS.filter((sheet) => sheet !== ORDER_HISTORY_SHEET);
+}
+
+/**
+ * Valor crudo de la URL → hoja. Desconocido, ausente o no disponible para el
+ * usuario (`history` sin `canSeeHistory`) → hoja por defecto.
+ */
+export function resolveOrderDetailSheet(
+  value: string | undefined,
+  { canSeeHistory }: { canSeeHistory: boolean },
+): OrderDetailSheet {
   // Contra la lista y no contra un objeto: un `?sheet=constructor` no puede
   // resolver a nada heredado de `Object.prototype`.
-  return (ORDER_DETAIL_SHEETS as readonly string[]).includes(value ?? "")
+  return (availableOrderDetailSheets(canSeeHistory) as readonly string[]).includes(value ?? "")
     ? (value as OrderDetailSheet)
     : DEFAULT_ORDER_DETAIL_SHEET;
 }

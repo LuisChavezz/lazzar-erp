@@ -5,16 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import {
-  ArrowLeftIcon,
-  BanIcon,
-  EditIcon,
-  PedidosIcon,
-  RefreshIcon,
-  TrendingUpIcon,
-} from "@/src/components/Icons";
+import { ArrowLeftIcon, BanIcon, EditIcon, RefreshIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasPermission, meetsPermissionRequirement } from "@/src/utils/permissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -24,6 +17,10 @@ import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { getQuoteOnboardingDataQueryOptions } from "@/src/features/quotes/hooks/useQuoteOnboardingData";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
 import { usePedidoTrazabilidad } from "../hooks/usePedidoTrazabilidad";
+import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
+import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { DOCUMENT_AUDIT_PERMISSION } from "@/src/features/document-audit/constants/documentAuditValues";
+import { useDocumentTimeline } from "@/src/features/document-audit/hooks/useDocumentTimeline";
 import { useSampleSkuLinking } from "../hooks/useSampleSkuLinking";
 import {
   canEditPedidoMesaControl,
@@ -56,7 +53,9 @@ import { canAccessRoute } from "@/src/utils/routeAccess";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
 import { resolveInvoiceDetailSheet } from "@/src/features/invoicing/constants/invoiceDetailSheets";
 import {
+  availableOrderDetailSheets,
   buildOrderDetailSheetHref,
+  ORDER_HISTORY_SHEET,
   resolveOrderDetailSheet,
   type OrderDetailSearchParams,
   type OrderDetailSheet,
@@ -64,6 +63,8 @@ import {
 import type { SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
 import { canSeeAccounting } from "../utils/orderAccounting";
 import { isSampleLine } from "../utils/orderLines";
+import { OrderDetailSheetSelector } from "./OrderDetailSheetSelector";
+import { OrderHistorySheet } from "./OrderHistorySheet";
 import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
@@ -233,11 +234,15 @@ interface PedidoDetailContentProps {
 }
 
 /**
- * Detalle de pedido en DOS hojas sobre la misma página:
+ * Detalle de pedido en hojas sobre la misma página:
  *
  * - "Pedido" (`OrderMainSheet`, por defecto): el pedido con el formato del
  *   formulario de cotización, en solo lectura.
  * - "Avances" (`OrderProgressSheet`): surtido y documentos relacionados.
+ * - "Historial" (`OrderHistorySheet`, EC-854): la línea de tiempo de la
+ *   bitácora de documentos. Solo para quien puede leerla (`R-CORE` o
+ *   `R-CORE-REPORTES`); sin ese permiso el selector no la ofrece y
+ *   `?sheet=history` cae en "Pedido".
  *
  * La hoja activa vive en la URL (`?sheet=`, ver `orderDetailSheets`): sobrevive
  * a la recarga y cambiarla conserva `from` y el resto de parámetros. Esta
@@ -255,11 +260,21 @@ export function PedidoDetailContent({
   const numericId = Number(pedidoId);
   const { data, isLoading, isInitialError, isFetching, error, refetch } =
     usePedidoDetailPage(numericId);
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const { phase: recoveryPhase } = useSessionRecovery();
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const sheet = resolveOrderDetailSheet(rawSheet);
+  const companyId = useSessionCompanyId();
+  // Permiso de la bitácora (hoja "Historial"). Mientras la sesión carga no se
+  // sabe: un `?sheet=history` se respeta y la hoja espera, en vez de pintar
+  // "Pedido" y saltar a "Historial" cuando llegue la sesión. Ya resuelta, sin
+  // permiso la hoja no existe.
+  const isSessionPending = sessionStatus === "loading" || recoveryPhase === "recovering";
+  const canSeeHistory = meetsPermissionRequirement(DOCUMENT_AUDIT_PERMISSION, session?.user);
+  const sheet = resolveOrderDetailSheet(rawSheet, {
+    canSeeHistory: canSeeHistory || isSessionPending,
+  });
   // ¿Lo que pinta la página ya se sabe que NO es el pedido? Id inválido, o el
   // pedido en uno de los estados de error que cambian la página (404, carga
   // inicial fallida). Las consultas que van en paralelo con el pedido se
@@ -305,6 +320,13 @@ export function PedidoDetailContent({
   // encenderse se relee (`usePedidoTrazabilidad`).
   const trazabilidad = usePedidoTrazabilidad(numericId, {
     enabled: sheet === "progress" && !cancelled && !isPedidoUnavailable,
+  });
+  // Línea de tiempo de la hoja "Historial": solo con la hoja activa y el
+  // permiso ya CONFIRMADO (nunca mientras la sesión carga). En paralelo con el
+  // pedido, como la trazabilidad (EC-768).
+  const history = useDocumentTimeline("pedido", numericId, companyId, {
+    enabled:
+      sheet === ORDER_HISTORY_SHEET && canSeeHistory && !cancelled && !isPedidoUnavailable,
   });
   // La vinculación (corrida en curso, avance, resultados) vive AQUÍ y no en el
   // diálogo: así el diálogo se puede cerrar —o la hoja cambiar— a media corrida
@@ -465,19 +487,8 @@ export function PedidoDetailContent({
   if (sampleSkuLineId !== null && sampleSkuLine === null) {
     setSampleSkuLineId(null);
   }
-  // Cambio de hoja: enlace real que conserva `from` y el resto de la query.
-  const sheetSwitch =
-    sheet === "order"
-      ? {
-          href: buildOrderDetailSheetHref(pathname, searchParams, "progress"),
-          label: "Ver Avances",
-          icon: <TrendingUpIcon className="w-4 h-4" aria-hidden="true" />,
-        }
-      : {
-          href: buildOrderDetailSheetHref(pathname, searchParams, "order"),
-          label: "Ver Pedido",
-          icon: <PedidosIcon className="w-4 h-4" aria-hidden="true" />,
-        };
+  // Hojas que se ofrecen: "Historial" solo con el permiso confirmado.
+  const sheets = availableOrderDetailSheets(canSeeHistory);
 
   return (
     <div className="w-full space-y-6">
@@ -491,12 +502,12 @@ export function PedidoDetailContent({
       <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
         {BackLink}
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="secondary">
-            <Link href={sheetSwitch.href} className="inline-flex items-center gap-2">
-              {sheetSwitch.icon}
-              {sheetSwitch.label}
-            </Link>
-          </Button>
+          {/* Cambio de hoja: enlaces reales que conservan `from` y el resto de la query. */}
+          <OrderDetailSheetSelector
+            sheets={sheets}
+            active={sheet}
+            hrefFor={(target) => buildOrderDetailSheetHref(pathname, searchParams, target)}
+          />
           {/* Recompra: NO depende de `data.cotizacion` (el backend clona el
               pedido mismo, tenga o no cotización de origen). */}
           {canRecomprar && canRecomprarPedido(data.estatus) && (
@@ -563,13 +574,15 @@ export function PedidoDetailContent({
             onLinkAll: sampleSkuLinking.linkAll,
           }}
         />
-      ) : (
+      ) : sheet === "progress" ? (
         <OrderProgressSheet
           pedido={data}
           showAccounting={showAccounting}
           onOpenDoc={setOpenDoc}
           trazabilidad={trazabilidad}
         />
+      ) : (
+        <OrderHistorySheet pedido={data} history={canSeeHistory ? history : null} />
       )}
 
       {/* El diálogo de SKU de muestra ordena sus filas con el catálogo de
