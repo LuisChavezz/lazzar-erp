@@ -1,14 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import {
-  DataTable,
-  type DataTableHandle,
-  type DataTableVisibleColumn,
-} from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { DataTable, type DataTableVisibleColumn } from "@/src/components/DataTable";
 import { hasPermission } from "@/src/utils/permissions";
 import { useIsCompanyAdmin } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -20,28 +15,36 @@ import CustomerAddressForm from "./CustomerAddressForm";
 import { CustomerAddressList } from "./CustomerAddressList";
 import { getCustomerColumns } from "./CustomerColumns";
 import { useCustomer } from "../hooks/useCustomer";
-import { useCustomers } from "../hooks/useCustomers";
+import { useCustomersTable } from "../hooks/useCustomersTable";
 import { useCustomerCsvExport } from "../hooks/useCustomerCsvExport";
 import { useCustomerPdfExport } from "../hooks/useCustomerPdfExport";
-import { Customer } from "../interfaces/customer.interface";
+import type { CustomerListItem } from "../interfaces/customer.interface";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
 
+/**
+ * Listado de clientes de Ventas en MODO SERVIDOR: búsqueda, orden y paginación
+ * los resuelve el backend y su estado vive en la URL (`useCustomersTable`), así
+ * que la página lo envuelve en `<Suspense>`. El catálogo completo que leen
+ * otros módulos (`useCustomers`, llave exacta `["customers"]`) es otra consulta
+ * y no cambia.
+ */
 export const CustomerList = () => {
-  const { customers, isLoading, isInitialError, error } = useCustomers();
-  // Las filas a exportar se LEEN de la tabla al hacer clic (`getFilteredRows`),
-  // no se espejean en estado: así el archivo siempre lleva los datos vigentes.
-  const tableRef = useRef<DataTableHandle<Customer>>(null);
-  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<Customer>[]>([]);
-  useCustomerCsvExport(tableRef, visibleColumns);
-  useCustomerPdfExport(tableRef, visibleColumns);
+  const table = useCustomersTable();
+  // Exportan TODO lo que cumple la búsqueda vigente (con su orden), no solo la
+  // página visible: las filas se piden al backend al hacer clic
+  // (`fetchAllRows`). Las columnas son las visibles (`onVisibleColumnsChange`).
+  const [visibleColumns, setVisibleColumns] = useState<DataTableVisibleColumn<CustomerListItem>[]>([]);
+  useCustomerCsvExport(table.fetchAllRows, visibleColumns);
+  useCustomerPdfExport(table.fetchAllRows, visibleColumns);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+  const [customerToEdit, setCustomerToEdit] = useState<CustomerListItem | null>(null);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
-  const [selectedCustomerForAddress, setSelectedCustomerForAddress] = useState<Customer | null>(null);
+  const [selectedCustomerForAddress, setSelectedCustomerForAddress] =
+    useState<CustomerListItem | null>(null);
   const [addressToEdit, setAddressToEdit] = useState<CustomerAddress | null>(null);
   const [returnToListAfterAddress, setReturnToListAfterAddress] = useState(false);
   const [isAddressListDialogOpen, setIsAddressListDialogOpen] = useState(false);
-  const [selectedCustomerForList, setSelectedCustomerForList] = useState<Customer | null>(null);
+  const [selectedCustomerForList, setSelectedCustomerForList] = useState<CustomerListItem | null>(null);
 
   // Ver el listado exige `R-CRM-CLIENTES` (ver `routePermissions`); dar de alta
   // exige además `C-CRM-CLIENTES`. `hasPermission` cortocircuita para "admin".
@@ -75,7 +78,7 @@ export const CustomerList = () => {
   const addressCustomerRfc = freshCustomerForAddress?.rfc ?? selectedCustomerForAddress?.rfc ?? "";
 
   const openAddressFormFor = useCallback(
-    (customer: Customer | null) => {
+    (customer: CustomerListItem | null) => {
       // Fuerza la relectura aunque el detalle esté en caché y vigente.
       if (customer) {
         void queryClient.invalidateQueries({ queryKey: ["customer", String(Number(customer.id))] });
@@ -85,7 +88,7 @@ export const CustomerList = () => {
     [queryClient]
   );
 
-  const handleEdit = useCallback((customer: Customer) => {
+  const handleEdit = useCallback((customer: CustomerListItem) => {
     setCustomerToEdit(customer);
     setIsCustomerDialogOpen(true);
   }, []);
@@ -102,7 +105,7 @@ export const CustomerList = () => {
     }
   }, []);
 
-  const handleAddAddress = useCallback((customer: Customer) => {
+  const handleAddAddress = useCallback((customer: CustomerListItem) => {
     openAddressFormFor(customer);
     setIsAddressDialogOpen(true);
   }, [openAddressFormFor]);
@@ -144,7 +147,7 @@ export const CustomerList = () => {
     setSelectedCustomerForAddress(null);
   }, [returnToListAfterAddress]);
 
-  const handleViewAddresses = useCallback((customer: Customer) => {
+  const handleViewAddresses = useCallback((customer: CustomerListItem) => {
     setSelectedCustomerForList(customer);
     setIsAddressListDialogOpen(true);
   }, []);
@@ -156,10 +159,11 @@ export const CustomerList = () => {
     }
   }, []);
 
-  const columns = useMemo(
-    () => getCustomerColumns(handleEdit, handleAddAddress, handleViewAddresses),
-    [handleEdit, handleAddAddress, handleViewAddresses]
-  );
+  const columns = getCustomerColumns({
+    onEdit: handleEdit,
+    onAddAddress: handleAddAddress,
+    onViewAddresses: handleViewAddresses,
+  });
 
   return (
     <>
@@ -216,14 +220,13 @@ export const CustomerList = () => {
       </MainDialog>
 
       <DataTable
-        ref={tableRef}
         columns={columns}
-        data={customers}
-        searchPlaceholder="Buscar por razón social, nombre, correo o teléfono..."
-        isLoading={isLoading}
-        isError={isInitialError}
+        {...table.tableProps}
+        // Identidad de la fila por registro, no por posición en la página.
+        getRowId={(row) => String(row.id)}
+        searchPlaceholder="Buscar por razón social, nombre, RFC, correo o teléfono..."
+        emptyMessage="Aún no hay clientes registrados"
         errorTitle="Error al cargar los clientes"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando clientes"
         onVisibleColumnsChange={setVisibleColumns}
         actionButton={

@@ -1,46 +1,20 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { datedFileName } from "@/src/utils/datedFileName";
-import { Customer } from "../interfaces/customer.interface";
-import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
-import toast from "react-hot-toast";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import type { CustomerListItem } from "../interfaces/customer.interface";
+import { getCustomerColumnText } from "../utils/customerExport";
 
-const getValueByPath = (value: unknown, path: string) => {
-  return path.split(".").reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === "object" && key in acc) {
-      return (acc as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, value);
-};
-
-const getColumnValue = (
-  customer: Customer,
-  column: DataTableVisibleColumn<Customer>,
-  index: number
-) => {
-  if (column.accessorFn) {
-    return column.accessorFn(customer, index);
-  }
-  if (column.accessorKey) {
-    return getValueByPath(customer, column.accessorKey);
-  }
-  return (customer as unknown as Record<string, unknown>)[column.id];
-};
-
-const formatValue = (value: unknown): string => {
-  if (value === null || value === undefined || value === "") return "—";
-  return String(value);
-};
+const formatValue = (value: string): string => (value === "" ? "—" : value);
 
 const createCustomersPdfDocument = (
   renderer: Pick<
     typeof import("@react-pdf/renderer"),
     "Document" | "Page" | "Text" | "View" | "StyleSheet"
   >,
-  customers: Customer[],
-  columns: DataTableVisibleColumn<Customer>[],
+  customers: CustomerListItem[],
+  columns: DataTableVisibleColumn<CustomerListItem>[],
   now: Date,
 ) => {
   const { Document, Page, Text, View, StyleSheet } = renderer;
@@ -188,7 +162,7 @@ const createCustomersPdfDocument = (
             >
               {columns.map((column) => (
                 <Text key={`${customer.id}-${column.id}`} style={[styles.cell, { width: columnWidth }]}>
-                  {formatValue(getColumnValue(customer, column, rowIndex))}
+                  {formatValue(getCustomerColumnText(customer, column))}
                 </Text>
               ))}
             </View>
@@ -212,15 +186,19 @@ const createCustomersPdfDocument = (
 };
 
 /**
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas
- * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
- * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
- * valores y orden viejos tras un refetch que no cambiaba el número de filas.
+ * Exporta el listado de clientes a PDF con las columnas visibles.
+ * `@react-pdf/renderer` se importa dinámicamente (solo al exportar) y el
+ * disparo llega por un `CustomEvent` propio (`customers:exportPDF`).
+ *
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de la
+ * tabla (búsqueda y orden), página por página desde el backend (`fetchAllRows`
+ * de `useServerTable`). Un fallo (al pedir las filas o al cargar el chunk de
+ * react-pdf) lo avisa `useServerExport` con un toast de error. Mismo patrón
+ * que `useSupplierPdfExport`.
  */
 export const useCustomerPdfExport = (
-  tableRef: RefObject<DataTableHandle<Customer> | null>,
-  columns: DataTableVisibleColumn<Customer>[]
+  getRows: () => Promise<CustomerListItem[]>,
+  columns: DataTableVisibleColumn<CustomerListItem>[],
 ) => {
   const columnsRef = useRef(columns);
 
@@ -228,12 +206,12 @@ export const useCustomerPdfExport = (
     columnsRef.current = columns;
   }, [columns]);
 
+  const runExport = useServerExport(getRows, "customers-export-pdf");
+
   const exportToPdf = useCallback(async () => {
-    // Se dispara desde un listener (`void exportToPdf()`): sin este catch un
-    // fallo (p. ej. al descargar el chunk de react-pdf) quedaba como promesa
-    // rechazada sin aviso para el usuario.
-    try {
-      if (columnsRef.current.length === 0) return;
+    const exportColumns = columnsRef.current;
+    if (exportColumns.length === 0) return;
+    await runExport(async (rows) => {
       const renderer = await import("@react-pdf/renderer");
       const now = new Date();
       const pdfDocument = createCustomersPdfDocument(
@@ -244,16 +222,14 @@ export const useCustomerPdfExport = (
           View: renderer.View,
           StyleSheet: renderer.StyleSheet,
         },
-        tableRef.current?.getFilteredRows() ?? [],
-        columnsRef.current,
+        rows,
+        exportColumns,
         now,
       );
       const blob = await renderer.pdf(pdfDocument).toBlob();
       downloadBlob(blob, datedFileName("clientes", "pdf", now));
-    } catch (error) {
-      toast.error(extractErrorMessage(error, "No se pudo generar el PDF."));
-    }
-  }, [tableRef]);
+    });
+  }, [runExport]);
 
   useEffect(() => {
     const handleExport = () => {

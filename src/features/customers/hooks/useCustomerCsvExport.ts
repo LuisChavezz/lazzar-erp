@@ -1,65 +1,41 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { datedFileName } from "@/src/utils/datedFileName";
-import { Customer } from "../interfaces/customer.interface";
-import { type DataTableHandle, DataTableVisibleColumn } from "@/src/components/DataTable";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import { useServerExport } from "@/src/hooks/useServerExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
+import type { CustomerListItem } from "../interfaces/customer.interface";
+import { getCustomerColumnText } from "../utils/customerExport";
 
-const escapeCsv = (value: string | number | boolean | null | undefined) => {
-  if (value === null || value === undefined) return "";
-  const stringValue = String(value);
-  if (/[",\n]/.test(stringValue)) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
+const escapeCsv = (value: string) => {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
   }
-  return stringValue;
+  return value;
 };
 
-const getValueByPath = (value: unknown, path: string) => {
-  return path.split(".").reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === "object" && key in acc) {
-      return (acc as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, value);
-};
-
-const getColumnValue = (
-  customer: Customer,
-  column: DataTableVisibleColumn<Customer>,
-  index: number
+const buildCsv = (
+  customers: CustomerListItem[],
+  columns: DataTableVisibleColumn<CustomerListItem>[],
 ) => {
-  if (column.accessorFn) {
-    return column.accessorFn(customer, index);
-  }
-  if (column.accessorKey) {
-    return getValueByPath(customer, column.accessorKey);
-  }
-  return (customer as unknown as Record<string, unknown>)[column.id];
-};
-
-const buildCsv = (customers: Customer[], columns: DataTableVisibleColumn<Customer>[]) => {
   const headers = columns.map((column) => column.header);
-  const rows = customers.map((customer, index) =>
-    columns.map((column) => {
-      const value = getColumnValue(customer, column, index);
-      return value === null || value === undefined ? "" : String(value);
-    })
+  const rows = customers.map((customer) =>
+    columns.map((column) => getCustomerColumnText(customer, column)),
   );
-
-  return [headers, ...rows]
-    .map((row) => row.map(escapeCsv).join(","))
-    .join("\n");
+  return [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
 };
 
 /**
- * `tableRef` es el `ref` de la `DataTable` de la vista; AL EXPORTAR (no al
- * montar) se leen de él las filas
- * filtradas y ordenadas que `DataTable` expone por `ref` (`getFilteredRows`),
- * leídas en ese instante. Guardar una copia en un ref dejaba en el archivo
- * valores y orden viejos tras un refetch que no cambiaba el número de filas.
+ * Exporta el listado de clientes a un CSV que Excel abre directamente, con las
+ * columnas visibles. Disparo por `CustomEvent` (`customers:exportCSV`).
+ *
+ * `getRows` trae, AL EXPORTAR, TODAS las filas de los criterios vigentes de la
+ * tabla (búsqueda y orden), página por página desde el backend (`fetchAllRows`
+ * de `useServerTable`): la tabla en modo servidor solo tiene la página
+ * visible. Mismo patrón que `useSupplierCsvExport`.
  */
 export const useCustomerCsvExport = (
-  tableRef: RefObject<DataTableHandle<Customer> | null>,
-  columns: DataTableVisibleColumn<Customer>[]
+  getRows: () => Promise<CustomerListItem[]>,
+  columns: DataTableVisibleColumn<CustomerListItem>[],
 ) => {
   const columnsRef = useRef(columns);
 
@@ -67,17 +43,25 @@ export const useCustomerCsvExport = (
     columnsRef.current = columns;
   }, [columns]);
 
-  const exportToCsv = useCallback(() => {
-    if (columnsRef.current.length === 0) return;
-    const csvContent = buildCsv(tableRef.current?.getFilteredRows() ?? [], columnsRef.current);
-    const blob = new Blob([`﻿${csvContent}`], {
-      type: "text/csv;charset=utf-8;",
+  const runExport = useServerExport(getRows, "customers-export-csv");
+
+  const exportToCsv = useCallback(async () => {
+    const exportColumns = columnsRef.current;
+    if (exportColumns.length === 0) return;
+    await runExport(async (rows) => {
+      const csvContent = buildCsv(rows, exportColumns);
+      // BOM para que Excel detecte UTF-8 y no rompa acentos/ñ.
+      const blob = new Blob([`\uFEFF${csvContent}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      downloadBlob(blob, datedFileName("clientes", "csv"));
     });
-    downloadBlob(blob, datedFileName("clientes", "csv"));
-  }, [tableRef]);
+  }, [runExport]);
 
   useEffect(() => {
-    const handleExport = () => exportToCsv();
+    const handleExport = () => {
+      void exportToCsv();
+    };
     document.addEventListener("customers:exportCSV", handleExport);
     return () => {
       document.removeEventListener("customers:exportCSV", handleExport);
