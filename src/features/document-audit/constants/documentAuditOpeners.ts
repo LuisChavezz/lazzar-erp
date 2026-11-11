@@ -39,7 +39,8 @@ export const DOCUMENT_AUDIT_OPENERS: Partial<Record<TipoDocumento, DocumentAudit
   pedido: {
     kind: "route",
     path: pedidoDetailPath,
-    // Origen propio: el "Volver" del pedido regresa a la bitácora.
+    // Origen propio: el "Volver" del pedido regresa a la bitácora. La tabla lo
+    // pinta con `PedidoFolioLink` (mismo origen); `href` queda para quien no.
     href: (id) => pedidoDetailHref(id, "document-audit"),
   },
   orden_compra: {
