@@ -401,7 +401,15 @@ export function PurchaseOrderDetailDialog({
 
         {/* ── Estado: datos cargados ────────────────────────────────────────── */}
         {!isLoading && !isError && purchaseOrder && (
-          <div className="space-y-5">
+          // `contain: inline-size`: el ancho mínimo de las tablas (celdas sin
+          // salto de línea) ya no sube hasta el diálogo. Sin él, el relleno de
+          // Radix (`.rt-BaseDialogScrollPadding`, un hijo flex con
+          // `min-width: auto`) crecía a ese ancho: a 375 px el diálogo medía
+          // ~733 px y el encabezado con "Descargar PDF" quedaba fuera de la
+          // pantalla. Ahora el diálogo cabe en el viewport y cada tabla hace
+          // scroll horizontal dentro de su propio contenedor (`LineItemsTable`
+          // ya es `overflow-auto`).
+          <div className="space-y-5 [contain:inline-size]">
             {/* Información general de la orden */}
             <div className={INFO_BOX}>
               <InfoField label="Folio">
