@@ -8,6 +8,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { CustomerCartera } from "./CustomerCartera";
 import { CustomerCredito } from "./CustomerCredito";
+import { CustomerHeaderTiles } from "./CustomerHeaderTiles";
 import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResumenKpis";
 import { CustomerResumenPedidos } from "./CustomerResumenPedidos";
 import { useCustomer } from "../hooks/useCustomer";
@@ -121,6 +122,10 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
           </span>
         )}
       </div>
+
+      {/* Datos fiscales y de contacto: vienen en la fila del listado, así que
+          se pintan también mientras se muestra el placeholder. */}
+      <CustomerHeaderTiles customer={data} />
 
       {kpis}
 
