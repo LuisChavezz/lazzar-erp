@@ -2,6 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useForm } from "@tanstack/react-form";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { getCodigoPostalError } from "@/src/utils/codigoPostal";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
@@ -49,6 +50,9 @@ export function useCustomerAddressForm({
   onSuccess,
 }: UseCustomerAddressFormParams) {
   const formRef = useRef<HTMLFormElement>(null);
+  // Marca de SALIDA del candado (`useFormSubmitLock`): tras guardar, el diálogo
+  // se cierra pero el formulario sigue montado durante la animación.
+  const leavingRef = useRef(false);
 
   // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
   const {
@@ -66,7 +70,6 @@ export function useCustomerAddressForm({
     useCreateCustomerAddress(setServerFieldError);
   const { mutateAsync: updateAddress, isPending: isUpdating } =
     useUpdateCustomerAddress(setServerFieldError);
-  const isPending = isCreating || isUpdating;
 
   // Valores iniciales: datos de la direccion en modo edicion, vacios en modo creacion.
   const initialValues = useMemo<CustomerAddressFormValues>(() => {
@@ -129,11 +132,20 @@ export function useCustomerAddressForm({
         return;
       }
 
+      if (onSuccess) leavingRef.current = true;
       form.reset();
       clearAllErrors();
       onSuccess?.();
     },
   });
+
+  // Candado del envío (EC-753): síncrono, antes de validar; un doble disparo en
+  // el mismo tick manda una sola petición. `isFormSubmitting` es solo para
+  // pintar (también mientras se valida).
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
+  const isPending = isCreating || isUpdating || isFormSubmitting;
 
   // Valida un campo individual con Zod al perder el foco.
   const validateField = (
@@ -159,14 +171,9 @@ export function useCustomerAddressForm({
 
   // Restablece el formulario: vuelve a initialValues (datos originales en edicion, vacio en creacion).
   const handleReset = () => {
+    if (isSubmitLocked()) return;
     form.reset();
     clearAllErrors();
-  };
-
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    void form.handleSubmit();
   };
 
   return {

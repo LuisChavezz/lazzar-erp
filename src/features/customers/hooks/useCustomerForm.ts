@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
@@ -104,6 +105,11 @@ export function useCustomerForm({
   const { data: satInfo, isLoading: isSatInfoLoading } = useSatInfo();
   const isEditing = Boolean(customerToEdit?.id);
   const formRef = useRef<HTMLFormElement>(null);
+  // Marca de SALIDA del candado de envío (`useFormSubmitLock`): tras un
+  // guardado correcto quien monta el formulario cierra su diálogo, pero el
+  // formulario sigue montado durante la animación de salida; con ella, ningún
+  // envío en ese hueco repite el POST/PUT.
+  const leavingRef = useRef(false);
 
   const [clientErrors, setClientErrors] = useState<Partial<Record<CustomerFormField, string>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<CustomerFormField, string>>>({});
@@ -291,6 +297,7 @@ export function useCustomerForm({
           return;
         }
 
+        if (onCreated || onSuccess) leavingRef.current = true;
         onCreated?.(updatedCustomer);
         onSuccess?.();
         return;
@@ -314,6 +321,7 @@ export function useCustomerForm({
         return;
       }
 
+      if (onCreated || onSuccess) leavingRef.current = true;
       onCreated?.(createdCustomer);
       form.reset(emptyValues);
       setClientErrors({});
@@ -322,7 +330,15 @@ export function useCustomerForm({
     },
   });
 
-  const isPending = isCreating || isUpdating;
+  // Candado del envío (EC-753): se toma de forma SÍNCRONA antes de validar,
+  // así un Enter + clic (o dos clics en el mismo tick) mandan un solo POST/PUT.
+  // `isPending` de la mutación llega un render tarde y solo sirve para pintar.
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
+  // Para pintar ("Guardando...", campos deshabilitados): también mientras se
+  // valida, antes de que la mutación arranque.
+  const isPending = isCreating || isUpdating || isFormSubmitting;
 
   // Error de un campo según su schema Zod y, para el CP, según el RFC que el
   // formulario tiene en ese momento.
@@ -374,6 +390,8 @@ export function useCustomerForm({
   // - creación: vuelve a emptyValues
   // - edición: vuelve a los valores cargados del cliente (editValues)
   const handleReset = () => {
+    // Con un envío en curso (o ya guardado y saliendo) no se toca el formulario.
+    if (isSubmitLocked()) return;
     form.reset(isEditing ? editValues : emptyValues);
     setClientErrors({});
     setServerErrors({});
@@ -397,12 +415,6 @@ export function useCustomerForm({
   const handleFieldBlur = (field: CustomerFormField, value: CustomerFormValues[CustomerFormField], onBlur: () => void) => {
     onBlur();
     validateField(field, value);
-  };
-
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
   };
 
   const formKey = isEditing ? `customer-edit-${customerToEdit?.id ?? "ready"}` : "customer-new";
