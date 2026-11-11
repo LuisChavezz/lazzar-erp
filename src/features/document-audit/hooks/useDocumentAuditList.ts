@@ -8,6 +8,7 @@ import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import type { BitacoraDocumentoPage } from "../interfaces/document-audit.interface";
 import { getDocumentAuditPage } from "../services/actions";
 import { extractAuditCursor } from "../utils/auditCursor";
+import { retryDocumentAuditQuery } from "../utils/documentAuditErrors";
 
 /**
  * Frescura corta: la bitácora crece con cada cambio de documento, y volver a la
@@ -48,6 +49,7 @@ export const useDocumentAuditList = (
     getNextPageParam: (lastPage) => extractAuditCursor(lastPage.next),
     enabled: enabled && params !== null && companyId !== null,
     staleTime: DOCUMENT_AUDIT_STALE_TIME,
+    retry: retryDocumentAuditQuery,
     placeholderData: keepPreviousData,
   });
 

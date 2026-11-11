@@ -2,6 +2,7 @@ import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getDocumentTimeline } from "../services/actions";
 import { isValidTimelineTarget } from "../schemas/documentAuditFilters.schema";
+import { retryDocumentAuditQuery } from "../utils/documentAuditErrors";
 import { DOCUMENT_AUDIT_QUERY_KEY, DOCUMENT_AUDIT_STALE_TIME } from "./useDocumentAuditList";
 
 /**
@@ -26,6 +27,7 @@ export const useDocumentTimeline = (
         queryFn: ({ signal }) => getDocumentTimeline(tipo, documentoId, signal),
         enabled: enabled && companyId !== null && isValidTimelineTarget(tipo, documentoId),
         staleTime: DOCUMENT_AUDIT_STALE_TIME,
+        retry: retryDocumentAuditQuery,
       },
       // 404: el documento no existe en la empresa activa. No se reintenta.
       { toastId: "document-timeline-refetch-error", isDefinitiveError: isNotFoundError },
