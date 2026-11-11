@@ -24,10 +24,24 @@ import { probeSession } from "./sessionRecovery";
  *
  * Un cambio de empresa del mismo usuario (EC-847) tendrá su propio alcance,
  * junto a este; no se resuelve aquí.
+ *
+ * Nunca lanza: corre justo antes de navegar (cierres de sesión, login) y un
+ * fallo de almacenamiento no debe impedirlo. `persist` de zustand no atrapa
+ * los errores de `localStorage.setItem` (cuota llena, almacenamiento
+ * bloqueado), así que cada paso se intenta por separado y se ignora su fallo:
+ * lo que no se pudo borrar lo vuelve a intentar el siguiente límite de sesión.
  */
 export const clearUserScopedClientState = () => {
-  useWorkspaceStore.getState().clearWorkspace();
-  clearWorkspaceCookie();
+  try {
+    useWorkspaceStore.getState().clearWorkspace();
+  } catch {
+    // Sin poder escribir el store persistido, al menos la cookie.
+  }
+  try {
+    clearWorkspaceCookie();
+  } catch {
+    // `document.cookie` no disponible: nada más que hacer.
+  }
 };
 
 const LOGIN_PATH = "/auth/login";
