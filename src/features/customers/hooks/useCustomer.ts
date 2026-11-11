@@ -5,18 +5,22 @@ import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { Customer, CustomerDetail } from "../interfaces/customer.interface";
 import { getCustomer } from "../services/actions";
+import { findCustomerInListPages } from "../utils/customerList";
 
 /**
  * Detalle de un cliente (`GET /terceros/clientes/{id}/`), que es el ÚNICO
  * endpoint que trae `resumen_comercial`.
  *
- * La fila del listado (`["customers"]`) se usa como `placeholderData` y NO como
+ * La fila del listado se usa como `placeholderData` y NO como
  * `initialData`: el placeholder no se escribe en caché ni cuenta como dato
  * fresco, así que la cabecera se pinta al instante y el GET del detalle corre
  * SIEMPRE. Con `initialData` (o sembrando la caché al navegar) la fila del
  * listado pasaba por respuesta vigente durante los 15 min de `staleTime` y el
  * resumen nunca llegaba. `isPlaceholderData` le dice a la UI que aún está
- * mostrando la fila del listado.
+ * mostrando la fila del listado. La fila se busca en el catálogo completo
+ * (`["customers"]`, `useCustomers`) y, si no está, en las páginas cacheadas de
+ * la tabla de Ventas (`["customers", "list", …]`, `useCustomersTable`), que es
+ * lo único cargado al llegar desde ella. Solo se LEEN.
  *
  * **Un 404 o un 403 es un error DEFINITIVO** (`isDefinitiveError` de
  * `useGuardedQuery`): no se reintenta, no avisa por toast y no conserva lo ya
@@ -51,7 +55,8 @@ export const useCustomer = (customerId: string) => {
         placeholderData: () =>
           queryClient
             .getQueryData<Customer[]>(["customers"])
-            ?.find((item) => String(item.id) === customerKey),
+            ?.find((item) => String(item.id) === customerKey) ??
+          findCustomerInListPages(queryClient, customerKey),
       },
       {
         toastId: "customer-detail-refetch-error",

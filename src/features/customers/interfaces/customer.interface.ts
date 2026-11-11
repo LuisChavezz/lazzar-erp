@@ -54,6 +54,24 @@ export interface Customer {
 }
 
 /**
+ * Fila del LISTADO de clientes (`GET /terceros/clientes/`, con o sin `limit`):
+ * `Customer` más `fecha_ultima_compra` (EC-853), que el backend anota SOLO en
+ * listado y detalle. Alta y edición (`POST`/`PUT`) responden `Customer` sin
+ * ella, así que nunca se arma una fila a partir de la respuesta de un guardado:
+ * las mutaciones invalidan `["customers"]` y la fila se relee.
+ */
+export interface CustomerListItem extends Customer {
+  /**
+   * Día ("YYYY-MM-DD", calendario local del backend) del pedido más reciente
+   * del cliente que es venta real (sin MUESTRA, PEDIDO DE ERROR, BORRADOR, POR
+   * AUTORIZAR ni CANCELADO; la misma regla que Mesa de Control). `null`: el
+   * cliente nunca ha comprado. Al ordenar por ella, los `null` van al final en
+   * ambas direcciones.
+   */
+  fecha_ultima_compra: string | null;
+}
+
+/**
  * Respuesta de `POST /terceros/clientes/`: el cliente más
  * `facturama_sincronizado`, `true` si quedó en el catálogo de clientes de
  * Facturama y `false` si no se subió (la empresa no usa Facturama o al cliente
@@ -146,6 +164,11 @@ export interface ResumenComercial {
  * `placeholderData`, que no lo trae.
  */
 export interface CustomerDetail extends Customer {
+  /**
+   * Viene en el detalle real (EC-853). Opcional porque el placeholder puede ser
+   * una fila de otra lectura; el detalle no la pinta.
+   */
+  fecha_ultima_compra?: string | null;
   resumen_comercial?: ResumenComercial;
 }
 
