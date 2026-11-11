@@ -4,7 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { FiscalAddressSchema, FiscalAddressFormValues } from "../schemas/fiscal-address.schema";
-import { useSatStore } from "../stores/sat.store";
+import { useCompanyFiscalAddress } from "./useCompanyFiscalAddress";
 
 interface UseFiscalAddressFormParams {
   onSuccess: () => void;
@@ -14,8 +14,8 @@ type FiscalAddressFormField = keyof FiscalAddressFormValues;
 type FieldErrorLike = { type: string; message?: string };
 
 export function useFiscalAddressForm({ onSuccess }: UseFiscalAddressFormParams) {
-  // Obtiene datos persistidos de dirección fiscal y su actualizador.
-  const { fiscalAddress, setFiscalAddress } = useSatStore();
+  // Dirección fiscal persistida de la empresa de la sesión y su actualizador (EC-847).
+  const { companyId, fiscalAddress, setFiscalAddress } = useCompanyFiscalAddress();
 
   // Conserva una referencia al formulario para ejecutar scroll superior al limpiar.
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -106,11 +106,15 @@ export function useFiscalAddressForm({ onSuccess }: UseFiscalAddressFormParams) 
       if (!validateForm(value)) {
         return;
       }
+      // Sin empresa confirmada no hay a cuál asignarla (el diálogo no se ofrece).
+      if (companyId === null) {
+        return;
+      }
 
       setIsSubmitting(true);
       try {
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        setFiscalAddress(value);
+        setFiscalAddress(companyId, value);
         onSuccess();
       } finally {
         setIsSubmitting(false);

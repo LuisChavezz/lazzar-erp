@@ -1,6 +1,6 @@
 "use client";
 
-import { useSatStore } from "../stores/sat.store";
+import { useCompanyFiscalAddress } from "../hooks/useCompanyFiscalAddress";
 import { MainDialog } from "@/src/components/MainDialog";
 import FiscalAddressForm from "./FiscalAddressForm";
 import { useState } from "react";
@@ -9,13 +9,15 @@ import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 
 export const FiscalAddressDetails = () => {
-  const { fiscalAddress } = useSatStore();
+  // Una dirección por empresa: la de la empresa de la sesión (EC-847).
+  const { companyId, fiscalAddress } = useCompanyFiscalAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: session } = useSession();
 
   // Alta/edición de la dirección fiscal: `E-CONFIGURACION` del catálogo.
   // `hasPermission` ya cortocircuita para el rol "admin".
-  const canEdit = hasPermission("E-CONFIGURACION", session?.user);
+  // Sin empresa confirmada no hay a cuál asignarla.
+  const canEdit = hasPermission("E-CONFIGURACION", session?.user) && companyId !== null;
 
   return (
     <div className="space-y-6">
