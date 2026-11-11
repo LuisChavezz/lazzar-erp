@@ -1,20 +1,36 @@
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
-import { useSatStore } from "../stores/sat.store";
-import { fiscalAddressForCompany } from "../utils/fiscalAddressStorage";
+import { getFiscalAddress } from "../services/actions";
 
 /**
- * Dirección fiscal de la empresa de la sesión (EC-847): una por empresa.
- * `companyId` es `null` sin empresa confirmada; entonces no hay dirección que
- * mostrar ni que guardar.
+ * Llave del domicilio fiscal. Lleva la empresa: el backend responde siempre el
+ * de la empresa ACTIVA, y el de una no debe servir para otra (un superusuario
+ * que cambia de empresa, EC-847).
+ */
+export const fiscalAddressQueryKey = (companyId: number | null) =>
+  ["fiscal-address", companyId] as const;
+
+/**
+ * Domicilio fiscal de la empresa de la sesión (EC-860), leído del backend.
+ * Apagado sin empresa confirmada (`companyId` `null`): no hay de cuál leerlo.
+ * `fiscalAddress` es `undefined` mientras no ha cargado.
  */
 export const useCompanyFiscalAddress = () => {
   const companyId = useSessionCompanyId();
-  const addressesByCompany = useSatStore((state) => state.addressesByCompany);
-  const setFiscalAddress = useSatStore((state) => state.setFiscalAddress);
+  const { data, isLoading, isInitialError, refetch } = useGuardedQuery(
+    {
+      queryKey: fiscalAddressQueryKey(companyId),
+      queryFn: ({ signal }) => getFiscalAddress(signal),
+      enabled: companyId !== null,
+    },
+    { toastId: "fiscal-address-refetch-error" },
+  );
 
   return {
     companyId,
-    fiscalAddress: fiscalAddressForCompany(addressesByCompany, companyId),
-    setFiscalAddress,
+    fiscalAddress: data,
+    isLoading,
+    isInitialError,
+    refetch,
   };
 };

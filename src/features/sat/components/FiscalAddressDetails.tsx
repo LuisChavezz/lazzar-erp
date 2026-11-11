@@ -1,23 +1,52 @@
 "use client";
 
-import { useCompanyFiscalAddress } from "../hooks/useCompanyFiscalAddress";
-import { MainDialog } from "@/src/components/MainDialog";
-import FiscalAddressForm from "./FiscalAddressForm";
 import { useState } from "react";
-import { MapPinIcon, EditIcon, BuildingIcon } from "@/src/components/Icons";
-import { useSession } from "next-auth/react";
-import { hasPermission } from "@/src/utils/permissions";
+import { useCompanyFiscalAddress } from "../hooks/useCompanyFiscalAddress";
+import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
+import { MainDialog } from "@/src/components/MainDialog";
+import { ErrorState } from "@/src/components/ErrorState";
+import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import FiscalAddressForm from "./FiscalAddressForm";
+import { MapPinIcon, EditIcon, BuildingIcon, RefreshIcon } from "@/src/components/Icons";
+import {
+  DEFAULT_FISCAL_COUNTRY,
+  FiscalAddress,
+} from "../interfaces/fiscal-address.interface";
+
+/** Base del formulario mientras el domicilio no ha cargado (el diálogo no se ofrece). */
+const EMPTY_ADDRESS: FiscalAddress = {
+  calle: "",
+  numero_exterior: "",
+  numero_interior: "",
+  colonia: "",
+  localidad: "",
+  municipio: "",
+  estado: "",
+  pais: DEFAULT_FISCAL_COUNTRY,
+  codigo_postal: "",
+};
+
+/**
+ * ¿Ya se capturó algo? El backend responde siempre los nueve campos; una
+ * empresa sin domicilio los trae vacíos salvo `pais`, que vale `MEX` por omisión.
+ */
+const hasCapturedAddress = (address: FiscalAddress) =>
+  Object.entries(address).some(([field, value]) => field !== "pais" && value.trim() !== "");
+
+const orDash = (value: string) => (value.trim() ? value : <span className="text-slate-400 italic">-</span>);
 
 export const FiscalAddressDetails = () => {
-  // Una dirección por empresa: la de la empresa de la sesión (EC-847).
-  const { companyId, fiscalAddress } = useCompanyFiscalAddress();
+  // Domicilio fiscal de la empresa de la sesión, leído del backend (EC-860).
+  const { companyId, fiscalAddress, isLoading, isInitialError, refetch } = useCompanyFiscalAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { data: session } = useSession();
+  const dialogSession = useDialogSession(isDialogOpen, fiscalAddress ?? EMPTY_ADDRESS);
 
-  // Alta/edición de la dirección fiscal: `E-CONFIGURACION` del catálogo.
-  // `hasPermission` ya cortocircuita para el rol "admin".
-  // Sin empresa confirmada no hay a cuál asignarla.
-  const canEdit = hasPermission("E-CONFIGURACION", session?.user) && companyId !== null;
+  // Misma regla que el backend para escribir: superusuario o admin de empresa.
+  // Mientras no se sabe (`unknown`) no se ofrece editar.
+  const adminStatus = useCompanyAdminStatus();
+  const canEdit = adminStatus === "admin" && companyId !== null && fiscalAddress !== undefined;
+  const hasAddress = fiscalAddress !== undefined && hasCapturedAddress(fiscalAddress);
 
   return (
     <div className="space-y-6">
@@ -30,6 +59,11 @@ export const FiscalAddressDetails = () => {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Esta es la dirección que se utilizará para la emisión de facturas.
           </p>
+          {adminStatus === "not-admin" && (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Solo un administrador de la empresa puede modificarla.
+            </p>
+          )}
         </div>
 
         {canEdit && (
@@ -38,7 +72,7 @@ export const FiscalAddressDetails = () => {
             <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
               <div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-                  {fiscalAddress ? "Editar Dirección Fiscal" : "Registrar Dirección Fiscal"}
+                  {hasAddress ? "Editar Dirección Fiscal" : "Registrar Dirección Fiscal"}
                 </h1>
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
@@ -46,7 +80,7 @@ export const FiscalAddressDetails = () => {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {fiscalAddress ? "Actualización de datos" : "Registro Nuevo"}
+                    {hasAddress ? "Actualización de datos" : "Registro Nuevo"}
                   </p>
                 </div>
               </div>
@@ -60,16 +94,43 @@ export const FiscalAddressDetails = () => {
               className="px-4 py-2 cursor-pointer bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap flex items-center gap-2"
             >
               <EditIcon className="w-4 h-4" />
-              {fiscalAddress ? "Editar Dirección" : "Registrar Dirección"}
+              {hasAddress ? "Editar Dirección" : "Registrar Dirección"}
             </button>
           }
         >
-          <FiscalAddressForm onSuccess={() => setIsDialogOpen(false)} />
+          <FiscalAddressForm
+            key={dialogSession.id}
+            companyId={companyId}
+            address={dialogSession.snapshot}
+            onSuccess={() => setIsDialogOpen(false)}
+          />
         </MainDialog>
         )}
       </div>
 
-      {!fiscalAddress ? (
+      {companyId === null ? (
+        <ErrorState
+          title="Sin empresa activa"
+          message="La dirección fiscal es de la empresa activa; tu sesión todavía no tiene una."
+        />
+      ) : isInitialError ? (
+        <div className="space-y-3">
+          <ErrorState
+            title="No se pudo cargar la dirección fiscal"
+            message="Revisa tu conexión e inténtalo de nuevo."
+          />
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="inline-flex items-center gap-2 px-4 py-2 cursor-pointer rounded-full text-sm font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20"
+          >
+            <RefreshIcon className="w-4 h-4" />
+            Reintentar
+          </button>
+        </div>
+      ) : isLoading || fiscalAddress === undefined ? (
+        <LoadingSkeleton className="h-72" />
+      ) : !hasAddress ? (
         <div className="p-8 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center justify-center text-center">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
             <MapPinIcon className="w-6 h-6 text-slate-400" />
@@ -78,7 +139,9 @@ export const FiscalAddressDetails = () => {
             No hay dirección fiscal registrada
           </h4>
           <p className="text-sm text-slate-500 max-w-sm">
-            Registra una dirección fiscal para habilitar todas las funciones de facturación.
+            {canEdit
+              ? "Registra una dirección fiscal para habilitar todas las funciones de facturación."
+              : "Un administrador de la empresa puede registrarla."}
           </p>
         </div>
       ) : (
@@ -99,16 +162,16 @@ export const FiscalAddressDetails = () => {
                       Calle
                   </label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white wrap-break-word">
-                      {fiscalAddress.calle}
+                      {orDash(fiscalAddress.calle)}
                   </p>
               </div>
-              
+
               <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       Número Exterior
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {fiscalAddress.numero_exterior}
+                      {orDash(fiscalAddress.numero_exterior)}
                   </p>
               </div>
 
@@ -117,7 +180,7 @@ export const FiscalAddressDetails = () => {
                       Número Interior
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {fiscalAddress.numero_interior || <span className="text-slate-400 italic">-</span>}
+                      {orDash(fiscalAddress.numero_interior)}
                   </p>
               </div>
 
@@ -126,7 +189,7 @@ export const FiscalAddressDetails = () => {
                       Colonia
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {fiscalAddress.colonia}
+                      {orDash(fiscalAddress.colonia)}
                   </p>
               </div>
 
@@ -134,9 +197,13 @@ export const FiscalAddressDetails = () => {
                   <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       Código Postal
                   </label>
-                  <div className="ml-1 inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-sm font-medium">
-                    {fiscalAddress.codigo_postal}
-                  </div>
+                  {fiscalAddress.codigo_postal ? (
+                    <div className="ml-1 inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-sm font-medium">
+                      {fiscalAddress.codigo_postal}
+                    </div>
+                  ) : (
+                    <p className="text-base font-medium">{orDash("")}</p>
+                  )}
               </div>
             </div>
           </div>
@@ -157,7 +224,7 @@ export const FiscalAddressDetails = () => {
                       Municipio / Alcaldía
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {fiscalAddress.municipio}
+                      {orDash(fiscalAddress.municipio)}
                   </p>
               </div>
 
@@ -166,7 +233,7 @@ export const FiscalAddressDetails = () => {
                       Estado
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white">
-                      {fiscalAddress.estado}
+                      {orDash(fiscalAddress.estado)}
                   </p>
               </div>
 
@@ -175,8 +242,8 @@ export const FiscalAddressDetails = () => {
                       País
                   </label>
                   <p className="text-base font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                      {fiscalAddress.pais}
-                      {fiscalAddress.pais === "México" && <span className="text-lg">🇲🇽</span>}
+                      {orDash(fiscalAddress.pais)}
+                      {fiscalAddress.pais === DEFAULT_FISCAL_COUNTRY && <span className="text-lg">🇲🇽</span>}
                   </p>
               </div>
 

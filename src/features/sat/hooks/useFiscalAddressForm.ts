@@ -1,154 +1,128 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import toast from "react-hot-toast";
+import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
+import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
+import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { FiscalAddressSchema, FiscalAddressFormValues } from "../schemas/fiscal-address.schema";
-import { useCompanyFiscalAddress } from "./useCompanyFiscalAddress";
+import {
+  FISCAL_ADDRESS_FIELDS,
+  FiscalAddress,
+  FiscalAddressField,
+} from "../interfaces/fiscal-address.interface";
+import { useUpdateFiscalAddress } from "./useUpdateFiscalAddress";
 
 interface UseFiscalAddressFormParams {
+  /** Empresa de la sesión: la llave de caché donde queda lo guardado. */
+  companyId: number | null;
+  /** El domicilio tal como estaba al abrir el diálogo. */
+  address: FiscalAddress;
   onSuccess: () => void;
 }
 
-type FiscalAddressFormField = keyof FiscalAddressFormValues;
-type FieldErrorLike = { type: string; message?: string };
+const SAVE_FALLBACK = "No se pudo guardar la dirección fiscal";
 
-export function useFiscalAddressForm({ onSuccess }: UseFiscalAddressFormParams) {
-  // Dirección fiscal persistida de la empresa de la sesión y su actualizador (EC-847).
-  const { companyId, fiscalAddress, setFiscalAddress } = useCompanyFiscalAddress();
-
-  // Conserva una referencia al formulario para ejecutar scroll superior al limpiar.
+export function useFiscalAddressForm({ companyId, address, onSuccess }: UseFiscalAddressFormParams) {
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Marca de salida del candado (`useFormSubmitLock`): tras guardar, el diálogo
+  // se cierra pero el formulario sigue montado durante la animación.
+  const leavingRef = useRef(false);
 
-  // Controla estado de envío para bloquear acciones y mantener feedback visual.
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Rechazo que no es de un campo: el 403 de quien no es admin o el 400 de un
+  // usuario sin empresa activa (`{"empresa": "..."}`).
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Mantiene errores de validación por campo separados del estado del input.
-  const [errors, setErrors] = useState<Partial<Record<FiscalAddressFormField, string>>>({});
+  const {
+    getError,
+    setServerFieldError,
+    setClientFieldError,
+    clearClientFieldError,
+    clearFieldErrors,
+    replaceClientErrors,
+    clearServerErrors,
+    clearAllErrors,
+  } = useFormFieldErrors<FiscalAddressField>();
 
-  // Define valores base con el mismo estado inicial del formulario original.
-  const defaultValues = useMemo<FiscalAddressFormValues>(
-    () => ({
-      calle: "",
-      numero_exterior: "",
-      numero_interior: "",
-      colonia: "",
-      localidad: "",
-      municipio: "",
-      estado: "",
-      pais: "México",
-      codigo_postal: "",
-    }),
-    []
-  );
+  const { mutateAsync: saveAddress, isPending: isSaving } = useUpdateFiscalAddress(companyId);
 
-  // Resuelve mensaje de error para cada campo según contrato de los componentes visuales.
-  const getError = (field: FiscalAddressFormField): FieldErrorLike | undefined => {
-    const message = errors[field];
-    return message ? { type: "manual", message } : undefined;
-  };
-
-  // Limpia error de un campo al cambiar su valor para mantener experiencia fluida.
-  const clearFieldError = (field: FiscalAddressFormField) => {
-    setErrors((prev) => {
-      if (!(field in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  // Ejecuta validación de campo individual al perder foco.
-  const validateField = (
-    field: FiscalAddressFormField,
-    value: FiscalAddressFormValues[FiscalAddressFormField]
-  ) => {
-    const fieldSchema = FiscalAddressSchema.shape[field];
-    const parsed = fieldSchema.safeParse(value);
-
-    if (parsed.success) {
-      clearFieldError(field);
-      return true;
-    }
-
-    const message = parsed.error.issues[0]?.message ?? "Valor inválido";
-    setErrors((prev) => ({ ...prev, [field]: message }));
-    return false;
-  };
-
-  // Aplica validación completa antes del submit para preservar el flujo de guardado.
-  const validateForm = (values: FiscalAddressFormValues) => {
-    const parsed = FiscalAddressSchema.safeParse(values);
-    if (parsed.success) {
-      setErrors({});
-      return true;
-    }
-
-    const nextErrors: Partial<Record<FiscalAddressFormField, string>> = {};
-    parsed.error.issues.forEach((issue) => {
-      const field = issue.path[0] as FiscalAddressFormField;
-      if (!field || nextErrors[field]) {
-        return;
-      }
-      nextErrors[field] = issue.message;
-    });
-
-    setErrors(nextErrors);
-    return false;
-  };
-
-  // Centraliza submit: valida, simula latencia, persiste en store y dispara éxito.
   const form = useForm({
-    defaultValues: fiscalAddress ?? defaultValues,
+    defaultValues: address satisfies FiscalAddressFormValues,
     onSubmit: async ({ value }) => {
-      if (!validateForm(value)) {
+      clearServerErrors();
+      setFormError(null);
+
+      const parsed = FiscalAddressSchema.safeParse(value);
+      if (!parsed.success) {
+        const nextErrors: Partial<Record<FiscalAddressField, string>> = {};
+        for (const issue of parsed.error.issues) {
+          const field = issue.path[0] as FiscalAddressField;
+          if (field && !nextErrors[field]) nextErrors[field] = issue.message;
+        }
+        replaceClientErrors(nextErrors);
+        scrollToFirstValidationError(formRef.current, Object.keys(nextErrors));
         return;
       }
-      // Sin empresa confirmada no hay a cuál asignarla (el diálogo no se ofrece).
-      if (companyId === null) {
+      replaceClientErrors({});
+
+      try {
+        await saveAddress(parsed.data);
+      } catch (error) {
+        // Cada error de campo va bajo su input (p. ej. los dos mensajes del CP).
+        // Lo que no es de un campo va al banner; si solo hubo errores de campo,
+        // el banner sobra y basta el toast genérico.
+        let hasFieldError = false;
+        const message = handleDrfWriteError(error, SAVE_FALLBACK, FISCAL_ADDRESS_FIELDS, (field, text) => {
+          hasFieldError = true;
+          setServerFieldError(field, text);
+        });
+        if (!hasFieldError || message !== SAVE_FALLBACK) setFormError(message);
+        toast.error(message);
         return;
       }
 
-      setIsSubmitting(true);
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setFiscalAddress(companyId, value);
-        onSuccess();
-      } finally {
-        setIsSubmitting(false);
-      }
+      leavingRef.current = true;
+      clearAllErrors();
+      onSuccess();
     },
   });
 
-  // Sincroniza formulario cuando cambia la dirección fiscal persistida.
-  useEffect(() => {
-    form.reset(fiscalAddress ?? defaultValues);
-  }, [defaultValues, fiscalAddress, form]);
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
 
-  // Restablece valores base, limpia errores y hace scroll superior suave.
+  // Valida un campo al perder el foco; el error del servidor se va al editarlo.
+  const validateField = (field: FiscalAddressField, value: string) => {
+    const parsed = FiscalAddressSchema.shape[field].safeParse(value);
+    if (parsed.success) {
+      clearClientFieldError(field);
+      return true;
+    }
+    setClientFieldError(field, parsed.error.issues[0]?.message ?? "Valor inválido");
+    return false;
+  };
+
+  // Vuelve a los valores con los que se abrió el diálogo.
   const handleReset = () => {
-    form.reset(defaultValues);
-    setErrors({});
+    if (isSubmitLocked()) return;
+    form.reset();
+    clearAllErrors();
+    setFormError(null);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   };
 
-  // Delega submit DOM al submit de TanStack Form.
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
-  };
-
   return {
     form,
     formRef,
-    isSubmitting,
+    isSubmitting: isSaving || isFormSubmitting,
+    formError,
     getError,
-    clearFieldError,
+    // Editar un campo quita sus errores, de cliente y de servidor.
+    clearFieldError: clearFieldErrors,
     validateField,
     handleReset,
     handleFormSubmit,
