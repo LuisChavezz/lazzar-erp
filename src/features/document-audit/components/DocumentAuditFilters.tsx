@@ -21,7 +21,10 @@ import type {
   DocumentAuditFilterKey,
   DocumentAuditFilterValues,
 } from "../constants/documentAuditTable";
-import { MAX_AUDIT_FOLIO_LENGTH } from "../schemas/documentAuditFilters.schema";
+import {
+  MAX_AUDIT_FOLIO_LENGTH,
+  normalizeAuditFolio,
+} from "../schemas/documentAuditFilters.schema";
 
 /** Pausa antes de consultar por folio: es "contiene" contra el servidor. */
 const FOLIO_DEBOUNCE_MS = 400;
@@ -75,9 +78,14 @@ export function DocumentAuditFilters({
   // escritura de `replaceState` un render después, así que inicializar desde la
   // URL al limpiar no basta.
   const [syncedFolio, setSyncedFolio] = useState(filters.folio ?? "");
+  // Solo se pisa el borrador si DICE otra cosa que la URL: uno que solo difiere
+  // en espacios de los extremos ("PED " frente a "PED") es el que el usuario
+  // sigue escribiendo, y recortarlo le borraría el espacio recién tecleado.
   if ((filters.folio ?? "") !== syncedFolio) {
     setSyncedFolio(filters.folio ?? "");
-    if (!isFolioPending) setFolioDraft(filters.folio ?? "");
+    if (!isFolioPending && (normalizeAuditFolio(folioDraft) ?? "") !== (filters.folio ?? "")) {
+      setFolioDraft(filters.folio ?? "");
+    }
   }
   const folioTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,8 +100,8 @@ export function DocumentAuditFilters({
     if (folioTimer.current) clearTimeout(folioTimer.current);
     folioTimer.current = null;
     setIsFolioPending(false);
-    const folio = value.trim();
-    setFilter("folio", folio === "" ? undefined : folio);
+    // Se recorta lo que va a la URL y al backend, nunca el borrador.
+    setFilter("folio", normalizeAuditFolio(value) ?? undefined);
   };
 
   const handleFolioChange = (value: string) => {
