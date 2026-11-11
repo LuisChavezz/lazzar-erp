@@ -1,24 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { BuildingIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import {
-  sessionCompanySyncKey,
-  useSessionCompanySyncStore,
-} from "@/src/features/auth/stores/sessionCompanySync.store";
 import type { Company } from "@/src/features/companies/interfaces/company.interface";
 import { useMyCompanies } from "@/src/features/companies/hooks/useMyCompanies";
 import { useSwitchCompany } from "@/src/features/companies/hooks/useSwitchCompany";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
+import type { SessionCompany } from "../hooks/useSessionCompany";
 import { companyDisplayName, switchableCompanies } from "../utils/switchableCompanies";
+import CompanyCard from "./CompanyCard";
 
 interface CompanySwitcherCardProps {
-  /** Empresa de la sesión; `null` si el superusuario no tiene. */
-  companyId: number | null;
+  /** Empresa de la sesión (`useSessionCompany`); `companyId` `null` si no tiene. */
+  sessionCompany: SessionCompany;
   /** `null` mientras se carga el nombre (o sin empresa). */
   name: string | null;
   rfc?: string | null;
@@ -34,19 +31,15 @@ interface CompanySwitcherCardProps {
  * `mis-empresas/` (para el superusuario: las activas y la actual) sin la actual.
  *
  * El botón espera a que la sincronización de la empresa de esta carga
- * (`SessionCompanySync`) termine bien: una relectura de `/auth/user/` aún en
+ * (`SessionCompanySync`, `sessionCompany.sync`) termine bien: una relectura de `/auth/user/` aún en
  * vuelo podría responder con la empresa anterior y escribirla en la sesión
  * encima del cambio, y es esa sincronización la que asigna la Dirección fiscal
- * anterior a EC-847 a la empresa en la que estaba el usuario.
+ * anterior a EC-847 a la empresa en la que estaba el usuario. Si esa
+ * sincronización falla, la tarjeta lo dice y ofrece reintentarla.
  */
-export default function CompanySwitcherCard({ companyId, name, rfc }: CompanySwitcherCardProps) {
-  const { data: session, status } = useSession();
-  const attempt = useSessionCompanySyncStore((state) => state.attempt);
-  const syncKey = useSessionCompanySyncStore((state) => state.key);
-  const syncStatus = useSessionCompanySyncStore((state) => state.status);
-  const userId = status === "authenticated" ? session?.user?.id : undefined;
-  const syncSettled =
-    !!userId && syncKey === sessionCompanySyncKey(userId, attempt) && syncStatus === "done";
+export default function CompanySwitcherCard({ sessionCompany, name, rfc }: CompanySwitcherCardProps) {
+  const companyId = sessionCompany.companyId;
+  const { sync, retrySync } = sessionCompany;
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -57,37 +50,47 @@ export default function CompanySwitcherCard({ companyId, name, rfc }: CompanySwi
   const { companies, loading, error } = useMyCompanies({ enabled: pickerOpen });
   const options = switchableCompanies(companies, companyId);
   const { switchCompany, isBusy } = useSwitchCompany();
+  // La empresa elegida, copiada al ABRIR la confirmación (CLAUDE.md).
+  const confirmSession = useDialogSession(confirmOpen, target);
+  const confirmTarget = confirmSession.snapshot;
 
   const handleConfirm = () => {
-    if (!target?.id) return;
-    switchCompany(target.id, { onError: () => setConfirmOpen(false) });
+    if (!confirmTarget?.id) return;
+    switchCompany(confirmTarget.id, { onError: () => setConfirmOpen(false) });
   };
 
-  return (
-    <div className="mb-8 flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-zinc-900/70">
-      <div className="rounded-xl bg-sky-50 p-3 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400">
-        <BuildingIcon className="h-7 w-7" aria-hidden="true" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Empresa activa</p>
-        {companyId === null ? (
-          <p className="text-lg font-bold text-slate-500 dark:text-slate-400">Sin empresa activa</p>
-        ) : name ? (
-          <p className="truncate text-lg font-bold text-slate-900 dark:text-white">{name}</p>
-        ) : (
-          <div className="mt-1 h-6 w-48 animate-pulse rounded bg-slate-200 dark:bg-white/10" />
-        )}
-        {rfc && <p className="text-xs text-slate-500 dark:text-slate-400">{rfc}</p>}
-      </div>
-
+  const action =
+    sync === "failed" ? (
+      <Button variant="secondary" onClick={retrySync}>
+        Reintentar
+      </Button>
+    ) : (
       <Button
         variant="secondary"
         onClick={() => setPickerOpen(true)}
-        disabled={!syncSettled || isBusy}
-        title={syncSettled ? undefined : "Confirmando la empresa de tu usuario..."}
+        disabled={sync !== "done" || isBusy}
+        title={sync === "done" ? undefined : "Confirmando la empresa de tu usuario..."}
       >
         {isBusy ? "Cambiando..." : "Cambiar empresa"}
       </Button>
+    );
+
+  return (
+    <>
+      <CompanyCard
+        label="Empresa activa"
+        name={companyId === null ? null : name}
+        emptyName={companyId === null ? "Sin empresa activa" : undefined}
+        rfc={rfc}
+        detail={
+          sync === "failed" && (
+            <p className="text-xs text-rose-600 dark:text-rose-400">
+              No se pudo confirmar la empresa de tu usuario; reinténtalo para poder cambiarla.
+            </p>
+          )
+        }
+        action={action}
+      />
 
       <MainDialog
         open={pickerOpen}
@@ -145,18 +148,19 @@ export default function CompanySwitcherCard({ companyId, name, rfc }: CompanySwi
       </MainDialog>
 
       <ConfirmDialog
+        key={confirmSession.id}
         open={confirmOpen}
         onOpenChange={(open) => {
           if (!isBusy) setConfirmOpen(open);
         }}
         title="¿Cambiar de empresa?"
-        description={`Pasarás a trabajar en ${target ? companyDisplayName(target) : "la empresa elegida"}. Se reinician tu sucursal por defecto y tus sucursales y departamentos asignados, el cambio aplica a todas tus sesiones abiertas y tendrás que elegir sucursal de nuevo.`}
+        description={`Pasarás a trabajar en ${confirmTarget ? companyDisplayName(confirmTarget) : "la empresa elegida"}. Se reinician tu sucursal por defecto y tus sucursales y departamentos asignados, el cambio aplica a todas tus sesiones abiertas y tendrás que elegir sucursal de nuevo.`}
         confirmText={isBusy ? "Cambiando..." : "Cambiar empresa"}
         confirmColor="blue"
         closeOnConfirm={false}
         busy={isBusy}
         onConfirm={handleConfirm}
       />
-    </div>
+    </>
   );
 }
