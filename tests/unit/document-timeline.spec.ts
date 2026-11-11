@@ -6,7 +6,11 @@ import { resolveDocumentAuditTarget } from "@/src/features/document-audit/consta
 import { getTipoDocumentoLabel } from "@/src/features/document-audit/constants/documentAuditValues";
 import type { BitacoraDocumento } from "@/src/features/document-audit/interfaces/document-audit.interface";
 import { getDocumentTimeline } from "@/src/features/document-audit/services/actions";
-import { documentAuditErrorMessage } from "@/src/features/document-audit/utils/documentAuditErrors";
+import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
+import {
+  documentAuditErrorMessage,
+  retryDocumentAuditQuery,
+} from "@/src/features/document-audit/utils/documentAuditErrors";
 import {
   resolveOrderHistoryView,
   type OrderHistoryQuery,
@@ -156,6 +160,21 @@ test.describe("derivados nuevos de linea-tiempo", () => {
     for (const tipo of ["factura_proveedor", "cobro"]) {
       expect(resolveDocumentAuditTarget({ tipo_documento: tipo, documento_id: "5", accion: "crear" }, admin)).toBeNull();
     }
+  });
+});
+
+test.describe("retryDocumentAuditQuery", () => {
+  test("no reintenta un 400 ni una respuesta con otra forma", () => {
+    expect(retryDocumentAuditQuery(0, httpError(400, { usuario: "x" }))).toBe(false);
+    expect(retryDocumentAuditQuery(0, new ZodError([]))).toBe(false);
+  });
+
+  test("401, 403, 404, 408, 429, 5xx y red siguen la política global", () => {
+    for (const status of [401, 403, 404, 408, 429, 500, 503]) {
+      expect(retryDocumentAuditQuery(0, httpError(status, {}))).toBe(true);
+      expect(retryDocumentAuditQuery(DEFAULT_QUERY_RETRY, httpError(status, {}))).toBe(false);
+    }
+    expect(retryDocumentAuditQuery(0, new AxiosError("Network Error"))).toBe(true);
   });
 });
 

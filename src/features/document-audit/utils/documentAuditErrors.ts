@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import { ZodError } from "zod";
+import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstRejection } from "@/src/utils/firstDrfMessage";
 
@@ -21,6 +22,20 @@ const AUDIT_PARAM_LABELS = {
 } as const;
 
 const AUDIT_PARAMS = Object.keys(AUDIT_PARAM_LABELS) as (keyof typeof AUDIT_PARAM_LABELS)[];
+
+/**
+ * `retry` de las consultas de la bitácora (listado y `linea-tiempo`): un 400
+ * por un parámetro inválido y una respuesta con otra forma (`ZodError`) son
+ * deterministas, así que no se reintentan. Solo el 400: no se usa
+ * `retryUnlessClientError` porque su `isClientError` cubre también 401, 403 y
+ * 404, y esos siguen la política global. El resto conserva
+ * `DEFAULT_QUERY_RETRY`.
+ */
+export const retryDocumentAuditQuery = (failureCount: number, error: unknown): boolean => {
+  if (error instanceof ZodError) return false;
+  if (isAxiosError(error) && error.response?.status === 400) return false;
+  return failureCount < DEFAULT_QUERY_RETRY;
+};
 
 /**
  * Mensaje de un error de la bitácora (listado o `linea-tiempo`). Un 400 por un
