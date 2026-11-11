@@ -64,7 +64,14 @@ export const signOutToLogin = async (): Promise<void> => {
   }
 };
 
-const POST_LOGIN_PATH = "/select-branch";
+/**
+ * Destino tras iniciar sesión. Los `signIn("credentials", …)` lo pasan como
+ * `callbackUrl` explícito: sin él, next-auth usa `window.location.href` y lo
+ * guarda en la cookie `next-auth.callback-url`, que conservaría un query con
+ * credenciales si el login se cargó con uno (EC-863). Con `redirect: false`
+ * next-auth no navega; la navegación sigue siendo `enterNewSession`.
+ */
+export const POST_LOGIN_PATH = "/select-branch";
 
 /**
  * Entra a la app con la sesión recién creada: limpia el estado del usuario

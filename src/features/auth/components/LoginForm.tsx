@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircleIcon, EmailIcon, EyeIcon, EyeOffIcon, LockIcon, LoadingSpinnerIcon } from "../../../components/Icons";
+import { useHydrated } from "@/src/hooks/useHydrated";
 import { useLoginForm } from "../hooks/useLoginForm";
 import type { LoginSuccessResponse } from "../interfaces/auth.interface";
 
@@ -19,6 +20,7 @@ export default function LoginForm({
   onDismissBanner,
 }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const isHydrated = useHydrated();
 
   const {
     form,
@@ -33,7 +35,14 @@ export default function LoginForm({
   });
 
   return (
-    <form onSubmit={handleFormSubmit} className="w-full flex flex-col items-center justify-center">
+    /* `method="post"`: si el formulario se envía de forma nativa (antes de
+     * hidratar, sin el `onSubmit`), los campos viajan en el body y nunca en la
+     * URL, donde quedarían en el historial y en los logs (EC-863). */
+    <form
+      method="post"
+      onSubmit={handleFormSubmit}
+      className="w-full flex flex-col items-center justify-center"
+    >
             <h2 className="text-4xl text-slate-900 dark:text-white font-medium transition-colors brand-font">
               Iniciar sesión
             </h2>
@@ -160,9 +169,12 @@ export default function LoginForm({
               </a>
             </div>
 
+            {/* Deshabilitado hasta hidratar (el HTML estático ya lo trae
+                `disabled`): un botón por defecto deshabilitado también bloquea
+                el envío implícito con Enter (EC-863). */}
             <button
               type="submit"
-              disabled={isPending}
+              disabled={!isHydrated || isPending}
               className="mt-8 w-full h-11 rounded-full cursor-pointer text-white bg-sky-500 hover:opacity-90 transition-opacity font-medium shadow-lg shadow-sky-500/30 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isPending ? (

@@ -13,7 +13,7 @@ import { ArrowLeftIcon, LoadingSpinnerIcon, ShieldCheckIcon } from "@/src/compon
 import { Button } from "@/src/components/Button";
 import { useConfirmMfa } from "../hooks/useConfirmMfa";
 import { useMfaLogin } from "../hooks/useMfaLogin";
-import { enterNewSession } from "../utils/clientSessionState";
+import { enterNewSession, POST_LOGIN_PATH } from "../utils/clientSessionState";
 
 const OTP_LENGTH = 6;
 
@@ -64,6 +64,7 @@ export default function MfaOtpVerify({
         setIsCreatingSession(true);
         const result = await signIn("credentials", {
           accessToken: data.access,
+          callbackUrl: POST_LOGIN_PATH,
           redirect: false,
         });
 
