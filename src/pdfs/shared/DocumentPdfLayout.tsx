@@ -37,7 +37,7 @@ import {
 export interface DocumentPdfLayoutProps {
   /** Empresa activa; sin ella el encabezado solo lleva el título. */
   company: PdfCompany | null;
-  document: DocumentPdfDescriptor;
+  descriptor: DocumentPdfDescriptor;
   /** Título del documento ("Orden de compra"). También abre el pie. */
   title: string;
   /** Línea bajo el título (p. ej. el proveedor o el cliente). */
@@ -56,7 +56,7 @@ export interface DocumentPdfLayoutProps {
 
 export function DocumentPdfLayout({
   company,
-  document,
+  descriptor,
   title,
   subtitle,
   date,
@@ -64,9 +64,9 @@ export function DocumentPdfLayout({
   footerDetail,
   children,
 }: DocumentPdfLayoutProps) {
-  const folioLabel = documentPdfFolioLabel(document.folio, document.id);
-  const cancelled = document.cancelled;
-  const cancellationReason = documentPdfCancellationReason(document);
+  const folioLabel = documentPdfFolioLabel(descriptor.folio, descriptor.id);
+  const cancelled = descriptor.cancelled;
+  const cancellationReason = documentPdfCancellationReason(descriptor);
   const banner = cancelled
     ? { title: DOCUMENT_PDF_CANCELLED_MARK, detail: cancellationReason, detailLabel: "Motivo: " }
     : statusBanner

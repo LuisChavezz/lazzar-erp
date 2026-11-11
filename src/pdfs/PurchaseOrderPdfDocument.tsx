@@ -139,7 +139,7 @@ export const PurchaseOrderPdfDocument = ({ order, company }: PurchaseOrderPdfDoc
   return (
     <DocumentPdfLayout
       company={company}
-      document={purchaseOrderPdfDescriptor(order)}
+      descriptor={purchaseOrderPdfDescriptor(order)}
       title="Orden de compra"
       subtitle={order.proveedor_nombre || "-"}
       date={{ label: "Fecha OC", value: formatLocalDate(order.fecha_oc) }}

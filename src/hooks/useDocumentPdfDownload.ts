@@ -20,17 +20,17 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
  *
  * El candado contra el doble clic es la propia mutación (`isPending`).
  */
-export function useDocumentPdfDownload(document: DocumentPdfDescriptor, source: DocumentPdfSource) {
+export function useDocumentPdfDownload(descriptor: DocumentPdfDescriptor, source: DocumentPdfSource) {
   const pdfCompany = usePdfCompany();
 
   const mutation = useMutation({
-    mutationKey: ["document-pdf", document.type, document.id],
+    mutationKey: ["document-pdf", descriptor.type, descriptor.id],
     mutationFn: async () => {
       const company = requirePdfCompany(pdfCompany);
       const file = await source({ company });
       downloadBlob(
         file.blob,
-        documentPdfFileName(file.document.type, file.document.folio, file.document.id),
+        documentPdfFileName(file.descriptor.type, file.descriptor.folio, file.descriptor.id),
       );
     },
     onSuccess: () => {

@@ -18,7 +18,7 @@ export interface DocumentPdfContext {
  */
 export interface DocumentPdfFile {
   blob: Blob;
-  document: DocumentPdfDescriptor;
+  descriptor: DocumentPdfDescriptor;
 }
 
 /**
@@ -46,12 +46,12 @@ export function renderedDocumentPdfSource<Detail>({
 }: {
   fetchDetail: () => Promise<Detail>;
   describe: (detail: Detail) => DocumentPdfDescriptor;
-  render: (detail: Detail, context: DocumentPdfContext & { document: DocumentPdfDescriptor }) => Promise<Blob>;
+  render: (detail: Detail, context: DocumentPdfContext & { descriptor: DocumentPdfDescriptor }) => Promise<Blob>;
 }): DocumentPdfSource {
   return async (context) => {
     const detail = await fetchDetail();
-    const document = describe(detail);
-    const blob = await render(detail, { ...context, document });
-    return { blob, document };
+    const descriptor = describe(detail);
+    const blob = await render(detail, { ...context, descriptor });
+    return { blob, descriptor };
   };
 }
