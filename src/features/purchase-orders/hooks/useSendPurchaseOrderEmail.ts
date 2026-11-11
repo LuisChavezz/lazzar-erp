@@ -10,6 +10,8 @@ import { useSendEmailConfirmation } from "@/src/features/google/hooks/useSendEma
 import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEmailFlow";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
+import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
+import type { PdfCompany } from "@/src/pdfs/shared/documentPdfModel";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
 import { purchaseOrderEmailRenderInputs } from "../utils/purchaseOrderEmailRenderInputs";
 import { getPurchaseOrderEmailBlocker } from "../utils/purchaseOrderEmailBlocker";
@@ -42,7 +44,7 @@ export const preparePurchaseOrderEmailMutationKey = ["purchase-orders", "prepare
 export const sendPurchaseOrderEmailMutationKey = ["purchase-orders", "send-email"] as const;
 
 /**
- * Lee la orden SIEMPRE fresca (`staleTime: 0` fuerza el GET, a diferencia de
+ * Lee la orden SIEMPRE fresca (`staleTime: 0` fuerza el GET, igual que
  * "Descargar PDF") y aplica `getPurchaseOrderEmailBlocker`: las guardas tienen
  * que ver el estatus y los importes REALES, no unos cacheados hasta 15 min.
  * Si el estatus ya no permite enviarla, refresca el listado para que la fila
@@ -123,6 +125,10 @@ export const usePreparePurchaseOrderEmail = () => {
  */
 export const useSendPurchaseOrderEmail = () => {
   const queryClient = useQueryClient();
+  // Empresa activa del encabezado del PDF adjunto (EC-855), la misma que pone
+  // "Descargar PDF".
+  const { name: companyName, rfc: companyRfc } = useSessionCompanyDetails();
+  const company: PdfCompany | null = companyName ? { name: companyName, rfc: companyRfc } : null;
 
   return useMutation<SendEmailResult, unknown, PreparedPurchaseOrderEmail>({
     mutationKey: sendPurchaseOrderEmailMutationKey,
@@ -134,7 +140,7 @@ export const useSendPurchaseOrderEmail = () => {
         PURCHASE_ORDER_EMAIL_STALE_MESSAGE,
       );
 
-      const pdfBlob = await generatePurchaseOrderPdfBlob(order);
+      const pdfBlob = await generatePurchaseOrderPdfBlob(order, company);
       const attachment = await buildGoogleEmailAttachment(
         pdfBlob,
         attachmentName,

@@ -11,7 +11,6 @@ import {
   CloseIcon,
   DeleteIcon,
   ChevronRightIcon,
-  DownloadIcon,
   EditIcon,
   EmailIcon,
   RouteIcon,
@@ -24,7 +23,6 @@ import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
 import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail";
 import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
-import { useDownloadPurchaseOrderPdf } from "../hooks/useDownloadPurchaseOrderPdf";
 import {
   isPurchaseOrderAuthorizedOrComplete,
   isPurchaseOrderCancellable,
@@ -58,8 +56,9 @@ const columnHelper = createColumnHelper<PurchaseOrder>();
  *
  * Confirmar y Eliminar sí se resuelven aquí, con su `ConfirmDialog` y su hook:
  * son mutaciones inmediatas sobre ESTA fila, no un estado que deba sobrevivirle.
- * Descargar PDF no abre nada — es un `mutate(id)` directo. El "en curso" del
- * correo se lee de la `MutationCache` (`usePurchaseOrderEmailStatus`).
+ * El "en curso" del correo se lee de la `MutationCache`
+ * (`usePurchaseOrderEmailStatus`). "Descargar PDF" ya no está aquí: desde
+ * EC-855 vive en el encabezado del detalle (`PurchaseOrderPdfButton`).
  */
 const FolioCell = ({
   order,
@@ -79,7 +78,6 @@ const FolioCell = ({
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
   const { isPreparingEmail, isSendingEmail } = usePurchaseOrderEmailStatus(order.id);
   const isEmailBusy = isPreparingEmail || isSendingEmail;
-  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadPurchaseOrderPdf();
 
   // Cómo se nombra la orden en el disparador, su `aria-label` y el texto de los
   // diálogos de confirmación. `folio` es `null` hasta que la orden se confirma
@@ -110,18 +108,17 @@ const FolioCell = ({
   // antes de eso todavía puede editarse/eliminarse, así que no debe salirle un
   // documento en firme (el hook vuelve a comprobarlo con el estatus real).
   // Cuando la condición no se cumple, la acción se OCULTA por completo (igual
-  // que Editar/Confirmar/Cancelar), no se muestra deshabilitada. "Descargar
-  // PDF", en cambio, está en todos los estatus (ver su item más abajo).
+  // que Editar/Confirmar/Cancelar), no se muestra deshabilitada.
   const isAuthorizedOrBeyond = isPurchaseOrderAuthorizedOrComplete(order.estatus);
 
-  // La visibilidad de importes NO se comprueba aquí, aunque correo/PDF/edición
+  // La visibilidad de importes NO se comprueba aquí, aunque correo/edición
   // la necesiten: la decisión se toma sobre el DETALLE recién consultado, no
   // sobre esta fila del listado. El backend filtra los campos de contabilidad
   // tanto en `list()` como en `retrieve()` (`compras/api/views.py`,
   // `filtrar_campos_contabilidad_orden_compra`), así que la fila también llega
   // sin `gran_total` para quien no tiene permiso; aun así la guarda vive donde
-  // se arma el documento: los hooks de correo/PDF (`canSeeAmounts` tras su
-  // `fetchQuery`) y el wizard de edición (`PurchaseOrderEditStepManager`).
+  // se arma el documento: el hook del correo (`getPurchaseOrderEmailBlocker`
+  // tras su `fetchQuery`) y el wizard de edición (`PurchaseOrderEditStepManager`).
 
   // "Enviar correo" requiere además un correo del proveedor al que enviar.
   const canSendEmail = isAuthorizedOrBeyond && !supplierHasNoEmail;
@@ -159,7 +156,7 @@ const FolioCell = ({
       permission: "E-COMPRAS-OC",
     });
     // "Editar" NO se restringe por importes aquí, por el mismo motivo que
-    // correo/PDF: esto es una fila de listado, sin filtrar. La pérdida de
+    // el correo: esto es una fila de listado, sin filtrar. La pérdida de
     // precios que podría causar un rol sin visibilidad financiera se bloquea
     // dentro del wizard (`PurchaseOrderEditStepManager`), que sí trabaja con el
     // detalle filtrado.
@@ -217,28 +214,12 @@ const FolioCell = ({
       icon: EmailIcon,
       // Prepara el correo y la vista pide confirmación; nada se envía antes.
       onSelect: () => onSendEmail(order.id),
-      // In-flight guard: evita doble envío o solaparse con la descarga.
+      // In-flight guard: evita doble envío.
       // `keepOpenOnSelect` deja el menú abierto para ver "Preparando..."/"Enviando...".
-      disabled: isEmailBusy || isDownloadingPdf,
+      disabled: isEmailBusy,
       keepOpenOnSelect: true,
     });
   }
-
-  // "Descargar PDF" está disponible en TODOS los estatus —sin condición— y no
-  // necesita correo del proveedor (es una acción local: el documento puede
-  // imprimirse o compartirse a mano). Solo la orden CANCELADA se marca dentro
-  // del documento (leyenda, motivo y marca de agua en `PurchaseOrderPdfDocument`)
-  // para que no se confunda con una orden válida; los demás estatus salen sin
-  // marca.
-  menuItems.push({
-    label: isDownloadingPdf ? "Generando PDF..." : "Descargar PDF",
-    icon: DownloadIcon,
-    onSelect: () => downloadPdf(order.id),
-    // In-flight guard: evita doble descarga o solaparse con el envío.
-    // `keepOpenOnSelect` deja el menú abierto para ver el estado "Generando PDF...".
-    disabled: isDownloadingPdf || isEmailBusy,
-    keepOpenOnSelect: true,
-  });
 
   return (
     // `whitespace-nowrap`: punto, folio, chevron y referencia en UNA línea (ver

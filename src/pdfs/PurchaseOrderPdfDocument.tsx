@@ -1,10 +1,8 @@
 /**
- * Documento PDF de una orden de compra.
- * Responsabilidad: estructura visual del documento, solo presentacional.
- * Usa la API de @react-pdf/renderer exclusivamente.
- *
- * Estilos → PurchaseOrderPdfStyles.ts
- * Colores → PurchaseOrderPdfColors.ts
+ * Documento PDF de una orden de compra, sobre la plantilla base
+ * `DocumentPdfLayout` (EC-855): el marco (empresa activa, folio, fecha, marca
+ * de cancelado, pie paginado) es el de todos los documentos; aquí solo va el
+ * cuerpo de la OC.
  *
  * ─── DECISIÓN DE CONTENIDO (Fase 1.4) ────────────────────────────────────────
  * Este documento representa "lo que se ordenó al proveedor": encabezado de la
@@ -16,269 +14,195 @@
  * vivo: mezclar "lo recibido hasta ahora" en el PDF que se envía al proveedor
  * confundiría el propósito del documento (el proveedor necesita saber qué se le
  * pidió, no cuánto lleva entregado la bodega). El avance de recepciones ya se
- * consulta en `PurchaseOrderDetailDialog` para uso interno. Si en el futuro se
- * requiere un documento de "pendiente por surtir", debe ser un documento
- * distinto, no este.
+ * consulta en el detalle para uso interno. Si en el futuro se requiere un
+ * documento de "pendiente por surtir", debe ser un documento distinto, no este.
  *
  * ─── ORDEN CANCELADA ─────────────────────────────────────────────────────────
- * El PDF se descarga en todos los estatus, y SOLO la cancelada se marca: lleva
- * la leyenda "CANCELADA" (banner en la primera página + pie de cada página),
- * su `motivo_cancelacion` y una marca de agua en cada página, para que no se
- * confunda con una orden válida. Los demás estatus se renderizan sin ninguna
- * marca. El correo al proveedor solo sale en 3/4/5 (`usePreparePurchaseOrderEmail`),
- * así que su adjunto nunca lleva la leyenda.
+ * El PDF se descarga en todos los estatus, y SOLO la cancelada se marca (banner
+ * con su `motivo_cancelacion`, marca de agua y leyenda en el pie de cada
+ * página, todo de la plantilla). El correo al proveedor solo sale en 3/4/5
+ * (`usePreparePurchaseOrderEmail`), así que su adjunto nunca lleva la marca.
+ *
+ * ─── IMPORTES OCULTOS ────────────────────────────────────────────────────────
+ * El backend ELIMINA los campos financieros de la respuesta según el rol de
+ * quien consulta, y este documento se genera con esa respuesta. Lo que no
+ * viene no se pinta: las columnas Precio/Descuento/Importe se omiten si ningún
+ * renglón las trae y cada renglón de totales sin su clave desaparece. Nada se
+ * recalcula.
  */
-import { Document, Page, Text, View } from "@react-pdf/renderer";
-import { isPurchaseOrderCancelled } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
-import type { PurchaseOrderDetail } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
+import { View } from "@react-pdf/renderer";
+import type { PurchaseOrderDetail, PurchaseOrderDetalle } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 import {
   hasVariantSku,
   variantAttributesCaption,
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
-import { formatMoneyValueOrDash, safeParseAmount } from "@/src/utils/formatCurrency";
-import { formatLocalDate } from "@/src/utils/formatDate";
-import { purchaseOrderPdfStyles as s } from "./PurchaseOrderPdfStyles";
 import { purchaseOrderDeliveryRows } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
-
-/**
- * Texto FIJO de la leyenda/marca de agua de una orden cancelada. Decidido por
- * negocio y deliberadamente independiente de la etiqueta de
- * `PURCHASE_ORDER_ESTATUS_CFG` ("Cancelada").
- */
-const CANCELLED_MARK = "CANCELADA";
+import { formatIvaPercent } from "@/src/features/purchase-orders/utils/purchaseOrderFinance";
+import { purchaseOrderPdfDescriptor } from "@/src/features/purchase-orders/utils/purchaseOrderPdfDescriptor";
+import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatLocalDate } from "@/src/utils/formatDate";
+import {
+  DocumentPdfLayout,
+  PdfCardRow,
+  PdfCellCaption,
+  PdfCellText,
+  PdfInfoCard,
+  PdfLineItemsTable,
+  PdfNotes,
+  PdfTotals,
+  type PdfColumn,
+} from "./shared/DocumentPdfLayout";
+import type { PdfCompany } from "./shared/documentPdfModel";
 
 type PurchaseOrderPdfDocumentProps = {
   order: PurchaseOrderDetail;
+  company: PdfCompany | null;
 };
 
-export const PurchaseOrderPdfDocument = ({ order }: PurchaseOrderPdfDocumentProps) => {
+export const PurchaseOrderPdfDocument = ({ order, company }: PurchaseOrderPdfDocumentProps) => {
   const detalles = order.detalles ?? [];
-  // Columna SKU solo si algún renglón se compró por SKU (PT, EC-657).
-  const showSku = hasVariantSku(detalles);
-  // `folio` es `null` hasta que la orden se confirma; mismo respaldo que el
-  // correo (`PurchaseOrderEmail`).
-  const folioLabel = order.folio ?? `#${order.id}`;
-  const statusMark = isPurchaseOrderCancelled(order.estatus) ? CANCELLED_MARK : null;
-  const motivoCancelacion = statusMark ? order.motivo_cancelacion?.trim() || null : null;
-  // Importes en la MONEDA DE LA ORDEN, y "—" cuando el campo viene ausente:
-  // el backend elimina los financieros de la respuesta según el rol de quien
-  // consultó la orden, y este documento se genera a partir de esa respuesta.
-  const money = (value: string | number | null | undefined) =>
-    formatMoneyValueOrDash(value, order.moneda_codigo);
-  const descuento = safeParseAmount(order.descuento);
-  const flete = safeParseAmount(order.flete);
-  const seguros = safeParseAmount(order.seguros);
-  const ivaPct = safeParseAmount(order.porcentaje_iva);
+  // Importes en la MONEDA DE LA ORDEN; solo se llama con un valor presente.
+  const money = (value: string) => formatMoneyValue(value, order.moneda_codigo);
+  // `undefined` = la clave no vino (rol sin importes): el renglón se omite.
+  const moneyIfPresent = (value: string | undefined) =>
+    value === undefined ? undefined : money(value);
+  // Descuento, flete y seguros solo aparecen cuando son mayores a cero.
+  const moneyIfPositive = (value: string | undefined) =>
+    value !== undefined && safeParseAmount(value) > 0 ? money(value) : undefined;
   const entrega = purchaseOrderDeliveryRows(order);
 
+  const columns: PdfColumn<PurchaseOrderDetalle>[] = [
+    // Columna SKU solo si algún renglón se compró por SKU (PT, EC-657).
+    ...(hasVariantSku(detalles)
+      ? [
+          {
+            id: "sku",
+            header: "SKU",
+            flex: 2,
+            cell: (item: PurchaseOrderDetalle) => item.producto_variante_sku ?? "-",
+          },
+        ]
+      : []),
+    {
+      id: "descripcion",
+      header: "Descripción",
+      flex: 4,
+      cell: (item) => {
+        // "Color · Talla" bajo la descripción de un renglón con variante (EC-684).
+        const atributos = variantAttributesCaption(
+          item.descripcion,
+          item.producto_variante_color,
+          item.producto_variante_talla,
+        );
+        return (
+          <View>
+            <PdfCellText bold>{item.descripcion}</PdfCellText>
+            {atributos ? <PdfCellCaption>{atributos}</PdfCellCaption> : null}
+          </View>
+        );
+      },
+    },
+    {
+      id: "cantidad",
+      header: "Cantidad",
+      flex: 1.2,
+      align: "right",
+      cell: (item) => item.cantidad.toLocaleString("es-MX"),
+    },
+    {
+      id: "precio",
+      header: "Precio u.",
+      flex: 1.5,
+      align: "right",
+      field: "precio",
+      cell: (item) => moneyIfPresent(item.precio) ?? "",
+    },
+    {
+      id: "descuento",
+      header: "Descuento",
+      flex: 1.5,
+      align: "right",
+      field: "descuento",
+      cell: (item) => moneyIfPresent(item.descuento) ?? "",
+    },
+    {
+      id: "importe",
+      header: "Importe",
+      flex: 1.5,
+      align: "right",
+      bold: true,
+      field: "importe",
+      cell: (item) => moneyIfPresent(item.importe) ?? "",
+    },
+  ];
+
   return (
-    <Document>
-      <Page size="A4" style={s.page}>
-        {/* ── Encabezado ── */}
-        <View style={s.header} wrap={false}>
-          <View style={s.headerLeft}>
-            <Text style={s.brandLabel}>ERP LAZZAR</Text>
-            <Text style={s.docTitle}>Orden de compra</Text>
-            <Text style={s.docSubtitle}>{order.proveedor_nombre || "-"}</Text>
-          </View>
-          <View style={s.headerRight}>
-            <View style={s.folioBadge}>
-              <Text style={s.folioText}>{folioLabel}</Text>
-            </View>
-          </View>
-        </View>
+    <DocumentPdfLayout
+      company={company}
+      document={purchaseOrderPdfDescriptor(order)}
+      title="Orden de compra"
+      subtitle={order.proveedor_nombre || "-"}
+      date={{ label: "Fecha OC", value: formatLocalDate(order.fecha_oc) }}
+      footerDetail={order.proveedor_nombre || "-"}
+    >
+      <PdfCardRow>
+        <PdfInfoCard
+          title="DATOS DEL PROVEEDOR"
+          items={[
+            { label: "Proveedor", value: order.proveedor_nombre || "-" },
+            { label: "Correo", value: order.proveedor_correo || "-" },
+          ]}
+        />
+        <PdfInfoCard
+          title="DATOS DE LA ORDEN"
+          items={[
+            { label: "Referencia", value: order.referencia || "-" },
+            { label: "Tipo", value: order.tipo || "-" },
+            { label: "Entrega estimada", value: formatLocalDate(order.fecha_entrega_estimada) },
+          ]}
+        />
+      </PdfCardRow>
 
-        {/* ── Leyenda de orden cancelada ── */}
-        {statusMark ? (
-          <View style={s.statusBanner} wrap={false}>
-            <Text style={s.statusBannerTitle}>{statusMark}</Text>
-            {motivoCancelacion ? (
-              <Text style={s.statusBannerReason}>
-                <Text style={s.statusBannerReasonLabel}>Motivo: </Text>
-                {motivoCancelacion}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+      {/* Entrega (EC-796): a dónde envía el proveedor. La dirección es la de la
+          sucursal de la orden; sin capturar se dice explícitamente. */}
+      <PdfCardRow>
+        <PdfInfoCard
+          title="DIRECCIÓN DE ENTREGA"
+          items={[
+            { label: "Almacén destino", value: entrega.almacen },
+            { label: "Dirección", value: entrega.direccion },
+            { label: "Teléfono", value: entrega.telefono },
+          ]}
+        />
+      </PdfCardRow>
 
-        {/* ── Info general ── */}
-        <View style={s.twoCol} wrap={false}>
-          {/* Proveedor */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>DATOS DEL PROVEEDOR</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Proveedor</Text>
-              <Text style={s.infoValue}>{order.proveedor_nombre || "-"}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Correo</Text>
-              <Text style={s.infoValue}>{order.proveedor_correo || "-"}</Text>
-            </View>
-          </View>
+      <PdfLineItemsTable
+        title="PRODUCTOS SOLICITADOS"
+        rows={detalles}
+        columns={columns}
+        emptyMessage="Esta orden no tiene productos registrados."
+      />
 
-          {/* Orden */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>DATOS DE LA ORDEN</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Fecha OC</Text>
-              <Text style={s.infoValue}>{formatLocalDate(order.fecha_oc)}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Referencia</Text>
-              <Text style={s.infoValue}>{order.referencia || "-"}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Tipo</Text>
-              <Text style={s.infoValue}>{order.tipo || "-"}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Entrega estimada</Text>
-              <Text style={s.infoValue}>{formatLocalDate(order.fecha_entrega_estimada)}</Text>
-            </View>
-          </View>
-        </View>
+      <PdfTotals
+        rows={[
+          // `total_piezas` NO es un campo financiero: llega siempre.
+          { label: "Piezas totales", value: order.total_piezas?.toLocaleString("es-MX") ?? "0" },
+          { label: "Subtotal", value: moneyIfPresent(order.subtotal) },
+          { label: "Descuento", value: moneyIfPositive(order.descuento) },
+          { label: "Flete", value: moneyIfPositive(order.flete) },
+          { label: "Seguros", value: moneyIfPositive(order.seguros) },
+          {
+            label:
+              order.porcentaje_iva === undefined
+                ? "IVA"
+                : `IVA (${formatIvaPercent(order.porcentaje_iva)}%)`,
+            value: moneyIfPresent(order.total_iva),
+          },
+          { label: "TOTAL", value: moneyIfPresent(order.gran_total), emphasis: true },
+        ]}
+      />
 
-        {/* ── Entrega (EC-796): a dónde envía el proveedor ──
-            La dirección es la de la sucursal de la orden; sin capturar se dice
-            explícitamente, en vez de un guion que pasaría por dato vacío. Una
-            fila (`twoCol`) para que la tarjeta crezca a lo ancho, no a lo alto. */}
-        <View style={s.twoCol} wrap={false}>
-          <View style={s.card}>
-            <Text style={s.cardTitle}>DIRECCIÓN DE ENTREGA</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Almacén destino</Text>
-              <Text style={s.infoValue}>{entrega.almacen}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Dirección</Text>
-              <Text style={s.infoValue}>{entrega.direccion}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Teléfono</Text>
-              <Text style={s.infoValue}>{entrega.telefono}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Tabla de productos ── */}
-        <Text style={s.sectionTitle}>PRODUCTOS SOLICITADOS</Text>
-        <View>
-          {/* Encabezado de la tabla — se repite en cada página */}
-          <View style={s.tableHeader} fixed>
-            {showSku && <Text style={[s.tableHeaderCell, s.colSku]}>SKU</Text>}
-            <Text style={[s.tableHeaderCell, s.colDescription]}>Descripción</Text>
-            <Text style={[s.tableHeaderCell, s.colQty]}>Cantidad</Text>
-            <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
-            <Text style={[s.tableHeaderCell, s.colDiscount]}>Descuento</Text>
-            <Text style={[s.tableHeaderCell, s.colAmount]}>Importe</Text>
-          </View>
-
-          {detalles.length === 0 ? (
-            <View style={s.emptyRow}>
-              <Text style={s.emptyText}>Esta orden no tiene productos registrados.</Text>
-            </View>
-          ) : (
-            detalles.map((item, i) => {
-              const atributos = variantAttributesCaption(
-                item.descripcion,
-                item.producto_variante_color,
-                item.producto_variante_talla,
-              );
-              return (
-                <View
-                  key={i}
-                  style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]}
-                  wrap={false}
-                >
-                  {showSku && (
-                    <Text style={[s.tableCell, s.colSku]}>{item.producto_variante_sku ?? "-"}</Text>
-                  )}
-                  <View style={s.colDescription}>
-                    <Text style={s.tableCellBold}>{item.descripcion}</Text>
-                    {atributos && <Text style={s.variantAttributes}>{atributos}</Text>}
-                  </View>
-                  <Text style={[s.tableCell, s.colQty]}>
-                    {item.cantidad.toLocaleString("es-MX")}
-                  </Text>
-                  <Text style={[s.tableCell, s.colPrice]}>{money(item.precio)}</Text>
-                  <Text style={[s.tableCell, s.colDiscount]}>{money(item.descuento)}</Text>
-                  <Text style={[s.tableCellBold, s.colAmount]}>{money(item.importe)}</Text>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        {/* ── Totales ── */}
-        <View style={s.totalsSection} wrap={false}>
-          <View style={s.totalsCard}>
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Piezas totales</Text>
-              <Text style={s.totalsValue}>{order.total_piezas?.toLocaleString("es-MX") ?? "0"}</Text>
-            </View>
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Subtotal</Text>
-              <Text style={s.totalsValue}>{money(order.subtotal)}</Text>
-            </View>
-            {descuento > 0 && (
-              <View style={s.totalsRow}>
-                <Text style={s.totalsLabel}>Descuento</Text>
-                <Text style={s.totalsValue}>{money(order.descuento)}</Text>
-              </View>
-            )}
-            {flete > 0 && (
-              <View style={s.totalsRow}>
-                <Text style={s.totalsLabel}>Flete</Text>
-                <Text style={s.totalsValue}>{money(order.flete)}</Text>
-              </View>
-            )}
-            {seguros > 0 && (
-              <View style={s.totalsRow}>
-                <Text style={s.totalsLabel}>Seguros</Text>
-                <Text style={s.totalsValue}>{money(order.seguros)}</Text>
-              </View>
-            )}
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>IVA ({ivaPct}%)</Text>
-              <Text style={s.totalsValue}>{money(order.total_iva)}</Text>
-            </View>
-            <View style={s.totalsRowFinal}>
-              <Text style={s.totalsFinalLabel}>TOTAL</Text>
-              <Text style={s.totalsFinalValue}>{money(order.gran_total)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Observaciones ── */}
-        {order.observaciones?.trim() ? (
-          <View style={s.obsCard} wrap={false}>
-            <Text style={s.cardTitle}>OBSERVACIONES</Text>
-            <Text style={s.obsText}>{order.observaciones}</Text>
-          </View>
-        ) : null}
-
-        {/* ── Marca de agua (orden cancelada) — al final para quedar encima ── */}
-        {statusMark ? (
-          <View style={s.watermarkLayer} fixed>
-            <Text style={s.watermarkText}>{statusMark}</Text>
-          </View>
-        ) : null}
-
-        {/* ── Pie de página ── */}
-        {/* El texto izquierdo se encoge (y parte en líneas) para que un nombre
-            de proveedor largo —más la leyenda, si es cancelada— no se encime
-            con la paginación. */}
-        <View style={s.footer} fixed>
-          <Text style={[s.footerText, s.footerTextShrink]}>
-            Orden de compra {folioLabel} — {order.proveedor_nombre || "-"}
-            {statusMark ? <Text style={s.footerStatus}> · {statusMark}</Text> : null}
-          </Text>
-          <Text
-            style={[s.footerText, s.footerPageNumberFixed]}
-            render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
-          />
-        </View>
-      </Page>
-    </Document>
+      <PdfNotes text={order.observaciones} />
+    </DocumentPdfLayout>
   );
 };

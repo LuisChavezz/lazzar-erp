@@ -28,6 +28,7 @@ import { canSeeAmounts, formatIvaPercent } from "../utils/purchaseOrderFinance";
 import { SkuCode } from "@/src/components/SkuCode";
 import { hasLineCode } from "@/src/utils/sku";
 import { VariantAttributesCaption } from "./VariantAttributesCaption";
+import { PurchaseOrderPdfButton } from "./PurchaseOrderPdfButton";
 import type {
   DocumentoLigado,
   PurchaseOrderDetalle,
@@ -345,6 +346,8 @@ export function PurchaseOrderDetailDialog({
     : "Cargando…";
 
   const showAmounts = purchaseOrder ? canSeeAmounts(purchaseOrder) : false;
+  const pdfAction =
+    purchaseOrder && !isError ? <PurchaseOrderPdfButton order={purchaseOrder} compact /> : null;
   const money = (value: string | undefined) =>
     // Solo se invoca dentro del bloque con `purchaseOrder` ya resuelto.
     formatMoneyValueOrDash(value, purchaseOrder?.moneda_codigo ?? null);
@@ -356,8 +359,12 @@ export function PurchaseOrderDetailDialog({
         onOpenChange={onOpenChange}
         maxWidth="760px"
         showCloseButton={true}
+        // "Descargar PDF" en el encabezado (EC-855), una vez cargada la orden.
+        headerAction={pdfAction}
         title={
-          <div className="flex items-center gap-2.5 pr-8">
+          // Sin acción, el título deja libre la X de cierre por sí mismo; con
+          // ella, el encabezado de `MainDialog` ya reserva ese espacio.
+          <div className={`flex items-center gap-2.5 ${pdfAction ? "" : "pr-8"}`}>
             <ComprasIcon className="w-5 h-5 text-sky-500 shrink-0" />
             <div>
               <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
