@@ -28,6 +28,8 @@ interface SendEmailConfirmDialogProps {
   attachmentName: string;
   noRecipientMessage: string;
   onConfirm: () => void;
+  /** Deshabilita "Enviar" (p. ej. mientras se cargan datos del adjunto). */
+  confirmDisabled?: boolean;
 }
 
 export function SendEmailConfirmDialog({
@@ -39,6 +41,7 @@ export function SendEmailConfirmDialog({
   attachmentName,
   noRecipientMessage,
   onConfirm,
+  confirmDisabled = false,
 }: SendEmailConfirmDialogProps) {
   const hasRecipients = recipients.length > 0;
 
@@ -58,7 +61,7 @@ export function SendEmailConfirmDialog({
         <Button
           variant="primary"
           // Cerrado (animación de salida): un segundo clic no confirma otra vez.
-          disabled={!hasRecipients || !open}
+          disabled={!hasRecipients || !open || confirmDisabled}
           onClick={() => {
             onOpenChange(false);
             onConfirm();

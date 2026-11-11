@@ -71,7 +71,7 @@ const FolioCell = ({
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
-  const { onSendEmail } = usePurchaseOrderRowActionsContext();
+  const { onSendEmail, emailPendingCompany } = usePurchaseOrderRowActionsContext();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
@@ -214,9 +214,10 @@ const FolioCell = ({
       icon: EmailIcon,
       // Prepara el correo y la vista pide confirmación; nada se envía antes.
       onSelect: () => onSendEmail(order.id),
-      // In-flight guard: evita doble envío.
+      // In-flight guard: evita doble envío. También espera a la empresa del
+      // encabezado del PDF adjunto (`usePdfCompany`).
       // `keepOpenOnSelect` deja el menú abierto para ver "Preparando..."/"Enviando...".
-      disabled: isEmailBusy,
+      disabled: isEmailBusy || emailPendingCompany,
       keepOpenOnSelect: true,
     });
   }

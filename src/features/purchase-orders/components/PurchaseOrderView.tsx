@@ -21,6 +21,7 @@ import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDial
 import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailConfirmDialog";
 import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
 import { PurchaseOrderRowActionsProvider } from "../hooks/purchaseOrderRowActionsContext";
+import { usePdfCompany } from "@/src/hooks/usePdfCompany";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
@@ -91,7 +92,8 @@ export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewPr
   // nada se envía hasta confirmar. Mismo flujo que facturas y cotizaciones.
   // `request` llega al menú de cada fila por contexto (ver el Provider abajo).
   const email = usePurchaseOrderEmailConfirmation();
-  const rowActions = { onSendEmail: email.request };
+  const { pending: emailPendingCompany } = usePdfCompany();
+  const rowActions = { onSendEmail: email.request, emailPendingCompany };
 
   // Callbacks inline (solo setters, estables): la factoría no se recalcula.
   const columns = getColumns(
