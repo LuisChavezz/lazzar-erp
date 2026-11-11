@@ -23,6 +23,7 @@ import {
   productionOrderPriorityFallback,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
+import { opPedidoRefs, pedidoRefLabel } from "../utils/opPedidos";
 
 const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
@@ -80,10 +81,14 @@ export function getProductionOrderColumns(
   onViewDetails: (id: number) => void,
   onOpenCriticalPath: (row: ProductionOrderListItem) => void,
 ): ColumnDef<ProductionOrderListItem, unknown>[] {
-  // El listado solo trae el PK del pedido: el folio sale de `pedido_folio`
-  // cuando el backend lo mande; mientras, `Pedido #id` (ya enlaza al 360°).
-  const pedidoFolioOf = (row: ProductionOrderListItem) =>
-    row.pedido == null ? '' : row.pedido_folio || `Pedido #${row.pedido}`;
+  // Una OP puede cubrir varios pedidos (`pedidos`, principal primero). Sin ese
+  // campo queda el pedido único de siempre: el folio sale de `pedido_folio` y,
+  // sin folio, `Pedido #id` (ya enlaza al 360°).
+  const pedidoFolioOf = (row: ProductionOrderListItem) => {
+    const refs = opPedidoRefs(row.pedidos, row.pedido);
+    if (refs) return refs.map(pedidoRefLabel).join(', ');
+    return row.pedido == null ? '' : row.pedido_folio || `Pedido #${row.pedido}`;
+  };
 
   return [
     // Folio OP: es el menú de acciones de la fila (con ">") y lleva el estatus
@@ -100,12 +105,30 @@ export function getProductionOrderColumns(
       ),
     }),
 
-    // Pedido ligado: enlace al detalle 360° sin abrir la OP.
+    // Pedidos ligados: enlace al detalle 360° de cada uno sin abrir la OP. El
+    // valor de la columna (búsqueda y orden) es la lista de folios.
     columnHelper.accessor((row) => pedidoFolioOf(row), {
       id: 'pedido',
       header: 'Pedido',
-      size: 140,
+      size: 160,
       cell: ({ row, getValue }) => {
+        const refs = opPedidoRefs(row.original.pedidos, row.original.pedido);
+        if (refs) {
+          return (
+            <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+              {refs.map((ref) => (
+                <PedidoFolioLink
+                  key={ref.id}
+                  pedidoId={ref.id}
+                  folio={pedidoRefLabel(ref)}
+                  from="production-orders"
+                  tone="accent"
+                  className={PEDIDO_LINK_VISIBLE_CLASS}
+                />
+              ))}
+            </span>
+          );
+        }
         const pedidoId = row.original.pedido;
         if (pedidoId == null) {
           return <span className="text-xs text-slate-400 dark:text-slate-500">Sin pedido</span>;

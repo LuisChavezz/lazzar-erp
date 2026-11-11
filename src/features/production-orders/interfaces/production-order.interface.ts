@@ -50,6 +50,16 @@ export interface ProductionOrderConsumo {
   detalles: ProductionOrderConsumoDetalle[];
 }
 
+/**
+ * Un pedido de los que cubre la OP (`pedidos` del listado y del detalle). Una
+ * OP puede cubrir varios pedidos; `pedido` sigue siendo el principal, que el
+ * backend pone primero. `folio` es `null` si el pedido aún no tiene folio.
+ */
+export interface ProductionOrderPedidoRef {
+  id: number;
+  folio: string | null;
+}
+
 export interface ProductionOrderOnboarding {
   op_id: number;
   folio_op: string;
@@ -85,6 +95,8 @@ export interface ProductionOrderOnboarding {
    * asumir presente sin comprobarlo. `null` cuando la orden no tiene pedido.
    */
   pedido_vinculado?: { id: number; folio: string } | null;
+  /** Todos los pedidos que cubre la OP, principal primero (EC-865). */
+  pedidos?: ProductionOrderPedidoRef[];
   op_info: string;
   productos: ProductionOrderOnboardingProducto[];
   /** Consumos de material registrados contra la orden. Vacío si aún no hay ninguno. */
@@ -209,6 +221,8 @@ export interface ProductionOrderListItem {
   pedido: number | null;
   /** Folio del pedido; `null` sin pedido. */
   pedido_folio?: string | null;
+  /** Todos los pedidos que cubre la OP, principal primero (EC-865). */
+  pedidos?: ProductionOrderPedidoRef[];
   sucursal: number;
   /**
    * Campos de la vista principal. Opcionales: pedidos al backend; sin ellos su

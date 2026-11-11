@@ -16,6 +16,7 @@ import type {
   ProductionOrderOnboardingProducto,
   ProductionOrderOnboardingTalla,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
+import { opPedidoRefs, pedidoRefLabel } from "@/src/features/production-orders/utils/opPedidos";
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
@@ -162,6 +163,7 @@ export function ProductionOrderDetailDialog({
   onOpenChange,
 }: ProductionOrderDetailDialogProps) {
   const { data, isLoading, isError, error } = useProductionOrderOnboarding(opId);
+  const pedidoRefs = opPedidoRefs(data?.pedidos, data?.pedido);
 
   return (
     <MainDialog
@@ -234,11 +236,16 @@ export function ProductionOrderDetailDialog({
                 defaultConfig={productionOrderPriorityFallback(data.prioridad)}
               />
             </InfoField>
-            {/* Pedido opcional: "—" cuando la orden no tiene. Texto y no enlace:
-                este diálogo se abre desde el propio detalle del pedido. */}
-            <InfoField label="Pedido">
+            {/* Pedido opcional: "—" cuando la orden no tiene. Todos los pedidos
+                de la OP, principal primero; sin `pedidos`, el único de siempre.
+                Texto y no enlace: este diálogo se abre desde el propio detalle
+                del pedido, y un enlace a otro pedido cambiaría la página debajo
+                del diálogo abierto. */}
+            <InfoField label={(pedidoRefs?.length ?? 0) > 1 ? "Pedidos" : "Pedido"}>
               <span className="font-mono">
-                {textOrDash(data.pedido_vinculado?.folio ?? data.pedido_folio)}
+                {pedidoRefs
+                  ? pedidoRefs.map(pedidoRefLabel).join(", ")
+                  : textOrDash(data.pedido_vinculado?.folio ?? data.pedido_folio)}
               </span>
             </InfoField>
             <InfoField label="Fecha inicio">{formatLocalDate(data.fecha_inicio)}</InfoField>
