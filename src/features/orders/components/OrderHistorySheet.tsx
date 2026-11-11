@@ -14,7 +14,7 @@ import {
   formatAuditUser,
   formatStatusChange,
 } from "@/src/features/document-audit/utils/documentAuditFormat";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { documentAuditErrorMessage } from "@/src/features/document-audit/utils/documentAuditErrors";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { OrderBadge, SheetSection } from "./OrderSheetPrimitives";
@@ -66,7 +66,7 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
     content = (
       <ErrorDisplay
         title="Error al cargar el historial"
-        message={extractErrorMessage(history.error, "No se pudo cargar el historial del pedido.")}
+        message={documentAuditErrorMessage(history.error, "No se pudo cargar el historial del pedido.")}
         onRetry={() => void history.refetch()}
       />
     );

@@ -8,7 +8,7 @@ import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBran
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { documentAuditErrorMessage } from "../utils/documentAuditErrors";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
 import { DOCUMENT_AUDIT_PERMISSION } from "../constants/documentAuditValues";
 import { resolveDocumentAuditTarget } from "../constants/documentAuditOpeners";
@@ -87,7 +87,7 @@ export function DocumentAuditView() {
           getCurrencyCode={(monedaId) => findCurrency(currencies, monedaId)?.codigo_iso ?? null}
           isLoading={list.isLoading}
           isError={list.isInitialError}
-          errorMessage={extractErrorMessage(list.error, "No se pudo cargar la bitácora.")}
+          errorMessage={documentAuditErrorMessage(list.error, "No se pudo cargar la bitácora.")}
           onRetry={() => void list.refetch()}
           isTransitioning={list.isTransitioning}
           hasActiveFilters={hasActiveFilters}
