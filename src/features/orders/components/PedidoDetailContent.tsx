@@ -266,15 +266,18 @@ export function PedidoDetailContent({
   const router = useRouter();
   const queryClient = useQueryClient();
   const companyId = useSessionCompanyId();
-  // Permiso de la bitácora (hoja "Historial"). Mientras la sesión carga no se
-  // sabe: un `?sheet=history` se respeta y la hoja espera, en vez de pintar
-  // "Pedido" y saltar a "Historial" cuando llegue la sesión. Ya resuelta, sin
-  // permiso la hoja no existe.
+  // Permiso de la bitácora (hoja "Historial"). Sin él la hoja no existe:
+  // el selector no la ofrece y `?sheet=history` cae en "Pedido".
   const isSessionPending = sessionStatus === "loading" || recoveryPhase === "recovering";
   const canSeeHistory = meetsPermissionRequirement(DOCUMENT_AUDIT_PERMISSION, session?.user);
-  const sheet = resolveOrderDetailSheet(rawSheet, {
-    canSeeHistory: canSeeHistory || isSessionPending,
-  });
+  // `?sheet=history` con la sesión aún cargando: todavía no se sabe si existe
+  // la hoja, así que ninguna se resuelve y la página sigue en "Cargando pedido"
+  // hasta confirmarlo. Así hoja y selector nunca se contradicen (ni se pinta
+  // "Pedido" para saltar luego a "Historial") y no sale `linea-tiempo` antes
+  // del permiso.
+  const isHistoryAccessPending =
+    isSessionPending && !canSeeHistory && rawSheet === ORDER_HISTORY_SHEET;
+  const sheet = resolveOrderDetailSheet(rawSheet, { canSeeHistory });
   // ¿Lo que pinta la página ya se sabe que NO es el pedido? Id inválido, o el
   // pedido en uno de los estados de error que cambian la página (404, carga
   // inicial fallida). Las consultas que van en paralelo con el pedido se
@@ -287,7 +290,7 @@ export function PedidoDetailContent({
   // pedido ya llegó, y pedirlo ahí lo encadenaba detrás (EC-768). Misma llave
   // que la sección, que lo encuentra fresco (24 h) y no lo vuelve a pedir; sus
   // respaldos mientras carga no cambian. Solo en la hoja que lo pinta.
-  useSatInfo({ enabled: sheet === "order" && !isPedidoUnavailable });
+  useSatInfo({ enabled: sheet === "order" && !isPedidoUnavailable && !isHistoryAccessPending });
   // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
   // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
   // de departamento sea exactamente `MESACONTROL`—, así que esto solo gobierna
@@ -452,7 +455,7 @@ export function PedidoDetailContent({
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading || !data || isHistoryAccessPending) {
     return (
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
@@ -582,7 +585,7 @@ export function PedidoDetailContent({
           trazabilidad={trazabilidad}
         />
       ) : (
-        <OrderHistorySheet pedido={data} history={canSeeHistory ? history : null} />
+        <OrderHistorySheet pedido={data} history={history} />
       )}
 
       {/* El diálogo de SKU de muestra ordena sus filas con el catálogo de

@@ -35,10 +35,10 @@ export interface OrderHistoryQuery {
 interface OrderHistorySheetProps {
   pedido: PedidoDetail;
   /**
-   * `null` mientras no se sabe si el usuario puede leer la bitácora (la sesión
-   * aún carga): la hoja espera en vez de afirmar que no hay eventos.
+   * Solo se monta con el permiso de la bitácora confirmado: la página no
+   * resuelve esta hoja mientras la sesión carga.
    */
-  history: OrderHistoryQuery | null;
+  history: OrderHistoryQuery;
 }
 
 /**
@@ -52,11 +52,11 @@ interface OrderHistorySheetProps {
  * filtro contable del detalle (`canSeeAccounting`), así que no los repite.
  */
 export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
-  const events = history?.events;
+  const events = history.events;
   const isTruncated = (events?.length ?? 0) >= DOCUMENT_TIMELINE_MAX_EVENTS;
 
   let content;
-  if (history === null || (history.isLoading && events === undefined)) {
+  if (history.isLoading && events === undefined) {
     content = <Loader title="Cargando historial" message="Obteniendo los eventos del pedido..." />;
   } else if (history.isInitialError) {
     content = (
@@ -141,7 +141,7 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
         title="Historial"
         subtitle="Altas, cambios de estatus, bajas y borrados del pedido y de sus documentos"
         action={
-          history && events !== undefined ? (
+          events !== undefined ? (
             <Button
               type="button"
               variant="secondary"
