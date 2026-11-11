@@ -1,9 +1,10 @@
 import type { BASE_PDF_COLORS } from "./BasePdfColors";
 
 /**
- * Bloques de estilo compartidos, byte-idénticos, entre `QuotePdfStyles` y
- * `PurchaseOrderPdfStyles` — factorizados aquí para que un ajuste de layout
- * (padding, tipografía, bordes) se aplique a ambos documentos a la vez.
+ * Bloques de estilo compartidos, byte-idénticos, entre `QuotePdfStyles`,
+ * `InvoicePdfStyles` y la plantilla base de documentos (`DocumentPdfStyles`,
+ * que usa la orden de compra) — factorizados aquí para que un ajuste de layout
+ * (padding, tipografía, bordes) se aplique a todos a la vez.
  *
  * No se envuelve en `StyleSheet.create` aquí: cada documento la combina con
  * sus propios estilos específicos dentro de su propio `StyleSheet.create`.

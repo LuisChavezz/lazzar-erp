@@ -7,7 +7,7 @@ import { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
  * usadas por este hook y también por mutaciones que necesitan la MISMA
  * orden (enviar correo, descargar PDF). Esas mutaciones las usan con
  * `staleTime: 0`: NO reutilizan el cache, porque dependen del `estatus` real
- * (guarda del correo, marca CANCELADA del PDF); comparten la llave para que
+ * (guarda del correo, marca de cancelado del PDF); comparten la llave para que
  * el GET fresco también actualice el detalle cacheado.
  */
 export const purchaseOrderQueryOptions = (id: number) => ({

@@ -42,6 +42,7 @@ import { VariantAttributesCaption } from "./VariantAttributesCaption";
 import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
+import { PurchaseOrderPdfButton } from "./PurchaseOrderPdfButton";
 import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import type {
   DocumentoLigado,
@@ -629,9 +630,11 @@ interface PurchaseOrderPageContentProps {
  * su propio "Volver". Ambos consumen el mismo `usePurchaseOrder` y coexisten
  * sin tocarse.
  *
- * Vista de SOLO LECTURA: las acciones de la orden (editar, confirmar, cancelar,
- * enviar correo, descargar PDF) siguen viviendo en el menú del listado, que es
- * donde el usuario ya las conoce.
+ * Las acciones que CAMBIAN la orden (editar, confirmar, cancelar, enviar
+ * correo) siguen viviendo en el menú del listado, que es donde el usuario ya
+ * las conoce. En la cabecera solo van las que no la modifican: "Ruta crítica"
+ * (con su propio permiso de edición) y "Descargar PDF", que desde EC-855 vive
+ * en el encabezado de cada detalle y ya no en el menú.
  */
 export function PurchaseOrderPageContent({
   orderId,
@@ -821,20 +824,26 @@ export function PurchaseOrderPageContent({
             )}
           </HeaderStatRow>
 
-          {/* Solo con la orden ya confirmada (mismo criterio que el menú del
-              listado); el diálogo decide si es de solo lectura (OC Cancelada o
-              sin `E-COMPRAS-OC`). */}
-          {!isPurchaseOrderUnconfirmed(data.estatus) && (
-          <Button
-            variant="secondary"
-            onClick={() =>
-              setCriticalPathTarget({ ocId: data.id, folio: data.folio, estatus: data.estatus })
-            }
-          >
-            <RouteIcon className="w-4 h-4" aria-hidden="true" />
-            Ruta crítica
-          </Button>
-          )}
+          {/* Acciones de la cabecera, alineadas a la derecha; al angostarse
+              bajan juntas a su propia línea. */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Solo con la orden ya confirmada (mismo criterio que el menú del
+                listado); el diálogo decide si es de solo lectura (OC Cancelada
+                o sin `E-COMPRAS-OC`). */}
+            {!isPurchaseOrderUnconfirmed(data.estatus) && (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setCriticalPathTarget({ ocId: data.id, folio: data.folio, estatus: data.estatus })
+                }
+              >
+                <RouteIcon className="w-4 h-4" aria-hidden="true" />
+                Ruta crítica
+              </Button>
+            )}
+            {/* En los seis estatus (EC-855). */}
+            <PurchaseOrderPdfButton order={data} />
+          </div>
         </div>
       </section>
 
