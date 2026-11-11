@@ -108,6 +108,10 @@ export const getCustomerColumns = ({
     id: "razon_social",
     accessorKey: "razon_social",
     header: "Razón social",
+    // La tabla es `table-fixed`: el ancho se reparte en proporción a `size`.
+    // La razón social es el dato que más se lee y la celda lleva además el ">"
+    // del menú y el aviso de Facturama; teléfono y fecha caben en menos.
+    size: 340,
     meta: { label: "Razón social", serverSort: "razon_social" },
     cell: ({ row }) => (
       <RazonSocialCell
@@ -122,6 +126,7 @@ export const getCustomerColumns = ({
     id: "nombre",
     accessorKey: "nombre",
     header: "Contacto",
+    size: 220,
     meta: { label: "Contacto", serverSort: "nombre" },
     cell: ({ row }) => textCell(row.original.nombre),
   },
@@ -129,6 +134,7 @@ export const getCustomerColumns = ({
     id: "telefono",
     accessorKey: "telefono",
     header: "Teléfono",
+    size: 140,
     meta: { label: "Teléfono", serverSort: "telefono" },
     cell: ({ row }) => textCell(row.original.telefono),
   },
@@ -136,6 +142,7 @@ export const getCustomerColumns = ({
     id: "correo",
     accessorKey: "correo",
     header: "Correo",
+    size: 240,
     meta: { label: "Correo", serverSort: "correo" },
     cell: ({ row }) => textCell(row.original.correo),
   },
@@ -145,6 +152,7 @@ export const getCustomerColumns = ({
     id: "ultima_compra",
     accessorKey: "fecha_ultima_compra",
     header: "Última Compra",
+    size: 140,
     meta: { label: "Última Compra", serverSort: "fecha_ultima_compra" },
     cell: ({ row }) => {
       const value = row.original.fecha_ultima_compra;
