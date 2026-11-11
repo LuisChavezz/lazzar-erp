@@ -735,13 +735,13 @@ export function PurchaseOrderPageContent({
 
       {/* ── 1. Cabecera ─────────────────────────────────────────────────── */}
       {/* Cabecera en fila, mismo patrón que la orden de bordado: identidad a
-          la izquierda (`mr-auto`) y a la derecha solo lo que un usuario
+          la izquierda (`grow`: ocupa el espacio libre) y a la derecha solo lo que un usuario
           necesita SIN hacer scroll — incluido el Gran total, que antes vivía
           hasta el fondo de la página en su propia tarjeta ("Resumen
           financiero"). Al angostarse, los datos bajan a su propia línea. */}
       <section className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-3.5 md:px-6">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="mr-auto min-w-0">
+          <div className="grow min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               {/* El folio lo asigna el backend al crear; el respaldo cubre las
                   órdenes en borrador, que aún no lo tienen. */}
@@ -825,8 +825,10 @@ export function PurchaseOrderPageContent({
           </HeaderStatRow>
 
           {/* Acciones de la cabecera, alineadas a la derecha; al angostarse
-              bajan juntas a su propia línea. */}
-          <div className="flex flex-wrap items-center gap-2">
+              bajan juntas a su propia línea y `ml-auto` las mantiene a la
+              derecha (en la misma línea no cambia nada: `grow` ya se llevó
+              el espacio libre). */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             {/* Solo con la orden ya confirmada (mismo criterio que el menú del
                 listado); el diálogo decide si es de solo lectura (OC Cancelada
                 o sin `E-COMPRAS-OC`). */}
