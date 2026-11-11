@@ -67,7 +67,7 @@ export function DocumentAuditView() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void list.refetch()}
+            onClick={() => void list.refreshFirstPage()}
             disabled={list.isFetching || list.isLoading}
             className="inline-flex items-center gap-2"
           >
