@@ -68,6 +68,7 @@ import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
 import { PedidoCancelDialog, type PedidoCancelTarget } from "./PedidoCancelDialog";
+import { CUSTOMERS_LIST_PATH } from "@/src/features/customers/constants/customerRoutes";
 import { SampleSkuLinkDialog, SampleSkuSizeCatalogPrefetch } from "./SampleSkuLinkDialog";
 import {
   hasOrderDocumentDialog,
@@ -141,7 +142,7 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // Quien llega desde los pedidos recientes del detalle de un cliente
   // (`CustomerResumenPedidos`) vuelve al listado de clientes. La tabla es estática,
   // así que no puede volver al cliente CONCRETO.
-  customers: { href: "/sales/customers", label: "Volver a Clientes" },
+  customers: { href: CUSTOMERS_LIST_PATH, label: "Volver a Clientes" },
   // Quien llega desde el detalle de una factura con su id (`?factura=`) vuelve a
   // ESA factura: el destino real lo arma `resolveBack` con el id validado. Esta
   // entrada fija es el respaldo cuando el id falta o no es válido.

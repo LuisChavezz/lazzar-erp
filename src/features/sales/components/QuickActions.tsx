@@ -11,6 +11,7 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { hasPermission } from "@/src/utils/permissions";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
+import { CUSTOMERS_LIST_PATH } from "@/src/features/customers/constants/customerRoutes";
 
 // Carga dinámica del formulario de cliente para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
 const LazyCustomerForm = dynamic(
@@ -49,11 +50,11 @@ export const QuickActions = () => {
   // (`R-CRM-CLIENTES`); si no, se queda aquí con el aviso de guardado del
   // propio formulario.
   const canCreateCustomer = !isPending && hasPermission("C-CRM-CLIENTES", user);
-  const canOpenCustomers = canOpen("/sales/customers");
+  const canOpenCustomers = canOpen(CUSTOMERS_LIST_PATH);
 
   const handleCustomerCreated = () => {
     setIsCustomerDialogOpen(false);
-    if (canOpenCustomers) router.push("/sales/customers");
+    if (canOpenCustomers) router.push(CUSTOMERS_LIST_PATH);
   };
 
   return (

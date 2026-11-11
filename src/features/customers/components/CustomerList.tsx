@@ -13,7 +13,8 @@ import { ExportCsvIcon, ExportPdfIcon, PlusIcon } from "@/src/components/Icons";
 import CustomerForm from "./CustomerForm";
 import CustomerAddressForm from "./CustomerAddressForm";
 import { CustomerAddressList } from "./CustomerAddressList";
-import { getCustomerColumns } from "./CustomerColumns";
+import { CustomerListQueryContext, getCustomerColumns } from "./CustomerColumns";
+import { serializeCustomersListState } from "../utils/customerListQuery";
 import { useCustomer } from "../hooks/useCustomer";
 import { useCustomersTable } from "../hooks/useCustomersTable";
 import { useCustomerCsvExport } from "../hooks/useCustomerCsvExport";
@@ -220,6 +221,9 @@ export const CustomerList = () => {
         )}
       </MainDialog>
 
+      {/* El estado de la tabla viaja en "Ver detalle" (`?lista=`) para que el
+          "Volver" del detalle regrese a esta misma vista. */}
+      <CustomerListQueryContext.Provider value={serializeCustomersListState(table.state)}>
       <DataTable
         columns={columns}
         {...table.tableProps}
@@ -288,6 +292,7 @@ export const CustomerList = () => {
           </div>
         }
       />
+      </CustomerListQueryContext.Provider>
     </>
   );
 };

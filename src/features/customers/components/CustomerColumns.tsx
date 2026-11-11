@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
@@ -12,10 +13,16 @@ import {
 import type { CustomerListItem } from "../interfaces/customer.interface";
 import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
 import { formatUltimaCompra } from "../utils/customerList";
+import { customerDetailHref } from "../utils/customerListQuery";
 
-/** Ruta del detalle: la misma para el enlace "Ver detalle" de la fila. */
-export const customerDetailHref = (customer: Pick<CustomerListItem, "id">) =>
-  `/sales/customers/${customer.id}`;
+/**
+ * Estado validado del listado (`serializeCustomersListState`) para el enlace
+ * "Ver detalle", que lo lleva en `?lista=` para que "Volver" regrese a la misma
+ * vista. Va por contexto y no por la factoría de columnas: cambia con cada
+ * búsqueda, orden o página, y como argumento de `getCustomerColumns` recrearía
+ * las columnas y remontaría las celdas (con su menú abierto).
+ */
+export const CustomerListQueryContext = createContext("");
 
 interface CustomerRowCallbacks {
   onEdit: (customer: CustomerListItem) => void;
@@ -64,6 +71,7 @@ const RazonSocialCell = ({
     },
   ];
   const facturamaNotice = getFacturamaVerificationNotice(customer);
+  const listQuery = useContext(CustomerListQueryContext);
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -71,7 +79,7 @@ const RazonSocialCell = ({
         name={customer.razon_social}
         // Sin sembrar la caché del detalle: `useCustomer` toma la fila de esta
         // página como `placeholderData` y siempre pide el detalle real.
-        detail={{ href: customerDetailHref(customer) }}
+        detail={{ href: customerDetailHref(customer.id, listQuery) }}
         items={items}
       />
       {facturamaNotice && (

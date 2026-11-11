@@ -13,12 +13,19 @@ import { CustomerResumenKpis, CustomerResumenKpisSkeleton } from "./CustomerResu
 import { CustomerResumenPedidos } from "./CustomerResumenPedidos";
 import { useCustomer } from "../hooks/useCustomer";
 import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
+import { customersListHref, readCustomerListParam } from "../utils/customerListQuery";
 
 interface CustomerDetailContentProps {
   customerId: string;
+  /**
+   * Valor CRUDO de `?lista=` (el estado del listado del que se llegó). Se
+   * valida con la definición del listado antes de armar el "Volver"; sin él,
+   * vuelve al listado por defecto.
+   */
+  listParam?: string | string[];
 }
 
-export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps) => {
+export const CustomerDetailContent = ({ customerId, listParam }: CustomerDetailContentProps) => {
   const router = useRouter();
   const { data, isPlaceholderData, isNotFound, isInitialError, isValidId } =
     useCustomer(customerId);
@@ -27,7 +34,7 @@ export const CustomerDetailContent = ({ customerId }: CustomerDetailContentProps
     <div className="sticky top-0 z-10 py-2 w-fit">
       <button
         type="button"
-        onClick={() => router.replace("/sales/customers")}
+        onClick={() => router.replace(customersListHref(readCustomerListParam(listParam)))}
         className={BACK_BUTTON_CLASS}
       >
         <ArrowLeftIcon className={BACK_ARROW_CLASS} />
