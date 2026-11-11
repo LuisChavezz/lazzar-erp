@@ -12,7 +12,7 @@ import {
 } from "@/src/components/Icons";
 import type { CustomerListItem } from "../interfaces/customer.interface";
 import { getFacturamaVerificationNotice } from "../utils/facturamaVerification";
-import { formatUltimaCompra } from "../utils/customerList";
+import { formatUltimaCompra } from "../utils/ultimaCompra";
 import { customerDetailHref } from "../utils/customerListQuery";
 
 /**
