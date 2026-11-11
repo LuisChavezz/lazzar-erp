@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
+import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import type { BitacoraDocumento } from "../interfaces/document-audit.interface";
 import { getTipoDocumentoLabel } from "../constants/documentAuditValues";
@@ -143,7 +144,17 @@ export function DocumentAuditTable({
           </td>
           <td className={CELL}>{getTipoDocumentoLabel(event.tipo_documento)}</td>
           <td className={`${CELL} whitespace-nowrap`}>
-            {target?.opener.kind === "route" ? (
+            {/* Un pedido abre `/orders/[id]` con el enlace de folio de pedido del
+                proyecto (`PedidoFolioLink`); su origen hace que "Volver" regrese
+                aquí. Los demás tipos usan su página o su diálogo. */}
+            {target?.tipo === "pedido" ? (
+              <PedidoFolioLink
+                pedidoId={target.id}
+                folio={event.folio.trim() !== "" ? event.folio : null}
+                from="document-audit"
+                className="font-mono font-medium"
+              />
+            ) : target?.opener.kind === "route" ? (
               <Link href={target.opener.href(target.id)} title="Ver detalle" className={FOLIO_LINK_CLS}>
                 {folioText}
               </Link>
