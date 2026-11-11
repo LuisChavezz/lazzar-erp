@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { formatCurrency } from "@/src/utils/formatCurrency";
@@ -117,7 +118,7 @@ export function DocumentAuditTable({
     body = rows.map((event) => {
       const statusChange = formatStatusChange(event.estatus_anterior, event.estatus_nuevo);
       const target = getTarget(event);
-      const folioText = event.folio.trim() !== "" ? event.folio : "—";
+      const folioText = textOrDash(event.folio);
       const branchName = event.sucursal_id !== null ? getBranchName(event.sucursal_id) : null;
       const total = event.total !== null ? Number(event.total) : null;
       return (
