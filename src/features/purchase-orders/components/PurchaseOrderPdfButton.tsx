@@ -37,7 +37,7 @@ export function PurchaseOrderPdfButton({
 
   return (
     <DocumentPdfButton
-      document={purchaseOrderPdfDescriptor(order)}
+      descriptor={purchaseOrderPdfDescriptor(order)}
       source={source}
       compact={compact}
     />

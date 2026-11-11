@@ -25,7 +25,7 @@ test.describe("renderedDocumentPdfSource", () => {
     // tiene folio y está cancelada.
     const cached: OcRow = { id: 7, folio: null, estatus: 3, motivo_cancelacion: null };
     const fresh: OcRow = { id: 7, folio: "OC-00012-2026", estatus: 6, motivo_cancelacion: "Duplicada" };
-    const rendered: Array<{ detail: OcRow; document: DocumentPdfDescriptor }> = [];
+    const rendered: Array<{ detail: OcRow; descriptor: DocumentPdfDescriptor }> = [];
     const blob = new Blob(["%PDF-fake"], { type: "application/pdf" });
 
     const source = renderedDocumentPdfSource<OcRow>({
@@ -33,7 +33,7 @@ test.describe("renderedDocumentPdfSource", () => {
       describe: purchaseOrderPdfDescriptor,
       render: async (detail, context) => {
         expect(context.company).toEqual(company);
-        rendered.push({ detail, document: context.document });
+        rendered.push({ detail, descriptor: context.descriptor });
         return blob;
       },
     });
@@ -43,10 +43,10 @@ test.describe("renderedDocumentPdfSource", () => {
     expect(file.blob).toBe(blob);
     expect(rendered).toHaveLength(1);
     expect(rendered[0].detail).toBe(fresh);
-    expect(file.document).toEqual(rendered[0].document);
-    expect(fileNameOf(file.document)).toBe("OC-00012-2026.pdf");
+    expect(file.descriptor).toEqual(rendered[0].descriptor);
+    expect(fileNameOf(file.descriptor)).toBe("OC-00012-2026.pdf");
     expect(fileNameOf(purchaseOrderPdfDescriptor(cached))).toBe("OC-ID7.pdf");
-    expect(file.document.cancelled).toBe(true);
+    expect(file.descriptor.cancelled).toBe(true);
   });
 
   test("un error al pedir el detalle no genera el PDF", async () => {

@@ -11,7 +11,7 @@ import {
 
 interface DocumentPdfButtonProps {
   /** Identidad del documento tal como se ve en pantalla (para la etiqueta accesible). */
-  document: DocumentPdfDescriptor;
+  descriptor: DocumentPdfDescriptor;
   /** De dónde sale el PDF; ver `DocumentPdfSource`. */
   source: DocumentPdfSource;
   /**
@@ -30,9 +30,9 @@ interface DocumentPdfButtonProps {
  * pasó su puerta. Lo que el usuario no puede ver del documento lo resuelve la
  * fuente, que arma el PDF con la respuesta YA filtrada del backend.
  */
-export function DocumentPdfButton({ document, source, compact = false }: DocumentPdfButtonProps) {
-  const { download, isPending, companyPending } = useDocumentPdfDownload(document, source);
-  const folioLabel = documentPdfFolioLabel(document.folio, document.id);
+export function DocumentPdfButton({ descriptor, source, compact = false }: DocumentPdfButtonProps) {
+  const { download, isPending, companyPending } = useDocumentPdfDownload(descriptor, source);
+  const folioLabel = documentPdfFolioLabel(descriptor.folio, descriptor.id);
 
   return (
     <Button
