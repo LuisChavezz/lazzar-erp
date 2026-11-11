@@ -13,6 +13,7 @@ import {
 import { formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
 import type { CustomerListItem } from "@/src/features/customers/interfaces/customer.interface";
 import { getCustomerColumnText } from "@/src/features/customers/utils/customerExport";
+import { getCustomerColumns } from "@/src/features/customers/components/CustomerColumns";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import {
   formatCustomerUbicacion,
@@ -125,9 +126,32 @@ test.describe("getCustomerColumnText (exportaciones)", () => {
     ).toBe(formatUltimaCompra("2026-07-14"));
   });
 
-  test("las demás columnas leen el campo de su id; vacío es cadena vacía", () => {
-    expect(getCustomerColumnText(customer, column("razon_social"))).toBe("ACME SA");
+  test("cada columna conocida lee su campo; vacío es cadena vacía", () => {
+    const full = { ...customer, nombre: "PEDRO", correo: "p@x.com", telefono: "3312345678" };
+    expect(getCustomerColumnText(full, column("razon_social"))).toBe("ACME SA");
+    expect(getCustomerColumnText(full, column("nombre"))).toBe("PEDRO");
+    expect(getCustomerColumnText(full, column("telefono"))).toBe("3312345678");
+    expect(getCustomerColumnText(full, column("correo"))).toBe("p@x.com");
     expect(getCustomerColumnText(customer, column("telefono"))).toBe("");
+  });
+
+  test("un id que no está en el mapeo sale vacío aunque coincida con un campo", () => {
+    expect(getCustomerColumnText({ ...customer, rfc: "XAXX010101000" }, column("rfc"))).toBe("");
+    expect(getCustomerColumnText(customer, column("id"))).toBe("");
+  });
+
+  test("cada columna de la tabla tiene su mapeo de exportación", () => {
+    const full = {
+      ...customer,
+      nombre: "PEDRO",
+      correo: "p@x.com",
+      telefono: "3312345678",
+      fecha_ultima_compra: "2026-07-14",
+    };
+    const noop = () => undefined;
+    for (const def of getCustomerColumns({ onEdit: noop, onAddAddress: noop, onViewAddresses: noop })) {
+      expect(getCustomerColumnText(full, column(def.id as string))).not.toBe("");
+    }
   });
 });
 
