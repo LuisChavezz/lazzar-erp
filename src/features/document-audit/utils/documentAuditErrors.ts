@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import { ZodError } from "zod";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstRejection } from "@/src/utils/firstDrfMessage";
 
@@ -28,6 +29,9 @@ const AUDIT_PARAMS = Object.keys(AUDIT_PARAM_LABELS) as (keyof typeof AUDIT_PARA
  * `extractErrorMessage`.
  */
 export const documentAuditErrorMessage = (error: unknown, fallback: string): string => {
+  // Respuesta con otra forma (`documentTimelineResponseSchema`): su texto es
+  // técnico, en inglés.
+  if (error instanceof ZodError) return fallback;
   if (isAxiosError(error) && error.response?.status === 400) {
     const rejection = firstRejection(error.response.data, AUDIT_PARAMS);
     if (rejection) return `${AUDIT_PARAM_LABELS[rejection.key]}: ${rejection.message}`;
