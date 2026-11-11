@@ -7,10 +7,7 @@ import { HistoryIcon, RefreshIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { DocumentAuditActionIcon } from "@/src/features/document-audit/components/DocumentAuditActionIcon";
-import {
-  DOCUMENT_TIMELINE_MAX_EVENTS,
-  getTipoDocumentoLabel,
-} from "@/src/features/document-audit/constants/documentAuditValues";
+import { getTipoDocumentoLabel } from "@/src/features/document-audit/constants/documentAuditValues";
 import type { BitacoraDocumento } from "@/src/features/document-audit/interfaces/document-audit.interface";
 import {
   formatAuditDateTime,
@@ -25,6 +22,8 @@ import { OrderBadge, SheetSection } from "./OrderSheetPrimitives";
 /** Consulta de la línea de tiempo, montada por la página (`useDocumentTimeline`). */
 export interface OrderHistoryQuery {
   events: BitacoraDocumento[] | undefined;
+  /** El backend devolvió solo los 500 eventos más recientes (`truncado`). */
+  isTruncated: boolean;
   isLoading: boolean;
   isFetching: boolean;
   isInitialError: boolean;
@@ -53,7 +52,6 @@ interface OrderHistorySheetProps {
  */
 export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
   const events = history.events;
-  const isTruncated = (events?.length ?? 0) >= DOCUMENT_TIMELINE_MAX_EVENTS;
 
   let content;
   if (history.isLoading && events === undefined) {
@@ -81,13 +79,13 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
   } else {
     content = (
       <div className="space-y-4">
-        {isTruncated && (
+        {history.isTruncated && (
           <p
             role="status"
             className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-800 dark:text-amber-300"
           >
-            Se muestran los primeros {DOCUMENT_TIMELINE_MAX_EVENTS} eventos; puede haber eventos más
-            recientes que no aparecen aquí.
+            Se muestran los {events.length} eventos más recientes; los anteriores no se incluyen
+            en este historial.
           </p>
         )}
         <ActivityTimeline ariaLabel="Historial del pedido">
