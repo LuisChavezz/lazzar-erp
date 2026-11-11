@@ -3,7 +3,9 @@
 import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { useWorkspace } from "../hooks/useWorkspace";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import BranchGrid from "./BranchGrid";
+import CompanySwitcherCard from "./CompanySwitcherCard";
 import LockedCompanyCard from "./LockedCompanyCard";
 import NoCompanyState from "./NoCompanyState";
 
@@ -20,6 +22,9 @@ export default function WorkspaceSelector() {
     handleBranchSelect,
     handleContinueWithoutBranch,
   } = useWorkspace();
+  // Solo el superusuario puede cambiar de empresa activa (EC-847); los demás
+  // ven la empresa de su usuario bloqueada.
+  const canSwitchCompany = useIsSuperuser();
 
   // Mostrar loader mientras se confirma la empresa o se está seleccionando una sucursal
   if (sessionCompany.status === "loading" || isLoading) {
@@ -56,7 +61,21 @@ export default function WorkspaceSelector() {
           />
         )}
 
-        {sessionCompany.status === "none" && (
+        {sessionCompany.status === "none" && canSwitchCompany && (
+          <>
+            <CompanySwitcherCard companyId={null} name={null} />
+            <div className="flex justify-center">
+              <button
+                onClick={handleContinueWithoutBranch}
+                className="px-6 py-2.5 cursor-pointer bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-sky-500/20"
+              >
+                Continuar sin empresa
+              </button>
+            </div>
+          </>
+        )}
+
+        {sessionCompany.status === "none" && !canSwitchCompany && (
           <NoCompanyState
             action={
               <button
@@ -71,9 +90,17 @@ export default function WorkspaceSelector() {
 
         {sessionCompany.status === "ready" && (
           <>
-            {/* La empresa no se elige (EC-842): es la de la sesión, bloqueada
-                hasta que exista un endpoint para cambiarla (EC-843). */}
-            <LockedCompanyCard name={companyName} rfc={companyRfc} />
+            {/* La empresa es la de la sesión (EC-842). Solo el superusuario la
+                cambia, con `cambiar-empresa` (EC-847). */}
+            {canSwitchCompany ? (
+              <CompanySwitcherCard
+                companyId={sessionCompany.companyId}
+                name={companyName}
+                rfc={companyRfc}
+              />
+            ) : (
+              <LockedCompanyCard name={companyName} rfc={companyRfc} />
+            )}
             {isErrorBranches ? (
               <ErrorDisplay
                 title="No se pudieron cargar tus sucursales."

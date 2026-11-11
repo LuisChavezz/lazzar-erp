@@ -10,9 +10,9 @@ import { useSessionCompanyDetails } from "./useSessionCompanyDetails";
 import { setWorkspaceCookie } from "../utils/workspaceCookie";
 
 /**
- * Flujo de /select-branch. La empresa NO se elige (EC-842): es la de la sesión,
- * con la que el backend acota todo, y el paso de empresa queda bloqueado hasta
- * que exista un endpoint para cambiarla (EC-843). Solo se elige la sucursal.
+ * Flujo de /select-branch. La empresa NO se elige aquí (EC-842): es la de la
+ * sesión, con la que el backend acota todo. Solo se elige la sucursal; el
+ * superusuario cambia la empresa aparte, con `CompanySwitcherCard` (EC-847).
  */
 export const useWorkspace = () => {
   const router = useRouter();

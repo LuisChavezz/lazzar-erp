@@ -8,8 +8,8 @@ interface LockedCompanyCardProps {
 
 /**
  * Empresa del workspace, de solo lectura (EC-842). Es la asignada al usuario en
- * el backend; no se puede cambiar desde aquí hasta que exista un endpoint para
- * ello (EC-843).
+ * el backend. Solo el superusuario puede cambiarla (`cambiar-empresa`): él ve
+ * `CompanySwitcherCard` en su lugar (EC-847).
  */
 export default function LockedCompanyCard({ name, rfc }: LockedCompanyCardProps) {
   return (

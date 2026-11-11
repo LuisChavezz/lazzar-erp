@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { pickValidBranchId } from "@/src/features/workspace/utils/pickValidBranchId";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { BancosIcon, BuildingIcon, CheckCircleIcon, ChevronDownIcon, LockIcon } from "./Icons";
 import { DropdownMenu } from "@radix-ui/themes";
 import { Branch } from "../features/branches/interfaces/branch.interface";
@@ -15,8 +17,10 @@ export const WorkspaceInfo = () => {
   const selectedBranch = useWorkspaceStore((state) => state.selectedBranch);
   const setBranch = useWorkspaceStore((state) => state.setBranch);
   const branchSwitching = useWorkspaceStore((state) => state.branchSwitching);
-  // La empresa es la de la sesión (EC-842), de solo lectura hasta EC-843.
+  // La empresa es la de la sesión (EC-842). Solo el superusuario la cambia, en
+  // /select-branch (EC-847); para él el candado lleva allí.
   const { sessionCompany, name: companyName } = useSessionCompanyDetails();
+  const canSwitchCompany = useIsSuperuser();
   const companyId = sessionCompany.companyId;
   // Sucursales del usuario en la empresa de la sesión.
   const {
@@ -47,6 +51,18 @@ export const WorkspaceInfo = () => {
     );
   }
 
+  if (sessionCompany.status === "none" && canSwitchCompany) {
+    return (
+      <Link
+        href="/select-branch"
+        className="text-xs italic text-slate-400 hover:underline"
+        title="Elegir una empresa activa"
+      >
+        Sin empresa activa
+      </Link>
+    );
+  }
+
   if (sessionCompany.status === "none") {
     return (
       <span className="text-xs italic text-slate-400" title="Pide a un administrador que te asigne una empresa.">
@@ -74,16 +90,31 @@ export const WorkspaceInfo = () => {
 
       <div className="flex items-center gap-3">
         {/* Company */}
-        <div
-          className="flex items-center gap-1.5"
-          title="Empresa asignada a tu usuario. Por ahora no se puede cambiar."
-        >
-          <span className="max-w-44 truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
-            {companyName}
-          </span>
-          <BancosIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
-          <LockIcon className="w-3 h-3 text-slate-400" aria-label="Empresa bloqueada" />
-        </div>
+        {canSwitchCompany ? (
+          <Link
+            href="/select-branch"
+            className="flex items-center gap-1.5 rounded-md hover:opacity-80"
+            title="Cambiar de empresa activa"
+            aria-label={`Empresa: ${companyName}. Cambiar de empresa activa`}
+          >
+            <span className="max-w-44 truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {companyName}
+            </span>
+            <BancosIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" aria-hidden="true" />
+            <LockIcon className="w-3 h-3 text-slate-400" aria-hidden="true" />
+          </Link>
+        ) : (
+          <div
+            className="flex items-center gap-1.5"
+            title="Empresa asignada a tu usuario. Por ahora no se puede cambiar."
+          >
+            <span className="max-w-44 truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {companyName}
+            </span>
+            <BancosIcon className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+            <LockIcon className="w-3 h-3 text-slate-400" aria-label="Empresa bloqueada" />
+          </div>
+        )}
 
         {/* Separator */}
         <div className="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
