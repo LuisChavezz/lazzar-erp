@@ -276,7 +276,7 @@ export function DocumentAuditFilters({
             isLoading={isUsersLoading}
             isError={isUsersError}
             errorMessage="No se pudo cargar el catálogo de usuarios."
-            searchPlaceholder="Buscar por nombre o correo..."
+            searchPlaceholder="Buscar por nombre..."
             filterPredicate={(user, term) => user.nombre_completo.toLowerCase().includes(term)}
             getKey={(user) => user.id}
             selectedKey={filters.usuario ?? null}
