@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { isAxiosError } from "axios";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
 	isLoginErrorResponse,
@@ -23,6 +23,31 @@ interface LoginFormValues {
 type LoginFormField = keyof LoginFormValues;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const LOGIN_FORM_FIELDS = ["email", "password"] as const satisfies readonly LoginFormField[];
+
+interface LoginFieldValueStore {
+	getFieldValue: (field: LoginFormField) => string;
+	setFieldValue: (field: LoginFormField, value: string) => void;
+}
+
+/**
+ * Pasa al estado del formulario lo que muestran los inputs cuando difiere.
+ * Lo escrito o autocompletado ANTES de hidratar se queda en el DOM (React no lo
+ * sobrescribe al hidratar) pero nunca dispara `onChange`, así que el estado
+ * seguiría vacío y se validaría "El correo es obligatorio" con el campo lleno.
+ * Se llama al montar y otra vez al enviar: Chrome no expone una contraseña
+ * autocompletada a JS hasta que el usuario interactúa, y el envío ya lo es.
+ */
+const syncFieldsFromDom = (store: LoginFieldValueStore, element: HTMLFormElement) => {
+	const data = new FormData(element);
+	for (const field of LOGIN_FORM_FIELDS) {
+		const domValue = data.get(field);
+		if (typeof domValue === "string" && domValue !== store.getFieldValue(field)) {
+			store.setFieldValue(field, domValue);
+		}
+	}
+};
 
 export const useLoginForm = ({ onShowMfaOptIn, onMfaRequired }: UseLoginFormParams) => {
 	const loginMutation = useLogin();
@@ -123,9 +148,17 @@ export const useLoginForm = ({ onShowMfaOptIn, onMfaRequired }: UseLoginFormPara
 		},
 	});
 
+	/* Ref del `<form>`: al montar (justo después de hidratar) se recoge lo que
+	 * el usuario o el navegador escribieron antes. */
+	const formRef = useRef<HTMLFormElement>(null);
+	useEffect(() => {
+		if (formRef.current) syncFieldsFromDom(form, formRef.current);
+	}, [form]);
+
 	const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		event.stopPropagation();
+		syncFieldsFromDom(form, event.currentTarget);
 		void form.handleSubmit();
 	};
 
@@ -136,6 +169,7 @@ export const useLoginForm = ({ onShowMfaOptIn, onMfaRequired }: UseLoginFormPara
 
 	return {
 		form,
+		formRef,
 		isPending: loginMutation.isPending,
 		clearFieldErrors,
 		validateField,

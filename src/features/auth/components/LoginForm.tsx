@@ -24,6 +24,7 @@ export default function LoginForm({
 
   const {
     form,
+    formRef,
     isPending,
     clearFieldErrors,
     validateField,
@@ -33,12 +34,14 @@ export default function LoginForm({
     onShowMfaOptIn,
     onMfaRequired,
   });
+  const isSubmitBlocked = !isHydrated || isPending;
 
   return (
     /* `method="post"`: si el formulario se envía de forma nativa (antes de
      * hidratar, sin el `onSubmit`), los campos viajan en el body y nunca en la
      * URL, donde quedarían en el historial y en los logs (EC-863). */
     <form
+      ref={formRef}
       method="post"
       onSubmit={handleFormSubmit}
       className="w-full flex flex-col items-center justify-center"
@@ -169,15 +172,15 @@ export default function LoginForm({
               </a>
             </div>
 
-            {/* Deshabilitado hasta hidratar (el HTML estático ya lo trae
-                `disabled`): un botón por defecto deshabilitado también bloquea
-                el envío implícito con Enter (EC-863). */}
+            {/* Deshabilitado y con el spinner de carga hasta hidratar (el HTML
+                estático ya lo trae así): un botón por defecto deshabilitado
+                también bloquea el envío implícito con Enter (EC-863). */}
             <button
               type="submit"
-              disabled={!isHydrated || isPending}
+              disabled={isSubmitBlocked}
               className="mt-8 w-full h-11 rounded-full cursor-pointer text-white bg-sky-500 hover:opacity-90 transition-opacity font-medium shadow-lg shadow-sky-500/30 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {isPending ? (
+              {isSubmitBlocked ? (
                 <LoadingSpinnerIcon className="w-5 h-5 animate-spin" />
               ) : (
                 "Iniciar sesión"
