@@ -2,24 +2,30 @@
 
 import { FormInput } from "@/src/components/FormInput";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
+import { FormErrorBanner } from "@/src/components/FormErrorBanner";
 import { MapPinIcon } from "@/src/components/Icons";
 import { useFiscalAddressForm } from "../hooks/useFiscalAddressForm";
+import { FiscalAddress } from "../interfaces/fiscal-address.interface";
 
 interface FiscalAddressFormProps {
+  companyId: number | null;
+  /** El domicilio tal como estaba al abrir el diálogo. */
+  address: FiscalAddress;
   onSuccess: () => void;
 }
 
-export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps) {
+export default function FiscalAddressForm({ companyId, address, onSuccess }: FiscalAddressFormProps) {
   const {
     form,
     formRef,
     isSubmitting,
+    formError,
     getError,
     clearFieldError,
     validateField,
     handleReset,
     handleFormSubmit,
-  } = useFiscalAddressForm({ onSuccess });
+  } = useFiscalAddressForm({ companyId, address, onSuccess });
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit}>
@@ -131,6 +137,7 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                     label="Código Postal"
                     placeholder="Ej. 06000"
                     maxLength={5}
+                    inputMode="numeric"
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
@@ -231,7 +238,8 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
                 {(field) => (
                   <FormInput
                     label="País"
-                    placeholder="Ej. México"
+                    placeholder="Ej. MEX"
+                    maxLength={3}
                     forceUppercase
                     name={field.name}
                     value={field.state.value}
@@ -250,6 +258,8 @@ export default function FiscalAddressForm({ onSuccess }: FiscalAddressFormProps)
             </div>
           </div>
         </section>
+
+        <FormErrorBanner message={formError} />
 
         <div className="flex justify-end gap-3">
           <FormCancelButton onClick={handleReset} disabled={isSubmitting} />
