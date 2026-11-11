@@ -14,6 +14,11 @@ import { formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat"
 import type { CustomerListItem } from "@/src/features/customers/interfaces/customer.interface";
 import { getCustomerColumnText } from "@/src/features/customers/utils/customerExport";
 import { getCustomerColumns } from "@/src/features/customers/components/CustomerColumns";
+import {
+  customerDetailHref,
+  customersListHref,
+  readCustomerListParam,
+} from "@/src/features/customers/utils/customerListQuery";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import {
   formatCustomerUbicacion,
@@ -165,5 +170,30 @@ test.describe("cabecera del detalle", () => {
     expect(formatCustomerUbicacion({ ciudad: "MONTERREY", estado: "NL" })).toBe("MONTERREY, NL");
     expect(formatCustomerUbicacion({ ciudad: " ", estado: "NL" })).toBe("NL");
     expect(formatCustomerUbicacion({ ciudad: "", estado: "" })).toBe("—");
+  });
+});
+
+test.describe("estado del listado en el detalle (`?lista=`)", () => {
+  test("ida y vuelta: el detalle lleva el estado y «Volver» lo restaura", () => {
+    const listQuery = readCustomerListParam("search=SA&ordering=-fecha_ultima_compra&page=2&page_size=10");
+    expect(listQuery).toBe("search=SA&ordering=-fecha_ultima_compra&page=2&page_size=10");
+    const href = customerDetailHref(42, listQuery);
+    expect(href).toBe(
+      "/sales/customers/42?lista=search%3DSA%26ordering%3D-fecha_ultima_compra%26page%3D2%26page_size%3D10",
+    );
+    const lista = new URL(href, "http://x").searchParams.get("lista") ?? "";
+    expect(customersListHref(readCustomerListParam(lista))).toBe(
+      "/sales/customers?search=SA&ordering=-fecha_ultima_compra&page=2&page_size=10",
+    );
+  });
+
+  test("valores inválidos o ajenos no llegan al «Volver»", () => {
+    expect(readCustomerListParam("ordering=rfc&page=abc&page_size=7&foo=x&activo=false")).toBe("");
+    expect(customersListHref(readCustomerListParam(undefined))).toBe("/sales/customers");
+    expect(readCustomerListParam(["page=3", "page=9"])).toBe("page=3");
+  });
+
+  test("la vista por defecto no añade `?lista=` al enlace", () => {
+    expect(customerDetailHref(13, readCustomerListParam(""))).toBe("/sales/customers/13");
   });
 });
