@@ -13,6 +13,7 @@ import {
 } from "./SpecialOrderColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
+import { sortAtrasadosFirst } from "../utils/specialOrderAlert";
 
 type Vista = "proceso" | "completos";
 
@@ -31,8 +32,9 @@ const isCompleto = (order: SpecialOrderRow) =>
  * carga inicial, y "Ver detalle" que NAVEGA a
  * `/manufacturing/special-orders/[id]`. Sin KPIs ni exportación.
  *
- * El orden es el del servidor (sin confirmar primero) y no se reordena; los
- * chips de Clasificación y Estado solo filtran en memoria lo ya cargado.
+ * Orden por defecto: los atrasados activos (alerta de 24 h) primero y, dentro
+ * de cada grupo, el del servidor (sin confirmar primero). Los filtros de
+ * encabezado solo filtran en memoria lo ya cargado.
  */
 export function SpecialOrdersView() {
   const { orders, isLoading, isError, error, hasLoaded, refetch, isFetching } =
@@ -42,7 +44,7 @@ export function SpecialOrdersView() {
   const [vista, setVista] = useState<Vista>("proceso");
   const completos = orders.filter(isCompleto);
   const enProceso = orders.filter((order) => !isCompleto(order));
-  const rows = vista === "completos" ? completos : enProceso;
+  const rows = sortAtrasadosFirst(vista === "completos" ? completos : enProceso);
 
   const showError = isInitialLoadError(isError, hasLoaded);
   // Una columna de campo opcional solo se monta si el backend ya lo manda.

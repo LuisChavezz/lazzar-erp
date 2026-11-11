@@ -13,6 +13,8 @@ import { parseLocalDate } from "@/src/utils/formatDate";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
+import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { isAtrasadoActivo } from "../utils/specialOrderAlert";
 import { ServiciosCell } from "./ServiceOrdersTracking";
 import { EntregaCell, getSiguientePaso, OpsCell, PreOrdenCell, SiguientePasoCell, TrabajoCell } from "./SpecialOrderPriorityCells";
 
@@ -76,6 +78,33 @@ const SkuProgressCell = ({ order }: { order: SpecialOrderRow }) => {
   );
 };
 
+const ATRASADO_CFG: Record<"atrasado", StatusBadgeConfigEntry> = {
+  atrasado: {
+    label: "Atrasado · prioridad",
+    cls: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+    dot: "bg-red-500",
+  },
+};
+
+/**
+ * Alerta de 24 h: badge rojo y las horas TAL COMO las manda el servidor
+ * (`horas_en_produccion`, contadas desde que se creó el pedido); no se
+ * recalculan en el navegador.
+ */
+const AtrasadoBadge = ({ horas }: { horas: number | null | undefined }) => (
+  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+    <StatusBadge status="atrasado" config={ATRASADO_CFG} />
+    {horas != null && (
+      <span
+        className="text-xs font-medium tabular-nums text-red-600 dark:text-red-400 whitespace-nowrap"
+        title="Horas desde que se creó el pedido"
+      >
+        {horas} h
+      </span>
+    )}
+  </span>
+);
+
 export interface SpecialOrderColumnCallbacks {
   /** Navega a la página de detalle del pedido especial. */
   onViewDetail: (id: number) => void;
@@ -104,12 +133,18 @@ export const getSpecialOrderColumns = ({
     // El folio es el menú de acciones de la fila (con ">"): sin columna aparte
     // de "Acciones", igual que el resto de los listados de Producción.
     size: 180,
+    // Bajo el folio va la alerta de 24 h, como el estatus en otros listados.
     cell: (info) => (
       <FolioActionMenu
         folio={info.getValue<string>()}
         items={[
           { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(info.row.original.id) },
         ]}
+        status={
+          isAtrasadoActivo(info.row.original) ? (
+            <AtrasadoBadge horas={info.row.original.horas_en_produccion} />
+          ) : undefined
+        }
       />
     ),
   },
@@ -242,6 +277,14 @@ export const getSpecialOrderColumns = ({
  * valores de las filas que el catálogo no cubre.
  */
 export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<SpecialOrderRow>>> = {
+  // El folio filtra por la alerta de 24 h que lleva debajo.
+  folio: {
+    type: "boolean",
+    filterLabel: "prioridad",
+    get: isAtrasadoActivo,
+    yes: "Atrasados",
+    no: "Sin alerta",
+  },
   cliente_nombre: { type: "distinct", get: (r) => r.cliente_nombre, searchable: true },
   clasificacion: {
     type: "options",
