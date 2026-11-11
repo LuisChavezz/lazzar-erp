@@ -12,6 +12,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
 import type { PdfCompany } from "@/src/pdfs/shared/documentPdfModel";
+import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
 import { purchaseOrderEmailRenderInputs } from "../utils/purchaseOrderEmailRenderInputs";
 import { getPurchaseOrderEmailBlocker } from "../utils/purchaseOrderEmailBlocker";
@@ -94,7 +95,9 @@ export const usePreparePurchaseOrderEmail = () => {
         label: order.folio || `#${order.id}`,
         order,
         content,
-        attachmentName: `orden-compra-${order.folio || order.id}.pdf`,
+        // Mismo nombre que "Descargar PDF" (EC-855): el archivo adjunto y el
+        // descargado se llaman igual.
+        attachmentName: documentPdfFileName("OC", order.folio, order.id),
       };
     },
     onError: (error) => {
