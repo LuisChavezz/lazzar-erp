@@ -6,7 +6,11 @@ import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import LoginForm from "./LoginForm";
 import type { LoginSuccessResponse, MfaCreateResponse } from "../interfaces/auth.interface";
-import { clearUserScopedClientStateIfSignedOut, enterNewSession } from "../utils/clientSessionState";
+import {
+  clearUserScopedClientStateIfSignedOut,
+  enterNewSession,
+  POST_LOGIN_PATH,
+} from "../utils/clientSessionState";
 
 /**
  * Los pasos de MFA no forman parte de la vista inicial de credenciales: solo
@@ -157,6 +161,7 @@ export default function LoginStepManager() {
     try {
       const result = await signIn("credentials", {
         accessToken: loginAccessToken,
+        callbackUrl: POST_LOGIN_PATH,
         redirect: false,
       });
 
