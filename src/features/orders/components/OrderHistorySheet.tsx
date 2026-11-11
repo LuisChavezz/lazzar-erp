@@ -15,7 +15,11 @@ import {
 } from "@/src/features/document-audit/utils/documentAuditFormat";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoDetail } from "../interfaces/order.interface";
-import { resolveOrderHistoryView, type OrderHistoryQuery } from "../utils/orderHistoryView";
+import {
+  canRefreshOrderHistory,
+  resolveOrderHistoryView,
+  type OrderHistoryQuery,
+} from "../utils/orderHistoryView";
 import { OrderBadge, SheetSection } from "./OrderSheetPrimitives";
 
 interface OrderHistorySheetProps {
@@ -39,7 +43,6 @@ interface OrderHistorySheetProps {
  * filtro contable del detalle (`canSeeAccounting`), así que no los repite.
  */
 export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
-  const { events } = history;
   const view = resolveOrderHistoryView(history);
 
   let content;
@@ -129,7 +132,7 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
         title="Historial"
         subtitle="Altas, cambios de estatus, bajas y borrados del pedido y de sus documentos"
         action={
-          events !== undefined ? (
+          canRefreshOrderHistory(view) ? (
             <Button
               type="button"
               variant="secondary"
