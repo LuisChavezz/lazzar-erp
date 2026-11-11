@@ -22,8 +22,10 @@ import { probeSession } from "./sessionRecovery";
  * - `sat-storage`: la Dirección fiscal capturada a mano, que hoy solo existe ahí
  *   (no llega al backend); borrarla la perdería sin respaldo.
  *
- * Un cambio de empresa del mismo usuario (EC-847) tendrá su propio alcance,
- * junto a este; no se resuelve aquí.
+ * Un cambio de empresa del mismo usuario (EC-847) reusa esta misma limpieza
+ * (`completeCompanySwitch`): la sucursal elegida es de la empresa anterior.
+ * Lo demás de ese cambio (marcar la empresa nueva como confirmada, escribirla
+ * en la sesión y la carga completa que descarta la caché) vive allí.
  *
  * Nunca lanza: corre justo antes de navegar (cierres de sesión, login) y un
  * fallo de almacenamiento no debe impedirlo. `persist` de zustand no atrapa
