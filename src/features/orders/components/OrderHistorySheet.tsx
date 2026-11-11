@@ -44,8 +44,9 @@ interface OrderHistorySheetProps {
 
 /**
  * Hoja 3, "Historial" (EC-854): la línea de tiempo de la bitácora de documentos
- * para este pedido y los documentos que lo tienen como origen directo (OP, OC,
- * órdenes de trabajo, surtido, embarque, facturas, movimientos…), en orden
+ * para este pedido y los documentos que derivan de él, en cadena (OP, OC y sus
+ * recepciones y facturas de proveedor, órdenes de trabajo, surtido y su
+ * transferencia, embarque, facturas y sus cobros, movimientos…), en orden
  * cronológico. Cada evento dice de QUÉ documento es (tipo y folio), para
  * distinguir los del pedido de los de sus derivados.
  *

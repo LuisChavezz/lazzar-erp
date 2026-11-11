@@ -7,19 +7,20 @@ export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
 export type AccionBitacora = (typeof ACCIONES_BITACORA)[number];
 
 /**
- * Un evento de la bitácora (`BitacoraDocumentoSerializer`, nucleo-erp PR #1062).
- * Mismos campos y nulabilidad que el serializer.
+ * Un evento de la bitácora (`BitacoraDocumentoSerializer`, nucleo-erp PR #1062
+ * y #1072). Mismos campos y nulabilidad que el serializer.
  *
  * - `tipo_documento` y `accion` se tipan como `string`: el backend no los
  *   restringe y la UI debe aguantar un valor que aún no conoce (lo pinta tal
  *   cual en vez de romper). Para comparar, usar los guardas de
  *   `documentAuditValues`.
  * - `documento_id` es texto (`CharField`), aunque hoy siempre sea un entero.
- * - `estatus_anterior` / `estatus_nuevo` son la ETIQUETA de los `choices` de
- *   cada modelo, no uniforme entre tipos (mayúsculas en pedido, sin acentos en
- *   OP, el código en picking, `tipo_movimiento` en movimientos, vacía en
- *   ajustes): se muestran como texto, sin mapear a badges.
- * - `folio`, `estatus_*` y `origen_tipo` llegan como `""` cuando no aplican.
+ * - `estatus_anterior` / `estatus_nuevo` son etiquetas legibles y uniformes
+ *   entre tipos ("Por autorizar", "Preparación"), también en los eventos
+ *   anteriores a #1072. Se muestran como texto, sin badges; vacías en ajustes
+ *   de inventario.
+ * - `folio`, `estatus_*`, `estatus_codigo` y `origen_tipo` llegan como `""`
+ *   cuando no aplican.
  * - `usuario_id` / `usuario_nombre` son `null` cuando el cambio no vino de una
  *   petición con usuario (procesos internos).
  */
@@ -33,10 +34,18 @@ export interface BitacoraDocumento {
   accion_display: string;
   estatus_anterior: string;
   estatus_nuevo: string;
-  /** Decimal como texto (`"1234.50"`) o `null`. */
+  /**
+   * Código crudo del estatus NUEVO (#1072). `""` al eliminar, en ajustes de
+   * inventario y en todo evento registrado antes de #1072.
+   */
+  estatus_codigo: string;
+  /**
+   * Decimal como texto (`"1234.50"`) o `null`: el tipo no tiene importe o el
+   * usuario no puede ver importes (se pinta "—").
+   */
   total: string | null;
   moneda_id: number | null;
-  /** Siempre `null` en cobros y pagos (sus modelos no tienen sucursal). */
+  /** `null` en los cobros y pagos registrados antes de que tuvieran sucursal (#1072). */
   sucursal_id: number | null;
   origen_tipo: string;
   origen_id: number | null;

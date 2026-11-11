@@ -3,8 +3,8 @@ import { getMexicoTimeHHMM, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /**
  * Cambio de estatus como texto: "anterior → nuevo". Las etiquetas del backend
- * no son uniformes entre tipos (ver `BitacoraDocumento`), así que se muestran
- * tal cual, sin badge. Una alta solo trae el nuevo; una baja o restauración
+ * ya vienen legibles (ver `BitacoraDocumento`) y se muestran tal cual, sin
+ * badge. Una alta solo trae el nuevo; una baja o restauración
  * repite el mismo en ambos lados: en esos casos va un solo estatus. `null` si
  * el evento no trae ninguno (p. ej. un ajuste de inventario).
  */
