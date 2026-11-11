@@ -1,4 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getDocumentTimeline } from "../services/actions";
 import { isValidTimelineTarget } from "../schemas/documentAuditFilters.schema";
 import { DOCUMENT_AUDIT_QUERY_KEY, DOCUMENT_AUDIT_STALE_TIME } from "./useDocumentAuditList";
@@ -18,15 +19,17 @@ export const useDocumentTimeline = (
   companyId: number | null,
   { enabled }: { enabled: boolean },
 ) => {
-  const { data, isLoading, isFetching, isInitialError, error, refetch } = useGuardedQuery(
-    {
-      queryKey: [...DOCUMENT_AUDIT_QUERY_KEY, "timeline", companyId, tipo, documentoId],
-      queryFn: ({ signal }) => getDocumentTimeline(tipo, documentoId, signal),
-      enabled: enabled && companyId !== null && isValidTimelineTarget(tipo, documentoId),
-      staleTime: DOCUMENT_AUDIT_STALE_TIME,
-    },
-    { toastId: "document-timeline-refetch-error" },
-  );
+  const { data, isLoading, isFetching, isInitialError, isDefinitiveError, error, refetch } =
+    useGuardedQuery(
+      {
+        queryKey: [...DOCUMENT_AUDIT_QUERY_KEY, "timeline", companyId, tipo, documentoId],
+        queryFn: ({ signal }) => getDocumentTimeline(tipo, documentoId, signal),
+        enabled: enabled && companyId !== null && isValidTimelineTarget(tipo, documentoId),
+        staleTime: DOCUMENT_AUDIT_STALE_TIME,
+      },
+      // 404: el documento no existe en la empresa activa. No se reintenta.
+      { toastId: "document-timeline-refetch-error", isDefinitiveError: isNotFoundError },
+    );
 
   return {
     /** `undefined` hasta la primera respuesta: distingue "cargando" de "sin eventos". */
@@ -36,6 +39,8 @@ export const useDocumentTimeline = (
     isLoading,
     isFetching,
     isInitialError,
+    /** 404: la historia no está disponible (el documento no es de la empresa). */
+    isDefinitiveError,
     error,
     refetch,
   };
