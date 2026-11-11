@@ -1,14 +1,16 @@
 import { signOut } from "next-auth/react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
+import { probeSession } from "./sessionRecovery";
 
 /**
  * Borra el estado del cliente que pertenece al USUARIO de la sesión (EC-848):
  * el workspace persistido (sucursal elegida y nombre de la empresa) y la cookie
  * `erp_workspace_id`. Corre en los dos cierres de sesión (`useLogout` y el 401
- * forzado de `v1_api`), al montar el login (`LoginStepManager`, donde ya no
- * queda nada de la sesión anterior montado que lo reescriba) y al entrar con
- * una sesión nueva (`enterNewSession`).
+ * forzado de `v1_api`), al montar el login si no hay sesión
+ * (`clearUserScopedClientStateIfSignedOut`, donde ya no queda nada de la sesión
+ * anterior montado que lo reescriba) y al entrar con una sesión nueva
+ * (`enterNewSession`).
  *
  * No toca la caché de TanStack Query: vive solo en memoria, y todos esos
  * caminos terminan en una carga completa de la página que la descarta.
@@ -54,11 +56,29 @@ const POST_LOGIN_PATH = "/select-branch";
  * anterior caducó sin cerrarla, la pestaña conserva en memoria la caché de
  * TanStack Query de ese usuario; la carga completa la descarta.
  *
+ * `replace`, no `assign`: el login sale del historial, así que "Atrás" no
+ * vuelve a mostrarlo (desde la caché del navegador, sin pasar por el proxy) a
+ * un usuario que ya tiene sesión.
+ *
  * Sin el workspace anterior, el proxy deja pasar solo a `/select-branch`, que
  * no lo necesita: lee la empresa de la sesión y escribe sucursal y cookie al
  * elegir.
  */
 export const enterNewSession = () => {
   clearUserScopedClientState();
-  window.location.assign(POST_LOGIN_PATH);
+  window.location.replace(POST_LOGIN_PATH);
+};
+
+/**
+ * Limpieza al montar el login: solo si el endpoint de sesión confirma que NO
+ * hay sesión. El proxy manda a "/" a quien la tiene, pero una página servida
+ * desde la caché del navegador no pasa por él, y limpiar ahí borraría el
+ * workspace de una sesión viva. Un fallo de la consulta (`failed`) tampoco
+ * limpia: `getSession()` lo devolvería como `null`, por eso se usa
+ * `probeSession`, que distingue "sin sesión" de "no se pudo saber".
+ */
+export const clearUserScopedClientStateIfSignedOut = async (signal: AbortSignal) => {
+  if ((await probeSession(signal)) === "none" && !signal.aborted) {
+    clearUserScopedClientState();
+  }
 };
