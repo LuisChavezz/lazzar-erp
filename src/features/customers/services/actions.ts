@@ -1,9 +1,11 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import {
   Customer,
   CustomerCreate,
   CustomerCreateResponse,
   CustomerDetail,
+  CustomerListItem,
   CustomerRfcVerification,
   VerifyCustomerRfcParams,
 } from "../interfaces/customer.interface";
@@ -20,9 +22,30 @@ export const getCustomerKpis = async (): Promise<CustomerKpis> => {
   return response.data;
 };
 
+/**
+ * Una PÁGINA del listado de clientes (`?limit=&offset=` → `{count, next,
+ * previous, results}`, tope 500) con la búsqueda (`search`) y el orden
+ * (`ordering`) de la tabla en modo servidor (`useCustomersTable`). Sin `limit`
+ * el mismo endpoint responde el arreglo completo: eso es el catálogo
+ * (`getCustomers`). El backend ya lista solo activos (baja lógica) y no acepta
+ * filtros: un parámetro desconocido se ignora.
+ */
+export const getCustomersPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<CustomerListItem>> => {
+  const response = await v1_api.get<PaginatedListResponse<CustomerListItem>>("/terceros/clientes/", {
+    params,
+  });
+  return response.data;
+};
 
-export const getCustomers = async (): Promise<Customer[]> => {
-  const response = await v1_api.get<Customer[]>("/terceros/clientes/");
+/**
+ * Catálogo COMPLETO de clientes (sin `limit`: arreglo plano), para selectores y
+ * filtros de otros módulos (`useCustomers`). La tabla de Ventas usa
+ * `getCustomersPage`.
+ */
+export const getCustomers = async (): Promise<CustomerListItem[]> => {
+  const response = await v1_api.get<CustomerListItem[]>("/terceros/clientes/");
   return response.data;
 };
 
