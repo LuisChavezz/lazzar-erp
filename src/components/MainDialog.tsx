@@ -25,6 +25,11 @@ interface MainDialogProps {
    * `GlobalSearchPalette` para abrir el detalle de cotización al cerrarse.
    */
   onCloseAutoFocus?: (event: Event) => void;
+  /**
+   * Acción del encabezado, junto al título (p. ej. `DocumentPdfButton` en el
+   * detalle de un documento). Sin ella, el encabezado es el de siempre.
+   */
+  headerAction?: React.ReactNode;
 }
 
 export function MainDialog({
@@ -39,6 +44,7 @@ export function MainDialog({
   open,
   onOpenChange,
   onCloseAutoFocus,
+  headerAction,
 }: MainDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -62,8 +68,21 @@ export function MainDialog({
           <XIcon className="w-8 h-8" aria-hidden="true" />
         </Dialog.Close>
 
-        <Dialog.Title>{title}</Dialog.Title>
-        
+        {headerAction ? (
+          // El título y la acción en una fila; `pr-10` deja libre la X de
+          // cierre (absoluta, arriba a la derecha). Al angostarse, la acción
+          // baja debajo del título. La acción va FUERA de `Dialog.Title` para
+          // no entrar en el nombre accesible del diálogo.
+          <Flex align="start" justify="between" gap="3" wrap="wrap" mb="3" className="pr-10">
+            <Dialog.Title mb="0" className="min-w-0">
+              {title}
+            </Dialog.Title>
+            <div className="shrink-0">{headerAction}</div>
+          </Flex>
+        ) : (
+          <Dialog.Title>{title}</Dialog.Title>
+        )}
+
         {description && (
           <Dialog.Description size="2" mb="4">
             {description}
