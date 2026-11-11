@@ -39,6 +39,31 @@ export const migrateFiscalAddressStorage = (
 };
 
 /**
+ * Lee el valor crudo de `sat-storage` (`{ state, version }` serializado por
+ * `persist`) y lo devuelve migrado; `null` si no hay valor o no es JSON válido.
+ */
+export const parseStoredFiscalAddressState = (raw: string | null): FiscalAddressStorageState | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { state?: unknown; version?: unknown } | null;
+    if (!parsed || typeof parsed !== "object") return null;
+    return migrateFiscalAddressStorage(parsed.state, typeof parsed.version === "number" ? parsed.version : 0);
+  } catch {
+    return null;
+  }
+};
+
+/** `state` con la dirección de `companyId` puesta (o reemplazada); el resto intacto. */
+export const withFiscalAddressForCompany = (
+  state: FiscalAddressStorageState,
+  companyId: number,
+  address: FiscalAddress
+): FiscalAddressStorageState => ({
+  ...state,
+  addressesByCompany: { ...state.addressesByCompany, [String(companyId)]: address },
+});
+
+/**
  * Asigna la dirección anterior a EC-847 a `companyId`, la empresa activa que
  * el servidor confirmó en la primera carga tras la migración. Si esa empresa
  * ya tiene una dirección propia no la pisa y conserva la anterior para no

@@ -20,4 +20,13 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   timeout: 30_000,
+  /* Los specs `*.fake-window.spec.ts` instalan un `window` falso ANTES de
+   * importar stores persistidos de zustand, que hidratan al crearse. Van en su
+   * propio proyecto porque Playwright reutiliza el worker (y su caché de
+   * módulos) entre archivos del mismo proyecto: si otro spec importara antes el
+   * store sin `window`, nacería sin almacenamiento. */
+  projects: [
+    { name: "unit", testIgnore: /\.fake-window\.spec\.ts$/ },
+    { name: "fake-window", testMatch: /\.fake-window\.spec\.ts$/ },
+  ],
 });
