@@ -11,8 +11,9 @@ const nextConfig: NextConfig = {
   // Referer. `strict-origin` deja solo el origen en todas partes; hacia otros
   // orígenes (backend, Zebra, ngrok) se envía exactamente lo mismo que antes.
   // No `no-referrer`: pondría `Origin: null` en los POST al mismo origen y
-  // rompería cualquier Server Action. `headers` corre antes que redirects y el
-  // proxy, así que también cubre los 307/308 (EC-864).
+  // rompería cualquier Server Action. Los redirects del proxy (307 a login) sí
+  // la llevan; los de `redirects()` de abajo no, bajo `next start` (sin
+  // verificar en Vercel) (EC-864).
   async headers() {
     return [
       {
