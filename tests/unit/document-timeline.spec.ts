@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
+import { ZodError } from "zod";
 import { v1_api } from "@/src/api/v1.api";
 import { resolveDocumentAuditTarget } from "@/src/features/document-audit/constants/documentAuditOpeners";
 import { getTipoDocumentoLabel } from "@/src/features/document-audit/constants/documentAuditValues";
@@ -74,6 +75,21 @@ test.describe("getDocumentTimeline", () => {
       expect(calls).toEqual([
         { url: "/auditoria/documentos/linea-tiempo/", params: { tipo: "pedido", documento_id: 7 } },
       ]);
+    } finally {
+      v1_api.get = originalGet;
+    }
+  });
+
+  test("otra forma de respuesta es un error, no 'sin eventos'", async () => {
+    const originalGet = v1_api.get;
+    try {
+      for (const data of [[evento()], {}, { eventos: [evento()] }, { eventos: "x", truncado: false }]) {
+        v1_api.get = (async () => ({ data })) as typeof v1_api.get;
+        const error = await getDocumentTimeline("pedido", 7).catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(ZodError);
+        // El texto técnico de zod nunca llega a la hoja.
+        expect(documentAuditErrorMessage(error, "Respaldo")).toBe("Respaldo");
+      }
     } finally {
       v1_api.get = originalGet;
     }
