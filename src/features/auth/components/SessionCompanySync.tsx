@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseSessionEmpresa } from "@/src/lib/sessionEmpresa";
-import { claimLegacyFiscalAddress } from "@/src/features/sat/stores/sat.store";
 import { getCurrentUser } from "../services/currentUser";
 import {
   sessionCompanySyncKey,
@@ -60,9 +59,6 @@ export function SessionCompanySync() {
         if (empresa === undefined) throw new Error("`empresa` inválida en /auth/user/");
 
         useSessionCompanySyncStore.getState().confirm(key, empresa);
-        // La Dirección fiscal anterior a EC-847 (una sola, sin empresa) se
-        // asigna a la primera empresa que el servidor confirma tras migrar.
-        if (empresa !== null) claimLegacyFiscalAddress(empresa);
         if (empresa !== sessionEmpresa) {
           const persisted = await persistSessionEmpresa({
             empresa,
