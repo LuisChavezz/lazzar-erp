@@ -355,7 +355,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
             : "Hay existencia de todos los materiales. La pre-orden quedará lista para producir."
         }
         confirmText="Confirmar"
-        confirmColor="sky"
+        confirmColor="blue"
         closeOnConfirm={false}
         busy={confirmar.isPending}
         onConfirm={() => confirmar.mutate(undefined, { onSettled: () => setConfirmOpen(false) })}
