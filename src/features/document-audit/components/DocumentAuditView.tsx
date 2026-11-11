@@ -7,7 +7,6 @@ import { RefreshIcon } from "@/src/components/Icons";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
 import { useCurrencies } from "@/src/features/currency/hooks/useCurrencies";
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
-import { useUserCatalog } from "@/src/features/users/hooks/useUserCatalog";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { meetsPermissionRequirement } from "@/src/utils/permissions";
@@ -38,7 +37,6 @@ export function DocumentAuditView() {
   const params = toDocumentAuditParams(filters);
   const list = useDocumentAuditList(params, companyId, { enabled: canRead });
 
-  const userCatalog = useUserCatalog(companyId, { enabled: canRead });
   const { branches, isLoading: isBranchesLoading } = useCompanyBranches(companyId);
   const { data: currencies } = useCurrencies();
 
@@ -58,9 +56,8 @@ export function DocumentAuditView() {
         setFilter={setFilter}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
-        users={userCatalog.users}
-        isUsersLoading={userCatalog.isLoading}
-        isUsersError={userCatalog.isInitialError}
+        companyId={companyId}
+        canLoadUsers={canRead}
         branches={branches}
         isBranchesLoading={isBranchesLoading}
       />

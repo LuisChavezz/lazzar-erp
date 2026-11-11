@@ -8,7 +8,7 @@ import { ItemPickerButton } from "@/src/components/ItemPickerButton";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import type { Branch } from "@/src/features/branches/interfaces/branch.interface";
-import type { UserCatalogItem } from "@/src/features/users/interfaces/user.interface";
+import { useUserCatalog } from "@/src/features/users/hooks/useUserCatalog";
 import {
   ACCION_BITACORA_LABELS,
   ACCIONES_BITACORA,
@@ -39,9 +39,10 @@ interface DocumentAuditFiltersProps {
   ) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
-  users: UserCatalogItem[];
-  isUsersLoading: boolean;
-  isUsersError: boolean;
+  /** Empresa de la sesión: el catálogo de usuarios es de la empresa activa. */
+  companyId: number | null;
+  /** Permiso confirmado de la bitácora: sin él no se pide el catálogo. */
+  canLoadUsers: boolean;
   branches: Branch[];
   isBranchesLoading: boolean;
 }
@@ -62,13 +63,19 @@ export function DocumentAuditFilters({
   setFilter,
   hasActiveFilters,
   onClearFilters,
-  users,
-  isUsersLoading,
-  isUsersError,
+  companyId,
+  canLoadUsers,
   branches,
   isBranchesLoading,
 }: DocumentAuditFiltersProps) {
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
+  // El catálogo solo hace falta para nombrar el usuario elegido (también el
+  // que llega en la URL) o para llenar el selector abierto: una visita sin
+  // filtro de usuario no lo pide.
+  const userCatalog = useUserCatalog(companyId, {
+    enabled: canLoadUsers && (filters.usuario !== undefined || isUserPickerOpen),
+  });
+  const users = userCatalog.users;
   const [folioDraft, setFolioDraft] = useState(filters.folio ?? "");
   // ¿Hay un folio tecleado sin confirmar? Mientras lo haya, la URL no pisa el
   // borrador.
@@ -118,7 +125,8 @@ export function DocumentAuditFilters({
   const selectedUserLabel =
     filters.usuario === undefined
       ? null
-      : (selectedUser?.nombre_completo ?? `Usuario #${filters.usuario}`);
+      : (selectedUser?.nombre_completo ??
+        (userCatalog.isLoading ? "Cargando usuario..." : `Usuario #${filters.usuario}`));
 
   const handleClear = () => {
     if (folioTimer.current) clearTimeout(folioTimer.current);
@@ -273,8 +281,8 @@ export function DocumentAuditFilters({
             title="Filtrar por usuario"
             subtitle="Usuarios activos de la empresa"
             items={users}
-            isLoading={isUsersLoading}
-            isError={isUsersError}
+            isLoading={userCatalog.isLoading}
+            isError={userCatalog.isInitialError}
             errorMessage="No se pudo cargar el catálogo de usuarios."
             searchPlaceholder="Buscar por nombre..."
             filterPredicate={(user, term) => user.nombre_completo.toLowerCase().includes(term)}
