@@ -8,30 +8,15 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
 import { DocumentAuditActionIcon } from "@/src/features/document-audit/components/DocumentAuditActionIcon";
 import { getTipoDocumentoLabel } from "@/src/features/document-audit/constants/documentAuditValues";
-import type { BitacoraDocumento } from "@/src/features/document-audit/interfaces/document-audit.interface";
 import {
   formatAuditDateTime,
   formatAuditUser,
   formatStatusChange,
 } from "@/src/features/document-audit/utils/documentAuditFormat";
-import { documentAuditErrorMessage } from "@/src/features/document-audit/utils/documentAuditErrors";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoDetail } from "../interfaces/order.interface";
+import { resolveOrderHistoryView, type OrderHistoryQuery } from "../utils/orderHistoryView";
 import { OrderBadge, SheetSection } from "./OrderSheetPrimitives";
-
-/** Consulta de la línea de tiempo, montada por la página (`useDocumentTimeline`). */
-export interface OrderHistoryQuery {
-  events: BitacoraDocumento[] | undefined;
-  /** El backend devolvió solo los 500 eventos más recientes (`truncado`). */
-  isTruncated: boolean;
-  isLoading: boolean;
-  isFetching: boolean;
-  isInitialError: boolean;
-  /** 404 de `linea-tiempo`: el historial no está disponible. */
-  isDefinitiveError: boolean;
-  error: unknown;
-  refetch: () => unknown;
-}
 
 interface OrderHistorySheetProps {
   pedido: PedidoDetail;
@@ -54,24 +39,23 @@ interface OrderHistorySheetProps {
  * filtro contable del detalle (`canSeeAccounting`), así que no los repite.
  */
 export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
-  const events = history.events;
+  const { events } = history;
+  const view = resolveOrderHistoryView(history);
 
   let content;
-  if (history.isDefinitiveError) {
-    content = (
-      <EmptyLines>El historial de este pedido no está disponible.</EmptyLines>
-    );
-  } else if (history.isLoading && events === undefined) {
+  if (view.kind === "unavailable") {
+    content = <EmptyLines>El historial de este pedido no está disponible.</EmptyLines>;
+  } else if (view.kind === "loading") {
     content = <Loader title="Cargando historial" message="Obteniendo los eventos del pedido..." />;
-  } else if (history.isInitialError) {
+  } else if (view.kind === "error") {
     content = (
       <ErrorDisplay
         title="Error al cargar el historial"
-        message={documentAuditErrorMessage(history.error, "No se pudo cargar el historial del pedido.")}
+        message={view.message}
         onRetry={() => void history.refetch()}
       />
     );
-  } else if (!events || events.length === 0) {
+  } else if (view.kind === "empty") {
     content = (
       <div className="py-10 text-center space-y-1">
         <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -86,17 +70,16 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
   } else {
     content = (
       <div className="space-y-4">
-        {history.isTruncated && (
+        {view.truncationNotice && (
           <p
             role="status"
             className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-800 dark:text-amber-300"
           >
-            Se muestran los {events.length} eventos más recientes; los anteriores no se incluyen
-            en este historial.
+            {view.truncationNotice}
           </p>
         )}
         <ActivityTimeline ariaLabel="Historial del pedido">
-          {events.map((event) => {
+          {view.events.map((event) => {
             const statusChange = formatStatusChange(event.estatus_anterior, event.estatus_nuevo);
             return (
               <ActivityTimelineItem
