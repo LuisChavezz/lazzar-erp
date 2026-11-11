@@ -30,23 +30,28 @@ const criteriaOf = (query: string) => {
 };
 
 test.describe("parámetros del listado de clientes", () => {
-  test("sin nada elegido manda el orden por defecto del backend con desempate", () => {
-    expect(criteriaOf("")).toEqual({ ordering: "nombre,-id" });
+  test("sin nada elegido ordena por la primera columna (razón social) con desempate", () => {
+    expect(criteriaOf("")).toEqual({ ordering: "razon_social,-id" });
   });
 
   test("la búsqueda viaja como `search`", () => {
-    expect(criteriaOf("search=81%201234")).toEqual({ search: "81 1234", ordering: "nombre,-id" });
+    expect(criteriaOf("search=81%201234")).toEqual({ search: "81 1234", ordering: "razon_social,-id" });
   });
 
   test("cada columna ordenable llega con `-id` de desempate", () => {
-    for (const field of ["razon_social", "telefono", "correo", "fecha_ultima_compra"]) {
+    for (const field of ["razon_social", "nombre", "telefono", "correo", "fecha_ultima_compra"]) {
       expect(criteriaOf(`ordering=${field}`)).toEqual({ ordering: `${field},-id` });
       expect(criteriaOf(`ordering=-${field}`)).toEqual({ ordering: `-${field},-id` });
     }
   });
 
   test("un orden fuera de la lista blanca o un filtro no llegan al backend", () => {
-    expect(criteriaOf("ordering=rfc&activo=false")).toEqual({ ordering: "nombre,-id" });
+    expect(criteriaOf("ordering=rfc&activo=false")).toEqual({ ordering: "razon_social,-id" });
+  });
+
+  test("el orden por defecto no se escribe en la URL", () => {
+    const params = new URLSearchParams("ordering=razon_social");
+    expect(readServerTableState(customersTable, (key) => params.get(key)).ordering).toBeNull();
   });
 });
 
