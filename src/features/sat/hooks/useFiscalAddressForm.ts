@@ -5,25 +5,19 @@ import { useForm } from "@tanstack/react-form";
 import toast from "react-hot-toast";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
-import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { FiscalAddressSchema, FiscalAddressFormValues } from "../schemas/fiscal-address.schema";
-import {
-  FISCAL_ADDRESS_FIELDS,
-  FiscalAddress,
-  FiscalAddressField,
-} from "../interfaces/fiscal-address.interface";
+import { FiscalAddress, FiscalAddressField } from "../interfaces/fiscal-address.interface";
+import { fiscalAddressPatch } from "../utils/fiscalAddressForm";
 import { useUpdateFiscalAddress } from "./useUpdateFiscalAddress";
 
 interface UseFiscalAddressFormParams {
   /** Empresa de la sesión: la llave de caché donde queda lo guardado. */
   companyId: number | null;
-  /** El domicilio tal como estaba al abrir el diálogo. */
+  /** El domicilio recién releído al abrir el diálogo (`useFiscalAddressDialogLoad`). */
   address: FiscalAddress;
   onSuccess: () => void;
 }
-
-const SAVE_FALLBACK = "No se pudo guardar la dirección fiscal";
 
 export function useFiscalAddressForm({ companyId, address, onSuccess }: UseFiscalAddressFormParams) {
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -46,7 +40,11 @@ export function useFiscalAddressForm({ companyId, address, onSuccess }: UseFisca
     clearAllErrors,
   } = useFormFieldErrors<FiscalAddressField>();
 
-  const { mutateAsync: saveAddress, isPending: isSaving } = useUpdateFiscalAddress(companyId);
+  // La mutación avisa con toast y reparte el error entre campos y banner.
+  const { mutateAsync: saveAddress, isPending: isSaving } = useUpdateFiscalAddress(companyId, {
+    setFieldError: setServerFieldError,
+    setFormError,
+  });
 
   const form = useForm({
     defaultValues: address satisfies FiscalAddressFormValues,
@@ -67,19 +65,19 @@ export function useFiscalAddressForm({ companyId, address, onSuccess }: UseFisca
       }
       replaceClientErrors({});
 
+      // Solo lo que cambió: no pisar lo que otro guardó en los demás campos.
+      const patch = fiscalAddressPatch(address, parsed.data);
+      if (Object.keys(patch).length === 0) {
+        toast("No hay cambios que guardar");
+        leavingRef.current = true;
+        onSuccess();
+        return;
+      }
+
       try {
-        await saveAddress(parsed.data);
-      } catch (error) {
-        // Cada error de campo va bajo su input (p. ej. los dos mensajes del CP).
-        // Lo que no es de un campo va al banner; si solo hubo errores de campo,
-        // el banner sobra y basta el toast genérico.
-        let hasFieldError = false;
-        const message = handleDrfWriteError(error, SAVE_FALLBACK, FISCAL_ADDRESS_FIELDS, (field, text) => {
-          hasFieldError = true;
-          setServerFieldError(field, text);
-        });
-        if (!hasFieldError || message !== SAVE_FALLBACK) setFormError(message);
-        toast.error(message);
+        await saveAddress(patch);
+      } catch {
+        // La mutación ya avisó (toast, errores por campo y banner).
         return;
       }
 

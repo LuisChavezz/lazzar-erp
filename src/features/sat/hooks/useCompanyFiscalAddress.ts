@@ -1,3 +1,4 @@
+import { queryOptions } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { getFiscalAddress } from "../services/actions";
@@ -11,6 +12,16 @@ export const fiscalAddressQueryKey = (companyId: number | null) =>
   ["fiscal-address", companyId] as const;
 
 /**
+ * Opciones de la consulta, compartidas por la vista y por la relectura al abrir
+ * el diálogo de edición (`useFiscalAddressDialogLoad`).
+ */
+export const fiscalAddressQueryOptions = (companyId: number | null) =>
+  queryOptions({
+    queryKey: fiscalAddressQueryKey(companyId),
+    queryFn: ({ signal }) => getFiscalAddress(signal),
+  });
+
+/**
  * Domicilio fiscal de la empresa de la sesión (EC-860), leído del backend.
  * Apagado sin empresa confirmada (`companyId` `null`): no hay de cuál leerlo.
  * `fiscalAddress` es `undefined` mientras no ha cargado.
@@ -18,11 +29,7 @@ export const fiscalAddressQueryKey = (companyId: number | null) =>
 export const useCompanyFiscalAddress = () => {
   const companyId = useSessionCompanyId();
   const { data, isLoading, isInitialError, refetch } = useGuardedQuery(
-    {
-      queryKey: fiscalAddressQueryKey(companyId),
-      queryFn: ({ signal }) => getFiscalAddress(signal),
-      enabled: companyId !== null,
-    },
+    { ...fiscalAddressQueryOptions(companyId), enabled: companyId !== null },
     { toastId: "fiscal-address-refetch-error" },
   );
 

@@ -6,7 +6,9 @@ import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAd
 import { MainDialog } from "@/src/components/MainDialog";
 import { ErrorState } from "@/src/components/ErrorState";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { useFiscalAddressDialogLoad } from "../hooks/useFiscalAddressDialogLoad";
+import { fiscalAddressLoadErrorMessage } from "../utils/fiscalAddressForm";
 import FiscalAddressForm from "./FiscalAddressForm";
 import { MapPinIcon, EditIcon, BuildingIcon, RefreshIcon } from "@/src/components/Icons";
 import {
@@ -14,33 +16,27 @@ import {
   FiscalAddress,
 } from "../interfaces/fiscal-address.interface";
 
-/** Base del formulario mientras el domicilio no ha cargado (el diálogo no se ofrece). */
-const EMPTY_ADDRESS: FiscalAddress = {
-  calle: "",
-  numero_exterior: "",
-  numero_interior: "",
-  colonia: "",
-  localidad: "",
-  municipio: "",
-  estado: "",
-  pais: DEFAULT_FISCAL_COUNTRY,
-  codigo_postal: "",
-};
-
 /**
  * ¿Ya se capturó algo? El backend responde siempre los nueve campos; una
  * empresa sin domicilio los trae vacíos salvo `pais`, que vale `MEX` por omisión.
  */
+const orDash = (value: string) => (value.trim() ? value : <span className="text-slate-400 italic">-</span>);
+
 const hasCapturedAddress = (address: FiscalAddress) =>
   Object.entries(address).some(([field, value]) => field !== "pais" && value.trim() !== "");
-
-const orDash = (value: string) => (value.trim() ? value : <span className="text-slate-400 italic">-</span>);
 
 export const FiscalAddressDetails = () => {
   // Domicilio fiscal de la empresa de la sesión, leído del backend (EC-860).
   const { companyId, fiscalAddress, isLoading, isInitialError, refetch } = useCompanyFiscalAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const dialogSession = useDialogSession(isDialogOpen, fiscalAddress ?? EMPTY_ADDRESS);
+  // Al abrir se relee el domicilio: el formulario parte del valor actual, no
+  // de la caché (que pudo quedar vieja frente a otra pestaña u otro admin).
+  const { load: dialogLoad, reload: reloadDialog } = useFiscalAddressDialogLoad(companyId);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (open) void reloadDialog();
+  };
 
   // Misma regla que el backend para escribir: superusuario o admin de empresa.
   // Mientras no se sabe (`unknown`) no se ofrece editar.
@@ -87,7 +83,7 @@ export const FiscalAddressDetails = () => {
             </div>
           }
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={handleDialogOpenChange}
           maxWidth="800px"
           trigger={
             <button
@@ -98,12 +94,23 @@ export const FiscalAddressDetails = () => {
             </button>
           }
         >
-          <FiscalAddressForm
-            key={dialogSession.id}
-            companyId={companyId}
-            address={dialogSession.snapshot}
-            onSuccess={() => setIsDialogOpen(false)}
-          />
+          {dialogLoad.status === "ready" ? (
+            <FiscalAddressForm
+              key={dialogLoad.id}
+              companyId={companyId}
+              address={dialogLoad.address}
+              onSuccess={() => setIsDialogOpen(false)}
+            />
+          ) : dialogLoad.status === "error" ? (
+            <SectionErrorNotice
+              title="No se pudo cargar la dirección fiscal"
+              message={fiscalAddressLoadErrorMessage(dialogLoad.error)}
+              onRetry={() => void reloadDialog()}
+              isRetrying={false}
+            />
+          ) : (
+            <LoadingSkeleton className="h-72" />
+          )}
         </MainDialog>
         )}
       </div>
