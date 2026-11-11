@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { DocumentPdfButton } from "@/src/components/DocumentPdfButton";
-import { renderedDocumentPdfSource } from "@/src/hooks/useDocumentPdfDownload";
+import { renderedDocumentPdfSource } from "@/src/pdfs/shared/documentPdfSource";
 import { purchaseOrderQueryOptions } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderDetail } from "../interfaces/purchase-order.interface";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
