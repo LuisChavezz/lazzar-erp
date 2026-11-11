@@ -155,6 +155,10 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // generar: la campana no tiene página propia a la que volver. Sin
   // R-CRM-PEDIDOS cae al Home (`resolveBack`).
   notifications: { href: "/sales/orders", label: "Volver a Mis Pedidos" },
+  // Quien llega desde la Bitácora de documentos (un evento de este pedido)
+  // vuelve a ella. Exige R-CORE o R-CORE-REPORTES; sin ninguno cae al Home
+  // (`resolveBack`).
+  "document-audit": { href: "/system/document-audit", label: "Volver a la Bitácora" },
   // Destino universal: el Home no exige ningún permiso de módulo, así que sirve
   // como salida para quien llega sin `?from=` (URL pegada, recarga, enlace
   // externo). También es válido como valor explícito de `?from=home`.

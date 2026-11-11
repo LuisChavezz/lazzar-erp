@@ -25,6 +25,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "invoice",
   "opportunities",
   "notifications",
+  "document-audit",
   "home",
 ] as const;
 
