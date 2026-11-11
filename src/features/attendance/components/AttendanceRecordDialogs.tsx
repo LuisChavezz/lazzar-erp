@@ -106,7 +106,7 @@ export function AttendanceRecordDialogs({ dialogs, permissions }: AttendanceReco
           confirmText={
             isJustifying ? "Guardando…" : isJustify ? "Justificar" : "Quitar justificación"
           }
-          confirmColor={isJustify ? "sky" : "amber"}
+          confirmColor={isJustify ? "blue" : "amber"}
           closeOnConfirm={false}
           busy={isJustifying}
           onConfirm={() =>
