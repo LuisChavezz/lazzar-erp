@@ -43,12 +43,6 @@ export function DocumentAuditView() {
   const { data: currencies } = useCurrencies();
 
   const [openDocument, setOpenDocument] = useState<OpenAuditDocument | null>(null);
-  // Remonta los filtros al limpiar, para que el borrador del folio no sobreviva.
-  const [filtersKey, setFiltersKey] = useState(0);
-  const handleClearFilters = () => {
-    clearFilters();
-    setFiltersKey((key) => key + 1);
-  };
 
   const branchNames = new Map(branches.map((branch) => [branch.id, branch.nombre]));
 
@@ -60,11 +54,10 @@ export function DocumentAuditView() {
       </p>
 
       <DocumentAuditFilters
-        key={filtersKey}
         filters={filters}
         setFilter={setFilter}
         hasActiveFilters={hasActiveFilters}
-        onClearFilters={handleClearFilters}
+        onClearFilters={clearFilters}
         users={userCatalog.users}
         isUsersLoading={userCatalog.isLoading}
         isUsersError={userCatalog.isInitialError}
@@ -101,7 +94,7 @@ export function DocumentAuditView() {
           onRetry={() => void list.refetch()}
           isTransitioning={list.isTransitioning}
           hasActiveFilters={hasActiveFilters}
-          onClearFilters={handleClearFilters}
+          onClearFilters={clearFilters}
         />
 
         {list.hasLoaded && list.rows.length > 0 && (

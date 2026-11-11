@@ -51,8 +51,8 @@ interface DocumentAuditFiltersProps {
  * un día completo que no invierta el rango.
  *
  * El folio guarda un BORRADOR local que se confirma tras una pausa (o con
- * Enter). La vista lo remonta con otra `key` al limpiar los filtros, para que
- * el borrador no sobreviva a "Limpiar filtros".
+ * Enter) y sigue a la URL cuando esta cambia por fuera (p. ej. "Limpiar
+ * filtros" desde el error de la tabla).
  */
 export function DocumentAuditFilters({
   filters,
@@ -67,6 +67,18 @@ export function DocumentAuditFilters({
 }: DocumentAuditFiltersProps) {
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const [folioDraft, setFolioDraft] = useState(filters.folio ?? "");
+  // ¿Hay un folio tecleado sin confirmar? Mientras lo haya, la URL no pisa el
+  // borrador.
+  const [isFolioPending, setIsFolioPending] = useState(false);
+  // Último folio de la URL visto: si cambia por fuera (limpiar filtros, atrás o
+  // adelante del navegador), el borrador lo sigue. `useSearchParams` refleja la
+  // escritura de `replaceState` un render después, así que inicializar desde la
+  // URL al limpiar no basta.
+  const [syncedFolio, setSyncedFolio] = useState(filters.folio ?? "");
+  if ((filters.folio ?? "") !== syncedFolio) {
+    setSyncedFolio(filters.folio ?? "");
+    if (!isFolioPending) setFolioDraft(filters.folio ?? "");
+  }
   const folioTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -79,12 +91,14 @@ export function DocumentAuditFilters({
   const commitFolio = (value: string) => {
     if (folioTimer.current) clearTimeout(folioTimer.current);
     folioTimer.current = null;
+    setIsFolioPending(false);
     const folio = value.trim();
     setFilter("folio", folio === "" ? undefined : folio);
   };
 
   const handleFolioChange = (value: string) => {
     setFolioDraft(value);
+    setIsFolioPending(true);
     if (folioTimer.current) clearTimeout(folioTimer.current);
     folioTimer.current = setTimeout(() => commitFolio(value), FOLIO_DEBOUNCE_MS);
   };
@@ -101,6 +115,7 @@ export function DocumentAuditFilters({
   const handleClear = () => {
     if (folioTimer.current) clearTimeout(folioTimer.current);
     folioTimer.current = null;
+    setIsFolioPending(false);
     setFolioDraft("");
     onClearFilters();
   };
