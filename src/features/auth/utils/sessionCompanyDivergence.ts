@@ -66,3 +66,16 @@ export const resolveDivergence = (
   confirmedEmpresa: number | null,
   serverEmpresa: number | null
 ): "reapply" | "reload" => (serverEmpresa === confirmedEmpresa ? "reapply" : "reload");
+
+/**
+ * Qué hacer si la relectura de `/auth/user/` FALLA (backend caído, red):
+ * - `restore`: la sesión perdió la clave (`undefined`, un GET tardío con un
+ *   token anterior a EC-842). Se vuelve a escribir la empresa confirmada sin
+ *   esperar al servidor, como hacía la reaplicación de EC-842; si no, la puerta
+ *   de empresa se queda en "cargando".
+ * - `none`: la sesión trae otra empresa definida. Lo más probable es un cambio
+ *   legítimo en otra pestaña, y reescribir la empresa vieja lo revertiría.
+ */
+export const resolveRereadFailure = (
+  sessionEmpresa: number | null | undefined
+): "restore" | "none" => (sessionEmpresa === undefined ? "restore" : "none");
