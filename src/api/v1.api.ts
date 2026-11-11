@@ -47,10 +47,11 @@ const forceSignOut = async (): Promise<void> => {
   if (typeof window === "undefined" || isSigningOut) return;
 
   isSigningOut = true;
-  // Misma limpieza que el cierre de sesión explícito (`useLogout`): el
-  // workspace del usuario no debe sobrevivir a su sesión (EC-842, EC-848).
-  clearUserScopedClientState();
   try {
+    // Misma limpieza que el cierre de sesión explícito (`useLogout`): el
+    // workspace del usuario no debe sobrevivir a su sesión (EC-842, EC-848).
+    // No lanza, y aun así va dentro del `try`: el latch se suelta pase lo que pase.
+    clearUserScopedClientState();
     await signOutToLogin();
   } finally {
     isSigningOut = false;
