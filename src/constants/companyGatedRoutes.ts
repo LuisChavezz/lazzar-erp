@@ -45,6 +45,12 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   { prefix: "/operations/quotes", gated: true },
   { prefix: "/operations/dashboard", gated: true },
   { prefix: "/operations/inventory-pipeline", gated: true },
+
+  // ── Panel de Control ──────────────────────────────────────────────────────
+  // La bitácora de documentos es de la empresa activa: sin empresa el backend
+  // devuelve la lista vacía, que se leería como "no hay eventos". Los reportes
+  // de inventario y la portada no pasan por aquí.
+  { prefix: "/system/document-audit", gated: true },
 ];
 
 /** `true` si la ruta depende de la empresa de la sesión. */

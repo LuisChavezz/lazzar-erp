@@ -162,14 +162,18 @@ export const appRouteGroups: AppRouteGroup[] = [
   defineSectionedGroup({
     key: "system",
     label: "Panel de Control",
-    description: "Reportes del sistema.",
+    description: "Reportes del sistema y bitácora de documentos.",
     permission: "R-CORE",
     moduleLabel: "Panel de Control",
     modulePath: "/system",
-    moduleDescription: "Reportes del sistema: existencias, movimientos y auxiliar de inventario.",
+    moduleDescription:
+      "Reportes del sistema (existencias, movimientos y auxiliar de inventario) y bitácora de documentos.",
     moduleIcon: DashboardIcon,
     showInHome: true,
-    sections: [{ key: "reports", label: "Reportes de inventario" }],
+    sections: [
+      { key: "reports", label: "Reportes de inventario" },
+      { key: "audit", label: "Auditoría" },
+    ],
     items: [
       // Una ruta por reporte, todas con el código de Reportes: la regla
       // `/system/reports` de `routePermissions` las cubre por prefijo.
@@ -199,6 +203,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Kardex de un SKU: cada movimiento con su saldo corrido.",
         permission: "R-CORE-REPORTES",
         section: "reports",
+      },
+      // Fuera de `/system/reports` a propósito: esa regla exige solo
+      // R-CORE-REPORTES y la bitácora la abre también R-CORE (los mismos dos
+      // códigos que exige el backend). La cubre la regla `/system`.
+      {
+        key: "system-document-audit",
+        label: "Bitácora de documentos",
+        path: "/system/document-audit",
+        icon: HistoryIcon,
+        description: "Altas, cambios de estatus, bajas y borrados de los documentos del ERP.",
+        permission: ["R-CORE", "R-CORE-REPORTES"],
+        section: "audit",
       },
     ],
   }),

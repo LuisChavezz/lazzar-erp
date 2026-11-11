@@ -78,6 +78,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/system/reports/existencias": "Reporte de Existencias",
   "/system/reports/movimientos": "Reporte de Movimientos",
   "/system/reports/auxiliar": "Auxiliar de Movimientos",
+  "/system/document-audit": "Bitácora de documentos",
   "/hr/employees": "Empleados",
   "/hr/areas": "Áreas",
   "/hr/positions": "Puestos",

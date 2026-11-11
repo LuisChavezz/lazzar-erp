@@ -26,6 +26,7 @@ const GATED = [
   "/operations/inventory-pipeline",
   "/orders/2121",
   "/orders/2121/edit-mesa-control",
+  "/system/document-audit",
 ];
 
 const NOT_GATED = [
@@ -43,6 +44,7 @@ const NOT_GATED = [
   "/wms",
   "/hr",
   "/system",
+  "/system/reports/existencias",
   "/config",
   // Prefijos que solo comparten letras con una regla no cuentan.
   "/salesforce",
