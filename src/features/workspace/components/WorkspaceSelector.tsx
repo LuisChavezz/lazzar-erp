@@ -26,6 +26,17 @@ export default function WorkspaceSelector() {
   // ven la empresa de su usuario bloqueada.
   const canSwitchCompany = useIsSuperuser();
 
+  // Entrar sin empresa: el superusuario puede elegir una antes, por eso su
+  // rótulo lo dice; los demás solo pueden continuar.
+  const continueButton = (
+    <button
+      onClick={handleContinueWithoutBranch}
+      className="px-6 py-2.5 cursor-pointer bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-sky-500/20"
+    >
+      {canSwitchCompany ? "Continuar sin empresa" : "Continuar"}
+    </button>
+  );
+
   // Mostrar loader mientras se confirma la empresa o se está seleccionando una sucursal
   if (sessionCompany.status === "loading" || isLoading) {
     return (
@@ -61,32 +72,15 @@ export default function WorkspaceSelector() {
           />
         )}
 
-        {sessionCompany.status === "none" && canSwitchCompany && (
-          <>
-            <CompanySwitcherCard companyId={null} name={null} />
-            <div className="flex justify-center">
-              <button
-                onClick={handleContinueWithoutBranch}
-                className="px-6 py-2.5 cursor-pointer bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-sky-500/20"
-              >
-                Continuar sin empresa
-              </button>
-            </div>
-          </>
-        )}
-
-        {sessionCompany.status === "none" && !canSwitchCompany && (
-          <NoCompanyState
-            action={
-              <button
-                onClick={handleContinueWithoutBranch}
-                className="px-6 py-2.5 cursor-pointer bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-sky-500/20"
-              >
-                Continuar
-              </button>
-            }
-          />
-        )}
+        {sessionCompany.status === "none" &&
+          (canSwitchCompany ? (
+            <>
+              <CompanySwitcherCard sessionCompany={sessionCompany} name={null} />
+              <div className="flex justify-center">{continueButton}</div>
+            </>
+          ) : (
+            <NoCompanyState action={continueButton} />
+          ))}
 
         {sessionCompany.status === "ready" && (
           <>
@@ -94,7 +88,7 @@ export default function WorkspaceSelector() {
                 cambia, con `cambiar-empresa` (EC-847). */}
             {canSwitchCompany ? (
               <CompanySwitcherCard
-                companyId={sessionCompany.companyId}
+                sessionCompany={sessionCompany}
                 name={companyName}
                 rfc={companyRfc}
               />
