@@ -20,9 +20,9 @@ export interface User {
   is_admin_empresa: boolean;
   /**
    * Superusuario de la plataforma. Desde EC-798, ventas, finanzas, terceros y
-   * compras lo acotan a su propia `empresa`, como a cualquier usuario; otros
-   * módulos del backend (catálogo, usuarios, inventarios, WMS, RH, producción)
-   * todavía le muestran todas las empresas.
+   * compras lo acotan a su propia `empresa`, como a cualquier usuario, y desde
+   * EC-843 también `/usuarios/`; otros módulos del backend (catálogo,
+   * inventarios, WMS, RH, producción) todavía le muestran todas las empresas.
    */
   is_superuser: boolean;
   date_joined: string;
