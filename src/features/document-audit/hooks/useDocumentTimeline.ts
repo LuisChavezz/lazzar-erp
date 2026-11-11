@@ -5,7 +5,7 @@ import { DOCUMENT_AUDIT_QUERY_KEY, DOCUMENT_AUDIT_STALE_TIME } from "./useDocume
 
 /**
  * Línea de tiempo de un documento (`linea-tiempo`): su historia y la de los
- * documentos que lo tienen como origen directo.
+ * documentos que derivan de él.
  *
  * `enabled` lo decide quien la monta (p. ej. la hoja "Historial" activa Y el
  * permiso de la bitácora): sin él no sale ninguna petición. Tampoco sale con
@@ -30,7 +30,9 @@ export const useDocumentTimeline = (
 
   return {
     /** `undefined` hasta la primera respuesta: distingue "cargando" de "sin eventos". */
-    events: data,
+    events: data?.eventos,
+    /** El backend dejó fuera los eventos más antiguos (había más de 500). */
+    isTruncated: data?.truncado ?? false,
     isLoading,
     isFetching,
     isInitialError,

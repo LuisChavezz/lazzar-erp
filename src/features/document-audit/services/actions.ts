@@ -1,7 +1,7 @@
 import { v1_api } from "@/src/api/v1.api";
 import type {
-  BitacoraDocumento,
   BitacoraDocumentoPage,
+  BitacoraLineaTiempo,
 } from "../interfaces/document-audit.interface";
 
 /** Eventos por página. El backend da 50 por defecto y acepta hasta 200 (`limit`). */
@@ -29,16 +29,17 @@ export const getDocumentAuditPage = async (
 };
 
 /**
- * Historia de un documento y de los que lo tienen como origen directo, en
- * orden cronológico (máximo 500, los más antiguos). Un id inexistente o de otra
- * empresa responde `200 []`.
+ * Historia de un documento y de lo que deriva de él (en cadena: OC → recepción
+ * → factura de proveedor, la transferencia de cada picking, los cobros de cada
+ * factura…), en orden cronológico: los 500 más recientes, con `truncado` si
+ * había más. Un documento que no existe en la empresa responde 404.
  */
 export const getDocumentTimeline = async (
   tipo: string,
   documentoId: number,
   signal?: AbortSignal,
-): Promise<BitacoraDocumento[]> => {
-  const { data } = await v1_api.get<BitacoraDocumento[]>("/auditoria/documentos/linea-tiempo/", {
+): Promise<BitacoraLineaTiempo> => {
+  const { data } = await v1_api.get<BitacoraLineaTiempo>("/auditoria/documentos/linea-tiempo/", {
     params: { tipo, documento_id: documentoId },
     signal,
   });

@@ -44,6 +44,16 @@ export interface BitacoraDocumento {
   usuario_nombre: string | null;
 }
 
+/**
+ * Respuesta de `linea-tiempo/` (nucleo-erp PR #1072): los 500 eventos MÁS
+ * RECIENTES del documento y de sus derivados, en orden cronológico.
+ * `truncado` es `true` cuando había más y los más antiguos quedaron fuera.
+ */
+export interface BitacoraLineaTiempo {
+  eventos: BitacoraDocumento[];
+  truncado: boolean;
+}
+
 /** Página del listado: `CursorPagination` de DRF, sin `count`. */
 export interface BitacoraDocumentoPage {
   /** URL absoluta de la página siguiente (trae el `cursor`), o `null`. */
