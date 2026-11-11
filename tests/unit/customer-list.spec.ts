@@ -11,6 +11,10 @@ import {
 import type { CustomerListItem } from "@/src/features/customers/interfaces/customer.interface";
 import { getCustomerColumnText } from "@/src/features/customers/utils/customerExport";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
+  formatCustomerUbicacion,
+  satCatalogLabel,
+} from "@/src/features/customers/utils/customerHeader";
 
 /**
  * EC-754: listado de clientes de Ventas en modo servidor contra
@@ -110,5 +114,18 @@ test.describe("getCustomerColumnText (exportaciones)", () => {
   test("las demás columnas leen el campo de su id; vacío es cadena vacía", () => {
     expect(getCustomerColumnText(customer, column("razon_social"))).toBe("ACME SA");
     expect(getCustomerColumnText(customer, column("telefono"))).toBe("");
+  });
+});
+
+test.describe("cabecera del detalle", () => {
+  test("rotula una entrada del catálogo SAT o «—» sin ella", () => {
+    expect(satCatalogLabel({ codigo: "601", descripcion: "General de Ley" })).toBe("601 - General de Ley");
+    expect(satCatalogLabel(undefined)).toBe("—");
+  });
+
+  test("ciudad y estado sin separador colgando", () => {
+    expect(formatCustomerUbicacion({ ciudad: "MONTERREY", estado: "NL" })).toBe("MONTERREY, NL");
+    expect(formatCustomerUbicacion({ ciudad: " ", estado: "NL" })).toBe("NL");
+    expect(formatCustomerUbicacion({ ciudad: "", estado: "" })).toBe("—");
   });
 });
