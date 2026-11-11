@@ -89,8 +89,16 @@ export function MainDialog({
           </Dialog.Description>
         )}
 
-        {/* Contenido dinámico */}
-        {children}
+        {/* Contenido dinámico. `contain: inline-size`: el ancho mínimo del
+            contenido (p. ej. una tabla con celdas sin salto de línea) ya no
+            sube hasta el relleno de Radix (`.rt-BaseDialogScrollPadding`, un
+            hijo flex con `min-width: auto`), que antes crecía a ese ancho y
+            sacaba el diálogo —y su encabezado— del viewport en un teléfono.
+            El diálogo conserva su ancho (100% hasta `maxWidth`) y lo ancho
+            hace scroll dentro de su propio contenedor (`LineItemsTable`) o del
+            diálogo. Va aquí y no en CSS global para no tocar los diálogos de
+            Radix que no usan `MainDialog` (la paleta de búsqueda). */}
+        <div className="[contain:inline-size]">{children}</div>
 
         <Flex gap="3" mt="4" justify="end">
           {showCloseButton && (
