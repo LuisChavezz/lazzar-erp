@@ -3,7 +3,8 @@
 import { FormInput } from "@/src/components/FormInput";
 import { FormToggle } from "@/src/components/FormToggle";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
-import { HomeIcon, MapPinIcon } from "@/src/components/Icons";
+import { FormSection } from "@/src/components/FormSection";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { useCustomerAddressForm } from "../hooks/useCustomerAddressForm";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
@@ -16,6 +17,9 @@ interface CustomerAddressFormProps {
   addressToEdit?: CustomerAddress | null;
   onSuccess?: () => void;
 }
+
+/** Rejilla de cada sección: dos columnas compactas (mismo molde que EC-753). */
+const SECTION_GRID_CLS = "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3";
 
 export default function CustomerAddressForm({
   customerId,
@@ -37,29 +41,16 @@ export default function CustomerAddressForm({
 
   return (
     <form ref={formRef} onSubmit={handleFormSubmit} className="w-full">
-      <fieldset disabled={isPending} className="group-disabled:opacity-50">
+      <fieldset disabled={isPending} className="space-y-5 group-disabled:opacity-50">
 
         {/* ─── Sección: Contacto de entrega ─────────────────────────────── */}
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-6">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-              <HomeIcon className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-base">
-                Contacto de Entrega
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Persona y empresa que recibirá el envío
-              </p>
-            </div>
-          </div>
-
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormSection title="Contacto de Entrega" description="Persona y empresa que recibirá el envío">
+          <div className={SECTION_GRID_CLS}>
             {/* Destinatario */}
             <form.Field name="destinatario">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Destinatario"
                   name="destinatario"
                   placeholder="Nombre de quien recibe"
@@ -82,6 +73,7 @@ export default function CustomerAddressForm({
             <form.Field name="empresa_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Empresa de envío"
                   name="empresa_envio"
                   placeholder="Nombre de la empresa"
@@ -104,6 +96,7 @@ export default function CustomerAddressForm({
             <form.Field name="telefono_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Teléfono"
                   name="telefono_envio"
                   type="tel"
@@ -126,6 +119,7 @@ export default function CustomerAddressForm({
             <form.Field name="celular_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Celular"
                   name="celular_envio"
                   type="tel"
@@ -144,30 +138,17 @@ export default function CustomerAddressForm({
               )}
             </form.Field>
           </div>
-        </section>
+        </FormSection>
 
         {/* ─── Sección: Dirección ───────────────────────────────────────── */}
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-6">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-              <MapPinIcon className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-base">
-                Dirección de Envío
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Datos completos de la ubicación de entrega
-              </p>
-            </div>
-          </div>
-
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormSection title="Dirección de Envío" description="Datos completos de la ubicación de entrega">
+          <div className={SECTION_GRID_CLS}>
             {/* Calle y número */}
             <div className="sm:col-span-2">
               <form.Field name="direccion_envio">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Calle y número"
                     name="direccion_envio"
                     placeholder="Av. Reforma 100, Int. 5"
@@ -191,6 +172,7 @@ export default function CustomerAddressForm({
             <form.Field name="colonia_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Colonia"
                   name="colonia_envio"
                   placeholder="Nombre de la colonia"
@@ -213,6 +195,7 @@ export default function CustomerAddressForm({
             <form.Field name="codigo_postal">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Código Postal"
                   name="codigo_postal"
                   {...getCodigoPostalInputProps(customerRfc)}
@@ -235,6 +218,7 @@ export default function CustomerAddressForm({
             <form.Field name="ciudad_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Ciudad"
                   name="ciudad_envio"
                   placeholder="Ciudad"
@@ -257,6 +241,7 @@ export default function CustomerAddressForm({
             <form.Field name="estado_envio">
               {(field) => (
                 <FormInput
+                  className={COMPACT_FIELD_CLS}
                   label="Estado"
                   name="estado_envio"
                   placeholder="Estado"
@@ -280,6 +265,7 @@ export default function CustomerAddressForm({
               <form.Field name="referencias">
                 {(field) => (
                   <FormInput
+                    className={COMPACT_FIELD_CLS}
                     label="Referencias"
                     name="referencias"
                     placeholder="Entre calles, color de fachada, referencias adicionales..."
@@ -313,10 +299,10 @@ export default function CustomerAddressForm({
               </form.Field>
             </div>
           </div>
-        </section>
+        </FormSection>
 
         {/* ─── Botones de acción ───────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex items-center justify-end gap-3 pt-1">
           <FormCancelButton
             onClick={handleReset}
             label={isEditing ? "Restablecer" : "Limpiar"}

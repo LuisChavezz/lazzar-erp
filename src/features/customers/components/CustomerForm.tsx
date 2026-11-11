@@ -7,7 +7,9 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { FormErrorBanner } from "@/src/components/FormErrorBanner";
-import { ClientesIcon, ExclamationTriangleIcon, TaxIcon, WalletIcon } from "@/src/components/Icons";
+import { FormSection } from "@/src/components/FormSection";
+import { ExclamationTriangleIcon } from "@/src/components/Icons";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { Loader } from "@/src/components/Loader";
 import { getCodigoPostalInputProps } from "@/src/utils/codigoPostal";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
@@ -33,6 +35,9 @@ interface CustomerFormProps {
 }
 
 const RFC_MIN_LENGTH = 12;
+
+/** Rejilla de cada sección: dos columnas compactas (mismo molde que EC-753). */
+const SECTION_GRID_CLS = "grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3";
 
 type RfcValidationTone = "success" | "error";
 
@@ -179,26 +184,15 @@ export default function CustomerForm({
       onSubmit={handleFormSubmit}
       className="w-full"
     >
-      <fieldset disabled={isPending} className="group-disabled:opacity-50">
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
-          <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-              <ClientesIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Información General
-              </h3>
-              <p className="text-xs text-slate-500">Datos principales del cliente</p>
-            </div>
-          </div>
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <fieldset disabled={isPending} className="space-y-5 group-disabled:opacity-50">
+        <FormSection title="Información General" description="Datos principales del cliente">
+          <div className={SECTION_GRID_CLS}>
               {/* Cada form.Field conecta un input visual con el estado interno de TanStack Form. */}
               <form.Field name="razon_social">
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -219,6 +213,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -239,6 +234,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -259,6 +255,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -275,23 +272,10 @@ export default function CustomerForm({
                 )}
               </form.Field>
             </div>
-          </div>
-        </section>
+        </FormSection>
 
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
-          <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-              <TaxIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Datos Fiscales
-              </h3>
-              <p className="text-xs text-slate-500">Información fiscal del cliente</p>
-            </div>
-          </div>
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <FormSection title="Datos Fiscales" description="Información fiscal del cliente">
+          <div className={SECTION_GRID_CLS}>
               <form.Field name="rfc">
                 {(field) => {
                   const normalizedFieldRfc = normalizeRfc(field.state.value ?? "");
@@ -302,6 +286,7 @@ export default function CustomerForm({
                     <div className="space-y-2">
                       <FormInput
                         name={field.name}
+                        className={COMPACT_FIELD_CLS}
                         value={field.state.value}
                         disabled={isRfcVerified}
                         onChange={(event) => {
@@ -374,6 +359,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormSelect
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={String(field.state.value)}
                     onChange={(event) => {
                       field.handleChange(Number(event.target.value));
@@ -405,6 +391,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormSelect
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={String(field.state.value)}
                     onChange={(event) => {
                       field.handleChange(Number(event.target.value));
@@ -436,6 +423,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -456,6 +444,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -476,6 +465,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     {...getCodigoPostalInputProps(currentRfc)}
                     value={field.state.value}
                     onChange={(event) => {
@@ -496,6 +486,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -516,6 +507,7 @@ export default function CustomerForm({
                 {(field) => (
                   <FormInput
                     name={field.name}
+                    className={COMPACT_FIELD_CLS}
                     value={field.state.value}
                     onChange={(event) => {
                       field.handleChange(event.target.value);
@@ -533,24 +525,11 @@ export default function CustomerForm({
                 )}
               </form.Field>
             </div>
-          </div>
-        </section>
+        </FormSection>
 
         {showCreditFields ? (
-        <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
-          <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-              <WalletIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-slate-900 dark:text-white text-lg">
-                Crédito
-              </h3>
-              <p className="text-xs text-slate-500">Condiciones de crédito del cliente</p>
-            </div>
-          </div>
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <FormSection title="Crédito" description="Condiciones de crédito del cliente">
+          <div className={SECTION_GRID_CLS}>
               {/* Texto, no `type="number"`: sin validación nativa que
                   corte el envío antes que Zod (mismo patrón que los importes
                   de `PaymentForm`). Vacío equivale a 0. */}
@@ -559,6 +538,7 @@ export default function CustomerForm({
                   <div className="space-y-2">
                     <FormInput
                       name={field.name}
+                      className={COMPACT_FIELD_CLS}
                       inputMode="numeric"
                       value={field.state.value}
                       onChange={(event) => {
@@ -588,6 +568,7 @@ export default function CustomerForm({
                   <div className="space-y-2">
                     <FormInput
                       name={field.name}
+                      className={COMPACT_FIELD_CLS}
                       inputMode="decimal"
                       value={field.state.value}
                       onChange={(event) => {
@@ -611,11 +592,10 @@ export default function CustomerForm({
                 )}
               </form.Field>
             </div>
-          </div>
-        </section>
+        </FormSection>
         ) : null}
 
-        <div className="space-y-4 pb-8">
+        <div className="space-y-4 pt-1">
           {/* Junto a los botones y no bajo Correo: en el alta aparece al verificar
               el RFC, cuando Correo ya quedó arriba, fuera de la vista. */}
           {facturamaWarning && (
