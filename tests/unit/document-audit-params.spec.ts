@@ -46,6 +46,7 @@ test.describe("toDocumentAuditParams", () => {
     expect(toDocumentAuditParams({ fecha_desde: "2026-11-12", fecha_hasta: "2026-11-11" })).toBeNull();
     expect(toDocumentAuditParams({ tipo: "cotizacion" as never })).toBeNull();
     expect(toDocumentAuditParams({ accion: "borrar" as never })).toBeNull();
+    expect(toDocumentAuditParams({ folio: "x".repeat(61) })).toBeNull();
   });
 
   test("nunca acepta ordering ni search", () => {
@@ -66,6 +67,12 @@ test.describe("filtros de la URL", () => {
       sucursal: 3,
     });
     expect(read("sucursal=99999999999&origen_id=4&ordering=folio&search=x")).toEqual({});
+  });
+
+  test("el folio sigue la misma regla en la URL y en el esquema", () => {
+    expect(read(`folio=${"x".repeat(61)}`)).toEqual({});
+    expect(read("folio=%20PED%201%20")).toEqual({ folio: "PED 1" });
+    expect(toDocumentAuditParams(read("folio=%20PED%201%20"))).toEqual({ folio: "PED 1" });
   });
 
   test("un rango invertido descarta ambos extremos", () => {

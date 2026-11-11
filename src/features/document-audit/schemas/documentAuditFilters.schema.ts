@@ -11,7 +11,26 @@ export const MAX_AUDIT_ID = 2_147_483_647;
 /** El `folio` de la bitácora tiene `max_length=60`: un texto más largo no coincide con nada. */
 export const MAX_AUDIT_FOLIO_LENGTH = 60;
 
-const auditId = z.number().int().positive().max(MAX_AUDIT_ID);
+/**
+ * Reglas de los filtros, en UN solo lugar: las usan este esquema y los códecs
+ * de la URL (`documentAuditTable`). Si se separaran, la URL podría aceptar un
+ * valor que el esquema rechaza y la lista dejaría de consultar sin avisar.
+ */
+
+/** ¿Id que el backend sabe comparar? Entero positivo de 32 bits. */
+export const isValidAuditId = (value: number): boolean =>
+  Number.isSafeInteger(value) && value > 0 && value <= MAX_AUDIT_ID;
+
+/**
+ * Folio tal como se manda al backend y se guarda en la URL: recortado, no
+ * vacío y dentro del `max_length` del campo; `null` si no es filtrable.
+ */
+export const normalizeAuditFolio = (raw: string): string | null => {
+  const folio = raw.trim();
+  return folio !== "" && folio.length <= MAX_AUDIT_FOLIO_LENGTH ? folio : null;
+};
+
+const auditId = z.number().refine(isValidAuditId, { message: "Id no válido." });
 
 const dateKey = z
   .string()
@@ -36,7 +55,14 @@ export const documentAuditFiltersSchema = z
     sucursal: auditId.optional(),
     fecha_desde: dateKey.optional(),
     fecha_hasta: dateKey.optional(),
-    folio: z.string().trim().max(MAX_AUDIT_FOLIO_LENGTH).optional(),
+    // Vacío o solo espacios = sin filtro; cualquier otro texto debe ser un folio filtrable.
+    folio: z
+      .string()
+      .refine((value) => value.trim() === "" || normalizeAuditFolio(value) !== null, {
+        message: "Folio no válido.",
+      })
+      .transform((value) => normalizeAuditFolio(value) ?? undefined)
+      .optional(),
   })
   .strict()
   .refine(

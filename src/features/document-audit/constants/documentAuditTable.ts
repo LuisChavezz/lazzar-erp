@@ -6,24 +6,21 @@ import {
   type ServerTableParam,
 } from "@/src/utils/serverTableParams";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
-import { MAX_AUDIT_FOLIO_LENGTH, MAX_AUDIT_ID } from "../schemas/documentAuditFilters.schema";
+import { isValidAuditId, normalizeAuditFolio } from "../schemas/documentAuditFilters.schema";
 import { ACCIONES_BITACORA, TIPOS_DOCUMENTO } from "./documentAuditValues";
 
-/** Id entero positivo dentro de lo que el backend compara (32 bits). */
+/** Id entero positivo dentro de lo que el backend compara (`isValidAuditId`). */
 const auditIdParam: ServerTableParam<number> = {
   parse: (raw) => {
     const id = parsePositiveId(raw);
-    return id !== null && id <= MAX_AUDIT_ID ? id : null;
+    return id !== null && isValidAuditId(id) ? id : null;
   },
   serialize: (value) => String(value),
 };
 
-/** Folio "contiene": recortado, no vacío y dentro del `max_length` del campo. */
+/** Folio "contiene", con la misma regla que el esquema (`normalizeAuditFolio`). */
 const folioParam: ServerTableParam<string> = {
-  parse: (raw) => {
-    const folio = raw.trim();
-    return folio !== "" && folio.length <= MAX_AUDIT_FOLIO_LENGTH ? folio : null;
-  },
+  parse: normalizeAuditFolio,
   serialize: (value) => value,
 };
 
