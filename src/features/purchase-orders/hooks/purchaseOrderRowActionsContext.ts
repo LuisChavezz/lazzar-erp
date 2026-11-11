@@ -10,6 +10,11 @@ import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
 export interface PurchaseOrderRowActionsContextValue {
   /** Prepara el correo de la orden y, al terminar, la vista pide confirmación. */
   onSendEmail: (orderId: number) => void;
+  /**
+   * Los datos de la empresa del encabezado del PDF adjunto aún se están
+   * cargando (`usePdfCompany`): "Enviar correo" se deshabilita mientras tanto.
+   */
+  emailPendingCompany: boolean;
 }
 
 const { Provider, useRowActionsContext } =

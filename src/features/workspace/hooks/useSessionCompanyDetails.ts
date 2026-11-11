@@ -24,7 +24,9 @@ export function useSessionCompanyDetails() {
   const [now] = useState(() => Date.now());
 
   const { label, needsLookup } = resolveCompanyLabel({ hasHydrated, companyId, storedLabel, now });
-  const { companies, loading } = useMyCompanies({ enabled: needsLookup });
+  const { companies, loading, error: lookupError, refetch: retryLookup } = useMyCompanies({
+    enabled: needsLookup,
+  });
 
   const found = needsLookup ? companies.find((c) => c.id === companyId) : undefined;
   const foundName = found ? found.nombre_comercial || found.razon_social : undefined;
@@ -50,5 +52,14 @@ export function useSessionCompanyDetails() {
     /** Nombre para mostrar; `null` sin empresa confirmada o mientras se busca. */
     name,
     rfc: found ? foundRfc : (label?.rfc ?? null),
+    /**
+     * `name` es el respaldo `Empresa #<id>`: la búsqueda terminó (falló o no
+     * encontró la empresa) y no hay nombre guardado. Sirve para mostrar, nunca
+     * como dato del documento (`usePdfCompany`).
+     */
+    isFallbackName: companyId !== null && !foundName && !label?.name && !lookupPending,
+    /** Mensaje si `mis-empresas/` nunca cargó; `retryLookup` la repite. */
+    lookupError,
+    retryLookup,
   };
 }

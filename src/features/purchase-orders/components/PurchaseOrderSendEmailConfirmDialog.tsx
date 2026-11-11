@@ -9,6 +9,7 @@
  */
 import { SendEmailConfirmDialog } from "@/src/features/google/components/SendEmailConfirmDialog";
 import type { PreparedPurchaseOrderEmail } from "../hooks/useSendPurchaseOrderEmail";
+import { usePdfCompany } from "@/src/hooks/usePdfCompany";
 
 interface PurchaseOrderSendEmailConfirmDialogProps {
   open: boolean;
@@ -23,6 +24,10 @@ export function PurchaseOrderSendEmailConfirmDialog({
   email,
   onConfirm,
 }: PurchaseOrderSendEmailConfirmDialogProps) {
+  // El PDF adjunto se genera al enviar y lleva la empresa en el encabezado:
+  // "Enviar" espera a que sus datos estén resueltos (`usePdfCompany`).
+  const { pending: companyPending } = usePdfCompany();
+
   return (
     <SendEmailConfirmDialog
       open={open}
@@ -34,6 +39,7 @@ export function PurchaseOrderSendEmailConfirmDialog({
       attachmentName={email.attachmentName}
       noRecipientMessage="La orden de compra no tiene un correo de proveedor válido, así que no hay a quién enviarla."
       onConfirm={onConfirm}
+      confirmDisabled={companyPending}
     />
   );
 }

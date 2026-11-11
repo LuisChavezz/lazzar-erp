@@ -10,8 +10,7 @@ import { useSendEmailConfirmation } from "@/src/features/google/hooks/useSendEma
 import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEmailFlow";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
-import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
-import type { PdfCompany } from "@/src/pdfs/shared/documentPdfModel";
+import { requirePdfCompany, usePdfCompany } from "@/src/hooks/usePdfCompany";
 import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { generatePurchaseOrderPdfBlob } from "../services/pdf/purchaseOrderPdfBlob";
 import { purchaseOrderEmailRenderInputs } from "../utils/purchaseOrderEmailRenderInputs";
@@ -81,10 +80,14 @@ const fetchSendablePurchaseOrder = async (
  */
 export const usePreparePurchaseOrderEmail = () => {
   const queryClient = useQueryClient();
+  // El adjunto lleva la empresa en el encabezado (EC-855): sin datos reales de
+  // ella no se prepara un correo que luego no podría enviarse.
+  const pdfCompany = usePdfCompany();
 
   return useMutation<PreparedPurchaseOrderEmail, unknown, number>({
     mutationKey: preparePurchaseOrderEmailMutationKey,
     mutationFn: async (orderId: number): Promise<PreparedPurchaseOrderEmail> => {
+      requirePdfCompany(pdfCompany);
       const order = await fetchSendablePurchaseOrder(queryClient, orderId);
       const content = await renderEmailContent(`/api/purchase-orders/${order.id}/send-email`, {
         order,
@@ -128,10 +131,9 @@ export const usePreparePurchaseOrderEmail = () => {
  */
 export const useSendPurchaseOrderEmail = () => {
   const queryClient = useQueryClient();
-  // Empresa activa del encabezado del PDF adjunto (EC-855), la misma que pone
-  // "Descargar PDF".
-  const { name: companyName, rfc: companyRfc } = useSessionCompanyDetails();
-  const company: PdfCompany | null = companyName ? { name: companyName, rfc: companyRfc } : null;
+  // Empresa activa del encabezado del PDF adjunto (EC-855), con la misma regla
+  // que "Descargar PDF" (`usePdfCompany`).
+  const pdfCompany = usePdfCompany();
 
   return useMutation<SendEmailResult, unknown, PreparedPurchaseOrderEmail>({
     mutationKey: sendPurchaseOrderEmailMutationKey,
@@ -143,6 +145,7 @@ export const useSendPurchaseOrderEmail = () => {
         PURCHASE_ORDER_EMAIL_STALE_MESSAGE,
       );
 
+      const company = requirePdfCompany(pdfCompany);
       const pdfBlob = await generatePurchaseOrderPdfBlob(order, company);
       const attachment = await buildGoogleEmailAttachment(
         pdfBlob,

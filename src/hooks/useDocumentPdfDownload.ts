@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useSessionCompanyDetails } from "@/src/features/workspace/hooks/useSessionCompanyDetails";
+import { requirePdfCompany, usePdfCompany } from "@/src/hooks/usePdfCompany";
 import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import type { DocumentPdfDescriptor, PdfCompany } from "@/src/pdfs/shared/documentPdfModel";
 import { downloadBlob } from "@/src/utils/downloadBlob";
@@ -10,8 +10,8 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 
 /** Lo que la descarga le da a la fuente para armar el PDF. */
 export interface DocumentPdfContext {
-  /** Empresa activa para el encabezado; `null` si la sesión no tiene una. */
-  company: PdfCompany | null;
+  /** Empresa activa del encabezado, siempre con nombre real (`usePdfCompany`). */
+  company: PdfCompany;
 }
 
 /**
@@ -63,22 +63,20 @@ export function renderedDocumentPdfSource<Detail>({
  * "Descargar PDF" de un documento (EC-855): obtiene el PDF de su fuente, lo
  * descarga como `<TIPO>-<folio>.pdf` y avisa con un toast.
  *
- * Espera a que se conozca la empresa activa (`companyPending`) para no generar
- * un documento sin encabezado mientras `mis-empresas/` todavía responde. Sin
- * empresa en la sesión (estado distinto de `loading`/`ready`) se genera sin
- * ella: no se inventa una.
+ * La empresa del encabezado sale de `usePdfCompany`: mientras se resuelve,
+ * `companyPending` deshabilita el botón; si no hay datos reales de la empresa,
+ * NO se genera el PDF —se avisa con un toast y se reintenta la búsqueda, así
+ * que el siguiente clic ya puede descargar—.
  *
  * El candado contra el doble clic es la propia mutación (`isPending`).
  */
 export function useDocumentPdfDownload(document: DocumentPdfDescriptor, source: DocumentPdfSource) {
-  const { sessionCompany, name, rfc } = useSessionCompanyDetails();
-  const company: PdfCompany | null = name ? { name, rfc } : null;
-  const companyPending =
-    sessionCompany.status === "loading" || (sessionCompany.status === "ready" && name === null);
+  const pdfCompany = usePdfCompany();
 
   const mutation = useMutation({
     mutationKey: ["document-pdf", document.type, document.id],
     mutationFn: async () => {
+      const company = requirePdfCompany(pdfCompany);
       const file = await source({ company });
       downloadBlob(
         file.blob,
@@ -96,6 +94,6 @@ export function useDocumentPdfDownload(document: DocumentPdfDescriptor, source: 
   return {
     download: () => mutation.mutate(),
     isPending: mutation.isPending,
-    companyPending,
+    companyPending: pdfCompany.pending,
   };
 }
