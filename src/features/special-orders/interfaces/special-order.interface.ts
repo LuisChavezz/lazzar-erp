@@ -59,6 +59,20 @@ export interface SpecialOrderListItem {
     reflejante: ServiceOrderRef[];
     corte_manga: ServiceOrderRef[];
   };
+  /**
+   * Alerta de 24 h (EC-865), calculada en el servidor:
+   *  - `horas_en_produccion`: horas enteras desde que se CREÓ el pedido.
+   *  - `sin_avance`: sin pre-orden (BOM) ni OP.
+   *  - `atrasado`: 24 h o más y sin avance.
+   * El listado incluye pedidos dados de baja y también los marca `atrasado`,
+   * así que la alerta solo se muestra con `activo === true` (EC-873 agrega
+   * `activo` al listado). Opcionales: sin ellos no hay alerta.
+   */
+  horas_en_produccion?: number | null;
+  sin_avance?: boolean;
+  atrasado?: boolean;
+  /** `Pedido.activo`. Mientras el backend no lo mande, ninguna fila muestra la alerta. */
+  activo?: boolean;
 }
 
 /** Orden de servicio (OB/OR/OCM) ligada a un pedido especial. */

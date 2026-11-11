@@ -19,7 +19,8 @@ const EMPTY_ROWS: SpecialOrderRow[] = [];
  * Mismo patrón que `useCorteMangaOrders`.
  *
  * ORDEN: el del servidor (`-fecha_confirmacion, -id`, pedidos sin confirmar
- * primero). No se reordena en cliente.
+ * primero). Aquí no se reordena; la vista solo sube los atrasados activos
+ * (`sortAtrasadosFirst`).
  *
  * DESVIACIÓN DELIBERADA de los defaults del QueryClient (15 min de
  * `staleTime`, sin refetch al enfocar): lo que alimenta esta lista cambia en
