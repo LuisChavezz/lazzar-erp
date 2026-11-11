@@ -99,12 +99,20 @@ function NameActionMenu({ name, detail, items, active, subtitle, status }: NameM
           // usuario de solo lectura) el menú no se pinta: el nombre queda
           // como texto plano en vez de desaparecer.
           renderWhenEmpty={
-            <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+            <span
+              className="truncate font-medium text-slate-700 dark:text-slate-200"
+              title={name || undefined}
+            >
               {name || "—"}
             </span>
           }
         >
-          <span className="truncate">{name || "—"}</span>
+          {/* `title` con el nombre completo: truncado, solo así se puede leer. Al
+              pasar el cursor sobre el texto gana el del span sobre el
+              "Ver acciones" del botón; el menú se abre igual. */}
+          <span className="truncate" title={name || undefined}>
+            {name || "—"}
+          </span>
         </RowMenuTrigger>
       </div>
       {subtitle}
