@@ -3,10 +3,16 @@ import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.stor
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
 import { probeSession } from "./sessionRecovery";
 
+/** Clave del antiguo store de la Dirección fiscal en `localStorage` (EC-860). */
+export const LEGACY_SAT_STORAGE_KEY = "sat-storage";
+
 /**
  * Borra el estado del cliente que pertenece al USUARIO de la sesión (EC-848):
- * el workspace persistido (sucursal elegida y nombre de la empresa) y la cookie
- * `erp_workspace_id`. Corre en los dos cierres de sesión (`useLogout` y el 401
+ * el workspace persistido (sucursal elegida y nombre de la empresa), la cookie
+ * `erp_workspace_id` y la clave `sat-storage` que dejó la Dirección fiscal
+ * cuando solo vivía en el navegador (ahora vive en el backend, EC-860; ningún
+ * código la lee ni la escribe, así que solo queda borrar la que ya existe).
+ * Corre en los dos cierres de sesión (`useLogout` y el 401
  * forzado de `v1_api`), al montar el login si no hay sesión
  * (`clearUserScopedClientStateIfSignedOut`, donde ya no queda nada de la sesión
  * anterior montado que lo reescriba) y al entrar con una sesión nueva
@@ -19,8 +25,6 @@ import { probeSession } from "./sessionRecovery";
  * - `theme-storage` y `sidebar-storage`: preferencias del navegador, no datos.
  * - `nextauth.message` (localStorage): el canal entre pestañas de next-auth.
  * - La marca anti-ciclo de `sessionRecovery` (sessionStorage).
- * - `sat-storage`: la Dirección fiscal capturada a mano, que hoy solo existe ahí
- *   (no llega al backend); borrarla la perdería sin respaldo.
  *
  * Un cambio de empresa del mismo usuario (EC-847) reusa esta misma limpieza
  * (`completeCompanySwitch`): la sucursal elegida es de la empresa anterior.
@@ -43,6 +47,11 @@ export const clearUserScopedClientState = () => {
     clearWorkspaceCookie();
   } catch {
     // `document.cookie` no disponible: nada más que hacer.
+  }
+  try {
+    window.localStorage.removeItem(LEGACY_SAT_STORAGE_KEY);
+  } catch {
+    // Almacenamiento bloqueado: lo reintenta el siguiente límite de sesión.
   }
 };
 

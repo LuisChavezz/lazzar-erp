@@ -3,7 +3,11 @@ import {
   clearWorkspaceCookie,
   setWorkspaceCookie,
 } from "@/src/features/workspace/utils/workspaceCookie";
-import { signOutToLogin } from "@/src/features/auth/utils/clientSessionState";
+import {
+  clearUserScopedClientState,
+  LEGACY_SAT_STORAGE_KEY,
+  signOutToLogin,
+} from "@/src/features/auth/utils/clientSessionState";
 
 /**
  * EC-848: piezas de la limpieza en los límites de sesión.
@@ -11,6 +15,8 @@ import { signOutToLogin } from "@/src/features/auth/utils/clientSessionState";
  * - La cookie `erp_workspace_id` solo se borra si el borrado lleva el mismo
  *   nombre y `path` (y los mismos `Secure`/`SameSite`) que la escritura.
  * - `signOutToLogin` navega a login aunque `signOut` falle.
+ * - EC-860: la limpieza borra la `sat-storage` que dejó la Dirección fiscal
+ *   cuando solo vivía en el navegador, sin lanzar si el almacenamiento falla.
  */
 
 type Globals = { document?: unknown; window?: unknown; fetch?: unknown };
@@ -93,5 +99,49 @@ test.describe("signOutToLogin", () => {
       console.error = previousConsoleError;
     }
     expect(location.href).toBe("/auth/login");
+  });
+});
+
+test.describe("clearUserScopedClientState y sat-storage (EC-860)", () => {
+  /** Instala un `window` con el `localStorage` dado mientras corre `run`. */
+  const withWindow = (localStorage: unknown, run: () => void) => {
+    const previousWindow = globals.window;
+    globals.window = { localStorage };
+    try {
+      run();
+    } finally {
+      globals.window = previousWindow;
+    }
+  };
+
+  test("borra la clave sat-storage y deja las preferencias del navegador", () => {
+    const items = new Map<string, string>([
+      [LEGACY_SAT_STORAGE_KEY, '{"state":{"addressesByCompany":{}},"version":1}'],
+      ["theme-storage", '{"state":{"theme":"dark"}}'],
+    ]);
+    const localStorage = {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      removeItem: (key: string) => void items.delete(key),
+    };
+    withWindow(localStorage, () => clearUserScopedClientState());
+    expect(LEGACY_SAT_STORAGE_KEY).toBe("sat-storage");
+    expect(items.has("sat-storage")).toBe(false);
+    expect(items.get("theme-storage")).toBe('{"state":{"theme":"dark"}}');
+  });
+
+  test("no lanza si el almacenamiento está bloqueado", () => {
+    const blocked = {
+      getItem: () => {
+        throw new Error("SecurityError");
+      },
+      setItem: () => {
+        throw new Error("SecurityError");
+      },
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    expect(() => withWindow(blocked, () => clearUserScopedClientState())).not.toThrow();
   });
 });
