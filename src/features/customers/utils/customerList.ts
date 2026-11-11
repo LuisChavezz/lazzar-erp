@@ -24,14 +24,16 @@ export const CUSTOMERS_TABLE_KEY = ["customers"] as const;
  *   guardó). Cada palabra se busca como subcadena y deben coincidir todas.
  * - `ordering`: los campos de las columnas, todos en la lista blanca del
  *   backend. `fecha_ultima_compra` deja los clientes sin compras al final en
- *   ambas direcciones. El default reproduce el del backend (`nombre, id`).
+ *   ambas direcciones. El default es la primera columna (razón social), no
+ *   el del backend (`nombre, id`): la vista inicial se lee ordenada por lo que
+ *   se ve primero, con la flecha en esa columna.
  */
 export const customersTable = defineServerTable({
   filters: {},
   search: { param: "search" },
   ordering: {
     fields: ["razon_social", "nombre", "telefono", "correo", "fecha_ultima_compra"],
-    default: "nombre",
+    default: "razon_social",
     tiebreaker: "-id",
   },
 });
