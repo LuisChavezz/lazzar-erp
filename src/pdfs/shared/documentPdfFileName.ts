@@ -8,6 +8,11 @@ import type { DocumentPdfType } from "./documentPdfModel";
  *   ASCII, dígito, punto o guion bajo/medio —`/`, espacios, acentos, `:`…—
  *   se vuelve `-`; los guiones repetidos se juntan en uno y se recortan los
  *   guiones y puntos de las orillas.
+ * - Si el folio YA saneado empieza con `<TIPO>-`, no se repite el código:
+ *   `OC` + `OC-00010-2026` → `OC-00010-2026.pdf` (no `OC-OC-…`), mientras
+ *   que `OC` + `O-00002` → `OC-O-00002.pdf`. Se compara después de sanear
+ *   para que `OC/00010` (→ `OC-00010`) cuente igual. Distingue mayúsculas:
+ *   los códigos son fijos en mayúsculas.
  * - Sin folio (nulo, vacío o que no deja nada tras sanearlo) el nombre es
  *   `<TIPO>-ID<id>.pdf`.
  * - Sin sufijo de estatus: que el documento esté cancelado se ve DENTRO del
@@ -19,7 +24,8 @@ export function documentPdfFileName(
   id: number,
 ): string {
   const safeFolio = sanitizeFileNamePart(folio ?? "");
-  return safeFolio ? `${type}-${safeFolio}.pdf` : `${type}-ID${id}.pdf`;
+  if (!safeFolio) return `${type}-ID${id}.pdf`;
+  return safeFolio.startsWith(`${type}-`) ? `${safeFolio}.pdf` : `${type}-${safeFolio}.pdf`;
 }
 
 const sanitizeFileNamePart = (value: string): string =>
