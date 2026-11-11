@@ -20,8 +20,20 @@ export type OrderHistoryView =
   | { kind: "unavailable" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "empty" }
+  /**
+   * Sin eventos. `loaded` distingue "el backend respondió vacío" de "la
+   * consulta no corrió" (apagada, p. ej. en un pedido cancelado).
+   */
+  | { kind: "empty"; loaded: boolean }
   | { kind: "events"; events: BitacoraDocumento[]; truncationNotice: string | null };
+
+/**
+ * ¿La hoja ofrece "Actualizar"? Solo con una respuesta ya cargada: vacía o con
+ * eventos. Cargando, en error (tiene su propio "Reintentar"), no disponible o
+ * con la consulta apagada, no.
+ */
+export const canRefreshOrderHistory = (view: OrderHistoryView): boolean =>
+  view.kind === "events" || (view.kind === "empty" && view.loaded);
 
 /**
  * Estado de la hoja a partir de la consulta. Un 404 (`isDefinitiveError`) gana
@@ -39,7 +51,7 @@ export const resolveOrderHistoryView = (history: OrderHistoryQuery): OrderHistor
       message: documentAuditErrorMessage(history.error, "No se pudo cargar el historial del pedido."),
     };
   }
-  if (!events || events.length === 0) return { kind: "empty" };
+  if (!events || events.length === 0) return { kind: "empty", loaded: events !== undefined };
   return {
     kind: "events",
     events,

@@ -12,6 +12,7 @@ import {
   retryDocumentAuditQuery,
 } from "@/src/features/document-audit/utils/documentAuditErrors";
 import {
+  canRefreshOrderHistory,
   resolveOrderHistoryView,
   type OrderHistoryQuery,
 } from "@/src/features/orders/utils/orderHistoryView";
@@ -136,7 +137,9 @@ test.describe("resolveOrderHistoryView", () => {
 
   test("cargando, vacío y error de carga", () => {
     expect(resolveOrderHistoryView(history({ isLoading: true }))).toEqual({ kind: "loading" });
-    expect(resolveOrderHistoryView(history({ events: [] }))).toEqual({ kind: "empty" });
+    expect(resolveOrderHistoryView(history({ events: [] }))).toEqual({ kind: "empty", loaded: true });
+    // Consulta apagada (p. ej. pedido cancelado): vacío, pero sin respuesta.
+    expect(resolveOrderHistoryView(history({}))).toEqual({ kind: "empty", loaded: false });
     expect(
       resolveOrderHistoryView(
         history({ isInitialError: true, error: httpError(400, { documento_id: "Debe ser un número entero." }) }),
@@ -145,6 +148,20 @@ test.describe("resolveOrderHistoryView", () => {
     expect(
       resolveOrderHistoryView(history({ isInitialError: true, error: httpError(500, "<html>") })),
     ).toEqual({ kind: "error", message: "No se pudo cargar el historial del pedido." });
+  });
+});
+
+test.describe("canRefreshOrderHistory", () => {
+  test("solo con una respuesta ya cargada", () => {
+    const can = (overrides: Partial<OrderHistoryQuery>) =>
+      canRefreshOrderHistory(resolveOrderHistoryView(history(overrides)));
+    expect(can({ events: [evento()] })).toBe(true);
+    expect(can({ events: [evento()], isFetching: true })).toBe(true);
+    expect(can({ events: [] })).toBe(true);
+    expect(can({})).toBe(false);
+    expect(can({ isLoading: true })).toBe(false);
+    expect(can({ isInitialError: true })).toBe(false);
+    expect(can({ isDefinitiveError: true })).toBe(false);
   });
 });
 
