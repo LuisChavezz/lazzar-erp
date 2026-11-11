@@ -10,6 +10,7 @@ import { ClientesIcon, PedidosIcon, PlusIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { hasPermission } from "@/src/utils/permissions";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 
 // Carga dinámica del formulario de cliente para optimizar la carga inicial y evitar cargarlo si el usuario no interactúa con esa acción
 const LazyCustomerForm = dynamic(
@@ -96,7 +97,7 @@ export const QuickActions = () => {
               }
               open={isCustomerDialogOpen}
               onOpenChange={setIsCustomerDialogOpen}
-              maxWidth="900px"
+              maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
             >
               {isCustomerDialogOpen ? <LazyCustomerForm onCreated={handleCustomerCreated} /> : null}
             </MainDialog>

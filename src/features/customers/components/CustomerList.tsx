@@ -20,6 +20,7 @@ import { useCustomerCsvExport } from "../hooks/useCustomerCsvExport";
 import { useCustomerPdfExport } from "../hooks/useCustomerPdfExport";
 import type { CustomerListItem } from "../interfaces/customer.interface";
 import { CustomerAddress } from "../interfaces/customer-address.interface";
+import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 
 /**
  * Listado de clientes de Ventas en MODO SERVIDOR: búsqueda, orden y paginación
@@ -178,7 +179,7 @@ export const CustomerList = () => {
         }
         open={isAddressDialogOpen}
         onOpenChange={handleAddressDialogOpenChange}
-        maxWidth="680px"
+        maxWidth={DIALOG_WIDTH_FORM}
       >
         {selectedCustomerForAddress && (
           <CustomerAddressForm
@@ -259,7 +260,7 @@ export const CustomerList = () => {
               }
               open={isCustomerDialogOpen}
               onOpenChange={handleDialogOpenChange}
-              maxWidth="900px"
+              maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
               // Solo se oculta el TRIGGER, no el diálogo: este mismo `MainDialog`
               // es también el de EDICIÓN (lo abre `handleEdit` desde la fila por
               // `open`, sin pasar por el trigger). Desmontarlo dejaría sin efecto

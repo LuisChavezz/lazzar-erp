@@ -50,6 +50,7 @@ import { buildProductByIdMap, getMissingColorState } from "../utils/requiredColo
 import { QuoteCreationSuccessMessage, type QuoteSuccessVariant } from "./QuoteCreationSuccessMessage";
 import { QuoteFormErrorSummaryDialog } from "./QuoteFormErrorSummaryDialog";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 
 const LazyCustomerForm = dynamic(
   () => import("../../customers/components/CustomerForm"),
@@ -499,7 +500,7 @@ export function QuoteFormContent({
                     }
                     open={isCustomerDialogOpen}
                     onOpenChange={setIsCustomerDialogOpen}
-                    maxWidth="900px"
+                    maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
                   >
                     {isCustomerDialogOpen ? (
                       <LazyCustomerForm onCreated={handleCustomerCreated} invalidateOrderOnboarding />
