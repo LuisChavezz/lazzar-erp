@@ -1,5 +1,4 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { defineServerTable } from "@/src/utils/serverTableParams";
 import type { CustomerListItem } from "../interfaces/customer.interface";
@@ -37,18 +36,6 @@ export const customersTable = defineServerTable({
     tiebreaker: "-id",
   },
 });
-
-/** Texto de un cliente sin compras: celda y exportaciones dicen lo mismo. */
-export const SIN_COMPRAS_LABEL = "Sin compras";
-
-/**
- * "Última Compra" como texto: el día de `fecha_ultima_compra` ("14 jul 2026")
- * leído como fecha-calendario (sin pasar por medianoche UTC, EC-558);
- * `SIN_COMPRAS_LABEL` si es `null` (el cliente nunca ha comprado) y "—" si el
- * campo no viene o no es una fecha válida.
- */
-export const formatUltimaCompra = (value: string | null | undefined): string =>
-  value === null ? SIN_COMPRAS_LABEL : formatShortCalendarDate(value);
 
 /**
  * Busca un cliente en las páginas cacheadas de la tabla

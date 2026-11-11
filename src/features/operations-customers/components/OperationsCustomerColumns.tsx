@@ -12,7 +12,10 @@ import {
   buildMonthFilterOptions,
   matchesMonthFilter,
 } from "@/src/utils/columnFilterOptions";
-import { formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
+import {
+  formatUltimaCompra,
+  SIN_COMPRAS_LABEL,
+} from "@/src/features/customers/utils/ultimaCompra";
 import { OperationsCustomer } from "../interfaces/operations-customer.interface";
 
 /**
@@ -77,9 +80,6 @@ const presenceFilter =
 
 /** Teléfono visible de la fila: el fijo o, si no hay, el celular. */
 export const telefonoDe = (customer: OperationsCustomer) => customer.telefono || customer.celular;
-
-/** Texto de los clientes sin compras: lo usan la celda y la opción del filtro. */
-const SIN_COMPRAS_LABEL = "Sin compras";
 
 export interface OperationsCustomerFilterOptions {
   estados: ColumnFilterOption[];
@@ -236,11 +236,11 @@ export const getOperationsCustomerColumns = (
     cell: ({ row }) =>
       row.original.fecha_ultima_compra === null ? (
         <span className="text-slate-400 dark:text-slate-600 whitespace-nowrap">
-          {SIN_COMPRAS_LABEL}
+          {formatUltimaCompra(row.original.fecha_ultima_compra)}
         </span>
       ) : (
         <span className="text-slate-600 dark:text-slate-300 whitespace-nowrap">
-          {formatFechaCalendario(row.original.fecha_ultima_compra)}
+          {formatUltimaCompra(row.original.fecha_ultima_compra)}
         </span>
       ),
   },

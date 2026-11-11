@@ -1,6 +1,6 @@
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import type { CustomerListItem } from "../interfaces/customer.interface";
-import { formatUltimaCompra } from "./customerList";
+import { formatUltimaCompra } from "./ultimaCompra";
 
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado de clientes

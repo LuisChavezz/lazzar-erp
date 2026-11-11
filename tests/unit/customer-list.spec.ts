@@ -5,9 +5,12 @@ import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import {
   customersTable,
   findCustomerInListPages,
+} from "@/src/features/customers/utils/customerList";
+import {
   formatUltimaCompra,
   SIN_COMPRAS_LABEL,
-} from "@/src/features/customers/utils/customerList";
+} from "@/src/features/customers/utils/ultimaCompra";
+import { formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
 import type { CustomerListItem } from "@/src/features/customers/interfaces/customer.interface";
 import { getCustomerColumnText } from "@/src/features/customers/utils/customerExport";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
@@ -63,6 +66,12 @@ test.describe("formatUltimaCompra", () => {
   test("una fecha se lee como día de calendario (sin correr al día anterior)", () => {
     expect(formatUltimaCompra("2026-07-14")).toBe(formatShortCalendarDate("2026-07-14"));
     expect(formatUltimaCompra("2026-07-14")).toMatch(/^14 jul\.? 2026$/);
+  });
+
+  test("misma salida que el formateador que usaba Mesa de Control", () => {
+    for (const value of ["2026-07-14", "2026-01-01", "2026-12-31", "2026-11-06"]) {
+      expect(formatUltimaCompra(value)).toBe(formatFechaCalendario(value));
+    }
   });
 
   test("ausente o inválida es «—», no «Sin compras»", () => {
