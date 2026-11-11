@@ -188,8 +188,25 @@ test.describe("documentAuditErrorMessage", () => {
     ).toBe("Fecha desde: Usa el formato YYYY-MM-DD.");
   });
 
-  test("cualquier otro error cae al respaldo", () => {
-    expect(documentAuditErrorMessage(httpError(400, { otro: "nada" }), "Respaldo")).toBe("Respaldo");
+  test("otro 400 o un 403 muestran el mensaje del backend", () => {
+    expect(documentAuditErrorMessage(httpError(400, { non_field_errors: ["Rango inválido."] }), "R")).toBe(
+      "Rango inválido.",
+    );
+    expect(documentAuditErrorMessage(httpError(400, { detail: "Petición inválida." }), "R")).toBe(
+      "Petición inválida.",
+    );
+    expect(documentAuditErrorMessage(httpError(400, { otro: "nada" }), "R")).toBe("nada");
+    expect(
+      documentAuditErrorMessage(
+        httpError(403, { detail: "No tienes permiso para consultar la bitácora de documentos." }),
+        "R",
+      ),
+    ).toBe("No tienes permiso para consultar la bitácora de documentos.");
+  });
+
+  test("lo demás cae al respaldo", () => {
+    expect(documentAuditErrorMessage(httpError(400, {}), "Respaldo")).toBe("Respaldo");
+    expect(documentAuditErrorMessage(httpError(403, {}), "Respaldo")).toBe("Respaldo");
     expect(documentAuditErrorMessage(httpError(500, "<html>"), "Respaldo")).toBe("Respaldo");
     expect(documentAuditErrorMessage(httpError(404, { detail: "No." }), "Respaldo")).toBe("Respaldo");
   });

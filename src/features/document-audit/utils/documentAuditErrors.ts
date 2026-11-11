@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { ZodError } from "zod";
 import { DEFAULT_QUERY_RETRY } from "@/src/constants/queryCache";
+import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstRejection } from "@/src/utils/firstDrfMessage";
 
@@ -40,8 +41,10 @@ export const retryDocumentAuditQuery = (failureCount: number, error: unknown): b
 /**
  * Mensaje de un error de la bitácora (listado o `linea-tiempo`). Un 400 por un
  * parámetro inválido muestra el mensaje del backend con el nombre del filtro
- * ("Usuario: Debe ser un número entero."); cualquier otro error, lo mismo que
- * `extractErrorMessage`.
+ * ("Usuario: Debe ser un número entero."). Otro 400 (`non_field_errors`,
+ * `detail`, una clave desconocida) o un 403 con su motivo (`detail`) muestran
+ * ese texto: es la misma lectura de `handleDrfWriteError`, que sin
+ * `setFieldError` solo devuelve el mensaje. Lo demás, como `extractErrorMessage`.
  */
 export const documentAuditErrorMessage = (error: unknown, fallback: string): string => {
   // Respuesta con otra forma (`documentTimelineResponseSchema`): su texto es
@@ -51,5 +54,5 @@ export const documentAuditErrorMessage = (error: unknown, fallback: string): str
     const rejection = firstRejection(error.response.data, AUDIT_PARAMS);
     if (rejection) return `${AUDIT_PARAM_LABELS[rejection.key]}: ${rejection.message}`;
   }
-  return extractErrorMessage(error, fallback);
+  return handleDrfWriteError(error, "", []) || extractErrorMessage(error, fallback);
 };
