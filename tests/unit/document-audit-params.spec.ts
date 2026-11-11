@@ -8,9 +8,9 @@ import { DOCUMENT_AUDIT_TABLE } from "@/src/features/document-audit/constants/do
 import { readServerTableState } from "@/src/utils/serverTableParams";
 
 /**
- * EC-854: la bitácora no valida sus parámetros (500 con ids no numéricos o
- * fechas imposibles) y su `OrderingFilter` global rompe el cursor. Nada de eso
- * debe salir del frontend.
+ * EC-854 / EC-862: la bitácora responde 400 a un parámetro inválido e ignora
+ * `ordering` y `search`. El frontend descarta antes esos valores: un enlace con
+ * un filtro roto se lee como si no lo trajera, en vez de terminar en error.
  */
 test.describe("toDocumentAuditParams", () => {
   test("omite los vacíos y recorta el folio", () => {
@@ -37,7 +37,7 @@ test.describe("toDocumentAuditParams", () => {
     });
   });
 
-  test("rechaza lo que el backend respondería con 500 o vacío silencioso", () => {
+  test("rechaza lo que el backend respondería con 400 o que no coincide con nada", () => {
     expect(toDocumentAuditParams({ usuario: 0 })).toBeNull();
     expect(toDocumentAuditParams({ sucursal: 1.5 })).toBeNull();
     expect(toDocumentAuditParams({ sucursal: 2_147_483_648 })).toBeNull();

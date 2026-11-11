@@ -39,13 +39,13 @@ const dateKey = z
 /**
  * Filtros de `GET /auditoria/documentos/`, validados ANTES de llegar al backend.
  *
- * El endpoint no valida sus parámetros: un `usuario`, `sucursal` u `origen_id`
- * no numérico o una fecha imposible responden 500, y `tipo`/`accion` fuera de
- * su lista devuelven vacío sin avisar. Por eso cada valor se restringe a lo que
- * el backend sabe responder (ids enteros positivos, días reales
- * `YYYY-MM-DD`, `tipo` y `accion` de su enum) y un rango invertido se rechaza.
- * `ordering` y `search` no existen aquí a propósito: el `OrderingFilter` global
- * rompería el cursor y `search` no hace nada.
+ * El endpoint responde 400 a un parámetro inválido (nucleo-erp PR #1072). Aun
+ * así, cada valor se restringe aquí a lo que el backend acepta (ids enteros
+ * positivos, días reales `YYYY-MM-DD`, `tipo` y `accion` de su enum) y un rango
+ * invertido se rechaza, para que un enlace con un filtro roto no termine en
+ * error: el valor se ignora. `ordering` y `search` no existen aquí: el backend
+ * los ignora (su orden es siempre `-id`, el único que soporta el cursor) y el
+ * folio se busca con `folio`.
  */
 export const documentAuditFiltersSchema = z
   .object({
