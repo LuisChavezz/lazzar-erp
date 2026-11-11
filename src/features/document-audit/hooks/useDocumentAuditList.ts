@@ -1,5 +1,11 @@
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
+import type { BitacoraDocumentoPage } from "../interfaces/document-audit.interface";
 import { getDocumentAuditPage } from "../services/actions";
 import { extractAuditCursor } from "../utils/auditCursor";
 
@@ -33,8 +39,10 @@ export const useDocumentAuditList = (
   companyId: number | null,
   { enabled }: { enabled: boolean },
 ) => {
+  const queryClient = useQueryClient();
+  const queryKey = [...DOCUMENT_AUDIT_QUERY_KEY, "list", companyId, params];
   const query = useInfiniteQuery({
-    queryKey: [...DOCUMENT_AUDIT_QUERY_KEY, "list", companyId, params],
+    queryKey,
     queryFn: ({ pageParam, signal }) => getDocumentAuditPage(params ?? {}, pageParam, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => extractAuditCursor(lastPage.next),
@@ -64,5 +72,19 @@ export const useDocumentAuditList = (
     isLoadMoreError: query.isFetchNextPageError,
     loadMore: () => query.fetchNextPage(),
     refetch: () => query.refetch(),
+    /**
+     * "Actualizar": vuelve a la PRIMERA página. `refetch` de una consulta
+     * infinita repite, una tras otra, todas las páginas ya cargadas; aquí se
+     * recorta la caché a la primera y solo esa se vuelve a pedir (una
+     * petición). Lo más reciente está en esa página; "Cargar más" sigue desde ahí.
+     */
+    refreshFirstPage: () => {
+      queryClient.setQueryData<InfiniteData<BitacoraDocumentoPage, string | null>>(
+        queryKey,
+        (data) =>
+          data && { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) },
+      );
+      return query.refetch();
+    },
   };
 };
