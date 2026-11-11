@@ -2,7 +2,7 @@
 
 import { Button } from "@/src/components/Button";
 import { ActivityTimeline, ActivityTimelineItem } from "@/src/components/ActivityTimeline";
-import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { HistoryIcon, RefreshIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
 import { ErrorDisplay } from "@/src/components/ui/ErrorDisplay";
@@ -27,6 +27,8 @@ export interface OrderHistoryQuery {
   isLoading: boolean;
   isFetching: boolean;
   isInitialError: boolean;
+  /** 404 de `linea-tiempo`: el historial no está disponible. */
+  isDefinitiveError: boolean;
   error: unknown;
   refetch: () => unknown;
 }
@@ -54,7 +56,11 @@ export function OrderHistorySheet({ pedido, history }: OrderHistorySheetProps) {
   const events = history.events;
 
   let content;
-  if (history.isLoading && events === undefined) {
+  if (history.isDefinitiveError) {
+    content = (
+      <EmptyLines>El historial de este pedido no está disponible.</EmptyLines>
+    );
+  } else if (history.isLoading && events === undefined) {
     content = <Loader title="Cargando historial" message="Obteniendo los eventos del pedido..." />;
   } else if (history.isInitialError) {
     content = (
