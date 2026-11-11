@@ -50,3 +50,9 @@ export interface RegisterUserResponseErrors {
   empresa?: string[];
   sucursal_default?: string[];
 }
+/** Fila de `GET /usuarios/catalogo/`: usuario activo de la empresa activa. */
+export interface UserCatalogItem {
+  id: number;
+  /** Nombre y apellido; el email si el usuario no tiene nombre. */
+  nombre_completo: string;
+}
