@@ -27,7 +27,7 @@ import {
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
-import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
+import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
@@ -401,13 +401,9 @@ export function ProductionOrderPageContent({
 
           <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
             <InfoGrid>
-              <InfoField label="Pedido">
+              <InfoField label={(data.pedidos?.length ?? 0) > 1 ? "Pedidos" : "Pedido"}>
                 {/* El pedido es OPCIONAL en el alta: el guion es un estado normal. */}
-                <PedidoVinculadoFolio
-                  pedidoVinculado={data.pedido_vinculado}
-                  pedidoFolio={data.pedido_folio}
-                  from="production-orders"
-                />
+                <ProductionOrderPedidosField data={data} />
               </InfoField>
               <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
               <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
