@@ -12,7 +12,11 @@ import {
   persistSessionEmpresa,
   readPersistedSessionEmpresa,
 } from "../utils/persistSessionEmpresa";
-import { resolveDivergence, shouldRereadOnDivergence } from "../utils/sessionCompanyDivergence";
+import {
+  resolveDivergence,
+  resolveRereadFailure,
+  shouldRereadOnDivergence,
+} from "../utils/sessionCompanyDivergence";
 
 /** Relecturas hechas por clave de sincronización (vive lo que la pestaña). */
 const rereads = new Map<string, number>();
@@ -42,8 +46,10 @@ const inFlight = new Set<string>();
  * la sincronización de la carga nueva confirma la empresa del servidor y la
  * sesión ya coincide; y las relecturas están acotadas por sincronización.
  *
- * Si la relectura falla no hace nada: la pestaña sigue como estaba hasta la
- * siguiente desviación o recarga.
+ * Si la relectura falla, solo repara una sesión que perdió la clave `empresa`
+ * (vuelve a escribir la confirmada, como antes, para que la puerta de empresa
+ * no se quede en "cargando"); una sesión con otra empresa definida se deja,
+ * porque casi seguro es un cambio legítimo en otra pestaña.
  *
  * Vive en los layouts de (Main) y de /select-branch; no pinta nada.
  */
@@ -76,10 +82,25 @@ export function SessionCompanyWatcher() {
     rereads.set(key, rereadsDone + 1);
     inFlight.add(key);
 
+    const persist = (empresa: number | null) =>
+      persistSessionEmpresa({ empresa, update, readPersisted: readPersistedSessionEmpresa });
+
     void (async () => {
+      let server: number | null | undefined;
       try {
-        const server = parseSessionEmpresa((await getCurrentUser()).empresa);
-        if (server === undefined) return;
+        server = parseSessionEmpresa((await getCurrentUser()).empresa);
+      } catch {
+        // Sin respuesta del servidor: solo se repara una sesión que perdió la
+        // clave; otra empresa definida se deja (resolveRereadFailure).
+        server = undefined;
+      }
+      try {
+        if (server === undefined) {
+          const store = useSessionCompanySyncStore.getState();
+          if (store.switching || store.confirmed?.key !== key) return;
+          if (resolveRereadFailure(sessionEmpresa) === "restore") await persist(store.confirmed.empresa);
+          return;
+        }
         // Mientras se preguntaba, la pestaña empezó su propio cambio de
         // empresa o lanzó otra sincronización: esta respuesta ya no aplica.
         const store = useSessionCompanySyncStore.getState();
@@ -89,13 +110,9 @@ export function SessionCompanyWatcher() {
           window.location.reload();
           return;
         }
-        await persistSessionEmpresa({
-          empresa: server,
-          update,
-          readPersisted: readPersistedSessionEmpresa,
-        });
+        await persist(server);
       } catch {
-        // Sin respuesta del servidor no se decide nada.
+        // No se pudo escribir la sesión: la siguiente desviación lo reintenta.
       } finally {
         inFlight.delete(key);
       }

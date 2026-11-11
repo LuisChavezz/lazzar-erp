@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   MAX_DIVERGENCE_REREADS,
   resolveDivergence,
+  resolveRereadFailure,
   shouldRereadOnDivergence,
 } from "@/src/features/auth/utils/sessionCompanyDivergence";
 
@@ -91,4 +92,13 @@ test("dos pestañas: la que cambia no relee y la otra recarga sin tocar la sesi�
   const tabB = { ...base, sessionEmpresa: 55 };
   expect(shouldRereadOnDivergence(tabB)).toBe(true);
   expect(resolveDivergence(tabB.confirmed.empresa, 55)).toBe("reload");
+});
+
+test("si la relectura falla y la sesión perdió la clave, se restaura la confirmada", () => {
+  expect(resolveRereadFailure(undefined)).toBe("restore");
+});
+
+test("si la relectura falla y la sesión trae otra empresa definida, no se toca (cambio en otra pestaña)", () => {
+  expect(resolveRereadFailure(55)).toBe("none");
+  expect(resolveRereadFailure(null)).toBe("none");
 });
