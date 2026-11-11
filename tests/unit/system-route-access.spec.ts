@@ -25,6 +25,14 @@ test.describe("acceso al Panel de Control", () => {
   test("sin ninguno de los dos no entra", () => {
     expect(canAccessRoute("/system", user(["R-CRM"]))).toBe(false);
   });
+
+  // EC-854: la bitácora vive fuera de `/system/reports` para que la abra
+  // cualquiera de los dos códigos, como exige el backend.
+  test("la bitácora de documentos acepta R-CORE o R-CORE-REPORTES", () => {
+    expect(canAccessRoute("/system/document-audit", user(["R-CORE"]))).toBe(true);
+    expect(canAccessRoute("/system/document-audit", user(["R-CORE-REPORTES"]))).toBe(true);
+    expect(canAccessRoute("/system/document-audit", user(["R-CRM"]))).toBe(false);
+  });
 });
 
 test.describe("isPlausibleDateKey (movido a src/utils)", () => {
