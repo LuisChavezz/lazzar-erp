@@ -93,7 +93,7 @@ export default function FiscalAddressForm({ companyId, address, onSuccess }: Fis
                 {(field) => (
                   <FormInput
                     label="Número Interior"
-                    placeholder="Ej. Depto 4B (Opcional)"
+                    placeholder="Ej. Depto 4B"
                     forceUppercase
                     name={field.name}
                     value={field.state.value}
@@ -175,7 +175,7 @@ export default function FiscalAddressForm({ companyId, address, onSuccess }: Fis
                 {(field) => (
                   <FormInput
                     label="Localidad"
-                    placeholder="Ej. Ciudad de México (Opcional)"
+                    placeholder="Ej. Ciudad de México"
                     forceUppercase
                     name={field.name}
                     value={field.state.value}
