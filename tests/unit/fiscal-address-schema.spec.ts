@@ -36,7 +36,7 @@ test("ningún campo es obligatorio: basta con uno solo", () => {
 test("código postal: vacío o exactamente 5 dígitos", () => {
   expect(firstMessage({ codigo_postal: "44100" })).toBeUndefined();
   expect(firstMessage({ codigo_postal: "" })).toBeUndefined();
-  for (const invalid of ["4410", "441000", "44A00", " 4410", "44 100"]) {
+  for (const invalid of ["4410", "441000", "44A00", " 4410 ", "44 100"]) {
     const issue = firstMessage({ codigo_postal: invalid });
     expect(issue?.path).toEqual(["codigo_postal"]);
     expect(issue?.message).toBe("El código postal debe tener 5 dígitos");
@@ -64,4 +64,16 @@ test("longitudes máximas del backend", () => {
     expect(firstMessage({ [field]: "X".repeat(max) })).toBeUndefined();
     expect(firstMessage({ [field]: "X".repeat(max + 1) })?.path).toEqual([field]);
   }
+});
+
+test("recorta espacios antes de validar, como el backend", () => {
+  const parsed = FiscalAddressSchema.parse({
+    ...empty,
+    calle: `${"X".repeat(255)} `,
+    codigo_postal: " 44100 ",
+    pais: " mex ",
+  });
+  expect(parsed.calle).toHaveLength(255);
+  expect(parsed.codigo_postal).toBe("44100");
+  expect(parsed.pais).toBe("mex");
 });
