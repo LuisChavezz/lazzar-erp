@@ -81,10 +81,3 @@ export const isAccionBitacora = (value: string): value is AccionBitacora =>
 /** Etiqueta del tipo; un tipo que el frontend aún no conoce se muestra tal cual. */
 export const getTipoDocumentoLabel = (tipo: string): string =>
   isTipoDocumento(tipo) ? TIPO_DOCUMENTO_LABELS[tipo] : tipo;
-
-/**
- * Tope de eventos de `linea-tiempo`. El backend devuelve los 500 MÁS ANTIGUOS y
- * descarta el resto sin avisar: con exactamente este número la vista advierte
- * que puede faltar lo más reciente.
- */
-export const DOCUMENT_TIMELINE_MAX_EVENTS = 500;
