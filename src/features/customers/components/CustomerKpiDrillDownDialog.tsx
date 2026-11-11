@@ -12,6 +12,7 @@ import type {
   CustomerSalesKpiAvailable,
 } from "../interfaces/customer-kpis.interface";
 import { formatKpiCurrencyAmount, formatKpiDate, formatKpiPct, formatKpiTaggedCurrencyAmount, plural } from "@/src/utils/kpiFormat";
+import { customerDetailPath } from "../constants/customerRoutes";
 
 /** Bloques con drill-down (todos los que el backend lista). */
 export type CustomerKpiDrillDownKind = "ventas_por_cliente" | "clientes_activos" | "cartera_antiguedad";
@@ -27,7 +28,7 @@ const NOTE_CLASS = "mt-2 text-xs text-slate-500 dark:text-slate-400";
 /** Nombre del cliente que navega a su detalle (enlace real: clic central abre pestaña nueva). */
 function ClienteLink({ clienteId, nombre }: { clienteId: number; nombre: string }) {
   return (
-    <Link href={`/sales/customers/${clienteId}`} className={CLIENT_LINK_CLASS} title="Ver detalle del cliente">
+    <Link href={customerDetailPath(clienteId)} className={CLIENT_LINK_CLASS} title="Ver detalle del cliente">
       {nombre || `#${clienteId}`}
     </Link>
   );

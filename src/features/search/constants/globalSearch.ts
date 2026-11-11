@@ -10,6 +10,7 @@ import {
   SliceIcon,
   TrendingUpIcon,
 } from "@/src/components/Icons";
+import { customerDetailPath } from "@/src/features/customers/constants/customerRoutes";
 import { opportunityDetailPath } from "@/src/features/opportunities/constants/opportunityRoutes";
 import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
@@ -67,7 +68,7 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   // el proxy rebotaría.
   pedido: { modo: "ruta", href: (id) => `/orders/${id}?from=home` },
   // Único camino al detalle de cliente en toda la app.
-  cliente: { modo: "ruta", href: (id) => `/sales/customers/${id}` },
+  cliente: { modo: "ruta", href: (id) => customerDetailPath(id) },
   // Sin ruta de detalle: el diálogo self-fetching (`QuoteDetailByIdDialog`) que
   // abre el bloque "Documentos relacionados" del pedido 360°.
   cotizacion: { modo: "dialogo-cotizacion" },
