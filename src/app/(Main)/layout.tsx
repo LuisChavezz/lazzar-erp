@@ -6,6 +6,7 @@ import BranchChangeLoader from "@/src/components/BranchChangeLoader";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SessionRecoveryProvider } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { SessionCompanySync } from "@/src/features/auth/components/SessionCompanySync";
+import { SessionCompanyWatcher } from "@/src/features/auth/components/SessionCompanyWatcher";
 import { SessionUserWatcher } from "@/src/features/auth/components/SessionUserWatcher";
 import { CompanyGate } from "@/src/features/workspace/components/CompanyGate";
 import { SidebarProvider } from "@/src/components/SidebarProvider";
@@ -45,6 +46,8 @@ export default function MainLayout({
       <SessionUserWatcher />
       {/* Relee la empresa del usuario en `/auth/user/` al cargar la app (EC-842). */}
       <SessionCompanySync />
+      {/* Relee el servidor si la empresa de la sesión se desvía; recarga si cambió en otra pestaña (EC-847). */}
+      <SessionCompanyWatcher />
       <SettingsModalProvider>
         {/* Envuelve al header (su disparador) y a todas las páginas: monta la
             paleta de búsqueda una sola vez para todas las rutas de (Main). */}

@@ -3,6 +3,7 @@ import "@/src/styles/radix-theme.css";
 import { getServerSession } from "next-auth";
 import { SessionThemeProvider } from "@/src/app/SessionThemeProvider";
 import { SessionCompanySync } from "@/src/features/auth/components/SessionCompanySync";
+import { SessionCompanyWatcher } from "@/src/features/auth/components/SessionCompanyWatcher";
 import { SessionUserWatcher } from "@/src/features/auth/components/SessionUserWatcher";
 import { authOptions } from "@/src/lib/auth";
 
@@ -23,6 +24,8 @@ export default async function SelectBranchLayout({
       {/* Recarga la pestaña si su sesión pasa a otro usuario (EC-848). */}
       <SessionUserWatcher />
       <SessionCompanySync />
+      {/* Relee el servidor si la empresa de la sesión se desvía; recarga si cambió en otra pestaña (EC-847). */}
+      <SessionCompanyWatcher />
       <div className="bg-slate-50 dark:bg-black min-h-screen flex flex-col items-center justify-center py-12 transition-colors duration-300 relative selection:bg-sky-500 selection:text-white">
         <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(110%_70%_at_50%_-10%,rgba(56,189,248,0.28),rgba(255,255,255,0))] dark:bg-[radial-gradient(120%_85%_at_50%_-20%,rgba(56,189,248,0.22),rgba(17,17,19,0))]"></div>
         {children}
