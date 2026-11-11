@@ -2,7 +2,8 @@
 
 import { Button } from "@/src/components/Button";
 import { DownloadIcon, LoadingSpinnerIcon } from "@/src/components/Icons";
-import { useDocumentPdfDownload, type DocumentPdfSource } from "@/src/hooks/useDocumentPdfDownload";
+import { useDocumentPdfDownload } from "@/src/hooks/useDocumentPdfDownload";
+import type { DocumentPdfSource } from "@/src/pdfs/shared/documentPdfSource";
 import {
   documentPdfFolioLabel,
   type DocumentPdfDescriptor,
