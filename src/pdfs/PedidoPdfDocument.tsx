@@ -113,7 +113,10 @@ const PAYMENT_CONDITIONS: { key: keyof Order; label: string }[] = [
   { key: "otra_cantidad", label: "Otra cantidad" },
 ];
 
-const textOrDash = (value: string | null | undefined): string => value?.trim() || "-";
+/** Valor vacío: el mismo "—" que la pantalla y que los helpers de fecha del pedido. */
+const EMPTY = "—";
+
+const textOrDash = (value: string | null | undefined): string => value?.trim() || EMPTY;
 
 /** Domicilio en una línea con las partes que vengan: "Calle 1, Centro, C.P. 44100, …". */
 const joinAddress = (parts: {
@@ -132,7 +135,7 @@ const joinAddress = (parts: {
   ]
     .map((part) => part?.trim())
     .filter(Boolean)
-    .join(", ") || "-";
+    .join(", ") || EMPTY;
 
 /** "Bordado · Reflejante (CH, M)": los servicios de la línea; "Parcial" con sus tallas. */
 const lineServicesCaption = (linea: PedidoDetalleLinea): string | null => {
@@ -161,7 +164,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
 
   const lineAmounts = showAccounting ? reconciledLineAmounts(pedido) : null;
   const totalPiezas = detalles.reduce((sum, linea) => sum + (linea.cantidad_total ?? 0), 0);
-  const cliente = pedido.cliente_razon_social || pedido.cliente_nombre || "-";
+  const cliente = pedido.cliente_razon_social || pedido.cliente_nombre || EMPTY;
 
   const lineColumns: PdfColumn<PedidoDetalleLinea>[] = [
     {
@@ -174,7 +177,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
       id: "sku",
       header: "SKU",
       flex: 1.4,
-      cell: (linea) => (isSampleLine(linea) ? "Muestra" : linea.sku_base || "-"),
+      cell: (linea) => (isSampleLine(linea) ? "Muestra" : linea.sku_base || EMPTY),
     },
     {
       id: "descripcion",
@@ -220,7 +223,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
             <PdfCellText>Varía</PdfCellText>
             {price.bySize.map((size) => (
               <PdfCellCaption key={size.talla}>
-                {`${size.talla}: ${moneyIfPresent(size.precio) ?? "-"}`}
+                {`${size.talla}: ${moneyIfPresent(size.precio) ?? EMPTY}`}
               </PdfCellCaption>
             ))}
           </View>
@@ -410,7 +413,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
           { label: "Descuento global", value: moneyIfPositive(pedido.descuento_global) },
           { label: "IEPS", value: moneyIfPositive(pedido.ieps) },
           // Mismo lugar que en pantalla: entre los cargos y el IVA.
-          { label: "Moneda", value: currency ? (currency.label ?? "-") : undefined },
+          { label: "Moneda", value: currency ? (currency.label ?? EMPTY) : undefined },
           {
             label: pedido.iva === undefined ? "IVA" : `IVA (${pedido.iva}%)`,
             value: moneyIfPresent(pedido.importe_iva),
