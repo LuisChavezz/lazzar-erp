@@ -35,7 +35,10 @@ export type DocumentPdfSource = (context: DocumentPdfContext) => Promise<Documen
  * 1. `fetchDetail` vuelve a pedir el detalle FRESCO (no una fila o un detalle
  *    cacheados): el estatus real decide la marca de cancelado y la respuesta
  *    ya viene filtrada por el rol, así que el PDF muestra exactamente los
- *    importes que el backend deja ver.
+ *    importes que el backend deja ver. Debe llamar al SERVICIO del detalle, no
+ *    `queryClient.fetchQuery` sobre la consulta que observa la pantalla: un
+ *    fallo escrito en esa consulta dispararía además el aviso de la pantalla
+ *    (doble toast) o la cambiaría a su estado de error (EC-856).
  * 2. `describe` lo traduce a la identidad del documento.
  * 3. `render` arma el `Blob` (vía `renderPdfBlob`, con carga diferida).
  */
