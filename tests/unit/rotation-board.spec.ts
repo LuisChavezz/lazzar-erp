@@ -24,6 +24,9 @@ import {
   normalizeImportePorMoneda,
 } from "@/src/features/rotation-board/utils/rotationBoardAmounts";
 import { rotationBranchOptions } from "@/src/features/rotation-board/utils/rotationBoardBranches";
+import { formatCurrencyBlockAmount } from "@/src/components/CurrencyTotalsValue";
+import { formatInCurrency } from "@/src/utils/currencyTotals";
+import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 
 /** Pruebas unitarias del tablero de rotación de Planeación (EC-867). */
 
@@ -340,5 +343,15 @@ test.describe("filtro de sucursal", () => {
       data: { sucursal: ["Sucursal no encontrada."] },
     });
     expect(rotationBoardFieldErrorMessage(error)).toBe("Sucursal: Sucursal no encontrada.");
+  });
+});
+
+test.describe("formatCurrencyBlockAmount (importe por moneda del tablero)", () => {
+  test("mismo texto que la regla de bloques etiquetados: símbolo propio, XTS y sin moneda sin símbolo", () => {
+    for (const [moneda, total] of [["MXN", 1685828.74], ["USD", 785095], ["XTS", 7740]] as const) {
+      expect(formatCurrencyBlockAmount({ moneda, total })).toBe(formatKpiTaggedCurrencyAmount(total, moneda));
+    }
+    expect(formatCurrencyBlockAmount({ moneda: null, total: 5 })).toBe(formatInCurrency(5, null));
+    expect(formatCurrencyBlockAmount({ moneda: "XTS", total: 7740 })).not.toContain("XTS");
   });
 });
