@@ -28,6 +28,7 @@ import {
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
 import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
+import { ProductionOrderPdfButton } from "./ProductionOrderPdfButton";
 import { opPedidoRefs } from "../utils/opPedidos";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
@@ -351,6 +352,7 @@ export function ProductionOrderPageContent({
             <RouteIcon className="w-4 h-4" aria-hidden="true" />
             Ruta crítica
           </Button>
+          <ProductionOrderPdfButton op={data} />
         </div>
       </div>
 
