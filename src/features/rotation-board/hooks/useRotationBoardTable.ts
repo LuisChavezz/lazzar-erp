@@ -74,6 +74,15 @@ export const useRotationBoardTable = () => {
     });
 
   const filters = table.state.filters;
+
+  /**
+   * Sucursal del filtro (`null` = todas las del usuario). Vive en la URL como
+   * un filtro más: cambiarla vuelve a la página 1, "Limpiar filtros" la quita y
+   * sobrevive al cambio de agrupación (existe en los dos modos).
+   */
+  const sucursal = filters.sucursal ?? null;
+  const setSucursal = (value: number | null) => table.setFilter("sucursal", value ?? undefined);
+
   const isShortcutActive = (shortcut: RotationBoardShortcut) =>
     isRotationShortcutActive(filters, shortcut);
 
@@ -106,6 +115,8 @@ export const useRotationBoardTable = () => {
     agrupar,
     isProductMode,
     setAgrupar,
+    sucursal,
+    setSucursal,
     isShortcutActive,
     toggleShortcut,
   };

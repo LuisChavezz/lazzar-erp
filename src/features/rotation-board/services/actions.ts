@@ -31,14 +31,20 @@ export const getRotationBoardPage = async (
   };
 };
 
-/** `GET /planeacion/necesidades-materia-prima/?variante=&cantidad=` (desglose de un SKU). */
+/**
+ * `GET /planeacion/necesidades-materia-prima/?variante=&cantidad=[&sucursal=]`
+ * (desglose de un SKU). Con `sucursal`, la existencia de los insumos es la de
+ * esa sucursal, igual que en la fila del tablero; sin ella, la del alcance por
+ * defecto del usuario (sus sucursales, o toda la empresa para el admin).
+ */
 export const getVariantMaterialNeeds = async ({
   variante,
   cantidad,
+  sucursal,
 }: VariantMaterialNeedsParams): Promise<VariantMaterialNeeds> => {
   const response = await v1_api.get<VariantMaterialNeeds>(
     "/planeacion/necesidades-materia-prima/",
-    { params: { variante, cantidad } },
+    { params: sucursal === null ? { variante, cantidad } : { variante, cantidad, sucursal } },
   );
   return response.data;
 };

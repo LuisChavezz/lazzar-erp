@@ -15,6 +15,7 @@ import {
   rotationControlSchemas,
   type RotationNumericControl,
 } from "../schemas/rotationBoardControls.schema";
+import { RotationBranchFilter } from "./RotationBranchFilter";
 
 /** Pausa antes de aplicar un campo numérico: no se consulta a cada tecla. */
 export const ROTATION_CONTROL_DEBOUNCE_MS = 500;
@@ -87,12 +88,15 @@ interface RotationBoardControlsProps {
   semanasObjetivo: number;
   diasSinVenta: number;
   agrupar: RotationAgrupar;
+  /** Filtro de sucursal (`null` = todas las del usuario). */
+  sucursal: number | null;
   /** Eco del backend: periodo realmente calculado (`desde`–`hasta`). */
   parametros: RotationBoardParametros | undefined;
   onSemanasChange: (value: number) => void;
   onSemanasObjetivoChange: (value: number) => void;
   onDiasSinVentaChange: (value: number) => void;
   onAgruparChange: (value: RotationAgrupar) => void;
+  onSucursalChange: (value: number | null) => void;
   onReset: () => void;
 }
 
@@ -100,17 +104,23 @@ interface RotationBoardControlsProps {
  * Parámetros de CÁLCULO del tablero (no filtros): periodo, semanas objetivo,
  * umbral sin venta y agrupación. Viven en la URL, "Limpiar filtros" de la
  * tabla no los toca y "Restablecer" los devuelve a sus valores por defecto.
+ *
+ * Junto a ellos va la sucursal, que SÍ es un filtro (lo quita "Limpiar
+ * filtros", no "Restablecer") pero cambia el cálculo entero, tarjetas
+ * incluidas, así que se elige aquí y no en un encabezado de columna.
  */
 export function RotationBoardControls({
   semanas,
   semanasObjetivo,
   diasSinVenta,
   agrupar,
+  sucursal,
   parametros,
   onSemanasChange,
   onSemanasObjetivoChange,
   onDiasSinVentaChange,
   onAgruparChange,
+  onSucursalChange,
   onReset,
 }: RotationBoardControlsProps) {
   // Restablecer remonta los campos: un borrador inválido ("0") se descarta
@@ -123,7 +133,7 @@ export function RotationBoardControls({
 
   return (
     <section
-      aria-label="Parámetros de cálculo"
+      aria-label="Parámetros de cálculo y sucursal"
       className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3"
     >
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
@@ -162,6 +172,7 @@ export function RotationBoardControls({
             ]}
           />
         </div>
+        <RotationBranchFilter value={sucursal} onChange={onSucursalChange} />
         <div className="flex flex-1 flex-wrap items-end justify-end gap-3 self-end">
           {parametros && (
             <p className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">

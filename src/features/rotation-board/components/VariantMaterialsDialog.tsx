@@ -24,7 +24,7 @@ import { useVariantMaterialNeeds } from "../hooks/useVariantMaterialNeeds";
 import type { RotationBoardRow } from "../interfaces/rotation-board.interface";
 import type { VariantMaterial } from "../interfaces/variant-materials.interface";
 import { materialsCantidadSchema } from "../schemas/rotationBoardControls.schema";
-import { formatPieces } from "../utils/rotationBoardFormat";
+import { formatPieces, rotationBoardFieldErrorMessage } from "../utils/rotationBoardFormat";
 
 /** Pausa antes de pedir el desglose de una cantidad nueva. */
 const CANTIDAD_DEBOUNCE_MS = 500;
@@ -87,6 +87,8 @@ function MaterialRow({ material }: { material: VariantMaterial }) {
 
 interface MaterialsContentProps {
   row: RotationBoardRow;
+  /** Sucursal del tablero al abrir (`null` = todas las del usuario). */
+  sucursal: number | null;
 }
 
 /**
@@ -94,7 +96,7 @@ interface MaterialsContentProps {
  * `useDialogSession`, así que sobrevive a que la fila salga del filtro o de la
  * página) y el desglose del BOM para `cantidad` piezas.
  */
-function MaterialsContent({ row }: MaterialsContentProps) {
+function MaterialsContent({ row, sucursal }: MaterialsContentProps) {
   const [draft, setDraft] = useState(String(initialMaterialsCantidad(row)));
   // La cantidad que se consulta: el último borrador VÁLIDO tras la pausa. Uno
   // inválido muestra su motivo y no consulta (se queda la anterior).
@@ -109,7 +111,7 @@ function MaterialsContent({ row }: MaterialsContentProps) {
   const draftError = parsedDraft.success ? undefined : parsedDraft.error.issues[0]?.message;
 
   const { needs, isLoading, isFetching, isPlaceholderData, isInitialError, isNotFound, error, cantidadError, refetch } =
-    useVariantMaterialNeeds(row.variante_id, cantidad);
+    useVariantMaterialNeeds(row.variante_id, cantidad, sucursal);
 
   // El error del campo: primero el del cliente (no es un entero ≥ 1), luego el
   // del backend (p. ej. el tope de 1 000 000), con su texto tal cual.
@@ -190,7 +192,10 @@ function MaterialsContent({ row }: MaterialsContentProps) {
         ) : isInitialError && !cantidadError ? (
           <SectionErrorNotice
             title="No se pudo cargar el desglose"
-            message={extractErrorMessage(error, "Intenta de nuevo en unos momentos.")}
+            message={
+              rotationBoardFieldErrorMessage(error) ??
+              extractErrorMessage(error, "Intenta de nuevo en unos momentos.")
+            }
             onRetry={() => void refetch()}
             isRetrying={isFetching}
           />
@@ -233,6 +238,8 @@ function MaterialsContent({ row }: MaterialsContentProps) {
 interface VariantMaterialsDialogProps {
   /** Fila elegida; `null` = cerrado. */
   row: RotationBoardRow | null;
+  /** Sucursal del filtro del tablero (`null` = todas las del usuario). */
+  sucursal: number | null;
   onClose: () => void;
 }
 
@@ -240,12 +247,13 @@ interface VariantMaterialsDialogProps {
  * Detalle de materiales de un SKU (solo con agrupación por variante). Lo monta
  * la vista, no la celda. `useDialogSession` guarda la fila al ABRIR: si un
  * refetch la saca del filtro o de la página, el diálogo sigue con sus datos
- * (y conserva el contenido durante la animación de cierre).
+ * (y conserva el contenido durante la animación de cierre). La sucursal se
+ * guarda con ella: el desglose es el de la fila tal como se abrió.
  */
-export function VariantMaterialsDialog({ row, onClose }: VariantMaterialsDialogProps) {
+export function VariantMaterialsDialog({ row, sucursal, onClose }: VariantMaterialsDialogProps) {
   const open = row !== null;
-  const session = useDialogSession(open, row);
-  const snapshot = session.snapshot;
+  const session = useDialogSession(open, row === null ? null : { row, sucursal });
+  const snapshot = session.snapshot?.row ?? null;
 
   return (
     <MainDialog
@@ -263,7 +271,11 @@ export function VariantMaterialsDialog({ row, onClose }: VariantMaterialsDialogP
       }
     >
       {snapshot && snapshot.variante_id !== null && (
-        <MaterialsContent key={session.id} row={snapshot} />
+        <MaterialsContent
+          key={session.id}
+          row={snapshot}
+          sucursal={session.snapshot?.sucursal ?? null}
+        />
       )}
     </MainDialog>
   );
