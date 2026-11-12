@@ -323,6 +323,14 @@ test.describe("filtro de sucursal", () => {
     expect(rotationBranchOptions(BRANCHES, 72)).toHaveLength(3);
   });
 
+  test("mientras el catálogo carga, la sucursal de la URL no se rotula como desconocida", () => {
+    expect(rotationBranchOptions([], 1, true)).toEqual([
+      { value: "", label: "Todas mis sucursales" },
+      { value: "1", label: "Cargando sucursales..." },
+    ]);
+    expect(rotationBranchOptions([], 1, false)[1]).toEqual({ value: "1", label: "Sucursal #1" });
+  });
+
   test("el 400 de sucursal se lee con su etiqueta", () => {
     const error = new AxiosError("Bad Request", "ERR_BAD_REQUEST", undefined, undefined, {
       status: 400,
