@@ -6,6 +6,7 @@ import { TrendingUpIcon } from "@/src/components/Icons";
 import { OrderChip, SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { pluralForQuantity } from "@/src/utils/plural";
+import { workOrderCoveragePercent } from "@/src/utils/workOrderGarments";
 
 /**
  * Piezas de "hoja" compartidas por los detalles de órdenes de trabajo
@@ -68,7 +69,7 @@ export function WorkOrderCoverageSheet({
   /** Aviso opcional bajo la barra (p. ej. reparto aproximado). */
   notice?: ReactNode;
 }) {
-  const porcentaje = contratada > 0 ? Math.round((cubierta / contratada) * 100) : null;
+  const porcentaje = workOrderCoveragePercent(cubierta, contratada);
   return (
     <SheetSection
       icon={<TrendingUpIcon className="w-5 h-5" />}
