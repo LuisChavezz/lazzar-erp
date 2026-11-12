@@ -260,13 +260,14 @@ export interface PurchaseOrderDetalle {
 
 /**
  * Recepción embebida en la respuesta de detalle de la orden de compra
- * (`recepciones[]` de GET /compras/ordenes/{id}/). Su forma es idéntica, campo
- * por campo, a la respuesta del recurso dedicado GET /compras/recepciones/{id}/,
- * por lo que se reutiliza {@link ReceiptDetail} en lugar de redefinirla — incluye
- * el mismo arreglo anidado `detalles: ReceiptDetailLine[]` (vacío cuando la
- * recepción aún no registra líneas).
+ * (`recepciones[]` de GET /compras/ordenes/{id}/). Su forma es la de la
+ * respuesta del recurso dedicado GET /compras/recepciones/{id}/ salvo el folio
+ * del origen (`orden_compra_folio`/`op_folio`, EC-879), que el anidado no trae:
+ * ya está dentro de su OC. Por eso se reutiliza {@link ReceiptDetail} sin esos
+ * dos campos — incluye el mismo arreglo anidado `detalles: ReceiptDetailLine[]`
+ * (vacío cuando la recepción aún no registra líneas).
  */
-export type PurchaseOrderReceipt = ReceiptDetail;
+export type PurchaseOrderReceipt = Omit<ReceiptDetail, "orden_compra_folio" | "op_folio">;
 
 /**
  * Respuesta del endpoint GET /compras/ordenes/{id}/.

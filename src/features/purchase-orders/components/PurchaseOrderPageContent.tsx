@@ -310,9 +310,8 @@ const TotalsFooter = ({
  * Resumen de UNA recepción generada contra la orden.
  *
  * Es un RESUMEN, no el detalle completo de la recepción: para eso está el
- * módulo de recepciones. `ubicacion_nombre` de los renglones no se pinta —
- * `ReceiptDetailLine` lo tipa como el literal `null` a propósito, porque el
- * backend nunca lo resuelve—.
+ * módulo de recepciones. `ubicacion_nombre` de los renglones no se pinta en
+ * este resumen.
  */
 const RecepcionCard = ({
   recepcion,

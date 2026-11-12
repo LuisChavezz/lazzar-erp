@@ -33,8 +33,8 @@ const formatCantidad = (value: string): string => {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
-/** Lote / serie de una línea como mini-pill; se omite si la línea no lo trae. */
-const LinePill = ({ label, value }: { label: string; value: string | null | undefined }) =>
+/** Lote / serie de una línea como mini-pill (el id que manda el backend); se omite si no lo trae. */
+const LinePill = ({ label, value }: { label: string; value: number | null | undefined }) =>
   value ? (
     <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
       <span className="text-slate-400 dark:text-slate-500">{label}</span>
