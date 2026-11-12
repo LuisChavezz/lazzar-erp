@@ -12,13 +12,10 @@ import {
 } from "@/src/features/orders/utils/loadPedidoForPdf";
 import { pedidoPdfDescriptor } from "@/src/features/orders/utils/pedidoPdfDescriptor";
 import { ivaTotalRow, PedidoPdfDocument } from "@/src/pdfs/PedidoPdfDocument";
-import { PdfLineItemsTable, PdfTotals, type PdfColumn } from "@/src/pdfs/shared/DocumentPdfLayout";
+import { PdfTotals } from "@/src/pdfs/shared/DocumentPdfLayout";
 import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
-import {
-  visiblePdfColumns,
-  visiblePdfTotals,
-  type PdfTotalRow,
-} from "@/src/pdfs/shared/documentPdfModel";
+import { visiblePdfTotals, type PdfTotalRow } from "@/src/pdfs/shared/documentPdfModel";
+import { elementsOf, pdfTable } from "./support/pdfElementTree";
 
 /**
  * PDF del pedido (EC-856): identidad del documento, nombre del archivo, carga
@@ -163,21 +160,6 @@ test.describe("loadPedidoForPdf", () => {
 
 // ── Documento: lo que se pinta con y sin importes ────────────────────────────
 
-type TreeElement = { type: unknown; props: Record<string, unknown> };
-
-/**
- * Todos los elementos del árbol (sin renderizar), recorriendo `props.children`.
- * Se reconocen por forma (`type` + `props`) y no con `isValidElement`: el
- * runner transforma el JSX del documento con otro runtime cuyo `$$typeof` no
- * coincide con el de este `react`.
- */
-function elementsOf(node: unknown): TreeElement[] {
-  if (Array.isArray(node)) return node.flatMap(elementsOf);
-  if (node === null || typeof node !== "object" || !("type" in node) || !("props" in node)) return [];
-  const element = node as TreeElement;
-  return [element, ...elementsOf(element.props.children)];
-}
-
 const talla = (precio: string | undefined) => ({
   id: 1,
   talla: 1,
@@ -231,13 +213,8 @@ function renderedParts(pedido: PedidoDetail) {
     currency: canSeeAccounting(pedido) ? { codigo: "MXN", label: "MXN - Peso mexicano" } : null,
   });
   const elements = elementsOf(tree);
-  const columnsOf = (title: string) => {
-    const table = elements.find(
-      (element) => element.type === PdfLineItemsTable && element.props.title === title,
-    );
-    const props = table?.props as { columns: PdfColumn<unknown>[]; rows: unknown[] };
-    return visiblePdfColumns(props.columns, props.rows).map((column) => column.header);
-  };
+  const columnsOf = (title: string) =>
+    pdfTable(elements, title).columns.map((column) => column.header);
   const totals = elements.find((element) => element.type === PdfTotals);
   const totalLabels = visiblePdfTotals((totals?.props as { rows: PdfTotalRow[] }).rows).map(
     (row) => row.label,
