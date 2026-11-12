@@ -13,9 +13,10 @@ import { pedidoPdfDescriptor } from "../utils/pedidoPdfDescriptor";
  * de detalle (`PedidoDetailContent`), en las tres hojas.
  *
  * Como la orden de compra, el PDF NO se arma con el pedido que ya muestra la
- * pantalla: `loadPedidoForPdf` vuelve a pedir el detalle (`staleTime: 0`)
- * porque el folio y el estatus pueden haber cambiado, y esa respuesta ya viene
- * filtrada por rol: sin permiso de importes, el PDF sale sin ellos.
+ * pantalla: `loadPedidoForPdf` vuelve a pedir el detalle (sin tocar la caché
+ * que observa la página) porque el folio y el estatus pueden haber cambiado, y
+ * esa respuesta ya viene filtrada por rol: sin permiso de importes, el PDF sale
+ * sin ellos.
  */
 export function PedidoPdfButton({ pedido }: { pedido: Pick<PedidoDetail, "id" | "folio" | "estatus"> }) {
   const queryClient = useQueryClient();
