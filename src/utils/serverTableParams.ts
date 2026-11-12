@@ -542,6 +542,53 @@ export const writeServerTableQuery = <
 };
 
 /**
+ * Query CANÓNICA de una tabla a partir de la del navegador: sus propios
+ * parámetros reescritos con valores ya validados (un orden fuera de la lista
+ * blanca, un filtro inválido o un ajuste en su default desaparecen) y, además,
+ * sin `foreignKeys` (las claves de una definición hermana que esta no usa).
+ * Los parámetros ajenos a la tabla (`?from=`) se conservan.
+ */
+export const canonicalServerTableQuery = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S>,
+  current: URLSearchParams,
+  foreignKeys: readonly string[] = [],
+): URLSearchParams => {
+  const state = readServerTableState(definition, (key) => current.get(key));
+  const query = writeServerTableQuery(definition, state, current);
+  for (const key of foreignKeys) query.delete(urlKey(definition, key));
+  return query;
+};
+
+/** ¿Las dos queries tienen los mismos parámetros, sin importar su orden? */
+export const isSameServerTableQuery = (a: URLSearchParams, b: URLSearchParams): boolean => {
+  const sorted = (query: URLSearchParams) => {
+    const copy = new URLSearchParams(query);
+    copy.sort();
+    return copy.toString();
+  };
+  return sorted(a) === sorted(b);
+};
+
+/**
+ * Estado con todos los ajustes en su default y la página 1. Si ya estaban
+ * todos en su default devuelve el MISMO estado (`===`): "Restablecer" no debe
+ * escribir la URL ni cambiar de página cuando no hay nada que restablecer.
+ */
+export const resetServerTableSettingsState = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams,
+>(
+  definition: ServerTableDefinition<P, S>,
+  state: ServerTableState<P, S>,
+): ServerTableState<P, S> =>
+  areServerTableSettingsDefault(definition as AnyServerTableDefinition, settingsOf(state))
+    ? state
+    : { ...state, settings: defaultServerTableSettings(definition), page: 1 };
+
+/**
  * Criterios de la consulta para el backend, SIN paginación: filtros, búsqueda
  * y orden efectivo, con los nombres del endpoint. Es lo que comparten la lista
  * y cualquier consulta hermana sobre el mismo conjunto (un total, un embudo,
