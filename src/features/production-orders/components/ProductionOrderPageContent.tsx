@@ -34,7 +34,6 @@ import { ProductionOrderCriticalPathDialog } from "@/src/features/production-ord
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
 import { ProductionOrderConsumptionSection } from "@/src/features/production-order-consumption/components/ProductionOrderConsumptionSection";
 import { RecalculateConsumptionDialog } from "@/src/features/production-order-consumption/components/RecalculateConsumptionDialog";
-import { summarizeConsumption } from "@/src/features/production-order-consumption/utils/summarizeConsumption";
 import { useProductionOrderStatusFlow } from "@/src/features/production-order-status/hooks/useProductionOrderStatusFlow";
 import { ProductionOrderStatusMenu } from "@/src/features/production-order-status/components/ProductionOrderStatusMenu";
 import { ProductionOrderStatusDialog } from "@/src/features/production-order-status/components/ProductionOrderStatusDialog";
@@ -238,10 +237,11 @@ export function ProductionOrderPageContent({
     });
   };
 
-  // Consumo por producto: lo comparten la sección y el selector del diálogo.
-  // Un refetch fallido de v5 conserva `data`, así que sigue disponible aunque
-  // la página muestre su estado de error.
-  const consumptionProducts = data ? summarizeConsumption(data.consumos) : [];
+  // Consumo por material, resuelto por el backend (`consumos_resumen`, EC-880):
+  // lo comparten la sección y el selector del diálogo. Un refetch fallido de v5
+  // conserva `data`, así que sigue disponible aunque la página muestre su estado
+  // de error.
+  const consumptionProducts = data?.consumos_resumen ?? [];
 
   // El diálogo de recálculo va FUERA de las ramas de carga/error/éxito, en la
   // misma posición en todas (segundo hijo del fragmento de `withPageDialogs`):
@@ -314,12 +314,10 @@ export function ProductionOrderPageContent({
     return withPageDialogs(
       <div className="w-full space-y-6">
         <div>{BackLink}</div>
-        {/* El copy NO afirma "no tienes acceso", a diferencia de las páginas de
-            OB/OR/OCM: el endpoint que alimenta esta página
-            (`onboarding?op_id=`) acota por empresa pero NO por sucursal
-            (nucleo-erp#538), así que el 404 solo significa "no existe en tu
-            empresa". Prometer un control por sucursal que el backend no aplica
-            sería afirmar algo falso. */}
+        {/* El endpoint que alimenta esta página (`onboarding?op_id=`) acota
+            por empresa y, para quien no es admin de empresa ni superusuario,
+            por sus sucursales permitidas (`ordenes_produccion_visibles`). Una
+            OP dada de baja (`activo=false`) también responde 404. */}
         <ErrorState
           title="No se pudo cargar la orden de producción"
           message={extractErrorMessage(

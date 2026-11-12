@@ -23,10 +23,8 @@ import { toCantidadValue } from "@/src/features/production-order-critical-path/u
 import { recalculateConsumptionMutationKey } from "../hooks/useRecalculateProductionOrderConsumption";
 import { useRecalculateConsumptionForm } from "../hooks/useRecalculateConsumptionForm";
 import type { RecalculateConsumptionResponse } from "../interfaces/production-order-consumption.interface";
-import {
-  productFallbackName,
-  type ProductConsumption,
-} from "../utils/summarizeConsumption";
+import type { ProductionOrderConsumoResumen } from "@/src/features/production-orders/interfaces/production-order.interface";
+import { consumptionProductName, productFallbackName } from "../utils/consumptionRecords";
 import {
   formatBackendQuantity,
   formatSignedBackendQuantity,
@@ -37,8 +35,8 @@ interface RecalculateConsumptionDialogProps {
   onOpenChange: (open: boolean) => void;
   opId: number;
   folio: string;
-  /** Productos con consumo en la OP (`summarizeConsumption`). Se copian al abrir. */
-  products: ProductConsumption[];
+  /** Materiales con consumo en la OP (`consumos_resumen`). Se copian al abrir. */
+  products: ProductionOrderConsumoResumen[];
 }
 
 /**
@@ -90,7 +88,7 @@ export function RecalculateConsumptionDialog({
 
 interface RecalculateConsumptionContentProps {
   opId: number;
-  products: ProductConsumption[];
+  products: ProductionOrderConsumoResumen[];
   onClose: () => void;
 }
 
@@ -170,7 +168,7 @@ function RecalculateConsumptionContent({
 
 interface RecalculateConsumptionStepsProps {
   opId: number;
-  products: ProductConsumption[];
+  products: ProductionOrderConsumoResumen[];
   initialCantidad: string;
   onClose: () => void;
 }
@@ -197,9 +195,10 @@ function RecalculateConsumptionSteps({
     confirm,
   } = useRecalculateConsumptionForm({ opId, initialCantidad, products });
 
-  const nameIn = (list: ProductConsumption[]) => (producto: number) =>
-    list.find((product) => product.producto === producto)?.producto_nombre ??
-    productFallbackName(producto);
+  const nameIn = (list: ProductionOrderConsumoResumen[]) => (producto: number) => {
+    const product = list.find((candidate) => candidate.producto === producto);
+    return product ? consumptionProductName(product) : productFallbackName(producto);
+  };
   const productName = nameIn(products);
 
   return (
@@ -283,16 +282,16 @@ function RecalculateConsumptionSteps({
                             className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500"
                           />
                           <span className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200">
-                            {product.producto_nombre}
+                            {consumptionProductName(product)}
                           </span>
                           <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 tabular-nums text-right">
                             Planeado{" "}
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                              {formatBackendQuantity(product.planned)}
+                              {formatBackendQuantity(product.planeado)}
                             </span>
                             {" · "}Actual{" "}
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                              {formatBackendQuantity(product.current)}
+                              {formatBackendQuantity(product.actual)}
                             </span>
                           </span>
                         </label>
