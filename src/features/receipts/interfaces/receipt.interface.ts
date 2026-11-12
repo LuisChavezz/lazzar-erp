@@ -27,6 +27,9 @@ export interface Receipt {
   almacen_nombre: string;
   proveedor_nombre: string | null;
   orden_compra_folio: string | null;
+  // Folio de la orden de producción de origen (`op.folio_op`, EC-879); null en
+  // recepciones de tipo OC.
+  op_folio: string | null;
   // Tipo de la orden de compra de origen: "MP" (OC, materia prima) o "PT"
   // (O, producto terminado). null en recepciones de tipo OP.
   orden_compra_tipo_compra: TipoCompra | null;
@@ -34,10 +37,12 @@ export interface Receipt {
 
 // ── Detalle de recepción ───────────────────────────────────────────────────────
 // Forma que devuelve GET /compras/recepciones/{id}/. Es un recurso DISTINTO del
-// listado `Receipt`: no trae `orden_compra`/`op`/`orden_compra_folio`/`activo`, y
-// en cambio agrega `detalles[]`, `estatus_label`, `sucursal_nombre` y
-// `factura_referencia`. Es un tipo compartido (WMS, Producción y Compras
-// consumirán la misma respuesta), por lo que modela ambos orígenes (OC/OP).
+// listado `Receipt`: no trae los ids `orden_compra`/`op` ni `activo`, y en cambio
+// agrega `detalles[]`, `estatus_label`, `sucursal_nombre` y `factura_referencia`.
+// Desde EC-879 trae también el folio del origen (`orden_compra_folio` y
+// `op_folio`, el que no corresponde a `tipo_origen` en null). Es un tipo
+// compartido (WMS, Producción y Compras consumen la misma respuesta), por lo que
+// modela ambos orígenes (OC/OP).
 
 export interface ReceiptDetailLine {
   id: number;
@@ -59,19 +64,26 @@ export interface ReceiptDetailLine {
    */
   producto_codigo?: string | null;
   producto_cod_proscai?: string | null;
+  // Nombre de la talla de la variante (EC-879); null sin variante (materia
+  // prima) o sin talla.
+  producto_variante_talla: string | null;
   ubicacion: number | null;
-  // Siempre null: limitación estructural del backend (no es un bug). Se tipa como
-  // `null` literal a propósito para que cualquier intento futuro de renderizarlo
-  // como texto sea un error de compilación.
-  ubicacion_nombre: null;
-  lote: string | null;
-  serie: string | null;
+  // Ubicación resuelta por el backend (`str(ubicacion)`); null sin ubicación.
+  ubicacion_nombre: string | null;
+  // Ids de las FK `Lote` / `Serie` (enteros), no un código: el backend no
+  // resuelve su texto.
+  lote: number | null;
+  serie: number | null;
   cantidad_recibida: string; // string numérico, p.ej. "1.0000"
 }
 
 export interface ReceiptDetail {
   id: number;
   tipo_origen: "OC" | "OP";
+  // Folio del origen (EC-879): el de la OC en origen OC, el de la OP en origen
+  // OP; el otro llega null. `OrdenCompra.folio` también puede ser null.
+  orden_compra_folio: string | null;
+  op_folio: string | null;
   folio: string;
   remision: string | null;
   factura_referencia: string | null;
@@ -85,9 +97,8 @@ export interface ReceiptDetail {
   almacen: number;
   almacen_nombre: string;
   transportista: number | null;
-  // Siempre null: limitación estructural del backend (no es un bug). Se tipa como
-  // `null` literal a propósito (ver `ubicacion_nombre` arriba).
-  transportista_nombre: null;
+  // Nombre del transportista resuelto por el backend; null sin transportista.
+  transportista_nombre: string | null;
   observaciones: string | null;
   created_at: string;
   updated_at: string;
