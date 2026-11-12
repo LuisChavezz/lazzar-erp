@@ -19,6 +19,10 @@ import {
   weeklySeriesRanges,
 } from "@/src/features/rotation-board/utils/rotationBoardFormat";
 import { readServerTableState, toServerTableCriteria } from "@/src/utils/serverTableParams";
+import {
+  importeCurrencyTotals,
+  normalizeImportePorMoneda,
+} from "@/src/features/rotation-board/utils/rotationBoardAmounts";
 
 /** Pruebas unitarias del tablero de rotación de Planeación (EC-867). */
 
@@ -239,5 +243,37 @@ test.describe("readRotationAgrupar", () => {
     expect(read("")).toBe("variante");
     expect(read("agrupar=producto")).toBe("producto");
     expect(read("agrupar=modelo")).toBe("variante");
+  });
+});
+
+test.describe("importe_por_moneda (#1109)", () => {
+  test("ausente, null o algo que no es diccionario es null (sin permiso)", () => {
+    expect(normalizeImportePorMoneda(undefined)).toBeNull();
+    expect(normalizeImportePorMoneda(null)).toBeNull();
+    expect(normalizeImportePorMoneda(1234.5)).toBeNull();
+    expect(normalizeImportePorMoneda([])).toBeNull();
+  });
+
+  test("{} se conserva: sin venta, no sin permiso", () => {
+    expect(normalizeImportePorMoneda({})).toEqual({});
+  });
+
+  test("importes numéricos o decimales en texto; uno ilegible invalida todo", () => {
+    expect(normalizeImportePorMoneda({ MXN: 1685828.74, USD: "785095.00" })).toEqual({
+      MXN: 1685828.74,
+      USD: 785095,
+    });
+    expect(normalizeImportePorMoneda({ MXN: 10, USD: "abc" })).toBeNull();
+    expect(normalizeImportePorMoneda({ MXN: null })).toBeNull();
+  });
+
+  test("ordena por código y deja la moneda sin código (S/M) al final como desconocida", () => {
+    expect(importeCurrencyTotals({ "S/M": 5, XTS: 7740, MXN: 100, USD: 50 })).toEqual([
+      { moneda: "MXN", total: 100 },
+      { moneda: "USD", total: 50 },
+      { moneda: "XTS", total: 7740 },
+      { moneda: null, total: 5 },
+    ]);
+    expect(importeCurrencyTotals({})).toEqual([]);
   });
 });
