@@ -69,6 +69,7 @@ import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
 import { PedidoCancelDialog, type PedidoCancelTarget } from "./PedidoCancelDialog";
+import { PedidoPdfButton } from "./PedidoPdfButton";
 import { CUSTOMERS_LIST_PATH } from "@/src/features/customers/constants/customerRoutes";
 import { SampleSkuLinkDialog, SampleSkuSizeCatalogPrefetch } from "./SampleSkuLinkDialog";
 import {
@@ -559,6 +560,8 @@ export function PedidoDetailContent({
               Cancelar pedido
             </Button>
           )}
+          {/* En las tres hojas y en todo estatus legible (EC-856). */}
+          <PedidoPdfButton pedido={data} />
         </div>
       </div>
 
