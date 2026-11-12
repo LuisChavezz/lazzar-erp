@@ -18,7 +18,10 @@ interface RotationBranchFilterProps {
  * el alcance, así que no hay nota aparte.
  */
 export function RotationBranchFilter({ value, onChange }: RotationBranchFilterProps) {
-  const { branches, isInitialError } = useCompanyBranches(useSessionCompanyId());
+  const companyId = useSessionCompanyId();
+  const { branches, isLoading, isInitialError } = useCompanyBranches(companyId);
+  // Sin empresa de sesión todavía la consulta ni empieza: también es "cargando".
+  const isPending = !isInitialError && (companyId === null || isLoading);
 
   return (
     <div className="w-52">
@@ -32,7 +35,8 @@ export function RotationBranchFilter({ value, onChange }: RotationBranchFilterPr
           onChange(Number.isInteger(id) && id > 0 ? id : null);
         }}
         className="py-1.5! text-xs! rounded-md!"
-        options={rotationBranchOptions(branches, value)}
+        disabled={isPending}
+        options={rotationBranchOptions(branches, value, isPending)}
         error={isInitialError ? { message: "No se pudieron cargar las sucursales." } : undefined}
       />
     </div>
