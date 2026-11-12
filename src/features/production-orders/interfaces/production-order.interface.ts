@@ -1,4 +1,8 @@
 import type { BomBulkDetalle } from "@/src/features/bom/interfaces/bom.interface";
+import type {
+  PedidoVinculado,
+  PedidoVinculadoCliente,
+} from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 // ── Onboarding ───────────────────────────────────────────────────────────────
 
@@ -20,10 +24,26 @@ export interface ProductionOrderOnboardingHabilitacion {
   total: number;
 }
 
+/**
+ * Renglón de `habilitacion_con_desperdicio` (EC-880): la misma forma que
+ * `habilitacion` y las mismas llaves (`codigo`, `descripcion`, `unidad`) en el
+ * mismo orden, pero con el desperdicio del BOM aplicado con la fórmula del
+ * consumo real. `total` llega como texto a 4 decimales ("12.0000").
+ */
+export interface ProductionOrderOnboardingHabilitacionConDesperdicio {
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  total: string;
+}
+
 export interface ProductionOrderOnboardingProducto {
   nombre: string;
   cantidades: ProductionOrderOnboardingCantidades;
+  /** Materiales del BOM SIN desperdicio (piezas × cantidad del BOM). */
   habilitacion: ProductionOrderOnboardingHabilitacion[];
+  /** Los mismos materiales CON desperdicio (EC-880). */
+  habilitacion_con_desperdicio?: ProductionOrderOnboardingHabilitacionConDesperdicio[];
 }
 
 /** Renglón de `detalles` de un consumo de material contra la orden. */
@@ -51,13 +71,41 @@ export interface ProductionOrderConsumo {
 }
 
 /**
+ * Consumo de UN material en la OP (`consumos_resumen`, EC-880), resuelto por el
+ * backend con la misma regla que usa el recálculo
+ * (`produccion/services/consumo_resumen.py`):
+ *
+ * - consumo inicial = el primer registro de la OP CON renglones;
+ * - `planeado` = su cantidad en el consumo inicial, "0.0000" si no está en él;
+ * - `actual` = la suma de todos sus renglones;
+ * - `ajustes` = `actual` − `planeado` (con signo).
+ *
+ * Las cantidades llegan como texto a 4 decimales. El frontend las muestra tal
+ * cual; no las vuelve a calcular.
+ */
+export interface ProductionOrderConsumoResumen {
+  producto: number;
+  /** `null` si el producto no tiene nombre. */
+  producto_nombre: string | null;
+  /** Clave de la unidad de medida del producto en mayúsculas; `null` si no tiene. */
+  unidad: string | null;
+  planeado: string;
+  ajustes: string;
+  actual: string;
+}
+
+/**
  * Un pedido de los que cubre la OP (`pedidos` del listado y del detalle). Una
  * OP puede cubrir varios pedidos; `pedido` sigue siendo el principal, que el
  * backend pone primero. `folio` es `null` si el pedido aún no tiene folio.
+ *
+ * `cliente` solo viene en el DETALLE (`onboarding/?op_id=` y el retrieve,
+ * EC-880); el listado no lo trae.
  */
 export interface ProductionOrderPedidoRef {
   id: number;
   folio: string | null;
+  cliente?: PedidoVinculadoCliente | null;
 }
 
 export interface ProductionOrderOnboarding {
@@ -88,19 +136,28 @@ export interface ProductionOrderOnboarding {
   /** Nombre ya resuelto del operador asignado. */
   usuario_nombre: string | null;
   /**
-   * `{id, folio}` del pedido madre, armado por el mismo helper compartido que
-   * ya usan bordado/reflejante/corte de manga (`armar_pedido_vinculado`).
-   * OPCIONAL: se agregó al onboarding en el mismo cambio de backend que ya
-   * llegó a los otros tres módulos, así que se tipa igual de cauto — no
-   * asumir presente sin comprobarlo. `null` cuando la orden no tiene pedido.
+   * `{id, folio, cliente}` del pedido madre, armado por el mismo helper
+   * compartido que ya usan bordado/reflejante/corte de manga
+   * (`armar_pedido_vinculado`). OPCIONAL: se agregó al onboarding en el mismo
+   * cambio de backend que ya llegó a los otros tres módulos, así que se tipa
+   * igual de cauto — no asumir presente sin comprobarlo. `null` cuando la
+   * orden no tiene pedido.
    */
-  pedido_vinculado?: { id: number; folio: string } | null;
-  /** Todos los pedidos que cubre la OP, principal primero (EC-865). */
+  pedido_vinculado?: PedidoVinculado | null;
+  /** Todos los pedidos que cubre la OP, principal primero (EC-865), cada uno con su cliente. */
   pedidos?: ProductionOrderPedidoRef[];
+  /** Alta del pedido principal ("YYYY-MM-DD"); `null` sin pedido (EC-880). */
+  fecha_pedido?: string | null;
+  /** Fecha compromiso del pedido principal ("YYYY-MM-DD"); `null` si no aplica (EC-880). */
+  fecha_vence?: string | null;
+  /** Entrega estimada que captura producción ("YYYY-MM-DD"); `null` si no se capturó. */
+  fecha_entrega_estimada?: string | null;
   op_info: string;
   productos: ProductionOrderOnboardingProducto[];
   /** Consumos de material registrados contra la orden. Vacío si aún no hay ninguno. */
   consumos: ProductionOrderConsumo[];
+  /** Consumo por material resuelto por el backend (EC-880). Vacío sin consumos. */
+  consumos_resumen: ProductionOrderConsumoResumen[];
 }
 
 // ── Create onboarding ────────────────────────────────────────────────────────
