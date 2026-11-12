@@ -1,4 +1,5 @@
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 /**
  * Contratos del endpoint REAL de órdenes de bordado
@@ -539,9 +540,10 @@ export interface EmbroideryOrderDetail extends Omit<EmbroideryOrder, "detalles">
    * existe; el par plano se queda para rotular.
    *
    * `null` cuando la orden no tiene pedido. `folio` nunca es `null` aunque
-   * `Pedido.folio` sí lo sea: el helper cae al PK en string.
+   * `Pedido.folio` sí lo sea: el helper cae al PK en string. Trae el `cliente`
+   * del pedido (EC-880).
    */
-  pedido_vinculado: { id: number; folio: string } | null;
+  pedido_vinculado: PedidoVinculado | null;
   /**
    * `true` cuando el pedido tiene piezas programadas SIN talla identificable
    * (renglones con `talla` nula que genera el pipeline de picking). El total
