@@ -11,10 +11,10 @@ export const productionOrderStatusKey = (opId: number) =>
  * página de detalle al cargar, con la misma caché que el detalle: los dos se
  * invalidan juntos tras un cambio, así que no se contradicen.
  *
- * El 404 es DEFINITIVO (`isDefinitiveError`): la OP no es visible para este
- * usuario en este endpoint, aunque sí lo sea su detalle (el backend acota
- * `estatus/` por sucursal y el detalle no). No se reintenta, no avisa y `data`
- * queda en `undefined`, así que la página simplemente no ofrece la acción.
+ * El 404 es DEFINITIVO (`isDefinitiveError`): la OP no existe en la empresa
+ * del usuario (`estatus/` acota solo por empresa; el detalle, además, por
+ * sucursal y por `activo`). No se reintenta, no avisa y `data` queda en
+ * `undefined`, así que la página simplemente no ofrece la acción.
  * Cualquier otro fallo inicial tampoco rompe la página: deja la acción oculta
  * (`isInitialError`). Un refetch fallido conserva lo cargado y avisa por toast.
  */

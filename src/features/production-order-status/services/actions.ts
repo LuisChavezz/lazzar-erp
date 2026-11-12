@@ -9,8 +9,8 @@ const statusUrl = (opId: number) => `/produccion/orden-produccion/${opId}/estatu
 
 /**
  * Estatus actual y destinos posibles. Solo lectura. 404 `{ msg }` si la OP no
- * es visible para el usuario (el backend acota este endpoint por sucursal,
- * a diferencia del detalle).
+ * existe en la empresa del usuario (este endpoint acota solo por empresa; el
+ * detalle `onboarding/?op_id=` también por sucursal y por `activo`).
  */
 export const getProductionOrderStatus = async (
   opId: number,
