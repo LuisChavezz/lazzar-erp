@@ -51,6 +51,11 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   // devuelve la lista vacía, que se leería como "no hay eventos". Los reportes
   // de inventario y la portada no pasan por aquí.
   { prefix: "/system/document-audit", gated: true },
+
+  // ── Producción: Planeación ────────────────────────────────────────────────
+  // El tablero de rotación se calcula sobre `user.empresa`: sin empresa el
+  // backend responde 400 ("Tu usuario no tiene una empresa activa.").
+  { prefix: "/manufacturing/planning", gated: true },
 ];
 
 /** `true` si la ruta depende de la empresa de la sesión. */

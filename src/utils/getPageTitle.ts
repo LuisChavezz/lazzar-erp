@@ -7,6 +7,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/procurement": "Compras y SCM",
   "/manufacturing": "Manufactura (Producción)",
   "/manufacturing/dashboard": "Dashboard",
+  "/manufacturing/planning": "Planeación",
   "/manufacturing/pre-orders": "Pre-órdenes",
   "/finance": "Finanzas y Contabilidad",
   "/hr": "Capital Humano (HR)",
