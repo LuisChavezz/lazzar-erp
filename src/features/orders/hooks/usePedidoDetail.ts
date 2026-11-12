@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getPedidoDetail } from "../services/actions";
 import type { PedidoDetail } from "../interfaces/order.interface";
@@ -32,19 +32,10 @@ export const PEDIDO_DETAIL_QUERY_ROOT = "pedido-detail";
 
 export const pedidoDetailQueryKey = (id: number) => [PEDIDO_DETAIL_QUERY_ROOT, id] as const;
 
-/**
- * Llave y lectura del detalle, compartidas con quien lo pide fuera de un
- * componente: "Descargar PDF" lo vuelve a leer con `fetchQuery` (EC-856).
- */
-export const pedidoDetailQueryOptions = (id: number) =>
-  queryOptions<PedidoDetail>({
-    queryKey: pedidoDetailQueryKey(id),
-    queryFn: () => getPedidoDetail(id),
-  });
-
 export const usePedidoDetail = (id: number, options: UsePedidoDetailOptions = {}) => {
   return useQuery<PedidoDetail>({
-    ...pedidoDetailQueryOptions(id),
+    queryKey: pedidoDetailQueryKey(id),
+    queryFn: () => getPedidoDetail(id),
     enabled: id > 0,
     // Spread condicional: un `refetchOnMount: undefined` explícito pisaría el
     // default del QueryClient para los consumidores que no pasan la opción.
