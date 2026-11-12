@@ -122,7 +122,7 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
                     configs={configs}
                     productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
                     tallaNombre={linea.talla_nombre}
-                    colorNombre={linea.color_nombre}
+                    colorNombre={linea.color_nombre ?? null}
                   />
                   <ReflectiveConfigCountBadge configs={configs} />
                 </span>
