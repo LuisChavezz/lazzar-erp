@@ -38,12 +38,13 @@ export const getCorteMangaOrders = async (): Promise<CorteMangaOrder[]> => {
  * Detalle de UNA orden de corte de manga
  * (`GET /produccion/orden-corte-manga/{id}/`).
  *
- * `retrieve` usa `OrdenesCorteMangaRetrieveSerializer`: es un superconjunto del
- * renglón del listado —añade `pedido_vinculado` y devuelve los renglones
- * COMPLETOS (`corte_manga_config`/`ubicaciones`/`foto`/`notas`)—, así que el
- * tipo de retorno sigue siendo `CorteMangaOrder`, con `pedido_vinculado`
- * declarado OPCIONAL por ser el único campo que distingue las dos acciones. No
- * hace falta un tipo de detalle aparte como en bordado/reflejante.
+ * `retrieve` usa `OrdenesCorteMangaRetrieveSerializer`, que no tiene la forma
+ * del listado: añade `pedido_vinculado` (con el cliente del pedido, EC-880),
+ * la cobertura, las órdenes hermanas, los avances y los renglones COMPLETOS
+ * (`corte_manga_config`/`ubicaciones`/`foto`/`notas`), y trae su propio
+ * `resumen_avance`. Desde EC-880 también trae `fecha_pedido` y `fecha_vence`.
+ * El retorno es `CorteMangaOrder`, con OPCIONALES los campos que solo trae una
+ * de las dos acciones.
  *
  * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
  * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
