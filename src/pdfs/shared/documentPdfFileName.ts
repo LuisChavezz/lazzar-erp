@@ -25,8 +25,23 @@ export function documentPdfFileName(
 ): string {
   const safeFolio = sanitizeFileNamePart(folio ?? "");
   if (!safeFolio) return `${type}-ID${id}.pdf`;
-  return safeFolio.startsWith(`${type}-`) ? `${safeFolio}.pdf` : `${type}-${safeFolio}.pdf`;
+  const prefixes = DOCUMENT_FOLIO_SERIES[type] ?? [type];
+  return prefixes.some((prefix) => safeFolio.startsWith(`${prefix}-`))
+    ? `${safeFolio}.pdf`
+    : `${type}-${safeFolio}.pdf`;
 }
+
+/**
+ * Series de folio de un tipo cuyo código de archivo no es el único prefijo
+ * posible. Las recepciones (desde OC y desde OP) comparten las series RC, RT y
+ * RZ, fijas en el backend (`_serie_folio_recepcion` y el `serie_codigo` del
+ * onboarding, `compras/api/views.py`): un folio que ya empieza con cualquiera
+ * se usa tal cual (`RT-00011.pdf`, no `RC-RT-00011.pdf`). Un tipo ausente solo
+ * reconoce su propio código.
+ */
+const DOCUMENT_FOLIO_SERIES: Partial<Record<DocumentPdfType, readonly string[]>> = {
+  RC: ["RC", "RT", "RZ"],
+};
 
 const sanitizeFileNamePart = (value: string): string =>
   value

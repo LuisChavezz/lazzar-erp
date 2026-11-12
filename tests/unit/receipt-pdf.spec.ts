@@ -74,7 +74,11 @@ test.describe("receiptPdfDescriptor", () => {
       cancelled: false,
     });
     expect(fileNameOf(receipt())).toBe("RC-000123.pdf");
-    expect(fileNameOf(receipt({ tipo_origen: "OP", folio: "RT-000009" }))).toBe("RC-RT-000009.pdf");
+    // Las series RT y RZ también son de recepción: el folio se usa tal cual.
+    expect(fileNameOf(receipt({ tipo_origen: "OP", folio: "RT-000009" }))).toBe("RT-000009.pdf");
+    expect(fileNameOf(receipt({ folio: "RZ-00001" }))).toBe("RZ-00001.pdf");
+    // Un folio con otro prefijo (configurado por empresa) sí lleva el código.
+    expect(fileNameOf(receipt({ folio: "X-00001" }))).toBe("RC-X-00001.pdf");
     expect(fileNameOf(receipt({ folio: "" }))).toBe("RC-ID5.pdf");
   });
 
