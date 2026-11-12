@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import {
   EmptyLines,
@@ -15,6 +15,7 @@ import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
@@ -95,29 +96,17 @@ interface MaterialsContentProps {
  */
 function MaterialsContent({ row }: MaterialsContentProps) {
   const [draft, setDraft] = useState(String(initialMaterialsCantidad(row)));
+  // La cantidad que se consulta: el último borrador VÁLIDO tras la pausa. Uno
+  // inválido muestra su motivo y no consulta (se queda la anterior).
   const [cantidad, setCantidad] = useState(initialMaterialsCantidad(row));
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  const debouncedDraft = useDebounce(draft, CANTIDAD_DEBOUNCE_MS);
+  const parsedDebounced = materialsCantidadSchema.safeParse(debouncedDraft);
+  if (parsedDebounced.success && parsedDebounced.data !== cantidad) {
+    setCantidad(parsedDebounced.data);
+  }
 
   const parsedDraft = materialsCantidadSchema.safeParse(draft);
   const draftError = parsedDraft.success ? undefined : parsedDraft.error.issues[0]?.message;
-
-  const handleCantidadChange = (next: string) => {
-    setDraft(next);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    const result = materialsCantidadSchema.safeParse(next);
-    if (!result.success) return;
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      setCantidad(result.data);
-    }, CANTIDAD_DEBOUNCE_MS);
-  };
 
   const { needs, isLoading, isFetching, isPlaceholderData, isInitialError, isNotFound, error, cantidadError, refetch } =
     useVariantMaterialNeeds(row.variante_id, cantidad);
@@ -156,7 +145,7 @@ function MaterialsContent({ row }: MaterialsContentProps) {
             min={1}
             step={1}
             value={draft}
-            onChange={(event) => handleCantidadChange(event.target.value)}
+            onChange={(event) => setDraft(event.target.value)}
             aria-invalid={fieldError ? true : undefined}
             error={fieldError ? { message: fieldError } : undefined}
           />

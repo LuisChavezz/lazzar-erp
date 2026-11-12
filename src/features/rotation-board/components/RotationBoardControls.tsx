@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { Button } from "@/src/components/Button";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import type {
   RotationAgrupar,
@@ -31,46 +32,34 @@ interface NumericSettingFieldProps {
  * mismo rango que el backend y, si es válido, se aplica tras
  * `ROTATION_CONTROL_DEBOUNCE_MS`. Un valor inválido muestra su motivo y no se
  * aplica (la tabla sigue con el último válido). Si el valor cambia por fuera
- * (navegar atrás) y no hay nada pendiente, el borrador lo refleja.
+ * (navegar atrás) y no hay nada pendiente, el borrador lo refleja. La pausa es
+ * la de `useDebounce`.
  */
 function NumericSettingField({ name, label, value, onCommit }: NumericSettingFieldProps) {
   const [draft, setDraft] = useState(String(value));
   const [syncedValue, setSyncedValue] = useState(value);
-  const [isPending, setIsPending] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedDraft = useDebounce(draft, ROTATION_CONTROL_DEBOUNCE_MS);
+  // Lo tecleado aún no pasó la pausa: no se pisa con el valor de la URL.
+  const isPending = draft !== debouncedDraft;
 
   if (value !== syncedValue) {
     setSyncedValue(value);
     if (!isPending) setDraft(String(value));
   }
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  // Al terminar la pausa: aplica el borrador si es válido y distinto del
+  // vigente. Lee `value`/`onCommit` al dispararse, no al programarse.
+  const commitDraft = useEffectEvent((raw: string) => {
+    const result = rotationControlSchemas[name].safeParse(raw);
+    if (result.success && result.data !== value) onCommit(result.data);
+  });
+  useEffect(() => {
+    commitDraft(debouncedDraft);
+  }, [debouncedDraft]);
 
   const parsed = rotationControlSchemas[name].safeParse(draft);
   const errorMessage = parsed.success ? undefined : parsed.error.issues[0]?.message;
   const { min, max } = ROTATION_CONTROL_LIMITS[name];
-
-  const handleChange = (next: string) => {
-    setDraft(next);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    const result = rotationControlSchemas[name].safeParse(next);
-    if (!result.success) {
-      setIsPending(false);
-      return;
-    }
-    setIsPending(true);
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      setIsPending(false);
-      onCommit(result.data);
-    }, ROTATION_CONTROL_DEBOUNCE_MS);
-  };
 
   return (
     <div className="w-36">
@@ -85,7 +74,7 @@ function NumericSettingField({ name, label, value, onCommit }: NumericSettingFie
         max={max}
         step={1}
         value={draft}
-        onChange={(event) => handleChange(event.target.value)}
+        onChange={(event) => setDraft(event.target.value)}
         aria-invalid={errorMessage ? true : undefined}
         error={errorMessage ? { message: errorMessage } : undefined}
       />
