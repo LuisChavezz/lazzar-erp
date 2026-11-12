@@ -36,6 +36,8 @@ import type {
   CorteMangaOrderSibling,
 } from "../interfaces/corte-manga-order.interface";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { corteMangaTotalPiezas } from "../utils/corteMangaOrderPdf";
+import { CorteMangaOrderPdfButton } from "./CorteMangaOrderPdfButton";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -47,27 +49,6 @@ const BACK = {
   href: "/manufacturing/corte-manga",
   label: "Volver a Órdenes de Corte de Manga",
 };
-
-/**
- * Piezas que programa esta orden.
- *
- * Se SUMAN los renglones, a diferencia de bordado y reflejante, que leen el
- * `cantidad_cubierta` del backend: OCM no expone cobertura (ni
- * `cantidad_cubierta`, ni `cantidad_contratada`, ni `cobertura_completa`), así
- * que esta suma no puede contradecir ninguna otra cifra de la pantalla — no hay
- * otra.
- *
- * Se descartan los valores no finitos con el MISMO criterio que la columna
- * "Prendas" del listado (`CorteMangaOrderColumns`) y que
- * `computeCorteMangaOrderKpis`: sin el filtro, un `cantidad` corrupto daría
- * `NaN` aquí y quedaría excluido allá, y la página y el listado reportarían
- * totales distintos del mismo dato.
- */
-const sumarPiezas = (items: CorteMangaOrderLine[]): number =>
-  items.reduce(
-    (acc, linea) => (Number.isFinite(linea.cantidad) ? acc + linea.cantidad : acc),
-    0,
-  );
 
 // ── Prendas de la orden ──────────────────────────────────────────────────────
 
@@ -135,10 +116,10 @@ interface CorteMangaOrderPageContentProps {
  * `MainDialog`; este trae su propio detalle por id y se pinta a página completa,
  * con secciones y su propio "Volver". Ambos coexisten sin tocarse.
  *
- * Notablemente más corto que sus equivalentes de bordado y reflejante, y a
- * propósito: el contrato de OCM no expone cobertura sobre el pedido, ni las
- * órdenes hermanas, ni el aviso de reparto por talla aproximado. No se inventan
- * secciones para datos que el backend no manda.
+ * Misma estructura que bordado y reflejante: el detalle de OCM trae la
+ * cobertura sobre el pedido y las órdenes hermanas, y la sección de cobertura
+ * solo se pinta si la respuesta las trae. No expone el aviso de reparto por
+ * talla aproximado.
  */
 export function CorteMangaOrderPageContent({
   orderId,
@@ -223,6 +204,7 @@ export function CorteMangaOrderPageContent({
       <WorkOrderTopBar
         backLink={BackLink}
         readOnlyLabel={isTerminal ? "Orden cancelada · solo lectura" : null}
+        actions={<CorteMangaOrderPdfButton order={data} />}
       />
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
@@ -293,7 +275,7 @@ export function CorteMangaOrderPageContent({
               </InfoField>
               <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
               <InfoField label="Total piezas">
-                <span className="tabular-nums font-semibold">{formatQuantityValue(data.cantidad_cubierta ?? sumarPiezas(data.detalles))}</span>
+                <span className="tabular-nums font-semibold">{formatQuantityValue(corteMangaTotalPiezas(data))}</span>
               </InfoField>
               <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
               <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
@@ -340,7 +322,7 @@ export function CorteMangaOrderPageContent({
         config={CORTE_MANGA_AVANCE_CONFIG}
         orderId={data.id}
         detailQueryKey={corteMangaOrderDetailQueryKey(data.id)}
-        piezasOrden={data.cantidad_cubierta ?? Math.floor(sumarPiezas(data.detalles))}
+        piezasOrden={data.cantidad_cubierta ?? Math.floor(corteMangaTotalPiezas(data))}
         canEdit={canEdit}
         isTerminal={isTerminal}
         avances={data.avances}
