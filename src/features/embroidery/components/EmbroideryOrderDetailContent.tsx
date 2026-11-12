@@ -31,6 +31,7 @@ import { EmbroideryOperatorSelect } from "./EmbroideryOperatorSelect";
 import { EmbroideryProveedorSelect } from "./EmbroideryProveedorSelect";
 import { EmbroideryProgressSummary } from "./EmbroideryProgressSummary";
 import { EmbroideryAvancesHistory } from "./EmbroideryAvancesHistory";
+import { EmbroideryOrderPdfButton } from "./EmbroideryOrderPdfButton";
 import { EmbroideryOrderGarmentGroups } from "./EmbroideryOrderGarmentGroups";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
 
@@ -191,10 +192,14 @@ export function EmbroideryOrderDetailContent({
   // impresa"): barra fija con "Volver" y secciones blancas con paneles grises.
   return (
     <div className="w-full space-y-6">
-      {/* ── Barra superior fija con "Volver" ─────────────────────────────── */}
+      {/* ── Barra superior fija: "Volver" y, a la derecha, el aviso de solo
+          lectura y las acciones ─────────────────────────────────────────── */}
       <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
         {BackLink}
-        {isTerminal && <OrderChip>Orden cerrada · solo lectura</OrderChip>}
+        <div className="flex flex-wrap items-center gap-2">
+          {isTerminal && <OrderChip>Orden cerrada · solo lectura</OrderChip>}
+          <EmbroideryOrderPdfButton order={data} />
+        </div>
       </div>
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
