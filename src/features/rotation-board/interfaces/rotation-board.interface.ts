@@ -90,9 +90,10 @@ export interface RotationBoardParametros {
 }
 
 /**
- * Resumen del conjunto. Lo cambian la búsqueda y los parámetros de cálculo,
- * pero NO `clase`, `estado`, `solo_candidatos`, `fabricacion`, el orden ni la
- * página: por eso las tarjetas se mantienen al filtrar desde ellas.
+ * Resumen del conjunto. Lo cambian la búsqueda, los parámetros de cálculo y
+ * la `sucursal` (acota venta, existencia, en proceso y capacidad), pero NO
+ * `clase`, `estado`, `solo_candidatos`, `fabricacion`, el orden ni la página:
+ * por eso las tarjetas se mantienen al filtrar desde ellas.
  */
 export interface RotationBoardResumen {
   articulos: number;
