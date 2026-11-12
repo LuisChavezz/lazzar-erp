@@ -50,6 +50,7 @@ import {
 import { pedidoRefLabel } from "@/src/features/production-orders/utils/opPedidos";
 import { formatExactQuantityValue, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
+import { pluralForQuantity } from "@/src/utils/plural";
 import { textOrDash } from "@/src/utils/textOrDash";
 import {
   DocumentPdfLayout,
@@ -244,7 +245,7 @@ function productoTables(producto: ProductionOrderOnboarding["productos"][number]
   return [
     <PdfLineItemsTable
       key={`tallas-${index}`}
-      title={`${nombre} · ${formatQuantityValue(producto.cantidades.total)} PIEZAS POR TALLA`}
+      title={`${nombre} · POR TALLA · ${formatQuantityValue(producto.cantidades.total)} ${pluralForQuantity(producto.cantidades.total, "PIEZA", "PIEZAS")}`}
       rows={producto.cantidades.tallas}
       columns={TALLA_COLUMNS}
       emptyMessage="Sin desglose por talla."
