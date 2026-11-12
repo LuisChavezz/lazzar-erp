@@ -4,23 +4,13 @@ import type { ReactNode } from "react";
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { pluralForQuantity } from "@/src/utils/plural";
+import {
+  groupWorkOrderGarments,
+  workOrderGarmentOptionalColumns,
+  type WorkOrderGarmentLine,
+} from "@/src/utils/workOrderGarments";
 
-/** Renglón normalizado de una orden de trabajo (bordado, reflejante, corte de manga). */
-export interface WorkOrderGarmentLine {
-  id: number;
-  /** Agrupa los renglones: misma prenda (id de producto). */
-  productoId: number | string | null;
-  producto: string;
-  color: string | null;
-  talla: string | null;
-  /** Piezas en ESTA orden. */
-  cantidad: number;
-  /** `undefined` = el backend no manda el dato y la columna no se pinta. */
-  sku?: string | null;
-  programado?: number | null;
-  pedido?: number | null;
-  pendiente?: number | null;
-}
+export type { WorkOrderGarmentLine } from "@/src/utils/workOrderGarments";
 
 /** Columna extra propia de cada módulo (bordado, tipo de reflejante, metros…). */
 export interface WorkOrderGarmentColumn<T> {
@@ -35,14 +25,6 @@ interface WorkOrderGarmentGroupsProps<T> {
   toLine: (item: T) => WorkOrderGarmentLine;
   /** Se pintan después de SKU y antes de las cantidades. */
   columns?: WorkOrderGarmentColumn<T>[];
-}
-
-interface Group<T> {
-  key: string;
-  producto: string;
-  color: string | null;
-  rows: { item: T; line: WorkOrderGarmentLine }[];
-  total: number;
 }
 
 const quantityOrDash = (value: number | null | undefined) =>
@@ -67,27 +49,13 @@ export function WorkOrderGarmentGroups<T>({
     return <EmptyLines>Esta orden no tiene artículos registrados.</EmptyLines>;
   }
 
-  const groups = new Map<string, Group<T>>();
-  for (const item of items) {
-    const line = toLine(item);
-    const key = `${line.productoId ?? line.producto}|${line.color ?? ""}`;
-    const group = groups.get(key) ?? {
-      key,
-      producto: line.producto,
-      color: line.color,
-      rows: [],
-      total: 0,
-    };
-    group.rows.push({ item, line });
-    group.total += line.cantidad;
-    groups.set(key, group);
-  }
-  const list = [...groups.values()];
-  const lines = list.flatMap((g) => g.rows.map((r) => r.line));
-  const showSku = lines.some((l) => l.sku !== undefined);
-  const showProgramado = lines.some((l) => l.programado !== undefined);
-  const showPedido = lines.some((l) => l.pedido !== undefined);
-  const showPendiente = lines.some((l) => l.pendiente !== undefined);
+  const list = groupWorkOrderGarments(items, toLine);
+  const {
+    sku: showSku,
+    programado: showProgramado,
+    pedido: showPedido,
+    pendiente: showPendiente,
+  } = workOrderGarmentOptionalColumns(list.flatMap((g) => g.rows.map((r) => r.line)));
 
   const th = "py-2 pr-3 font-medium";
   const num = "py-2 pr-3 text-right tabular-nums text-slate-500 dark:text-slate-400";
