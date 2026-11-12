@@ -195,9 +195,5 @@ export const LineItemsTable = ({
   </div>
 );
 
-/**
- * Valor de texto opcional del backend. Cubre `null`, `undefined` y la cadena
- * vacía con el mismo guion largo que usa el resto de las tablas del proyecto.
- */
-export const textOrDash = (value: string | null | undefined): string =>
-  value && value.trim() !== "" ? value : "—";
+/** Reexportado: lo usan muchas pantallas desde aquí; vive en `src/utils/textOrDash`. */
+export { textOrDash } from "@/src/utils/textOrDash";
