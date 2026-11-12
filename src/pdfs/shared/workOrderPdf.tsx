@@ -68,7 +68,7 @@ export function workOrderGarmentTables<T>({
     {
       id: "cantidad",
       header: "En esta orden",
-      flex: 1.1,
+      flex: 1.4,
       align: "right",
       bold: true,
       cell: ({ line }) => formatQuantityValue(line.cantidad),
