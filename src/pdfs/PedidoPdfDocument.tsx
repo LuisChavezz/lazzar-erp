@@ -37,9 +37,12 @@ import {
   getPedidoEstatusConfig,
   getTipoPedidoConfig,
 } from "@/src/features/orders/constants/pedidoStatus";
+import {
+  PEDIDO_HEADER_CHARGES,
+  PEDIDO_PAYMENT_CONDITIONS,
+} from "@/src/features/orders/constants/pedidoAmounts";
 import { getFormaPagoLabel, getMetodoPagoLabel, getUsoCfdiLabel } from "@/src/features/orders/constants/satCatalogs";
 import type {
-  Order,
   PedidoDetail,
   PedidoDetalleLinea,
   PedidoServicioExtra,
@@ -62,6 +65,7 @@ import { pedidoPdfDescriptor } from "@/src/features/orders/utils/pedidoPdfDescri
 import type { PedidoPdfCurrency } from "@/src/features/orders/utils/loadPedidoForPdf";
 import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
 import {
   DocumentPdfLayout,
   PdfCardRow,
@@ -74,7 +78,7 @@ import {
   type PdfColumn,
   type PdfInfoItem,
 } from "./shared/DocumentPdfLayout";
-import type { PdfCompany } from "./shared/documentPdfModel";
+import type { PdfCompany, PdfTotalRow } from "./shared/documentPdfModel";
 
 type PedidoPdfDocumentProps = {
   pedido: PedidoDetail;
@@ -91,32 +95,8 @@ const LINE_SERVICES: { flag: LineServiceFlag; label: string }[] = [
   { flag: "lleva_cambio_talla", label: "Cambio talla" },
 ];
 
-/** Cargos de cabecera, en el orden de "Cargos Adicionales" (`OrderChargesSection`). */
-const CHARGES: { key: keyof Order; label: string }[] = [
-  { key: "flete", label: "Flete" },
-  { key: "seguros", label: "Seguros" },
-  { key: "anticipo", label: "A cuenta (Anticipo)" },
-  { key: "envio", label: "Envío" },
-  { key: "programa_bordados", label: "Programa bordados" },
-  { key: "serigrafia", label: "Serigrafía" },
-  { key: "reflejante", label: "Reflejante" },
-  { key: "bordado_pantalones_extras", label: "Bordado pantalones (extras)" },
-];
-
-/** Condiciones de pago, como el panel "Condiciones de pago" de la pantalla. */
-const PAYMENT_CONDITIONS: { key: keyof Order; label: string }[] = [
-  { key: "anticipo_total", label: "Anticipo total" },
-  { key: "anticipo_parcial", label: "Anticipo parcial" },
-  { key: "vendedor_autoriza", label: "Vendedor autoriza" },
-  { key: "pago_antes_embarque", label: "Pago antes de embarque" },
-  { key: "por_confirmar", label: "Por confirmar" },
-  { key: "otra_cantidad", label: "Otra cantidad" },
-];
-
 /** Valor vacío: el mismo "—" que la pantalla y que los helpers de fecha del pedido. */
-const EMPTY = "—";
-
-const textOrDash = (value: string | null | undefined): string => value?.trim() || EMPTY;
+const EMPTY = EMPTY_VALUE;
 
 /** Domicilio en una línea con las partes que vengan: "Calle 1, Centro, C.P. 44100, …". */
 const joinAddress = (parts: {
@@ -136,6 +116,20 @@ const joinAddress = (parts: {
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(", ") || EMPTY;
+
+/**
+ * Renglón de IVA de los totales, con la regla de la pantalla
+ * (`OrderChargesSection`): la tasa siempre que venga, y el importe cuando el
+ * backend lo envía. Sin importe, el renglón muestra solo la tasa en vez de
+ * desaparecer; sin tasa ni importe (rol sin importes), se omite.
+ */
+export const ivaTotalRow = (
+  iva: number | undefined,
+  importeIva: string | undefined,
+): PdfTotalRow =>
+  importeIva !== undefined
+    ? { label: iva === undefined ? "IVA" : `IVA (${iva}%)`, value: importeIva }
+    : { label: "IVA", value: iva === undefined ? undefined : `${iva}%` };
 
 /** "Bordado · Reflejante (CH, M)": los servicios de la línea; "Parcial" con sus tallas. */
 const lineServicesCaption = (linea: PedidoDetalleLinea): string | null => {
@@ -221,8 +215,9 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
         return (
           <View>
             <PdfCellText>Varía</PdfCellText>
-            {price.bySize.map((size) => (
-              <PdfCellCaption key={size.talla}>
+            {price.bySize.map((size, index) => (
+              // Índice y no `talla`: el nombre de la talla puede repetirse en una línea.
+              <PdfCellCaption key={index}>
                 {`${size.talla}: ${moneyIfPresent(size.precio) ?? EMPTY}`}
               </PdfCellCaption>
             ))}
@@ -325,9 +320,11 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
     { label: "Embarque parcial", value: pedido.embarque_parcial ? "Sí" : "No" },
   ];
 
+  // Monto de "Otra cantidad": solo si es > 0, como en pantalla.
+  const monto = moneyIfPositive(pedido.monto);
   // Forma de pago, método y uso de CFDI son contables: sin la clave, su renglón
   // no existe (no "—", que diría "sin capturar").
-  const activeConditions = PAYMENT_CONDITIONS.filter((condition) => pedido[condition.key] === true);
+  const activeConditions = PEDIDO_PAYMENT_CONDITIONS.filter((condition) => pedido[condition.key] === true);
   const pagoItems: PdfInfoItem[] = [
     { label: "Persona pagos", value: textOrDash(pedido.persona_pagos) },
     { label: "Correo facturas", value: textOrDash(pedido.correo_facturas) },
@@ -354,12 +351,10 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
           },
         ]
       : []),
-    ...(moneyIfPositive(pedido.monto) !== undefined
-      ? [{ label: "Monto", value: moneyIfPositive(pedido.monto) as string }]
-      : []),
+    ...(monto !== undefined ? [{ label: "Monto", value: monto }] : []),
   ];
 
-  const cargoItems: PdfInfoItem[] = CHARGES.flatMap((charge) => {
+  const cargoItems: PdfInfoItem[] = PEDIDO_HEADER_CHARGES.flatMap((charge) => {
     const value = moneyIfPositive(pedido[charge.key] as string | null | undefined);
     return value === undefined ? [] : [{ label: charge.label, value }];
   });
@@ -414,10 +409,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
           { label: "IEPS", value: moneyIfPositive(pedido.ieps) },
           // Mismo lugar que en pantalla: entre los cargos y el IVA.
           { label: "Moneda", value: currency ? (currency.label ?? EMPTY) : undefined },
-          {
-            label: pedido.iva === undefined ? "IVA" : `IVA (${pedido.iva}%)`,
-            value: moneyIfPresent(pedido.importe_iva),
-          },
+          ivaTotalRow(pedido.iva, moneyIfPresent(pedido.importe_iva)),
           { label: "TOTAL", value: moneyIfPresent(pedido.gran_total), emphasis: true },
         ]}
       />
