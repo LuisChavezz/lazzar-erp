@@ -3,11 +3,10 @@
 import { useSearchParams } from "next/navigation";
 import { useServerTable } from "@/src/hooks/useServerTable";
 import { pageNumberCountAdapter } from "@/src/utils/serverListAdapters";
-import { readServerTableState } from "@/src/utils/serverTableParams";
 import {
-  ROTATION_DEFAULT_ORDERING,
   VARIANT_ONLY_FILTERS,
   VARIANT_ONLY_ORDERING_FIELDS,
+  readRotationAgrupar,
   rotationBoardProductTable,
   rotationBoardVariantTable,
 } from "../constants/rotationBoardTable";
@@ -15,10 +14,14 @@ import type {
   RotationAgrupar,
   RotationBoardResponse,
   RotationBoardRow,
-  RotationEstado,
 } from "../interfaces/rotation-board.interface";
 import { getRotationBoardPage } from "../services/actions";
 import { rotationBoardFieldErrorMessage } from "../utils/rotationBoardFormat";
+import {
+  RESURTIR_ORDERING,
+  isRotationShortcutActive,
+  type RotationBoardShortcut,
+} from "../utils/rotationBoardShortcuts";
 
 /**
  * Prefijo de las consultas del tablero. La tabla vive en
@@ -29,25 +32,19 @@ export const ROTATION_BOARD_KEY = ["rotation-board"] as const;
 
 const rotationBoardAdapter = pageNumberCountAdapter<RotationBoardRow, RotationBoardResponse>();
 
-/** Atajo de las tarjetas: qué filtro (y orden) aplica cada una. */
-export type RotationBoardShortcut = Extract<
-  RotationEstado,
-  "RESURTIR" | "SOBREINVENTARIO" | "LENTO"
-> | "CANDIDATOS";
-
-/** Orden que pone el atajo "Resurtir": lo más urgente primero. */
-export const RESURTIR_ORDERING = "-resurtido_sugerido";
-
 /**
- * Tablero de rotación en modo servidor. La AGRUPACIÓN elige la definición:
- * se lee de la URL ANTES de llamar a `useServerTable` (las dos definiciones
- * comparten los ajustes, así que cualquiera de las dos la lee igual).
+ * Tablero de rotación en modo servidor. La AGRUPACIÓN elige la definición: se
+ * lee de la URL (solo su parámetro, con su codec) ANTES de `useServerTable`.
+ *
+ * En modo producto la URL se mantiene canónica (`canonicalUrl`): las claves que
+ * solo existen por variante (`fabricacion`, un orden por `sku` o por
+ * `fabricable_con_existencia`) se quitan al entrar a ese modo y también si
+ * llegan en un enlace, así que nunca quedan escondidas ni reaparecen al volver
+ * a variante o con "Restablecer".
  */
 export const useRotationBoardTable = () => {
   const searchParams = useSearchParams();
-  const agrupar: RotationAgrupar = readServerTableState(rotationBoardVariantTable, (key) =>
-    searchParams.get(key),
-  ).settings.agrupar;
+  const agrupar = readRotationAgrupar((key) => searchParams.get(key));
   const isProductMode = agrupar === "producto";
 
   // La de variante es un SUPERCONJUNTO de la de producto (un filtro y dos
@@ -62,6 +59,7 @@ export const useRotationBoardTable = () => {
       "No se pudo actualizar el tablero de rotación. Se muestran los datos anteriores.",
     loadErrorMessage: "No se pudo cargar el tablero de rotación.",
     errorMessageFor: rotationBoardFieldErrorMessage,
+    canonicalUrl: { foreignKeys: isProductMode ? VARIANT_ONLY_FILTERS : [] },
   });
 
   /**
@@ -75,24 +73,19 @@ export const useRotationBoardTable = () => {
       resetOrderingFields: value === "producto" ? VARIANT_ONLY_ORDERING_FIELDS : [],
     });
 
-  const { estado, solo_candidatos: soloCandidatos } = table.state.filters;
-  const activeShortcut: RotationBoardShortcut | null = soloCandidatos
-    ? estado === undefined
-      ? "CANDIDATOS"
-      : null
-    : estado === "RESURTIR" || estado === "SOBREINVENTARIO" || estado === "LENTO"
-      ? estado
-      : null;
+  const filters = table.state.filters;
+  const isShortcutActive = (shortcut: RotationBoardShortcut) =>
+    isRotationShortcutActive(filters, shortcut);
 
   /**
-   * Tarjetas: cada una es un atajo EXCLUSIVO (quita el de las otras). Pulsar
-   * la activa la apaga. "Resurtir" además ordena por `-resurtido_sugerido`, y
-   * al apagarse devuelve el orden por defecto solo si sigue siendo ese.
+   * Tarjetas. Pulsar una ACTIVA quita solo su propio filtro (y "Resurtir"
+   * devuelve el orden por defecto si sigue siendo el suyo). Pulsar una
+   * inactiva la aplica como atajo: quita el filtro de las otras tarjetas y
+   * "Resurtir" además ordena por `-resurtido_sugerido`.
    */
   const toggleShortcut = (shortcut: RotationBoardShortcut) => {
-    const isActive = activeShortcut === shortcut;
     const orderingIsResurtir = table.state.ordering === RESURTIR_ORDERING;
-    if (isActive) {
+    if (isShortcutActive(shortcut)) {
       table.setFilter(shortcut === "CANDIDATOS" ? "solo_candidatos" : "estado", undefined);
       if (shortcut === "RESURTIR" && orderingIsResurtir) table.setOrdering(null);
       return;
@@ -113,8 +106,7 @@ export const useRotationBoardTable = () => {
     agrupar,
     isProductMode,
     setAgrupar,
-    activeShortcut,
+    isShortcutActive,
     toggleShortcut,
-    defaultOrdering: ROTATION_DEFAULT_ORDERING,
   };
 };

@@ -3,7 +3,7 @@
 import { FilterIcon } from "@/src/components/Icons";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { ROTATION_ESTADO_CONFIG } from "../constants/rotationBoardStatus";
-import type { RotationBoardShortcut } from "../hooks/useRotationBoardTable";
+import type { RotationBoardShortcut } from "../utils/rotationBoardShortcuts";
 import type { RotationBoardResumen } from "../interfaces/rotation-board.interface";
 import { formatPieces } from "../utils/rotationBoardFormat";
 
@@ -11,7 +11,8 @@ interface RotationBoardKpisProps {
   /** `undefined` mientras no hay respuesta (o falló la carga inicial). */
   resumen: RotationBoardResumen | undefined;
   isLoading: boolean;
-  activeShortcut: RotationBoardShortcut | null;
+  /** Cada tarjeta está activa si SU filtro está puesto (pueden ser varias). */
+  isActive: (shortcut: RotationBoardShortcut) => boolean;
   onToggle: (shortcut: RotationBoardShortcut) => void;
 }
 
@@ -70,14 +71,14 @@ const CARD_CLS =
 export function RotationBoardKpis({
   resumen,
   isLoading,
-  activeShortcut,
+  isActive: isShortcutActive,
   onToggle,
 }: RotationBoardKpisProps) {
   return (
     <section aria-label="Indicadores del tablero de rotación">
       <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {CARDS.map((card) => {
-          const isActive = activeShortcut === card.shortcut;
+          const isActive = isShortcutActive(card.shortcut);
           const value = resumen ? card.value(resumen) : undefined;
           const total = resumen?.articulos;
           return (
