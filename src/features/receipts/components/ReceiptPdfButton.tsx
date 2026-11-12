@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { DocumentPdfButton } from "@/src/components/DocumentPdfButton";
 import type { ReceiptDetail } from "../interfaces/receipt.interface";
 import { generateReceiptPdfBlob } from "../services/pdf/receiptPdfBlob";
@@ -12,10 +13,12 @@ import { receiptPdfSource } from "../utils/receiptPdfSource";
  * en WMS y auditoría). Sirve para ambos orígenes (OC y OP).
  */
 export function ReceiptPdfButton({ receipt }: { receipt: Pick<ReceiptDetail, "id" | "folio" | "estatus"> }) {
+  const queryClient = useQueryClient();
+
   return (
     <DocumentPdfButton
       descriptor={receiptPdfDescriptor(receipt)}
-      source={receiptPdfSource(receipt.id, generateReceiptPdfBlob)}
+      source={receiptPdfSource({ queryClient, receiptId: receipt.id, render: generateReceiptPdfBlob })}
       compact
     />
   );
