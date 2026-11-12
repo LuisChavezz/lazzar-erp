@@ -11,6 +11,7 @@ import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { fetchAllServerListRows, type ServerListAdapter } from "@/src/utils/serverListAdapters";
 import {
   areServerTableRangesValid,
+  defaultServerTableSettings,
   effectiveServerTableOrdering,
   hasServerTableCriteria,
   nextServerTableOrdering,
@@ -18,21 +19,30 @@ import {
   readServerTableState,
   serializeServerTableFilters,
   isServerTableDefaultView,
+  normalizeServerTableOrdering,
   serverTablePageSizes,
   toServerTableCriteria,
   writeServerTableQuery,
   type ServerTableDefinition,
   type ServerTableFilterParams,
   type ServerTableFilterValues,
+  type NoServerTableSettings,
+  type ServerTableSettingParams,
+  type ServerTableSettingValues,
   type ServerTableState,
 } from "@/src/utils/serverTableParams";
 
 /** Parámetros de la petición: criterios (texto) + paginación (números). */
 export type ServerTableRequest = Record<string, string | number>;
 
-interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TRow> {
+interface UseServerTableOptions<
+  P extends ServerTableFilterParams,
+  TResponse,
+  TRow,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+> {
   /** Contrato de la lista con su endpoint (`defineServerTable`). */
-  definition: ServerTableDefinition<P>;
+  definition: ServerTableDefinition<P, S>;
   /**
    * PREFIJO de la llave (p. ej. `["opportunities"]`). La consulta vive en
    * `[...queryKey, "list", params]`, así que las mutaciones invalidan todas
@@ -76,6 +86,20 @@ interface UseServerTableOptions<P extends ServerTableFilterParams, TResponse, TR
    * invalidar el prefijo. Por defecto, `false`: el comportamiento de siempre.
    */
   cacheDefaultView?: boolean;
+  /**
+   * Mensaje del error de cuerpo a partir del error (p. ej. el primer error por
+   * campo de un 400 de DRF). `undefined` → el de siempre:
+   * `extractErrorMessage(error, loadErrorMessage)`. Omitido, nada cambia.
+   */
+  errorMessageFor?: (error: unknown) => string | undefined;
+}
+
+/** Qué más limpia `setSetting` en la MISMA escritura de la URL. */
+export interface ServerTableSettingSideEffects {
+  /** Filtros que se quitan (p. ej. los de columnas que dejan de existir). */
+  clearFilters?: readonly string[];
+  /** Si el orden vigente es por uno de estos campos, vuelve al orden por defecto. */
+  resetOrderingFields?: readonly string[];
 }
 
 // Referencia estable para "sin filas": un `[]` nuevo por render haría creer a
@@ -126,7 +150,12 @@ const isPageGoneData = (data: unknown): data is PageGone =>
  * (`queryKey`) en vez de escribir la caché de forma optimista: la página a la
  * que pertenece un registro depende de los filtros y del orden.
  */
-export function useServerTable<P extends ServerTableFilterParams, TResponse, TRow>({
+export function useServerTable<
+  P extends ServerTableFilterParams,
+  TResponse,
+  TRow,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>({
   definition,
   queryKey,
   queryFn,
@@ -139,14 +168,15 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
   searchDebounceMs = 300,
   refetchOnMount,
   cacheDefaultView = false,
-}: UseServerTableOptions<P, TResponse, TRow>) {
+  errorMessageFor,
+}: UseServerTableOptions<P, TResponse, TRow, S>) {
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readServerTableState(definition, (key) => searchParams.get(key));
 
   // ── Escritura en la URL ─────────────────────────────────────────────────
-  const commit = (update: (current: ServerTableState<P>) => ServerTableState<P>) => {
+  const commit = (update: (current: ServerTableState<P, S>) => ServerTableState<P, S>) => {
     const currentQuery = new URLSearchParams(window.location.search);
     const current = readServerTableState(definition, (key) => currentQuery.get(key));
     const next = update(current);
@@ -154,7 +184,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     // Segunda guarda, por VALOR: un cambio que deja el estado igual (el mismo
     // filtro, la misma búsqueda, el mismo orden o tamaño) no escribe la URL ni
     // toca la página, aunque quien lo pidió haya armado un objeto nuevo.
-    const serialize = (state: ServerTableState<P>) =>
+    const serialize = (state: ServerTableState<P, S>) =>
       writeServerTableQuery(definition, state, new URLSearchParams()).toString();
     if (serialize(next) === serialize(current)) return;
     const qs = writeServerTableQuery(definition, next, currentQuery).toString();
@@ -284,6 +314,69 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     const parsed = param.parse(param.serialize(value));
     if (parsed !== null) writeFilter(key, parsed);
   };
+
+  // ── Ajustes (`definition.settings`) ─────────────────────────────────────
+  // No son criterios: `clear` no los toca y no cuentan en `hasActiveCriteria`.
+  // Cambiar uno vuelve a la página 1, como un filtro.
+  const settingsOfState = (current: ServerTableState<P, S>) =>
+    (current as { settings?: Record<string, unknown> }).settings ?? {};
+
+  /**
+   * Cambia un ajuste. Un valor que su `parse` no acepta se ignora. `effects`
+   * limpia en la MISMA escritura filtros y orden que dejan de aplicar (p. ej. al
+   * cambiar de agrupación desaparecen columnas): así nunca se consulta una
+   * combinación intermedia.
+   */
+  const setSetting = <K extends keyof S & string>(
+    key: K,
+    value: ServerTableSettingValues<S>[K],
+    effects: ServerTableSettingSideEffects = {},
+  ) => {
+    const setting = definition.settings?.[key];
+    if (!setting) return;
+    const parsed = setting.param.parse(setting.param.serialize(value));
+    if (parsed === null) return;
+    commit((current) => {
+      const settings = settingsOfState(current);
+      const sameValue =
+        setting.param.serialize(settings[key] ?? setting.default) ===
+        setting.param.serialize(parsed);
+      if (sameValue) return current;
+      const filters: Record<string, unknown> = { ...current.filters };
+      for (const filterKey of effects.clearFilters ?? []) delete filters[filterKey];
+      const orderingField = current.ordering?.replace(/^-/, "");
+      const ordering =
+        orderingField !== undefined && effects.resetOrderingFields?.includes(orderingField)
+          ? null
+          : current.ordering;
+      return {
+        ...current,
+        settings: { ...settings, [key]: parsed },
+        filters: filters as ServerTableFilterValues<P>,
+        ordering,
+        page: 1,
+      };
+    });
+  };
+
+  /** Todos los ajustes a su default (página 1). No toca filtros, búsqueda ni orden. */
+  const resetSettings = () =>
+    commit((current) => ({
+      ...current,
+      settings: defaultServerTableSettings(definition),
+      page: 1,
+    }));
+
+  /**
+   * Para controles FUERA del encabezado (un atajo que ordena): el orden pedido
+   * si es válido para la definición; `null` vuelve al orden por defecto.
+   * Página 1, como el clic en un encabezado.
+   */
+  const setOrdering = (value: string | null) =>
+    commit((current) => {
+      const next = normalizeServerTableOrdering(definition, value);
+      return next === current.ordering ? current : { ...current, ordering: next, page: 1 };
+    });
 
   /** Quita filtros y búsqueda y vuelve a la página 1 (conserva orden y tamaño). */
   const clear = () => {
@@ -467,6 +560,11 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
     /** Todas las filas de los criterios vigentes, página por página (exportar). */
     fetchAllRows,
     setFilter,
+    /** Ajustes vigentes (`definition.settings`); `{}` si la tabla no tiene. */
+    settings: settingsOfState(state) as ServerTableSettingValues<S>,
+    setSetting,
+    resetSettings,
+    setOrdering,
     clear,
     /** Hay una consulta con parámetros nuevos en curso. */
     isTransitioning: query.isPlaceholderData,
@@ -480,7 +578,7 @@ export function useServerTable<P extends ServerTableFilterParams, TResponse, TRo
       isError: query.isInitialError,
       errorMessage: isOutOfRangeError
         ? "Esa página ya no existe con los filtros actuales."
-        : extractErrorMessage(query.error, loadErrorMessage),
+        : (errorMessageFor?.(query.error) ?? extractErrorMessage(query.error, loadErrorMessage)),
       onErrorRetry: isOutOfRangeError
         ? () => setPage(1)
         : () => {

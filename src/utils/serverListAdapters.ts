@@ -88,6 +88,34 @@ export const pageNumberAdapter = <
   isOutOfRange: isNotFoundError,
 });
 
+/**
+ * Sobre de una lista paginada SIN enlaces: `{ count, results }` y nada más
+ * (endpoints que paginan en Python, como `GET /planeacion/tablero-rotacion/`).
+ * Las claves extra del endpoint (`resumen`, `page`) se conservan.
+ */
+export interface CountedListResponse<TRow> {
+  count: number;
+  results: TRow[];
+}
+
+/**
+ * `?page=&page_size=` → `{ count, results }`, sin `next` ni `previous`. Como no
+ * hay `next`, "hay más páginas" sale del total: `page × pageSize < count`. Una
+ * página fuera de rango llega como 200 con `results: []` (la corrige
+ * `useServerTable` con el total), así que no declara `isOutOfRange`.
+ */
+export const pageNumberCountAdapter = <
+  TRow,
+  TResponse extends CountedListResponse<TRow> = CountedListResponse<TRow>,
+>(): ServerListAdapter<TResponse, TRow> => ({
+  paginationParams: ({ page, pageSize }) => ({ page, page_size: pageSize }),
+  parse: (response, { page, pageSize }) => ({
+    rows: response.results,
+    total: response.count,
+    hasMore: page * pageSize < response.count,
+  }),
+});
+
 /** Tamaño de página al recorrer una lista completa: el `max_limit` de los endpoints. */
 export const SERVER_LIST_EXPORT_PAGE_SIZE = 500;
 

@@ -84,6 +84,30 @@ export const monthParam: ServerTableParam<string> = {
 };
 
 /**
+ * Entero entre `min` y `max` (inclusivos), solo dígitos: para parámetros
+ * numéricos con rango que el backend valida (`?semanas=1..104`). Un valor
+ * fuera del rango es inválido, igual que uno que no sea número.
+ */
+export const intRangeParam = (min: number, max: number): ServerTableParam<number> => ({
+  parse: (raw) => {
+    if (!/^\d{1,9}$/.test(raw)) return null;
+    const value = Number(raw);
+    return value >= min && value <= max ? value : null;
+  },
+  serialize: (value) => String(value),
+});
+
+/**
+ * Bandera booleana que solo cuenta encendida (`?solo_candidatos=true`):
+ * `"true"` es el único valor válido y apagada se representa con su AUSENCIA,
+ * no con `"false"`, para que "sin filtro" tenga una sola forma en la URL.
+ */
+export const booleanFlagParam: ServerTableParam<true> = {
+  parse: (raw) => (raw === "true" ? true : null),
+  serialize: () => "true",
+};
+
+/**
  * Codec de fecha: lleva la marca `kind: "date"` para que `dateRanges` acepte
  * SOLO filtros de fecha (su comparación es por texto "yyyy-mm-dd", que no
  * sirve para otros valores).
@@ -108,15 +132,51 @@ export type ServerTableFilterValues<P extends ServerTableFilterParams> = {
 };
 
 /**
+ * Un AJUSTE de la consulta: un parámetro del endpoint que no filtra el conjunto
+ * sino que cambia cómo se calcula (`?semanas=12`, `?agrupar=producto`). A
+ * diferencia de un filtro siempre tiene valor —`default` cuando la URL no trae
+ * uno válido—, se envía siempre, no cuenta como criterio activo y "Limpiar
+ * filtros" (`clear`) no lo toca. En la URL solo se escribe si difiere de
+ * `default`.
+ */
+export interface ServerTableSetting<T> {
+  param: ServerTableParam<T>;
+  default: T;
+}
+
+/** Identidad con inferencia para declarar un ajuste (`settings` de la definición). */
+export const serverTableSetting = <T>(
+  param: ServerTableParam<T>,
+  defaultValue: T,
+): ServerTableSetting<T> => ({ param, default: defaultValue });
+
+/** Ajustes de una tabla: clave del parámetro del endpoint → codec y default. */
+export type ServerTableSettingParams = Record<string, ServerTableSetting<unknown>>;
+
+/** Sin ajustes: el caso de todas las tablas que no declaran `settings`. */
+export type NoServerTableSettings = Record<never, never>;
+
+/** Valores tipados de los ajustes: siempre presentes (el default si no hay otro). */
+export type ServerTableSettingValues<S extends ServerTableSettingParams> = {
+  [K in keyof S]: S[K] extends ServerTableSetting<infer T> ? T : never;
+};
+
+/**
  * Contrato de una lista con su endpoint: qué filtros acepta, cómo se llama su
  * parámetro de búsqueda, por qué campos ordena y qué tamaños de página ofrece.
  * Declárala una vez por lista, a nivel de módulo, con `defineServerTable`.
  */
 export interface ServerTableDefinition<
   P extends ServerTableFilterParams = ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
 > {
   /** Filtros que el endpoint acepta. `{}` si no tiene. */
   filters: P;
+  /**
+   * Ajustes de la consulta (`ServerTableSetting`). Omitido → la tabla no tiene
+   * ajustes y todo se comporta como antes de que existieran.
+   */
+  settings?: S;
   /** Búsqueda de texto. Omitida → la lista no tiene buscador. */
   search?: {
     /** Nombre del parámetro en el endpoint (y en la URL), p. ej. `"q"`. */
@@ -183,14 +243,22 @@ type DateFilterKey<P extends ServerTableFilterParams> = {
  * Identidad con inferencia: conserva los tipos de cada filtro. Un par de
  * `dateRanges` que nombre un filtro que no sea `dateParam` no compila.
  */
-export const defineServerTable = <const P extends ServerTableFilterParams>(
-  definition: ServerTableDefinition<P> & {
+export const defineServerTable = <
+  const P extends ServerTableFilterParams,
+  const S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S> & {
     dateRanges?: readonly { from: DateFilterKey<P>; to: DateFilterKey<P> }[];
   },
-): ServerTableDefinition<P> => definition;
+): ServerTableDefinition<P, S> => definition;
 
-/** Lo que la URL dice de la tabla, ya validado. */
-export interface ServerTableState<P extends ServerTableFilterParams = ServerTableFilterParams> {
+/** Definición con cualquier filtro y cualquier ajuste, para las funciones internas. */
+type AnyServerTableDefinition = ServerTableDefinition<
+  ServerTableFilterParams,
+  ServerTableSettingParams
+>;
+
+interface ServerTableBaseState<P extends ServerTableFilterParams> {
   filters: ServerTableFilterValues<P>;
   /** Búsqueda confirmada (recortada). `""` = sin búsqueda. */
   search: string;
@@ -200,6 +268,66 @@ export interface ServerTableState<P extends ServerTableFilterParams = ServerTabl
   page: number;
   pageSize: number;
 }
+
+/**
+ * Lo que la URL dice de la tabla, ya validado. `settings` es obligatorio solo
+ * en las tablas que declaran ajustes; en las demás es opcional, así que un
+ * estado armado a mano (sin `settings`) sigue siendo válido.
+ */
+export type ServerTableState<
+  P extends ServerTableFilterParams = ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+> = ServerTableBaseState<P> &
+  (keyof S extends never
+    ? { settings?: ServerTableSettingValues<S> }
+    : { settings: ServerTableSettingValues<S> });
+
+/** Ajustes del estado como registro suelto (`{}` si la tabla no tiene). */
+const settingsOf = (state: { settings?: unknown }): Readonly<Record<string, unknown>> =>
+  (state.settings ?? {}) as Record<string, unknown>;
+
+/** `[clave, ajuste]` de la definición; vacío si no declara `settings`. */
+const settingEntries = (definition: AnyServerTableDefinition) =>
+  Object.entries(definition.settings ?? {}) as [string, ServerTableSetting<unknown>][];
+
+/** Valores por defecto de todos los ajustes. */
+export const defaultServerTableSettings = <S extends ServerTableSettingParams>(
+  definition: ServerTableDefinition<ServerTableFilterParams, S>,
+): ServerTableSettingValues<S> =>
+  Object.fromEntries(
+    settingEntries(definition as AnyServerTableDefinition).map(([key, setting]) => [
+      key,
+      setting.default,
+    ]),
+  ) as ServerTableSettingValues<S>;
+
+/**
+ * Ajustes como texto (clave del endpoint → valor), TODOS, también los que
+ * están en su default: es lo que se envía al backend, para no depender de sus
+ * propios defaults. Un ajuste ausente del estado cuenta con su default.
+ */
+export const serializeServerTableSettings = (
+  definition: AnyServerTableDefinition,
+  settings: Readonly<Record<string, unknown>>,
+): Record<string, string> => {
+  const serialized: Record<string, string> = {};
+  for (const [key, setting] of settingEntries(definition)) {
+    const value = settings[key] ?? setting.default;
+    serialized[key] = setting.param.serialize(value);
+  }
+  return serialized;
+};
+
+/** ¿Todos los ajustes están en su default? (`true` si la tabla no tiene.) */
+export const areServerTableSettingsDefault = (
+  definition: AnyServerTableDefinition,
+  settings: Readonly<Record<string, unknown>>,
+): boolean =>
+  settingEntries(definition).every(
+    ([key, setting]) =>
+      setting.param.serialize(settings[key] ?? setting.default) ===
+      setting.param.serialize(setting.default),
+  );
 
 const DEFAULT_PAGE_SIZES: readonly number[] = [10, 20, 50, 100];
 const DEFAULT_PAGE_SIZE = 20;
@@ -269,8 +397,9 @@ const urlKey = (definition: ServerTableDefinition, name: string): string =>
   `${definition.urlPrefix ?? ""}${name}`;
 
 /** Parámetros de la URL que pertenecen a esta tabla (con su prefijo). */
-const ownUrlKeys = (definition: ServerTableDefinition): string[] => [
+const ownUrlKeys = (definition: AnyServerTableDefinition): string[] => [
   ...Object.keys(definition.filters),
+  ...Object.keys(definition.settings ?? {}),
   ...(definition.search ? [definition.search.param] : []),
   "ordering",
   "page",
@@ -308,10 +437,13 @@ export const areServerTableRangesValid = <P extends ServerTableFilterParams>(
  * `URLSearchParams.get` en el cliente o el objeto `searchParams` de una página
  * de servidor.
  */
-export const readServerTableState = <P extends ServerTableFilterParams>(
-  definition: ServerTableDefinition<P>,
+export const readServerTableState = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S>,
   get: (key: string) => string | null | undefined,
-): ServerTableState<P> => {
+): ServerTableState<P, S> => {
   const filters: Record<string, unknown> = {};
   for (const name of Object.keys(definition.filters)) {
     const raw = get(urlKey(definition, name));
@@ -330,7 +462,19 @@ export const readServerTableState = <P extends ServerTableFilterParams>(
   const pageSizes = serverTablePageSizes(definition);
   const pageSize = parsePositiveId(get(urlKey(definition, "page_size")));
 
+  // Cada ajuste por separado: uno inválido (o ausente) toma su default.
+  const settingEntriesOfDefinition = settingEntries(definition as AnyServerTableDefinition);
+  const settings: Record<string, unknown> = {};
+  for (const [name, setting] of settingEntriesOfDefinition) {
+    const raw = get(urlKey(definition, name));
+    const value = raw === null || raw === undefined || raw === "" ? null : setting.param.parse(raw);
+    settings[name] = value ?? setting.default;
+  }
+
   return {
+    // Solo las tablas con ajustes llevan la clave: el estado de las demás
+    // queda idéntico al de antes de que existieran.
+    ...(settingEntriesOfDefinition.length > 0 ? { settings } : {}),
     filters: filters as ServerTableFilterValues<P>,
     search: definition.search
       ? normalizeServerTableSearch(definition, get(urlKey(definition, definition.search.param)) ?? "")
@@ -341,7 +485,7 @@ export const readServerTableState = <P extends ServerTableFilterParams>(
       pageSize !== null && pageSizes.includes(pageSize)
         ? pageSize
         : serverTableDefaultPageSize(definition),
-  };
+  } as ServerTableState<P, S>;
 };
 
 /** Filtros como texto (clave del endpoint → valor), para la tabla y el backend. */
@@ -364,13 +508,25 @@ export const serializeServerTableFilters = <P extends ServerTableFilterParams>(
  * prefijo) y reescribe solo los propios, con valores ya validados. Los valores
  * por defecto se omiten: la vista por defecto es la URL sin parámetros.
  */
-export const writeServerTableQuery = <P extends ServerTableFilterParams>(
-  definition: ServerTableDefinition<P>,
-  state: ServerTableState<P>,
+export const writeServerTableQuery = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S>,
+  state: ServerTableState<P, S>,
   current: URLSearchParams,
 ): URLSearchParams => {
   const query = new URLSearchParams(current);
-  for (const key of ownUrlKeys(definition)) query.delete(key);
+  const anyDefinition = definition as AnyServerTableDefinition;
+  for (const key of ownUrlKeys(anyDefinition)) query.delete(key);
+
+  // Ajustes: solo los que difieren de su default (la vista por defecto queda
+  // sin parámetros).
+  const settings = settingsOf(state);
+  for (const [name, setting] of settingEntries(anyDefinition)) {
+    const value = setting.param.serialize(settings[name] ?? setting.default);
+    if (value !== setting.param.serialize(setting.default)) query.set(urlKey(definition, name), value);
+  }
 
   const filters = serializeServerTableFilters(definition, state.filters);
   for (const [name, value] of Object.entries(filters)) query.set(urlKey(definition, name), value);
@@ -391,9 +547,12 @@ export const writeServerTableQuery = <P extends ServerTableFilterParams>(
  * y cualquier consulta hermana sobre el mismo conjunto (un total, un embudo,
  * una exportación).
  */
-export const toServerTableCriteria = <P extends ServerTableFilterParams>(
-  definition: ServerTableDefinition<P>,
-  state: ServerTableState<P>,
+export const toServerTableCriteria = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S>,
+  state: ServerTableState<P, S>,
 ): Record<string, string> => {
   const ordering =
     definition.ordering?.omitDefault && state.ordering === null
@@ -406,6 +565,8 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
       ? `${ordering},${tiebreaker}`
       : ordering;
   return {
+    // Los ajustes van SIEMPRE (también en su default); `{}` sin ajustes.
+    ...serializeServerTableSettings(definition as AnyServerTableDefinition, settingsOf(state)),
     ...serializeServerTableFilters(definition, state.filters),
     ...(definition.search && state.search !== "" ? { [definition.search.param]: state.search } : {}),
     ...(sentOrdering !== null ? { ordering: sentOrdering } : {}),
@@ -414,18 +575,22 @@ export const toServerTableCriteria = <P extends ServerTableFilterParams>(
 
 /**
  * ¿Es la vista por defecto? Página 1, tamaño de página por defecto, sin
- * filtros, sin búsqueda y con el orden por defecto (`ordering === null`). Es la
- * única llave que `useServerTable` conserva más tiempo con `cacheDefaultView`.
+ * filtros, sin búsqueda, con el orden por defecto (`ordering === null`) y, si
+ * la tabla tiene ajustes, todos en su default. Es la única llave que
+ * `useServerTable` conserva más tiempo con `cacheDefaultView`.
  */
 export const isServerTableDefaultView = (
-  definition: ServerTableDefinition,
-  state: ServerTableState,
+  definition: AnyServerTableDefinition,
+  state: ServerTableBaseState<ServerTableFilterParams> & { settings?: unknown },
 ): boolean =>
+  areServerTableSettingsDefault(definition, settingsOf(state)) &&
   !hasServerTableCriteria(state) &&
   state.ordering === null &&
   state.page === 1 &&
   state.pageSize === serverTableDefaultPageSize(definition);
 
 /** ¿La consulta lleva filtros o búsqueda? (El orden y la página no cuentan.) */
-export const hasServerTableCriteria = (state: ServerTableState): boolean =>
+export const hasServerTableCriteria = (
+  state: Pick<ServerTableBaseState<ServerTableFilterParams>, "search" | "filters">,
+): boolean =>
   state.search !== "" || Object.keys(state.filters).length > 0;
