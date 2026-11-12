@@ -10,6 +10,7 @@ import {
   ROTATION_CLASES,
   ROTATION_ESTADOS,
   ROTATION_FABRICACION,
+  type RotationAgrupar,
 } from "../interfaces/rotation-board.interface";
 import { ROTATION_CONTROL_LIMITS } from "../schemas/rotationBoardControls.schema";
 
@@ -33,7 +34,7 @@ import { ROTATION_CONTROL_LIMITS } from "../schemas/rotationBoardControls.schema
  *   nombre y SKU.
  * - **Paginación**: `page`/`page_size` (máx. 500), 50 por defecto.
  */
-const settings = {
+export const ROTATION_SETTINGS = {
   semanas: serverTableSetting(
     intRangeParam(ROTATION_CONTROL_LIMITS.semanas.min, ROTATION_CONTROL_LIMITS.semanas.max),
     ROTATION_CONTROL_LIMITS.semanas.default,
@@ -53,6 +54,16 @@ const settings = {
     ROTATION_CONTROL_LIMITS.dias_sin_venta.default,
   ),
   agrupar: serverTableSetting(enumParam(ROTATION_AGRUPAR), "variante"),
+};
+
+/**
+ * Agrupación vigente leída SOLO de su parámetro, con su codec y su default
+ * (un valor inválido o ausente = "variante"). Decide qué definición se usa,
+ * así que se lee antes de `useServerTable` sin parsear todo el estado.
+ */
+export const readRotationAgrupar = (get: (key: string) => string | null): RotationAgrupar => {
+  const raw = get("agrupar");
+  return (raw ? ROTATION_SETTINGS.agrupar.param.parse(raw) : null) ?? ROTATION_SETTINGS.agrupar.default;
 };
 
 const commonFilters = {
@@ -84,7 +95,7 @@ const PAGE_SIZES = [20, 50, 100, 200] as const;
 
 export const rotationBoardVariantTable = defineServerTable({
   filters: { ...commonFilters, fabricacion: enumParam(ROTATION_FABRICACION) },
-  settings,
+  settings: ROTATION_SETTINGS,
   search: { param: "buscar", maxLength: 100 },
   ordering: {
     fields: [...COMMON_ORDERING_FIELDS, ...VARIANT_ONLY_ORDERING_FIELDS],
@@ -96,7 +107,7 @@ export const rotationBoardVariantTable = defineServerTable({
 
 export const rotationBoardProductTable = defineServerTable({
   filters: commonFilters,
-  settings,
+  settings: ROTATION_SETTINGS,
   search: { param: "buscar", maxLength: 100 },
   ordering: { fields: COMMON_ORDERING_FIELDS, default: ROTATION_DEFAULT_ORDERING },
   pageSizes: PAGE_SIZES,

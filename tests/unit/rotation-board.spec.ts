@@ -1,9 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
 import {
+  VARIANT_ONLY_FILTERS,
+  readRotationAgrupar,
   rotationBoardProductTable,
   rotationBoardVariantTable,
 } from "@/src/features/rotation-board/constants/rotationBoardTable";
+import { isRotationShortcutActive } from "@/src/features/rotation-board/utils/rotationBoardShortcuts";
+import { canonicalServerTableQuery } from "@/src/utils/serverTableParams";
 import { rowFabricacion } from "@/src/features/rotation-board/components/RotationBoardColumns";
 import type { RotationBoardRow } from "@/src/features/rotation-board/interfaces/rotation-board.interface";
 import {
@@ -155,5 +159,52 @@ test.describe("rowFabricacion", () => {
     expect(rowFabricacion(row({ puede_fabricar_resurtido: true }))).toBe("ALCANZA");
     expect(rowFabricacion(row({ puede_fabricar_resurtido: false }))).toBe("NO_ALCANZA");
     expect(rowFabricacion(row({}))).toBeNull();
+  });
+});
+
+test.describe("tarjetas activas", () => {
+  test("Candidatos y un estado del encabezado se ven activas a la vez", () => {
+    const filters = { solo_candidatos: true as const, estado: "SOBREINVENTARIO" as const };
+    expect(isRotationShortcutActive(filters, "CANDIDATOS")).toBe(true);
+    expect(isRotationShortcutActive(filters, "SOBREINVENTARIO")).toBe(true);
+    expect(isRotationShortcutActive(filters, "RESURTIR")).toBe(false);
+  });
+
+  test("sin filtros ninguna está activa", () => {
+    expect(isRotationShortcutActive({}, "CANDIDATOS")).toBe(false);
+    expect(isRotationShortcutActive({}, "LENTO")).toBe(false);
+  });
+});
+
+test.describe("modo producto: claves solo de variante", () => {
+  const canonicalProduct = (query: string) =>
+    canonicalServerTableQuery(
+      rotationBoardProductTable,
+      new URLSearchParams(query),
+      VARIANT_ONLY_FILTERS,
+    ).toString();
+
+  test("un enlace con fabricacion la pierde en modo producto", () => {
+    expect(canonicalProduct("agrupar=producto&fabricacion=NO_ALCANZA")).toBe("agrupar=producto");
+  });
+
+  test("un orden por un campo solo de variante también se quita", () => {
+    expect(canonicalProduct("agrupar=producto&ordering=-fabricable_con_existencia&estado=LENTO")).toBe(
+      "agrupar=producto&estado=LENTO",
+    );
+    expect(canonicalProduct("agrupar=producto&ordering=sku")).toBe("agrupar=producto");
+  });
+});
+
+test.describe("readRotationAgrupar", () => {
+  const read = (query: string) => {
+    const params = new URLSearchParams(query);
+    return readRotationAgrupar((key) => params.get(key));
+  };
+
+  test("lee solo su parámetro con su codec y default", () => {
+    expect(read("")).toBe("variante");
+    expect(read("agrupar=producto")).toBe("producto");
+    expect(read("agrupar=modelo")).toBe("variante");
   });
 });

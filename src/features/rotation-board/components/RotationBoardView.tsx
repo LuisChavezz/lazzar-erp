@@ -40,7 +40,7 @@ export function RotationBoardView() {
       <RotationBoardKpis
         resumen={response?.resumen}
         isLoading={board.tableProps.isLoading}
-        activeShortcut={board.activeShortcut}
+        isActive={board.isShortcutActive}
         onToggle={board.toggleShortcut}
       />
 
