@@ -6,6 +6,7 @@ import { InfoTile, InfoTileGrid } from "@/src/components/DetailDialogPrimitives"
 import { RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 import { SkuCode } from "@/src/components/SkuCode";
 import { hasLineCode } from "@/src/utils/sku";
+import { formatCantidadRecibida, totalCantidadRecibida } from "../utils/receiptQuantities";
 
 // ── Shell presentacional compartido del detalle de recepción ──────────────────
 // Recibe un `ReceiptDetail` YA CARGADO (no hace fetch — eso vive en el diálogo
@@ -21,15 +22,6 @@ interface ReceiptDetailShellProps {
   /** Muestra la sección Remisión / Factura de referencia (relevante en OC). */
   showRemisionFactura?: boolean;
 }
-
-// ── Helpers de formato ────────────────────────────────────────────────────────
-
-/** Formatea el string numérico de cantidad ("1.0000") sin ceros sobrantes. */
-const formatCantidad = (value: string): string => {
-  if (!value) return "—";
-  const parsed = parseFloat(value);
-  return Number.isNaN(parsed) ? "—" : parsed.toLocaleString("es-MX");
-};
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
@@ -89,7 +81,7 @@ const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
                 )}
               </td>
               <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums text-slate-900 dark:text-white whitespace-nowrap align-top">
-                {formatCantidad(linea.cantidad_recibida)}
+                {formatCantidadRecibida(linea.cantidad_recibida)}
               </td>
             </tr>
           ))}
@@ -110,10 +102,7 @@ export function ReceiptDetailShell({
     showRemisionFactura && (receipt.remision !== null || receipt.factura_referencia !== null);
 
   // Resumen de lo recibido: cuántas líneas y cuántas piezas en total.
-  const totalRecibido = receipt.detalles.reduce((sum, linea) => {
-    const cantidad = parseFloat(linea.cantidad_recibida);
-    return Number.isNaN(cantidad) ? sum : sum + cantidad;
-  }, 0);
+  const totalRecibido = totalCantidadRecibida(receipt.detalles);
   const lineas = receipt.detalles.length;
 
   return (
@@ -123,7 +112,7 @@ export function ReceiptDetailShell({
         <StatusBadge status={receipt.estatus_label} config={RECEIPT_STATUS_CONFIG} />
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-            {totalRecibido.toLocaleString("es-MX")}
+            {formatCantidadRecibida(String(totalRecibido))}
           </span>
           <span className="text-xs text-slate-600 dark:text-slate-300">piezas recibidas</span>
         </div>
