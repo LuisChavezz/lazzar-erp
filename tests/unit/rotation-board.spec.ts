@@ -8,11 +8,12 @@ import {
 } from "@/src/features/rotation-board/constants/rotationBoardTable";
 import { isRotationShortcutActive } from "@/src/features/rotation-board/utils/rotationBoardShortcuts";
 import { canonicalServerTableQuery } from "@/src/utils/serverTableParams";
-import { rowFabricacion } from "@/src/features/rotation-board/components/RotationBoardColumns";
+import { rowFabricationCell } from "@/src/features/rotation-board/utils/rotationBoardFabrication";
 import type { RotationBoardRow } from "@/src/features/rotation-board/interfaces/rotation-board.interface";
 import {
   formatPercent,
   formatPieces,
+  formatSharePercent,
   formatWeeklyRate,
   rotationBoardFieldErrorMessage,
   weeklySeriesRanges,
@@ -94,6 +95,12 @@ test.describe("weeklySeriesRanges", () => {
     expect(weeklySeriesRanges("2026-01-03", 1)).toEqual([{ from: "2025-12-28", to: "2026-01-03" }]);
   });
 
+  test("12 semanas desde la respuesta real: mismas etiquetas que antes", () => {
+    const ranges = weeklySeriesRanges("2026-11-12", 12);
+    expect(ranges[0]).toEqual({ from: "2026-08-21", to: "2026-08-27" });
+    expect(ranges[11]).toEqual({ from: "2026-11-06", to: "2026-11-12" });
+  });
+
   test("una fecha inválida no produce rangos", () => {
     expect(weeklySeriesRanges("2026-02-30", 4)).toEqual([]);
     expect(weeklySeriesRanges("", 4)).toEqual([]);
@@ -151,14 +158,40 @@ test.describe("rotationBoardFieldErrorMessage", () => {
   });
 });
 
-test.describe("rowFabricacion", () => {
-  const row = (overrides: Partial<RotationBoardRow>) => ({ tiene_bom: true, puede_fabricar_resurtido: null, ...overrides }) as RotationBoardRow;
+test.describe("rowFabricationCell", () => {
+  const row = (overrides: Partial<RotationBoardRow>) =>
+    ({
+      tiene_bom: true,
+      resurtido_sugerido: 10,
+      puede_fabricar_resurtido: null,
+      fabricable_con_existencia: 100,
+      ...overrides,
+    }) as RotationBoardRow;
 
-  test("deriva el mismo valor que filtra ?fabricacion=", () => {
-    expect(rowFabricacion(row({ tiene_bom: false }))).toBe("SIN_BOM");
-    expect(rowFabricacion(row({ puede_fabricar_resurtido: true }))).toBe("ALCANZA");
-    expect(rowFabricacion(row({ puede_fabricar_resurtido: false }))).toBe("NO_ALCANZA");
-    expect(rowFabricacion(row({}))).toBeNull();
+  test("sin resurtido: Sin BOM o nada, como antes", () => {
+    expect(rowFabricationCell(row({ resurtido_sugerido: 0, tiene_bom: false }))).toBe("SIN_BOM");
+    expect(rowFabricationCell(row({ resurtido_sugerido: 0 }))).toBeNull();
+  });
+
+  test("con resurtido distingue Sin BOM, alcanza, no alcanza y BOM no calculable", () => {
+    expect(rowFabricationCell(row({ tiene_bom: false, fabricable_con_existencia: null }))).toBe("SIN_BOM");
+    expect(rowFabricationCell(row({ puede_fabricar_resurtido: true }))).toBe("ALCANZA");
+    expect(rowFabricationCell(row({ puede_fabricar_resurtido: false }))).toBe("NO_ALCANZA");
+    expect(rowFabricationCell(row({ fabricable_con_existencia: null }))).toBe("NO_CALCULABLE");
+  });
+});
+
+test.describe("formatSharePercent", () => {
+  test("una participación real pero mínima no sale como 0 %", () => {
+    expect(formatSharePercent(0.02)).toBe("< 0.1 %");
+    expect(formatSharePercent(0.049)).toBe("< 0.1 %");
+  });
+
+  test("el resto conserva el formato de un decimal", () => {
+    expect(formatSharePercent(0.05)).toBe("0.1 %");
+    expect(formatSharePercent(11.32)).toBe("11.3 %");
+    expect(formatSharePercent(0)).toBe("0 %");
+    expect(formatSharePercent(null)).toBe("—");
   });
 });
 

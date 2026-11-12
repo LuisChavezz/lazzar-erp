@@ -7,15 +7,14 @@ import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import {
   ROTATION_CLASE_CONFIG,
   ROTATION_ESTADO_CONFIG,
-  ROTATION_FABRICACION_CONFIG,
+  ROTATION_FABRICATION_CELL_CONFIG,
 } from "../constants/rotationBoardStatus";
-import type {
-  RotationBoardRow,
-  RotationFabricacion,
-} from "../interfaces/rotation-board.interface";
+import type { RotationBoardRow } from "../interfaces/rotation-board.interface";
+import { rowFabricationCell } from "../utils/rotationBoardFabrication";
 import {
   formatPercent,
   formatPieces,
+  formatSharePercent,
   formatWeeklyRate,
   formatWeeks,
 } from "../utils/rotationBoardFormat";
@@ -34,14 +33,6 @@ interface RotationBoardColumnsOptions {
   /** Abre el detalle de materiales de la fila (solo por variante). */
   onOpenDetail: (row: RotationBoardRow) => void;
 }
-
-/** Estado de material de una fila por variante, como lo filtra `?fabricacion=`. */
-export const rowFabricacion = (row: RotationBoardRow): RotationFabricacion | null => {
-  if (!row.tiene_bom) return "SIN_BOM";
-  if (row.puede_fabricar_resurtido === true) return "ALCANZA";
-  if (row.puede_fabricar_resurtido === false) return "NO_ALCANZA";
-  return null;
-};
 
 const NUMBER_CELL = "tabular-nums text-slate-700 dark:text-slate-200";
 const MUTED = "text-[11px] text-slate-400 dark:text-slate-500";
@@ -93,10 +84,10 @@ export function getRotationBoardColumns({
       meta: { label: "SKU", serverSort: "sku" },
       cell: ({ row }) => (
         // Truncada: hay SKUs largos (de QA) que invadirían la columna vecina;
-        // el `title` conserva el SKU completo.
+        // el SKU completo se lee en el encabezado del detalle.
         <button
           type="button"
-          title={`Ver detalle · ${row.original.sku ?? ""}`}
+          title="Ver detalle"
           onClick={() => onOpenDetail(row.original)}
           className={`${DETAIL_LINK} block max-w-full truncate whitespace-nowrap`}
         >
@@ -140,7 +131,7 @@ export function getRotationBoardColumns({
         <div className="flex flex-col items-center gap-0.5">
           <StatusBadge status={row.original.clase_abc} config={ROTATION_CLASE_CONFIG} />
           <span className={`${MUTED} tabular-nums`}>
-            {formatPercent(row.original.participacion_pct)}
+            {formatSharePercent(row.original.participacion_pct)}
           </span>
         </div>
       ),
@@ -311,11 +302,11 @@ export function getRotationBoardColumns({
       header: ({ column }) => <RotationFabricacionHeader column={column} />,
       meta: { label: "Material", serverFilter: "fabricacion" },
       cell: ({ row }) => {
-        const fabricacion = rowFabricacion(row.original);
+        const fabricacion = rowFabricationCell(row.original);
         return (
           <div className="flex items-center gap-1.5">
             {fabricacion ? (
-              <StatusBadge status={fabricacion} config={ROTATION_FABRICACION_CONFIG} />
+              <StatusBadge status={fabricacion} config={ROTATION_FABRICATION_CELL_CONFIG} />
             ) : (
               <span className="text-slate-400" title="Sin resurtido sugerido">
                 —
