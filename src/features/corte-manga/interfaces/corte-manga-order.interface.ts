@@ -1,5 +1,6 @@
 import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 /**
  * Contratos del endpoint de órdenes de corte de manga
@@ -149,9 +150,12 @@ export interface CorteMangaOrderSibling {
 }
 
 export interface CorteMangaOrder extends WorkOrderAvanceFields {
-  /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). Opcional: pedida al backend. */
+  /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). En el listado y, desde EC-880, en el detalle. */
   fecha_pedido?: string | null;
-  /** `fecha_compromiso` del pedido (`YYYY-MM-DD`). Opcional: pedida al backend. */
+  /**
+   * `fecha_compromiso` del pedido (`YYYY-MM-DD`); `null` si el pedido no tiene
+   * clasificación. En el listado y, desde EC-880, en el detalle.
+   */
   fecha_vence?: string | null;
   /**
    * Cobertura del pedido, como bordado y reflejante. Solo en el retrieve;
@@ -214,7 +218,7 @@ export interface CorteMangaOrder extends WorkOrderAvanceFields {
   /**
    * `{id, folio}` del pedido madre, armado por el MISMO helper compartido que
    * ya usan bordado y reflejante (`armar_pedido_vinculado`), así que la forma es
-   * idéntica en los tres módulos.
+   * idéntica en los tres módulos. Trae el `cliente` del pedido (EC-880).
    *
    * OPCIONAL —y es la única forma correcta de tiparlo— porque su presencia
    * depende de la ACCIÓN, y este mismo tipo describe las dos: solo
@@ -234,7 +238,7 @@ export interface CorteMangaOrder extends WorkOrderAvanceFields {
    * tipo de retorno de un `SerializerMethodField` — mismo caso ya documentado en
    * `usuario_nombre`.
    */
-  pedido_vinculado?: { id: number; folio: string } | null;
+  pedido_vinculado?: PedidoVinculado | null;
 }
 
 // ─── Onboarding / alta ───────────────────────────────────────────────────────

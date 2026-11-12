@@ -15,11 +15,13 @@ export const corteMangaOrderDetailQueryKey = (id: number | null) =>
  * nullable y `enabled` que mantiene la consulta APAGADA mientras no haya una
  * orden seleccionada, de modo que un `id` nulo o inválido no dispara petición.
  *
- * `list` y `retrieve` tampoco comparten serializer aquí, pero el detalle es un
- * superconjunto ESTRICTO del renglón del listado (añade `pedido_vinculado` y
- * los campos completos por línea), así que el retorno sigue siendo
- * `CorteMangaOrder` —con `pedido_vinculado` opcional— y no hace falta un tipo
- * de detalle aparte como en bordado/reflejante.
+ * `list` y `retrieve` no comparten serializer ni forma: el detalle añade
+ * `pedido_vinculado`, la cobertura, las órdenes hermanas, los avances y los
+ * campos completos por línea, y su `resumen_avance` es el del detalle, no el
+ * del listado. Ambos se describen con `CorteMangaOrder`, que declara
+ * OPCIONALES los campos que solo trae una de las dos acciones; quien los use
+ * debe comprobarlos. `fecha_pedido` y `fecha_vence` llegan en las dos desde
+ * EC-880.
  *
  * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
  * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
