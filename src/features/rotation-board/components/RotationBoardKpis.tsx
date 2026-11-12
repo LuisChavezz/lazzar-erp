@@ -1,11 +1,13 @@
 "use client";
 
 import { FilterIcon } from "@/src/components/Icons";
+import { SEPARATE_CURRENCIES_NOTE } from "@/src/components/KpiCurrency";
 import { LoadingSkeleton } from "@/src/components/LoadingSkeleton";
 import { ROTATION_ESTADO_CONFIG } from "../constants/rotationBoardStatus";
 import type { RotationBoardShortcut } from "../utils/rotationBoardShortcuts";
 import type { RotationBoardResumen } from "../interfaces/rotation-board.interface";
 import { formatPieces } from "../utils/rotationBoardFormat";
+import { RotationSoldAmountValue } from "./RotationBoardAmount";
 
 interface RotationBoardKpisProps {
   /** `undefined` mientras no hay respuesta (o falló la carga inicial). */
@@ -67,6 +69,10 @@ const CARD_CLS =
  * Patrón del embudo de oportunidades (`OpportunityFunnel`): cada tarjeta es un
  * BOTÓN con `aria-pressed`; la activa se marca con contorno y el texto "Filtro
  * activo", no solo con color. Pulsar la activa quita el filtro.
+ *
+ * Al final va "Vendido" (`resumen.importe_por_moneda`), que NO es un filtro:
+ * ocupa una fila entera hasta `xl` (monedas en línea) y desde `xl` es la quinta
+ * columna (monedas apiladas).
  */
 export function RotationBoardKpis({
   resumen,
@@ -76,7 +82,7 @@ export function RotationBoardKpis({
 }: RotationBoardKpisProps) {
   return (
     <section aria-label="Indicadores del tablero de rotación">
-      <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <ul className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {CARDS.map((card) => {
           const isActive = isShortcutActive(card.shortcut);
           const value = resumen ? card.value(resumen) : undefined;
@@ -127,6 +133,26 @@ export function RotationBoardKpis({
             </li>
           );
         })}
+        <li className="col-span-2 lg:col-span-4 xl:col-span-1">
+          <div
+            className="h-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3"
+            title={`Importe vendido en el periodo. ${SEPARATE_CURRENCIES_NOTE}`}
+          >
+            <span className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
+              <span className="truncate">Vendido</span>
+            </span>
+            <span className="mt-1.5 block">
+              {resumen ? (
+                <RotationSoldAmountValue importes={resumen.importe_por_moneda} />
+              ) : isLoading ? (
+                <LoadingSkeleton className="h-8 w-28" />
+              ) : (
+                <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">—</span>
+              )}
+            </span>
+          </div>
+        </li>
       </ul>
     </section>
   );

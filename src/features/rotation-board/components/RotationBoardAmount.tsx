@@ -1,4 +1,5 @@
 import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
+import { KpiMutedValue } from "@/src/components/KpiCurrency";
 import { HIDDEN_PEDIDO_AMOUNTS_REASON } from "@/src/features/orders/constants/pedidoKpis";
 import { formatInCurrency } from "@/src/utils/currencyTotals";
 import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
@@ -47,5 +48,44 @@ export function RotationAmountCell({ importes }: { importes: ImportePorMoneda | 
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Valor de la tarjeta "Vendido" (`resumen.importe_por_moneda`): un bloque por
+ * moneda con su código, como `KpiCurrencyBlocks`, pero en línea cuando la
+ * tarjeta ocupa una fila entera y apilados cuando es una columna (`xl`).
+ *
+ * - `null` (sin permiso): "—", nunca un 0.
+ * - `{}` (sin venta): "Sin venta en el periodo" atenuado.
+ */
+export function RotationSoldAmountValue({ importes }: { importes: ImportePorMoneda | null }) {
+  if (importes === null) {
+    return (
+      <span className="text-2xl font-bold text-slate-300 dark:text-slate-600" title={HIDDEN_PEDIDO_AMOUNTS_REASON}>
+        —
+      </span>
+    );
+  }
+  const totals = importeCurrencyTotals(importes);
+  if (totals.length === 0) {
+    return <KpiMutedValue>{NO_SALES_AMOUNT_TITLE}</KpiMutedValue>;
+  }
+  return (
+    <span className="flex flex-wrap gap-x-6 gap-y-1 xl:flex-col xl:gap-x-0">
+      {totals.map(({ moneda, total }) => (
+        <span
+          key={moneda ?? UNKNOWN_CURRENCY_TAG}
+          className="flex items-baseline gap-2 whitespace-nowrap tabular-nums"
+        >
+          <span className="text-lg font-bold text-slate-800 dark:text-white">
+            {moneda ? formatKpiTaggedCurrencyAmount(total, moneda) : formatInCurrency(total, null)}
+          </span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {moneda ?? UNKNOWN_CURRENCY_TAG}
+          </span>
+        </span>
+      ))}
+    </span>
   );
 }
