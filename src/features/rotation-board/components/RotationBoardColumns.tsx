@@ -209,18 +209,11 @@ export function getRotationBoardColumns({
       cell: ({ row }) => (
         <div className="flex flex-col whitespace-nowrap">
           <span>{formatShortCalendarDate(row.original.ultima_venta)}</span>
-          {/* Negativo = la venta tiene fecha FUTURA (pedido confirmado a
-              futuro, pendiente de corregir en el backend): no se pinta "hace -71 d". */}
-          {row.original.dias_sin_venta !== null &&
-            (row.original.dias_sin_venta < 0 ? (
-              <span className={MUTED} title="El pedido trae una fecha de confirmación futura">
-                fecha futura
-              </span>
-            ) : (
-              <span className={`${MUTED} tabular-nums`}>
-                hace {formatPieces(row.original.dias_sin_venta)} d
-              </span>
-            ))}
+          {row.original.dias_sin_venta !== null && (
+            <span className={`${MUTED} tabular-nums`}>
+              hace {formatPieces(row.original.dias_sin_venta)} d
+            </span>
+          )}
         </div>
       ),
     },
