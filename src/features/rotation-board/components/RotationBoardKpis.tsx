@@ -63,7 +63,7 @@ const CARDS: CardSpec[] = [
 ];
 
 const CARD_CLS =
-  "group w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-default disabled:hover:bg-white dark:disabled:hover:bg-white/5";
+  "group h-full w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-default disabled:hover:bg-white dark:disabled:hover:bg-white/5";
 
 /**
  * Patrón del embudo de oportunidades (`OpportunityFunnel`): cada tarjeta es un
