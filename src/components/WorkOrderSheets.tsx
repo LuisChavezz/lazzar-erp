@@ -13,12 +13,32 @@ import { pluralForQuantity } from "@/src/utils/plural";
  * pedido, para que las tres páginas se lean igual.
  */
 
-/** Barra superior fija con "Volver" y, si aplica, el aviso de solo lectura. */
-export function WorkOrderTopBar({ backLink, readOnlyLabel }: { backLink: ReactNode; readOnlyLabel?: string | null }) {
+/**
+ * Barra superior fija con "Volver" y, a la derecha, el aviso de solo lectura
+ * (si aplica) y las acciones de la página (`actions`, p. ej. "Descargar PDF").
+ * Sin `actions` se pinta exactamente como antes de existir el slot.
+ */
+export function WorkOrderTopBar({
+  backLink,
+  readOnlyLabel,
+  actions,
+}: {
+  backLink: ReactNode;
+  readOnlyLabel?: string | null;
+  actions?: ReactNode;
+}) {
+  const readOnlyChip = readOnlyLabel && <OrderChip>{readOnlyLabel}</OrderChip>;
   return (
     <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 shadow-sm dark:shadow-none px-6 md:px-8 py-3">
       {backLink}
-      {readOnlyLabel && <OrderChip>{readOnlyLabel}</OrderChip>}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {readOnlyChip}
+          {actions}
+        </div>
+      ) : (
+        readOnlyChip
+      )}
     </div>
   );
 }
