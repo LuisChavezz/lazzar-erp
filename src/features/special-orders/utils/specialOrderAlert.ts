@@ -3,10 +3,10 @@ import type { SpecialOrderListItem } from "../interfaces/special-order.interface
 type AlertFields = Pick<SpecialOrderListItem, "activo" | "atrasado">;
 
 /**
- * Alerta de 24 h de un pedido especial: el servidor ya decide `atrasado`; aquí
- * solo se descartan los pedidos dados de baja, que el listado incluye y también
- * marca atrasados. Exige `activo === true`: sin el campo (el backend aún no lo
- * manda, EC-873) no hay alerta.
+ * Alerta de 24 h de un pedido especial: el servidor decide `atrasado` (y desde
+ * EC-873 lo manda en `false` para pedidos inactivos o cancelados). Exigir
+ * además `activo === true` es una salvaguarda: el listado incluye pedidos dados
+ * de baja, y una respuesta sin `activo` no muestra la alerta.
  */
 export const isAtrasadoActivo = (order: AlertFields): boolean =>
   order.activo === true && order.atrasado === true;
