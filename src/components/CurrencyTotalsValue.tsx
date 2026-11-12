@@ -20,9 +20,11 @@ const tagOf = (entry: CurrencyTotal): string =>
  * Importe de un bloque, con los decimales que pidió quien llama: símbolo
  * estrecho de su moneda (`narrowSymbol`, como `formatKpiCurrencyAmount`; el
  * código va aparte). Sin moneda, o si la moneda no tiene símbolo propio y
- * `Intl` repetiría el código (XTS, monedas privadas), sin símbolo.
+ * `Intl` repetiría el código (XTS, monedas privadas), sin símbolo. Exportado
+ * para quien pinta su propio bloque por moneda con el código aparte (el
+ * tablero de rotación).
  */
-const formatBlockAmount = (
+export const formatCurrencyBlockAmount = (
   { moneda, total }: CurrencyTotal,
   options?: MoneyFormatOverrides,
 ): string =>
@@ -56,7 +58,7 @@ export function CurrencyTotalsValue({
     <KpiTaggedBlocks
       blocks={totals.map((entry) => ({
         key: tagOf(entry),
-        value: formatBlockAmount(entry, options),
+        value: formatCurrencyBlockAmount(entry, options),
         tag: tagOf(entry),
       }))}
     />
@@ -91,6 +93,6 @@ export const formatCurrencyTotalsInline = (
     return formatInCurrency(only?.total ?? 0, only?.moneda ?? null, options);
   }
   return LIST_FORMAT.format(
-    totals.map((entry) => `${formatBlockAmount(entry, options)} ${tagOf(entry)}`),
+    totals.map((entry) => `${formatCurrencyBlockAmount(entry, options)} ${tagOf(entry)}`),
   );
 };

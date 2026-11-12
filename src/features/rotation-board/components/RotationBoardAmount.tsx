@@ -1,8 +1,6 @@
-import { UNKNOWN_CURRENCY_TAG } from "@/src/components/CurrencyTotalsValue";
+import { UNKNOWN_CURRENCY_TAG, formatCurrencyBlockAmount } from "@/src/components/CurrencyTotalsValue";
 import { KpiMutedValue } from "@/src/components/KpiCurrency";
 import { HIDDEN_PEDIDO_AMOUNTS_REASON } from "@/src/features/orders/constants/pedidoKpis";
-import { formatInCurrency } from "@/src/utils/currencyTotals";
-import { formatKpiTaggedCurrencyAmount } from "@/src/utils/kpiFormat";
 import { importeCurrencyTotals, type ImportePorMoneda } from "../utils/rotationBoardAmounts";
 
 /** Por qué una fila sin importes dice 0 y no "—" (que es "sin permiso"). */
@@ -36,14 +34,14 @@ export function RotationAmountCell({ importes }: { importes: ImportePorMoneda | 
   }
   return (
     <div className="flex flex-col items-end">
-      {totals.map(({ moneda, total }) => (
+      {totals.map((entry) => (
         <span
-          key={moneda ?? UNKNOWN_CURRENCY_TAG}
+          key={entry.moneda ?? UNKNOWN_CURRENCY_TAG}
           className="whitespace-nowrap tabular-nums text-slate-700 dark:text-slate-200"
         >
-          {moneda ? formatKpiTaggedCurrencyAmount(total, moneda) : formatInCurrency(total, null)}{" "}
+          {formatCurrencyBlockAmount(entry)}{" "}
           <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-            {moneda ?? UNKNOWN_CURRENCY_TAG}
+            {entry.moneda ?? UNKNOWN_CURRENCY_TAG}
           </span>
         </span>
       ))}
@@ -73,16 +71,16 @@ export function RotationSoldAmountValue({ importes }: { importes: ImportePorMone
   }
   return (
     <span className="flex flex-wrap gap-x-6 gap-y-1 xl:flex-col xl:gap-x-0">
-      {totals.map(({ moneda, total }) => (
+      {totals.map((entry) => (
         <span
-          key={moneda ?? UNKNOWN_CURRENCY_TAG}
+          key={entry.moneda ?? UNKNOWN_CURRENCY_TAG}
           className="flex items-baseline gap-2 whitespace-nowrap tabular-nums"
         >
           <span className="text-lg font-bold text-slate-800 dark:text-white">
-            {moneda ? formatKpiTaggedCurrencyAmount(total, moneda) : formatInCurrency(total, null)}
+            {formatCurrencyBlockAmount(entry)}
           </span>
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {moneda ?? UNKNOWN_CURRENCY_TAG}
+            {entry.moneda ?? UNKNOWN_CURRENCY_TAG}
           </span>
         </span>
       ))}
