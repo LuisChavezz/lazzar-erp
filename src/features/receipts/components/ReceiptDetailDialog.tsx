@@ -6,6 +6,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { useReceiptDetail } from "@/src/features/receipts/hooks/useReceiptDetail";
 import { ReceiptDetailShell } from "@/src/features/receipts/components/ReceiptDetailShell";
+import { ReceiptPdfButton } from "@/src/features/receipts/components/ReceiptPdfButton";
 import { formatLocalDate } from "@/src/utils/formatDate";
 
 interface ReceiptDetailDialogProps {
@@ -46,14 +47,19 @@ export function ReceiptDetailDialog({
       ]
     : [];
 
+  // "Descargar PDF" junto al título (EC-856), una vez cargada la recepción.
+  const pdfAction = receipt && !isError ? <ReceiptPdfButton receipt={receipt} /> : null;
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
       maxWidth="760px"
       showCloseButton={true}
+      headerAction={pdfAction}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
+        <div className={`flex items-center gap-2.5 ${pdfAction ? "" : "pr-8"}`}>
           <PackageCheckIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
