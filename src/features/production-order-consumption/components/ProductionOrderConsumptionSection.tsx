@@ -2,15 +2,18 @@
 
 import { Button } from "@/src/components/Button";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
-import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
+import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { LayersIcon } from "@/src/components/Icons";
 import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
-import type { ProductionOrderConsumo } from "@/src/features/production-orders/interfaces/production-order.interface";
+import type {
+  ProductionOrderConsumo,
+  ProductionOrderConsumoResumen,
+} from "@/src/features/production-orders/interfaces/production-order.interface";
 import {
+  consumptionProductName,
   labelConsumptionRecords,
   productFallbackName,
-  type ProductConsumption,
-} from "../utils/summarizeConsumption";
+} from "../utils/consumptionRecords";
 import {
   formatBackendQuantity,
   formatSignedBackendQuantity,
@@ -19,8 +22,8 @@ import {
 interface ProductionOrderConsumptionSectionProps {
   /** Registros en bruto de `onboarding?op_id=`, para el historial. */
   consumos: ProductionOrderConsumo[];
-  /** `summarizeConsumption(consumos)`: lo calcula la página, que también se lo da al diálogo. */
-  products: ProductConsumption[];
+  /** `consumos_resumen` del backend (EC-880): una fila por material. */
+  products: ProductionOrderConsumoResumen[];
   /** La OP está Completada o Cancelada: el backend ya no admite el recálculo. */
   isClosed: boolean;
   onRecalculate: () => void;
@@ -29,6 +32,10 @@ interface ProductionOrderConsumptionSectionProps {
 /**
  * Sección "Consumos" del detalle de OP: una fila por PRODUCTO (planeado,
  * ajustes, actual) y, plegado, el historial de registros tal como llegan.
+ *
+ * Las filas son `consumos_resumen` TAL CUAL las resuelve el backend (EC-880),
+ * la misma regla que aplica el recálculo: aquí no se suma ni se resta nada. Un
+ * material que solo aparece en un ajuste trae planeado 0.
  *
  * Las cantidades van con `formatExactQuantityValue` (4 decimales), nunca
  * redondeadas: son la resolución con que el inventario mueve materiales, y
@@ -86,6 +93,7 @@ export function ProductionOrderConsumptionSection({
               head={
                 <>
                   <th className="px-3 py-2 font-medium">Producto</th>
+                  <th className="px-3 py-2 font-medium">Unidad</th>
                   <th className="px-3 py-2 font-medium text-right">Planeado</th>
                   <th className="px-3 py-2 font-medium text-right">Ajustes</th>
                   <th className="px-3 py-2 font-medium text-right">Actual</th>
@@ -95,16 +103,19 @@ export function ProductionOrderConsumptionSection({
               {products.map((product) => (
                 <tr key={product.producto}>
                   <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-                    {product.producto_nombre}
+                    {consumptionProductName(product)}
+                  </td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    {textOrDash(product.unidad)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {formatBackendQuantity(product.planned)}
+                    {formatBackendQuantity(product.planeado)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {formatSignedBackendQuantity(product.adjustments)}
+                    {formatSignedBackendQuantity(product.ajustes)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                    {formatBackendQuantity(product.current)}
+                    {formatBackendQuantity(product.actual)}
                   </td>
                 </tr>
               ))}
@@ -136,8 +147,9 @@ const RECORD_BADGE_CFG: Record<"original" | "ajuste", StatusBadgeConfigEntry> = 
 
 /**
  * Registros de consumo en bruto, del más antiguo al más reciente, plegados por
- * defecto. El primero de la OP es el "Original"; cada recálculo agrega un
- * "Ajuste" con cantidades firmadas (el original nunca se edita).
+ * defecto. El consumo inicial (el primero con renglones) es el "Original";
+ * cada recálculo agrega un "Ajuste" con cantidades firmadas (el original nunca
+ * se edita).
  */
 function ConsumptionHistory({ consumos }: { consumos: ProductionOrderConsumo[] }) {
   const records = labelConsumptionRecords(consumos);

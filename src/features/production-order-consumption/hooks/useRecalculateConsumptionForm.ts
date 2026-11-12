@@ -14,7 +14,7 @@ import {
   type RecalculateConsumptionField,
   type RecalculateConsumptionValues,
 } from "../schemas/recalculate-consumption.schema";
-import type { ProductConsumption } from "../utils/summarizeConsumption";
+import type { ProductionOrderConsumoResumen } from "@/src/features/production-orders/interfaces/production-order.interface";
 import { handleRecalculateConsumptionError } from "./recalculateConsumptionErrorMessages";
 import { useRecalculateProductionOrderConsumption } from "./useRecalculateProductionOrderConsumption";
 
@@ -26,7 +26,7 @@ interface UseRecalculateConsumptionFormParams {
   /** `cantidad_real_corte` de la ruta crítica, ya como texto del input ("" si no hay). */
   initialCantidad: string;
   /** Productos que ofrece el diálogo; se copian al enviar para rotular el resultado. */
-  products: ProductConsumption[];
+  products: ProductionOrderConsumoResumen[];
 }
 
 /**
@@ -53,7 +53,7 @@ export function useRecalculateConsumptionForm({
   // Foto de los productos al ENVIAR: el resultado traduce `producto_id` a
   // nombre con ella, sin depender de nada que la página pueda perder si su
   // refetch del detalle falla justo después del recálculo.
-  const [submittedProducts, setSubmittedProducts] = useState<ProductConsumption[]>([]);
+  const [submittedProducts, setSubmittedProducts] = useState<ProductionOrderConsumoResumen[]>([]);
   const [formMessage, setFormMessage] = useState<string | undefined>(undefined);
   // Envío en curso, síncrono: `isPending` llega hasta el siguiente render y el
   // POST no es idempotente en efectos (mueve inventario).
