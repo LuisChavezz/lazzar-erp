@@ -33,11 +33,20 @@ export interface ReceiptOrigin {
 /**
  * Origen por `tipo_origen`: el folio de la OC (`orden_compra_folio`) o el de
  * la OP (`op_folio`, EC-879). Se lee el que corresponde al origen y no "el que
- * venga", para no mostrar el folio equivocado si el backend mandara ambos.
+ * venga", para no mostrar el folio equivocado si el backend mandara ambos. Un
+ * `tipo_origen` que no sea "OC" ni "OP" se dice "Desconocido", como en el
+ * diálogo de WMS, en vez de suponer una orden de compra.
  */
-export const receiptOrigin = (
-  receipt: Pick<ReceiptDetail, "tipo_origen" | "orden_compra_folio" | "op_folio">,
-): ReceiptOrigin =>
-  receipt.tipo_origen === "OP"
-    ? { label: "Orden de producción", folio: receipt.op_folio?.trim() || null }
-    : { label: "Orden de compra", folio: receipt.orden_compra_folio?.trim() || null };
+export const receiptOrigin = (receipt: {
+  tipo_origen: string;
+  orden_compra_folio: string | null;
+  op_folio: string | null;
+}): ReceiptOrigin => {
+  if (receipt.tipo_origen === "OC") {
+    return { label: "Orden de compra", folio: receipt.orden_compra_folio?.trim() || null };
+  }
+  if (receipt.tipo_origen === "OP") {
+    return { label: "Orden de producción", folio: receipt.op_folio?.trim() || null };
+  }
+  return { label: "Desconocido", folio: null };
+};
