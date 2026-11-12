@@ -48,7 +48,7 @@ export function QualityInspectionDialog({
   const {
     data: detail,
     isLoading,
-    isError,
+    isInitialError: isError,
     error,
     refetch,
   } = useReceiptDetail(reception?.id ?? null);

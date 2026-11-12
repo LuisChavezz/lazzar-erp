@@ -21,7 +21,12 @@ export function ReceiptDetailDialog({
   open,
   onOpenChange,
 }: ReceiptDetailDialogProps) {
-  const { data: receipt, isLoading, isError, error } = useReceiptDetail(receiptId);
+  const {
+    data: receipt,
+    isLoading,
+    isInitialError: isError,
+    error,
+  } = useReceiptDetail(receiptId);
 
   // Vista WMS: mezcla recepciones de ambos orígenes, por lo que el encabezado
   // INCLUYE `tipo_origen` y adapta qué campos se muestran. Toda la lógica

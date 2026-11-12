@@ -21,7 +21,12 @@ export function PurchaseOrderReceiptDetailDialog({
   open,
   onOpenChange,
 }: PurchaseOrderReceiptDetailDialogProps) {
-  const { data: receipt, isLoading, isError, error } = useReceiptDetail(receiptId);
+  const {
+    data: receipt,
+    isLoading,
+    isInitialError: isError,
+    error,
+  } = useReceiptDetail(receiptId);
 
   // Defensa en profundidad: esta vista depende de que el listado ya filtró por
   // `tipo_origen=OC` server-side. Estructuralmente no debería llegar aquí una
