@@ -20,6 +20,10 @@
 import { View } from "@react-pdf/renderer";
 import type { ReceiptDetail, ReceiptDetailLine } from "@/src/features/receipts/interfaces/receipt.interface";
 import { receiptOrigin, receiptPdfDescriptor } from "@/src/features/receipts/utils/receiptPdf";
+import {
+  formatCantidadRecibida,
+  totalCantidadRecibida,
+} from "@/src/features/receipts/utils/receiptQuantities";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { formatSku, hasLineCode } from "@/src/utils/sku";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
@@ -41,12 +45,6 @@ type ReceiptPdfDocumentProps = {
   company: PdfCompany | null;
 };
 
-/** Cantidad recibida ("12.5000") como la pinta la pantalla: sin ceros sobrantes. */
-const formatCantidad = (value: string): string => {
-  const parsed = Number.parseFloat(value);
-  return Number.isNaN(parsed) ? EMPTY_VALUE : parsed.toLocaleString("es-MX");
-};
-
 const idOrDash = (value: number | null | undefined): string =>
   value == null ? EMPTY_VALUE : String(value);
 
@@ -62,10 +60,7 @@ export const ReceiptPdfDocument = ({ receipt, company }: ReceiptPdfDocumentProps
   const detalles = receipt.detalles ?? [];
   const origin = receiptOrigin(receipt);
   const originText = `${origin.label} ${origin.folio ?? EMPTY_VALUE}`;
-  const totalRecibido = detalles.reduce((sum, linea) => {
-    const cantidad = Number.parseFloat(linea.cantidad_recibida);
-    return Number.isNaN(cantidad) ? sum : sum + cantidad;
-  }, 0);
+  const totalRecibido = totalCantidadRecibida(detalles);
 
   const columns: PdfColumn<ReceiptDetailLine>[] = [
     ...(hasLineCode(detalles)
@@ -115,7 +110,7 @@ export const ReceiptPdfDocument = ({ receipt, company }: ReceiptPdfDocumentProps
       flex: 1.3,
       align: "right",
       bold: true,
-      cell: (linea) => formatCantidad(linea.cantidad_recibida),
+      cell: (linea) => formatCantidadRecibida(linea.cantidad_recibida),
     },
   ];
 
@@ -159,7 +154,7 @@ export const ReceiptPdfDocument = ({ receipt, company }: ReceiptPdfDocumentProps
       <PdfTotals
         rows={[
           { label: "Productos", value: detalles.length.toLocaleString("es-MX") },
-          { label: "Piezas recibidas", value: totalRecibido.toLocaleString("es-MX"), emphasis: true },
+          { label: "Piezas recibidas", value: formatCantidadRecibida(String(totalRecibido)), emphasis: true },
         ]}
       />
 
