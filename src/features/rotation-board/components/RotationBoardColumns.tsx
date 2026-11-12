@@ -23,6 +23,7 @@ import {
   RotationEstadoHeader,
   RotationFabricacionHeader,
 } from "./RotationBoardHeaderFilters";
+import { RotationAmountCell } from "./RotationBoardAmount";
 import { WeeklySparkline } from "./WeeklySparkline";
 
 interface RotationBoardColumnsOptions {
@@ -50,7 +51,8 @@ const pieces = (value: number | null) => <span className={NUMBER_CELL}>{formatPi
  *   la clave del filtro de servidor de su `ColumnHeaderFilter`.
  * - El diálogo vive en la vista (`RotationBoardView`), nunca en la celda: el
  *   SKU solo dispara `onOpenDetail`.
- * - `importe_vendido` no tiene columna: en v1 no se muestra (suma monedas).
+ * - El importe vendido sale de `importe_por_moneda` (una línea por moneda) y
+ *   no se ordena: `importe_vendido` nunca se lee ni se pide.
  */
 export function getRotationBoardColumns({
   isProductMode,
@@ -163,6 +165,14 @@ export function getRotationBoardColumns({
           </span>
         </div>
       ),
+    },
+    {
+      // Sin `serverSort` a propósito: ordenar por importe compararía monedas
+      // distintas (100 MXN = 100 USD), así que nunca se pide `importe_vendido`.
+      id: "importe_por_moneda",
+      header: "Importe",
+      meta: { label: "Importe vendido", align: "right", hideOnMobile: true },
+      cell: ({ row }) => <RotationAmountCell importes={row.original.importe_por_moneda} />,
     },
     {
       id: "tendencia_pct",

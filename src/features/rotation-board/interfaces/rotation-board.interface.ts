@@ -8,9 +8,14 @@
  * - Con `agrupar=producto`, `variante_id`/`sku`/`color`/`talla` y los campos
  *   de fabricación llegan `null` (salvo `bom_con_alertas`, `false`) y aparece
  *   `variantes_con_bom`.
- * - `importe_vendido` NO se tipa a propósito: hoy suma monedas distintas y en
- *   v1 no se muestra en ningún lado (ni columna, ni tarjeta, ni orden).
+ * - Importes (#1109): `importe_por_moneda` por fila y en `resumen`, `{}` sin
+ *   venta y `null` sin permiso de importes (ver `utils/rotationBoardAmounts`;
+ *   `getRotationBoardPage` normaliza una clave ausente a `null`).
+ *   `importe_vendido` de la fila NO se tipa a propósito: vale `0` sin ventas y
+ *   `null` con varias monedas, y no se ordena por él.
  */
+
+import type { ImportePorMoneda } from "../utils/rotationBoardAmounts";
 
 export const ROTATION_ESTADOS = ["RESURTIR", "SOBREINVENTARIO", "LENTO", "SIN_VENTA", "OK"] as const;
 export type RotationEstado = (typeof ROTATION_ESTADOS)[number];
@@ -61,6 +66,8 @@ export interface RotationBoardRow {
   disponible: number;
   cobertura_semanas: number | null;
   resurtido_sugerido: number;
+  /** Importe vendido en el periodo por moneda; `{}` sin venta, `null` sin permiso. */
+  importe_por_moneda: ImportePorMoneda | null;
   tiene_bom: boolean;
   fabricable_con_existencia: number | null;
   limitante: RotationLimitante | null;
@@ -95,6 +102,8 @@ export interface RotationBoardResumen {
   existencia: number;
   en_proceso: number;
   resurtido_sugerido: number;
+  /** Importe vendido del conjunto por moneda; `{}` sin venta, `null` sin permiso. */
+  importe_por_moneda: ImportePorMoneda | null;
   por_clase: Record<RotationClase, number>;
   por_estado: Record<RotationEstado, number>;
   candidatos_descontinuar: number;

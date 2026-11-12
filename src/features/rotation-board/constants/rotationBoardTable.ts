@@ -28,8 +28,9 @@ import { ROTATION_CONTROL_LIMITS } from "../schemas/rotationBoardControls.schema
  *   variante). No cambian el `resumen`, así que las tarjetas no se mueven al
  *   filtrar desde ellas. Sin `sucursal` en v1: el backend solo la aplica a la
  *   venta, no al stock.
- * - **Orden**: solo campos con columna. `importe_vendido` queda fuera (en v1 no
- *   se muestra: suma monedas distintas). Sin desempate: el backend rechaza una
+ * - **Orden**: solo campos con columna. `importe_vendido` queda fuera aunque el
+ *   importe se muestre (por moneda): ordenar por él compararía monedas
+ *   distintas como iguales. Sin desempate: el backend rechaza una
  *   lista de campos (`vendido_periodo,-id` → 400) y desempata él mismo por
  *   nombre y SKU.
  * - **Paginación**: `page`/`page_size` (máx. 500), 50 por defecto.

@@ -4,15 +4,31 @@ import type {
   VariantMaterialNeeds,
   VariantMaterialNeedsParams,
 } from "../interfaces/variant-materials.interface";
+import { normalizeImportePorMoneda } from "../utils/rotationBoardAmounts";
 
-/** `GET /planeacion/tablero-rotacion/` con los parámetros ya validados por la tabla. */
+/**
+ * `GET /planeacion/tablero-rotacion/` con los parámetros ya validados por la
+ * tabla. `importe_por_moneda` (resumen y filas) se normaliza aquí: una clave
+ * ausente o un valor ilegible queda en `null`, igual que sin permiso.
+ */
 export const getRotationBoardPage = async (
   params: Record<string, string | number>,
 ): Promise<RotationBoardResponse> => {
   const response = await v1_api.get<RotationBoardResponse>("/planeacion/tablero-rotacion/", {
     params,
   });
-  return response.data;
+  const data = response.data;
+  return {
+    ...data,
+    resumen: {
+      ...data.resumen,
+      importe_por_moneda: normalizeImportePorMoneda(data.resumen.importe_por_moneda),
+    },
+    results: data.results.map((row) => ({
+      ...row,
+      importe_por_moneda: normalizeImportePorMoneda(row.importe_por_moneda),
+    })),
+  };
 };
 
 /** `GET /planeacion/necesidades-materia-prima/?variante=&cantidad=` (desglose de un SKU). */
