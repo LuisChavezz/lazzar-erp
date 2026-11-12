@@ -13,6 +13,7 @@ import {
   ORIGIN_BADGE_CLASS,
 } from "../constants/pedidoStatus";
 import { getFormaPagoLabel, getMetodoPagoLabel, getUsoCfdiLabel } from "../constants/satCatalogs";
+import { PEDIDO_PAYMENT_CONDITIONS } from "../constants/pedidoAmounts";
 import { formatEntregaEstimada } from "../utils/pedidoFormat";
 import type { Order, PedidoDetail } from "../interfaces/order.interface";
 import { PedidoClasificacionSelect } from "./PedidoClasificacionSelect";
@@ -36,18 +37,6 @@ const ORIGIN_FLAGS: { key: keyof Order; label: string }[] = [
   { key: "mailing", label: "Mailing" },
 ];
 
-// Condiciones de pago (booleanas). Todas menos `vendedor_autoriza` son campos
-// contables que el backend elimina sin permiso, así que el panel entero solo se
-// pinta con datos contables: con una sola bandera sobreviviente, las demás
-// ausentes se leerían como "no aplica" cuando en realidad "no se sabe".
-const PAYMENT_CONDITIONS: { key: keyof Order; label: string }[] = [
-  { key: "anticipo_total", label: "Anticipo total" },
-  { key: "anticipo_parcial", label: "Anticipo parcial" },
-  { key: "vendedor_autoriza", label: "Vendedor autoriza" },
-  { key: "pago_antes_embarque", label: "Pago antes de embarque" },
-  { key: "por_confirmar", label: "Por confirmar" },
-  { key: "otra_cantidad", label: "Otra cantidad" },
-];
 
 interface OrderCommercialInfoSectionProps {
   pedido: PedidoDetail;
@@ -82,7 +71,7 @@ export function OrderCommercialInfoSection({
   const estatusCfg = getPedidoEstatusConfig(pedido.estatus);
   const tipoCfg = getTipoPedidoConfig(pedido.tipo_pedido);
   const activeOrigins = ORIGIN_FLAGS.filter((flag) => pedido[flag.key]);
-  const activeConditions = PAYMENT_CONDITIONS.filter((cond) => pedido[cond.key]);
+  const activeConditions = PEDIDO_PAYMENT_CONDITIONS.filter((cond) => pedido[cond.key]);
 
   // Régimen fiscal: mientras carga el catálogo (o si no hay coincidencia) cae a
   // "Régimen {id}"; "—" cuando no hay valor.
