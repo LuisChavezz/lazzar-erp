@@ -1,4 +1,5 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import type { RotationFabricationCell } from "../utils/rotationBoardFabrication";
 import type {
   RotationClase,
   RotationEstado,
@@ -80,5 +81,22 @@ export const ROTATION_FABRICACION_CONFIG: Record<RotationFabricacion, StatusBadg
     label: "Sin BOM",
     cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
     dot: "bg-slate-400",
+  },
+};
+
+/**
+ * Celda "Material": los valores del filtro más "BOM no calculable" (hay BOM
+ * pero el backend no pudo calcular cuánto alcanza). Este último no es opción
+ * del filtro: el backend no lo acepta en `?fabricacion=`.
+ */
+export const ROTATION_FABRICATION_CELL_CONFIG: Record<
+  RotationFabricationCell,
+  StatusBadgeConfigEntry
+> = {
+  ...ROTATION_FABRICACION_CONFIG,
+  NO_CALCULABLE: {
+    label: "BOM no calculable",
+    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+    dot: "bg-amber-500",
   },
 };

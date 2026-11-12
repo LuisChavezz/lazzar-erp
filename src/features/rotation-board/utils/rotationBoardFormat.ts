@@ -1,11 +1,12 @@
 import type { AxiosError } from "axios";
-import { isValidDateKey } from "@/src/utils/formatDate";
+import { addDays } from "date-fns";
+import { isValidDateKey, parseLocalDate, toLocalDateKey } from "@/src/utils/formatDate";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 
 /**
- * Formato del tablero de rotación. Todo es puro (sin `Date.now()` ni zona
- * local): las semanas se derivan de `parametros.hasta`, que el backend ya
- * resolvió en hora de México.
+ * Formato del tablero de rotación. Todo es puro (sin `Date.now()`): las
+ * semanas se derivan de `parametros.hasta`, que el backend ya resolvió en hora
+ * de México, contando días de calendario.
  */
 
 const DASH = "—";
@@ -41,17 +42,19 @@ export const formatPercent = (
   return signed && value > 0 ? `+${text}` : text;
 };
 
+/**
+ * Participación (`participacion_pct`) con un decimal. Una participación real
+ * pero menor a lo que un decimal muestra (0.02) sale como "< 0.1 %" y no como
+ * "0 %", que se leería como "no se vendió".
+ */
+export const formatSharePercent = (value: number | null | undefined): string => {
+  if (isNumber(value) && value > 0 && value < 0.05) return "< 0.1 %";
+  return formatPercent(value);
+};
+
 /** Cobertura en semanas ("24.8 sem"). */
 export const formatWeeks = (value: number | null | undefined): string =>
   isNumber(value) ? `${oneDecimalFormat.format(value)} sem` : DASH;
-
-/** Día "YYYY-MM-DD" desplazado `days` días, en aritmética UTC (sin zona local). */
-export const shiftDateKey = (dateKey: string, days: number): string => {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-};
 
 export interface WeekRange {
   /** "YYYY-MM-DD", inclusivo. */
@@ -67,12 +70,13 @@ export interface WeekRange {
  */
 export const weeklySeriesRanges = (hasta: string, semanas: number): WeekRange[] => {
   if (!isValidDateKey(hasta) || !Number.isInteger(semanas) || semanas < 1) return [];
+  // Días de calendario (`addDays` sobre la fecha local): un cambio de horario
+  // no corre el día, y la clave vuelve a "YYYY-MM-DD" sin pasar por UTC.
+  const end = parseLocalDate(hasta) as Date;
+  const dayKey = (offset: number) => toLocalDateKey(addDays(end, offset));
   return Array.from({ length: semanas }, (_, index) => {
     const weeksAgo = semanas - 1 - index;
-    return {
-      from: shiftDateKey(hasta, -(7 * weeksAgo + 6)),
-      to: shiftDateKey(hasta, -7 * weeksAgo),
-    };
+    return { from: dayKey(-(7 * weeksAgo + 6)), to: dayKey(-7 * weeksAgo) };
   });
 };
 
