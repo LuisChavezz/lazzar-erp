@@ -11,15 +11,17 @@ import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
 import { fetchAllServerListRows, type ServerListAdapter } from "@/src/utils/serverListAdapters";
 import {
   areServerTableRangesValid,
-  defaultServerTableSettings,
+  canonicalServerTableQuery,
   effectiveServerTableOrdering,
   hasServerTableCriteria,
   nextServerTableOrdering,
   normalizeServerTableSearch,
   readServerTableState,
   serializeServerTableFilters,
+  isSameServerTableQuery,
   isServerTableDefaultView,
   normalizeServerTableOrdering,
+  resetServerTableSettingsState,
   serverTablePageSizes,
   toServerTableCriteria,
   writeServerTableQuery,
@@ -92,6 +94,18 @@ interface UseServerTableOptions<
    * `extractErrorMessage(error, loadErrorMessage)`. Omitido, nada cambia.
    */
   errorMessageFor?: (error: unknown) => string | undefined;
+  /**
+   * Opt-in: mantiene la URL de esta tabla en su forma CANÓNICA. Al cargar y
+   * cada vez que la URL cambia, la reescribe (`replaceState`, sin consultar)
+   * si trae un valor propio que la definición no acepta (un orden por un campo
+   * que no está en su lista blanca, un filtro inválido, un ajuste en su
+   * default) o alguna de `foreignKeys`: las claves de una definición HERMANA
+   * que esta no usa (la de variante cuando se muestra la de producto). Así una
+   * clave huérfana no se queda en la URL sin control visible ni reaparece al
+   * volver a la otra definición. `foreignKeys` también se quitan en cada
+   * escritura. Omitido, la URL se trata como siempre.
+   */
+  canonicalUrl?: { foreignKeys?: readonly string[] };
 }
 
 /** Qué más limpia `setSetting` en la MISMA escritura de la URL. */
@@ -169,11 +183,40 @@ export function useServerTable<
   refetchOnMount,
   cacheDefaultView = false,
   errorMessageFor,
+  canonicalUrl,
 }: UseServerTableOptions<P, TResponse, TRow, S>) {
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readServerTableState(definition, (key) => searchParams.get(key));
+
+  /** Quita de `query` las claves de la definición hermana (`canonicalUrl`). */
+  const dropForeignKeys = (query: URLSearchParams) => {
+    for (const key of canonicalUrl?.foreignKeys ?? []) {
+      query.delete(`${definition.urlPrefix ?? ""}${key}`);
+    }
+    return query;
+  };
+
+  // ── URL canónica (solo con `canonicalUrl`) ──────────────────────────────
+  // Lee la URL del navegador al dispararse (como `commit`). Compara sin
+  // importar el orden de los parámetros: reordenarlos no es un cambio.
+  const canonicalizeUrl = useEffectEvent(() => {
+    if (!canonicalUrl) return;
+    const currentQuery = new URLSearchParams(window.location.search);
+    const canonical = canonicalServerTableQuery(
+      definition,
+      currentQuery,
+      canonicalUrl.foreignKeys,
+    );
+    if (isSameServerTableQuery(canonical, currentQuery)) return;
+    const qs = canonical.toString();
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  });
+  const searchKey = searchParams.toString();
+  useEffect(() => {
+    canonicalizeUrl();
+  }, [searchKey, definition]);
 
   // ── Escritura en la URL ─────────────────────────────────────────────────
   const commit = (update: (current: ServerTableState<P, S>) => ServerTableState<P, S>) => {
@@ -187,7 +230,7 @@ export function useServerTable<
     const serialize = (state: ServerTableState<P, S>) =>
       writeServerTableQuery(definition, state, new URLSearchParams()).toString();
     if (serialize(next) === serialize(current)) return;
-    const qs = writeServerTableQuery(definition, next, currentQuery).toString();
+    const qs = dropForeignKeys(writeServerTableQuery(definition, next, currentQuery)).toString();
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   };
 
@@ -359,13 +402,13 @@ export function useServerTable<
     });
   };
 
-  /** Todos los ajustes a su default (página 1). No toca filtros, búsqueda ni orden. */
+  /**
+   * Todos los ajustes a su default (página 1). No toca filtros, búsqueda ni
+   * orden. Si ya están todos en su default no hace NADA: ni escribe la URL ni
+   * cambia de página.
+   */
   const resetSettings = () =>
-    commit((current) => ({
-      ...current,
-      settings: defaultServerTableSettings(definition),
-      page: 1,
-    }));
+    commit((current) => resetServerTableSettingsState(definition, current));
 
   /**
    * Para controles FUERA del encabezado (un atajo que ordena): el orden pedido

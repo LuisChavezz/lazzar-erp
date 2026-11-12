@@ -1,11 +1,14 @@
 import { expect, test } from "@playwright/test";
 import {
   booleanFlagParam,
+  canonicalServerTableQuery,
   defineServerTable,
   enumParam,
   intRangeParam,
   isServerTableDefaultView,
+  isSameServerTableQuery,
   readServerTableState,
+  resetServerTableSettingsState,
   serverTableSetting,
   toServerTableCriteria,
   writeServerTableQuery,
@@ -175,5 +178,41 @@ test.describe("pageNumberCountAdapter", () => {
 
   test("una página fuera de rango (200 vacío) no es un error de rango", () => {
     expect(adapter.isOutOfRange).toBeUndefined();
+  });
+});
+
+test.describe("resetServerTableSettingsState", () => {
+  test("con todos los ajustes en su default devuelve el MISMO estado (no escribe ni cambia de página)", () => {
+    const state = stateOf("page=4&estado=A");
+    expect(resetServerTableSettingsState(withSettings, state)).toBe(state);
+  });
+
+  test("con algún ajuste distinto vuelve a los defaults y a la página 1, sin tocar filtros", () => {
+    const next = resetServerTableSettingsState(withSettings, stateOf("semanas=6&agrupar=producto&page=4&estado=A"));
+    expect(next.settings).toEqual({ semanas: 12, agrupar: "variante" });
+    expect(next.page).toBe(1);
+    expect(next.filters).toEqual({ estado: "A" });
+  });
+});
+
+test.describe("canonicalServerTableQuery", () => {
+  const canonical = (query: string, foreignKeys?: readonly string[]) =>
+    canonicalServerTableQuery(withSettings, new URLSearchParams(query), foreignKeys).toString();
+
+  test("quita las claves de la definición hermana y conserva las ajenas a la tabla", () => {
+    expect(canonical("agrupar=producto&fabricacion=NO_ALCANZA&from=x", ["fabricacion"])).toBe(
+      "from=x&agrupar=producto",
+    );
+  });
+
+  test("quita un orden fuera de la lista blanca, un filtro inválido y un ajuste en su default", () => {
+    expect(canonical("ordering=fabricable&estado=Z&semanas=12&page=2")).toBe("page=2");
+  });
+
+  test("una URL ya canónica queda igual (sin importar el orden de sus parámetros)", () => {
+    const current = new URLSearchParams("estado=A&semanas=6");
+    expect(
+      isSameServerTableQuery(canonicalServerTableQuery(withSettings, current), current),
+    ).toBe(true);
   });
 });
