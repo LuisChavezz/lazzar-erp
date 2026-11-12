@@ -93,6 +93,12 @@ test.describe("receiptOrigin", () => {
     ).toEqual({ label: "Orden de producción", folio: "OP-000042" });
     expect(receiptOrigin(receipt({ orden_compra_folio: null })).folio).toBeNull();
   });
+
+  test("un tipo_origen que no es OC ni OP se dice Desconocido, sin folio", () => {
+    expect(
+      receiptOrigin({ tipo_origen: "TR", orden_compra_folio: "OC-X", op_folio: "OP-Y" }),
+    ).toEqual({ label: "Desconocido", folio: null });
+  });
 });
 
 function documentOf(detail: ReceiptDetail) {
@@ -130,7 +136,7 @@ test.describe("ReceiptPdfDocument", () => {
     expect(doc.entrega.Proveedor).toBe("—");
   });
 
-  test("cada renglón lleva su talla; sin talla en ningún renglón la columna no existe", () => {
+  test("cada renglón lleva su talla; sin talla no hay columna, y nunca Lote ni Serie", () => {
     const doc = documentOf(
       receipt({ detalles: [linea(), linea({ id: 2, producto_variante_talla: "G", cantidad_recibida: "3.5000" })] }),
     );
@@ -146,8 +152,9 @@ test.describe("ReceiptPdfDocument", () => {
         ],
       }),
     );
-    expect(materiaPrima.headers).toEqual(["SKU", "Producto", "Lote", "Recibido"]);
-    expect(materiaPrima.cellText("Lote", 0)).toBe("12");
+    // Sin columna de talla, y sin Lote/Serie aunque el renglón traiga sus ids:
+    // el backend no manda un código legible.
+    expect(materiaPrima.headers).toEqual(["SKU", "Producto", "Recibido"]);
   });
 });
 

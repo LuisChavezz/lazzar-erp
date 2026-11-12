@@ -8,13 +8,14 @@
  * Lo que muestran los diálogos de detalle (`ReceiptDetailShell`): estatus,
  * origen con el folio de la OC o de la OP (EC-879), proveedor, almacén,
  * sucursal, remisión, factura de referencia, observaciones y los productos
- * recibidos con su SKU (o código de producto), talla, lote, serie y cantidad.
+ * recibidos con su SKU (o código de producto), talla y cantidad.
  *
  * - Del proveedor va solo el nombre, como en el PDF de la OC. Una recepción
  *   desde OP no tiene proveedor: sale "—".
- * - Lote y serie son ids de sus FK (el backend no resuelve un código): se
- *   imprimen como los pinta la pantalla. Sus columnas, y la de talla, solo
- *   aparecen si algún renglón trae el dato.
+ * - La columna de talla solo aparece si algún renglón trae el dato.
+ * - Sin lote ni serie: el backend solo manda el id de sus FK, no un código
+ *   legible, y un id impreso se leería como el número de lote. Vuelven cuando
+ *   el backend exponga el código.
  * - Una recepción no tiene importes ni moneda: no hay nada que ocultar por rol.
  */
 import { View } from "@react-pdf/renderer";
@@ -44,9 +45,6 @@ type ReceiptPdfDocumentProps = {
   receipt: ReceiptDetail;
   company: PdfCompany | null;
 };
-
-const idOrDash = (value: number | null | undefined): string =>
-  value == null ? EMPTY_VALUE : String(value);
 
 /** Identificador del renglón, con la regla de `SkuCode`: SKU, o el código del producto. */
 const lineCode = (linea: ReceiptDetailLine): string => {
@@ -97,12 +95,6 @@ export const ReceiptPdfDocument = ({ receipt, company }: ReceiptPdfDocumentProps
             cell: (linea: ReceiptDetailLine) => textOrDash(linea.producto_variante_talla),
           },
         ]
-      : []),
-    ...(detalles.some((linea) => linea.lote != null)
-      ? [{ id: "lote", header: "Lote", flex: 1, cell: (linea: ReceiptDetailLine) => idOrDash(linea.lote) }]
-      : []),
-    ...(detalles.some((linea) => linea.serie != null)
-      ? [{ id: "serie", header: "Serie", flex: 1, cell: (linea: ReceiptDetailLine) => idOrDash(linea.serie) }]
       : []),
     {
       id: "cantidad",
