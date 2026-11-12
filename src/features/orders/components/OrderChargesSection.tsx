@@ -2,23 +2,10 @@
 
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
+import { PEDIDO_HEADER_CHARGES } from "../constants/pedidoAmounts";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { useOrderMoney } from "./OrderCurrencyContext";
 import { AmountRow, SheetCard } from "./OrderSheetPrimitives";
-
-// Cargos de cabecera, en el orden del formulario (Flete, Seguros, Anticipo) y
-// luego los demás importes de cabecera que el pedido trae y que la página ya
-// mostraba. Todos opcionales: solo se pintan si son > 0, como hasta ahora.
-const CHARGES: { key: keyof PedidoDetail; label: string }[] = [
-  { key: "flete", label: "Flete" },
-  { key: "seguros", label: "Seguros" },
-  { key: "anticipo", label: "A cuenta (Anticipo)" },
-  { key: "envio", label: "Envío" },
-  { key: "programa_bordados", label: "Programa bordados" },
-  { key: "serigrafia", label: "Serigrafía" },
-  { key: "reflejante", label: "Reflejante" },
-  { key: "bordado_pantalones_extras", label: "Bordado pantalones (extras)" },
-];
 
 interface OrderChargesSectionProps {
   pedido: PedidoDetail;
@@ -40,7 +27,7 @@ interface OrderChargesSectionProps {
  */
 export function OrderChargesSection({ pedido, showAccounting }: OrderChargesSectionProps) {
   const { formatMoney, currencyLabel } = useOrderMoney();
-  const visibleCharges = CHARGES.filter(
+  const visibleCharges = PEDIDO_HEADER_CHARGES.filter(
     (charge) => safeParseAmount(pedido[charge.key] as string | null | undefined) > 0,
   );
 
