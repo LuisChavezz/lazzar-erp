@@ -1,6 +1,7 @@
 import type { WorkOrderResumenAvance } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
+import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 /**
  * Contratos del endpoint de órdenes de reflejante
@@ -52,10 +53,10 @@ export type ReflectiveOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
  * ESTADO REAL DE LOS CAMPOS PROPIOS DEL REFLEJANTE, que depende de QUIÉN creó
  * la orden (hay dos rutas de alta, ver `ReflectiveOrder`):
  *
- *  - `tipo_reflejante` / `posicion`: los puebla la generación automática desde
- *    ventas (los lee de `PedidoDetalleTalla.reflejante_config`), pero NO
- *    `OrdenReflejanteService.save` —el alta del módulo de producción—, que
- *    construye el detalle sin ellos y los deja en `null`.
+ *  - `tipo_reflejante` / `posicion`: el alta del módulo
+ *    (`OrdenReflejanteService`) los toma de la PRIMERA entrada de
+ *    `reflejante_config`; las órdenes viejas pueden traerlos en `null`. La
+ *    generación automática desde ventas está apagada.
  *  - `metros`: llega `0` SIEMPRE, por las dos rutas (ventas lo escribe literal
  *    `metros=0`; el service no lo pasa y el modelo declara
  *    `FloatField(default=0)`). Nunca es `null` — es un número que hoy nadie
@@ -69,11 +70,12 @@ export type ReflectiveOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
  * `cantidad` y `metros` son `FloatField`, o sea NÚMEROS en el JSON (no el
  * string decimal habitual de los campos de inventario).
  *
- * Los `*_nombre` se declaran nullable porque el backend los resuelve con un
- * `source` con punto (`talla.nombre`) sobre FKs que SÍ admiten nulo
- * (`talla`/`color` son `SET_NULL`): DRF devuelve `null` cuando el eslabón
- * intermedio no existe. El esquema OpenAPI los marca `string` requerido
- * —drf-spectacular no modela ese caso—, no porque nunca sean nulos.
+ * Los `*_nombre` se resuelven con un `source` con punto (`color.nombre`)
+ * sobre FKs que SÍ admiten nulo (`talla`/`color` son `SET_NULL`): cuando el
+ * eslabón intermedio no existe, DRF OMITE la clave (no la manda en `null`).
+ * Comprobado con `color_nombre` en un renglón sin color (EC-857), que por eso
+ * es opcional. El esquema OpenAPI los marca `string` requerido
+ * —drf-spectacular no modela ese caso—.
  */
 export interface ReflectiveOrderLine {
   id: number;
@@ -85,11 +87,12 @@ export interface ReflectiveOrderLine {
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
-  color_nombre: string | null;
+  /** Se OMITE cuando el renglón no tiene color (ver nota del bloque). */
+  color_nombre?: string | null;
   cantidad: number;
-  /** Ver nota del bloque: `null` en las órdenes creadas desde este módulo. */
+  /** Ver nota del bloque: de la primera entrada de `reflejante_config`. */
   tipo_reflejante: string | null;
-  /** Ver nota del bloque: `null` en las órdenes creadas desde este módulo. */
+  /** Ver nota del bloque: de la primera entrada de `reflejante_config`. */
   posicion: string | null;
   /** Ver nota del bloque: hoy es `0` en TODAS las órdenes. */
   metros: number;
@@ -367,7 +370,7 @@ export interface ReflectiveOrderDetail
    * `SerializerMethodField`; el tipo real es el de este objeto (verificado en
    * `armar_pedido_vinculado`), mismo caso ya documentado en `usuario_nombre`.
    */
-  pedido_vinculado: { id: number; folio: string } | null;
+  pedido_vinculado: PedidoVinculado | null;
   /**
    * `true` cuando el pedido tiene piezas programadas SIN talla identificable
    * (renglones con `talla` nula que genera el pipeline de picking, más los
