@@ -668,6 +668,19 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-PRODUCCION",
         section: "analytics",
       },
+      {
+        key: "manufacturing-planning",
+        label: "Planeación",
+        path: "/manufacturing/planning",
+        icon: TrendingUpIcon,
+        description:
+          "Rotación de producto terminado: qué resurtir, qué sobra, qué se vende lento y qué descontinuar.",
+        // Sin código de sección propio en el catálogo de permisos (tampoco lo
+        // exige el backend todavía, EC-875): la ruta cae en la regla de módulo
+        // `/manufacturing` de `routePermissions` (R-PRODUCCION).
+        permission: "R-PRODUCCION",
+        section: "analytics",
+      },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
       //   key: "manufacturing-cedicor-product-development-orders",

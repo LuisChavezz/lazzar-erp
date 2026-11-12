@@ -27,6 +27,7 @@ const GATED = [
   "/orders/2121",
   "/orders/2121/edit-mesa-control",
   "/system/document-audit",
+  "/manufacturing/planning",
 ];
 
 const NOT_GATED = [
@@ -41,6 +42,8 @@ const NOT_GATED = [
   "/procurement/purchase-orders",
   "/procurement/dashboard",
   "/manufacturing/production-orders",
+  "/manufacturing",
+  "/manufacturing/planning-archive",
   "/wms",
   "/hr",
   "/system",
