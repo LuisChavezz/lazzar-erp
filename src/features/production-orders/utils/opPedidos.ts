@@ -25,6 +25,28 @@ export function opPedidoRefs(
   return [...principal, ...unicos.filter((p) => p.id !== principalId)];
 }
 
+/**
+ * Pedidos de una fila del listado de OP, ya con el respaldo del pedido único:
+ * `opPedidoRefs` o, sin `pedidos`, `pedido`/`pedido_folio`; `[]` sin pedido.
+ * Se calcula una vez por fila (caché por objeto): lo leen el accessor de la
+ * columna y su celda.
+ */
+const listRefsCache = new WeakMap<object, ProductionOrderPedidoRef[]>();
+
+export function opListPedidoRefs(row: {
+  pedidos?: ProductionOrderPedidoRef[];
+  pedido: number | null;
+  pedido_folio?: string | null;
+}): ProductionOrderPedidoRef[] {
+  const cached = listRefsCache.get(row);
+  if (cached) return cached;
+  const refs =
+    opPedidoRefs(row.pedidos, row.pedido) ??
+    (row.pedido == null ? [] : [{ id: row.pedido, folio: row.pedido_folio ?? null }]);
+  listRefsCache.set(row, refs);
+  return refs;
+}
+
 /** Texto de un folio de pedido: `Pedido #id` si aún no tiene folio. */
 export const pedidoRefLabel = (pedido: ProductionOrderPedidoRef) =>
   pedido.folio || `Pedido #${pedido.id}`;

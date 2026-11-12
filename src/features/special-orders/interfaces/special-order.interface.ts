@@ -64,14 +64,14 @@ export interface SpecialOrderListItem {
    *  - `horas_en_produccion`: horas enteras desde que se CREÓ el pedido.
    *  - `sin_avance`: sin pre-orden (BOM) ni OP.
    *  - `atrasado`: 24 h o más y sin avance.
-   * El listado incluye pedidos dados de baja y también los marca `atrasado`,
-   * así que la alerta solo se muestra con `activo === true` (EC-873 agrega
-   * `activo` al listado). Opcionales: sin ellos no hay alerta.
+   * El listado incluye pedidos dados de baja; desde EC-873 llegan con
+   * `atrasado: false` (igual que los cancelados). La alerta además exige
+   * `activo === true`. Opcionales: sin ellos no hay alerta.
    */
   horas_en_produccion?: number | null;
   sin_avance?: boolean;
   atrasado?: boolean;
-  /** `Pedido.activo`. Mientras el backend no lo mande, ninguna fila muestra la alerta. */
+  /** `Pedido.activo` (EC-873). Sin él, ninguna fila muestra la alerta. */
   activo?: boolean;
 }
 

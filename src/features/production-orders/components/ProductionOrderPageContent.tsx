@@ -28,6 +28,7 @@ import {
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
 import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
+import { opPedidoRefs } from "../utils/opPedidos";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
@@ -401,7 +402,9 @@ export function ProductionOrderPageContent({
 
           <SheetPanel title="Origen y seguimiento" className="flex-1 self-start w-full">
             <InfoGrid>
-              <InfoField label={(data.pedidos?.length ?? 0) > 1 ? "Pedidos" : "Pedido"}>
+              <InfoField
+                label={(opPedidoRefs(data.pedidos, data.pedido)?.length ?? 0) > 1 ? "Pedidos" : "Pedido"}
+              >
                 {/* El pedido es OPCIONAL en el alta: el guion es un estado normal. */}
                 <ProductionOrderPedidosField data={data} />
               </InfoField>
