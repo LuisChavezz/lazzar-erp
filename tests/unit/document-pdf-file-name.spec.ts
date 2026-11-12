@@ -28,6 +28,14 @@ test.describe("documentPdfFileName", () => {
     expect(documentPdfFileName("OC", "oc-00010", 7)).toBe("OC-oc-00010.pdf");
   });
 
+  test("la recepción reconoce sus tres series (RC, RT, RZ); los demás tipos, solo su código", () => {
+    expect(documentPdfFileName("RC", "RC-00031", 7)).toBe("RC-00031.pdf");
+    expect(documentPdfFileName("RC", "RT-00011", 7)).toBe("RT-00011.pdf");
+    expect(documentPdfFileName("RC", "RZ-00001", 7)).toBe("RZ-00001.pdf");
+    expect(documentPdfFileName("OC", "RT-00011", 7)).toBe("OC-RT-00011.pdf");
+    expect(documentPdfFileName("PED", "RC-00031", 7)).toBe("PED-RC-00031.pdf");
+  });
+
   test("compara el prefijo DESPUÉS de sanear el folio", () => {
     expect(documentPdfFileName("OC", "OC/2026/15", 7)).toBe("OC-2026-15.pdf");
     expect(documentPdfFileName("OC", " OC 00010 ", 7)).toBe("OC-00010.pdf");
