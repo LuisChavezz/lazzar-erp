@@ -86,6 +86,7 @@ const PARAM_LABELS: Record<string, string> = {
   semanas_objetivo: "Semanas objetivo",
   dias_sin_venta: "Días sin venta",
   agrupar: "Agrupar por",
+  sucursal: "Sucursal",
   buscar: "Búsqueda",
   clase: "Clase",
   estado: "Estado",

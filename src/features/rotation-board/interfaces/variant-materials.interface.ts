@@ -1,9 +1,10 @@
 import type { RotationLimitante } from "./rotation-board.interface";
 
 /**
- * `GET /planeacion/necesidades-materia-prima/?variante=&cantidad=`: desglose
- * del BOM de UN SKU para fabricar `cantidad` piezas. Responde 404 si la
- * variante no es de la empresa y 400 por campo (`cantidad` fuera de 1–1 000 000).
+ * `GET /planeacion/necesidades-materia-prima/?variante=&cantidad=[&sucursal=]`:
+ * desglose del BOM de UN SKU para fabricar `cantidad` piezas. Responde 404 si
+ * la variante no es de la empresa y 400 por campo (`cantidad` fuera de
+ * 1–1 000 000, `sucursal` ajena o fuera del alcance del usuario).
  * Sin BOM: `tiene_bom: false`, `bom_id: null` y `materiales: []`.
  */
 export interface VariantMaterial {
@@ -40,4 +41,6 @@ export interface VariantMaterialNeeds {
 export interface VariantMaterialNeedsParams {
   variante: number;
   cantidad: number;
+  /** Sucursal del filtro del tablero; `null` = el alcance por defecto del usuario. */
+  sucursal: number | null;
 }

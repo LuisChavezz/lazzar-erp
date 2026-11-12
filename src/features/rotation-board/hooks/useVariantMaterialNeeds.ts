@@ -12,7 +12,9 @@ import { ROTATION_BOARD_KEY } from "./useRotationBoardTable";
 
 /**
  * Desglose del BOM de un SKU para fabricar `cantidad` piezas
- * (`necesidades-materia-prima/?variante=&cantidad=`).
+ * (`necesidades-materia-prima/?variante=&cantidad=[&sucursal=]`), con la misma
+ * `sucursal` que el tablero para que cuadre con la fila (`null` = el alcance
+ * por defecto del usuario).
  *
  * - Mientras llega una cantidad NUEVA se conserva el desglose anterior
  *   (`keepPreviousData`, misma variante): la tabla no parpadea al teclear.
@@ -20,13 +22,21 @@ import { ROTATION_BOARD_KEY } from "./useRotationBoardTable";
  * - Un 400 con error en `cantidad` (fuera del tope del backend) se expone en
  *   `cantidadError` para pintarlo bajo el campo, con el texto del backend.
  */
-export const useVariantMaterialNeeds = (variante: number | null, cantidad: number | null) => {
+export const useVariantMaterialNeeds = (
+  variante: number | null,
+  cantidad: number | null,
+  sucursal: number | null,
+) => {
   const enabled = variante !== null && cantidad !== null;
   const query = useGuardedQuery<VariantMaterialNeeds>(
     {
-      queryKey: [...ROTATION_BOARD_KEY, "materials", variante, cantidad],
+      queryKey: [...ROTATION_BOARD_KEY, "materials", variante, cantidad, sucursal],
       queryFn: () =>
-        getVariantMaterialNeeds({ variante: variante as number, cantidad: cantidad as number }),
+        getVariantMaterialNeeds({
+          variante: variante as number,
+          cantidad: cantidad as number,
+          sucursal,
+        }),
       enabled,
       retry: retryUnlessClientError,
       placeholderData: keepPreviousData,

@@ -20,7 +20,8 @@ import { VariantMaterialsDialog } from "./VariantMaterialsDialog";
  *   (placeholder), igual que las filas.
  * - `DataTable` se monta siempre: su toolbar sigue durante la carga o un error.
  * - El detalle de materiales vive aquí, no en la celda (las celdas se
- *   desmontan al paginar, ordenar o filtrar).
+ *   desmontan al paginar, ordenar o filtrar), y recibe la sucursal del filtro
+ *   para que su desglose sea el de la fila.
  */
 export function RotationBoardView() {
   const board = useRotationBoardTable();
@@ -49,11 +50,13 @@ export function RotationBoardView() {
         semanasObjetivo={semanas_objetivo}
         diasSinVenta={dias_sin_venta}
         agrupar={board.agrupar}
+        sucursal={board.sucursal}
         parametros={response?.parametros}
         onSemanasChange={(value) => board.setSetting("semanas", value)}
         onSemanasObjetivoChange={(value) => board.setSetting("semanas_objetivo", value)}
         onDiasSinVentaChange={(value) => board.setSetting("dias_sin_venta", value)}
         onAgruparChange={board.setAgrupar}
+        onSucursalChange={board.setSucursal}
         onReset={board.resetSettings}
       />
 
@@ -76,7 +79,11 @@ export function RotationBoardView() {
         loadingAriaLabel="Cargando tablero de rotación"
       />
 
-      <VariantMaterialsDialog row={detailRow} onClose={() => setDetailRow(null)} />
+      <VariantMaterialsDialog
+        row={detailRow}
+        sucursal={board.sucursal}
+        onClose={() => setDetailRow(null)}
+      />
     </div>
   );
 }

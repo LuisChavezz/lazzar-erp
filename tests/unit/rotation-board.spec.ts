@@ -23,6 +23,7 @@ import {
   importeCurrencyTotals,
   normalizeImportePorMoneda,
 } from "@/src/features/rotation-board/utils/rotationBoardAmounts";
+import { rotationBranchOptions } from "@/src/features/rotation-board/utils/rotationBoardBranches";
 
 /** Pruebas unitarias del tablero de rotación de Planeación (EC-867). */
 
@@ -275,5 +276,61 @@ test.describe("importe_por_moneda (#1109)", () => {
       { moneda: null, total: 5 },
     ]);
     expect(importeCurrencyTotals({})).toEqual([]);
+  });
+});
+
+test.describe("filtro de sucursal", () => {
+  const BRANCHES = [
+    { id: 61, nombre: "Matriz" },
+    { id: 72, nombre: "Norte" },
+  ];
+
+  test("viaja como sucursal en ambos modos; un id inválido se trata como ausente", () => {
+    expect(criteriaOf(rotationBoardVariantTable, "sucursal=61").sucursal).toBe("61");
+    const productParams = new URLSearchParams("agrupar=producto&sucursal=61");
+    const productCriteria = toServerTableCriteria(
+      rotationBoardProductTable,
+      readServerTableState(rotationBoardProductTable, (key) => productParams.get(key)),
+    );
+    expect(productCriteria.sucursal).toBe("61");
+    expect(criteriaOf(rotationBoardVariantTable, "sucursal=0")).not.toHaveProperty("sucursal");
+    expect(criteriaOf(rotationBoardVariantTable, "sucursal=abc")).not.toHaveProperty("sucursal");
+  });
+
+  test("el modo producto no la quita de la URL", () => {
+    const query = canonicalServerTableQuery(
+      rotationBoardProductTable,
+      new URLSearchParams("agrupar=producto&sucursal=61&fabricacion=ALCANZA"),
+      VARIANT_ONLY_FILTERS,
+    );
+    expect(query.get("sucursal")).toBe("61");
+    expect(query.has("fabricacion")).toBe(false);
+  });
+
+  test("Todas mis sucursales primero y luego el catálogo en su orden", () => {
+    expect(rotationBranchOptions(BRANCHES, null)).toEqual([
+      { value: "", label: "Todas mis sucursales" },
+      { value: "61", label: "Matriz" },
+      { value: "72", label: "Norte" },
+    ]);
+  });
+
+  test("una sucursal de la URL que no está en el catálogo queda fijada a la vista", () => {
+    expect(rotationBranchOptions(BRANCHES, 99).slice(0, 2)).toEqual([
+      { value: "", label: "Todas mis sucursales" },
+      { value: "99", label: "Sucursal #99" },
+    ]);
+    expect(rotationBranchOptions(BRANCHES, 72)).toHaveLength(3);
+  });
+
+  test("el 400 de sucursal se lee con su etiqueta", () => {
+    const error = new AxiosError("Bad Request", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 400,
+      statusText: "Bad Request",
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+      data: { sucursal: ["Sucursal no encontrada."] },
+    });
+    expect(rotationBoardFieldErrorMessage(error)).toBe("Sucursal: Sucursal no encontrada.");
   });
 });

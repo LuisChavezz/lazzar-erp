@@ -3,6 +3,7 @@ import {
   defineServerTable,
   enumParam,
   intRangeParam,
+  positiveIdParam,
   serverTableSetting,
 } from "@/src/utils/serverTableParams";
 import {
@@ -26,8 +27,13 @@ import { ROTATION_CONTROL_LIMITS } from "../schemas/rotationBoardControls.schema
  *   12 / 8 / 90 / variante con "Restablecer". Mismos rangos que el backend.
  * - **Filtros**: `clase`, `estado`, `solo_candidatos` (+ `fabricacion` por
  *   variante). No cambian el `resumen`, así que las tarjetas no se mueven al
- *   filtrar desde ellas. Sin `sucursal` en v1: el backend solo la aplica a la
- *   venta, no al stock.
+ *   filtrar desde ellas.
+ * - **Sucursal** (`sucursal`, en ambos modos): es un filtro (lo quita "Limpiar
+ *   filtros") pero, a diferencia de los demás, SÍ cambia el `resumen`: el
+ *   backend acota venta, existencia, en proceso y capacidad a esa sucursal
+ *   (#1109). Sin ella, el alcance por defecto del usuario: sus sucursales, o
+ *   toda la empresa para el admin. Una sucursal ajena o fuera de su alcance
+ *   responde 400 en `sucursal`.
  * - **Orden**: solo campos con columna. `importe_vendido` queda fuera aunque el
  *   importe se muestre (por moneda): ordenar por él compararía monedas
  *   distintas como iguales. Sin desempate: el backend rechaza una
@@ -68,6 +74,7 @@ export const readRotationAgrupar = (get: (key: string) => string | null): Rotati
 };
 
 const commonFilters = {
+  sucursal: positiveIdParam,
   clase: enumParam(ROTATION_CLASES),
   estado: enumParam(ROTATION_ESTADOS),
   solo_candidatos: booleanFlagParam,
