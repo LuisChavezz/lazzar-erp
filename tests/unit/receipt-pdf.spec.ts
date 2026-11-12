@@ -5,6 +5,10 @@ import type { ReceiptDetail, ReceiptDetailLine } from "@/src/features/receipts/i
 import { receiptDetailQueryKey } from "@/src/features/receipts/hooks/useReceiptDetail";
 import { receiptOrigin, receiptPdfDescriptor } from "@/src/features/receipts/utils/receiptPdf";
 import { receiptPdfSource } from "@/src/features/receipts/utils/receiptPdfSource";
+import {
+  formatCantidadRecibida,
+  totalCantidadRecibida,
+} from "@/src/features/receipts/utils/receiptQuantities";
 import { ReceiptPdfDocument } from "@/src/pdfs/ReceiptPdfDocument";
 import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { elementsOf, pdfCardItems, pdfTable } from "./support/pdfElementTree";
@@ -231,5 +235,32 @@ test.describe("receiptPdfSource", () => {
     const state = client.getQueryState(DIALOG_KEY);
     expect(state?.status).toBe("success");
     expect(state?.error).toBeNull();
+  });
+});
+
+test.describe("cantidades recibidas", () => {
+  test("se muestran con sus 4 decimales, sin ceros sobrantes", () => {
+    expect(formatCantidadRecibida("1.2345")).toBe("1.2345");
+    expect(formatCantidadRecibida("12.0000")).toBe("12");
+    expect(formatCantidadRecibida("0.0004")).toBe("0.0004");
+    expect(formatCantidadRecibida("")).toBe("—");
+    expect(formatCantidadRecibida("abc")).toBe("—");
+  });
+
+  test("el total suma sin residuos de punto flotante e ignora lo que no es número", () => {
+    const total = totalCantidadRecibida([
+      { cantidad_recibida: "0.1000" },
+      { cantidad_recibida: "0.2000" },
+      { cantidad_recibida: "abc" },
+    ]);
+    expect(total).toBe(0.3);
+    expect(formatCantidadRecibida(String(total))).toBe("0.3");
+  });
+
+  test("el PDF imprime la cantidad con la misma precisión que la pantalla", () => {
+    const doc = documentOf(
+      receipt({ detalles: [linea({ cantidad_recibida: "1.2345" }), linea({ id: 2, cantidad_recibida: "2.0000" })] }),
+    );
+    expect(doc.cellText("Recibido", 0)).toBe("1.2345");
   });
 });
