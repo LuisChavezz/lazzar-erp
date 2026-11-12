@@ -116,6 +116,8 @@ function MaterialsContent({ row, sucursal }: MaterialsContentProps) {
   // El error del campo: primero el del cliente (no es un entero ≥ 1), luego el
   // del backend (p. ej. el tope de 1 000 000), con su texto tal cual.
   const fieldError = draftError ?? cantidadError;
+  // Error por campo del backend fuera de `cantidad` (400): no se arregla repitiendo.
+  const fieldErrorMessage = rotationBoardFieldErrorMessage(error);
   const isStale = isPlaceholderData || (isFetching && !needs);
 
   return (
@@ -190,15 +192,18 @@ function MaterialsContent({ row, sucursal }: MaterialsContentProps) {
         {isNotFound ? (
           <EmptyLines>Esta variante ya no está disponible.</EmptyLines>
         ) : isInitialError && !cantidadError ? (
-          <SectionErrorNotice
-            title="No se pudo cargar el desglose"
-            message={
-              rotationBoardFieldErrorMessage(error) ??
-              extractErrorMessage(error, "Intenta de nuevo en unos momentos.")
-            }
-            onRetry={() => void refetch()}
-            isRetrying={isFetching}
-          />
+          // Un 400 por campo (p. ej. `sucursal` ajena o fuera de alcance) falla
+          // igual al repetirlo: sin "Reintentar". Red o 5xx sí lo ofrecen.
+          fieldErrorMessage ? (
+            <SectionErrorNotice title="No se pudo cargar el desglose" message={fieldErrorMessage} />
+          ) : (
+            <SectionErrorNotice
+              title="No se pudo cargar el desglose"
+              message={extractErrorMessage(error, "Intenta de nuevo en unos momentos.")}
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
+          )
         ) : isLoading && !needs ? (
           <LoadingSkeleton className="h-40" />
         ) : !needs ? (
