@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { QueryClient } from "@tanstack/react-query";
 import { AxiosError, type AxiosResponse } from "axios";
 import type { ReceiptDetail, ReceiptDetailLine } from "@/src/features/receipts/interfaces/receipt.interface";
+import { receiptDetailQueryKey } from "@/src/features/receipts/hooks/useReceiptDetail";
 import { receiptOrigin, receiptPdfDescriptor } from "@/src/features/receipts/utils/receiptPdf";
 import { receiptPdfSource } from "@/src/features/receipts/utils/receiptPdfSource";
 import { ReceiptPdfDocument } from "@/src/pdfs/ReceiptPdfDocument";
@@ -169,9 +170,13 @@ const notFound = () =>
     data: { detail: "No encontrado." },
   } as AxiosResponse);
 
-const DIALOG_KEY = ["receipt-detail", 5];
+const DIALOG_KEY = receiptDetailQueryKey(5);
 
-/** Corre la fuente con `v1_api.get` sustituido y la consulta del diálogo ya cargada. */
+/**
+ * Corre la fuente con `v1_api.get` sustituido y la consulta del diálogo ya
+ * cargada en el MISMO cliente que recibe la fuente (como el del botón): si la
+ * fuente leyera o escribiera esa consulta, estas pruebas lo verían.
+ */
 async function download(respond: () => Promise<ReceiptDetail>) {
   const { v1_api } = await import("@/src/api/v1.api");
   const originalGet = v1_api.get;
@@ -184,9 +189,13 @@ async function download(respond: () => Promise<ReceiptDetail>) {
   const cached = receipt({ folio: "RC-VIEJO" });
   client.setQueryData(DIALOG_KEY, cached);
   const rendered: ReceiptDetail[] = [];
-  const source = receiptPdfSource(5, async (detail) => {
-    rendered.push(detail);
-    return new Blob(["%PDF-fake"], { type: "application/pdf" });
+  const source = receiptPdfSource({
+    queryClient: client,
+    receiptId: 5,
+    render: async (detail) => {
+      rendered.push(detail);
+      return new Blob(["%PDF-fake"], { type: "application/pdf" });
+    },
   });
   let outcome: { fileFolio: string | null | undefined } | { error: unknown };
   try {
