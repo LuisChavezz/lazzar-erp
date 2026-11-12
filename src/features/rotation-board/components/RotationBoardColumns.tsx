@@ -69,9 +69,12 @@ export function getRotationBoardColumns({
   const product: ColumnDef<RotationBoardRow> = {
     id: "producto",
     header: "Producto",
+    // Ancho propio: con el de por defecto (150px) los nombres largos se
+    // truncarían a pocas letras.
+    size: 260,
     meta: { label: "Producto", serverSort: "nombre" },
     cell: ({ row }) => (
-      <div className="min-w-[12rem] max-w-[18rem]">
+      <div className="min-w-0">
         <p
           className="truncate font-medium text-slate-800 dark:text-slate-100"
           title={row.original.producto_nombre}
@@ -89,11 +92,13 @@ export function getRotationBoardColumns({
       header: "SKU",
       meta: { label: "SKU", serverSort: "sku" },
       cell: ({ row }) => (
+        // Truncada: hay SKUs largos (de QA) que invadirían la columna vecina;
+        // el `title` conserva el SKU completo.
         <button
           type="button"
-          title="Ver detalle"
+          title={`Ver detalle · ${row.original.sku ?? ""}`}
           onClick={() => onOpenDetail(row.original)}
-          className={`${DETAIL_LINK} whitespace-nowrap`}
+          className={`${DETAIL_LINK} block max-w-full truncate whitespace-nowrap`}
         >
           {row.original.sku ?? "—"}
         </button>
@@ -195,6 +200,7 @@ export function getRotationBoardColumns({
     {
       id: "serie_semanal",
       header: "Venta semanal",
+      size: 180,
       meta: { label: "Venta semanal", serverSort: "venta_semanal" },
       cell: ({ row }) => (
         <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400">
@@ -212,11 +218,18 @@ export function getRotationBoardColumns({
       cell: ({ row }) => (
         <div className="flex flex-col whitespace-nowrap">
           <span>{formatShortCalendarDate(row.original.ultima_venta)}</span>
-          {row.original.dias_sin_venta !== null && (
-            <span className={`${MUTED} tabular-nums`}>
-              hace {formatPieces(row.original.dias_sin_venta)} d
-            </span>
-          )}
+          {/* Negativo = la venta tiene fecha FUTURA (pedido confirmado a
+              futuro, pendiente de corregir en el backend): no se pinta "hace -71 d". */}
+          {row.original.dias_sin_venta !== null &&
+            (row.original.dias_sin_venta < 0 ? (
+              <span className={MUTED} title="El pedido trae una fecha de confirmación futura">
+                fecha futura
+              </span>
+            ) : (
+              <span className={`${MUTED} tabular-nums`}>
+                hace {formatPieces(row.original.dias_sin_venta)} d
+              </span>
+            ))}
         </div>
       ),
     },
@@ -273,17 +286,18 @@ export function getRotationBoardColumns({
     {
       id: "fabricable_con_existencia",
       header: "Fabricable",
+      size: 200,
       meta: {
         label: "Fabricable con existencia",
         serverSort: "fabricable_con_existencia",
         align: "right",
       },
       cell: ({ row }) => (
-        <div className="flex flex-col items-end">
+        <div className="flex min-w-0 flex-col items-end">
           {pieces(row.original.fabricable_con_existencia)}
           {row.original.limitante && (
             <span
-              className={`${MUTED} max-w-[10rem] truncate`}
+              className={`${MUTED} max-w-full truncate`}
               title={`Limita: ${row.original.limitante.componente_nombre}`}
             >
               {row.original.limitante.componente_nombre}
