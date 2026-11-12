@@ -32,6 +32,7 @@ import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups"
 import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/components/WorkOrderAvancesSection";
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
+import { ReflectiveOrderPdfButton } from "./ReflectiveOrderPdfButton";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
   ReflectiveConfigCountBadge,
@@ -240,6 +241,7 @@ export function ReflectiveOrderDetailContent({
       <WorkOrderTopBar
         backLink={BackLink}
         readOnlyLabel={isTerminal ? "Orden cancelada · solo lectura" : null}
+        actions={<ReflectiveOrderPdfButton order={data} />}
       />
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
