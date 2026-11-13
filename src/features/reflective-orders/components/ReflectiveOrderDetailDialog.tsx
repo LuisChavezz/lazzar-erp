@@ -32,18 +32,7 @@ import type {
   ReflectiveOrderDetailLine,
   ReflectiveOrderSibling,
 } from "../interfaces/reflective-order.interface";
-
-/**
- * `metros` es un `FloatField(default=0)`: cuando nadie lo captura llega `0`, no
- * `null`. Un "0" pintado como número se lee como una medición real ("esta orden
- * no lleva cinta"), que es falso — nadie lo calcula todavía. Se trata el cero
- * como AUSENCIA y se pinta con el mismo guion largo que los campos nulos.
- *
- * Se descartan también los valores no finitos, mismo criterio defensivo que
- * `computeReflectiveOrderKpis` con `cantidad`.
- */
-const metrosOrDash = (metros: number): string =>
-  Number.isFinite(metros) && metros !== 0 ? `${formatQuantityValue(metros)} m` : "—";
+import { reflectiveMetrosText } from "../utils/reflectiveMetros";
 
 /** Cantidad que puede llegar `null` del backend. `null` → guion largo. */
 const quantityOrDash = (value: number | null) =>
@@ -141,7 +130,7 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
             {textOrDash(linea.posicion)}
           </td>
           <td className="px-3 py-2 whitespace-nowrap text-right tabular-nums text-slate-600 dark:text-slate-300">
-            {metrosOrDash(linea.metros)}
+            {reflectiveMetrosText(linea.metros)}
           </td>
           <td className="px-3 py-2 whitespace-nowrap text-right tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatQuantityValue(linea.cantidad)}

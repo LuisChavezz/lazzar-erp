@@ -5,7 +5,6 @@
  */
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
 import { cleanText } from "@/src/utils/cleanText";
-import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import type {
   ReflectiveLineConfigEntry,
@@ -27,14 +26,6 @@ export const reflectiveOrderPdfDescriptor = (
   folio: order.folio_reflejante,
   cancelled: isWorkOrderTerminal(order.estatus_reflejante),
 });
-
-/**
- * Metros como los muestra la página (`metrosOrDash`): un `0` es "nadie lo
- * capturó" —hoy llega `0` en todas las órdenes— y se pinta "—", igual que un
- * valor no finito.
- */
-export const reflectiveMetrosText = (metros: number): string =>
-  Number.isFinite(metros) && metros !== 0 ? `${formatQuantityValue(metros)} m` : "—";
 
 /**
  * Una entrada de reflejante como texto, con los datos del popover de la

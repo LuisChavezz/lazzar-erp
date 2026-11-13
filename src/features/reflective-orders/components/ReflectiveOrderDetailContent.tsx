@@ -33,6 +33,7 @@ import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/compo
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { ReflectiveOrderPdfButton } from "./ReflectiveOrderPdfButton";
+import { reflectiveMetrosText } from "../utils/reflectiveMetros";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
   ReflectiveConfigCountBadge,
@@ -53,19 +54,6 @@ const BACK = {
   href: "/manufacturing/reflective-orders",
   label: "Volver a Órdenes de Reflejante",
 };
-
-/**
- * `metros` es un `FloatField(default=0)`: cuando nadie lo captura llega `0`, no
- * `null`. Un "0" pintado como número se lee como una medición real ("esta orden
- * no lleva cinta"), que es falso — nadie lo calcula todavía. Se trata el cero
- * como AUSENCIA y se pinta con el mismo guion largo que los campos nulos, misma
- * convención que `ReflectiveOrderDetailDialog`.
- *
- * Se descartan también los valores no finitos, mismo criterio defensivo que
- * `computeReflectiveOrderKpis` con `cantidad`.
- */
-const metrosOrDash = (metros: number): string =>
-  Number.isFinite(metros) && metros !== 0 ? `${formatQuantityValue(metros)} m` : "—";
 
 // ── Prendas de la orden ──────────────────────────────────────────────────────
 
@@ -119,7 +107,7 @@ const ReflectiveGarments = ({ items }: { items: ReflectiveOrderDetailLine[] }) =
       },
       { key: "tipo", label: "Tipo", render: (linea) => textOrDash(linea.tipo_reflejante) },
       { key: "posicion", label: "Posición", render: (linea) => textOrDash(linea.posicion) },
-      { key: "metros", label: "Metros", align: "right", render: (linea) => metrosOrDash(linea.metros) },
+      { key: "metros", label: "Metros", align: "right", render: (linea) => reflectiveMetrosText(linea.metros) },
     ]}
   />
 );
