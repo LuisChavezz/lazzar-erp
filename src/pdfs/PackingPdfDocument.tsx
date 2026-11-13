@@ -53,13 +53,13 @@ export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps
     ...conditionalColumn(lineas, (line) => line.ubicacion_nombre, {
       id: "ubicacion",
       header: "Ubicación",
-      flex: 1.6,
+      flex: 1.25,
       cell: (line) => textOrDash(line.ubicacion_nombre),
     }),
     ...conditionalColumn(lineas, (line) => line.caja_numero, {
       id: "caja",
       header: "Caja",
-      flex: 0.7,
+      flex: 0.55,
       align: "right",
       cell: (line) => (line.caja_numero == null ? textOrDash(null) : String(line.caja_numero)),
     }),
@@ -70,7 +70,7 @@ export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps
     {
       id: "estatus",
       header: "Estatus",
-      flex: 1.1,
+      flex: 1.2,
       cell: (line) => PACKING_STATUS_CONFIG[line.estado]?.label ?? textOrDash(line.estado),
     },
   ];

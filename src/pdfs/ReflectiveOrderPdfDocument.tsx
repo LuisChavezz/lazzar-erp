@@ -145,13 +145,13 @@ export const ReflectiveOrderPdfDocument = ({ order, company }: ReflectiveOrderPd
           pendiente: linea.cantidad_pendiente,
         }),
         extraColumns: [
-          { id: "reflejante", header: "Reflejante", flex: 2.4, cell: reflejanteCell },
-          { id: "tipo", header: "Tipo", flex: 1.6, cell: ({ item }: Row) => textOrDash(item.tipo_reflejante) },
-          { id: "posicion", header: "Posición", flex: 1.3, cell: ({ item }: Row) => textOrDash(item.posicion) },
+          { id: "reflejante", header: "Reflejante", flex: 2.5, cell: reflejanteCell },
+          { id: "tipo", header: "Tipo", flex: 1, cell: ({ item }: Row) => textOrDash(item.tipo_reflejante) },
+          { id: "posicion", header: "Posición", flex: 0.9, cell: ({ item }: Row) => textOrDash(item.posicion) },
           {
             id: "metros",
             header: "Metros",
-            flex: 0.9,
+            flex: 0.7,
             align: "right",
             cell: ({ item }: Row) => reflectiveMetrosText(item.metros),
           },

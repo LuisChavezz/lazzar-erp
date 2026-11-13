@@ -35,13 +35,18 @@ export const wmsLineProductName = (line: WmsPdfLineProduct): string =>
  * Columnas SKU, Producto, Color y Talla. SKU y Color van ligadas a su clave
  * (`field`): una respuesta anterior a EC-882 que no las traiga las omite en vez
  * de pintar una columna de guiones.
+ *
+ * Anchos (EC-891) medidos con Arimo en el caso más ancho, el embarque con
+ * todas sus columnas: el SKU más largo (`10012-100-2XCH`), la ubicación y las
+ * cantidades caben en un renglón, y los encabezados no se parten; lo que queda
+ * es para el producto, que se parte por palabras.
  */
 export function wmsProductColumns<Row extends WmsPdfLineProduct>(): PdfColumn<Row>[] {
   return [
-    { id: "sku", header: "SKU", flex: 1.6, field: "sku", cell: (line) => textOrDash(line.sku) },
-    { id: "producto", header: "Producto", flex: 3, bold: true, cell: (line) => wmsLineProductName(line) },
-    { id: "color", header: "Color", flex: 1.3, field: "color_nombre", cell: (line) => textOrDash(line.color_nombre) },
-    { id: "talla", header: "Talla", flex: 0.8, cell: (line) => textOrDash(line.talla_nombre) },
+    { id: "sku", header: "SKU", flex: 1.7, field: "sku", cell: (line) => textOrDash(line.sku) },
+    { id: "producto", header: "Producto", flex: 1.6, bold: true, cell: (line) => wmsLineProductName(line) },
+    { id: "color", header: "Color", flex: 1.15, field: "color_nombre", cell: (line) => textOrDash(line.color_nombre) },
+    { id: "talla", header: "Talla", flex: 0.7, cell: (line) => textOrDash(line.talla_nombre) },
   ];
 }
 
