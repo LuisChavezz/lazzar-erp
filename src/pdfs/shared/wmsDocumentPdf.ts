@@ -78,6 +78,17 @@ export const conditionalColumn = <Row>(
   column: PdfColumn<Row>,
 ): PdfColumn<Row>[] => (rowsHaveValue(rows, value) ? [column] : []);
 
+/** Separación entre columnas de las tablas de WMS (pt). */
+const WMS_COLUMN_GAP = 6;
+
+/**
+ * Las columnas con una separación a la izquierda, salvo la primera: las tablas
+ * de WMS tienen muchas columnas y, sin relleno en las celdas, un nombre o un
+ * encabezado que llena la suya tocaba el de al lado ("DiferenciaEstatus").
+ */
+export const withWmsColumnGaps = <Row>(columns: PdfColumn<Row>[]): PdfColumn<Row>[] =>
+  columns.map((column, index) => (index === 0 ? column : { ...column, gapBefore: WMS_COLUMN_GAP }));
+
 /** Renglón de una tarjeta solo si el dato viene (oleada, zona…). */
 export const optionalInfoItem = (label: string, value: string | null | undefined): PdfInfoItem[] =>
   value?.trim() ? [{ label, value: value.trim() }] : [];
