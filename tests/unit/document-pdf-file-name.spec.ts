@@ -61,6 +61,20 @@ test.describe("documentPdfFileName", () => {
     expect(documentPdfFileName("RC", "RT-00001", 7)).toBe("RT-00001.pdf");
   });
 
+  test("picking y packing reconocen sus series PICK y PACK; el traspaso, TR (EC-858)", () => {
+    // Folios reales de la BD (2026-11-12).
+    expect(documentPdfFileName("PCK", "PICK-000038", 7)).toBe("PICK-000038.pdf");
+    expect(documentPdfFileName("PAK", "PACK-000017", 7)).toBe("PACK-000017.pdf");
+    expect(documentPdfFileName("TR", "TR-00033", 7)).toBe("TR-00033.pdf");
+    // Su propio código también cuenta; otra serie lleva el código delante.
+    expect(documentPdfFileName("PCK", "PCK-1", 7)).toBe("PCK-1.pdf");
+    expect(documentPdfFileName("PCK", "PK-A-000001", 7)).toBe("PCK-PK-A-000001.pdf");
+    // La serie de uno no vale para el otro.
+    expect(documentPdfFileName("PAK", "PICK-000038", 7)).toBe("PAK-PICK-000038.pdf");
+    expect(documentPdfFileName("PCK", "PACK-000017", 7)).toBe("PCK-PACK-000017.pdf");
+    expect(documentPdfFileName("PCK", null, 5)).toBe("PCK-ID5.pdf");
+  });
+
   test("un folio que es solo el segmento lleva el código delante", () => {
     expect(documentPdfFileName("OP", "OP", 7)).toBe("OP-OP.pdf");
   });
