@@ -11,7 +11,7 @@ import {
   WarehouseIcon,
 } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
-import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
   InfoField,
@@ -23,48 +23,15 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { plural } from "@/src/utils/plural";
+import { PICKING_LINEA_ESTADO_CONFIG } from "../constants/pickingLineaEstado";
 import { PICKING_PRIORIDAD_CONFIG } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
 import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
 import { isPickingTrasladable } from "../utils/picking.utils";
 import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
+import { PickingPdfButton } from "./PickingPdfButton";
 import { PickingTransferDialog } from "./PickingTransferDialog";
-
-/**
- * Colores del estatus de UNA LÍNEA (`PickingDetalleLine.estado`) — enum
- * propio, distinto del estatus del picking completo (`PICKING_STATUS_CONFIG`).
- * Se declara local a este diálogo (no en `constants/`) porque, a diferencia
- * del estatus de cabecera, ningún otro componente lo consume — es un detalle
- * de presentación de esta sola tabla, no un catálogo compartido.
- */
-const LINE_ESTADO_CONFIG: Record<string, StatusBadgeConfigEntry> = {
-  PENDIENTE: {
-    label: "Pendiente",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-500",
-  },
-  SURTIDA: {
-    label: "Surtida",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    dot: "bg-emerald-500",
-  },
-  PARCIAL: {
-    label: "Parcial",
-    cls: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
-    dot: "bg-orange-500",
-  },
-  FALTANTE: {
-    label: "Faltante",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
-    dot: "bg-rose-500",
-  },
-  CANCELADA: {
-    label: "Cancelada",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
-    dot: "bg-slate-400",
-  },
-};
 
 /** Nombre del producto/variante surtido en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
@@ -118,7 +85,7 @@ const LineasTable = ({ items }: { items: PickingDetalleLine[] }) => {
             {formatExactQuantityValue(linea.diferencia)}
           </td>
           <td className="px-3 py-2">
-            <StatusBadge status={linea.estado} config={LINE_ESTADO_CONFIG} />
+            <StatusBadge status={linea.estado} config={PICKING_LINEA_ESTADO_CONFIG} />
           </td>
         </tr>
       ))}
@@ -169,8 +136,11 @@ export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDeta
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
+      // "Descargar PDF" junto al título (EC-858); el encabezado de `MainDialog`
+      // ya reserva el espacio de la X.
+      headerAction={<PickingPdfButton picking={picking} />}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        <div className="flex items-center gap-2.5">
           <RouteIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">

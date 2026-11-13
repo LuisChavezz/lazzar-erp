@@ -8,6 +8,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { usePickingDetail } from "../hooks/usePickingDetail";
 import { mapPickingToRow } from "../utils/picking.utils";
 import { PickingDetailContent } from "./PickingDetailDialog";
+import { PickingPdfButton } from "./PickingPdfButton";
 
 interface PickingDetailByIdDialogProps {
   /** Id del picking a consultar. `null` mantiene la consulta apagada. */
@@ -51,14 +52,19 @@ export function PickingDetailByIdDialog({
       ? "Error al cargar"
       : row.folio;
 
+  // "Descargar PDF" junto al título (EC-858), una vez cargado el surtido.
+  const pdfAction = !isLoading && !isError && row ? <PickingPdfButton picking={row} /> : null;
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
+      headerAction={pdfAction}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
+        <div className={`flex items-center gap-2.5 ${pdfAction ? "" : "pr-8"}`}>
           <RouteIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
