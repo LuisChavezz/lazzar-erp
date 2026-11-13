@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { QueryClient } from "@tanstack/react-query";
 import { AxiosError, type AxiosResponse } from "axios";
-import { labelConsumptionRecords } from "@/src/features/production-order-consumption/utils/consumptionRecords";
+import {
+  labelConsumptionRecords,
+  recalculableConsumptionProducts,
+} from "@/src/features/production-order-consumption/utils/consumptionRecords";
 import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import type {
   ProductionOrderConsumoResumen,
@@ -271,6 +274,18 @@ test.describe("consumos: el resumen del backend", () => {
     expect(cells(table)).toEqual([
       { Material: "GABARDINA", Unidad: "M", Planeado: "1", Ajustes: "-0.5", Actual: "0.5" },
     ]);
+  });
+
+  test("Recalcular solo ofrece materiales con planeado, la regla con que el backend responde 400", () => {
+    expect(recalculableConsumptionProducts(resumen).map((row) => row.producto)).toEqual([10575]);
+    expect(
+      recalculableConsumptionProducts([
+        { ...resumen[1], planeado: "0" },
+        { ...resumen[1], producto: 1, planeado: "-0.0000" },
+        { ...resumen[1], producto: 2, planeado: "no-numero" },
+        { ...resumen[1], producto: 3, planeado: "0.0001" },
+      ]).map((row) => row.producto),
+    ).toEqual([3]);
   });
 
   test("el historial rotula Original al primer registro CON renglones, como el backend", () => {

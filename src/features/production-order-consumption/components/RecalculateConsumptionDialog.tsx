@@ -35,7 +35,11 @@ interface RecalculateConsumptionDialogProps {
   onOpenChange: (open: boolean) => void;
   opId: number;
   folio: string;
-  /** Materiales con consumo en la OP (`consumos_resumen`). Se copian al abrir. */
+  /**
+   * Materiales que se pueden recalcular: los de `consumos_resumen` con consumo
+   * planeado (`recalculableConsumptionProducts`); los de planeado 0 el backend
+   * los rechaza. Se copian al abrir.
+   */
   products: ProductionOrderConsumoResumen[];
 }
 

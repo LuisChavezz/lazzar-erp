@@ -24,6 +24,8 @@ interface ProductionOrderConsumptionSectionProps {
   consumos: ProductionOrderConsumo[];
   /** `consumos_resumen` del backend (EC-880): una fila por material. */
   products: ProductionOrderConsumoResumen[];
+  /** Cuántos de `products` puede recalcular el backend (`recalculableConsumptionProducts`). */
+  recalculableCount: number;
   /** La OP está Completada o Cancelada: el backend ya no admite el recálculo. */
   isClosed: boolean;
   onRecalculate: () => void;
@@ -48,6 +50,7 @@ interface ProductionOrderConsumptionSectionProps {
 export function ProductionOrderConsumptionSection({
   consumos,
   products,
+  recalculableCount,
   isClosed,
   onRecalculate,
 }: ProductionOrderConsumptionSectionProps) {
@@ -55,6 +58,8 @@ export function ProductionOrderConsumptionSection({
     ? "La orden está completada o cancelada: ya no se pueden recalcular sus consumos."
     : products.length === 0
       ? "La orden no tiene consumos que recalcular."
+      : recalculableCount === 0
+        ? "Ningún material tiene consumo planeado: no hay nada que recalcular."
       : undefined;
 
   return (
