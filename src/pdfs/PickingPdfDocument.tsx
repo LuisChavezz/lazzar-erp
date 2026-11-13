@@ -59,7 +59,7 @@ export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps
     ...conditionalColumn(lineas, (line) => line.ubicacion_nombre, {
       id: "ubicacion",
       header: "Ubicación",
-      flex: 1.6,
+      flex: 1.25,
       cell: (line) => textOrDash(line.ubicacion_nombre),
     }),
     quantity("solicitada", "Solicitada", (line) => line.cantidad_solicitada),
@@ -69,7 +69,7 @@ export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps
     {
       id: "estatus",
       header: "Estatus",
-      flex: 1.1,
+      flex: 1.05,
       cell: (line) => PICKING_LINEA_ESTADO_CONFIG[line.estado]?.label ?? textOrDash(line.estado),
     },
   ];

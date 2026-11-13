@@ -56,17 +56,20 @@ export function workOrderGarmentTables<T>({
     ];
   }
 
+  // Anchos (EC-891) medidos con Arimo en la tabla más ancha, la de la OR con
+  // sus cuatro columnas extra: el SKU más largo (`10012-100-2XCH`) cabe en un
+  // renglón y ningún encabezado ("Programado", "Pendiente") se parte.
   const show = workOrderGarmentOptionalColumns(groups.flatMap((group) => group.rows.map((row) => row.line)));
   const columns: PdfColumn<WorkOrderPdfGarmentRow<T>>[] = [
-    { id: "talla", header: "Talla", flex: 0.9, bold: true, cell: ({ line }) => textOrDash(line.talla) },
+    { id: "talla", header: "Talla", flex: 0.6, bold: true, cell: ({ line }) => textOrDash(line.talla) },
     ...(show.sku
-      ? [{ id: "sku", header: "SKU", flex: 1.4, cell: ({ line }: WorkOrderPdfGarmentRow<T>) => textOrDash(line.sku) }]
+      ? [{ id: "sku", header: "SKU", flex: 1.45, cell: ({ line }: WorkOrderPdfGarmentRow<T>) => textOrDash(line.sku) }]
       : []),
     ...extraColumns,
     {
       id: "cantidad",
       header: "En esta orden",
-      flex: 1.4,
+      flex: 0.7,
       align: "right",
       bold: true,
       cell: ({ line }) => formatQuantityValue(line.cantidad),
@@ -76,7 +79,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "programado",
             header: "Programado",
-            flex: 1.1,
+            flex: 1,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.programado),
           },
@@ -87,7 +90,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "pedido",
             header: "Pedido",
-            flex: 1,
+            flex: 0.7,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pedido),
           },
@@ -98,7 +101,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "pendiente",
             header: "Pendiente",
-            flex: 1,
+            flex: 0.85,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pendiente),
           },

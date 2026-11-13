@@ -170,13 +170,13 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
     {
       id: "sku",
       header: "SKU",
-      flex: 1.4,
+      flex: 1.7,
       cell: (linea) => (isSampleLine(linea) ? "Muestra" : linea.sku_base || EMPTY),
     },
     {
       id: "descripcion",
       header: "Descripción",
-      flex: 3.6,
+      flex: 3.3,
       cell: (linea) => {
         const servicesCaption = lineServicesCaption(linea);
         return (

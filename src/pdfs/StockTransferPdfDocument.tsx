@@ -51,13 +51,13 @@ export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdf
     ...conditionalColumn(lineas, (line) => line.ubicacion_origen_nombre, {
       id: "ubicacion_origen",
       header: "Ubicación origen",
-      flex: 1.8,
+      flex: 1.25,
       cell: (line) => textOrDash(line.ubicacion_origen_nombre),
     }),
     ...conditionalColumn(lineas, (line) => line.ubicacion_destino_nombre, {
       id: "ubicacion_destino",
       header: "Ubicación destino",
-      flex: 1.8,
+      flex: 1.25,
       cell: (line) => textOrDash(line.ubicacion_destino_nombre),
     }),
   ];
