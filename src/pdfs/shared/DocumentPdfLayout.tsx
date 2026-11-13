@@ -21,7 +21,7 @@ import type { ReactNode } from "react";
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { documentPdfStyles as s } from "./DocumentPdfStyles";
 import {
-  DOCUMENT_PDF_CANCELLED_MARK,
+  documentPdfCancelledMark,
   documentPdfCancellationReason,
   documentPdfFolioLabel,
   visiblePdfColumns,
@@ -67,8 +67,9 @@ export function DocumentPdfLayout({
   const folioLabel = documentPdfFolioLabel(descriptor.folio, descriptor.id);
   const cancelled = descriptor.cancelled;
   const cancellationReason = documentPdfCancellationReason(descriptor);
+  const cancelledMark = documentPdfCancelledMark(descriptor);
   const banner = cancelled
-    ? { title: DOCUMENT_PDF_CANCELLED_MARK, detail: cancellationReason, detailLabel: "Motivo: " }
+    ? { title: cancelledMark, detail: cancellationReason, detailLabel: "Motivo: " }
     : statusBanner
       ? { title: statusBanner.title, detail: statusBanner.detail?.trim() || null, detailLabel: null }
       : null;
@@ -134,7 +135,7 @@ export function DocumentPdfLayout({
         {/* ── Marca de agua (cancelado) — al final para quedar encima ── */}
         {cancelled ? (
           <View style={s.watermarkLayer} fixed>
-            <Text style={s.watermarkText}>{DOCUMENT_PDF_CANCELLED_MARK}</Text>
+            <Text style={s.watermarkText}>{cancelledMark}</Text>
           </View>
         ) : null}
 
@@ -144,7 +145,7 @@ export function DocumentPdfLayout({
             {title} {folioLabel}
             {footerDetail ? ` — ${footerDetail}` : ""}
             {cancelled ? (
-              <Text style={s.footerStatus}> · {DOCUMENT_PDF_CANCELLED_MARK}</Text>
+              <Text style={s.footerStatus}> · {cancelledMark}</Text>
             ) : null}
           </Text>
           <Text

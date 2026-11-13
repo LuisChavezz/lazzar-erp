@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import {
+  DOCUMENT_PDF_CANCELLED_MARK,
   documentPdfCancellationReason,
+  documentPdfCancelledMark,
   documentPdfFolioLabel,
   rowsHaveField,
   visiblePdfColumns,
@@ -91,5 +93,17 @@ test.describe("documentPdfCancellationReason", () => {
   test("un motivo vacío no se imprime", () => {
     expect(documentPdfCancellationReason({ cancelled: true, cancellationReason: "  " })).toBeNull();
     expect(documentPdfCancellationReason({ cancelled: true })).toBeNull();
+  });
+});
+
+test.describe("documentPdfCancelledMark", () => {
+  test("sin leyenda propia, o vacía, la marca es la de siempre", () => {
+    expect(documentPdfCancelledMark({})).toBe(DOCUMENT_PDF_CANCELLED_MARK);
+    expect(documentPdfCancelledMark({ cancelledLabel: null })).toBe("CANCELADO");
+    expect(documentPdfCancelledMark({ cancelledLabel: "  " })).toBe("CANCELADO");
+  });
+
+  test("un documento puede traer la suya (EC-858)", () => {
+    expect(documentPdfCancelledMark({ cancelledLabel: " FALLIDA " })).toBe("FALLIDA");
   });
 });
