@@ -13,8 +13,10 @@ import { withDocumentPdfFont } from "./documentPdfFonts";
 
 // Toda la base en Arimo (EC-858, `documentPdfFonts`): los nombres de Helvetica
 // de abajo y de `basePdfStyles` se traducen a esa familia.
+const base = basePdfStyles(C);
+
 export const documentPdfStyles = withDocumentPdfFont(StyleSheet.create({
-  ...basePdfStyles(C),
+  ...base,
 
   /* ── Encabezado ──────────────────────────────── */
   companyName: {
@@ -139,6 +141,23 @@ export const documentPdfStyles = withDocumentPdfFont(StyleSheet.create({
   /* ── Tabla de renglones ──────────────────────── */
   section: {
     marginBottom: 4,
+  },
+  // Margen lateral de cada celda (EC-891): sin él, el texto de una columna que
+  // llena la suya toca el de la siguiente ("…SA DE CVDMS050731LX7"). Va en la
+  // caja de la celda —encabezado, celda de texto y celda compuesta por igual—
+  // y no en `tableCell`, que `PdfCellText` repite dentro de la celda compuesta.
+  // La fila y el encabezado bajan su relleno de 8 a 5 para que el texto de los
+  // extremos siga a 8 pt del borde: entre columnas quedan 3 + 3 = 6 pt.
+  tableCellBox: {
+    paddingHorizontal: 3,
+  },
+  tableHeader: {
+    ...base.tableHeader,
+    paddingHorizontal: 5,
+  },
+  tableRow: {
+    ...base.tableRow,
+    paddingHorizontal: 5,
   },
   cellRight: {
     textAlign: "right",
