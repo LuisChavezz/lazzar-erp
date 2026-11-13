@@ -17,9 +17,12 @@
  */
 
 /**
- * Estatus posibles de un `Picking`. Hoy el backend solo asigna `"Pendiente"`
- * — los otros seis existen en el modelo pero nada los asigna todavía (ver
- * `constants/pickingStatus.ts`).
+ * Estatus posibles de un `Picking` (`Picking.Estado`). El alta
+ * (`PickingService.handle_store`) deja `"Completado"` si cada línea surte todo
+ * lo pendiente de su talla y `"Parcial"` si no; los pickings anteriores a ese
+ * flujo quedaron en `"Pendiente"`. Hay pickings `"Cancelado"` en los datos,
+ * aunque hoy ningún flujo lo asigna; `"Asignado"`, `"En proceso"` y `"Pausado"`
+ * existen en el modelo sin que nada los asigne (ver `constants/pickingStatus.ts`).
  */
 export type PickingEstado =
   | "Pendiente"
@@ -290,9 +293,11 @@ export interface CreatePickingDetalleLine {
  * del frontend (ver `ordenes_trabajo` arriba para el camino de reemplazo).
  */
 /**
- * Cuerpo de `POST /wms/pickings/{id}/trasladar/`: cambia el almacén desde el que
- * se surte el picking (`almacen`). Es documental, como el alta: no mueve ni
- * aparta existencias y no crea traspasos.
+ * Cuerpo de `POST /wms/pickings/{id}/trasladar/`: lleva las prendas del picking
+ * a otro almacén. Crea un traspaso (folio TR) desde donde están hoy
+ * (`almacen_actual`) hasta el nuevo, que MUEVE las existencias, y deja
+ * `almacen` = el nuevo, `almacen_destino` = `null` y `transferencia` = esa TR
+ * (sin líneas que mover no crea TR). No aparta existencias.
  *
  * `observaciones` es un `CharField(required=False, allow_blank=True)`: un
  * `null` es 400, así que se OMITE cuando está vacío. El backend la añade en una

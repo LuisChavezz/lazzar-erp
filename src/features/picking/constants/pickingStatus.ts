@@ -2,11 +2,11 @@ import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import type { PickingEstado } from "../interfaces/picking.interface";
 
 /**
- * Colores por estatus de un picking. Hoy el backend solo asigna
- * `"Pendiente"` (ver `Picking.estado` en `picking.interface.ts`) — los otros
- * seis existen en el modelo pero nada los asigna todavía. Se cubren los 7
- * desde ahora para que un cambio futuro de backend que empiece a usarlos no
- * requiera tocar el frontend.
+ * Colores por estatus de un picking: los 7 de `Picking.Estado`. El alta deja
+ * el picking en `"Completado"` o `"Parcial"` (ver `PickingEstado` en
+ * `picking.interface.ts`); los pickings antiguos siguen en `"Pendiente"` y hay
+ * `"Cancelado"` en los datos, aunque hoy ningún flujo lo asigna. Los otros
+ * tres existen en el modelo sin que nada los asigne.
  */
 export const PICKING_STATUS_CONFIG: Record<PickingEstado, StatusBadgeConfigEntry> = {
   Pendiente: {
