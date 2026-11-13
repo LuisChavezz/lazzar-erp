@@ -7,7 +7,9 @@ import { FormCancelButton, FormSubmitButton } from "../../../components/FormButt
 import { ItemPickerButton } from "../../../components/ItemPickerButton";
 import { InfoIcon, ProductVariantsIcon, SettingsIcon } from "../../../components/Icons";
 import { READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
+import { LoadingSkeleton } from "../../../components/LoadingSkeleton";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
+import { useColors } from "../../colors/hooks/useColors";
 import { ProductSelectorDialog } from "../../products/components/ProductSelectorDialog";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { useProductVariantForm } from "../hooks/useProductVariantForm";
@@ -17,7 +19,35 @@ interface ProductVariantFormProps {
   productVariantToEdit?: ProductVariant | null;
 }
 
-export default function ProductVariantForm({
+/**
+ * No monta el formulario hasta que el catálogo de colores cargó: los valores de
+ * edición (`editValues`) dependen de él (un color fuera del catálogo se vacía),
+ * y el hook vuelve a hacer `form.reset(editValues)` cuando cambian. Montado con
+ * la caché fría, la llegada tardía de los colores borraba lo ya escrito. La
+ * consulta es la misma (`["colors"]`) que usa el hook, así que no pide nada de
+ * más. Un fallo de carga deja pasar: el formulario muestra sus prerequisitos.
+ */
+export default function ProductVariantForm(props: ProductVariantFormProps) {
+  const { isLoading: isLoadingColors } = useColors();
+
+  if (isLoadingColors) {
+    return (
+      <div
+        className="flex flex-col gap-6"
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando formulario de variante"
+      >
+        <LoadingSkeleton className="h-24 rounded-3xl" />
+        <LoadingSkeleton className="h-64 rounded-3xl" />
+      </div>
+    );
+  }
+
+  return <ProductVariantFormContent {...props} />;
+}
+
+function ProductVariantFormContent({
   onSuccess,
   productVariantToEdit,
 }: ProductVariantFormProps) {
