@@ -1,28 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import { LoadingSpinnerIcon } from "@/src/components/Icons";
 import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
-import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
+import { useProductVariantSearch } from "@/src/features/product-variants/hooks/useProductVariantSelector";
+import type { ProductVariantSelectorItem } from "@/src/features/product-variants/interfaces/product-variant-selector.interface";
+import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
+import { CATALOG_SELECTOR_DEBOUNCE_MS } from "@/src/utils/catalogSelectorQuery";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 
-/**
- * Debounce de un valor: difiere las recomputaciones costosas (filtrado +
- * render de la lista de resultados) hasta que el usuario deja de teclear,
- * sacándolas del manejador del evento de input para mejorar el INP.
- */
-function useDebounce<T>(value: T, delay = 250): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
-
 interface ProductVariantSearchDropdownProps {
-  variants: ProductVariant[];
   value: number;
   onChange: (variantId: number) => void;
   onBlur: () => void;
@@ -30,15 +18,22 @@ interface ProductVariantSearchDropdownProps {
   disabled?: boolean;
 }
 
+const variantLabel = (variant: ProductVariantSelectorItem) => `${variant.sku} - ${variant.nombre}`;
+
 /**
  * Input con búsqueda y dropdown para seleccionar una variante de producto.
  * Reemplaza el <select> de variantes con una experiencia tipo autocomplete.
+ *
+ * La búsqueda corre EN EL SERVIDOR (`producto-variante/selector/?q=&limit=`,
+ * EC-886) con el texto debounced: no se descarga el catálogo, y solo trae
+ * variantes activas de productos activos. La variante elegida se guarda
+ * entera aquí (`selected`), así su etiqueta no depende de que la búsqueda
+ * actual la traiga. El formulario remonta el componente (`key`) al limpiarse.
  *
  * El dropdown usa `position: fixed` calculado desde el input para evitar
  * recortes por contenedores padre con `overflow-hidden`.
  */
 export function ProductVariantSearchDropdown({
-  variants,
   value,
   onChange,
   onBlur,
@@ -46,6 +41,7 @@ export function ProductVariantSearchDropdown({
   disabled,
 }: ProductVariantSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selected, setSelected] = useState<ProductVariantSelectorItem | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
@@ -53,25 +49,20 @@ export function ProductVariantSearchDropdown({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // ─── Label derivado del valor seleccionado ────────────────────────────
-  const selectedVariant = useMemo(
-    () => variants.find((v) => v.id === value),
-    [variants, value],
-  );
-  const selectedLabel = selectedVariant
-    ? `${selectedVariant.sku} - ${selectedVariant.nombre}`
-    : "";
-
-  // ─── Resultados filtrados (sobre el query debounced) ─────────────────
-  // Filtrar y volver a renderizar la lista en cada pulsación bloquea el hilo
-  // principal cuando hay muchas variantes; se hace sobre el valor debounced.
-  const debouncedQuery = useDebounce(searchQuery);
-  const filteredVariants = useMemo(() => {
-    const query = debouncedQuery.trim();
-    if (!query) return variants;
-    return variants.filter((v) => matchesProductVariantSearch(v, query));
-  }, [variants, debouncedQuery]);
+  // Solo cuenta si sigue siendo el valor del formulario.
+  const selectedVariant = selected && selected.id === value ? selected : null;
+  const selectedLabel = selectedVariant ? variantLabel(selectedVariant) : "";
 
   const showDropdown = isOpen && searchQuery.trim().length > 0;
+
+  // ─── Búsqueda en el servidor (sobre el texto debounced) ──────────────
+  // Solo con el dropdown abierto y algo escrito: el texto que queda tras
+  // elegir (la etiqueta) no dispara búsquedas.
+  const { term, isDebouncing } = useServerSearchTerm(searchQuery, CATALOG_SELECTOR_DEBOUNCE_MS);
+  const isSearchEnabled = showDropdown && term !== "";
+  const { variants, total, hasResults, isInitialError, isPlaceholderData, refetch } =
+    useProductVariantSearch({ q: term }, { enabled: isSearchEnabled });
+  const isSearching = isPlaceholderData || isDebouncing;
 
   // ─── Calcular posición del dropdown (fixed) ──────────────────────────
   const updateDropdownPosition = useCallback(() => {
@@ -114,9 +105,9 @@ export function ProductVariantSearchDropdown({
   }, [value, selectedLabel, searchQuery]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────
-  const handleSelect = (variant: ProductVariant) => {
-    const label = `${variant.sku} - ${variant.nombre}`;
-    setSearchQuery(label);
+  const handleSelect = (variant: ProductVariantSelectorItem) => {
+    setSelected(variant);
+    setSearchQuery(variantLabel(variant));
     onChange(variant.id);
     setIsOpen(false);
     setActiveIndex(-1);
@@ -154,6 +145,10 @@ export function ProductVariantSearchDropdown({
     }, 180);
   };
 
+  // Mientras llega la búsqueda de un término nuevo, las filas pintadas son de
+  // la anterior: el teclado no elige sobre ellas.
+  const selectableVariants = isSearching ? [] : variants;
+
   // ─── Navegación por teclado ───────────────────────────────────────────
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (!showDropdown) {
@@ -169,19 +164,19 @@ export function ProductVariantSearchDropdown({
       case "ArrowDown":
         event.preventDefault();
         setActiveIndex((prev) =>
-          prev < filteredVariants.length - 1 ? prev + 1 : 0,
+          prev < selectableVariants.length - 1 ? prev + 1 : 0,
         );
         break;
       case "ArrowUp":
         event.preventDefault();
         setActiveIndex((prev) =>
-          prev > 0 ? prev - 1 : filteredVariants.length - 1,
+          prev > 0 ? prev - 1 : selectableVariants.length - 1,
         );
         break;
       case "Enter":
         event.preventDefault();
-        if (activeIndex >= 0 && activeIndex < filteredVariants.length) {
-          handleSelect(filteredVariants[activeIndex]);
+        if (activeIndex >= 0 && activeIndex < selectableVariants.length) {
+          handleSelect(selectableVariants[activeIndex]);
         }
         break;
       case "Escape":
@@ -192,6 +187,73 @@ export function ProductVariantSearchDropdown({
         }
         break;
     }
+  };
+
+  const renderBody = () => {
+    if (isInitialError) {
+      return (
+        <div role="alert" className="px-4 py-3 text-xs text-red-500">
+          Error al buscar las variantes.{" "}
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void refetch()}
+            className="font-semibold underline cursor-pointer"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    if (!hasResults) {
+      return (
+        <div
+          role="status"
+          className="flex items-center gap-2 px-4 py-3 text-xs text-slate-500 dark:text-slate-400"
+        >
+          <LoadingSpinnerIcon className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+          Buscando...
+        </div>
+      );
+    }
+    if (variants.length === 0) {
+      return (
+        <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+          No se encontraron variantes.
+        </div>
+      );
+    }
+    return (
+      <div
+        aria-busy={isSearching || undefined}
+        className={`transition-opacity ${isSearching ? "opacity-60" : ""}`}
+      >
+        {variants.map((variant, index) => (
+          <button
+            key={variant.id}
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => handleSelect(variant)}
+            className={`w-full text-left px-4 py-3 cursor-pointer transition-colors ${
+              index === activeIndex && !isSearching
+                ? "bg-sky-50 dark:bg-sky-500/10"
+                : "hover:bg-slate-50 dark:hover:bg-white/10"
+            }`}
+          >
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <span className="min-w-0 truncate">{variantLabel(variant)}</span>
+              <ProductVariantCodeBadges variant={variant} />
+            </div>
+          </button>
+        ))}
+        {total > variants.length && (
+          <p className="px-4 py-2 text-center text-[11px] text-slate-400 dark:text-slate-500">
+            Hay {total} coincidencias y aquí se listan solo {variants.length}. Escribe más para
+            acotar la búsqueda.
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -215,34 +277,7 @@ export function ProductVariantSearchDropdown({
           style={dropdownStyle}
           className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden"
         >
-          <div className="max-h-52 overflow-y-auto">
-            {filteredVariants.length === 0 ? (
-              <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                No se encontraron variantes.
-              </div>
-            ) : (
-              filteredVariants.map((variant, index) => (
-                <button
-                  key={variant.id}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleSelect(variant)}
-                  className={`w-full text-left px-4 py-3 cursor-pointer transition-colors ${
-                    index === activeIndex
-                      ? "bg-sky-50 dark:bg-sky-500/10"
-                      : "hover:bg-slate-50 dark:hover:bg-white/10"
-                  }`}
-                >
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                    <span className="min-w-0 truncate">
-                      {variant.sku} - {variant.nombre}
-                    </span>
-                    <ProductVariantCodeBadges variant={variant} />
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+          <div className="max-h-52 overflow-y-auto">{renderBody()}</div>
         </div>
       )}
     </div>

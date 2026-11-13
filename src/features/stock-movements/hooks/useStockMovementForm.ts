@@ -7,7 +7,7 @@ import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
-import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
+import { useProductVariantSelectorTotal } from "@/src/features/product-variants/hooks/useProductVariantSelector";
 import { getStockItems } from "@/src/features/stock/services/actions";
 import { STOCK_ITEMS_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { useCreateStockMovement, parseStockMovementPedidoError } from "./useCreateStockMovement";
@@ -36,11 +36,14 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     isLoading: isLoadingLocations,
     isInitialError: isErrorLocations,
   } = useLocations();
+  // La variante se busca en el servidor (`ProductVariantSearchDropdown`, selector
+  // ligero de variantes activas, EC-886): aquí no se descarga el catálogo. Solo
+  // se pregunta si hay alguna (una fila), para el aviso de prerrequisitos.
   const {
-    productVariants,
+    total: variantTotal,
     isLoading: isLoadingVariants,
     isInitialError: isErrorVariants,
-  } = useProductVariants();
+  } = useProductVariantSelectorTotal();
 
   const isLoadingFormData = isLoadingWarehouses || isLoadingLocations || isLoadingVariants;
   // Si un catálogo NUNCA cargó, su lista vacía no es un catálogo vacío: se
@@ -123,26 +126,14 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     [locations],
   );
 
-  /** Variantes de producto como opciones del select. */
-  const variantOptions = useMemo(
-    () =>
-      productVariants
-        .filter((v) => v.activo)
-        .map((v) => ({
-          value: v.id,
-          label: `${v.sku} - ${v.nombre}`,
-        })),
-    [productVariants],
-  );
-
   // ─── Prerrequisitos ─────────────────────────────────────────────────────
   const missingItems = useMemo(() => {
     const items: string[] = [];
     if (warehouseOptions.length === 0) items.push("Almacenes activos");
     if (activeLocations.length === 0) items.push("Ubicaciones activas");
-    if (variantOptions.length === 0) items.push("Variantes de producto");
+    if (variantTotal === 0) items.push("Variantes de producto");
     return items;
-  }, [warehouseOptions.length, activeLocations.length, variantOptions.length]);
+  }, [warehouseOptions.length, activeLocations.length, variantTotal]);
 
   // ─── Selección de pedido ────────────────────────────────────────────────
   const handleSelectPedido = (pedido: { id: number; label: string }) => {
@@ -323,8 +314,6 @@ export function useStockMovementForm({ onSuccess }: { onSuccess?: () => void } =
     missingItems,
     warehouseOptions,
     activeLocations,
-    variantOptions,
-    productVariants,
     movimientoTypeOptions,
     stockCheckResult,
     availableStock,

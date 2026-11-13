@@ -23,7 +23,7 @@ import { AJUSTE_OBSERVACIONES_MAX } from "../schemas/stock-movement.schema";
 
 /**
  * Contenido del formulario — se monta solo cuando el diálogo está abierto,
- * por lo que los hooks de datos (useWarehouses, useLocations, useProductVariants)
+ * por lo que los hooks de datos (useWarehouses, useLocations, useProductVariantSelectorTotal)
  * solo se ejecutan bajo demanda.
  */
 function StockMovementFormContent({ onClose }: { onClose: () => void }) {
@@ -35,7 +35,6 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
     missingItems,
     warehouseOptions,
     activeLocations,
-    productVariants,
     resetCounter,
     movimientoTypeOptions,
     stockCheckResult,
@@ -71,14 +70,6 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
   const observacionesTrimmedLength = observacionesValue.trim().length;
   const ajusteObservacionesOverflow =
     isAjuste && observacionesTrimmedLength > AJUSTE_OBSERVACIONES_MAX;
-
-  // ─── Variantes activas (estable entre renders) ──────────────────────────
-  // Evita recrear el arreglo filtrado en cada render y estabiliza la prop
-  // `variants` del dropdown de búsqueda (memos internos no se invalidan).
-  const activeVariants = useMemo(
-    () => productVariants.filter((v) => v.activo),
-    [productVariants],
-  );
 
   // ─── Ubicaciones filtradas por almacén ──────────────────────────────────
   const ubicacionOrigenOptions = useMemo(
@@ -342,7 +333,6 @@ function StockMovementFormContent({ onClose }: { onClose: () => void }) {
                     <div className="space-y-2">
                       <ProductVariantSearchDropdown
                         key={resetCounter}
-                        variants={activeVariants}
                         value={field.state.value}
                         onChange={(variantId) => {
                           field.handleChange(variantId);
