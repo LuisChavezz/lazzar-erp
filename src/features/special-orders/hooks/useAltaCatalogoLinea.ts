@@ -33,7 +33,8 @@ interface AltaCatalogoVariables {
  * llamada, por nombre de talla): se invalida el detalle, que relee
  * `aplica_catalogo`/`sku_catalogo` de cada talla y con eso la columna "SKU
  * catálogo" y el botón. También `["product-variants"]` por prefijo: los SKU
- * nuevos salen en Nueva OP (`con_bom=true`), movimientos y traspasos. Sin
+ * nuevos salen en los selectores de variante (`producto-variante/selector/`)
+ * de Nueva OP, con su `tiene_bom`, de movimientos y de traspasos. Sin
  * `invalidateStockQueries`: el alta no mueve inventario.
  *
  * Con `categoriaProductoId` el alta SÍ toca la línea del pedido (le guarda la
