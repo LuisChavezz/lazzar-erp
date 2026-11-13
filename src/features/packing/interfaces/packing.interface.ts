@@ -1,3 +1,5 @@
+import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
+
 /**
  * Contratos del endpoint de packing (`/wms/packings/`).
  *
@@ -32,13 +34,11 @@ export type PackingEstado = "PENDIENTE" | "EN_PROCESO" | "COMPLETADO" | "CANCELA
  * no-nulo por línea (y su `_nombre` correspondiente) — mismo patrón que
  * `PickingDetalleLine`.
  *
- * `talla_id` es OPCIONAL de verdad (la clave puede faltar por completo, no
- * solo venir `null`): su origen en el backend es una cadena de atributos de
- * varios saltos (`picking_detalle.pedido_detalle_talla.variante.talla_id`)
- * SIN `default` — si `pedido_detalle_talla` es `null`, DRF revienta la cadena
- * a medio camino y omite la clave (`SkipField`) en vez de serializar `null`.
- * `talla_nombre` NO tiene este problema (declara `default=None`), por eso se
- * tipa distinto pese a compartir el mismo origen accidentado.
+ * `talla_id` sigue tipado como opcional por las respuestas anteriores a
+ * EC-882, que omitían la clave (`SkipField`) cuando faltaba la cadena
+ * `picking_detalle.pedido_detalle_talla.variante`. Desde EC-882 el backend la
+ * manda siempre, igual que `talla_nombre`, leída de la variante surtida (o de la
+ * talla del pedido si la línea no tiene variante).
  */
 export interface PackingDetalleLine {
   id: number;
@@ -57,6 +57,18 @@ export interface PackingDetalleLine {
   pedido_detalle_talla: number | null;
   talla_id?: number | null;
   talla_nombre: string | null;
+  /** Variante de muestra de su `picking_detalle` y su SKU (EC-882). */
+  variante_produccion: number | null;
+  sku_muestra: string | null;
+  /**
+   * SKU, color y talla de la variante surtida en la línea (EC-882): la de
+   * catálogo (`producto_variante`) o, si no hay, la de muestra
+   * (`variante_produccion`). Una línea sin ninguna de las dos trae `sku` y
+   * `color_*` en `null`.
+   */
+  sku: string | null;
+  color_id: number | null;
+  color_nombre: string | null;
   cantidad_asignada: string;
   cantidad_solicitada: string;
   cantidad_surtida: string;
@@ -85,6 +97,8 @@ export interface Packing {
   sucursal: number;
   pedido: number;
   pedido_folio: string | null;
+  /** Pedido con su cliente (EC-882), misma forma que en picking y en Producción. */
+  pedido_vinculado: PedidoVinculado;
   picking: number;
   picking_folio: string;
   picking_estado: string;
