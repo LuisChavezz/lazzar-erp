@@ -22,5 +22,5 @@ export const VARIANT_PRODUCT_TYPE_IDS: readonly number[] = [
  * Regla de FRONTEND (EC-252): solo el producto terminado (PT) exige talla. El
  * backend acepta `talla: null` para cualquier tipo.
  */
-export const productRequiresTalla = (product: Product | undefined): boolean =>
+export const productRequiresTalla = (product: Pick<Product, "tipo"> | undefined): boolean =>
   product?.tipo === PRODUCT_TYPE_IDS.PT;

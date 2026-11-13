@@ -9,7 +9,8 @@ export const useDeleteProductVariant = () => {
   return useMutation({
     mutationFn: deleteProductVariant,
     // Ninguna consulta usa la llave exacta `["product-variants"]`: los listados
-    // son `["product-variants", con_bom]`. Por eso todo va por prefijo.
+    // son `["product-variants", con_bom]` y los selectores
+    // `["product-variants", "selector", params]`. Por eso todo va por prefijo.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["product-variants"] });
       const previousVariants = queryClient.getQueriesData<ProductVariant[]>({

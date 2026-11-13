@@ -16,7 +16,7 @@ import type { ProductSelectorParams } from "../interfaces/product-selector.inter
  * Llave de `GET /catalogo/producto/selector/`. Cuelga del prefijo
  * `["products"]` que ya invalidan las mutaciones de productos. El segmento
  * `"selector"` evita chocar con los listados completos (`["products", tipo_id]`,
- * que siguen usando las tablas) y con el detalle (`["products", "detail", id]`).
+ * que siguen usando las tablas).
  * Los parámetros van normalizados: dos búsquedas iguales comparten llave.
  */
 export const productSelectorQueryKey = (params: ProductSelectorParams) =>

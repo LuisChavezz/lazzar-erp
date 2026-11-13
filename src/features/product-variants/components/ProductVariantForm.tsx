@@ -13,6 +13,7 @@ import { useColors } from "../../colors/hooks/useColors";
 import { ProductSelectorDialog } from "../../products/components/ProductSelectorDialog";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 import { useProductVariantForm } from "../hooks/useProductVariantForm";
+import { VARIANT_PRODUCT_TYPE_IDS } from "../constants/variantProductTypes";
 
 interface ProductVariantFormProps {
   onSuccess: () => void;
@@ -61,9 +62,8 @@ function ProductVariantFormContent({
     keepCreating,
     setKeepCreating,
     missingItems,
-    activeProducts,
     activeColors,
-    selectedProductId,
+    selectedProduct,
     getProductLabel,
     handleProductSelect,
     requiresTalla,
@@ -355,8 +355,8 @@ function ProductVariantFormContent({
       <ProductSelectorDialog
         open={isProductSelectorOpen}
         onOpenChange={setIsProductSelectorOpen}
-        products={activeProducts}
-        selectedId={selectedProductId}
+        tipoIds={VARIANT_PRODUCT_TYPE_IDS}
+        selected={selectedProduct}
         onSelect={handleProductSelect}
       />
     </>

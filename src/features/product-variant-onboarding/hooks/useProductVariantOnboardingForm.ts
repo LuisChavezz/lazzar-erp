@@ -6,8 +6,8 @@ import { useForm, useStore } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { toSendableDecimal } from "@/src/utils/decimal";
-import { useProducts } from "../../products/hooks/useProducts";
-import type { Product } from "../../products/interfaces/product.interface";
+import { useProductSelectorTotal } from "../../products/hooks/useProductSelector";
+import type { ProductSelectorItem } from "../../products/interfaces/product-selector.interface";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizesByCategory } from "../../sizes/hooks/useSizesByCategory";
 import {
@@ -46,28 +46,33 @@ const isFormField = (field: string): field is ProductVariantOnboardingFormField 
  * servidor separados (gana el del servidor) y, tras el 201, se guarda la
  * variante creada para mostrar el SKU real que asignó el backend.
  *
- * Catálogos reutilizados: productos PT + COMPRAS (`useProducts` con
- * `VARIANT_PRODUCT_TYPE_IDS`, activos), colores y tallas por categoría del
- * producto (`useSizesByCategory`). Los productos sin `codigo` NO se filtran: si
+ * Catálogos: el producto se busca en el servidor (`ProductSelectorDialog`,
+ * productos activos de `VARIANT_PRODUCT_TYPE_IDS`), colores y tallas por
+ * categoría del producto (`useSizesByCategory`). Los productos sin `codigo` NO se filtran: si
  * se elige uno, el backend responde su 400 bajo `producto`.
  *
  * Los errores de `sku` (SKU duplicado o demasiado largo) no tienen input propio:
  * van a `generalError`, que la UI pinta sobre los botones.
  */
 export function useProductVariantOnboardingForm() {
+  // El producto se elige en un selector que busca en el servidor
+  // (`ProductSelectorDialog`: productos activos PT y COMPRAS, EC-886), así que
+  // aquí no se descarga el catálogo. Solo se pregunta si hay alguno (una
+  // fila), para el aviso de prerequisitos.
   const {
-    products,
+    total: productTotal,
     isLoading: isLoadingProducts,
     isInitialError: isProductsError,
     error: productsError,
-  } = useProducts(VARIANT_PRODUCT_TYPE_IDS);
+  } = useProductSelectorTotal({ tipo_id: VARIANT_PRODUCT_TYPE_IDS });
   const { colors, isLoading: isLoadingColors, isInitialError: isColorsError, error: colorsError } =
     useColors();
 
-  const activeProducts = products.filter((product) => product.activo);
+  // Producto elegido en el selector: la fila completa que entrega el diálogo.
+  const [pickedProduct, setPickedProduct] = useState<ProductSelectorItem | null>(null);
 
-  const findProduct = (productId: number): Product | undefined =>
-    activeProducts.find((product) => product.id === productId);
+  const findProduct = (productId: number): ProductSelectorItem | undefined =>
+    pickedProduct?.id === productId ? pickedProduct : undefined;
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,7 +89,7 @@ export function useProductVariantOnboardingForm() {
 
   // Solo se reporta un catálogo como faltante cuando cargó bien y vino vacío.
   const missingItems = [
-    !isLoadingProducts && !isProductsError && activeProducts.length === 0 ? "Productos" : null,
+    !isLoadingProducts && !isProductsError && productTotal === 0 ? "Productos" : null,
     !isLoadingColors && !isColorsError && colors.length === 0 ? "Colores" : null,
   ].filter((item): item is string => Boolean(item));
 
@@ -236,9 +241,10 @@ export function useProductVariantOnboardingForm() {
    * Confirmación del selector de producto. Reconfirmar el MISMO producto no
    * toca nada: ni la talla capturada ni los avisos.
    */
-  const handleProductSelect = (productId: number) => {
-    if (productId === form.state.values.producto) return;
-    form.setFieldValue("producto", productId);
+  const handleProductSelect = (product: ProductSelectorItem) => {
+    if (product.id === form.state.values.producto) return;
+    setPickedProduct(product);
+    form.setFieldValue("producto", product.id);
     clearFieldErrors("producto");
     resetTalla();
   };
@@ -282,7 +288,8 @@ export function useProductVariantOnboardingForm() {
     isLoadingCatalogs: isLoadingProducts || isLoadingColors,
     catalogsError,
     missingItems,
-    activeProducts,
+    /** Producto elegido resuelto (para fijarlo en el selector); `null` si ninguno. */
+    selectedProduct: selectedProduct ?? null,
     colors,
     requiresTalla,
     sizeOptions,
