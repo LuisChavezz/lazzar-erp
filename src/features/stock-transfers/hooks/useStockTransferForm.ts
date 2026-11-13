@@ -6,12 +6,14 @@ import { useForm } from "@tanstack/react-form";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
 import { useLocations } from "@/src/features/locations/hooks/useLocations";
-import { useProducts } from "@/src/features/products/hooks/useProducts";
-import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import { useProductSelectorTotal } from "@/src/features/products/hooks/useProductSelector";
+import { useProductVariantSelectorTotal } from "@/src/features/product-variants/hooks/useProductVariantSelector";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
+import type { ProductVariantSelectorItem } from "@/src/features/product-variants/interfaces/product-variant-selector.interface";
 import {
   StockTransferFormSchema,
   createEmptyTransferLine,
+  type ItemKind,
   type StockTransferFormValues,
 } from "../schemas/stock-transfer.schema";
 import { buildTransferPayload } from "../utils/buildTransferPayload";
@@ -26,12 +28,27 @@ export interface EntityOption {
   label: string;
   sublabel?: string;
   /**
-   * Variante de origen (solo en las opciones de variante): el selector busca
-   * con `matchesProductVariantSearch` y muestra sus códigos secundarios
-   * (Proscai, SKU de producción), igual que Movimientos y Nueva OP.
+   * Variante de origen (solo en las opciones de variante): el selector muestra
+   * sus códigos secundarios (Proscai, SKU de producción), igual que
+   * Movimientos y Nueva OP.
    */
-  variant?: ProductVariant;
+  variant?: ProductVariantSelectorItem;
 }
+
+/** Fila del selector de productos como opción de una línea. */
+export const productEntityOption = (product: ProductSelectorItem): EntityOption => ({
+  id: product.id,
+  label: product.nombre,
+  sublabel: product.codigo ?? undefined,
+});
+
+/** Fila del selector de variantes como opción de una línea. */
+export const variantEntityOption = (variant: ProductVariantSelectorItem): EntityOption => ({
+  id: variant.id,
+  label: `${variant.sku} - ${variant.nombre}`,
+  sublabel: variant.sku,
+  variant,
+});
 
 const LINE_ERROR_PREFIX = "transferencia_detalle";
 
@@ -55,16 +72,20 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     isLoading: isLoadingLocations,
     isInitialError: isErrorLocations,
   } = useLocations();
+  // Productos y variantes se buscan en el servidor desde el selector de cada
+  // línea (`StockTransferProductSelectorDialog`, selectores ligeros de activos,
+  // EC-886): aquí no se descargan los catálogos. Solo se pregunta si hay
+  // alguno de cada uno (una fila), para el aviso de prerrequisitos.
   const {
-    products,
+    total: productTotal,
     isLoading: isLoadingProducts,
     isInitialError: isErrorProducts,
-  } = useProducts();
+  } = useProductSelectorTotal();
   const {
-    productVariants,
+    total: variantTotal,
     isLoading: isLoadingVariants,
     isInitialError: isErrorVariants,
-  } = useProductVariants();
+  } = useProductVariantSelectorTotal();
 
   const isLoadingFormData =
     isLoadingWarehouses || isLoadingLocations || isLoadingProducts || isLoadingVariants;
@@ -111,37 +132,25 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     [locations],
   );
 
-  const productOptions = useMemo<EntityOption[]>(
-    () =>
-      products
-        .filter((p) => p.activo)
-        .map((p) => ({ id: p.id, label: p.nombre, sublabel: p.codigo ?? undefined })),
-    [products],
-  );
-
-  const variantOptions = useMemo<EntityOption[]>(
-    () =>
-      productVariants
-        .filter((v) => v.activo)
-        .map((v) => ({
-          id: v.id,
-          label: `${v.sku} - ${v.nombre}`,
-          sublabel: v.sku,
-          variant: v,
-        })),
-    [productVariants],
-  );
+  // Lo elegido en cada selector, por modo e id: la línea solo guarda el id, y
+  // la etiqueta (y la opción fija al reabrir el selector) sale de aquí, no de
+  // un catálogo cargado.
+  const [knownItems, setKnownItems] = useState<Record<string, EntityOption>>({});
+  const rememberItem = (mode: ItemKind, option: EntityOption) =>
+    setKnownItems((prev) => ({ ...prev, [`${mode}:${option.id}`]: option }));
+  const getItemOption = (mode: ItemKind, id: number): EntityOption | undefined =>
+    id > 0 ? knownItems[`${mode}:${id}`] : undefined;
 
   // ─── Prerrequisitos ───────────────────────────────────────────────────────
   const missingItems = useMemo(() => {
     const items: string[] = [];
     // Un traspaso necesita origen Y destino distintos → al menos 2 almacenes.
     if (warehouseOptions.length < 2) items.push("Al menos 2 almacenes activos");
-    if (productOptions.length === 0 && variantOptions.length === 0) {
+    if (productTotal === 0 && variantTotal === 0) {
       items.push("Productos o variantes de producto");
     }
     return items;
-  }, [warehouseOptions.length, productOptions.length, variantOptions.length]);
+  }, [warehouseOptions.length, productTotal, variantTotal]);
 
   // ─── Helpers de errores ─────────────────────────────────────────────────
   const getError = (path: string): FormFieldError | undefined =>
@@ -315,8 +324,8 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
     missingItems,
     warehouseOptions,
     activeLocations,
-    productOptions,
-    variantOptions,
+    rememberItem,
+    getItemOption,
     lineKeys,
     serverBanner,
     bannerErrorTick,
