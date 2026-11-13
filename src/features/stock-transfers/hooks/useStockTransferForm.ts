@@ -134,7 +134,8 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
 
   // Lo elegido en cada selector, por modo e id: la línea solo guarda el id, y
   // la etiqueta (y la opción fija al reabrir el selector) sale de aquí, no de
-  // un catálogo cargado.
+  // un catálogo cargado. Se vacía junto con el formulario (al limpiar y tras
+  // un traspaso registrado): describe las líneas, no las sobrevive.
   const [knownItems, setKnownItems] = useState<Record<string, EntityOption>>({});
   const rememberItem = (mode: ItemKind, option: EntityOption) =>
     setKnownItems((prev) => ({ ...prev, [`${mode}:${option.id}`]: option }));
@@ -270,6 +271,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
         await createTransfer(buildTransferPayload(parsed.data));
         form.reset(defaultValues);
         setLineKeys([lineKeyCounter.current++]);
+        setKnownItems({});
         setErrors({});
         setServerBanner(null);
         onSuccess?.();
@@ -312,6 +314,7 @@ export function useStockTransferForm({ onSuccess }: { onSuccess?: () => void } =
   const handleReset = () => {
     form.reset(defaultValues);
     setLineKeys([lineKeyCounter.current++]);
+    setKnownItems({});
     setErrors({});
     setServerBanner(null);
   };
