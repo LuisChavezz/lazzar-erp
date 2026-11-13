@@ -41,6 +41,10 @@ export const useCreateSampleSkuOnboarding = (
       // en su línea cuando le asigna color: el detalle que leen picking,
       // programación y Mesa de Control también cambió.
       queryClient.invalidateQueries({ queryKey: ["pedido-detail", pedidoId] });
+      // El alta crea variantes de producción (las muestras que lista el alta de
+      // OP) y, con `alta_catalogo`, también variantes de catálogo con su BOM.
+      queryClient.invalidateQueries({ queryKey: ["production-variants"] });
+      queryClient.invalidateQueries({ queryKey: ["product-variants"] });
     },
     onError: (error) => {
       const parsed = parseSampleSkuOnboardingError(error);
