@@ -30,7 +30,7 @@ interface PickingDetailByIdDialogProps {
  *     (loader → error → `PickingDetailContent`): al mantener el mismo shell
  *     montado, la transición carga→dato NO remonta el modal (sin parpadeo de
  *     cierre/apertura ni reset de foco). Mismo chrome que `PickingDetailDialog`
- *     (RouteIcon, `maxWidth="820px"`, "Detalle de Picking").
+ *     (RouteIcon, `maxWidth="820px"`, "Detalle de Surtido").
  *
  * No depende de la query del listado (`usePickings`): fetchea por id.
  */
