@@ -100,8 +100,8 @@ test.describe("productionOrderPdfDescriptor", () => {
       folio: "2026-OP-00045",
       cancelled: false,
     });
-    // El folio de producción empieza con el año: no con "OP-", así que lleva el código.
-    expect(fileNameOf(op())).toBe("OP-2026-OP-00045.pdf");
+    // El folio de producción empieza con el año y trae el segmento OP: se usa tal cual.
+    expect(fileNameOf(op())).toBe("2026-OP-00045.pdf");
     expect(fileNameOf(op({ folio_op: "" }))).toBe("OP-ID72.pdf");
   });
 

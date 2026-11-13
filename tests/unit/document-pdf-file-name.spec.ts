@@ -36,6 +36,35 @@ test.describe("documentPdfFileName", () => {
     expect(documentPdfFileName("PED", "RC-00031", 7)).toBe("PED-RC-00031.pdf");
   });
 
+  test("producción: el segmento de tipo en medio del folio también cuenta (EC-857)", () => {
+    // Formatos reales de la BD (2026-11-13).
+    expect(documentPdfFileName("OP", "2026-OP-00016", 7)).toBe("2026-OP-00016.pdf");
+    expect(documentPdfFileName("OP", "OP-P-00010-2026", 7)).toBe("OP-P-00010-2026.pdf");
+    expect(documentPdfFileName("OP", "OP-E2715058", 7)).toBe("OP-E2715058.pdf");
+    expect(documentPdfFileName("OB", "2026-OB-00032", 7)).toBe("2026-OB-00032.pdf");
+    expect(documentPdfFileName("OR", "2026-OR-00001", 7)).toBe("2026-OR-00001.pdf");
+    // La OCM se reconoce por su segmento CM (y por su código).
+    expect(documentPdfFileName("OCM", "2026-CM-00006", 7)).toBe("2026-CM-00006.pdf");
+    expect(documentPdfFileName("OCM", "OCM-15", 7)).toBe("OCM-15.pdf");
+    // El segmento de OTRO tipo no cuenta, ni un tramo que solo lo contiene.
+    expect(documentPdfFileName("OB", "2026-OP-00016", 7)).toBe("OB-2026-OP-00016.pdf");
+    expect(documentPdfFileName("OP", "2026-CM-00006", 7)).toBe("OP-2026-CM-00006.pdf");
+    expect(documentPdfFileName("OC", "2026-OCX-1", 7)).toBe("OC-2026-OCX-1.pdf");
+  });
+
+  test("los demás formatos reales siguen igual", () => {
+    expect(documentPdfFileName("OC", "OC-1-126", 7)).toBe("OC-1-126.pdf");
+    expect(documentPdfFileName("OC", "OC-00001-2026", 7)).toBe("OC-00001-2026.pdf");
+    expect(documentPdfFileName("OC", "O-1-209", 7)).toBe("OC-O-1-209.pdf");
+    expect(documentPdfFileName("PED", "P-00009-2026", 7)).toBe("PED-P-00009-2026.pdf");
+    expect(documentPdfFileName("PED", "QA249-QA-000001", 7)).toBe("PED-QA249-QA-000001.pdf");
+    expect(documentPdfFileName("RC", "RT-00001", 7)).toBe("RT-00001.pdf");
+  });
+
+  test("un folio que es solo el segmento lleva el código delante", () => {
+    expect(documentPdfFileName("OP", "OP", 7)).toBe("OP-OP.pdf");
+  });
+
   test("compara el prefijo DESPUÉS de sanear el folio", () => {
     expect(documentPdfFileName("OC", "OC/2026/15", 7)).toBe("OC-2026-15.pdf");
     expect(documentPdfFileName("OC", " OC 00010 ", 7)).toBe("OC-00010.pdf");

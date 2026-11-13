@@ -145,7 +145,7 @@ const ob = (overrides: Partial<EmbroideryOrderDetail> = {}): EmbroideryOrderDeta
 
 test.describe("PDF de la orden de bordado", () => {
   test("código OB; solo el 8 (Cancelado legacy) lleva la marca", () => {
-    expect(fileName(embroideryOrderPdfDescriptor(ob()))).toBe("OB-2026-OB-00032.pdf");
+    expect(fileName(embroideryOrderPdfDescriptor(ob()))).toBe("2026-OB-00032.pdf");
     expect(fileName(embroideryOrderPdfDescriptor(ob({ folio_bordado: "" })))).toBe("OB-ID177.pdf");
     expect(embroideryOrderPdfDescriptor(ob({ estatus_bordado: 8 })).cancelled).toBe(true);
     expect(embroideryOrderPdfDescriptor(ob({ estatus_bordado: 7 })).cancelled).toBe(false);
@@ -263,7 +263,7 @@ const or = (overrides: Partial<ReflectiveOrderDetail> = {}): ReflectiveOrderDeta
 
 test.describe("PDF de la orden de reflejante", () => {
   test("código OR; la cancelada (7) lleva la marca", () => {
-    expect(fileName(reflectiveOrderPdfDescriptor(or()))).toBe("OR-2026-OR-00001.pdf");
+    expect(fileName(reflectiveOrderPdfDescriptor(or()))).toBe("2026-OR-00001.pdf");
     expect(reflectiveOrderPdfDescriptor(or({ estatus_reflejante: 7 })).cancelled).toBe(true);
     expect(reflectiveOrderPdfDescriptor(or({ estatus_reflejante: 5 })).cancelled).toBe(false);
   });
@@ -364,8 +364,8 @@ const ocm = (overrides: Partial<CorteMangaOrder> = {}): CorteMangaOrder => ({
 });
 
 test.describe("PDF de la orden de corte de manga", () => {
-  test("código OCM; el folio de la serie CM lleva el código delante", () => {
-    expect(fileName(corteMangaOrderPdfDescriptor(ocm()))).toBe("OCM-2026-CM-00006.pdf");
+  test("código OCM; el folio con segmento CM se usa tal cual", () => {
+    expect(fileName(corteMangaOrderPdfDescriptor(ocm()))).toBe("2026-CM-00006.pdf");
     expect(corteMangaOrderPdfDescriptor(ocm({ estatus_corte: 7 })).cancelled).toBe(true);
   });
 
