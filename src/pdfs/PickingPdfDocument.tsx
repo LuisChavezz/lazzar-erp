@@ -39,7 +39,7 @@ import {
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
-import { conditionalColumn, wmsQuantityColumn, optionalInfoItem, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsQuantityColumn, optionalInfoItem, wmsProductColumns, withWmsColumnGaps } from "./shared/wmsDocumentPdf";
 
 type PickingPdfDocumentProps = {
   picking: Picking;
@@ -125,7 +125,7 @@ export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps
       <PdfLineItemsTable
         title="LÍNEAS DEL SURTIDO"
         rows={lineas}
-        columns={columns}
+        columns={withWmsColumnGaps(columns)}
         emptyMessage="Este surtido no tiene líneas registradas."
       />
 

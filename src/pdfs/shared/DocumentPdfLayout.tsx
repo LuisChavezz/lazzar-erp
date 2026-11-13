@@ -199,6 +199,13 @@ export interface PdfColumn<Row> extends PdfColumnVisibility<Row> {
   align?: "left" | "right";
   bold?: boolean;
   /**
+   * Espacio (pt) a la izquierda de la columna, en encabezado y celdas. Las
+   * celdas no tienen relleno horizontal, así que en una tabla de muchas
+   * columnas un texto que llena la suya toca la siguiente (EC-858). Sin él, la
+   * columna queda como siempre.
+   */
+  gapBefore?: number;
+  /**
    * Contenido de la celda. Un texto o número se pinta con el estilo de celda;
    * cualquier otro nodo (varias líneas, p. ej.) se pinta tal cual dentro de la
    * celda.
@@ -252,6 +259,7 @@ export function PdfLineItemsTable<Row>({
               style={[
                 s.tableHeaderCell,
                 { flex: column.flex },
+                ...(column.gapBefore ? [{ paddingLeft: column.gapBefore }] : []),
                 ...(column.align === "right" ? [s.cellRight] : []),
               ]}
             >
@@ -276,6 +284,7 @@ export function PdfLineItemsTable<Row>({
                 const cellStyle = [
                   column.bold ? s.tableCellBold : s.tableCell,
                   { flex: column.flex },
+                  ...(column.gapBefore ? [{ paddingLeft: column.gapBefore }] : []),
                   ...(column.align === "right" ? [s.cellRight] : []),
                 ];
                 return typeof content === "string" || typeof content === "number" ? (
@@ -283,7 +292,7 @@ export function PdfLineItemsTable<Row>({
                     {content}
                   </Text>
                 ) : (
-                  <View key={column.id} style={{ flex: column.flex }}>
+                  <View key={column.id} style={{ flex: column.flex, paddingLeft: column.gapBefore ?? 0 }}>
                     {content}
                   </View>
                 );

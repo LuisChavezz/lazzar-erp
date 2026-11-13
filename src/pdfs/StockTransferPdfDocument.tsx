@@ -33,7 +33,7 @@ import {
   type PdfColumn,
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
-import { conditionalColumn, wmsProductColumns, wmsQuantityColumn } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsProductColumns, wmsQuantityColumn, withWmsColumnGaps } from "./shared/wmsDocumentPdf";
 
 type StockTransferPdfDocumentProps = {
   transfer: TransferenciaDetail;
@@ -95,7 +95,7 @@ export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdf
       <PdfLineItemsTable
         title="LÍNEAS DEL TRASPASO"
         rows={lineas}
-        columns={columns}
+        columns={withWmsColumnGaps(columns)}
         emptyMessage="Este traspaso no tiene líneas registradas."
       />
 

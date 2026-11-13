@@ -33,7 +33,7 @@ import {
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
-import { conditionalColumn, wmsQuantityColumn, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsQuantityColumn, wmsProductColumns, withWmsColumnGaps } from "./shared/wmsDocumentPdf";
 
 type PackingPdfDocumentProps = {
   packing: Packing;
@@ -118,7 +118,7 @@ export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps
       <PdfLineItemsTable
         title="LÍNEAS DEL EMBARQUE"
         rows={lineas}
-        columns={columns}
+        columns={withWmsColumnGaps(columns)}
         emptyMessage="Este embarque no tiene líneas registradas."
       />
 
