@@ -212,6 +212,9 @@ export interface PdfLineItemsTableProps<Row> {
   emptyMessage: string;
 }
 
+/** Puntos que deben caber tras el título de una tabla: encabezado + un renglón. */
+const TABLE_TITLE_MIN_PRESENCE_AHEAD = 50;
+
 export function PdfLineItemsTable<Row>({
   title,
   rows,
@@ -222,7 +225,20 @@ export function PdfLineItemsTable<Row>({
 
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>{title}</Text>
+      {/* El título no debe quedar solo al pie de una página: `minPresenceAhead`
+          pide que tras él quepan el encabezado de la tabla y su primer renglón
+          (~23 + ~22 pt); si no caben, el título pasa a la página siguiente con
+          la tabla. Dos detalles de `@react-pdf/layout` (`shouldBreak`):
+          - solo salta ANTES de un elemento si hay contenido delante de él en el
+            mismo contenedor (`breakingImprovesPresence`), así que este `View`
+            vacío, de alto 0, va primero para que el título no sea el primer hijo;
+          - los hermanos `fixed` se quedan en la página actual al saltar, por eso
+            el encabezado `fixed` sigue DENTRO del `View` de la tabla y no como
+            hermano del título. */}
+      <View />
+      <Text style={s.sectionTitle} minPresenceAhead={TABLE_TITLE_MIN_PRESENCE_AHEAD}>
+        {title}
+      </Text>
       <View>
         {/* Encabezado de la tabla — se repite en cada página */}
         <View style={s.tableHeader} fixed>
