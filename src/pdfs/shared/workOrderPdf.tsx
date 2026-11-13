@@ -13,6 +13,7 @@ import {
   groupWorkOrderGarments,
   workOrderCoveragePercent,
   workOrderGarmentOptionalColumns,
+  workOrderQuantityOrDash,
   type WorkOrderGarmentLine,
 } from "@/src/utils/workOrderGarments";
 import { PdfLineItemsTable, type PdfColumn, type PdfInfoItem } from "./DocumentPdfLayout";
@@ -22,9 +23,6 @@ export interface WorkOrderPdfGarmentRow<T> {
   item: T;
   line: WorkOrderGarmentLine;
 }
-
-const quantityOrDash = (value: number | null | undefined) =>
-  value === null || value === undefined ? EMPTY_VALUE : formatQuantityValue(value);
 
 /**
  * Una tabla por prenda + color, con el título que en la pantalla es el
@@ -80,7 +78,7 @@ export function workOrderGarmentTables<T>({
             header: "Programado",
             flex: 1.1,
             align: "right" as const,
-            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => quantityOrDash(line.programado),
+            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.programado),
           },
         ]
       : []),
@@ -91,7 +89,7 @@ export function workOrderGarmentTables<T>({
             header: "Pedido",
             flex: 1,
             align: "right" as const,
-            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => quantityOrDash(line.pedido),
+            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pedido),
           },
         ]
       : []),
@@ -102,7 +100,7 @@ export function workOrderGarmentTables<T>({
             header: "Pendiente",
             flex: 1,
             align: "right" as const,
-            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => quantityOrDash(line.pendiente),
+            cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pendiente),
           },
         ]
       : []),
