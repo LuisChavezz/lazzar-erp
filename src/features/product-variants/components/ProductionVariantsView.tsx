@@ -8,9 +8,6 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
-import { useProducts } from "../../products/hooks/useProducts";
-import { useColors } from "../../colors/hooks/useColors";
-import { useSizes } from "../../sizes/hooks/useSizes";
 import ProductVariantOnboardingForm from "../../product-variant-onboarding/components/ProductVariantOnboardingForm";
 import { useProductVariants } from "../hooks/useProductVariants";
 import { getColumns, getProductVariantHeaderFilters } from "./ProductVariantColumns";
@@ -24,9 +21,10 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
  * La tabla es de solo lectura (sin columna de acciones): la edición y la baja
  * siguen en Configuración (`ProductVariantList`, SKU manual), que no se toca.
  *
- * Los nombres de producto se resuelven contra el catálogo SIN filtro de tipo:
- * hay variantes de productos que no son PT/COMPRAS (p. ej. componentes MP de
- * los BOM) y con el filtro saldrían como `#id`.
+ * Producto, color y talla se pintan con los nombres que ya trae cada fila
+ * (`producto_nombre`, `color_nombre`, `talla_nombre`): no se piden los
+ * catálogos de productos, colores ni tallas solo para traducir ids (EC-888).
+ * El alta rápida carga sus propios catálogos al abrir su diálogo.
  *
  * Ver la página exige `R-PRODUCCION` (regla de prefijo `/manufacturing`) y el
  * alta se gatea con ese mismo código, igual que el alta rápida de productos.
@@ -37,40 +35,13 @@ export function ProductionVariantsView() {
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  const {
-    productVariants,
-    isLoading: isLoadingVariants,
-    isInitialError: isErrorVariants,
-    error: variantsError,
-  } = useProductVariants();
-  const {
-    products,
-    isLoading: isLoadingProducts,
-    isInitialError: isErrorProducts,
-    error: productsError,
-  } = useProducts();
-  const { colors, isLoading: isLoadingColors, isInitialError: isErrorColors, error: colorsError } =
-    useColors();
-  const { sizes, isLoading: isLoadingSizes, isInitialError: isErrorSizes, error: sizesError } =
-    useSizes();
+  const { productVariants, isLoading, isInitialError, error } = useProductVariants();
 
-  const lookups = {
-    products: new Map(products.map((product) => [product.id, product.nombre])),
-    colors: new Map(colors.map((color) => [color.id, color.nombre])),
-    sizes: new Map(sizes.map((size) => [size.id, size.nombre])),
-  };
   const columns = withHeaderFilters(
-    getColumns(() => {}, { canEdit: false, canDelete: false }, lookups),
+    getColumns(() => {}, { canEdit: false, canDelete: false }),
     productVariants,
-    getProductVariantHeaderFilters(lookups),
+    getProductVariantHeaderFilters(),
   );
-
-  const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
-  // Variantes, productos, colores y tallas ya llegan filtrados: un refetch
-  // fallido de cualquiera conserva la tabla (toast desde su hook) y su `error`
-  // es `null` salvo en una carga inicial fallida.
-  const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
-  const error = variantsError || productsError || colorsError || sizesError;
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -82,7 +53,7 @@ export function ProductionVariantsView() {
       fillHeight
       emptyMessage="No hay variantes registradas."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar variantes"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando variantes"
