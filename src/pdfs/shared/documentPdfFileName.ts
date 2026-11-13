@@ -45,10 +45,16 @@ export function documentPdfFileName(
  *   onboarding, `compras/api/views.py`): `RT-00011.pdf`, no `RC-RT-00011.pdf`.
  * - La orden de corte de manga se archiva como `OCM`, pero su folio lleva el
  *   segmento `CM` (`2026-CM-00006`, `folio_ocm` del backend): `2026-CM-00006.pdf`.
+ * - El picking y el packing se archivan como `PCK` y `PAK`, pero sus folios
+ *   llevan las series `PICK` y `PACK` (`PICK-000038`, `PACK-000017`, EC-858):
+ *   `PICK-000038.pdf`, no `PCK-PICK-000038.pdf`. El traspaso no lo necesita:
+ *   su folio ya empieza con `TR`.
  */
 const DOCUMENT_FOLIO_SERIES: Partial<Record<DocumentPdfType, readonly string[]>> = {
   RC: ["RC", "RT", "RZ"],
   OCM: ["OCM", "CM"],
+  PCK: ["PCK", "PICK"],
+  PAK: ["PAK", "PACK"],
 };
 
 const sanitizeFileNamePart = (value: string): string =>
