@@ -43,6 +43,13 @@ interface ServerSearchSelectListProps<T> {
   errorMessage: string;
   /** Alto máximo de la lista con scroll (clase de Tailwind). */
   maxHeightClassName?: string;
+  /**
+   * OPCIONAL (apagado por defecto). Motivo por el que `item` NO se puede elegir,
+   * o `null` si se puede (ver `SelectListRow.disabledReason`). Aplica igual a
+   * las filas fijadas y a los resultados. Sin la prop todas las filas se pueden
+   * elegir, igual que siempre.
+   */
+  getItemDisabledReason?: (item: T) => string | null;
 }
 
 /**
@@ -75,6 +82,7 @@ export function ServerSearchSelectList<T>({
   noResultsMessage,
   errorMessage,
   maxHeightClassName = "max-h-60",
+  getItemDisabledReason,
 }: ServerSearchSelectListProps<T>) {
   const pinnedKeys = new Set(pinned.map(getKey));
   const rest = results.filter((item) => !pinnedKeys.has(getKey(item)));
@@ -92,6 +100,7 @@ export function ServerSearchSelectList<T>({
         selected={selected}
         onSelect={() => onSelect(item)}
         indicator={renderIndicator(selected)}
+        disabledReason={getItemDisabledReason?.(item) ?? null}
       >
         {renderContent(item)}
       </SelectListRow>

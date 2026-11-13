@@ -6,16 +6,15 @@ import { Loader } from "@/src/components/Loader";
 import { XIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
-import { SearchableSelectList } from "@/src/components/SearchableSelectList";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
-import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
+import { useProductVariantSearchField } from "@/src/features/product-variants/hooks/useProductVariantSelector";
 import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
-import { matchesProductVariantSearch } from "@/src/features/product-variants/utils/productVariantSearch";
 import { useProductionVariants } from "../hooks/useProductionVariants";
 import { useMaquileros } from "@/src/features/suppliers/hooks/useMaquileros";
 import {
   catalogOption,
-  matchesOpSkuOption,
+  matchesProductionOption,
   productionOption,
   type OpSkuOption,
 } from "../utils/opSkuOptions";
@@ -78,25 +77,27 @@ export function ProductionOrderStep1({
   onNext,
   onBack,
 }: ProductionOrderStep1Props) {
-  // TODOS los SKU: el catálogo completo más las muestras SIN alta en catálogo
-  // (variantes de producción; las que ya tienen alta salen en el catálogo).
-  // La lista con BOM marca cuáles del catálogo se pueden fabricar; las de
-  // producción traen `tiene_bom`. Sin BOM se muestran pero no se eligen.
-  const { productVariants, isLoading, isInitialError } = useProductVariants();
+  // Dos fuentes de SKU:
+  // - Catálogo: búsqueda EN EL SERVIDOR sobre el selector ligero de variantes
+  //   (`producto-variante/selector/`, EC-886), una página por término. Solo
+  //   trae variantes activas de productos activos, y cada fila su `tiene_bom`.
+  // - Muestras SIN alta en catálogo (variantes de producción; las que ya
+  //   tienen alta salen en el catálogo): lista corta, completa, filtrada aquí
+  //   con el mismo término debounced.
+  // Sin BOM se muestran pero no se eligen.
+  const catalogSearch = useProductVariantSearchField();
   const {
     productionVariants,
     isLoading: isLoadingProduccion,
     isInitialError: isProduccionError,
   } = useProductionVariants();
-  const {
-    productVariants: variantsConBom,
-    isLoading: isLoadingBom,
-    isInitialError: isBomError,
-  } = useProductVariants(true);
-  const conBomIds = new Set(variantsConBom.map((variant) => variant.id));
-  const options: OpSkuOption[] = [
-    ...productionVariants.filter((variant) => !variant.aplica_catalogo).map(productionOption),
-    ...productVariants.map((variant) => catalogOption(variant, conBomIds.has(variant.id))),
+  const productionMatches = productionVariants
+    .filter((variant) => !variant.aplica_catalogo)
+    .map(productionOption)
+    .filter((option) => matchesProductionOption(option, catalogSearch.term));
+  const results: OpSkuOption[] = [
+    ...productionMatches,
+    ...catalogSearch.variants.map(catalogOption),
   ];
 
   const [prioridad, setPrioridad] = useState<number>(
@@ -128,7 +129,7 @@ export function ProductionOrderStep1({
   };
 
   // ── Loading state ─────────────────────────────────────────────────────
-  if (isLoading || isLoadingBom || isLoadingProduccion) {
+  if (isLoadingProduccion) {
     return (
       <Loader
         title="Cargando variantes"
@@ -138,9 +139,10 @@ export function ProductionOrderStep1({
   }
 
   // ── Error state ───────────────────────────────────────────────────────
-  // Solo si el catálogo nunca cargó: un refetch fallido conserva la lista (y
-  // la selección) y avisa por toast desde `useProductVariants`.
-  if (isInitialError || isBomError || isProduccionError) {
+  // Solo si las muestras nunca cargaron: un refetch fallido conserva la lista
+  // (y la selección) y avisa por toast. Un fallo de la búsqueda del catálogo
+  // se muestra DENTRO de la lista, con "Reintentar".
+  if (isProduccionError) {
     return (
       <p className="text-sm text-red-500 p-4">
         Error al cargar las variantes de producto.
@@ -291,22 +293,29 @@ export function ProductionOrderStep1({
         </span>
       </div>
 
-      {/* Search + scrollable multi-select list */}
-      <SearchableSelectList<OpSkuOption>
-        items={options}
-        pinSelected
-        debounceMs={250}
-        maxVisible={100}
+      {/* Búsqueda en el servidor + lista de selección múltiple. Lo elegido va
+          fijo arriba (son los objetos completos de `selected`), aunque la
+          búsqueda actual ya no lo traiga. */}
+      <ServerSearchSelectList<OpSkuOption>
+        search={catalogSearch.search}
+        onSearchChange={catalogSearch.setSearch}
+        results={results}
+        pinned={selected}
+        total={productionMatches.length + catalogSearch.total}
+        hasResults={catalogSearch.hasResults}
+        isInitialError={catalogSearch.isInitialError}
+        isSearching={catalogSearch.isSearching}
+        onRetry={() => void catalogSearch.refetch()}
         getItemDisabledReason={(option) =>
           option.tieneBom ? null : "Sin lista de materiales (BOM): no se puede fabricar todavía"
         }
         searchPlaceholder="Buscar variante por nombre, SKU, código Proscai o SKU de producción..."
-        filterPredicate={(option, term) => matchesOpSkuOption(option, term, matchesProductVariantSearch)}
         getKey={(option) => option.key}
         isSelected={isChosen}
         onSelect={toggleSku}
         emptyMessage="No hay variantes de producto disponibles."
         noResultsMessage="No se encontraron variantes"
+        errorMessage="Error al buscar las variantes de producto."
         renderIndicator={renderCheckboxIndicator}
         renderContent={(option) => (
           <>

@@ -1,4 +1,4 @@
-import type { ProductVariant } from "@/src/features/product-variants/interfaces/product-variant.interface";
+import type { ProductVariantSelectorItem } from "@/src/features/product-variants/interfaces/product-variant-selector.interface";
 import type { ProductionVariantOption } from "../interfaces/production-order.interface";
 
 /**
@@ -12,21 +12,22 @@ export interface OpSkuOption {
   id: number;
   nombre: string;
   sku: string;
-  /** Solo catálogo: para los badges de códigos. */
-  variant?: ProductVariant;
+  /** Solo catálogo: fila del selector, para los badges de códigos. */
+  variant?: ProductVariantSelectorItem;
   /** Solo producción: pedido de la muestra. */
   pedidoFolio?: string | null;
   tieneBom: boolean;
 }
 
-export const catalogOption = (variant: ProductVariant, tieneBom: boolean): OpSkuOption => ({
+/** `tieneBom` sale de la marca `tiene_bom` del selector de variantes (EC-886). */
+export const catalogOption = (variant: ProductVariantSelectorItem): OpSkuOption => ({
   key: `c:${variant.id}`,
   kind: "catalogo",
   id: variant.id,
   nombre: variant.nombre,
   sku: variant.sku,
   variant,
-  tieneBom,
+  tieneBom: variant.tiene_bom,
 });
 
 export const productionOption = (variant: ProductionVariantOption): OpSkuOption => ({
@@ -39,8 +40,15 @@ export const productionOption = (variant: ProductionVariantOption): OpSkuOption 
   tieneBom: variant.tiene_bom,
 });
 
-/** Búsqueda por nombre, SKU, códigos y folio del pedido (término ya en minúsculas). */
-export const matchesOpSkuOption = (option: OpSkuOption, term: string, matchesVariant: (v: ProductVariant, t: string) => boolean) =>
-  option.variant
-    ? matchesVariant(option.variant, term)
-    : [option.nombre, option.sku, option.pedidoFolio ?? ""].some((value) => value.toLowerCase().includes(term));
+/**
+ * Búsqueda EN MEMORIA de una muestra sin catálogo (`kind: "produccion"`): por
+ * nombre, SKU y folio del pedido, sin distinguir mayúsculas; un término vacío
+ * casa todo. Las variantes de catálogo no pasan por aquí: las busca el servidor.
+ */
+export const matchesProductionOption = (option: OpSkuOption, term: string) => {
+  const query = term.trim().toLowerCase();
+  if (!query) return true;
+  return [option.nombre, option.sku, option.pedidoFolio ?? ""].some((value) =>
+    value.toLowerCase().includes(query),
+  );
+};
