@@ -18,9 +18,10 @@ interface BomStep1Props {
   /** Closes the wizard (this is the first step — no previous step). */
   onBack: () => void;
   /**
-   * Selección con la que arranca el paso. Opcional: sin ella arranca vacío,
-   * como siempre. La usa el alta de SKU de muestra (`special-orders`) para
-   * conservar lo elegido al regresar desde su Paso 2; solo se lee al montar.
+   * Selección con la que arranca el paso. Opcional: sin ella arranca vacío.
+   * La usan el asistente de BOM (`BomStepManager`) y el alta de SKU de muestra
+   * (`special-orders`) para conservar lo elegido al regresar desde su Paso 2;
+   * solo se lee al montar.
    */
   initialSelected?: readonly ProductSelectorItem[];
 }
