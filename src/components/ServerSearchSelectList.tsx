@@ -13,6 +13,16 @@ interface ServerSearchSelectListProps<T> {
   /** Coincidencias de la búsqueda en el servidor (una página). */
   results: T[];
   /**
+   * OPCIONAL. Coincidencias que NO dependen de la búsqueda en el servidor: un
+   * catálogo corto ya cargado en memoria que el consumidor filtra con el mismo
+   * término (p. ej. las muestras sin catálogo del alta de OP). Se pintan antes
+   * de `results` y siguen visibles y elegibles aunque la búsqueda del servidor
+   * esté cargando o haya fallado: "Buscando...", el error con "Reintentar" y el
+   * aviso de que hay más solo se refieren a `results`. Sin la prop la lista se
+   * comporta exactamente igual que siempre.
+   */
+  localResults?: T[];
+  /**
    * Lo SELECCIONADO, fijo arriba y visible aunque la búsqueda no lo incluya
    * (issue #262): confirmar nunca aplica una selección que el usuario no ve.
    * Lo arma el consumidor con lo que sabe de cada seleccionado (el objeto que
@@ -45,9 +55,10 @@ interface ServerSearchSelectListProps<T> {
   maxHeightClassName?: string;
   /**
    * OPCIONAL (apagado por defecto). Motivo por el que `item` NO se puede elegir,
-   * o `null` si se puede (ver `SelectListRow.disabledReason`). Aplica igual a
-   * las filas fijadas y a los resultados. Sin la prop todas las filas se pueden
-   * elegir, igual que siempre.
+   * o `null` si se puede (ver `SelectListRow.disabledReason`). Aplica a los
+   * resultados, NUNCA a las filas fijadas: lo ya elegido siempre se puede
+   * quitar, aunque su motivo cambie después. Sin la prop todas las filas se
+   * pueden elegir, igual que siempre.
    */
   getItemDisabledReason?: (item: T) => string | null;
 }
@@ -67,6 +78,7 @@ export function ServerSearchSelectList<T>({
   onSearchChange,
   searchPlaceholder,
   results,
+  localResults = [],
   pinned,
   getKey,
   isSelected,
@@ -86,13 +98,16 @@ export function ServerSearchSelectList<T>({
 }: ServerSearchSelectListProps<T>) {
   const pinnedKeys = new Set(pinned.map(getKey));
   const rest = results.filter((item) => !pinnedKeys.has(getKey(item)));
+  const localRest = localResults.filter((item) => !pinnedKeys.has(getKey(item)));
   const hasSearch = search.trim() !== "";
   // El servidor tiene más coincidencias de las que trajo la página. El aviso
   // cuenta las filas listadas bajo "Resultados" (`rest`, sin las fijadas
   // arriba), no `results`, para no contradecir lo que se ve.
   const hasMore = total > results.length;
 
-  const renderRow = (item: T) => {
+  // Una fila fijada (lo seleccionado) nunca se deshabilita: siempre se puede
+  // quitar de la selección.
+  const renderRow = (item: T, { isPinned = false }: { isPinned?: boolean } = {}) => {
     const selected = isSelected(item);
     return (
       <SelectListRow
@@ -100,7 +115,7 @@ export function ServerSearchSelectList<T>({
         selected={selected}
         onSelect={() => onSelect(item)}
         indicator={renderIndicator(selected)}
-        disabledReason={getItemDisabledReason?.(item) ?? null}
+        disabledReason={isPinned ? null : (getItemDisabledReason?.(item) ?? null)}
       >
         {renderContent(item)}
       </SelectListRow>
@@ -121,13 +136,15 @@ export function ServerSearchSelectList<T>({
       <SearchInput value={search} onChange={onSearchChange} placeholder={searchPlaceholder} />
 
       <div className={`${maxHeightClassName} overflow-y-auto space-y-1 pr-1`}>
-        {pinned.map(renderRow)}
+        {pinned.map((item) => renderRow(item, { isPinned: true }))}
 
         {pinned.length > 0 && (
           <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             Resultados de la búsqueda
           </div>
         )}
+
+        {localRest.map((item) => renderRow(item))}
 
         {isInitialError ? (
           <p role="alert" className="py-4 text-center text-sm text-red-500">
@@ -150,16 +167,19 @@ export function ServerSearchSelectList<T>({
           </p>
         ) : rest.length === 0 && !hasMore ? (
           // Vacío solo si el servidor de verdad no tiene más: si la página
-          // traía únicamente lo ya fijado arriba, abajo va el aviso de que hay más.
-          <p className="py-6 text-center text-sm text-slate-400">
-            {hasSearch ? noResultsMessage : emptyMessage}
-          </p>
+          // traía únicamente lo ya fijado arriba, abajo va el aviso de que hay
+          // más. Con coincidencias locales pintadas arriba, no hay nada que decir.
+          localRest.length === 0 && (
+            <p className="py-6 text-center text-sm text-slate-400">
+              {hasSearch ? noResultsMessage : emptyMessage}
+            </p>
+          )
         ) : (
           <div
             aria-busy={isSearching || undefined}
             className={`space-y-1 transition-opacity ${isSearching ? "opacity-60" : ""}`}
           >
-            {rest.map(renderRow)}
+            {rest.map((item) => renderRow(item))}
             {hasMore && (
               <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
                 {rest.length === 0
