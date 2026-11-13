@@ -96,7 +96,12 @@ export interface EmbroideryOrderLine {
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
-  color_nombre: string | null;
+  /**
+   * OPCIONAL: es `CharField(source='color.nombre')`, y DRF OMITE la clave (no
+   * la manda en `null`) cuando el renglón no tiene color. Mismo caso que en la
+   * orden de reflejante (EC-857).
+   */
+  color_nombre?: string | null;
   cantidad: number;
   posicion_bordado: string | null;
   colores_hilo: number;

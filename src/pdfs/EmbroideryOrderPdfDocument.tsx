@@ -120,7 +120,7 @@ export const EmbroideryOrderPdfDocument = ({ order, company }: EmbroideryOrderPd
           id: linea.id,
           productoId: linea.producto,
           producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
-          color: linea.color_nombre,
+          color: linea.color_nombre ?? null,
           talla: linea.talla_nombre,
           cantidad: linea.cantidad,
           sku: linea.sku,

@@ -21,7 +21,7 @@ const BordadoCell = ({ linea }: { linea: EmbroideryOrderDetailLine }) => {
         ubicaciones={ubicaciones}
         productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
         tallaNombre={linea.talla_nombre}
-        colorNombre={linea.color_nombre}
+        colorNombre={linea.color_nombre ?? null}
         posicionLabel={linea.posicion_bordado}
       />
       {ubicaciones.length > 1 && (
@@ -42,7 +42,7 @@ export function EmbroideryOrderGarmentGroups({ items }: { items: EmbroideryOrder
         id: linea.id,
         productoId: linea.producto,
         producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
-        color: linea.color_nombre,
+        color: linea.color_nombre ?? null,
         talla: linea.talla_nombre,
         cantidad: linea.cantidad,
         sku: linea.sku,
