@@ -11,6 +11,10 @@ export const useCreateListaMaterial = () => {
     mutationFn: (body: ListaMaterialCreate) => createListaMaterial(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bom"] });
+      // `tiene_bom` del selector de variantes (alta de OP) depende de las
+      // listas de materiales: sin esto, la variante seguiría como "Sin BOM"
+      // hasta que venciera la caché.
+      queryClient.invalidateQueries({ queryKey: ["product-variants"] });
       toast.success("Lista de materiales registrada correctamente");
     },
     onError: (error) => {
