@@ -9,11 +9,7 @@ import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductVariantForm from "./ProductVariantForm";
 import { ProductVariant } from "../interfaces/product-variant.interface";
-import { useProducts } from "../../products/hooks/useProducts";
-import { useColors } from "../../colors/hooks/useColors";
-import { useSizes } from "../../sizes/hooks/useSizes";
 import { useProductVariants } from "../hooks/useProductVariants";
-import { VARIANT_PRODUCT_TYPE_IDS } from "../constants/variantProductTypes";
 
 export default function ProductVariantList() {
   const { data: session } = useSession();
@@ -26,25 +22,10 @@ export default function ProductVariantList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProductVariant, setSelectedProductVariant] =
     useState<ProductVariant | null>(null);
-  const {
-    productVariants,
-    isLoading: isLoadingVariants,
-    isInitialError: isErrorVariants,
-    error: variantsError,
-  } = useProductVariants();
-  // Mismos tipos que el formulario (PT + COMPRAS, EC-249): con solo PT, el
-  // nombre del producto de una variante COMPRAS saldría como `#id`. Comparte
-  // la entrada de caché del formulario.
-  const {
-    products,
-    isLoading: isLoadingProducts,
-    isInitialError: isErrorProducts,
-    error: productsError,
-  } = useProducts(VARIANT_PRODUCT_TYPE_IDS);
-  const { colors, isLoading: isLoadingColors, isInitialError: isErrorColors, error: colorsError } =
-    useColors();
-  const { sizes, isLoading: isLoadingSizes, isInitialError: isErrorSizes, error: sizesError } =
-    useSizes();
+  // Producto, color y talla se pintan con los nombres que trae cada fila
+  // (EC-888): sin pedir catálogos solo para traducir ids. El formulario carga
+  // los suyos al abrir el diálogo.
+  const { productVariants, isLoading, isInitialError, error } = useProductVariants();
 
   const handleEdit = useCallback(
     (variant: ProductVariant) => {
@@ -59,26 +40,11 @@ export default function ProductVariantList() {
     setIsDialogOpen(true);
   }, [setSelectedProductVariant]);
 
-  const lookups = useMemo(
-    () => ({
-      products: new Map(products.map((product) => [product.id, product.nombre])),
-      colors: new Map(colors.map((color) => [color.id, color.nombre])),
-      sizes: new Map(sizes.map((size) => [size.id, size.nombre])),
-    }),
-    [products, colors, sizes]
-  );
-
   const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit, canDelete }, lookups),
-    [handleEdit, canEdit, canDelete, lookups]
+    () => getColumns(handleEdit, { canEdit, canDelete }),
+    [handleEdit, canEdit, canDelete]
   );
   const isEditing = Boolean(selectedProductVariant?.id);
-  const isLoading = isLoadingVariants || isLoadingProducts || isLoadingColors || isLoadingSizes;
-  // Variantes, productos, colores y tallas ya llegan filtrados: un refetch
-  // fallido de cualquiera conserva la tabla (toast desde su hook) y su `error`
-  // es `null` salvo en una carga inicial fallida.
-  const isError = isErrorVariants || isErrorProducts || isErrorColors || isErrorSizes;
-  const error = variantsError || productsError || colorsError || sizesError;
 
   return (
     <DataTable
@@ -86,7 +52,7 @@ export default function ProductVariantList() {
       data={productVariants}
       searchPlaceholder="Buscar variante..."
       isLoading={isLoading}
-      isError={isError}
+      isError={isInitialError}
       errorTitle="Error al cargar variantes"
       errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando variantes"

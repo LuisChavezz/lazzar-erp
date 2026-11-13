@@ -21,12 +21,6 @@ import { useState } from "react";
 
 const columnHelper = createColumnHelper<ProductVariant>();
 
-interface ProductVariantLookups {
-  products: Map<number, string>;
-  colors: Map<number, string>;
-  sizes: Map<number, string>;
-}
-
 const ActionsCell = ({
   row,
   onEdit,
@@ -152,7 +146,6 @@ const ActionsCell = ({
 export const getColumns = (
   onEdit: (variant: ProductVariant) => void,
   permissions: { canEdit: boolean; canDelete: boolean },
-  lookups: ProductVariantLookups
 ) => {
   const columns = [
     columnHelper.accessor("activo", {
@@ -175,46 +168,42 @@ export const getColumns = (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
-    columnHelper.accessor(
-      (row) => lookups.products.get(row.producto) ?? "",
-      {
-        id: "producto",
-        header: "Producto",
-        cell: ({ row }) => (
+    // Los nombres llegan resueltos en la fila (`producto_nombre`, `color_nombre`,
+    // `talla_nombre`). El valor de la columna colapsa el ausente a `""`: la
+    // búsqueda global de `DataTable` descarta una columna si su valor en la
+    // primera fila no es string/number. `#id` queda solo como respaldo.
+    columnHelper.accessor((row) => row.producto_nombre ?? "", {
+      id: "producto",
+      header: "Producto",
+      cell: ({ row }) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {row.original.producto_nombre || `#${row.original.producto}`}
+        </span>
+      ),
+    }),
+    columnHelper.accessor((row) => row.color_nombre ?? "", {
+      id: "color",
+      header: "Color",
+      cell: ({ row }) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {row.original.color_nombre || `#${row.original.color}`}
+        </span>
+      ),
+    }),
+    // `talla` es null en variantes de productos que no son PT (EC-252); en ese
+    // caso el backend OMITE `talla_nombre` de la respuesta (no manda `null`).
+    columnHelper.accessor((row) => row.talla_nombre ?? "", {
+      id: "talla",
+      header: "Talla",
+      cell: ({ row }) => {
+        const { talla, talla_nombre } = row.original;
+        return (
           <span className="text-slate-500 dark:text-slate-400">
-            {lookups.products.get(row.original.producto) ?? `#${row.original.producto}`}
+            {talla === null ? "—" : talla_nombre || `#${talla}`}
           </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
-      (row) => lookups.colors.get(row.color) ?? "",
-      {
-        id: "color",
-        header: "Color",
-        cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
-            {lookups.colors.get(row.original.color) ?? `#${row.original.color}`}
-          </span>
-        ),
-      }
-    ),
-    columnHelper.accessor(
-      // `talla` es null en variantes de productos que no son PT (EC-252).
-      (row) => (row.talla === null ? "" : (lookups.sizes.get(row.talla) ?? "")),
-      {
-        id: "talla",
-        header: "Talla",
-        cell: ({ row }) => {
-          const talla = row.original.talla;
-          return (
-            <span className="text-slate-500 dark:text-slate-400">
-              {talla === null ? "—" : (lookups.sizes.get(talla) ?? `#${talla}`)}
-            </span>
-          );
-        },
-      }
-    ),
+        );
+      },
+    }),
     columnHelper.accessor("precio_base", {
       header: "Precio Base",
       meta: { align: "right" },
@@ -247,17 +236,16 @@ export const getColumns = (
 
 /**
  * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
+ * Las opciones salen del listado completo (la tabla es de modo cliente); se
+ * compara por id y se rotula con el nombre que ya trae la fila.
  */
-export const getProductVariantHeaderFilters = (lookups: {
-  products: Map<number, string>;
-  colors: Map<number, string>;
-  sizes: Map<number, string>;
-}): Partial<Record<string, HeaderFilterSpec<ProductVariant>>> => ({
+export const getProductVariantHeaderFilters = (): Partial<
+  Record<string, HeaderFilterSpec<ProductVariant>>
+> => ({
   activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
-  producto: { type: "distinct", get: (r) => r.producto, label: (r) => lookups.products.get(r.producto), searchable: true },
-  color: { type: "distinct", get: (r) => r.color, label: (r) => lookups.colors.get(r.color), searchable: true },
-  talla: { type: "distinct", get: (r) => r.talla, label: (r) => (r.talla === null ? null : lookups.sizes.get(r.talla)) },
+  producto: { type: "distinct", get: (r) => r.producto, label: (r) => r.producto_nombre, searchable: true },
+  color: { type: "distinct", get: (r) => r.color, label: (r) => r.color_nombre, searchable: true },
+  talla: { type: "distinct", get: (r) => r.talla, label: (r) => (r.talla === null ? null : r.talla_nombre) },
   precio_base: { type: "range", get: (r) => r.precio_base, ranges: [
     { value: "hasta-100", label: "Hasta $100", max: 100 },
     { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
