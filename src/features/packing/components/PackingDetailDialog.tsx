@@ -14,6 +14,7 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { PACKING_STATUS_CONFIG } from "../constants/packingStatus";
 import type { Packing, PackingDetalleLine } from "../interfaces/packing.interface";
+import { PackingPdfButton } from "./PackingPdfButton";
 
 /** Nombre del producto/variante empacado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
@@ -89,8 +90,11 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
+      // "Descargar PDF" junto al título (EC-858); el encabezado de `MainDialog`
+      // ya reserva el espacio de la X.
+      headerAction={<PackingPdfButton packing={packing} />}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        <div className="flex items-center gap-2.5">
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">

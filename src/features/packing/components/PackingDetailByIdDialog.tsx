@@ -7,6 +7,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { usePackingDetail } from "../hooks/usePackingDetail";
 import { PackingDetailContent } from "./PackingDetailDialog";
+import { PackingPdfButton } from "./PackingPdfButton";
 
 interface PackingDetailByIdDialogProps {
   /** Id del packing a consultar. `null` mantiene la consulta apagada. */
@@ -44,14 +45,19 @@ export function PackingDetailByIdDialog({
       ? "Error al cargar"
       : packing.folio;
 
+  // "Descargar PDF" junto al título (EC-858), una vez cargado el embarque.
+  const pdfAction = !isLoading && !isError && packing ? <PackingPdfButton packing={packing} /> : null;
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
+      headerAction={pdfAction}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
+        <div className={`flex items-center gap-2.5 ${pdfAction ? "" : "pr-8"}`}>
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
