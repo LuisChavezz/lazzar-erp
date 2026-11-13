@@ -7,6 +7,7 @@ import { pluralForQuantity } from "@/src/utils/plural";
 import {
   groupWorkOrderGarments,
   workOrderGarmentOptionalColumns,
+  workOrderQuantityOrDash,
   type WorkOrderGarmentLine,
 } from "@/src/utils/workOrderGarments";
 
@@ -26,9 +27,6 @@ interface WorkOrderGarmentGroupsProps<T> {
   /** Se pintan después de SKU y antes de las cantidades. */
   columns?: WorkOrderGarmentColumn<T>[];
 }
-
-const quantityOrDash = (value: number | null | undefined) =>
-  value === null || value === undefined ? "—" : formatQuantityValue(value);
 
 /**
  * Prendas de una orden de trabajo: una tarjeta desplegable por prenda + color.
@@ -148,9 +146,9 @@ export function WorkOrderGarmentGroups<T>({
                     <td className="py-2 pr-3 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
                       {formatQuantityValue(line.cantidad)}
                     </td>
-                    {showProgramado && <td className={num}>{quantityOrDash(line.programado)}</td>}
-                    {showPedido && <td className={num}>{quantityOrDash(line.pedido)}</td>}
-                    {showPendiente && <td className={num}>{quantityOrDash(line.pendiente)}</td>}
+                    {showProgramado && <td className={num}>{workOrderQuantityOrDash(line.programado)}</td>}
+                    {showPedido && <td className={num}>{workOrderQuantityOrDash(line.pedido)}</td>}
+                    {showPendiente && <td className={num}>{workOrderQuantityOrDash(line.pendiente)}</td>}
                   </tr>
                 ))}
               </tbody>

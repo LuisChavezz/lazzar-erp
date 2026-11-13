@@ -4,6 +4,8 @@
  * (`WorkOrderGarmentGroups`, `WorkOrderCoverageSheet`) y los PDF (EC-857), para
  * que el documento agrupe y rotule exactamente como la página. Sin React.
  */
+import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { EMPTY_VALUE } from "@/src/utils/textOrDash";
 
 /** Renglón normalizado de una orden de trabajo (bordado, reflejante, corte de manga). */
 export interface WorkOrderGarmentLine {
@@ -66,3 +68,10 @@ export const workOrderGarmentOptionalColumns = (lines: readonly WorkOrderGarment
 /** Porcentaje de lo contratado que cubre la orden, redondeado; `null` sin contratado. */
 export const workOrderCoveragePercent = (cubierta: number, contratada: number): number | null =>
   contratada > 0 ? Math.round((cubierta / contratada) * 100) : null;
+
+/**
+ * Cantidad opcional de un renglón (programado, pedido, pendiente): `null` o
+ * `undefined` se muestran con el guion largo, nunca como 0.
+ */
+export const workOrderQuantityOrDash = (value: number | null | undefined): string =>
+  value === null || value === undefined ? EMPTY_VALUE : formatQuantityValue(value);
