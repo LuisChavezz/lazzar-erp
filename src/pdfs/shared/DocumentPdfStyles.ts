@@ -9,8 +9,11 @@
 import { StyleSheet } from "@react-pdf/renderer";
 import { DOCUMENT_PDF_COLORS as C } from "./DocumentPdfColors";
 import { basePdfStyles } from "./BasePdfStyles";
+import { withDocumentPdfFont } from "./documentPdfFonts";
 
-export const documentPdfStyles = StyleSheet.create({
+// Toda la base en Arimo (EC-858, `documentPdfFonts`): los nombres de Helvetica
+// de abajo y de `basePdfStyles` se traducen a esa familia.
+export const documentPdfStyles = withDocumentPdfFont(StyleSheet.create({
   ...basePdfStyles(C),
 
   /* ── Encabezado ──────────────────────────────── */
@@ -169,4 +172,4 @@ export const documentPdfStyles = StyleSheet.create({
     borderRadius: 6,
     overflow: "hidden",
   },
-});
+}));
