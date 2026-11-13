@@ -26,9 +26,8 @@ import { PICKING_PRIORIDAD_CONFIG } from "@/src/features/picking/constants/picki
 import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "@/src/features/picking/constants/pickingTipo";
 import { pickingPdfDescriptor } from "@/src/features/picking/utils/pickingPdf";
-import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { plural } from "@/src/utils/plural";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
+import { plural } from "@/src/utils/plural";
 import { textOrDash } from "@/src/utils/textOrDash";
 import {
   DocumentPdfLayout,
@@ -40,20 +39,15 @@ import {
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
-import { conditionalColumn, optionalInfoItem, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsQuantityColumn, optionalInfoItem, wmsProductColumns } from "./shared/wmsDocumentPdf";
 
 type PickingPdfDocumentProps = {
   picking: Picking;
   company: PdfCompany | null;
 };
 
-const quantity = (id: string, header: string, value: (line: PickingDetalleLine) => string): PdfColumn<PickingDetalleLine> => ({
-  id,
-  header,
-  flex: 1,
-  align: "right",
-  cell: (line) => formatExactQuantityValue(value(line)),
-});
+const quantity = (id: string, header: string, value: (line: PickingDetalleLine) => string) =>
+  wmsQuantityColumn<PickingDetalleLine>(id, header, value);
 
 export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps) => {
   const lineas = picking.picking_detalle ?? [];
