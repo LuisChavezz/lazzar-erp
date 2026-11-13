@@ -245,7 +245,7 @@ export const getProductVariantHeaderFilters = (): Partial<
   activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
   producto: { type: "distinct", get: (r) => r.producto, label: (r) => r.producto_nombre, searchable: true },
   color: { type: "distinct", get: (r) => r.color, label: (r) => r.color_nombre, searchable: true },
-  talla: { type: "distinct", get: (r) => r.talla, label: (r) => (r.talla === null ? null : r.talla_nombre) },
+  talla: { type: "distinct", get: (r) => r.talla, label: (r) => r.talla_nombre },
   precio_base: { type: "range", get: (r) => r.precio_base, ranges: [
     { value: "hasta-100", label: "Hasta $100", max: 100 },
     { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
