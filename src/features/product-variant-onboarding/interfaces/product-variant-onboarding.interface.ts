@@ -22,12 +22,7 @@ export interface ProductVariantOnboardingPayload {
 }
 
 /**
- * Respuesta 201: `ProductoVarianteSerializer` completo.
- *
- * `talla_nombre` NO viene en el JSON cuando `talla` es null: DRF omite la clave
- * (verificado serializando una variante sin talla). Por eso es opcional aquí,
- * aunque `ProductVariant` la declare obligatoria.
+ * Respuesta 201: `ProductoVarianteSerializer` completo, la misma forma que el
+ * listado (incluido `talla_nombre` ausente cuando `talla` es null).
  */
-export type ProductVariantOnboardingResult = Omit<ProductVariant, "talla_nombre"> & {
-  talla_nombre?: string;
-};
+export type ProductVariantOnboardingResult = ProductVariant;
