@@ -6,6 +6,7 @@ import { Popover } from "@radix-ui/themes";
 import { InfoIcon } from "@/src/components/Icons";
 import { cleanText } from "@/src/utils/cleanText";
 import type { EmbroideryOnboardingUbicacion } from "../interfaces/embroidery.interface";
+import { embroideryMedidas, embroideryTechniques } from "../utils/embroideryUbicacion";
 
 /**
  * `loader` de identidad + `unoptimized`: la imagen vive en el servidor de
@@ -17,39 +18,6 @@ import type { EmbroideryOnboardingUbicacion } from "../interfaces/embroidery.int
  * que `QuoteProductEmbroideryView`/`StepEmbroidery` en cotizaciones.
  */
 const externalImageLoader = ({ src }: { src: string }) => src;
-
-/**
- * Las CINCO banderas booleanas de la ubicación, y nada más.
- *
- * El tipo se cierra a esta unión en vez de a `keyof
- * EmbroideryOnboardingUbicacion`: el filtro de abajo compara con `=== true`, así
- * que una clave que no sea booleana —`codigo`, `pantones`…— compilaría sin
- * quejarse y su distintivo simplemente no aparecería nunca, sin ninguna pista de
- * por qué. Con la unión explícita ese error es de compilación.
- */
-type EmbroideryTechniqueKey =
-  | "dtf"
-  | "sublimado"
-  | "serigrafia"
-  | "revelado"
-  | "nuevo_ponchado";
-
-/**
- * Técnicas de la ubicación. Solo se pintan las que llegan en `true`: una lista
- * con "DTF: No · Sublimado: No · …" ocuparía el doble para comunicar lo mismo
- * que su ausencia. En los datos actuales las cinco llegan en `false`, así que lo
- * normal hoy es que esta sección no aparezca.
- */
-const TECHNIQUE_LABELS: {
-  key: EmbroideryTechniqueKey;
-  label: string;
-}[] = [
-  { key: "dtf", label: "DTF" },
-  { key: "sublimado", label: "Sublimado" },
-  { key: "serigrafia", label: "Serigrafía" },
-  { key: "revelado", label: "Revelado" },
-  { key: "nuevo_ponchado", label: "Nuevo ponchado" },
-];
 
 /**
  * UNA ubicación del bordado. Se extrajo a su propio componente al pasar el
@@ -85,23 +53,9 @@ function UbicacionDetail({
   const pantones = cleanText(ubicacion.pantones);
   const codigo = cleanText(ubicacion.codigo);
 
-  /**
-   * Las medidas se muestran como par —una sola dimensión no describe nada— y
-   * ambas tienen que ser POSITIVAS. Un `0` no es una medida: es el valor que
-   * deja un campo numérico sin capturar, y el propio formulario de captura lo
-   * rechaza (`Number.isFinite(alto) && alto > 0` en `useEmbroideryState`).
-   * Aceptarlo pintaría "Medidas: 0 × 0 cm" como si fuera un dato real, el mismo
-   * criterio por el que `cleanText` descarta las cadenas vacías.
-   */
-  const medidas =
-    typeof ubicacion.ancho_cm === "number" &&
-    typeof ubicacion.alto_cm === "number" &&
-    ubicacion.ancho_cm > 0 &&
-    ubicacion.alto_cm > 0
-      ? `${ubicacion.ancho_cm} × ${ubicacion.alto_cm} cm`
-      : null;
-
-  const tecnicas = TECHNIQUE_LABELS.filter(({ key }) => ubicacion[key] === true);
+  // Medidas y técnicas con las reglas que comparte el PDF (`embroideryUbicacion`).
+  const medidas = embroideryMedidas(ubicacion);
+  const tecnicas = embroideryTechniques(ubicacion);
 
   /**
    * Texto alternativo de la imagen. Incluye el código cuando lo hay: con varias
