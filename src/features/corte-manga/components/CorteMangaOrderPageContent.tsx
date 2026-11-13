@@ -36,7 +36,7 @@ import type {
   CorteMangaOrderSibling,
 } from "../interfaces/corte-manga-order.interface";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { corteMangaTotalPiezas } from "../utils/corteMangaPiezas";
+import { corteMangaPiezasOrden, corteMangaTotalPiezas } from "../utils/corteMangaPiezas";
 import { CorteMangaOrderPdfButton } from "./CorteMangaOrderPdfButton";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
@@ -322,7 +322,7 @@ export function CorteMangaOrderPageContent({
         config={CORTE_MANGA_AVANCE_CONFIG}
         orderId={data.id}
         detailQueryKey={corteMangaOrderDetailQueryKey(data.id)}
-        piezasOrden={data.cantidad_cubierta ?? Math.floor(corteMangaTotalPiezas(data))}
+        piezasOrden={corteMangaPiezasOrden(data)}
         canEdit={canEdit}
         isTerminal={isTerminal}
         avances={data.avances}
