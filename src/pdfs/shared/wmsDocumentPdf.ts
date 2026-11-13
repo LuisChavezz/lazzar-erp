@@ -6,6 +6,7 @@
  * talla de cada renglón ya vienen resueltos desde la variante surtida, la de
  * catálogo o la de muestra; aquí no se deriva nada.
  */
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
 import type { PdfColumn, PdfInfoItem } from "./DocumentPdfLayout";
 
@@ -39,6 +40,19 @@ export function wmsProductColumns<Row extends WmsPdfLineProduct>(): PdfColumn<Ro
     { id: "talla", header: "Talla", flex: 0.8, cell: (line) => textOrDash(line.talla_nombre) },
   ];
 }
+
+/** Columna de una cantidad del renglón: a la derecha, con la precisión exacta de la pantalla. */
+export const wmsQuantityColumn = <Row>(
+  id: string,
+  header: string,
+  value: (line: Row) => string,
+): PdfColumn<Row> => ({
+  id,
+  header,
+  flex: 1,
+  align: "right",
+  cell: (line) => formatExactQuantityValue(value(line)),
+});
 
 /** ¿Algún renglón trae un valor (no vacío) en ese dato? Decide las columnas condicionales. */
 export const rowsHaveValue = <Row>(

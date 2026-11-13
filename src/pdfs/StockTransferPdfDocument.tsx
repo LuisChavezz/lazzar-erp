@@ -22,7 +22,6 @@ import type {
   TransferenciaDetalleLine,
 } from "@/src/features/stock-transfers/interfaces/stock-transfer.interface";
 import { stockTransferPdfDescriptor } from "@/src/features/stock-transfers/utils/stockTransferPdf";
-import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/utils/textOrDash";
 import {
@@ -34,7 +33,7 @@ import {
   type PdfColumn,
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
-import { conditionalColumn, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsProductColumns, wmsQuantityColumn } from "./shared/wmsDocumentPdf";
 
 type StockTransferPdfDocumentProps = {
   transfer: TransferenciaDetail;
@@ -48,14 +47,7 @@ export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdf
 
   const columns: PdfColumn<TransferenciaDetalleLine>[] = [
     ...wmsProductColumns<TransferenciaDetalleLine>(),
-    {
-      id: "cantidad",
-      header: "Cantidad",
-      flex: 1,
-      align: "right",
-      bold: true,
-      cell: (line) => formatExactQuantityValue(line.cantidad),
-    },
+    { ...wmsQuantityColumn<TransferenciaDetalleLine>("cantidad", "Cantidad", (line) => line.cantidad), bold: true },
     ...conditionalColumn(lineas, (line) => line.ubicacion_origen_nombre, {
       id: "ubicacion_origen",
       header: "Ubicación origen",

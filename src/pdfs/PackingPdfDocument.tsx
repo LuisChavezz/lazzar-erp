@@ -33,20 +33,15 @@ import {
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
-import { conditionalColumn, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, wmsQuantityColumn, wmsProductColumns } from "./shared/wmsDocumentPdf";
 
 type PackingPdfDocumentProps = {
   packing: Packing;
   company: PdfCompany | null;
 };
 
-const quantity = (id: string, header: string, value: (line: PackingDetalleLine) => string): PdfColumn<PackingDetalleLine> => ({
-  id,
-  header,
-  flex: 1,
-  align: "right",
-  cell: (line) => formatExactQuantityValue(value(line)),
-});
+const quantity = (id: string, header: string, value: (line: PackingDetalleLine) => string) =>
+  wmsQuantityColumn<PackingDetalleLine>(id, header, value);
 
 export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps) => {
   const lineas = packing.packing_detalle ?? [];
