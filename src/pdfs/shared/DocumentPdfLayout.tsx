@@ -234,7 +234,10 @@ export function PdfLineItemsTable<Row>({
             vacío, de alto 0, va primero para que el título no sea el primer hijo;
           - los hermanos `fixed` se quedan en la página actual al saltar, por eso
             el encabezado `fixed` sigue DENTRO del `View` de la tabla y no como
-            hermano del título. */}
+            hermano del título.
+          Depende de esos internos de react-pdf: si una actualización los cambia,
+          lo detecta `tests/unit/document-pdf-table-page-break.spec.ts`, que
+          maqueta un documento real. */}
       <View />
       <Text style={s.sectionTitle} minPresenceAhead={TABLE_TITLE_MIN_PRESENCE_AHEAD}>
         {title}
