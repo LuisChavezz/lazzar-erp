@@ -16,6 +16,7 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
 import { useTransferenciaDetail } from "../hooks/useTransferenciaDetail";
 import type { TransferenciaDetalleLine } from "../interfaces/stock-transfer.interface";
+import { StockTransferPdfButton } from "./StockTransferPdfButton";
 
 /** Nombre del producto/variante trasladado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. */
@@ -74,14 +75,20 @@ export function StockTransferDetailDialog({
   const { data, isLoading, isInitialError, isNotFound, error } =
     useTransferenciaDetail(transferId);
 
+  // "Descargar PDF" junto al título (EC-858), una vez cargado el traspaso. Un
+  // 403/404 definitivo no conserva datos, así que tampoco ofrece el botón.
+  const pdfAction = data && !isNotFound ? <StockTransferPdfButton transfer={data} /> : null;
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
       maxWidth="760px"
       showCloseButton={true}
+      headerAction={pdfAction}
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
+        <div className={`flex items-center gap-2.5 ${pdfAction ? "" : "pr-8"}`}>
           <TraspasosIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
