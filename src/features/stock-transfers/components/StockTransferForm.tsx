@@ -186,8 +186,8 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
     missingItems,
     warehouseOptions,
     activeLocations,
-    productOptions,
-    variantOptions,
+    rememberItem,
+    getItemOption,
     lineKeys,
     serverBanner,
     bannerErrorTick,
@@ -523,9 +523,8 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
                                         label="Producto"
                                         placeholder="Seleccionar producto..."
                                         selectedLabel={
-                                          productOptions.find(
-                                            (o) => o.id === field.state.value,
-                                          )?.label ?? null
+                                          getItemOption("producto", field.state.value)
+                                            ?.label ?? null
                                         }
                                         onClick={() =>
                                           setPicker({ index, mode: "producto" })
@@ -546,9 +545,8 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
                                         label="Variante de Producto"
                                         placeholder="Seleccionar variante..."
                                         selectedLabel={
-                                          variantOptions.find(
-                                            (o) => o.id === field.state.value,
-                                          )?.label ?? null
+                                          getItemOption("producto_variante", field.state.value)
+                                            ?.label ?? null
                                         }
                                         onClick={() =>
                                           setPicker({
@@ -704,19 +702,22 @@ function StockTransferFormContent({ onClose }: { onClose: () => void }) {
           if (!open) setPicker(null);
         }}
         mode={picker?.mode ?? "producto"}
-        productOptions={productOptions}
-        variantOptions={variantOptions}
-        selectedId={
+        selected={
           picker === null
-            ? 0
-            : picker.mode === "producto"
-              ? form.getFieldValue(`transferencia_detalle[${picker.index}].producto`)
-              : form.getFieldValue(
-                  `transferencia_detalle[${picker.index}].producto_variante`,
-                )
+            ? null
+            : (getItemOption(
+                picker.mode,
+                picker.mode === "producto"
+                  ? form.getFieldValue(`transferencia_detalle[${picker.index}].producto`)
+                  : form.getFieldValue(
+                      `transferencia_detalle[${picker.index}].producto_variante`,
+                    ),
+              ) ?? null)
         }
-        onSelect={(id) => {
+        onSelect={(option) => {
           if (picker === null) return;
+          const { id } = option;
+          rememberItem(picker.mode, option);
           // Se escribe en la línea CONCRETA que abrió el selector, respetando el
           // XOR (solo se toca el campo del modo activo; el otro ya está en 0).
           if (picker.mode === "producto") {
