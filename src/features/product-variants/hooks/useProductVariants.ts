@@ -3,18 +3,23 @@ import { getProductVariants } from "../services/actions";
 import { ProductVariant } from "../interfaces/product-variant.interface";
 
 /**
+ * Listado COMPLETO de variantes, para las tablas de catálogo. Los selectores
+ * usan el selector ligero (`useProductVariantSelector`).
+ *
+ * Su llave es la raíz `["product-variants"]`, que invalidan las mutaciones de
+ * variantes y de BOM; las búsquedas del selector cuelgan de ella
+ * (`["product-variants", "selector", params]`).
+ *
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
  * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
- * contrato que `useProducts`. El `toastId` es uno solo para las dos llaves
- * (`con_bom` o no), así que una invalidación de la raíz `["product-variants"]`
- * que falle en ambas da un único toast.
+ * contrato que `useProducts`.
  */
-export const useProductVariants = (con_bom?: boolean) => {
+export const useProductVariants = () => {
   const { data, isLoading, isInitialError, error } = useGuardedQuery<ProductVariant[]>(
     {
-      queryKey: ["product-variants", con_bom],
-      queryFn: () => getProductVariants(con_bom),
+      queryKey: ["product-variants"],
+      queryFn: () => getProductVariants(),
     },
     { toastId: "product-variants-refetch-error" },
   );
