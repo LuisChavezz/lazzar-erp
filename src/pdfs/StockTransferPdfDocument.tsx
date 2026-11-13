@@ -68,7 +68,7 @@ export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdf
       descriptor={stockTransferPdfDescriptor(transfer)}
       title="Traspaso entre almacenes"
       subtitle={ruta}
-      date={{ label: "Fecha", value: formatShortDate(transfer.fecha_creacion) }}
+      date={{ label: "Alta", value: formatShortDate(transfer.fecha_creacion) }}
       footerDetail={ruta}
     >
       <PdfCardRow>
