@@ -419,7 +419,7 @@ test.describe("PDF del traspaso", () => {
 
   test("TR-00032: la línea de muestra de un surtido sale con nombre, SKU, color y talla", () => {
     const doc = read(StockTransferPdfDocument({ transfer: transfer(), company: COMPANY }));
-    expect(doc.layout.subtitle).toBe("PRODUCTO TERMINADO → APARTADOS");
+    expect(doc.layout.subtitle).toBe("De PRODUCTO TERMINADO a APARTADOS");
     expect(doc.card("ALMACENES")).toEqual({ Origen: "PRODUCTO TERMINADO", Destino: "APARTADOS" });
     expect(doc.card("DATOS DEL TRASPASO")).toMatchObject({ Estatus: "Completada" });
     expect(doc.headers).toEqual(["SKU", "Producto", "Color", "Talla", "Cantidad"]);

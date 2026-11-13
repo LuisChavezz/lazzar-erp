@@ -43,7 +43,8 @@ type StockTransferPdfDocumentProps = {
 
 export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdfDocumentProps) => {
   const lineas = transfer.transferencia_detalle ?? [];
-  const ruta = `${textOrDash(transfer.almacen_origen_nombre)} → ${textOrDash(transfer.almacen_destino_nombre)}`;
+  // Sin flecha: la Helvetica estándar del PDF (WinAnsi) no tiene "→" y la omite.
+  const ruta = `De ${textOrDash(transfer.almacen_origen_nombre)} a ${textOrDash(transfer.almacen_destino_nombre)}`;
 
   const columns: PdfColumn<TransferenciaDetalleLine>[] = [
     ...wmsProductColumns<TransferenciaDetalleLine>(),
