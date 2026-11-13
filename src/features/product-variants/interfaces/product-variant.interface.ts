@@ -23,7 +23,11 @@ export interface ProductVariant {
   /** Nombres resueltos del producto, color y talla (solo lectura). */
   producto_nombre: string;
   color_nombre: string;
-  talla_nombre: string;
+  /**
+   * Ausente (no `null`) cuando `talla` es `null`: el serializer resuelve
+   * `talla.nombre` y DRF omite la clave si la relación está vacía.
+   */
+  talla_nombre?: string;
   precio_base: string;
   activo: boolean;
 }
