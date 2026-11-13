@@ -1,5 +1,8 @@
 import { v1_api } from "@/src/api/v1.api";
 import { Product, ProductUpdate } from "../interfaces/product.interface";
+import type { ProductSelectorItem, ProductSelectorParams } from "../interfaces/product-selector.interface";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
+import { toCatalogSelectorQuery } from "@/src/utils/catalogSelectorQuery";
 
 
 /**
@@ -18,6 +21,22 @@ export const getProducts = async (
       }),
     },
   });
+  return response.data;
+};
+
+/**
+ * Selector ligero de productos (`GET /catalogo/producto/selector/`, EC-886):
+ * siempre paginado (`{count, next, previous, results}`, 50 por defecto, tope
+ * 500). Los parámetros viajan normalizados por `toCatalogSelectorQuery`
+ * (sin vacíos; `tipo_id` e `ids` separados por comas).
+ */
+export const getProductSelector = async (
+  params: ProductSelectorParams,
+): Promise<PaginatedListResponse<ProductSelectorItem>> => {
+  const response = await v1_api.get<PaginatedListResponse<ProductSelectorItem>>(
+    "/catalogo/producto/selector/",
+    { params: toCatalogSelectorQuery(params) },
+  );
   return response.data;
 };
 

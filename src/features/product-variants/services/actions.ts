@@ -1,5 +1,11 @@
 import { v1_api } from "@/src/api/v1.api";
 import { ProductVariant, ProductVariantCreate } from "../interfaces/product-variant.interface";
+import type {
+  ProductVariantSelectorItem,
+  ProductVariantSelectorParams,
+} from "../interfaces/product-variant-selector.interface";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
+import { toCatalogSelectorQuery } from "@/src/utils/catalogSelectorQuery";
 
 
 export const getProductVariants = async (con_bom?: boolean): Promise<ProductVariant[]> => {
@@ -8,6 +14,22 @@ export const getProductVariants = async (con_bom?: boolean): Promise<ProductVari
       ...(con_bom !== undefined && { con_bom }),
     },
   });
+  return response.data;
+};
+
+/**
+ * Selector ligero de variantes (`GET /catalogo/producto-variante/selector/`,
+ * EC-886): siempre paginado (`{count, next, previous, results}`, 50 por
+ * defecto, tope 500). Los parámetros viajan normalizados por
+ * `toCatalogSelectorQuery` (sin vacíos, `ids` separados por comas).
+ */
+export const getProductVariantSelector = async (
+  params: ProductVariantSelectorParams,
+): Promise<PaginatedListResponse<ProductVariantSelectorItem>> => {
+  const response = await v1_api.get<PaginatedListResponse<ProductVariantSelectorItem>>(
+    "/catalogo/producto-variante/selector/",
+    { params: toCatalogSelectorQuery(params) },
+  );
   return response.data;
 };
 
