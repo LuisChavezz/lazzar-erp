@@ -22,10 +22,8 @@ import {
   corteMangaStatusEntry,
 } from "@/src/features/corte-manga/constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "@/src/features/corte-manga/interfaces/corte-manga-order.interface";
-import {
-  corteMangaOrderPdfDescriptor,
-  corteMangaTotalPiezas,
-} from "@/src/features/corte-manga/utils/corteMangaOrderPdf";
+import { corteMangaOrderPdfDescriptor } from "@/src/features/corte-manga/utils/corteMangaOrderPdf";
+import { corteMangaTotalPiezas } from "@/src/features/corte-manga/utils/corteMangaPiezas";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/utils/textOrDash";

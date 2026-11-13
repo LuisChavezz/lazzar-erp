@@ -36,7 +36,7 @@ import type {
   CorteMangaOrderSibling,
 } from "../interfaces/corte-manga-order.interface";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { corteMangaTotalPiezas } from "../utils/corteMangaOrderPdf";
+import { corteMangaTotalPiezas } from "../utils/corteMangaPiezas";
 import { CorteMangaOrderPdfButton } from "./CorteMangaOrderPdfButton";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—

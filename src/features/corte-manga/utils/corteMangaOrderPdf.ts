@@ -4,7 +4,7 @@
  */
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
-import type { CorteMangaOrder, CorteMangaOrderLine } from "../interfaces/corte-manga-order.interface";
+import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 
 /**
  * Identidad de una OCM para su PDF. La CANCELADA (7) se sigue pudiendo
@@ -19,14 +19,3 @@ export const corteMangaOrderPdfDescriptor = (
   folio: order.folio_ocm,
   cancelled: isWorkOrderTerminal(order.estatus_corte),
 });
-
-/**
- * "Total piezas" como lo muestra la página: `cantidad_cubierta` del backend y,
- * solo si la respuesta no la trae, la suma de los renglones (descartando
- * cantidades no finitas, el mismo criterio que la página y el listado).
- */
-export const corteMangaTotalPiezas = (
-  order: Pick<CorteMangaOrder, "cantidad_cubierta"> & { detalles: Pick<CorteMangaOrderLine, "cantidad">[] },
-): number =>
-  order.cantidad_cubierta ??
-  order.detalles.reduce((acc, linea) => (Number.isFinite(linea.cantidad) ? acc + linea.cantidad : acc), 0);
