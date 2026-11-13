@@ -313,7 +313,7 @@ test.describe("PDF del embarque (packing)", () => {
     });
     expect(doc.card("DATOS DEL EMBARQUE")).toMatchObject({ Cajas: "1", "Peso total": "0 kg" });
     expect(doc.headers).toEqual(["SKU", "Producto", "Color", "Talla", "Solicitada", "Asignada", "Surtida", "Empacada", "Estatus"]);
-    expect(doc.cells[0]).toMatchObject({ SKU: "6000100M", Producto: "BATA EJECUTIVA DAMA", Color: "BLANCO", Talla: "M", Empacada: "1" });
+    expect(doc.cells[0]).toMatchObject({ SKU: "6000100M", Producto: "BATA EJECUTIVA DAMA BLANCO", Color: "BLANCO", Talla: "M", Empacada: "1" });
   });
 
   test("ubicación y caja solo si algún renglón las trae; la línea de muestra sale con sus datos", () => {
@@ -450,7 +450,12 @@ test.describe("PDF del traspaso", () => {
       StockTransferPdfDocument({ transfer: transfer({ folio: "TR-00033", transferencia_detalle: [catalogo] }), company: COMPANY }),
     );
     expect(doc.headers).toEqual(["SKU", "Producto", "Color", "Talla", "Cantidad", "Ubicación destino"]);
-    expect(doc.cells[0]).toMatchObject({ SKU: "30018", Producto: "CHAMARRA BUENOS AIRES", Talla: "2XCH" });
+    expect(doc.cells[0]).toMatchObject({
+      SKU: "30018",
+      // El nombre de la variante, como en el diálogo; sin variante, el del producto.
+      Producto: "CHAMARRA BUENOS AIRES - MARINO - 2XCH",
+      Talla: "2XCH",
+    });
   });
 });
 

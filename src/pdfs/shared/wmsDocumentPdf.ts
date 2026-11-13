@@ -19,13 +19,12 @@ export interface WmsPdfLineProduct {
 }
 
 /**
- * Nombre del producto del renglón: `producto_nombre` (el del producto o, en una
- * línea de muestra, el de la muestra) y, si no viene, el de la variante. Con el
- * color y la talla en sus propias columnas, el nombre base se lee mejor que el
- * de la variante, que suele repetirlos.
+ * Nombre del producto del renglón, en el mismo orden que los diálogos de
+ * detalle: el de la variante y, si no viene, `producto_nombre` (el del producto
+ * o, en una línea de muestra, el de la muestra).
  */
 export const wmsLineProductName = (line: WmsPdfLineProduct): string =>
-  line.producto_nombre?.trim() || line.producto_variante_nombre?.trim() || EMPTY_VALUE;
+  line.producto_variante_nombre?.trim() || line.producto_nombre?.trim() || EMPTY_VALUE;
 
 /**
  * Columnas SKU, Producto, Color y Talla. SKU y Color van ligadas a su clave
