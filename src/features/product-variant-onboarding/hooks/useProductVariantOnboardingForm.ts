@@ -7,6 +7,7 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
 import { toSendableDecimal } from "@/src/utils/decimal";
 import { useProductSelectorTotal } from "../../products/hooks/useProductSelector";
+import { getOnboardingMissingItems } from "../utils/onboardingPrerequisites";
 import type { ProductSelectorItem } from "../../products/interfaces/product-selector.interface";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizesByCategory } from "../../sizes/hooks/useSizesByCategory";
@@ -58,13 +59,9 @@ export function useProductVariantOnboardingForm() {
   // El producto se elige en un selector que busca en el servidor
   // (`ProductSelectorDialog`: productos activos PT y COMPRAS, EC-886), así que
   // aquí no se descarga el catálogo. Solo se pregunta si hay alguno (una
-  // fila), para el aviso de prerequisitos.
-  const {
-    total: productTotal,
-    isLoading: isLoadingProducts,
-    isInitialError: isProductsError,
-    error: productsError,
-  } = useProductSelectorTotal({ tipo_id: VARIANT_PRODUCT_TYPE_IDS });
+  // fila), para el aviso de prerequisitos; ese conteo NO bloquea el formulario
+  // ni el selector mientras carga o si falla.
+  const { total: productTotal } = useProductSelectorTotal({ tipo_id: VARIANT_PRODUCT_TYPE_IDS });
   const { colors, isLoading: isLoadingColors, isInitialError: isColorsError, error: colorsError } =
     useColors();
 
@@ -85,13 +82,14 @@ export function useProductVariantOnboardingForm() {
     createEmptyProductVariantOnboardingForm,
   );
 
-  const catalogsError = isProductsError ? productsError : isColorsError ? colorsError : null;
+  // Solo los colores (una lista que el formulario pinta) bloquean con su error.
+  const catalogsError = isColorsError ? colorsError : null;
 
   // Solo se reporta un catálogo como faltante cuando cargó bien y vino vacío.
-  const missingItems = [
-    !isLoadingProducts && !isProductsError && productTotal === 0 ? "Productos" : null,
-    !isLoadingColors && !isColorsError && colors.length === 0 ? "Colores" : null,
-  ].filter((item): item is string => Boolean(item));
+  const missingItems = getOnboardingMissingItems({
+    productTotal,
+    colors: isLoadingColors || isColorsError ? null : colors,
+  });
 
   // El normalizador compartido reporta campos del formulario de variantes de
   // config; aquí `sku` no tiene input, así que se desvía al aviso general.
@@ -285,7 +283,7 @@ export function useProductVariantOnboardingForm() {
     form,
     formRef,
     isPending,
-    isLoadingCatalogs: isLoadingProducts || isLoadingColors,
+    isLoadingColors,
     catalogsError,
     missingItems,
     /** Producto elegido resuelto (para fijarlo en el selector); `null` si ninguno. */

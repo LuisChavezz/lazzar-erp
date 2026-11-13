@@ -30,7 +30,7 @@ export default function ProductVariantOnboardingForm() {
     form,
     formRef,
     isPending,
-    isLoadingCatalogs,
+    isLoadingColors,
     catalogsError,
     missingItems,
     selectedProduct,
@@ -123,11 +123,11 @@ export default function ProductVariantOnboardingForm() {
                   {(field) => (
                     <ItemPickerButton
                       label="Producto"
-                      placeholder={isLoadingCatalogs ? "Cargando..." : "Seleccionar producto..."}
+                      placeholder="Seleccionar producto..."
                       selectedLabel={getProductLabel(field.state.value)}
                       onClick={() => setIsProductSelectorOpen(true)}
                       error={getError("producto")}
-                      disabled={isPending || isLoadingCatalogs}
+                      disabled={isPending}
                     />
                   )}
                 </form.Field>
@@ -152,7 +152,7 @@ export default function ProductVariantOnboardingForm() {
                     error={getError("color")}
                   >
                     <option value="0" disabled>
-                      {isLoadingCatalogs ? "Cargando..." : "Seleccionar..."}
+                      {isLoadingColors ? "Cargando..." : "Seleccionar..."}
                     </option>
                     {colors.map((color) => (
                       <option key={color.id} value={color.id} className={optionClassName}>
