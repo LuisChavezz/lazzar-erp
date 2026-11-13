@@ -24,7 +24,7 @@ interface SampleSkuOnboardingStep1Props {
  *
  * El color solo se CAPTURA cuando la línea no tiene uno (el backend lo exige y
  * lo guarda en la línea); si ya lo tiene se muestra de solo lectura y no viaja.
- * El catálogo (`/catalogo/color`) ya llega filtrado a colores activos; aquí se
+ * El catálogo (`/catalogo/color/`) ya llega filtrado a colores activos; aquí se
  * descartan además los que no tienen `codigo`, porque el SKU lo lleva y el
  * backend los rechaza.
  *

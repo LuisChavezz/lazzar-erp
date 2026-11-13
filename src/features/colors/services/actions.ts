@@ -3,7 +3,7 @@ import type { Color, ColorCreate } from "../interfaces/color.interface";
 
 
 export const getColors = async (): Promise<Color[]> => {
-  const { data } = await v1_api.get<Color[]>("/catalogo/color");
+  const { data } = await v1_api.get<Color[]>("/catalogo/color/");
   return data;
 };
 
