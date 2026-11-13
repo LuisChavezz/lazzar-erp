@@ -74,6 +74,9 @@ export function BomStepManager({
       <div>
         {currentStep === "select-materials" && (
           <BomStep1
+            // Al regresar del Paso 2 arranca con lo ya elegido (los objetos del
+            // selector, fijos arriba aunque la búsqueda no los traiga).
+            initialSelected={selectedMaterials}
             onNext={handleMaterialsSelected}
             onBack={() => onClose?.()}
           />
