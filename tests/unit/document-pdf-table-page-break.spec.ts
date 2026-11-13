@@ -35,12 +35,14 @@ const documentWith = (fillerRows: number) =>
       title: "Prueba",
     } as DocumentPdfLayoutProps,
     createElement(PdfLineItemsTable<Row>, {
+      key: "relleno",
       title: "RELLENO",
       rows: Array.from({ length: fillerRows }, (_, index) => ({ texto: `relleno${index}fin` })),
       columns: COLUMNS,
       emptyMessage: "-",
     }),
     createElement(PdfLineItemsTable<Row>, {
+      key: "objetivo",
       title: "TITULOOBJETIVO",
       rows: [{ texto: "PRIMERRENGLON" }, { texto: "SEGUNDORENGLON" }],
       columns: COLUMNS,

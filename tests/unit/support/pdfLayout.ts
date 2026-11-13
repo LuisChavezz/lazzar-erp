@@ -1,62 +1,12 @@
 import { inflateSync } from "node:zlib";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { createElement, Fragment, type ComponentType, type ReactElement, type ReactNode } from "react";
+import { toReactElement } from "./pwJsx";
 
 /**
- * MAQUETAR de verdad un documento de react-pdf en las pruebas unitarias.
- *
- * El runner compila el JSX con su propio runtime: un elemento sale como
- * `{ __pw_type: "jsx", type, props, key }`, no como un elemento de React, y el
- * reconciliador de react-pdf lo rechaza ("Objects are not valid as a React
- * child"). `toReactElement` traduce esos objetos a `createElement` de `react`,
- * envuelve cada componente de función para traducir también lo que devuelve al
- * renderizarse y cambia su `Fragment` (un objeto propio) por el de React. El
- * layout (`@react-pdf/layout`) y el render son los reales: solo cambia la forma
- * del objeto del elemento.
+ * MAQUETAR de verdad un documento de react-pdf en las pruebas unitarias: el
+ * JSX del runner se traduce a elementos de React (`toReactElement`) y se
+ * renderiza con `renderToBuffer`; el layout (`@react-pdf/layout`) es el real.
  */
-
-type PwElement = { __pw_type: "jsx"; type: unknown; props: Record<string, unknown>; key?: unknown };
-
-const isPwElement = (node: unknown): node is PwElement =>
-  typeof node === "object" && node !== null && (node as { __pw_type?: unknown }).__pw_type === "jsx";
-
-const wrappedComponents = new WeakMap<object, ComponentType<Record<string, unknown>>>();
-
-const wrapType = (type: unknown): unknown => {
-  if (typeof type === "object" && type !== null && "__pw_jsx_fragment" in type) return Fragment;
-  if (typeof type !== "function") return type;
-  const cached = wrappedComponents.get(type);
-  if (cached) return cached;
-  const component = type as (props: Record<string, unknown>) => unknown;
-  const wrapped = (props: Record<string, unknown>) => toReactNode(component(props));
-  wrappedComponents.set(type, wrapped as ComponentType<Record<string, unknown>>);
-  return wrapped;
-};
-
-const convertProps = (props: Record<string, unknown>) =>
-  Object.fromEntries(
-    Object.entries(props).map(([key, value]) => [key, key === "children" ? toReactNode(value) : value]),
-  );
-
-function toReactNode(node: unknown): ReactNode {
-  if (Array.isArray(node)) return node.map(toReactNode);
-  if (isPwElement(node)) {
-    const props = convertProps(node.props ?? {});
-    if (node.key !== undefined && node.key !== null) props.key = node.key;
-    return createElement(wrapType(node.type) as ComponentType, props);
-  }
-  if (typeof node === "object" && node !== null && "props" in node && "type" in node) {
-    // Un elemento real de React (p. ej. de `createElement` en la prueba): su
-    // tipo y sus hijos pueden traer JSX del runner.
-    const element = node as ReactElement<Record<string, unknown>>;
-    const props = convertProps(element.props ?? {});
-    if (element.key !== null) props.key = element.key;
-    return createElement(wrapType(element.type) as ComponentType, props);
-  }
-  return node as ReactNode;
-}
-
-export const toReactElement = (node: unknown) => toReactNode(node) as ReactElement;
 
 /**
  * Texto de cada página de un PDF de react-pdf, en el orden de las páginas.
