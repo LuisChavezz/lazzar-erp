@@ -113,7 +113,7 @@ const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
                     ubicaciones={ubicaciones}
                     productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
                     tallaNombre={linea.talla_nombre}
-                    colorNombre={linea.color_nombre}
+                    colorNombre={linea.color_nombre ?? null}
                     posicionLabel={linea.posicion_bordado}
                   />
                   {/* Mismo distintivo que el Paso 2 del alta, y por el mismo
