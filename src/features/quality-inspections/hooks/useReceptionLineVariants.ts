@@ -18,6 +18,11 @@ export interface ReceptionLineVariant {
  * GET /catalogo/producto-variante/{id}/. Solo corre cuando el diálogo de
  * inspección ya cargó el detalle (nunca por prefetch). En renglones sin
  * variante (materia prima, PT sin SKU) es `null` y no se pide nada.
+ *
+ * La llave cuelga del prefijo `["product-variants"]` (segmento `"detail"`), así
+ * que las mutaciones de variantes, que invalidan ese prefijo, también la
+ * refrescan. El borrado optimista de una variante solo filtra arreglos: este
+ * detalle (un objeto) no lo toca.
  */
 export const useReceptionLineVariants = (
   variantIds: (number | null)[],
@@ -28,7 +33,7 @@ export const useReceptionLineVariants = (
 
   const results = useQueries({
     queries: distinctIds.map((id) => ({
-      queryKey: ["product-variant", id],
+      queryKey: ["product-variants", "detail", id],
       queryFn: () => getProductVariant(id),
     })),
   });
