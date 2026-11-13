@@ -91,14 +91,13 @@ export function ProductionOrderStep1({
     isLoading: isLoadingProduccion,
     isInitialError: isProduccionError,
   } = useProductionVariants();
+  // Las muestras van como resultados LOCALES: siguen visibles y elegibles
+  // aunque la búsqueda del catálogo esté cargando o haya fallado.
   const productionMatches = productionVariants
     .filter((variant) => !variant.aplica_catalogo)
     .map(productionOption)
     .filter((option) => matchesProductionOption(option, catalogSearch.term));
-  const results: OpSkuOption[] = [
-    ...productionMatches,
-    ...catalogSearch.variants.map(catalogOption),
-  ];
+  const catalogResults: OpSkuOption[] = catalogSearch.variants.map(catalogOption);
 
   const [prioridad, setPrioridad] = useState<number>(
     initialData?.prioridad ?? 0,
@@ -299,9 +298,10 @@ export function ProductionOrderStep1({
       <ServerSearchSelectList<OpSkuOption>
         search={catalogSearch.search}
         onSearchChange={catalogSearch.setSearch}
-        results={results}
+        results={catalogResults}
+        localResults={productionMatches}
         pinned={selected}
-        total={productionMatches.length + catalogSearch.total}
+        total={catalogSearch.total}
         hasResults={catalogSearch.hasResults}
         isInitialError={catalogSearch.isInitialError}
         isSearching={catalogSearch.isSearching}
