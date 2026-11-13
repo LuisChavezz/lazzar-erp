@@ -123,19 +123,20 @@ export interface TransferenciaDetalleLine {
    * muestra no tiene producto ni variante de catálogo; `producto_nombre` trae
    * entonces el nombre de la muestra.
    */
-  variante_produccion: number | null;
-  sku_muestra: string | null;
+  variante_produccion?: number | null;
+  sku_muestra?: string | null;
   /**
    * SKU, color y talla de la variante surtida en la línea (EC-882): la de
    * catálogo (`producto_variante`) o, si no hay, la de muestra
    * (`variante_produccion`). Una línea sin ninguna de las dos trae `sku` y
-   * `color_*` en `null`. Sin variante, `talla_*` también va en `null`.
+   * `color_*` en `null`. Sin variante, `talla_*` también va en `null`. Opcionales en el tipo, como `cliente?` en EC-857: una respuesta sin la clave
+   * (anterior a EC-882) no debe leerse como "sin dato"; el PDF omite la columna.
    */
-  sku: string | null;
-  color_id: number | null;
-  color_nombre: string | null;
-  talla_id: number | null;
-  talla_nombre: string | null;
+  sku?: string | null;
+  color_id?: number | null;
+  color_nombre?: string | null;
+  talla_id?: number | null;
+  talla_nombre?: string | null;
   /** Cantidad trasladada, string decimal de 4 posiciones (ej. `"10.0000"`). */
   cantidad: string;
   ubicacion_origen: number | null;

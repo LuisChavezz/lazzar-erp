@@ -10,13 +10,17 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
 import type { PdfColumn, PdfInfoItem } from "./DocumentPdfLayout";
 
-/** Datos del producto que traen los renglones de los tres documentos. */
+/**
+ * Datos del producto que traen los renglones de los tres documentos. `sku`,
+ * `color_nombre` y la talla del traspaso son de EC-882: opcionales, como en
+ * los tipos de cada documento.
+ */
 export interface WmsPdfLineProduct {
-  sku: string | null;
+  sku?: string | null;
   producto_nombre: string | null;
   producto_variante_nombre: string | null;
-  color_nombre: string | null;
-  talla_nombre: string | null;
+  color_nombre?: string | null;
+  talla_nombre?: string | null;
 }
 
 /**

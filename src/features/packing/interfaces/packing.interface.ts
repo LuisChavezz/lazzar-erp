@@ -58,17 +58,18 @@ export interface PackingDetalleLine {
   talla_id?: number | null;
   talla_nombre: string | null;
   /** Variante de muestra de su `picking_detalle` y su SKU (EC-882). */
-  variante_produccion: number | null;
-  sku_muestra: string | null;
+  variante_produccion?: number | null;
+  sku_muestra?: string | null;
   /**
    * SKU, color y talla de la variante surtida en la línea (EC-882): la de
    * catálogo (`producto_variante`) o, si no hay, la de muestra
    * (`variante_produccion`). Una línea sin ninguna de las dos trae `sku` y
-   * `color_*` en `null`.
+   * `color_*` en `null`. Opcionales en el tipo, como `cliente?` en EC-857: una respuesta sin la clave
+   * (anterior a EC-882) no debe leerse como "sin dato"; el PDF omite la columna.
    */
-  sku: string | null;
-  color_id: number | null;
-  color_nombre: string | null;
+  sku?: string | null;
+  color_id?: number | null;
+  color_nombre?: string | null;
   cantidad_asignada: string;
   cantidad_solicitada: string;
   cantidad_surtida: string;
@@ -98,7 +99,7 @@ export interface Packing {
   pedido: number;
   pedido_folio: string | null;
   /** Pedido con su cliente (EC-882), misma forma que en picking y en Producción. */
-  pedido_vinculado: PedidoVinculado;
+  pedido_vinculado?: PedidoVinculado;
   picking: number;
   picking_folio: string;
   picking_estado: string;
