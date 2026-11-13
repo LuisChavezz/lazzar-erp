@@ -33,6 +33,7 @@ import { opPedidoRefs } from "../utils/opPedidos";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
+import { recalculableConsumptionProducts } from "@/src/features/production-order-consumption/utils/consumptionRecords";
 import { ProductionOrderConsumptionSection } from "@/src/features/production-order-consumption/components/ProductionOrderConsumptionSection";
 import { RecalculateConsumptionDialog } from "@/src/features/production-order-consumption/components/RecalculateConsumptionDialog";
 import { useProductionOrderStatusFlow } from "@/src/features/production-order-status/hooks/useProductionOrderStatusFlow";
@@ -243,6 +244,8 @@ export function ProductionOrderPageContent({
   // conserva `data`, así que sigue disponible aunque la página muestre su estado
   // de error.
   const consumptionProducts = data?.consumos_resumen ?? [];
+  // El diálogo solo ofrece lo que el backend acepta recalcular (planeado ≠ 0).
+  const recalculableProducts = recalculableConsumptionProducts(consumptionProducts);
 
   // El diálogo de recálculo va FUERA de las ramas de carga/error/éxito, en la
   // misma posición en todas (segundo hijo del fragmento de `withPageDialogs`):
@@ -258,7 +261,7 @@ export function ProductionOrderPageContent({
         onOpenChange={setIsRecalculateOpen}
         opId={numericId}
         folio={data?.folio_op ?? ""}
-        products={consumptionProducts}
+        products={recalculableProducts}
       />
       <ProductionOrderStatusDialog
         flow={statusFlow}
@@ -450,6 +453,7 @@ export function ProductionOrderPageContent({
       <ProductionOrderConsumptionSection
         consumos={data.consumos}
         products={consumptionProducts}
+        recalculableCount={recalculableProducts.length}
         isClosed={isClosedProductionOrderStatus(data.estatus_op)}
         onRecalculate={() => setIsRecalculateOpen(true)}
       />

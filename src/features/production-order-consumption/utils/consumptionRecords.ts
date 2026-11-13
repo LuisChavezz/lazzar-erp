@@ -2,6 +2,7 @@ import type {
   ProductionOrderConsumo,
   ProductionOrderConsumoResumen,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
+import { parseQuantity } from "./consumptionQuantity";
 
 /** Rótulo de un producto cuyo nombre el backend mandó en `null`. */
 export const productFallbackName = (producto: number): string => `Producto #${producto}`;
@@ -32,3 +33,20 @@ export const labelConsumptionRecords = (
   const original = sorted.find((record) => record.detalles.length > 0);
   return sorted.map((record) => ({ record, isOriginal: record === original }));
 };
+
+/**
+ * Materiales que "Recalcular consumos" puede ofrecer: los que tienen consumo
+ * PLANEADO. Es la regla del backend (`RecalculoConsumoTelaService.recalcular`,
+ * EC-880): un material con planeado 0 —uno que no estaba en el consumo inicial
+ * y solo entró por un ajuste— se rechaza con 400 `productos`, porque su
+ * objetivo sería 0 y devolvería al inventario todo lo consumido. El planeado
+ * sale del mismo `consumos_resumen` que usa el backend; uno que no se puede
+ * interpretar tampoco se ofrece.
+ */
+export const recalculableConsumptionProducts = (
+  resumen: readonly ProductionOrderConsumoResumen[],
+): ProductionOrderConsumoResumen[] =>
+  resumen.filter((row) => {
+    const planeado = parseQuantity(row.planeado);
+    return planeado !== null && planeado !== BigInt(0);
+  });
