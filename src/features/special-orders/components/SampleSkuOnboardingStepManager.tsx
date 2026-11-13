@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@tanstack/react-form";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
-import { useProducts } from "@/src/features/products/hooks/useProducts";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
 import type {
   SampleProductionVariant,
   SpecialOrderLine,
@@ -36,6 +35,11 @@ interface SampleSkuOnboardingStepManagerProps {
  * El formulario vive AQUÍ y no en un paso: los pasos se desmontan al cambiar,
  * y así regresar al Paso 1 conserva lo capturado de los materiales que sigan
  * seleccionados (ver `setMaterials`).
+ *
+ * También vive aquí la selección de materiales como OBJETOS del selector de
+ * productos (nombre, código, unidad): el Paso 1 la recibe para fijarla arriba
+ * al regresar, y el Paso 2 la usa para pintar cada fila, sin volver a pedir
+ * el catálogo ni resolver ids sueltos.
  */
 export function SampleSkuOnboardingStepManager({
   pedidoId,
@@ -47,22 +51,14 @@ export function SampleSkuOnboardingStepManager({
   // resultado hasta que se cierre a mano (no se cierra solo al terminar).
   const [result, setResult] = useState<SampleProductionVariant[] | null>(null);
 
-  // Mismo `useProducts(2)` que el Paso 1 (misma caché): da la unidad de cada material.
-  const { products } = useProducts(2);
+  // Materiales elegidos en el Paso 1, en el orden de las filas del formulario.
+  const [selectedMaterials, setSelectedMaterials] = useState<ProductSelectorItem[]>([]);
   const onboarding = useSampleSkuOnboardingForm({
     pedidoId,
     line,
     onSuccess: setResult,
     onColorRejected: () => setCurrentStep("select-materials"),
   });
-
-  // Suscripción al store y no `form.getFieldValue()` en el render: esa lectura
-  // no es reactiva y el React Compiler puede memoizarla sobre `form`, que es
-  // una referencia estable.
-  const materials = useStore(
-    onboarding.form.store,
-    (state) => state.values.materia_prima_detalle,
-  );
 
   const labels: Record<SampleSkuOnboardingStep, string> = {
     "select-materials": onboarding.requiresColor
@@ -83,11 +79,12 @@ export function SampleSkuOnboardingStepManager({
         <SampleSkuOnboardingStep1
           line={line}
           onboarding={onboarding}
-          initialSelectedIds={materials.map((row) => row.componente)}
-          onNext={(componentIds) => {
+          initialSelected={selectedMaterials}
+          onNext={(picked) => {
+            setSelectedMaterials(picked);
             onboarding.setMaterials(
-              componentIds,
-              new Map(products.map((product) => [product.id, product.unidad_id ?? null])),
+              picked.map((product) => product.id),
+              new Map(picked.map((product) => [product.id, product.unidad_id])),
             );
             setCurrentStep("configure-materials");
           }}
@@ -98,6 +95,7 @@ export function SampleSkuOnboardingStepManager({
       {currentStep === "configure-materials" && (
         <SampleSkuOnboardingStep2
           onboarding={onboarding}
+          materials={selectedMaterials}
           onBack={() => setCurrentStep("select-materials")}
         />
       )}

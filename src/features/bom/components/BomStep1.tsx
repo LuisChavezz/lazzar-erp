@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { SearchInput } from "@/src/components/SearchInput";
-import { Loader } from "@/src/components/Loader";
-import { CheckIcon } from "@/src/components/Icons";
-import { useProducts } from "@/src/features/products/hooks/useProducts";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
+import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
+import { useProductSearchField } from "@/src/features/products/hooks/useProductSelector";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
+import { PRODUCT_TYPE_IDS } from "@/src/features/product-variants/constants/variantProductTypes";
 
 interface BomStep1Props {
-  /** Advances to Step 2 with the selected component (product) ids. */
-  onNext: (componentIds: number[]) => void;
+  /**
+   * Advances to Step 2 with the selected materials. Van los objetos completos
+   * del selector (nombre, código, unidad), no solo sus ids: el Paso 2 los
+   * pinta y toma su unidad sin volver a pedir el catálogo.
+   */
+  onNext: (materials: ProductSelectorItem[]) => void;
   /** Closes the wizard (this is the first step — no previous step). */
   onBack: () => void;
   /**
@@ -17,7 +22,7 @@ interface BomStep1Props {
    * como siempre. La usa el alta de SKU de muestra (`special-orders`) para
    * conservar lo elegido al regresar desde su Paso 2; solo se lee al montar.
    */
-  initialSelectedIds?: readonly number[];
+  initialSelected?: readonly ProductSelectorItem[];
 }
 
 /**
@@ -28,76 +33,31 @@ interface BomStep1Props {
  * only — per-item configuration happens in Step 2. "Continuar" is enabled once
  * at least one product is selected.
  */
-export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) {
-  const { products, isLoading, isInitialError } = useProducts(2);
-
-  const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<number[]>(() => [
-    ...(initialSelectedIds ?? []),
+export function BomStep1({ onNext, onBack, initialSelected }: BomStep1Props) {
+  // Búsqueda en el servidor (`producto/selector/?tipo_id=2`, EC-886): busca por
+  // nombre, código y descripción, y solo trae materiales activos.
+  const materialSearch = useProductSearchField({ tipo_id: PRODUCT_TYPE_IDS.MP });
+  // Se guardan los OBJETOS elegidos: siguen fijos arriba aunque la búsqueda
+  // actual no los traiga, y el Paso 2 los recibe tal cual.
+  const [selected, setSelected] = useState<ProductSelectorItem[]>(() => [
+    ...(initialSelected ?? []),
   ]);
+  const isChosen = (product: ProductSelectorItem) =>
+    selected.some((item) => item.id === product.id);
 
-  const filteredProducts = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    const matches = !term
-      ? products
-      : products.filter(
-          (product) =>
-            product.nombre.toLowerCase().includes(term) ||
-            (product.codigo ?? "").toLowerCase().includes(term) ||
-            (product.descripcion ?? "").toLowerCase().includes(term),
-        );
-    // Lo elegido queda arriba aunque la búsqueda lo filtre: nunca se confirma
-    // una selección invisible.
-    const chosen = products.filter((product) => selectedIds.includes(product.id));
-    return [...chosen, ...matches.filter((product) => !selectedIds.includes(product.id))];
-  }, [products, search, selectedIds]);
-
-  const toggleProduct = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+  const toggleProduct = (product: ProductSelectorItem) => {
+    setSelected((prev) =>
+      prev.some((item) => item.id === product.id)
+        ? prev.filter((item) => item.id !== product.id)
+        : [...prev, product],
     );
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <Loader
-        title="Cargando productos"
-        message="Obteniendo lista de materiales disponibles..."
-      />
-    );
-  }
-
-  // ── Error state ───────────────────────────────────────────────────────
-  // Solo si el catálogo nunca cargó: un refetch fallido conserva la lista (y
-  // la selección) y avisa por toast desde `useProducts`.
-  if (isInitialError) {
-    return (
-      <p className="text-sm text-red-500 p-4">Error al cargar los productos.</p>
-    );
-  }
-
-  // ── Empty state ───────────────────────────────────────────────────────
-  if (products.length === 0) {
-    return (
-      <p className="text-sm text-slate-400 text-center py-6">
-        No hay productos disponibles.
-      </p>
-    );
-  }
-
-  const selectedCount = selectedIds.length;
+  const selectedCount = selected.length;
   const canAdvance = selectedCount > 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search */}
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder="Buscar por nombre o código..."
-      />
-
       {/* Selected count */}
       <p className="text-xs text-slate-500 font-medium">
         {selectedCount === 0
@@ -105,58 +65,44 @@ export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) 
           : `${selectedCount} material${selectedCount === 1 ? "" : "es"} seleccionado${selectedCount === 1 ? "" : "s"}`}
       </p>
 
-      {/* Scrollable multi-select list */}
-      <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
-        {filteredProducts.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            No se encontraron productos
-          </p>
-        ) : (
-          filteredProducts.map((product) => {
-            const selected = selectedIds.includes(product.id);
-            return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => toggleProduct(product.id)}
-                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
-                  selected
-                    ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20"
-                    : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10"
-                }`}
-              >
-                {/* Check indicator */}
-                <span
-                  className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                    selected
-                      ? "border-sky-500 bg-sky-500 text-white"
-                      : "border-slate-300 dark:border-slate-600"
-                  }`}
-                >
-                  {selected && <CheckIcon className="w-3.5 h-3.5" />}
+      {/* Search + scrollable multi-select list */}
+      <ServerSearchSelectList<ProductSelectorItem>
+        search={materialSearch.search}
+        onSearchChange={materialSearch.setSearch}
+        searchPlaceholder="Buscar por nombre, código o descripción..."
+        results={materialSearch.products}
+        pinned={selected}
+        total={materialSearch.total}
+        hasResults={materialSearch.hasResults}
+        isInitialError={materialSearch.isInitialError}
+        isSearching={materialSearch.isSearching}
+        onRetry={() => void materialSearch.refetch()}
+        getKey={(product) => product.id}
+        isSelected={isChosen}
+        onSelect={toggleProduct}
+        emptyMessage="No hay productos disponibles."
+        noResultsMessage="No se encontraron productos"
+        errorMessage="Error al cargar los productos."
+        maxHeightClassName="max-h-72"
+        renderIndicator={renderCheckboxIndicator}
+        renderContent={(product) => (
+          <>
+            <p className="flex items-baseline gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+              <span className="truncate">{product.nombre}</span>
+              {product.codigo && (
+                <span className="shrink-0 text-xs font-medium tabular-nums text-slate-400">
+                  {product.codigo}
                 </span>
-
-                {/* Product info */}
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-baseline gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    <span className="truncate">{product.nombre}</span>
-                    {product.codigo && (
-                      <span className="shrink-0 text-xs font-medium tabular-nums text-slate-400">
-                        {product.codigo}
-                      </span>
-                    )}
-                  </p>
-                  {product.descripcion && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {product.descripcion}
-                    </p>
-                  )}
-                </div>
-              </button>
-            );
-          })
+              )}
+            </p>
+            {product.descripcion && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {product.descripcion}
+              </p>
+            )}
+          </>
         )}
-      </div>
+      />
 
       {/* Action bar */}
       <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-4">
@@ -172,7 +118,7 @@ export function BomStep1({ onNext, onBack, initialSelectedIds }: BomStep1Props) 
         <button
           type="button"
           disabled={!canAdvance}
-          onClick={() => canAdvance && onNext(selectedIds)}
+          onClick={() => canAdvance && onNext(selected)}
           className={`inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition-all ${
             canAdvance
               ? "cursor-pointer hover:bg-sky-700 active:scale-[0.97]"
