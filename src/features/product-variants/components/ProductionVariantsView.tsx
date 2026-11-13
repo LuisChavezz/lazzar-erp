@@ -19,7 +19,8 @@ import { withHeaderFilters } from "@/src/components/withHeaderFilters";
  * servidor). Mismo patrón que `ProductionProductsView`.
  *
  * La tabla es de solo lectura (sin columna de acciones): la edición y la baja
- * siguen en Configuración (`ProductVariantList`, SKU manual), que no se toca.
+ * siguen en Configuración (`ProductVariantList`, SKU manual), que comparte con
+ * esta vista las columnas de `getColumns`.
  *
  * Producto, color y talla se pintan con los nombres que ya trae cada fila
  * (`producto_nombre`, `color_nombre`, `talla_nombre`): no se piden los
