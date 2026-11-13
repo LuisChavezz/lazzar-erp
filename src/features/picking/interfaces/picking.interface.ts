@@ -1,3 +1,5 @@
+import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
+
 /**
  * Contratos del endpoint de picking (`/wms/pickings/`).
  *
@@ -88,6 +90,18 @@ export interface PickingDetalleLine {
   producto_variante_nombre: string | null;
   /** SKU de muestra cuando la línea es de una muestra. Opcional (backend anterior). */
   sku_muestra?: string | null;
+  /** Variante de muestra (`VarianteProductoProduccion`) de una línea de muestra. */
+  variante_produccion: number | null;
+  /**
+   * SKU, color y talla de la variante surtida en la línea (EC-882): la de
+   * catálogo (`producto_variante`) o, si no hay, la de muestra
+   * (`variante_produccion`). Una línea sin ninguna de las dos trae `sku` y
+   * `color_*` en `null`. La talla (`talla_*`) sale de esa misma variante y, sin
+   * variante, de la talla del pedido.
+   */
+  sku: string | null;
+  color_id: number | null;
+  color_nombre: string | null;
   ubicacion: number | null;
   ubicacion_nombre: string | null;
   lote: string | null;
@@ -143,6 +157,11 @@ export interface Picking {
   sucursal: number;
   pedido: number;
   pedido_folio: string;
+  /**
+   * Pedido con su cliente (EC-882), la misma forma que en los detalles de
+   * Producción (EC-880, `armar_pedido_vinculado`).
+   */
+  pedido_vinculado: PedidoVinculado;
   operador: number;
   operador_nombre: string;
   /**
