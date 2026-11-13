@@ -8,12 +8,9 @@ import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { toCatalogSelectorQuery } from "@/src/utils/catalogSelectorQuery";
 
 
-export const getProductVariants = async (con_bom?: boolean): Promise<ProductVariant[]> => {
-  const response = await v1_api.get<ProductVariant[]>("/catalogo/producto-variante/", {
-    params: {
-      ...(con_bom !== undefined && { con_bom }),
-    },
-  });
+/** Listado COMPLETO de variantes (sin paginar): lo leen las tablas de catálogo. */
+export const getProductVariants = async (): Promise<ProductVariant[]> => {
+  const response = await v1_api.get<ProductVariant[]>("/catalogo/producto-variante/");
   return response.data;
 };
 

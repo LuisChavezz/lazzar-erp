@@ -335,8 +335,8 @@ export const configCards: ConfigCardItem[] = [
     view: "product-variants",
     group: "Productos",
     adminOnly: true,
-    // Misma llave que `ProductVariantList` (`useProductVariants()`, sin `con_bom`).
-    prefetchKey: ["product-variants", undefined],
+    // Misma llave que `ProductVariantList` (`useProductVariants()`).
+    prefetchKey: ["product-variants"],
     prefetchFn: () => getProductVariants(),
   },
   {

@@ -15,10 +15,10 @@ import type { ProductVariantSelectorParams } from "../interfaces/product-variant
  * Llave de `GET /catalogo/producto-variante/selector/`. Cuelga del prefijo
  * `["product-variants"]` que ya invalidan las mutaciones de variantes (y las de
  * BOM, porque `tiene_bom` cambia con ellas), así que todas las búsquedas se
- * refrescan sin tocar esas mutaciones. El segmento `"selector"` evita chocar
- * con el listado completo (`["product-variants", con_bom]`, que sigue usando
- * la tabla de Configuración). Los parámetros van normalizados: dos búsquedas
- * iguales comparten llave.
+ * refrescan sin tocar esas mutaciones. El segmento `"selector"` las separa del
+ * listado completo (la raíz `["product-variants"]`, que siguen usando las
+ * tablas de catálogo). Los parámetros van normalizados: dos búsquedas iguales
+ * comparten llave.
  */
 export const productVariantSelectorQueryKey = (params: ProductVariantSelectorParams) =>
   ["product-variants", "selector", toCatalogSelectorQuery(params)] as const;
