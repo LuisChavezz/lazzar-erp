@@ -164,7 +164,7 @@ test.describe("PDF del surtido (picking)", () => {
       Estatus: "Completado",
       Prioridad: "Media",
       Tipo: "Por pedido",
-      Avance: "1 de 1 líneas",
+      Avance: "1 de 1 línea",
     });
     expect(doc.card("PEDIDO Y UBICACIÓN")).toMatchObject({
       Pedido: "P-00140-2026",

@@ -27,6 +27,7 @@ import { PICKING_STATUS_CONFIG } from "@/src/features/picking/constants/pickingS
 import { PICKING_TIPO_LABELS } from "@/src/features/picking/constants/pickingTipo";
 import { pickingPdfDescriptor } from "@/src/features/picking/utils/pickingPdf";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
+import { plural } from "@/src/utils/plural";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/utils/textOrDash";
 import {
@@ -98,7 +99,10 @@ export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps
               value: PICKING_PRIORIDAD_CONFIG[picking.prioridad]?.label ?? textOrDash(picking.prioridad),
             },
             { label: "Tipo", value: PICKING_TIPO_LABELS[picking.tipo] ?? textOrDash(picking.tipo) },
-            { label: "Avance", value: `${picking.total_lineas_completas} de ${picking.total_lineas} líneas` },
+            {
+              label: "Avance",
+              value: `${picking.total_lineas_completas} de ${picking.total_lineas} ${plural(picking.total_lineas, "línea", "líneas")}`,
+            },
             { label: "Fecha límite", value: formatShortDate(picking.fecha_limite) },
             { label: "Inicio", value: formatShortDateTime(picking.fecha_inicio) },
             { label: "Fin", value: formatShortDateTime(picking.fecha_fin) },
