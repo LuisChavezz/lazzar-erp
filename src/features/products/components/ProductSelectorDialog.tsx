@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { Button } from "@/src/components/Button";
-import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { ServerSearchPickerDialogContent } from "@/src/components/ServerSearchPickerDialogContent";
 import { useProductSearchField } from "../hooks/useProductSelector";
 import type { ProductSelectorItem } from "../interfaces/product-selector.interface";
 
@@ -27,9 +23,7 @@ interface ProductSelectorDialogProps {
 /**
  * Contenido del selector — se monta solo mientras el diálogo está abierto,
  * así que la búsqueda (`GET /catalogo/producto/selector/?tipo_id=&q=&limit=`)
- * corre bajo demanda. La selección es *tentativa*: solo se propaga al pulsar
- * "Confirmar selección". Se guarda el producto ENTERO para que siga fijo
- * arriba aunque la búsqueda ya no lo traiga.
+ * corre bajo demanda.
  */
 function ProductSelectorContent({
   tipoIds,
@@ -42,72 +36,36 @@ function ProductSelectorContent({
   onConfirm: (product: ProductSelectorItem) => void;
   onCancel: () => void;
 }) {
-  const [tentative, setTentative] = useState<ProductSelectorItem | null>(selected);
-  const { search, setSearch, isSearching, products, total, hasResults, isInitialError, refetch } =
-    useProductSearchField({ tipo_id: tipoIds });
+  const { products, ...search } = useProductSearchField({ tipo_id: tipoIds });
 
   return (
-    <>
-      <DialogHeader
-        title="Seleccionar Producto"
-        subtitle="Elige un producto del catálogo"
-        statusColor="sky"
-      />
-
-      <ServerSearchSelectList<ProductSelectorItem>
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar producto por nombre, código o descripción..."
-        results={products}
-        pinned={tentative ? [tentative] : []}
-        getKey={(product) => product.id}
-        isSelected={(product) => product.id === tentative?.id}
-        onSelect={(product) =>
-          setTentative((prev) => (prev?.id === product.id ? null : product))
-        }
-        renderIndicator={renderRadioIndicator}
-        renderContent={(product) => (
-          <>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {product.nombre}
-            </p>
-            {/* `codigo` es nullable: sin código el backend no puede generar el
-                SKU de una variante, así que se dice en vez de dejar un hueco. */}
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {product.codigo ? (
-                <span className="font-mono">{product.codigo}</span>
-              ) : (
-                "Sin código"
-              )}
-              {!product.activo && " · Inactivo"}
-            </p>
-          </>
-        )}
-        hasResults={hasResults}
-        isInitialError={isInitialError}
-        isSearching={isSearching}
-        onRetry={() => void refetch()}
-        total={total}
-        emptyMessage="No hay productos disponibles."
-        noResultsMessage="No se encontraron productos"
-        errorMessage="Error al buscar los productos."
-      />
-
-      <div className="flex items-center justify-end gap-3 pt-5">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => {
-            if (tentative) onConfirm(tentative);
-          }}
-          disabled={tentative === null}
-        >
-          Confirmar selección
-        </Button>
-      </div>
-    </>
+    <ServerSearchPickerDialogContent<ProductSelectorItem>
+      title="Seleccionar Producto"
+      subtitle="Elige un producto del catálogo"
+      statusColor="sky"
+      query={{ ...search, results: products }}
+      searchPlaceholder="Buscar producto por nombre, código o descripción..."
+      initialSelected={selected}
+      getKey={(product) => product.id}
+      renderContent={(product) => (
+        <>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+            {product.nombre}
+          </p>
+          {/* `codigo` es nullable: sin código el backend no puede generar el
+              SKU de una variante, así que se dice en vez de dejar un hueco. */}
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            {product.codigo ? <span className="font-mono">{product.codigo}</span> : "Sin código"}
+            {!product.activo && " · Inactivo"}
+          </p>
+        </>
+      )}
+      emptyMessage="No hay productos disponibles."
+      noResultsMessage="No se encontraron productos"
+      errorMessage="Error al buscar los productos."
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }
 

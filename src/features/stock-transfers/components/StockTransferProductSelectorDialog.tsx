@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { Button } from "@/src/components/Button";
-import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { ServerSearchPickerDialogContent } from "@/src/components/ServerSearchPickerDialogContent";
 import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
 import { useProductSearchField } from "@/src/features/products/hooks/useProductSelector";
 import { useProductVariantSearchField } from "@/src/features/product-variants/hooks/useProductVariantSelector";
@@ -60,75 +56,53 @@ function SelectorContent({
   onCancel: () => void;
 }) {
   const copy = MODE_COPY[mode];
-  const [tentative, setTentative] = useState<EntityOption | null>(selected);
-  const productSearch = useProductSearchField({}, { enabled: mode === "producto" });
-  const variantSearch = useProductVariantSearchField({}, { enabled: mode === "producto_variante" });
-  const active =
+  const { products, ...productSearch } = useProductSearchField({}, { enabled: mode === "producto" });
+  const { variants, ...variantSearch } = useProductVariantSearchField(
+    {},
+    { enabled: mode === "producto_variante" },
+  );
+  const query =
     mode === "producto"
-      ? { ...productSearch, results: productSearch.products.map(productEntityOption) }
-      : { ...variantSearch, results: variantSearch.variants.map(variantEntityOption) };
+      ? { ...productSearch, results: products.map(productEntityOption) }
+      : { ...variantSearch, results: variants.map(variantEntityOption) };
 
   return (
-    <>
-      <DialogHeader title={copy.title} subtitle={copy.subtitle} statusColor="sky" />
-
-      <ServerSearchSelectList<EntityOption>
-        search={active.search}
-        onSearchChange={active.setSearch}
-        searchPlaceholder={copy.placeholder}
-        results={active.results}
-        pinned={tentative ? [tentative] : []}
-        getKey={(option) => option.id}
-        isSelected={(option) => option.id === tentative?.id}
-        onSelect={(option) => setTentative((prev) => (prev?.id === option.id ? null : option))}
-        renderIndicator={renderRadioIndicator}
-        renderContent={(option) => (
-          <>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {option.label}
+    <ServerSearchPickerDialogContent<EntityOption>
+      title={copy.title}
+      subtitle={copy.subtitle}
+      statusColor="sky"
+      query={query}
+      searchPlaceholder={copy.placeholder}
+      initialSelected={selected}
+      getKey={(option) => option.id}
+      renderContent={(option) => (
+        <>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+            {option.label}
+          </p>
+          {(option.sublabel || option.variant) && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              {option.sublabel && <span className="min-w-0 truncate">{option.sublabel}</span>}
+              {/* Las insignias no dependen del sublabel: se muestran aunque falte. */}
+              {option.variant && <ProductVariantCodeBadges variant={option.variant} />}
             </p>
-            {(option.sublabel || option.variant) && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                {option.sublabel && <span className="min-w-0 truncate">{option.sublabel}</span>}
-                {/* Las insignias no dependen del sublabel: se muestran aunque falte. */}
-                {option.variant && <ProductVariantCodeBadges variant={option.variant} />}
-              </p>
-            )}
-          </>
-        )}
-        hasResults={active.hasResults}
-        isInitialError={active.isInitialError}
-        isSearching={active.isSearching}
-        onRetry={() => void active.refetch()}
-        total={active.total}
-        emptyMessage={
-          mode === "producto" ? "No hay productos disponibles." : "No hay variantes disponibles."
-        }
-        noResultsMessage={
-          mode === "producto" ? "No se encontraron productos" : "No se encontraron variantes"
-        }
-        errorMessage={
-          mode === "producto"
-            ? "Error al buscar los productos."
-            : "Error al buscar las variantes de producto."
-        }
-      />
-
-      <div className="flex items-center justify-end gap-3 pt-5">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => {
-            if (tentative) onConfirm(tentative);
-          }}
-          disabled={tentative === null}
-        >
-          Confirmar selección
-        </Button>
-      </div>
-    </>
+          )}
+        </>
+      )}
+      emptyMessage={
+        mode === "producto" ? "No hay productos disponibles." : "No hay variantes disponibles."
+      }
+      noResultsMessage={
+        mode === "producto" ? "No se encontraron productos" : "No se encontraron variantes"
+      }
+      errorMessage={
+        mode === "producto"
+          ? "Error al buscar los productos."
+          : "Error al buscar las variantes de producto."
+      }
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }
 

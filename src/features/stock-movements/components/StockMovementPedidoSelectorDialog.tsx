@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { DialogHeader } from "@/src/components/DialogHeader";
-import { Button } from "@/src/components/Button";
-import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
-import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { ServerSearchPickerDialogContent } from "@/src/components/ServerSearchPickerDialogContent";
 import { usePedidoSearchField } from "@/src/features/orders/hooks/usePedidoSearch";
 
 export interface SelectedPedido {
@@ -52,13 +48,7 @@ function PedidoSelectorContent({
   onConfirm: (pedido: SelectedPedido) => void;
   onCancel: () => void;
 }) {
-  const [tentative, setTentative] = useState<PedidoOption | null>(
-    selectedPedido
-      ? { id: selectedPedido.id, folio: selectedPedido.label, cliente: null }
-      : null,
-  );
-  const { search, setSearch, isSearching, pedidos, total, hasResults, isInitialError, refetch } =
-    usePedidoSearchField();
+  const { pedidos, ...search } = usePedidoSearchField();
   const results: PedidoOption[] = pedidos.map((pedido) => ({
     id: pedido.id,
     folio: pedido.folio,
@@ -66,62 +56,32 @@ function PedidoSelectorContent({
   }));
 
   return (
-    <>
-      <DialogHeader
-        title="Seleccionar Pedido"
-        subtitle="Vincula el movimiento a un pedido existente"
-        statusColor="indigo"
-      />
-
-      <ServerSearchSelectList<PedidoOption>
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar pedido por folio, OC o cliente..."
-        results={results}
-        pinned={tentative ? [tentative] : []}
-        getKey={(option) => option.id}
-        isSelected={(option) => option.id === tentative?.id}
-        onSelect={(option) =>
-          setTentative((prev) => (prev?.id === option.id ? null : option))
-        }
-        renderIndicator={renderRadioIndicator}
-        renderContent={(option) => (
-          <>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {optionLabel(option)}
-            </p>
-            {option.cliente && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {option.cliente}
-              </p>
-            )}
-          </>
-        )}
-        hasResults={hasResults}
-        isInitialError={isInitialError}
-        isSearching={isSearching}
-        onRetry={() => void refetch()}
-        total={total}
-        emptyMessage="No hay pedidos disponibles."
-        noResultsMessage="No se encontraron pedidos"
-        errorMessage="Error al buscar los pedidos."
-      />
-
-      <div className="flex items-center justify-end gap-3 pt-5">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => {
-            if (tentative) onConfirm({ id: tentative.id, label: optionLabel(tentative) });
-          }}
-          disabled={tentative === null}
-        >
-          Confirmar selección
-        </Button>
-      </div>
-    </>
+    <ServerSearchPickerDialogContent<PedidoOption>
+      title="Seleccionar Pedido"
+      subtitle="Vincula el movimiento a un pedido existente"
+      statusColor="indigo"
+      query={{ ...search, results }}
+      searchPlaceholder="Buscar pedido por folio, OC o cliente..."
+      initialSelected={
+        selectedPedido ? { id: selectedPedido.id, folio: selectedPedido.label, cliente: null } : null
+      }
+      getKey={(option) => option.id}
+      renderContent={(option) => (
+        <>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+            {optionLabel(option)}
+          </p>
+          {option.cliente && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{option.cliente}</p>
+          )}
+        </>
+      )}
+      emptyMessage="No hay pedidos disponibles."
+      noResultsMessage="No se encontraron pedidos"
+      errorMessage="Error al buscar los pedidos."
+      onConfirm={(option) => onConfirm({ id: option.id, label: optionLabel(option) })}
+      onCancel={onCancel}
+    />
   );
 }
 
