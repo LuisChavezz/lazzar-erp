@@ -51,10 +51,20 @@ export interface DocumentPdfDescriptor {
   cancelled: boolean;
   /** Motivo de la cancelación, si el documento lo tiene. */
   cancellationReason?: string | null;
+  /**
+   * Leyenda de la marca (banner, pie y marca de agua) cuando no es la de
+   * siempre: p. ej. "FALLIDA" en un traspaso (EC-858). Sin ella, o vacía, la
+   * marca dice `DOCUMENT_PDF_CANCELLED_MARK`.
+   */
+  cancelledLabel?: string | null;
 }
 
-/** Leyenda fija de un documento cancelado: banner, pie y marca de agua. */
+/** Leyenda por defecto de un documento cancelado: banner, pie y marca de agua. */
 export const DOCUMENT_PDF_CANCELLED_MARK = "CANCELADO";
+
+/** Leyenda de la marca de un documento cancelado: la suya o la de siempre. */
+export const documentPdfCancelledMark = (descriptor: Pick<DocumentPdfDescriptor, "cancelledLabel">): string =>
+  descriptor.cancelledLabel?.trim() || DOCUMENT_PDF_CANCELLED_MARK;
 
 /** Folio a mostrar dentro del PDF: el folio, o `#id` si aún no tiene. */
 export const documentPdfFolioLabel = (folio: string | null | undefined, id: number): string =>
