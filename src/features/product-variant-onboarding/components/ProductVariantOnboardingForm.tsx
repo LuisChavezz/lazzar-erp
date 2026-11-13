@@ -13,6 +13,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import MissingPrerequisites from "../../products/components/MissingPrerequisites";
 import { ProductSelectorDialog } from "../../products/components/ProductSelectorDialog";
 import { useProductVariantOnboardingForm } from "../hooks/useProductVariantOnboardingForm";
+import { VARIANT_PRODUCT_TYPE_IDS } from "../../product-variants/constants/variantProductTypes";
 
 const optionClassName = "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white";
 
@@ -32,7 +33,7 @@ export default function ProductVariantOnboardingForm() {
     isLoadingCatalogs,
     catalogsError,
     missingItems,
-    activeProducts,
+    selectedProduct,
     colors,
     requiresTalla,
     sizeOptions,
@@ -267,8 +268,8 @@ export default function ProductVariantOnboardingForm() {
       <ProductSelectorDialog
         open={isProductSelectorOpen}
         onOpenChange={setIsProductSelectorOpen}
-        products={activeProducts}
-        selectedId={selectedProductId}
+        tipoIds={VARIANT_PRODUCT_TYPE_IDS}
+        selected={selectedProduct}
         onSelect={handleProductSelect}
       />
     </>

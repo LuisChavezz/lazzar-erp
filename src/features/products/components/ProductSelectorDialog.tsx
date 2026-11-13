@@ -1,44 +1,131 @@
 "use client";
 
+import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
-import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import type { Product } from "../interfaces/product.interface";
+import { DialogHeader } from "@/src/components/DialogHeader";
+import { Button } from "@/src/components/Button";
+import { ServerSearchSelectList } from "@/src/components/ServerSearchSelectList";
+import { renderRadioIndicator } from "@/src/components/RadioIndicator";
+import { useProductSearchField } from "../hooks/useProductSelector";
+import type { ProductSelectorItem } from "../interfaces/product-selector.interface";
 
 interface ProductSelectorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Catálogo ya cargado y filtrado por el formulario (una sola fuente, sin doble fetch). */
-  products: Product[];
-  /** Id actualmente elegido (para resaltarlo al abrir si está en `products`); `0` = ninguno. */
-  selectedId: number;
-  /** Se invoca al confirmar con el id elegido; el formulario decide qué hacer con él. */
-  onSelect: (id: number) => void;
+  /** Tipos de producto que se buscan (`?tipo_id=`). */
+  tipoIds: number | readonly number[];
+  /**
+   * Producto actualmente elegido, o `null`. Se fija arriba aunque la búsqueda
+   * no lo traiga, también si ya no es elegible (inactivo o de otro tipo, al
+   * editar una variante): lo resuelve el formulario, aquí no se busca.
+   */
+  selected: ProductSelectorItem | null;
+  /** Se invoca al confirmar con el producto elegido; el formulario decide qué hacer con él. */
+  onSelect: (product: ProductSelectorItem) => void;
+}
+
+/**
+ * Contenido del selector — se monta solo mientras el diálogo está abierto,
+ * así que la búsqueda (`GET /catalogo/producto/selector/?tipo_id=&q=&limit=`)
+ * corre bajo demanda. La selección es *tentativa*: solo se propaga al pulsar
+ * "Confirmar selección". Se guarda el producto ENTERO para que siga fijo
+ * arriba aunque la búsqueda ya no lo traiga.
+ */
+function ProductSelectorContent({
+  tipoIds,
+  selected,
+  onConfirm,
+  onCancel,
+}: {
+  tipoIds: number | readonly number[];
+  selected: ProductSelectorItem | null;
+  onConfirm: (product: ProductSelectorItem) => void;
+  onCancel: () => void;
+}) {
+  const [tentative, setTentative] = useState<ProductSelectorItem | null>(selected);
+  const { search, setSearch, isSearching, products, total, hasResults, isInitialError, refetch } =
+    useProductSearchField({ tipo_id: tipoIds });
+
+  return (
+    <>
+      <DialogHeader
+        title="Seleccionar Producto"
+        subtitle="Elige un producto del catálogo"
+        statusColor="sky"
+      />
+
+      <ServerSearchSelectList<ProductSelectorItem>
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar producto por nombre, código o descripción..."
+        results={products}
+        pinned={tentative ? [tentative] : []}
+        getKey={(product) => product.id}
+        isSelected={(product) => product.id === tentative?.id}
+        onSelect={(product) =>
+          setTentative((prev) => (prev?.id === product.id ? null : product))
+        }
+        renderIndicator={renderRadioIndicator}
+        renderContent={(product) => (
+          <>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+              {product.nombre}
+            </p>
+            {/* `codigo` es nullable: sin código el backend no puede generar el
+                SKU de una variante, así que se dice en vez de dejar un hueco. */}
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {product.codigo ? (
+                <span className="font-mono">{product.codigo}</span>
+              ) : (
+                "Sin código"
+              )}
+              {!product.activo && " · Inactivo"}
+            </p>
+          </>
+        )}
+        hasResults={hasResults}
+        isInitialError={isInitialError}
+        isSearching={isSearching}
+        onRetry={() => void refetch()}
+        total={total}
+        emptyMessage="No hay productos disponibles."
+        noResultsMessage="No se encontraron productos"
+        errorMessage="Error al buscar los productos."
+      />
+
+      <div className="flex items-center justify-end gap-3 pt-5">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (tentative) onConfirm(tentative);
+          }}
+          disabled={tentative === null}
+        >
+          Confirmar selección
+        </Button>
+      </div>
+    </>
+  );
 }
 
 /**
  * ProductSelectorDialog
  *
  * Selector único de PRODUCTO (no de variante), APILADO encima del formulario
- * que lo abre. Mismo patrón que `StockTransferProductSelectorDialog`: el
- * formulario es dueño del estado de apertura y le pasa el catálogo; aquí no se
- * hace fetch ni se filtra nada (tipo, `activo`, etc. los decide quien llama).
- *
- * `codigo` es nullable en el modelo aunque `Product` lo declare `string`: se
- * pinta "Sin código" en vez de un hueco, porque sin código el backend no puede
- * generar el SKU de una variante.
+ * que lo abre (formulario y onboarding de variante). Busca en el servidor
+ * sobre el selector ligero de productos (EC-886) en vez de recibir el
+ * catálogo completo cargado: solo trae productos activos de `tipoIds`.
  */
 export function ProductSelectorDialog({
   open,
   onOpenChange,
-  products,
-  selectedId,
+  tipoIds,
+  selected,
   onSelect,
 }: ProductSelectorDialogProps) {
-  // El producto elegido puede NO estar en el catálogo (p. ej. al editar una
-  // variante cuyo producto ya está inactivo o es de otro tipo). Sembrarlo como
-  // selección tentativa dejaría "Confirmar" habilitado sin nada que confirmar.
-  const isSelectedListed = products.some((product) => product.id === selectedId);
-
   return (
     <MainDialog
       open={open}
@@ -47,38 +134,13 @@ export function ProductSelectorDialog({
       maxWidth="560px"
       showCloseButton={false}
     >
-      {/* Se remonta al reabrir para reiniciar la selección tentativa. Sin hook de
-          datos propio: el catálogo ya viene cargado por el formulario. */}
+      {/* Se remonta al reabrir para reiniciar la selección tentativa. */}
       {open && (
-        <SingleSelectPickerDialogContent<Product>
-          title="Seleccionar Producto"
-          subtitle="Elige un producto del catálogo"
-          statusColor="sky"
-          items={products}
-          searchPlaceholder="Buscar producto por nombre o código..."
-          filterPredicate={(product, term) =>
-            `${product.nombre} ${product.codigo ?? ""}`.toLowerCase().includes(term)
-          }
-          getKey={(product) => product.id}
-          selectedKey={isSelectedListed ? selectedId : null}
-          emptyMessage="No hay productos disponibles."
-          noResultsMessage="No se encontraron productos"
-          renderContent={(product) => (
-            <>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {product.nombre}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {product.codigo ? (
-                  <span className="font-mono">{product.codigo}</span>
-                ) : (
-                  "Sin código"
-                )}
-              </p>
-            </>
-          )}
+        <ProductSelectorContent
+          tipoIds={tipoIds}
+          selected={selected}
           onConfirm={(product) => {
-            onSelect(product.id);
+            onSelect(product);
             onOpenChange(false);
           }}
           onCancel={() => onOpenChange(false)}

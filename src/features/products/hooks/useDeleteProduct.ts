@@ -9,8 +9,8 @@ export const useDeleteProduct = () => {
   return useMutation({
     mutationFn: deleteProduct,
     // Ninguna consulta usa la llave exacta `["products"]`: los listados son
-    // `["products", tipo_id]` y el detalle `["products", "detail", id]`. Por eso
-    // todo va por prefijo.
+    // `["products", tipo_id]` y los selectores `["products", "selector", params]`
+    // (un sobre paginado, no un arreglo). Por eso todo va por prefijo.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["products"] });
       const previousProducts = queryClient.getQueriesData<Product[] | Product>({
@@ -18,7 +18,8 @@ export const useDeleteProduct = () => {
       });
 
       // Solo se filtran los listados (arreglos). Devolver `undefined` deja la
-      // entrada intacta, así el detalle (un objeto) no se toca.
+      // entrada intacta, así los selectores (un objeto) no se tocan: se
+      // refrescan con la invalidación de `onSettled`.
       queryClient.setQueriesData<Product[] | Product>({ queryKey: ["products"] }, (old) =>
         Array.isArray(old) ? old.filter((product) => product.id !== id) : undefined
       );

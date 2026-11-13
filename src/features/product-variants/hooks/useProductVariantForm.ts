@@ -5,14 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
 import { ProductVariantFormSchema, ProductVariantFormValues } from "../schemas/product-variant.schema";
-import { useProducts } from "../../products/hooks/useProducts";
-import { useProduct } from "../../products/hooks/useProduct";
+import { useProductSelectorTotal, useProductsByIds } from "../../products/hooks/useProductSelector";
 import { useColors } from "../../colors/hooks/useColors";
 import { useSizesByCategory } from "../../sizes/hooks/useSizesByCategory";
 import { useCreateProductVariant } from "./useCreateProductVariant";
 import { useUpdateProductVariant } from "./useUpdateProductVariant";
 import { ProductVariant } from "../interfaces/product-variant.interface";
-import type { Product } from "../../products/interfaces/product.interface";
+import type { ProductSelectorItem } from "../../products/interfaces/product-selector.interface";
 import {
   VARIANT_PRODUCT_TYPE_IDS,
   productRequiresTalla,
@@ -44,33 +43,36 @@ export function useProductVariantForm({
   const { sessionCompany, name: companyName } = useSessionCompanyDetails();
   const companyId = sessionCompany.companyId;
 
-  // Carga catálogos necesarios para construir los selectores.
-  // EC-249: productos PT y COMPRAS en UNA consulta (`?tipo_id=1,3`). Su llave
-  // (`["products", [1, 3]]`) no choca con los listados solo-PT (`["products", 3]`).
-  const { products, isLoading: isLoadingProducts } = useProducts(VARIANT_PRODUCT_TYPE_IDS);
+  // El producto se elige en un selector que busca en el servidor
+  // (`ProductSelectorDialog`: productos activos PT y COMPRAS, EC-249/EC-886), así
+  // que aquí no se descarga el catálogo. Solo se pregunta si hay alguno (una
+  // fila), para el aviso de prerequisitos de un alta.
+  const { total: productTotal, isLoading: isLoadingProducts } = useProductSelectorTotal({
+    tipo_id: VARIANT_PRODUCT_TYPE_IDS,
+  });
   const { colors, isLoading: isLoadingColors } = useColors();
-
-  // Mantiene los mismos criterios de disponibilidad del formulario original.
-  const activeProducts = useMemo(() => products.filter((product) => product.activo), [products]);
   const activeColors = colors;
 
   // Detecta si el formulario está en modo edición.
   const isEditing = Boolean(productVariantToEdit?.id);
 
-  // En edición se conserva el producto ACTUAL de la variante aunque no esté en
-  // el catálogo del selector (inactivo, o de un tipo fuera de PT/COMPRAS como
-  // los MP de los BOM): el selector solo sirve para CAMBIARLO. Su tipo y su
-  // categoría —que deciden la talla— salen del detalle del producto, que solo
-  // se pide en ese caso.
+  // En edición se conserva el producto ACTUAL de la variante aunque ya no sea
+  // elegible (inactivo, o de un tipo fuera de PT/COMPRAS como los MP de los
+  // BOM): el selector solo sirve para CAMBIARLO. Su tipo y su categoría —que
+  // deciden la talla— se resuelven por id (`?ids=`), que el backend devuelve
+  // aunque esté inactivo o sea de otro tipo.
   const editProductId = productVariantToEdit?.producto ?? 0;
-  const isEditProductListed = activeProducts.some((product) => product.id === editProductId);
-  const { product: editProduct, isError: isEditProductError } = useProduct(editProductId, {
-    enabled: !isLoadingProducts && !isEditProductListed,
-  });
+  const {
+    productsById: editProducts,
+    isLoading: isLoadingEditProduct,
+    isInitialError: isEditProductError,
+  } = useProductsByIds(editProductId > 0 ? [editProductId] : []);
 
-  const findProduct = (productId: number): Product | undefined =>
-    activeProducts.find((product) => product.id === productId) ??
-    (editProduct?.id === productId ? editProduct : undefined);
+  // Producto elegido en el selector: la fila completa que entrega el diálogo.
+  const [pickedProduct, setPickedProduct] = useState<ProductSelectorItem | null>(null);
+
+  const findProduct = (productId: number): ProductSelectorItem | undefined =>
+    (pickedProduct?.id === productId ? pickedProduct : undefined) ?? editProducts.get(productId);
 
   // Define los prerequisitos de catálogos para habilitar el formulario. Las
   // tallas ya no son prerequisito global: solo las necesita un producto PT y se
@@ -79,10 +81,10 @@ export function useProductVariantForm({
   const missingItems = useMemo(
     () =>
       [
-        activeProducts.length === 0 && !isLoadingProducts && !isEditing ? "Productos" : null,
+        productTotal === 0 && !isLoadingProducts && !isEditing ? "Productos" : null,
         activeColors.length === 0 && !isLoadingColors ? "Colores" : null,
       ].filter((item): item is string => Boolean(item)),
-    [activeColors.length, activeProducts.length, isEditing, isLoadingColors, isLoadingProducts]
+    [activeColors.length, productTotal, isEditing, isLoadingColors, isLoadingProducts]
   );
 
   // Mantiene referencias visuales y preferencia de captura continua.
@@ -209,11 +211,12 @@ export function useProductVariantForm({
 
       // Sin el producto resuelto no se sabe si exige talla: enviar así mandaría
       // `talla: null` y borraría la de una variante PT. Solo ocurre con el
-      // producto actual de una edición mientras su detalle carga o si falló.
+      // producto actual de una edición mientras se resuelve o si falló.
       if (!productToSave) {
-        const isLoadingEditProduct = value.producto === editProductId && !isEditProductError;
+        const isResolvingEditProduct =
+          value.producto === editProductId && isLoadingEditProduct && !isEditProductError;
         setClientErrors({
-          producto: isLoadingEditProduct ? PRODUCT_LOADING_MESSAGE : PRODUCT_LOAD_ERROR_MESSAGE,
+          producto: isResolvingEditProduct ? PRODUCT_LOADING_MESSAGE : PRODUCT_LOAD_ERROR_MESSAGE,
         });
         return;
       }
@@ -327,18 +330,19 @@ export function useProductVariantForm({
    * Confirmación del selector de producto. Reconfirmar el MISMO producto no
    * toca nada: ni la talla capturada ni el aviso del campo.
    */
-  const handleProductSelect = (productId: number) => {
-    if (productId === form.state.values.producto) {
+  const handleProductSelect = (product: ProductSelectorItem) => {
+    if (product.id === form.state.values.producto) {
       return;
     }
-    form.setFieldValue("producto", productId);
+    setPickedProduct(product);
+    form.setFieldValue("producto", product.id);
     clearFieldErrors("producto");
     resetTalla();
   };
 
   /**
-   * Etiqueta del producto elegido. Mientras el detalle del producto actual de
-   * una edición carga (o si falló) se usa el nombre que ya trae la variante.
+   * Etiqueta del producto elegido. Mientras el producto actual de una edición
+   * se resuelve (o si falló) se usa el nombre que ya trae la variante.
    */
   const getProductLabel = (productId: number): string | null => {
     if (productId <= 0) {
@@ -389,9 +393,9 @@ export function useProductVariantForm({
     keepCreating,
     setKeepCreating,
     missingItems,
-    activeProducts,
     activeColors,
-    selectedProductId,
+    /** Producto elegido resuelto (para fijarlo en el selector); `null` si aún no. */
+    selectedProduct: selectedProduct ?? null,
     getProductLabel,
     handleProductSelect,
     requiresTalla,

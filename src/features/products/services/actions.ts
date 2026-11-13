@@ -40,17 +40,6 @@ export const getProductSelector = async (
   return response.data;
 };
 
-/**
- * Detalle de un producto. El backend acota el `retrieve` con el mismo queryset
- * que el listado: por empresa (`_alcance_empresa`) y solo ACTIVOS
- * (`filter(activo=True)`), así que un producto ajeno o dado de baja responde
- * 404. No aplica el filtro de tipo (`?tipo_id` es solo del listado).
- */
-export const getProduct = async (id: number): Promise<Product> => {
-  const response = await v1_api.get<Product>(`/catalogo/producto/${id}/`);
-  return response.data;
-};
-
 // Sin `createProduct`: el alta de productos va solo por el alta rápida
 // (`product-onboarding`, `POST /catalogo/producto/onboarding/`), que asigna el
 // `codigo`. El `POST` base lo dejaría en `null`.
