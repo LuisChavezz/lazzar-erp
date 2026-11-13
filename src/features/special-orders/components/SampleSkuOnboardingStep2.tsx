@@ -7,7 +7,7 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormToggle } from "@/src/components/FormToggle";
 import { FormSubmitButton } from "@/src/components/FormButtons";
 import { WarningFilledIcon } from "@/src/components/Icons";
-import { useProducts } from "@/src/features/products/hooks/useProducts";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import { useNextCatalogProductCode } from "../hooks/useNextCatalogProductCode";
 import { sanitizeDecimalInput } from "@/src/utils/decimal";
@@ -20,6 +20,8 @@ const CATALOG_WARNING_TEXT = "text-amber-700 dark:text-amber-400";
 
 interface SampleSkuOnboardingStep2Props {
   onboarding: SampleSkuOnboardingForm;
+  /** Materiales elegidos en el Paso 1 (filas del selector): nombre, código y unidad de cada fila. */
+  materials: readonly ProductSelectorItem[];
   /** Regresa al Paso 1 (los valores capturados se conservan en el formulario). */
   onBack: () => void;
 }
@@ -41,6 +43,7 @@ interface SampleSkuOnboardingStep2Props {
  */
 export function SampleSkuOnboardingStep2({
   onboarding,
+  materials,
   onBack,
 }: SampleSkuOnboardingStep2Props) {
   const {
@@ -54,15 +57,13 @@ export function SampleSkuOnboardingStep2({
     handleFormSubmit,
   } = onboarding;
 
-  // Mismo `useProducts(2)` que `BomStep1`: comparte caché, no vuelve a pedir.
-  const { products, isLoading: isLoadingProducts } = useProducts(2);
   const { units, isLoading: isLoadingUnits, isInitialError: isErrorUnits } = useUnitsOfMeasure();
 
-  if (isLoadingProducts || isLoadingUnits) {
+  if (isLoadingUnits) {
     return <Loader title="Preparando configuración" message="Cargando catálogos..." />;
   }
 
-  const productById = new Map(products.map((product) => [product.id, product]));
+  const productById = new Map(materials.map((product) => [product.id, product]));
   const unitById = new Map(units.map((unit) => [unit.id, unit]));
   const activeUnits = units.filter((unit) => unit.activo);
   // El backend crea un SKU por cada talla con cantidad (> 0): son las filas de la vista previa.

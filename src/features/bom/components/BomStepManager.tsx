@@ -15,6 +15,7 @@
 
 import { useCallback, useState } from "react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
 import { BomStep1 } from "./BomStep1";
 import { BomStep2 } from "./BomStep2";
 
@@ -44,7 +45,8 @@ interface BomStepManagerProps {
  *
  * Orchestrator for the BOM (lista de materiales) onboarding wizard. The variant
  * is fixed via `productoVarianteId`; this holds the current step and the
- * component ids chosen in Step 1, and renders the matching step component.
+ * materials chosen in Step 1 (the selector rows, so Step 2 needs no catalog
+ * fetch), and renders the matching step component.
  */
 export function BomStepManager({
   productoVarianteId,
@@ -52,13 +54,11 @@ export function BomStepManager({
   onSuccess,
 }: BomStepManagerProps) {
   const [currentStep, setCurrentStep] = useState<BomStep>(STEPS[0]);
-  const [selectedComponentIds, setSelectedComponentIds] = useState<number[]>(
-    [],
-  );
+  const [selectedMaterials, setSelectedMaterials] = useState<ProductSelectorItem[]>([]);
 
-  /** Step 1 → store the selected component ids and advance to configuration. */
-  const handleMaterialsSelected = useCallback((componentIds: number[]) => {
-    setSelectedComponentIds(componentIds);
+  /** Step 1 → store the selected materials and advance to configuration. */
+  const handleMaterialsSelected = useCallback((materials: ProductSelectorItem[]) => {
+    setSelectedMaterials(materials);
     setCurrentStep("configure-materials");
   }, []);
 
@@ -82,7 +82,7 @@ export function BomStepManager({
         {currentStep === "configure-materials" && (
           <BomStep2
             productoVarianteId={productoVarianteId}
-            componentIds={selectedComponentIds}
+            materials={selectedMaterials}
             onBack={() => setCurrentStep("select-materials")}
             onSuccess={onSuccess}
           />

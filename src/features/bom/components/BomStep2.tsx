@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Loader } from "@/src/components/Loader";
 import { FormInput } from "@/src/components/FormInput";
@@ -8,15 +7,18 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormToggle } from "@/src/components/FormToggle";
 import { FormSubmitButton } from "@/src/components/FormButtons";
-import { useProducts } from "@/src/features/products/hooks/useProducts";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
 import { useUnitsOfMeasure } from "@/src/features/units-of-measure/hooks/useUnitsOfMeasure";
 import { useCreateBomForm } from "@/src/features/bom/hooks/useCreateBomForm";
 
 interface BomStep2Props {
   /** Variante de producto (recibida desde el diálogo). */
   productoVarianteId: number;
-  /** Product ids selected in Step 1 — one config card each. */
-  componentIds: number[];
+  /**
+   * Materiales elegidos en el Paso 1 (filas del selector de productos), una
+   * tarjeta cada uno. Traen nombre y unidad: no se vuelve a pedir el catálogo.
+   */
+  materials: readonly ProductSelectorItem[];
   /** Returns to Step 1. */
   onBack: () => void;
   /** Called after the lista de materiales is created — closes the dialog. */
@@ -41,31 +43,22 @@ function toNumber(raw: string): number {
  */
 export function BomStep2({
   productoVarianteId,
-  componentIds,
+  materials,
   onBack,
   onSuccess,
 }: BomStep2Props) {
-  const { products, isLoading: isLoadingProducts } = useProducts(2);
+  const productById = new Map(materials.map((product) => [product.id, product]));
   const { form, isSubmitting, getError, clearError, handleFormSubmit } =
     useCreateBomForm({
       productoVarianteId,
-      componentIds,
-      // `useProducts(2)` ya está en caché desde el Paso 1.
-      unitById: new Map(products.map((product) => [product.id, product.unidad_id ?? null])),
+      componentIds: materials.map((product) => product.id),
+      unitById: new Map(materials.map((product) => [product.id, product.unidad_id])),
       onSuccess,
     });
 
   const { units, isLoading: isLoadingUnits } = useUnitsOfMeasure();
 
-  // Mapa id → nombre para titular cada tarjeta de material.
-  const productNameById = useMemo(() => {
-    const map = new Map<number, string>();
-    products.forEach((product) => map.set(product.id, product.nombre));
-    return map;
-  }, [products]);
-  const productById = new Map(products.map((product) => [product.id, product]));
-
-  if (isLoadingProducts || isLoadingUnits) {
+  if (isLoadingUnits) {
     return (
       <Loader
         title="Preparando configuración"
@@ -105,7 +98,7 @@ export function BomStep2({
                     {index + 1}
                   </span>
                   <h4 className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                    {productNameById.get(item.componente) ??
+                    {productById.get(item.componente)?.nombre ??
                       `Componente #${item.componente}`}
                   </h4>
                 </div>

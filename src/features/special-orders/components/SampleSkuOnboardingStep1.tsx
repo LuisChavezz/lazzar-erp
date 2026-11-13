@@ -4,16 +4,17 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { InfoField } from "@/src/components/DetailDialogPrimitives";
 import { BomStep1 } from "@/src/features/bom/components/BomStep1";
 import { useColors } from "@/src/features/colors/hooks/useColors";
+import type { ProductSelectorItem } from "@/src/features/products/interfaces/product-selector.interface";
 import type { SpecialOrderLine } from "../interfaces/special-order.interface";
 import type { SampleSkuOnboardingForm } from "../hooks/useSampleSkuOnboardingForm";
 
 interface SampleSkuOnboardingStep1Props {
   line: SpecialOrderLine;
   onboarding: SampleSkuOnboardingForm;
-  /** Materiales ya elegidos (al regresar del Paso 2). */
-  initialSelectedIds: readonly number[];
+  /** Materiales ya elegidos (al regresar del Paso 2): las filas del selector. */
+  initialSelected: readonly ProductSelectorItem[];
   /** Avanza al Paso 2 con los materiales elegidos. */
-  onNext: (componentIds: number[]) => void;
+  onNext: (materials: ProductSelectorItem[]) => void;
   /** Cierra el asistente (es el primer paso). */
   onClose: () => void;
 }
@@ -34,7 +35,7 @@ interface SampleSkuOnboardingStep1Props {
 export function SampleSkuOnboardingStep1({
   line,
   onboarding,
-  initialSelectedIds,
+  initialSelected,
   onNext,
   onClose,
 }: SampleSkuOnboardingStep1Props) {
@@ -104,9 +105,9 @@ export function SampleSkuOnboardingStep1({
           Materiales
         </p>
         <BomStep1
-          initialSelectedIds={initialSelectedIds}
-          onNext={(componentIds) => {
-            if (validateColor()) onNext(componentIds);
+          initialSelected={initialSelected}
+          onNext={(materials) => {
+            if (validateColor()) onNext(materials);
           }}
           onBack={onClose}
         />
