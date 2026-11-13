@@ -30,9 +30,9 @@ import type {
 } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
 import {
   reflectiveLineConfigText,
-  reflectiveMetrosText,
   reflectiveOrderPdfDescriptor,
 } from "@/src/features/reflective-orders/utils/reflectiveOrderPdf";
+import { reflectiveMetrosText } from "@/src/features/reflective-orders/utils/reflectiveMetros";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";

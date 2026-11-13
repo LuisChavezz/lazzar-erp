@@ -14,10 +14,8 @@ import type {
   ReflectiveOrderDetail,
   ReflectiveOrderDetailLine,
 } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
-import {
-  reflectiveOrderPdfDescriptor,
-  reflectiveMetrosText,
-} from "@/src/features/reflective-orders/utils/reflectiveOrderPdf";
+import { reflectiveMetrosText } from "@/src/features/reflective-orders/utils/reflectiveMetros";
+import { reflectiveOrderPdfDescriptor } from "@/src/features/reflective-orders/utils/reflectiveOrderPdf";
 import { CorteMangaOrderPdfDocument } from "@/src/pdfs/CorteMangaOrderPdfDocument";
 import { EmbroideryOrderPdfDocument } from "@/src/pdfs/EmbroideryOrderPdfDocument";
 import { ReflectiveOrderPdfDocument } from "@/src/pdfs/ReflectiveOrderPdfDocument";
