@@ -25,10 +25,14 @@ interface UseReceiptFormParams {
 
 type ReceiptFormField = keyof ReceiptFormValues;
 
-// Busca el primer campo inválido y mueve el viewport hasta él.
+// Busca el primer campo inválido y mueve el viewport hasta él. Los inputs de
+// cantidad no llevan `name` (`QuantitySelector`), así que un error en
+// `cantidades` sin ningún campo de cabecera inválido ancla a su sección
+// (`cantidadesSection`), que va después de la cabecera en el DOM (EC-893).
 const scrollToFirstValidationError = (
   formElement: HTMLFormElement,
   issuePaths: string[],
+  cantidadesSection: HTMLElement | null,
 ) => {
   if (issuePaths.length === 0) return;
 
@@ -55,6 +59,11 @@ const scrollToFirstValidationError = (
   if (firstInvalid) {
     firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.focus({ preventScroll: true });
+    return;
+  }
+
+  if (cantidadesSection && issuePaths.includes("cantidades")) {
+    cantidadesSection.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 };
 
@@ -102,6 +111,9 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
   // ── Referencia del formulario ─────────────────────────────────────────
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Sección de cantidades (o su aviso, si la orden no trae renglones): destino
+  // del scroll cuando el error está en `cantidades`.
+  const cantidadesRef = useRef<HTMLElement | null>(null);
 
   // ── Errores de validación ─────────────────────────────────────────────
   const [clientErrors, setClientErrors] = useState<
@@ -175,7 +187,11 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
     if (formRef.current) {
       setTimeout(() => {
-        scrollToFirstValidationError(formRef.current!, issuePaths);
+        scrollToFirstValidationError(
+          formRef.current!,
+          issuePaths,
+          cantidadesRef.current,
+        );
       }, 0);
     }
 
@@ -270,6 +286,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   return {
     form,
     formRef,
+    cantidadesRef,
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
