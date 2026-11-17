@@ -14,7 +14,7 @@ import {
   SheetSection,
 } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { canEditEmbroideryOrder } from "../utils/embroideryPermissions";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
@@ -99,7 +99,7 @@ export function EmbroideryOrderDetailContent({
   // retornan antes y no puede quedar tras un `return` condicional.
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
-  const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
+  const canEditOb = canEditEmbroideryOrder(session?.user);
 
   const BackLink = (
     <Link

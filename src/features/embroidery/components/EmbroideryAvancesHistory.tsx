@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, PlusIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import { hasPermission } from "@/src/utils/permissions";
+import { canDeleteEmbroideryAvance, canEditEmbroideryOrder } from "../utils/embroideryPermissions";
 import { useDeleteAvance } from "../hooks/useDeleteAvance";
 import { EmbroideryCreateAvanceDialog } from "./EmbroideryCreateAvanceDialog";
 import type { BordadoAvance } from "../interfaces/embroidery.interface";
@@ -45,12 +45,13 @@ export function EmbroideryAvancesHistory({
   const [avanceToDelete, setAvanceToDelete] = useState<BordadoAvance | null>(null);
   const { mutate: deleteAvance, isPending: isDeleting } = useDeleteAvance(obId);
 
-  // Un avance es un registro de progreso de la ORDEN, no un documento propio:
-  // tanto darlo de alta como borrarlo modifican la orden, así que ambas
-  // acciones se rigen por `E-PRODUCCION-OB` (el catálogo no tiene un código
-  // propio para avances). `hasPermission` ya cortocircuita para "admin".
+  // Un avance es un registro de progreso de la ORDEN, no un documento propio
+  // (el catálogo no tiene un código para avances): registrarlo se rige por
+  // `E-PRODUCCION-OB` y borrarlo, acción destructiva, por `D-PRODUCCION-OB`
+  // (EC-895). Ambos helpers dejan pasar al rol "admin".
   const { data: session } = useSession();
-  const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
+  const canEditOb = canEditEmbroideryOrder(session?.user);
+  const canDeleteAvance = canDeleteEmbroideryAvance(session?.user);
 
   // Sin piezas programadas no hay contra qué medir un avance: el tope del
   // diálogo sería 0 y solo abriría un formulario bloqueado. Regla del frontend,
@@ -141,7 +142,7 @@ export function EmbroideryAvancesHistory({
                       la orden esté al 100%. Se oculta, no se inhabilita, para
                       no ofrecer una acción que la ficha no admite. */}
                   <td className="px-3 py-2 text-right">
-                    {!isTerminal && canEditOb && (
+                    {!isTerminal && canDeleteAvance && (
                       <button
                         type="button"
                         onClick={() => setAvanceToDelete(avance)}

@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
+import {
+  canDeleteWorkOrderAvance,
+  canEditWorkOrder,
+  WORK_ORDER_DELETE_PERMISSION,
+  WORK_ORDER_EDIT_PERMISSION,
+} from "@/src/utils/workOrderEditAccess";
 
 /**
  * Pruebas unitarias de EC-672: quién edita la ficha de una orden de reflejante
@@ -11,8 +16,8 @@ import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
  * la ficha y sus avances.
  */
 
-const OR = "E-PRODUCCION-OR";
-const CM = "E-PRODUCCION-CM";
+const OR = WORK_ORDER_EDIT_PERMISSION.OR;
+const CM = WORK_ORDER_EDIT_PERMISSION.CM;
 
 test.describe("canEditWorkOrder", () => {
   test("el superusuario edita aunque su lista de permisos llegue vacía", () => {
@@ -62,5 +67,35 @@ test.describe("canEditWorkOrder", () => {
     // Con una sola bandera tampoco se sabe (misma regla que `useCompanyAdminStatus`).
     const partial = { role: "admin", permissions: [], is_superuser: true };
     expect(canEditWorkOrder(partial, CM)).toBe(false);
+  });
+});
+
+test.describe("canDeleteWorkOrderAvance (EC-895)", () => {
+  const D_OR = WORK_ORDER_DELETE_PERMISSION.OR;
+  const D_CM = WORK_ORDER_DELETE_PERMISSION.CM;
+  const flags = { is_superuser: false, is_admin_empresa: false };
+
+  test("los códigos son los del catálogo", () => {
+    expect([OR, CM, D_OR, D_CM]).toEqual(["E-PRODUCCION-OR", "E-PRODUCCION-CM", "D-PRODUCCION-OR", "D-PRODUCCION-CM"]);
+  });
+
+  test("con solo E- registra avances pero no los borra", () => {
+    const user = { permissions: ["R-PRODUCCION-OR", "R-PRODUCCION-CM", OR, CM], ...flags };
+    expect(canEditWorkOrder(user, OR)).toBe(true);
+    expect(canEditWorkOrder(user, CM)).toBe(true);
+    expect(canDeleteWorkOrderAvance(user, D_OR)).toBe(false);
+    expect(canDeleteWorkOrderAvance(user, D_CM)).toBe(false);
+  });
+
+  test("con E- y D- de una sección borra solo en esa sección", () => {
+    const user = { permissions: [OR, D_OR, CM], ...flags };
+    expect(canDeleteWorkOrderAvance(user, D_OR)).toBe(true);
+    expect(canDeleteWorkOrderAvance(user, D_CM)).toBe(false);
+  });
+
+  test("superusuario y admin de empresa borran; sin sesión no", () => {
+    expect(canDeleteWorkOrderAvance({ permissions: [], is_superuser: true, is_admin_empresa: false }, D_OR)).toBe(true);
+    expect(canDeleteWorkOrderAvance({ permissions: [], is_superuser: false, is_admin_empresa: true }, D_CM)).toBe(true);
+    expect(canDeleteWorkOrderAvance(null, D_OR)).toBe(false);
   });
 });

@@ -32,7 +32,10 @@ import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
 import { PreOrdenLink } from "./PreOrdenLink";
 import { ProductionOrderPdfButton } from "./ProductionOrderPdfButton";
 import { opPedidoRefs } from "../utils/opPedidos";
-import { canEditProductionOrder } from "../utils/productionOrderPermissions";
+import {
+  canEditProductionOrder,
+  visibleProductionOrderStatusOptions,
+} from "../utils/productionOrderPermissions";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
@@ -233,8 +236,8 @@ export function ProductionOrderPageContent({
   // opciones (oculto); nunca cambian lo que pinta la página.
   const statusFlow = useProductionOrderStatusFlow(numericId);
   // Cambiar estatus y recalcular consumos exigen `E-PRODUCCION-OP` (EC-895):
-  // sin él el menú de estatus no se pinta y "Recalcular consumos" queda
-  // deshabilitado con el motivo. La ruta crítica se abre en solo lectura (lo
+  // sin él el menú de estatus no se pinta (y Cancelado pide además
+  // `D-PRODUCCION-OP`) y "Recalcular consumos" queda deshabilitado con el motivo. La ruta crítica se abre en solo lectura (lo
   // decide su diálogo). `hasPermission` deja pasar al rol "admin".
   const { data: session } = useSession();
   const canEdit = canEditProductionOrder(session?.user);
@@ -356,7 +359,7 @@ export function ProductionOrderPageContent({
         {BackLink}
         <div className="flex flex-wrap items-center gap-2">
           <ProductionOrderStatusMenu
-            options={canEdit ? statusFlow.options : []}
+            options={visibleProductionOrderStatusOptions(statusFlow.options, session?.user)}
             isPending={statusFlow.isPending}
             onSelect={statusFlow.select}
           />

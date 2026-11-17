@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   canCreateProductionOrder,
   canEditProductionOrder,
+  visibleProductionOrderStatusOptions,
 } from "@/src/features/production-orders/utils/productionOrderPermissions";
 
 /**
@@ -43,5 +44,28 @@ test.describe("canCreateProductionOrder (Crear OP desde pre-orden y listado)", (
 
   test("el admin sí", () => {
     expect(canCreateProductionOrder(admin)).toBe(true);
+  });
+});
+
+test.describe("visibleProductionOrderStatusOptions (menú Cambiar estatus)", () => {
+  // Destinos como los manda `GET estatus/`: 3 En producción, 6 Detenido, 7 Cancelado.
+  const options = [3, 6, 7].map((estatus_op) => ({ estatus_op, etiqueta: String(estatus_op), permitido: true }));
+  const destinos = (u: never) => visibleProductionOrderStatusOptions(options, u).map((o) => o.estatus_op);
+
+  test("con E- solo: sin Cancelado", () => {
+    expect(destinos(user(["R-PRODUCCION-OP", "E-PRODUCCION-OP"]))).toEqual([3, 6]);
+  });
+
+  test("con E- y D-: con Cancelado", () => {
+    expect(destinos(user(["R-PRODUCCION-OP", "E-PRODUCCION-OP", "D-PRODUCCION-OP"]))).toEqual([3, 6, 7]);
+  });
+
+  test("D- sin E- no abre el menú", () => {
+    expect(destinos(user(["R-PRODUCCION-OP", "D-PRODUCCION-OP"]))).toEqual([]);
+    expect(destinos(soloLectura)).toEqual([]);
+  });
+
+  test("el admin ve todos", () => {
+    expect(destinos(admin)).toEqual([3, 6, 7]);
   });
 });

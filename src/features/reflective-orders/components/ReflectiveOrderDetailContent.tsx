@@ -15,7 +15,12 @@ import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
+import {
+  canDeleteWorkOrderAvance,
+  canEditWorkOrder,
+  WORK_ORDER_DELETE_PERMISSION,
+  WORK_ORDER_EDIT_PERMISSION,
+} from "@/src/utils/workOrderEditAccess";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
@@ -157,11 +162,13 @@ export function ReflectiveOrderDetailContent({
   const updateOrder = useUpdateReflectiveOrder(numericId);
 
   // Superusuario, admin de empresa o el código de edición de la sección,
-  // `E-PRODUCCION-OR` (`canEditWorkOrder`, EC-895): rige la ficha y los avances.
+  // `E-PRODUCCION-OR` (`canEditWorkOrder`, EC-895): rige la ficha y el registro de avances.
   // Es UX: evita ofrecer controles que van a fallar, no es la frontera de acceso.
   // Antes de los `return` tempranos porque `useSession` es un hook.
   const { data: session } = useSession();
-  const canEdit = canEditWorkOrder(session?.user, "E-PRODUCCION-OR");
+  const canEdit = canEditWorkOrder(session?.user, WORK_ORDER_EDIT_PERMISSION.OR);
+  // Borrar un avance es destructivo: exige `D-PRODUCCION-OR` (EC-895).
+  const canDeleteAvance = canDeleteWorkOrderAvance(session?.user, WORK_ORDER_DELETE_PERMISSION.OR);
 
   const BackLink = (
     <Link
@@ -360,6 +367,7 @@ export function ReflectiveOrderDetailContent({
         detailQueryKey={reflectiveOrderDetailQueryKey(data.id)}
         piezasOrden={data.cantidad_cubierta}
         canEdit={canEdit}
+        canDelete={canDeleteAvance}
         isTerminal={isTerminal}
         avances={data.avances}
         resumen_avance={data.resumen_avance}
