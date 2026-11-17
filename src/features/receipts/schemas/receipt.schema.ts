@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tieneCantidadRecibida } from "../utils/receiptQuantities";
 
 export const CANTIDADES_REQUIRED_MESSAGE =
   "Captura al menos una cantidad recibida mayor a 0";
@@ -13,10 +14,7 @@ export const ReceiptFormSchema = z.object({
   // ninguno el POST saldría con `detalle: []`, que el backend rechaza (EC-894).
   // También cubre una orden sin renglones, cuyo registro queda vacío (EC-893).
   cantidades: z.record(z.string(), z.string()).superRefine((cantidades, ctx) => {
-    const algunaPositiva = Object.values(cantidades).some(
-      (cantidad) => cantidad.trim() !== "" && Number(cantidad) > 0,
-    );
-    if (!algunaPositiva) {
+    if (!Object.values(cantidades).some(tieneCantidadRecibida)) {
       ctx.addIssue({ code: "custom", message: CANTIDADES_REQUIRED_MESSAGE });
     }
   }),

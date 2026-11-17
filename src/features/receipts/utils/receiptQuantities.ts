@@ -18,6 +18,36 @@ export const formatCantidadRecibida = (value: string | null | undefined): string
 };
 
 /**
+ * ¿La cantidad capturada en el alta de recepción cuenta como recibida? Es la
+ * ÚNICA regla para eso: la usan el schema del formulario ("al menos una") y el
+ * armado del payload (`reduceDetalle`, que descarta las demás), así que "el
+ * formulario pasa" y "el POST lleva renglones" no pueden divergir (EC-893).
+ */
+export const tieneCantidadRecibida = (value: string | undefined): boolean =>
+  value !== undefined && value.trim() !== "" && Number(value) > 0;
+
+/**
+ * Techo de captura de un renglón del alta: lo pendiente (el backend ya lo
+ * manda >= 0) en piezas enteras, porque el selector solo captura enteros
+ * (decimales: EC-900). Un pendiente menor a 1 da 0: el renglón no se puede
+ * recibir desde la pantalla.
+ */
+export const topeRecepcion = (cantidadPendiente: string): number =>
+  Math.max(0, Math.floor(Number(cantidadPendiente) || 0));
+
+/**
+ * Por qué un renglón no se puede recibir (techo 0): "Sin pendiente" si no le
+ * queda nada y "Pendiente fraccionario" si le queda menos de una pieza.
+ * `null` si se puede recibir. Se deriva del mismo techo que topa la captura.
+ */
+export const motivoSinTope = (
+  cantidadPendiente: string,
+): "Sin pendiente" | "Pendiente fraccionario" | null => {
+  if (topeRecepcion(cantidadPendiente) >= 1) return null;
+  return (Number(cantidadPendiente) || 0) > 0 ? "Pendiente fraccionario" : "Sin pendiente";
+};
+
+/**
  * Total de piezas recibidas de una recepción. Se suma en diezmilésimas enteras
  * para que la aritmética de punto flotante no deje residuos ("0.1" + "0.2");
  * un renglón que no sea número no suma.
