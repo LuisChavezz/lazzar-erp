@@ -1,6 +1,5 @@
 import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
 import type { ProductCategory } from "../../product-categories/interfaces/product-category.interface";
@@ -10,28 +9,26 @@ import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
 import { textOrDash } from "../../../components/DetailDialogPrimitives";
 import { useState } from "react";
 import { getCategoriaLineaLabel } from "../../product-categories/constants/categoriaLinea";
-import { categoriaLineaHeaderFilter } from "../../product-categories/utils/categoriaLineaHeaderFilter";
+import {
+  CategoryHeaderFilter,
+  CodProscaiHeaderFilter,
+  LineaHeaderFilter,
+  PriceRangeHeaderFilter,
+} from "./CatalogHeaderFilters";
 
 /**
- * Fila de la tabla: el producto tal como llega del backend más el nombre de su
- * categoría ya resuelto. Es un modelo de vista, no un tipo del backend.
+ * Fila de la tabla: el producto tal como llega del backend más el nombre y la
+ * línea de su categoría ya resueltos. Es un modelo de vista, no un tipo del
+ * backend: `producto/` solo trae el id de la categoría.
  *
- * El nombre viaja EN LA FILA y no se resuelve dentro del accessor con un `Map`
- * recibido por parámetro: TanStack guarda en caché el valor del accessor por
- * fila y solo lo recalcula cuando cambia `data`, no cuando cambian las
- * columnas. La celda leía el catálogo en vivo y se veía bien, pero si el
- * usuario buscaba u ordenaba mientras el catálogo de categorías aún cargaba,
- * el accessor se congelaba en `""`: después ni la búsqueda encontraba el
- * producto por su categoría ni el orden por Categoría ordenaba. Al construir
- * las filas en `ProductList` a partir de productos + categorías, la llegada
- * del catálogo produce un `data` nuevo y TanStack recalcula todo. Mismo
- * arreglo que `ContractRow` y `CalendarRow`.
+ * Desde EC-897 la búsqueda, el orden y los filtros los resuelve el servidor;
+ * resolverlos en la fila (y no en la celda con un `Map`) hace que la llegada
+ * tardía del catálogo de categorías produzca un `data` nuevo y la tabla se
+ * vuelva a pintar con los nombres.
  *
- * `null` = la categoría no aparece en el catálogo (o todavía no llega).
- *
- * `categoria_linea` sigue la misma regla: la `linea` cruda de la categoría
- * (`""` = sin línea, materia prima), resuelta del catálogo de categorías porque
- * `producto/` no la expone; `null` si la categoría no está en el catálogo.
+ * `null` = la categoría no aparece en el catálogo (sin categoría, inactiva o
+ * el catálogo todavía no llega). `categoria_linea` es la `linea` cruda (`""` =
+ * sin línea, materia prima).
  */
 export type ProductRow = Product & {
   categoria_nombre: string | null;
@@ -120,15 +117,32 @@ const ActionsCell = ({
   );
 };
 
+/**
+ * Qué filtros de encabezado lleva la tabla. Cada vista conserva los que tenía
+ * en modo cliente: Producción todos (`"all"`) y Configuración solo la línea
+ * (`"linea"`). Sin filtros de Estado ni de Nombre: el listado ya es solo de
+ * activos y la búsqueda (`q`) cubre el nombre (EC-897).
+ */
+export type ProductHeaderFilters = "all" | "linea";
+
+/**
+ * Columnas de las tablas de productos en MODO SERVIDOR (EC-897): cada columna
+ * ordenable declara su campo de la lista blanca del backend (`serverSort`) y
+ * cada filtro su clave (`serverFilter`), con opciones fijas o de un catálogo
+ * (`CatalogHeaderFilters`), nunca de las filas.
+ */
 export const getColumns = (
   onEdit: (product: Product) => void,
-  permissions: { canEdit: boolean; canDelete: boolean }
+  permissions: { canEdit: boolean; canDelete: boolean },
+  headerFilters: ProductHeaderFilters = "linea",
 ) => {
+  const allFilters = headerFilters === "all";
   const columns = [
     columnHelper.accessor((row) => (row.activo), {
       id: "activo",
       header: "Estado",
       size: 100,
+      meta: { label: "Estado", serverSort: "activo" },
       cell: ({ row }) => {
         const isActive = row.original.activo;
         const styles = isActive
@@ -144,6 +158,7 @@ export const getColumns = (
     columnHelper.accessor("nombre", {
       header: "Nombre",
       size: 200,
+      meta: { label: "Nombre", serverSort: "nombre" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
@@ -152,36 +167,52 @@ export const getColumns = (
     columnHelper.accessor((row) => row.codigo ?? "", {
       id: "codigo",
       header: "Código",
+      meta: { label: "Código", serverSort: "codigo" },
       cell: ({ row }) => (
         <span className="text-slate-500 dark:text-slate-400">{textOrDash(row.original.codigo)}</span>
       ),
     }),
     columnHelper.accessor("cod_proscai", {
-      header: "Cód. Proscai",
+      header: allFilters
+        ? ({ column }) => <CodProscaiHeaderFilter column={column} title="Cód. Proscai" />
+        : "Cód. Proscai",
+      meta: {
+        label: "Cód. Proscai",
+        serverSort: "cod_proscai",
+        ...(allFilters ? { serverFilter: "con_cod_proscai" } : {}),
+      },
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    // El accessor (búsqueda y orden) y la celda leen el mismo nombre ya
-    // resuelto en la fila (ver `ProductRow`). Sin resolver, el accessor da `""`
-    // —string, así la columna sigue en la búsqueda global— y la celda el ID.
+    // La celda lee el nombre ya resuelto en la fila (ver `ProductRow`); sin
+    // resolver (categoría inactiva o catálogo aún cargando), el id. El orden es
+    // del servidor, por el nombre de la categoría.
     columnHelper.accessor((row) => row.categoria_nombre ?? "", {
       id: "categoria_producto",
-      header: "Categoría",
+      header: allFilters
+        ? ({ column }) => <CategoryHeaderFilter column={column} title="Categoría" />
+        : "Categoría",
+      meta: {
+        label: "Categoría",
+        serverSort: "categoria_producto__nombre",
+        ...(allFilters ? { serverFilter: "categoria_producto" } : {}),
+      },
       cell: ({ row }) => (
         <span className="text-slate-500 dark:text-slate-400">
           {row.original.categoria_nombre ?? `#${row.original.categoria_producto}`}
         </span>
       ),
     }),
-    // Búsqueda y orden por la etiqueta; el filtro de encabezado
-    // (`categoriaLineaHeaderFilter`) compara la línea cruda. Sin categoría
-    // resuelta no hay línea que mostrar.
+    // Ordena y filtra por la línea cruda de la categoría (`linea`, con
+    // `SIN_LINEA` para vacía o sin categoría). Sin categoría resuelta no hay
+    // línea que mostrar.
     columnHelper.accessor(
       (row) => (row.categoria_linea === null ? "" : getCategoriaLineaLabel(row.categoria_linea)),
       {
         id: "categoria_linea",
-        header: "Línea",
+        header: ({ column }) => <LineaHeaderFilter column={column} title="Línea" />,
+        meta: { label: "Línea", serverSort: "categoria_producto__linea", serverFilter: "linea" },
         cell: ({ row }) => (
           <span className="text-slate-500 dark:text-slate-400">
             {row.original.categoria_linea === null
@@ -192,8 +223,15 @@ export const getColumns = (
       },
     ),
     columnHelper.accessor("precio_base", {
-      header: "Precio",
-      meta: { align: "right" },
+      header: allFilters
+        ? ({ column }) => <PriceRangeHeaderFilter column={column} title="Precio" />
+        : "Precio",
+      meta: {
+        align: "right",
+        label: "Precio",
+        serverSort: "precio_base",
+        ...(allFilters ? { serverFilter: "rango_precio" } : {}),
+      },
       // Sin símbolo: `precio_base` no declara moneda (EC-606).
       cell: ({ row }) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">
@@ -223,44 +261,3 @@ export const getColumns = (
 
   return columns;
 };
-
-/**
- * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente).
- */
-export const PRODUCT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ProductRow>>> = {
-  activo: { type: "boolean", get: (r) => r.activo, yes: "Activos", no: "Inactivos" },
-  nombre: { type: "distinct", get: (r) => r.nombre, searchable: true },
-  cod_proscai: { type: "presence", get: (r) => r.cod_proscai, con: "Con código Proscai", sin: "Sin código Proscai" },
-  categoria_producto: { type: "distinct", get: (r) => r.categoria_producto, label: (r) => r.categoria_nombre },
-  precio_base: {
-    type: "range",
-    get: (r) => r.precio_base,
-    ranges: [
-      { value: "hasta-100", label: "Hasta $100", max: 100 },
-      { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
-      { value: "mas-500", label: "Más de $500", min: 500 },
-    ],
-  },
-};
-
-/** Valor del filtro de línea para un producto cuya categoría no se resolvió. */
-const SIN_CATEGORIA_FILTER_VALUE = "__sin_categoria__";
-
-/** Opción del filtro de línea para los productos sin categoría resuelta. */
-export const SIN_CATEGORIA_O_INACTIVA_LABEL = "Sin categoría o inactiva";
-
-/**
- * Filtro de encabezado de la columna "Línea" (`categoria_linea`). Un producto
- * sin categoría resuelta (`categoria_linea === null`: sin categoría, o con una
- * categoría inactiva, que `categoria-producto/` no lista) NO es materia prima:
- * va en su propia opción "Sin categoría o inactiva", que solo aparece si hay
- * filas así, en vez de caer en "Sin línea (materia prima)".
- *
- * Usa un valor marcador porque la `emptyOption` de `withHeaderFilters` trata
- * igual `null` y `""`, y una fila `null` no genera opción propia.
- */
-export const productLineaHeaderFilter = categoriaLineaHeaderFilter<ProductRow>(
-  (row) => row.categoria_linea ?? SIN_CATEGORIA_FILTER_VALUE,
-  (row) => (row.categoria_linea === null ? SIN_CATEGORIA_O_INACTIVA_LABEL : null),
-);

@@ -15,13 +15,7 @@ import {
 } from "@/src/features/product-categories/schemas/product-category.schema";
 import { normalizeProductCategory } from "@/src/features/product-categories/utils/normalizeProductCategory";
 import { categoriaLineaHeaderFilter } from "@/src/features/product-categories/utils/categoriaLineaHeaderFilter";
-import {
-  buildProductRows,
-  getColumns,
-  productLineaHeaderFilter,
-  SIN_CATEGORIA_O_INACTIVA_LABEL,
-  type ProductRow,
-} from "@/src/features/products/components/ProductColumns";
+import { buildProductRows } from "@/src/features/products/components/ProductColumns";
 import type { Product } from "@/src/features/products/interfaces/product.interface";
 import { harness } from "./support/headerFilterHarness";
 
@@ -167,32 +161,5 @@ test.describe("filtros de encabezado de línea", () => {
     ]);
     expect(h.matching("linea", EMPTY_VALUE_FILTER_VALUE).map((row) => row.id)).toEqual([2]);
     expect(h.matching("linea", "EPP").map((row) => row.id)).toEqual([1]);
-  });
-
-  test("productos: \"Sin categoría o inactiva\" va aparte de \"Sin línea (materia prima)\"", () => {
-    const rows = buildProductRows([product(1, 10), product(2, 20), product(3, 99), product(4, null)], CATEGORIES);
-    const columns = withHeaderFilters<ProductRow>(
-      getColumns(() => {}, { canEdit: false, canDelete: false }),
-      rows,
-      { categoria_linea: productLineaHeaderFilter },
-    );
-    const h = harness(columns, rows);
-    const options = h.options("categoria_linea");
-    const sinCategoria = options.at(-1);
-    expect(sinCategoria?.label).toBe(SIN_CATEGORIA_O_INACTIVA_LABEL);
-    expect(h.matching("categoria_linea", EMPTY_VALUE_FILTER_VALUE).map((row) => row.id)).toEqual([2]);
-    expect(h.matching("categoria_linea", sinCategoria!.value!).map((row) => row.id)).toEqual([3, 4]);
-    expect(h.matching("categoria_linea", "INDUSTRIAL").map((row) => row.id)).toEqual([1]);
-  });
-
-  test("productos: sin filas sin categoría no aparece esa opción", () => {
-    const rows = buildProductRows([product(1, 10), product(2, 20)], CATEGORIES);
-    const columns = withHeaderFilters<ProductRow>(
-      getColumns(() => {}, { canEdit: false, canDelete: false }),
-      rows,
-      { categoria_linea: productLineaHeaderFilter },
-    );
-    const labels = harness(columns, rows).options("categoria_linea").map((option) => option.label);
-    expect(labels).not.toContain(SIN_CATEGORIA_O_INACTIVA_LABEL);
   });
 });

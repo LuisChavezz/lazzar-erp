@@ -257,7 +257,11 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
       {selectedView === "products" && (
         <div className="flex flex-col gap-6">
           {renderHeader("Productos")}
-          <ProductList />
+          {/* Modo servidor (EC-897): lee su estado de la URL con
+              `useSearchParams`, que requiere un límite de Suspense. */}
+          <Suspense fallback={<ConfigDetailLoadingSkeleton />}>
+            <ProductList />
+          </Suspense>
         </div>
       )}
 
