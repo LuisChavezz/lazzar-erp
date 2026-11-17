@@ -27,7 +27,7 @@ export const sizesByCategoryKey = (categoriaProductoId: number | null) =>
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
  * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
- * contrato que `useProducts`.
+ * contrato que `useProductCategories`.
  */
 export const useSizesByCategory = ({ categoriaProductoId, enabled }: UseSizesByCategoryParams) => {
   const { data, isLoading, isInitialError, error } = useGuardedQuery<Size[]>(

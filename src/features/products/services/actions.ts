@@ -6,25 +6,6 @@ import { toCatalogSelectorQuery } from "@/src/utils/catalogSelectorQuery";
 
 
 /**
- * `tipo_id` acepta uno o VARIOS tipos. Una lista viaja en forma de comas
- * (`?tipo_id=1,3`), que el backend acepta igual que el parámetro repetido; no se
- * pasa el arreglo tal cual porque axios lo serializaría como `tipo_id[]=1&...`,
- * clave que el backend no lee (filtraría nada y devolvería todos los tipos).
- */
-export const getProducts = async (
-  tipo_id?: number | readonly number[],
-): Promise<Product[]> => {
-  const response = await v1_api.get<Product[]>("/catalogo/producto/", {
-    params: {
-      ...(tipo_id !== undefined && {
-        tipo_id: Array.isArray(tipo_id) ? tipo_id.join(",") : tipo_id,
-      }),
-    },
-  });
-  return response.data;
-};
-
-/**
  * Una página del listado de productos (`?limit=&offset=` → `{count, next,
  * previous, results}`, EC-886) con los filtros, la búsqueda y el orden de las
  * tablas de catálogo en modo servidor (EC-896/897). Los parámetros llegan ya

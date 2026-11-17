@@ -7,7 +7,7 @@ import { STOCK_MOVEMENTS_QUERY_KEY } from "@/src/constants/stockQueryKeys";
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
  * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
- * contrato que `useProducts`.
+ * contrato que `useProductCategories`.
  */
 export const useStockMovements = () => {
   const { data, isLoading, isInitialError, error, refetch, isFetching } = useGuardedQuery<StockMovement[]>(

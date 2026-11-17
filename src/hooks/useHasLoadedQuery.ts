@@ -31,7 +31,7 @@ const MAX_NOTIFIED_PER_TOAST = 10;
  * solo toast, y se vacía al recargar la pestaña.
  *
  * Varios valores por `toastId`, y no uno solo, porque varias consultas pueden
- * compartir `toastId` (p. ej. `useProducts` con distintos `tipo_id`) y fallar
+ * compartir `toastId` (p. ej. las tablas de catálogo de un mismo recurso con distintos parámetros) y fallar
  * casi a la vez en una misma invalidación.
  *
  * Acotado a `MAX_NOTIFIED_PER_TOAST` por `toastId`, descartando el más viejo:

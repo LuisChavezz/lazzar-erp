@@ -5,7 +5,7 @@ import { getCompanyBranches } from "../services/actions";
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * de ESTA empresa nunca cargó; un refetch fallido con datos en caché conserva
  * lo cargado y avisa por toast (`useGuardedQuery`). `error` sigue la misma
- * regla. Mismo contrato que `useProducts`.
+ * regla. Mismo contrato que `useProductCategories`.
  */
 export const useCompanyBranches = (companyId: number | null | undefined) => {
   const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery(

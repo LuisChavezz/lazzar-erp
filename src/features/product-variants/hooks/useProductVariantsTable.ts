@@ -2,7 +2,11 @@
 
 import { useServerTable, type ServerTableRequest } from "@/src/hooks/useServerTable";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
-import type { ServerTableDefinition } from "@/src/utils/serverTableParams";
+import {
+  readServerTableState,
+  toServerTableCriteria,
+  type ServerTableDefinition,
+} from "@/src/utils/serverTableParams";
 import {
   productVariantsTable,
   toCatalogListApiParams,
@@ -21,6 +25,28 @@ const productVariantsAdapter = limitOffsetAdapter<ProductVariant>();
  * estas páginas se refrescan con su invalidación.
  */
 const PRODUCT_VARIANTS_TABLE_KEY = ["product-variants", "table"] as const;
+
+/** Una página con los parámetros de la tabla, traducidos (`rango_precio`). */
+const fetchProductVariantsTablePage = (params: ServerTableRequest) =>
+  getProductVariantsPage(toCatalogListApiParams(params));
+
+/**
+ * Llave y petición de la VISTA POR DEFECTO de la tabla de variantes (página 1,
+ * sin filtros ni búsqueda, orden `-id`), para el prefetch de la tarjeta de
+ * Configuración. La llave es la misma que arma `useServerTable`
+ * (`[...prefijo, "list", petición]`), así que la tabla la lee al abrirse.
+ */
+export const productVariantsTableDefaultQuery = () => {
+  const state = readServerTableState(productVariantsTable, () => null);
+  const request: ServerTableRequest = {
+    ...toServerTableCriteria(productVariantsTable, state),
+    ...productVariantsAdapter.paginationParams({ page: state.page, pageSize: state.pageSize }),
+  };
+  return {
+    queryKey: [...PRODUCT_VARIANTS_TABLE_KEY, "list", request],
+    queryFn: () => fetchProductVariantsTablePage(request),
+  };
+};
 
 /**
  * Tabla de variantes en MODO SERVIDOR (EC-897): filtros, búsqueda, orden y
@@ -41,7 +67,7 @@ export const useProductVariantsTable = ({
   useServerTable({
     definition,
     queryKey: PRODUCT_VARIANTS_TABLE_KEY,
-    queryFn: (params: ServerTableRequest) => getProductVariantsPage(toCatalogListApiParams(params)),
+    queryFn: fetchProductVariantsTablePage,
     adapter: productVariantsAdapter,
     toastId,
     refetchErrorMessage: "No se pudieron actualizar las variantes. Se muestran los datos anteriores.",
