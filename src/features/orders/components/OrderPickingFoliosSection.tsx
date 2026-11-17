@@ -7,8 +7,6 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import type { PedidoFolioPicking } from "../interfaces/order.interface";
 import { PICKING_DOC_TIPO, type OpenOrderDocument } from "./orderDocumentDialogs";
-import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
-import { useSession } from "next-auth/react";
 
 /**
  * Timestamp de un folio para ordenar (desc, más reciente primero). `null`
@@ -35,7 +33,6 @@ export function OrderPickingFoliosSection({
   folios: PedidoFolioPicking[];
   onOpenFolio: (doc: OpenOrderDocument) => void;
 }) {
-  const { data: session } = useSession();
   const ordenados = [...folios].sort((a, b) => {
     const ta = folioSortTime(a);
     const tb = folioSortTime(b);
@@ -74,23 +71,18 @@ export function OrderPickingFoliosSection({
                 <tr key={folio.id} className="border-t border-slate-100 dark:border-white/10 align-top">
                   <td className="px-3 py-2">
                     {/* Abre el MISMO diálogo por id que "Documentos
-                        relacionados" (no hay ruta de detalle de surtido), y
-                        con la misma condición: poder abrir Surtido en WMS
-                        (`canOpenOrderDocument`, EC-895). Sin ella, texto. */}
-                    {canOpenOrderDocument(PICKING_DOC_TIPO, folio.id, session?.user) ? (
-                      <button
-                        type="button"
-                        onClick={() => onOpenFolio({ tipo: PICKING_DOC_TIPO, id: folio.id })}
-                        className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors whitespace-nowrap"
-                        title="Ver detalle del surtido"
-                      >
-                        {textOrDash(folio.folio)}
-                      </button>
-                    ) : (
-                      <span className="font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                        {textOrDash(folio.folio)}
-                      </span>
-                    )}
+                        relacionados". No es un enlace a /wms/...: esa ruta de
+                        detalle no existe, y además el módulo WMS exige R-WMS,
+                        que un usuario de Ventas no tiene aunque sí pueda ver
+                        este pedido (la ruta /orders/[id] es neutra). */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenFolio({ tipo: PICKING_DOC_TIPO, id: folio.id })}
+                      className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-medium text-left transition-colors whitespace-nowrap"
+                      title="Ver detalle del surtido"
+                    >
+                      {textOrDash(folio.folio)}
+                    </button>
                   </td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {formatShortDate(folio.created_at)}

@@ -30,8 +30,10 @@ test.describe("pedido 360°: diálogos de Documentos relacionados y trazabilidad
     }
   });
 
-  test("los tipos sin sección registrada no cambian", () => {
-    expect(canOpenOrderDocument("movimiento_inventario", 5, user(["R-CRM-PEDIDOS"]))).toBe(true);
+  test("los tipos sin sección propia no cambian", () => {
+    for (const tipo of ["picking", "packing", "orden_compra", "cotizacion", "movimiento_inventario"]) {
+      expect(canOpenOrderDocument(tipo, 5, user(["R-CRM-PEDIDOS"]))).toBe(true);
+    }
     // Un `tipo` heredado de Object.prototype no resuelve a una ruta.
     expect(canOpenOrderDocument("constructor", 5, user([]))).toBe(true);
   });
@@ -56,32 +58,21 @@ test.describe("OP desde Fabricación Especial y Pre-órdenes", () => {
   });
 });
 
-test.describe("pedido 360°: diálogos de WMS, Compras y cotización (EC-895)", () => {
-  test("surtido y embarque piden su sección de WMS", () => {
-    const ventas = user(["R-CRM-PEDIDOS"]);
-    expect(canOpenOrderDocument("picking", 5, ventas)).toBe(false);
-    expect(canOpenOrderDocument("packing", 5, ventas)).toBe(false);
-    expect(canOpenOrderDocument("picking", 5, user(["R-CRM-PEDIDOS", "R-WMS-PICKING"]))).toBe(true);
-    expect(canOpenOrderDocument("packing", 5, user(["R-WMS-PACKING"]))).toBe(true);
-    expect(canOpenOrderDocument("packing", 5, user(["R-WMS-PICKING"]))).toBe(false);
-  });
+test.describe("pedido 360°: surtido, embarque, OC y cotización siguen abiertos (EC-895)", () => {
+  // El backend los sirve a quien ve el pedido (sin código de sección): solo se
+  // condicionan las órdenes de Producción, cuyo detalle sí exige su código.
+  const soloPedidos = user(["R-CRM-PEDIDOS"]);
 
-  test("la orden de compra pide R-COMPRAS-OC", () => {
-    expect(canOpenOrderDocument("orden_compra", 9, user(["R-COMPRAS-PEDIDOS"]))).toBe(false);
-    expect(canOpenOrderDocument("orden_compra", 9, user(["R-COMPRAS-OC"]))).toBe(true);
-  });
-
-  test("la cotización se abre con la lista de Ventas o la de Mesa de Control", () => {
-    expect(canOpenOrderDocument("cotizacion", 3, user(["R-WMS-PEDIDOS"]))).toBe(false);
-    expect(canOpenOrderDocument("cotizacion", 3, user(["R-CRM-COTIZACIONES"]))).toBe(true);
-    expect(canOpenOrderDocument("cotizacion", 3, user(["R-MESACONTROL-COTI"]))).toBe(true);
-  });
-
-  test("el admin abre todos; el movimiento de inventario no cambia", () => {
+  test("con solo R-CRM-PEDIDOS se abren los cuatro diálogos", () => {
     for (const tipo of ["picking", "packing", "orden_compra", "cotizacion"]) {
-      expect(canOpenOrderDocument(tipo, 1, admin)).toBe(true);
+      expect(canOpenOrderDocument(tipo, 5, soloPedidos)).toBe(true);
     }
-    expect(canOpenOrderDocument("movimiento_inventario", 1, user(["R-CRM-PEDIDOS"]))).toBe(true);
+  });
+
+  test("con el mismo perfil, las órdenes de Producción quedan como texto", () => {
+    for (const tipo of ["orden_produccion", "orden_bordado", "orden_reflejante", "orden_corte_manga"]) {
+      expect(canOpenOrderDocument(tipo, 5, soloPedidos)).toBe(false);
+    }
   });
 });
 

@@ -6,37 +6,24 @@ import {
   productionOrderDetailPath,
   reflectiveOrderDetailPath,
 } from "@/src/constants/workOrderRoutes";
-import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
 
 /**
- * Rutas de sección de cada documento que el pedido 360° abre en un diálogo
- * (`ORDER_DOCUMENT_DIALOGS`, también "Folios de surtido" y la trazabilidad). El
- * diálogo se abre solo si el usuario puede abrir ALGUNA de esas rutas; si no,
- * el documento queda como texto (EC-895). La regla vive en `routePermissions`
- * y aquí solo se nombran las rutas:
- * - las cuatro órdenes de Producción: su página de detalle (`R-PRODUCCION-OP`
- *   / `-OB` / `-OR` / `-CM`);
- * - surtido y embarque: su listado en WMS (`R-WMS-PICKING` / `R-WMS-PACKING`),
- *   que no tiene detalle propio;
- * - orden de compra: su página de detalle (`R-COMPRAS-OC`);
- * - cotización: la lista de Ventas o la de Mesa de Control
- *   (`R-CRM-COTIZACIONES` o `R-MESACONTROL-COTI`), las dos pantallas que la
- *   muestran.
+ * Ruta de sección de cada orden de trabajo que el pedido 360° abre en un
+ * diálogo (`ORDER_DOCUMENT_DIALOGS`). El diálogo pide el detalle al endpoint de
+ * SU sección, que el backend niega (403) sin ese código; por eso se abre solo si
+ * el usuario puede abrir la página de detalle de esa sección. La regla vive en
+ * `routePermissions` y aquí solo se nombra la ruta (EC-895).
  */
-const ORDER_DOCUMENT_SECTION_PATHS: Record<string, (id: number) => readonly string[]> = {
-  orden_produccion: (id) => [productionOrderDetailPath(id)],
-  orden_bordado: (id) => [embroideryOrderDetailPath(id)],
-  orden_reflejante: (id) => [reflectiveOrderDetailPath(id)],
-  orden_corte_manga: (id) => [corteMangaOrderDetailPath(id)],
-  picking: () => ["/wms/picking"],
-  packing: () => ["/wms/packing"],
-  orden_compra: (id) => [purchaseOrderDetailHref(id)],
-  cotizacion: () => ["/sales/quotes", "/operations/quotes"],
+const ORDER_DOCUMENT_SECTION_PATHS: Record<string, (id: number) => string> = {
+  orden_produccion: productionOrderDetailPath,
+  orden_bordado: embroideryOrderDetailPath,
+  orden_reflejante: reflectiveOrderDetailPath,
+  orden_corte_manga: corteMangaOrderDetailPath,
 };
 
 /**
  * ¿Puede `user` abrir el detalle del documento `tipo`/`id` desde el pedido? Los
- * tipos sin sección registrada (p. ej. el movimiento de inventario) no se
+ * tipos sin sección propia (picking, packing, OC, cotización, movimiento) no se
  * restringen aquí: la regla `/orders` sigue siendo su control. `Object.hasOwn`
  * porque `tipo` llega del backend.
  */
@@ -46,5 +33,5 @@ export function canOpenOrderDocument(
   user?: PermissionContext | null,
 ): boolean {
   if (!Object.hasOwn(ORDER_DOCUMENT_SECTION_PATHS, tipo)) return true;
-  return ORDER_DOCUMENT_SECTION_PATHS[tipo](id).some((path) => canAccessRoute(path, user));
+  return canAccessRoute(ORDER_DOCUMENT_SECTION_PATHS[tipo](id), user);
 }
