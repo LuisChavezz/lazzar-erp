@@ -8,7 +8,7 @@
  */
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
-import type { PdfColumn, PdfInfoItem } from "./DocumentPdfLayout";
+import type { PdfColumn } from "./DocumentPdfLayout";
 
 /**
  * Datos del producto que traen los renglones de los tres documentos. `sku`,
@@ -76,27 +76,3 @@ export const wmsQuantityColumn = <Row>(
   align: "right",
   cell: (line) => formatExactQuantityValue(value(line)),
 });
-
-/** ¿Algún renglón trae un valor (no vacío) en ese dato? Decide las columnas condicionales. */
-export const rowsHaveValue = <Row>(
-  rows: readonly Row[],
-  value: (row: Row) => string | number | null | undefined,
-): boolean =>
-  rows.some((row) => {
-    const dato = value(row);
-    return typeof dato === "number" || Boolean(dato?.trim());
-  });
-
-/**
- * La columna solo si algún renglón trae el dato, como la de talla en la
- * recepción: ubicación, caja… vacías en todos los renglones no ocupan espacio.
- */
-export const conditionalColumn = <Row>(
-  rows: readonly Row[],
-  value: (row: Row) => string | number | null | undefined,
-  column: PdfColumn<Row>,
-): PdfColumn<Row>[] => (rowsHaveValue(rows, value) ? [column] : []);
-
-/** Renglón de una tarjeta solo si el dato viene (oleada, zona…). */
-export const optionalInfoItem = (label: string, value: string | null | undefined): PdfInfoItem[] =>
-  value?.trim() ? [{ label, value: value.trim() }] : [];

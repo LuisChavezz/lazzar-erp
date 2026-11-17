@@ -33,7 +33,8 @@ import {
   type PdfColumn,
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
-import { conditionalColumn, wmsProductColumns, wmsQuantityColumn } from "./shared/wmsDocumentPdf";
+import { conditionalColumn } from "./shared/documentPdfColumns";
+import { wmsProductColumns, wmsQuantityColumn } from "./shared/wmsDocumentPdf";
 
 type StockTransferPdfDocumentProps = {
   transfer: TransferenciaDetail;

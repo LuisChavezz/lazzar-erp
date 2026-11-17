@@ -39,7 +39,8 @@ import {
 } from "./shared/DocumentPdfLayout";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
-import { conditionalColumn, wmsQuantityColumn, optionalInfoItem, wmsProductColumns } from "./shared/wmsDocumentPdf";
+import { conditionalColumn, optionalInfoItem } from "./shared/documentPdfColumns";
+import { wmsQuantityColumn, wmsProductColumns } from "./shared/wmsDocumentPdf";
 
 type PickingPdfDocumentProps = {
   picking: Picking;
