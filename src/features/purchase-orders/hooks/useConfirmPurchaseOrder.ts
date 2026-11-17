@@ -3,8 +3,7 @@ import { confirmPurchaseOrder } from "../services/actions";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
-import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
+import { toastDrfError } from "@/src/utils/toastDrfError";
 
 export const useConfirmPurchaseOrder = () => {
   const queryClient = useQueryClient();
@@ -22,20 +21,6 @@ export const useConfirmPurchaseOrder = () => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey });
       toast.success("Orden de compra confirmada correctamente");
     },
-    onError: (error) => {
-      if (error instanceof AxiosError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-
-        if (statusCode === 400 && data) {
-          const firstMessage = firstNestedDrfMessage(data);
-          if (firstMessage) {
-            toast.error(firstMessage);
-            return;
-          }
-        }
-      }
-      toast.error("Error al confirmar la orden de compra");
-    },
+    onError: (error) => toastDrfError(error, "Error al confirmar la orden de compra"),
   });
 };
