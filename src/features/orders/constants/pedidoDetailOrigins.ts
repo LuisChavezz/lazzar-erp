@@ -20,6 +20,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "reflective",
   "corte-manga",
   "production-orders",
+  "pre-orders",
   "purchase-orders",
   "customers",
   "invoice",

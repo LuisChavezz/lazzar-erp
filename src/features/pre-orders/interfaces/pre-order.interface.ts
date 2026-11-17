@@ -4,12 +4,16 @@
  * que ya tienen BOM. Sirve para conocer los materiales antes de la OP.
  */
 export type PreOrderStatus =
+  /** Resurtido recién creado por planeación: producción lo acepta o rechaza. */
+  | "pendiente_aceptar"
   | "pendiente_validar"
   | "faltan_materiales"
   | "en_compra"
   | "lista"
   | "convertida"
-  | "cancelada";
+  | "cancelada"
+  /** Producción rechazó el resurtido; el motivo viene en `motivo_rechazo`. */
+  | "rechazada";
 
 /** Referencia que traen `pedidos-especiales` en `pre_orden`. */
 export interface PreOrderRef {
@@ -32,9 +36,30 @@ export interface PreOrderRegreso {
   motivo: string;
 }
 
+export interface PreOrderPedidoVinculado {
+  id: number;
+  folio: string | null;
+  cliente_nombre: string | null;
+}
+
+/** `pedido`: nace de un pedido especial (muestra); `resurtido`: alta manual para stock, sin pedido. */
+export type PreOrderOrigen = "pedido" | "resurtido";
+
 export interface PreOrderListItem {
   id: number;
-  pedido: number;
+  /** `null` en un resurtido. */
+  pedido: number | null;
+  origen?: PreOrderOrigen;
+  origen_display?: string;
+  /** Folio del pedido (`P-…`) o `"Resurtido · SKU"`, ya resuelto por el backend. */
+  referencia?: string | null;
+  producto?: number | null;
+  producto_nombre?: string | null;
+  sucursal_nombre?: string | null;
+  notas?: string | null;
+  motivo_rechazo?: string | null;
+  /** Pedidos que cubre una pre-orden generada por planeación (opcional, varios). */
+  pedidos_vinculados?: PreOrderPedidoVinculado[];
   pedido_folio: string | null;
   cliente_nombre: string | null;
   sucursal: number | null;
@@ -57,14 +82,32 @@ export interface PreOrderListItem {
   updated_at: string;
 }
 
+/** Cómo surte el backend un renglón de resurtido: con BOM se fabrica; sin BOM y de compra, se compra. */
+export type PreOrderLineTipo = "fabricado" | "compra";
+export type PreOrderLineEstado = "pendiente" | "con_op" | "por_comprar" | "en_compra" | "recibido";
+
+/** Avance de un renglón de resurtido: los campos de OP (fabricado) o de OC (compra). */
+export interface PreOrderLineAvance {
+  estado: PreOrderLineEstado;
+  op?: number | null;
+  op_folio?: string | null;
+  orden_compra?: number | null;
+  orden_compra_folio?: string | null;
+  cantidad_recibida?: number | null;
+}
+
 export interface PreOrderLine {
   id: number;
+  tipo_linea?: PreOrderLineTipo;
+  avance?: PreOrderLineAvance | null;
+  /** `m`, `kg`, `pz`… del producto; los fabricados siempre `pz`. */
+  unidad?: string | null;
   variante_produccion: number;
   sku: string;
   nombre: string;
   talla_nombre: string | null;
   color_nombre: string | null;
-  pedido_detalle: number;
+  pedido_detalle: number | null;
   cantidad: number;
 }
 
@@ -125,6 +168,8 @@ export interface PurchaseNeed {
   pre_orden?: number | null;
   pedido?: number | null;
   pedido_folio?: string | null;
+  origen?: PreOrderOrigen;
+  referencia?: string | null;
   fecha_requerida?: string | null;
   estatus?: PurchaseNeedStatus;
   estatus_display?: string | null;
@@ -162,4 +207,81 @@ export interface CrearOpResponse {
   folio?: string | null;
   pre_orden?: number;
   estatus?: PreOrderStatus;
+}
+
+/**
+ * `POST /produccion/pre-ordenes/`: alta de un resurtido de stock. Lo crea
+ * planeación: muchos SKUs, una sola sucursal. Cada renglón va con `sku` (el
+ * backend los resuelve de un jalón); los errores vuelven por renglón, en el
+ * mismo orden.
+ */
+export interface CreateResurtidoBody {
+  origen: "resurtido";
+  sucursal: number;
+  fecha_compromiso: string;
+  /**
+   * Un renglón por variante (`variante` o `sku`) o por producto sin variante
+   * (`producto`, siempre se compra). La cantidad admite hasta 4 decimales en
+   * lo que se compra; lo fabricado va en piezas enteras.
+   */
+  lineas: ResurtidoLineaBody[];
+  /** Pedidos que cubre (opcional, uno o varios). */
+  pedidos?: number[];
+  notas?: string;
+}
+
+export type ResurtidoLineaBody =
+  | { variante: number; cantidad: string }
+  | { sku: string; cantidad: string }
+  | { producto: number; cantidad: string };
+
+/**
+ * Una fila de `POST /produccion/pre-ordenes/disponibilidad/`: por variante o
+ * por producto (el otro en `null`). Por producto suma todas sus variantes.
+ */
+export interface VariantAvailability {
+  variante: number | null;
+  producto?: number | null;
+  sku?: string | null;
+  existencia: number;
+  /** En OP abiertas. */
+  por_fabricar: number;
+  /** En OC sin recibir. */
+  por_comprar: number;
+  /** Pedidos autorizados/en proceso (completos) + otros resurtidos abiertos. */
+  comprometido: number;
+  disponible: number;
+}
+
+/** 201: el detalle + avisos (p. ej. ya hay un resurtido abierto igual). */
+export interface CreateResurtidoResponse extends PreOrderDetail {
+  avisos?: string[];
+}
+
+export type ResurtidoTipoProducto = "MP" | "PT" | "COMPRAS";
+
+/** Variante de un resultado de `catalogo-resurtido/`. */
+export interface ResurtidoCatalogVariant {
+  id: number;
+  sku: string;
+  nombre: string;
+  talla: string | null;
+  color: string | null;
+  tipo_linea: PreOrderLineTipo | null;
+}
+
+/**
+ * Un producto de `GET /produccion/pre-ordenes/catalogo-resurtido/`.
+ * `tipo_linea` `null` = no se puede resurtir (terminado sin BOM ni `es_compras`).
+ * Si trae `variantes`, se resurte por variante; si no, por producto.
+ */
+export interface ResurtidoCatalogItem {
+  producto: number;
+  nombre: string;
+  codigo: string | null;
+  tipo: string | null;
+  unidad: string | null;
+  unidad_id?: number | null;
+  tipo_linea: PreOrderLineTipo | null;
+  variantes: ResurtidoCatalogVariant[];
 }

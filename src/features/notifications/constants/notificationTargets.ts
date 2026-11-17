@@ -187,6 +187,7 @@ const NOTIFICATION_ICON_VARIANTS: Record<string, NotificationIconVariant> = {
   pre_orden_lista: "success",
   pre_orden_regreso: "error",
   pre_orden_semaforo_rojo: "error",
+  pre_orden_rechazada: "error",
 };
 
 export const resolveNotificationIconVariant = (

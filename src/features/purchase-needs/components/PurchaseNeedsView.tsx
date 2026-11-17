@@ -217,7 +217,7 @@ export function PurchaseNeedsView() {
                                 <input
                                   type="checkbox"
                                   className="h-4 w-4 accent-sky-600 cursor-pointer disabled:cursor-not-allowed"
-                                  aria-label={`Seleccionar necesidad del pedido ${n.pedido_folio ?? n.id}`}
+                                  aria-label={`Seleccionar necesidad de ${n.referencia ?? n.pedido_folio ?? n.id}`}
                                   checked={selected.has(n.id)}
                                   disabled={!editable}
                                   onChange={(e) => toggleNeeds([n.id], e.target.checked)}
@@ -226,10 +226,10 @@ export function PurchaseNeedsView() {
                               <td className="py-2">
                                 {n.pre_orden ? (
                                   <Link href={`/manufacturing/pre-orders/${n.pre_orden}`} className={LINK_CLASS}>
-                                    {n.pedido_folio ?? `Pre-orden #${n.pre_orden}`}
+                                    {n.referencia ?? n.pedido_folio ?? `Pre-orden #${n.pre_orden}`}
                                   </Link>
                                 ) : (
-                                  <span className="font-mono text-xs">{n.pedido_folio ?? "—"}</span>
+                                  <span className="font-mono text-xs">{n.referencia ?? n.pedido_folio ?? "—"}</span>
                                 )}
                               </td>
                               <td className="py-2 tabular-nums text-slate-600 dark:text-slate-300">
