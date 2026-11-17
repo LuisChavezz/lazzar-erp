@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AccessibleLink } from "@/src/components/AccessibleLink";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -175,9 +177,14 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
           {data.op && (
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               OP:{" "}
-              <Link href={`/manufacturing/production-orders/${data.op}`} className={LINK_CLASS}>
+              {/* Sin `R-PRODUCCION-OP` (la regla de la ruta), folio sin enlace (EC-895). */}
+              <AccessibleLink
+                href={productionOrderDetailPath(data.op)}
+                className={LINK_CLASS}
+                fallbackClassName="font-mono"
+              >
                 {data.op_folio || `#${data.op}`}
-              </Link>
+              </AccessibleLink>
             </p>
           )}
         </div>
@@ -395,9 +402,13 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                       <div className="flex flex-wrap items-center gap-2">
                         {d.avance?.estado ? <StatusBadge status={d.avance.estado} config={LINE_AVANCE_CFG} /> : <span className="text-xs text-slate-400">—</span>}
                         {d.avance?.op ? (
-                          <Link href={`/manufacturing/production-orders/${d.avance.op}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                          <AccessibleLink
+                            href={productionOrderDetailPath(d.avance.op)}
+                            className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline"
+                            fallbackClassName="font-mono text-xs text-slate-600 dark:text-slate-300"
+                          >
                             {d.avance.op_folio || `OP #${d.avance.op}`}
-                          </Link>
+                          </AccessibleLink>
                         ) : null}
                         {d.avance?.orden_compra ? (
                           <Link href={`/procurement/purchase-orders/${d.avance.orden_compra}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">

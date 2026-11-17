@@ -1,10 +1,15 @@
 import type { TrackerStep, TrackerState } from "@/src/components/StepTracker";
+import {
+  corteMangaOrderDetailPath,
+  embroideryOrderDetailPath,
+  reflectiveOrderDetailPath,
+} from "@/src/constants/workOrderRoutes";
 
 export type ServiceKey = "bordado" | "reflejante" | "corte_manga";
 
 interface ServiceConfig {
   label: string;
-  /** Detalle de la orden. */
+  /** Detalle de la orden: ruta de su sección, la que se evalúa para enlazarla. */
   href: (id: number) => string;
   steps: readonly TrackerStep[];
   /** Estatus del backend → índice del paso. El último paso, al llegar, cuenta como terminado. */
@@ -21,7 +26,7 @@ interface ServiceConfig {
 export const SERVICE_STEPS: Record<ServiceKey, ServiceConfig> = {
   bordado: {
     label: "Bordado",
-    href: (id) => `/manufacturing/embroidery/${id}`,
+    href: embroideryOrderDetailPath,
     steps: [
       { label: "Sin trabajar" },
       { label: "Programado" },
@@ -36,7 +41,7 @@ export const SERVICE_STEPS: Record<ServiceKey, ServiceConfig> = {
   },
   reflejante: {
     label: "Reflejante",
-    href: (id) => `/manufacturing/reflective-orders/${id}`,
+    href: reflectiveOrderDetailPath,
     steps: [
       { label: "Pendiente" },
       { label: "Preparación" },
@@ -50,7 +55,7 @@ export const SERVICE_STEPS: Record<ServiceKey, ServiceConfig> = {
   },
   corte_manga: {
     label: "Corte de manga",
-    href: (id) => `/manufacturing/corte-manga/${id}`,
+    href: corteMangaOrderDetailPath,
     steps: [
       { label: "Pendiente" },
       { label: "Preparación" },

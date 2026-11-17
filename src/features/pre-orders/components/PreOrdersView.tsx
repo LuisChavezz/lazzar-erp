@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AccessibleLink } from "@/src/components/AccessibleLink";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { useSession } from "next-auth/react";
 import { Button } from "@/src/components/Button";
 import { hasPermission } from "@/src/utils/permissions";
@@ -177,9 +179,14 @@ const columns = [
     size: 110,
     cell: ({ row }) =>
       row.original.op ? (
-        <Link href={`/manufacturing/production-orders/${row.original.op}`} className={LINK_CLASS}>
+        // Sin `R-PRODUCCION-OP` (la regla de la ruta), folio sin enlace (EC-895).
+        <AccessibleLink
+          href={productionOrderDetailPath(row.original.op)}
+          className={LINK_CLASS}
+          fallbackClassName="font-mono text-xs text-slate-600 dark:text-slate-300"
+        >
           {row.original.op_folio || `#${row.original.op}`}
-        </Link>
+        </AccessibleLink>
       ) : (
         <span className="text-xs text-slate-400 dark:text-slate-500">Sin OP</span>
       ),

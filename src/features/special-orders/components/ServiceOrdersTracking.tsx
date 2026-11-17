@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AccessibleLink } from "@/src/components/AccessibleLink";
 import { ScissorsIcon } from "@/src/components/Icons";
 import { StepTracker, StepTrackerMini } from "@/src/components/StepTracker";
 import { SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
@@ -44,11 +44,14 @@ export function ServiciosCell({ order }: { order: SpecialOrderListItem }) {
           orders.map((o) => {
             const { current, state } = serviceProgress(key, o.estatus, o.estatus_previo);
             return (
-              <Link
+              // Sin el permiso de la sección de la orden, el tracker queda
+              // sin enlace (EC-895).
+              <AccessibleLink
                 key={o.id}
                 href={SERVICE_STEPS[key].href(o.id)}
                 title={`${SERVICE_STEPS[key].label} ${o.folio} · ${shortText(o)}`}
                 className="inline-flex flex-col hover:opacity-80"
+                fallbackClassName="inline-flex flex-col"
               >
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                   {SERVICE_STEPS[key].label}
@@ -59,7 +62,7 @@ export function ServiciosCell({ order }: { order: SpecialOrderListItem }) {
                   state={state}
                   text={o.estatus_display}
                 />
-              </Link>
+              </AccessibleLink>
             );
           })
         ),
@@ -77,13 +80,14 @@ function ServiceOrderRow({ serviceKey, order }: { serviceKey: ServiceKey; order:
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div className="flex flex-wrap items-baseline gap-x-3">
           <span className="text-sm font-semibold text-slate-900 dark:text-white">{cfg.label}</span>
-          <Link
+          <AccessibleLink
             href={cfg.href(order.id)}
             title="Ver orden"
             className="text-sm font-medium tabular-nums text-sky-600 dark:text-sky-400 hover:underline"
+            fallbackClassName="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200"
           >
             {order.folio}
-          </Link>
+          </AccessibleLink>
           {state !== "normal" && (
             <span
               className={`text-xs font-semibold ${

@@ -14,6 +14,7 @@ import {
   PICKING_DOC_TIPO,
   type OpenOrderDocument,
 } from "./orderDocumentDialogs";
+import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
 
 const DOC_LINK_CLASS =
   "group inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer font-semibold text-left transition-colors";
@@ -78,7 +79,8 @@ function docSortTime(doc: PedidoDocumento): number | null {
  *
  * Los tipos con página propia (`ORDER_DOCUMENT_ROUTES`, hoy la factura)
  * enlazan a ella solo si el usuario puede abrir esa ruta; si no, quedan como
- * texto. Los tipos con diálogo lo abren como siempre.
+ * texto. Los tipos con diálogo lo abren, salvo las órdenes de Producción sin
+ * el permiso de su sección (`canOpenOrderDocument`), que quedan como texto.
  */
 export function OrderDocumentsSection({
   pedidoId,
@@ -144,7 +146,12 @@ export function OrderDocumentsSection({
                   route && canAccessRoute(route.path(doc.id), session?.user)
                     ? route.href(doc.id, pedidoId)
                     : null;
-                const hasDialog = !route && hasOrderDocumentDialog(doc.tipo);
+                // Las órdenes de trabajo solo abren su diálogo con el permiso
+                // de su sección (`canOpenOrderDocument`); sin él, texto (EC-895).
+                const hasDialog =
+                  !route &&
+                  hasOrderDocumentDialog(doc.tipo) &&
+                  canOpenOrderDocument(doc.tipo, doc.id, session?.user);
                 const folio = isStub || isMovimiento ? "—" : textOrDash(doc.folio);
                 const fecha = isStub ? "—" : formatDocFecha(doc.fecha);
                 const showEstatus = !isStub && !isMovimiento && doc.estatus;
