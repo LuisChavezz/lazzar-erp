@@ -2,27 +2,16 @@
 
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
-import { useProducts } from "../hooks/useProducts";
-import {
-  buildProductRows,
-  getColumns,
-  PRODUCT_HEADER_FILTERS,
-  productLineaHeaderFilter,
-} from "./ProductColumns";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useProductsTable } from "../hooks/useProductsTable";
+import { buildProductRows, getColumns } from "./ProductColumns";
 
 // Sin acciones por fila: esta vista solo lista y da de alta. La edición y la
-// baja siguen viviendo en Configuración (`ProductList`).
-const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: false });
-
-const HEADER_FILTERS = {
-  ...PRODUCT_HEADER_FILTERS,
-  categoria_linea: productLineaHeaderFilter,
-};
+// baja siguen viviendo en Configuración (`ProductList`). Con todos los filtros
+// de encabezado de Producción. A nivel de módulo: referencia estable.
+const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: false }, "all");
 
 /**
  * Gestión de productos del módulo de Producción (`/manufacturing/products`):
@@ -31,6 +20,12 @@ const HEADER_FILTERS = {
  * El listado va SIN filtro de tipo —a diferencia de `ProductList`, que muestra
  * solo `tipo_id=3`—: el alta rápida permite elegir cualquier tipo, y con filtro
  * un producto recién creado de otro tipo no aparecería en la tabla.
+ *
+ * MODO SERVIDOR (EC-897): paginación, búsqueda (`q`: nombre, código y código
+ * Proscai), orden y filtros los resuelve `GET /catalogo/producto/` y su estado
+ * vive en la URL (`useProductsTable`), así que la página la envuelve en
+ * `<Suspense>`. El listado es solo de activos; las opciones de Categoría
+ * salen del catálogo de categorías, nunca de las filas.
  *
  * Ver la página exige `R-PRODUCCION` (regla de prefijo `/manufacturing` en
  * `routePermissions`). El alta se gatea con ese MISMO código: por decisión de
@@ -45,27 +40,24 @@ export function ProductionProductsView() {
   const { data: session } = useSession();
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
 
-  const { products, isLoading, isInitialError, error } = useProducts();
+  const table = useProductsTable({ toastId: "production-products-table-refetch-error" });
   const { categories } = useProductCategories();
 
-  // El nombre de la categoría se incorpora a la FILA (ver `ProductRow`): así la
-  // llegada tardía del catálogo produce un `data` nuevo y TanStack recalcula
-  // búsqueda y orden.
-  const rows = buildProductRows(products, categories);
+  // El nombre y la línea de la categoría se incorporan a la FILA (ver
+  // `ProductRow`): la llegada tardía del catálogo produce un `data` nuevo.
+  const rows = buildProductRows(table.rows, categories);
 
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
-        columns={withHeaderFilters(READ_ONLY_COLUMNS, rows, HEADER_FILTERS)}
+        columns={READ_ONLY_COLUMNS}
+        {...table.tableProps}
         data={rows}
-        searchPlaceholder="Buscar producto..."
+        searchPlaceholder="Buscar por nombre, código o código Proscai..."
         getRowId={(row) => String(row.id)}
         fillHeight
         emptyMessage="No hay productos registrados."
-        isLoading={isLoading}
-        isError={isInitialError}
         errorTitle="Error al cargar productos"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando productos"
         actionButton={canCreate ? <ProductOnboardingDialog /> : undefined}
       />

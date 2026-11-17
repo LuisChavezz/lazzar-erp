@@ -1,10 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { DataTable } from "../../../components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
-import { buildProductRows, getColumns, productLineaHeaderFilter, ProductRow } from "./ProductColumns";
+import { buildProductRows, getColumns } from "./ProductColumns";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
@@ -14,15 +13,25 @@ import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasur
 import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
 import { useSatProdServCodes } from "../../sat-prodserv-codes/hooks/useSatProdServCodes";
-import { useProducts } from "../hooks/useProducts";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useProductsTable } from "../hooks/useProductsTable";
+import { productsTable, withUrlPrefix } from "../utils/catalogListParams";
 
-// Solo la línea: el resto de `PRODUCT_HEADER_FILTERS` es de la vista de
-// Producción y no se adopta aquí.
-const HEADER_FILTERS = {
-  categoria_linea: productLineaHeaderFilter,
-};
+/**
+ * En Configuración varias tablas en modo servidor comparten `/config` (la
+ * vista elegida no va en la URL): el prefijo evita que esta herede la
+ * búsqueda o la página que dejó otra. A nivel de módulo: referencia estable.
+ */
+const CONFIG_PRODUCTS_TABLE = withUrlPrefix(productsTable, "prod_");
 
+/**
+ * Productos terminados (`tipo_id=3`) en Configuración (`/config`, vista
+ * "products"): edición y baja; el alta va por el alta rápida.
+ *
+ * MODO SERVIDOR (EC-897): paginación, búsqueda (`q`), orden y el filtro de
+ * Línea —el único que tenía— los resuelve `GET /catalogo/producto/` y su estado
+ * vive en la URL con el prefijo `prod_` (`useProductsTable`), así que
+ * `ConfigDetailView` la envuelve en `<Suspense>`.
+ */
 export default function ProductList() {
   const { data: session } = useSession();
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
@@ -33,7 +42,11 @@ export default function ProductList() {
   const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const { products, isLoading, isInitialError, error } = useProducts(3);
+  const table = useProductsTable({
+    tipoId: 3,
+    definition: CONFIG_PRODUCTS_TABLE,
+    toastId: "config-products-table-refetch-error",
+  });
 
   const { categories } = useProductCategories();
   // Sin uso aquí: precargan los catálogos que pide el formulario de edición
@@ -43,37 +56,27 @@ export default function ProductList() {
   useSatProdServCodes();
   useSatUnitCodes();
 
-  const handleEdit = useCallback(
-    (product: Product) => {
-      setSelectedProduct(product);
-      setIsDialogOpen(true);
-    },
-    [setSelectedProduct]
-  );
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDialogOpen(true);
+  };
 
-  // El nombre de la categoría se incorpora a la FILA, no al accessor: así la
-  // llegada tardía de su catálogo produce un `data` nuevo y TanStack recalcula
-  // búsqueda y orden aunque ya se hubieran calculado. Ver `ProductRow`.
-  const rows = useMemo<ProductRow[]>(
-    () => buildProductRows(products, categories),
-    [products, categories]
-  );
+  // El nombre y la línea de la categoría se incorporan a la FILA (ver
+  // `ProductRow`): la llegada tardía del catálogo produce un `data` nuevo.
+  const rows = buildProductRows(table.rows, categories);
 
-  const columns = useMemo(
-    () => getColumns(handleEdit, { canEdit, canDelete }),
-    [handleEdit, canEdit, canDelete]
-  );
+  const columns = getColumns(handleEdit, { canEdit, canDelete }, "linea");
 
   return (
     <>
       <DataTable
-        columns={withHeaderFilters(columns, rows, HEADER_FILTERS)}
+        columns={columns}
+        {...table.tableProps}
         data={rows}
-        searchPlaceholder="Buscar producto..."
-        isLoading={isLoading}
-        isError={isInitialError}
+        // Identidad de la fila por registro, no por posición en la página.
+        getRowId={(row) => String(row.id)}
+        searchPlaceholder="Buscar por nombre, código o código Proscai..."
         errorTitle="Error al cargar productos"
-        errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando productos"
         // El alta va por el alta rápida (asigna el `codigo`); el formulario
         // completo solo edita.
