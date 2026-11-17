@@ -80,7 +80,10 @@ export function MainDialog({
             <div className="shrink-0">{headerAction}</div>
           </Flex>
         ) : (
-          <Dialog.Title>{title}</Dialog.Title>
+          // Mismo `pr-10` que la fila con acción: la X ocupa de 12 a 56 px del
+          // borde y el relleno de Radix solo deja 24, así que sin él un título
+          // largo ("Nueva Nota de Crédito" a 375 px) corría bajo la X.
+          <Dialog.Title className="pr-10">{title}</Dialog.Title>
         )}
 
         {description && (
