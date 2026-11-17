@@ -1,6 +1,7 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_KPI_DRILL_DOWN } from "@/src/constants/dialogWidths";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatKpiCurrencyAmount, plural } from "@/src/utils/kpiFormat";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
@@ -91,7 +92,7 @@ export function PedidoKpiDrillDownDialog({ open, kpi, showAmounts, onClose }: Pe
       }}
       title="Pedidos activos"
       description={getDescription(kpi)}
-      maxWidth="720px"
+      maxWidth={DIALOG_WIDTH_KPI_DRILL_DOWN}
     >
       {rows.length === 0 ? (
         <EmptyLines>Sin pedidos activos para mostrar.</EmptyLines>
