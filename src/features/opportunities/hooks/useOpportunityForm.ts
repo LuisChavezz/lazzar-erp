@@ -2,9 +2,9 @@
 
 import { useForm, useStore } from "@tanstack/react-form";
 import { useRef, useState } from "react";
-import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { scrollToFirstValidationError } from "@/src/utils/scrollToFirstValidationError";
@@ -26,6 +26,7 @@ import {
 } from "../schemas/opportunity.schema";
 import { useCreateOpportunity } from "./useCreateOpportunity";
 import { useUpdateOpportunity } from "./useUpdateOpportunity";
+import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
 
 interface UseOpportunityFormParams {
   onSuccess: () => void;
@@ -130,8 +131,15 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  // Envío en curso, síncrono (ver `onSubmit`).
-  const submittingRef = useRef(false);
+  // Marca de SALIDA del candado de envío (`useFormSubmitLock`): tras guardar
+  // (o ver que ya no existe) el diálogo se cierra con su animación y el
+  // formulario sigue montado; nada debe volver a enviarlo.
+  const leavingRef = useRef(false);
+  /** Guardado correcto (o nada que reintentar): el diálogo se cierra. */
+  const leave = () => {
+    leavingRef.current = true;
+    onSuccess();
+  };
 
   // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
   const {
@@ -200,7 +208,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     return { success: false as const, issuePaths };
   };
 
-  /** El envío en sí, sin la guarda de doble envío (vive en `onSubmit`). */
+  /** El envío en sí; el candado contra el doble envío es `useFormSubmitLock`. */
   const submitOpportunity = async (value: OpportunityFormValues) => {
     clearServerErrors();
 
@@ -218,7 +226,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
         const changes = diffPayload(toWritePayload(toFormValues(opportunityToEdit)), payload);
         if (Object.keys(changes).length === 0) {
           toast("No hay cambios que guardar.");
-          onSuccess();
+          leave();
           return;
         }
         await updateOpportunity({ id: opportunityToEdit.id, changes });
@@ -228,7 +236,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
         const createPayload: OpportunityCreate = titulo ? { ...rest, titulo } : rest;
         await createOpportunity(createPayload);
       }
-      onSuccess();
+      leave();
     } catch (error) {
       // El `onError` de la mutación ya avisó y pintó los errores por campo. Sin
       // este catch el rechazo de `mutateAsync` escaparía sin manejar.
@@ -236,7 +244,7 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
       // Si la oportunidad ya no existe (otra persona la dio de baja), no hay
       // nada que reintentar: el diálogo se cierra y queda el listado, que la
       // mutación ya refrescó.
-      if (opportunityToEdit && isNotFoundError(error)) onSuccess();
+      if (opportunityToEdit && isNotFoundError(error)) leave();
     } finally {
       setIsLoading(false);
     }
@@ -244,17 +252,13 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
 
   const form = useForm({
     defaultValues: opportunityToEdit ? toFormValues(opportunityToEdit) : EMPTY_VALUES,
-    onSubmit: async ({ value }) => {
-      // Guarda SÍNCRONA contra el doble envío en el mismo tick: `isPending`
-      // deshabilita el formulario hasta el siguiente render.
-      if (submittingRef.current) return;
-      submittingRef.current = true;
-      try {
-        await submitOpportunity(value);
-      } finally {
-        submittingRef.current = false;
-      }
-    },
+    onSubmit: ({ value }) => submitOpportunity(value),
+  });
+
+  // Candado SÍNCRONO contra el doble envío (Enter + clic en el mismo tick),
+  // tomado antes de la validación: `isPending` llega un render tarde.
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
   });
 
   // Valida un solo campo en blur (el schema completo ya no expone `.shape`).
@@ -307,8 +311,11 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   const selectedCustomerLabel =
     watchedCliente === null
       ? ""
-      : selectedCustomer?.razon_social ??
-        (watchedCliente === opportunityToEdit?.cliente ? opportunityToEdit.cliente_nombre : null) ??
+      : selectedCustomer?.razon_social?.trim() ||
+        selectedCustomer?.nombre?.trim() ||
+        (watchedCliente === opportunityToEdit?.cliente
+          ? getOpportunityClienteLabel(opportunityToEdit)
+          : null) ||
         `Cliente #${watchedCliente}`;
   // Una oportunidad ya ligada a un cliente inactivo lo conserva al editar.
   const isSelectedCustomerInactive = selectedCustomer !== undefined && !selectedCustomer.activo;
@@ -336,9 +343,11 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
   /** Al salir del buscador, lo tecleado sin elegir se descarta. */
   const resetCustomerSearch = () => setCustomerSearch(null);
 
-  const isPending = isCreating || isUpdating || isLoading;
+  const isPending = isCreating || isUpdating || isLoading || isFormSubmitting;
 
   const handleReset = () => {
+    // No se toca el formulario mientras se envía ni cuando ya se guardó.
+    if (isSubmitLocked()) return;
     form.reset(opportunityToEdit ? toFormValues(opportunityToEdit) : EMPTY_VALUES);
     setCustomerSearch(null);
     clearAllErrors();
@@ -346,12 +355,6 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  };
-
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
   };
 
   return {
