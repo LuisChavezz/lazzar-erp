@@ -96,7 +96,7 @@ export default function OpportunityList() {
         {...table.tableProps}
         // Identidad de la fila por registro, no por posición en la página.
         getRowId={(row) => String(row.id)}
-        searchPlaceholder="Buscar por título o contacto..."
+        searchPlaceholder="Buscar por título, cliente o contacto..."
         emptyMessage="Aún no hay oportunidades registradas"
         errorTitle="Error al cargar oportunidades"
         loadingAriaLabel="Cargando oportunidades"

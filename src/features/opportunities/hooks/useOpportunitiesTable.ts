@@ -20,11 +20,15 @@ export const OPPORTUNITIES_KEY = ["opportunities"] as const;
 /**
  * Contrato del listado con `/ventas/oportunidades/`.
  *
- * - Solo se ordena por campos REALES del modelo. `estado` es calculado y los
- *   nombres de cliente y vendedor salen de otras tablas: el backend ignora en
- *   silencio un `ordering` que no reconoce, así que ofrecerlos ordenaría "sin
- *   hacer nada".
- * - `tiebreaker`: `monto_estimado` y `proximo_contacto` se repiten mucho; sin
+ * - Solo se ordena por lo que el backend acepta: el backend ignora en silencio
+ *   un `ordering` que no reconoce, así que ofrecer otro ordenaría "sin hacer
+ *   nada". `estado` es calculado y el nombre del vendedor no está en su lista.
+ *   `cliente__razon_social` (EC-902) ordena por la etiqueta que se pinta (la
+ *   razón social o, en blanco, el nombre), y un cliente que el usuario no ve
+ *   ordena como si no hubiera cliente (`NULL`).
+ * - `q` busca en título, contacto y —si el usuario ve a ese cliente— en el
+ *   nombre y la razón social del cliente.
+ * - `tiebreaker`: cliente, `monto_estimado` y `proximo_contacto` se repiten mucho; sin
  *   el desempate por `id`, las filas empatadas cambiarían de página.
  * - `proximo_contacto_hasta` existe en el endpoint pero no se usa aquí: es de
  *   la agenda de seguimientos.
@@ -37,7 +41,7 @@ export const opportunitiesTable = defineServerTable({
   },
   search: { param: "q" },
   ordering: {
-    fields: ["titulo", "monto_estimado", "proximo_contacto", "created_at"],
+    fields: ["titulo", "cliente__razon_social", "monto_estimado", "proximo_contacto", "created_at"],
     default: "-id",
     tiebreaker: "-id",
   },

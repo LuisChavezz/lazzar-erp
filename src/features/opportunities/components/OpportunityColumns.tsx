@@ -1,20 +1,15 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import {
-  ChevronRightIcon,
-  DeleteIcon,
-  EditIcon,
-  TraspasosIcon,
-  ViewIcon,
-} from "@/src/components/Icons";
+import type { ActionMenuItem } from "@/src/components/ActionMenu";
+import { FolioActionMenu } from "@/src/components/FolioActionMenu";
+import { DeleteIcon, EditIcon, TraspasosIcon } from "@/src/components/Icons";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { getEstadoOportunidadCfg } from "../constants/opportunityChoices";
 import { useOpportunityRowActionsContext } from "../hooks/useOpportunityRowActions";
 import type { Opportunity } from "../interfaces/opportunity.interface";
-import { getOpportunityName } from "../utils/describeOpportunity";
+import { getOpportunityLabel } from "../utils/describeOpportunity";
+import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
 import { opportunityDetailHref } from "../utils/opportunityListQuery";
-import { OpportunityName } from "./OpportunityName";
+import { OpportunityEstadoBadge } from "./OpportunityEstadoBadge";
 import {
   OpportunityClienteHeader,
   OpportunityTituloHeader,
@@ -26,35 +21,23 @@ const columnHelper = createColumnHelper<Opportunity>();
 const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
 /**
- * Celda "Oportunidad", con el diseño del folio de Pedidos: punto de color del
- * ESTADO + título en negritas + flecha, sin fondo. El título es el DISPARADOR
- * del menú de fila ("Ver detalle", "Editar", "Dar de baja"), como el folio de Pedidos en Mesa
- * de Control (`OperationsOrderColumns`): no hay columna "Acciones" ni columna
- * "Estado" aparte.
+ * Celda "Oportunidad": el título ES el menú de la fila (`FolioActionMenu`, modo
+ * nombre), con "Ver detalle" como primera acción y enlace real (clic medio abre
+ * otra pestaña), y debajo el badge del ESTADO —el estatus único de la
+ * oportunidad, como el de "Mis pedidos" (EC-755)—. La etapa no se pinta aquí: es
+ * informativa y vive en el detalle.
  *
- * El estado no va solo en el color: el punto lleva `role="img"` con el nombre
- * del estado como `aria-label` y `title` (mismo recurso que el punto de
- * confirmación de "Mis pedidos"). El punto queda FUERA del botón: es
- * indicador, no parte de la acción.
+ * Sin título, el nombre derivado (cliente, contacto o "#id") va atenuado y en
+ * cursiva con "Sin título" en el tooltip (`derivedNameHint`).
  *
  * Solo presentacional — los callbacks llegan por contexto y los diálogos viven
  * en `OpportunityList`.
  */
 function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) {
   const { listQuery, onEdit, onDelete, onTransfer } = useOpportunityRowActionsContext();
-  // `estado` es un valor del backend: uno fuera del catálogo cae al gris neutro
-  // y se anuncia con su texto crudo (`getEstadoOportunidadCfg`).
-  const estadoCfg = getEstadoOportunidadCfg(opportunity.estado);
-  const estadoLabel = estadoCfg.label;
+  const { text, isTitulo } = getOpportunityLabel(opportunity);
 
-  const menuItems: ActionMenuItem[] = [
-    // Enlace real (`href`): clic central y Ctrl+clic abren el detalle en otra
-    // pestaña. Lleva el estado del listado para que "Volver" regrese a él.
-    {
-      label: "Ver detalle",
-      icon: ViewIcon,
-      href: opportunityDetailHref(opportunity.id, listQuery),
-    },
+  const items: ActionMenuItem[] = [
     { label: "Editar", icon: EditIcon, onSelect: () => onEdit(opportunity) },
     ...(onTransfer
       ? [{ label: "Transferir", icon: TraspasosIcon, onSelect: () => onTransfer(opportunity) }]
@@ -63,55 +46,33 @@ function OpportunityTitleActions({ opportunity }: { opportunity: Opportunity }) 
   ];
 
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span
-        className={`h-2.5 w-2.5 rounded-full shrink-0 ${estadoCfg.dot}`}
-        role="img"
-        aria-label={estadoLabel}
-        title={estadoLabel}
-      />
-      <ActionMenu
-        items={menuItems}
-        ariaLabel="Acciones de la oportunidad"
-        align="start"
-        trigger={
-          <button
-            type="button"
-            aria-label={`Ver acciones de la oportunidad ${getOpportunityName(opportunity)}`}
-            className="group inline-flex min-w-0 items-center gap-1 text-left text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-          >
-            {/* Sin título, el nombre derivado va atenuado y en cursiva. */}
-            <span className="min-w-0 wrap-break-word">
-              <OpportunityName opportunity={opportunity} />
-            </span>
-            <ChevronRightIcon
-              className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-              aria-hidden="true"
-            />
-          </button>
-        }
-      />
-    </div>
+    <FolioActionMenu
+      name={text}
+      derivedNameHint={isTitulo ? undefined : "Sin título"}
+      // Lleva el estado del listado para que "Volver" regrese a él.
+      detail={{ href: opportunityDetailHref(opportunity.id, listQuery) }}
+      items={items}
+      status={<OpportunityEstadoBadge estado={opportunity.estado} />}
+    />
   );
 }
 
 /**
  * Columnas del listado de oportunidades (tabla en MODO SERVIDOR).
  *
- * - `meta.serverSort` solo en campos reales del modelo (ver
- *   `opportunitiesTable`): estado, cliente y vendedor no ordenan.
+ * - `meta.serverSort` solo en campos que el backend ordena (ver
+ *   `opportunitiesTable`): estado y vendedor no ordenan.
  * - `meta.serverFilter` liga el filtro del encabezado con el parámetro del
  *   endpoint; no hay `filterFn` porque nada se filtra en memoria.
  * - No dependen de nada que cambie: los callbacks del menú llegan por contexto.
- * - Sin columnas "Acciones" ni "Estado": el menú cuelga del título y el
- *   estado es el punto de color de esa misma celda (ver
- *   `OpportunityTitleActions`).
+ * - Sin columnas "Acciones" ni "Estado": el menú cuelga del título y el estado
+ *   es el badge bajo él (ver `OpportunityTitleActions`).
  */
 export const opportunityColumns = [
   columnHelper.accessor("titulo", {
     id: "titulo",
     // Ordena por `titulo` y filtra por `estado`: el filtro vive en este
-    // encabezado, como el de confirmación en el Folio de "Mis pedidos".
+    // encabezado, como el de estatus en el Folio de "Mis pedidos".
     meta: { label: "Oportunidad", serverSort: "titulo", serverFilter: "estado" },
     // Lleva el menú de fila, el estado y su filtro: ocultarla desde
     // "Mostrar/Ocultar" dejaría la fila sin acciones y el filtro sin control.
@@ -119,30 +80,26 @@ export const opportunityColumns = [
     header: ({ column }) => <OpportunityTituloHeader column={column} />,
     cell: ({ row }) => <OpportunityTitleActions opportunity={row.original} />,
   }),
-  // Cliente si lo hay; si no, el contacto capturado. `cliente_nombre` es el
-  // nombre del cliente tal como lo manda el backend.
-  columnHelper.accessor((row) => row.cliente_nombre ?? row.nombre_contacto ?? "", {
+  // El cliente por su razón social (EC-810, `getOpportunityClienteLabel`); el
+  // contacto del cliente solo va en el detalle, donde hay espacio. Sin cliente,
+  // el contacto que se capturó en la oportunidad.
+  columnHelper.accessor((row) => getOpportunityClienteLabel(row) ?? row.nombre_contacto ?? "", {
     id: "cliente",
-    meta: { label: "Cliente / Contacto", serverFilter: "cliente" },
+    meta: { label: "Cliente", serverFilter: "cliente", serverSort: "cliente__razon_social" },
     header: ({ column }) => <OpportunityClienteHeader column={column} />,
     cell: ({ row }) => {
-      const { cliente_nombre, nombre_contacto } = row.original;
-      const contacto = nombre_contacto?.trim();
-      if (cliente_nombre) {
-        return (
-          <div className="min-w-0">
-            <div className="text-slate-700 dark:text-slate-200">{cliente_nombre}</div>
-            {contacto && <div className={`text-xs ${MUTED_CLS}`}>{contacto}</div>}
-          </div>
-        );
+      const clienteLabel = getOpportunityClienteLabel(row.original);
+      if (clienteLabel) {
+        return <span className="text-slate-700 dark:text-slate-200">{clienteLabel}</span>;
       }
+      const contacto = row.original.nombre_contacto?.trim();
       return contacto ? (
         <div className="min-w-0">
           <div className="text-slate-700 dark:text-slate-200">{contacto}</div>
           <div className={`text-xs ${MUTED_CLS}`}>Sin cliente</div>
         </div>
       ) : (
-        <span className={MUTED_CLS}>—</span>
+        <span className={MUTED_CLS}>Sin cliente</span>
       );
     },
   }),
@@ -150,8 +107,9 @@ export const opportunityColumns = [
     id: "vendedor",
     meta: { label: "Vendedor", serverFilter: "vendedor" },
     header: ({ column }) => <OpportunityVendedorHeader column={column} />,
+    // `vendedor_nombre` puede llegar `""` (usuario sin nombre): igual que `null`.
     cell: (info) =>
-      info.getValue() ? (
+      info.getValue().trim() ? (
         <span className="text-slate-600 dark:text-slate-300">{info.getValue()}</span>
       ) : (
         <span className={MUTED_CLS}>Sin asignar</span>
