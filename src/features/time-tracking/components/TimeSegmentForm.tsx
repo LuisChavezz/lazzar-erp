@@ -26,6 +26,11 @@ interface TimeSegmentFormProps {
   orders: readonly ProductionOrderListItem[];
   ordersLoaded: boolean;
   ordersError: boolean;
+  /**
+   * Motivo por el que no hay catálogo de OP (sin `R-PRODUCCION-OP`, EC-895):
+   * el selector se deshabilita y lo muestra. `null` si se puede elegir.
+   */
+  ordersUnavailableReason: string | null;
   /** Otra escritura de tramos en vuelo: el formulario espera a que termine. */
   disabled: boolean;
   onDone: () => void;
@@ -51,6 +56,7 @@ export function TimeSegmentForm({
   orders,
   ordersLoaded,
   ordersError,
+  ordersUnavailableReason,
   disabled,
   onDone,
   onCancel,
@@ -127,13 +133,18 @@ export function TimeSegmentForm({
                   value={field.state.value}
                   error={getError("op")}
                   options={opOptions}
+                  disabled={ordersUnavailableReason !== null}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
                     clearFieldErrors("op");
                   }}
                   onBlur={field.handleBlur}
                 />
-                {ordersError ? (
+                {ordersUnavailableReason !== null ? (
+                  <p className="mt-1 ml-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    {ordersUnavailableReason}
+                  </p>
+                ) : ordersError ? (
                   <p className="mt-1 ml-1 text-[11px] text-amber-600 dark:text-amber-400">
                     No se pudo cargar el catálogo de órdenes de producción.
                   </p>

@@ -1,3 +1,5 @@
+import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import { hasPermission } from "@/src/utils/permissions";
 import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
 
 /**
@@ -60,3 +62,17 @@ export const buildOpOptions = (
   }
   return [{ value: "", label: SIN_OP_LABEL }, ...options];
 };
+
+/** Código con el que el backend sirve el listado de OP al desglose. */
+export const OP_CATALOG_PERMISSION = "R-PRODUCCION-OP";
+
+export const OP_CATALOG_FORBIDDEN_REASON =
+  "No tienes permiso para consultar órdenes de producción: no se puede elegir una OP. Un tramo que ya tiene OP la conserva.";
+
+/**
+ * ¿Puede el desglose pedir el catálogo de OP? Sin `R-PRODUCCION-OP` no se pide
+ * (sería un 403) y el selector de OP se deshabilita con el motivo (EC-895). El
+ * rol "admin" pasa siempre.
+ */
+export const canListProductionOrders = (user?: PermissionContext | null): boolean =>
+  hasPermission(OP_CATALOG_PERMISSION, user);

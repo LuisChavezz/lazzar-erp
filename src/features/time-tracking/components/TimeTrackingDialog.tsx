@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { EmptyLines, InfoField, InfoGrid } from "@/src/components/DetailDialogPrimitives";
@@ -18,7 +19,11 @@ import { useDeleteTimeSegment } from "../hooks/useDeleteTimeSegment";
 import { useIsTimeTrackingMutating } from "../hooks/useIsTimeTrackingMutating";
 import { SEGMENT_GONE_MESSAGE, SEGMENT_GONE_TOAST_ID } from "../hooks/timeTrackingErrorMessages";
 import { computeBreakdownTotals } from "../utils/breakdownTotals";
-import { indexOrders } from "../utils/productionOrderOptions";
+import {
+  canListProductionOrders,
+  indexOrders,
+  OP_CATALOG_FORBIDDEN_REASON,
+} from "../utils/productionOrderOptions";
 import {
   getAttendanceBounds,
   getCutoffMs,
@@ -82,11 +87,21 @@ export function TimeTrackingDialog({ attendance, permissions, onClose }: TimeTra
   const { segments, hasLoaded, isInitialError, error, refetch, isFetching } =
     useTimeSegments(attendance);
   const { shifts, isLoading: isLoadingShifts, isInitialError: isShiftsError } = useShifts();
+  // El catálogo de OP solo se pide con `R-PRODUCCION-OP` (EC-895): sin él el
+  // backend responde 403. Mientras la sesión carga tampoco se pide ni se da
+  // motivo ("Cargando órdenes…").
+  const { data: session, status: sessionStatus } = useSession();
+  const canListOrders = canListProductionOrders(session?.user);
+  const ordersUnavailableReason =
+    sessionStatus !== "loading" && !canListOrders ? OP_CATALOG_FORBIDDEN_REASON : null;
   const {
     data: orders,
-    hasLoaded: ordersLoaded,
+    hasLoaded: catalogLoaded,
     isError: isOrdersError,
-  } = useProductionOrders();
+  } = useProductionOrders({ enabled: canListOrders });
+  // Sin permiso no hay catálogo que esperar: las OP guardadas se rotulan
+  // `OP #<id>` en vez de quedar en "…".
+  const ordersLoaded = ordersUnavailableReason !== null || catalogLoaded;
   const isMutating = useIsTimeTrackingMutating();
   const { mutate: deleteSegment, isPending: isDeleting } = useDeleteTimeSegment();
   // Guarda SÍNCRONA contra el doble clic en el mismo tick: `busy` llega hasta
@@ -281,6 +296,7 @@ export function TimeTrackingDialog({ attendance, permissions, onClose }: TimeTra
               orders={orders ?? []}
               ordersLoaded={ordersLoaded}
               ordersError={isOrdersError}
+              ordersUnavailableReason={ordersUnavailableReason}
               disabled={isMutating}
               onDone={() => setEditingId(null)}
               onCancel={() => setEditingId(null)}
@@ -296,6 +312,7 @@ export function TimeTrackingDialog({ attendance, permissions, onClose }: TimeTra
               orders={orders ?? []}
               ordersLoaded={ordersLoaded}
               ordersError={isOrdersError}
+              ordersUnavailableReason={ordersUnavailableReason}
               disabled={isMutating}
               onDone={() => setCreateKey((current) => current + 1)}
             />
