@@ -20,15 +20,6 @@ import { opportunityDetailKey } from "./useOpportunityDetail";
 
 const NO_COUNTS: DetailQueryCounts = { dataUpdateCount: 0, errorUpdateCount: 0 };
 
-/**
- * Llave del observador mientras NO verifica (cerrado o con la acción propia en
- * vuelo). No es la del detalle: dar de baja quita el detalle de la caché, y un
- * observador deshabilitado sobre esa llave la volvería a crear en su render,
- * lo que avisa a la página de detalle a media renderización de otro
- * componente. Nunca se consulta (`enabled: false`).
- */
-const IDLE_KEY = [...OPPORTUNITIES_KEY, "live-state-idle"] as const;
-
 interface UseOpportunityStaleNoticeParams {
   action: OpportunityDialogAction;
   /** Oportunidad del diálogo; `null` = cerrado. */
@@ -51,8 +42,7 @@ interface UseOpportunityStaleNoticeParams {
  * - `staleTime: 0`: el observador queda montado y pasa de deshabilitado a
  *   habilitado al abrir, así que relee aunque el detalle esté en caché.
  * - Deshabilitado mientras la acción PROPIA viaja (`isBusy`): dar de baja
- *   quita el detalle de la caché, y volver a pedirlo solo traería un 404
- *   (ver `IDLE_KEY`).
+ *   quita el detalle de la caché, y volver a pedirlo solo traería un 404.
  * - Solo cuenta lo resuelto DESPUÉS de abrir: los contadores de la consulta se
  *   copian al abrir (`useDialogSession`).
  * - El toast y el cierre van en un EFECTO (cerrar cambia el estado del dueño);
@@ -70,13 +60,12 @@ export function useOpportunityStaleNotice({
   const queryClient = useQueryClient();
   const open = opportunityId !== null;
   const queryKey = opportunityDetailKey(opportunityId ?? 0);
-  const isChecking = open && !isBusy;
 
   useGuardedQuery<OpportunityOnboarding>(
     {
-      queryKey: isChecking ? queryKey : IDLE_KEY,
+      queryKey,
       queryFn: () => getOpportunityOnboarding(opportunityId as number),
-      enabled: isChecking,
+      enabled: open && !isBusy,
       staleTime: 0,
       retry: retryUnlessClientError,
     },
@@ -87,19 +76,14 @@ export function useOpportunityStaleNotice({
     }
   );
 
-  // Solo los eventos de ESTA consulta (como `useLiveQuoteStatus`), y solo
-  // mientras verifica: tras una baja propia la página de detalle vuelve a crear
-  // su consulta en SU render, y escuchar ese evento aquí actualizaría este
-  // componente a media renderización de otro.
+  // Solo los eventos de ESTA consulta (como `useLiveQuoteStatus`).
   const queryHash = hashKey(queryKey);
   const state = useSyncExternalStore(
     (onChange) =>
-      isChecking
-        ? queryClient.getQueryCache().subscribe((event) => {
-            if (event.query.queryHash === queryHash) onChange();
-          })
-        : () => {},
-    () => (isChecking ? queryClient.getQueryState<OpportunityOnboarding>(queryKey) : undefined),
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryHash === queryHash) onChange();
+      }),
+    () => queryClient.getQueryState<OpportunityOnboarding>(queryKey),
     () => undefined
   );
 
