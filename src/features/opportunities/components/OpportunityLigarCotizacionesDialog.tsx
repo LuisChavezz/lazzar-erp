@@ -14,6 +14,7 @@ import {
   useLigarOpportunityCotizaciones,
   useOpportunityCotizacionesLinks,
 } from "../hooks/useOpportunityCotizacionLinks";
+import { useOpportunityStaleNotice } from "../hooks/useOpportunityStaleNotice";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { cotizacionEstatusBadge } from "../utils/cotizacionEstatus";
 import { CotizacionEstatusBadge } from "./CotizacionEstatusBadge";
@@ -114,6 +115,10 @@ function LigarCotizacionesContent({
 /**
  * "Ligar cotización": selector MÚLTIPLE de cotizaciones ya hechas del cliente
  * de la oportunidad. No se puede cerrar mientras guarda.
+ *
+ * Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el detalle
+ * dice que la oportunidad ya no existe o que quedó cerrada (Ganada o Perdida),
+ * se cierra con aviso antes de elegir nada.
  */
 export function OpportunityLigarCotizacionesDialog({
   opportunityId,
@@ -125,6 +130,13 @@ export function OpportunityLigarCotizacionesDialog({
   const isLigando =
     useIsMutating({ mutationKey: ligarCotizacionesMutationKey(opportunityId ?? 0) }) > 0;
   const submitLockRef = useRef(false);
+
+  useOpportunityStaleNotice({
+    action: { kind: "ligar" },
+    opportunityId,
+    isBusy: isLigando,
+    onClose,
+  });
 
   return (
     <MainDialog

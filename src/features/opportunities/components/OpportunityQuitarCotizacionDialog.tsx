@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useQuitarOpportunityCotizacion } from "../hooks/useOpportunityCotizacionLinks";
+import { useOpportunityStaleNotice } from "../hooks/useOpportunityStaleNotice";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 
 interface OpportunityQuitarCotizacionDialogProps {
@@ -25,6 +26,9 @@ interface OpportunityQuitarCotizacionDialogProps {
  *
  * - Candado SÍNCRONO por cotización (`useRowActionLock`), tomado al confirmar:
  *   un doble clic manda un solo DELETE.
+ * - Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el
+ *   detalle dice que la oportunidad ya no existe, que la cotización ya no está
+ *   ligada o que ya se autorizó, se cierra con aviso.
  */
 export function OpportunityQuitarCotizacionDialog({
   opportunityId,
@@ -35,6 +39,13 @@ export function OpportunityQuitarCotizacionDialog({
   const lock = useRowActionLock();
   const cotizacionId = cotizacion?.id ?? null;
   const isPending = lock.isPending(cotizacionId);
+
+  useOpportunityStaleNotice({
+    action: { kind: "quitar", cotizacionId: cotizacionId ?? 0 },
+    opportunityId: cotizacion ? opportunityId : null,
+    isBusy: isPending,
+    onClose,
+  });
 
   // El texto sigue nombrando la última cotización mientras el diálogo se
   // cierra, cuando `cotizacion` ya es `null`.
