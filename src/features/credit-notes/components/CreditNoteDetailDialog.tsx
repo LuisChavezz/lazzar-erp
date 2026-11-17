@@ -41,6 +41,7 @@ import {
 } from "../utils/creditNoteStamping";
 import { CreditNoteStampDialog } from "./CreditNoteStampDialog";
 import { CreditNoteCfdiReconcileDialog } from "./CreditNoteCfdiReconcileDialog";
+import { CreditNotePdfActions } from "./CreditNotePdfActions";
 
 interface CreditNoteDetailDialogProps {
   /**
@@ -99,6 +100,7 @@ export function CreditNoteDetailDialog({
       maxWidth="900px"
       showCloseButton={true}
       title={<CreditNoteDialogTitle label={nota.folio || `#${nota.id}`} />}
+      headerAction={<CreditNotePdfActions nota={nota} />}
     >
       {isDraft && onEmitir && (
         <CreditNoteEmitPanel
