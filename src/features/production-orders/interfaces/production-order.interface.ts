@@ -7,6 +7,8 @@ import type {
 // ── Onboarding ───────────────────────────────────────────────────────────────
 
 export interface ProductionOrderOnboardingTalla {
+  /** SKU de la variante; `null` en líneas de muestra. */
+  sku?: string | null;
   talla: string;
   color: string;
   cantidad: number;
@@ -39,6 +41,9 @@ export interface ProductionOrderOnboardingHabilitacionConDesperdicio {
 
 export interface ProductionOrderOnboardingProducto {
   nombre: string;
+  /** Código y clave Proscai del producto. Opcionales: pedidos al backend. */
+  codigo?: string | null;
+  cod_proscai?: string | null;
   cantidades: ProductionOrderOnboardingCantidades;
   /** Materiales del BOM SIN desperdicio (piezas × cantidad del BOM). */
   habilitacion: ProductionOrderOnboardingHabilitacion[];
