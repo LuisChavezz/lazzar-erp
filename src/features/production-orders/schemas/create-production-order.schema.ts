@@ -6,11 +6,12 @@ export const CANTIDAD_DECIMALES_MESSAGE = "La cantidad admite máximo 2 decimale
 /**
  * ¿`value` tiene a lo más 2 decimales? El backend guarda `cantidad` como
  * `DecimalField(decimal_places=2)` y rechaza más decimales con un 400 por
- * renglón; aquí se bloquea antes, sin redondear. La tolerancia absorbe el
- * error de punto flotante (`0.29 * 100` = 28.999999999999996).
+ * renglón; aquí se bloquea antes, sin redondear. Se revisa el texto del número,
+ * que es exactamente lo que viaja en el JSON (`JSON.stringify` y `String` dan
+ * la misma representación): `0.29` pasa, `0.30000000000000004` y `1.000000001`
+ * no, y una notación exponencial (`1e-7`) tampoco.
  */
-export const hasAtMostTwoDecimals = (value: number) =>
-  Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
+export const hasAtMostTwoDecimals = (value: number) => /^-?\d+(\.\d{1,2})?$/.test(String(value));
 
 /**
  * Renglón del detalle (`orden_produccion_detalle`): una variante de producto a

@@ -13,7 +13,7 @@ test.describe("cantidad de la OP: máximo 2 decimales (EC-898)", () => {
   });
 
   test("rechaza 3 o más decimales sin redondear", () => {
-    for (const value of [100.555, 0.001, 1.234]) {
+    for (const value of [100.555, 0.001, 1.234, 1.000000001, 0.1 + 0.2, 1e-7]) {
       expect(hasAtMostTwoDecimals(value), String(value)).toBe(false);
     }
   });
