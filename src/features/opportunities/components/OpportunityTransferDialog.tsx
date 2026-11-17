@@ -18,6 +18,7 @@ import {
   useTransferOpportunity,
   type TransferOpportunityVariables,
 } from "../hooks/useTransferOpportunity";
+import { useOpportunityStaleNotice } from "../hooks/useOpportunityStaleNotice";
 import { useTransferCandidates } from "../hooks/useTransferCandidates";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
@@ -319,6 +320,10 @@ interface OpportunityTransferDialogProps {
  *
  * - Candado SÍNCRONO del envío (`runWithSubmitLock`): un doble clic manda una
  *   sola transferencia.
+ * - Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el
+ *   detalle dice que ya no existe (otra persona la dio de baja o se la
+ *   transfirió a otro vendedor), se cierra con aviso. Transferir una cerrada
+ *   sí se puede.
  */
 export function OpportunityTransferDialog({
   opportunity,
@@ -330,6 +335,13 @@ export function OpportunityTransferDialog({
   const submitLockRef = useRef(false);
   const session = useDialogSession(opportunity !== null, { opportunity, cotizaciones });
   const opened = session.snapshot;
+
+  useOpportunityStaleNotice({
+    action: { kind: "transfer" },
+    opportunityId: opportunity?.id ?? null,
+    isBusy: isPending,
+    onClose,
+  });
 
   return (
     <MainDialog

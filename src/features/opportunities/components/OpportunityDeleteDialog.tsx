@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useDeleteOpportunity } from "../hooks/useDeleteOpportunity";
+import { useOpportunityStaleNotice } from "../hooks/useOpportunityStaleNotice";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { describeOpportunity } from "../utils/describeOpportunity";
 
@@ -32,6 +33,8 @@ interface OpportunityDeleteDialogProps {
  * - Candado SÍNCRONO por oportunidad (`useRowActionLock`): se toma al
  *   confirmar, así un doble clic manda una sola baja; el diálogo no se cierra
  *   mientras viaja.
+ * - Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el
+ *   detalle dice que ya no existe (404), se cierra con aviso.
  */
 export function OpportunityDeleteDialog({
   opportunity,
@@ -42,6 +45,13 @@ export function OpportunityDeleteDialog({
   const lock = useRowActionLock();
   const opportunityId = opportunity?.id ?? null;
   const isDeleting = lock.isPending(opportunityId);
+
+  useOpportunityStaleNotice({
+    action: { kind: "delete" },
+    opportunityId,
+    isBusy: isDeleting,
+    onClose,
+  });
 
   // El texto sigue nombrando a la última oportunidad mientras el diálogo se
   // cierra, cuando `opportunity` ya es `null`.
