@@ -14,6 +14,14 @@ import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
  */
 export const opportunityDetailKey = (id: number) => [...OPPORTUNITIES_KEY, "detail", id] as const;
 
+/**
+ * Llave del REGISTRO (`GET /ventas/oportunidades/{id}/`): misma forma que una
+ * fila del listado, con su `estado`. La relee el aviso de fila obsoleta de dar
+ * de baja, transferir y ligar (`useOpportunityStaleNotice`). Cuelga del mismo
+ * prefijo, así que las mutaciones la invalidan con todo lo demás.
+ */
+export const opportunityRecordKey = (id: number) => [...OPPORTUNITIES_KEY, "record", id] as const;
+
 interface UseOpportunityDetailOptions {
   /**
    * `false` deja de consultar. Lo usa la página cuando ELLA MISMA acaba de dar

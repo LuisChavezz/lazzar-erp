@@ -40,6 +40,16 @@ export const getOpportunitiesEmbudo = async (
   return data;
 };
 
+/**
+ * Un solo registro, con la misma forma que una fila del listado (`estado`
+ * incluido). 404 si no existe, se dio de baja o ya no es visible para el
+ * usuario. Más ligero que `getOpportunityOnboarding` cuando solo importa eso.
+ */
+export const getOpportunity = async (id: number): Promise<Opportunity> => {
+  const { data } = await v1_api.get<Opportunity>(`/ventas/oportunidades/${id}/`);
+  return data;
+};
+
 export const createOpportunity = async (opportunity: OpportunityCreate): Promise<Opportunity> => {
   const { data } = await v1_api.post<Opportunity>("/ventas/oportunidades/", opportunity);
   return data;

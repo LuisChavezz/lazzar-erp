@@ -8,12 +8,16 @@ import {
 import toast from "react-hot-toast";
 import { deleteOpportunity } from "../services/actions";
 import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
-import { opportunityDetailKey } from "./useOpportunityDetail";
+import { opportunityDetailKey, opportunityRecordKey } from "./useOpportunityDetail";
 import { opportunitySeguimientosKey } from "./useOpportunitySeguimientos";
 import { opportunityActionErrorMessage } from "./opportunityErrorMessages";
 
 /** Consultas que son de UNA oportunidad y dejan de tener sentido al darla de baja. */
-const ownQueryKeys = (id: number) => [opportunityDetailKey(id), opportunitySeguimientosKey(id)];
+const ownQueryKeys = (id: number) => [
+  opportunityDetailKey(id),
+  opportunitySeguimientosKey(id),
+  opportunityRecordKey(id),
+];
 
 /**
  * Quita una consulta de la caché en cuanto NADIE la observa: ya mismo si no
@@ -58,8 +62,8 @@ interface UseDeleteOpportunityOptions {
  * fila sale del listado cuando el refetch por prefijo responde, y con ella se
  * actualiza el total.
  *
- * Con la baja confirmada, lo de ESA oportunidad —su detalle y su historial de
- * seguimientos— se quita de la caché en cuanto nadie lo observa
+ * Con la baja confirmada, lo de ESA oportunidad —su detalle, su historial de
+ * seguimientos y su registro— se quita de la caché en cuanto nadie lo observa
  * (`removeWhenUnobserved`; si quedara, volver a abrir su URL pintaría la ficha
  * de una oportunidad dada de baja mientras llega la relectura) y se excluye de
  * la invalidación: pedirlo de nuevo solo traería un 404 y retrasaría la salida

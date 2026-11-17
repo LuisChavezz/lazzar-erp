@@ -4,7 +4,6 @@ import {
   ESTADO_OPORTUNIDAD_VALUES,
 } from "@/src/features/opportunities/constants/opportunityChoices";
 import type { Opportunity } from "@/src/features/opportunities/interfaces/opportunity.interface";
-import type { OpportunityOnboarding } from "@/src/features/opportunities/interfaces/opportunity-onboarding.interface";
 import { describeOpportunity } from "@/src/features/opportunities/utils/describeOpportunity";
 import {
   getOpportunityClienteContacto,
@@ -19,6 +18,7 @@ import {
   getOpportunityStaleNotice,
   resolveLiveOpportunity,
   type LiveOpportunitySources,
+  type LiveOpportunityView,
 } from "@/src/features/opportunities/utils/opportunityLiveState";
 import { acquireRowLock, releaseRowLock, runWithSubmitLock } from "@/src/utils/actionLocks";
 
@@ -116,16 +116,17 @@ test.describe("nombre del cliente (EC-810)", () => {
   });
 });
 
-const detail = (estado: Opportunity["estado"], cotizaciones: { id: number; estatus: number }[] = []) =>
-  ({
-    oportunidad: opportunity({ estado }),
-    cotizaciones,
-    cartera: [],
-  }) as unknown as OpportunityOnboarding;
+/** Lo que el aviso mira de una lectura (registro o detalle). */
+const detail = (
+  estado: Opportunity["estado"],
+  cotizaciones?: { id: number; estatus: number }[]
+): LiveOpportunityView => ({ estado, cotizaciones });
 
 const baseline = { dataUpdateCount: 2, errorUpdateCount: 1 };
 
-const state = (overrides: Partial<NonNullable<LiveOpportunitySources["state"]>>) => ({
+type State = NonNullable<LiveOpportunitySources<LiveOpportunityView>["state"]>;
+
+const state = (overrides: Partial<State>): State => ({
   ...baseline,
   dataUpdatedAt: 100,
   errorUpdatedAt: 50,
