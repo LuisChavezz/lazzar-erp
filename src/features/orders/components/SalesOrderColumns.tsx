@@ -91,8 +91,10 @@ function PedidoEstatusBadge({ estatus }: { estatus: number }) {
 function PedidoFolioCell({ order, from }: { order: PedidoListItem; from: PedidoDetailOrigin }) {
   return (
     <FolioActionMenu
-      // Sin folio, "—" (lo pinta `FolioActionMenu`); el menú sigue abriendo.
+      // Sin folio, "—" (lo pinta `FolioActionMenu`); el menú sigue abriendo y
+      // el lector de pantalla lo nombra con el id del pedido.
       folio={order.folio ?? ''}
+      menuLabel={order.folio || `pedido #${order.id}`}
       items={[{ label: 'Ver detalle', icon: ViewIcon, href: pedidoDetailHref(order.id, from) }]}
       status={
         <div className="flex items-center gap-2 flex-wrap">

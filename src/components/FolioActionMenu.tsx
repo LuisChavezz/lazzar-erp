@@ -6,6 +6,11 @@ import { ChevronRightIcon, ViewIcon } from "./Icons";
 
 interface FolioModeProps {
   folio: string;
+  /**
+   * Nombre del menú para lectores de pantalla cuando el folio puede venir
+   * vacío (p. ej. el id del registro). Sin él, el folio.
+   */
+  menuLabel?: string;
   items: ActionMenuItem[];
   /** Badge de estatus que va junto al folio. */
   status?: ReactNode;
@@ -57,13 +62,13 @@ export function FolioActionMenu(props: FolioModeProps | NameModeProps) {
   if ("name" in props) {
     return <NameActionMenu {...props} />;
   }
-  const { folio, items, status } = props;
+  const { folio, menuLabel, items, status } = props;
   return (
     // Folio arriba y estatus debajo: siempre en dos líneas, para que el folio
     // (largo, tipo `2026-CM-00006`) nunca empuje ni recorte la etiqueta.
     <div className="flex flex-col items-start gap-1 min-w-0">
       <RowMenuTrigger
-        label={folio}
+        label={menuLabel || folio}
         items={items}
         className="group inline-flex items-center gap-1 font-mono text-[13px] font-bold text-slate-800 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors cursor-pointer whitespace-nowrap"
       >
