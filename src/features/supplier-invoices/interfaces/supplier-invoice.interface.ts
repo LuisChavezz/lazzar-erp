@@ -51,6 +51,13 @@ export interface FacturaProveedorDetalle {
   subtotal: string;
   /** Decimal en string. */
   total: string;
+  /**
+   * Nombre y código del producto (EC-904). SOLO en listado y retrieve (no en
+   * las respuestas de alta o edición), por eso opcionales; el código es `null`
+   * si el producto no tiene. Los lee el PDF.
+   */
+  producto_nombre?: string | null;
+  producto_codigo?: string | null;
 }
 
 export interface FacturaProveedor {

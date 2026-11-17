@@ -28,6 +28,7 @@ import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
+import { SupplierInvoicePdfButton } from "./SupplierInvoicePdfButton";
 
 /**
  * Acciones del PDF del proveedor. Las POSEE la vista (`SupplierInvoiceList`):
@@ -185,6 +186,7 @@ export function SupplierInvoiceDetailDialog({
           icon={FacturaProveedorIcon}
         />
       }
+      headerAction={<SupplierInvoicePdfButton factura={factura} />}
     >
       <div className="space-y-5">
         {/* Encabezado: lo que se busca primero al abrir el registro. */}
