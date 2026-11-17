@@ -10,7 +10,6 @@ import { Button } from "@/src/components/Button";
 import { ErrorState } from "@/src/components/ErrorState";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { Loader } from "@/src/components/Loader";
-import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   InfoField,
   InfoGrid,
@@ -20,13 +19,8 @@ import {
 import { CustomerCartera } from "@/src/features/customers/components/CustomerCartera";
 import { useCompanyAdminStatus } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { canLandOnQuoteEdit } from "@/src/features/quotes/utils/quoteEditRouteAccess";
-import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import {
-  ESTADO_OPORTUNIDAD_CFG,
-  ETAPA_PERDIDA,
-  isOportunidadCerrada,
-} from "../constants/opportunityChoices";
+import { ETAPA_PERDIDA, isOportunidadCerrada } from "../constants/opportunityChoices";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
 import { useOpportunityDetail } from "../hooks/useOpportunityDetail";
 import { usePendingQuitarCotizacionIds } from "../hooks/useOpportunityCotizacionLinks";
@@ -49,6 +43,8 @@ import { OpportunityFormDialog } from "./OpportunityFormDialog";
 import { OpportunityLigarCotizacionesDialog } from "./OpportunityLigarCotizacionesDialog";
 import { OpportunityQuitarCotizacionDialog } from "./OpportunityQuitarCotizacionDialog";
 import { OpportunityTransferDialog } from "./OpportunityTransferDialog";
+import { OpportunityEstadoBadge } from "./OpportunityEstadoBadge";
+import { OpportunityHeaderTiles } from "./OpportunityHeaderTiles";
 import { OpportunityName } from "./OpportunityName";
 import { OpportunitySeguimientoDeleteDialog } from "./OpportunitySeguimientoDeleteDialog";
 import { OpportunitySeguimientoFormDialog } from "./OpportunitySeguimientoFormDialog";
@@ -56,8 +52,6 @@ import {
   OpportunitySeguimientos,
   type OpportunitySeguimientoActions,
 } from "./OpportunitySeguimientos";
-
-const MUTED_CLS = "text-slate-400 dark:text-slate-500";
 
 interface OpportunityDetailContentProps {
   /** Id tal cual llega del segmento de ruta (texto libre). */
@@ -287,8 +281,9 @@ interface OpportunityDetailBodyProps {
 }
 
 /**
- * La ficha ya cargada: cabecera con el `estado` en TEXTO (`StatusBadge`; en el
- * listado es solo un punto de color) y las acciones, y las secciones de datos,
+ * La ficha ya cargada: cabecera con el nombre, el badge del `estado` y las
+ * acciones; los mosaicos del encabezado (`OpportunityHeaderTiles`), y las
+ * secciones de datos,
  * seguimientos, cotizaciones y cartera. Presentacional: los diálogos viven en
  * `OpportunityDetailContent`.
  */
@@ -313,7 +308,6 @@ function OpportunityDetailBody({
   const cotizaciones = data.cotizaciones ?? [];
   const cartera = data.cartera ?? [];
 
-  const contacto = opportunity.nombre_contacto?.trim();
   const hasCliente = opportunity.cliente !== null;
   const busyCotizacionIds = usePendingQuitarCotizacionIds(opportunity.id);
 
@@ -346,14 +340,8 @@ function OpportunityDetailBody({
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white wrap-break-word min-w-0">
               <OpportunityName opportunity={opportunity} />
             </h1>
-            <StatusBadge status={opportunity.estado} config={ESTADO_OPORTUNIDAD_CFG} />
+            <OpportunityEstadoBadge estado={opportunity.estado} />
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {opportunity.cliente_nombre ?? (contacto || "Sin cliente")} ·{" "}
-            {opportunity.vendedor_nombre
-              ? `Vendedor: ${opportunity.vendedor_nombre}`
-              : "Sin vendedor asignado"}
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canCotizar && (
@@ -417,12 +405,11 @@ function OpportunityDetailBody({
         />
       )}
 
+      <OpportunityHeaderTiles opportunity={opportunity} />
+
       {/* ── Datos de la oportunidad ────────────────────────────────────── */}
       <Section title="Datos de la oportunidad">
         <InfoGrid>
-          <InfoField label="Cliente">
-            {opportunity.cliente_nombre ?? <span className={MUTED_CLS}>Sin cliente</span>}
-          </InfoField>
           <InfoField label="Contacto">{textOrDash(opportunity.nombre_contacto)}</InfoField>
           <InfoField label="Teléfono">
             <span className="tabular-nums">{textOrDash(opportunity.telefono)}</span>
@@ -430,25 +417,9 @@ function OpportunityDetailBody({
           <InfoField label="Correo" className="break-all">
             {textOrDash(opportunity.correo)}
           </InfoField>
-          <InfoField label="Vendedor">
-            {opportunity.vendedor_nombre ?? <span className={MUTED_CLS}>Sin asignar</span>}
-          </InfoField>
-          {/* Sin símbolo de moneda: las oportunidades no tienen moneda. */}
-          <InfoField label="Monto estimado">
-            <span className="tabular-nums">
-              {formatCurrency(safeParseAmount(opportunity.monto_estimado), null)}
-            </span>
-          </InfoField>
-          <InfoField label="Etapa">{textOrDash(opportunity.etapa)}</InfoField>
           {opportunity.etapa === ETAPA_PERDIDA && (
             <InfoField label="Motivo de pérdida">{textOrDash(opportunity.motivo_perdida)}</InfoField>
           )}
-          {/* Fecha-calendario sin hora: se lee en UTC para que no se corra un
-              día en husos al oeste. Las otras dos son timestamps reales. */}
-          <InfoField label="Próximo contacto">
-            {formatShortDate(opportunity.proximo_contacto, { timeZone: "UTC" })}
-          </InfoField>
-          <InfoField label="Creada">{formatShortDate(opportunity.created_at)}</InfoField>
           <InfoField label="Actualizada">{formatShortDate(opportunity.updated_at)}</InfoField>
           <InfoField label="Notas" className="col-span-full">
             <p className="whitespace-pre-wrap wrap-break-word">{textOrDash(opportunity.notas)}</p>
