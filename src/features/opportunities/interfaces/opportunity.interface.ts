@@ -11,7 +11,11 @@ import type { EstadoOportunidad, EtapaOportunidad } from "../constants/opportuni
  *   etapa. Nunca se envía.
  * - `vendedor` lo fija el backend con el usuario que da de alta; es de solo
  *   lectura. Puede venir `null` en registros creados por otros flujos.
- * - `cliente_nombre` es el `nombre` del cliente (no su razón social).
+ * - `cliente_razon_social` (EC-902) es la razón social del cliente y
+ *   `cliente_nombre` su `nombre`, que es la PERSONA DE CONTACTO del cliente
+ *   (EC-810). Los dos llegan `null` sin cliente o si el usuario no puede ver a
+ *   ese cliente; la razón social puede llegar en blanco. Se nombran con
+ *   `getOpportunityClienteLabel`.
  * - `monto_estimado` es un decimal en texto ("1500.00"), sin moneda.
  * - `titulo` puede venir vacío en registros existentes, aunque al escribir el
  *   backend rechaza un `""` explícito.
@@ -20,6 +24,7 @@ export interface Opportunity {
   id: number;
   cliente: number | null;
   cliente_nombre: string | null;
+  cliente_razon_social: string | null;
   vendedor: number | null;
   vendedor_nombre: string | null;
   nombre_contacto: string;

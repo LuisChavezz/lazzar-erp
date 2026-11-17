@@ -34,6 +34,13 @@ export const describeOpportunity = (opportunity: Opportunity): string => {
   return quien ? `de ${quien}` : `#${opportunity.id}`;
 };
 
-/** De quién es una oportunidad sin título: su cliente o, si no tiene, su contacto. */
+/**
+ * De quién es una oportunidad sin título: su cliente (razón social o, en
+ * blanco, su nombre, EC-810) o, si no tiene o el usuario no lo ve, su contacto.
+ * Un cliente oculto no se nombra "Cliente #id" aquí: el contacto dice más.
+ */
 const getOpportunityWho = (opportunity: Opportunity): string | undefined =>
-  opportunity.cliente_nombre?.trim() || opportunity.nombre_contacto?.trim() || undefined;
+  opportunity.cliente_razon_social?.trim() ||
+  opportunity.cliente_nombre?.trim() ||
+  opportunity.nombre_contacto?.trim() ||
+  undefined;

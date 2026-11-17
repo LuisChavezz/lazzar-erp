@@ -1,89 +1,49 @@
 "use client";
 
 import type { Column } from "@tanstack/react-table";
-import { ColumnHeaderFilter, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { ColumnHeaderFilter } from "@/src/components/ColumnHeaderFilter";
 import { useCustomers } from "@/src/features/customers/hooks/useCustomers";
 import { useIsCompanyAdmin } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { useUsers } from "@/src/features/users/hooks/useUsers";
-import { ESTADO_OPORTUNIDAD_CFG, ESTADO_OPORTUNIDAD_VALUES } from "../constants/opportunityChoices";
 import type { Opportunity } from "../interfaces/opportunity.interface";
+import {
+  OPPORTUNITY_ESTADO_FILTER_OPTIONS,
+  buildOpportunityClienteFilterOptions,
+  sortOpportunityCatalogOptions,
+} from "../utils/opportunityFilterOptions";
 
 /**
  * Encabezados con filtro de la tabla de oportunidades. Son componentes (y no
  * parte de la factoría de columnas) porque las opciones de cliente y vendedor
  * salen de un CATÁLOGO: la tabla solo tiene una página, así que nunca se
- * derivan de las filas cargadas.
+ * derivan de las filas cargadas. Las opciones las arma
+ * `opportunityFilterOptions`.
  */
 
 type OpportunityColumn = Column<Opportunity, unknown>;
 
-const ALL_OPTION: ColumnFilterOption = { value: undefined, label: "Todos" };
-
-/** Activos primero y, al final, los inactivos marcados; cada grupo por nombre. */
-const sortCatalogOptions = (
-  entries: { value: string; label: string; active: boolean }[]
-): ColumnFilterOption[] =>
-  entries
-    .slice()
-    .sort((a, b) => Number(b.active) - Number(a.active) || a.label.localeCompare(b.label, "es"))
-    .map(({ value, label, active }) => ({
-      value,
-      label: active ? label : `${label} (inactivo)`,
-    }));
-
-const ESTADO_OPTIONS: ColumnFilterOption[] = [
-  ALL_OPTION,
-  ...ESTADO_OPORTUNIDAD_VALUES.map((estado) => ({
-    value: estado,
-    label: ESTADO_OPORTUNIDAD_CFG[estado].label ?? estado,
-    dotClassName: ESTADO_OPORTUNIDAD_CFG[estado].dot,
-  })),
-];
-
 /**
  * Encabezado de la columna "Oportunidad": su etiqueta y el filtro de ESTADO
- * (la columna pinta el estado como punto de color, sin columna propia). Cada
- * opción del filtro lleva su punto (`dotClassName`), así que el menú sirve de
- * LEYENDA de colores: es donde se lee qué estado es cada punto de la tabla.
+ * (la columna pinta el estado como badge bajo el título, sin columna propia).
+ * Cada opción lleva el punto de color de su badge (`optionsFromConfig`).
  */
 export function OpportunityTituloHeader({ column }: { column: OpportunityColumn }) {
   return (
     <div className="flex items-center gap-1.5">
       <span>Oportunidad</span>
-      <ColumnHeaderFilter column={column} options={ESTADO_OPTIONS} label="estado" />
+      <ColumnHeaderFilter column={column} options={OPPORTUNITY_ESTADO_FILTER_OPTIONS} label="estado" />
     </div>
   );
 }
 
 export function OpportunityClienteHeader({ column }: { column: OpportunityColumn }) {
   const { customers, isLoading, isInitialError } = useCustomers();
-  // `Customer.id` está tipado como string, pero el backend manda un número: el
-  // valor del filtro es su forma en texto, que es como viaja en la URL.
-  //
-  // La etiqueta lleva la razón social Y el nombre: la columna pinta
-  // `cliente_nombre` (el `nombre` del cliente), así que buscar aquí lo que se
-  // ve en la tabla tiene que encontrarlo.
-  const options: ColumnFilterOption[] = [
-    ALL_OPTION,
-    ...sortCatalogOptions(
-      customers.map((customer) => {
-        const razonSocial = customer.razon_social?.trim() ?? "";
-        const nombre = customer.nombre?.trim() ?? "";
-        return {
-          value: String(Number(customer.id)),
-          label:
-            razonSocial && nombre && razonSocial !== nombre
-              ? `${razonSocial} (${nombre})`
-              : razonSocial || nombre || `Cliente #${customer.id}`,
-          active: customer.activo,
-        };
-      })
-    ),
-  ];
+  // Rotuladas como la celda: razón social (EC-810).
+  const options = buildOpportunityClienteFilterOptions(customers);
 
   return (
     <div className="flex items-center gap-1.5">
-      <span>Cliente / Contacto</span>
+      <span>Cliente</span>
       <ColumnHeaderFilter
         column={column}
         options={options}
@@ -112,16 +72,13 @@ export function OpportunityVendedorHeader({ column }: { column: OpportunityColum
 function VendedorFilterHeader({ column }: { column: OpportunityColumn }) {
   const { data: users, isLoading, isError } = useUsers();
 
-  const options: ColumnFilterOption[] = [
-    ALL_OPTION,
-    ...sortCatalogOptions(
-      (users ?? []).map((user) => ({
-        value: String(user.id),
-        label: user.nombre_completo?.trim() || user.email || user.username,
-        active: user.is_active,
-      }))
-    ),
-  ];
+  const options = sortOpportunityCatalogOptions(
+    (users ?? []).map((user) => ({
+      value: String(user.id),
+      label: user.nombre_completo?.trim() || user.email || user.username,
+      active: user.is_active,
+    }))
+  );
 
   return (
     <div className="flex items-center gap-1.5">
