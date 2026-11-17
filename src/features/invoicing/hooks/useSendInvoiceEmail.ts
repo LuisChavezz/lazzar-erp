@@ -8,6 +8,8 @@ import { renderEmailContent, type SendEmailResult } from "@/src/features/google/
 import type { GoogleEmailPayload } from "@/src/features/google/interfaces/google.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { assertEmailSnapshotUnchanged } from "@/src/features/google/utils/sendEmailFlow";
+import { requirePdfCompany, usePdfCompany } from "@/src/hooks/usePdfCompany";
+import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceEmailRenderInputs } from "../utils/invoiceEmailRenderInputs";
@@ -67,10 +69,14 @@ export const sendInvoiceEmailMutationKey = ["invoices", "send-email"] as const;
  */
 export const usePrepareInvoiceEmail = () => {
   const queryClient = useQueryClient();
+  // El adjunto lleva la empresa en el encabezado (EC-859): sin datos reales de
+  // ella no se prepara un correo que luego no podría enviarse.
+  const pdfCompany = usePdfCompany();
 
   return useMutation<PreparedInvoiceEmail, unknown, Invoice | number>({
     mutationKey: prepareInvoiceEmailMutationKey,
     mutationFn: async (target): Promise<PreparedInvoiceEmail> => {
+      requirePdfCompany(pdfCompany);
       const invoice = typeof target === "number" ? await fetchSendableInvoice(queryClient, target) : target;
       const content = await renderEmailContent(`/api/invoices/${invoice.id}/send-email`, {
         invoice,
@@ -82,7 +88,8 @@ export const usePrepareInvoiceEmail = () => {
         label,
         invoice,
         content,
-        attachmentName: `factura-${invoice.folio || invoice.id}.pdf`,
+        // Mismo nombre que "Descargar PDF" (EC-859).
+        attachmentName: documentPdfFileName("FAC", invoice.folio, invoice.id),
       };
     },
     onError: (error) => {
@@ -112,6 +119,8 @@ export const usePrepareInvoiceEmail = () => {
  */
 export const useSendInvoiceEmail = () => {
   const queryClient = useQueryClient();
+  // Empresa activa del encabezado del PDF adjunto, con la regla de "Descargar PDF".
+  const pdfCompany = usePdfCompany();
 
   return useMutation<SendEmailResult, unknown, PreparedInvoiceEmail>({
     mutationKey: sendInvoiceEmailMutationKey,
@@ -123,7 +132,7 @@ export const useSendInvoiceEmail = () => {
         INVOICE_EMAIL_STALE_MESSAGE,
       );
 
-      const pdfBlob = await generateInvoicePdfBlob(invoice);
+      const pdfBlob = await generateInvoicePdfBlob(invoice, requirePdfCompany(pdfCompany));
       const attachment = await buildGoogleEmailAttachment(
         pdfBlob,
         attachmentName,

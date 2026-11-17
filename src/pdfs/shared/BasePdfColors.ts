@@ -1,6 +1,6 @@
 /**
- * Tokens de color compartidos, byte-idénticos, entre `QuotePdfColors`,
- * `InvoicePdfColors` y la plantilla base de documentos (`DocumentPdfColors`) —
+ * Tokens de color compartidos, byte-idénticos, entre `QuotePdfColors` y
+ * la plantilla base de documentos (`DocumentPdfColors`) —
  * factorizados aquí para que un ajuste de marca se aplique a todos a la vez
  * en vez de tener que sincronizarlo a mano en cada archivo. Cada documento extiende esta base con sus
  * propios tokens específicos.

@@ -22,6 +22,8 @@ import { InvoiceMainSheet } from "./InvoiceMainSheet";
 import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { useInvoiceDetailEmail } from "../hooks/useInvoiceDocumentActions";
 import { InvoiceTrackingSheet } from "./InvoiceTrackingSheet";
+import { InvoiceCfdiButton, InvoicePdfButton } from "./InvoicePdfButton";
+import { hasInvoiceCfdi } from "../utils/invoicePdf";
 
 interface InvoiceDetailPageContentProps {
   /** Segmento crudo de la URL. */
@@ -34,10 +36,14 @@ interface InvoiceDetailPageContentProps {
  * Detalle de factura en DOS hojas, con el mismo mecanismo que el detalle de
  * pedido (`PedidoDetailContent`):
  *
- * - "Factura" (`InvoiceMainSheet`, por defecto): cabecera con las acciones de
- *   PDF y correo, emisor y receptor, pedido, conceptos e importes.
+ * - "Factura" (`InvoiceMainSheet`, por defecto): cabecera con las acciones del
+ *   documento (correo, emisión, timbrado…), emisor y receptor, pedido,
+ *   conceptos e importes.
  * - "Seguimiento" (`InvoiceTrackingSheet`): avance del pedido, parcialidades,
  *   cobranza y notas de crédito.
+ *
+ * "Descargar PDF" y, timbrada, "Descargar CFDI" van en la barra superior, en
+ * las dos hojas (EC-859), como el PDF del pedido.
  *
  * La hoja activa vive en la URL (`?sheet=`). Lee DOS endpoints: el desglose
  * (todo lo que se pinta) y el retrieve, que aporta `activo` —el desglose no lo
@@ -146,12 +152,18 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
           pedido (tarjeta fija semitransparente sobre el contenido). */}
       <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
         {BackLink}
-        <Button asChild variant="secondary">
-          <Link href={sheetSwitch.href} className="inline-flex items-center gap-2">
-            {sheetSwitch.icon}
-            {sheetSwitch.label}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={sheetSwitch.href} className="inline-flex items-center gap-2">
+              {sheetSwitch.icon}
+              {sheetSwitch.label}
+            </Link>
+          </Button>
+          {/* Sin retrieve no se ofrecen (no se sabe si la factura sigue activa).
+              El PDF va en todo estatus; el CFDI, solo timbrada. */}
+          {invoice !== null && hasInvoiceCfdi(invoice) && <InvoiceCfdiButton invoice={invoice} />}
+          {invoice !== null && <InvoicePdfButton invoice={invoice} />}
+        </div>
       </div>
 
       {/* El desglose responde también para facturas eliminadas, pero no lo

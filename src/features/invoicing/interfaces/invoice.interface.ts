@@ -1,3 +1,5 @@
+import type { InvoiceDesgloseReceptor } from "./invoice-desglose.interface";
+
 /**
  * Estatus de una factura (`Factura.FacturaStatus` del backend). Enum COMPLETO:
  * la facturación por piezas crea la factura en `Borrador` y
@@ -126,6 +128,24 @@ export interface Invoice {
    * API: un PATCH que lo cambie responde `400`.
    */
   tipo_cambio: string | null;
+  /**
+   * Datos fiscales del receptor (EC-904), con la misma forma y regla que
+   * `desglose/` (`InvoiceDesgloseReceptor`). SOLO los trae el retrieve
+   * (`GET /finanzas/facturas/{id}/`): ni el listado ni las respuestas de
+   * emitir, timbrar o cancelar, por eso son opcionales. Los lee el PDF.
+   */
+  receptor?: InvoiceDesgloseReceptor | null;
+  /**
+   * Forma y método de pago del pedido (EC-904, solo retrieve): `null` en una
+   * factura sin pedido. `_nombre` es la etiqueta ("03 - Transferencia…").
+   */
+  forma_pago?: string | null;
+  forma_pago_nombre?: string | null;
+  metodo_pago?: string | null;
+  metodo_pago_nombre?: string | null;
+  /** Uso de CFDI timbrado (el del pedido o, si no trae, el del cliente); `""` si ninguno. */
+  uso_cfdi?: string | null;
+  uso_cfdi_nombre?: string | null;
 }
 
 /**

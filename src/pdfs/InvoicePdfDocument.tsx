@@ -1,189 +1,184 @@
 /**
- * Documento PDF de una factura.
- * Responsabilidad: estructura visual del documento, solo presentacional.
- * Usa la API de @react-pdf/renderer exclusivamente.
+ * Documento PDF de una factura de cliente, sobre la plantilla base
+ * `DocumentPdfLayout` (EC-859; reemplaza al PDF "no fiscal" con estilos propios).
  *
- * Estilos → InvoicePdfStyles.ts
- * Colores → InvoicePdfColors.ts
- * Datos   → buildInvoiceDocumentModel (compartido con InvoiceEmail)
+ * ─── CONTENIDO ───────────────────────────────────────────────────────────────
+ * Lo que trae `GET /finanzas/facturas/{id}/`, tal cual:
  *
- * ─── DECISIÓN DE CONTENIDO ───────────────────────────────────────────────────
- * Este documento representa la factura emitida al CLIENTE: encabezado (folio,
- * estatus, cliente, moneda, fecha de emisión y vencimiento), los conceptos
- * (`factura_detalles[]`) y el resumen financiero.
+ * - Receptor fiscal (EC-904): nombre, razón social, RFC, régimen, C.P. y uso de
+ *   CFDI, con la regla del timbrado.
+ * - Datos de la factura: estatus (no en `Borrador`: esas facturas se le mandan
+ *   al cliente), vencimiento, moneda y —fuera de MXN— tipo de cambio, forma y
+ *   método de pago (solo con pedido).
+ * - Comprobante fiscal, si está timbrada: folio fiscal, fecha de timbrado y
+ *   estado del CFDI. El PDF del ERP NO es el CFDI (no lleva sello): lo dice su
+ *   banner, y el CFDI oficial se baja aparte con "Descargar CFDI".
+ * - Conceptos con talla y tasa de IVA (cada columna solo si algún renglón la
+ *   trae), cantidad, precio, descuento e importe (`total` del renglón).
+ * - Totales guardados (subtotal, descuento si es mayor a cero, impuestos y
+ *   total) y observaciones.
  *
- * A diferencia del PDF de orden de compra —que OMITE el estatus por ser un
- * estado de flujo interno irrelevante para el proveedor— aquí el `estatus`
- * SÍ se incluye: es información fiscal y de pago relevante para el cliente,
- * igual que el PDF de cotización muestra su estatus.
- *
- * Ese badge es además lo que permite que la descarga NO se condicione al
- * estatus (a diferencia del envío por correo): una factura `Cancelada` puede
- * descargarse como registro interno precisamente porque el documento se rotula
- * a sí mismo como CANCELADA y no puede confundirse con un comprobante vigente.
- * Si se llegara a omitir el badge, habría que reinstalar la compuerta en la
- * descarga (ver `InvoiceColumns`).
- *
- * El correo del cliente NO se muestra en el PDF: es metadato de
- * direccionamiento del envío, no contenido del comprobante, y no viaja en la
- * fila de la factura con la que se genera la descarga.
+ * Se descarga en todos los estatus. Una `Cancelada` lleva la marca
+ * "CANCELADA" (`invoicePdfDescriptor`); una eliminada (`activo = false`), un
+ * banner que lo dice. Nada se recalcula.
  */
-import { Document, Page, Text, View } from "@react-pdf/renderer";
-import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
-import { buildInvoiceDocumentModel } from "@/src/features/invoicing/utils/invoiceDocumentModel";
 import { INVOICE_STATUS } from "@/src/features/invoicing/constants/invoiceStatus";
-import { invoicePdfStyles as s } from "./InvoicePdfStyles";
+import type { Invoice, InvoiceDetail } from "@/src/features/invoicing/interfaces/invoice.interface";
+import { formatTasaImpuesto } from "@/src/features/invoicing/utils/invoiceDocumentModel";
+import { invoicePdfDescriptor } from "@/src/features/invoicing/utils/invoicePdf";
+import { isInvoicePdfNonFiscal } from "@/src/features/invoicing/utils/invoiceStamping";
+import { formatQuantityValue, safeParseAmount } from "@/src/utils/formatCurrency";
+import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
+import {
+  DocumentPdfLayout,
+  PdfCardRow,
+  PdfCellText,
+  PdfInfoCard,
+  PdfLineItemsTable,
+  PdfNotes,
+  PdfTotals,
+  type PdfColumn,
+  type PdfInfoItem,
+} from "./shared/DocumentPdfLayout";
+import { conditionalColumn, optionalInfoItem } from "./shared/documentPdfColumns";
+import type { PdfCompany } from "./shared/documentPdfModel";
+import { pdfCurrencyItems, pdfDate, pdfDateTime, pdfMoney } from "./shared/financeDocumentPdf";
 
 type InvoicePdfDocumentProps = {
   invoice: Invoice;
+  company: PdfCompany | null;
 };
 
-export const InvoicePdfDocument = ({ invoice }: InvoicePdfDocumentProps) => {
-  const model = buildInvoiceDocumentModel(invoice);
+/** "G01 - Adquisición de mercancías": código y etiqueta, sin repetir el código. */
+const codeAndName = (code: string | null | undefined, name: string | null | undefined): string => {
+  const codigo = code?.trim();
+  const nombre = name?.trim();
+  if (!codigo) return textOrDash(nombre);
+  if (!nombre || nombre === codigo || nombre.startsWith(codigo)) return nombre || codigo;
+  return `${codigo} - ${nombre}`;
+};
+
+/** Estado del CFDI timbrado, de sus banderas (no es un estatus de la factura). */
+const cfdiState = (invoice: Invoice): string => {
+  if (invoice.cfdi_cancelado) return "Cancelado ante el SAT";
+  if (invoice.cfdi_cancelacion_solicitada) return "Cancelación solicitada ante el SAT";
+  return "Vigente";
+};
+
+export const InvoicePdfDocument = ({ invoice, company }: InvoicePdfDocumentProps) => {
+  const detalles = invoice.factura_detalles ?? [];
+  const money = pdfMoney(invoice.moneda_nombre);
+  const receptor = invoice.receptor ?? null;
+  const cliente = invoice.cliente_nombre || receptor?.nombre || EMPTY_VALUE;
+  const stamped = Boolean(invoice.cfdi_uuid);
+
+  const columns: PdfColumn<InvoiceDetail>[] = [
+    {
+      id: "descripcion",
+      header: "Descripción",
+      flex: 4,
+      cell: (line) => <PdfCellText bold>{textOrDash(line.producto_nombre)}</PdfCellText>,
+    },
+    ...conditionalColumn(detalles, (line) => line.talla_nombre, {
+      id: "talla",
+      header: "Talla",
+      flex: 1,
+      cell: (line) => textOrDash(line.talla_nombre),
+    }),
+    { id: "cantidad", header: "Cantidad", flex: 1.2, align: "right", cell: (line) => formatQuantityValue(line.cantidad) },
+    { id: "precio", header: "Precio u.", flex: 1.6, align: "right", cell: (line) => money(line.precio_unitario) },
+    ...conditionalColumn(detalles, (line) => line.porcentaje_impuesto, {
+      id: "iva",
+      header: "IVA",
+      flex: 1,
+      align: "right",
+      cell: (line) => formatTasaImpuesto(line.porcentaje_impuesto),
+    }),
+    { id: "descuento", header: "Descuento", flex: 1.5, align: "right", cell: (line) => money(line.descuento) },
+    { id: "importe", header: "Importe", flex: 1.7, align: "right", bold: true, cell: (line) => money(line.total) },
+  ];
+
+  const datosFactura: PdfInfoItem[] = [
+    // Sin estatus en Borrador: esas facturas se le mandan al cliente (como el PDF anterior).
+    ...(invoice.estatus === INVOICE_STATUS.BORRADOR ? [] : [{ label: "Estatus", value: invoice.estatus }]),
+    { label: "Emisión", value: pdfDate(invoice.fecha_emision) },
+    { label: "Vencimiento", value: pdfDate(invoice.fecha_vencimiento) },
+    ...pdfCurrencyItems(invoice.moneda_nombre, invoice.tipo_cambio),
+    ...optionalInfoItem("Forma de pago", invoice.forma_pago ? codeAndName(invoice.forma_pago, invoice.forma_pago_nombre) : null),
+    ...optionalInfoItem("Método de pago", invoice.metodo_pago ? codeAndName(invoice.metodo_pago, invoice.metodo_pago_nombre) : null),
+  ];
+
+  const statusBanner = !invoice.activo
+    ? { title: "FACTURA ELIMINADA", detail: "Esta factura fue eliminada en el ERP." }
+    : isInvoicePdfNonFiscal(invoice)
+      ? {
+          title: "REPRESENTACIÓN NO FISCAL",
+          detail: stamped
+            ? "Este documento no sustituye al CFDI timbrado ante el SAT."
+            : "El timbrado de esta factura está pendiente de confirmar; este documento no es un CFDI.",
+        }
+      : null;
 
   return (
-    <Document>
-      <Page size="A4" style={s.page}>
-        {/* ── Encabezado ── */}
-        <View style={s.header} wrap={false}>
-          <View style={s.headerLeft}>
-            <Text style={s.brandLabel}>ERP LAZZAR</Text>
-            <Text style={s.docTitle}>Factura</Text>
-            <Text style={s.docSubtitle}>{model.customerName}</Text>
-          </View>
-          <View style={s.headerRight}>
-            <View style={s.folioBadge}>
-              <Text style={s.folioText}>{model.folio}</Text>
-            </View>
-            {/* Sin etiqueta en Borrador: esas facturas se mandan al cliente para
-                revisión y el documento no debe llevar marca de borrador. */}
-            {model.statusLabel !== INVOICE_STATUS.BORRADOR && (
-              <View style={s.statusBadge}>
-                <Text style={s.statusText}>{model.statusLabel.toUpperCase()}</Text>
-              </View>
-            )}
-          </View>
-        </View>
+    <DocumentPdfLayout
+      company={company}
+      descriptor={invoicePdfDescriptor(invoice)}
+      title="Factura"
+      subtitle={cliente}
+      date={{ label: "Emisión", value: pdfDate(invoice.fecha_emision) }}
+      statusBanner={statusBanner}
+      footerDetail={cliente}
+    >
+      <PdfCardRow>
+        <PdfInfoCard
+          title="RECEPTOR"
+          items={[
+            { label: "Cliente", value: cliente },
+            ...optionalInfoItem("Razón social", receptor?.razon_social),
+            { label: "RFC", value: textOrDash(receptor?.rfc) },
+            ...optionalInfoItem(
+              "Régimen fiscal",
+              receptor?.regimen_fiscal ? codeAndName(receptor.regimen_fiscal.codigo, receptor.regimen_fiscal.descripcion) : null,
+            ),
+            ...optionalInfoItem("C.P.", receptor?.codigo_postal),
+            ...optionalInfoItem("Uso de CFDI", invoice.uso_cfdi ? codeAndName(invoice.uso_cfdi, invoice.uso_cfdi_nombre) : null),
+          ]}
+        />
+        <PdfInfoCard title="DATOS DE LA FACTURA" items={datosFactura} />
+      </PdfCardRow>
 
-        {/* ── Info general ── */}
-        <View style={s.twoCol} wrap={false}>
-          {/* Cliente */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>DATOS DEL CLIENTE</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Cliente</Text>
-              <Text style={s.infoValue}>{model.customerName}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Moneda</Text>
-              <Text style={s.infoValue}>{model.currency || "-"}</Text>
-            </View>
-            {model.statusLabel !== INVOICE_STATUS.BORRADOR && (
-              <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Estatus</Text>
-                <Text style={s.infoValue}>{model.statusLabel}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Factura */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>DATOS DE LA FACTURA</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Folio</Text>
-              <Text style={s.infoValue}>{model.folio}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Fecha de emisión</Text>
-              <Text style={s.infoValue}>{model.fechaEmision}</Text>
-            </View>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Fecha de vencimiento</Text>
-              <Text style={s.infoValue}>{model.fechaVencimiento}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Tabla de conceptos ── */}
-        <Text style={s.sectionTitle}>CONCEPTOS</Text>
-        <View>
-          {/* Encabezado de la tabla — se repite en cada página */}
-          <View style={s.tableHeader} fixed>
-            <Text style={[s.tableHeaderCell, s.colDescription]}>Descripción</Text>
-            <Text style={[s.tableHeaderCell, s.colTalla]}>Talla</Text>
-            <Text style={[s.tableHeaderCell, s.colQty]}>Cantidad</Text>
-            <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
-            <Text style={[s.tableHeaderCell, s.colTax]}>IVA</Text>
-            <Text style={[s.tableHeaderCell, s.colDiscount]}>Descuento</Text>
-            <Text style={[s.tableHeaderCell, s.colAmount]}>Importe</Text>
-          </View>
-
-          {model.lines.length === 0 ? (
-            <View style={s.emptyRow}>
-              <Text style={s.emptyText}>Esta factura no tiene conceptos registrados.</Text>
-            </View>
-          ) : (
-            model.lines.map((line, i) => (
-              <View
-                key={i}
-                style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]}
-                wrap={false}
-              >
-                <Text style={[s.tableCellBold, s.colDescription]}>{line.descripcion}</Text>
-                <Text style={[s.tableCell, s.colTalla]}>{line.talla}</Text>
-                <Text style={[s.tableCell, s.colQty]}>{line.cantidad}</Text>
-                <Text style={[s.tableCell, s.colPrice]}>{line.precioUnitario}</Text>
-                <Text style={[s.tableCell, s.colTax]}>{line.tasaImpuesto}</Text>
-                <Text style={[s.tableCell, s.colDiscount]}>{line.descuento}</Text>
-                <Text style={[s.tableCellBold, s.colAmount]}>{line.importe}</Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* ── Totales ── */}
-        <View style={s.totalsSection} wrap={false}>
-          <View style={s.totalsCard}>
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Subtotal</Text>
-              <Text style={s.totalsValue}>{model.subtotal}</Text>
-            </View>
-            {model.showDescuento && (
-              <View style={s.totalsRow}>
-                <Text style={s.totalsLabel}>Descuento</Text>
-                <Text style={s.totalsValue}>{model.descuento}</Text>
-              </View>
-            )}
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Impuestos</Text>
-              <Text style={s.totalsValue}>{model.impuestos}</Text>
-            </View>
-            <View style={s.totalsRowFinal}>
-              <Text style={s.totalsFinalLabel}>TOTAL</Text>
-              <Text style={s.totalsFinalValue}>{model.total}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Observaciones ── */}
-        {model.observaciones?.trim() ? (
-          <View style={s.obsCard} wrap={false}>
-            <Text style={s.cardTitle}>OBSERVACIONES</Text>
-            <Text style={s.obsText}>{model.observaciones}</Text>
-          </View>
-        ) : null}
-
-        {/* ── Pie de página ── */}
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>
-            Factura {model.folio} — {model.customerName}
-          </Text>
-          <Text
-            style={s.footerText}
-            render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
+      {stamped ? (
+        <PdfCardRow>
+          <PdfInfoCard
+            title="COMPROBANTE FISCAL (CFDI)"
+            items={[
+              { label: "Folio fiscal", value: textOrDash(invoice.cfdi_uuid) },
+              { label: "Timbrado", value: pdfDateTime(invoice.cfdi_fecha_timbrado) },
+              { label: "Estado del CFDI", value: cfdiState(invoice) },
+            ]}
           />
-        </View>
-      </Page>
-    </Document>
+        </PdfCardRow>
+      ) : null}
+
+      <PdfLineItemsTable
+        title="CONCEPTOS"
+        rows={detalles}
+        columns={columns}
+        emptyMessage="Esta factura no tiene conceptos registrados."
+      />
+
+      <PdfTotals
+        rows={[
+          { label: "Subtotal", value: money(invoice.subtotal) },
+          // Solo cuando aporta al total, como el PDF anterior y el correo.
+          { label: "Descuento", value: safeParseAmount(invoice.descuento) > 0 ? money(invoice.descuento) : undefined },
+          { label: "Impuestos", value: money(invoice.impuestos) },
+          { label: "TOTAL", value: money(invoice.total), emphasis: true },
+        ]}
+      />
+
+      <PdfNotes text={invoice.observaciones} />
+    </DocumentPdfLayout>
   );
 };
+

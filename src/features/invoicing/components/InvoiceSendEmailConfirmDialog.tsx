@@ -7,6 +7,7 @@
  * `SendEmailConfirmDialog`, igual que en cotizaciones; aquí solo va el texto.
  */
 import { SendEmailConfirmDialog } from "@/src/features/google/components/SendEmailConfirmDialog";
+import { usePdfCompany } from "@/src/hooks/usePdfCompany";
 import type { PreparedInvoiceEmail } from "../hooks/useSendInvoiceEmail";
 
 interface InvoiceSendEmailConfirmDialogProps {
@@ -22,6 +23,10 @@ export function InvoiceSendEmailConfirmDialog({
   email,
   onConfirm,
 }: InvoiceSendEmailConfirmDialogProps) {
+  // El PDF adjunto se genera al enviar y lleva la empresa en el encabezado
+  // (EC-859): "Enviar" espera a que sus datos estén resueltos.
+  const { pending: companyPending } = usePdfCompany();
+
   return (
     <SendEmailConfirmDialog
       open={open}
@@ -33,6 +38,7 @@ export function InvoiceSendEmailConfirmDialog({
       attachmentName={email.attachmentName}
       noRecipientMessage="La factura no tiene un correo de facturación válido, así que no hay a quién enviarla."
       onConfirm={onConfirm}
+      confirmDisabled={companyPending}
     />
   );
 }

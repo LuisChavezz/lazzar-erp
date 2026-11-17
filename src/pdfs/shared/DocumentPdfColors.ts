@@ -1,7 +1,7 @@
 /**
  * Paleta de la plantilla base de documentos (`DocumentPdfLayout`, EC-855).
- * Extiende `BASE_PDF_COLORS` —la misma escala de marca de cotización y
- * factura— con los tokens de la marca de cancelado y del banner de estatus.
+ * Extiende `BASE_PDF_COLORS` —la misma escala de marca de la cotización—
+ * con los tokens de la marca de cancelado y del banner de estatus.
  */
 import { BASE_PDF_COLORS } from "./BasePdfColors";
 

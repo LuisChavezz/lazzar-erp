@@ -2,10 +2,10 @@
 
 import { useMutationState } from "@tanstack/react-query";
 import { useSendEmailConfirmation } from "@/src/features/google/hooks/useSendEmailConfirmation";
+import { usePdfCompany } from "@/src/hooks/usePdfCompany";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
-import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
 import {
   prepareInvoiceEmailMutationKey,
   sendInvoiceEmailMutationKey,
@@ -15,25 +15,19 @@ import {
 } from "./useSendInvoiceEmail";
 
 /**
- * Reglas de las acciones "Enviar correo" y "Descargar PDF" de UNA factura, en
- * un solo lugar, para la cabecera de la página de detalle, con el `Invoice`
- * del retrieve que alimenta el PDF y el correo. El menú del listado aplica las
- * mismas reglas pidiendo el retrieve al activarse
- * (`useInvoiceListDocumentActions`).
+ * Reglas de "Enviar correo" de UNA factura, para la cabecera de la página de
+ * detalle, con el `Invoice` del retrieve que alimenta el correo. El menú del
+ * listado aplica las mismas reglas pidiendo el retrieve al activarse
+ * (`useInvoiceListDocumentActions`). "Descargar PDF" es `InvoicePdfButton`, en
+ * la barra de la página (EC-859).
  *
  * - Enviar correo solo existe en un estatus enviable (no Cancelada) y en una
  *   factura ACTIVA: no debe salir hacia el cliente un comprobante cancelado o
  *   eliminado como si estuviera vigente.
  *   Cuando no se cumple, la acción se OCULTA (no se muestra deshabilitada).
  *   Se deshabilita sin correo de destino (`correo_facturas === null`, resuelto
- *   server-side: pedido → cliente → null) o con un envío o descarga en curso.
+ *   server-side: pedido → cliente → null) o con un envío en curso.
  *   El Route Handler valida destinatario y estatus de forma autoritativa.
- * - Descargar PDF NO depende del estatus: consultar o archivar internamente una
- *   factura cancelada no corre ese riesgo (su PDF se rotula con su estatus; el
- *   del Borrador no lleva estatus, por decisión de negocio). Si también se
- *   ocultara, no quedaría forma de obtener el documento de una cancelada. No
- *   necesita correo. Sigue disponible en una factura eliminada (uso interno).
- *   Se deshabilita con una descarga o un envío en curso.
  * - Enviar correo primero PREPARA el correo (valida y renderiza) y pide
  *   confirmación mostrando destinatario, asunto y adjunto; nada se envía hasta
  *   confirmar. Esa confirmación la monta la PÁGINA (`useInvoiceDetailEmail` en
@@ -52,8 +46,10 @@ export function useInvoiceDocumentActions(invoice: Invoice, onSendEmail: (invoic
   });
   const isPreparingEmail = preparingIds.includes(invoice.id);
   const isSendingEmail = sendingIds.includes(invoice.id);
-  const { mutate: downloadPdf, isPending: isDownloadingPdf } = useDownloadInvoicePdf();
-  const busy = isPreparingEmail || isSendingEmail || isDownloadingPdf;
+  const busy = isPreparingEmail || isSendingEmail;
+  // El adjunto lleva la empresa en el encabezado (EC-859): mientras sus datos
+  // se resuelven, "Enviar correo" espera (`usePdfCompany`, como en la OC).
+  const { pending: companyPending } = usePdfCompany();
   // Regla compartida con el menú del listado (`getInvoiceEmailBlocker`):
   // eliminada o no enviable → se oculta; sin destinatario → se deshabilita.
   const emailBlocker = getInvoiceEmailBlocker(invoice);
@@ -64,13 +60,10 @@ export function useInvoiceDocumentActions(invoice: Invoice, onSendEmail: (invoic
     hasNoRecipientEmail,
     /** Motivo a mostrar en el botón deshabilitado por falta de destinatario. */
     noRecipientMessage: hasNoRecipientEmail ? emailBlocker.message : undefined,
-    emailDisabled: busy || hasNoRecipientEmail,
-    pdfDisabled: busy,
+    emailDisabled: busy || hasNoRecipientEmail || companyPending,
     isPreparingEmail,
     isSendingEmail,
-    isDownloadingPdf,
     sendEmail: () => onSendEmail(invoice.id),
-    downloadPdf: () => downloadPdf(invoice),
   };
 }
 

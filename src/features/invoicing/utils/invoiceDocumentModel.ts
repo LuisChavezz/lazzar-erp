@@ -1,11 +1,9 @@
 /**
- * Modelo de vista compartido entre el PDF de la factura
- * (`InvoicePdfDocument`) y la plantilla de correo (`InvoiceEmail`).
- *
- * Ambos documentos se construyen A PARTIR DE ESTE MISMO modelo, de modo que el
- * contenido del correo y el del PDF descargable/adjunto NO pueden divergir por
- * construcción: cualquier cambio de formato (moneda, fecha, redondeo, qué
- * renglones se muestran) ocurre una sola vez aquí y se refleja en los dos.
+ * Modelo de vista de la plantilla de correo de la factura (`InvoiceEmail`) y
+ * de su asunto. Desde EC-859 el PDF (`InvoicePdfDocument`) se arma sobre la
+ * plantilla base de documentos y lee la factura directamente; de aquí solo
+ * reutiliza `formatTasaImpuesto`. Los importes de ambos salen de los mismos
+ * campos guardados, con la moneda de la factura.
  *
  * Devuelve únicamente primitivos (strings/booleanos/arreglos de strings) sin
  * JSX, para poder consumirse igual desde `@react-pdf/renderer` (`<Text>`) que

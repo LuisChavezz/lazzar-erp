@@ -141,10 +141,9 @@ const invoice = {
   ],
 } as unknown as Invoice;
 
-test("factura: pagos, CFDI y auditoría no abortan", () => {
+test("factura: pagos y auditoría no abortan", () => {
   const changed = {
     ...invoice,
-    cfdi_uuid: "ABC-123",
     saldo_pendiente: "0.00",
     updated_at: "2026-11-03T10:00:00",
   } as Invoice;
@@ -157,6 +156,9 @@ test("factura: cualquier dato del documento o el destinatario aborta", () => {
     { ...invoice, observaciones: "Nota nueva" },
     { ...invoice, total: "60.00" },
     { ...invoice, correo_facturas: "otro@x.com" },
+    // El PDF adjunto imprime el CFDI y el receptor fiscal (EC-859).
+    { ...invoice, cfdi_uuid: "ABC-123" },
+    { ...invoice, receptor: { cliente: 1, nombre: "QA", razon_social: "QA SA", rfc: "XAXX010101000", regimen_fiscal: null, codigo_postal: "01000", correo_facturas: null } },
     { ...invoice, factura_detalles: [{ ...invoice.factura_detalles![0], cantidad: "2.00" }] },
   ]) {
     expect(aborts(invoiceEmailRenderInputs, invoice, changed as Invoice)).toBe(true);
