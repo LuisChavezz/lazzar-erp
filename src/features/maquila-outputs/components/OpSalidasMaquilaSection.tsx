@@ -9,7 +9,7 @@ import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { GenerarSalidaMaquilaDialog } from "./GenerarSalidaMaquilaDialog";
@@ -22,7 +22,7 @@ import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
 export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; opCancelada: boolean }) {
   const { salidas, isLoading, isInitialError } = useSalidasMaquila({ op: opId });
   const { data: session } = useSession();
-  const canWrite = hasPermission("C-PRODUCCION-OP", session?.user);
+  const canWrite = hasProductionPermission(session?.user, "OP", "C");
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
