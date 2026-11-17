@@ -13,6 +13,7 @@ import {
   RECENT_OPPORTUNITIES_LIMIT,
   useRecentOpportunities,
 } from "../hooks/useRecentOpportunities";
+import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { OpportunityName } from "./OpportunityName";
 
@@ -47,7 +48,7 @@ function RecentOpportunityRow({
         )}
       </td>
       <td className="px-6 py-3 text-slate-600 dark:text-slate-300">
-        {opportunity.cliente_nombre || <span className={MUTED_CLS}>Sin cliente</span>}
+        {getOpportunityClienteLabel(opportunity) ?? <span className={MUTED_CLS}>Sin cliente</span>}
       </td>
       <td className="px-6 py-3">
         <span className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
