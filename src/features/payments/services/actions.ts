@@ -77,3 +77,14 @@ export const getMovimientosByPago = async (
   );
   return data;
 };
+
+/**
+ * Detalle de un pago (`GET /finanzas/pagos/{id}/`), con la moneda de su cuenta
+ * y el folio de la factura de cada línea (EC-904). Lo usa el PDF (EC-859) para
+ * leerlo FRESCO; el diálogo sigue con la fila del listado. Otra empresa o un
+ * pago dado de baja responden 404.
+ */
+export const getPago = async (id: number): Promise<Pago> => {
+  const { data } = await v1_api.get<Pago>(`/finanzas/pagos/${id}/`);
+  return data;
+};
