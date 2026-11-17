@@ -9,7 +9,11 @@ import {
   getPedidoClasificacionLabel,
   PEDIDO_ESTATUS_CONFIG,
 } from "../constants/pedidoStatus";
-import { PEDIDO_ESTATUS_VALUES, type PedidoRangeOption } from "../utils/pedidoListParams";
+import {
+  PEDIDO_ESTATUS_VALUES,
+  SIN_CLASIFICACION,
+  type PedidoRangeOption,
+} from "../utils/pedidoListParams";
 
 /**
  * Encabezados con filtro de las listas de pedidos en MODO SERVIDOR (Mesa de
@@ -91,6 +95,17 @@ export function PedidoRangeHeaderFilter<TData>({
   );
 }
 
+/**
+ * «Sin clasificación» (`SIN_CLASIFICACION`), la opción virtual que Mis pedidos
+ * fija en primer lugar del filtro de clasificación: `opciones/` no lista las
+ * clasificaciones nulas, así que se ofrece siempre. Misma etiqueta que la
+ * celda (`getPedidoClasificacionLabel(null)`).
+ */
+export const SIN_CLASIFICACION_FILTER_OPTION: ColumnFilterOption = {
+  value: SIN_CLASIFICACION,
+  label: getPedidoClasificacionLabel(null),
+};
+
 /** Etiqueta de cada catálogo; la clasificación usa la misma que la celda. */
 const catalogLabel = (catalog: keyof PedidoFilterOptions, value: string, label: string) =>
   catalog === "clasificacion" ? getPedidoClasificacionLabel(value) : label;
@@ -106,6 +121,7 @@ export function PedidoCatalogHeaderFilter<TData>({
   catalog,
   label,
   misPedidos = false,
+  pinnedOptions = [],
   searchPlaceholder,
   menuAlign,
 }: {
@@ -115,6 +131,11 @@ export function PedidoCatalogHeaderFilter<TData>({
   label: string;
   /** El catálogo de "Mis pedidos" (`?mis_pedidos=true`). */
   misPedidos?: boolean;
+  /**
+   * Opciones fijas antes de las del catálogo (tras "Todos"), visibles aunque
+   * el catálogo cargue o falle. Opt-in: sin ellas, las opciones de siempre.
+   */
+  pinnedOptions?: readonly ColumnFilterOption[];
   /** Con él, el menú lleva buscador (catálogos largos: clientes, vendedores). */
   searchPlaceholder?: string;
   menuAlign?: "start" | "end";
@@ -122,6 +143,7 @@ export function PedidoCatalogHeaderFilter<TData>({
   const { data, isLoading, isInitialError } = usePedidoFilterOptions(misPedidos);
   const options: ColumnFilterOption[] = [
     ALL_FILTER_OPTION,
+    ...pinnedOptions,
     ...(data?.[catalog] ?? []).map((option) => ({
       value: String(option.value),
       label: catalogLabel(catalog, String(option.value), option.label),
