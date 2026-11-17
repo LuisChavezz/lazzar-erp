@@ -24,6 +24,7 @@ import {
 import { PAGO_ESTATUS_CONFIG } from "../constants/paymentStatus";
 import { useMovimientosByPago } from "../hooks/useMovimientosByPago";
 import type { Pago } from "../interfaces/payment.interface";
+import { PagoPdfButton } from "./PagoPdfButton";
 
 interface PaymentDetailDialogProps {
   /**
@@ -66,6 +67,7 @@ export function PaymentDetailDialog({
           icon={ReceiptIcon}
         />
       }
+      headerAction={<PagoPdfButton pago={pago} />}
     >
       <div className="space-y-5">
         {/* Cabecera: sale del renglón que el listado ya cargó. */}

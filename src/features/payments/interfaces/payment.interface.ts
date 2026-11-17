@@ -33,6 +33,12 @@ export interface PagoDetalle {
   importe_aplicado: string;
   observaciones: string | null;
   created_at: string | null;
+  /**
+   * Folio de la factura de proveedor de la CxP (EC-904). SOLO en listado y
+   * retrieve (no en las respuestas de alta o cancelar), por eso opcional; `null`
+   * si la factura no tiene folio. Lo lee el PDF.
+   */
+  factura_proveedor_folio?: string | null;
 }
 
 export interface Pago {
@@ -71,6 +77,14 @@ export interface Pago {
   updated_at: string | null;
   /** Líneas anidadas. Puede venir vacío. */
   pago_detalles: PagoDetalle[];
+  /**
+   * Moneda del pago (EC-904): la de su cuenta bancaria, porque el pago no
+   * guarda moneda propia. `moneda` es el id y `moneda_nombre` el CÓDIGO ISO.
+   * Solo listado y retrieve, por eso opcionales. Sin tipo de cambio: el lado de
+   * proveedores no lo registra.
+   */
+  moneda?: number;
+  moneda_nombre?: string | null;
 }
 
 /**
