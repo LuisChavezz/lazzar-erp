@@ -129,9 +129,9 @@ export function ProductionOrderStep1({
     );
   };
 
-  // EC-898: las muestras solo se ofrecen con pedido vinculado, y solo las de
-  // ese pedido (ver `isOfferedForPedidos`). Lista para cuando la OP lleve
-  // varios pedidos.
+  // EC-898: una muestra de un pedido solo se ofrece con ese pedido vinculado;
+  // las que no vienen de ningún pedido, siempre (ver `isOfferedForPedidos`).
+  // Lista para cuando la OP lleve varios pedidos.
   const linkedPedidoIds = pedido ? [pedido.id] : [];
   const offeredProductionMatches = productionMatches.filter((option) =>
     isOfferedForPedidos(option, linkedPedidoIds),
@@ -145,15 +145,16 @@ export function ProductionOrderStep1({
   const changePedido = (next: SelectedProductionOrderPedido | null) => {
     setPedido(next);
     const nextIds = next ? [next.id] : [];
-    const removed = selected.filter((option) => !isOfferedForPedidos(option, nextIds));
-    if (removed.length === 0) return;
-    setSelected((prev) => prev.filter((option) => isOfferedForPedidos(option, nextIds)));
+    const kept = selected.filter((option) => isOfferedForPedidos(option, nextIds));
+    const removedCount = selected.length - kept.length;
+    if (removedCount === 0) return;
+    setSelected(kept);
     const count =
-      removed.length === 1 ? "Se quitó 1 muestra" : `Se quitaron ${removed.length} muestras`;
+      removedCount === 1 ? "Se quitó 1 muestra" : `Se quitaron ${removedCount} muestras`;
     toast(
       next
-        ? `${count} que no ${removed.length === 1 ? "es" : "son"} del pedido ${next.label}.`
-        : `${count}: sin pedido vinculado no se pueden incluir muestras.`,
+        ? `${count} que no ${removedCount === 1 ? "es" : "son"} del pedido ${next.label}.`
+        : `${count} de un pedido: sin pedido vinculado no se pueden incluir.`,
     );
   };
 
@@ -321,6 +322,13 @@ export function ProductionOrderStep1({
             : `${selectedCount} variante${selectedCount === 1 ? "" : "s"} seleccionada${selectedCount === 1 ? "" : "s"}`}
         </span>
       </div>
+      {/* Sin pedido se ocultan las muestras de pedidos: decirlo, para que una
+          búsqueda vacía no parezca que la muestra no existe. */}
+      {!pedido && (
+        <p className="-mt-1 ml-1 text-[11px] text-slate-500 dark:text-slate-400">
+          Vincula un pedido para ver sus muestras.
+        </p>
+      )}
 
       {/* Búsqueda en el servidor + lista de selección múltiple. Lo elegido va
           fijo arriba (son los objetos completos de `selected`), aunque la

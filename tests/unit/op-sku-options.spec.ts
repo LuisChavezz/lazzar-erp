@@ -26,12 +26,16 @@ test.describe("isOfferedForPedidos (EC-898)", () => {
     expect(isOfferedForPedidos(muestra(2122), [2122])).toBe(true);
     expect(isOfferedForPedidos(muestra(2125), [2122])).toBe(false);
     expect(isOfferedForPedidos(muestra(2125), [2122, 2125])).toBe(true);
-    expect(isOfferedForPedidos(muestra(null), [2122])).toBe(false);
+    expect(isOfferedForPedidos(muestra(null), [2122])).toBe(true);
   });
 
-  test("sin pedido vinculado no ofrece ninguna muestra", () => {
+  test("sin pedido vinculado no ofrece las muestras de un pedido", () => {
     expect(isOfferedForPedidos(muestra(2125), [])).toBe(false);
-    expect(isOfferedForPedidos(muestra(null), [])).toBe(false);
+  });
+
+  test("una muestra sin pedido de origen se ofrece siempre", () => {
+    expect(isOfferedForPedidos(muestra(null), [])).toBe(true);
+    expect(isOfferedForPedidos(muestra(null), [2122])).toBe(true);
   });
 
   test("las variantes de catálogo siempre se ofrecen", () => {
