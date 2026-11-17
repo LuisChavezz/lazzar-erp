@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   CORTEMANGAORDER_HEADER_FILTERS,
@@ -17,6 +17,7 @@ import { CorteMangaOrderDetailDialog } from "./CorteMangaOrderDetailDialog";
 import { CorteMangaOrderForm } from "./CorteMangaOrderForm";
 import { CorteMangaOrderStats } from "./CorteMangaOrderStats";
 import { useCorteMangaOrders } from "../hooks/useCorteMangaOrders";
+import { corteMangaOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /**
  * Vista de Órdenes de Corte de Manga: KPIs del listado
@@ -82,7 +83,7 @@ export function CorteMangaOrdersView() {
   // exige además `C-PRODUCCION-CM`. `hasPermission` ya cortocircuita para el rol
   // "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission("C-PRODUCCION-CM", session?.user);
+  const canCreate = hasProductionPermission(session?.user, "CM", "C");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -100,7 +101,7 @@ export function CorteMangaOrdersView() {
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
     () =>
-      getCorteMangaOrderColumns((id) => router.push(`/manufacturing/corte-manga/${id}`)),
+      getCorteMangaOrderColumns((id) => router.push(corteMangaOrderDetailPath(id))),
     [router],
   );
 

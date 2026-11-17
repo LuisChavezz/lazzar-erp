@@ -31,6 +31,7 @@ import {
   type EmbroideryOrderMetrics,
   type ProductionOrderMetrics,
 } from "../utils/manufacturingDashboardMetrics";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 // ── Sub-componentes reutilizables ─────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ function OrderRow({ order }: { order: ProductionOrderListItem }) {
 
   return (
     <Link
-      href={`/manufacturing/production-orders/${order.op_id}`}
+      href={productionOrderDetailPath(order.op_id)}
       title="Ver detalle"
       className="group flex items-center gap-3 -mx-2 px-2 py-2.5 rounded-lg border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
     >

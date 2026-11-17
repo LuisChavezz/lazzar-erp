@@ -18,12 +18,20 @@ export const productionOrderStatusKey = (opId: number) =>
  * Cualquier otro fallo inicial tampoco rompe la página: deja la acción oculta
  * (`isInitialError`). Un refetch fallido conserva lo cargado y avisa por toast.
  */
-export const useProductionOrderStatus = (opId: number) => {
+/**
+ * ¿Se pide `GET estatus/`? Solo con un id válido y si el menú se va a poder
+ * usar (`enabled`, el `E-PRODUCCION-OP` de la sesión, EC-895): sin él la
+ * respuesta se descartaría.
+ */
+export const isProductionOrderStatusQueryEnabled = (opId: number, enabled: boolean): boolean =>
+  enabled && isValidOpId(opId);
+
+export const useProductionOrderStatus = (opId: number, { enabled = true }: { enabled?: boolean } = {}) => {
   const { data, isInitialError, isDefinitiveError } = useGuardedQuery(
     {
       queryKey: productionOrderStatusKey(opId),
       queryFn: () => getProductionOrderStatus(opId),
-      enabled: isValidOpId(opId),
+      enabled: isProductionOrderStatusQueryEnabled(opId, enabled),
     },
     {
       toastId: "production-order-status-refetch-error",

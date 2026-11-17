@@ -9,6 +9,7 @@ import { canAccessRoute } from "@/src/utils/routeAccess";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import type { BitacoraDocumento, TipoDocumento } from "../interfaces/document-audit.interface";
 import { isTipoDocumento } from "./documentAuditValues";
+import { corteMangaOrderDetailPath, embroideryOrderDetailPath, productionOrderDetailPath, reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /**
  * Cómo se abre el documento de un evento, según su `tipo_documento`.
@@ -50,23 +51,23 @@ export const DOCUMENT_AUDIT_OPENERS: Partial<Record<TipoDocumento, DocumentAudit
   },
   orden_produccion: {
     kind: "route",
-    path: (id) => `/manufacturing/production-orders/${id}`,
-    href: (id) => `/manufacturing/production-orders/${id}`,
+    path: productionOrderDetailPath,
+    href: productionOrderDetailPath,
   },
   orden_bordado: {
     kind: "route",
-    path: (id) => `/manufacturing/embroidery/${id}`,
-    href: (id) => `/manufacturing/embroidery/${id}`,
+    path: embroideryOrderDetailPath,
+    href: embroideryOrderDetailPath,
   },
   orden_reflejante: {
     kind: "route",
-    path: (id) => `/manufacturing/reflective-orders/${id}`,
-    href: (id) => `/manufacturing/reflective-orders/${id}`,
+    path: reflectiveOrderDetailPath,
+    href: reflectiveOrderDetailPath,
   },
   orden_corte_manga: {
     kind: "route",
-    path: (id) => `/manufacturing/corte-manga/${id}`,
-    href: (id) => `/manufacturing/corte-manga/${id}`,
+    path: corteMangaOrderDetailPath,
+    href: corteMangaOrderDetailPath,
   },
   factura: { kind: "route", path: invoiceDetailPath, href: (id) => invoiceDetailHref(id) },
   // Diálogos: `gatePath` es el listado del que se abren hoy.

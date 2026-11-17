@@ -28,7 +28,10 @@ interface WorkOrderAvancesSectionProps extends WorkOrderAvanceFields {
   detailQueryKey: QueryKey;
   /** Piezas de la orden; techo mientras el backend no mande `resumen_avance`. */
   piezasOrden: number;
+  /** Registrar avances (`E-` de la sección). */
   canEdit: boolean;
+  /** Borrar un avance (`D-` de la sección, EC-895). */
+  canDelete: boolean;
   isTerminal: boolean;
 }
 
@@ -46,6 +49,7 @@ export function WorkOrderAvancesSection({
   detailQueryKey,
   piezasOrden,
   canEdit,
+  canDelete,
   isTerminal,
   avances,
   resumen_avance: resumen,
@@ -155,7 +159,7 @@ export function WorkOrderAvancesSection({
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-center">
-                        {!isTerminal && canEdit && (
+                        {!isTerminal && canDelete && (
                           <button
                             type="button"
                             onClick={() => setToDelete(avance)}

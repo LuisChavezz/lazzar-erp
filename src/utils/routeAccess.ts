@@ -15,8 +15,27 @@ export function findRoutePermissionRule(pathname: string) {
 }
 
 /**
+ * Página a la que el proxy manda a quien abre una ruta sin su permiso
+ * (EC-895). No tiene regla en `routePermissions`, así que nunca se redirige a
+ * sí misma; solo exige sesión y workspace, como cualquier ruta del matcher.
+ */
+export const ACCESS_DENIED_PATH = "/access-denied";
+
+/**
+ * Redirección del proxy por permisos para `pathname`: `ACCESS_DENIED_PATH` si
+ * la ruta tiene regla y `user` no la cumple, o `null` si puede entrar. Misma
+ * regla que `canAccessRoute`.
+ */
+export function getRouteAccessRedirect(
+  pathname: string,
+  user?: PermissionContext | null,
+): string | null {
+  return canAccessRoute(pathname, user) ? null : ACCESS_DENIED_PATH;
+}
+
+/**
  * ¿El proxy dejaría entrar a `user` en `pathname`? Para no ofrecer enlaces que
- * rebotan al Home: un enlace solo se pinta si su destino es abrible. Sin regla
+ * rebotan a "sin acceso": un enlace solo se pinta si su destino es abrible. Sin regla
  * se permite, igual que en el proxy (que además exige sesión y workspace, ya
  * garantizados dentro de la app). `pathname` va sin query.
  */

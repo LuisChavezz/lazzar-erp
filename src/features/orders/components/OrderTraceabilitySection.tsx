@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { useSession } from "next-auth/react";
 import { SheetSection } from "./OrderSheetPrimitives";
 import { CheckIcon, ChevronDownIcon, WarningFilledIcon, RouteIcon } from "@/src/components/Icons";
 import { Loader } from "@/src/components/Loader";
@@ -23,6 +24,7 @@ import type {
 } from "../interfaces/pedido-trazabilidad.interface";
 import { formatDiasRestantes, formatFechaCalendario, formatPedidoPct } from "../utils/pedidoFormat";
 import { hasOrderDocumentDialog, type OpenOrderDocument } from "./orderDocumentDialogs";
+import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
 
 const SECTION_TITLE = "Trazabilidad";
 
@@ -75,9 +77,10 @@ function AvanceCells({ avance }: { avance: AvanceView }) {
 /**
  * Orden de trabajo vigente del proceso. El folio abre el MISMO diálogo que en
  * "Documentos relacionados" (registro `ORDER_DOCUMENT_DIALOGS`), nunca una
- * ruta: la regla `/orders` ya es el control de acceso de esos diálogos. Un
- * `tipo` sin diálogo (uno nuevo del backend) deja el folio como texto: un
- * enlace que no abre nada sería peor que ninguno.
+ * ruta, y con la misma condición: el permiso de la sección de la orden
+ * (`canOpenOrderDocument`, EC-895). Un `tipo` sin diálogo (uno nuevo del
+ * backend) o sin ese permiso deja el folio como texto: un enlace que no abre
+ * nada sería peor que ninguno.
  *
  * La barra NUNCA se marca completa: la orden no trae `estado`, y su `pct` llega
  * a 100 sin que la orden esté terminada (avances iguales a lo cubierto, o el
@@ -90,10 +93,17 @@ function OrdenRow({
   orden: TrazabilidadOrden;
   onOpenOrden: (doc: OpenOrderDocument) => void;
 }) {
+  const { data: session } = useSession();
   const folio = orden.folio || `#${orden.id}`;
   const docTipo = getOrdenDocTipo(orden.tipo);
-  // Llave del diálogo a abrir, o `null` si no hay ninguno registrado.
-  const openTipo = docTipo !== null && hasOrderDocumentDialog(docTipo) ? docTipo : null;
+  // Llave del diálogo a abrir, o `null` si no hay ninguno registrado o el
+  // usuario no puede abrir la sección de la orden.
+  const openTipo =
+    docTipo !== null &&
+    hasOrderDocumentDialog(docTipo) &&
+    canOpenOrderDocument(docTipo, orden.id, session?.user)
+      ? docTipo
+      : null;
   return (
     <li
       className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2 ${

@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createElement } from "react";
+import { createElement, type ComponentType } from "react";
 import { renderToString } from "react-dom/server";
+import { SessionProvider, type SessionProviderProps } from "next-auth/react";
+import type { Session } from "next-auth";
 import { ProductionOrderConsumptionSection } from "@/src/features/production-order-consumption/components/ProductionOrderConsumptionSection";
 import { RecalculateConsumptionDialog } from "@/src/features/production-order-consumption/components/RecalculateConsumptionDialog";
 import { ProductionOrderPageContent } from "@/src/features/production-orders/components/ProductionOrderPageContent";
@@ -11,6 +13,7 @@ import type {
   ProductionOrderOnboarding,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
 import { isPwElement, toReactElement } from "./support/pwJsx";
+import type { PermissionGate } from "@/src/utils/permissionGate";
 
 /**
  * "Recalcular consumos" en la página de la OP (EC-857): la página le pasa al
@@ -64,6 +67,9 @@ const op = (consumosResumen: ProductionOrderConsumoResumen[]): ProductionOrderOn
   consumos_resumen: consumosResumen,
 });
 
+/** `createElement` pasa los hijos aparte; el tipo de `SessionProvider` los exige como prop. */
+const SessionProviderWithChildren = SessionProvider as ComponentType<Omit<SessionProviderProps, "children">>;
+
 type TreeNode = { type: unknown; props: Record<string, unknown> };
 
 /** Elementos del árbol (JSX del runner o de React), sin renderizar. */
@@ -76,7 +82,7 @@ const elementsOf = (node: unknown): TreeNode[] => {
 };
 
 /** Corre la página con la OP en caché y devuelve las props de sus hijos clave. */
-function pagePropsFor(detail: ProductionOrderOnboarding) {
+function pagePropsFor(detail: ProductionOrderOnboarding, permissions: string[] = ["R-PRODUCCION-OP", "E-PRODUCCION-OP"]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(productionOrderOnboardingKey(OP_ID), detail);
   let tree: unknown;
@@ -84,8 +90,14 @@ function pagePropsFor(detail: ProductionOrderOnboarding) {
     onTree(ProductionOrderPageContent({ orderId: String(OP_ID) }));
     return null;
   };
+  // La página lee los permisos de la sesión (EC-895): se le da una ya resuelta.
+  const session = { user: { role: "user", permissions }, expires: "2999-01-01T00:00:00.000Z" } as unknown as Session;
   renderToString(
-    createElement(QueryClientProvider, { client }, createElement(Probe, { onTree: (value) => (tree = value) })),
+    createElement(
+      SessionProviderWithChildren,
+      { session, refetchOnWindowFocus: false },
+      createElement(QueryClientProvider, { client }, createElement(Probe, { onTree: (value) => (tree = value) })),
+    ),
   );
   const elements = elementsOf(tree);
   const propsOf = (type: unknown) => {
@@ -98,6 +110,7 @@ function pagePropsFor(detail: ProductionOrderOnboarding) {
     section: propsOf(ProductionOrderConsumptionSection) as {
       products: ProductionOrderConsumoResumen[];
       recalculableCount: number;
+      recalculateAccess: string;
     },
   };
 }
@@ -131,6 +144,7 @@ test.describe("Recalcular consumos en la página de la OP", () => {
           products: section.products,
           recalculableCount: section.recalculableCount,
           isClosed: false,
+          recalculateAccess: "allowed",
           onRecalculate: () => {},
         }),
       ),
@@ -139,5 +153,38 @@ test.describe("Recalcular consumos en la página de la OP", () => {
     expect(button, "la sección no pintó el botón").not.toBeNull();
     expect(button?.[1]).toBe("Ningún material tiene consumo planeado: no hay nada que recalcular.");
     expect(button?.[0]).toContain('disabled=""');
+  });
+
+  test("sin E-PRODUCCION-OP, el botón se apaga con el motivo de permiso (EC-895)", () => {
+    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP"]).section.recalculateAccess).toBe("denied");
+    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP", "C-PRODUCCION-OP"]).section.recalculateAccess).toBe("denied");
+    const { section } = pagePropsFor(op([conPlaneado]));
+    expect(section.recalculateAccess).toBe("allowed");
+    const render = (recalculateAccess: PermissionGate) =>
+      renderToString(
+        toReactElement(
+          createElement(ProductionOrderConsumptionSection, {
+            consumos: op([conPlaneado]).consumos,
+            products: section.products,
+            recalculableCount: section.recalculableCount,
+            isClosed: false,
+            recalculateAccess,
+            onRecalculate: () => {},
+          }),
+        ),
+      );
+    const re = /<span(?: title="([^"]*)")?><button[^>]*?(disabled="")?[^>]*>Recalcular consumos<\/button>/;
+    const sin = re.exec(render("denied"));
+    expect(sin?.[1]).toBe(
+      "No tienes permiso para editar órdenes de producción: no puedes recalcular sus consumos.",
+    );
+    expect(sin?.[0]).toContain('disabled=""');
+    // Pendiente (la sesión carga o se recupera): deshabilitado, SIN afirmar que falte el permiso.
+    const pendiente = re.exec(render("pending"));
+    expect(pendiente?.[1]).toBe("Comprobando tus permisos…");
+    expect(pendiente?.[0]).toContain('disabled=""');
+    const con = re.exec(render("allowed"));
+    expect(con, "la sección no pintó el botón").not.toBeNull();
+    expect(con?.[0]).not.toContain('disabled=""');
   });
 });

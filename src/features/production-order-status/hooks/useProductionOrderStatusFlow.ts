@@ -66,8 +66,11 @@ const optionLabel = (option: ProductionOrderStatusOption) =>
  *   motivo obligatorio;
  * - cualquier otra: se aplica directo y sus errores van por toast.
  */
-export const useProductionOrderStatusFlow = (opId: number) => {
-  const status = useProductionOrderStatus(opId);
+export const useProductionOrderStatusFlow = (
+  opId: number,
+  { enabled = true }: { enabled?: boolean } = {},
+) => {
+  const status = useProductionOrderStatus(opId, { enabled });
   const mutation = useChangeProductionOrderStatus(opId);
   const [dialog, setDialog] = useState<ProductionOrderStatusDialogState | null>(null);
 

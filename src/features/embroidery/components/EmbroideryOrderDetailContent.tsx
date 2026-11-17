@@ -14,7 +14,7 @@ import {
   SheetSection,
 } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
@@ -34,6 +34,7 @@ import { EmbroideryAvancesHistory } from "./EmbroideryAvancesHistory";
 import { EmbroideryOrderPdfButton } from "./EmbroideryOrderPdfButton";
 import { EmbroideryOrderGarmentGroups } from "./EmbroideryOrderGarmentGroups";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
+import { embroideryOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -59,7 +60,7 @@ const SiblingOrders = ({ items }: { items: EmbroideryOrderSibling[] }) => (
     {items.map((hermana) => (
       <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
         <Link
-          href={`/manufacturing/embroidery/${hermana.id}`}
+          href={embroideryOrderDetailPath(hermana.id)}
           className="font-mono font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
         >
           {hermana.folio_bordado}
@@ -99,7 +100,7 @@ export function EmbroideryOrderDetailContent({
   // retornan antes y no puede quedar tras un `return` condicional.
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
-  const canEditOb = hasPermission("E-PRODUCCION-OB", session?.user);
+  const canEditOb = hasProductionPermission(session?.user, "OB", "E");
 
   const BackLink = (
     <Link

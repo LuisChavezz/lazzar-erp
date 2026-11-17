@@ -1,5 +1,12 @@
 "use client";
 
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { permissionGate } from "@/src/utils/permissionGate";
+import {
+  CRITICAL_PATH_FORBIDDEN_NOTICE,
+  CRITICAL_PATH_PENDING_NOTICE,
+} from "@/src/features/production-orders/utils/productionOrderPermissions";
 import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -49,6 +56,9 @@ interface ProductionOrderCriticalPathDialogProps {
  * diálogo pasa a solo lectura hasta cerrarse (`closedByServer`), con un aviso
  * que no afirma cuál de los dos estatus es.
  *
+ * Sin `E-PRODUCCION-OP` también se abre en solo lectura, con su propio aviso
+ * (EC-895).
+ *
  * Un refetch fallido tras una carga correcta no reemplaza el formulario: avisa
  * por toast (`isInitialError`). Un id que no es entero positivo se trata como
  * OP no encontrada sin pedir nada.
@@ -60,11 +70,18 @@ export function ProductionOrderCriticalPathDialog({
   const validId = isValidOpId(target.opId);
   // El PATCH respondió 409 en esta apertura: manda sobre el estatus de la foto.
   const [closedByServer, setClosedByServer] = useState(false);
+  // Sin `E-PRODUCCION-OP` la ruta crítica se consulta en solo lectura (EC-895).
+  const { isPending: isAccessPending, user } = useRouteAccess();
+  const editAccess = permissionGate(isAccessPending, hasProductionPermission(user, "OP", "E"));
   const readOnlyNotice = closedByServer
     ? closedOpNotice()
     : isClosedProductionOrderStatus(target.estatusOp)
       ? closedOpNotice(target.estatusOp)
-      : null;
+      : editAccess === "pending"
+        ? CRITICAL_PATH_PENDING_NOTICE
+        : editAccess === "denied"
+          ? CRITICAL_PATH_FORBIDDEN_NOTICE
+          : null;
   const { data, error, isInitialError, isFetchedAfterMount, isFetching, refetch } =
     useProductionOrderCriticalPath(target.opId);
   const isSaving = useIsMutating({ mutationKey: updateCriticalPathMutationKey }) > 0;

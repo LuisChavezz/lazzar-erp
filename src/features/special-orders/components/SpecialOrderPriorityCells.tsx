@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { AccessibleLink } from "@/src/components/AccessibleLink";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { useClientNow } from "@/src/hooks/useClientNow";
 import { PreOrderTrackerMini } from "@/src/features/pre-orders/components/PreOrderTracker";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -166,13 +168,15 @@ export function OpsCell({ order }: { order: SpecialOrderListItem }) {
     <div className="flex flex-col gap-1">
       {ops.map((op) => (
         <span key={op.op_id} className="flex items-center gap-1.5 whitespace-nowrap">
-          <Link
-            href={`/manufacturing/production-orders/${op.op_id}`}
+          {/* Sin `R-PRODUCCION-OP` (la regla de la ruta), folio sin enlace (EC-895). */}
+          <AccessibleLink
+            href={productionOrderDetailPath(op.op_id)}
             title="Ver orden de producción"
             className="font-mono text-xs text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:underline"
+            fallbackClassName="font-mono text-xs text-slate-600 dark:text-slate-300"
           >
             {op.folio_op}
-          </Link>
+          </AccessibleLink>
           <StatusBadge
             status={String(op.estatus_op)}
             config={{ [op.estatus_op]: productionOrderStatusEntry(op.estatus_op, op.estatus_op_display) }}

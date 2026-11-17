@@ -15,7 +15,7 @@ import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
@@ -43,6 +43,7 @@ import type {
   ReflectiveOrderDetailLine,
   ReflectiveOrderSibling,
 } from "../interfaces/reflective-order.interface";
+import { reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -125,7 +126,7 @@ const SiblingOrders = ({ items }: { items: ReflectiveOrderSibling[] }) => (
     {items.map((hermana) => (
       <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
         <Link
-          href={`/manufacturing/reflective-orders/${hermana.id}`}
+          href={reflectiveOrderDetailPath(hermana.id)}
           className="font-mono font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
         >
           {hermana.folio_reflejante}
@@ -156,13 +157,14 @@ export function ReflectiveOrderDetailContent({
   // pintan en los estados de carga/error.
   const updateOrder = useUpdateReflectiveOrder(numericId);
 
-  // Superusuario, admin de empresa o el código de esta ruta, `R-PRODUCCION-OR`
-  // (`canEditWorkOrder`): una aproximación del backend, que autoriza por
-  // departamento PRODUCCION y rechaza al resto con un `400`. Es UX: evita
-  // ofrecer controles que van a fallar, no es la frontera de acceso.
+  // Superusuario, admin de empresa o el código de edición de la sección,
+  // `E-PRODUCCION-OR` (`hasProductionPermission`, EC-895): rige la ficha y el registro de avances.
+  // Es UX: evita ofrecer controles que van a fallar, no es la frontera de acceso.
   // Antes de los `return` tempranos porque `useSession` es un hook.
   const { data: session } = useSession();
-  const canEdit = canEditWorkOrder(session?.user, "R-PRODUCCION-OR");
+  const canEdit = hasProductionPermission(session?.user, "OR", "E");
+  // Borrar un avance es destructivo: exige `D-PRODUCCION-OR` (EC-895).
+  const canDeleteAvance = hasProductionPermission(session?.user, "OR", "D");
 
   const BackLink = (
     <Link
@@ -361,6 +363,7 @@ export function ReflectiveOrderDetailContent({
         detailQueryKey={reflectiveOrderDetailQueryKey(data.id)}
         piezasOrden={data.cantidad_cubierta}
         canEdit={canEdit}
+        canDelete={canDeleteAvance}
         isTerminal={isTerminal}
         avances={data.avances}
         resumen_avance={data.resumen_avance}

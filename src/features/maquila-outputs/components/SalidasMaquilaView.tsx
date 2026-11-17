@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { getSalidaMaquilaColumns } from "./SalidaMaquilaColumns";
 import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
@@ -19,7 +19,7 @@ type Vista = "maquila" | "recibidas" | "canceladas";
 export function SalidasMaquilaView() {
   const { salidas, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } = useSalidasMaquila();
   const { data: session } = useSession();
-  const canWrite = hasPermission("C-PRODUCCION-OP", session?.user);
+  const canWrite = hasProductionPermission(session?.user, "OP", "C");
   const [vista, setVista] = useState<Vista>("maquila");
   const [openId, setOpenId] = useState<number | null>(null);
 

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { AccessibleLink } from "@/src/components/AccessibleLink";
+import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -88,6 +92,11 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [opOpen, setOpOpen] = useState(false);
   const [showLines, setShowLines] = useState(false);
+  // "Crear OP" da de alta una orden de producción: exige `C-PRODUCCION-OP`
+  // además del estatus (EC-895). Sin él el botón no se pinta, como el resto de
+  // acciones que no aplican.
+  const { data: session } = useSession();
+  const canCreateOp = hasProductionPermission(session?.user, "OP", "C");
 
   const faltaReal = (m: PreOrderDetail["materiales"][number]) => m.faltante_real ?? m.faltante;
   const faltantes = data.materiales.filter((m) => faltaReal(m) > 0);
@@ -175,9 +184,14 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
           {data.op && (
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               OP:{" "}
-              <Link href={`/manufacturing/production-orders/${data.op}`} className={LINK_CLASS}>
+              {/* Sin `R-PRODUCCION-OP` (la regla de la ruta), folio sin enlace (EC-895). */}
+              <AccessibleLink
+                href={productionOrderDetailPath(data.op)}
+                className={LINK_CLASS}
+                fallbackClassName="font-mono"
+              >
                 {data.op_folio || `#${data.op}`}
-              </Link>
+              </AccessibleLink>
             </p>
           )}
         </div>
@@ -212,7 +226,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               </button>
             </>
           )}
-          {canCreateOpFromPreOrder(data.estatus) && (
+          {canCreateOp && canCreateOpFromPreOrder(data.estatus) && (
             <button
               type="button"
               className={BTN_SUCCESS}
@@ -336,9 +350,14 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               <ul className="space-y-2">
                 {data.ordenes_compra.map((oc) => (
                   <li key={oc.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link href={`/procurement/purchase-orders/${oc.id}`} className={LINK_CLASS}>
+                    {/* Sin `R-COMPRAS-OC` (la regla de la ruta), folio sin enlace (EC-895). */}
+                    <AccessibleLink
+                      href={purchaseOrderDetailHref(oc.id)}
+                      className={LINK_CLASS}
+                      fallbackClassName="font-mono"
+                    >
                       {oc.folio || `OC #${oc.id}`}
-                    </Link>
+                    </AccessibleLink>
                     {(oc.estatus_display || oc.estatus_label) && (
                       <OrderChip>{oc.estatus_display || oc.estatus_label}</OrderChip>
                     )}
@@ -395,14 +414,22 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                       <div className="flex flex-wrap items-center gap-2">
                         {d.avance?.estado ? <StatusBadge status={d.avance.estado} config={LINE_AVANCE_CFG} /> : <span className="text-xs text-slate-400">—</span>}
                         {d.avance?.op ? (
-                          <Link href={`/manufacturing/production-orders/${d.avance.op}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                          <AccessibleLink
+                            href={productionOrderDetailPath(d.avance.op)}
+                            className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline"
+                            fallbackClassName="font-mono text-xs text-slate-600 dark:text-slate-300"
+                          >
                             {d.avance.op_folio || `OP #${d.avance.op}`}
-                          </Link>
+                          </AccessibleLink>
                         ) : null}
                         {d.avance?.orden_compra ? (
-                          <Link href={`/procurement/purchase-orders/${d.avance.orden_compra}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                          <AccessibleLink
+                            href={purchaseOrderDetailHref(d.avance.orden_compra)}
+                            className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline"
+                            fallbackClassName="font-mono text-xs text-slate-600 dark:text-slate-300"
+                          >
                             {d.avance.orden_compra_folio || `OC #${d.avance.orden_compra}`}
-                          </Link>
+                          </AccessibleLink>
                         ) : null}
                         {d.tipo_linea === "compra" && d.avance?.cantidad_recibida ? (
                           <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">

@@ -1,8 +1,7 @@
 import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
-import { hasAnyPermission } from "./utils/permissions";
-import { findRoutePermissionRule } from "./utils/routeAccess";
+import { getRouteAccessRedirect } from "./utils/routeAccess";
 import { authSecret } from "./lib/authSecret";
 
 /**
@@ -27,33 +26,23 @@ const authMiddleware = withAuth(
 
     const hasWorkspace = req.cookies.has("erp_workspace_id"); // Verificar si hay workspace seleccionado
     const isSelectBranchPage = pathname.startsWith("/select-branch"); // Verificar si es la página de selección de sucursal
-    // Regla de permisos que coincide con la ruta actual. La búsqueda vive en
-    // `routeAccess` para que los enlaces de la app (`canAccessRoute`) apliquen
-    // exactamente la misma.
-    const rule = findRoutePermissionRule(pathname);
 
     // Redirigir a la página de selección de sucursal si no hay workspace y no es la página de selección
     if (!hasWorkspace && !isSelectBranchPage) {
       return NextResponse.redirect(new URL("/select-branch", req.url));
     }
 
-    // Verificar si hay una regla de permisos para la ruta actual
-    if (rule) { // Si hay una regla de permisos para la ruta actual permite el acceso
-      const token = req.nextauth?.token;
-      // `permission` puede ser un código o un arreglo (regla que se cumple con
-      // CUALQUIERA de ellos). Se normaliza a arreglo: para un código suelto,
-      // `hasAnyPermission([code])` es idéntico a `hasPermission(code)` — mismo
-      // cortocircuito de rol "admin" incluido.
-      const required = Array.isArray(rule.permission)
-        ? rule.permission
-        : [rule.permission];
-      const canAccess = hasAnyPermission(required, {
-        role: token?.role as string | undefined,
-        permissions: token?.permissions as string[] | undefined,
-      });
-      if (!canAccess) { // Si el usuario no tiene permisos para acceder a la ruta actual redirigir al home
-        return NextResponse.redirect(new URL("/", req.url));
-      }
+    // Permiso de la ruta: la regla de `routePermissions` que coincide, con la
+    // MISMA búsqueda que los enlaces de la app (`canAccessRoute`). Un código o
+    // un arreglo (cualquiera de ellos), con el cortocircuito del rol "admin".
+    // Sin permiso, a la página "sin acceso" (EC-895), que no tiene regla.
+    const token = req.nextauth?.token;
+    const redirectPath = getRouteAccessRedirect(pathname, {
+      role: token?.role as string | undefined,
+      permissions: token?.permissions as string[] | undefined,
+    });
+    if (redirectPath) {
+      return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
     return NextResponse.next();
@@ -109,6 +98,9 @@ export const config = {
     // hacia "/" (ver wrapper). A los NO autenticados se les sirve el login.
     "/auth/login",
     "/select-branch/:path*",
+    // Página "sin acceso" (EC-895): exige sesión y workspace como el resto,
+    // pero no tiene regla de permiso, así que no puede redirigirse a sí misma.
+    "/access-denied",
     "/config/:path*",
     "/system/:path*",
     "/sales/:path*",

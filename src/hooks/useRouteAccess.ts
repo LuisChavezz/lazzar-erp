@@ -1,6 +1,7 @@
 import { useSession } from "next-auth/react";
 import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { isSessionAccessPending } from "@/src/utils/permissionGate";
 
 /**
  * Para pintar enlaces condicionados a la regla del proxy (`canAccessRoute`)
@@ -15,7 +16,7 @@ import { canAccessRoute } from "@/src/utils/routeAccess";
 export const useRouteAccess = () => {
   const { data: session, status } = useSession();
   const { phase } = useSessionRecovery();
-  const isPending = status === "loading" || phase === "recovering";
+  const isPending = isSessionAccessPending(status, phase);
   return {
     isPending,
     canOpen: (pathname: string) => !isPending && canAccessRoute(pathname, session?.user),
