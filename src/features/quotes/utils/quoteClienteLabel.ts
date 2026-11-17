@@ -68,3 +68,24 @@ export const getQuoteClienteContacto = (quote: QuoteClienteFields): string | nul
  */
 export const formatQuoteClienteDe = (quote: QuoteClienteFields): string =>
   quote.cliente == null ? "" : ` de ${getQuoteClienteLabel(quote)}`;
+
+/**
+ * Opciones de un filtro de CLIENTE ya rotuladas con esta convención: si dos
+ * clientes comparten la etiqueta, SOLO esos llevan su id para distinguirlos
+ * ("LAZZAR (cliente #21)", EC-752); el resto queda igual. Lo usan el filtro de
+ * cliente de cotizaciones y el de oportunidades, para que la regla no se
+ * separe.
+ */
+export const withHomonymClienteIds = <T extends { value: string; label: string }>(
+  options: readonly T[],
+): T[] => {
+  const countByLabel = new Map<string, number>();
+  for (const option of options) {
+    countByLabel.set(option.label, (countByLabel.get(option.label) ?? 0) + 1);
+  }
+  return options.map((option) =>
+    (countByLabel.get(option.label) ?? 0) > 1
+      ? { ...option, label: `${option.label} (cliente #${option.value})` }
+      : option,
+  );
+};

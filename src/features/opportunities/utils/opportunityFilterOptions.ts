@@ -1,4 +1,5 @@
 import type { ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import { withHomonymClienteIds } from "@/src/features/quotes/utils/quoteClienteLabel";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
 
@@ -51,7 +52,8 @@ interface CustomerOptionSource {
  * Filtro de CLIENTE desde el catálogo de clientes, rotulado como la celda
  * (EC-810): la razón social tal cual; en blanco, el nombre; sin ninguno,
  * `Cliente #<id>`. Si dos clientes comparten la etiqueta, solo esos llevan su
- * id para distinguirlos ("LAZZAR (cliente #21)"), como en cotizaciones.
+ * id para distinguirlos (`withHomonymClienteIds`, la MISMA regla que el filtro
+ * de cotizaciones).
  *
  * `Customer.id` está tipado como string pero el backend manda un número: el
  * valor es su forma en texto, que es como viaja en la URL.
@@ -67,13 +69,5 @@ export const buildOpportunityClienteFilterOptions = (
       active: customer.activo,
     };
   });
-  const countByLabel = new Map<string, number>();
-  for (const entry of entries) countByLabel.set(entry.label, (countByLabel.get(entry.label) ?? 0) + 1);
-  return sortOpportunityCatalogOptions(
-    entries.map((entry) =>
-      (countByLabel.get(entry.label) ?? 0) > 1
-        ? { ...entry, label: `${entry.label} (cliente #${entry.value})` }
-        : entry
-    )
-  );
+  return sortOpportunityCatalogOptions(withHomonymClienteIds(entries));
 };

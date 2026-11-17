@@ -12,6 +12,7 @@ import {
   QUOTE_ESTATUS_VALUES,
 } from "@/src/features/quotes/utils/quoteListParams";
 import { buildQuoteClienteFilterOptions } from "@/src/features/quotes/utils/quoteFilterOptions";
+import { withHomonymClienteIds } from "@/src/features/quotes/utils/quoteClienteLabel";
 import {
   readServerTableState,
   toServerTableCriteria,
@@ -171,5 +172,21 @@ test.describe("getQuoteStatusLabel", () => {
     expect(getQuoteStatusLabel({ estatus: 9, estatus_label: " EN PAUSA " })).toBe("En pausa");
     expect(getQuoteStatusLabel({ estatus: 9, estatus_label: null })).toBe("Estatus 9");
     expect(getQuoteStatusLabel({ estatus: null })).toBe("Sin estatus");
+  });
+});
+
+test.describe("withHomonymClienteIds (compartido con oportunidades)", () => {
+  test("solo los homónimos llevan su id; el resto y el orden no cambian", () => {
+    expect(
+      withHomonymClienteIds([
+        { value: "21", label: "LAZZAR" },
+        { value: "5", label: "HERSHEY" },
+        { value: "22", label: "LAZZAR", active: false },
+      ]),
+    ).toEqual([
+      { value: "21", label: "LAZZAR (cliente #21)" },
+      { value: "5", label: "HERSHEY" },
+      { value: "22", label: "LAZZAR (cliente #22)", active: false },
+    ]);
   });
 });
