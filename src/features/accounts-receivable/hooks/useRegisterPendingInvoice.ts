@@ -8,6 +8,7 @@ import {
 } from "../schemas/register-pending-invoice.schema";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { handleDrfWriteError } from "@/src/utils/drfWriteErrors";
+import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 
 /**
  * Campos del formulario que pueden recibir un error de campo del backend.
@@ -68,7 +69,7 @@ export const useRegisterPendingInvoice = (
         }
 
         toast.error(
-          (error.response?.data as { detail?: string })?.detail ??
+          firstDrfMessage((error.response?.data as { detail?: unknown } | undefined)?.detail) ??
             "No se pudo registrar la factura. Intenta de nuevo.",
         );
         return;

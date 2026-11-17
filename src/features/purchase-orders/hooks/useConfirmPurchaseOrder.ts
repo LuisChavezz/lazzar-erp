@@ -4,6 +4,7 @@ import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOp
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
 
 export const useConfirmPurchaseOrder = () => {
   const queryClient = useQueryClient();
@@ -27,8 +28,7 @@ export const useConfirmPurchaseOrder = () => {
         const data = error.response?.data;
 
         if (statusCode === 400 && data) {
-          const validationErrors = data as Record<string, string[]>;
-          const firstMessage = Object.values(validationErrors).flat()[0];
+          const firstMessage = firstNestedDrfMessage(data);
           if (firstMessage) {
             toast.error(firstMessage);
             return;

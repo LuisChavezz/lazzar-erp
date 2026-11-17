@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
 import toast from "react-hot-toast";
 import { createProductionOrderOnboarding } from "@/src/features/production-orders/services/actions";
 import type { CreateProductionOrderBody } from "@/src/features/production-orders/interfaces/production-order.interface";
@@ -30,8 +31,7 @@ export const useCreateProductionOrder = () => {
         const statusCode = error.response?.status;
         const data = error.response?.data;
         if (statusCode === 400 && data) {
-          const validationErrors = data as Record<string, string[]>;
-          const firstMessage = Object.values(validationErrors).flat()[0];
+          const firstMessage = firstNestedDrfMessage(data);
           if (firstMessage) {
             toast.error(firstMessage);
             return;

@@ -81,7 +81,7 @@ export const useCreateStockMovement = (setError?: SetStockMovementError) => {
           }
         } else {
           toast.error(
-            (error.response?.data as { detail?: string })?.detail ??
+            firstDrfMessage((error.response?.data as { detail?: unknown } | undefined)?.detail) ??
               "Error al registrar el movimiento de stock",
           );
         }
