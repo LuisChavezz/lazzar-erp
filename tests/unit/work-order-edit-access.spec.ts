@@ -7,11 +7,12 @@ import { canEditWorkOrder } from "@/src/utils/workOrderEditAccess";
  * (nucleo-erp #786), que deja fuera a `is_staff`. Desde EC-673 la sesión ya
  * no le da el rol "admin" y el `jwt` corrige los tokens anteriores que traen
  * las banderas; uno sin ellas conserva ese rol. Aquí el rol no cuenta: solo
- * las banderas o el código de la ruta.
+ * las banderas o el código de EDICIÓN de la sección (`E-`, EC-895), que rige
+ * la ficha y sus avances.
  */
 
-const OR = "R-PRODUCCION-OR";
-const CM = "R-PRODUCCION-CM";
+const OR = "E-PRODUCCION-OR";
+const CM = "E-PRODUCCION-CM";
 
 test.describe("canEditWorkOrder", () => {
   test("el superusuario edita aunque su lista de permisos llegue vacía", () => {
@@ -26,9 +27,19 @@ test.describe("canEditWorkOrder", () => {
     expect(canEditWorkOrder(user, CM)).toBe(true);
   });
 
-  test("quien tiene el código de la ruta edita solo esa ficha", () => {
-    const user = { permissions: ["R-PRODUCCION", OR], is_superuser: false, is_admin_empresa: false };
+  test("quien tiene el E- de una sección edita solo esa ficha y sus avances", () => {
+    const user = { permissions: ["R-PRODUCCION", "R-PRODUCCION-OR", OR], is_superuser: false, is_admin_empresa: false };
     expect(canEditWorkOrder(user, OR)).toBe(true);
+    expect(canEditWorkOrder(user, CM)).toBe(false);
+  });
+
+  test("el código de lectura de la sección ya no basta para editar (EC-895)", () => {
+    const user = {
+      permissions: ["R-PRODUCCION", "R-PRODUCCION-OR", "R-PRODUCCION-CM", "C-PRODUCCION-OR", "D-PRODUCCION-CM"],
+      is_superuser: false,
+      is_admin_empresa: false,
+    };
+    expect(canEditWorkOrder(user, OR)).toBe(false);
     expect(canEditWorkOrder(user, CM)).toBe(false);
   });
 

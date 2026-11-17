@@ -10,8 +10,8 @@ import { drfActionErrorMessage } from "./drfWriteErrors";
  *
  * Lo que exige el `PATCH` del backend (nucleo-erp #786):
  *  - Solo producción: superusuario, admin de empresa o un rol del departamento
- *    PRODUCCION; el resto recibe `400 {"permiso": [...]}` (ver
- *    `canEditWorkOrder`).
+ *    PRODUCCION; el resto recibe `400 {"permiso": [...]}`. El frontend lo
+ *    aproxima con el código `E-` de la sección (ver `canEditWorkOrder`).
  *  - `prioridad` solo 1, 2 o 3; otro entero responde `400`.
  *  - Una orden en `7` (Cancelado) ya no se edita: cualquier `PATCH` responde
  *    `400` en el campo de estatus.
