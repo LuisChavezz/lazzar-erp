@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { invalidateCobroBankAccountData } from "@/src/features/collections/hooks/cobroQueryCache";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetBankAccountError = (
   field: keyof BankAccountFormValues,
@@ -35,12 +36,12 @@ export const useCreateBankAccount = (setError?: SetBankAccountError) => {
             // (`empresa`, `saldo_actual`). Esas no tienen dónde pintarse; el
             // toast de abajo las cubre.
             const fieldKey = key as keyof BankAccountFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

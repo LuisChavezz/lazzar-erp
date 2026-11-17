@@ -3,6 +3,7 @@ import { updateProductCategory } from "../services/actions";
 import { ProductCategoryFormValues } from "../schemas/product-category.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateProductCategoryPayload extends ProductCategoryFormValues {
   id: number;
@@ -36,12 +37,12 @@ export const useUpdateProductCategory = (
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof ProductCategoryFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

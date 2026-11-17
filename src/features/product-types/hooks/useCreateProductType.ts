@@ -3,6 +3,7 @@ import { createProductType } from "../services/actions";
 import { ProductTypeFormValues } from "../schemas/product-type.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetProductTypeError = (
   field: keyof ProductTypeFormValues,
@@ -28,12 +29,12 @@ export const useCreateProductType = (setError?: SetProductTypeError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof ProductTypeFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

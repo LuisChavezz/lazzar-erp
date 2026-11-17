@@ -5,6 +5,7 @@ import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCo
 import { createEmployee } from "../services/actions";
 import { EmployeeCreate } from "../interfaces/employee.interface";
 import { EmployeeServerErrorField } from "../schemas/employee.schema";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetEmployeeError = (
   field: EmployeeServerErrorField,
@@ -35,12 +36,12 @@ export const useCreateEmployee = (setError?: SetEmployeeError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as EmployeeServerErrorField;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

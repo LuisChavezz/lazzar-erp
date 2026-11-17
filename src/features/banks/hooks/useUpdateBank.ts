@@ -5,6 +5,7 @@ import { BancoCreate } from "../interfaces/bank.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateBankPayload extends BancoCreate {
   id: number;
@@ -34,12 +35,12 @@ export const useUpdateBank = (setError?: SetBankError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof BankFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

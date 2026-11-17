@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 import { createTraining } from "../services/actions";
 import { TrainingFormValues } from "../schemas/training.schema";
 
@@ -41,12 +41,12 @@ export const useCreateTraining = (setError?: SetTrainingError) => {
                 return;
               }
               const fieldKey = key as keyof TrainingFormValues;
-              const errorMessages = validationErrors[key];
+              const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-              if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+              if (errorMessage) {
                 setError(fieldKey, {
                   type: "server",
-                  message: errorMessages[0],
+                  message: errorMessage,
                 });
               }
             });

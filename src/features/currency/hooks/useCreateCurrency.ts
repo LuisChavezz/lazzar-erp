@@ -4,6 +4,7 @@ import { CreateCurrencyResponseError } from "../interfaces/currency.interface";
 import { CurrencyFormValues } from "../schemas/currency.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetCurrencyError = (
   field: keyof CurrencyFormValues,
@@ -29,12 +30,12 @@ export const useCreateCurrency = (setError?: SetCurrencyError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof CurrencyFormValues;
-            const errorMessages = (validationErrors as Record<string, string[]>)[key];
+            const errorMessage = firstNestedFieldMessage((validationErrors as Record<string, string[]>)[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

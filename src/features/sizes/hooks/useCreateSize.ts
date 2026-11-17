@@ -3,6 +3,7 @@ import { createSize } from "../services/actions";
 import { SizeFormValues } from "../schemas/size.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetSizeError = (
   field: keyof SizeFormValues,
@@ -28,12 +29,12 @@ export const useCreateSize = (setError?: SetSizeError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof SizeFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

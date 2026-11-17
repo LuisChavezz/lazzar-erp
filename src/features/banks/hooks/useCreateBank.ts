@@ -4,6 +4,7 @@ import { BankFormValues } from "../schemas/bank.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetBankError = (
   field: keyof BankFormValues,
@@ -33,12 +34,12 @@ export const useCreateBank = (setError?: SetBankError) => {
             // EC-798 la resuelve el servidor para todos, superusuario incluido).
             // Esas no tienen dónde pintarse; el toast de abajo las cubre.
             const fieldKey = key as keyof BankFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

@@ -3,6 +3,7 @@ import { updateSerieFolio } from "../services/actions";
 import { SerieFolioFormValues } from "../schemas/serie-folio.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetSerieFolioError = (
   field: keyof SerieFolioFormValues,
@@ -28,12 +29,12 @@ export const useUpdateSerieFolio = (setError?: SetSerieFolioError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof SerieFolioFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { updateShift } from "../services/actions";
 import { ShiftPayload } from "../interfaces/shift.interface";
 import { ShiftFormValues } from "../schemas/shift.schema";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 // En edición la empresa viaja tal cual la trae el registro: no debe
 // reasignarse por el workspace activo del usuario.
@@ -35,12 +36,12 @@ export const useUpdateShift = (setError?: SetShiftError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof ShiftFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

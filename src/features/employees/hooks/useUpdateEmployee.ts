@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { updateEmployee } from "../services/actions";
 import { EmployeePayload } from "../interfaces/employee.interface";
 import { EmployeeServerErrorField } from "../schemas/employee.schema";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 // En edición la empresa viaja tal cual la trae el registro: no debe
 // reasignarse por el workspace activo del usuario.
@@ -36,12 +37,12 @@ export const useUpdateEmployee = (setError?: SetEmployeeError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as EmployeeServerErrorField;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

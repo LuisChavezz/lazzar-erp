@@ -4,6 +4,7 @@ import { ProductFormValues } from "../schemas/product.schema";
 import type { ProductUpdate } from "../interfaces/product.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateProductPayload extends ProductUpdate {
   id: number;
@@ -33,12 +34,12 @@ export const useUpdateProduct = (setError?: SetProductError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof ProductFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });
