@@ -6,6 +6,7 @@ import {
   PIEZAS_RANGE_OPTIONS,
   procurementPedidosTable,
   salesPedidosTable,
+  SALES_VIRTUAL_FILTER_VALUES,
   SIN_CLASIFICACION,
   SUBTOTAL_RANGE_OPTIONS,
   toPedidoKpisApiParams,
@@ -119,13 +120,20 @@ test.describe("definiciones de las listas", () => {
 const apiParamsOf = (definition: Parameters<typeof readServerTableState>[0], query: string) =>
   toPedidoListApiParams(toServerTableCriteria(definition, stateOf(definition, query)));
 
+/** Lo mismo para Mis pedidos, con SUS valores virtuales (como `SalesOrderList`). */
+const salesParamsOf = (query: string) =>
+  toPedidoListApiParams(
+    toServerTableCriteria(salesPedidosTable, stateOf(salesPedidosTable, query)),
+    SALES_VIRTUAL_FILTER_VALUES,
+  );
+
 test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
   test("estatus CSV, «Cancelado» incluido (`estatus=5`)", () => {
-    expect(apiParamsOf(salesPedidosTable, "estatus=5")).toEqual({
+    expect(salesParamsOf("estatus=5")).toEqual({
       estatus: "5",
       ordering: "-created_at,-id",
     });
-    expect(apiParamsOf(salesPedidosTable, "estatus=4,3").estatus).toBe("3,4");
+    expect(salesParamsOf("estatus=4,3").estatus).toBe("3,4");
     expect(stateOf(salesPedidosTable, "estatus=6").filters).toEqual({});
   });
 
@@ -133,16 +141,16 @@ test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
     const state = stateOf(salesPedidosTable, `clasificacion=${SIN_CLASIFICACION}`);
     // La URL conserva la opción virtual (ida y vuelta).
     expect(toServerTableCriteria(salesPedidosTable, state).clasificacion).toBe(SIN_CLASIFICACION);
-    expect(apiParamsOf(salesPedidosTable, `clasificacion=${SIN_CLASIFICACION}`)).toEqual({
+    expect(salesParamsOf(`clasificacion=${SIN_CLASIFICACION}`)).toEqual({
       sin_clasificar: "true",
       ordering: "-created_at,-id",
     });
   });
 
   test("los códigos pasan como CSV normalizado; un valor inválido o mezclado se descarta", () => {
-    expect(apiParamsOf(salesPedidosTable, "clasificacion=B,A").clasificacion).toBe("A,B");
+    expect(salesParamsOf("clasificacion=B,A").clasificacion).toBe("A,B");
     for (const raw of ["a", "A,Z", `A,${SIN_CLASIFICACION}`, ""]) {
-      const params = apiParamsOf(salesPedidosTable, `clasificacion=${encodeURIComponent(raw)}`);
+      const params = salesParamsOf(`clasificacion=${encodeURIComponent(raw)}`);
       expect(params).not.toHaveProperty("clasificacion");
       expect(params).not.toHaveProperty("sin_clasificar");
     }
@@ -150,8 +158,7 @@ test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
 
   test("se combina con `q`, `mes`, `confirmado` y el orden por confirmación o estatus", () => {
     expect(
-      apiParamsOf(
-        salesPedidosTable,
+      salesParamsOf(
         `q=acme&mes=2026-11&confirmado=false&estatus=3&clasificacion=${SIN_CLASIFICACION}&ordering=fecha_confirmacion`,
       ),
     ).toEqual({
@@ -162,7 +169,7 @@ test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
       sin_clasificar: "true",
       ordering: "fecha_confirmacion,-id",
     });
-    expect(apiParamsOf(salesPedidosTable, "ordering=-estatus").ordering).toBe("-estatus,-id");
+    expect(salesParamsOf("ordering=-estatus").ordering).toBe("-estatus,-id");
   });
 
   test("sin permiso de importes se conservan estatus y clasificación", () => {
@@ -173,6 +180,30 @@ test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
 });
 
 test.describe("Mesa de Control y Compras no cambian con EC-755", () => {
+  test("sin los valores virtuales de Mis pedidos no se traduce nada (opt-in por lista)", () => {
+    // Aunque un códec dejara pasar el valor, una lista que no pasa
+    // `SALES_VIRTUAL_FILTER_VALUES` lo enviaría tal cual, nunca `sin_clasificar`.
+    expect(toPedidoListApiParams({ clasificacion: SIN_CLASIFICACION })).toEqual({
+      clasificacion: SIN_CLASIFICACION,
+    });
+    expect(toPedidoListApiParams({ clasificacion: "A,C" }, SALES_VIRTUAL_FILTER_VALUES)).toEqual({
+      clasificacion: "A,C",
+    });
+  });
+
+  test("los indicadores de Mesa reciben los mismos parámetros que antes", () => {
+    const criteria = toServerTableCriteria(
+      mesaPedidosTable,
+      stateOf(mesaPedidosTable, "clasificacion=C,A&rango_piezas=1-50&confirmado=false&q=x&ordering=piezas"),
+    );
+    expect(toPedidoKpisApiParams(criteria)).toEqual({
+      clasificacion: "A,C",
+      piezas_max: "51",
+      confirmado: "false",
+      q: "x",
+    });
+  });
+
   test("Mesa: «Sin clasificación» no es un valor válido y nunca envía `sin_clasificar`", () => {
     expect(stateOf(mesaPedidosTable, `clasificacion=${SIN_CLASIFICACION}`).filters).toEqual({});
     expect(apiParamsOf(mesaPedidosTable, `clasificacion=${SIN_CLASIFICACION}`)).toEqual({
