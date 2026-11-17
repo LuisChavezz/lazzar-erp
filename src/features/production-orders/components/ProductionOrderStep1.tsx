@@ -129,17 +129,18 @@ export function ProductionOrderStep1({
     );
   };
 
-  // EC-898: con pedido vinculado solo se ofrecen SUS muestras (el backend
-  // rechaza las de otro pedido). Lista para cuando la OP lleve varios pedidos.
+  // EC-898: las muestras solo se ofrecen con pedido vinculado, y solo las de
+  // ese pedido (ver `isOfferedForPedidos`). Lista para cuando la OP lleve
+  // varios pedidos.
   const linkedPedidoIds = pedido ? [pedido.id] : [];
   const offeredProductionMatches = productionMatches.filter((option) =>
     isOfferedForPedidos(option, linkedPedidoIds),
   );
 
   /**
-   * Cambia el pedido vinculado y quita de la selección las muestras que ya no
-   * se ofrecen (de otro pedido), avisando cuántas: si no, seguirían fijas
-   * arriba y elegidas aunque la lista ya no las muestre.
+   * Cambia el pedido vinculado (o lo quita, con `null`) y quita de la
+   * selección las muestras que ya no se ofrecen, avisando cuántas: si no,
+   * seguirían fijas arriba y elegidas aunque la lista ya no las muestre.
    */
   const changePedido = (next: SelectedProductionOrderPedido | null) => {
     setPedido(next);
@@ -147,10 +148,12 @@ export function ProductionOrderStep1({
     const removed = selected.filter((option) => !isOfferedForPedidos(option, nextIds));
     if (removed.length === 0) return;
     setSelected((prev) => prev.filter((option) => isOfferedForPedidos(option, nextIds)));
+    const count =
+      removed.length === 1 ? "Se quitó 1 muestra" : `Se quitaron ${removed.length} muestras`;
     toast(
-      removed.length === 1
-        ? `Se quitó 1 muestra que no es del pedido ${next?.label}.`
-        : `Se quitaron ${removed.length} muestras que no son del pedido ${next?.label}.`,
+      next
+        ? `${count} que no ${removed.length === 1 ? "es" : "son"} del pedido ${next.label}.`
+        : `${count}: sin pedido vinculado no se pueden incluir muestras.`,
     );
   };
 
