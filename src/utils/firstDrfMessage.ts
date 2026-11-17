@@ -34,6 +34,10 @@ const DRF_GENERAL_KEYS = ["detail", "non_field_errors"] as const;
 /** Clave de un diccionario de errores por renglón (`{"1": {...}}`). */
 const ROW_INDEX_KEY = /^\d+$/;
 
+/** Objeto (no lista): la forma de los errores de campo de UN renglón. */
+const isFieldErrors = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
 /** Antepone el renglón (base 1) al mensaje, si el mensaje salió de uno. */
 const withRow = (message: string, row: number | undefined) =>
   row === undefined ? message : `Renglón ${row + 1}: ${message}`;
@@ -42,6 +46,12 @@ const withRow = (message: string, row: number | undefined) =>
  * Recorre un valor de error en profundidad y devuelve su primer mensaje no
  * vacío. `row` es el renglón más externo por el que se pasó (se conserva al
  * bajar más niveles).
+ *
+ * Un renglón se reconoce por su FORMA, no por la clave: es un objeto de errores
+ * de campo, ya sea en una posición de lista o bajo una clave numérica
+ * (`{"1": {"cantidad": [...]}}`). Una clave numérica cuyo valor ya es un
+ * mensaje o una lista de mensajes (`{"5123": ["msg"]}`) suele ser el id de un
+ * registro, no una posición, y no lleva "Renglón".
  */
 function firstMessageDeep(value: unknown, row: number | undefined): string | undefined {
   if (typeof value === "string") {
@@ -50,7 +60,7 @@ function firstMessageDeep(value: unknown, row: number | undefined): string | und
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
       // Un objeto dentro de una lista es un renglón; un string, un mensaje más.
-      const entryRow = row ?? (entry && typeof entry === "object" && !Array.isArray(entry) ? index : undefined);
+      const entryRow = row ?? (isFieldErrors(entry) ? index : undefined);
       const message = firstMessageDeep(entry, entryRow);
       if (message) return message;
     }
@@ -58,7 +68,8 @@ function firstMessageDeep(value: unknown, row: number | undefined): string | und
   }
   if (value && typeof value === "object") {
     for (const [key, entry] of Object.entries(value)) {
-      const entryRow = row ?? (ROW_INDEX_KEY.test(key) ? Number(key) : undefined);
+      const entryRow =
+        row ?? (ROW_INDEX_KEY.test(key) && isFieldErrors(entry) ? Number(key) : undefined);
       const message = firstMessageDeep(entry, entryRow);
       if (message) return message;
     }
@@ -102,6 +113,16 @@ export function firstNestedDrfMessage(data: unknown): string | undefined {
     if (message) return message;
   }
   return firstMessageDeep(body, undefined);
+}
+
+/**
+ * Primer mensaje de UN campo de un cuerpo 400 de DRF, siempre un string (o
+ * `undefined`): `"msg"`, `["msg"]` o un valor anidado, que se recorre igual que
+ * en `firstNestedDrfMessage`. Para pasarlo a `setError` de un formulario sin que
+ * llegue un objeto al render del campo (EC-898).
+ */
+export function firstNestedFieldMessage(value: unknown): string | undefined {
+  return firstMessageDeep(value, undefined);
 }
 
 /**
