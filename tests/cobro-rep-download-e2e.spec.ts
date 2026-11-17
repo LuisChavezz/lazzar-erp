@@ -18,9 +18,9 @@ import path from "node:path";
  *    cada paso (archivo base64, 403 o 502): nunca sale a Facturama.
  * Ninguna otra petición se toca.
  *
- * La cuenta necesita abrir `/finance/collections`, que el listado tenga al
- * menos un cobro y `R-FIN-FACTURAMA` (o ser admin): sin el permiso el detalle
- * muestra la nota en lugar de los botones y los pasos de descarga fallan.
+ * La cuenta necesita abrir `/finance/collections` y que el listado tenga al
+ * menos un cobro. Desde EC-859 la descarga no pide `R-FIN-FACTURAMA`: el
+ * archivo se llama `REP-<folio del cobro>`.
  *
  * Variables de entorno:
  *   BASE_URL            URL del frontend (default `http://localhost:3000`)
@@ -74,11 +74,14 @@ test("Cobros — descarga del REP (PDF, XML, 403 y 502)", async ({ page }) => {
 
   // ── Intercepciones ────────────────────────────────────────────────────────
   // El listado pasa al backend y se le pone el REP al primer cobro.
+  let archivoRep = "";
   await page.route(esListado, async (route: Route) => {
     if (route.request().method() !== "GET") return route.fallback();
     const response = await route.fetch();
     const cobros = (await response.json()) as Record<string, unknown>[];
     if (cobros[0]) {
+      // Nombre esperado (EC-859): `REP-<folio>`; un cobro aplicado siempre tiene folio.
+      archivoRep = cobros[0].folio ? `REP-${String(cobros[0].folio)}` : `REP-ID${String(cobros[0].id)}`;
       Object.assign(cobros[0], {
         rep_uuid: REP_UUID,
         rep_facturama_id: REP_FACTURAMA_ID,
@@ -115,8 +118,8 @@ test("Cobros — descarga del REP (PDF, XML, 403 y 502)", async ({ page }) => {
     });
   });
 
-  const botonPdf = page.getByRole("button", { name: "Descargar PDF" });
-  const botonXml = page.getByRole("button", { name: "Descargar XML" });
+  const botonPdf = page.getByRole("button", { name: "Descargar PDF del REP" });
+  const botonXml = page.getByRole("button", { name: "Descargar XML del REP" });
   // `includeHidden`: con el detalle abierto, el modal de Radix marca con
   // `aria-hidden` todo lo que queda fuera de él, incluido el contenedor de los
   // toasts; sin esto el rol no se encuentra aunque el toast se vea.
@@ -153,20 +156,20 @@ test("Cobros — descarga del REP (PDF, XML, 403 y 502)", async ({ page }) => {
   });
 
   // ── Paso 2: PDF ──────────────────────────────────────────────────────────
-  await runStep("Paso 2 · Descargar PDF baja REP-{uuid}.pdf con el contenido decodificado", async () => {
+  await runStep("Paso 2 · Descargar PDF baja REP-{folio}.pdf con el contenido decodificado", async () => {
     modo = "archivo";
     const [descarga] = await Promise.all([page.waitForEvent("download"), botonPdf.click()]);
-    expect(descarga.suggestedFilename()).toBe(`REP-${REP_UUID}.pdf`);
+    expect(descarga.suggestedFilename()).toBe(`${archivoRep}.pdf`);
     const ruta = await descarga.path();
     expect(fs.readFileSync(ruta, "utf8")).toBe(PDF);
     expect(pedidas.at(-1)).toMatch(new RegExp(`/finanzas/facturama/cfdi/pdf/issued/${REP_FACTURAMA_ID}/$`));
   });
 
   // ── Paso 3: XML ──────────────────────────────────────────────────────────
-  await runStep("Paso 3 · Descargar XML baja REP-{uuid}.xml con el contenido decodificado", async () => {
+  await runStep("Paso 3 · Descargar XML baja REP-{folio}.xml con el contenido decodificado", async () => {
     modo = "archivo";
     const [descarga] = await Promise.all([page.waitForEvent("download"), botonXml.click()]);
-    expect(descarga.suggestedFilename()).toBe(`REP-${REP_UUID}.xml`);
+    expect(descarga.suggestedFilename()).toBe(`${archivoRep}.xml`);
     expect(fs.readFileSync(await descarga.path(), "utf8")).toBe(XML);
     expect(pedidas.at(-1)).toMatch(new RegExp(`/finanzas/facturama/cfdi/xml/issued/${REP_FACTURAMA_ID}/$`));
   });
