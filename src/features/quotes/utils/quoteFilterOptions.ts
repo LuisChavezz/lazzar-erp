@@ -1,6 +1,11 @@
 import { buildDistinctFilterOptions, type ColumnFilterOption } from "@/src/utils/columnFilterOptions";
 import { SIN_CLIENTE, type QuoteClienteOption } from "../interfaces/quote-list.interface";
-import { getQuoteClienteLabel, SIN_CLIENTE_LABEL, type QuoteClienteFields } from "./quoteClienteLabel";
+import {
+  getQuoteClienteLabel,
+  SIN_CLIENTE_LABEL,
+  withHomonymClienteIds,
+  type QuoteClienteFields,
+} from "./quoteClienteLabel";
 
 /**
  * Opciones del filtro de cliente, por id:
@@ -21,22 +26,13 @@ export const buildQuoteClienteFilterOptions = (
   options: readonly QuoteClienteOption[],
 ): ColumnFilterOption[] => {
   const labelOf = (option: QuoteClienteOption) => option.label.trim() || `Cliente #${option.value}`;
-  const clientes = options.filter((option) => option.value !== SIN_CLIENTE);
-  const countByLabel = new Map<string, number>();
-  for (const option of clientes) {
-    const label = labelOf(option);
-    countByLabel.set(label, (countByLabel.get(label) ?? 0) + 1);
-  }
+  const clientes = options
+    .filter((option) => option.value !== SIN_CLIENTE)
+    .map((option) => ({ value: String(option.value), label: labelOf(option) }));
   const sinCliente = options.find((option) => option.value === SIN_CLIENTE);
   return [
     ...(sinCliente ? [{ value: SIN_CLIENTE, label: sinCliente.label || SIN_CLIENTE_LABEL }] : []),
-    ...clientes.map((option) => {
-      const label = labelOf(option);
-      return {
-        value: String(option.value),
-        label: (countByLabel.get(label) ?? 0) > 1 ? `${label} (cliente #${option.value})` : label,
-      };
-    }),
+    ...withHomonymClienteIds(clientes),
   ];
 };
 
