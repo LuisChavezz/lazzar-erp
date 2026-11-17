@@ -224,6 +224,9 @@ test.describe("aviso de fila obsoleta", () => {
   test("Quitar: la cotización ya no está ligada o ya se autorizó", () => {
     const quitar = { kind: "quitar" as const, cotizacionId: 5 };
     expect(notice(quitar, detail("Cotizada", [{ id: 5, estatus: 1 }]))).toBeNull();
+    // Sin el arreglo (el detalle se defiende de ese caso con `?? []`) no se sabe:
+    // sigue ligada y el diálogo no se cierra.
+    expect(notice(quitar, detail("Cotizada"))).toBeNull();
     expect(notice(quitar, detail("Cotizada", [{ id: 6, estatus: 1 }]))?.message).toBe(
       "La cotización #5 ya no está ligada a esta oportunidad."
     );
