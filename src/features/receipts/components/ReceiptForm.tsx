@@ -36,6 +36,7 @@ export default function ReceiptForm({
   const {
     form,
     formRef,
+    cantidadesRef,
     formKey,
     isPending,
     warehouses,
@@ -56,6 +57,9 @@ export default function ReceiptForm({
   const renglonesCompra = new Map(
     candidate.type === "compra" ? candidate.order.detalle.map((d) => [d.id, d]) : [],
   );
+  // Error de "al menos una cantidad > 0" (EC-893): va en el encabezado de la
+  // sección de cantidades o, si la orden no trae renglones, en su aviso.
+  const cantidadesError = getError("cantidades")?.message;
   const headerSubtitle =
     candidate.type === "compra"
       ? `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`
@@ -236,8 +240,27 @@ export default function ReceiptForm({
         </section>
 
         {/* ── Detalle de la orden ───────────────────────────────────── */}
+        {detalle.length === 0 && (
+          <section
+            ref={cantidadesRef}
+            className="rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900 px-8 py-5 mb-8"
+          >
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              La orden no tiene productos para recibir.
+            </p>
+            {cantidadesError && (
+              <p role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                {cantidadesError}
+              </p>
+            )}
+          </section>
+        )}
+
         {detalle.length > 0 && (
-          <section className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8">
+          <section
+            ref={cantidadesRef}
+            className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8"
+          >
             <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
                 <PackageCheckIcon className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
@@ -249,6 +272,11 @@ export default function ReceiptForm({
                 <p className="text-xs text-slate-500">
                   {detalle.length} producto{detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
                 </p>
+                {cantidadesError && (
+                  <p role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                    {cantidadesError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -257,6 +285,13 @@ export default function ReceiptForm({
                 {detalle.map((d) => {
                   const fieldName = `cantidades.${d.id}` as const;
                   const renglonCompra = renglonesCompra.get(d.id);
+                  // Techo del renglón: lo pendiente (el backend ya lo manda
+                  // >= 0). El selector solo captura enteros, así que un
+                  // pendiente fraccionario se topa a su parte entera.
+                  const pendiente = Math.max(
+                    0,
+                    Math.floor(Number(d.cantidad_pendiente) || 0),
+                  );
                   const atributos = variantAttributesLabel(
                     renglonCompra?.producto_variante_color,
                     renglonCompra?.producto_variante_talla,
@@ -285,9 +320,12 @@ export default function ReceiptForm({
                         {(field) => (
                           <QuantitySelector
                             value={Number(field.state.value) || 0}
-                            onChange={(next) =>
-                              field.handleChange(String(next))
-                            }
+                            onChange={(next) => {
+                              // `QuantitySelector` no tiene techo: se topa aquí,
+                              // así que nunca se captura más que lo pendiente.
+                              field.handleChange(String(Math.min(next, pendiente)));
+                              clearFieldErrors("cantidades");
+                            }}
                             min={0}
                             label={`Cantidad de ${d.producto_nombre}${atributos ? ` (${atributos})` : ""}`}
                           />
