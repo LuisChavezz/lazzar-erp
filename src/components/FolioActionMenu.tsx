@@ -38,6 +38,13 @@ interface NameModeProps {
   subtitle?: ReactNode;
   /** Badge de estatus de negocio (`estado`) bajo el nombre. */
   status?: ReactNode;
+  /**
+   * El nombre no es propio del registro sino DERIVADO (p. ej. una oportunidad
+   * sin título que se nombra por su cliente): se pinta atenuado y en cursiva, y
+   * el tooltip agrega esta aclaración ("Sin título"). Sin él, el nombre se
+   * pinta como siempre.
+   */
+  derivedNameHint?: string;
 }
 
 /**
@@ -79,11 +86,23 @@ export function FolioActionMenu(props: FolioModeProps | NameModeProps) {
   );
 }
 
-function NameActionMenu({ name, detail, items, active, subtitle, status }: NameModeProps) {
+function NameActionMenu({
+  name,
+  detail,
+  items,
+  active,
+  subtitle,
+  status,
+  derivedNameHint,
+}: NameModeProps) {
   const menuItems: ActionMenuItem[] = detail
     ? [{ label: "Ver detalle", icon: ViewIcon, ...detail }, ...items]
     : items;
   const activeLabel = active ? "Activo" : "Inactivo";
+  const nameTitle = name ? (derivedNameHint ? `${name} (${derivedNameHint})` : name) : undefined;
+  // En el `<span>` del texto: su color propio gana al heredado del botón
+  // (también al de hover), como el nombre derivado de siempre.
+  const derivedCls = derivedNameHint ? " italic text-slate-400 dark:text-slate-500" : "";
   return (
     <div className="flex flex-col items-start gap-1 min-w-0">
       <div className="flex items-center gap-2 min-w-0 max-w-full">
@@ -105,8 +124,8 @@ function NameActionMenu({ name, detail, items, active, subtitle, status }: NameM
           // como texto plano en vez de desaparecer.
           renderWhenEmpty={
             <span
-              className="truncate font-medium text-slate-700 dark:text-slate-200"
-              title={name || undefined}
+              className={`truncate font-medium${derivedCls || " text-slate-700 dark:text-slate-200"}`}
+              title={nameTitle}
             >
               {name || "—"}
             </span>
@@ -115,7 +134,7 @@ function NameActionMenu({ name, detail, items, active, subtitle, status }: NameM
           {/* `title` con el nombre completo: truncado, solo así se puede leer. Al
               pasar el cursor sobre el texto gana el del span sobre el
               "Ver acciones" del botón; el menú se abre igual. */}
-          <span className="truncate" title={name || undefined}>
+          <span className={`truncate${derivedCls}`} title={nameTitle}>
             {name || "—"}
           </span>
         </RowMenuTrigger>
