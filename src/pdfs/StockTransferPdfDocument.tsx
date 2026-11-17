@@ -46,18 +46,20 @@ export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdf
   const ruta = `De ${textOrDash(transfer.almacen_origen_nombre)} a ${textOrDash(transfer.almacen_destino_nombre)}`;
 
   const columns: PdfColumn<TransferenciaDetalleLine>[] = [
-    ...wmsProductColumns<TransferenciaDetalleLine>(),
-    { ...wmsQuantityColumn<TransferenciaDetalleLine>("cantidad", "Cantidad", (line) => line.cantidad), bold: true },
+    // Anchos en decenas de punto: ver `wmsDocumentPdf.ts`. Las ubicaciones
+    // caben con su encabezado en un renglón; el producto se lleva el resto.
+    ...wmsProductColumns<TransferenciaDetalleLine>(17.15),
+    { ...wmsQuantityColumn<TransferenciaDetalleLine>("cantidad", "Cantidad", 3.4, (line) => line.cantidad), bold: true },
     ...conditionalColumn(lineas, (line) => line.ubicacion_origen_nombre, {
       id: "ubicacion_origen",
       header: "Ubicación origen",
-      flex: 1.25,
+      flex: 6.45,
       cell: (line) => textOrDash(line.ubicacion_origen_nombre),
     }),
     ...conditionalColumn(lineas, (line) => line.ubicacion_destino_nombre, {
       id: "ubicacion_destino",
       header: "Ubicación destino",
-      flex: 1.25,
+      flex: 6.45,
       cell: (line) => textOrDash(line.ubicacion_destino_nombre),
     }),
   ];

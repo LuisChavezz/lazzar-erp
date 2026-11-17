@@ -46,8 +46,8 @@ type PickingPdfDocumentProps = {
   company: PdfCompany | null;
 };
 
-const quantity = (id: string, header: string, value: (line: PickingDetalleLine) => string) =>
-  wmsQuantityColumn<PickingDetalleLine>(id, header, value);
+const quantity = (id: string, header: string, flex: number, value: (line: PickingDetalleLine) => string) =>
+  wmsQuantityColumn<PickingDetalleLine>(id, header, flex, value);
 
 export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps) => {
   const lineas = picking.picking_detalle ?? [];
@@ -55,21 +55,22 @@ export const PickingPdfDocument = ({ picking, company }: PickingPdfDocumentProps
   const clienteText = pedidoClienteLabel(cliente);
 
   const columns: PdfColumn<PickingDetalleLine>[] = [
-    ...wmsProductColumns<PickingDetalleLine>(),
+    // Anchos en decenas de punto: ver `wmsDocumentPdf.ts`.
+    ...wmsProductColumns<PickingDetalleLine>(8.65),
     ...conditionalColumn(lineas, (line) => line.ubicacion_nombre, {
       id: "ubicacion",
       header: "Ubicación",
-      flex: 1.25,
+      flex: 4.95,
       cell: (line) => textOrDash(line.ubicacion_nombre),
     }),
-    quantity("solicitada", "Solicitada", (line) => line.cantidad_solicitada),
-    quantity("asignada", "Asignada", (line) => line.cantidad_asignada),
-    { ...quantity("surtida", "Surtida", (line) => line.cantidad_surtida), bold: true },
-    quantity("diferencia", "Diferencia", (line) => line.diferencia),
+    quantity("solicitada", "Solicitada", 3.75, (line) => line.cantidad_solicitada),
+    quantity("asignada", "Asignada", 3.6, (line) => line.cantidad_asignada),
+    { ...quantity("surtida", "Surtida", 2.85, (line) => line.cantidad_surtida), bold: true },
+    quantity("diferencia", "Diferencia", 3.8, (line) => line.diferencia),
     {
       id: "estatus",
       header: "Estatus",
-      flex: 1.05,
+      flex: 4.05,
       cell: (line) => PICKING_LINEA_ESTADO_CONFIG[line.estado]?.label ?? textOrDash(line.estado),
     },
   ];

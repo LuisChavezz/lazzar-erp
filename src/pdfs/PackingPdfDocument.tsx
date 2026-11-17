@@ -40,8 +40,8 @@ type PackingPdfDocumentProps = {
   company: PdfCompany | null;
 };
 
-const quantity = (id: string, header: string, value: (line: PackingDetalleLine) => string) =>
-  wmsQuantityColumn<PackingDetalleLine>(id, header, value);
+const quantity = (id: string, header: string, flex: number, value: (line: PackingDetalleLine) => string) =>
+  wmsQuantityColumn<PackingDetalleLine>(id, header, flex, value);
 
 export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps) => {
   const lineas = packing.packing_detalle ?? [];
@@ -49,28 +49,30 @@ export const PackingPdfDocument = ({ packing, company }: PackingPdfDocumentProps
   const clienteText = pedidoClienteLabel(cliente);
 
   const columns: PdfColumn<PackingDetalleLine>[] = [
-    ...wmsProductColumns<PackingDetalleLine>(),
+    // Anchos en decenas de punto: ver `wmsDocumentPdf.ts`. Es la tabla más
+    // ancha de WMS (once columnas): el producto se queda con lo que sobra.
+    ...wmsProductColumns<PackingDetalleLine>(5.3),
     ...conditionalColumn(lineas, (line) => line.ubicacion_nombre, {
       id: "ubicacion",
       header: "Ubicación",
-      flex: 1.25,
+      flex: 4.95,
       cell: (line) => textOrDash(line.ubicacion_nombre),
     }),
     ...conditionalColumn(lineas, (line) => line.caja_numero, {
       id: "caja",
       header: "Caja",
-      flex: 0.55,
+      flex: 1.9,
       align: "right",
       cell: (line) => (line.caja_numero == null ? textOrDash(null) : String(line.caja_numero)),
     }),
-    quantity("solicitada", "Solicitada", (line) => line.cantidad_solicitada),
-    quantity("asignada", "Asignada", (line) => line.cantidad_asignada),
-    quantity("surtida", "Surtida", (line) => line.cantidad_surtida),
-    { ...quantity("empacada", "Empacada", (line) => line.cantidad_empacada), bold: true },
+    quantity("solicitada", "Solicitada", 3.75, (line) => line.cantidad_solicitada),
+    quantity("asignada", "Asignada", 3.6, (line) => line.cantidad_asignada),
+    quantity("surtida", "Surtida", 2.85, (line) => line.cantidad_surtida),
+    { ...quantity("empacada", "Empacada", 3.95, (line) => line.cantidad_empacada), bold: true },
     {
       id: "estatus",
       header: "Estatus",
-      flex: 1.2,
+      flex: 4.75,
       cell: (line) => PACKING_STATUS_CONFIG[line.estado]?.label ?? textOrDash(line.estado),
     },
   ];
