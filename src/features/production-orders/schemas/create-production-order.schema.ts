@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+/** Mensaje del límite de decimales de `cantidad` (EC-898). */
+export const CANTIDAD_DECIMALES_MESSAGE = "La cantidad admite máximo 2 decimales";
+
+/**
+ * ¿`value` tiene a lo más 2 decimales? El backend guarda `cantidad` como
+ * `DecimalField(decimal_places=2)` y rechaza más decimales con un 400 por
+ * renglón; aquí se bloquea antes, sin redondear. La tolerancia absorbe el
+ * error de punto flotante (`0.29 * 100` = 28.999999999999996).
+ */
+export const hasAtMostTwoDecimals = (value: number) =>
+  Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
+
 /**
  * Renglón del detalle (`orden_produccion_detalle`): una variante de producto a
  * fabricar con su cantidad, unidad de medida y observaciones. El backend
@@ -11,7 +23,10 @@ export const CreateProductionOrderDetalleSchema = z
     // Una de las dos: variante de catálogo o variante de producción (muestra).
     producto_variante_id: z.number().int().positive().optional(),
     variante_produccion_id: z.number().int().positive().optional(),
-    cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
+    cantidad: z
+      .number()
+      .positive("La cantidad debe ser mayor a 0")
+      .refine(hasAtMostTwoDecimals, CANTIDAD_DECIMALES_MESSAGE),
     unidad: z.number().int().positive("Selecciona una unidad"),
     observaciones: z.string(),
   })
