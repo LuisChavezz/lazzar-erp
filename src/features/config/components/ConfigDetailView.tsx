@@ -279,7 +279,11 @@ export function ConfigDetailView({ selectedView, onBack }: ConfigDetailViewProps
       {selectedView === "bom" && (
         <div className="flex flex-col gap-6">
           {renderHeader("Materiales")}
-          <BomList />
+          {/* Modo servidor (EC-897): lee su estado de la URL con
+              `useSearchParams`, que requiere un límite de Suspense. */}
+          <Suspense fallback={<ConfigDetailLoadingSkeleton />}>
+            <BomList />
+          </Suspense>
         </div>
       )}
 
