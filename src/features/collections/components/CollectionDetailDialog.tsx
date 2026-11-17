@@ -47,7 +47,7 @@ import {
   COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE,
   COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
 } from "../utils/cobroDraft";
-import { COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE, hasCobroRepFile } from "../utils/cobroRepDownload";
+import { hasCobroRepFile } from "../utils/cobroRepDownload";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
 
@@ -87,12 +87,6 @@ interface CollectionDetailDialogProps {
    * (`isDeletableCobroDraft`); con folio se ofrece "Cancelar cobro" (`onCancel`).
    */
   onDelete?: () => void;
-  /**
-   * ¿El usuario tiene el permiso de descarga del REP (`R-FIN-FACTURAMA`)? Solo
-   * el permiso: con el REP timbrado, `true` ofrece "Descargar PDF/XML" y `false`
-   * muestra una nota.
-   */
-  hasRepDownloadPermission?: boolean;
 }
 
 export function CollectionDetailDialog({
@@ -105,7 +99,6 @@ export function CollectionDetailDialog({
   onEdit,
   onApply,
   onDelete,
-  hasRepDownloadPermission = false,
 }: CollectionDetailDialogProps) {
   // Sin parámetros: la MISMA entrada de caché que la pantalla de CxC, y con las
   // `Pagada`/`Cancelada` incluidas (las líneas de cobros viejos apuntan ahí).
@@ -285,8 +278,7 @@ export function CollectionDetailDialog({
               </Button>
             )}
             {/* Con permiso y un REP cancelable (`canCancelCobroRep`, en
-                cualquier estatus del cobro); el diálogo vive en `CollectionList`.
-                No depende de `R-FIN-FACTURAMA`: la nota de abajo es solo de descargas. */}
+                cualquier estatus del cobro); el diálogo vive en `CollectionList`. */}
             {onCancelRep && (
               <Button
                 type="button"
@@ -299,12 +291,8 @@ export function CollectionDetailDialog({
               </Button>
             )}
           </div>
-          {repHasFile &&
-            (hasRepDownloadPermission ? (
-              <CobroRepDownloadButtons cobro={cobro} />
-            ) : (
-              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{COBRO_REP_DOWNLOAD_FORBIDDEN_MESSAGE}</p>
-            ))}
+          {/* Sin permiso aparte (EC-859): basta ver el cobro. */}
+          {repHasFile && <CobroRepDownloadButtons cobro={cobro} />}
           {repPending && (
             <div
               role="status"

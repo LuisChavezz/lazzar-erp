@@ -21,7 +21,6 @@ import { CollectionRowActionsProvider } from "../hooks/useCollectionRowActions";
 import { canStampCobroRep } from "../utils/cobroRepStamping";
 import { canOfferCobroCancel } from "../utils/cobroCancellation";
 import { canCancelCobroRep } from "../utils/cobroRepCancellation";
-import { hasRepDownloadPermission } from "../utils/cobroRepDownload";
 import { CollectionCancelDialog } from "./CollectionCancelDialog";
 import { CobroDraftEditDialog } from "./CobroDraftEditDialog";
 import { CobroDraftApplyDialog } from "./CobroDraftApplyDialog";
@@ -184,7 +183,6 @@ export function CollectionList() {
           onEdit={canManageDraft ? () => setEditId(detailCobro.id) : undefined}
           onApply={canManageDraft ? () => setApplyId(detailCobro.id) : undefined}
           onDelete={canManageDraft && isDeletableDraft ? () => setDeleteId(detailCobro.id) : undefined}
-          hasRepDownloadPermission={hasRepDownloadPermission(session?.user)}
         />
       )}
 

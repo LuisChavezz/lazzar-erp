@@ -28,7 +28,7 @@ export function documentPdfFileName(
   folio: string | null | undefined,
   id: number,
 ): string {
-  const safeFolio = sanitizeFileNamePart(folio ?? "");
+  const safeFolio = sanitizeDocumentFileNamePart(folio ?? "");
   if (!safeFolio) return `${type}-ID${id}.pdf`;
   const series = DOCUMENT_FOLIO_SERIES[type] ?? [type];
   const segments = safeFolio.split("-");
@@ -57,7 +57,12 @@ const DOCUMENT_FOLIO_SERIES: Partial<Record<DocumentPdfType, readonly string[]>>
   PAK: ["PAK", "PACK"],
 };
 
-const sanitizeFileNamePart = (value: string): string =>
+/**
+ * Saneo de un folio para un nombre de archivo (ver `documentPdfFileName`):
+ * `/`, espacios, acentos… → `-`, sin guiones repetidos ni en las orillas.
+ * Lo reutilizan los archivos oficiales (el REP, `REP-<folio del cobro>`).
+ */
+export const sanitizeDocumentFileNamePart = (value: string): string =>
   value
     .trim()
     .replace(/[^A-Za-z0-9._-]/g, "-")

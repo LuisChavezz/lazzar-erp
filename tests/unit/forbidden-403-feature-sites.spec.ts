@@ -4,7 +4,7 @@ import { parseCorteMangaOrderError } from "@/src/features/corte-manga/utils/pars
 import { parseEmbroideryOrderError } from "@/src/features/embroidery/utils/parseEmbroideryOrderError";
 import { parseReflectiveOrderError } from "@/src/features/reflective-orders/utils/parseReflectiveOrderError";
 import { parseTransferPickingError } from "@/src/features/picking/hooks/useTransferPicking";
-import { downloadCobroRepErrorMessage } from "@/src/features/collections/utils/cobroRepDownload";
+import { officialCfdiErrorMessage } from "@/src/utils/officialCfdiFile";
 
 /**
  * Pruebas unitarias de EC-770: los 403 que cada feature resolvía a mano siguen
@@ -63,10 +63,9 @@ test("traslado de surtido: un 403 sigue la regla única", () => {
   );
 });
 
-test("descarga del REP: un 403 sigue la regla única", () => {
-  expect(downloadCobroRepErrorMessage(axiosError(403, { detail: "No tienes acceso a Facturama." }))).toBe(
-    "No tienes acceso a Facturama.",
-  );
-  expect(downloadCobroRepErrorMessage(axiosError(403, { cobro: ["x"] }))).toBe("No tienes acceso a Facturama.");
-  expect(downloadCobroRepErrorMessage(axiosError(403, { non_field_errors: ["Motivo."] }))).toBe("Motivo.");
+test("descarga de un CFDI oficial (REP, factura, nota): un 403 sigue la regla única", () => {
+  const message = (error: unknown) => officialCfdiErrorMessage(error, "del REP");
+  expect(message(axiosError(403, { detail: "No tienes acceso a Facturama." }))).toBe("No tienes acceso a Facturama.");
+  expect(message(axiosError(403, { cobro: ["x"] }))).toBe("No tienes permiso para descargar el CFDI del REP.");
+  expect(message(axiosError(403, { non_field_errors: ["Motivo."] }))).toBe("Motivo.");
 });
