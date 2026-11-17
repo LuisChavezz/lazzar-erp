@@ -226,7 +226,7 @@ const TABLE_TITLE_MIN_PRESENCE_AHEAD = 50;
  * antemano: sin ella, una palabra más ancha que su columna ("MARINO/AMARILLO/
  * REY") se saldría sobre la de al lado en vez de partirse.
  */
-export const wholeWords = (word: string): string[] => [word];
+const wholeWords = (word: string): string[] => [word];
 
 export function PdfLineItemsTable<Row>({
   title,
