@@ -1,55 +1,67 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { retryUnlessClientError } from "@/src/utils/retryUnlessClientError";
+import type { Opportunity } from "../interfaces/opportunity.interface";
 import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
-import { getOpportunityOnboarding } from "../services/actions";
+import { getOpportunity, getOpportunityOnboarding } from "../services/actions";
 import {
-  getOpportunityStaleNotice,
-  resolveLiveOpportunity,
-  type DetailQueryCounts,
+  INITIAL_STALE_NOTICE_MEMORY,
+  getStaleNoticeForFrame,
+  nextStaleNoticeMemory,
+  type LiveOpportunityView,
   type OpportunityDialogAction,
+  type StaleNoticeFrame,
 } from "../utils/opportunityLiveState";
 import { OPPORTUNITIES_KEY } from "./useOpportunitiesTable";
-import { opportunityDetailKey } from "./useOpportunityDetail";
-
-const NO_COUNTS: DetailQueryCounts = { dataUpdateCount: 0, errorUpdateCount: 0 };
+import { opportunityDetailKey, opportunityRecordKey } from "./useOpportunityDetail";
 
 interface UseOpportunityStaleNoticeParams {
   action: OpportunityDialogAction;
   /** Oportunidad del diálogo; `null` = cerrado. */
   opportunityId: number | null;
-  /** La acción propia está en vuelo (el candado): no se verifica ni se avisa. */
+  /**
+   * La acción propia está en vuelo: la mutación O su candado síncrono. El
+   * candado sigue tomado hasta que el diálogo se cerró por su resultado; la
+   * mutación deja de estar pendiente un render antes.
+   */
   isBusy: boolean;
   /** Cierra el diálogo (quien lo monta pone su registro en `null`). */
   onClose: () => void;
 }
 
+/** Solo lo que miran los avisos, desde cualquiera de las dos lecturas. */
+const recordView = (record: Opportunity): LiveOpportunityView => ({ estado: record.estado });
+const detailView = (detail: OpportunityOnboarding): LiveOpportunityView => ({
+  estado: detail.oportunidad.estado,
+  cotizaciones: detail.cotizaciones,
+});
+
 /**
  * Aviso de fila obsoleta de un diálogo de acción de oportunidad (ver
- * `getOpportunityStaleNotice`): al ABRIR el diálogo relee el detalle
- * (`GET …/onboarding/`, la misma llave que la página de detalle) y, si la
- * oportunidad ya no existe o ya no admite la acción, cierra el diálogo con un
- * toast.
+ * `getOpportunityStaleNotice`): al ABRIR el diálogo relee la oportunidad y, si
+ * ya no existe o ya no admite la acción, cierra el diálogo con un toast.
  *
+ * - Qué relee: el REGISTRO (`GET …/{id}/`, `opportunityRecordKey`) para dar de
+ *   baja, transferir y ligar, que solo necesitan saber si existe y su
+ *   `estado`; el DETALLE (`…/onboarding/`, la llave de la página) para quitar,
+ *   que necesita las cotizaciones ligadas.
  * - Verificación SILENCIOSA (`silent`): un fallo que no sea 404 no dice nada
  *   de la oportunidad y no se avisa; lo decide el backend al enviar.
  * - `staleTime: 0`: el observador queda montado y pasa de deshabilitado a
- *   habilitado al abrir, así que relee aunque el detalle esté en caché.
- * - Deshabilitado mientras la acción PROPIA viaja (`isBusy`): dar de baja
- *   quita el detalle de la caché, y volver a pedirlo solo traería un 404.
- * - Solo cuenta lo resuelto DESPUÉS de abrir: los contadores de la consulta se
- *   copian al abrir (`useDialogSession`).
+ *   habilitado al abrir, así que relee aunque haya algo en caché.
+ * - Solo cuenta lo resuelto DESPUÉS de abrir y nada mientras la acción propia
+ *   viaja (`nextStaleNoticeMemory`, `getStaleNoticeForFrame`, puras y
+ *   probadas).
  * - El toast y el cierre van en un EFECTO (cerrar cambia el estado del dueño);
  *   el `id` del toast es la `key` del aviso, así un render repetido no lo
  *   duplica. Con el aviso se relee lo de oportunidades (listado, embudo,
- *   recientes) para que la fila obsoleta salga o se actualice; el detalle de
- *   ESTA oportunidad no, porque se acaba de leer.
+ *   recientes) para que la fila obsoleta salga o se actualice; lo que se acaba
+ *   de leer, no.
  */
 export function useOpportunityStaleNotice({
   action,
@@ -59,12 +71,14 @@ export function useOpportunityStaleNotice({
 }: UseOpportunityStaleNoticeParams) {
   const queryClient = useQueryClient();
   const open = opportunityId !== null;
-  const queryKey = opportunityDetailKey(opportunityId ?? 0);
+  const usesDetail = action.kind === "quitar";
+  const id = opportunityId ?? 0;
+  const queryKey = usesDetail ? opportunityDetailKey(id) : opportunityRecordKey(id);
 
-  useGuardedQuery<OpportunityOnboarding>(
+  useGuardedQuery<Opportunity | OpportunityOnboarding>(
     {
       queryKey,
-      queryFn: () => getOpportunityOnboarding(opportunityId as number),
+      queryFn: () => (usesDetail ? getOpportunityOnboarding(id) : getOpportunity(id)),
       enabled: open && !isBusy,
       staleTime: 0,
       retry: retryUnlessClientError,
@@ -78,35 +92,42 @@ export function useOpportunityStaleNotice({
 
   // Solo los eventos de ESTA consulta (como `useLiveQuoteStatus`).
   const queryHash = hashKey(queryKey);
-  const state = useSyncExternalStore(
+  const queryState = useSyncExternalStore(
     (onChange) =>
       queryClient.getQueryCache().subscribe((event) => {
         if (event.query.queryHash === queryHash) onChange();
       }),
-    () => queryClient.getQueryState<OpportunityOnboarding>(queryKey),
+    () => queryClient.getQueryState<Opportunity | OpportunityOnboarding>(queryKey),
     () => undefined
   );
 
-  const currentCounts: DetailQueryCounts = state
-    ? { dataUpdateCount: state.dataUpdateCount, errorUpdateCount: state.errorUpdateCount }
-    : NO_COUNTS;
-  const baseline = useDialogSession(open, currentCounts).snapshot;
+  const frame: StaleNoticeFrame<Opportunity | OpportunityOnboarding> = {
+    open,
+    isBusy,
+    state: queryState && {
+      dataUpdateCount: queryState.dataUpdateCount,
+      errorUpdateCount: queryState.errorUpdateCount,
+      dataUpdatedAt: queryState.dataUpdatedAt,
+      errorUpdatedAt: queryState.errorUpdatedAt,
+      data: queryState.data,
+      isNotFound: queryState.status === "error" && isNotFoundError(queryState.error),
+    },
+  };
 
-  const live = open
-    ? resolveLiveOpportunity({
-        baseline,
-        state: state && {
-          dataUpdateCount: state.dataUpdateCount,
-          errorUpdateCount: state.errorUpdateCount,
-          dataUpdatedAt: state.dataUpdatedAt,
-          errorUpdatedAt: state.errorUpdatedAt,
-          data: state.data,
-          isNotFound: state.status === "error" && isNotFoundError(state.error),
-        },
-      })
-    : undefined;
+  // Contadores al abrir: se actualizan EN el render de la transición (como
+  // `useDialogSession`), así el primer render abierto ya los compara.
+  const [memory, setMemory] = useState(INITIAL_STALE_NOTICE_MEMORY);
+  const nextMemory = nextStaleNoticeMemory(memory, frame);
+  if (nextMemory !== memory) setMemory(nextMemory);
 
-  const notice = open ? getOpportunityStaleNotice({ action, opportunityId, live, isBusy }) : null;
+  const notice = getStaleNoticeForFrame({
+    frame,
+    memory: nextMemory,
+    action,
+    opportunityId,
+    toView: (data) =>
+      usesDetail ? detailView(data as OpportunityOnboarding) : recordView(data as Opportunity),
+  });
   const noticeKey = notice?.key;
   const noticeMessage = notice?.message;
 

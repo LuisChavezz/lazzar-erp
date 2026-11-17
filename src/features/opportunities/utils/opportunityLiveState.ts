@@ -1,6 +1,6 @@
 import { getStaleRowDialogNotice, type StaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { isOportunidadCerrada } from "../constants/opportunityChoices";
-import type { OpportunityOnboarding } from "../interfaces/opportunity-onboarding.interface";
+import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { COTIZACION_ESTATUS_AUTORIZADA } from "./cotizacionEstatus";
 
 /**
@@ -12,43 +12,61 @@ import { COTIZACION_ESTATUS_AUTORIZADA } from "./cotizacionEstatus";
  * Con el listado en modo servidor la vista no tiene TODAS las oportunidades:
  * una fila que sale de la página (otro orden, otra página, un filtro de estado
  * que ya no cumple) NO dejó de existir. Por eso la ausencia en el listado nunca
- * cuenta, y "ya no existe" solo lo dice el DETALLE
- * (`GET /ventas/oportunidades/{id}/onboarding/` → 404), como en cotizaciones
- * (EC-809). El 404 cubre la baja (lógica), la transferencia a otro vendedor
- * (quien la perdió deja de verla) y la pérdida de acceso.
+ * cuenta, y "ya no existe" solo lo dice una lectura del REGISTRO (404), como en
+ * cotizaciones (EC-809): `GET /ventas/oportunidades/{id}/` (trae el `estado`)
+ * para dar de baja, transferir y ligar, y el detalle `…/onboarding/` para
+ * quitar, que además necesita las cotizaciones ligadas. El 404 cubre la baja
+ * (lógica), la transferencia a otro vendedor (quien la perdió deja de verla) y
+ * la pérdida de acceso.
  *
  * Solo cuenta lo que el detalle resolvió DESPUÉS de abrir el diálogo: se
  * compara contra los contadores de la consulta al abrirlo (`baseline`), no
  * contra lo que ya hubiera en caché.
  */
 
-/** Contadores de la consulta del detalle (los de `QueryState`). */
+/** Contadores de la consulta que se relee (los de `QueryState`). */
 export interface DetailQueryCounts {
   dataUpdateCount: number;
   errorUpdateCount: number;
 }
 
-export interface LiveOpportunitySources {
+export interface LiveOpportunitySources<T> {
   /** Contadores al abrir el diálogo. */
   baseline: DetailQueryCounts;
-  /** Estado actual de la consulta del detalle, o `undefined` si no existe. */
+  /** Estado actual de la consulta, o `undefined` si no existe. */
   state?: DetailQueryCounts & {
     dataUpdatedAt: number;
     errorUpdatedAt: number;
-    data?: OpportunityOnboarding;
+    data?: T;
     /** El último error es un 404 (definitivo). */
     isNotFound: boolean;
   };
 }
 
 /**
- * `null` = la oportunidad ya no existe o ya no es visible; un detalle = lo que
+ * Lo que los avisos necesitan de la oportunidad leída: su `estado` y, solo
+ * desde el detalle, sus cotizaciones ligadas (`undefined` = no se sabe).
+ */
+export interface LiveOpportunityView {
+  estado: string;
+  cotizaciones?: readonly Pick<OpportunityCotizacion, "id" | "estatus">[];
+}
+
+/**
+ * `null` = la oportunidad ya no existe o ya no es visible; una vista = lo que
  * se leyó después de abrir; `undefined` = aún no hay nada nuevo (el diálogo
  * sigue con su foto).
  */
-export type LiveOpportunity = OpportunityOnboarding | null | undefined;
+export type LiveOpportunity = LiveOpportunityView | null | undefined;
 
-export const resolveLiveOpportunity = ({ baseline, state }: LiveOpportunitySources): LiveOpportunity => {
+/**
+ * Lo leído después de abrir: `null` si fue un 404, el dato si llegó uno nuevo,
+ * `undefined` si no hay nada nuevo (o el error no fue un 404).
+ */
+export const resolveLiveOpportunity = <T>({
+  baseline,
+  state,
+}: LiveOpportunitySources<T>): T | null | undefined => {
   if (!state) return undefined;
   const hasNewError = state.errorUpdateCount > baseline.errorUpdateCount;
   const hasNewData = state.dataUpdateCount > baseline.dataUpdateCount && state.data !== undefined;
@@ -110,7 +128,7 @@ export const getOpportunityStaleNotice = ({
   if (action.kind === "delete" || action.kind === "transfer") return null;
 
   if (action.kind === "ligar") {
-    const estado = live?.oportunidad.estado;
+    const estado = live?.estado;
     return getStaleRowDialogNotice({
       resource,
       targetId: opportunityId,
@@ -127,7 +145,7 @@ export const getOpportunityStaleNotice = ({
 
   if (action.kind !== "quitar") return null;
   const cotizacion = live?.cotizaciones?.find((item) => item.id === action.cotizacionId);
-  // Sin detalle nuevo, la cotización sigue como al abrir (ligada).
+  // Sin lectura nueva, la cotización sigue como al abrir (ligada).
   let cotizacionEstado: "ligada" | "autorizada" | null = "ligada";
   if (live !== undefined) {
     if (!cotizacion) cotizacionEstado = null;
@@ -144,5 +162,78 @@ export const getOpportunityStaleNotice = ({
       estadoChanged: () =>
         `La cotización #${action.cotizacionId} ya está autorizada: no se puede quitar de la oportunidad.`,
     },
+  });
+};
+
+/**
+ * Lo que un render de `useOpportunityStaleNotice` sabe: si el diálogo está
+ * abierto, si la acción propia está en vuelo (mutación o candado) y el estado
+ * de la consulta que se relee.
+ */
+export interface StaleNoticeFrame<T> {
+  open: boolean;
+  isBusy: boolean;
+  state?: LiveOpportunitySources<T>["state"];
+}
+
+/** Memoria entre renders: si estaba abierto y los contadores al ABRIR. */
+export interface StaleNoticeMemory {
+  wasOpen: boolean;
+  baseline: DetailQueryCounts;
+}
+
+export const INITIAL_STALE_NOTICE_MEMORY: StaleNoticeMemory = {
+  wasOpen: false,
+  baseline: { dataUpdateCount: 0, errorUpdateCount: 0 },
+};
+
+/**
+ * Siguiente memoria: en la transición cerrado → abierto se copian los
+ * contadores de ESE momento (lo anterior a abrir no cuenta); el resto de los
+ * renders la deja igual (misma referencia, para no volver a renderizar).
+ */
+export const nextStaleNoticeMemory = <T>(
+  memory: StaleNoticeMemory,
+  frame: StaleNoticeFrame<T>
+): StaleNoticeMemory => {
+  if (frame.open === memory.wasOpen) return memory;
+  if (!frame.open) return { ...memory, wasOpen: false };
+  return {
+    wasOpen: true,
+    baseline: frame.state
+      ? {
+          dataUpdateCount: frame.state.dataUpdateCount,
+          errorUpdateCount: frame.state.errorUpdateCount,
+        }
+      : INITIAL_STALE_NOTICE_MEMORY.baseline,
+  };
+};
+
+/**
+ * El aviso de un render: nada con el diálogo cerrado ni con la acción propia
+ * en vuelo (su resultado cierra el diálogo y avisa por su cuenta: si se
+ * verificara antes de que el diálogo se cierre saldría un segundo aviso); si
+ * no, lo leído después de abrir (`toView` lo traduce a lo que el aviso mira).
+ */
+export const getStaleNoticeForFrame = <T>({
+  frame,
+  memory,
+  action,
+  opportunityId,
+  toView,
+}: {
+  frame: StaleNoticeFrame<T>;
+  memory: StaleNoticeMemory;
+  action: OpportunityDialogAction;
+  opportunityId: number | null;
+  toView: (data: T) => LiveOpportunityView;
+}): StaleRowDialogNotice | null => {
+  if (!frame.open || frame.isBusy || opportunityId === null) return null;
+  const live = resolveLiveOpportunity({ baseline: memory.baseline, state: frame.state });
+  return getOpportunityStaleNotice({
+    action,
+    opportunityId,
+    live: live === null ? null : live === undefined ? undefined : toView(live),
+    isBusy: frame.isBusy,
   });
 };
