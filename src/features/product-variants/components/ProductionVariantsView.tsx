@@ -6,17 +6,25 @@ import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductVariantOnboardingForm from "../../product-variant-onboarding/components/ProductVariantOnboardingForm";
-import { useProductVariants } from "../hooks/useProductVariants";
-import { getColumns, getProductVariantHeaderFilters } from "./ProductVariantColumns";
-import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { useProductVariantsTable } from "../hooks/useProductVariantsTable";
+import { getColumns } from "./ProductVariantColumns";
+
+// Sin acciones por fila y con los filtros de encabezado de Producción. A nivel
+// de módulo: una referencia estable entre renders.
+const COLUMNS = getColumns(null, { canEdit: false, canDelete: false }, { withHeaderFilters: true });
 
 /**
  * Variantes del módulo de Producción (`/manufacturing/product-variants`):
  * listado + alta rápida (`product-variant-onboarding`, SKU generado en el
  * servidor). Mismo patrón que `ProductionProductsView`.
+ *
+ * MODO SERVIDOR (EC-897): paginación, búsqueda (`q`), orden y filtros los
+ * resuelve `GET /catalogo/producto-variante/` y su estado vive en la URL
+ * (`useProductVariantsTable`), así que la página la envuelve en `<Suspense>`.
+ * Las opciones de los filtros salen de catálogos (colores, tallas) o de la
+ * búsqueda de productos en el servidor, nunca de las filas.
  *
  * La tabla es de solo lectura (sin columna de acciones): la edición y la baja
  * siguen en Configuración (`ProductVariantList`, SKU manual), que comparte con
@@ -36,27 +44,18 @@ export function ProductionVariantsView() {
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  const { productVariants, isLoading, isInitialError, error } = useProductVariants();
-
-  const columns = withHeaderFilters(
-    getColumns(() => {}, { canEdit: false, canDelete: false }),
-    productVariants,
-    getProductVariantHeaderFilters(),
-  );
+  const table = useProductVariantsTable({ toastId: "production-variants-table-refetch-error" });
 
   return (
     <div className="h-full flex flex-col min-h-0">
     <DataTable
-      columns={columns}
-      data={productVariants}
-      searchPlaceholder="Buscar variante..."
+      columns={COLUMNS}
+      {...table.tableProps}
+      searchPlaceholder="Buscar por SKU, nombre o producto..."
       getRowId={(row) => String(row.id)}
       fillHeight
       emptyMessage="No hay variantes registradas."
-      isLoading={isLoading}
-      isError={isInitialError}
       errorTitle="Error al cargar variantes"
-      errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
       loadingAriaLabel="Cargando variantes"
       actionButton={
         canCreate ? (

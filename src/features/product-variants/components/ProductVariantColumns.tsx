@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import {
   EditIcon,
   DeleteIcon,
@@ -8,148 +8,99 @@ import {
   PencilSquareIcon,
 } from "../../../components/Icons";
 import { ProductVariant } from "../interfaces/product-variant.interface";
-import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { MainDialog } from "../../../components/MainDialog";
-import { DialogHeader } from "../../../components/DialogHeader";
-import BomList from "./BomList";
-import { CreateBomDialog } from "@/src/features/bom/components/CreateBomDialog";
-import { Button } from "@/src/components/Button";
-import { useDeleteProductVariant } from "../hooks/useDeleteProductVariant";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
-import { useState } from "react";
+import {
+  ActivoHeaderFilter,
+  ColorHeaderFilter,
+  PriceRangeHeaderFilter,
+  ProductServerSearchHeaderFilter,
+  SizeHeaderFilter,
+} from "@/src/features/products/components/CatalogHeaderFilters";
 
 const columnHelper = createColumnHelper<ProductVariant>();
 
+/**
+ * Acciones de una fila. Los diálogos (lista de materiales, su edición, el
+ * asistente para agregar materiales y la baja) viven en la LISTA, no en la
+ * celda: en modo servidor un cambio de página, un refetch o una baja
+ * desmontan las celdas, y un diálogo dentro se cerraría con ellas. La celda
+ * solo avisa qué variante y qué acción.
+ */
+export interface ProductVariantRowActions {
+  onEdit: (variant: ProductVariant) => void;
+  onOpenBom: (variant: ProductVariant) => void;
+  onEditBom: (variant: ProductVariant) => void;
+  onDelete: (variant: ProductVariant) => void;
+}
+
 const ActionsCell = ({
-  row,
-  onEdit,
+  variant,
+  actions,
   canEdit,
   canDelete,
 }: {
-  row: Row<ProductVariant>;
-  onEdit: (variant: ProductVariant) => void;
+  variant: ProductVariant;
+  actions: ProductVariantRowActions;
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const { mutate: deleteProductVariant } = useDeleteProductVariant();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isBomOpen, setIsBomOpen] = useState(false);
-  const [isEditBomOpen, setIsEditBomOpen] = useState(false);
-  const [bomDialogOpen, setBomDialogOpen] = useState(false);
-
-  // Tras crear la lista, cierra el asistente y reabre el diálogo de la lista
-  // (que se refresca solo: `useCreateListaMaterial` invalida la query ["bom"]).
-  const handleBomCreationSuccess = () => {
-    setBomDialogOpen(false);
-    setIsBomOpen(true);
-  };
-
-  const menuItems: ActionMenuItem[] = [];
-  menuItems.push({
-    label: "Lista de Materiales",
-    icon: ClipboardListIcon,
-    onSelect: () => setIsBomOpen(true),
-  });
-  menuItems.push({
-    label: "Editar Lista de Materiales",
-    icon: PencilSquareIcon,
-    onSelect: () => setIsEditBomOpen(true),
-  });
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Lista de Materiales",
+      icon: ClipboardListIcon,
+      onSelect: () => actions.onOpenBom(variant),
+    },
+    {
+      label: "Editar Lista de Materiales",
+      icon: PencilSquareIcon,
+      onSelect: () => actions.onEditBom(variant),
+    },
+  ];
   if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    });
+    menuItems.push({ label: "Editar", icon: EditIcon, onSelect: () => actions.onEdit(variant) });
   }
   if (canDelete) {
-    menuItems.push({
-      label: "Cancelar",
-      icon: DeleteIcon,
-      onSelect: () => setIsDeleteOpen(true),
-    });
+    menuItems.push({ label: "Cancelar", icon: DeleteIcon, onSelect: () => actions.onDelete(variant) });
   }
 
   return (
     <div className="flex justify-center">
       <ActionMenu items={menuItems} />
-      <MainDialog
-        open={isBomOpen}
-        onOpenChange={setIsBomOpen}
-        maxWidth="760px"
-        title={
-          <DialogHeader
-            title="Lista de Materiales"
-            subtitle={row.original.sku}
-            statusColor="indigo"
-          />
-        }
-      >
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button
-              variant="primary"
-              rounded="full"
-              onClick={() => {
-                setIsBomOpen(false);
-                setBomDialogOpen(true);
-              }}
-            >
-              Agregar materiales
-            </Button>
-          </div>
-          <BomList productoVarianteId={row.original.id} />
-        </div>
-      </MainDialog>
-      <MainDialog
-        open={isEditBomOpen}
-        onOpenChange={setIsEditBomOpen}
-        maxWidth="760px"
-        title={
-          <DialogHeader
-            title="Editar Lista de Materiales"
-            subtitle={row.original.sku}
-            statusColor="amber"
-          />
-        }
-      >
-        <BomList
-          productoVarianteId={row.original.id}
-          mode="edit"
-          onClose={() => setIsEditBomOpen(false)}
-        />
-      </MainDialog>
-      <CreateBomDialog
-        open={bomDialogOpen}
-        onOpenChange={setBomDialogOpen}
-        productoVarianteId={row.original.id}
-        onSuccess={handleBomCreationSuccess}
-      />
-      {canDelete && (
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Eliminar Variante"
-          description="¿Estás seguro de que deseas eliminar esta variante? Esta acción no se puede deshacer."
-          onConfirm={() => {
-            deleteProductVariant(row.original.id);
-            setIsDeleteOpen(false);
-          }}
-          confirmColor="red"
-        />
-      )}
     </div>
   );
 };
 
+/** Sin acciones: la vista de Producción solo lista. */
+const NO_ROW_ACTIONS: ProductVariantRowActions = {
+  onEdit: () => {},
+  onOpenBom: () => {},
+  onEditBom: () => {},
+  onDelete: () => {},
+};
+
+/**
+ * Columnas de las tablas de variantes en MODO SERVIDOR (EC-897): cada columna
+ * ordena por su campo de la lista blanca del backend (`serverSort`; producto,
+ * color y talla por su nombre, la talla en su orden canónico). Con
+ * `withHeaderFilters` (Producción) llevan además su filtro de encabezado
+ * (`serverFilter`), con opciones de un catálogo o fijas, nunca de las filas;
+ * Configuración no los tenía y sigue sin ellos.
+ */
 export const getColumns = (
-  onEdit: (variant: ProductVariant) => void,
+  actions: ProductVariantRowActions | null,
   permissions: { canEdit: boolean; canDelete: boolean },
+  { withHeaderFilters = false }: { withHeaderFilters?: boolean } = {},
 ) => {
   const columns = [
     columnHelper.accessor("activo", {
-      header: "Estado",
+      header: withHeaderFilters
+        ? ({ column }) => <ActivoHeaderFilter column={column} title="Estado" />
+        : "Estado",
+      meta: {
+        label: "Estado",
+        serverSort: "activo",
+        ...(withHeaderFilters ? { serverFilter: "activo" } : {}),
+      },
       cell: (info) => {
         const isActive = info.getValue();
         const styles = isActive
@@ -164,17 +115,23 @@ export const getColumns = (
     }),
     columnHelper.accessor("sku", {
       header: "SKU",
+      meta: { label: "SKU", serverSort: "sku" },
       cell: (info) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">{info.getValue()}</span>
       ),
     }),
     // Los nombres llegan resueltos en la fila (`producto_nombre`, `color_nombre`,
-    // `talla_nombre`). El valor de la columna colapsa el ausente a `""`: la
-    // búsqueda global de `DataTable` descarta una columna si su valor en la
-    // primera fila no es string/number. `#id` queda solo como respaldo.
+    // `talla_nombre`); `#id` queda solo como respaldo.
     columnHelper.accessor((row) => row.producto_nombre ?? "", {
       id: "producto",
-      header: "Producto",
+      header: withHeaderFilters
+        ? ({ column }) => <ProductServerSearchHeaderFilter column={column} title="Producto" />
+        : "Producto",
+      meta: {
+        label: "Producto",
+        serverSort: "producto__nombre",
+        ...(withHeaderFilters ? { serverFilter: "producto" } : {}),
+      },
       cell: ({ row }) => (
         <span className="text-slate-500 dark:text-slate-400">
           {row.original.producto_nombre || `#${row.original.producto}`}
@@ -183,7 +140,14 @@ export const getColumns = (
     }),
     columnHelper.accessor((row) => row.color_nombre ?? "", {
       id: "color",
-      header: "Color",
+      header: withHeaderFilters
+        ? ({ column }) => <ColorHeaderFilter column={column} title="Color" />
+        : "Color",
+      meta: {
+        label: "Color",
+        serverSort: "color__nombre",
+        ...(withHeaderFilters ? { serverFilter: "color" } : {}),
+      },
       cell: ({ row }) => (
         <span className="text-slate-500 dark:text-slate-400">
           {row.original.color_nombre || `#${row.original.color}`}
@@ -191,10 +155,17 @@ export const getColumns = (
       ),
     }),
     // `talla` es null en variantes de productos que no son PT (EC-252); en ese
-    // caso el backend OMITE `talla_nombre` de la respuesta (no manda `null`).
+    // caso `talla_nombre` llega null u omitido. Al ordenar van al final.
     columnHelper.accessor((row) => row.talla_nombre ?? "", {
       id: "talla",
-      header: "Talla",
+      header: withHeaderFilters
+        ? ({ column }) => <SizeHeaderFilter column={column} title="Talla" />
+        : "Talla",
+      meta: {
+        label: "Talla",
+        serverSort: "talla__nombre",
+        ...(withHeaderFilters ? { serverFilter: "talla" } : {}),
+      },
       cell: ({ row }) => {
         const { talla, talla_nombre } = row.original;
         return (
@@ -205,8 +176,15 @@ export const getColumns = (
       },
     }),
     columnHelper.accessor("precio_base", {
-      header: "Precio Base",
-      meta: { align: "right" },
+      header: withHeaderFilters
+        ? ({ column }) => <PriceRangeHeaderFilter column={column} title="Precio Base" />
+        : "Precio Base",
+      meta: {
+        align: "right",
+        label: "Precio Base",
+        serverSort: "precio_base",
+        ...(withHeaderFilters ? { serverFilter: "rango_precio" } : {}),
+      },
       cell: (info) => (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
@@ -214,6 +192,7 @@ export const getColumns = (
   ] as ColumnDef<ProductVariant>[];
 
   if (permissions.canEdit || permissions.canDelete) {
+    const rowActions = actions ?? NO_ROW_ACTIONS;
     columns.push(
       columnHelper.display({
         id: "actions",
@@ -221,8 +200,8 @@ export const getColumns = (
         meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
-            row={row}
-            onEdit={onEdit}
+            variant={row.original}
+            actions={rowActions}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
@@ -233,22 +212,3 @@ export const getColumns = (
 
   return columns;
 };
-
-/**
- * Filtros de encabezado (estilo Excel) de esta tabla, para `withHeaderFilters`.
- * Las opciones salen del listado completo (la tabla es de modo cliente); se
- * compara por id y se rotula con el nombre que ya trae la fila.
- */
-export const getProductVariantHeaderFilters = (): Partial<
-  Record<string, HeaderFilterSpec<ProductVariant>>
-> => ({
-  activo: { type: "boolean", get: (r) => r.activo, yes: "Activas", no: "Inactivas" },
-  producto: { type: "distinct", get: (r) => r.producto, label: (r) => r.producto_nombre, searchable: true },
-  color: { type: "distinct", get: (r) => r.color, label: (r) => r.color_nombre, searchable: true },
-  talla: { type: "distinct", get: (r) => r.talla, label: (r) => r.talla_nombre },
-  precio_base: { type: "range", get: (r) => r.precio_base, ranges: [
-    { value: "hasta-100", label: "Hasta $100", max: 100 },
-    { value: "100-500", label: "$100 – $500", min: 100, max: 500 },
-    { value: "mas-500", label: "Más de $500", min: 500 },
-  ] },
-});
