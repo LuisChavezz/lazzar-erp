@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
-import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
+import { toastDrfError } from "@/src/utils/toastDrfError";
 import toast from "react-hot-toast";
 import { createProductionOrderOnboarding } from "@/src/features/production-orders/services/actions";
 import type { CreateProductionOrderBody } from "@/src/features/production-orders/interfaces/production-order.interface";
@@ -26,19 +25,6 @@ export const useCreateProductionOrder = () => {
       void invalidatePedidoProgress(queryClient);
       toast.success("Orden de producción creada correctamente");
     },
-    onError: (error) => {
-      if (error instanceof AxiosError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-        if (statusCode === 400 && data) {
-          const firstMessage = firstNestedDrfMessage(data);
-          if (firstMessage) {
-            toast.error(firstMessage);
-            return;
-          }
-        }
-      }
-      toast.error("Error al crear la orden de producción");
-    },
+    onError: (error) => toastDrfError(error, "Error al crear la orden de producción"),
   });
 };

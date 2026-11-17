@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { patchBomMateriaPrima } from "../services/actions";
 import type { BomDetalle } from "../interfaces/bom.interface";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
-import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
+import { toastDrfError } from "@/src/utils/toastDrfError";
 
 /**
  * Actualiza (reemplaza) los renglones de materia prima de una lista de
@@ -32,19 +31,6 @@ export const usePatchBomMateriaPrima = () => {
       toast.success("Lista de materiales actualizada correctamente");
     },
 
-    onError: (error) => {
-      if (error instanceof AxiosError) {
-        const statusCode = error.response?.status;
-        const data = error.response?.data;
-        if (statusCode === 400 && data) {
-          const firstMessage = firstNestedDrfMessage(data);
-          if (firstMessage) {
-            toast.error(firstMessage);
-            return;
-          }
-        }
-      }
-      toast.error("Error al actualizar la lista de materiales");
-    },
+    onError: (error) => toastDrfError(error, "Error al actualizar la lista de materiales"),
   });
 };
