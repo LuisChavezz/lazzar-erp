@@ -28,6 +28,7 @@ import {
   toPedidoKpisApiParams,
   toPedidoListApiParams,
   withoutAmountCriteria,
+  type PedidoVirtualFilterValues,
 } from "../utils/pedidoListParams";
 
 // A nivel de módulo: una referencia estable entre renders.
@@ -51,6 +52,11 @@ interface UsePedidosTableOptions<P extends ServerTableFilterParams> {
    * deja la definición completa: el backend los ignoraría igual.
    */
   puedeVerImportes?: boolean;
+  /**
+   * Valores virtuales de los filtros de ESTA lista (`toPedidoListApiParams`),
+   * p. ej. `SALES_VIRTUAL_FILTER_VALUES` en Mis pedidos. Sin ellos, ninguno.
+   */
+  virtualFilterValues?: PedidoVirtualFilterValues;
 }
 
 /**
@@ -69,6 +75,7 @@ export const usePedidosTable = <P extends ServerTableFilterParams>({
   toastId,
   cacheDefaultView,
   puedeVerImportes,
+  virtualFilterValues,
 }: UsePedidosTableOptions<P>) => {
   const scope = misPedidos ? MIS_PEDIDOS_PARAM : undefined;
   const definition =
@@ -79,7 +86,7 @@ export const usePedidosTable = <P extends ServerTableFilterParams>({
     // Los `rango_*` de la URL se traducen aquí, así que también los traduce la
     // exportación por páginas (`fetchAllRows` pasa por esta misma función).
     queryFn: (params: ServerTableRequest) =>
-      getOrdersPage({ ...toPedidoListApiParams(params), ...scope }),
+      getOrdersPage({ ...toPedidoListApiParams(params, virtualFilterValues), ...scope }),
     adapter: pedidosAdapter,
     toastId,
     refetchErrorMessage: "No se pudieron actualizar los pedidos. Se muestran los datos anteriores.",
@@ -96,10 +103,10 @@ export const usePedidosTable = <P extends ServerTableFilterParams>({
     const currentQuery = new URLSearchParams(window.location.search);
     const current = readServerTableState(definition, (key) => currentQuery.get(key));
     return exportOrders({
-      ...(toPedidoListApiParams(toServerTableCriteria(definition, current)) as Record<
-        string,
-        string
-      >),
+      ...(toPedidoListApiParams(
+        toServerTableCriteria(definition, current),
+        virtualFilterValues,
+      ) as Record<string, string>),
       ...scope,
     });
   };

@@ -11,7 +11,11 @@ import { useProcurementOrderCsvExport } from '../hooks/useProcurementOrderCsvExp
 import { useProcurementOrderPdfExport } from '../hooks/useProcurementOrderPdfExport';
 import { MIS_PEDIDOS_TABLE_QUERY_KEY, ORDERS_QUERY_KEY } from '../constants/ordersQueryKeys';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
-import { procurementPedidosTable, salesPedidosTable } from '../utils/pedidoListParams';
+import {
+  procurementPedidosTable,
+  SALES_VIRTUAL_FILTER_VALUES,
+  salesPedidosTable,
+} from '../utils/pedidoListParams';
 import { createSalesOrderColumns } from './SalesOrderColumns';
 import { createProcurementOrderColumns } from './ProcurementOrderColumns';
 import type { PedidoListItem } from '../interfaces/order.interface';
@@ -76,6 +80,8 @@ function SalesOrderList({ from, extraRefetchQueryKeys }: ListProps) {
     definition: salesPedidosTable,
     queryKey: MIS_PEDIDOS_TABLE_QUERY_KEY,
     misPedidos: true,
+    // «Sin clasificación» → `sin_clasificar=true` (solo esta lista).
+    virtualFilterValues: SALES_VIRTUAL_FILTER_VALUES,
     puedeVerImportes,
     toastId: 'mis-pedidos-table-refetch-error',
   });

@@ -97,10 +97,29 @@ export const PEDIDO_ESTATUS_VALUES = Object.values(PEDIDO_ESTATUS).map(String);
 /**
  * Opción VIRTUAL «Sin clasificación» del filtro de clasificación (solo Mis
  * pedidos): `?clasificacion=sin_clasificar` en la URL. El backend no la acepta
- * en `clasificacion` (un valor que no es código da 400): `toPedidoListApiParams`
- * la cambia por `sin_clasificar=true` y no envía `clasificacion`.
+ * en `clasificacion` (un valor que no es código da 400): se cambia por
+ * `sin_clasificar=true` y no se envía `clasificacion`
+ * (`SALES_VIRTUAL_FILTER_VALUES`).
  */
 export const SIN_CLASIFICACION = "sin_clasificar";
+
+/**
+ * Valores VIRTUALES de un filtro: clave de la URL → valor → los parámetros del
+ * backend que lo sustituyen (la clave original no se envía). A diferencia de
+ * los rangos (`RANGE_FILTERS`, comunes a todas las listas), son de UNA lista:
+ * cada una pasa los suyos a `toPedidoListApiParams`, y quien no pasa ninguno
+ * envía sus filtros tal cual aunque su códec llegara a aceptar el valor.
+ */
+export type PedidoVirtualFilterValues = Readonly<
+  Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>>
+>;
+
+/** Los de Mis pedidos (`salesPedidosTable`). */
+export const SALES_VIRTUAL_FILTER_VALUES: PedidoVirtualFilterValues = {
+  clasificacion: { [SIN_CLASIFICACION]: { sin_clasificar: "true" } },
+};
+
+const NO_VIRTUAL_FILTER_VALUES: PedidoVirtualFilterValues = {};
 
 const clasificacionCsvParam = csvEnumParam(PEDIDO_CLASIFICACIONES);
 
@@ -121,19 +140,20 @@ const clasificacionOrSinParam: ServerTableParam<string> = {
 
 /**
  * Parámetros de la tabla → parámetros del endpoint: cada `rango_*` se
- * sustituye por los suyos, `clasificacion=sin_clasificar` por
- * `sin_clasificar=true` y el resto pasa igual. Una opción de rango que no
+ * sustituye por los suyos, cada valor virtual de `virtualValues` (solo los de
+ * la lista que llama, p. ej. `SALES_VIRTUAL_FILTER_VALUES`) por los suyos y el
+ * resto pasa igual. Una opción de rango que no
  * existe se descarta (su codec ya no la deja llegar aquí).
  */
 export const toPedidoListApiParams = <T extends string | number>(
   params: Readonly<Record<string, T>>,
+  virtualValues: PedidoVirtualFilterValues = NO_VIRTUAL_FILTER_VALUES,
 ): Record<string, T | string> => {
   const apiParams: Record<string, T | string> = {};
   for (const [key, value] of Object.entries(params)) {
-    // Solo la definición de Mis pedidos deja pasar este valor (la de Mesa de
-    // Control lo descarta por no ser un código).
-    if (key === "clasificacion" && value === SIN_CLASIFICACION) {
-      apiParams.sin_clasificar = "true";
+    const virtual = virtualValues[key]?.[String(value)];
+    if (virtual) {
+      Object.assign(apiParams, virtual);
       continue;
     }
     const options = RANGE_FILTERS[key];
