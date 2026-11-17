@@ -3,6 +3,7 @@
 import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, ProduccionIcon, ProductIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
@@ -31,6 +32,7 @@ import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
 import { PreOrdenLink } from "./PreOrdenLink";
 import { ProductionOrderPdfButton } from "./ProductionOrderPdfButton";
 import { opPedidoRefs } from "../utils/opPedidos";
+import { canEditProductionOrder } from "../utils/productionOrderPermissions";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
@@ -230,6 +232,12 @@ export function ProductionOrderPageContent({
   // recálculo. Un 404, una OP terminal o un GET fallido solo dejan el menú sin
   // opciones (oculto); nunca cambian lo que pinta la página.
   const statusFlow = useProductionOrderStatusFlow(numericId);
+  // Cambiar estatus y recalcular consumos exigen `E-PRODUCCION-OP` (EC-895):
+  // sin él el menú de estatus no se pinta y "Recalcular consumos" queda
+  // deshabilitado con el motivo. La ruta crítica se abre en solo lectura (lo
+  // decide su diálogo). `hasPermission` deja pasar al rol "admin".
+  const { data: session } = useSession();
+  const canEdit = canEditProductionOrder(session?.user);
 
   const openCriticalPath = () => {
     if (!data) return;
@@ -348,7 +356,7 @@ export function ProductionOrderPageContent({
         {BackLink}
         <div className="flex flex-wrap items-center gap-2">
           <ProductionOrderStatusMenu
-            options={statusFlow.options}
+            options={canEdit ? statusFlow.options : []}
             isPending={statusFlow.isPending}
             onSelect={statusFlow.select}
           />
@@ -461,6 +469,7 @@ export function ProductionOrderPageContent({
         products={consumptionProducts}
         recalculableCount={recalculableProducts.length}
         isClosed={isClosedProductionOrderStatus(data.estatus_op)}
+        canRecalculate={canEdit}
         onRecalculate={() => setIsRecalculateOpen(true)}
       />
 

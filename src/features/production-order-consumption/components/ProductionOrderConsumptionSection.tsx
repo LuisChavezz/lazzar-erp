@@ -1,5 +1,6 @@
 "use client";
 
+import { RECALCULATE_FORBIDDEN_REASON } from "@/src/features/production-orders/utils/productionOrderPermissions";
 import { Button } from "@/src/components/Button";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
@@ -28,6 +29,8 @@ interface ProductionOrderConsumptionSectionProps {
   recalculableCount: number;
   /** La OP está Completada o Cancelada: el backend ya no admite el recálculo. */
   isClosed: boolean;
+  /** `E-PRODUCCION-OP` (EC-895): sin él el botón queda deshabilitado con el motivo. */
+  canRecalculate: boolean;
   onRecalculate: () => void;
 }
 
@@ -52,9 +55,12 @@ export function ProductionOrderConsumptionSection({
   products,
   recalculableCount,
   isClosed,
+  canRecalculate,
   onRecalculate,
 }: ProductionOrderConsumptionSectionProps) {
-  const disabledReason = isClosed
+  const disabledReason = !canRecalculate
+    ? RECALCULATE_FORBIDDEN_REASON
+    : isClosed
     ? "La orden está completada o cancelada: ya no se pueden recalcular sus consumos."
     : products.length === 0
       ? "La orden no tiene consumos que recalcular."

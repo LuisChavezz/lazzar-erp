@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { canCreateProductionOrder } from "@/src/features/production-orders/utils/productionOrderPermissions";
 import { AccessibleLink } from "@/src/components/AccessibleLink";
 import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
@@ -90,6 +92,11 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [opOpen, setOpOpen] = useState(false);
   const [showLines, setShowLines] = useState(false);
+  // "Crear OP" da de alta una orden de producción: exige `C-PRODUCCION-OP`
+  // además del estatus (EC-895). Sin él el botón no se pinta, como el resto de
+  // acciones que no aplican.
+  const { data: session } = useSession();
+  const canCreateOp = canCreateProductionOrder(session?.user);
 
   const faltaReal = (m: PreOrderDetail["materiales"][number]) => m.faltante_real ?? m.faltante;
   const faltantes = data.materiales.filter((m) => faltaReal(m) > 0);
@@ -219,7 +226,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               </button>
             </>
           )}
-          {canCreateOpFromPreOrder(data.estatus) && (
+          {canCreateOp && canCreateOpFromPreOrder(data.estatus) && (
             <button
               type="button"
               className={BTN_SUCCESS}

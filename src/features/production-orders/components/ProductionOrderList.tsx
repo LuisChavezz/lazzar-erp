@@ -8,7 +8,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { isClosedProductionOrderStatus } from "../constants/productionOrderStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { canCreateProductionOrder } from "../utils/productionOrderPermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
 import {
@@ -41,7 +41,7 @@ export function ProductionOrderList() {
   // exige además `C-PRODUCCION-OP`. `hasPermission` ya cortocircuita para el rol
   // "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
+  const canCreate = canCreateProductionOrder(session?.user);
   // OP cuya ruta crítica está abierta. Se guarda la FOTO (id, folio y estatus) de la
   // apertura y no se resuelve contra el listado: la ruta crítica no depende de
   // la fila, así que un refetch del listado no debe cerrar el diálogo.
