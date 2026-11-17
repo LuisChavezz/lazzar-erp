@@ -48,14 +48,14 @@ export const productionOption = (variant: ProductionVariantOption): OpSkuOption 
  *
  * Una muestra (`kind: "produccion"`) solo si es de uno de esos pedidos: con
  * pedido en la OP, el backend rechaza el renglón cuya línea de muestra es de
- * otro pedido. Sin pedidos vinculados se ofrecen todas, porque el backend no
- * valida el renglón en ese caso. Las variantes de catálogo no llevan pedido y
- * siempre se ofrecen. Recibe una lista para servir igual a las OP de varios
- * pedidos.
+ * otro pedido. Sin pedidos vinculados no se ofrece ninguna: el backend sí la
+ * aceptaría (no valida el renglón sin pedido), pero el renglón quedaría ligado
+ * a la línea de ese pedido y lo bloquearía en Mesa de Control sin que la OP
+ * aparezca en él. Las variantes de catálogo no llevan pedido y siempre se
+ * ofrecen. Recibe una lista para servir igual a las OP de varios pedidos.
  */
 export const isOfferedForPedidos = (option: OpSkuOption, pedidoIds: readonly number[]) =>
   option.kind !== "produccion" ||
-  pedidoIds.length === 0 ||
   (option.pedidoId != null && pedidoIds.includes(option.pedidoId));
 
 /**
