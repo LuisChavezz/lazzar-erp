@@ -216,6 +216,18 @@ export interface PdfLineItemsTableProps<Row> {
 /** Puntos que deben caber tras el título de una tabla: encabezado + un renglón. */
 const TABLE_TITLE_MIN_PRESENCE_AHEAD = 50;
 
+/**
+ * Los encabezados de la tabla se parten solo entre palabras (EC-891). Por
+ * omisión react-pdf separa en sílabas al partir un renglón aunque la palabra
+ * quepa entera en el siguiente ("En esta or-/den"); sin puntos de separación,
+ * la palabra pasa completa al renglón de abajo. Solo los encabezados: son texto
+ * fijo y cada columna es lo bastante ancha para su palabra más larga. Las
+ * celdas conservan la separación por omisión porque sus datos no se conocen de
+ * antemano: sin ella, una palabra más ancha que su columna ("MARINO/AMARILLO/
+ * REY") se saldría sobre la de al lado en vez de partirse.
+ */
+export const wholeWords = (word: string): string[] => [word];
+
 export function PdfLineItemsTable<Row>({
   title,
   rows,
@@ -249,6 +261,7 @@ export function PdfLineItemsTable<Row>({
           {visible.map((column) => (
             <Text
               key={column.id}
+              hyphenationCallback={wholeWords}
               style={[
                 s.tableHeaderCell,
                 s.tableCellBox,
