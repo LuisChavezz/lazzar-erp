@@ -1,31 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
-import { appRouteGroups } from "@/src/constants/appRoutes";
-import { mainGroupKeys } from "@/src/constants/sidebarItems";
-import { getFirstModuleEntry } from "@/src/utils/moduleEntry";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { getFirstHomeCardEntry } from "@/src/utils/homeCardHref";
 import { Button } from "./Button";
 import { LockIcon } from "./Icons";
 
-/** Módulos principales en el orden del catálogo: los mismos del Home y del sidebar. */
-const mainGroups = appRouteGroups.filter((group) => mainGroupKeys.has(group.key));
-
 /**
  * Página "sin acceso" (EC-895): a donde el proxy manda a quien abre una ruta
- * sin su permiso. Explica qué pasó y ofrece salir al primer módulo en el que sí
- * puede entrar (`getFirstModuleEntry`, la misma regla que Home y el sidebar) o
- * al inicio.
+ * sin su permiso. Explica qué pasó y ofrece salir a la primera tarjeta de Home
+ * que puede abrir (`getFirstHomeCardEntry`: mismo orden, misma regla y mismo
+ * destino que Home) o al inicio.
  *
  * El botón del módulo espera a la sesión: mientras carga (o se recupera) no se
  * sabe a cuál puede entrar, así que solo se ofrece el inicio.
  */
 export function AccessDeniedContent() {
-  const { data: session, status } = useSession();
-  const { phase } = useSessionRecovery();
-  const isPending = status === "loading" || phase === "recovering";
-  const firstModule = isPending ? null : getFirstModuleEntry(mainGroups, session?.user);
+  const { isPending, user } = useRouteAccess();
+  const firstModule = isPending ? null : getFirstHomeCardEntry(user);
 
   return (
     <div className="max-w-xl mx-auto py-12">
@@ -43,7 +35,7 @@ export function AccessDeniedContent() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {firstModule && (
             <Button asChild variant="primary">
-              <Link href={firstModule.href}>Ir a {firstModule.label}</Link>
+              <Link href={firstModule.href}>Ir a {firstModule.title}</Link>
             </Button>
           )}
           <Button asChild variant="secondary">

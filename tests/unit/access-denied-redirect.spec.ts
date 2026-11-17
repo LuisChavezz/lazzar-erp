@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { appRouteGroups } from "@/src/constants/appRoutes";
-import { mainGroupKeys } from "@/src/constants/sidebarItems";
-import { getFirstModuleEntry } from "@/src/utils/moduleEntry";
+import { homeCards } from "@/src/constants/homeCards";
+import { getFirstHomeCardEntry, getHomeCardHref } from "@/src/utils/homeCardHref";
 import { ACCESS_DENIED_PATH, findRoutePermissionRule, getRouteAccessRedirect } from "@/src/utils/routeAccess";
 
 /**
@@ -11,7 +10,6 @@ import { ACCESS_DENIED_PATH, findRoutePermissionRule, getRouteAccessRedirect } f
  */
 const user = (permissions: string[]) => ({ role: "user", permissions }) as never;
 const admin = { role: "admin", permissions: [] } as never;
-const mainGroups = appRouteGroups.filter((group) => mainGroupKeys.has(group.key));
 
 test.describe("getRouteAccessRedirect", () => {
   test("una sección de Producción sin su subcódigo va a sin acceso", () => {
@@ -52,16 +50,27 @@ test.describe("getRouteAccessRedirect", () => {
   });
 });
 
-test.describe("getFirstModuleEntry", () => {
-  test("lleva al primer módulo abrible, por su sección si no tiene el de módulo", () => {
-    expect(getFirstModuleEntry(mainGroups, user(["R-PRODUCCION-OB"]))).toEqual({
-      label: "Manufactura (Producción)",
+test.describe("getFirstHomeCardEntry (salida de sin acceso)", () => {
+  test("lleva a la primera tarjeta de Home abrible, por su sección si no tiene el de módulo", () => {
+    expect(getFirstHomeCardEntry(user(["R-PRODUCCION-OB"]))).toEqual({
+      title: "Manufactura (Producción)",
       href: "/manufacturing/embroidery",
     });
-    expect(getFirstModuleEntry(mainGroups, user(["R-PRODUCCION"]))?.href).toBe("/manufacturing");
+    expect(getFirstHomeCardEntry(user(["R-PRODUCCION"]))?.href).toBe("/manufacturing");
   });
 
-  test("sin ningún módulo abrible da null", () => {
-    expect(getFirstModuleEntry(mainGroups, user([]))).toBeNull();
+  test("coincide con la primera tarjeta que pinta Home, en su orden", () => {
+    const profile = user(["R-RH", "R-PRODUCCION-CM", "R-WMS-PICKING"]);
+    const firstVisible = homeCards.find((card) => getHomeCardHref(card, profile) !== null);
+    expect(getFirstHomeCardEntry(profile)).toEqual({
+      title: firstVisible?.title,
+      href: getHomeCardHref(firstVisible!, profile),
+    });
+    expect(getFirstHomeCardEntry(profile)?.href).toBe("/wms/picking");
+  });
+
+  test("sin ninguna tarjeta abrible (p. ej. solo configuración) da null, como Home", () => {
+    expect(getFirstHomeCardEntry(user([]))).toBeNull();
+    expect(getFirstHomeCardEntry(user(["R-CONFIGURACION"]))).toBeNull();
   });
 });
