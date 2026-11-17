@@ -144,14 +144,18 @@ export const ReflectiveOrderPdfDocument = ({ order, company }: ReflectiveOrderPd
           pedido: linea.cantidad_pedido,
           pendiente: linea.cantidad_pendiente,
         }),
+        // Anchos en decenas de punto (ver `workOrderPdf.tsx`). Con sus cuatro
+        // columnas propias es la tabla de prendas más ancha: "En esta orden"
+        // va en dos renglones para que el reflejante conserve espacio.
+        widths: { cantidad: 2.85 },
         extraColumns: [
-          { id: "reflejante", header: "Reflejante", flex: 2.5, cell: reflejanteCell },
-          { id: "tipo", header: "Tipo", flex: 1, cell: ({ item }: Row) => textOrDash(item.tipo_reflejante) },
-          { id: "posicion", header: "Posición", flex: 0.9, cell: ({ item }: Row) => textOrDash(item.posicion) },
+          { id: "reflejante", header: "Reflejante", flex: 10.3, cell: reflejanteCell },
+          { id: "tipo", header: "Tipo", flex: 4.65, cell: ({ item }: Row) => textOrDash(item.tipo_reflejante) },
+          { id: "posicion", header: "Posición", flex: 4.05, cell: ({ item }: Row) => textOrDash(item.posicion) },
           {
             id: "metros",
             header: "Metros",
-            flex: 0.7,
+            flex: 3.1,
             align: "right",
             cell: ({ item }: Row) => reflectiveMetrosText(item.metros),
           },

@@ -128,7 +128,9 @@ export const EmbroideryOrderPdfDocument = ({ order, company }: EmbroideryOrderPd
           pedido: linea.cantidad_pedido,
           pendiente: linea.cantidad_pendiente,
         }),
-        extraColumns: [{ id: "bordado", header: "Bordado", flex: 3.2, cell: bordadoCell }],
+        // Anchos en decenas de punto (ver `workOrderPdf.tsx`): el bordado se lleva
+        // lo que dejan las columnas comunes.
+        extraColumns: [{ id: "bordado", header: "Bordado", flex: 21.7, cell: bordadoCell }],
       })}
 
       <PdfNotes text={order.observaciones} />
