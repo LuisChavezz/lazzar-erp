@@ -5,8 +5,7 @@ import { ProductCategory } from "../interfaces/product-category.interface";
 /**
  * No expone el `isError` crudo: `isInitialError` solo es `true` si la consulta
  * NUNCA cargó; un refetch fallido con datos en caché conserva lo cargado y
- * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla. Mismo
- * contrato que `useProducts`.
+ * avisa por toast (`useGuardedQuery`). `error` sigue la misma regla.
  */
 export const useProductCategories = () => {
   const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery<ProductCategory[]>(

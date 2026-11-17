@@ -18,8 +18,8 @@ const GENERIC_ERROR = "Error al registrar el producto";
  * - Cualquier otro fallo (p. ej. el `500` de un usuario sin empresa) cae en un
  *   aviso genérico: su cuerpo no trae un mensaje apto para el usuario.
  *
- * Se invalida la raíz `["products"]`: alcanza a todos los listados filtrados
- * por tipo (`["products", tipo_id]`).
+ * Se invalida la raíz `["products"]`: alcanza a todas las tablas de catálogo
+ * (`["products", "table", tipo, …]`) y a los selectores.
  */
 export const useCreateProductOnboarding = (setError?: SetProductOnboardingError) => {
   const queryClient = useQueryClient();

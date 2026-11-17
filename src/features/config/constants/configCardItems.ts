@@ -37,8 +37,8 @@ import { getTaxes } from "../../taxes/services/actions";
 import { getUnitsOfMeasure } from "../../units-of-measure/services/actions";
 import { getSatProdservCodes } from "../../sat-prodserv-codes/services/actions";
 import { getSatUnitCodes } from "../../sat-unit-codes/services/actions";
-import { getProducts } from "../../products/services/actions";
-import { getProductVariants } from "../../product-variants/services/actions";
+import { productsTableDefaultQuery } from "../../products/hooks/useProductsTable";
+import { productVariantsTableDefaultQuery } from "../../product-variants/hooks/useProductVariantsTable";
 import { getSerieFolios } from "../../series-folios/services/actions";
 import { getSuppliers } from "../../suppliers/services/actions";
 
@@ -55,7 +55,7 @@ interface ConfigCardItem {
    * parámetros, aunque sean `undefined`: `["x", undefined]` no es `["x"]`), o el
    * prefetch llena una entrada que nadie lee.
    */
-  prefetchKey?: (string | number | undefined)[];
+  prefetchKey?: readonly unknown[];
   /**
    * Se pasa tal cual como `queryFn`, así que TanStack le entrega su contexto
    * como primer argumento. Una acción con parámetros opcionales va SIEMPRE
@@ -324,9 +324,9 @@ export const configCards: ConfigCardItem[] = [
     view: "products",
     group: "Productos",
     adminOnly: true,
-    // Misma llave y parámetro que `ProductList` (`useProducts(3)`: solo PT).
-    prefetchKey: ["products", 3],
-    prefetchFn: () => getProducts(3),
+    // La vista por defecto de `ProductList` (modo servidor, solo PT).
+    prefetchKey: productsTableDefaultQuery(3).queryKey,
+    prefetchFn: productsTableDefaultQuery(3).queryFn,
   },
   {
     title: "Variantes de Producto",
@@ -335,9 +335,9 @@ export const configCards: ConfigCardItem[] = [
     view: "product-variants",
     group: "Productos",
     adminOnly: true,
-    // Misma llave que `ProductVariantList` (`useProductVariants()`).
-    prefetchKey: ["product-variants"],
-    prefetchFn: () => getProductVariants(),
+    // La vista por defecto de `ProductVariantList` (modo servidor).
+    prefetchKey: productVariantsTableDefaultQuery().queryKey,
+    prefetchFn: productVariantsTableDefaultQuery().queryFn,
   },
   {
     title: "Materiales",
@@ -346,8 +346,8 @@ export const configCards: ConfigCardItem[] = [
     view: "bom",
     group: "Productos",
     adminOnly: true,
-    // Misma llave y parámetro que `BomList` (`useProducts(2)`: solo MP).
-    prefetchKey: ["products", 2],
-    prefetchFn: () => getProducts(2),
+    // La vista por defecto de `BomList` (modo servidor, solo materia prima).
+    prefetchKey: productsTableDefaultQuery(2).queryKey,
+    prefetchFn: productsTableDefaultQuery(2).queryFn,
   },
 ];

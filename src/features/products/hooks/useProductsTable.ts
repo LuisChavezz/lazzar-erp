@@ -2,13 +2,46 @@
 
 import { useServerTable, type ServerTableRequest } from "@/src/hooks/useServerTable";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
-import type { ServerTableDefinition } from "@/src/utils/serverTableParams";
+import {
+  readServerTableState,
+  toServerTableCriteria,
+  type ServerTableDefinition,
+} from "@/src/utils/serverTableParams";
 import type { Product } from "../interfaces/product.interface";
 import { getProductsPage } from "../services/actions";
 import { productsTable, toCatalogListApiParams } from "../utils/catalogListParams";
 
 // A nivel de módulo: una referencia estable entre renders.
 const productsAdapter = limitOffsetAdapter<Product>();
+
+/** Prefijo de la tabla de productos de un tipo (o de todos). */
+const productsTableQueryKey = (tipoId: number | undefined) =>
+  ["products", "table", tipoId ?? "todos"] as const;
+
+/** Una página con los parámetros de la tabla, traducidos y con el tipo fijo. */
+const fetchProductsTablePage = (tipoId: number | undefined, params: ServerTableRequest) =>
+  getProductsPage({
+    ...toCatalogListApiParams(params),
+    ...(tipoId !== undefined ? { tipo_id: tipoId } : {}),
+  });
+
+/**
+ * Llave y petición de la VISTA POR DEFECTO de una tabla de productos (página
+ * 1, sin filtros ni búsqueda, orden por defecto), para el prefetch de las
+ * tarjetas de Configuración. La llave es la misma que arma `useServerTable`
+ * (`[...prefijo, "list", petición]`), así que la tabla la lee al abrirse.
+ */
+export const productsTableDefaultQuery = (tipoId?: number) => {
+  const state = readServerTableState(productsTable, () => null);
+  const request: ServerTableRequest = {
+    ...toServerTableCriteria(productsTable, state),
+    ...productsAdapter.paginationParams({ page: state.page, pageSize: state.pageSize }),
+  };
+  return {
+    queryKey: [...productsTableQueryKey(tipoId), "list", request],
+    queryFn: () => fetchProductsTablePage(tipoId, request),
+  };
+};
 
 interface UseProductsTableOptions {
   /**
@@ -42,12 +75,8 @@ export const useProductsTable = ({
 }: UseProductsTableOptions) =>
   useServerTable({
     definition,
-    queryKey: ["products", "table", tipoId ?? "todos"],
-    queryFn: (params: ServerTableRequest) =>
-      getProductsPage({
-        ...toCatalogListApiParams(params),
-        ...(tipoId !== undefined ? { tipo_id: tipoId } : {}),
-      }),
+    queryKey: productsTableQueryKey(tipoId),
+    queryFn: (params: ServerTableRequest) => fetchProductsTablePage(tipoId, params),
     adapter: productsAdapter,
     toastId,
     refetchErrorMessage: "No se pudieron actualizar los productos. Se muestran los datos anteriores.",

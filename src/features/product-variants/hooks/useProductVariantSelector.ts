@@ -14,8 +14,8 @@ import type {
  * `["product-variants"]` que ya invalidan las mutaciones de variantes (y las de
  * BOM, porque `tiene_bom` cambia con ellas), así que todas las búsquedas se
  * refrescan sin tocar esas mutaciones. El segmento `"selector"` las separa del
- * listado completo (la raíz `["product-variants"]`, que siguen usando las
- * tablas de catálogo). Los parámetros van normalizados: dos búsquedas iguales
+ * listado completo (la raíz `["product-variants"]`) y de las tablas de
+ * catálogo (`["product-variants", "table", …]`). Los parámetros van normalizados: dos búsquedas iguales
  * comparten llave.
  */
 export const productVariantSelectorQueryKey = (params: ProductVariantSelectorParams) =>

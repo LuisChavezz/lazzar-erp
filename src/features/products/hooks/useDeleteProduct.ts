@@ -8,18 +8,20 @@ export const useDeleteProduct = () => {
 
   return useMutation({
     mutationFn: deleteProduct,
-    // Ninguna consulta usa la llave exacta `["products"]`: los listados son
-    // `["products", tipo_id]` y los selectores `["products", "selector", params]`
-    // (un sobre paginado, no un arreglo). Por eso todo va por prefijo.
+    // Ninguna consulta usa la llave exacta `["products"]`: las tablas de
+    // catálogo (`["products", "table", …]`, EC-897) y los selectores
+    // (`["products", "selector", params]`) guardan sobres paginados, no
+    // arreglos. Por eso todo va por prefijo.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["products"] });
       const previousProducts = queryClient.getQueriesData<Product[] | Product>({
         queryKey: ["products"],
       });
 
-      // Solo se filtran los listados (arreglos). Devolver `undefined` deja la
-      // entrada intacta, así los selectores (un objeto) no se tocan: se
-      // refrescan con la invalidación de `onSettled`.
+      // Solo se filtran entradas que sean arreglos (hoy ninguna). Devolver
+      // `undefined` deja la entrada intacta, así las páginas de las tablas y
+      // los selectores (un objeto) no se tocan: se refrescan con la
+      // invalidación de `onSettled`, como pide el modo servidor.
       queryClient.setQueriesData<Product[] | Product>({ queryKey: ["products"] }, (old) =>
         Array.isArray(old) ? old.filter((product) => product.id !== id) : undefined
       );
