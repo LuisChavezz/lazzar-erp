@@ -1,18 +1,25 @@
+import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 import { cotizacionEstatusBadge } from "../utils/cotizacionEstatus";
 
 /**
- * Píldora del estatus de una cotización, con el nombre y los colores del
- * tablero de cotizaciones (`cotizacionEstatusBadge`). Única definición para la
+ * Sin mapa propio: `cotizacionEstatusBadge` ya da la entrada completa de
+ * cualquier estatus (conocido o de respaldo), así que va como `defaultConfig`
+ * sobre un `config` vacío, como el estatus de "Mis pedidos".
+ */
+const NO_BADGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {};
+
+/**
+ * Badge del estatus de una cotización (punto + etiqueta, `StatusBadge`), con el
+ * nombre y los colores del tablero de cotizaciones. Única definición para la
  * tabla de cotizaciones de la oportunidad y el selector de "Ligar".
  */
 export function CotizacionEstatusBadge({ cotizacion }: { cotizacion: OpportunityCotizacion }) {
-  const badge = cotizacionEstatusBadge(cotizacion);
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
-    >
-      {badge.label}
-    </span>
+    <StatusBadge
+      status={String(cotizacion.estatus)}
+      config={NO_BADGE_CONFIG}
+      defaultConfig={cotizacionEstatusBadge(cotizacion)}
+    />
   );
 }
