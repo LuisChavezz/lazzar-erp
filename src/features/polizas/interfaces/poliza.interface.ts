@@ -85,6 +85,14 @@ export interface PolizaDetalle {
   pago: number | null;
   cobro: number | null;
   movimiento_bancario: number | null;
+  /**
+   * Código y nombre de la cuenta (EC-904), con los nombres de
+   * `PolizaDetalleRelacionadoSerializer`. SOLO en listado y retrieve (no en las
+   * respuestas de alta, contabilizar o cancelar), por eso opcionales; `null` si
+   * la línea perdió su cuenta. Los lee el PDF.
+   */
+  cuenta_contable_codigo?: string | null;
+  cuenta_contable_nombre?: string | null;
 }
 
 export interface Poliza {

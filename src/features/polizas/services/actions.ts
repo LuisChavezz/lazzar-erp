@@ -101,3 +101,14 @@ export const cancelarPoliza = async (id: number): Promise<CancelarPolizaResponse
 export const deletePoliza = async (id: number): Promise<void> => {
   await v1_api.delete(`/finanzas/polizas/${id}/`);
 };
+
+/**
+ * Detalle de una póliza (`GET /finanzas/polizas/{id}/`), con el código y el
+ * nombre de la cuenta de cada movimiento (EC-904). Lo usa el PDF (EC-859) para
+ * leerla FRESCA; el diálogo sigue con la fila del listado. Otra empresa
+ * responde 404.
+ */
+export const getPoliza = async (id: number): Promise<Poliza> => {
+  const { data } = await v1_api.get<Poliza>(`/finanzas/polizas/${id}/`);
+  return data;
+};

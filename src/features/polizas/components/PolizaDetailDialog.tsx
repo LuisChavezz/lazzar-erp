@@ -22,6 +22,7 @@ import type { Branch } from "@/src/features/branches/interfaces/branch.interface
 import type { Poliza } from "../interfaces/poliza.interface";
 import type { CostCenter } from "@/src/features/cost-centers/interfaces/cost-center.interface";
 import type { CuentaContable } from "@/src/features/chart-of-accounts/interfaces/chart-of-account.interface";
+import { PolizaPdfButton } from "./PolizaPdfButton";
 
 interface PolizaDetailDialogProps {
   /**
@@ -114,6 +115,7 @@ export function PolizaDetailDialog({
           icon={ContabilidadIcon}
         />
       }
+      headerAction={<PolizaPdfButton poliza={poliza} />}
     >
       <div className="space-y-5">
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
