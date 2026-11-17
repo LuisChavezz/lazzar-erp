@@ -1,5 +1,6 @@
 const ROUTE_TITLES: Record<string, string> = {
   "/": "Inicio",
+  "/access-denied": "Sin acceso",
   "/config": "Configuración",
   "/system": "Panel de Control",
   "/sales": "CRM y Ventas",

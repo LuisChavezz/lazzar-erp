@@ -28,3 +28,19 @@ export function getModuleEntryHref(
     null
   );
 }
+
+/**
+ * Primer módulo de `groups` (en su orden) en el que `user` puede entrar, con el
+ * destino de `getModuleEntryHref`: la salida que ofrece la página "sin acceso"
+ * (EC-895). `null` si no puede entrar en ninguno.
+ */
+export function getFirstModuleEntry(
+  groups: readonly AppRouteGroup[],
+  user?: PermissionContext | null,
+): { label: string; href: string } | null {
+  for (const group of groups) {
+    const href = getModuleEntryHref(group, user);
+    if (href) return { label: group.moduleLabel, href };
+  }
+  return null;
+}
