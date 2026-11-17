@@ -50,6 +50,7 @@ import {
 import { hasCobroRepFile } from "../utils/cobroRepDownload";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
+import { CobroPdfButton } from "./CobroPdfButton";
 
 interface CollectionDetailDialogProps {
   /**
@@ -151,6 +152,7 @@ export function CollectionDetailDialog({
           icon={ReceiptIcon}
         />
       }
+      headerAction={<CobroPdfButton cobro={cobro} />}
     >
       <div className="space-y-5">
         {/* Encabezado: lo que se busca primero al abrir el cobro. */}

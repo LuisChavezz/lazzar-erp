@@ -43,6 +43,13 @@ export interface CobroDetalle {
   importe_aplicado: string;
   observaciones: string | null;
   created_at: string;
+  /**
+   * Factura de la CxC de la línea (EC-904). SOLO en listado y retrieve (no en
+   * las respuestas de alta, aplicar o timbrar), por eso opcionales. Sin saldo:
+   * el de la CxC es el actual, no el del momento del cobro. Los lee el PDF.
+   */
+  factura_id?: number;
+  factura_folio?: string | null;
 }
 
 export interface Cobro {
