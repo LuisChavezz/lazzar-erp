@@ -111,7 +111,7 @@ export function PurchaseNeedsView() {
     <div className="space-y-4 pb-28">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Lo que les falta a los pedidos especiales, juntado por material. Elige las necesidades y crea
+          Lo que les falta a las pre-órdenes (pedidos especiales y resurtidos), juntado por material. Elige las necesidades y crea
           una sola orden de compra.
         </p>
         <button
@@ -202,7 +202,7 @@ export function PurchaseNeedsView() {
                       <thead>
                         <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
                           <th className="w-8 py-1.5" />
-                          <th className="py-1.5 font-medium">Pedido</th>
+                          <th className="py-1.5 font-medium">Origen</th>
                           <th className="py-1.5 font-medium">Requerida para</th>
                           <th className="py-1.5 font-medium text-right">Cantidad</th>
                           <th className="py-1.5 font-medium pl-4">Estatus</th>

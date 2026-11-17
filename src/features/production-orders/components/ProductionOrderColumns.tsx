@@ -24,6 +24,7 @@ import {
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { opListPedidoRefs, pedidoRefLabel } from "../utils/opPedidos";
+import { PreOrdenLink } from "./PreOrdenLink";
 
 const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
@@ -110,8 +111,13 @@ export function getProductionOrderColumns(
       size: 160,
       cell: ({ row }) => {
         const refs = opListPedidoRefs(row.original);
+        const preOrden = row.original.pre_orden;
         if (refs.length === 0) {
-          return <span className="text-xs text-slate-400 dark:text-slate-500">Sin pedido</span>;
+          return preOrden ? (
+            <PreOrdenLink preOrden={preOrden} />
+          ) : (
+            <span className="text-xs text-slate-400 dark:text-slate-500">Sin pedido</span>
+          );
         }
         // En azul y subrayado punteado desde el inicio: se nota que lleva al pedido.
         return (
@@ -126,6 +132,7 @@ export function getProductionOrderColumns(
                 className={PEDIDO_LINK_VISIBLE_CLASS}
               />
             ))}
+            {preOrden && <PreOrdenLink preOrden={preOrden} />}
           </span>
         );
       },
