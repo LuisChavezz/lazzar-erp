@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { permissionGate } from "@/src/utils/permissionGate";
-import { ArrowLeftIcon, ProduccionIcon, ProductIcon, RouteIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ChevronDownIcon, ProduccionIcon, ProductIcon, RouteIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -32,6 +32,9 @@ import {
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
 import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
 import { PreOrdenLink } from "./PreOrdenLink";
+import { OpSalidasMaquilaSection } from "@/src/features/maquila-outputs/components/OpSalidasMaquilaSection";
+import { useOpParaSalidaMaquila } from "@/src/features/maquila-outputs/hooks/useOpParaSalidaMaquila";
+import type { OpParaSalidaMaquilaRenglon } from "@/src/features/maquila-outputs/interfaces/salida-maquila.interface";
 import { ProductionOrderPdfButton } from "./ProductionOrderPdfButton";
 import { opPedidoRefs } from "../utils/opPedidos";
 import { visibleProductionOrderStatusOptions } from "../utils/productionOrderPermissions";
@@ -80,9 +83,14 @@ const DateWithTimeTitle = ({ value }: { value: string | null }) => {
  */
 const TallasTable = ({
   tallas,
+  skuOf,
 }: {
   tallas: ProductionOrderOnboardingProducto["cantidades"]["tallas"];
+  /** SKU de la variante (talla + color), del retrieve de la OP. */
+  skuOf?: (talla: string, color: string) => string | undefined;
 }) => {
+  const skuFor = (t: (typeof tallas)[number]) => t.sku || skuOf?.(t.talla, t.color);
+  const showSku = tallas.some((t) => skuFor(t));
   if (tallas.length === 0) {
     return <EmptyLines>Sin desglose por talla.</EmptyLines>;
   }
@@ -92,6 +100,7 @@ const TallasTable = ({
       <table className="min-w-full text-xs">
         <thead className="bg-slate-50 dark:bg-white/5">
           <tr className="text-slate-500 dark:text-slate-400">
+            {showSku && <th className="px-3 py-2 text-left font-semibold">SKU</th>}
             <th className="px-3 py-2 text-left font-semibold">Talla</th>
             <th className="px-3 py-2 text-left font-semibold">Color</th>
             <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
@@ -103,6 +112,11 @@ const TallasTable = ({
               key={index}
               className="border-t border-slate-100 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             >
+              {showSku && (
+                <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {skuFor(item) ?? "—"}
+                </td>
+              )}
               <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{item.talla}</td>
               <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{item.color}</td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">
@@ -174,24 +188,73 @@ const HabilitacionTable = ({
  * detalle del pedido): nombre y total arriba; debajo, cantidades por talla y
  * habilitación lado a lado en pantallas anchas.
  */
-const ProductoCard = ({ producto }: { producto: ProductionOrderOnboardingProducto }) => (
-  <SheetPanel className="p-5!">
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{producto.nombre}</h3>
+const ProductoCard = ({
+  producto,
+  info,
+  defaultOpen,
+}: {
+  producto: ProductionOrderOnboardingProducto;
+  info?: ProductoInfo;
+  defaultOpen: boolean;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const codigo = producto.codigo || info?.codigo;
+  const proscai = producto.cod_proscai || info?.proscai;
+  const skuList = [
+    ...new Set([
+      ...producto.cantidades.tallas.map((t) => t.sku).filter((s): s is string => Boolean(s)),
+      ...(info ? info.skus.values() : []),
+    ]),
+  ];
+  return (
+  <SheetPanel className="p-0! overflow-hidden">
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      className="w-full flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-left cursor-pointer hover:bg-slate-100/60 dark:hover:bg-white/5 transition-colors"
+    >
+      <ChevronDownIcon
+        aria-hidden
+        className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`}
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{producto.nombre}</h3>
+        <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+          <span>
+            <span className="font-sans text-slate-400">SKU </span>
+            {skuList.length === 0 ? "—" : skuList.length === 1 ? skuList[0] : `${skuList.length} variantes`}
+          </span>
+          <span aria-hidden>|</span>
+          <span>
+            <span className="font-sans text-slate-400">Código </span>
+            {codigo || "—"}
+          </span>
+          <span aria-hidden>|</span>
+          <span>
+            <span className="font-sans text-slate-400">Proscai </span>
+            {proscai || "—"}
+          </span>
+        </p>
+      </div>
       <OrderChip>
         <span className="tabular-nums font-semibold text-slate-800 dark:text-white mr-1">
           {formatQuantityValue(producto.cantidades.total)}
         </span>
-        piezas
+        {producto.cantidades.total === 1 ? "pieza" : "piezas"}
       </OrderChip>
-    </div>
+    </button>
 
-    <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+    {open && (
+    <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 px-5 pb-5">
       <div className="space-y-2 xl:col-span-2">
         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Cantidades por talla
         </h4>
-        <TallasTable tallas={producto.cantidades.tallas} />
+        <TallasTable
+          tallas={producto.cantidades.tallas}
+          skuOf={info ? (talla, color) => info.skus.get(`${talla}|${color}`) : undefined}
+        />
       </div>
       <div className="space-y-2 xl:col-span-3">
         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -200,8 +263,33 @@ const ProductoCard = ({ producto }: { producto: ProductionOrderOnboardingProduct
         <HabilitacionTable habilitacion={producto.habilitacion} />
       </div>
     </div>
+    )}
   </SheetPanel>
-);
+  );
+};
+
+/** SKU por talla/color, código y Proscai de un producto, sacados del retrieve de la OP. */
+interface ProductoInfo {
+  skus: Map<string, string>;
+  codigo?: string;
+  proscai?: string;
+}
+
+const buildProductoInfo = (
+  renglones: OpParaSalidaMaquilaRenglon[] | undefined,
+): Map<string, ProductoInfo> => {
+  const map = new Map<string, ProductoInfo>();
+  for (const r of renglones ?? []) {
+    const v = r.producto_variante;
+    if (!v) continue;
+    const info = map.get(v.producto_nombre) ?? { skus: new Map<string, string>() };
+    if (v.sku) info.skus.set(`${v.talla_nombre}|${v.color_nombre}`, v.sku);
+    info.proscai ||= v.cod_proscai || undefined;
+    info.codigo ||= v.producto_codigo || undefined;
+    map.set(v.producto_nombre, info);
+  }
+  return map;
+};
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -243,6 +331,10 @@ export function ProductionOrderPageContent({
   const { isPending: isAccessPending, user } = useRouteAccess();
   const editAccess = permissionGate(isAccessPending, hasProductionPermission(user, "OP", "E"));
   const statusFlow = useProductionOrderStatusFlow(numericId, { enabled: editAccess === "allowed" });
+  // SKU, código y Proscai de cada producto: el onboarding no los trae y el
+  // retrieve sí (misma consulta que usa "Generar SM").
+  const retrieve = useOpParaSalidaMaquila(numericId, numericId > 0);
+  const productoInfo = buildProductoInfo(retrieve.data?.orden_produccion_detalle);
 
   const openCriticalPath = () => {
     if (!data) return;
@@ -462,11 +554,19 @@ export function ProductionOrderPageContent({
         ) : (
           <div className="space-y-4">
             {data.productos.map((producto, index) => (
-              <ProductoCard key={index} producto={producto} />
+              <ProductoCard
+                key={index}
+                producto={producto}
+                info={productoInfo.get(producto.nombre)}
+                defaultOpen={data.productos.length <= 2}
+              />
             ))}
           </div>
         )}
       </SheetSection>
+
+      {/* ── Salidas a maquila (SM, EC-868) ─────────────────────────────── */}
+      <OpSalidasMaquilaSection opId={data.op_id} opCancelada={data.estatus_op === 7} />
 
       {/* ── 5. Consumos ──────────────────────────────────────────────────── */}
       <ProductionOrderConsumptionSection

@@ -621,6 +621,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         permission: "R-PRODUCCION-CM",
         section: "operation",
       },
+      {
+        key: "manufacturing-maquila-outputs",
+        label: "Salidas a Maquila",
+        path: "/manufacturing/maquila-outputs",
+        icon: EmbarquesIcon,
+        description: "Prendas que salen a confeccionarse con un maquilero (SM) y su recepción.",
+        // Mismo permiso que las OP: la SM se genera desde la OP.
+        permission: "R-PRODUCCION-OP",
+        section: "operation",
+      },
       // ── Inventario ──────────────────────────────────────────────────────────
       {
         key: "manufacturing-stock",

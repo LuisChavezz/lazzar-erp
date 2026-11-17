@@ -42,6 +42,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/manufacturing/embroidery": "Órdenes de Bordado",
   "/manufacturing/reflective-orders": "Órdenes de Reflejante",
   "/manufacturing/corte-manga": "Órdenes de Corte de Manga",
+  "/manufacturing/maquila-outputs": "Salidas a Maquila",
   "/manufacturing/special-orders": "Fabricación Especial",
   "/manufacturing/stock": "Existencias",
   "/manufacturing/products": "Productos",

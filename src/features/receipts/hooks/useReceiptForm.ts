@@ -17,6 +17,7 @@ import {
   almacenesDeSucursal,
   almacenPreseleccionado,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
+import { tieneCantidadRecibida } from "../utils/receiptQuantities";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
@@ -25,10 +26,14 @@ interface UseReceiptFormParams {
 
 type ReceiptFormField = keyof ReceiptFormValues;
 
-// Busca el primer campo inválido y mueve el viewport hasta él.
+// Busca el primer campo inválido y mueve el viewport hasta él. Los inputs de
+// cantidad no llevan `name` (`QuantitySelector`), así que un error en
+// `cantidades` sin ningún campo de cabecera inválido ancla a su sección
+// (`cantidadesSection`), que va después de la cabecera en el DOM (EC-893).
 const scrollToFirstValidationError = (
   formElement: HTMLFormElement,
   issuePaths: string[],
+  cantidadesSection: HTMLElement | null,
 ) => {
   if (issuePaths.length === 0) return;
 
@@ -55,6 +60,16 @@ const scrollToFirstValidationError = (
   if (firstInvalid) {
     firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.focus({ preventScroll: true });
+    return;
+  }
+
+  if (cantidadesSection && issuePaths.includes("cantidades")) {
+    cantidadesSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Como los campos de cabecera: el foco va a la primera cantidad. Sin
+    // inputs (orden sin renglones o sin piezas recibibles) se queda donde está.
+    cantidadesSection
+      .querySelector<HTMLInputElement>("input")
+      ?.focus({ preventScroll: true });
   }
 };
 
@@ -69,10 +84,8 @@ function reduceDetalle<D extends { id: number }, T>(
 ): T[] {
   return detalle.reduce<T[]>((acc, item) => {
     const cantidad = cantidades[String(item.id)];
-    const tieneCantidad = !(
-      cantidad === undefined || cantidad.trim() === "" || Number(cantidad) <= 0
-    );
-    if (!tieneCantidad) return acc;
+    // Misma regla que el schema ("al menos una"): ver `tieneCantidadRecibida`.
+    if (cantidad === undefined || !tieneCantidadRecibida(cantidad)) return acc;
     acc.push(buildRow(item, cantidad));
     return acc;
   }, []);
@@ -102,6 +115,9 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
   // ── Referencia del formulario ─────────────────────────────────────────
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Sección de cantidades (o su aviso, si la orden no trae renglones): destino
+  // del scroll cuando el error está en `cantidades`.
+  const cantidadesRef = useRef<HTMLElement | null>(null);
 
   // ── Errores de validación ─────────────────────────────────────────────
   const [clientErrors, setClientErrors] = useState<
@@ -175,7 +191,11 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
     if (formRef.current) {
       setTimeout(() => {
-        scrollToFirstValidationError(formRef.current!, issuePaths);
+        scrollToFirstValidationError(
+          formRef.current!,
+          issuePaths,
+          cantidadesRef.current,
+        );
       }, 0);
     }
 
@@ -251,6 +271,19 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
     },
   });
 
+  // ── Cambio de una cantidad ────────────────────────────────────────────
+  // Guarda el valor del renglón y quita el error de `cantidades` solo si, con
+  // el cambio, ya hay al menos una cantidad recibida: un "−" en 0 o un "+"
+  // topado no lo borran (el formulario seguiría siendo inválido).
+  const handleCantidadChange = (lineId: number, valor: string) => {
+    const key = String(lineId);
+    form.setFieldValue(`cantidades.${key}`, valor);
+    const cantidades = { ...form.state.values.cantidades, [key]: valor };
+    if (Object.values(cantidades).some(tieneCantidadRecibida)) {
+      clearFieldErrors("cantidades");
+    }
+  };
+
   // ── Reset manual ──────────────────────────────────────────────────────
   const handleReset = () => {
     form.reset(defaultValues);
@@ -270,6 +303,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   return {
     form,
     formRef,
+    cantidadesRef,
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
@@ -277,6 +311,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
     getError,
     clearFieldErrors,
     validateField,
+    handleCantidadChange,
     handleReset,
     handleFormSubmit,
   };
