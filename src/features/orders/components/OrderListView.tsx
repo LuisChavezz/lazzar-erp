@@ -25,7 +25,7 @@ interface OrderListViewProps {
   /**
    * `"sales"` es "Mis pedidos": `?mis_pedidos=true` (solo los pedidos de
    * cotizaciones del usuario), columnas de `SalesOrderColumns.tsx` y filtros de
-   * confirmación y mes. `"procurement"` es Compras › Pedidos: columnas de
+   * estatus, confirmación, mes y clasificación. `"procurement"` es Compras › Pedidos: columnas de
    * `ProcurementOrderColumns.tsx`, filtros de estatus, cliente, meses y total,
    * y botones de exportar a Excel/PDF. Las dos son de solo lectura.
    */
@@ -82,22 +82,8 @@ function SalesOrderList({ from, extraRefetchQueryKeys }: ListProps) {
   const showAmounts = puedeVerImportes === true;
   const onRefetch = useToolbarRefetch(table.tableProps.onRefetch, extraRefetchQueryKeys);
 
-  // Leyenda del punto de confirmación, integrada en la barra de herramientas
-  // (vía `actionButton`) en vez de una fila propia: no depende de hover (que
-  // en touch no existe) y no empuja la tabla hacia abajo.
-  const confirmationLegend = (
-    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
-        Por confirmar
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-cyan-500 shrink-0" aria-hidden="true" />
-        Confirmado
-      </span>
-    </div>
-  );
-
+  // Sin `actionButton`: la confirmación tiene su propia columna (con su
+  // etiqueta), así que la leyenda del antiguo punto del folio ya no hace falta.
   return (
     <DataTable
       columns={createSalesOrderColumns({ from, showAmounts })}
@@ -107,7 +93,6 @@ function SalesOrderList({ from, extraRefetchQueryKeys }: ListProps) {
       // El backend busca en folio, OC y cliente; por fecha se filtra con el
       // mes del encabezado "Fecha".
       searchPlaceholder="Buscar por folio, cliente u OC..."
-      actionButton={confirmationLegend}
       emptyMessage="Aún no tienes pedidos"
       errorTitle="Error al cargar pedidos"
       loadingAriaLabel="Cargando pedidos"
