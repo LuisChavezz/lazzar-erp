@@ -25,6 +25,21 @@ export const getProducts = async (
 };
 
 /**
+ * Una página del listado de productos (`?limit=&offset=` → `{count, next,
+ * previous, results}`, EC-886) con los filtros, la búsqueda y el orden de las
+ * tablas de catálogo en modo servidor (EC-896/897). Los parámetros llegan ya
+ * validados y con los nombres del endpoint (`toCatalogListApiParams`).
+ */
+export const getProductsPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<Product>> => {
+  const response = await v1_api.get<PaginatedListResponse<Product>>("/catalogo/producto/", {
+    params,
+  });
+  return response.data;
+};
+
+/**
  * Selector ligero de productos (`GET /catalogo/producto/selector/`, EC-886):
  * siempre paginado (`{count, next, previous, results}`, 50 por defecto, tope
  * 500). Los parámetros viajan normalizados por `toCatalogSelectorQuery`
