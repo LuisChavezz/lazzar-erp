@@ -1,5 +1,6 @@
 import { isCompleteDateEntry } from "@/src/utils/formatDate";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
+import type { ServerListAdapter } from "@/src/utils/serverListAdapters";
 
 /**
  * Estado de una tabla en MODO SERVIDOR (`DataTable` con `server`) y su ida y
@@ -653,3 +654,58 @@ export const hasServerTableCriteria = (
   state: Pick<ServerTableBaseState<ServerTableFilterParams>, "search" | "filters">,
 ): boolean =>
   state.search !== "" || Object.keys(state.filters).length > 0;
+
+/** Parámetros de la petición de una lista: criterios (texto) + paginación (números). */
+export type ServerTableRequest = Record<string, string | number>;
+
+/**
+ * La petición de una lista para un estado: los criterios con los nombres del
+ * endpoint (`toServerTableCriteria`) más la paginación del adaptador. Es la
+ * misma que arma `useServerTable`.
+ */
+export const serverTableRequest = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams = NoServerTableSettings,
+>(
+  definition: ServerTableDefinition<P, S>,
+  state: ServerTableState<P, S>,
+  adapter: Pick<ServerListAdapter<unknown, unknown>, "paginationParams">,
+): ServerTableRequest => ({
+  ...toServerTableCriteria(definition, state),
+  ...adapter.paginationParams({ page: state.page, pageSize: state.pageSize }),
+});
+
+/**
+ * Llave de la consulta de una lista: `[...prefijo, "list", petición]`. La única
+ * fuente de esa forma: la usan `useServerTable` y `serverTableDefaultQuery`, así
+ * que un prefetch siempre llena la entrada que la tabla lee.
+ */
+export const serverTableListKey = (
+  queryKey: readonly unknown[],
+  request: ServerTableRequest,
+): unknown[] => [...queryKey, "list", request];
+
+/**
+ * Llave y consulta de la VISTA POR DEFECTO de una lista (página 1, tamaño por
+ * defecto, sin filtros ni búsqueda, orden por defecto), para precargarla antes
+ * de montar la tabla (las tarjetas de Configuración). Sin React: se puede
+ * llamar desde cualquier módulo.
+ */
+export const serverTableDefaultQuery = <
+  P extends ServerTableFilterParams,
+  S extends ServerTableSettingParams,
+  TResponse,
+>({
+  definition,
+  adapter,
+  queryKey,
+  queryFn,
+}: {
+  definition: ServerTableDefinition<P, S>;
+  adapter: Pick<ServerListAdapter<TResponse, unknown>, "paginationParams">;
+  queryKey: readonly unknown[];
+  queryFn: (params: ServerTableRequest) => Promise<TResponse>;
+}) => {
+  const request = serverTableRequest(definition, readServerTableState(definition, () => null), adapter);
+  return { queryKey: serverTableListKey(queryKey, request), queryFn: () => queryFn(request) };
+};
