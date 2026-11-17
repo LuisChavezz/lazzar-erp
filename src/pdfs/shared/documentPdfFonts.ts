@@ -8,8 +8,8 @@
  * para que tablas y tarjetas conserven sus anchos. No cubre emoji ni ✓.
  *
  * Solo se REGISTRA aquí; react-pdf descarga el archivo al generar un PDF, así
- * que no pesa en ninguna pantalla. Los PDF de cotización y factura (estilos
- * propios, fuera de la base) siguen en Helvetica.
+ * que no pesa en ninguna pantalla. El PDF de cotización (estilos propios,
+ * fuera de la base) sigue en Helvetica; el de factura pasó a la base (EC-859).
  */
 import { Font } from "@react-pdf/renderer";
 
@@ -42,8 +42,8 @@ type PdfStyleEntry = { fontFamily?: string | string[] };
 /**
  * Pasa una hoja de estilos de Helvetica a la fuente de la base: `Helvetica` →
  * Arimo normal y `Helvetica-Bold` → Arimo en negritas. La usa
- * `DocumentPdfStyles`, que parte de `basePdfStyles` (compartida con cotización
- * y factura, que siguen en Helvetica), así que el cambio queda solo en la base.
+ * `DocumentPdfStyles`, que parte de `basePdfStyles` (compartida con la
+ * cotización, que sigue en Helvetica), así que el cambio queda solo en la base.
  */
 export function withDocumentPdfFont<Styles extends Record<string, PdfStyleEntry>>(styles: Styles): Styles {
   return Object.fromEntries(

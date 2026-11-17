@@ -22,8 +22,8 @@ export const isInvoiceStamped = (invoice: { cfdi_uuid?: string | null }): boolea
 /**
  * ¿El PDF del ERP debe rotularse como no fiscal? Si la factura ya tiene CFDI
  * (`cfdi_uuid`) o pudo tenerlo (`cfdi_pendiente`: timbrado sin confirmar), el
- * PDF que genera el ERP no es el comprobante fiscal. Fuente única para la
- * cabecera del detalle y el menú del listado.
+ * PDF que genera el ERP no es el comprobante fiscal. Fuente única para
+ * "Enviar correo" (detalle y listado) y el banner del propio PDF (EC-859).
  */
 export const isInvoicePdfNonFiscal = (invoice: {
   cfdi_uuid?: string | null;
@@ -31,16 +31,13 @@ export const isInvoicePdfNonFiscal = (invoice: {
 }): boolean => isInvoiceStamped(invoice) || invoice.cfdi_pendiente === true;
 
 /**
- * Aviso para "Descargar PDF" y "Enviar correo" de una factura timbrada o con
- * timbrado pendiente: el PDF
- * que genera el ERP no es la representación impresa del CFDI (no lleva folio
- * fiscal ni sello). Se rotula; no se oculta.
+ * Aviso para "Enviar correo" de una factura timbrada o con timbrado pendiente:
+ * el PDF que adjunta (el del ERP) no es la representación impresa del CFDI: no
+ * lleva sello. Se rotula; no se oculta. El CFDI oficial se baja con
+ * "Descargar CFDI" o se manda con "Enviar CFDI" (EC-859).
  */
 export const INVOICE_NON_FISCAL_PDF_MESSAGE =
-  "Este PDF no es el CFDI: no incluye folio fiscal ni sello digital.";
-
-/** Etiqueta de "Descargar PDF" para una factura timbrada. */
-export const INVOICE_NON_FISCAL_PDF_LABEL = "Descargar PDF (no fiscal)";
+  "El PDF del ERP no es el CFDI: no lleva sello digital. El CFDI oficial se envía con «Enviar CFDI».";
 
 /**
  * Etiqueta de "Enviar correo": fuente única para la cabecera del detalle y el

@@ -15,7 +15,6 @@ import { INVOICE_STATUS_CONFIG, isInvoiceSendable } from "../constants/invoiceSt
 import { invoiceDetailHref } from "../constants/invoiceDetailOrigins";
 import { useInvoiceRowActionsContext } from "../hooks/useInvoiceListDocumentActions";
 import {
-  INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   invoiceEmailLabel,
   isInvoicePdfNonFiscal,
@@ -69,7 +68,7 @@ import {
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
-  const { onDownloadPdf, onSendEmail, pendingIds, canCancel, onCancel, canCancelCfdi, onCancelCfdi } =
+  const { onDownloadPdf, onSendEmail, pendingIds, companyPending, canCancel, onCancel, canCancelCfdi, onCancelCfdi } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
@@ -82,18 +81,20 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       href: invoiceDetailHref(invoice.id, "invoicing"),
     },
     {
-      label: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_LABEL : "Descargar PDF",
-      description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
+      // El PDF del ERP sobre la plantilla base (EC-859), el mismo de la página.
+      label: "Descargar PDF",
       icon: DownloadIcon,
       onSelect: () => onDownloadPdf(invoice.id),
-      disabled: pending,
+      // Lleva la empresa en el encabezado: espera a que sus datos estén resueltos.
+      disabled: pending || companyPending,
     },
     {
       label: invoiceEmailLabel({ nonFiscal: nonFiscalPdf }),
       description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: EmailIcon,
       onSelect: () => onSendEmail(invoice.id),
-      disabled: pending,
+      // El adjunto es el mismo PDF, con la empresa en el encabezado.
+      disabled: pending || companyPending,
       visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
     },
     {

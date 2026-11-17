@@ -14,11 +14,10 @@ type InvoiceEmailProps = {
 /**
  * Correo dirigido al CLIENTE con su factura adjunta en PDF.
  *
- * El cuerpo se construye a partir del MISMO modelo compartido que el PDF
- * (`buildInvoiceDocumentModel`), de modo que el resumen del correo y el PDF
- * adjunto no pueden divergir. El desglose completo vive en el PDF adjunto
- * (ver `InvoicePdfDocument`); aquí se ofrece un vistazo rápido de folio,
- * estatus, fechas, conceptos y totales.
+ * El cuerpo se construye con `buildInvoiceDocumentModel`, de los mismos
+ * campos guardados que lee el PDF adjunto (`InvoicePdfDocument`, sobre la
+ * plantilla base desde EC-859), que trae el desglose completo; aquí se ofrece
+ * un vistazo rápido de folio, estatus, fechas, conceptos y totales.
  *
  * El `estatus` se INCLUYE (a diferencia del correo de orden de compra) porque
  * en una factura es información fiscal/de pago relevante para el cliente.

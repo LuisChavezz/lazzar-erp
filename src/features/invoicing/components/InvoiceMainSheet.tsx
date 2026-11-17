@@ -4,7 +4,6 @@ import {
   BanIcon,
   CheckCircleIcon,
   ClientesIcon,
-  DownloadIcon,
   EmailIcon,
   FacturacionIcon,
   PaperPlaneIcon,
@@ -56,7 +55,6 @@ import {
 } from "../utils/invoiceCancellation";
 import { INVOICE_STATUS, INVOICE_STATUS_CONFIG } from "../constants/invoiceStatus";
 import {
-  INVOICE_NON_FISCAL_PDF_LABEL,
   INVOICE_NON_FISCAL_PDF_MESSAGE,
   INVOICE_STAMP_PENDING_LABEL,
   canReconcileInvoiceCfdi,
@@ -112,7 +110,9 @@ const satKeyLabel = (key: InvoiceDesgloseSatKey | null): string =>
  * retrieve). Debajo de los
  * botones va, en texto visible, el motivo de los que estén bloqueados (el
  * `title` de un botón deshabilitado no se muestra en todos los navegadores) y,
- * en una factura timbrada, el aviso de que el PDF del ERP no es el CFDI.
+ * en una factura timbrada, el aviso de que el PDF que adjunta el correo no es
+ * el CFDI. "Descargar PDF" y "Descargar CFDI" viven en la barra de la página
+ * (EC-859).
  */
 function InvoiceDocumentActions({
   invoice,
@@ -237,20 +237,6 @@ function InvoiceDocumentActions({
                   })}
           </Button>
         )}
-        <Button
-          type="button"
-          variant="primary"
-          onClick={actions.downloadPdf}
-          disabled={actions.pdfDisabled}
-          aria-describedby={nonFiscalPdf ? nonFiscalNoteId : undefined}
-        >
-          <DownloadIcon className="w-4 h-4" aria-hidden="true" />
-          {actions.isDownloadingPdf
-            ? "Generando PDF..."
-            : nonFiscalPdf
-              ? INVOICE_NON_FISCAL_PDF_LABEL
-              : "Descargar PDF"}
-        </Button>
       </div>
       {nonFiscalPdf && (
         <p id={nonFiscalNoteId} className="text-xs text-slate-500 dark:text-slate-400 max-w-md lg:text-right">

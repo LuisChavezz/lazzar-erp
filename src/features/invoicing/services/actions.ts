@@ -1,3 +1,4 @@
+import type { CfdiFileFormat, FacturamaCfdiFile } from "@/src/utils/officialCfdiFile";
 import { v1_api } from "@/src/api/v1.api";
 import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
 import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
@@ -215,5 +216,19 @@ export const sendInvoiceCfdi = async ({
     `/finanzas/facturas/${id}/enviar-cfdi/`,
     { email },
   );
+  return data;
+};
+
+/**
+ * CFDI OFICIAL de la factura timbrada (`GET /finanzas/facturas/{id}/cfdi/`,
+ * EC-859): el PDF o XML de Facturama en base64 (`Content`), acotado a las
+ * facturas de la empresa y con el permiso de lectura de Facturación. Sin
+ * `facturama_id` responde `400 {"cfdi": "La factura no tiene CFDI timbrado."}`;
+ * si Facturama falla, `502 {"cfdi": ...}`. Lo decodifica `cfdiFileToBlob`.
+ */
+export const getInvoiceCfdiFile = async (id: number, format: CfdiFileFormat): Promise<FacturamaCfdiFile> => {
+  const { data } = await v1_api.get<FacturamaCfdiFile>(`/finanzas/facturas/${id}/cfdi/`, {
+    params: { formato: format },
+  });
   return data;
 };

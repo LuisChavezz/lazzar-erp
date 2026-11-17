@@ -12,7 +12,10 @@ import {
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
-import { useDownloadInvoicePdf } from "./useDownloadInvoicePdf";
+import { requirePdfCompany, usePdfCompany } from "@/src/hooks/usePdfCompany";
+import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
+import { downloadBlob } from "@/src/utils/downloadBlob";
+import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
 import {
   usePrepareInvoiceEmail,
   useSendInvoiceEmail,
@@ -50,6 +53,11 @@ export interface InvoiceRowActionsContextValue {
   onSendEmail: (id: number) => void;
   /** Ids de factura con una acción de PDF o correo en curso. */
   pendingIds: number[];
+  /**
+   * Datos de la empresa del encabezado aún cargando (`usePdfCompany`): "Descargar
+   * PDF" y "Enviar correo" (cuyo adjunto es ese PDF) esperan mientras tanto.
+   */
+  companyPending: boolean;
   /** ¿Se ofrece "Cancelar factura" en esta fila? (`canCancelInvoice`). */
   canCancel: (invoice: InvoiceListRow) => boolean;
   /** Abre el diálogo de cancelación, que vive en `InvoiceList` (no en la celda). */
@@ -74,10 +82,10 @@ export const useInvoiceRowActionsContext = useRowActionsContext;
  *
  * El listado ligero no trae `factura_detalles`, `correo_facturas` ni `activo`,
  * así que cada acción pide el retrieve FRESCO al activarse (nunca al abrir el
- * menú; `invoiceRetrieveFreshOptions`) y le pasa ese `Invoice` a las MISMAS
- * mutaciones que usa la página de detalle (`useDownloadInvoicePdf` /
- * `usePrepareInvoiceEmail` / `useSendInvoiceEmail`): mismo PDF, mismo correo y
- * mismos avisos. El correo se bloquea con la misma regla
+ * menú; `invoiceRetrieveFreshOptions`). El PDF es el de la página
+ * (`generateInvoicePdfBlob` con la empresa activa, `FAC-<folio>.pdf`, EC-859) y
+ * el correo pasa por las MISMAS mutaciones (`usePrepareInvoiceEmail` /
+ * `useSendInvoiceEmail`): mismo PDF, mismo correo y mismos avisos. El correo se bloquea con la misma regla
  * (`getInvoiceEmailBlocker`), avisando el motivo, y como en el detalle se
  * prepara y se confirma (`emailDialog`, de `useSendEmailConfirmation`, que el
  * listado pinta con `InvoiceSendEmailConfirmDialog`) antes de enviarse.
@@ -96,7 +104,7 @@ export function useInvoiceListDocumentActions(): Omit<
   emailDialog: SendEmailDialogSession<PreparedInvoiceEmail> | null;
 } {
   const queryClient = useQueryClient();
-  const { mutateAsync: downloadPdf } = useDownloadInvoicePdf();
+  const pdfCompany = usePdfCompany();
   const { mutateAsync: prepareEmail } = usePrepareInvoiceEmail();
   const { mutateAsync: sendEmail } = useSendInvoiceEmail();
 
@@ -124,7 +132,13 @@ export function useInvoiceListDocumentActions(): Omit<
       }
 
       if (variables.action === "pdf") {
-        await downloadPdf(invoice);
+        try {
+          const blob = await generateInvoicePdfBlob(invoice, requirePdfCompany(pdfCompany));
+          downloadBlob(blob, documentPdfFileName("FAC", invoice.folio, invoice.id));
+        } catch (error) {
+          throw new InvoiceListActionError(extractErrorMessage(error, "No se pudo generar el PDF de la factura"));
+        }
+        toast.success("PDF generado y descargado correctamente");
         return;
       }
       const blocker = getInvoiceEmailBlocker(invoice);
@@ -135,7 +149,7 @@ export function useInvoiceListDocumentActions(): Omit<
       loadingId: toast.loading(LOADING_MESSAGES[action]),
     }),
     onError: (error) => {
-      // Los errores del PDF o del envío ya los avisó la mutación reutilizada.
+      // Los errores del envío ya los avisó la mutación reutilizada.
       if (error instanceof InvoiceListActionError) toast.error(error.message);
     },
     onSettled: (_data, _error, _variables, context) => {
@@ -168,6 +182,7 @@ export function useInvoiceListDocumentActions(): Omit<
     },
     onSendEmail: email.request,
     pendingIds,
+    companyPending: pdfCompany.pending,
     emailDialog: email.dialog,
   };
 }
