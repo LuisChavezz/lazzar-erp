@@ -15,7 +15,6 @@ import { pedidoDetailHref, type PedidoDetailOrigin } from '../constants/pedidoDe
 import {
   getPedidoClasificacionLabel,
   getPedidoEstatusBadge,
-  PEDIDO_ESTATUS,
 } from '../constants/pedidoStatus';
 import {
   PedidoCatalogHeaderFilter,
@@ -67,17 +66,18 @@ export interface SalesOrderColumnsOptions {
   showAmounts: boolean;
 }
 
-/** Badge de cada estatus conocido; uno fuera de rango cae en `defaultConfig`. */
-const PEDIDO_ESTATUS_BADGES: Record<string, StatusBadgeConfigEntry> = Object.fromEntries(
-  Object.values(PEDIDO_ESTATUS).map((estatus) => [String(estatus), getPedidoEstatusBadge(estatus)]),
-);
+/**
+ * Sin mapa propio: `getPedidoEstatusBadge` ya da la entrada completa de
+ * cualquier estatus (conocido o "Desconocido (n)"), así que va como
+ * `defaultConfig` sobre un `config` vacío.
+ */
+const NO_BADGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {};
 
 function PedidoEstatusBadge({ estatus }: { estatus: number }) {
   return (
     <StatusBadge
       status={String(estatus)}
-      config={PEDIDO_ESTATUS_BADGES}
-      // "Desconocido (n)" con el punto neutro, nunca el número crudo.
+      config={NO_BADGE_CONFIG}
       defaultConfig={getPedidoEstatusBadge(estatus)}
     />
   );
