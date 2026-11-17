@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import toast from "react-hot-toast";
 import { Loader } from "@/src/components/Loader";
 import { XIcon } from "@/src/components/Icons";
 import { FormSelect } from "@/src/components/FormSelect";
@@ -14,6 +15,7 @@ import { useProductionVariants } from "../hooks/useProductionVariants";
 import { useMaquileros } from "@/src/features/suppliers/hooks/useMaquileros";
 import {
   catalogOption,
+  isOfferedForPedidos,
   matchesProductionOption,
   productionOption,
   type OpSkuOption,
@@ -127,6 +129,31 @@ export function ProductionOrderStep1({
     );
   };
 
+  // EC-898: con pedido vinculado solo se ofrecen SUS muestras (el backend
+  // rechaza las de otro pedido). Lista para cuando la OP lleve varios pedidos.
+  const linkedPedidoIds = pedido ? [pedido.id] : [];
+  const offeredProductionMatches = productionMatches.filter((option) =>
+    isOfferedForPedidos(option, linkedPedidoIds),
+  );
+
+  /**
+   * Cambia el pedido vinculado y quita de la selección las muestras que ya no
+   * se ofrecen (de otro pedido), avisando cuántas: si no, seguirían fijas
+   * arriba y elegidas aunque la lista ya no las muestre.
+   */
+  const changePedido = (next: SelectedProductionOrderPedido | null) => {
+    setPedido(next);
+    const nextIds = next ? [next.id] : [];
+    const removed = selected.filter((option) => !isOfferedForPedidos(option, nextIds));
+    if (removed.length === 0) return;
+    setSelected((prev) => prev.filter((option) => isOfferedForPedidos(option, nextIds)));
+    toast(
+      removed.length === 1
+        ? `Se quitó 1 muestra que no es del pedido ${next?.label}.`
+        : `Se quitaron ${removed.length} muestras que no son del pedido ${next?.label}.`,
+    );
+  };
+
   // ── Loading state ─────────────────────────────────────────────────────
   if (isLoadingProduccion) {
     return (
@@ -212,7 +239,7 @@ export function ProductionOrderStep1({
               </button>
               <button
                 type="button"
-                onClick={() => setPedido(null)}
+                onClick={() => changePedido(null)}
                 aria-label="Quitar pedido"
                 aria-describedby={pedidoLabelId}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 transition-colors"
@@ -299,7 +326,7 @@ export function ProductionOrderStep1({
         search={catalogSearch.search}
         onSearchChange={catalogSearch.setSearch}
         results={catalogResults}
-        localResults={productionMatches}
+        localResults={offeredProductionMatches}
         pinned={selected}
         total={catalogSearch.total}
         hasResults={catalogSearch.hasResults}
@@ -373,7 +400,7 @@ export function ProductionOrderStep1({
         open={isPedidoSelectorOpen}
         onOpenChange={setIsPedidoSelectorOpen}
         selectedPedidoId={pedido?.id ?? null}
-        onSelect={setPedido}
+        onSelect={changePedido}
       />
     </div>
   );
