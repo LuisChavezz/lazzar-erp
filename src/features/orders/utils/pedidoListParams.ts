@@ -95,8 +95,34 @@ const confirmadoParam = enumParam(["true", "false"]);
 export const PEDIDO_ESTATUS_VALUES = Object.values(PEDIDO_ESTATUS).map(String);
 
 /**
+ * Opción VIRTUAL «Sin clasificación» del filtro de clasificación (solo Mis
+ * pedidos): `?clasificacion=sin_clasificar` en la URL. El backend no la acepta
+ * en `clasificacion` (un valor que no es código da 400): `toPedidoListApiParams`
+ * la cambia por `sin_clasificar=true` y no envía `clasificacion`.
+ */
+export const SIN_CLASIFICACION = "sin_clasificar";
+
+const clasificacionCsvParam = csvEnumParam(PEDIDO_CLASIFICACIONES);
+
+/**
+ * Clasificación de Mis pedidos: los códigos (CSV, como Mesa de Control) o la
+ * opción virtual `SIN_CLASIFICACION`, nunca mezclados (el backend combinaría
+ * `sin_clasificar` y `clasificacion` con AND y no quedaría nada). El valor se
+ * normaliza con el mismo orden que `csvEnumParam`.
+ */
+const clasificacionOrSinParam: ServerTableParam<string> = {
+  parse: (raw) => {
+    if (raw === SIN_CLASIFICACION) return raw;
+    const codes = clasificacionCsvParam.parse(raw);
+    return codes ? clasificacionCsvParam.serialize(codes) : null;
+  },
+  serialize: (value) => value,
+};
+
+/**
  * Parámetros de la tabla → parámetros del endpoint: cada `rango_*` se
- * sustituye por los suyos y el resto pasa igual. Una opción de rango que no
+ * sustituye por los suyos, `clasificacion=sin_clasificar` por
+ * `sin_clasificar=true` y el resto pasa igual. Una opción de rango que no
  * existe se descarta (su codec ya no la deja llegar aquí).
  */
 export const toPedidoListApiParams = <T extends string | number>(
@@ -104,6 +130,12 @@ export const toPedidoListApiParams = <T extends string | number>(
 ): Record<string, T | string> => {
   const apiParams: Record<string, T | string> = {};
   for (const [key, value] of Object.entries(params)) {
+    // Solo la definición de Mis pedidos deja pasar este valor (la de Mesa de
+    // Control lo descarta por no ser un código).
+    if (key === "clasificacion" && value === SIN_CLASIFICACION) {
+      apiParams.sin_clasificar = "true";
+      continue;
+    }
     const options = RANGE_FILTERS[key];
     if (!options) {
       apiParams[key] = value;
@@ -221,20 +253,28 @@ export const procurementPedidosTable = defineServerTable({
 /**
  * Mis pedidos (`/sales/orders`): la búsqueda por fecha de la tabla en memoria
  * se sustituye por el filtro `mes` (el `q` del backend no busca en fechas).
+ * `estatus` incluye «Cancelado» (`5`): es la única forma de ver los
+ * cancelados, que la vista por defecto no trae (el backend solo los devuelve
+ * con `estatus=5` explícito). La clasificación admite «Sin clasificación»
+ * (`SIN_CLASIFICACION`).
  */
 export const salesPedidosTable = defineServerTable({
   filters: {
+    estatus: csvEnumParam(PEDIDO_ESTATUS_VALUES),
     confirmado: confirmadoParam,
     mes: monthParam,
+    clasificacion: clasificacionOrSinParam,
   },
   search: { param: "q" },
   ordering: {
     fields: [
       "folio",
+      "estatus",
       "cliente_razon_social",
       "piezas",
       "vendedor_nombre",
       "created_at",
+      "fecha_confirmacion",
       "clasificacion",
       "subtotal",
     ],
