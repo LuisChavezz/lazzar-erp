@@ -145,9 +145,11 @@ export const getOpportunityStaleNotice = ({
 
   if (action.kind !== "quitar") return null;
   const cotizacion = live?.cotizaciones?.find((item) => item.id === action.cotizacionId);
-  // Sin lectura nueva, la cotización sigue como al abrir (ligada).
+  // Sin lectura nueva, o una sin el arreglo de cotizaciones (el detalle se
+  // defiende de ese caso con `?? []`), la cotización sigue como al abrir:
+  // ligada. Solo un arreglo que ya no la trae dice que se quitó.
   let cotizacionEstado: "ligada" | "autorizada" | null = "ligada";
-  if (live !== undefined) {
+  if (live?.cotizaciones) {
     if (!cotizacion) cotizacionEstado = null;
     else if (cotizacion.estatus === COTIZACION_ESTATUS_AUTORIZADA) cotizacionEstado = "autorizada";
   }
