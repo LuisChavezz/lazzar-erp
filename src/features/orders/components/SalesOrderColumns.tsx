@@ -54,7 +54,8 @@ import {
  * en el listado y traerlo por fila con un fetch de detalle aparte (N+1) no vale
  * la pena solo por la columna. Las columnas secundarias llevan
  * `meta: { hideOnMobile: true }` para no competir por espacio en pantallas
- * angostas.
+ * angostas; Confirmado no, porque es la única que muestra y filtra la
+ * confirmación.
  *
  * "Importe sin IVA" es `PedidoListItem.subtotal`, que el listado QUITA a
  * quien no ve importes de pedidos: sin permiso la columna no se monta.
@@ -234,9 +235,10 @@ export function createSalesOrderColumns({
       header: ({ column }) => <PedidoConfirmadoHeaderFilter column={column} title="Confirmado" />,
       size: 150,
       // Ordena por la fecha de confirmación: agrupa confirmados y por confirmar.
+      // Visible también en móvil: es el único sitio de la confirmación y de su
+      // filtro (antes vivían en el folio, que siempre se ve).
       meta: {
         label: 'Confirmado',
-        hideOnMobile: true,
         serverSort: 'fecha_confirmacion',
         serverFilter: 'confirmado',
       },
