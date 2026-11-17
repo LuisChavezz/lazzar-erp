@@ -11,8 +11,25 @@ import {
 } from "../services/actions";
 import type { CrearOpBody } from "../interfaces/pre-order.interface";
 
+/**
+ * Primer texto dentro de un error anidado de DRF, p. ej. el de `crear-op`:
+ * `{orden_produccion_detalle: {"0": {cantidad: ["…"]}}}`. `firstDrfFieldMessage`
+ * a propósito no baja a esos niveles.
+ */
+const deepFirstMessage = (value: unknown, depth = 0): string | undefined => {
+  if (typeof value === "string") return value;
+  if (depth > 4 || !value || typeof value !== "object") return undefined;
+  for (const v of Object.values(value)) {
+    const msg = deepFirstMessage(v, depth + 1);
+    if (msg) return msg;
+  }
+  return undefined;
+};
+
 const errorText = (error: unknown, fallback: string) =>
-  firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback);
+  firstDrfFieldMessage(error) ??
+  deepFirstMessage((error as { response?: { data?: unknown } })?.response?.data) ??
+  extractErrorMessage(error, fallback);
 
 /**
  * Acciones de una pre-orden. Todas refrescan las pre-órdenes y los pedidos

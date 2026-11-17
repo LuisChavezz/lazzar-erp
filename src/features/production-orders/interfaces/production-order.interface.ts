@@ -108,6 +108,16 @@ export interface ProductionOrderPedidoRef {
   cliente?: PedidoVinculadoCliente | null;
 }
 
+/**
+ * Pre-orden de la que salió la OP (`crear-op`). `null` si la OP se dio de alta
+ * a mano; opcional porque respuestas viejas no lo traen.
+ */
+export interface ProductionOrderPreOrdenRef {
+  id: number;
+  origen: "pedido_especial" | "resurtido" | string;
+  referencia: string;
+}
+
 export interface ProductionOrderOnboarding {
   op_id: number;
   folio_op: string;
@@ -146,6 +156,7 @@ export interface ProductionOrderOnboarding {
   pedido_vinculado?: PedidoVinculado | null;
   /** Todos los pedidos que cubre la OP, principal primero (EC-865), cada uno con su cliente. */
   pedidos?: ProductionOrderPedidoRef[];
+  pre_orden?: ProductionOrderPreOrdenRef | null;
   /** Alta del pedido principal ("YYYY-MM-DD"); `null` sin pedido (EC-880). */
   fecha_pedido?: string | null;
   /** Fecha compromiso del pedido principal ("YYYY-MM-DD"); `null` si no aplica (EC-880). */
@@ -280,6 +291,7 @@ export interface ProductionOrderListItem {
   pedido_folio?: string | null;
   /** Todos los pedidos que cubre la OP, principal primero (EC-865). */
   pedidos?: ProductionOrderPedidoRef[];
+  pre_orden?: ProductionOrderPreOrdenRef | null;
   sucursal: number;
   /**
    * Campos de la vista principal. Opcionales: pedidos al backend; sin ellos su

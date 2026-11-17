@@ -28,6 +28,7 @@ import {
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
 import { ProductionOrderPedidosField } from "./ProductionOrderPedidosField";
+import { PreOrdenLink } from "./PreOrdenLink";
 import { ProductionOrderPdfButton } from "./ProductionOrderPdfButton";
 import { opPedidoRefs } from "../utils/opPedidos";
 import type { ProductionOrderOnboardingProducto } from "../interfaces/production-order.interface";
@@ -411,6 +412,11 @@ export function ProductionOrderPageContent({
                 {/* El pedido es OPCIONAL en el alta: el guion es un estado normal. */}
                 <ProductionOrderPedidosField data={data} />
               </InfoField>
+              {data.pre_orden && (
+                <InfoField label="Pre-orden">
+                  <PreOrdenLink preOrden={data.pre_orden} />
+                </InfoField>
+              )}
               <InfoField label="Operador asignado">{textOrDash(data.usuario_nombre)}</InfoField>
               <InfoField label="Empresa">{textOrDash(data.empresa_nombre)}</InfoField>
               <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
