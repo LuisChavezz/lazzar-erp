@@ -82,6 +82,11 @@ test.describe("productsTable", () => {
     });
   });
 
+  test("Estado no ordena: el listado es solo de activos", () => {
+    const state = readServerTableState(productsTable, (key) => (key === "ordering" ? "activo" : null));
+    expect(toServerTableCriteria(productsTable, state).ordering).toBe("-created_at,-id");
+  });
+
   test("sin orden elegido manda el del backend; Estado y Nombre no son filtros", () => {
     const query = new URLSearchParams("activo=false&nombre=x");
     const state = readServerTableState(productsTable, (key) => query.get(key));

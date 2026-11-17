@@ -1,4 +1,5 @@
 import { ProductCategory } from "../../product-categories/interfaces/product-category.interface";
+import type { CategoriaLineaRaw } from "../../product-categories/constants/categoriaLinea";
 import { ProductType } from "../../product-types/interfaces/product-type.interface";
 import { SatProdservCode } from "../../sat-prodserv-codes/interfaces/sat-prodserv-code.interface";
 import { SatUnitCode } from "../../sat-unit-codes/interfaces/sat-unit-code.interface";
@@ -10,6 +11,17 @@ export interface Product {
   id: number;
   empresa: number;
   categoria_producto: ProductCategory["id"];
+  /**
+   * Nombre de la categoría (EC-905), también si está inactiva (el catálogo de
+   * categorías solo trae activas). `null` sin categoría.
+   */
+  categoria_producto_nombre: string | null;
+  /**
+   * Línea de la categoría (EC-905), también si está inactiva: una de
+   * `CategoriaProducto.Linea`, `""` si la categoría no tiene línea (materia
+   * prima) o `null` sin categoría.
+   */
+  categoria_producto_linea: CategoriaLineaRaw | null;
   unidad_medida: UnitOfMeasure["id"] | null;
   /**
    * Unidad de inventario resuelta por el backend (`/catalogo/producto/`).

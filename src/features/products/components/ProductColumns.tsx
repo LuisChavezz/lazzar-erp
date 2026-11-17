@@ -1,13 +1,9 @@
-import { ColumnDef, createColumnHelper, Row } from "@tanstack/react-table";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { EditIcon, DeleteIcon } from "../../../components/Icons";
 import { Product } from "../interfaces/product.interface";
-import type { ProductCategory } from "../../product-categories/interfaces/product-category.interface";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { ActionMenu, ActionMenuItem } from "../../../components/ActionMenu";
 import { textOrDash } from "../../../components/DetailDialogPrimitives";
-import { useState } from "react";
 import { getCategoriaLineaLabel } from "../../product-categories/constants/categoriaLinea";
 import {
   CategoryHeaderFilter,
@@ -17,105 +13,64 @@ import {
 } from "./CatalogHeaderFilters";
 
 /**
- * Fila de la tabla: el producto tal como llega del backend más el nombre y la
- * línea de su categoría ya resueltos. Es un modelo de vista, no un tipo del
- * backend: `producto/` solo trae el id de la categoría.
- *
- * Desde EC-897 la búsqueda, el orden y los filtros los resuelve el servidor;
- * resolverlos en la fila (y no en la celda con un `Map`) hace que la llegada
- * tardía del catálogo de categorías produzca un `data` nuevo y la tabla se
- * vuelva a pintar con los nombres.
- *
- * `null` = la categoría no aparece en el catálogo (sin categoría, inactiva o
- * el catálogo todavía no llega). `categoria_linea` es la `linea` cruda (`""` =
- * sin línea, materia prima).
+ * Categoría de un producto como la pinta la tabla: el nombre que trae la fila
+ * (`categoria_producto_nombre`, EC-905), también si la categoría está
+ * inactiva; "—" sin categoría.
  */
-export type ProductRow = Product & {
-  categoria_nombre: string | null;
-  categoria_linea: string | null;
-};
+export const productCategoryLabel = (
+  product: Pick<Product, "categoria_producto_nombre">,
+): string => textOrDash(product.categoria_producto_nombre);
 
 /**
- * Filas de las listas de productos (`ProductList`, `ProductionProductsView`):
- * cada producto con el nombre y la línea de su categoría, resueltos con UNA
- * búsqueda en el catálogo ya cargado. `null` en ambos si la categoría no está
- * en el catálogo (sin categoría, inactiva o el catálogo aún no llega).
+ * Línea de un producto como la pinta la tabla, de la línea que trae la fila
+ * (`categoria_producto_linea`, EC-905, también con la categoría inactiva).
+ * Vacía (`""`) o sin categoría (`null`) es "Sin línea (materia prima)": las
+ * dos son la opción `SIN_LINEA` del filtro, así que celda y filtro coinciden.
  */
-export function buildProductRows(
-  products: readonly Product[],
-  categories: readonly Pick<ProductCategory, "id" | "nombre" | "linea">[],
-): ProductRow[] {
-  const categoriesById = new Map(categories.map((category) => [category.id, category]));
-  return products.map((product) => {
-    const category = categoriesById.get(product.categoria_producto);
-    return {
-      ...product,
-      categoria_nombre: category?.nombre ?? null,
-      categoria_linea: category?.linea ?? null,
-    };
-  });
+export const productLineaLabel = (product: Pick<Product, "categoria_producto_linea">): string =>
+  getCategoriaLineaLabel(product.categoria_producto_linea);
+
+const columnHelper = createColumnHelper<Product>();
+
+/**
+ * Acciones de una fila. El diálogo de baja vive en la LISTA (`ProductList`), no
+ * en la celda: en modo servidor un cambio de página o un refetch desmontan las
+ * celdas, y un diálogo dentro se cerraría con ellas. La celda solo avisa qué
+ * producto y qué acción.
+ */
+export interface ProductRowActions {
+  onEdit: (product: Product) => void;
+  onDelete: (product: Product) => void;
 }
 
-const columnHelper = createColumnHelper<ProductRow>();
-
 const ActionsCell = ({
-  row,
-  onEdit,
+  product,
+  actions,
   canEdit,
   canDelete,
 }: {
-  row: Row<ProductRow>;
-  onEdit: (product: Product) => void;
+  product: Product;
+  actions: ProductRowActions;
   canEdit: boolean;
   canDelete: boolean;
 }) => {
-  const { mutate: deleteProduct, isPending } = useDeleteProduct();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const menuItems: ActionMenuItem[] = [];
-
   if (canEdit) {
-    menuItems.push({
-      label: "Editar",
-      icon: EditIcon,
-      onSelect: () => onEdit(row.original),
-    });
+    menuItems.push({ label: "Editar", icon: EditIcon, onSelect: () => actions.onEdit(product) });
   }
-
   if (canDelete) {
-    menuItems.push({
-      label: "Cancelar",
-      icon: DeleteIcon,
-      onSelect: () => setShowDeleteConfirm(true),
-      disabled: isPending,
-    });
+    menuItems.push({ label: "Cancelar", icon: DeleteIcon, onSelect: () => actions.onDelete(product) });
   }
-
   if (menuItems.length === 0) return null;
-
   return (
-    <>
-      <div className="flex items-center justify-center">
-        <ActionMenu items={menuItems} />
-      </div>
-      {showDeleteConfirm && (
-        <ConfirmDialog
-          title="Eliminar Producto"
-          description="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
-          confirmText={isPending ? "Eliminando..." : "Eliminar"}
-          onConfirm={() => {
-            deleteProduct(row.original.id);
-            setShowDeleteConfirm(false);
-          }}
-          confirmColor="red"
-          open={showDeleteConfirm}
-          onOpenChange={setShowDeleteConfirm}
-          trigger={null}
-        />
-      )}
-    </>
+    <div className="flex items-center justify-center">
+      <ActionMenu items={menuItems} />
+    </div>
   );
 };
+
+/** Sin acciones: la vista de Producción solo lista. */
+const NO_ROW_ACTIONS: ProductRowActions = { onEdit: () => {}, onDelete: () => {} };
 
 /**
  * Qué filtros de encabezado lleva la tabla. Cada vista conserva los que tenía
@@ -132,7 +87,7 @@ export type ProductHeaderFilters = "all" | "linea";
  * (`CatalogHeaderFilters`), nunca de las filas.
  */
 export const getColumns = (
-  onEdit: (product: Product) => void,
+  actions: ProductRowActions | null,
   permissions: { canEdit: boolean; canDelete: boolean },
   headerFilters: ProductHeaderFilters = "linea",
 ) => {
@@ -142,7 +97,9 @@ export const getColumns = (
       id: "activo",
       header: "Estado",
       size: 100,
-      meta: { label: "Estado", serverSort: "activo" },
+      // Sin orden: `producto/` solo lista activos, así que ordenar por Estado no
+      // cambiaría nada.
+      meta: { label: "Estado" },
       cell: ({ row }) => {
         const isActive = row.original.activo;
         const styles = isActive
@@ -185,10 +142,9 @@ export const getColumns = (
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    // La celda lee el nombre ya resuelto en la fila (ver `ProductRow`); sin
-    // resolver (categoría inactiva o catálogo aún cargando), el id. El orden es
-    // del servidor, por el nombre de la categoría.
-    columnHelper.accessor((row) => row.categoria_nombre ?? "", {
+    // Nombre y línea llegan en la fila (EC-905), también de una categoría
+    // inactiva; el orden es del servidor.
+    columnHelper.accessor((row) => row.categoria_producto_nombre ?? "", {
       id: "categoria_producto",
       header: allFilters
         ? ({ column }) => <CategoryHeaderFilter column={column} title="Categoría" />
@@ -200,24 +156,21 @@ export const getColumns = (
       },
       cell: ({ row }) => (
         <span className="text-slate-500 dark:text-slate-400">
-          {row.original.categoria_nombre ?? `#${row.original.categoria_producto}`}
+          {productCategoryLabel(row.original)}
         </span>
       ),
     }),
     // Ordena y filtra por la línea cruda de la categoría (`linea`, con
-    // `SIN_LINEA` para vacía o sin categoría). Sin categoría resuelta no hay
-    // línea que mostrar.
+    // `SIN_LINEA` para vacía o sin categoría).
     columnHelper.accessor(
-      (row) => (row.categoria_linea === null ? "" : getCategoriaLineaLabel(row.categoria_linea)),
+      (row) => productLineaLabel(row),
       {
         id: "categoria_linea",
         header: ({ column }) => <LineaHeaderFilter column={column} title="Línea" />,
         meta: { label: "Línea", serverSort: "categoria_producto__linea", serverFilter: "linea" },
         cell: ({ row }) => (
           <span className="text-slate-500 dark:text-slate-400">
-            {row.original.categoria_linea === null
-              ? "—"
-              : getCategoriaLineaLabel(row.original.categoria_linea)}
+            {productLineaLabel(row.original)}
           </span>
         ),
       },
@@ -232,16 +185,17 @@ export const getColumns = (
         serverSort: "precio_base",
         ...(allFilters ? { serverFilter: "rango_precio" } : {}),
       },
-      // Sin símbolo: `precio_base` no declara moneda (EC-606).
+      // Sin símbolo: `precio_base` no declara moneda (EC-606). Sin precio, "—".
       cell: ({ row }) => (
         <span className="text-slate-600 dark:text-slate-300 font-medium">
-          {formatMoneyValue(row.original.precio_base, null)}
+          {formatMoneyValueOrDash(row.original.precio_base, null)}
         </span>
       ),
     }),
-  ] as ColumnDef<ProductRow>[];
+  ] as ColumnDef<Product>[];
 
   if (permissions.canEdit || permissions.canDelete) {
+    const rowActions = actions ?? NO_ROW_ACTIONS;
     columns.push(
       columnHelper.display({
         id: "actions",
@@ -249,13 +203,13 @@ export const getColumns = (
         meta: { align: "center" },
         cell: ({ row }) => (
           <ActionsCell
-            row={row}
-            onEdit={onEdit}
+            product={row.original}
+            actions={rowActions}
             canEdit={permissions.canEdit}
             canDelete={permissions.canDelete}
           />
         ),
-      }) as ColumnDef<ProductRow>
+      }) as ColumnDef<Product>
     );
   }
 
