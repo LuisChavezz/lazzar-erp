@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import type { Column } from "@tanstack/react-table";
-import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import {
-  ServerSearchHeaderFilter,
-  useColumnServerFilterValue,
-} from "@/src/components/ServerSearchHeaderFilter";
+  FilterHeader,
+  useColumnServerFilter,
+  type ColumnFilterOption,
+} from "@/src/components/ColumnHeaderFilter";
+import { ServerSearchHeaderFilter } from "@/src/components/ServerSearchHeaderFilter";
 import { ALL_FILTER_OPTION, optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { useColors } from "../../colors/hooks/useColors";
@@ -185,7 +186,7 @@ export function ProductServerSearchHeaderFilter<TData>({ column, title }: Header
     {},
     { enabled: isOpen },
   );
-  const activeId = parsePositiveId(useColumnServerFilterValue(column));
+  const activeId = parsePositiveId(useColumnServerFilter(column).value);
   const { productsById } = useProductsByIds(activeId === null ? [] : [activeId]);
   const selectedProduct = activeId === null ? undefined : productsById.get(activeId);
   return (

@@ -1,26 +1,12 @@
 "use client";
 
-import { useContext } from "react";
 import type { Column } from "@tanstack/react-table";
-import { FilterHeader } from "./ColumnHeaderFilter";
-import { DataTableModeContext } from "./DataTableModeContext";
+import { FilterHeader, useColumnServerFilter } from "./ColumnHeaderFilter";
 import type { ColumnFilterOption } from "@/src/utils/columnFilterOptions";
-import { buildServerSearchFilterOptions } from "@/src/utils/serverSearchFilterOptions";
-
-/**
- * Valor activo del filtro de servidor de una columna (`meta.serverFilter`) en
- * una `DataTable` en modo servidor; `undefined` sin filtro o fuera de ese modo.
- * Lo usa quien arma un `ServerSearchHeaderFilter` para resolver lo elegido
- * (`?ids=`) antes de pintar el menú.
- */
-export function useColumnServerFilterValue<TData>(
-  column: Column<TData, unknown>,
-): string | undefined {
-  const tableMode = useContext(DataTableModeContext);
-  const key = column.columnDef.meta?.serverFilter;
-  if (tableMode.mode !== "server" || key === undefined) return undefined;
-  return tableMode.filters?.values[key];
-}
+import {
+  buildServerSearchFilterOptions,
+  serverSearchHiddenCount,
+} from "@/src/utils/serverSearchFilterOptions";
 
 /** Lo que da la búsqueda en el servidor de un catálogo (p. ej. `useProductSearchField`). */
 export interface ServerSearchHeaderFilterSearch {
@@ -28,7 +14,10 @@ export interface ServerSearchHeaderFilterSearch {
   setSearch: (search: string) => void;
   /** Coincidencias de la búsqueda vigente (o de la anterior, mientras llega). */
   results: readonly ColumnFilterOption[];
-  /** Cuántas coincidencias hay en el servidor (el menú pinta como mucho 50). */
+  /**
+   * Cuántas coincidencias hay en el servidor (`count`), contando las de
+   * `results`; `undefined` si no se sabe.
+   */
   total: number | undefined;
   /** Lo pintado todavía no es de lo tecleado (debounce o petición en curso). */
   isSearching: boolean;
@@ -78,7 +67,7 @@ export function ServerSearchHeaderFilter<TData>({
   selected,
   onOpenChange,
 }: ServerSearchHeaderFilterProps<TData>) {
-  const activeValue = useColumnServerFilterValue(column);
+  const activeValue = useColumnServerFilter(column).value;
   const options = buildServerSearchFilterOptions({
     results: search.results,
     selected,
@@ -94,7 +83,7 @@ export function ServerSearchHeaderFilter<TData>({
       serverSearch={{
         onQueryChange: search.setSearch,
         onOpenChange,
-        total: search.total,
+        hiddenCount: serverSearchHiddenCount(search.total, search.results.length),
       }}
       isLoading={search.isSearching}
       isError={search.isError}

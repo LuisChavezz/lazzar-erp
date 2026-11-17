@@ -3,7 +3,7 @@
 import { useContext, useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
-import { DataTableModeContext } from './DataTableModeContext';
+import { DataTableModeContext, type DataTableServerFilters } from './DataTableModeContext';
 import { pinActiveFilterOption, type ColumnFilterOption } from '@/src/utils/columnFilterOptions';
 
 export type { ColumnFilterOption };
@@ -30,13 +30,14 @@ interface ColumnHeaderFilterProps<TData> {
    * texto (el backend puede coincidir por un campo que la etiqueta no
    * muestra, como un código). Cada cambio del texto se informa con
    * `onQueryChange` (crudo, sin debounce; `""` al cerrar) y la apertura con
-   * `onOpenChange`, para no buscar con el menú cerrado. `total`: cuántas
-   * coincidencias hay en el servidor, para el aviso "Sigue escribiendo".
+   * `onOpenChange`, para no buscar con el menú cerrado. `hiddenCount`:
+   * coincidencias del servidor que no llegaron en la página de resultados,
+   * para el aviso "Sigue escribiendo" (`serverSearchHiddenCount`).
    */
   serverSearch?: {
     onQueryChange: (query: string) => void;
     onOpenChange?: (open: boolean) => void;
-    total?: number;
+    hiddenCount?: number;
   };
   /** El catálogo de opciones aún está cargando. */
   isLoading?: boolean;
@@ -48,6 +49,28 @@ interface ColumnHeaderFilterProps<TData> {
    * borde derecho de la tabla (importes), donde el menú se saldría del marco.
    */
   menuAlign?: 'start' | 'end';
+}
+
+/**
+ * Filtro de SERVIDOR de una columna: los filtros de la tabla, la clave
+ * (`meta.serverFilter`) y su valor activo. `filters`/`key` son `undefined`
+ * fuera del modo servidor o si la columna no declara la clave; entonces el
+ * encabezado filtra con el estado de columna de TanStack. Única lectura de esa
+ * regla: la comparten `ColumnHeaderFilter` y `ServerSearchHeaderFilter`.
+ */
+export function useColumnServerFilter<TData>(column: Column<TData, unknown>): {
+  filters: DataTableServerFilters | undefined;
+  key: string | undefined;
+  value: string | undefined;
+} {
+  const tableMode = useContext(DataTableModeContext);
+  const key = column.columnDef.meta?.serverFilter;
+  const filters = tableMode.mode === 'server' && key !== undefined ? tableMode.filters : undefined;
+  return {
+    filters,
+    key: filters !== undefined ? key : undefined,
+    value: filters !== undefined && key !== undefined ? filters.values[key] : undefined,
+  };
 }
 
 /** Tope de coincidencias pintadas en la variante con buscador. */
@@ -102,12 +125,14 @@ export function ColumnHeaderFilter<TData>({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const tableMode = useContext(DataTableModeContext);
-  const serverFilterKey = column.columnDef.meta?.serverFilter;
-  const serverFilters =
-    tableMode.mode === 'server' && serverFilterKey !== undefined ? tableMode.filters : undefined;
+  const {
+    filters: serverFilters,
+    key: serverFilterKey,
+    value: serverFilterValue,
+  } = useColumnServerFilter(column);
   const activeValue =
-    serverFilters !== undefined && serverFilterKey !== undefined
-      ? serverFilters.values[serverFilterKey]
+    serverFilters !== undefined
+      ? serverFilterValue
       : tableMode.mode === 'client' && tableMode.columnFilters !== undefined
         ? (tableMode.columnFilters.find((filter) => filter.id === column.id)?.value as
             | string
@@ -244,10 +269,7 @@ export function ColumnHeaderFilter<TData>({
           foldText(opt.label).includes(foldedQuery)),
     );
     const capped = matches.slice(0, SEARCHABLE_MAX_VISIBLE);
-    hiddenCount =
-      serverSearch?.total !== undefined
-        ? Math.max(0, serverSearch.total - capped.length)
-        : matches.length - capped.length;
+    hiddenCount = serverSearch?.hiddenCount ?? matches.length - capped.length;
     hasNoMatches = foldedQuery !== '' && matches.length === 0;
     visibleOptions = [
       ...(allOption ? [allOption] : []),

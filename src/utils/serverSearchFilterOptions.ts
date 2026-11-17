@@ -33,3 +33,15 @@ export function buildServerSearchFilterOptions({
   }
   return options;
 }
+
+/**
+ * Cuántas coincidencias de una búsqueda en el servidor NO llegaron en la página
+ * de resultados (aviso "Sigue escribiendo para acotar"). Se cuenta contra los
+ * resultados CRUDOS del servidor (`resultsCount`), no contra las opciones del
+ * menú: la opción elegida va fijada aparte y, si la búsqueda también la trajo,
+ * contarla de nuevo daría "1 más" con todo a la vista.
+ */
+export const serverSearchHiddenCount = (
+  total: number | undefined,
+  resultsCount: number,
+): number | undefined => (total === undefined ? undefined : Math.max(0, total - resultsCount));

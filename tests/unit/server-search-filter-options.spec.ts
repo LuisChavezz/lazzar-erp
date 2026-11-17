@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
-import { buildServerSearchFilterOptions } from "@/src/utils/serverSearchFilterOptions";
+import {
+  buildServerSearchFilterOptions,
+  serverSearchHiddenCount,
+} from "@/src/utils/serverSearchFilterOptions";
 
 /**
  * EC-897: opciones del filtro de encabezado con búsqueda en el servidor
@@ -54,5 +57,25 @@ test.describe("buildServerSearchFilterOptions", () => {
     expect(buildServerSearchFilterOptions({ results: [], activeValue: undefined })).toEqual([
       ALL_FILTER_OPTION,
     ]);
+  });
+});
+
+test.describe("serverSearchHiddenCount", () => {
+  test("cuenta contra los resultados crudos, no contra el menú con la selección fijada", () => {
+    // La búsqueda trajo 3 (el elegido entre ellos) de 3: no falta ninguno,
+    // aunque el menú pinte el elegido aparte y solo 2 debajo.
+    const results = [opt("9"), opt("3"), opt("1")];
+    const options = buildServerSearchFilterOptions({ results, selected: opt("9"), activeValue: "9" });
+    expect(options.length - 2).toBe(2);
+    expect(serverSearchHiddenCount(3, results.length)).toBe(0);
+  });
+
+  test("lo que no llegó en la página", () => {
+    expect(serverSearchHiddenCount(130, 50)).toBe(80);
+    expect(serverSearchHiddenCount(50, 50)).toBe(0);
+  });
+
+  test("sin total no hay aviso", () => {
+    expect(serverSearchHiddenCount(undefined, 50)).toBeUndefined();
   });
 });

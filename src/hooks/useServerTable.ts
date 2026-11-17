@@ -22,20 +22,22 @@ import {
   isServerTableDefaultView,
   normalizeServerTableOrdering,
   resetServerTableSettingsState,
+  serverTableListKey,
   serverTablePageSizes,
+  serverTableRequest,
   toServerTableCriteria,
   writeServerTableQuery,
   type ServerTableDefinition,
   type ServerTableFilterParams,
   type ServerTableFilterValues,
+  type ServerTableRequest,
   type NoServerTableSettings,
   type ServerTableSettingParams,
   type ServerTableSettingValues,
   type ServerTableState,
 } from "@/src/utils/serverTableParams";
 
-/** Parámetros de la petición: criterios (texto) + paginación (números). */
-export type ServerTableRequest = Record<string, string | number>;
+export type { ServerTableRequest } from "@/src/utils/serverTableParams";
 
 interface UseServerTableOptions<
   P extends ServerTableFilterParams,
@@ -437,9 +439,9 @@ export function useServerTable<
   // ── Consulta ────────────────────────────────────────────────────────────
   const page = { page: state.page, pageSize: state.pageSize };
   const criteria = toServerTableCriteria(definition, state);
-  const request: ServerTableRequest = { ...criteria, ...adapter.paginationParams(page) };
+  const request = serverTableRequest(definition, state, adapter);
 
-  const listKey = [...queryKey, "list", request];
+  const listKey = serverTableListKey(queryKey, request);
   const isDefaultView = isServerTableDefaultView(definition, state);
   const listKeyHash = hashKey(listKey);
   const query = useGuardedQuery<TResponse | PageGone>(
