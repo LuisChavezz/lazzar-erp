@@ -127,3 +127,14 @@ export const getSupplierInvoiceMergedPdf = async (id: number): Promise<Blob> => 
     throw await readBlobErrorBody(error);
   }
 };
+
+/**
+ * Detalle de una factura de proveedor (`GET /finanzas/facturas-proveedor/{id}/`),
+ * con sus renglones y el producto de cada uno (EC-904). Lo usa el PDF
+ * (EC-859) para leerla FRESCA; el diálogo de detalle sigue con la fila del
+ * listado. Otra empresa responde 404.
+ */
+export const getSupplierInvoice = async (id: number): Promise<FacturaProveedor> => {
+  const { data } = await v1_api.get<FacturaProveedor>(`/finanzas/facturas-proveedor/${id}/`);
+  return data;
+};
