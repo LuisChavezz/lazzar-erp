@@ -3,6 +3,7 @@ import {
   firstDrfMessage,
   firstNonBlankDrfMessage,
   firstNestedDrfMessage,
+  firstNestedFieldMessage,
   firstNonBlankRejectionMessage,
 } from "@/src/utils/firstDrfMessage";
 
@@ -79,5 +80,34 @@ test.describe("firstNestedDrfMessage", () => {
     expect(firstNestedDrfMessage("<html>Server Error</html>")).toBeUndefined();
     expect(firstNestedDrfMessage(null)).toBeUndefined();
     expect(firstNestedDrfMessage({ campo: [42, null] })).toBeUndefined();
+  });
+});
+
+test.describe("firstNestedDrfMessage: renglón por forma, no por clave", () => {
+  test("clave numérica con errores de campo = renglón", () => {
+    expect(firstNestedDrfMessage({ detalle: { "1": { cantidad: ["Mal."] } } })).toBe("Renglón 2: Mal.");
+  });
+
+  test("clave numérica con mensajes directos = id de registro, sin renglón", () => {
+    expect(firstNestedDrfMessage({ detalles_override: { "5123": ["cantidad excede"] } })).toBe(
+      "cantidad excede",
+    );
+    expect(firstNestedDrfMessage({ detalles_override: { "5123": "cantidad excede" } })).toBe(
+      "cantidad excede",
+    );
+  });
+});
+
+test.describe("firstNestedFieldMessage", () => {
+  test("string, lista o anidado: siempre un string", () => {
+    expect(firstNestedFieldMessage("Requerido.")).toBe("Requerido.");
+    expect(firstNestedFieldMessage(["", "Requerido."])).toBe("Requerido.");
+    expect(firstNestedFieldMessage([{ sub: ["Anidado."] }])).toBe("Renglón 1: Anidado.");
+    expect(firstNestedFieldMessage({ sub: ["Anidado."] })).toBe("Anidado.");
+  });
+
+  test("sin mensaje devuelve undefined", () => {
+    expect(firstNestedFieldMessage(undefined)).toBeUndefined();
+    expect(firstNestedFieldMessage([{}, "  "])).toBeUndefined();
   });
 });
