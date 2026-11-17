@@ -55,6 +55,14 @@ export interface NotaCreditoDetalle {
   subtotal: string;
   /** Decimal en string. */
   total: string;
+  /**
+   * Lo que se acredita, del renglón de la factura (EC-904): el producto o el
+   * nombre del servicio extra. SOLO en listado y retrieve (no en las respuestas
+   * de alta, emitir o timbrar), por eso opcional. Lo lee el PDF.
+   */
+  producto_nombre?: string | null;
+  /** Talla del renglón de la factura (EC-904); `null` en un servicio extra. Solo listado y retrieve. */
+  talla_nombre?: string | null;
 }
 
 export interface NotaCredito {
@@ -115,6 +123,20 @@ export interface NotaCredito {
   cfdi_pendiente: boolean;
   /** Líneas anidadas. Puede venir vacío — el backend no exige ninguna. */
   nota_credito_detalles: NotaCreditoDetalle[];
+  /**
+   * Moneda de la factura (EC-904): la nota no guarda moneda propia. `moneda` es
+   * el id y `moneda_nombre` el CÓDIGO ISO (como en la factura). Solo listado y
+   * retrieve, por eso opcionales.
+   */
+  moneda?: number;
+  moneda_nombre?: string | null;
+  /**
+   * Tipo de cambio de la factura (EC-904): `"1.000000"` en MXN, `null` si la
+   * factura en otra moneda no lo capturó. Solo listado y retrieve.
+   */
+  tipo_cambio?: string | null;
+  /** Folio fiscal (UUID) de la factura relacionada (EC-904); `null` sin timbrar. Solo listado y retrieve. */
+  factura_uuid?: string | null;
 }
 
 /**

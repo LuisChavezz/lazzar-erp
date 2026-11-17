@@ -6,6 +6,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useNotaCreditoDetail } from "../hooks/useNotaCreditoDetail";
 import { CreditNoteDetailBody, CreditNoteDialogTitle } from "./CreditNoteDetailDialog";
+import { CreditNotePdfActions } from "./CreditNotePdfActions";
 
 interface CreditNoteDetailByIdDialogProps {
   /** Id de la nota. `null` mantiene la consulta apagada. */
@@ -40,6 +41,8 @@ export function CreditNoteDetailByIdDialog({
           label={nota ? nota.folio || `#${nota.id}` : notaId !== null ? `#${notaId}` : ""}
         />
       }
+      // Solo con la nota cargada: sin ella no hay folio ni estatus que describir.
+      headerAction={nota ? <CreditNotePdfActions nota={nota} /> : undefined}
     >
       {nota ? (
         <CreditNoteDetailBody nota={nota} />
