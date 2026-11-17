@@ -14,3 +14,10 @@ export const DIALOG_WIDTH_SECTIONED_FORM = "860px";
  * importes). Lo comparten Ventas y Mesa de Control.
  */
 export const DIALOG_WIDTH_DETAIL = "1000px";
+
+/**
+ * Drill-down de un indicador (KPI): la lista de registros detrás de una
+ * tarjeta (pedidos activos, clientes nuevos…). Lo comparten los de Mis
+ * pedidos y de Clientes.
+ */
+export const DIALOG_WIDTH_KPI_DRILL_DOWN = "720px";
