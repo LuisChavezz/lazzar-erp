@@ -46,17 +46,19 @@ export const productionOption = (variant: ProductionVariantOption): OpSkuOption 
 /**
  * ¿Se puede ofrecer este SKU en una OP ligada a `pedidoIds`? (EC-898)
  *
- * Una muestra (`kind: "produccion"`) solo si es de uno de esos pedidos: con
- * pedido en la OP, el backend rechaza el renglón cuya línea de muestra es de
- * otro pedido. Sin pedidos vinculados no se ofrece ninguna: el backend sí la
- * aceptaría (no valida el renglón sin pedido), pero el renglón quedaría ligado
- * a la línea de ese pedido y lo bloquearía en Mesa de Control sin que la OP
- * aparezca en él. Las variantes de catálogo no llevan pedido y siempre se
- * ofrecen. Recibe una lista para servir igual a las OP de varios pedidos.
+ * Una muestra (`kind: "produccion"`) que viene de un pedido solo si ese pedido
+ * está vinculado: con pedido en la OP, el backend rechaza el renglón cuya línea
+ * de muestra es de otro pedido, y sin pedido lo aceptaría pero el renglón
+ * quedaría ligado a la línea de ese pedido y lo bloquearía en Mesa de Control
+ * sin que la OP aparezca en él. Una muestra sin pedido de origen no se liga a
+ * ninguna línea ni bloquea nada, así que se ofrece siempre, igual que las
+ * variantes de catálogo. Recibe una lista para servir igual a las OP de varios
+ * pedidos.
  */
 export const isOfferedForPedidos = (option: OpSkuOption, pedidoIds: readonly number[]) =>
   option.kind !== "produccion" ||
-  (option.pedidoId != null && pedidoIds.includes(option.pedidoId));
+  option.pedidoId == null ||
+  pedidoIds.includes(option.pedidoId);
 
 /**
  * Búsqueda EN MEMORIA de una muestra sin catálogo (`kind: "produccion"`): por
