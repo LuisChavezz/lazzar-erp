@@ -2,6 +2,7 @@
 
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useDeleteSeguimiento } from "../hooks/useSeguimientoMutations";
 import type { OpportunitySeguimiento } from "../interfaces/seguimiento.interface";
 import { previewText } from "../utils/seguimientos";
@@ -39,7 +40,12 @@ export function OpportunitySeguimientoDeleteDialog({
   seguimiento,
   onClose,
 }: OpportunitySeguimientoDeleteDialogProps) {
-  const { mutate: deleteSeguimiento, isPending: isDeleting } = useDeleteSeguimiento();
+  const { mutate: deleteSeguimiento } = useDeleteSeguimiento();
+  // Candado SÍNCRONO por seguimiento, tomado al confirmar: un doble clic manda
+  // un solo DELETE y la confirmación no se cierra mientras viaja.
+  const lock = useRowActionLock();
+  const seguimientoId = seguimiento?.id ?? null;
+  const isDeleting = lock.isPending(seguimientoId);
 
   // El texto sigue nombrando al último seguimiento mientras el diálogo se
   // cierra, cuando `seguimiento` ya es `null`.
@@ -48,9 +54,7 @@ export function OpportunitySeguimientoDeleteDialog({
   return (
     <ConfirmDialog
       open={seguimiento !== null}
-      onOpenChange={(open) => {
-        if (!open && !isDeleting) onClose();
-      }}
+      {...lock.guardClose(seguimientoId, onClose)}
       title="Eliminar Seguimiento"
       description={`Se eliminará definitivamente este seguimiento${
         shown ? ` (${describeSeguimiento(shown)})` : ""
@@ -58,9 +62,15 @@ export function OpportunitySeguimientoDeleteDialog({
       confirmText={isDeleting ? "Eliminando…" : "Eliminar"}
       confirmColor="red"
       closeOnConfirm={false}
-      busy={isDeleting}
       onConfirm={() => {
-        if (seguimiento) deleteSeguimiento(seguimiento.id, { onSettled: onClose });
+        if (!seguimiento || !lock.acquire(seguimiento.id)) return;
+        const { id } = seguimiento;
+        deleteSeguimiento(id, {
+          onSettled: () => {
+            lock.release(id);
+            onClose();
+          },
+        });
       }}
     />
   );
