@@ -37,13 +37,10 @@ import { getTaxes } from "../../taxes/services/actions";
 import { getUnitsOfMeasure } from "../../units-of-measure/services/actions";
 import { getSatProdservCodes } from "../../sat-prodserv-codes/services/actions";
 import { getSatUnitCodes } from "../../sat-unit-codes/services/actions";
-import { productsTableDefaultQuery } from "../../products/hooks/useProductsTable";
-import { productVariantsTableDefaultQuery } from "../../product-variants/hooks/useProductVariantsTable";
 import { getSerieFolios } from "../../series-folios/services/actions";
-import { getSuppliers } from "../../suppliers/services/actions";
 
 
-interface ConfigCardItem {
+export interface ConfigCardItem {
   title: string;
   description?: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -55,7 +52,7 @@ interface ConfigCardItem {
    * parámetros, aunque sean `undefined`: `["x", undefined]` no es `["x"]`), o el
    * prefetch llena una entrada que nadie lee.
    */
-  prefetchKey?: readonly unknown[];
+  prefetchKey?: (string | number | undefined)[];
   /**
    * Se pasa tal cual como `queryFn`, así que TanStack le entrega su contexto
    * como primer argumento. Una acción con parámetros opcionales va SIEMPRE
@@ -63,6 +60,13 @@ interface ConfigCardItem {
    * contexto viaja como parámetro de la petición.
    */
   prefetchFn?: () => Promise<unknown>;
+  /**
+   * Alternativa a `prefetchKey`/`prefetchFn` para las tablas en modo servidor:
+   * resuelve la llave y la consulta de su vista por defecto
+   * (`serverTableDefaultQuery`) importando su módulo BAJO DEMANDA, así el menú
+   * no carga las definiciones ni los servicios de cada tabla.
+   */
+  prefetchQuery?: () => Promise<{ queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>;
 }
 
 interface ConfigGroupItem {
@@ -185,8 +189,12 @@ export const configCards: ConfigCardItem[] = [
     view: "suppliers",
     group: "Organización",
     adminOnly: true,
-    prefetchKey: ["suppliers"],
-    prefetchFn: getSuppliers,
+    // La vista por defecto de `SupplierList` (modo servidor), no el catálogo
+    // completo `["suppliers"]`, que la tabla no lee.
+    prefetchQuery: () =>
+      import("../../suppliers/utils/suppliersTableQueries").then((m) =>
+        m.suppliersTableDefaultQuery(),
+      ),
   },
   {
     title: "Monedas",
@@ -325,8 +333,8 @@ export const configCards: ConfigCardItem[] = [
     group: "Productos",
     adminOnly: true,
     // La vista por defecto de `ProductList` (modo servidor, solo PT).
-    prefetchKey: productsTableDefaultQuery(3).queryKey,
-    prefetchFn: productsTableDefaultQuery(3).queryFn,
+    prefetchQuery: () =>
+      import("../../products/utils/catalogTableQueries").then((m) => m.productsTableDefaultQuery(3)),
   },
   {
     title: "Variantes de Producto",
@@ -336,8 +344,10 @@ export const configCards: ConfigCardItem[] = [
     group: "Productos",
     adminOnly: true,
     // La vista por defecto de `ProductVariantList` (modo servidor).
-    prefetchKey: productVariantsTableDefaultQuery().queryKey,
-    prefetchFn: productVariantsTableDefaultQuery().queryFn,
+    prefetchQuery: () =>
+      import("../../products/utils/catalogTableQueries").then((m) =>
+        m.productVariantsTableDefaultQuery(),
+      ),
   },
   {
     title: "Materiales",
@@ -347,7 +357,7 @@ export const configCards: ConfigCardItem[] = [
     group: "Productos",
     adminOnly: true,
     // La vista por defecto de `BomList` (modo servidor, solo materia prima).
-    prefetchKey: productsTableDefaultQuery(2).queryKey,
-    prefetchFn: productsTableDefaultQuery(2).queryFn,
+    prefetchQuery: () =>
+      import("../../products/utils/catalogTableQueries").then((m) => m.productsTableDefaultQuery(2)),
   },
 ];
