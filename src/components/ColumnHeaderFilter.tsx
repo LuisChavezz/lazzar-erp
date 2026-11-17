@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
 import { DataTableModeContext } from './DataTableModeContext';
@@ -23,6 +23,21 @@ interface ColumnHeaderFilterProps<TData> {
    * escribiendo más.
    */
   searchable?: boolean | { placeholder?: string };
+  /**
+   * Búsqueda EN EL SERVIDOR, para catálogos que no caben en memoria (ver
+   * `ServerSearchHeaderFilter`). Implica la variante con buscador, pero las
+   * `options` ya llegan filtradas por quien busca: aquí no se acotan por el
+   * texto (el backend puede coincidir por un campo que la etiqueta no
+   * muestra, como un código). Cada cambio del texto se informa con
+   * `onQueryChange` (crudo, sin debounce; `""` al cerrar) y la apertura con
+   * `onOpenChange`, para no buscar con el menú cerrado. `total`: cuántas
+   * coincidencias hay en el servidor, para el aviso "Sigue escribiendo".
+   */
+  serverSearch?: {
+    onQueryChange: (query: string) => void;
+    onOpenChange?: (open: boolean) => void;
+    total?: number;
+  };
   /** El catálogo de opciones aún está cargando. */
   isLoading?: boolean;
   /** El catálogo de opciones no se pudo cargar. */
@@ -75,6 +90,7 @@ export function ColumnHeaderFilter<TData>({
   options: optionsProp,
   label,
   searchable = false,
+  serverSearch,
   isLoading = false,
   isError = false,
   menuAlign = 'start',
@@ -106,7 +122,7 @@ export function ColumnHeaderFilter<TData>({
   };
 
   const menuAlignCls = menuAlign === 'end' ? 'right-0' : 'left-0';
-  const isSearchable = searchable !== false;
+  const isSearchable = searchable !== false || serverSearch !== undefined;
 
   // La opción elegida sigue a la vista aunque ya no esté entre las opciones
   // (las que salen de las filas cambian con un parámetro de servidor, p. ej.
@@ -149,19 +165,26 @@ export function ColumnHeaderFilter<TData>({
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 
+  const open = () => {
+    setIsOpen(true);
+    serverSearch?.onOpenChange?.(true);
+  };
+
   const close = () => {
     setIsOpen(false);
     setQuery('');
     setActiveIndex(-1);
+    serverSearch?.onQueryChange('');
+    serverSearch?.onOpenChange?.(false);
   };
 
+  // Lo lee el listener de clic afuera, que se registra una vez por apertura.
+  const closeOnOutsideClick = useEffectEvent(close);
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setQuery('');
-        setActiveIndex(-1);
+        closeOnOutsideClick();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -211,14 +234,20 @@ export function ColumnHeaderFilter<TData>({
     const allOption = options.find((opt) => opt.value === undefined);
     const selectedOption =
       activeValue === undefined ? undefined : options.find((opt) => opt.value === activeValue);
+    // Con búsqueda en el servidor las opciones ya son las coincidencias.
     const matches = options.filter(
       (opt) =>
         opt.value !== undefined &&
         opt !== selectedOption &&
-        (foldedQuery === '' || foldText(opt.label).includes(foldedQuery)),
+        (serverSearch !== undefined ||
+          foldedQuery === '' ||
+          foldText(opt.label).includes(foldedQuery)),
     );
     const capped = matches.slice(0, SEARCHABLE_MAX_VISIBLE);
-    hiddenCount = matches.length - capped.length;
+    hiddenCount =
+      serverSearch?.total !== undefined
+        ? Math.max(0, serverSearch.total - capped.length)
+        : matches.length - capped.length;
     hasNoMatches = foldedQuery !== '' && matches.length === 0;
     visibleOptions = [
       ...(allOption ? [allOption] : []),
@@ -285,7 +314,7 @@ export function ColumnHeaderFilter<TData>({
         onClick={(event) => {
           event.stopPropagation();
           if (isOpen) close();
-          else setIsOpen(true);
+          else open();
         }}
         onMouseDown={(event) => event.stopPropagation()}
         className={`inline-flex items-center justify-center rounded p-0.5 transition-colors cursor-pointer ${
@@ -339,6 +368,7 @@ export function ColumnHeaderFilter<TData>({
               onChange={(event) => {
                 setQuery(event.target.value);
                 setActiveIndex(-1);
+                serverSearch?.onQueryChange(event.target.value);
               }}
               onKeyDown={(event) => {
                 if (event.key === 'ArrowDown') {

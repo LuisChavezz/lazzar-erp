@@ -108,6 +108,18 @@ export const booleanFlagParam: ServerTableParam<true> = {
 };
 
 /**
+ * Booleano con SUS DOS valores (`?con_cod_proscai=true|false`, `?activo=…`):
+ * para un filtro "con / sin" donde `false` es una opción en sí, no la
+ * ausencia del filtro (eso es `booleanFlagParam`). Solo `"true"` y `"false"`
+ * exactos: el backend también acepta `1`/`0`, pero la URL tiene una sola
+ * forma por valor. Sin filtro = la clave ausente.
+ */
+export const booleanParam: ServerTableParam<boolean> = {
+  parse: (raw) => (raw === "true" ? true : raw === "false" ? false : null),
+  serialize: (value) => (value ? "true" : "false"),
+};
+
+/**
  * Codec de fecha: lleva la marca `kind: "date"` para que `dateRanges` acepte
  * SOLO filtros de fecha (su comparación es por texto "yyyy-mm-dd", que no
  * sirve para otros valores).
