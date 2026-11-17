@@ -12,6 +12,10 @@ import { FormSubmitButton } from "@/src/components/FormButtons";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import type { OpSkuOption } from "../utils/opSkuOptions";
 import type { CreateProductionOrderFormApi } from "@/src/features/production-orders/hooks/useCreateProductionOrderForm";
+import {
+  CANTIDAD_DECIMALES_MESSAGE,
+  hasAtMostTwoDecimals,
+} from "@/src/features/production-orders/schemas/create-production-order.schema";
 
 interface ProductionOrderStep2Props {
   /** SKU seleccionados en el Paso 1, en el mismo orden que el detalle. */
@@ -222,7 +226,7 @@ export function ProductionOrderStep2({
                       <FormInput
                         label="Cantidad"
                         type="number"
-                        step="any"
+                        step="0.01"
                         min={1}
                         inputMode="decimal"
                         placeholder="0"
@@ -234,9 +238,14 @@ export function ProductionOrderStep2({
                             `orden_produccion_detalle.${index}.cantidad`,
                           );
                         }}
-                        error={getError(
-                          `orden_produccion_detalle.${index}.cantidad`,
-                        )}
+                        // El límite de decimales se avisa al teclear; el
+                        // submit lo vuelve a validar con el schema.
+                        error={
+                          getError(`orden_produccion_detalle.${index}.cantidad`) ??
+                          (hasAtMostTwoDecimals(field.state.value)
+                            ? undefined
+                            : { message: CANTIDAD_DECIMALES_MESSAGE })
+                        }
                       />
                     )}
                   </form.Field>
