@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent, type RefObject } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -8,6 +8,7 @@ import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import {
   OPPORTUNITY_GONE_MESSAGE,
@@ -36,10 +37,10 @@ interface TransferFormProps {
   cotizaciones?: readonly OpportunityCotizacion[];
   goneMessage: string;
   isPending: boolean;
-  onTransfer: (
-    variables: TransferOpportunityVariables,
-    callbacks: { onSuccess: () => void; onError: (error: unknown) => void }
-  ) => void;
+  /** Candado SÍNCRONO del envío; lo lee también el diálogo para no cerrarse. */
+  submitLockRef: RefObject<boolean>;
+  /** `mutateAsync` de la transferencia. */
+  onTransfer: (variables: TransferOpportunityVariables) => Promise<unknown>;
   onClose: () => void;
 }
 
@@ -109,6 +110,7 @@ function TransferForm({
   cotizaciones,
   goneMessage,
   isPending,
+  submitLockRef,
   onTransfer,
   onClose,
 }: TransferFormProps) {
@@ -148,33 +150,34 @@ function TransferForm({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (selectedId === null || isPending) return;
-    setFieldError(null);
-    onTransfer(
-      {
-        id: opportunity.id,
-        vendedor: selectedId,
-        goneMessage,
-        cotizacionIds: cotizaciones?.map((cotizacion) => cotizacion.id),
-      },
-      {
-        onSuccess: onClose,
+    if (selectedId === null) return;
+    // Candado SÍNCRONO: un doble clic (o Enter + clic) llega antes de que
+    // `isPending` deshabilite el botón; el segundo no manda nada.
+    void runWithSubmitLock(submitLockRef, async () => {
+      setFieldError(null);
+      try {
+        await onTransfer({
+          id: opportunity.id,
+          vendedor: selectedId,
+          goneMessage,
+          cotizacionIds: cotizaciones?.map((cotizacion) => cotizacion.id),
+        });
+        onClose();
+      } catch (error) {
         // Los toasts los da el hook; aquí solo lo que depende del diálogo.
-        onError: (error) => {
-          // El destinatario no vale (no encontrado en la empresa de la
-          // oportunidad, inactivo o sin departamento de Ventas): se dice bajo
-          // el selector y el diálogo sigue abierto para elegir otro.
-          const rejection = transferVendedorRejection(error);
-          if (rejection) {
-            setFieldError(rejection);
-            return;
-          }
-          // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
-          // la relectura deja el detalle en "no disponible" o saca la fila.
-          if (isNotFoundError(error)) onClose();
-        },
+        // El destinatario no vale (no encontrado en la empresa de la
+        // oportunidad, inactivo o sin departamento de Ventas): se dice bajo el
+        // selector y el diálogo sigue abierto para elegir otro.
+        const rejection = transferVendedorRejection(error);
+        if (rejection) {
+          setFieldError(rejection);
+          return;
+        }
+        // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
+        // la relectura deja el detalle en "no disponible" o saca la fila.
+        if (isNotFoundError(error)) onClose();
       }
-    );
+    });
   };
 
   return (
@@ -313,6 +316,9 @@ interface OpportunityTransferDialogProps {
  *
  * Copia del registro al abrir (`useDialogSession`): una relectura a media
  * elección no le cambia el dueño actual ni la lista de destinatarios.
+ *
+ * - Candado SÍNCRONO del envío (`runWithSubmitLock`): un doble clic manda una
+ *   sola transferencia.
  */
 export function OpportunityTransferDialog({
   opportunity,
@@ -320,7 +326,8 @@ export function OpportunityTransferDialog({
   goneMessage = OPPORTUNITY_GONE_MESSAGE,
   onClose,
 }: OpportunityTransferDialogProps) {
-  const { mutate: transfer, isPending } = useTransferOpportunity();
+  const { mutateAsync: transfer, isPending } = useTransferOpportunity();
+  const submitLockRef = useRef(false);
   const session = useDialogSession(opportunity !== null, { opportunity, cotizaciones });
   const opened = session.snapshot;
 
@@ -335,7 +342,8 @@ export function OpportunityTransferDialog({
       }
       open={opportunity !== null}
       onOpenChange={(open) => {
-        if (!open && !isPending) onClose();
+        // El candado (ref) vale desde el mismo clic; `isPending`, un render después.
+        if (!open && !submitLockRef.current && !isPending) onClose();
       }}
       maxWidth="560px"
       showCloseButton={false}
@@ -347,6 +355,7 @@ export function OpportunityTransferDialog({
           cotizaciones={opened.cotizaciones}
           goneMessage={goneMessage}
           isPending={isPending}
+          submitLockRef={submitLockRef}
           onTransfer={transfer}
           onClose={onClose}
         />

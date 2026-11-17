@@ -2,6 +2,7 @@
 
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useDeleteOpportunity } from "../hooks/useDeleteOpportunity";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { describeOpportunity } from "../utils/describeOpportunity";
@@ -27,13 +28,20 @@ interface OpportunityDeleteDialogProps {
  * SIEMPRE montada y se abre con `opportunity`: así se cierra con su animación
  * aunque la pantalla de detrás cambie (el detalle pasa a "no disponible" o a
  * "volviendo al listado").
+ *
+ * - Candado SÍNCRONO por oportunidad (`useRowActionLock`): se toma al
+ *   confirmar, así un doble clic manda una sola baja; el diálogo no se cierra
+ *   mientras viaja.
  */
 export function OpportunityDeleteDialog({
   opportunity,
   onClose,
   onDeleted,
 }: OpportunityDeleteDialogProps) {
-  const { mutate: deleteOpportunity, isPending: isDeleting } = useDeleteOpportunity({ onDeleted });
+  const { mutate: deleteOpportunity } = useDeleteOpportunity({ onDeleted });
+  const lock = useRowActionLock();
+  const opportunityId = opportunity?.id ?? null;
+  const isDeleting = lock.isPending(opportunityId);
 
   // El texto sigue nombrando a la última oportunidad mientras el diálogo se
   // cierra, cuando `opportunity` ya es `null`.
@@ -42,9 +50,7 @@ export function OpportunityDeleteDialog({
   return (
     <ConfirmDialog
       open={opportunity !== null}
-      onOpenChange={(open) => {
-        if (!open && !isDeleting) onClose();
-      }}
+      {...lock.guardClose(opportunityId, onClose)}
       title="Dar de Baja Oportunidad"
       description={
         shown
@@ -56,9 +62,15 @@ export function OpportunityDeleteDialog({
       confirmText={isDeleting ? "Dando de baja…" : "Dar de baja"}
       confirmColor="red"
       closeOnConfirm={false}
-      busy={isDeleting}
       onConfirm={() => {
-        if (opportunity) deleteOpportunity(opportunity.id, { onSettled: onClose });
+        if (!opportunity || !lock.acquire(opportunity.id)) return;
+        const { id } = opportunity;
+        deleteOpportunity(id, {
+          onSettled: () => {
+            lock.release(id);
+            onClose();
+          },
+        });
       }}
     />
   );

@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef, type RefObject } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
+import { runWithSubmitLock } from "@/src/utils/actionLocks";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
@@ -35,14 +37,17 @@ interface OpportunityLigarCotizacionesDialogProps {
  */
 function LigarCotizacionesContent({
   opportunityId,
+  submitLockRef,
   onClose,
 }: {
   opportunityId: number;
+  /** Candado SÍNCRONO del POST; lo lee también el diálogo para no cerrarse. */
+  submitLockRef: RefObject<boolean>;
   onClose: () => void;
 }) {
   const { disponibles, isLoading, isInitialError, isNotFound } =
     useOpportunityCotizacionesLinks(opportunityId);
-  const { mutate: ligar, isPending } = useLigarOpportunityCotizaciones(opportunityId);
+  const { mutateAsync: ligar, isPending } = useLigarOpportunityCotizaciones(opportunityId);
 
   return (
     <MultiSelectPickerDialogContent<OpportunityCotizacion>
@@ -87,19 +92,19 @@ function LigarCotizacionesContent({
           </div>
         </div>
       )}
+      // Candado SÍNCRONO: un doble clic en "Confirmar" manda un solo POST.
       onConfirm={(cotizaciones) =>
-        ligar(
-          cotizaciones.map((cotizacion) => cotizacion.id),
-          {
-            onSuccess: onClose,
-            // La oportunidad ya no admite ligar (cerrada, sin cliente): el
-            // detalle ya se releyó y oculta el botón; seguir aquí solo
-            // permitiría repetir el mismo 400.
-            onError: (error) => {
-              if (isLigarOportunidadRejection(error)) onClose();
-            },
+        void runWithSubmitLock(submitLockRef, async () => {
+          try {
+            await ligar(cotizaciones.map((cotizacion) => cotizacion.id));
+            onClose();
+          } catch (error) {
+            // La oportunidad ya no admite ligar (400 `etapa`: cerrada; o sin
+            // vendedor o cliente): el hook ya avisó con el texto del backend y
+            // el detalle se releyó; seguir aquí solo repetiría el mismo 400.
+            if (isLigarOportunidadRejection(error)) onClose();
           }
-        )
+        })
       }
       onCancel={onClose}
     />
@@ -119,18 +124,25 @@ export function OpportunityLigarCotizacionesDialog({
   // mientras el POST sigue en curso.
   const isLigando =
     useIsMutating({ mutationKey: ligarCotizacionesMutationKey(opportunityId ?? 0) }) > 0;
+  const submitLockRef = useRef(false);
 
   return (
     <MainDialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && !isLigando) onClose();
+        if (!next && !submitLockRef.current && !isLigando) onClose();
       }}
       title=""
       maxWidth="640px"
       showCloseButton={false}
     >
-      {open && <LigarCotizacionesContent opportunityId={opportunityId} onClose={onClose} />}
+      {open && (
+        <LigarCotizacionesContent
+          opportunityId={opportunityId}
+          submitLockRef={submitLockRef}
+          onClose={onClose}
+        />
+      )}
     </MainDialog>
   );
 }

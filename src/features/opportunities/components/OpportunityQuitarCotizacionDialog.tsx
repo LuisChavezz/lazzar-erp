@@ -2,6 +2,7 @@
 
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useQuitarOpportunityCotizacion } from "../hooks/useOpportunityCotizacionLinks";
 import type { OpportunityCotizacion } from "../interfaces/opportunity-onboarding.interface";
 
@@ -21,13 +22,19 @@ interface OpportunityQuitarCotizacionDialogProps {
  * pantalla se relee; entonces se cierra, con éxito o con error (el aviso lo da
  * el hook). Siempre montada y abierta por `cotizacion`, como
  * `OpportunitySeguimientoDeleteDialog`.
+ *
+ * - Candado SÍNCRONO por cotización (`useRowActionLock`), tomado al confirmar:
+ *   un doble clic manda un solo DELETE.
  */
 export function OpportunityQuitarCotizacionDialog({
   opportunityId,
   cotizacion,
   onClose,
 }: OpportunityQuitarCotizacionDialogProps) {
-  const { mutate: quitar, isPending } = useQuitarOpportunityCotizacion(opportunityId);
+  const { mutate: quitar } = useQuitarOpportunityCotizacion(opportunityId);
+  const lock = useRowActionLock();
+  const cotizacionId = cotizacion?.id ?? null;
+  const isPending = lock.isPending(cotizacionId);
 
   // El texto sigue nombrando la última cotización mientras el diálogo se
   // cierra, cuando `cotizacion` ya es `null`.
@@ -36,9 +43,7 @@ export function OpportunityQuitarCotizacionDialog({
   return (
     <ConfirmDialog
       open={cotizacion !== null}
-      onOpenChange={(open) => {
-        if (!open && !isPending) onClose();
-      }}
+      {...lock.guardClose(cotizacionId, onClose)}
       title="Quitar Cotización"
       description={`La cotización${
         shown ? ` #${shown.id}` : ""
@@ -46,9 +51,15 @@ export function OpportunityQuitarCotizacionDialog({
       confirmText={isPending ? "Quitando…" : "Quitar"}
       confirmColor="red"
       closeOnConfirm={false}
-      busy={isPending}
       onConfirm={() => {
-        if (cotizacion) quitar(cotizacion.id, { onSettled: onClose });
+        if (!cotizacion || !lock.acquire(cotizacion.id)) return;
+        const { id } = cotizacion;
+        quitar(id, {
+          onSettled: () => {
+            lock.release(id);
+            onClose();
+          },
+        });
       }}
     />
   );
