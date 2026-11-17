@@ -8,7 +8,7 @@ import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { isClosedProductionOrderStatus } from "../constants/productionOrderStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { canCreateProductionOrder } from "../utils/productionOrderPermissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { Button } from "@/src/components/Button";
 import {
@@ -22,6 +22,7 @@ import { productionOrderKpisQueryKey } from "../hooks/useProductionOrderKpis";
 import { ProductionOrderKpisSection } from "./ProductionOrderKpisSection";
 import { ProductionOrderCriticalPathDialog } from "@/src/features/production-order-critical-path/components/ProductionOrderCriticalPathDialog";
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /**
  * Lista principal de órdenes de producción.
@@ -41,7 +42,7 @@ export function ProductionOrderList() {
   // exige además `C-PRODUCCION-OP`. `hasPermission` ya cortocircuita para el rol
   // "admin".
   const { data: session } = useSession();
-  const canCreate = canCreateProductionOrder(session?.user);
+  const canCreate = hasProductionPermission(session?.user, "OP", "C");
   // OP cuya ruta crítica está abierta. Se guarda la FOTO (id, folio y estatus) de la
   // apertura y no se resuelve contra el listado: la ruta crítica no depende de
   // la fila, así que un refetch del listado no debe cerrar el diálogo.
@@ -49,7 +50,7 @@ export function ProductionOrderList() {
   const columns = useMemo(
     () =>
       getProductionOrderColumns(
-        (id) => router.push(`/manufacturing/production-orders/${id}`),
+        (id) => router.push(productionOrderDetailPath(id)),
         (row) => setCriticalPathTarget({ opId: row.op_id, folio: row.folio_op, estatusOp: row.estatus_op }),
       ),
     [router],

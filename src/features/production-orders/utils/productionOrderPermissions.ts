@@ -1,28 +1,17 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { PRODUCTION_ORDER_STATUS_CODE } from "../constants/productionOrderStatus";
 
 /**
- * Códigos de escritura de las órdenes de producción, los que el backend exigirá
- * (EC-899): crear con `C-`, editar —cambiar estatus, ruta crítica, recalcular
- * consumos— con `E-`, y cancelar (destructivo) además con `D-` (EC-895).
- * `hasPermission` deja pasar al rol "admin".
+ * Reglas de la OP construidas sobre la tabla única de códigos de Producción
+ * (`hasProductionPermission`, EC-895): crear con `C-`, editar —cambiar
+ * estatus, ruta crítica, recalcular consumos— con `E-`, y cancelar
+ * (destructivo) además con `D-`.
  */
-export const PRODUCTION_ORDER_CREATE_PERMISSION = "C-PRODUCCION-OP";
-export const PRODUCTION_ORDER_EDIT_PERMISSION = "E-PRODUCCION-OP";
-export const PRODUCTION_ORDER_DELETE_PERMISSION = "D-PRODUCCION-OP";
-
-/** Dar de alta una OP: desde el listado o desde una pre-orden ("Crear OP"). */
-export const canCreateProductionOrder = (user?: PermissionContext | null): boolean =>
-  hasPermission(PRODUCTION_ORDER_CREATE_PERMISSION, user);
-
-/** Cambiar estatus, editar la ruta crítica y recalcular consumos de una OP. */
-export const canEditProductionOrder = (user?: PermissionContext | null): boolean =>
-  hasPermission(PRODUCTION_ORDER_EDIT_PERMISSION, user);
 
 /** Cancelar una OP (llevarla a Cancelado): destructivo, exige además `D-PRODUCCION-OP`. */
 export const canCancelProductionOrder = (user?: PermissionContext | null): boolean =>
-  canEditProductionOrder(user) && hasPermission(PRODUCTION_ORDER_DELETE_PERMISSION, user);
+  hasProductionPermission(user, "OP", "E") && hasProductionPermission(user, "OP", "D");
 
 /**
  * Opciones del menú "Cambiar estatus" que puede ver `user` (EC-895): ninguna
@@ -33,16 +22,22 @@ export const visibleProductionOrderStatusOptions = <T extends { estatus_op: numb
   options: readonly T[],
   user?: PermissionContext | null,
 ): T[] => {
-  if (!canEditProductionOrder(user)) return [];
+  if (!hasProductionPermission(user, "OP", "E")) return [];
   const canCancel = canCancelProductionOrder(user);
   return options.filter(
     (option) => canCancel || option.estatus_op !== PRODUCTION_ORDER_STATUS_CODE.CANCELLED,
   );
 };
 
+/** Aviso de solo lectura de la ruta crítica mientras la sesión carga o se recupera. */
+export const CRITICAL_PATH_PENDING_NOTICE = "Comprobando tus permisos: la ruta crítica queda de solo lectura mientras tanto.";
+
 /** Aviso de solo lectura de la ruta crítica sin `E-PRODUCCION-OP`. */
 export const CRITICAL_PATH_FORBIDDEN_NOTICE =
   "No tienes permiso para editar órdenes de producción: la ruta crítica es de solo lectura.";
+
+/** Motivo del botón "Recalcular consumos" mientras la sesión carga o se recupera. */
+export const RECALCULATE_PENDING_REASON = "Comprobando tus permisos…";
 
 /** Motivo del botón "Recalcular consumos" deshabilitado sin `E-PRODUCCION-OP`. */
 export const RECALCULATE_FORBIDDEN_REASON =

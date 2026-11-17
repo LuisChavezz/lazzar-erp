@@ -15,12 +15,7 @@ import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
 import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import {
-  canDeleteWorkOrderAvance,
-  canEditWorkOrder,
-  WORK_ORDER_DELETE_PERMISSION,
-  WORK_ORDER_EDIT_PERMISSION,
-} from "@/src/utils/workOrderEditAccess";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
@@ -48,6 +43,7 @@ import type {
   ReflectiveOrderDetailLine,
   ReflectiveOrderSibling,
 } from "../interfaces/reflective-order.interface";
+import { reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -130,7 +126,7 @@ const SiblingOrders = ({ items }: { items: ReflectiveOrderSibling[] }) => (
     {items.map((hermana) => (
       <li key={hermana.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
         <Link
-          href={`/manufacturing/reflective-orders/${hermana.id}`}
+          href={reflectiveOrderDetailPath(hermana.id)}
           className="font-mono font-semibold text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
         >
           {hermana.folio_reflejante}
@@ -162,13 +158,13 @@ export function ReflectiveOrderDetailContent({
   const updateOrder = useUpdateReflectiveOrder(numericId);
 
   // Superusuario, admin de empresa o el código de edición de la sección,
-  // `E-PRODUCCION-OR` (`canEditWorkOrder`, EC-895): rige la ficha y el registro de avances.
+  // `E-PRODUCCION-OR` (`hasProductionPermission`, EC-895): rige la ficha y el registro de avances.
   // Es UX: evita ofrecer controles que van a fallar, no es la frontera de acceso.
   // Antes de los `return` tempranos porque `useSession` es un hook.
   const { data: session } = useSession();
-  const canEdit = canEditWorkOrder(session?.user, WORK_ORDER_EDIT_PERMISSION.OR);
+  const canEdit = hasProductionPermission(session?.user, "OR", "E");
   // Borrar un avance es destructivo: exige `D-PRODUCCION-OR` (EC-895).
-  const canDeleteAvance = canDeleteWorkOrderAvance(session?.user, WORK_ORDER_DELETE_PERMISSION.OR);
+  const canDeleteAvance = hasProductionPermission(session?.user, "OR", "D");
 
   const BackLink = (
     <Link

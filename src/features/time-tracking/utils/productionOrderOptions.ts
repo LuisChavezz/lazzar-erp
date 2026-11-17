@@ -1,5 +1,6 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { hasPermission } from "@/src/utils/permissions";
+import type { PermissionGate } from "@/src/utils/permissionGate";
 import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
 
 /**
@@ -76,3 +77,17 @@ export const OP_CATALOG_FORBIDDEN_REASON =
  */
 export const canListProductionOrders = (user?: PermissionContext | null): boolean =>
   hasPermission(OP_CATALOG_PERMISSION, user);
+
+/**
+ * Qué hace el desglose con el catálogo de OP según el acceso (EC-895):
+ * - `allowed`: lo pide.
+ * - `pending` (la sesión carga o se recupera): no lo pide todavía ni da
+ *   motivo; el selector dice "Cargando órdenes…".
+ * - `denied`: no lo pide y el selector se deshabilita con el motivo.
+ */
+export const getOpCatalogAccess = (
+  access: PermissionGate,
+): { enabled: boolean; unavailableReason: string | null } => ({
+  enabled: access === "allowed",
+  unavailableReason: access === "denied" ? OP_CATALOG_FORBIDDEN_REASON : null,
+});

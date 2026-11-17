@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   EMBROIDERYORDER_HEADER_FILTERS,
@@ -18,6 +18,7 @@ import { EmbroideryOrderDetailDialog } from "./EmbroideryOrderDetailDialog";
 import { EmbroideryOrderForm } from "./EmbroideryOrderForm";
 import { EmbroideryStats } from "./EmbroideryStats";
 import { useEmbroideryOrders } from "../hooks/useEmbroideryOrders";
+import { embroideryOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 // El estatus se filtra desde el encabezado de su columna
 // (`EMBROIDERYORDER_HEADER_FILTERS`), igual que el resto de Producción.
@@ -57,7 +58,7 @@ export function EmbroideryView() {
   // exige además `C-PRODUCCION-OB`. `hasPermission` ya cortocircuita para el rol
   // "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission("C-PRODUCCION-OB", session?.user);
+  const canCreate = hasProductionPermission(session?.user, "OB", "C");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -75,7 +76,7 @@ export function EmbroideryView() {
   // diálogo sobre esta misma tabla (ver `EmbroideryOrderColumns`). El diálogo
   // sigue montado abajo porque el alta lo usa para el 409 de duplicado.
   const columns = useMemo(
-    () => getEmbroideryOrderColumns((id) => router.push(`/manufacturing/embroidery/${id}`)),
+    () => getEmbroideryOrderColumns((id) => router.push(embroideryOrderDetailPath(id))),
     [router],
   );
 

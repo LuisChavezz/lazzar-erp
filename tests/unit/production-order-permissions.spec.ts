@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import {
-  canCreateProductionOrder,
-  canEditProductionOrder,
-  visibleProductionOrderStatusOptions,
-} from "@/src/features/production-orders/utils/productionOrderPermissions";
+import { visibleProductionOrderStatusOptions } from "@/src/features/production-orders/utils/productionOrderPermissions";
+import { isProductionOrderStatusQueryEnabled } from "@/src/features/production-order-status/hooks/useProductionOrderStatus";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
+
+const canEditProductionOrder = (u?: never) => hasProductionPermission(u, "OP", "E");
+const canCreateProductionOrder = (u?: never) => hasProductionPermission(u, "OP", "C");
 
 /**
  * EC-895: las escrituras de la OP usan los códigos que exigirá el backend
@@ -67,5 +68,13 @@ test.describe("visibleProductionOrderStatusOptions (menú Cambiar estatus)", () 
 
   test("el admin ve todos", () => {
     expect(destinos(admin)).toEqual([3, 6, 7]);
+  });
+});
+
+test.describe("GET estatus/ de la OP (EC-895)", () => {
+  test("solo se pide con el permiso de edición y un id válido", () => {
+    expect(isProductionOrderStatusQueryEnabled(47, true)).toBe(true);
+    expect(isProductionOrderStatusQueryEnabled(47, false)).toBe(false);
+    expect(isProductionOrderStatusQueryEnabled(0, true)).toBe(false);
   });
 });

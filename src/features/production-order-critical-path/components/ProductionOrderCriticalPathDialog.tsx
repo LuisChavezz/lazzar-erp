@@ -1,9 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { permissionGate } from "@/src/utils/permissionGate";
 import {
-  canEditProductionOrder,
   CRITICAL_PATH_FORBIDDEN_NOTICE,
+  CRITICAL_PATH_PENDING_NOTICE,
 } from "@/src/features/production-orders/utils/productionOrderPermissions";
 import { useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
@@ -69,14 +71,17 @@ export function ProductionOrderCriticalPathDialog({
   // El PATCH respondió 409 en esta apertura: manda sobre el estatus de la foto.
   const [closedByServer, setClosedByServer] = useState(false);
   // Sin `E-PRODUCCION-OP` la ruta crítica se consulta en solo lectura (EC-895).
-  const { data: session } = useSession();
+  const { isPending: isAccessPending, user } = useRouteAccess();
+  const editAccess = permissionGate(isAccessPending, hasProductionPermission(user, "OP", "E"));
   const readOnlyNotice = closedByServer
     ? closedOpNotice()
     : isClosedProductionOrderStatus(target.estatusOp)
       ? closedOpNotice(target.estatusOp)
-      : !canEditProductionOrder(session?.user)
-        ? CRITICAL_PATH_FORBIDDEN_NOTICE
-        : null;
+      : editAccess === "pending"
+        ? CRITICAL_PATH_PENDING_NOTICE
+        : editAccess === "denied"
+          ? CRITICAL_PATH_FORBIDDEN_NOTICE
+          : null;
   const { data, error, isInitialError, isFetchedAfterMount, isFetching, refetch } =
     useProductionOrderCriticalPath(target.opId);
   const isSaving = useIsMutating({ mutationKey: updateCriticalPathMutationKey }) > 0;

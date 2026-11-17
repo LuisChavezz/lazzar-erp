@@ -13,6 +13,7 @@ import type {
   ProductionOrderOnboarding,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
 import { isPwElement, toReactElement } from "./support/pwJsx";
+import type { PermissionGate } from "@/src/utils/permissionGate";
 
 /**
  * "Recalcular consumos" en la página de la OP (EC-857): la página le pasa al
@@ -109,7 +110,7 @@ function pagePropsFor(detail: ProductionOrderOnboarding, permissions: string[] =
     section: propsOf(ProductionOrderConsumptionSection) as {
       products: ProductionOrderConsumoResumen[];
       recalculableCount: number;
-      canRecalculate: boolean;
+      recalculateAccess: string;
     },
   };
 }
@@ -143,7 +144,7 @@ test.describe("Recalcular consumos en la página de la OP", () => {
           products: section.products,
           recalculableCount: section.recalculableCount,
           isClosed: false,
-          canRecalculate: true,
+          recalculateAccess: "allowed",
           onRecalculate: () => {},
         }),
       ),
@@ -155,11 +156,11 @@ test.describe("Recalcular consumos en la página de la OP", () => {
   });
 
   test("sin E-PRODUCCION-OP, el botón se apaga con el motivo de permiso (EC-895)", () => {
-    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP"]).section.canRecalculate).toBe(false);
-    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP", "C-PRODUCCION-OP"]).section.canRecalculate).toBe(false);
+    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP"]).section.recalculateAccess).toBe("denied");
+    expect(pagePropsFor(op([conPlaneado]), ["R-PRODUCCION-OP", "C-PRODUCCION-OP"]).section.recalculateAccess).toBe("denied");
     const { section } = pagePropsFor(op([conPlaneado]));
-    expect(section.canRecalculate).toBe(true);
-    const render = (canRecalculate: boolean) =>
+    expect(section.recalculateAccess).toBe("allowed");
+    const render = (recalculateAccess: PermissionGate) =>
       renderToString(
         toReactElement(
           createElement(ProductionOrderConsumptionSection, {
@@ -167,18 +168,22 @@ test.describe("Recalcular consumos en la página de la OP", () => {
             products: section.products,
             recalculableCount: section.recalculableCount,
             isClosed: false,
-            canRecalculate,
+            recalculateAccess,
             onRecalculate: () => {},
           }),
         ),
       );
     const re = /<span(?: title="([^"]*)")?><button[^>]*?(disabled="")?[^>]*>Recalcular consumos<\/button>/;
-    const sin = re.exec(render(false));
+    const sin = re.exec(render("denied"));
     expect(sin?.[1]).toBe(
       "No tienes permiso para editar órdenes de producción: no puedes recalcular sus consumos.",
     );
     expect(sin?.[0]).toContain('disabled=""');
-    const con = re.exec(render(true));
+    // Pendiente (la sesión carga o se recupera): deshabilitado, SIN afirmar que falte el permiso.
+    const pendiente = re.exec(render("pending"));
+    expect(pendiente?.[1]).toBe("Comprobando tus permisos…");
+    expect(pendiente?.[0]).toContain('disabled=""');
+    const con = re.exec(render("allowed"));
     expect(con, "la sección no pintó el botón").not.toBeNull();
     expect(con?.[0]).not.toContain('disabled=""');
   });

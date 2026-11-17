@@ -6,7 +6,7 @@ import { AccessibleLink } from "@/src/components/AccessibleLink";
 import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { useSession } from "next-auth/react";
 import { Button } from "@/src/components/Button";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { CreateResurtidoDialog } from "./CreateResurtidoDialog";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { preOrderReference, isResurtido } from "../utils/preOrderOrigin";
@@ -203,7 +203,7 @@ export function PreOrdersView() {
   const [createOpen, setCreateOpen] = useState(false);
   const { data: session } = useSession();
   // Mismo permiso que el backend exige para el alta de resurtido.
-  const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
+  const canCreate = hasProductionPermission(session?.user, "OP", "C");
   const count = (v: Vista) => preOrders.filter(VISTA_FILTER[v]).length;
   const rows = preOrders.filter(VISTA_FILTER[vista]);
 

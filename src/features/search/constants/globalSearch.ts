@@ -15,6 +15,7 @@ import { opportunityDetailPath } from "@/src/features/opportunities/constants/op
 import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { corteMangaOrderDetailPath, embroideryOrderDetailPath, reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /**
  * Longitud mínima para disparar la petición. El servidor manda el valor real en
@@ -76,9 +77,9 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   // fijo al listado del módulo, que exige el mismo código de sección que la
   // ruta y que el backend pide para mandar el grupo (`R-PRODUCCION-OB` / `-OR`
   // / `-CM`): todo el que recibe la fila puede abrir la ruta y volver.
-  orden_bordado: { modo: "ruta", href: (id) => `/manufacturing/embroidery/${id}` },
-  orden_reflejante: { modo: "ruta", href: (id) => `/manufacturing/reflective-orders/${id}` },
-  orden_corte_manga: { modo: "ruta", href: (id) => `/manufacturing/corte-manga/${id}` },
+  orden_bordado: { modo: "ruta", href: embroideryOrderDetailPath },
+  orden_reflejante: { modo: "ruta", href: reflectiveOrderDetailPath },
+  orden_corte_manga: { modo: "ruta", href: corteMangaOrderDetailPath },
   // Página de detalle de factura, sin `?from=` (mismo criterio que las órdenes
   // de producción): su "Volver" cae al listado de facturas, que exige el mismo
   // código que la ruta.

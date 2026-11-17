@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, PlusIcon } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import { canDeleteEmbroideryAvance, canEditEmbroideryOrder } from "../utils/embroideryPermissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { useDeleteAvance } from "../hooks/useDeleteAvance";
 import { EmbroideryCreateAvanceDialog } from "./EmbroideryCreateAvanceDialog";
 import type { BordadoAvance } from "../interfaces/embroidery.interface";
@@ -48,10 +48,10 @@ export function EmbroideryAvancesHistory({
   // Un avance es un registro de progreso de la ORDEN, no un documento propio
   // (el catálogo no tiene un código para avances): registrarlo se rige por
   // `E-PRODUCCION-OB` y borrarlo, acción destructiva, por `D-PRODUCCION-OB`
-  // (EC-895). Ambos helpers dejan pasar al rol "admin".
+  // (EC-895). `hasProductionPermission` deja pasar al rol "admin".
   const { data: session } = useSession();
-  const canEditOb = canEditEmbroideryOrder(session?.user);
-  const canDeleteAvance = canDeleteEmbroideryAvance(session?.user);
+  const canEditOb = hasProductionPermission(session?.user, "OB", "E");
+  const canDeleteAvance = hasProductionPermission(session?.user, "OB", "D");
 
   // Sin piezas programadas no hay contra qué medir un avance: el tope del
   // diálogo sería 0 y solo abriría un formulario bloqueado. Regla del frontend,

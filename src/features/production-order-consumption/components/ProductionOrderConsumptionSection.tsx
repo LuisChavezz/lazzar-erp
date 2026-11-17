@@ -1,6 +1,10 @@
 "use client";
 
-import { RECALCULATE_FORBIDDEN_REASON } from "@/src/features/production-orders/utils/productionOrderPermissions";
+import {
+  RECALCULATE_FORBIDDEN_REASON,
+  RECALCULATE_PENDING_REASON,
+} from "@/src/features/production-orders/utils/productionOrderPermissions";
+import type { PermissionGate } from "@/src/utils/permissionGate";
 import { Button } from "@/src/components/Button";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
@@ -29,8 +33,12 @@ interface ProductionOrderConsumptionSectionProps {
   recalculableCount: number;
   /** La OP está Completada o Cancelada: el backend ya no admite el recálculo. */
   isClosed: boolean;
-  /** `E-PRODUCCION-OP` (EC-895): sin él el botón queda deshabilitado con el motivo. */
-  canRecalculate: boolean;
+  /**
+   * `E-PRODUCCION-OP` (EC-895): `denied` deshabilita el botón con el motivo;
+   * `pending` (la sesión carga o se recupera) lo deshabilita sin afirmar que
+   * falte el permiso.
+   */
+  recalculateAccess: PermissionGate;
   onRecalculate: () => void;
 }
 
@@ -55,10 +63,12 @@ export function ProductionOrderConsumptionSection({
   products,
   recalculableCount,
   isClosed,
-  canRecalculate,
+  recalculateAccess,
   onRecalculate,
 }: ProductionOrderConsumptionSectionProps) {
-  const disabledReason = !canRecalculate
+  const disabledReason = recalculateAccess === "pending"
+    ? RECALCULATE_PENDING_REASON
+    : recalculateAccess === "denied"
     ? RECALCULATE_FORBIDDEN_REASON
     : isClosed
     ? "La orden está completada o cancelada: ya no se pueden recalcular sus consumos."

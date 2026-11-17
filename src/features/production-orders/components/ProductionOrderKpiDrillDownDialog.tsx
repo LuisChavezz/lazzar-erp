@@ -5,6 +5,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { EmptyLines, LineItemsTable } from "@/src/components/DetailDialogPrimitives";
 import type { ProductionOrderKpis } from "../interfaces/production-order-kpis.interface";
 import { formatKpiDate } from "@/src/utils/kpiFormat";
+import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /** Bloques con drill-down. */
 export type ProductionOrderKpiDrillDownKind = "cumplimiento_a_tiempo" | "ops_atrasadas";
@@ -18,7 +19,7 @@ const TD_CLASS = "px-3 py-2 text-slate-600 dark:text-slate-300";
 /** Folio que navega al detalle de la OP (enlace real: abre en pestaña nueva con clic medio). */
 function OpFolioLink({ opId, folio }: { opId: number; folio: string }) {
   return (
-    <Link href={`/manufacturing/production-orders/${opId}`} className={FOLIO_LINK_CLASS} title="Ver detalle">
+    <Link href={productionOrderDetailPath(opId)} className={FOLIO_LINK_CLASS} title="Ver detalle">
       {folio || `#${opId}`}
     </Link>
   );

@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
+import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import {
   getReflectiveOrderColumns,
@@ -17,6 +17,7 @@ import { ReflectiveOrderDetailDialog } from "./ReflectiveOrderDetailDialog";
 import { ReflectiveOrderForm } from "./ReflectiveOrderForm";
 import { ReflectiveOrderStats } from "./ReflectiveOrderStats";
 import { useReflectiveOrders } from "../hooks/useReflectiveOrders";
+import { reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
 /**
  * Vista de Órdenes de Reflejante: KPIs del listado (`ReflectiveOrderStats`) más
@@ -74,7 +75,7 @@ export function ReflectiveOrdersView() {
   // exige además `C-PRODUCCION-OR`. `hasPermission` ya cortocircuita para el rol
   // "admin".
   const { data: session } = useSession();
-  const canCreate = hasPermission("C-PRODUCCION-OR", session?.user);
+  const canCreate = hasProductionPermission(session?.user, "OR", "C");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const router = useRouter();
 
@@ -93,7 +94,7 @@ export function ReflectiveOrdersView() {
   const columns = useMemo(
     () =>
       getReflectiveOrderColumns((id) =>
-        router.push(`/manufacturing/reflective-orders/${id}`),
+        router.push(reflectiveOrderDetailPath(id)),
       ),
     [router],
   );

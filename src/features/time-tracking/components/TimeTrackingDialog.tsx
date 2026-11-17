@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
-import { useSession } from "next-auth/react";
+import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { permissionGate } from "@/src/utils/permissionGate";
 import { MainDialog } from "@/src/components/MainDialog";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { EmptyLines, InfoField, InfoGrid } from "@/src/components/DetailDialogPrimitives";
@@ -21,8 +22,8 @@ import { SEGMENT_GONE_MESSAGE, SEGMENT_GONE_TOAST_ID } from "../hooks/timeTracki
 import { computeBreakdownTotals } from "../utils/breakdownTotals";
 import {
   canListProductionOrders,
+  getOpCatalogAccess,
   indexOrders,
-  OP_CATALOG_FORBIDDEN_REASON,
 } from "../utils/productionOrderOptions";
 import {
   getAttendanceBounds,
@@ -88,12 +89,12 @@ export function TimeTrackingDialog({ attendance, permissions, onClose }: TimeTra
     useTimeSegments(attendance);
   const { shifts, isLoading: isLoadingShifts, isInitialError: isShiftsError } = useShifts();
   // El catálogo de OP solo se pide con `R-PRODUCCION-OP` (EC-895): sin él el
-  // backend responde 403. Mientras la sesión carga tampoco se pide ni se da
-  // motivo ("Cargando órdenes…").
-  const { data: session, status: sessionStatus } = useSession();
-  const canListOrders = canListProductionOrders(session?.user);
-  const ordersUnavailableReason =
-    sessionStatus !== "loading" && !canListOrders ? OP_CATALOG_FORBIDDEN_REASON : null;
+  // backend responde 403. Mientras la sesión carga o se recupera tampoco se
+  // pide ni se da motivo ("Cargando órdenes…").
+  const { isPending: isAccessPending, user } = useRouteAccess();
+  const { enabled: canListOrders, unavailableReason: ordersUnavailableReason } = getOpCatalogAccess(
+    permissionGate(isAccessPending, canListProductionOrders(user)),
+  );
   const {
     data: orders,
     hasLoaded: catalogLoaded,
