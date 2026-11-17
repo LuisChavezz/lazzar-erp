@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 import { getOpportunityName } from "../utils/describeOpportunity";
@@ -51,7 +52,7 @@ export function OpportunityFormDialog({
       }
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="1000px"
+      maxWidth={DIALOG_WIDTH_SECTIONED_FORM}
       trigger={trigger}
     >
       <OpportunityForm
