@@ -9,7 +9,10 @@ import { ConfigDetailView } from "./ConfigDetailView";
 import { ArrowLeftIcon, CloseIcon, SearchIcon } from "@/src/components/Icons";
 import TiltCard from "@/src/components/TiltCard";
 import { useConfigMenu } from "../hooks/useConfigMenu";
-import { configGroups } from "../constants/configCardItems";
+import { configGroups, type ConfigCardItem } from "../constants/configCardItems";
+
+const canPrefetch = (card: ConfigCardItem) =>
+  card.prefetchQuery !== undefined || (card.prefetchKey !== undefined && card.prefetchFn !== undefined);
 
 export function ConfigContent() {
   const { data: session, status } = useSession();
@@ -32,6 +35,24 @@ export function ConfigContent() {
     filteredCards,
     selectedGroupCards,
   } = useConfigMenu(session?.user);
+
+  /**
+   * Precarga lo que la vista de la tarjeta leerá al abrirse. `prefetchQuery`
+   * (tablas en modo servidor) carga su módulo bajo demanda, para no meter los
+   * de las tablas en el menú; un fallo solo significa que no hubo precarga.
+   */
+  const prefetchCard = (card: ConfigCardItem) => {
+    if (card.prefetchQuery) {
+      card
+        .prefetchQuery()
+        .then((query) => queryClient.prefetchQuery(query))
+        .catch(() => {});
+      return;
+    }
+    if (card.prefetchKey && card.prefetchFn) {
+      void queryClient.prefetchQuery({ queryKey: card.prefetchKey, queryFn: card.prefetchFn });
+    }
+  };
 
   const groupTopRef = useRef<HTMLDivElement | null>(null);
   const hasSearch = searchTerm.trim().length > 0;
@@ -128,16 +149,7 @@ export function ConfigContent() {
                       description={card.description}
                       icon={card.icon}
                       onClick={() => handleCardClick(card.view)}
-                      onMouseEnter={
-                        card.prefetchKey && card.prefetchFn
-                          ? () => {
-                              queryClient.prefetchQuery({
-                                queryKey: card.prefetchKey!,
-                                queryFn: card.prefetchFn,
-                              });
-                            }
-                          : undefined
-                      }
+                      onMouseEnter={canPrefetch(card) ? () => prefetchCard(card) : undefined}
                     />
                   ))}
                 </div>
@@ -189,16 +201,7 @@ export function ConfigContent() {
                       description={card.description}
                       icon={card.icon}
                       onClick={() => handleCardClick(card.view)}
-                      onMouseEnter={
-                        card.prefetchKey && card.prefetchFn
-                          ? () => {
-                              queryClient.prefetchQuery({
-                                queryKey: card.prefetchKey!,
-                                queryFn: card.prefetchFn,
-                              });
-                            }
-                          : undefined
-                      }
+                      onMouseEnter={canPrefetch(card) ? () => prefetchCard(card) : undefined}
                     />
                   ))}
                 </div>
