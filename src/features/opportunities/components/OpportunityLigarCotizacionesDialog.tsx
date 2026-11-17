@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, type RefObject } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { MainDialog } from "@/src/components/MainDialog";
 import { MultiSelectPickerDialogContent } from "@/src/components/MultiSelectPickerDialogContent";
-import { runWithSubmitLock } from "@/src/utils/actionLocks";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { formatMoneyValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { OPPORTUNITY_GONE_DETAIL_MESSAGE } from "../hooks/opportunityErrorMessages";
@@ -38,12 +37,15 @@ interface OpportunityLigarCotizacionesDialogProps {
  */
 function LigarCotizacionesContent({
   opportunityId,
-  submitLockRef,
+  lock,
   onClose,
 }: {
   opportunityId: number;
-  /** Candado SÍNCRONO del POST; lo lee también el diálogo para no cerrarse. */
-  submitLockRef: RefObject<boolean>;
+  /**
+   * Candado SÍNCRONO del POST, de la oportunidad (`useRowActionLock`); lo leen
+   * también el diálogo, para no cerrarse, y el aviso de fila obsoleta.
+   */
+  lock: ReturnType<typeof useRowActionLock>;
   onClose: () => void;
 }) {
   const { disponibles, isLoading, isInitialError, isNotFound } =
@@ -93,9 +95,12 @@ function LigarCotizacionesContent({
           </div>
         </div>
       )}
-      // Candado SÍNCRONO: un doble clic en "Confirmar" manda un solo POST.
-      onConfirm={(cotizaciones) =>
-        void runWithSubmitLock(submitLockRef, async () => {
+      // Candado SÍNCRONO: un doble clic en "Confirmar" manda un solo POST. Se
+      // suelta DESPUÉS de cerrar (`finally`), así el aviso de fila obsoleta no
+      // vuelve a verificar entre el rechazo propio y el cierre.
+      onConfirm={(cotizaciones) => {
+        if (!lock.acquire(opportunityId)) return;
+        void (async () => {
           try {
             await ligar(cotizaciones.map((cotizacion) => cotizacion.id));
             onClose();
@@ -104,9 +109,11 @@ function LigarCotizacionesContent({
             // vendedor o cliente): el hook ya avisó con el texto del backend y
             // el detalle se releyó; seguir aquí solo repetiría el mismo 400.
             if (isLigarOportunidadRejection(error)) onClose();
+          } finally {
+            lock.release(opportunityId);
           }
-        })
-      }
+        })();
+      }}
       onCancel={onClose}
     />
   );
@@ -116,8 +123,8 @@ function LigarCotizacionesContent({
  * "Ligar cotización": selector MÚLTIPLE de cotizaciones ya hechas del cliente
  * de la oportunidad. No se puede cerrar mientras guarda.
  *
- * Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el detalle
- * dice que la oportunidad ya no existe o que quedó cerrada (Ganada o Perdida),
+ * Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir la
+ * oportunidad releída dice que ya no existe o que quedó cerrada (Ganada o Perdida),
  * se cierra con aviso antes de elegir nada.
  */
 export function OpportunityLigarCotizacionesDialog({
@@ -129,12 +136,12 @@ export function OpportunityLigarCotizacionesDialog({
   // mientras el POST sigue en curso.
   const isLigando =
     useIsMutating({ mutationKey: ligarCotizacionesMutationKey(opportunityId ?? 0) }) > 0;
-  const submitLockRef = useRef(false);
+  const lock = useRowActionLock();
 
   useOpportunityStaleNotice({
     action: { kind: "ligar" },
     opportunityId,
-    isBusy: isLigando,
+    isBusy: isLigando || lock.isPending(opportunityId),
     onClose,
   });
 
@@ -142,7 +149,7 @@ export function OpportunityLigarCotizacionesDialog({
     <MainDialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && !submitLockRef.current && !isLigando) onClose();
+        if (!next && !lock.isHeld(opportunityId) && !isLigando) onClose();
       }}
       title=""
       maxWidth="640px"
@@ -151,7 +158,7 @@ export function OpportunityLigarCotizacionesDialog({
       {open && (
         <LigarCotizacionesContent
           opportunityId={opportunityId}
-          submitLockRef={submitLockRef}
+          lock={lock}
           onClose={onClose}
         />
       )}

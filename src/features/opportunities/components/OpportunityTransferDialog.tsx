@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { MainDialog } from "@/src/components/MainDialog";
@@ -8,7 +8,7 @@ import { renderRadioIndicator } from "@/src/components/RadioIndicator";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { runWithSubmitLock } from "@/src/utils/actionLocks";
+import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import {
   OPPORTUNITY_GONE_MESSAGE,
@@ -38,8 +38,11 @@ interface TransferFormProps {
   cotizaciones?: readonly OpportunityCotizacion[];
   goneMessage: string;
   isPending: boolean;
-  /** Candado SÍNCRONO del envío; lo lee también el diálogo para no cerrarse. */
-  submitLockRef: RefObject<boolean>;
+  /**
+   * Candado SÍNCRONO del envío, de la oportunidad (`useRowActionLock`); lo
+   * leen también el diálogo, para no cerrarse, y el aviso de fila obsoleta.
+   */
+  lock: ReturnType<typeof useRowActionLock>;
   /** `mutateAsync` de la transferencia. */
   onTransfer: (variables: TransferOpportunityVariables) => Promise<unknown>;
   onClose: () => void;
@@ -111,7 +114,7 @@ function TransferForm({
   cotizaciones,
   goneMessage,
   isPending,
-  submitLockRef,
+  lock,
   onTransfer,
   onClose,
 }: TransferFormProps) {
@@ -153,12 +156,16 @@ function TransferForm({
     event.preventDefault();
     if (selectedId === null) return;
     // Candado SÍNCRONO: un doble clic (o Enter + clic) llega antes de que
-    // `isPending` deshabilite el botón; el segundo no manda nada.
-    void runWithSubmitLock(submitLockRef, async () => {
+    // `isPending` deshabilite el botón; el segundo no manda nada. Se suelta
+    // DESPUÉS de cerrar (`finally`), así el aviso de fila obsoleta no vuelve
+    // a verificar entre el error propio y el cierre.
+    const { id } = opportunity;
+    if (!lock.acquire(id)) return;
+    void (async () => {
       setFieldError(null);
       try {
         await onTransfer({
-          id: opportunity.id,
+          id,
           vendedor: selectedId,
           goneMessage,
           cotizacionIds: cotizaciones?.map((cotizacion) => cotizacion.id),
@@ -177,8 +184,10 @@ function TransferForm({
         // Ya no existe (o dejó de ser visible): no hay nada que reintentar;
         // la relectura deja el detalle en "no disponible" o saca la fila.
         if (isNotFoundError(error)) onClose();
+      } finally {
+        lock.release(id);
       }
-    });
+    })();
   };
 
   return (
@@ -318,7 +327,7 @@ interface OpportunityTransferDialogProps {
  * Copia del registro al abrir (`useDialogSession`): una relectura a media
  * elección no le cambia el dueño actual ni la lista de destinatarios.
  *
- * - Candado SÍNCRONO del envío (`runWithSubmitLock`): un doble clic manda una
+ * - Candado SÍNCRONO del envío (`useRowActionLock`): un doble clic manda una
  *   sola transferencia.
  * - Aviso de fila obsoleta (`useOpportunityStaleNotice`): si al abrir el
  *   detalle dice que ya no existe (otra persona la dio de baja o se la
@@ -332,14 +341,15 @@ export function OpportunityTransferDialog({
   onClose,
 }: OpportunityTransferDialogProps) {
   const { mutateAsync: transfer, isPending } = useTransferOpportunity();
-  const submitLockRef = useRef(false);
+  const lock = useRowActionLock();
+  const opportunityId = opportunity?.id ?? null;
   const session = useDialogSession(opportunity !== null, { opportunity, cotizaciones });
   const opened = session.snapshot;
 
   useOpportunityStaleNotice({
     action: { kind: "transfer" },
     opportunityId: opportunity?.id ?? null,
-    isBusy: isPending,
+    isBusy: isPending || lock.isPending(opportunityId),
     onClose,
   });
 
@@ -354,8 +364,8 @@ export function OpportunityTransferDialog({
       }
       open={opportunity !== null}
       onOpenChange={(open) => {
-        // El candado (ref) vale desde el mismo clic; `isPending`, un render después.
-        if (!open && !submitLockRef.current && !isPending) onClose();
+        // El candado vale desde el mismo clic; `isPending`, un render después.
+        if (!open && !lock.isHeld(opportunityId) && !isPending) onClose();
       }}
       maxWidth="560px"
       showCloseButton={false}
@@ -367,7 +377,7 @@ export function OpportunityTransferDialog({
           cotizaciones={opened.cotizaciones}
           goneMessage={goneMessage}
           isPending={isPending}
-          submitLockRef={submitLockRef}
+          lock={lock}
           onTransfer={transfer}
           onClose={onClose}
         />
