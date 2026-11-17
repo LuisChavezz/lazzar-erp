@@ -6,9 +6,11 @@ import {
   PIEZAS_RANGE_OPTIONS,
   procurementPedidosTable,
   salesPedidosTable,
+  SIN_CLASIFICACION,
   SUBTOTAL_RANGE_OPTIONS,
   toPedidoKpisApiParams,
   toPedidoListApiParams,
+  withoutAmountCriteria,
 } from "@/src/features/orders/utils/pedidoListParams";
 import {
   purchaseOrderEstatusParamExcept,
@@ -109,6 +111,141 @@ test.describe("definiciones de las listas", () => {
       confirmado: "true",
       mes: "2026-11",
       ordering: "-subtotal,-id",
+    });
+  });
+});
+
+/** URL de la tabla → parámetros que llegan al backend (sin paginación). */
+const apiParamsOf = (definition: Parameters<typeof readServerTableState>[0], query: string) =>
+  toPedidoListApiParams(toServerTableCriteria(definition, stateOf(definition, query)));
+
+test.describe("Mis pedidos: estatus y clasificación (EC-755)", () => {
+  test("estatus CSV, «Cancelado» incluido (`estatus=5`)", () => {
+    expect(apiParamsOf(salesPedidosTable, "estatus=5")).toEqual({
+      estatus: "5",
+      ordering: "-created_at,-id",
+    });
+    expect(apiParamsOf(salesPedidosTable, "estatus=4,3").estatus).toBe("3,4");
+    expect(stateOf(salesPedidosTable, "estatus=6").filters).toEqual({});
+  });
+
+  test("«Sin clasificación» se envía como `sin_clasificar=true`, sin `clasificacion`", () => {
+    const state = stateOf(salesPedidosTable, `clasificacion=${SIN_CLASIFICACION}`);
+    // La URL conserva la opción virtual (ida y vuelta).
+    expect(toServerTableCriteria(salesPedidosTable, state).clasificacion).toBe(SIN_CLASIFICACION);
+    expect(apiParamsOf(salesPedidosTable, `clasificacion=${SIN_CLASIFICACION}`)).toEqual({
+      sin_clasificar: "true",
+      ordering: "-created_at,-id",
+    });
+  });
+
+  test("los códigos pasan como CSV normalizado; un valor inválido o mezclado se descarta", () => {
+    expect(apiParamsOf(salesPedidosTable, "clasificacion=B,A").clasificacion).toBe("A,B");
+    for (const raw of ["a", "A,Z", `A,${SIN_CLASIFICACION}`, ""]) {
+      const params = apiParamsOf(salesPedidosTable, `clasificacion=${encodeURIComponent(raw)}`);
+      expect(params).not.toHaveProperty("clasificacion");
+      expect(params).not.toHaveProperty("sin_clasificar");
+    }
+  });
+
+  test("se combina con `q`, `mes`, `confirmado` y el orden por confirmación o estatus", () => {
+    expect(
+      apiParamsOf(
+        salesPedidosTable,
+        `q=acme&mes=2026-11&confirmado=false&estatus=3&clasificacion=${SIN_CLASIFICACION}&ordering=fecha_confirmacion`,
+      ),
+    ).toEqual({
+      q: "acme",
+      mes: "2026-11",
+      confirmado: "false",
+      estatus: "3",
+      sin_clasificar: "true",
+      ordering: "fecha_confirmacion,-id",
+    });
+    expect(apiParamsOf(salesPedidosTable, "ordering=-estatus").ordering).toBe("-estatus,-id");
+  });
+
+  test("sin permiso de importes se conservan estatus y clasificación", () => {
+    const definition = withoutAmountCriteria(salesPedidosTable);
+    expect(Object.keys(definition.filters)).toEqual(["estatus", "confirmado", "mes", "clasificacion"]);
+    expect(definition.ordering?.fields).not.toContain("subtotal");
+  });
+});
+
+test.describe("Mesa de Control y Compras no cambian con EC-755", () => {
+  test("Mesa: «Sin clasificación» no es un valor válido y nunca envía `sin_clasificar`", () => {
+    expect(stateOf(mesaPedidosTable, `clasificacion=${SIN_CLASIFICACION}`).filters).toEqual({});
+    expect(apiParamsOf(mesaPedidosTable, `clasificacion=${SIN_CLASIFICACION}`)).toEqual({
+      ordering: "-created_at,-id",
+    });
+  });
+
+  test("las definiciones conservan sus filtros y su orden", () => {
+    expect(Object.keys(mesaPedidosTable.filters)).toEqual([
+      "confirmado",
+      "cliente",
+      "vendedor",
+      "mes",
+      "clasificacion",
+      "rango_piezas",
+      "rango_subtotal",
+    ]);
+    expect(mesaPedidosTable.ordering?.fields).toEqual([
+      "folio",
+      "cliente_razon_social",
+      "piezas",
+      "piezas_surtidas",
+      "vendedor_nombre",
+      "created_at",
+      "clasificacion",
+      "subtotal",
+    ]);
+    expect(Object.keys(procurementPedidosTable.filters)).toEqual([
+      "estatus",
+      "cliente",
+      "mes",
+      "mes_confirmacion",
+      "rango_gran_total",
+    ]);
+    expect(procurementPedidosTable.ordering?.fields).toEqual([
+      "folio",
+      "cliente_razon_social",
+      "created_at",
+      "fecha_confirmacion",
+      "gran_total",
+    ]);
+  });
+
+  test("los mismos parámetros que antes para una URL con todos sus filtros", () => {
+    expect(
+      apiParamsOf(
+        mesaPedidosTable,
+        "confirmado=true&cliente=7&vendedor=12&mes=2026-10&clasificacion=C,A&rango_piezas=51-500&rango_subtotal=mas-100k&q=x&ordering=piezas",
+      ),
+    ).toEqual({
+      confirmado: "true",
+      cliente: "7",
+      vendedor: "12",
+      mes: "2026-10",
+      clasificacion: "A,C",
+      piezas_min: "51",
+      piezas_max: "501",
+      subtotal_min: "100000",
+      q: "x",
+      ordering: "piezas,-id",
+    });
+    expect(
+      apiParamsOf(
+        procurementPedidosTable,
+        "estatus=5&cliente=7&mes=2026-10&mes_confirmacion=sin_confirmar&rango_gran_total=cero&ordering=-gran_total",
+      ),
+    ).toEqual({
+      estatus: "5",
+      cliente: "7",
+      mes: "2026-10",
+      mes_confirmacion: "sin_confirmar",
+      gran_total_max: "0.01",
+      ordering: "-gran_total,-id",
     });
   });
 });
