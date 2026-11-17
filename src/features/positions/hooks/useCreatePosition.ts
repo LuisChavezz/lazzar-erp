@@ -5,6 +5,7 @@ import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCo
 import { createPosition } from "../services/actions";
 import { PositionCreate } from "../interfaces/position.interface";
 import { PositionFormValues } from "../schemas/position.schema";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetPositionError = (
   field: keyof PositionFormValues,
@@ -35,12 +36,12 @@ export const useCreatePosition = (setError?: SetPositionError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof PositionFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

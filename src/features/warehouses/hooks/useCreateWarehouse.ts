@@ -3,6 +3,7 @@ import { createWarehouse } from "../services/actions";
 import { WarehouseCreate } from "../interfaces/warehouse.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetWarehouseError = (
   field: keyof WarehouseCreate,
@@ -28,12 +29,12 @@ export const useCreateWarehouse = (setError?: SetWarehouseError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof WarehouseCreate;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 import { createCalendar } from "../services/actions";
 import { CalendarFormValues } from "../schemas/calendar.schema";
 
@@ -45,12 +45,12 @@ export const useCreateCalendar = (setError?: SetCalendarError) => {
                 return;
               }
               const fieldKey = key as keyof CalendarFormValues;
-              const errorMessages = validationErrors[key];
+              const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-              if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+              if (errorMessage) {
                 setError(fieldKey, {
                   type: "server",
-                  message: errorMessages[0],
+                  message: errorMessage,
                 });
               }
             });

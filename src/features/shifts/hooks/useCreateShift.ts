@@ -5,6 +5,7 @@ import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCo
 import { createShift } from "../services/actions";
 import { ShiftCreate } from "../interfaces/shift.interface";
 import { ShiftFormValues } from "../schemas/shift.schema";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetShiftError = (
   field: keyof ShiftFormValues,
@@ -34,12 +35,12 @@ export const useCreateShift = (setError?: SetShiftError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof ShiftFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

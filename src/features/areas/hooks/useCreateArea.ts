@@ -3,6 +3,7 @@ import { createArea } from "../services/actions";
 import { AreaFormValues } from "../schemas/area.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 type SetAreaError = (
   field: keyof AreaFormValues,
@@ -28,12 +29,12 @@ export const useCreateArea = (setError?: SetAreaError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof AreaFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

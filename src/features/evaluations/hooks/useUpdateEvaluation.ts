@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 import { updateEvaluation } from "../services/actions";
 import { EvaluationPayload } from "../interfaces/evaluation.interface";
 import { EvaluationFormValues } from "../schemas/evaluation.schema";
@@ -40,12 +40,12 @@ export const useUpdateEvaluation = (setError?: SetEvaluationError) => {
                 return;
               }
               const fieldKey = key as keyof EvaluationFormValues;
-              const errorMessages = validationErrors[key];
+              const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-              if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+              if (errorMessage) {
                 setError(fieldKey, {
                   type: "server",
-                  message: toEvaluationServerMessage(key, errorMessages[0]),
+                  message: toEvaluationServerMessage(key, errorMessage),
                 });
               }
             });

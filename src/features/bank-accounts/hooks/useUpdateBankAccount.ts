@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage } from "@/src/utils/drfWriteErrors";
 import { invalidateCobroBankAccountData } from "@/src/features/collections/hooks/cobroQueryCache";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateBankAccountPayload extends CuentaBancariaCreate {
   id: number;
@@ -43,12 +44,12 @@ export const useUpdateBankAccount = (setError?: SetBankAccountError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof BankAccountFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

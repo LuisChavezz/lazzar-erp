@@ -4,6 +4,7 @@ import { AreaFormValues } from "../schemas/area.schema";
 import { AreaCreate } from "../interfaces/area.interface";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateAreaPayload extends AreaCreate {
   id: number;
@@ -33,12 +34,12 @@ export const useUpdateArea = (setError?: SetAreaError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof AreaFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });

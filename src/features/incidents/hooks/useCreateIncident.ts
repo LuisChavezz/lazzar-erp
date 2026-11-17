@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
-import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { firstDrfMessage, firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 import { createIncident } from "../services/actions";
 import { IncidentFormValues } from "../schemas/incident.schema";
 import { INCIDENTS_KEY } from "./useIncidents";
@@ -42,12 +42,12 @@ export const useCreateIncident = (setError?: SetIncidentError) => {
                 return;
               }
               const fieldKey = key as keyof IncidentFormValues;
-              const errorMessages = validationErrors[key];
+              const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-              if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+              if (errorMessage) {
                 setError(fieldKey, {
                   type: "server",
-                  message: errorMessages[0],
+                  message: errorMessage,
                 });
               }
             });

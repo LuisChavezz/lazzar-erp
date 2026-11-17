@@ -4,6 +4,7 @@ import { UserFormValues } from "../schemas/user.schema";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
+import { firstNestedFieldMessage } from "@/src/utils/firstDrfMessage";
 
 interface UpdateUserVariables {
   id: number;
@@ -40,12 +41,12 @@ export const useUpdateUser = (setError?: SetUserError) => {
 
           Object.keys(validationErrors).forEach((key) => {
             const fieldKey = key as keyof UserFormValues;
-            const errorMessages = validationErrors[key];
+            const errorMessage = firstNestedFieldMessage(validationErrors[key]);
 
-            if (errorMessages && errorMessages.length > 0) {
+            if (errorMessage) {
               setError(fieldKey, {
                 type: "server",
-                message: errorMessages[0],
+                message: errorMessage,
               });
             }
           });
