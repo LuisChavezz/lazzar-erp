@@ -6,6 +6,8 @@ import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
+import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { isOportunidadCerrada } from "../constants/opportunityChoices";
 import { TIPO_SEGUIMIENTO_OPTIONS, type TipoSeguimiento } from "../constants/seguimientoChoices";
@@ -48,6 +50,7 @@ function SeguimientoForm({ opportunity, seguimientoToEdit, onSuccess }: Seguimie
             <form.Field name="tipo">
               {(field) => (
                 <FormSelect
+                  className={COMPACT_FIELD_CLS}
                   label="Tipo"
                   name={field.name}
                   value={field.state.value}
@@ -78,9 +81,9 @@ function SeguimientoForm({ opportunity, seguimientoToEdit, onSuccess }: Seguimie
             <form.Field name="fecha_recordatorio">
               {(field) => (
                 <FormInput
+                  className={`${COMPACT_FIELD_CLS} dark:scheme-dark`}
                   label="Recordatorio (opcional)"
                   type="date"
-                  className="dark:scheme-dark"
                   name={field.name}
                   value={field.state.value}
                   disabled={isOpportunityClosed}
@@ -178,7 +181,7 @@ export function OpportunitySeguimientoFormDialog({
       }
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="720px"
+      maxWidth={DIALOG_WIDTH_FORM}
     >
       {opened.opportunity && (
         <SeguimientoForm

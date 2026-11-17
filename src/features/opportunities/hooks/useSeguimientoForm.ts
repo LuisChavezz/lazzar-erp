@@ -3,9 +3,9 @@
 import { useForm } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { TIPO_SEGUIMIENTO_DEFAULT } from "../constants/seguimientoChoices";
 import type {
@@ -68,8 +68,13 @@ export function useSeguimientoForm({
 }: UseSeguimientoFormParams) {
   const isEditing = seguimientoToEdit !== null;
   const queryClient = useQueryClient();
-  // Envío en curso, síncrono (ver `onSubmit`).
-  const submittingRef = useRef(false);
+  // Marca de SALIDA del candado de envío (`useFormSubmitLock`): tras guardar
+  // (o ver que ya no existe) el diálogo se cierra y nada debe volver a enviar.
+  const leavingRef = useRef(false);
+  const leave = () => {
+    leavingRef.current = true;
+    onSuccess();
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Errores por campo (de cliente y de servidor): ver `useFormFieldErrors`.
@@ -99,7 +104,7 @@ export function useSeguimientoForm({
     setClientFieldError(field, parsed.error.issues[0]?.message ?? "Valor inválido");
   };
 
-  /** El envío en sí, sin la guarda de doble envío (vive en `onSubmit`). */
+  /** El envío en sí; el candado contra el doble envío es `useFormSubmitLock`. */
   const submitSeguimiento = async (value: SeguimientoFormValues) => {
     clearServerErrors();
 
@@ -130,7 +135,7 @@ export function useSeguimientoForm({
         }
         if (Object.keys(changes).length === 0) {
           toast("No hay cambios que guardar.");
-          onSuccess();
+          leave();
           return;
         }
         await updateSeguimiento({ id: seguimientoToEdit.id, changes });
@@ -139,7 +144,7 @@ export function useSeguimientoForm({
         if (!isOpportunityClosed) payload.fecha_recordatorio = fechaRecordatorio;
         await createSeguimiento(payload);
       }
-      onSuccess();
+      leave();
     } catch (error) {
       // El `onError` de la mutación ya avisó y pintó los errores por campo. Sin
       // este catch el rechazo de `mutateAsync` escaparía sin manejar.
@@ -158,7 +163,7 @@ export function useSeguimientoForm({
         ? isNotFoundError(error)
         : isOpportunityRejectedError(error) &&
           isNotFoundError(queryClient.getQueryState(opportunityDetailKey(opportunityId))?.error);
-      if (isGone) onSuccess();
+      if (isGone) leave();
     } finally {
       setIsSubmitting(false);
     }
@@ -166,33 +171,24 @@ export function useSeguimientoForm({
 
   const form = useForm({
     defaultValues: seguimientoToEdit ? toFormValues(seguimientoToEdit) : EMPTY_VALUES,
-    onSubmit: async ({ value }) => {
-      // Guarda SÍNCRONA contra el doble envío en el mismo tick: `isPending`
-      // deshabilita el formulario hasta el siguiente render.
-      if (submittingRef.current) return;
-      submittingRef.current = true;
-      try {
-        await submitSeguimiento(value);
-      } finally {
-        submittingRef.current = false;
-      }
-    },
+    onSubmit: ({ value }) => submitSeguimiento(value),
+  });
+
+  // Candado SÍNCRONO contra el doble envío, tomado antes de la validación:
+  // `isPending` llega un render tarde.
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
   });
 
   const handleReset = () => {
+    if (isSubmitLocked()) return;
     form.reset(seguimientoToEdit ? toFormValues(seguimientoToEdit) : EMPTY_VALUES);
     clearAllErrors();
   };
 
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
-  };
-
   return {
     form,
-    isPending: isCreating || isUpdating || isSubmitting,
+    isPending: isCreating || isUpdating || isSubmitting || isFormSubmitting,
     isEditing,
     getError,
     clearFieldErrors,
