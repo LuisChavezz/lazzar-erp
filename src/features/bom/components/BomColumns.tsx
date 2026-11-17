@@ -1,5 +1,5 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { formatMoneyValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { Product } from "@/src/features/products/interfaces/product.interface";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 
@@ -16,7 +16,8 @@ export const columns = [
     id: "activo",
     header: "Estado",
     size: 100,
-    meta: { label: "Estado", serverSort: "activo" },
+    // Sin orden: `producto/` solo lista activos.
+    meta: { label: "Estado" },
     cell: ({ row }) => {
       const isActive = row.original.activo;
       const styles = isActive
@@ -56,10 +57,10 @@ export const columns = [
   columnHelper.accessor("precio_base", {
     header: "Precio",
     meta: { align: "right", label: "Precio", serverSort: "precio_base" },
-    // Sin símbolo: `precio_base` no declara moneda (EC-606).
+    // Sin símbolo: `precio_base` no declara moneda (EC-606). Sin precio, "—".
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300 font-medium">
-        {formatMoneyValue(row.original.precio_base, null)}
+        {formatMoneyValueOrDash(row.original.precio_base, null)}
       </span>
     ),
   }),

@@ -3,12 +3,13 @@ import { DataTable } from "../../../components/DataTable";
 import { MainDialog } from "../../../components/MainDialog";
 import { DialogHeader } from "../../../components/DialogHeader";
 import { Product } from "../interfaces/product.interface";
-import { buildProductRows, getColumns } from "./ProductColumns";
+import { getColumns, type ProductRowActions } from "./ProductColumns";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/src/utils/permissions";
 import ProductForm from "./ProductForm";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
-import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import { useUnitsOfMeasure } from "../../units-of-measure/hooks/useUnitsOfMeasure";
 import { useTaxes } from "../../taxes/hooks/useTaxes";
 import { useSatUnitCodes } from "../../sat-unit-codes/hooks/useSatUnitCodes";
@@ -48,7 +49,6 @@ export default function ProductList() {
     toastId: "config-products-table-refetch-error",
   });
 
-  const { categories } = useProductCategories();
   // Sin uso aquí: precargan los catálogos que pide el formulario de edición
   // (`useProductForm`), como antes, cuando sus mapas vivían en `lookups`.
   useUnitsOfMeasure();
@@ -61,18 +61,21 @@ export default function ProductList() {
     setIsDialogOpen(true);
   };
 
-  // El nombre y la línea de la categoría se incorporan a la FILA (ver
-  // `ProductRow`): la llegada tardía del catálogo produce un `data` nuevo.
-  const rows = buildProductRows(table.rows, categories);
+  // ── Baja ──────────────────────────────────────────────────────────────────
+  // El diálogo vive AQUÍ y no en la celda: un cambio de página o un refetch
+  // desmontan las celdas y un diálogo dentro se cerraría con ellas. La baja es
+  // lógica (`activo=false`): el producto sale del listado al refrescarse.
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const { mutate: deleteProduct } = useDeleteProduct();
 
-  const columns = getColumns(handleEdit, { canEdit, canDelete }, "linea");
+  const rowActions: ProductRowActions = { onEdit: handleEdit, onDelete: setProductToDelete };
+  const columns = getColumns(rowActions, { canEdit, canDelete }, "linea");
 
   return (
     <>
       <DataTable
         columns={columns}
         {...table.tableProps}
-        data={rows}
         // Identidad de la fila por registro, no por posición en la página.
         getRowId={(row) => String(row.id)}
         searchPlaceholder="Buscar por nombre, código o código Proscai..."
@@ -104,6 +107,22 @@ export default function ProductList() {
           ) : null}
         </MainDialog>
       ) : null}
+      {canDelete && (
+        <ConfirmDialog
+          open={productToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) setProductToDelete(null);
+          }}
+          title="Eliminar Producto"
+          description="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
+          confirmText="Eliminar"
+          onConfirm={() => {
+            if (productToDelete) deleteProduct(productToDelete.id);
+            setProductToDelete(null);
+          }}
+          confirmColor="red"
+        />
+      )}
     </>
   );
 };

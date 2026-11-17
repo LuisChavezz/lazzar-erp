@@ -3,15 +3,14 @@
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { hasPermission } from "@/src/utils/permissions";
-import { useProductCategories } from "../../product-categories/hooks/useProductCategories";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProductsTable } from "../hooks/useProductsTable";
-import { buildProductRows, getColumns } from "./ProductColumns";
+import { getColumns } from "./ProductColumns";
 
 // Sin acciones por fila: esta vista solo lista y da de alta. La edición y la
 // baja siguen viviendo en Configuración (`ProductList`). Con todos los filtros
 // de encabezado de Producción. A nivel de módulo: referencia estable.
-const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: false }, "all");
+const READ_ONLY_COLUMNS = getColumns(null, { canEdit: false, canDelete: false }, "all");
 
 /**
  * Gestión de productos del módulo de Producción (`/manufacturing/products`):
@@ -24,8 +23,9 @@ const READ_ONLY_COLUMNS = getColumns(() => {}, { canEdit: false, canDelete: fals
  * MODO SERVIDOR (EC-897): paginación, búsqueda (`q`: nombre, código y código
  * Proscai), orden y filtros los resuelve `GET /catalogo/producto/` y su estado
  * vive en la URL (`useProductsTable`), así que la página la envuelve en
- * `<Suspense>`. El listado es solo de activos; las opciones de Categoría
- * salen del catálogo de categorías, nunca de las filas.
+ * `<Suspense>`. El listado es solo de activos. Categoría y Línea se pintan con
+ * lo que trae cada fila (EC-905); las opciones del filtro de Categoría salen
+ * del catálogo de categorías, nunca de las filas.
  *
  * Ver la página exige `R-PRODUCCION` (regla de prefijo `/manufacturing` en
  * `routePermissions`). El alta se gatea con ese MISMO código: por decisión de
@@ -41,18 +41,12 @@ export function ProductionProductsView() {
   const canCreate = hasPermission("R-PRODUCCION", session?.user);
 
   const table = useProductsTable({ toastId: "production-products-table-refetch-error" });
-  const { categories } = useProductCategories();
-
-  // El nombre y la línea de la categoría se incorporan a la FILA (ver
-  // `ProductRow`): la llegada tardía del catálogo produce un `data` nuevo.
-  const rows = buildProductRows(table.rows, categories);
 
   return (
     <div className="h-full flex flex-col min-h-0">
       <DataTable
         columns={READ_ONLY_COLUMNS}
         {...table.tableProps}
-        data={rows}
         searchPlaceholder="Buscar por nombre, código o código Proscai..."
         getRowId={(row) => String(row.id)}
         fillHeight

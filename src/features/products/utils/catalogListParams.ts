@@ -85,7 +85,7 @@ export const SIN_LINEA_FILTER_VALUE = "SIN_LINEA";
  *   nombre, código y código Proscai).
  * - `linea`: una línea de `CategoriaProducto.Linea` o `SIN_LINEA`.
  * - `ordering`: las columnas, todas en la lista blanca; el default reproduce
- *   el del backend (`-created_at, -id`). Categoría y Línea ordenan por nombre y
+ *   el del backend (`-created_at, -id`). Estado no ordena: todas son activas. Categoría y Línea ordenan por nombre y
  *   línea de la categoría, con los vacíos al final en ambas direcciones.
  * - `tipo_id` no se expone: lo fija quien monta la tabla (`useProductsTable`).
  */
@@ -99,7 +99,6 @@ export const productsTable = defineServerTable({
   search: { param: "q" },
   ordering: {
     fields: [
-      "activo",
       "nombre",
       "codigo",
       "cod_proscai",

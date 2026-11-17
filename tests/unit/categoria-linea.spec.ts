@@ -15,8 +15,11 @@ import {
 } from "@/src/features/product-categories/schemas/product-category.schema";
 import { normalizeProductCategory } from "@/src/features/product-categories/utils/normalizeProductCategory";
 import { categoriaLineaHeaderFilter } from "@/src/features/product-categories/utils/categoriaLineaHeaderFilter";
-import { buildProductRows } from "@/src/features/products/components/ProductColumns";
 import type { Product } from "@/src/features/products/interfaces/product.interface";
+import {
+  productCategoryLabel,
+  productLineaLabel,
+} from "@/src/features/products/components/ProductColumns";
 import { harness } from "./support/headerFilterHarness";
 
 test.describe("getCategoriaLineaLabel", () => {
@@ -111,33 +114,38 @@ test.describe("línea no reconocida en el formulario", () => {
   });
 });
 
-const product = (id: number, categoria_producto: number | null): Product =>
-  ({
-    id,
-    empresa: 1,
-    categoria_producto,
-    nombre: `P${id}`,
-    codigo: null,
-    cod_proscai: "",
-    precio_base: "1.00",
-    activo: true,
-  }) as unknown as Product;
+/**
+ * EC-897 / EC-905: la celda de Categoría y la de Línea de las tablas de
+ * productos leen lo que trae la fila (`categoria_producto_nombre` /
+ * `categoria_producto_linea`), también con la categoría inactiva, y "sin
+ * línea" se pinta igual que la opción `SIN_LINEA` del filtro.
+ */
+test.describe("celdas de categoría y línea de productos", () => {
+  type CategoryFields = Pick<Product, "categoria_producto_nombre" | "categoria_producto_linea">;
+  const row = (nombre: string | null, linea: CategoryFields["categoria_producto_linea"]): CategoryFields => ({
+    categoria_producto_nombre: nombre,
+    categoria_producto_linea: linea,
+  });
 
-const CATEGORIES = [
-  { id: 10, nombre: "Camisa", linea: "INDUSTRIAL" },
-  { id: 20, nombre: "TELAS", linea: "" },
-];
+  test("categoría con línea: su nombre y la etiqueta de la línea", () => {
+    expect(productCategoryLabel(row("Camisa", "INDUSTRIAL"))).toBe("Camisa");
+    expect(productLineaLabel(row("Camisa", "INDUSTRIAL"))).toBe("Industrial");
+  });
 
-test.describe("buildProductRows", () => {
-  test("resuelve nombre y línea de la categoría; null en ambos si no está en el catálogo", () => {
-    const rows = buildProductRows([product(1, 10), product(2, 20), product(3, 99), product(4, null)], CATEGORIES);
-    expect(rows.map((row) => [row.categoria_nombre, row.categoria_linea])).toEqual([
-      ["Camisa", "INDUSTRIAL"],
-      ["TELAS", ""],
-      [null, null],
-      [null, null],
-    ]);
-    expect(rows[0]).toMatchObject({ id: 1, nombre: "P1", categoria_producto: 10 });
+  test("categoría inactiva: la fila trae nombre y línea igual que una activa", () => {
+    // El catálogo de categorías solo lista activas; la fila no depende de él.
+    expect(productCategoryLabel(row("Chamarra vieja", "ROPA_FRIO"))).toBe("Chamarra vieja");
+    expect(productLineaLabel(row("Chamarra vieja", "ROPA_FRIO"))).toBe("Ropa de frío");
+  });
+
+  test("línea vacía (\"\"): sin línea, la misma etiqueta que la opción SIN_LINEA", () => {
+    expect(productLineaLabel(row("TELAS", ""))).toBe(SIN_LINEA_LABEL);
+    expect(productCategoryLabel(row("TELAS", ""))).toBe("TELAS");
+  });
+
+  test("sin categoría (null): sin línea y categoría \"—\"", () => {
+    expect(productLineaLabel(row(null, null))).toBe(SIN_LINEA_LABEL);
+    expect(productCategoryLabel(row(null, null))).toBe("—");
   });
 });
 
