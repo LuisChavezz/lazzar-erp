@@ -79,7 +79,9 @@ export const getOpportunityOnboarding = async (id: number): Promise<OpportunityO
 
 /**
  * Crea una cotización en Borrador ligada a la oportunidad (201). Sin cuerpo:
- * empresa y cliente salen de la oportunidad y el vendedor es quien la ejecuta.
+ * empresa y cliente salen de la oportunidad, el vendedor es el DUEÑO de la
+ * oportunidad (también si cotiza un administrador) y la sucursal es la
+ * `sucursal_default` del perfil de quien cotiza, no la del workspace.
  * NO es idempotente: cada llamada crea otra cotización.
  */
 export const cotizarOpportunity = async (id: number): Promise<OpportunityCotizarResponse> => {

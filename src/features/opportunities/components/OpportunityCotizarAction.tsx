@@ -12,6 +12,7 @@ import {
   cotizarOpportunityMutationKey,
   useCotizarOpportunity,
 } from "../hooks/useCotizarOpportunity";
+import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 
 interface OpportunityCotizarActionProps {
@@ -72,7 +73,7 @@ export function OpportunityCotizarAction({
       if (!isQuotable) {
         toast.error(
           `No puedes cotizar a ${
-            opportunity.cliente_nombre ?? "este cliente"
+            getOpportunityClienteLabel(opportunity) ?? "este cliente"
           }: no está entre tus clientes activos para cotizar. Revisa que esté activo y asignado a ti.`,
           { id: CUSTOMER_CHECK_TOAST_ID, duration: 8000 }
         );
@@ -107,7 +108,8 @@ export function OpportunityCotizarAction({
   };
 
   const hasCotizaciones = countAtOpen > 0;
-  const paraQuien = opportunity.cliente_nombre ? ` para ${opportunity.cliente_nombre}` : "";
+  const clienteLabel = getOpportunityClienteLabel(opportunity);
+  const paraQuien = clienteLabel ? ` para ${clienteLabel}` : "";
   const queSeCrea = `Se creará una cotización NUEVA en borrador${paraQuien}, ligada a esta oportunidad; podrás capturar sus productos antes de enviarla a revisión.`;
   const yaTiene = `Esta oportunidad ya tiene ${countAtOpen} ${
     countAtOpen === 1 ? "cotización" : "cotizaciones"
