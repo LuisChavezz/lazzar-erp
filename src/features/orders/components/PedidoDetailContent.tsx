@@ -131,6 +131,11 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
     href: "/manufacturing/production-orders",
     label: "Volver a Órdenes de Producción",
   },
+  // Pedidos ligados a una pre-orden (resurtido): vuelve a la bandeja.
+  "pre-orders": {
+    href: "/manufacturing/pre-orders",
+    label: "Volver a Pre-órdenes",
+  },
   // Quien llega desde el detalle de una orden de COMPRA
   // (`PurchaseOrderPageContent`, por sus `pedidos_vinculados`) vuelve al listado
   // de órdenes de compra. Nótese que NO es la llave `procurement` de arriba:

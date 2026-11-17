@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import {
+  aceptarPreOrden,
+  rechazarPreOrden,
   cancelarPreOrden,
   confirmarExistencias,
   crearOpDesdePreOrden,
@@ -65,5 +67,25 @@ export const usePreOrderActions = (id: number) => {
     onError: (error) => toast.error(errorText(error, "No se pudo cancelar la pre-orden.")),
   });
 
-  return { confirmar, crearOp, cancelar };
+  const aceptar = useMutation({
+    mutationKey: ["pre-order-aceptar", id],
+    mutationFn: () => aceptarPreOrden(id),
+    onSuccess: () => {
+      toast.success("Resurtido aceptado. Lo de compra ya pasó a compras; lo fabricado espera a almacén.");
+      return refresh("purchase-needs");
+    },
+    onError: (error) => toast.error(errorText(error, "No se pudo aceptar el resurtido.")),
+  });
+
+  const rechazar = useMutation({
+    mutationKey: ["pre-order-rechazar", id],
+    mutationFn: (motivo: string) => rechazarPreOrden(id, motivo),
+    onSuccess: () => {
+      toast.success("Resurtido rechazado. Planeación verá el motivo.");
+      return refresh();
+    },
+    onError: (error) => toast.error(errorText(error, "No se pudo rechazar el resurtido.")),
+  });
+
+  return { confirmar, crearOp, cancelar, aceptar, rechazar };
 };

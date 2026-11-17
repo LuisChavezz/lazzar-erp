@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { Button } from "@/src/components/Button";
+import { hasPermission } from "@/src/utils/permissions";
+import { CreateResurtidoDialog } from "./CreateResurtidoDialog";
+import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
+import { preOrderReference, isResurtido } from "../utils/preOrderOrigin";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
@@ -10,12 +16,13 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { usePreOrders } from "../hooks/usePreOrders";
 import { SemaforoBadge } from "./PreOrderTracking";
+import { isClosedPreOrderStatus } from "../constants/preOrderStatus";
 import { isUrgentPreOrder, PreOrderTrackerMini } from "./PreOrderTracker";
 import type { PreOrderListItem } from "../interfaces/pre-order.interface";
 
 type Vista = "urgentes" | "curso" | "completadas";
 
-const isClosed = (p: PreOrderListItem) => p.estatus === "convertida" || p.estatus === "cancelada";
+const isClosed = (p: PreOrderListItem) => isClosedPreOrderStatus(p.estatus);
 const VISTA_FILTER: Record<Vista, (p: PreOrderListItem) => boolean> = {
   urgentes: (p) => isUrgentPreOrder(p),
   curso: (p) => !isClosed(p),
@@ -31,14 +38,31 @@ const columnHelper = createColumnHelper<PreOrderListItem>();
 const SEMAFORO_ORDEN: Record<string, number> = { rojo: 0, amarillo: 1, verde: 2 };
 
 const columns = [
-  columnHelper.accessor((row) => row.pedido_folio ?? "", {
-    id: "pedido_folio",
-    header: "Pedido",
-    size: 120,
+  columnHelper.accessor((row) => preOrderReference(row), {
+    id: "referencia",
+    header: "Origen",
+    size: 150,
     cell: ({ row }) => (
-      <Link href={`/manufacturing/pre-orders/${row.original.id}`} className={LINK_CLASS} title="Ver pre-orden">
-        {row.original.pedido_folio || `#${row.original.pedido}`}
-      </Link>
+      <div className="flex flex-col items-start gap-1 min-w-0">
+        <Link href={`/manufacturing/pre-orders/${row.original.id}`} className={`${LINK_CLASS} truncate max-w-full`} title="Ver pre-orden">
+          {preOrderReference(row.original)}
+        </Link>
+        {isResurtido(row.original) && (
+          <span className="rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-400">
+            Resurtido
+          </span>
+        )}
+        {(row.original.pedidos_vinculados?.length ?? 0) > 0 && (
+          <span className="flex flex-wrap gap-x-2 text-[11px]" title="Pedidos ligados">
+            {row.original.pedidos_vinculados!.slice(0, 2).map((p) => (
+              <span key={p.id} className="font-mono text-[11px]"><PedidoVinculadoFolio pedidoVinculado={{ id: p.id, folio: p.folio || `#${p.id}` }} pedidoFolio={p.folio} from="pre-orders" /></span>
+            ))}
+            {row.original.pedidos_vinculados!.length > 2 && (
+              <span className="text-slate-400">+{row.original.pedidos_vinculados!.length - 2}</span>
+            )}
+          </span>
+        )}
+      </div>
     ),
   }),
   columnHelper.accessor((row) => row.cliente_nombre ?? "", {
@@ -47,7 +71,13 @@ const columns = [
     size: 170,
     cell: ({ row }) => (
       <span className="text-sm text-slate-700 dark:text-slate-200 line-clamp-2">
-        {textOrDash(row.original.cliente_nombre)}
+        {row.original.cliente_nombre
+          ? row.original.cliente_nombre
+          : (row.original.pedidos_vinculados?.length ?? 0) > 0
+            ? [...new Set(row.original.pedidos_vinculados!.map((p) => p.cliente_nombre).filter(Boolean))].join(", ") || "—"
+            : isResurtido(row.original)
+              ? "Stock interno"
+              : textOrDash(row.original.cliente_nombre)}
       </span>
     ),
   }),
@@ -72,7 +102,7 @@ const columns = [
     enableGlobalFilter: false,
     sortUndefined: "last",
     cell: ({ row }) =>
-      row.original.estatus === "convertida" || row.original.estatus === "cancelada" ? (
+      isClosedPreOrderStatus(row.original.estatus) ? (
         <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
       ) : (
         <SemaforoBadge semaforo={row.original.semaforo} compact />
@@ -162,7 +192,11 @@ const columns = [
  */
 export function PreOrdersView() {
   const { preOrders, hasLoaded, isLoading, isFetching, isInitialError, refetch } = usePreOrders();
-  const [vista, setVista] = useState<Vista>("urgentes");
+  const [vista, setVista] = useState<Vista>("curso");
+  const [createOpen, setCreateOpen] = useState(false);
+  const { data: session } = useSession();
+  // Mismo permiso que el backend exige para el alta de resurtido.
+  const canCreate = hasPermission("C-PRODUCCION-OP", session?.user);
   const count = (v: Vista) => preOrders.filter(VISTA_FILTER[v]).length;
   const rows = preOrders.filter(VISTA_FILTER[vista]);
 
@@ -185,7 +219,14 @@ export function PreOrdersView() {
           data={rows}
           paginationResetKey={vista}
           getRowId={(row) => String(row.id)}
-          searchPlaceholder="Buscar por pedido o cliente..."
+          searchPlaceholder="Buscar por pedido, SKU o cliente..."
+          actionButton={
+            canCreate ? (
+              <Button variant="primary" rounded="full" onClick={() => setCreateOpen(true)}>
+                + Generar pre-orden
+              </Button>
+            ) : undefined
+          }
           fillHeight
           onRefetch={refetch}
           isRefetching={isFetching}
@@ -196,6 +237,7 @@ export function PreOrdersView() {
           emptyMessage={vista === "urgentes" ? "Nada urgente. Todo va a tiempo." : "No hay pre-órdenes en esta vista."}
         />
       </div>
+      <CreateResurtidoDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

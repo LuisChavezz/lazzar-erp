@@ -48,7 +48,7 @@ export function PreOrderCreateOpDialog({
       open={open}
       onOpenChange={(next) => (isPending ? undefined : onOpenChange(next))}
       title="Crear orden de producción"
-      description={`Se crea con las prendas y cantidades de la pre-orden del pedido ${folio}.`}
+      description={`Se crea con las prendas y cantidades de la pre-orden ${folio}.`}
       maxWidth="480px"
       showCloseButton={false}
     >

@@ -22,12 +22,18 @@ import { usePreOrderActions } from "../hooks/usePreOrderActions";
 import {
   PRE_ORDER_NEXT_STEP,
   PRE_ORDER_STATUS_CFG,
+  LINE_AVANCE_CFG,
+  canAcceptPreOrder,
+  isClosedPreOrderStatus,
   canCancelPreOrder,
   canConfirmPreOrder,
   canCreateOpFromPreOrder,
 } from "../constants/preOrderStatus";
 import type { PreOrderDetail } from "../interfaces/pre-order.interface";
 import { PreOrderCreateOpDialog } from "./PreOrderCreateOpDialog";
+import { isResurtido, preOrderReference } from "../utils/preOrderOrigin";
+import { PreOrderRejectDialog } from "./PreOrderRejectDialog";
+import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { PreOrderTracker } from "./PreOrderTracker";
 import { NEED_STATUS_CFG, PreOrderHistory, RegresoAlert, SemaforoBadge } from "./PreOrderTracking";
 
@@ -72,7 +78,12 @@ export function PreOrderSheet({ preOrderId }: { preOrderId: number }) {
 }
 
 function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
-  const { confirmar, crearOp, cancelar } = usePreOrderActions(data.id);
+  const { confirmar, crearOp, cancelar, aceptar, rechazar } = usePreOrderActions(data.id);
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const resurtido = isResurtido(data);
+  const hasAvance = data.detalles.some((d) => d.tipo_linea || d.avance);
+  const porTipo = (t: "fabricado" | "compra") => data.detalles.filter((d) => d.tipo_linea === t).length;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [opOpen, setOpOpen] = useState(false);
@@ -83,7 +94,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
   const necesidades = data.necesidades ?? [];
   const [showHistory, setShowHistory] = useState(false);
   const piezas = data.detalles.reduce((acc, d) => acc + d.cantidad, 0);
-  const folio = data.pedido_folio || `#${data.pedido}`;
+  const folio = preOrderReference(data);
 
   return (
     <SheetSection
@@ -93,13 +104,39 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
       badges={
         <>
           <StatusBadge status={data.estatus} config={PRE_ORDER_STATUS_CFG} />
-          {data.estatus !== "convertida" && data.estatus !== "cancelada" && (
+          {!isClosedPreOrderStatus(data.estatus) && (
             <SemaforoBadge semaforo={data.semaforo} />
           )}
         </>
       }
     >
       {data.regreso && data.estatus === "faltan_materiales" && <RegresoAlert regreso={data.regreso} />}
+      {data.estatus === "rechazada" && (
+        <div role="alert" className="mb-6 rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-5 py-4">
+          <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Producción rechazó este resurtido</p>
+          <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/90">{data.motivo_rechazo || "Sin motivo registrado."}</p>
+        </div>
+      )}
+      {resurtido && (
+        <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-2xl border border-violet-200 dark:border-violet-500/20 bg-violet-50/60 dark:bg-violet-500/5 px-5 py-3 text-xs text-slate-600 dark:text-slate-300">
+          <span className="rounded-full bg-violet-100 dark:bg-violet-500/15 px-2 py-0.5 font-semibold text-violet-700 dark:text-violet-300">Resurtido de stock</span>
+          {data.sucursal_nombre && <span>Sucursal: <b className="text-slate-800 dark:text-white">{data.sucursal_nombre}</b></span>}
+          {hasAvance && <span>Se fabrican: <b className="text-slate-800 dark:text-white tabular-nums">{porTipo("fabricado")}</b> SKU</span>}
+          {hasAvance && <span>Se compran: <b className="text-slate-800 dark:text-white tabular-nums">{porTipo("compra")}</b> SKU</span>}
+          {(data.pedidos_vinculados?.length ?? 0) > 0 && (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              Pedidos:
+              {data.pedidos_vinculados!.map((p) => (
+                <span key={p.id} className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 px-2 py-0.5">
+                  <span className="font-semibold"><PedidoVinculadoFolio pedidoVinculado={{ id: p.id, folio: p.folio || `#${p.id}` }} pedidoFolio={p.folio} from="pre-orders" /></span>
+                  {p.cliente_nombre && <span className="text-slate-500 dark:text-slate-400">{p.cliente_nombre}</span>}
+                </span>
+              ))}
+            </span>
+          )}
+          {data.notas && <span className="min-w-0 truncate" title={data.notas}>Notas: {data.notas}</span>}
+        </div>
+      )}
 
       <div className="mb-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-4 py-5">
         <PreOrderTracker estatus={data.estatus} late={data.semaforo === "rojo"} />
@@ -155,6 +192,26 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               Confirmar existencias
             </button>
           )}
+          {canAcceptPreOrder(data.estatus) && (
+            <>
+              <button
+                type="button"
+                className={BTN_SUCCESS}
+                disabled={aceptar.isPending || rechazar.isPending}
+                onClick={() => setAcceptOpen(true)}
+              >
+                Aceptar resurtido
+              </button>
+              <button
+                type="button"
+                className={BTN_GHOST}
+                disabled={aceptar.isPending || rechazar.isPending}
+                onClick={() => setRejectOpen(true)}
+              >
+                Rechazar
+              </button>
+            </>
+          )}
           {canCreateOpFromPreOrder(data.estatus) && (
             <button
               type="button"
@@ -182,7 +239,13 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
         {/* Materiales */}
         <SheetPanel title={`Materiales (${data.materiales.length})`} className="xl:col-span-2 p-5!">
           {data.materiales.length === 0 ? (
-            <EmptyLines>Las muestras aún no tienen lista de materiales.</EmptyLines>
+            <EmptyLines>
+              {resurtido
+                ? data.estatus === "pendiente_aceptar"
+                  ? "Los materiales se calculan cuando producción acepte el resurtido."
+                  : "Este resurtido no lleva SKUs fabricados: todo se compra."
+                : "Las muestras aún no tienen lista de materiales."}
+            </EmptyLines>
           ) : (
             <LineItemsTable
               head={
@@ -233,7 +296,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
             <dl className="grid grid-cols-3 gap-3 text-center">
               {[
                 ["Piezas", formatQuantityValue(piezas || data.piezas_total)],
-                ["Tallas", String(data.detalles.length || data.tallas_total)],
+                [resurtido ? "SKU" : "Tallas", String(data.detalles.length || data.tallas_total)],
                 ["Faltan", String(faltantes.length)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/5 px-2 py-3">
@@ -295,7 +358,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
           aria-expanded={showLines}
           className="flex w-full items-center justify-between rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-5 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer"
         >
-          Prendas de la pre-orden ({data.detalles.length})
+          {resurtido ? "SKUs del resurtido" : "Prendas de la pre-orden"} ({data.detalles.length})
           <ChevronDownIcon className={`w-4 h-4 transition-transform ${showLines ? "rotate-180" : ""}`} />
         </button>
         {showLines && (
@@ -308,6 +371,8 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                   <th className="px-3 py-2 font-medium">Talla</th>
                   <th className="px-3 py-2 font-medium">Color</th>
                   <th className="px-3 py-2 font-medium text-right">Cantidad</th>
+                  {hasAvance && <th className="px-3 py-2 font-medium">Se surte</th>}
+                  {hasAvance && <th className="px-3 py-2 font-medium">Avance</th>}
                 </>
               }
             >
@@ -318,8 +383,35 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{textOrDash(d.talla_nombre)}</td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{textOrDash(d.color_nombre)}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                    {formatQuantityValue(d.cantidad)}
+                    {formatQuantityValue(d.cantidad)}{d.unidad && d.unidad !== "pz" ? ` ${d.unidad}` : ""}
                   </td>
+                  {hasAvance && (
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                      {d.tipo_linea === "compra" ? "Compra" : d.tipo_linea === "fabricado" ? "Fabricación" : "—"}
+                    </td>
+                  )}
+                  {hasAvance && (
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {d.avance?.estado ? <StatusBadge status={d.avance.estado} config={LINE_AVANCE_CFG} /> : <span className="text-xs text-slate-400">—</span>}
+                        {d.avance?.op ? (
+                          <Link href={`/manufacturing/production-orders/${d.avance.op}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                            {d.avance.op_folio || `OP #${d.avance.op}`}
+                          </Link>
+                        ) : null}
+                        {d.avance?.orden_compra ? (
+                          <Link href={`/procurement/purchase-orders/${d.avance.orden_compra}`} className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                            {d.avance.orden_compra_folio || `OC #${d.avance.orden_compra}`}
+                          </Link>
+                        ) : null}
+                        {d.tipo_linea === "compra" && d.avance?.cantidad_recibida ? (
+                          <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                            Recibido {formatQuantityValue(d.avance.cantidad_recibida)} / {formatQuantityValue(d.cantidad)} {d.unidad ?? ""}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </LineItemsTable>
@@ -361,10 +453,28 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
         onConfirm={() => confirmar.mutate(undefined, { onSettled: () => setConfirmOpen(false) })}
       />
       <ConfirmDialog
+        open={acceptOpen}
+        onOpenChange={setAcceptOpen}
+        title="Aceptar resurtido"
+        description={`Producción toma el resurtido ${folio}. Lo que tiene BOM pasa a almacén para validar materiales; lo de compra pasa directo a compras.`}
+        confirmText="Aceptar"
+        confirmColor="green"
+        closeOnConfirm={false}
+        busy={aceptar.isPending}
+        onConfirm={() => aceptar.mutate(undefined, { onSettled: () => setAcceptOpen(false) })}
+      />
+      <PreOrderRejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        folio={folio}
+        isPending={rechazar.isPending}
+        onSubmit={(motivo) => rechazar.mutate(motivo, { onSuccess: () => setRejectOpen(false) })}
+      />
+      <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancelar pre-orden"
-        description={`La pre-orden del pedido ${folio} dejará de avanzar. Esta acción no se puede deshacer.`}
+        description={`La pre-orden ${folio} dejará de avanzar. Esta acción no se puede deshacer.`}
         confirmText="Cancelar pre-orden"
         cancelText="Volver"
         confirmColor="red"

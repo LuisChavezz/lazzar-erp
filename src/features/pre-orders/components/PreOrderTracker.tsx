@@ -18,6 +18,8 @@ export const PRE_ORDER_STEPS = [
 /** Paso EN CURSO (0-based) según el estatus; 5 = todo terminado. */
 export function currentStep(estatus: PreOrderStatus): number {
   switch (estatus) {
+    case "pendiente_aceptar":
+      return 0;
     case "pendiente_validar":
       return 1;
     case "faltan_materiales":
@@ -35,7 +37,7 @@ export function currentStep(estatus: PreOrderStatus): number {
 type Tone = "done" | "current" | "todo" | "late" | "off";
 
 function stepTone(index: number, estatus: PreOrderStatus, late: boolean): Tone {
-  if (estatus === "cancelada") return "off";
+  if (estatus === "cancelada" || estatus === "rechazada") return "off";
   const cur = currentStep(estatus);
   if (index < cur) return "done";
   if (index === cur) return late ? "late" : "current";
@@ -96,8 +98,12 @@ export function PreOrderTracker({ estatus, late = false }: { estatus: PreOrderSt
 export function PreOrderTrackerMini({ estatus, late = false }: { estatus: PreOrderStatus; late?: boolean }) {
   const cur = currentStep(estatus);
   const label =
-    estatus === "cancelada"
-      ? "Cancelada"
+    estatus === "cancelada" || estatus === "rechazada"
+      ? estatus === "cancelada"
+        ? "Cancelada"
+        : "Rechazada"
+      : estatus === "pendiente_aceptar"
+        ? "Aceptar · Producción"
       : cur >= PRE_ORDER_STEPS.length
         ? "Completada"
         : `${PRE_ORDER_STEPS[cur].label} · ${PRE_ORDER_STEPS[cur].who}`;
@@ -124,7 +130,7 @@ export function PreOrderTrackerMini({ estatus, late = false }: { estatus: PreOrd
       </span>
       <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
         {label}
-        {cur < PRE_ORDER_STEPS.length && estatus !== "cancelada" && (
+        {cur < PRE_ORDER_STEPS.length && estatus !== "cancelada" && estatus !== "rechazada" && (
           <span className="ml-1 font-normal text-slate-400 tabular-nums">{Math.min(cur + 1, 5)}/5</span>
         )}
       </span>
@@ -138,7 +144,8 @@ export function isUrgentPreOrder(p: {
   semaforo?: string | null;
   regreso?: unknown;
 }): boolean {
-  if (p.estatus === "convertida" || p.estatus === "cancelada") return false;
+  if (p.estatus === "convertida" || p.estatus === "cancelada" || p.estatus === "rechazada") return false;
+  if (p.estatus === "pendiente_aceptar") return true;
   if (p.semaforo === "rojo") return true;
   if (p.regreso && p.estatus === "faltan_materiales") return true;
   return p.estatus === "lista";
