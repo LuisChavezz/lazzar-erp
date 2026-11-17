@@ -24,6 +24,27 @@ export interface WorkOrderPdfGarmentRow<T> {
   line: WorkOrderGarmentLine;
 }
 
+/** Columnas comunes de la tabla de prendas, cuyo ancho puede ajustar cada documento. */
+export type WorkOrderGarmentColumnId = "talla" | "sku" | "cantidad" | "programado" | "pedido" | "pendiente";
+
+/**
+ * Anchos de las columnas comunes (EC-891), en decenas de punto: con todas las
+ * columnas visibles, 1 de flex da ~10 pt de texto (la fila reparte su ancho,
+ * 513 pt, DESPUÉS de restar los 6 pt de relleno de cada celda). Cada una tiene
+ * lo que pide su contenido más largo —el SKU `10012-100-2XCH`, una cantidad de
+ * cinco cifras y cada palabra del encabezado, "En esta orden" entero— más ~4 pt
+ * de holgura. La columna propia del módulo (bordado, reflejante) se lleva lo
+ * que sobra; un documento con más columnas angosta las suyas con `widths`.
+ */
+const GARMENT_COLUMN_FLEX: Record<WorkOrderGarmentColumnId, number> = {
+  talla: 2.55,
+  sku: 6.65,
+  cantidad: 5.05,
+  programado: 4.55,
+  pedido: 2.85,
+  pendiente: 3.75,
+};
+
 /**
  * Una tabla por prenda + color, con el título que en la pantalla es el
  * encabezado de la tarjeta (prenda, color y piezas). Columnas: talla, SKU, las
@@ -38,10 +59,13 @@ export function workOrderGarmentTables<T>({
   items,
   toLine,
   extraColumns = [],
+  widths,
 }: {
   items: readonly T[];
   toLine: (item: T) => WorkOrderGarmentLine;
   extraColumns?: PdfColumn<WorkOrderPdfGarmentRow<T>>[];
+  /** Anchos propios del documento para las columnas comunes (ver `GARMENT_COLUMN_FLEX`). */
+  widths?: Partial<Record<WorkOrderGarmentColumnId, number>>;
 }) {
   const groups = groupWorkOrderGarments(items, toLine);
   if (groups.length === 0) {
@@ -56,20 +80,18 @@ export function workOrderGarmentTables<T>({
     ];
   }
 
-  // Anchos (EC-891) medidos con Arimo en la tabla más ancha, la de la OR con
-  // sus cuatro columnas extra: el SKU más largo (`10012-100-2XCH`) cabe en un
-  // renglón y ningún encabezado ("Programado", "Pendiente") se parte.
+  const flex = { ...GARMENT_COLUMN_FLEX, ...widths };
   const show = workOrderGarmentOptionalColumns(groups.flatMap((group) => group.rows.map((row) => row.line)));
   const columns: PdfColumn<WorkOrderPdfGarmentRow<T>>[] = [
-    { id: "talla", header: "Talla", flex: 0.6, bold: true, cell: ({ line }) => textOrDash(line.talla) },
+    { id: "talla", header: "Talla", flex: flex.talla, bold: true, cell: ({ line }) => textOrDash(line.talla) },
     ...(show.sku
-      ? [{ id: "sku", header: "SKU", flex: 1.45, cell: ({ line }: WorkOrderPdfGarmentRow<T>) => textOrDash(line.sku) }]
+      ? [{ id: "sku", header: "SKU", flex: flex.sku, cell: ({ line }: WorkOrderPdfGarmentRow<T>) => textOrDash(line.sku) }]
       : []),
     ...extraColumns,
     {
       id: "cantidad",
       header: "En esta orden",
-      flex: 0.7,
+      flex: flex.cantidad,
       align: "right",
       bold: true,
       cell: ({ line }) => formatQuantityValue(line.cantidad),
@@ -79,7 +101,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "programado",
             header: "Programado",
-            flex: 1,
+            flex: flex.programado,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.programado),
           },
@@ -90,7 +112,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "pedido",
             header: "Pedido",
-            flex: 0.7,
+            flex: flex.pedido,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pedido),
           },
@@ -101,7 +123,7 @@ export function workOrderGarmentTables<T>({
           {
             id: "pendiente",
             header: "Pendiente",
-            flex: 0.85,
+            flex: flex.pendiente,
             align: "right" as const,
             cell: ({ line }: WorkOrderPdfGarmentRow<T>) => workOrderQuantityOrDash(line.pendiente),
           },
