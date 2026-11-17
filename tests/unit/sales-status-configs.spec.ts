@@ -93,11 +93,13 @@ test.describe("cotizacionEstatusBadge", () => {
   test("usa la config de cotización y su mismo neutro", () => {
     expect(cotizacionEstatusBadge({ estatus: 2, estatus_display: "EN REVISION" } as OpportunityCotizacion)).toEqual({
       label: "Por Autorizar",
-      className: QUOTE_STATUS_CONFIG[2].cls,
+      cls: QUOTE_STATUS_CONFIG[2].cls,
+      dot: QUOTE_STATUS_CONFIG[2].dot,
     });
     expect(cotizacionEstatusBadge({ estatus: 9, estatus_display: "NUEVO" } as OpportunityCotizacion)).toEqual({
       label: "NUEVO",
-      className: QUOTE_STATUS_FALLBACK_CLS,
+      cls: QUOTE_STATUS_FALLBACK_CLS,
+      dot: "bg-slate-400",
     });
   });
 });
