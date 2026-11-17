@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import "./globals.css";
 
 /**
@@ -13,8 +13,11 @@ import "./globals.css";
  * Reemplaza al layout raíz cuando se activa, así que trae su propio
  * `<html>`/`<body>` y sus estilos: importa `globals.css` y aplica el tema
  * guardado con la misma regla que el script anti-FOUC del layout (sin él,
- * `dark:` no aplicaría). Las fuentes de `next/font` no llegan aquí; el `body`
- * cae en sus fuentes de respaldo.
+ * `dark:` no aplicaría). Lo hace en `useLayoutEffect`, antes del primer
+ * pintado, y no con un `<script>` en línea como el layout: esta pantalla casi
+ * siempre se monta en el cliente tras un error de render, y React no ejecuta
+ * un `<script>` que inserta él mismo. Las fuentes de `next/font` no llegan
+ * aquí; el `body` cae en sus fuentes de respaldo.
  *
  * "Recargar la página" es la acción principal: descarta todo el estado en
  * memoria (caché de consultas, toasts pendientes), que es lo que puede volver a
@@ -32,7 +35,7 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       const stored = localStorage.getItem("theme-storage");
       const theme = stored ? JSON.parse(stored)?.state?.theme : null;
