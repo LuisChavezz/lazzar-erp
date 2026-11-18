@@ -124,15 +124,17 @@ test.describe("signOutToLogin (EC-851)", () => {
   const runSignOut = async (
     responders: { csrf: Responder; signout?: Responder },
     timeoutMs?: number,
-    storage: Map<string, string> = new Map()
+    storage: Map<string, string> = new Map(),
+    // Una misma carga de página = el mismo `window`.
+    page: { location: { href: string } } = { location: { href: "http://localhost:3000/sales" } }
   ) => {
     const previousWindow = globals.window;
     const previousFetch = globals.fetch;
     const previousSessionStorage = globals.sessionStorage;
     const previousConsoleError = console.error;
-    const location = { href: "http://localhost:3000/sales" };
+    const { location } = page;
     const calls: FetchCall[] = [];
-    globals.window = { location };
+    globals.window = page;
     globals.sessionStorage = fakeSessionStorage(storage);
     globals.fetch = (url: string, init?: { method?: string }) => {
       calls.push({ url, method: (init?.method ?? "get").toLowerCase() });
@@ -206,6 +208,17 @@ test.describe("signOutToLogin (EC-851)", () => {
     expect(hrefs).toEqual([SERVER_LOGOUT_PATH, SERVER_LOGOUT_PATH, "http://localhost:3000/sales"]);
     const attempts = JSON.parse(storage.get(SIGN_OUT_FALLBACK_KEY) ?? "[]");
     expect(attempts).toHaveLength(SIGN_OUT_FALLBACK_MAX_ATTEMPTS);
+  });
+
+  test("dentro de la misma carga de página el respaldo anota un solo intento", async () => {
+    const storage = new Map<string, string>();
+    const page = { location: { href: "http://localhost:3000/sales" } };
+    for (let i = 0; i < 3; i++) {
+      page.location.href = "http://localhost:3000/sales";
+      const { href } = await runSignOut({ csrf: networkError }, undefined, storage, page);
+      expect(href).toBe(SERVER_LOGOUT_PATH);
+    }
+    expect(JSON.parse(storage.get(SIGN_OUT_FALLBACK_KEY) ?? "[]")).toHaveLength(1);
   });
 
   test("el camino normal no anota intentos", async () => {

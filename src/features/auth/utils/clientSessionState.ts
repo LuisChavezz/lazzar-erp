@@ -77,6 +77,17 @@ export const SERVER_LOGOUT_PATH = "/auth/logout";
 export const SIGN_OUT_TIMEOUT_MS = 8_000;
 
 /**
+ * Cargas de página (su `window`) cuyo intento ya se anotó en la guarda. La
+ * guarda cuenta CICLOS, no llamadas: dentro de una misma carga el respaldo
+ * puede correr más de una vez antes de que la navegación se complete (el
+ * latch de `forceSignOut` se suelta en cuanto `signOutToLogin` vuelve, y otro
+ * 401 en vuelo lo vuelve a disparar), y sin esto un solo ciclo gastaba los dos
+ * intentos. Se indexa por `window` y no con un booleano del módulo para que
+ * cada carga, y cada `window` falso de las pruebas, empiece sin anotar.
+ */
+const countedPages = new WeakSet<object>();
+
+/**
  * "Reintentar" de la pantalla de error: empieza la cuenta de nuevo y navega
  * siempre, aunque `sessionStorage` no esté disponible para anotar el intento
  * (es un clic del usuario, no un ciclo).
@@ -84,6 +95,7 @@ export const SIGN_OUT_TIMEOUT_MS = 8_000;
 const retryServerLogout = () => {
   clearSignOutFallbackAttempts();
   registerSignOutFallbackAttempt();
+  countedPages.add(window);
   window.location.href = SERVER_LOGOUT_PATH;
 };
 
@@ -92,14 +104,18 @@ const retryServerLogout = () => {
  * `/auth/logout`, que expira la cookie de sesión de NextAuth en el servidor y
  * manda al login. Si ese respaldo ya se intentó demasiadas veces seguidas en
  * esta pestaña (`signOutFallbackGuard`), deja de navegar y muestra la pantalla
- * de error en lugar de recargar en ciclo.
+ * de error en lugar de recargar en ciclo. Repetirlo en la misma carga vuelve a
+ * navegar sin anotar otro intento.
  */
 const navigateToServerLogout = () => {
-  if (registerSignOutFallbackAttempt()) {
-    window.location.href = SERVER_LOGOUT_PATH;
-    return;
+  if (!countedPages.has(window)) {
+    if (!registerSignOutFallbackAttempt()) {
+      showSignOutFailureScreen(retryServerLogout);
+      return;
+    }
+    countedPages.add(window);
   }
-  showSignOutFailureScreen(retryServerLogout);
+  window.location.href = SERVER_LOGOUT_PATH;
 };
 
 /**
