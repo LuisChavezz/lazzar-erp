@@ -81,6 +81,7 @@ export const PagoPdfDocument = ({ pago, company }: PagoPdfDocumentProps) => {
           items={[
             { label: "Proveedor", value: proveedor },
             { label: "Estatus", value: pago.estatus },
+            { label: "Sucursal", value: textOrDash(pago.sucursal_nombre) },
             { label: "Método de pago", value: textOrDash(pago.metodo_pago) },
             ...optionalInfoItem("Referencia", pago.referencia),
             ...optionalInfoItem("Ref. de operación", pago.referencia_operacion),
