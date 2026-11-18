@@ -95,9 +95,11 @@ export const hasOfficialCfdi = (uuid: string | null | undefined, facturamaId: st
 
 /**
  * Nombre del CFDI oficial de un documento con PDF propio: el del PDF del ERP
- * con `-CFDI` (`FAC-F-00094.pdf` → `FAC-F-00094-CFDI.pdf`), para que los dos
- * archivos no se confundan ni se pisen en la carpeta de descargas. Lo usan la
+ * con `-CFDI` y la extensión del formato (`FAC-F-00094.pdf` →
+ * `FAC-F-00094-CFDI.pdf` / `FAC-F-00094-CFDI.xml`), para que no se confunda
+ * con el PDF del ERP ni se pisen en la carpeta de descargas. Lo usan la
  * factura y la nota de crédito; el REP, que no tiene PDF del ERP, se nombra
  * aparte (`cobroRepFileName`).
  */
-export const officialCfdiFileName = (pdfFileName: string): string => pdfFileName.replace(/\.pdf$/, "-CFDI.pdf");
+export const officialCfdiFileName = (pdfFileName: string, format: CfdiFileFormat): string =>
+  pdfFileName.replace(/\.pdf$/, `-CFDI.${format}`);
