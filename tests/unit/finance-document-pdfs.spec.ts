@@ -526,6 +526,16 @@ test.describe("PDF del cobro y archivo del REP", () => {
     expect(tarjeta({ rep_uuid: null, rep_facturama_id: null })).toBeNull();
   });
 
+  test("la sucursal sale de sucursal_nombre; un Borrador sin líneas (null) imprime «—» (EC-866)", () => {
+    const datos = (overrides: Partial<Cobro>) =>
+      read(CobroPdfDocument({ cobro: cobro(overrides), company: COMPANY }), "FACTURAS COBRADAS").card("DATOS DEL COBRO");
+    expect(datos({}).Sucursal).toBe("MATRIZ");
+    expect(
+      datos({ estatus: "Borrador", folio: null, sucursal: null, sucursal_nombre: null, sucursal_codigo: null, cobro_detalles: [] })
+        .Sucursal,
+    ).toBe("—");
+  });
+
   test("el REP se descarga como REP-<folio del cobro>, sin permiso aparte", () => {
     expect(cobroRepFileName(cobro(), "pdf")).toBe("REP-COB-00001.pdf");
     expect(cobroRepFileName(cobro({ folio: "COB 00002/26" }), "xml")).toBe("REP-COB-00002-26.xml");
@@ -586,6 +596,13 @@ test.describe("PDF del pago a proveedor", () => {
     expect(doc.cells[0]).toMatchObject({ "Factura de proveedor": "A-123" });
     expect(doc.cells[0]["Importe aplicado"]).toMatch(/^USD\s580\.00$/);
     expect(JSON.stringify(doc.card("DATOS DEL PAGO"))).not.toContain("Tipo de cambio");
+  });
+
+  test("la sucursal sale de sucursal_nombre; sin sucursal (null) imprime «—» (EC-866)", () => {
+    const datos = (overrides: Partial<Pago>) =>
+      read(PagoPdfDocument({ pago: pago(overrides), company: COMPANY }), "FACTURAS PAGADAS").card("DATOS DEL PAGO");
+    expect(datos({}).Sucursal).toBe("MATRIZ");
+    expect(datos({ sucursal: null, sucursal_nombre: null, sucursal_codigo: null }).Sucursal).toBe("—");
   });
 });
 
