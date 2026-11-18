@@ -37,8 +37,9 @@ export const GOOGLE_EVENT_STATUS_UNKNOWN_CFG: Partial<StatusBadgeConfigEntry> = 
 };
 
 /**
- * Clave para `StatusBadge`: el estatus si es uno de los de Google, o `""`
- * (sin entrada en la config ⇒ `GOOGLE_EVENT_STATUS_UNKNOWN_CFG`).
+ * Clave para `StatusBadge`: `null` (Google omitió el campo) pasa a `""`. Un
+ * estatus sin entrada en la config cae al neutro
+ * (`GOOGLE_EVENT_STATUS_UNKNOWN_CFG`) dentro del propio `StatusBadge`.
  */
 export const toGoogleEventStatusKey = (status: string | null | undefined): string =>
-  status && Object.hasOwn(GOOGLE_EVENT_STATUS_CFG, status) ? status : "";
+  status ?? "";

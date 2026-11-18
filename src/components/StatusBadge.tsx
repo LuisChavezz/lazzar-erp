@@ -26,7 +26,12 @@ const FALLBACK_CFG: StatusBadgeConfigEntry = {
  * estatus no se comparten entre dominios, solo la presentación.
  */
 export function StatusBadge({ status, config, defaultConfig }: StatusBadgeProps) {
-  const cfg = config[status] ?? { ...FALLBACK_CFG, ...defaultConfig };
+  // `Object.hasOwn` y no `config[status]`: un estatus como `constructor` o
+  // `toString` resolvería una clave heredada del prototipo (una función) y el
+  // badge saldría sin estilo en vez del neutro.
+  const cfg = Object.hasOwn(config, status)
+    ? config[status]
+    : { ...FALLBACK_CFG, ...defaultConfig };
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${cfg.cls}`}

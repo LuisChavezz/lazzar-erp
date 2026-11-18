@@ -27,11 +27,12 @@ test.describe("estatus de evento de Google Calendar", () => {
     }
   });
 
-  test("uno desconocido, vacío o null cae al neutro «Sin estatus»", () => {
-    for (const status of ["CONFIRMED", "deleted", "", null, undefined, "toString", "__proto__"]) {
-      const key = toGoogleEventStatusKey(status);
-      expect(key).toBe("");
-      expect(Object.hasOwn(GOOGLE_EVENT_STATUS_CFG, key)).toBe(false);
+  test("null o ausente pasa a vacío; uno desconocido no tiene entrada en la config", () => {
+    expect(toGoogleEventStatusKey(null)).toBe("");
+    expect(toGoogleEventStatusKey(undefined)).toBe("");
+    // El neutro lo aplica `StatusBadge` (ver status-badge-config-lookup.spec.ts).
+    for (const status of ["CONFIRMED", "deleted", "", "toString", "__proto__"]) {
+      expect(Object.hasOwn(GOOGLE_EVENT_STATUS_CFG, toGoogleEventStatusKey(status))).toBe(false);
     }
     expect(GOOGLE_EVENT_STATUS_UNKNOWN_CFG.label).toBe("Sin estatus");
     expect(GOOGLE_EVENT_STATUS_UNKNOWN_CFG.label).not.toBe(GOOGLE_EVENT_STATUS_CFG.confirmed.label);
