@@ -10,6 +10,7 @@ import { EmptyUpcomingEvents } from "./EmptyUpcomingEvents";
 import { EventItem } from "./EventItem";
 import type { GoogleCalendarEvent } from "../interfaces/google.interface";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 
 const SALES_CALENDAR_PATH = "/sales/calendar";
 
@@ -27,7 +28,7 @@ const SALES_CALENDAR_PATH = "/sales/calendar";
  * Ventas (`R-CRM-CALENDAR`, EC-813).
  */
 export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: boolean }) => {
-  const { data, isLoading } = useGoogleCalendarEvents();
+  const { data, isLoading, isFetching, isInitialError, refetch } = useGoogleCalendarEvents();
   const selectedEventId = useGoogleCalendarStore((s) => s.selectedEventId);
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
   // Mientras la sesión resuelve, el hueco del enlace (el mismo de la carga).
@@ -91,7 +92,15 @@ export const GoogleUpcomingEvents = ({ hideViewAll = false }: { hideViewAll?: bo
         )}
       </div>
 
-      {upcomingEvents.length === 0 ? (
+      {isInitialError ? (
+        // Sin esto, una carga fallida se leía como "no hay próximos eventos".
+        <SectionErrorNotice
+          variant="inline"
+          message="No se pudieron cargar tus eventos."
+          onRetry={() => void refetch()}
+          isRetrying={isFetching}
+        />
+      ) : upcomingEvents.length === 0 ? (
         <EmptyUpcomingEvents />
       ) : (
         <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800 space-y-6">
