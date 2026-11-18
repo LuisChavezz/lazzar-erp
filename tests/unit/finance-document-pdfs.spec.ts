@@ -668,6 +668,17 @@ test.describe("CFDI oficial de Facturama", () => {
     });
     expect(officialCfdiErrorMessage(error, "de la factura")).toBe("La factura no tiene CFDI timbrado.");
   });
+
+  test("un 502 muestra el motivo del backend si lo trae; si no, o si es el del passthrough, el genérico", () => {
+    const http = (status: number, data: unknown) =>
+      Object.assign(new Error("Request failed"), { isAxiosError: true, response: { status, data } });
+    const generico = "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
+    expect(
+      officialCfdiErrorMessage(http(502, { cfdi: "Facturama no entregó el archivo: CFDI no encontrado" }), "de la factura"),
+    ).toBe("Facturama no entregó el archivo: CFDI no encontrado");
+    expect(officialCfdiErrorMessage(http(502, { error: "FACTURAMA_TIMEOUT", message: "timeout" }), "del REP")).toBe(generico);
+    expect(officialCfdiErrorMessage(http(504, "<html>Gateway Timeout</html>"), "de la factura")).toBe(generico);
+  });
 });
 
 // ── Fuentes: el detalle fresco del servicio ───────────────────────────────────
