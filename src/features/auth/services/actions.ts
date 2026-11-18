@@ -56,8 +56,13 @@ export const mfaLogin = async (mfaPayload: MfaLoginPayload): Promise<MfaLoginSuc
   return response.data;
 }
 
-export const logout = async (): Promise<void> => {
-  await api.post("/auth/logout/");
+/**
+ * Invalida la sesión del backend. `timeoutMs` la acota (axios `timeout`): el
+ * cliente `api` no tiene ninguno y una petición colgada dejaba el botón de
+ * "Cerrar sesión" en `isPending` sin llegar nunca al cierre local (EC-851).
+ */
+export const logout = async (timeoutMs?: number): Promise<void> => {
+  await api.post("/auth/logout/", undefined, { timeout: timeoutMs });
 };
 
 export const refreshToken = async (): Promise<RefreshTokenResponse> => {
