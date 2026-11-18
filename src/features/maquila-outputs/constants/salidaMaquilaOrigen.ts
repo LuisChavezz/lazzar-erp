@@ -19,6 +19,7 @@ export const SALIDA_MAQUILA_ORIGENES = {
     campo: "op",
     campoFolio: "op_folio",
     nombre: "orden de producción",
+    nombreCorto: "Producción",
     etiqueta: "OP · Producción",
     detailPath: productionOrderDetailPath,
   },
@@ -26,6 +27,7 @@ export const SALIDA_MAQUILA_ORIGENES = {
     campo: "ob",
     campoFolio: "ob_folio",
     nombre: "orden de bordado",
+    nombreCorto: "Bordado",
     etiqueta: "OB · Bordado",
     detailPath: embroideryOrderDetailPath,
   },
@@ -33,6 +35,7 @@ export const SALIDA_MAQUILA_ORIGENES = {
     campo: "orden_r",
     campoFolio: "orden_r_folio",
     nombre: "orden de reflejante",
+    nombreCorto: "Reflejante",
     etiqueta: "OR · Reflejante",
     detailPath: reflectiveOrderDetailPath,
   },
@@ -42,6 +45,8 @@ export const SALIDA_MAQUILA_ORIGENES = {
     campo: "op" | "ob" | "orden_r";
     campoFolio: "op_folio" | "ob_folio" | "orden_r_folio";
     nombre: string;
+    /** Nombre del origen sin sigla ("Bordado"), p. ej. en la recepción de la SM. */
+    nombreCorto: string;
     /** Opción del filtro de origen del listado. */
     etiqueta: string;
     detailPath: (id: number) => string;
