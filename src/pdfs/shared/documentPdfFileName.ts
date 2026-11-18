@@ -29,12 +29,20 @@ export function documentPdfFileName(
   id: number,
 ): string {
   const safeFolio = sanitizeDocumentFileNamePart(folio ?? "");
-  if (!safeFolio) return `${type}-ID${id}.pdf`;
   const series = DOCUMENT_FOLIO_SERIES[type] ?? [type];
   const segments = safeFolio.split("-");
   const hasTypeSegment = segments.length > 1 && segments.some((segment) => series.includes(segment));
-  return hasTypeSegment ? `${safeFolio}.pdf` : `${type}-${safeFolio}.pdf`;
+  return hasTypeSegment ? `${safeFolio}.pdf` : `${prefixedDocumentFileName(type, folio, id)}.pdf`;
 }
+
+/**
+ * `<prefijo>-<folio saneado>`, o `<prefijo>-ID<id>` sin folio: la regla de
+ * `documentPdfFileName` sin la extensión ni el alias de series (el prefijo se
+ * pone siempre). La reutilizan los archivos oficiales con otro prefijo: el REP
+ * (`REP-COB-00016`, `cobroRepFileName`).
+ */
+export const prefixedDocumentFileName = (prefix: string, folio: string | null | undefined, id: number): string =>
+  `${prefix}-${sanitizeDocumentFileNamePart(folio ?? "") || `ID${id}`}`;
 
 /**
  * Segmentos de folio de un tipo cuyo código de archivo no es el único posible.
@@ -57,12 +65,8 @@ const DOCUMENT_FOLIO_SERIES: Partial<Record<DocumentPdfType, readonly string[]>>
   PAK: ["PAK", "PACK"],
 };
 
-/**
- * Saneo de un folio para un nombre de archivo (ver `documentPdfFileName`):
- * `/`, espacios, acentos… → `-`, sin guiones repetidos ni en las orillas.
- * Lo reutilizan los archivos oficiales (el REP, `REP-<folio del cobro>`).
- */
-export const sanitizeDocumentFileNamePart = (value: string): string =>
+/** Saneo de un folio para un nombre de archivo (ver `documentPdfFileName`). */
+const sanitizeDocumentFileNamePart = (value: string): string =>
   value
     .trim()
     .replace(/[^A-Za-z0-9._-]/g, "-")

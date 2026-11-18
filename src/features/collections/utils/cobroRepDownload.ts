@@ -1,4 +1,4 @@
-import { sanitizeDocumentFileNamePart } from "@/src/pdfs/shared/documentPdfFileName";
+import { prefixedDocumentFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { hasOfficialCfdi, type CfdiFileFormat } from "@/src/utils/officialCfdiFile";
 import type { Cobro } from "../interfaces/collection.interface";
 
@@ -21,7 +21,5 @@ export const hasCobroRepFile = (cobro: Pick<Cobro, "rep_uuid" | "rep_facturama_i
  * timbra sobre un cobro `Aplicado`, que siempre tiene folio; sin él, por si
  * acaso, `REP-ID<id>`. El passthrough no manda nombre.
  */
-export const cobroRepFileName = (cobro: Pick<Cobro, "id" | "folio">, format: CfdiFileFormat): string => {
-  const folio = sanitizeDocumentFileNamePart(cobro.folio ?? "");
-  return `REP-${folio || `ID${cobro.id}`}.${format}`;
-};
+export const cobroRepFileName = (cobro: Pick<Cobro, "id" | "folio">, format: CfdiFileFormat): string =>
+  `${prefixedDocumentFileName("REP", cobro.folio, cobro.id)}.${format}`;
