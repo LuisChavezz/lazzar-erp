@@ -22,7 +22,7 @@ import { InvoiceMainSheet } from "./InvoiceMainSheet";
 import { InvoiceSendEmailConfirmDialog } from "./InvoiceSendEmailConfirmDialog";
 import { useInvoiceDetailEmail } from "../hooks/useInvoiceDocumentActions";
 import { InvoiceTrackingSheet } from "./InvoiceTrackingSheet";
-import { InvoiceCfdiButton, InvoicePdfButton } from "./InvoicePdfButton";
+import { InvoiceCfdiButtons, InvoicePdfButton } from "./InvoicePdfButton";
 import { hasInvoiceCfdi } from "../utils/invoicePdf";
 
 interface InvoiceDetailPageContentProps {
@@ -42,7 +42,7 @@ interface InvoiceDetailPageContentProps {
  * - "Seguimiento" (`InvoiceTrackingSheet`): avance del pedido, parcialidades,
  *   cobranza y notas de crédito.
  *
- * "Descargar PDF" y, timbrada, "Descargar CFDI" van en la barra superior, en
+ * "Descargar PDF" y, timbrada, "Descargar CFDI (PDF)" / "(XML)" van en la barra superior, en
  * las dos hojas (EC-859), como el PDF del pedido.
  *
  * La hoja activa vive en la URL (`?sheet=`). Lee DOS endpoints: el desglose
@@ -161,7 +161,7 @@ export function InvoiceDetailPageContent({ invoiceId, query }: InvoiceDetailPage
           </Button>
           {/* Sin retrieve no se ofrecen (no se sabe si la factura sigue activa).
               El PDF va en todo estatus; el CFDI, solo timbrada. */}
-          {invoice !== null && hasInvoiceCfdi(invoice) && <InvoiceCfdiButton invoice={invoice} />}
+          {invoice !== null && hasInvoiceCfdi(invoice) && <InvoiceCfdiButtons invoice={invoice} />}
           {invoice !== null && <InvoicePdfButton invoice={invoice} />}
         </div>
       </div>

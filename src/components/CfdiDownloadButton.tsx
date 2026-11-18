@@ -2,8 +2,13 @@
 
 import { Button } from "@/src/components/Button";
 import { LoadingSpinnerIcon, ShieldCheckIcon } from "@/src/components/Icons";
+import type { CfdiFileFormat } from "@/src/utils/officialCfdiFile";
+
+const FORMAT_LABELS: Record<CfdiFileFormat, string> = { pdf: "PDF", xml: "XML" };
 
 interface CfdiDownloadButtonProps {
+  /** Archivo que baja este botón: el PDF o el XML del CFDI. */
+  format: CfdiFileFormat;
   /** De `useOfficialCfdiDownload`. */
   download: () => void;
   isDownloading: boolean;
@@ -14,12 +19,20 @@ interface CfdiDownloadButtonProps {
 }
 
 /**
- * "Descargar CFDI" (EC-859): el PDF OFICIAL timbrado de Facturama, aparte de
- * "Descargar PDF" (el documento que arma el ERP). Va junto a `DocumentPdfButton`
- * y solo se monta cuando el documento está timbrado; el dato y el candado los
- * da `useOfficialCfdiDownload`.
+ * "Descargar CFDI (PDF)" / "(XML)" (EC-859): un archivo OFICIAL timbrado de
+ * Facturama, aparte de "Descargar PDF" (el documento que arma el ERP). Van en
+ * pareja, como las descargas del REP, junto a `DocumentPdfButton`, y solo se
+ * montan cuando el documento está timbrado; el dato y el candado (uno por
+ * formato) los da `useOfficialCfdiDownload`.
  */
-export function CfdiDownloadButton({ download, isDownloading, folioLabel, compact = false }: CfdiDownloadButtonProps) {
+export function CfdiDownloadButton({
+  format,
+  download,
+  isDownloading,
+  folioLabel,
+  compact = false,
+}: CfdiDownloadButtonProps) {
+  const label = `Descargar CFDI (${FORMAT_LABELS[format]})`;
   return (
     <Button
       type="button"
@@ -27,7 +40,7 @@ export function CfdiDownloadButton({ download, isDownloading, folioLabel, compac
       onClick={download}
       disabled={isDownloading}
       aria-busy={isDownloading || undefined}
-      aria-label={isDownloading ? `Descargando CFDI de ${folioLabel}` : `Descargar CFDI de ${folioLabel}`}
+      aria-label={isDownloading ? `Descargando CFDI (${FORMAT_LABELS[format]}) de ${folioLabel}` : `${label} de ${folioLabel}`}
       className={compact ? "px-3! py-1.5! text-xs!" : undefined}
     >
       {isDownloading ? (
@@ -35,7 +48,7 @@ export function CfdiDownloadButton({ download, isDownloading, folioLabel, compac
       ) : (
         <ShieldCheckIcon className="w-4 h-4" aria-hidden="true" />
       )}
-      {isDownloading ? "Descargando CFDI..." : "Descargar CFDI"}
+      {isDownloading ? "Descargando CFDI..." : label}
     </Button>
   );
 }

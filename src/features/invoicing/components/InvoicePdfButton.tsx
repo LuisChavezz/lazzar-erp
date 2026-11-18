@@ -5,7 +5,7 @@ import { DocumentPdfButton } from "@/src/components/DocumentPdfButton";
 import { useOfficialCfdiDownload } from "@/src/hooks/useOfficialCfdiDownload";
 import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
 import { documentPdfFolioLabel } from "@/src/pdfs/shared/documentPdfModel";
-import { officialCfdiFileName } from "@/src/utils/officialCfdiFile";
+import { officialCfdiFileName, type CfdiFileFormat } from "@/src/utils/officialCfdiFile";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { getInvoiceCfdiFile } from "../services/actions";
 import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
@@ -31,24 +31,35 @@ export function InvoicePdfButton({ invoice }: { invoice: InvoicePdfTarget }) {
   );
 }
 
-/**
- * "Descargar CFDI" de una factura timbrada (EC-859): el PDF OFICIAL de
- * Facturama (`facturas/{id}/cfdi/`), como `FAC-<folio>-CFDI.pdf`. Solo se
- * monta con CFDI (`hasInvoiceCfdi`).
- */
-export function InvoiceCfdiButton({ invoice }: { invoice: InvoicePdfTarget }) {
+function InvoiceCfdiButton({ invoice, format }: { invoice: InvoicePdfTarget; format: CfdiFileFormat }) {
   const { download, isDownloading } = useOfficialCfdiDownload({
-    mutationKey: ["download-invoice-cfdi", invoice.id, "pdf"],
-    format: "pdf",
-    fetchFile: hasInvoiceCfdi(invoice) ? () => getInvoiceCfdiFile(invoice.id, "pdf") : null,
-    fileName: officialCfdiFileName(documentPdfFileName("FAC", invoice.folio, invoice.id)),
+    mutationKey: ["download-invoice-cfdi", invoice.id, format],
+    format,
+    fetchFile: hasInvoiceCfdi(invoice) ? () => getInvoiceCfdiFile(invoice.id, format) : null,
+    fileName: officialCfdiFileName(documentPdfFileName("FAC", invoice.folio, invoice.id), format),
     ofDocument: "de la factura",
   });
   return (
     <CfdiDownloadButton
+      format={format}
       download={download}
       isDownloading={isDownloading}
       folioLabel={documentPdfFolioLabel(invoice.folio, invoice.id)}
     />
+  );
+}
+
+/**
+ * "Descargar CFDI (PDF)" y "(XML)" de una factura timbrada (EC-859): los
+ * archivos OFICIALES de Facturama (`facturas/{id}/cfdi/?formato=`), como
+ * `FAC-<folio>-CFDI.pdf` / `.xml`, en pareja como las del REP. Solo se montan
+ * con CFDI (`hasInvoiceCfdi`).
+ */
+export function InvoiceCfdiButtons({ invoice }: { invoice: InvoicePdfTarget }) {
+  return (
+    <>
+      <InvoiceCfdiButton invoice={invoice} format="pdf" />
+      <InvoiceCfdiButton invoice={invoice} format="xml" />
+    </>
   );
 }

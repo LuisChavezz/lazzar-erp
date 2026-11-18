@@ -255,7 +255,9 @@ test.describe("PDF de la factura de cliente", () => {
     expect(hasInvoiceCfdi(factura())).toBe(false);
     expect(hasInvoiceCfdi(factura({ cfdi_uuid: "X", facturama_id: null }))).toBe(false);
     expect(hasInvoiceCfdi(factura({ cfdi_uuid: "X", facturama_id: "fm-1" }))).toBe(true);
-    expect(officialCfdiFileName(fileName(invoicePdfDescriptor(factura())))).toBe("FAC-F-00100-CFDI.pdf");
+    expect(officialCfdiFileName(fileName(invoicePdfDescriptor(factura())), "pdf")).toBe("FAC-F-00100-CFDI.pdf");
+    expect(officialCfdiFileName(fileName(invoicePdfDescriptor(factura())), "xml")).toBe("FAC-F-00100-CFDI.xml");
+    expect(officialCfdiFileName(fileName(creditNotePdfDescriptor(nota({ folio: null }))), "xml")).toBe("NC-ID29-CFDI.xml");
   });
 });
 
