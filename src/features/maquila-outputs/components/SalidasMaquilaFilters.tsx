@@ -5,12 +5,13 @@ import { FormSelect } from "@/src/components/FormSelect";
 import { ItemPickerButton } from "@/src/components/ItemPickerButton";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
-import { useProductionOrders } from "@/src/features/production-orders/hooks/useProductionOrders";
+import { useProductionOrderCatalog } from "@/src/features/production-orders/hooks/useProductionOrderCatalog";
 import { useMaquileros } from "@/src/features/suppliers/hooks/useMaquileros";
 import type {
   SalidasMaquilaFilterKey,
   SalidasMaquilaFilterValues,
 } from "../constants/salidasMaquilaTable";
+import { useOpParaSalidaMaquila } from "../hooks/useOpParaSalidaMaquila";
 
 const OPTION_CLS = "text-slate-900 dark:text-white bg-white dark:bg-zinc-900";
 
@@ -19,6 +20,10 @@ interface SalidasMaquilaFiltersProps {
   setFilter: <K extends SalidasMaquilaFilterKey>(key: K, value: SalidasMaquilaFilterValues[K] | undefined) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
+  /** Folio de la OP filtrada tal como lo traen las SM cargadas (`op_folio`). */
+  opFolioFromRows: string | null;
+  /** ¿Ya respondió el listado filtrado? Sin filas, el folio se pide aparte. */
+  rowsLoaded: boolean;
 }
 
 /**
@@ -27,25 +32,37 @@ interface SalidasMaquilaFiltersProps {
  * pedir. Las opciones salen de los catálogos (OP y maquileros), nunca de las
  * SM cargadas, y un id de la URL que el catálogo no trae se sigue mostrando
  * por su id en vez de aparentar "Todas".
+ *
+ * El nombre de la OP elegida sale de las SM filtradas (`op_folio`); si el
+ * filtro no devolvió ninguna, del retrieve de esa OP (una sola, la misma
+ * consulta que "Generar SM"). El catálogo completo solo se pide con el
+ * selector abierto.
  */
 export function SalidasMaquilaFilters({
   filters,
   setFilter,
   hasActiveFilters,
   onClearFilters,
+  opFolioFromRows,
+  rowsLoaded,
 }: SalidasMaquilaFiltersProps) {
   const [isOpPickerOpen, setIsOpPickerOpen] = useState(false);
   const { maquileros, isLoading: isMaquilerosLoading } = useMaquileros();
-  // El catálogo de OP solo hace falta para nombrar la OP elegida o llenar el
-  // selector abierto: una visita sin filtro de OP no lo pide.
-  const opCatalog = useProductionOrders({ enabled: filters.op !== undefined || isOpPickerOpen });
-  const ops = opCatalog.data ?? [];
+  const opCatalog = useProductionOrderCatalog({ enabled: isOpPickerOpen });
+  const ops = opCatalog.productionOrders;
+  const catalogFolio =
+    filters.op !== undefined ? ops.find((op) => op.op_id === filters.op)?.folio_op : undefined;
+  const needsOpRetrieve =
+    filters.op !== undefined && rowsLoaded && !opFolioFromRows && catalogFolio === undefined;
+  const opRetrieve = useOpParaSalidaMaquila(filters.op ?? 0, needsOpRetrieve);
+  const retrievedFolio = needsOpRetrieve ? opRetrieve.data?.folio_op : undefined;
 
-  const selectedOp = filters.op !== undefined ? ops.find((op) => op.op_id === filters.op) : undefined;
+  const knownFolio = opFolioFromRows ?? catalogFolio ?? retrievedFolio;
+  const isResolvingFolio = !rowsLoaded || (needsOpRetrieve && opRetrieve.isLoading);
   const selectedOpLabel =
     filters.op === undefined
       ? null
-      : (selectedOp?.folio_op ?? (opCatalog.isLoading ? "Cargando OP..." : `OP #${filters.op}`));
+      : (knownFolio ?? (isResolvingFolio ? "Cargando OP..." : `OP #${filters.op}`));
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -120,7 +137,7 @@ export function SalidasMaquilaFilters({
             subtitle="Órdenes de producción de tus sucursales"
             items={ops}
             isLoading={opCatalog.isLoading}
-            isError={opCatalog.isError && !opCatalog.hasLoaded}
+            isError={opCatalog.isInitialError}
             errorMessage="No se pudo cargar el catálogo de órdenes de producción."
             searchPlaceholder="Buscar por folio de OP o de pedido..."
             filterPredicate={(op, term) =>

@@ -43,6 +43,8 @@ export function SalidasMaquilaView() {
         setFilter={setFilter}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
+        opFolioFromRows={salidas.find((s) => s.op === filters.op)?.op_folio ?? null}
+        rowsLoaded={hasLoaded}
       />
       <ListTabs
         ariaLabel="Vista de salidas a maquila"
