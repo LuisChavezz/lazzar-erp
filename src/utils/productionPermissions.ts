@@ -25,6 +25,17 @@ export const PRODUCTION_WRITE_PERMISSIONS = {
 } as const satisfies Record<ProductionSection, Record<ProductionWriteAction, string>>;
 
 /**
+ * Ver costos de producción (nucleo-erp #1135): el backend omite el
+ * `costo_maquila_unitario` de la OP sin él, y omitirá los importes de la salida
+ * a maquila (`precio_unitario`, `importe`, `total`).
+ */
+export const PRODUCTION_COSTS_PERMISSION = "R-PRODUCCION-COSTOS";
+
+/** ¿Ve `user` los costos de producción? El rol "admin" pasa siempre (`hasPermission`). */
+export const canSeeProductionCosts = (user: PermissionContext | null | undefined): boolean =>
+  hasPermission(PRODUCTION_COSTS_PERMISSION, user);
+
+/**
  * ¿Puede `user` hacer `action` en `section`? Con la misma regla que el resto de
  * la app y el proxy (`hasPermission`): el rol "admin" (superusuario o admin de
  * empresa) pasa siempre.

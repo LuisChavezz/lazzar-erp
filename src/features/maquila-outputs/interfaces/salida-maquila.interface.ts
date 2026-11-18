@@ -11,8 +11,9 @@ export interface SalidaMaquilaDetalle {
   op_detalle: number | null;
   descripcion: string;
   cantidad: string;
-  precio_unitario: string;
-  importe: string;
+  /** Ausente para quien no tiene `R-PRODUCCION-COSTOS` (como `importe` y el `total` de la SM). */
+  precio_unitario?: string;
+  importe?: string;
 }
 
 /** Renglón del listado: lo mismo que el detalle sin `detalles`. */
@@ -36,7 +37,8 @@ export interface SalidaMaquilaListItem {
   fecha_compromiso: string | null;
   fecha_recepcion: string | null;
   total_piezas: string;
-  total: string;
+  /** Ausente para quien no tiene `R-PRODUCCION-COSTOS`. */
+  total?: string;
   observaciones: string | null;
   usuario: number | null;
   created_at: string;

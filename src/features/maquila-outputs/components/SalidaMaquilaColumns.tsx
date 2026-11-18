@@ -12,8 +12,19 @@ import { SalidaMaquilaOrigenLink } from "./SalidaMaquilaOrigenLink";
 
 const columnHelper = createColumnHelper<SalidaMaquilaListItem>();
 
-/** Columnas del listado de SM. El folio abre el menú; "Ver detalle" abre el diálogo. */
-export const getSalidaMaquilaColumns = (onView: (id: number) => void) =>
+/** Total de la SM; sin la clave en la respuesta, "—" y al final al ordenar. */
+const totalColumn = columnHelper.accessor((row) => (row.total == null ? undefined : Number(row.total)), {
+  id: "total",
+  header: "Total",
+  size: 130,
+  meta: { align: "right" },
+  sortUndefined: "last",
+  cell: (info) => (
+    <span className="tabular-nums font-semibold">{formatAmountNoCurrency(info.getValue())}</span>
+  ),
+});
+
+const baseColumns = (onView: (id: number) => void) =>
   [
     columnHelper.accessor("folio", {
       header: "Folio",
@@ -59,13 +70,15 @@ export const getSalidaMaquilaColumns = (onView: (id: number) => void) =>
       meta: { align: "right" },
       cell: (info) => <span className="tabular-nums">{formatQuantityValue(info.getValue())}</span>,
     }),
-    columnHelper.accessor((row) => Number(row.total), {
-      id: "total",
-      header: "Total",
-      size: 130,
-      meta: { align: "right" },
-      cell: (info) => (
-        <span className="tabular-nums font-semibold">{formatAmountNoCurrency(info.getValue())}</span>
-      ),
-    }),
   ] as ColumnDef<SalidaMaquilaListItem>[];
+
+/**
+ * Columnas del listado de SM. El folio abre el menú; "Ver detalle" abre el diálogo.
+ * Sin `R-PRODUCCION-COSTOS` (`canSeeAmounts`) no va la columna Total: el
+ * backend omite el importe y una columna de guiones solo diría que existe.
+ */
+export const getSalidaMaquilaColumns = (onView: (id: number) => void, canSeeAmounts: boolean) =>
+  [
+    ...baseColumns(onView),
+    ...(canSeeAmounts ? [totalColumn as ColumnDef<SalidaMaquilaListItem>] : []),
+  ];
