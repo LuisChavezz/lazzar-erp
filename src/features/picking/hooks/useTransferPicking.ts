@@ -12,6 +12,7 @@ import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { PICKINGS_QUERY_KEY, pickingDetailQueryKey } from "../constants/pickingQueryKeys";
 import { transferPicking } from "../services/actions";
+import { toPickingDetailData, type PickingDetailData } from "../utils/picking.utils";
 import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
@@ -122,7 +123,10 @@ export const useTransferPicking = (pickingId: number) => {
     mutationKey: ["picking-transfer", pickingId],
     mutationFn: (payload: TransferPickingPayload) => transferPicking(pickingId, payload),
     onSuccess: (picking: Picking) => {
-      queryClient.setQueryData<Picking>(pickingDetailQueryKey(pickingId), picking);
+      queryClient.setQueryData<PickingDetailData>(
+        pickingDetailQueryKey(pickingId),
+        toPickingDetailData(picking),
+      );
       // Listado (página visible) e indicadores: la llave depende de filtros,
       // orden y página, así que se invalida el prefijo en vez de escribir filas.
       void queryClient.invalidateQueries({ queryKey: PICKINGS_QUERY_KEY });

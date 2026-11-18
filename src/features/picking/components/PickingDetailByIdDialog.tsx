@@ -37,20 +37,17 @@ export function PickingDetailByIdDialog({
   open,
   onOpenChange,
 }: PickingDetailByIdDialogProps) {
-  const { picking, dataUpdatedAt, isLoading, isError, error } =
-    usePickingDetail(orderId);
+  const { picking, fetchedAt, isLoading, isNotFound, error } = usePickingDetail(orderId);
 
-  // `dataUpdatedAt` como "ahora": una lectura pura en render (ver `usePickingDetail`).
-  const row = picking ? mapPickingToRow(picking, dataUpdatedAt) : null;
+  // `fetchedAt` como "ahora": fijado al leer, no en render (ver `usePickingDetail`).
+  // Un refetch fallido CONSERVA `picking` (solo toast), así que el cuerpo —y un
+  // traslado abierto con su aviso— sigue montado; sin datos se muestra el error.
+  const row = picking ? mapPickingToRow(picking, fetchedAt) : null;
 
-  const subtitle = isLoading
-    ? "Cargando…"
-    : isError || !row
-      ? "Error al cargar"
-      : row.folio;
+  const subtitle = row ? row.folio : isLoading ? "Cargando…" : "Error al cargar";
 
   // "Descargar PDF" junto al título (EC-858), una vez cargado el surtido.
-  const pdfAction = !isLoading && !isError && row ? <PickingPdfButton picking={row} /> : null;
+  const pdfAction = row ? <PickingPdfButton picking={row} /> : null;
 
   return (
     <MainDialog
@@ -74,20 +71,21 @@ export function PickingDetailByIdDialog({
         </div>
       }
     >
-      {isLoading ? (
+      {row ? (
+        <PickingDetailContent picking={row} />
+      ) : isLoading ? (
         <Loader title="Cargando detalle del surtido..." className="py-16" />
-      ) : isError || !row ? (
-        // Error de red o consulta resuelta sin registro (404 fuera de tenant / id
-        // inexistente): el backend fusiona ambos en un 404, un solo estado basta.
+      ) : (
+        // 404 definitivo (no existe o fuera de alcance: el backend fusiona ambos)
+        // o carga inicial fallida sin datos en caché.
         <ErrorState
           title="No se pudo cargar el surtido"
-          message={extractErrorMessage(
-            error,
-            "No existe, no tienes acceso a él o falló la conexión.",
-          )}
+          message={
+            isNotFound
+              ? "No existe o no tienes acceso a él."
+              : extractErrorMessage(error, "No existe, no tienes acceso a él o falló la conexión.")
+          }
         />
-      ) : (
-        <PickingDetailContent picking={row} />
       )}
     </MainDialog>
   );

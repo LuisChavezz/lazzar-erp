@@ -56,3 +56,21 @@ export const mapPickingToRow = (picking: Picking, nowMs: number): PickingRow => 
   ...picking,
   esta_vencida: isPickingVencido(picking, nowMs),
 });
+
+/**
+ * Lo que guarda la caché de `["picking-detail", id]`: el picking y el instante
+ * (ms) en que se leyó. `fetchedAt` es el "ahora" con que el consumidor deriva
+ * `esta_vencida` (`mapPickingToRow`): se fija FUERA del render (en la consulta
+ * o en la mutación que escribe la llave), así que leerlo en render es puro, a
+ * diferencia de `Date.now()`, que el React Compiler prohíbe.
+ */
+export interface PickingDetailData {
+  picking: Picking;
+  fetchedAt: number;
+}
+
+/** Valor de la llave del detalle a partir de una respuesta del backend. */
+export const toPickingDetailData = (picking: Picking): PickingDetailData => ({
+  picking,
+  fetchedAt: Date.now(),
+});
