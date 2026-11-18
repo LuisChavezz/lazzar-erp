@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  buildCreateSalidaMaquilaBody,
   draftProblems,
   hasInvalidPrice,
   hasInvalidQty,
@@ -73,6 +74,13 @@ test.describe("salida a maquila: borrador", () => {
     ]);
     // Un precio mal escrito bloquea aunque su renglón no lleve piezas.
     expect(draftProblems([line("2", "3.5", 1), line("", "3,5", 2)], 10)).toEqual(["precio"]);
+  });
+
+  test("el cuerpo lleva exactamente uno de op, ob u orden_r", () => {
+    const rest = { centro_confeccion: 8, detalles: [] };
+    expect(buildCreateSalidaMaquilaBody("OP", 82, rest)).toEqual({ op: 82, ...rest });
+    expect(buildCreateSalidaMaquilaBody("OB", 7, rest)).toEqual({ ob: 7, ...rest });
+    expect(buildCreateSalidaMaquilaBody("OR", 20, rest)).toEqual({ orden_r: 20, ...rest });
   });
 
   test("solo envía renglones con piezas, con el campo de renglón de la OP", () => {

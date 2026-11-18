@@ -13,11 +13,11 @@ import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { SALIDA_MAQUILA_ORIGENES } from "../constants/salidaMaquilaOrigen";
 import { useCreateSalidaMaquila } from "../hooks/useSalidaMaquilaMutations";
 import type {
-  CreateSalidaMaquilaBody,
   SalidaMaquilaOrdenSeed,
   SalidaMaquilaOrigen,
 } from "../interfaces/salida-maquila.interface";
 import {
+  buildCreateSalidaMaquilaBody,
   draftProblems,
   hasInvalidPrice,
   hasInvalidQty,
@@ -151,13 +151,12 @@ function SalidaMaquilaForm({
     setTouched(true);
     if (problems.length > 0 || sinMaquilero || isPending) return;
     const sentIds = linesToSend(lines).map((l) => l.detalleId);
-    const body = {
-      [SALIDA_MAQUILA_ORIGENES[origen].campo]: seed.ordenId,
+    const body = buildCreateSalidaMaquilaBody(origen, seed.ordenId, {
       centro_confeccion: Number(maquilero),
       ...(compromiso ? { fecha_compromiso: compromiso } : {}),
       ...(observaciones.trim() ? { observaciones: observaciones.trim() } : {}),
       detalles: toDetalles(lines, origen),
-    } as CreateSalidaMaquilaBody;
+    });
     create.mutate(body, {
       onSuccess: onClose,
       onError: (error) =>
