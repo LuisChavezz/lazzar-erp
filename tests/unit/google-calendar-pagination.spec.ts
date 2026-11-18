@@ -110,9 +110,38 @@ test.describe("fetchAllCalendarEventPages", () => {
       calls += 1;
       return { ok: true, events: range(0, 1), nextPageToken: `p${calls + 1}` };
     };
-    await expect(fetchAllCalendarEventPages(fetchPage, 3)).rejects.toBeInstanceOf(
+    await expect(fetchAllCalendarEventPages(fetchPage, { maxPages: 3 })).rejects.toBeInstanceOf(
       CalendarEventsPaginationError,
     );
     expect(calls).toBe(3);
+  });
+
+  test("pasa el signal a cada página y, si se aborta, no pide ninguna más", async () => {
+    const controller = new AbortController();
+    const seen: Array<AbortSignal | undefined> = [];
+    const fetchPage = async (_token: string | undefined, signal?: AbortSignal) => {
+      seen.push(signal);
+      // La consulta se cancela mientras la primera página está en vuelo.
+      if (seen.length === 1) controller.abort();
+      return { ok: true, events: range(0, 1), nextPageToken: `p${seen.length + 1}` };
+    };
+    await expect(
+      fetchAllCalendarEventPages(fetchPage, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(seen).toEqual([controller.signal]);
+  });
+
+  test("un signal ya abortado no pide ni la primera página", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let calls = 0;
+    const fetchPage = async () => {
+      calls += 1;
+      return { ok: true, events: [] };
+    };
+    await expect(
+      fetchAllCalendarEventPages(fetchPage, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(calls).toBe(0);
   });
 });
