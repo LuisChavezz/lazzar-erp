@@ -27,23 +27,35 @@ export interface GenerarSalidaMaquilaSlotProps {
  * Salidas a maquila de una orden (OP, OB u OR, EC-911), en su detalle: las que
  * ya hay y "Generar SM". No se genera sobre una orden cancelada (el backend la
  * rechaza). "Generar SM" exige `C-PRODUCCION-OP` y `R-PRODUCCION-COSTOS`;
- * cerrar y cancelar, solo el primero. Mismos permisos en los tres orígenes.
+ * cancelar, solo el primero. Mismos permisos en los tres orígenes.
  *
  * El diálogo de alta lo pone quien monta la sección (`renderGenerarDialog`):
  * la OP pide su retrieve al abrirlo; OB y OR pasan los renglones que su página
  * ya cargó.
+ *
+ * Leer SM exige `R-PRODUCCION-OP`, la regla de la ruta del listado: sin él (un
+ * rol con OB/OR pero sin OP) la sección no se monta ni pide las SM. En la OP
+ * siempre pasa, porque su ruta exige el mismo código. Mientras la sesión carga
+ * no se pinta.
  */
-export function SalidasMaquilaSection({
-  origen,
-  ordenId,
-  cancelada,
-  renderGenerarDialog,
-}: {
+export function SalidasMaquilaSection(props: SalidasMaquilaSectionProps) {
+  const { canRead } = useSalidaMaquilaAccess();
+  return canRead ? <SalidasMaquilaSectionContent {...props} /> : null;
+}
+
+interface SalidasMaquilaSectionProps {
   origen: SalidaMaquilaOrigen;
   ordenId: number;
   cancelada: boolean;
   renderGenerarDialog: (props: GenerarSalidaMaquilaSlotProps) => ReactNode;
-}) {
+}
+
+function SalidasMaquilaSectionContent({
+  origen,
+  ordenId,
+  cancelada,
+  renderGenerarDialog,
+}: SalidasMaquilaSectionProps) {
   const { salidas, isLoading, isInitialError } = useSalidasMaquila({
     [SALIDA_MAQUILA_ORIGENES[origen].campo]: ordenId,
   });
