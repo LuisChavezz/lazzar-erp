@@ -12,6 +12,12 @@ import {
   SIGN_OUT_ATTEMPTS_KEY,
   SIGN_OUT_MAX_ATTEMPTS,
 } from "@/src/features/auth/utils/signOutLoopGuard";
+import {
+  SIGN_OUT_FAILURE_RETRY_LABEL,
+  SIGN_OUT_FAILURE_RETRY_REENABLE_MS,
+  SIGN_OUT_FAILURE_SCREEN_ID,
+  SIGN_OUT_FAILURE_TITLE,
+} from "@/src/features/auth/utils/signOutFailureScreen";
 
 /**
  * EC-851: el cierre de sesión es una sola navegación a `/auth/logout`, sin
@@ -69,7 +75,8 @@ const withPage = async (
   {
     session = new Map<string, string>(),
     sessionStorage = fakeStorage(session),
-  }: { session?: Map<string, string>; sessionStorage?: unknown } = {}
+    document,
+  }: { session?: Map<string, string>; sessionStorage?: unknown; document?: unknown } = {}
 ): Promise<Env> => {
   const env: Env = {
     location: { href: "http://localhost:3000/sales" },
@@ -80,6 +87,7 @@ const withPage = async (
   const restore = saveGlobals();
   globals.window = { location: env.location, localStorage: fakeStorage(env.local) };
   globals.sessionStorage = sessionStorage;
+  globals.document = document;
   globals.fetch = (url: string) => {
     env.fetchCalls.push(url);
     return new Promise(() => {});
@@ -188,5 +196,124 @@ test.describe("settleSignedOutClientState (login montado)", () => {
       expect(local.has(LEGACY_SAT_STORAGE_KEY)).toBe(true);
       expect(local.has(NEXTAUTH_MESSAGE_KEY)).toBe(false);
     }
+  });
+});
+
+/** Elemento de un DOM falso mínimo: lo que usa `showSignOutFailureScreen`. */
+class FakeElement {
+  id = "";
+  className = "";
+  textContent = "";
+  type = "";
+  disabled = false;
+  readonly attributes = new Map<string, string>();
+  readonly children: FakeElement[] = [];
+  private readonly listeners = new Map<string, Array<() => void>>();
+
+  constructor(
+    readonly tagName: string,
+    private readonly doc: FakeDocument
+  ) {}
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value);
+  }
+  hasAttribute(name: string) {
+    return this.attributes.has(name);
+  }
+  append(...nodes: FakeElement[]) {
+    this.children.push(...nodes);
+  }
+  addEventListener(type: string, listener: () => void) {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+  click() {
+    if (!this.disabled) this.listeners.get("click")?.forEach((listener) => listener());
+  }
+  focus() {
+    this.doc.activeElement = this;
+  }
+  find(predicate: (el: FakeElement) => boolean): FakeElement | undefined {
+    if (predicate(this)) return this;
+    for (const child of this.children) {
+      const found = child.find(predicate);
+      if (found) return found;
+    }
+    return undefined;
+  }
+}
+
+class FakeDocument {
+  activeElement: FakeElement | null = null;
+  readonly body = new FakeElement("body", this);
+  constructor() {
+    this.body.append(new FakeElement("div", this), new FakeElement("script", this));
+  }
+  createElement(tagName: string) {
+    return new FakeElement(tagName, this);
+  }
+  getElementById(id: string) {
+    return this.body.find((el) => el.id === id) ?? null;
+  }
+}
+
+test.describe("pantalla de error cuando la guarda corta", () => {
+  const exhausted = () =>
+    new Map([[SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([Date.now() - 2, Date.now() - 1])]]);
+
+  test("se monta una sola vez, deja inert lo demás y enfoca Reintentar", async () => {
+    const doc = new FakeDocument();
+    const [appRoot, script] = doc.body.children;
+    await withPage(
+      () => {
+        signOutToLogin();
+        signOutToLogin();
+      },
+      { session: exhausted(), document: doc }
+    );
+    const screens = doc.body.children.filter((el) => el.id === SIGN_OUT_FAILURE_SCREEN_ID);
+    expect(screens).toHaveLength(1);
+    const [screen] = screens;
+    expect(screen.attributes.get("role")).toBe("alertdialog");
+    expect(screen.attributes.get("aria-modal")).toBe("true");
+    expect(screen.find((el) => el.tagName === "h1")?.textContent).toBe(SIGN_OUT_FAILURE_TITLE);
+    expect(appRoot.hasAttribute("inert")).toBe(true);
+    expect(script.hasAttribute("inert")).toBe(true);
+    expect(screen.hasAttribute("inert")).toBe(false);
+    expect(doc.activeElement?.textContent).toBe(SIGN_OUT_FAILURE_RETRY_LABEL);
+  });
+
+  test("Reintentar reinicia la cuenta, anota un intento y navega a /auth/logout", async () => {
+    const doc = new FakeDocument();
+    const session = exhausted();
+    const env = await withPage(
+      () => {
+        signOutToLogin();
+        const retry = doc.getElementById(SIGN_OUT_FAILURE_SCREEN_ID)?.find(
+          (el) => el.tagName === "button"
+        );
+        retry?.click();
+      },
+      { session, document: doc }
+    );
+    expect(env.location.href).toBe(SERVER_LOGOUT_PATH);
+    expect(attempts(session)).toHaveLength(1);
+    expect(env.fetchCalls).toEqual([]);
+  });
+
+  test("si la navegación no ocurre, Reintentar vuelve a estar disponible", async () => {
+    const doc = new FakeDocument();
+    let retry: FakeElement | undefined;
+    await withPage(
+      () => {
+        signOutToLogin();
+        retry = doc.getElementById(SIGN_OUT_FAILURE_SCREEN_ID)?.find((el) => el.tagName === "button");
+        retry?.click();
+      },
+      { session: exhausted(), document: doc }
+    );
+    expect(retry?.disabled).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, SIGN_OUT_FAILURE_RETRY_REENABLE_MS + 100));
+    expect(retry?.disabled).toBe(false);
   });
 });
