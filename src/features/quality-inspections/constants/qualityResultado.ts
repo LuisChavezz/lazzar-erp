@@ -1,5 +1,6 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import type { QualityResultado } from "../interfaces/quality-inspection.interface";
+import { RECEIPT_TIPO_ORIGEN_CFG } from "@/src/features/receipts/constants/receiptOrigin";
 
 /**
  * Etiquetas del enum COMPLETO `CalidadInspeccionDetalle.RESULTADO_CHOICES`
@@ -38,16 +39,8 @@ export const QUALITY_RESULTADO_OPTIONS = QUALITY_RESULTADO_CAPTURABLE_VALUES.map
   label: QUALITY_RESULTADO_LABELS[value],
 }));
 
-/** Badge del tipo de origen de la recepción (mismos colores que Recepciones). */
-export const QUALITY_TIPO_ORIGEN_CFG: Record<string, StatusBadgeConfigEntry> = {
-  OC: {
-    label: "Orden de Compra",
-    cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
-    dot: "bg-blue-500",
-  },
-  OP: {
-    label: "Orden de Producción",
-    cls: "bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400",
-    dot: "bg-purple-500",
-  },
-};
+/**
+ * Badge del tipo de origen de la recepción: el mismo de Recepciones. Calidad
+ * solo ve OC y OP (la recepción de una SM de OB/OR nace CERRADA, EC-912).
+ */
+export const QUALITY_TIPO_ORIGEN_CFG: Record<string, StatusBadgeConfigEntry> = RECEIPT_TIPO_ORIGEN_CFG;

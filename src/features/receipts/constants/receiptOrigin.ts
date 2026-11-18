@@ -23,7 +23,7 @@ export const RECEIPT_TIPO_ORIGEN_CFG: Record<ReceiptTipoOrigen, StatusBadgeConfi
   },
 };
 
-export const RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
+export const RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG: StatusBadgeConfigEntry & { label: string } = {
   label: "Desconocido",
   cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
   dot: "bg-slate-400",
@@ -32,4 +32,4 @@ export const RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
 /** Etiqueta del origen; "Desconocido" para un valor que el front no conoce. */
 export const receiptTipoOrigenLabel = (tipoOrigen: string): string =>
   (RECEIPT_TIPO_ORIGEN_CFG as Record<string, StatusBadgeConfigEntry | undefined>)[tipoOrigen]?.label ??
-  "Desconocido";
+  RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG.label;
