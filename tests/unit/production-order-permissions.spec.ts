@@ -5,7 +5,8 @@ import {
   canGenerateSalidaMaquila,
   canWriteSalidaMaquila,
 } from "@/src/features/maquila-outputs/utils/salidaMaquilaAccess";
-import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { getSalidaMaquilaColumns } from "@/src/features/maquila-outputs/components/SalidaMaquilaColumns";
+import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
 
 const canEditProductionOrder = (u?: never) => hasProductionPermission(u, "OP", "E");
 const canCreateProductionOrder = (u?: never) => hasProductionPermission(u, "OP", "C");
@@ -100,5 +101,27 @@ test.describe("salida a maquila: generar, cerrar y cancelar", () => {
   test("cerrar y cancelar no piden el permiso de costos", () => {
     expect(canWriteSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP"]))).toBe(true);
     expect(canWriteSalidaMaquila(soloLectura)).toBe(false);
+  });
+});
+
+/**
+ * EC-868: los importes de la SM (precio, importe y total) solo se muestran con
+ * `R-PRODUCCION-COSTOS`, el código con el que el backend oculta los costos de
+ * producción (#1135). El admin pasa siempre.
+ */
+test.describe("canSeeProductionCosts y la columna Total de las SM", () => {
+  test("solo con R-PRODUCCION-COSTOS (o admin)", () => {
+    expect(canSeeProductionCosts(user(["R-PRODUCCION-COSTOS"]))).toBe(true);
+    expect(canSeeProductionCosts(admin)).toBe(true);
+    expect(canSeeProductionCosts(soloLectura)).toBe(false);
+    expect(canSeeProductionCosts(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP", "E-PRODUCCION-OP"]))).toBe(false);
+    expect(canSeeProductionCosts(undefined)).toBe(false);
+  });
+
+  test("sin costos el listado no lleva la columna Total; con ellos, al final", () => {
+    const ids = (canSeeAmounts: boolean) =>
+      getSalidaMaquilaColumns(() => {}, canSeeAmounts).map((c) => c.id ?? (c as { accessorKey?: string }).accessorKey);
+    expect(ids(false)).not.toContain("total");
+    expect(ids(true)).toEqual([...ids(false), "total"]);
   });
 });
