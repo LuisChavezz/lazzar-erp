@@ -40,15 +40,25 @@ export const recentSignOutAttempts = (raw: string | null, now: number): number[]
 };
 
 /**
- * Anota un intento si todavía cabe. Devuelve `false` sin anotar si ya se
- * agotaron los intentos, o si `sessionStorage` no está disponible.
+ * Resultado de anotar un intento:
+ * - `registered`: cabía y quedó anotado; hay que navegar.
+ * - `exhausted`: ya se agotaron los intentos de la ventana; no navegar.
+ * - `unavailable`: sin `sessionStorage` no se puede contar. Se navega igual:
+ *   `/auth/logout` borra la cookie, así que una navegación sola no arma el
+ *   ciclo, y bloquear dejaría sin cierre de sesión a quien tiene los datos del
+ *   sitio bloqueados. La guarda solo aplica cuando puede contar.
  */
-export const registerSignOutAttempt = (now = Date.now()): boolean => {
+export type SignOutAttemptResult = "registered" | "exhausted" | "unavailable";
+
+/** Anota un intento si todavía cabe (ver `SignOutAttemptResult`). */
+export const registerSignOutAttempt = (now = Date.now()): SignOutAttemptResult => {
   const raw = readLoopMark(SIGN_OUT_ATTEMPTS_KEY);
-  if (raw === undefined) return false;
+  if (raw === undefined) return "unavailable";
   const attempts = recentSignOutAttempts(raw, now);
-  if (attempts.length >= SIGN_OUT_MAX_ATTEMPTS) return false;
-  return writeLoopMark(SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([...attempts, now]));
+  if (attempts.length >= SIGN_OUT_MAX_ATTEMPTS) return "exhausted";
+  return writeLoopMark(SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([...attempts, now]))
+    ? "registered"
+    : "unavailable";
 };
 
 /** Olvida los intentos (inicio de sesión, o "Reintentar"). Nunca lanza. */

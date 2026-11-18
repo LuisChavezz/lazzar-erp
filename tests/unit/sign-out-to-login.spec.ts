@@ -144,6 +144,13 @@ test.describe("signOutToLogin", () => {
     expect(env.fetchCalls).toEqual([]);
   });
 
+  test("sin sessionStorage navega igual (la guarda no puede contar)", async () => {
+    for (let i = 0; i < SIGN_OUT_MAX_ATTEMPTS + 1; i++) {
+      const env = await withPage(() => signOutToLogin(), { sessionStorage: fakeStorage("blocked") });
+      expect(env.location.href).toBe(SERVER_LOGOUT_PATH);
+    }
+  });
+
   test("sin cierre en marcha, isSignOutUnderway es false", async () => {
     await withPage(() => expect(isSignOutUnderway()).toBe(false));
   });
