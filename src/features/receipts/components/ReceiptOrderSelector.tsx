@@ -232,6 +232,9 @@ export function ReceiptOrderSelector({
             filterPredicate={productionTabRowMatches}
             getKey={productionTabRowKey}
             isSelected={(row) => productionTabRowKey(row) === selectedKey}
+            // La fila elegida sigue a la vista aunque la búsqueda la excluya:
+            // "Siguiente" nunca aplica a una selección invisible.
+            pinSelected
             getItemDisabledReason={productionTabRowDisabledReason}
             onSelect={(row) =>
               onSelect(
