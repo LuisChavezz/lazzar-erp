@@ -99,7 +99,17 @@ export const initialDraft = (
     precio: precioSugerido && Number(precioSugerido) > 0 ? String(Number(precioSugerido)) : "",
   }));
 
-export const lineQty = (l: SalidaMaquilaDraftLine): number => (QTY.test(l.cantidad) ? Number(l.cantidad) : 0);
+/**
+ * Piezas del renglón: solo un entero tal cual se tecleó (espacios aparte). Lo
+ * demás ("2.5", "2,5", "3 pz") vale 0 y se marca como inválido; nunca se
+ * reinterpreta como otro número (quitar el punto convertía "2.5" en 25).
+ */
+export const lineQty = (l: SalidaMaquilaDraftLine): number =>
+  QTY.test(l.cantidad.trim()) ? Number(l.cantidad.trim()) : 0;
+
+/** ¿Hay algo escrito en piezas que no es un entero? */
+export const hasInvalidQty = (l: SalidaMaquilaDraftLine): boolean =>
+  l.cantidad.trim() !== "" && !QTY.test(l.cantidad.trim());
 
 export const lineImporte = (l: SalidaMaquilaDraftLine): number =>
   PRICE.test(l.precio) ? lineQty(l) * Number(l.precio) : 0;
@@ -112,8 +122,7 @@ export type DraftProblem = "sin_piezas" | "excede" | "cantidad" | "precio";
  */
 export const draftProblems = (lines: SalidaMaquilaDraftLine[], quedan: number): DraftProblem[] => {
   const problems: DraftProblem[] = [];
-  const usadas = lines.filter((l) => l.cantidad.trim() !== "");
-  if (usadas.some((l) => !QTY.test(l.cantidad))) problems.push("cantidad");
+  if (lines.some(hasInvalidQty)) problems.push("cantidad");
   const piezas = lines.reduce((acc, l) => acc + lineQty(l), 0);
   if (piezas <= 0) problems.push("sin_piezas");
   if (piezas > quedan) problems.push("excede");

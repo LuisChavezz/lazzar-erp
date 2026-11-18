@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   draftProblems,
+  hasInvalidQty,
   initialDraft,
+  lineQty,
   opRenglones,
   opSeed,
   servicioSeed,
@@ -44,6 +46,18 @@ test.describe("salida a maquila: borrador", () => {
     expect(draftProblems([line("1.5", "10")], 10)).toContain("cantidad");
     expect(draftProblems([line("2", "0")], 10)).toEqual(["precio"]);
     expect(draftProblems([line("2", "12.5")], 10)).toEqual([]);
+  });
+
+  test("piezas no enteras no se reinterpretan: \"2.5\" no es 25 ni 2 (EC-911)", () => {
+    for (const texto of ["2.5", "2,5", "25.", "3 pz", "-2"]) {
+      const l = line(texto, "10");
+      expect(lineQty(l)).toBe(0);
+      expect(hasInvalidQty(l)).toBe(true);
+      expect(draftProblems([l], 100)).toContain("cantidad");
+      expect(toDetalles([l], "OR")).toEqual([]);
+    }
+    expect(lineQty(line(" 25 ", "10"))).toBe(25);
+    expect(hasInvalidQty(line("", "10"))).toBe(false);
   });
 
   test("solo envía renglones con piezas, con el campo de renglón de la OP", () => {
