@@ -80,10 +80,15 @@ export function MainDialog({
             <div className="shrink-0">{headerAction}</div>
           </Flex>
         ) : (
-          // Mismo `pr-10` que la fila con acción: la X ocupa de 12 a 56 px del
-          // borde y el relleno de Radix solo deja 24, así que sin él un título
-          // largo ("Nueva Nota de Crédito" a 375 px) corría bajo la X.
-          <Dialog.Title className="pr-10">{title}</Dialog.Title>
+          // La X ocupa de 12 a 56 px del borde y el relleno de Radix solo deja
+          // 24: un título largo ("Nueva Nota de Crédito" a 375 px) corría bajo
+          // ella. Se aparta solo el TEXTO, no el título entero, para que el
+          // divisor de `DialogHeader` siga llegando a la orilla: un título de
+          // texto lleva el `pr-10` en su propio bloque, y `DialogHeader` lee
+          // `--dialog-close-clearance` en su columna de texto.
+          <Dialog.Title className="[--dialog-close-clearance:2.5rem]">
+            {typeof title === "string" ? <span className="block pr-10">{title}</span> : title}
+          </Dialog.Title>
         )}
 
         {description && (
