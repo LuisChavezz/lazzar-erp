@@ -1,8 +1,8 @@
 /**
  * SM — salida de prendas a maquila (`/produccion/salidas-maquila/`, nucleo-erp
  * #1076). Documento con folio SM ligado a UNA orden (OP, OB u OR; #1193 y #1216)
- * y a un maquilero; no mueve inventario. Solo pasa de ENVIADA a RECIBIDA
- * (`cerrar/`) o a CANCELADA.
+ * y a un maquilero; no mueve inventario. Solo pasa de ENVIADA a RECIBIDA (al
+ * recepcionarla en WMS, nucleo-erp #1217) o a CANCELADA (`cancelar/`).
  */
 export type SalidaMaquilaEstatus = "ENVIADA" | "RECIBIDA" | "CANCELADA";
 

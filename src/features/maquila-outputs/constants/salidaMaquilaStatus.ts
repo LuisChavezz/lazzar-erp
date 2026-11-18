@@ -19,5 +19,5 @@ export const SALIDA_MAQUILA_STATUS_CONFIG: Record<SalidaMaquilaEstatus, StatusBa
   },
 };
 
-/** Cerrar y cancelar solo existen desde ENVIADA. */
+/** Cancelar solo existe desde ENVIADA (recibirla se hace en WMS). */
 export const isSalidaMaquilaAbierta = (estatus: SalidaMaquilaEstatus): boolean => estatus === "ENVIADA";
