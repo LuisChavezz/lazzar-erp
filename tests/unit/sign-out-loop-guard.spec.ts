@@ -1,16 +1,15 @@
 import { expect, test } from "@playwright/test";
 import {
-  canAttemptSignOutFallback,
-  clearSignOutFallbackAttempts,
-  recentSignOutFallbackAttempts,
-  registerSignOutFallbackAttempt,
-  SIGN_OUT_FALLBACK_KEY,
-  SIGN_OUT_FALLBACK_WINDOW_MS,
-} from "@/src/features/auth/utils/signOutFallbackGuard";
+  clearSignOutAttempts,
+  recentSignOutAttempts,
+  registerSignOutAttempt,
+  SIGN_OUT_ATTEMPTS_KEY,
+  SIGN_OUT_ATTEMPTS_WINDOW_MS,
+} from "@/src/features/auth/utils/signOutLoopGuard";
 import { enterNewSession } from "@/src/features/auth/utils/clientSessionState";
 
 /**
- * EC-851: guarda en `sessionStorage` que corta el respaldo de cierre de sesión
+ * EC-851: guarda en `sessionStorage` que corta el cierre de sesión
  * si se repite en ciclo, y su reinicio al iniciar sesión.
  */
 
@@ -39,65 +38,57 @@ const withSessionStorage = <T>(storage: Map<string, string> | "blocked", run: ()
   }
 };
 
-test.describe("recentSignOutFallbackAttempts", () => {
+test.describe("recentSignOutAttempts", () => {
   const now = 1_000_000;
 
   test("solo cuenta los intentos dentro de la ventana", () => {
-    const raw = JSON.stringify([now - SIGN_OUT_FALLBACK_WINDOW_MS, now - 59_999, now - 1]);
-    expect(recentSignOutFallbackAttempts(raw, now)).toEqual([now - 59_999, now - 1]);
+    const raw = JSON.stringify([now - SIGN_OUT_ATTEMPTS_WINDOW_MS, now - 59_999, now - 1]);
+    expect(recentSignOutAttempts(raw, now)).toEqual([now - 59_999, now - 1]);
   });
 
   test("una marca ilegible o con valores raros cuenta como ninguna", () => {
     const raws = [null, "", "{", "{}", JSON.stringify("x"), JSON.stringify(["1", null]), JSON.stringify([now + 5])];
     for (const raw of raws) {
-      expect(recentSignOutFallbackAttempts(raw, now), String(raw)).toEqual([]);
+      expect(recentSignOutAttempts(raw, now), String(raw)).toEqual([]);
     }
   });
 });
 
-test.describe("canAttemptSignOutFallback", () => {
-  test("deja dos intentos y corta en el tercero", () => {
-    expect(canAttemptSignOutFallback([])).toBe(true);
-    expect(canAttemptSignOutFallback([1])).toBe(true);
-    expect(canAttemptSignOutFallback([1, 2])).toBe(false);
-  });
-});
-
-test.describe("registerSignOutFallbackAttempt", () => {
+test.describe("registerSignOutAttempt", () => {
   test("anota hasta el máximo y luego rechaza sin anotar", () => {
     const storage = new Map<string, string>();
     const results = withSessionStorage(storage, () => [
-      registerSignOutFallbackAttempt(1_000),
-      registerSignOutFallbackAttempt(2_000),
-      registerSignOutFallbackAttempt(3_000),
+      registerSignOutAttempt(1_000),
+      registerSignOutAttempt(2_000),
+      registerSignOutAttempt(3_000),
     ]);
     expect(results).toEqual([true, true, false]);
-    expect(JSON.parse(storage.get(SIGN_OUT_FALLBACK_KEY) ?? "null")).toEqual([1_000, 2_000]);
+    expect(JSON.parse(storage.get(SIGN_OUT_ATTEMPTS_KEY) ?? "null")).toEqual([1_000, 2_000]);
   });
 
   test("pasada la ventana vuelve a dejar navegar", () => {
-    const storage = new Map([[SIGN_OUT_FALLBACK_KEY, JSON.stringify([1_000, 2_000])]]);
+    const storage = new Map([[SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([1_000, 2_000])]]);
     const result = withSessionStorage(storage, () =>
-      registerSignOutFallbackAttempt(2_000 + SIGN_OUT_FALLBACK_WINDOW_MS)
+      registerSignOutAttempt(2_000 + SIGN_OUT_ATTEMPTS_WINDOW_MS)
     );
     expect(result).toBe(true);
   });
 
   test("sin sessionStorage no navega (no puede contar) y no lanza", () => {
-    expect(withSessionStorage("blocked", () => registerSignOutFallbackAttempt())).toBe(false);
+    expect(withSessionStorage("blocked", () => registerSignOutAttempt())).toBe(false);
   });
 });
 
 test.describe("reinicio de la cuenta", () => {
-  test("clearSignOutFallbackAttempts borra la marca y no lanza sin almacenamiento", () => {
-    const storage = new Map([[SIGN_OUT_FALLBACK_KEY, "[1]"]]);
-    withSessionStorage(storage, () => clearSignOutFallbackAttempts());
-    expect(storage.has(SIGN_OUT_FALLBACK_KEY)).toBe(false);
-    expect(() => withSessionStorage("blocked", () => clearSignOutFallbackAttempts())).not.toThrow();
+  test("clearSignOutAttempts borra la marca y no lanza sin almacenamiento", () => {
+    const storage = new Map([[SIGN_OUT_ATTEMPTS_KEY, "[1]"]]);
+    withSessionStorage(storage, () => clearSignOutAttempts());
+    expect(storage.has(SIGN_OUT_ATTEMPTS_KEY)).toBe(false);
+    expect(() => withSessionStorage("blocked", () => clearSignOutAttempts())).not.toThrow();
   });
 
   test("enterNewSession reinicia la cuenta al iniciar sesión", () => {
-    const storage = new Map([[SIGN_OUT_FALLBACK_KEY, JSON.stringify([Date.now()])]]);
+    const storage = new Map([[SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([Date.now()])]]);
     const previousWindow = globals.window;
     const previousDocument = globals.document;
     let replaced = "";
@@ -112,7 +103,7 @@ test.describe("reinicio de la cuenta", () => {
       globals.window = previousWindow;
       globals.document = previousDocument;
     }
-    expect(storage.has(SIGN_OUT_FALLBACK_KEY)).toBe(false);
+    expect(storage.has(SIGN_OUT_ATTEMPTS_KEY)).toBe(false);
     expect(replaced).toBe("/select-branch");
   });
 });

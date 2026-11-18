@@ -13,7 +13,7 @@ export const useLogout = () => {
     retry: 0,
     /* Con o sin éxito del backend se cierra la sesión local y se navega a login:
      * si la petición falla, el usuario no debe quedar en un estado inconsistente.
-     * `signOutToLogin` navega aunque el propio `signOut` falle. */
+     * `signOutToLogin` navega a `/auth/logout`, que borra la sesión en el servidor. */
     onSettled: () => signOutToLogin(),
   });
 

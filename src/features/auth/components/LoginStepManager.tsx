@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import LoginForm from "./LoginForm";
 import type { LoginSuccessResponse, MfaCreateResponse } from "../interfaces/auth.interface";
 import {
-  clearUserScopedClientStateIfSignedOut,
+  settleSignedOutClientState,
   enterNewSession,
   POST_LOGIN_PATH,
 } from "../utils/clientSessionState";
@@ -93,14 +93,15 @@ export default function LoginStepManager() {
   }, []);
 
   /* Sin sesión, el workspace guardado es de una sesión que terminó. Los cierres
-   * de sesión ya lo limpian, pero mientras `signOut` espera sus fetch la página
-   * anterior sigue montada y `useSessionCompanyDetails` vuelve a escribir el
-   * nombre de la empresa desde su caché; aquí ya no queda nada montado que lo
-   * reescriba. Cubre también la sesión que caduca sin cierre. Solo limpia si se
-   * confirma que no hay sesión (ver `clearUserScopedClientStateIfSignedOut`). */
+   * de sesión ya lo limpian, pero mientras la navegación a `/auth/logout` está
+   * en curso la página anterior sigue montada y `useSessionCompanyDetails`
+   * vuelve a escribir el nombre de la empresa desde su caché; aquí ya no queda
+   * nada montado que lo reescriba. Cubre también la sesión que caduca sin
+   * cierre. Además avisa a las otras pestañas del cierre (EC-851). Solo actúa
+   * si se confirma que no hay sesión (ver `settleSignedOutClientState`). */
   useEffect(() => {
     const controller = new AbortController();
-    void clearUserScopedClientStateIfSignedOut(controller.signal);
+    void settleSignedOutClientState(controller.signal);
     return () => controller.abort();
   }, []);
 

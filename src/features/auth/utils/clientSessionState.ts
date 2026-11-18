@@ -1,11 +1,7 @@
-import { getCsrfToken, signOut } from "next-auth/react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
-import { probeSession } from "./sessionRecovery";
-import {
-  clearSignOutFallbackAttempts,
-  registerSignOutFallbackAttempt,
-} from "./signOutFallbackGuard";
+import { broadcastSignOut, probeSession } from "./sessionRecovery";
+import { clearSignOutAttempts, registerSignOutAttempt } from "./signOutLoopGuard";
 import { showSignOutFailureScreen } from "./signOutFailureScreen";
 
 /** Clave del antiguo store de la Dirección fiscal en `localStorage` (EC-860). */
@@ -19,7 +15,7 @@ export const LEGACY_SAT_STORAGE_KEY = "sat-storage";
  * código la lee ni la escribe, así que solo queda borrar la que ya existe).
  * Corre en los dos cierres de sesión (`useLogout` y el 401
  * forzado de `v1_api`), al montar el login si no hay sesión
- * (`clearUserScopedClientStateIfSignedOut`, donde ya no queda nada de la sesión
+ * (`settleSignedOutClientState`, donde ya no queda nada de la sesión
  * anterior montado que lo reescriba) y al entrar con una sesión nueva
  * (`enterNewSession`).
  *
@@ -30,9 +26,8 @@ export const LEGACY_SAT_STORAGE_KEY = "sat-storage";
  * - `theme-storage` y `sidebar-storage`: preferencias del navegador, no datos.
  * - `nextauth.message` (localStorage): el canal entre pestañas de next-auth.
  * - La marca anti-ciclo de `sessionRecovery` (sessionStorage).
- * - La cuenta de la guarda del respaldo de cierre de sesión (sessionStorage,
- *   EC-851): tiene que sobrevivir al cierre que la anota; la borra
- *   `enterNewSession`.
+ * - La cuenta de la guarda del cierre de sesión (sessionStorage, EC-851):
+ *   tiene que sobrevivir al cierre que la anota; la borra `enterNewSession`.
  *
  * Un cambio de empresa del mismo usuario (EC-847) reusa esta misma limpieza
  * (`completeCompanySwitch`): la sucursal elegida es de la empresa anterior.
@@ -63,29 +58,32 @@ export const clearUserScopedClientState = () => {
   }
 };
 
-const LOGIN_PATH = "/auth/login";
-
 /** Cierre de sesión del servidor por navegación (`src/app/auth/logout/route.ts`). */
 export const SERVER_LOGOUT_PATH = "/auth/logout";
 
 /**
- * Tiempo máximo (ms) para que `signOut` de next-auth termine (CSRF + POST)
- * antes de darlo por fallido. next-auth no pone timeout a sus `fetch`: sin
- * este límite una petición colgada dejaba la pestaña sin salida y el botón de
- * "Cerrar sesión" en `isPending` para siempre.
+ * ¿Ya empezó un cierre de sesión en ESTA carga de página? Un booleano del
+ * módulo basta: cada carga completa vuelve a evaluar el módulo. La guarda
+ * cuenta CICLOS, no llamadas: varios 401 en vuelo llaman a `signOutToLogin`
+ * antes de que la navegación termine, y solo el primero anota un intento.
  */
-export const SIGN_OUT_TIMEOUT_MS = 8_000;
+let signOutStarted = false;
+
+/** ¿La guarda ya cortó y la pantalla de error está a la vista? */
+let signOutBlocked = false;
 
 /**
- * Cargas de página (su `window`) cuyo intento ya se anotó en la guarda. La
- * guarda cuenta CICLOS, no llamadas: dentro de una misma carga el respaldo
- * puede correr más de una vez antes de que la navegación se complete (el
- * latch de `forceSignOut` se suelta en cuanto `signOutToLogin` vuelve, y otro
- * 401 en vuelo lo vuelve a disparar), y sin esto un solo ciclo gastaba los dos
- * intentos. Se indexa por `window` y no con un booleano del módulo para que
- * cada carga, y cada `window` falso de las pruebas, empiece sin anotar.
+ * ¿Ya hay un cierre de sesión en marcha (navegando o detenido en la pantalla
+ * de error) en esta carga? `v1_api` lo consulta para no intentar otro refresh
+ * con cada 401 que siga llegando: el siguiente paso ya está decidido.
  */
-const countedPages = new WeakSet<object>();
+export const isSignOutUnderway = () => signOutStarted || signOutBlocked;
+
+/** Solo para pruebas: devuelve el estado de la carga de página al inicial. */
+export const resetSignOutPageState = () => {
+  signOutStarted = false;
+  signOutBlocked = false;
+};
 
 /**
  * "Reintentar" de la pantalla de error: empieza la cuenta de nuevo y navega
@@ -93,78 +91,47 @@ const countedPages = new WeakSet<object>();
  * (es un clic del usuario, no un ciclo).
  */
 const retryServerLogout = () => {
-  clearSignOutFallbackAttempts();
-  registerSignOutFallbackAttempt();
-  countedPages.add(window);
+  clearSignOutAttempts();
+  registerSignOutAttempt();
+  signOutStarted = true;
   window.location.href = SERVER_LOGOUT_PATH;
 };
 
 /**
- * Respaldo cuando `signOut` no sirvió: navega (carga completa) a
- * `/auth/logout`, que expira la cookie de sesión de NextAuth en el servidor y
- * manda al login. Si ese respaldo ya se intentó demasiadas veces seguidas en
- * esta pestaña (`signOutFallbackGuard`), deja de navegar y muestra la pantalla
- * de error en lugar de recargar en ciclo. Repetirlo en la misma carga vuelve a
- * navegar sin anotar otro intento.
+ * Cierra la sesión: limpia el estado del usuario en el cliente y navega (carga
+ * completa) a `/auth/logout`, que expira la cookie de sesión de NextAuth en el
+ * servidor y manda al login (EC-851). Lo usan los dos cierres de sesión
+ * (`useLogout` y el 401 forzado de `v1_api`).
+ *
+ * No usa `signOut` de next-auth. Ese camino (CSRF + POST a
+ * `/api/auth/signout` por `fetch`) fallaba con la red caída, una respuesta que
+ * no es JSON o un CSRF que no llegaba, y su respaldo navegaba a `/auth/login`
+ * con la cookie viva: el proxy lo rebotaba a `/` → `/select-branch`, esa
+ * página recibía 401 y se volvía a cerrar sesión, en ciclo. Una navegación de
+ * documento no depende de nada de eso, y `src/lib/auth.ts` no tiene
+ * `events.signOut` ni nada que solo corra en ese POST (con sesión JWT, el POST
+ * solo borra la cookie, lo mismo que `/auth/logout`). El aviso a las otras
+ * pestañas que mandaba `signOut` lo manda ahora el login, cuando la cookie ya
+ * no existe (`settleSignedOutClientState`).
+ *
+ * La guarda de `signOutLoopGuard` es solo un respaldo: si la pestaña vuelve a
+ * caer aquí en ciclo, corta tras `SIGN_OUT_MAX_ATTEMPTS` cargas y deja una
+ * pantalla de error estable con "Reintentar". Llamadas repetidas en la misma
+ * carga no hacen ninguna petición: vuelven a navegar, o no hacen nada si la
+ * pantalla ya está a la vista.
  */
-const navigateToServerLogout = () => {
-  if (!countedPages.has(window)) {
-    if (!registerSignOutFallbackAttempt()) {
+export const signOutToLogin = (): void => {
+  clearUserScopedClientState();
+  if (signOutBlocked) return;
+  if (!signOutStarted) {
+    if (!registerSignOutAttempt()) {
+      signOutBlocked = true;
       showSignOutFailureScreen(retryServerLogout);
       return;
     }
-    countedPages.add(window);
+    signOutStarted = true;
   }
   window.location.href = SERVER_LOGOUT_PATH;
-};
-
-/**
- * Cierra la sesión de NextAuth y lleva a `/auth/login` con una carga completa.
- *
- * El camino normal es `signOut` de next-auth: pide el token CSRF, hace POST a
- * `/api/auth/signout` (que borra la cookie de sesión y avisa a las otras
- * pestañas) y solo DESPUÉS asigna `window.location`. Todo lo que impide que
- * ese camino termine cae al respaldo `/auth/logout` (EC-851):
- *
- * - `signOut` lanza: error de red, o una respuesta que no es JSON (un 5xx con
- *   HTML) hace que `res.json()` lance.
- * - Pasan `timeoutMs` sin terminar (petición colgada).
- * - No hay token CSRF: next-auth devuelve `null` sin lanzar si `/api/auth/csrf`
- *   falla, manda el POST con ese CSRF vacío y el servidor responde con su
- *   página genérica de confirmación (`/api/auth/signout?csrf=true`), con la
- *   sesión viva. Por eso el token se pide antes y, sin él, no se llama a
- *   `signOut`. `signOut` vuelve a pedirlo por su cuenta (no acepta uno dado):
- *   si esa segunda petición falla y la primera no, todavía se llega a esa
- *   página.
- *
- * El respaldo NO puede ser navegar a `/auth/login`: con la cookie viva el
- * proxy lo rebota a `/` → `/select-branch`, esa página recibe 401, el refresh
- * falla y se vuelve a cerrar sesión, en ciclo. `/auth/logout` borra la cookie
- * del lado del servidor, que es el único que puede (es HttpOnly). Si aun así
- * la pestaña vuelve a caer aquí en ciclo, la guarda de `signOutFallbackGuard`
- * corta tras `SIGN_OUT_FALLBACK_MAX_ATTEMPTS` navegaciones y deja una pantalla
- * de error estable con "Reintentar".
- *
- * `timeoutMs` existe para las pruebas; el código de la app usa el default.
- */
-export const signOutToLogin = async (timeoutMs = SIGN_OUT_TIMEOUT_MS): Promise<void> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("signOut excedió el tiempo")), timeoutMs);
-  });
-
-  try {
-    const csrfToken = await Promise.race([getCsrfToken(), deadline]);
-    if (!csrfToken) {
-      navigateToServerLogout();
-      return;
-    }
-    await Promise.race([signOut({ callbackUrl: LOGIN_PATH }), deadline]);
-  } catch {
-    navigateToServerLogout();
-  } finally {
-    clearTimeout(timer);
-  }
 };
 
 /**
@@ -190,26 +157,34 @@ export const POST_LOGIN_PATH = "/select-branch";
  * no lo necesita: lee la empresa de la sesión y escribe sucursal y cookie al
  * elegir.
  *
- * También reinicia la cuenta de la guarda del respaldo de cierre de sesión
- * (EC-851): los intentos de la sesión anterior no deben bloquear el próximo
- * cierre de esta.
+ * También reinicia la cuenta de la guarda del cierre de sesión (EC-851): los
+ * intentos de la sesión anterior no deben bloquear el próximo cierre de esta.
  */
 export const enterNewSession = () => {
   clearUserScopedClientState();
-  clearSignOutFallbackAttempts();
+  clearSignOutAttempts();
   window.location.replace(POST_LOGIN_PATH);
 };
 
 /**
- * Limpieza al montar el login: solo si el endpoint de sesión confirma que NO
- * hay sesión. El proxy manda a "/" a quien la tiene, pero una página servida
- * desde la caché del navegador no pasa por él, y limpiar ahí borraría el
- * workspace de una sesión viva. Un fallo de la consulta (`failed`) tampoco
- * limpia: `getSession()` lo devolvería como `null`, por eso se usa
+ * Al montar el login, solo si el endpoint de sesión confirma que NO hay
+ * sesión: limpia el estado del usuario en el cliente y avisa a las otras
+ * pestañas (`broadcastSignOut`, el mismo mensaje que mandaba `signOut` de
+ * next-auth). El proxy manda a "/" a quien tiene sesión, pero una página
+ * servida desde la caché del navegador no pasa por él, y limpiar ahí borraría
+ * el workspace de una sesión viva. Un fallo de la consulta (`failed`) tampoco
+ * hace nada: `getSession()` lo devolvería como `null`, por eso se usa
  * `probeSession`, que distingue "sin sesión" de "no se pudo saber".
+ *
+ * El aviso sale aquí y no al navegar a `/auth/logout`: solo con la cookie ya
+ * borrada es seguro que otra pestaña relea la sesión (ver `broadcastSignOut`).
+ * La cookie es la misma para todas las pestañas, así que "sin sesión" aquí lo
+ * es en todas: avisar también al abrir el login sin venir de un cierre solo
+ * hace que las demás relean una sesión que ya no tienen.
  */
-export const clearUserScopedClientStateIfSignedOut = async (signal: AbortSignal) => {
+export const settleSignedOutClientState = async (signal: AbortSignal) => {
   if ((await probeSession(signal)) === "none" && !signal.aborted) {
     clearUserScopedClientState();
+    broadcastSignOut();
   }
 };
