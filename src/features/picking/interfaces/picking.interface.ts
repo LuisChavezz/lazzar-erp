@@ -3,11 +3,9 @@ import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vi
 /**
  * Contratos del endpoint de picking (`/wms/pickings/`).
  *
- * `GET` (listado) y `GET .../{id}/` (detalle) devuelven la MISMA forma
- * (`Picking`, con `picking_detalle` incluido en ambos) — a diferencia de
- * traspasos, que sí separa listado/detalle en dos tipos distintos. Por eso el
- * diálogo de detalle de picking no hace ningún fetch propio: reutiliza el
- * objeto ya cargado por el listado (ver `PickingDetailDialog`).
+ * La tabla pide el listado ligero y paginado (`?resumen=1&limit=&offset=`,
+ * `PickingListItem`, sin renglones); el detalle (`GET .../{id}/`, `Picking`)
+ * trae los renglones y se pide al abrirlo (`PickingDetailByIdDialog`).
  *
  * `POST` crea un picking PARCIAL a partir de un `CreatePickingPayload`: el
  * frontend envía, por talla, la cantidad real a surtir en esta entrega
@@ -145,11 +143,10 @@ export interface PickingOrdenTrabajo {
 }
 
 /**
- * Renglón de `GET /wms/pickings/` (listado). Incluye `picking_detalle`
- * porque el backend lo devuelve en la misma respuesta del listado (a
- * diferencia de traspasos, que separa listado de detalle en dos formas
- * distintas) — se tipa aquí para que `Picking` sirva tanto para el listado
- * de hoy como para el detalle de una tarea futura, sin duplicar la interfaz.
+ * Un picking completo: `GET /wms/pickings/{id}/` (detalle), la respuesta de
+ * `POST /wms/pickings/` y de `POST .../trasladar/`. Trae sus renglones
+ * (`picking_detalle`) y sus `ordenes_trabajo`. El listado de la tabla NO usa
+ * esta forma: pide `?resumen=1`, sin renglones (`PickingListItem`).
  */
 export interface Picking {
   id: number;
@@ -253,8 +250,37 @@ export interface Picking {
 }
 
 /**
- * Fila de la tabla de picking: el registro del backend más los campos
- * DERIVADOS en cliente que consumen las columnas y los filtros.
+ * Fila de `GET /wms/pickings/?resumen=1` (EC-915, nucleo-erp #1228): el
+ * encabezado del picking SIN `picking_detalle` ni `ordenes_trabajo`. Los
+ * renglones se piden al abrir el detalle (`GET /wms/pickings/{id}/`).
+ */
+export type PickingListItem = Omit<Picking, "picking_detalle" | "ordenes_trabajo">;
+
+/**
+ * Indicadores del listado (`GET /wms/pickings/kpis/`, EC-921): el MISMO
+ * conjunto que la tabla con sus filtros y su búsqueda (sin paginar).
+ *
+ * - `total`: pickings del conjunto.
+ * - `lineas_por_surtir`: Σ `total_lineas - total_lineas_completas`, cada
+ *   término acotado a ≥ 0.
+ * - `por_prioridad`: siempre ALTA, MEDIA y BAJA, de la más urgente a la menos
+ *   (en cero si no hay).
+ */
+export interface PickingKpis {
+  generado_en: string;
+  total: number;
+  lineas_por_surtir: number;
+  por_prioridad: PickingKpisPrioridad[];
+}
+
+export interface PickingKpisPrioridad {
+  prioridad: PickingPrioridad;
+  prioridad_label: string;
+  total: number;
+}
+
+/**
+ * Picking del detalle más lo DERIVADO en cliente que pinta el diálogo.
  *
  * `esta_vencida` se deriva de `fecha_limite` porque el backend NO expone
  * ninguna bandera de vencimiento calculada (verificado contra el schema

@@ -1,133 +1,59 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { DataTable } from "@/src/components/DataTable";
 import { hasPermission } from "@/src/utils/permissions";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getPickingColumns } from "./PickingColumns";
-import { PickingDetailDialog } from "./PickingDetailDialog";
+import { PickingDetailByIdDialog } from "./PickingDetailByIdDialog";
 import { PickingForm } from "./PickingForm";
 import { PickingStats } from "./PickingStats";
-import {
-  PICKING_PRIORIDAD_CONFIG,
-  PICKING_PRIORIDAD_ORDER,
-} from "../constants/pickingPrioridad";
-import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
-import { usePickings } from "../hooks/usePickings";
-import { mapPickingsToRows } from "../utils/picking.utils";
-
-// Opciones de filtro derivadas de los MISMOS catálogos que pintan los badges,
-// para que un estatus o una prioridad no puedan existir en la tabla sin existir
-// en el filtro (ni al revés). `DataTable` compara `String(fila[id]) === value`,
-// así que los `value` son los strings exactos de la respuesta del backend.
-const ESTADO_FILTER_OPTIONS = Object.entries(PICKING_STATUS_CONFIG).map(([value, cfg]) => ({
-  value,
-  label: cfg.label ?? value,
-}));
-
-const PRIORIDAD_FILTER_OPTIONS = PICKING_PRIORIDAD_ORDER.map((value) => ({
-  value,
-  label: PICKING_PRIORIDAD_CONFIG[value].label,
-}));
+import { PICKINGS_QUERY_KEY } from "../constants/pickingQueryKeys";
+import { usePickingsTable } from "../hooks/usePickingsTable";
 
 /**
- * Vista de Picking: KPIs del listado (`PickingStats`) más el listado propio
- * (`GET /wms/pickings/`), con la captura de un nuevo picking
- * (`POST /wms/pickings/`, ver `PickingForm`) en el toolbar, y el detalle de
- * cada fila ("Ver Detalles", ver `PickingColumns`).
+ * Vista de Picking: KPIs (`PickingStats`, `GET /wms/pickings/kpis/`) más el
+ * listado en MODO SERVIDOR (`usePickingsTable`, `GET /wms/pickings/?resumen=1`
+ * paginado), con la captura de un nuevo picking (`POST /wms/pickings/`, ver
+ * `PickingForm`) en el toolbar y el detalle de cada fila.
  *
- * El diálogo de detalle lo monta ESTA vista, no la celda de acciones: guarda
- * solo el id del surtido abierto y lo resuelve en cada render contra `rows`
- * (la caché de `["pickings"]`). Así el diálogo sobrevive a ordenar, filtrar o
- * paginar —que desmontan las celdas— y refleja el registro actualizado cuando
- * la lista se refresca, p. ej. después de trasladarlo de almacén.
+ * Filtros, búsqueda, orden y página los resuelve el backend y su estado vive en
+ * la URL, así que la página que monta esta vista la envuelve en `<Suspense>`.
+ * Los KPIs reciben los mismos `criteria` que la tabla: resumen el conjunto
+ * filtrado completo, no la página visible.
  *
- * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
- * un ternario propio): recibe `isLoading`/`isError` y alterna internamente
- * solo su ÁREA DE DATOS, dejando el toolbar —y por tanto `PickingForm`—
- * visible en su posición habitual durante la carga y el error. Mismo patrón
- * que `StockTransfersView`.
- *
- * FILTRADO EN CLIENTE, a propósito: `GET /wms/pickings/` no acepta ningún
- * query param (el endpoint no declara parámetros y el backend no monta ningún
- * filter backend), así que mandarlos no filtraría nada. Como además el
- * endpoint devuelve la lista COMPLETA sin paginar, filtrar en memoria sobre
- * `rows` recorre exactamente el mismo universo de registros que filtraría el
- * servidor: el resultado es idéntico, no una aproximación sobre una página.
- * Si el backend llegara a paginar o a aceptar filtros, esto tendría que
- * moverse a params de `usePickings`.
+ * El detalle se pide POR ID (`PickingDetailByIdDialog`, `GET /wms/pickings/{id}/`):
+ * las filas del listado ligero no traen `picking_detalle`. El diálogo vive AQUÍ
+ * y no en la celda (que se desmonta al paginar, ordenar o filtrar, y la fila
+ * puede salir de la página); se guarda el id del último surtido abierto y
+ * `open` va aparte para que el contenido no se vacíe durante la animación de
+ * cierre.
  */
 export function PickingView() {
-  const {
-    pickings,
-    dataUpdatedAt,
-    isLoading,
-    isError,
-    error,
-    hasLoaded,
-    refetch,
-    isFetching,
-  } = usePickings();
+  const table = usePickingsTable();
+  const queryClient = useQueryClient();
 
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-WMS-PICKING", session?.user);
 
-  // Solo se trata como error "de pantalla completa" cuando la consulta nunca
-  // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
-  // (y los KPIs) y avisa por toast (ver `usePickings`). Mismo criterio que
-  // `AccountsReceivableList`.
-  const showError = isInitialLoadError(isError, hasLoaded);
-
-  // "Ahora" = el instante en que la query resolvió (`dataUpdatedAt`), UNO solo
-  // para todas las filas: ninguna queda evaluada contra un instante distinto y,
-  // a diferencia de un `Date.now()` en render, es una lectura pura —el React
-  // Compiler prohíbe la impura— que además se reevalúa exactamente cuando llega
-  // dato nuevo (refetch o botón de refrescar).
-  //
-  // Sigue siendo necesario aunque la tabla ya no muestre "Fecha Límite" ni
-  // filtre por "Vencido": `PickingRow.esta_vencida` alimenta el mismo
-  // resaltado en `PickingDetailDialog` (fuera de alcance de este cambio), que
-  // recibe la fila enriquecida —no el registro crudo— para no divergir de la
-  // definición de "vencido" en caso de que la columna regrese más adelante.
-  const rows = mapPickingsToRows(pickings, dataUpdatedAt);
-
   const [detailPickingId, setDetailPickingId] = useState<number | null>(null);
-  const detailPicking =
-    detailPickingId === null ? null : (rows.find((row) => row.id === detailPickingId) ?? null);
-  // Si el surtido abierto deja de venir en la lista ya cargada (p. ej. un 404
-  // al trasladarlo refresca la lista y ya no está), se olvida su id: si no, el
-  // detalle se volvería a abrir solo si el surtido reapareciera más tarde.
-  if (detailPickingId !== null && hasLoaded && detailPicking === null) {
-    setDetailPickingId(null);
-  }
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const openDetail = (pickingId: number) => {
+    setDetailPickingId(pickingId);
+    setIsDetailOpen(true);
+  };
 
-  const columns = getPickingColumns({ onViewDetail: setDetailPickingId });
-
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estatus", options: ESTADO_FILTER_OPTIONS },
-    { id: "prioridad", label: "Prioridad", options: PRIORIDAD_FILTER_OPTIONS },
-  ];
+  const columns = getPickingColumns({ onViewDetail: openDetail });
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-6">
-      {/* KPIs: ocultos durante la carga INICIAL y ante un error de carga —no
-          hay datos que resumir—, igual que `OrderStats` en `PurchaseOrderView`.
-          `pickings` arranca en `[]`, así que sin este gate las tarjetas
-          mostrarían ceros que se leerían como datos reales. `shrink-0`: solo
-          la tabla de abajo debe crecer. */}
-      {!isLoading && !showError && (
-        <div className="shrink-0">
-          <PickingStats items={pickings} />
-        </div>
-      )}
+      {/* `shrink-0`: solo la tabla de abajo debe crecer. */}
+      <div className="shrink-0">
+        <PickingStats criteria={table.criteria} />
+      </div>
 
-      {/* El placeholder de búsqueda NO menciona "almacén": la búsqueda global
-          de `DataTable` usa el filtro por defecto de TanStack, que solo recorre
-          columnas ACCESSOR, y la de almacén ya no existe — ofrecerla devolvería
-          "sin resultados" sobre pickings que sí coinciden. */}
       {/* `min-h-120`: piso de la tabla cuando la fila de KPIs (con el
           desglose por prioridad a su lado) deja poco espacio remanente —
           sin esto, `flex-1` podía encoger la tabla a un puñado de filas
@@ -135,36 +61,33 @@ export function PickingView() {
       <div className="flex-1 min-h-120 flex flex-col">
         <DataTable
           columns={columns}
-          data={rows}
-          searchPlaceholder="Buscar folio, pedido u operador..."
-          filterConfig={filterConfig}
+          {...table.tableProps}
+          // Invalida el PREFIJO y no solo la página: refresca también los
+          // indicadores (`["pickings", "kpis", …]`), para que tarjetas y tabla
+          // muestren el mismo momento.
+          onRefetch={() => queryClient.invalidateQueries({ queryKey: PICKINGS_QUERY_KEY })}
+          // Identidad de la fila por registro, no por posición en la página.
           getRowId={(row) => String(row.id)}
+          // Lo que busca `?search=` en el backend: folio del picking, folio del
+          // pedido y nombre del operador (no estatus ni prioridad).
+          searchPlaceholder="Buscar folio, pedido u operador..."
           // El cuerpo llena el contenedor de altura acotada que da
           // `wms/picking/page.tsx`, en vez de reservar un alto fijo.
           fillHeight
-          onRefetch={refetch}
-          isRefetching={isFetching}
           emptyMessage="No hay surtidos registrados."
           // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
           // alta exige además `C-WMS-PICKING`.
           actionButton={canCreate ? <PickingForm /> : undefined}
-          isLoading={isLoading}
-          isError={showError}
           errorTitle="Error al cargar los surtidos"
-          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
           loadingAriaLabel="Cargando surtidos"
         />
       </div>
 
-      {detailPicking && (
-        <PickingDetailDialog
-          picking={detailPicking}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setDetailPickingId(null);
-          }}
-        />
-      )}
+      <PickingDetailByIdDialog
+        orderId={detailPickingId}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   );
 }

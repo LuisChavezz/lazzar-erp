@@ -2,7 +2,7 @@ import {
   PICKING_PRIORIDAD_CONFIG,
   PICKING_PRIORIDAD_ORDER,
 } from "../constants/pickingPrioridad";
-import type { PickingKpis } from "../utils/picking.utils";
+import type { PickingPrioridadCounts } from "../utils/pickingList";
 
 /**
  * Desglose del listado por prioridad. Los colores salen de
@@ -19,7 +19,7 @@ export const PickingPriorityBreakdown = ({
   breakdown,
   className = "",
 }: {
-  breakdown: PickingKpis["prioridadBreakdown"];
+  breakdown: PickingPrioridadCounts;
   className?: string;
 }) => {
   const total = PICKING_PRIORIDAD_ORDER.reduce((acc, key) => acc + breakdown[key], 0);
@@ -34,7 +34,7 @@ export const PickingPriorityBreakdown = ({
             Surtidos por Prioridad
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Distribución del listado cargado
+            Distribución según filtros y búsqueda
           </p>
         </div>
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">

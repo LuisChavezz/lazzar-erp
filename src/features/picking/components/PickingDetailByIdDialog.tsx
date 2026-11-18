@@ -7,7 +7,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { usePickingDetail } from "../hooks/usePickingDetail";
 import { mapPickingToRow } from "../utils/picking.utils";
-import { PickingDetailContent } from "./PickingDetailDialog";
+import { PickingDetailContent } from "./PickingDetailContent";
 import { PickingPdfButton } from "./PickingPdfButton";
 
 interface PickingDetailByIdDialogProps {
@@ -18,22 +18,19 @@ interface PickingDetailByIdDialogProps {
 }
 
 /**
- * Envoltorio self-fetching de `PickingDetailDialog`. El diálogo original recibe
- * la fila YA ENRIQUECIDA (`PickingRow` = `Picking` + `esta_vencida`), no la trae
- * él, no acepta `null` y no tiene estados de carga/error. Este wrapper cierra
- * todas esas brechas SIN tocar su API pública, para exponer la firma por id
- * (`{ orderId, open, onOpenChange }`) que exige el registro `CLICKABLE_DOC_TIPOS`
- * del detalle de pedido:
- *  1. trae el `Picking` crudo por id (`usePickingDetail`);
+ * Detalle de un surtido POR ID, el único diálogo de detalle de picking: lo
+ * abren el listado de picking (cuyas filas, de `?resumen=1`, no traen
+ * renglones), el detalle de pedido (registro `CLICKABLE_DOC_TIPOS`) y la
+ * auditoría documental, con la firma `{ orderId, open, onOpenChange }`:
+ *  1. trae el `Picking` completo por id (`usePickingDetail`);
  *  2. lo enriquece a `PickingRow` con `mapPickingToRow(picking, dataUpdatedAt)`
- *     —el MISMO helper del listado, así el "vencido" no diverge—;
+ *     (`esta_vencida`);
  *  3. renderiza un ÚNICO `MainDialog` que solo intercambia su contenido
  *     (loader → error → `PickingDetailContent`): al mantener el mismo shell
  *     montado, la transición carga→dato NO remonta el modal (sin parpadeo de
- *     cierre/apertura ni reset de foco). Mismo chrome que `PickingDetailDialog`
- *     (RouteIcon, `maxWidth="820px"`, "Detalle de Surtido").
+ *     cierre/apertura ni reset de foco).
  *
- * No depende de la query del listado (`usePickings`): fetchea por id.
+ * No depende de la consulta del listado: fetchea por id.
  */
 export function PickingDetailByIdDialog({
   orderId,
@@ -43,7 +40,7 @@ export function PickingDetailByIdDialog({
   const { picking, dataUpdatedAt, isLoading, isError, error } =
     usePickingDetail(orderId);
 
-  // `dataUpdatedAt` como "ahora": misma fuente de vencimiento que el listado.
+  // `dataUpdatedAt` como "ahora": una lectura pura en render (ver `usePickingDetail`).
   const row = picking ? mapPickingToRow(picking, dataUpdatedAt) : null;
 
   const subtitle = isLoading

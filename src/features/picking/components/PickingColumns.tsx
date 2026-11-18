@@ -3,15 +3,41 @@
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FilterHeader } from "@/src/components/ColumnHeaderFilter";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { formatShortDate } from "@/src/utils/formatDate";
 import {
   PICKING_PRIORIDAD_CONFIG,
-  pickingPrioridadRank,
+  PICKING_PRIORIDAD_ORDER,
 } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
+import { PICKING_ESTADO_VALUES } from "../utils/pickingList";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import type { PickingRow } from "../interfaces/picking.interface";
+import type { PickingListItem } from "../interfaces/picking.interface";
+
+// ── Opciones de los filtros de encabezado ────────────────────────────────────
+
+// Del MISMO catálogo que pinta los badges, así que un estatus o una prioridad
+// no pueden existir en la tabla sin existir en el filtro (ni al revés). Los
+// `value` son los strings exactos del backend (`?estado=`, `?prioridad=`).
+const ESTADO_OPTIONS = [
+  ALL_FILTER_OPTION,
+  ...PICKING_ESTADO_VALUES.map((value) => ({
+    value,
+    label: PICKING_STATUS_CONFIG[value].label ?? value,
+    dotClassName: PICKING_STATUS_CONFIG[value].dot,
+  })),
+];
+
+const PRIORIDAD_OPTIONS = [
+  ALL_FILTER_OPTION,
+  ...PICKING_PRIORIDAD_ORDER.map((value) => ({
+    value,
+    label: PICKING_PRIORIDAD_CONFIG[value].label,
+    dotClassName: PICKING_PRIORIDAD_CONFIG[value].dot,
+  })),
+];
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
@@ -28,7 +54,7 @@ const ActionsCell = ({
   row,
   onViewDetail,
 }: {
-  row: PickingRow;
+  row: PickingListItem;
   onViewDetail: PickingColumnsCallbacks["onViewDetail"];
 }) => {
   const menuItems: ActionMenuItem[] = [
@@ -42,12 +68,24 @@ const ActionsCell = ({
   );
 };
 
-const columnHelper = createColumnHelper<PickingRow>();
+const columnHelper = createColumnHelper<PickingListItem>();
 
+/**
+ * Columnas del listado de pickings, para la tabla en MODO SERVIDOR
+ * (`usePickingsTable`): el backend filtra, busca, ordena y pagina, así que
+ * ninguna columna filtra ni ordena en memoria.
+ *
+ * - `meta.serverSort` = el campo de `ordering` del backend (lista blanca en
+ *   `pickingsTable`, `utils/pickingList.ts`); `prioridad` ordena por urgencia en el servidor.
+ * - `meta.serverFilter` = la clave del filtro que controla el encabezado de
+ *   esa columna. Sus opciones son fijas (los catálogos de estatus y
+ *   prioridad), nunca de las filas: la tabla solo tiene una página.
+ */
 export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
   [
     columnHelper.accessor("folio", {
       header: "Folio",
+      meta: { label: "Folio", serverSort: "folio" },
       // Abre el mismo detalle que "Ver Detalles" del menú de acciones.
       cell: (info) => (
         <button
@@ -62,6 +100,7 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
     }),
     columnHelper.accessor("pedido_folio", {
       header: "Pedido",
+      meta: { label: "Pedido", serverSort: "pedido_folio" },
       cell: (info) => (
         <PedidoFolioLink
           pedidoId={info.row.original.pedido}
@@ -72,6 +111,7 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
     }),
     columnHelper.accessor("operador_nombre", {
       header: "Operador",
+      meta: { label: "Operador", serverSort: "operador_nombre" },
       cell: (info) => (
         <div className="flex items-center gap-1.5">
           <UserIcon className="w-3 h-3 shrink-0 text-slate-400" />
@@ -82,7 +122,10 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
       ),
     }),
     columnHelper.accessor("estado", {
-      header: "Estatus",
+      meta: { label: "Estatus", serverSort: "estado", serverFilter: "estado" },
+      header: ({ column }) => (
+        <FilterHeader title="Estatus" column={column} options={ESTADO_OPTIONS} label="estatus" />
+      ),
       cell: (info) => <StatusBadge status={info.getValue()} config={PICKING_STATUS_CONFIG} />,
     }),
     // Badge de color (no texto plano) para que la urgencia se lea de un vistazo
@@ -90,22 +133,24 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
     // `PickingPriorityBreakdown` (`PICKING_PRIORIDAD_CONFIG`), así que "Alta" es
     // rose en ambos lugares.
     columnHelper.accessor("prioridad", {
-      header: "Prioridad",
-      // Sort por urgencia real, no alfabético sobre el string crudo (que
-      // ordenaría ALTA → BAJA → MEDIA, dejando la más urgente junto a la menos).
-      sortingFn: (a, b) =>
-        pickingPrioridadRank(a.original.prioridad) -
-        pickingPrioridadRank(b.original.prioridad),
+      meta: { label: "Prioridad", serverSort: "prioridad", serverFilter: "prioridad" },
+      header: ({ column }) => (
+        <FilterHeader
+          title="Prioridad"
+          column={column}
+          options={PRIORIDAD_OPTIONS}
+          label="prioridad"
+        />
+      ),
       cell: (info) => <StatusBadge status={info.getValue()} config={PICKING_PRIORIDAD_CONFIG} />,
     }),
     // `created_at` es un timestamp real (con hora y offset), así que va SIN
     // `timeZone: "UTC"`: el día se pinta en la zona del usuario (ver
-    // `formatShortDate`). Se ordena sobre el ISO crudo, no sobre el texto
-    // formateado. Misma convención que la columna "Creado" de Embarque
+    // `formatShortDate`). Misma convención que la columna "Creado" de Embarque
     // (`PackingColumns`).
     columnHelper.accessor("created_at", {
       header: "Fecha de creación",
-      sortingFn: "datetime",
+      meta: { label: "Fecha de creación", serverSort: "created_at" },
       cell: (info) => (
         <span className="text-sm text-slate-700 dark:text-slate-200">
           {formatShortDate(info.getValue())}
@@ -118,4 +163,4 @@ export const getPickingColumns = ({ onViewDetail }: PickingColumnsCallbacks) =>
       meta: { align: "center" },
       cell: ({ row }) => <ActionsCell row={row.original} onViewDetail={onViewDetail} />,
     }),
-  ] as ColumnDef<PickingRow>[];
+  ] as ColumnDef<PickingListItem>[];

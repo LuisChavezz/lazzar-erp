@@ -1,52 +1,62 @@
 "use client";
 
 import { RouteIcon, ClipboardListIcon } from "@/src/components/Icons";
-import { KpiCard, type KpiItem } from "@/src/components/KpiGrid";
-import { computePickingKpis } from "../utils/picking.utils";
+import { KpiCard, KpiGridSkeleton, type KpiItem } from "@/src/components/KpiGrid";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { usePickingKpis } from "../hooks/usePickingsTable";
+import { toPickingPrioridadCounts } from "../utils/pickingList";
 import { PickingPriorityBreakdown } from "./PickingPriorityBreakdown";
-import type { Picking } from "../interfaces/picking.interface";
 
 /**
- * KPIs del listado de Picking, derivados por completo de `Picking[]` ya
- * cargado por `usePickings()` — sin fetch propio. `estado` se deja fuera a
- * propósito: hoy todo picking nace `"Pendiente"` (no existen endpoints de
- * transición), así que un desglose por estatus sería siempre 100%/0% y no
- * aportaría información real.
+ * KPIs del listado de Picking desde `GET /wms/pickings/kpis/` (EC-921), con los
+ * MISMOS filtros y búsqueda que la tabla (`criteria` de `usePickingsTable`): las
+ * tarjetas resumen lo que la tabla lista en todas sus páginas, no la página
+ * visible. `estado` se deja fuera de las tarjetas a propósito: el filtro de
+ * estatus ya lo acota en la tabla.
  *
- * Se gatea `!isLoading && !isError` en el llamador (`PickingView`), mismo
- * patrón que `OrderStats` (`PurchaseOrderView`): sin ese gate, `items`
- * arrancaría en `[]` y las tarjetas mostrarían ceros que se leerían como datos
- * reales durante la carga inicial.
+ * Consulta PROPIA: carga y falla dentro de su sección (skeleton y aviso con
+ * "Reintentar"); la tabla no depende de ella. Un refetch fallido conserva los
+ * datos anteriores y avisa por toast (`useGuardedQuery`).
  *
  * El desglose por prioridad (`PickingPriorityBreakdown`) NO usa `KpiGrid`
- * completo a propósito: antes vivía apilado debajo de las dos tarjetas,
- * ocupando una fila propia. Aquí se arma la MISMA grilla a mano
- * (`KpiCard` suelto en vez de `<KpiGrid>`) para que el desglose entre como
- * tercer miembro de la fila (`md:col-span-2`) y quede a la misma altura que
- * "Total de Pickings"/"Líneas por Surtir" en vez de un bloque de dashboard
- * aparte.
+ * completo a propósito: se arma la MISMA grilla a mano (`KpiCard` suelto) para
+ * que el desglose entre como tercer miembro de la fila (`md:col-span-2`) y
+ * quede a la misma altura que las dos tarjetas.
  */
-export function PickingStats({ items }: { items: Picking[] }) {
-  const kpis = computePickingKpis(items);
+export function PickingStats({ criteria }: { criteria: Readonly<Record<string, string>> }) {
+  const { data, isInitialError, isFetching, refetch } = usePickingKpis(criteria);
+
+  if (!data) {
+    return isInitialError ? (
+      <SectionErrorNotice
+        title="No se pudieron cargar los indicadores"
+        message="Intenta de nuevo en unos momentos."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    ) : (
+      <KpiGridSkeleton count={4} label="Cargando indicadores de surtido" />
+    );
+  }
 
   const cards: KpiItem[] = [
     {
       label: "Total de Surtidos",
-      value: String(kpis.totalPickings),
+      value: String(data.total),
       icon: RouteIcon,
       iconBgClass: "bg-sky-50 dark:bg-sky-500/10",
       iconClass: "text-sky-500",
-      trendLabel: "Listado cargado",
+      trendLabel: "Según filtros y búsqueda",
       status: "neutral",
     },
     {
       label: "Líneas por Surtir",
-      value: String(kpis.lineasPorSurtir),
+      value: String(data.lineas_por_surtir),
       icon: ClipboardListIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
       trendLabel: "Trabajo pendiente",
-      status: kpis.lineasPorSurtir > 0 ? "negative" : "positive",
+      status: data.lineas_por_surtir > 0 ? "negative" : "positive",
     },
   ];
 
@@ -55,10 +65,7 @@ export function PickingStats({ items }: { items: Picking[] }) {
       {cards.map((item, index) => (
         <KpiCard key={`${item.label}-${index}`} item={item} />
       ))}
-      <PickingPriorityBreakdown
-        breakdown={kpis.prioridadBreakdown}
-        className="md:col-span-2"
-      />
+      <PickingPriorityBreakdown breakdown={toPickingPrioridadCounts(data)} className="md:col-span-2" />
     </div>
   );
 }

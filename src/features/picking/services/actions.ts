@@ -1,41 +1,54 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type {
   CreatePickingPayload,
   Picking,
+  PickingKpis,
+  PickingListItem,
   TransferPickingPayload,
 } from "../interfaces/picking.interface";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
 
 /**
- * Lista los pickings (`GET /wms/pickings/`).
+ * Una PÁGINA del listado de pickings (`GET /wms/pickings/?resumen=1&limit=&offset=`
+ * → `{count, next, previous, results}`), con los filtros (`estado`,
+ * `prioridad`), la búsqueda (`search`) y el orden (`ordering`) de la tabla en
+ * modo servidor (`usePickingsTable`).
  *
- * Tenant-scoped por empresa/sucursal — el usuario solo ve pickings de los
- * almacenes a los que tiene acceso (mismo comportamiento que traspasos).
- *
- * Sin parámetros: el endpoint NO acepta ningún query param (no declara
- * ninguno y el backend no monta filter backend alguno), así que devuelve
- * siempre la lista completa sin paginar. Por eso el filtrado del listado vive
- * en cliente (ver `PickingView`) — mandar `?estado=`/`?prioridad=` aquí no
- * filtraría nada, solo aparentaría hacerlo.
+ * `resumen=1` va FIJO aquí y no en la URL: las filas llegan sin
+ * `picking_detalle` ni `ordenes_trabajo` (nucleo-erp #1228); el detalle los
+ * pide por id al abrirse. Alcance por empresa/sucursal del backend.
  */
-export const getPickings = async (): Promise<Picking[]> => {
-  const response = await v1_api.get<Picking[]>("/wms/pickings/");
-  return response.data;
+export const getPickingsPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<PickingListItem>> => {
+  const { data } = await v1_api.get<PaginatedListResponse<PickingListItem>>("/wms/pickings/", {
+    params: { ...params, resumen: 1 },
+  });
+  return data;
 };
 
 /**
- * Detalle de UN picking (`GET /wms/pickings/{id}/`).
+ * Indicadores del listado (`GET /wms/pickings/kpis/`, EC-921) con los MISMOS
+ * filtros y búsqueda que la tabla (`criteria` de `useServerTable`). El backend
+ * ignora `limit`/`offset`/`ordering`.
+ */
+export const getPickingKpis = async (
+  params: Readonly<Record<string, string>>,
+): Promise<PickingKpis> => {
+  const { data } = await v1_api.get<PickingKpis>("/wms/pickings/kpis/", { params });
+  return data;
+};
+
+/**
+ * Detalle de UN picking (`GET /wms/pickings/{id}/`), con sus renglones
+ * (`picking_detalle`). La bandera derivada `esta_vencida` (que define
+ * `PickingRow`) NO viene del backend y se calcula en cliente con
+ * `mapPickingToRow`.
  *
- * `retrieve` devuelve el MISMO `PickingSerializer` que el listado (verificado en
- * `wms/api/views.py`: `PickingViewSet` usa un `serializer_class` único, sin
- * `get_serializer_class`), así que el retorno es `Picking` crudo — la bandera
- * derivada `esta_vencida` (que define `PickingRow`) NO viene del backend y se
- * calcula en cliente con `mapPickingToRow`.
- *
- * La vista de listado NO usa este action: arma el diálogo con la fila ya
- * enriquecida en caché. Existe para consumidores que solo tienen el id —p. ej.
- * la sección "Documentos relacionados" del detalle de pedido, vía
- * `usePickingDetail`. Fuera de alcance (otro almacén/tenant) responde `404`.
+ * Lo usan todos los detalles de picking (`PickingDetailByIdDialog`, vía
+ * `usePickingDetail`): el listado, el detalle de pedido y la auditoría
+ * documental. Fuera de alcance (otro almacén/tenant) responde `404`.
  */
 export const getPickingDetail = async (id: number): Promise<Picking> => {
   const response = await v1_api.get<Picking>(`/wms/pickings/${id}/`);

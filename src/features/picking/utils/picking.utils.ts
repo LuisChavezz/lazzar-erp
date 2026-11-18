@@ -1,11 +1,9 @@
-// Funciones puras de derivación para los KPIs del listado de Picking. Operan
-// sobre `Picking[]` ya cargado por `usePickings()` — sin fetch propio, mismo
-// espíritu que `computeCxcKpis` (accounts-receivable).
+// Funciones puras de derivación sobre un picking (traslado y vencimiento). Los
+// KPIs del listado los calcula el backend (`GET /wms/pickings/kpis/`).
 
 import { PICKING_ESTADOS_TRASLADABLES } from "../constants/pickingStatus";
 import type {
   Picking,
-  PickingPrioridad,
   PickingRow,
 } from "../interfaces/picking.interface";
 
@@ -25,8 +23,8 @@ export const isPickingTrasladable = (
 ): boolean => PICKING_ESTADOS_TRASLADABLES.includes(picking.estado);
 
 /**
- * DEFINICIÓN ÚNICA DE "PICKING VENCIDO", compartida por la columna "Fecha
- * Límite" y el filtro "Vencido" del listado. Si cambia, cambia aquí.
+ * DEFINICIÓN ÚNICA DE "PICKING VENCIDO", la que resalta la fecha límite en el
+ * detalle del surtido. Si cambia, cambia aquí.
  *
  * Un picking está vencido cuando cumple LAS DOS:
  *   1. no está `Completado` ni `Cancelado` (estados terminales: un picking ya
@@ -53,59 +51,8 @@ export const isPickingVencido = (picking: Picking, nowMs: number): boolean => {
   return limite < nowMs;
 };
 
-/** Enriquece un picking con los campos derivados que consume la tabla. */
+/** Enriquece un picking con los campos derivados que consume el detalle. */
 export const mapPickingToRow = (picking: Picking, nowMs: number): PickingRow => ({
   ...picking,
   esta_vencida: isPickingVencido(picking, nowMs),
 });
-
-/**
- * Mapea todo el listado contra un mismo "ahora", calculado UNA sola vez por la
- * vista, para que ninguna fila quede evaluada contra un instante distinto.
- */
-export const mapPickingsToRows = (pickings: Picking[], nowMs: number): PickingRow[] =>
-  pickings.map((picking) => mapPickingToRow(picking, nowMs));
-
-export interface PickingKpis {
-  /** Conteo simple del listado cargado. */
-  totalPickings: number;
-  /**
-   * Suma de líneas AÚN NO surtidas (`total_lineas - total_lineas_completas`)
-   * a través de todos los pickings — representa trabajo pendiente real, no el
-   * total bruto de líneas (que incluiría lo ya completado). Cada término se
-   * acota a `>= 0` por si algún registro llegara con `total_lineas_completas`
-   * mayor a `total_lineas` (dato inconsistente del backend): un valor así
-   * jamás debe restar al total en vez de sumar.
-   */
-  lineasPorSurtir: number;
-  /** Conteo de pickings por `prioridad`. */
-  prioridadBreakdown: Record<PickingPrioridad, number>;
-}
-
-export const computePickingKpis = (pickings: Picking[]): PickingKpis => {
-  let lineasPorSurtir = 0;
-  const prioridadBreakdown: Record<PickingPrioridad, number> = {
-    BAJA: 0,
-    MEDIA: 0,
-    ALTA: 0,
-  };
-
-  for (const picking of pickings) {
-    lineasPorSurtir += Math.max(0, picking.total_lineas - picking.total_lineas_completas);
-
-    // `prioridad` ya viene tipada como `PickingPrioridad` (los 3 valores del
-    // `TextChoices` del backend), pero eso es una promesa de compilación: la
-    // guarda en runtime descarta silenciosamente cualquier valor fuera del
-    // enum si el backend llegara a agregar uno, en vez de romper el conteo
-    // —igual que `StatusBadge` degrada ante un `estado` desconocido—.
-    if (picking.prioridad in prioridadBreakdown) {
-      prioridadBreakdown[picking.prioridad] += 1;
-    }
-  }
-
-  return {
-    totalPickings: pickings.length,
-    lineasPorSurtir,
-    prioridadBreakdown,
-  };
-};
