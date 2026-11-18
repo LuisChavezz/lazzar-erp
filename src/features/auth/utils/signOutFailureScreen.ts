@@ -21,6 +21,14 @@ export const SIGN_OUT_FAILURE_MESSAGE =
   "La sesión sigue abierta en este navegador. Revisa tu conexión y vuelve a intentarlo; si sigue pasando, avisa a soporte.";
 export const SIGN_OUT_FAILURE_RETRY_LABEL = "Reintentar";
 
+/**
+ * Tiempo (ms) que "Reintentar" queda desactivado tras el clic. Si para entonces
+ * la página sigue aquí, la navegación no ocurrió (p. ej. el usuario canceló un
+ * aviso `beforeunload`, como el de `RfidLabelCreateDialog`) y el botón vuelve a
+ * servir; si la página se fue, el temporizador muere con ella.
+ */
+export const SIGN_OUT_FAILURE_RETRY_REENABLE_MS = 3_000;
+
 export const showSignOutFailureScreen = (onRetry: () => void) => {
   if (typeof document === "undefined" || !document.body) return;
   if (document.getElementById(SIGN_OUT_FAILURE_SCREEN_ID)) return;
@@ -57,8 +65,11 @@ export const showSignOutFailureScreen = (onRetry: () => void) => {
     "mt-6 cursor-pointer rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:cursor-wait disabled:opacity-60";
   retry.textContent = SIGN_OUT_FAILURE_RETRY_LABEL;
   retry.addEventListener("click", () => {
-    // Un solo intento por clic: la navegación ya está en curso.
+    // Evita el doble clic mientras la navegación arranca.
     retry.disabled = true;
+    setTimeout(() => {
+      retry.disabled = false;
+    }, SIGN_OUT_FAILURE_RETRY_REENABLE_MS);
     onRetry();
   });
 
