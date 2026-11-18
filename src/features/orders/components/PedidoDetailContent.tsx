@@ -98,6 +98,8 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // cada una vuelve a SU listado. Misma convención de llave por ORIGEN concreto
   // que `embroidery`.
   picking: { href: "/wms/picking", label: "Volver a Surtido" },
+  // Avance de surtido por pedido (EC-913): vuelve a su listado.
+  "order-fulfillment": { href: "/wms/order-fulfillment", label: "Volver a Avance de surtido" },
   packing: { href: "/wms/packing", label: "Volver a Embarque" },
   shipping: { href: "/wms/shipping", label: "Volver a Envíos" },
   procurement: { href: "/procurement/orders", label: "Volver a Compras" },
