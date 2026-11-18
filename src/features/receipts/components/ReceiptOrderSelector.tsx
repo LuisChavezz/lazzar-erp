@@ -10,6 +10,9 @@
  * filtra y muestra. Compra es el valor por defecto (preserva el comportamiento
  * previo). Al cambiar de tipo se limpia la selección, ya que pertenece a la
  * otra lista.
+ *
+ * La pestaña Producción lista también las SM pendientes de recibir (EC-912):
+ * ver `utils/receiptCandidates.ts`.
  */
 
 "use client";
@@ -29,15 +32,25 @@ import {
 } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
 import type {
   ReceiptOnboardingPurchaseOrder,
-  ReceiptOnboardingProductionOrder,
   ReceiptOrderCandidate,
   ReceiptOrderType,
 } from "../interfaces/receipt-onboarding.interface";
+import {
+  buildProductionTabRows,
+  ocRowKey,
+  productionTabRowCandidate,
+  productionTabRowDisabledReason,
+  productionTabRowKey,
+  productionTabRowMatches,
+  salidaMaquilaOrigenNombre,
+  type ProductionTabRow,
+} from "../utils/receiptCandidates";
 
 interface ReceiptOrderSelectorProps {
   orderType: ReceiptOrderType;
   onOrderTypeChange: (type: ReceiptOrderType) => void;
-  selectedOrderId: number | null;
+  /** Llave de la fila elegida (`candidateKey`): los ids de OP y SM pueden coincidir. */
+  selectedKey: string | null;
   onSelect: (candidate: ReceiptOrderCandidate | null) => void;
 }
 
@@ -59,7 +72,7 @@ const PURCHASE_TYPE_FILTER_OPTIONS: { value: PurchaseTypeFilter; label: string }
 export function ReceiptOrderSelector({
   orderType,
   onOrderTypeChange,
-  selectedOrderId,
+  selectedKey,
   onSelect,
 }: ReceiptOrderSelectorProps) {
   const { onboardingData, isLoading, isInitialError: isError, error } = useReceiptOnboardingData();
@@ -70,9 +83,15 @@ export function ReceiptOrderSelector({
     () => onboardingData?.busqueda.ordenes_compra ?? [],
     [onboardingData?.busqueda.ordenes_compra],
   );
-  const productionOrders = useMemo(
-    () => onboardingData?.busqueda.ordenes_produccion ?? [],
-    [onboardingData?.busqueda.ordenes_produccion],
+  // OPs y SMs pendientes en una sola lista (EC-912). Cada fila con llave
+  // propia (`op-`/`sm-`): la OP 12 y la SM 12 son filas distintas.
+  const productionRows = useMemo(
+    () =>
+      buildProductionTabRows(
+        onboardingData?.busqueda.ordenes_produccion ?? [],
+        onboardingData?.busqueda.salidas_maquila ?? [],
+      ),
+    [onboardingData?.busqueda.ordenes_produccion, onboardingData?.busqueda.salidas_maquila],
   );
 
   const filteredPurchaseOrders =
@@ -81,8 +100,8 @@ export function ReceiptOrderSelector({
       : purchaseOrders.filter((order) => order.tipo_compra === purchaseTypeFilter);
 
   const isCompra = orderType === "compra";
-  const activeCount = isCompra ? purchaseOrders.length : productionOrders.length;
-  const bothEmpty = purchaseOrders.length === 0 && productionOrders.length === 0;
+  const activeCount = isCompra ? purchaseOrders.length : productionRows.length;
+  const bothEmpty = purchaseOrders.length === 0 && productionRows.length === 0;
 
   const handleTypeChange = (next: ReceiptOrderType) => {
     if (next === orderType) return;
@@ -150,7 +169,7 @@ export function ReceiptOrderSelector({
           <p className="text-sm text-slate-400 text-center py-6">
             {isCompra
               ? "No hay órdenes de compra disponibles."
-              : "No hay órdenes de producción disponibles."}
+              : "No hay órdenes de producción ni salidas a maquila por recibir."}
           </p>
         ) : isCompra ? (
           <>
@@ -178,10 +197,10 @@ export function ReceiptOrderSelector({
                 tipoCompraLabel(order.tipo_compra).toLowerCase().includes(term)
               }
               getKey={(order) => order.id}
-              isSelected={(order) => order.id === selectedOrderId}
+              isSelected={(order) => ocRowKey(order.id) === selectedKey}
               onSelect={(order) =>
                 onSelect(
-                  selectedOrderId === order.id
+                  selectedKey === ocRowKey(order.id)
                     ? null
                     : { type: "compra", order },
                 )
@@ -206,37 +225,54 @@ export function ReceiptOrderSelector({
             />
           </>
         ) : (
-          <SearchableSelectList<ReceiptOnboardingProductionOrder>
+          <SearchableSelectList<ProductionTabRow>
             key="produccion"
-            items={productionOrders}
-            searchPlaceholder="Buscar por folio..."
-            filterPredicate={(order, term) =>
-              (order.folio ?? "").toLowerCase().includes(term)
-            }
-            getKey={(order) => order.id}
-            isSelected={(order) => order.id === selectedOrderId}
-            onSelect={(order) =>
+            items={productionRows}
+            searchPlaceholder="Buscar por folio o maquilero..."
+            filterPredicate={productionTabRowMatches}
+            getKey={productionTabRowKey}
+            isSelected={(row) => productionTabRowKey(row) === selectedKey}
+            getItemDisabledReason={productionTabRowDisabledReason}
+            onSelect={(row) =>
               onSelect(
-                selectedOrderId === order.id
+                selectedKey === productionTabRowKey(row)
                   ? null
-                  : { type: "produccion", order },
+                  : productionTabRowCandidate(row),
               )
             }
             emptyMessage="No hay órdenes de producción disponibles."
             noResultsMessage="No se encontraron órdenes de producción"
             renderIndicator={renderRadioIndicator}
-            renderContent={(order) => (
-              <>
-                <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                  {order.folio}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {order.pedido_id !== null
-                    ? `Pedido #${order.pedido_id}`
-                    : `Inicio: ${formatLocalDate(order.fecha_inicio)}`}
-                </p>
-              </>
-            )}
+            renderContent={(row) =>
+              row.kind === "op" ? (
+                <>
+                  <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    {row.order.folio}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {row.order.pedido_id !== null
+                      ? `Pedido #${row.order.pedido_id}`
+                      : `Inicio: ${formatLocalDate(row.order.fecha_inicio)}`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    {row.salidaMaquila.origen_folio}
+                  </p>
+                  {/* Sin el `total` de la SM: el onboarding lo manda sin
+                      revisar R-PRODUCCION-COSTOS. */}
+                  <p className="flex flex-wrap min-w-0 gap-x-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="whitespace-nowrap">
+                      {row.salidaMaquila.folio} · {salidaMaquilaOrigenNombre(row.salidaMaquila)}
+                    </span>
+                    <span className="truncate max-w-full">
+                      · {row.salidaMaquila.centro_confeccion_nombre}
+                    </span>
+                  </p>
+                </>
+              )
+            }
           />
         )}
       </div>

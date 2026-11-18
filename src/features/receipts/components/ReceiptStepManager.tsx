@@ -22,6 +22,7 @@ import { ArrowRight } from "lucide-react";
 import { StepProgressBar } from "@/src/components/StepProgressBar";
 import { useReceiptStepper, STEP_LABELS } from "../hooks/useReceiptStepper";
 import { ReceiptOrderSelector } from "./ReceiptOrderSelector";
+import { candidateKey } from "../utils/receiptCandidates";
 import ReceiptForm from "./ReceiptForm";
 import type {
   ReceiptOrderCandidate,
@@ -64,7 +65,7 @@ export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
           <ReceiptOrderSelector
             orderType={orderType}
             onOrderTypeChange={setOrderType}
-            selectedOrderId={selectedOrder?.order.id ?? null}
+            selectedKey={selectedOrder ? candidateKey(selectedOrder) : null}
             onSelect={setSelectedOrder}
           />
         )}

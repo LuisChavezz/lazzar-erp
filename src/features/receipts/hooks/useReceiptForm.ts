@@ -4,7 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
-import { ReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.schema";
+import { buildReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.schema";
 import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
 import { useCreateReceipt } from "./useCreateReceipt";
 import type {
@@ -18,6 +18,11 @@ import {
   almacenPreseleccionado,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 import { tieneCantidadRecibida } from "../utils/receiptQuantities";
+import {
+  candidateHasLines,
+  candidateKey,
+  candidateSucursalId,
+} from "../utils/receiptCandidates";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
@@ -97,9 +102,14 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   const allWarehouses = onboardingData?.catalogos.almacenes ?? [];
   // Solo se ofrecen los almacenes de la sucursal de la orden (EC-796), que
   // son los únicos que el backend acepta al recibir, sea OC u OP (compara
-  // contra `oc.sucursal` u `op.sucursal`); los que no tienen sucursal también
-  // los rechaza, así que quedan fuera.
-  const warehouses = almacenesDeSucursal(allWarehouses, candidate.order.sucursal_id);
+  // contra `oc.sucursal` u `op.sucursal`, o la de la SM de OB/OR); los que no
+  // tienen sucursal también los rechaza, así que quedan fuera.
+  const warehouses = almacenesDeSucursal(allWarehouses, candidateSucursalId(candidate));
+
+  // La SM de OB/OR se recibe sin renglones (`detalle: []`, EC-912): ahí no se
+  // exige ninguna cantidad.
+  const conRenglones = candidateHasLines(candidate);
+  const formSchema = buildReceiptFormSchema({ conRenglones });
 
   // Almacén destino elegido en la OC, si está entre los ofrecidos. Se calcula
   // UNA vez al montar (el formulario se monta de nuevo con cada orden elegida):
@@ -152,7 +162,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
     field: ReceiptFormField,
     value: ReceiptFormValues[ReceiptFormField],
   ) => {
-    const fieldSchema = ReceiptFormSchema.shape[field];
+    const fieldSchema = formSchema.shape[field];
     const parsed = fieldSchema.safeParse(value);
     if (parsed.success) {
       setClientErrors((prev) => {
@@ -171,7 +181,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
   // ── Valida formulario completo ────────────────────────────────────────
   const validateForm = (values: ReceiptFormValues) => {
-    const parsed = ReceiptFormSchema.safeParse(values);
+    const parsed = formSchema.safeParse(values);
     if (parsed.success) {
       setClientErrors({});
       return true;
@@ -227,39 +237,58 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
 
       let payload: ReceiptCreatePayload;
 
-      if (candidate.type === "compra") {
-        const detalle = reduceDetalle<
-          typeof candidate.order.detalle[number],
-          ReceiptCreatePurchaseOrderDetalle
-        >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
-          orden_compra_detalle: d.id,
-          cantidad_recibida,
-        }));
+      switch (candidate.type) {
+        case "compra": {
+          const detalle = reduceDetalle<
+            typeof candidate.order.detalle[number],
+            ReceiptCreatePurchaseOrderDetalle
+          >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
+            orden_compra_detalle: d.id,
+            cantidad_recibida,
+          }));
 
-        payload = {
-          recepcion: {
-            orden_compra: candidate.order.id,
-            ...recepcionBase,
-          },
-          detalle,
-        };
-      } else {
-        const detalle = reduceDetalle<
-          typeof candidate.order.detalle[number],
-          ReceiptCreateProductionOrderDetalle
-        >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
-          orden_produccion_detalle: d.id,
-          cantidad_recibida,
-          producto_variante: d.producto_variante_id ?? null,
-        }));
+          payload = {
+            recepcion: {
+              orden_compra: candidate.order.id,
+              ...recepcionBase,
+            },
+            detalle,
+          };
+          break;
+        }
+        case "produccion": {
+          const detalle = reduceDetalle<
+            typeof candidate.order.detalle[number],
+            ReceiptCreateProductionOrderDetalle
+          >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
+            orden_produccion_detalle: d.id,
+            cantidad_recibida,
+            producto_variante: d.producto_variante_id ?? null,
+          }));
 
-        payload = {
-          recepcion: {
-            orden_produccion: candidate.order.id,
-            ...recepcionBase,
-          },
-          detalle,
-        };
+          payload = {
+            recepcion: {
+              orden_produccion: candidate.order.id,
+              // SM de esta OP: misma recepción de OP, y el backend cierra la SM.
+              ...(candidate.salidaMaquila
+                ? { salida_maquila: candidate.salidaMaquila.id }
+                : {}),
+              ...recepcionBase,
+            },
+            detalle,
+          };
+          break;
+        }
+        case "salida-maquila":
+          // SM de OB/OR: solo cabecera; no mueve inventario.
+          payload = {
+            recepcion: {
+              salida_maquila: candidate.salidaMaquila.id,
+              ...recepcionBase,
+            },
+            detalle: [],
+          };
+          break;
       }
 
       createReceiptMutation.mutate(payload, {
@@ -298,7 +327,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
   };
 
   // ── ID único para key del formulario ──────────────────────────────────
-  const formKey = `receipt-${candidate.type}-${candidate.order.id}`;
+  const formKey = `receipt-${candidateKey(candidate)}`;
 
   return {
     form,
@@ -307,6 +336,7 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
+    conRenglones,
     candidate,
     getError,
     clearFieldErrors,
