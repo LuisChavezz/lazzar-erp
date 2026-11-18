@@ -25,23 +25,26 @@ export class CalendarEventsPaginationError extends Error {
  * con ese error; si se rebasa `maxPages` o el backend repite un token (lo que
  * sería un bucle), rechaza con `CalendarEventsPaginationError`. La pantalla
  * muestra entonces el estado de error en vez de un calendario incompleto.
+ *
+ * `signal` es el de la consulta de TanStack: llega a cada petición y, si la
+ * consulta se cancela o la reemplaza otra (p. ej. la invalidación tras crear
+ * un evento), no se pide ninguna página más.
  */
 export const fetchAllCalendarEventPages = async (
-  fetchPage: (pageToken: string | undefined) => Promise<GoogleEventsResponse>,
-  maxPages: number = MAX_CALENDAR_EVENT_PAGES,
+  fetchPage: (pageToken: string | undefined, signal?: AbortSignal) => Promise<GoogleEventsResponse>,
+  { signal, maxPages = MAX_CALENDAR_EVENT_PAGES }: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GoogleEventsResponse> => {
   const events: GoogleCalendarEvent[] = [];
   const seenTokens = new Set<string>();
   let pageToken: string | undefined;
-  let ok = true;
 
   for (let page = 0; page < maxPages; page += 1) {
-    const response = await fetchPage(pageToken);
-    ok = ok && response.ok !== false;
+    signal?.throwIfAborted();
+    const response = await fetchPage(pageToken, signal);
     events.push(...(response.events ?? []));
 
     const next = response.nextPageToken || undefined;
-    if (!next) return { ok, events };
+    if (!next) return { ok: true, events };
     if (seenTokens.has(next)) {
       throw new CalendarEventsPaginationError("El calendario devolvió una página repetida.");
     }

@@ -37,8 +37,11 @@ export const googleGetEmailMessageById = async (messageId: string): Promise<Goog
   return response.data;
 }
 
-export const googleGetCalendarEvents = async (params: Record<string, string>): Promise<GoogleEventsResponse> => {
-  const response = await v1_api.get<GoogleEventsResponse>("/ai/google/calendar/events/", { params });
+export const googleGetCalendarEvents = async (
+  params: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<GoogleEventsResponse> => {
+  const response = await v1_api.get<GoogleEventsResponse>("/ai/google/calendar/events/", { params, signal });
   return response.data;
 }
 

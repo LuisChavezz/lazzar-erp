@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { GoogleEventsResponse } from "../interfaces/google.interface";
 import { googleGetCalendarEvents } from "../services/actions";
-import { fetchAllCalendarEventPages } from "../utils/fetchAllCalendarEventPages";
+import {
+  CalendarEventsPaginationError,
+  fetchAllCalendarEventPages,
+} from "../utils/fetchAllCalendarEventPages";
 
 interface UseGoogleCalendarEventsOptions {
   /** Inicio del rango de tiempo en formato ISO 8601. Por defecto: 2 meses atrás. */
@@ -62,10 +65,17 @@ export const useGoogleCalendarEvents = ({
     useGuardedQuery<GoogleEventsResponse>(
       {
         queryKey: ["google", "calendar", "events", params],
-        queryFn: () =>
-          fetchAllCalendarEventPages((pageToken) =>
-            googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params),
+        queryFn: ({ signal }) =>
+          fetchAllCalendarEventPages(
+            (pageToken, pageSignal) =>
+              googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params, pageSignal),
+            { signal },
           ),
+        // Un error de paginación (demasiadas páginas, token repetido) es
+        // determinista: reintentarlo solo repetiría toda la cadena. El resto
+        // conserva el reintento único del `QueryClient`.
+        retry: (failureCount, retryError) =>
+          !(retryError instanceof CalendarEventsPaginationError) && failureCount < 1,
         enabled,
       },
       {
