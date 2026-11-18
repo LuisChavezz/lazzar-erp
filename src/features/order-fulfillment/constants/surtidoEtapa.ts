@@ -1,4 +1,27 @@
-import type { SurtidoEtapa } from "../interfaces/order-fulfillment.interface";
+import {
+  getPedidoEstatusConfig,
+  PEDIDO_ESTATUS_CONFIG,
+} from "@/src/features/orders/constants/pedidoStatus";
+import type { SurtidoEtapa, SurtidoTotales } from "../interfaces/order-fulfillment.interface";
+
+/**
+ * ¿La barra de % surtido se pinta "terminada" (verde + palomita)? Solo si lo
+ * surtido cubre lo pedido. No se deriva de la etapa: DESPACHADO solo afirma
+ * despachadas ≥ pedidas, y con agregados que no cuadran (nucleo-erp#1246) un
+ * pedido despachado puede mostrar menos de 100% surtido.
+ */
+export const isSurtidoCompleto = ({ pedidas, surtidas }: Pick<SurtidoTotales, "pedidas" | "surtidas">) =>
+  pedidas > 0 && surtidas >= pedidas;
+
+/**
+ * Etiqueta del estatus del pedido: la del mapa del ERP (`estatus_display` llega
+ * en mayúsculas, "AUTORIZADA") y, para un código fuera del mapa, el texto del
+ * backend antes que el "Desconocido (n)" genérico.
+ */
+export const surtidoEstatusLabel = (estatus: number, estatusDisplay: string | null | undefined) =>
+  estatus in PEDIDO_ESTATUS_CONFIG || !estatusDisplay
+    ? getPedidoEstatusConfig(estatus).label
+    : estatusDisplay;
 
 interface EtapaConfig {
   label: string;

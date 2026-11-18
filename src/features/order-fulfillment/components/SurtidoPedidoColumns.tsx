@@ -4,17 +4,12 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { ListIcon } from "@/src/components/Icons";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import {
-  getPedidoEstatusConfig,
-  PEDIDO_ESTATUS_CONFIG,
-} from "@/src/features/orders/constants/pedidoStatus";
+import { getPedidoEstatusConfig } from "@/src/features/orders/constants/pedidoStatus";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type { SurtidoPedido } from "../interfaces/order-fulfillment.interface";
+import { isSurtidoCompleto, surtidoEstatusLabel } from "../constants/surtidoEtapa";
 import { useSurtidoPedidoRowActionsContext } from "../hooks/useSurtidoPedidoRowActions";
 import { SurtidoEtapaChip } from "./SurtidoEtapaChip";
-
-/** La barra se pinta "terminada" solo cuando el BACKEND lo afirma con su etapa. */
-export const isSurtidoCompleto = (etapa: string) => etapa === "SURTIDO" || etapa === "DESPACHADO";
 
 /**
  * Primera columna: punto y pill de estatus del pedido, el folio (enlace al
@@ -24,9 +19,7 @@ export const isSurtidoCompleto = (etapa: string) => etapa === "SURTIDO" || etapa
 const PedidoCell = ({ pedido }: { pedido: SurtidoPedido }) => {
   const { onViewDetail } = useSurtidoPedidoRowActionsContext();
   const estatus = getPedidoEstatusConfig(pedido.estatus);
-  // `estatus_display` llega en mayúsculas ("AUTORIZADA"): se usa la etiqueta
-  // del mapa del ERP y solo un estatus fuera del mapa cae al texto del backend.
-  const estatusLabel = PEDIDO_ESTATUS_CONFIG[pedido.estatus]?.label ?? (pedido.estatus_display || estatus.label);
+  const estatusLabel = surtidoEstatusLabel(pedido.estatus, pedido.estatus_display);
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -133,7 +126,7 @@ export const surtidoPedidoColumns: ColumnDef<SurtidoPedido>[] = [
     cell: ({ row }) => (
       <RowProgressBar
         percentage={row.original.pct_surtido}
-        complete={isSurtidoCompleto(row.original.etapa)}
+        complete={isSurtidoCompleto(row.original)}
       />
     ),
   },

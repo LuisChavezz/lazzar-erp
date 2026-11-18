@@ -10,13 +10,13 @@ import {
   LineItemsTable,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { PEDIDO_ESTATUS_CONFIG } from "@/src/features/orders/constants/pedidoStatus";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import type { SurtidoPedido } from "../interfaces/order-fulfillment.interface";
+import { isSurtidoCompleto, surtidoEstatusLabel } from "../constants/surtidoEtapa";
 import { useSurtidoPedidoDetalle } from "../hooks/useSurtidoPedidoDetalle";
 import { SurtidoEtapaChip } from "./SurtidoEtapaChip";
-import { isSurtidoCompleto } from "./SurtidoPedidoColumns";
 
 interface SurtidoPedidoDetailDialogProps {
   /** Fila con la que se abrió: da título mientras llega el detalle. */
@@ -41,15 +41,10 @@ export function SurtidoPedidoDetailDialog({
   open,
   onOpenChange,
 }: SurtidoPedidoDetailDialogProps) {
-  const {
-    data: detalle,
-    isLoading,
-    isInitialError,
-    isDefinitiveError,
-    error,
-  } = useSurtidoPedidoDetalle(pedido?.id ?? null);
-
-  const folio = detalle?.folio ?? pedido?.folio ?? null;
+  // Copia del pedido tal como estaba al ABRIR: el título no mezcla esa copia
+  // con la fila viva, y `session.id` monta un contenido nuevo en cada apertura.
+  const session = useDialogSession(open, pedido);
+  const titulo = session.snapshot;
 
   return (
     <MainDialog
@@ -67,15 +62,30 @@ export function SurtidoPedidoDetailDialog({
               Avance de surtido por talla
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5 truncate">
-              <span className="font-mono">{folio || "—"}</span>
-              {(detalle?.cliente_nombre ?? pedido?.cliente_nombre) && (
-                <> · {detalle?.cliente_nombre ?? pedido?.cliente_nombre}</>
-              )}
+              <span className="font-mono">{titulo?.folio || "—"}</span>
+              {titulo?.cliente_nombre && <> · {titulo.cliente_nombre}</>}
             </p>
           </div>
         </div>
       }
     >
+      {titulo && <SurtidoPedidoDetailContent key={session.id} pedidoId={titulo.id} />}
+    </MainDialog>
+  );
+}
+
+/** Cuerpo del diálogo: consulta y pinta el detalle de UNA apertura. */
+function SurtidoPedidoDetailContent({ pedidoId }: { pedidoId: number }) {
+  const {
+    data: detalle,
+    isLoading,
+    isInitialError,
+    isDefinitiveError,
+    error,
+  } = useSurtidoPedidoDetalle(pedidoId);
+
+  return (
+    <>
       {isLoading && <Loader title="Cargando avance por talla..." className="py-16" />}
 
       {isDefinitiveError && (
@@ -98,7 +108,7 @@ export function SurtidoPedidoDetailDialog({
             <span>Etapa del pedido:</span>
             <SurtidoEtapaChip etapa={detalle.etapa} />
             <span className="ml-2">
-              Estatus: {PEDIDO_ESTATUS_CONFIG[detalle.estatus]?.label ?? textOrDash(detalle.estatus_display)}
+              Estatus: {surtidoEstatusLabel(detalle.estatus, detalle.estatus_display)}
             </span>
           </div>
 
@@ -167,7 +177,7 @@ export function SurtidoPedidoDetailDialog({
                   <td className="px-2.5 py-2">
                     <RowProgressBar
                       percentage={renglon.pct_surtido}
-                      complete={isSurtidoCompleto(renglon.etapa)}
+                      complete={isSurtidoCompleto(renglon)}
                     />
                   </td>
                 </tr>
@@ -176,6 +186,6 @@ export function SurtidoPedidoDetailDialog({
           )}
         </div>
       )}
-    </MainDialog>
+    </>
   );
 }

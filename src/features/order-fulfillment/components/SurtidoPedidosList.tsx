@@ -45,6 +45,8 @@ export const SurtidoPedidosList = () => {
           setFilter={table.setFilter}
           branches={branches}
           isBranchesLoading={isBranchesLoading}
+          hasActiveFilters={table.hasActiveCriteria}
+          onClearFilters={table.clear}
         />
 
         <DataTable
@@ -54,7 +56,10 @@ export const SurtidoPedidosList = () => {
           onRefetch={() => queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY })}
           getRowId={(row) => String(row.id)}
           searchPlaceholder="Buscar por folio o cliente..."
-          emptyMessage="No hay pedidos con estos filtros"
+          // Solo se lee en la vista por defecto: con filtros o búsqueda activos
+          // el modo servidor de DataTable pone su propio texto ("No hay
+          // resultados con los filtros aplicados") y su "Limpiar filtros".
+          emptyMessage="No hay pedidos autorizados ni en proceso"
           errorTitle="Error al cargar el avance de surtido"
           loadingAriaLabel="Cargando avance de surtido"
         />

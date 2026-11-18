@@ -24,6 +24,10 @@ interface SurtidoPedidosFiltersProps {
   ) => void;
   branches: Branch[];
   isBranchesLoading: boolean;
+  /** Hay filtros o búsqueda activos (`hasActiveCriteria` de la tabla). */
+  hasActiveFilters: boolean;
+  /** Vuelve a la vista por defecto: sin filtros ni búsqueda, página 1. */
+  onClearFilters: () => void;
 }
 
 /**
@@ -36,9 +40,11 @@ export function SurtidoPedidosFilters({
   setFilter,
   branches,
   isBranchesLoading,
+  hasActiveFilters,
+  onClearFilters,
 }: SurtidoPedidosFiltersProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <FormSelect
         label="Estatus del pedido"
         value={filters.estatus ?? ""}
@@ -100,6 +106,18 @@ export function SurtidoPedidosFilters({
           </option>
         ))}
       </FormSelect>
+
+      <div className="flex items-end">
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="mb-3 text-sm font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+          >
+            Limpiar filtros
+          </button>
+        )}
+      </div>
     </div>
   );
 }
