@@ -41,7 +41,9 @@ export const DialogHeader = ({
           <Icon className="w-5 h-5" aria-hidden="true" />
         </span>
       )}
-      <div>
+      {/* `--dialog-close-clearance` lo fija `MainDialog` (sin `headerAction`):
+          aparta el texto de la X sin acortar el divisor de abajo. */}
+      <div className="pr-[var(--dialog-close-clearance,0px)]">
         <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
           {title}
         </h1>
