@@ -8,6 +8,7 @@ import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatC
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
 import type { SalidaMaquilaListItem } from "../interfaces/salida-maquila.interface";
+import { salidaMaquilaFolio, salidaMaquilaOrigenRef } from "../constants/salidaMaquilaOrigen";
 import { SalidaMaquilaOrigenLink } from "./SalidaMaquilaOrigenLink";
 
 const columnHelper = createColumnHelper<SalidaMaquilaListItem>();
@@ -26,18 +27,20 @@ const totalColumn = columnHelper.accessor((row) => (row.total == null ? undefine
 
 const baseColumns = (onView: (id: number) => void) =>
   [
-    columnHelper.accessor("folio", {
+    // `folio_display` ("SM-00012 · OR-00006") para pantalla y búsqueda.
+    columnHelper.accessor((row) => salidaMaquilaFolio(row), {
+      id: "folio",
       header: "Folio",
-      size: 170,
+      size: 220,
       cell: ({ row }) => (
         <FolioActionMenu
-          folio={row.original.folio}
+          folio={salidaMaquilaFolio(row.original)}
           items={[{ label: "Ver detalle", icon: ViewIcon, onSelect: () => onView(row.original.id) }]}
           status={<StatusBadge status={row.original.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />}
         />
       ),
     }),
-    columnHelper.accessor((row) => row.origen_folio ?? row.op_folio ?? row.ob_folio ?? "", {
+    columnHelper.accessor((row) => salidaMaquilaOrigenRef(row)?.folio ?? "", {
       id: "origen",
       header: "Origen",
       size: 180,
