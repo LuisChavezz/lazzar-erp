@@ -19,6 +19,7 @@ import type {
 } from "../interfaces/salida-maquila.interface";
 import {
   draftProblems,
+  hasInvalidPrice,
   hasInvalidQty,
   initialDraft,
   lineImporte,
@@ -35,7 +36,7 @@ const problemText = (problem: DraftProblem, origen: SalidaMaquilaOrigen): string
     cantidad: "Las piezas deben ser números enteros.",
     sin_piezas: "Captura cuántas piezas salen.",
     excede: `Son más piezas de las que quedan por enviar de esta ${origen}.`,
-    precio: "Cada prenda que sale necesita su precio de maquila (mayor que 0).",
+    precio: "Cada prenda que sale necesita su precio de maquila (mayor que 0, con punto decimal).",
   })[problem];
 
 /**
@@ -271,7 +272,8 @@ function SalidaMaquilaForm({
                 const lineError = serverError?.lines[l.detalleId];
                 // Al momento, no solo tras enviar: lo tecleado se queda como está.
                 const qtyBad = hasInvalidQty(l);
-                const priceBad = touched && lineQty(l) > 0 && !(Number(l.precio) > 0);
+                // Lo tecleado no válido, al momento; el que falta, tras enviar.
+                const priceBad = hasInvalidPrice(l) || (touched && lineQty(l) > 0 && l.precio.trim() === "");
                 return (
                   <tr key={l.detalleId} className={lineError ? "bg-rose-50/60 dark:bg-rose-500/5" : undefined}>
                     <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
@@ -307,7 +309,7 @@ function SalidaMaquilaForm({
                         aria-invalid={priceBad || undefined}
                         value={l.precio}
                         disabled={isPending}
-                        onChange={(e) => update(l.detalleId, { precio: e.target.value.replace(/[^\d.]/g, "") })}
+                        onChange={(e) => update(l.detalleId, { precio: e.target.value })}
                         className={`w-24 rounded-lg border bg-white dark:bg-zinc-900 px-2 py-1 text-right tabular-nums text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 ${
                           priceBad ? "border-rose-400" : "border-slate-200 dark:border-white/10"
                         }`}

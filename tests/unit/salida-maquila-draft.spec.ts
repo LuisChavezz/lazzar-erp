@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   draftProblems,
+  hasInvalidPrice,
   hasInvalidQty,
   initialDraft,
   lineQty,
@@ -58,6 +59,20 @@ test.describe("salida a maquila: borrador", () => {
     }
     expect(lineQty(line(" 25 ", "10"))).toBe(25);
     expect(hasInvalidQty(line("", "10"))).toBe(false);
+  });
+
+  test("precios no válidos no se reinterpretan: \"3,50\" no es 350 (EC-911)", () => {
+    for (const texto of ["3,50", "$3.50", "3.50.1", "0", "0.00", "1.23456"]) {
+      const l = line("2", texto);
+      expect(hasInvalidPrice(l)).toBe(true);
+      expect(draftProblems([l], 10)).toContain("precio");
+    }
+    expect(hasInvalidPrice(line("2", " 3.50 "))).toBe(false);
+    expect(toDetalles([line("2", " 3.50 ")], "OB")).toEqual([
+      { ob_detalle: 1, descripcion: "x", cantidad: "2", precio_unitario: "3.50" },
+    ]);
+    // Un precio mal escrito bloquea aunque su renglón no lleve piezas.
+    expect(draftProblems([line("2", "3.5", 1), line("", "3,5", 2)], 10)).toEqual(["precio"]);
   });
 
   test("solo envía renglones con piezas, con el campo de renglón de la OP", () => {

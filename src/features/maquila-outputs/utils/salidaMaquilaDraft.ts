@@ -111,8 +111,21 @@ export const lineQty = (l: SalidaMaquilaDraftLine): number =>
 export const hasInvalidQty = (l: SalidaMaquilaDraftLine): boolean =>
   l.cantidad.trim() !== "" && !QTY.test(l.cantidad.trim());
 
-export const lineImporte = (l: SalidaMaquilaDraftLine): number =>
-  PRICE.test(l.precio) ? lineQty(l) * Number(l.precio) : 0;
+/**
+ * Precio del renglón: un decimal con punto (hasta 4 decimales) mayor que 0, tal
+ * cual se tecleó (espacios aparte), o `null`. Igual que las piezas, nunca se
+ * reinterpreta: quitar la coma convertía "3,50" en 350.
+ */
+export const linePrice = (l: SalidaMaquilaDraftLine): number | null => {
+  const text = l.precio.trim();
+  return PRICE.test(text) && Number(text) > 0 ? Number(text) : null;
+};
+
+/** ¿Hay algo escrito en precio que no es un precio válido (> 0)? */
+export const hasInvalidPrice = (l: SalidaMaquilaDraftLine): boolean =>
+  l.precio.trim() !== "" && linePrice(l) === null;
+
+export const lineImporte = (l: SalidaMaquilaDraftLine): number => lineQty(l) * (linePrice(l) ?? 0);
 
 export type DraftProblem = "sin_piezas" | "excede" | "cantidad" | "precio";
 
@@ -126,7 +139,7 @@ export const draftProblems = (lines: SalidaMaquilaDraftLine[], quedan: number): 
   const piezas = lines.reduce((acc, l) => acc + lineQty(l), 0);
   if (piezas <= 0) problems.push("sin_piezas");
   if (piezas > quedan) problems.push("excede");
-  if (lines.some((l) => lineQty(l) > 0 && !(PRICE.test(l.precio) && Number(l.precio) > 0))) {
+  if (lines.some((l) => (lineQty(l) > 0 && linePrice(l) === null) || hasInvalidPrice(l))) {
     problems.push("precio");
   }
   return problems;
