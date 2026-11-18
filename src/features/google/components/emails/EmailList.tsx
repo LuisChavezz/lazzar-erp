@@ -237,7 +237,7 @@ export const EmailList = ({
           <div className="px-4 py-10">
             <SectionErrorNotice
               title="No se pudieron cargar los correos"
-              message={errorMessage ?? "Ocurrió un problema al consultar tus correos de Gmail."}
+              message={errorMessage}
               onRetry={() => void refetch()}
               isRetrying={isFetching}
             />
