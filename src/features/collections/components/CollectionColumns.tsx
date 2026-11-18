@@ -3,6 +3,7 @@ import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
+import { createSucursalColumn, sucursalHeaderFilter } from "@/src/features/branches/components/sucursalColumn";
 import { ShieldCheckIcon, ViewIcon } from "@/src/components/Icons";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { safeParseAmount } from "@/src/utils/formatCurrency";
@@ -110,16 +111,8 @@ export const getCollectionColumns = () =>
         <span className="font-medium text-slate-600 dark:text-slate-300">{info.getValue()}</span>
       ),
     }),
-    // Nombre resuelto por el backend (EC-874), como en el resto de listados. «—»
-    // en un Borrador sin líneas; la búsqueda no indexa un texto inventado.
-    columnHelper.accessor((row) => row.sucursal_nombre ?? "", {
-      id: "sucursal_nombre",
-      size: 150,
-      header: "Sucursal",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
-      ),
-    }),
+    // «—» en un Borrador sin líneas (EC-874).
+    createSucursalColumn<CobroRow>({ size: 150 }),
     // Una cuenta SIN alias es un dato real, no un nombre sin resolver: la celda
     // pinta «—» y la búsqueda no indexa un texto inventado (`Cuenta #N`).
     columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
@@ -194,6 +187,8 @@ export const getCollectionColumns = () =>
  *   comparan contra el id crudo y se rotulan con el nombre o alias (o
  *   `Cliente #N` / `Cuenta #N`), con buscador; dos homónimos no se mezclan. Los
  *   dos son obligatorios en el modelo: no hay opción "Sin …".
+ * - La sucursal (EC-866): `sucursalHeaderFilter`, por id con el nombre que
+ *   trae la fila; es nullable, así que lleva la opción "Sin sucursal".
  * - El método: el catálogo completo de `COBRO_METODO_PAGO_CONFIG`, que cubre el
  *   enum `MetodoPago` compartido con Pagos.
  */
@@ -207,6 +202,7 @@ export const getCollectionHeaderFilters = (): Partial<
     options: optionsFromConfig(COBRO_ESTATUS_CONFIG),
   },
   cliente_nombre: { type: "distinct", get: (r) => r.cliente, label: getClienteLabel, searchable: true },
+  sucursal_nombre: sucursalHeaderFilter<CobroRow>(),
   cuenta_bancaria_alias: {
     type: "distinct",
     get: (r) => r.cuenta_bancaria,
