@@ -1,5 +1,12 @@
 import type { TipoCompra } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
 
+/**
+ * Origen de la recepción. "SM" (nucleo-erp #1217, EC-912): regreso de una
+ * salida a maquila de OB/OR, sin OC ni OP y sin renglones; su proveedor es el
+ * maquilero. La recepción de una SM de OP sale como "OP".
+ */
+export type ReceiptTipoOrigen = "OC" | "OP" | "SM";
+
 export interface Receipt {
   id: number;
   folio: string;
@@ -23,7 +30,9 @@ export interface Receipt {
   // respuesta para WMS y para la vista de Compras filtrada por ?tipo_origen=OC).
   // Puramente aditivos. `almacen_nombre` siempre trae valor; los dos restantes
   // son null en recepciones de tipo OP (sin proveedor/OC).
-  tipo_origen: "OC" | "OP";
+  tipo_origen: ReceiptTipoOrigen;
+  /** SM que regresó con esta recepción (EC-912); `null` si no viene de una. */
+  salida_maquila?: number | null;
   almacen_nombre: string;
   proveedor_nombre: string | null;
   orden_compra_folio: string | null;
@@ -79,7 +88,8 @@ export interface ReceiptDetailLine {
 
 export interface ReceiptDetail {
   id: number;
-  tipo_origen: "OC" | "OP";
+  // "SM" trae los dos folios en null: el retrieve no expone la SM (EC-912).
+  tipo_origen: ReceiptTipoOrigen;
   // Folio del origen (EC-879): el de la OC en origen OC, el de la OP en origen
   // OP; el otro llega null. `OrdenCompra.folio` también puede ser null.
   orden_compra_folio: string | null;

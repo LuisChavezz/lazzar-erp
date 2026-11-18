@@ -103,6 +103,12 @@ test.describe("receiptOrigin", () => {
     expect(receiptOrigin(receipt({ orden_compra_folio: null })).folio).toBeNull();
   });
 
+  test("SM (EC-912) se dice Salida a maquila, sin folio", () => {
+    expect(
+      receiptOrigin({ tipo_origen: "SM", orden_compra_folio: null, op_folio: null }),
+    ).toEqual({ label: "Salida a maquila", folio: null });
+  });
+
   test("un tipo_origen que no es OC ni OP se dice Desconocido, sin folio", () => {
     expect(
       receiptOrigin({ tipo_origen: "TR", orden_compra_folio: "OC-X", op_folio: "OP-Y" }),

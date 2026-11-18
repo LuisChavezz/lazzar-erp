@@ -8,27 +8,12 @@ import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
 import { ReceiptActionsCell } from "./ReceiptActionsCell";
 import { getReceiptEstatusLabel, RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 import { createTipoCompraColumn } from "./TipoCompraColumn";
+import {
+  RECEIPT_TIPO_ORIGEN_CFG,
+  RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG,
+} from "../constants/receiptOrigin";
 
 const columnHelper = createColumnHelper<Receipt>();
-
-// ── Badge de tipo de origen ─────────────────────────────────────────────────
-const TIPO_ORIGEN_CFG: Record<string, StatusBadgeConfigEntry> = {
-  OC: {
-    label: "Orden de Compra",
-    cls: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
-    dot: "bg-blue-500",
-  },
-  OP: {
-    label: "Orden de Producción",
-    cls: "bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400",
-    dot: "bg-purple-500",
-  },
-};
-const TIPO_ORIGEN_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
-  label: "Desconocido",
-  cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-  dot: "bg-slate-400",
-};
 
 // ── Badge de estatus ─────────────────────────────────────────────────────────
 // El listado solo trae el código numérico: `getReceiptEstatusLabel` lo lleva a
@@ -53,8 +38,8 @@ export const receiptColumns = [
     cell: (info) => (
       <StatusBadge
         status={info.getValue()}
-        config={TIPO_ORIGEN_CFG}
-        defaultConfig={TIPO_ORIGEN_DESCONOCIDO_CFG}
+        config={RECEIPT_TIPO_ORIGEN_CFG}
+        defaultConfig={RECEIPT_TIPO_ORIGEN_DESCONOCIDO_CFG}
       />
     ),
   }),
