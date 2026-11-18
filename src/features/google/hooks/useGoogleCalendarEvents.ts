@@ -2,13 +2,17 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GoogleEventsResponse } from "../interfaces/google.interface";
 import { googleGetCalendarEvents } from "../services/actions";
+import { fetchAllCalendarEventPages } from "../utils/fetchAllCalendarEventPages";
 
 interface UseGoogleCalendarEventsOptions {
   /** Inicio del rango de tiempo en formato ISO 8601. Por defecto: 2 meses atrás. */
   timeMin?: string;
   /** Fin del rango de tiempo en formato ISO 8601. Por defecto: 6 meses hacia adelante. */
   timeMax?: string;
-  /** Número máximo de eventos a recuperar. Por defecto: 250. */
+  /**
+   * Eventos por PÁGINA (el backend acepta hasta 250). La consulta sigue
+   * `nextPageToken` hasta traer todos los eventos de la ventana.
+   */
   maxResults?: number;
   /** Si es false, la query no se ejecuta. Por defecto: true. */
   enabled?: boolean;
@@ -17,8 +21,9 @@ interface UseGoogleCalendarEventsOptions {
 /**
  * Consulta los eventos del Google Calendar del usuario autenticado.
  *
- * Por defecto carga un rango de 2 meses atrás hasta 6 meses hacia adelante,
- * con un stale time de 5 minutos para evitar peticiones excesivas al navegar.
+ * Por defecto carga un rango de 2 meses atrás hasta 6 meses hacia adelante.
+ * Trae TODAS las páginas del rango (`fetchAllCalendarEventPages`): con más de
+ * 250 eventos, antes se perdían los siguientes.
  */
 export const useGoogleCalendarEvents = ({
   timeMin,
@@ -52,7 +57,10 @@ export const useGoogleCalendarEvents = ({
 
   return useQuery<GoogleEventsResponse>({
     queryKey: ["google", "calendar", "events", params],
-    queryFn: () => googleGetCalendarEvents(params),
+    queryFn: () =>
+      fetchAllCalendarEventPages((pageToken) =>
+        googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params),
+      ),
     enabled,
   });
 };
