@@ -9,6 +9,10 @@ import {
   SERVER_LOGOUT_PATH,
   signOutToLogin,
 } from "@/src/features/auth/utils/clientSessionState";
+import {
+  SIGN_OUT_FALLBACK_KEY,
+  SIGN_OUT_FALLBACK_MAX_ATTEMPTS,
+} from "@/src/features/auth/utils/signOutFallbackGuard";
 
 /**
  * EC-848: piezas de la limpieza en los límites de sesión.
@@ -16,12 +20,18 @@ import {
  * - La cookie `erp_workspace_id` solo se borra si el borrado lleva el mismo
  *   nombre y `path` (y los mismos `Secure`/`SameSite`) que la escritura.
  * - `signOutToLogin` cae a `/auth/logout` si `signOut` falla, se cuelga o no
- *   hay token CSRF (EC-851).
+ *   hay token CSRF, y deja de navegar si ese respaldo se repite en ciclo
+ *   (EC-851).
  * - EC-860: la limpieza borra la `sat-storage` que dejó la Dirección fiscal
  *   cuando solo vivía en el navegador, sin lanzar si el almacenamiento falla.
  */
 
-type Globals = { document?: unknown; window?: unknown; fetch?: unknown };
+type Globals = {
+  document?: unknown;
+  window?: unknown;
+  fetch?: unknown;
+  sessionStorage?: unknown;
+};
 const globals = globalThis as unknown as Globals;
 
 /** Divide `a=b; path=/; Secure` en nombre, valor y atributos normalizados. */
@@ -82,6 +92,13 @@ test.describe("cookie de workspace", () => {
   });
 });
 
+/** `sessionStorage` en memoria sobre el `Map` dado. */
+const fakeSessionStorage = (storage: Map<string, string>) => ({
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => void storage.set(key, value),
+  removeItem: (key: string) => void storage.delete(key),
+});
+
 test.describe("signOutToLogin (EC-851)", () => {
   type FetchCall = { url: string; method: string };
   type Responder = (url: string) => Promise<unknown>;
@@ -106,14 +123,17 @@ test.describe("signOutToLogin (EC-851)", () => {
    */
   const runSignOut = async (
     responders: { csrf: Responder; signout?: Responder },
-    timeoutMs?: number
+    timeoutMs?: number,
+    storage: Map<string, string> = new Map()
   ) => {
     const previousWindow = globals.window;
     const previousFetch = globals.fetch;
+    const previousSessionStorage = globals.sessionStorage;
     const previousConsoleError = console.error;
     const location = { href: "http://localhost:3000/sales" };
     const calls: FetchCall[] = [];
     globals.window = { location };
+    globals.sessionStorage = fakeSessionStorage(storage);
     globals.fetch = (url: string, init?: { method?: string }) => {
       calls.push({ url, method: (init?.method ?? "get").toLowerCase() });
       if (url.endsWith("/csrf")) return responders.csrf(url);
@@ -127,9 +147,10 @@ test.describe("signOutToLogin (EC-851)", () => {
     } finally {
       globals.window = previousWindow;
       globals.fetch = previousFetch;
+      globals.sessionStorage = previousSessionStorage;
       console.error = previousConsoleError;
     }
-    return { href: location.href, calls };
+    return { href: location.href, calls, storage };
   };
 
   const postedSignout = (calls: FetchCall[]) =>
@@ -173,6 +194,26 @@ test.describe("signOutToLogin (EC-851)", () => {
     const { href, calls } = await runSignOut({ csrf: never }, 50);
     expect(href).toBe(SERVER_LOGOUT_PATH);
     expect(postedSignout(calls)).toBe(false);
+  });
+
+  test("el respaldo anota cada navegación; al tercer intento en la ventana ya no navega", async () => {
+    const storage = new Map<string, string>();
+    const hrefs: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const { href } = await runSignOut({ csrf: networkError }, undefined, storage);
+      hrefs.push(href);
+    }
+    expect(hrefs).toEqual([SERVER_LOGOUT_PATH, SERVER_LOGOUT_PATH, "http://localhost:3000/sales"]);
+    const attempts = JSON.parse(storage.get(SIGN_OUT_FALLBACK_KEY) ?? "[]");
+    expect(attempts).toHaveLength(SIGN_OUT_FALLBACK_MAX_ATTEMPTS);
+  });
+
+  test("el camino normal no anota intentos", async () => {
+    const { storage } = await runSignOut({
+      csrf: csrfOk,
+      signout: () => jsonResponse(200, { url: "http://localhost:3000/auth/login" }),
+    });
+    expect(storage.has(SIGN_OUT_FALLBACK_KEY)).toBe(false);
   });
 });
 
