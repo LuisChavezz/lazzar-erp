@@ -4,7 +4,8 @@ import { useUrlFilters } from "@/src/hooks/useUrlFilters";
 import { SALIDAS_MAQUILA_TABLE } from "../constants/salidasMaquilaTable";
 
 /**
- * Filtros del listado de SM (`?op=`, `?centro_confeccion=`) con la URL como
+ * Filtros del listado de SM (`?origen=`, `?op=`, `?ob=`, `?orden_r=`,
+ * `?centro_confeccion=`) con la URL como
  * fuente de verdad (`useUrlFilters`). La página envuelve la vista en
  * `<Suspense>`.
  */

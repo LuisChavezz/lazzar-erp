@@ -15,10 +15,11 @@ type Vista = "maquila" | "recibidas" | "canceladas";
 
 /**
  * Salidas a maquila (SM): lo que está con un maquilero, lo ya recibido y lo
- * cancelado. Las SM se generan desde el detalle de la OP.
+ * cancelado. Las SM se generan desde el detalle de la OP, la OB o la OR.
  *
- * La OP y el maquilero filtran en el SERVIDOR (`?op=`, `?centro_confeccion=`,
- * en la URL); las pestañas reparten por estatus lo que el servidor devolvió.
+ * El origen, la orden y el maquilero filtran en el SERVIDOR (`?origen=`,
+ * `?op=`, `?ob=`, `?orden_r=`, `?centro_confeccion=`, en la URL); las pestañas
+ * reparten por estatus lo que el servidor devolvió.
  *
  * Mientras la sesión carga, el permiso de costos está PENDIENTE: la tabla se
  * queda cargando con la columna Total puesta, en vez de pintarse sin ella y
@@ -47,6 +48,8 @@ export function SalidasMaquilaView() {
         onClearFilters={clearFilters}
         opFolioFromRows={salidas.find((s) => s.op === filters.op)?.op_folio ?? null}
         rowsLoaded={hasLoaded}
+        obFolioFromRows={salidas.find((s) => s.ob === filters.ob)?.ob_folio ?? null}
+        ordenRFolioFromRows={salidas.find((s) => s.orden_r === filters.orden_r)?.orden_r_folio ?? null}
       />
       <ListTabs
         ariaLabel="Vista de salidas a maquila"
@@ -62,7 +65,7 @@ export function SalidasMaquilaView() {
       <DataTable
         columns={columns}
         data={rows}
-        searchPlaceholder="Buscar folio, OP/OB o maquilero..."
+        searchPlaceholder="Buscar folio, OP/OB/OR o maquilero..."
         getRowId={(row) => String(row.id)}
         onRefetch={refetch}
         isRefetching={isFetching}
@@ -70,10 +73,10 @@ export function SalidasMaquilaView() {
           hasActiveFilters
             ? "No hay salidas con estos filtros en esta vista."
             : vista === "maquila"
-            ? "No hay prendas en maquila. Genera una salida desde el detalle de la OP."
+            ? "No hay prendas en maquila. Genera una salida desde el detalle de la OP, OB u OR."
             : "No hay salidas en esta vista."
         }
-        paginationResetKey={`${vista}|${filters.op ?? ""}|${filters.centro_confeccion ?? ""}`}
+        paginationResetKey={`${vista}|${filters.origen ?? ""}|${filters.op ?? ""}|${filters.ob ?? ""}|${filters.orden_r ?? ""}|${filters.centro_confeccion ?? ""}`}
         isLoading={isLoading || isAccessPending}
         isError={isInitialError}
         errorTitle="Error al cargar las salidas a maquila"
