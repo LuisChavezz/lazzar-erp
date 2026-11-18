@@ -4,7 +4,6 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import {
   cancelarSalidaMaquila,
-  cerrarSalidaMaquila,
   createSalidaMaquila,
 } from "../services/actions";
 import { salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
@@ -36,19 +35,10 @@ export const useCreateSalidaMaquila = (origen: SalidaMaquilaOrigen, ordenId: num
   });
 };
 
-/** Cerrar (recibida) y cancelar. Llave por registro: candado contra el doble envío. */
-export const useSalidaMaquilaActions = (id: number) => {
+/** Cancelar (solo desde ENVIADA). Llave por registro: candado contra el doble envío. */
+export const useCancelarSalidaMaquila = (id: number) => {
   const refresh = useRefresh();
-  const cerrar = useMutation({
-    mutationKey: ["salida-maquila-cerrar", id],
-    mutationFn: () => cerrarSalidaMaquila(id),
-    onSuccess: (sm) => {
-      toast.success(`${salidaMaquilaFolio(sm)} marcada como recibida.`);
-      return refresh();
-    },
-    onError: (error) => toast.error(salidaMaquilaErrorText(error, "No se pudo marcar como recibida.")),
-  });
-  const cancelar = useMutation({
+  return useMutation({
     mutationKey: ["salida-maquila-cancelar", id],
     mutationFn: () => cancelarSalidaMaquila(id),
     onSuccess: (sm) => {
@@ -57,5 +47,4 @@ export const useSalidaMaquilaActions = (id: number) => {
     },
     onError: (error) => toast.error(salidaMaquilaErrorText(error, "No se pudo cancelar la salida.")),
   });
-  return { cerrar, cancelar };
 };

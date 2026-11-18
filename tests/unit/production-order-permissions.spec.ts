@@ -87,10 +87,10 @@ test.describe("GET estatus/ de la OP (EC-895)", () => {
 
 /**
  * EC-868: "Generar SM" captura y muestra precios de maquila, así que exige
- * `R-PRODUCCION-COSTOS` además de `C-PRODUCCION-OP`; cerrar y cancelar siguen
- * solo con `C-PRODUCCION-OP`.
+ * `R-PRODUCCION-COSTOS` además de `C-PRODUCCION-OP`; cancelar sigue solo con
+ * `C-PRODUCCION-OP`. Recibirla ya no es acción de la SM (se hace en WMS).
  */
-test.describe("salida a maquila: generar, cerrar y cancelar", () => {
+test.describe("salida a maquila: leer, generar y cancelar", () => {
   test("generar exige C-PRODUCCION-OP y R-PRODUCCION-COSTOS", () => {
     expect(canGenerateSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP", "R-PRODUCCION-COSTOS"]))).toBe(true);
     expect(canGenerateSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP"]))).toBe(false);

@@ -25,12 +25,6 @@ export const createSalidaMaquila = async (body: CreateSalidaMaquilaBody): Promis
   return response.data;
 };
 
-/** WMS recibió las prendas y pasaron calidad → RECIBIDA. Solo desde ENVIADA. */
-export const cerrarSalidaMaquila = async (id: number): Promise<SalidaMaquila> => {
-  const response = await v1_api.post<SalidaMaquila>(`${BASE}${id}/cerrar/`);
-  return response.data;
-};
-
 export const cancelarSalidaMaquila = async (id: number): Promise<SalidaMaquila> => {
   const response = await v1_api.post<SalidaMaquila>(`${BASE}${id}/cancelar/`);
   return response.data;
