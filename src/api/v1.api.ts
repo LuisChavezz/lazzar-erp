@@ -34,10 +34,11 @@ const notifyQueue = (error?: Error): void => {
 /**
  * Cierra la sesión de forma garantizada.
  *
- * `signOutToLogin` navega a login aunque el propio `signOut` falle (el mismo
- * fallo de red que produce los CLIENT_FETCH_ERROR de /api/auth/session): sin
- * ese respaldo no había redirect y la pestaña quedaba en estado zombi (sesión
- * aparentemente viva, todas las llamadas en 401, sin salida).
+ * `signOutToLogin` navega a login aunque el propio `signOut` falle, se cuelgue
+ * o no consiga el token CSRF: cae a `/auth/logout`, que borra la cookie de
+ * sesión en el servidor (EC-851). Sin ese respaldo no había redirect y la
+ * pestaña quedaba en estado zombi (sesión aparentemente viva, todas las
+ * llamadas en 401, sin salida).
  *
  * El latch se suelta en `finally` (la redirección ya habrá comenzado; si la
  * página sobrevive, queda limpio para el siguiente 401 en vez de bloquearlo

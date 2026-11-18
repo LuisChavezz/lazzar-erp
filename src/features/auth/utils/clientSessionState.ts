@@ -1,4 +1,4 @@
-import { signOut } from "next-auth/react";
+import { getCsrfToken, signOut } from "next-auth/react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
 import { probeSession } from "./sessionRecovery";
@@ -57,19 +57,69 @@ export const clearUserScopedClientState = () => {
 
 const LOGIN_PATH = "/auth/login";
 
+/** Cierre de sesión del servidor por navegación (`src/app/auth/logout/route.ts`). */
+export const SERVER_LOGOUT_PATH = "/auth/logout";
+
+/**
+ * Tiempo máximo (ms) para que `signOut` de next-auth termine (CSRF + POST)
+ * antes de darlo por fallido. next-auth no pone timeout a sus `fetch`: sin
+ * este límite una petición colgada dejaba la pestaña sin salida y el botón de
+ * "Cerrar sesión" en `isPending` para siempre.
+ */
+export const SIGN_OUT_TIMEOUT_MS = 8_000;
+
+/**
+ * Respaldo cuando `signOut` no sirvió: navega (carga completa) a
+ * `/auth/logout`, que expira la cookie de sesión de NextAuth en el servidor y
+ * manda al login.
+ */
+const navigateToServerLogout = () => {
+  window.location.href = SERVER_LOGOUT_PATH;
+};
+
 /**
  * Cierra la sesión de NextAuth y lleva a `/auth/login` con una carga completa.
  *
- * `signOut` hace fetch a /api/auth/* (csrf + signout) y solo DESPUÉS asigna
- * `window.location`. Si ese fetch falla, la promesa se rechaza sin navegar y la
- * pestaña quedaría en estado zombi (sesión aparentemente viva, todas las
- * llamadas en 401, sin salida): por eso la redirección a mano como respaldo.
+ * El camino normal es `signOut` de next-auth: pide el token CSRF, hace POST a
+ * `/api/auth/signout` (que borra la cookie de sesión y avisa a las otras
+ * pestañas) y solo DESPUÉS asigna `window.location`. Todo lo que impide que
+ * ese camino termine cae al respaldo `/auth/logout` (EC-851):
+ *
+ * - `signOut` lanza: error de red, o una respuesta que no es JSON (un 5xx con
+ *   HTML) hace que `res.json()` lance.
+ * - Pasan `timeoutMs` sin terminar (petición colgada).
+ * - No hay token CSRF: next-auth devuelve `null` sin lanzar si `/api/auth/csrf`
+ *   falla, manda el POST con ese CSRF vacío y el servidor responde con su
+ *   página genérica de confirmación (`/api/auth/signout?csrf=true`), con la
+ *   sesión viva. Por eso el token se pide antes y, sin él, no se llama a
+ *   `signOut`. `signOut` vuelve a pedirlo por su cuenta (no acepta uno dado):
+ *   si esa segunda petición falla y la primera no, todavía se llega a esa
+ *   página.
+ *
+ * El respaldo NO puede ser navegar a `/auth/login`: con la cookie viva el
+ * proxy lo rebota a `/` → `/select-branch`, esa página recibe 401, el refresh
+ * falla y se vuelve a cerrar sesión, en ciclo. `/auth/logout` borra la cookie
+ * del lado del servidor, que es el único que puede (es HttpOnly).
+ *
+ * `timeoutMs` existe para las pruebas; el código de la app usa el default.
  */
-export const signOutToLogin = async (): Promise<void> => {
+export const signOutToLogin = async (timeoutMs = SIGN_OUT_TIMEOUT_MS): Promise<void> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("signOut excedió el tiempo")), timeoutMs);
+  });
+
   try {
-    await signOut({ callbackUrl: LOGIN_PATH });
+    const csrfToken = await Promise.race([getCsrfToken(), deadline]);
+    if (!csrfToken) {
+      navigateToServerLogout();
+      return;
+    }
+    await Promise.race([signOut({ callbackUrl: LOGIN_PATH }), deadline]);
   } catch {
-    window.location.href = LOGIN_PATH;
+    navigateToServerLogout();
+  } finally {
+    clearTimeout(timer);
   }
 };
 
