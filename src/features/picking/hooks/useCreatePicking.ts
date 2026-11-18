@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
+import { PICKINGS_QUERY_KEY } from "../constants/pickingQueryKeys";
 import { createPicking } from "../services/actions";
 import { invalidateIfPedidoRejected } from "./usePickingOnboarding";
 import { parsePickingError, type ParsedPickingError } from "../utils/parsePickingError";
@@ -13,7 +14,8 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  *
  * Para los errores de dato desactualizado se usa un toast NEUTRO (no de error):
  * no es un fallo del usuario, solo cambiaron los pendientes. El resto sí sale
- * como `toast.error`. Invalida `["pickings"]` (la lista del módulo).
+ * como `toast.error`. Invalida el prefijo `["pickings"]`: el listado y sus
+ * indicadores (`kpis/`). Un alta no cambia ningún detalle ya abierto.
  */
 export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) => void) => {
   const queryClient = useQueryClient();
@@ -21,7 +23,7 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
   return useMutation({
     mutationFn: createPicking,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pickings"] });
+      queryClient.invalidateQueries({ queryKey: PICKINGS_QUERY_KEY });
       void invalidatePedidoProgress(queryClient);
       // Crear el picking también genera una transferencia COMPLETADA del almacén
       // origen al destino (`picking_service.py`): mueve existencias y deja un
