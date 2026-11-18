@@ -4,7 +4,7 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro } from "../interfaces/collection.interface";
-import { isActionOutcomeUnknown } from "./actionOutcome";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 
 type CobroRepState = Pick<Cobro, "estatus" | "activo" | "rep_uuid" | "rep_pendiente">;
 

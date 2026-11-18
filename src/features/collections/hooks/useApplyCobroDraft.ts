@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { buildCobroPayloadFromCobro, updateCobro } from "../services/actions";
 import { cobroLabel } from "../utils/collection.utils";
-import { isActionOutcomeUnknown } from "../utils/actionOutcome";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE, COBRO_DRAFT_NOT_DRAFT_MESSAGE } from "../utils/cobroDraft";
 import { invalidateCobroEffects } from "./cobroQueryCache";
 import { parseCobroError } from "./useSaveCobro";

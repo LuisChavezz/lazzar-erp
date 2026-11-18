@@ -4,10 +4,12 @@ import { isAxiosError } from "axios";
 const GATEWAY_STATUSES = new Set([502, 503, 504]);
 
 /**
- * ¿La petición de una acción sobre el cobro (timbrar el REP, cancelar) se cortó
- * sin una respuesta del backend? Sin respuesta (red caída, CORS por un corte),
- * timeout del cliente o un 502/503/504 de la puerta de enlace: en todos el
- * backend pudo haber aplicado la acción, así que su resultado es desconocido.
+ * ¿La petición se cortó sin una respuesta del backend? Sin respuesta (red
+ * caída, CORS por un corte), timeout del cliente o un 502/503/504 de la puerta
+ * de enlace. En una acción que escribe (timbrar el REP, cancelar un cobro) el
+ * backend pudo haberla aplicado, así que su resultado es desconocido; en una
+ * lectura (el CFDI oficial, `officialCfdiErrorMessage`) solo dice que el
+ * archivo no llegó. Regla única para ambos (EC-859).
  */
 export const isActionOutcomeUnknown = (error: unknown): boolean => {
   if (!isAxiosError(error)) return false;

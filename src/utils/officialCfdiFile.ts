@@ -7,6 +7,7 @@
  * base64 en `Content`, sin nombre de archivo. Módulo puro, para `tests/unit/`.
  */
 import { isAxiosError } from "axios";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { base64ToBlob } from "@/src/utils/base64ToBlob";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
@@ -24,9 +25,6 @@ export interface FacturamaCfdiFile {
   Content: string;
   ContentType?: string;
 }
-
-/** Estatus de una puerta de enlace que cortó la petición (no responde Django). */
-const GATEWAY_STATUSES = new Set([502, 503, 504]);
 
 /** MIME del archivo descargado: sale del formato pedido, no del `ContentType` de Facturama. */
 export const CFDI_FILE_MIME: Record<CfdiFileFormat, string> = {
@@ -77,7 +75,7 @@ export const officialCfdiErrorMessage = (error: unknown, ofDocument: string): st
     }
     const isTimeout = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
     if (!error.response && !isTimeout) return "No se recibió respuesta del servidor. Intenta de nuevo.";
-    if (isTimeout || (status !== undefined && GATEWAY_STATUSES.has(status))) return "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
+    if (isActionOutcomeUnknown(error)) return "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
     if (typeof data?.error === "string" && data.error.startsWith("FACTURAMA_")) {
       return `Facturama no entregó el CFDI ${ofDocument} (HTTP ${status}).`;
     }
