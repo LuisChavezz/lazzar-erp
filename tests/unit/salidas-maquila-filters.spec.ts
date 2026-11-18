@@ -29,9 +29,9 @@ test.describe("filtros del listado de SM en la URL (EC-868)", () => {
     expect(read("op=0&centro_confeccion=8.5")).toEqual({});
   });
 
-  test("lee origen, ob y orden_r (EC-911); un origen desconocido se ignora", () => {
-    expect(read("origen=OR&orden_r=20&ob=7")).toEqual({ origen: "OR", orden_r: 20, ob: 7 });
-    expect(read("origen=XX&orden_r=abc")).toEqual({});
+  test("lee el origen (EC-911); un origen desconocido, ob u orden_r se ignoran", () => {
+    expect(read("origen=OR")).toEqual({ origen: "OR" });
+    expect(read("origen=XX&orden_r=20&ob=7")).toEqual({});
   });
 
   test("escribe solo los filtros puestos, sin page ni page_size", () => {

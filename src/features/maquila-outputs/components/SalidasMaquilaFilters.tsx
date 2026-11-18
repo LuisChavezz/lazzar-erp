@@ -12,7 +12,7 @@ import type {
   SalidasMaquilaFilterValues,
 } from "../constants/salidasMaquilaTable";
 import { useOpParaSalidaMaquila } from "../hooks/useOpParaSalidaMaquila";
-import { SALIDA_MAQUILA_ORIGEN_VALUES } from "../constants/salidaMaquilaOrigen";
+import { SALIDA_MAQUILA_ORIGEN_VALUES, SALIDA_MAQUILA_ORIGENES } from "../constants/salidaMaquilaOrigen";
 import type { SalidaMaquilaOrigen } from "../interfaces/salida-maquila.interface";
 
 const OPTION_CLS = "text-slate-900 dark:text-white bg-white dark:bg-zinc-900";
@@ -26,16 +26,7 @@ interface SalidasMaquilaFiltersProps {
   opFolioFromRows: string | null;
   /** ¿Ya respondió el listado filtrado? Sin filas, el folio se pide aparte. */
   rowsLoaded: boolean;
-  /** Folio de la OB / OR filtrada (`?ob=`, `?orden_r=`) tal como lo traen las SM cargadas. */
-  obFolioFromRows: string | null;
-  ordenRFolioFromRows: string | null;
 }
-
-const ORIGEN_LABEL: Record<SalidaMaquilaOrigen, string> = {
-  OP: "OP · Producción",
-  OB: "OB · Bordado",
-  OR: "OR · Reflejante",
-};
 
 /**
  * Filtros del listado de SM por OP y por maquilero. Son del SERVIDOR (`op`,
@@ -49,9 +40,9 @@ const ORIGEN_LABEL: Record<SalidaMaquilaOrigen, string> = {
  * consulta que "Generar SM"). El catálogo completo solo se pide con el
  * selector abierto.
  *
- * El origen (OP/OB/OR) también filtra en el servidor (`?origen=`). Una OB u OR
- * concreta (`?ob=`, `?orden_r=`) solo llega por la URL: se muestra como un aviso
- * con su folio (de las SM cargadas) y un botón para quitarla.
+ * El origen (OP/OB/OR) también filtra en el servidor (`?origen=`). Una OP y el
+ * origen OB u OR se excluyen (no hay SM que cumpla los dos): elegir OB u OR
+ * quita la OP, y con ese origen el selector de OP se desactiva.
  */
 export function SalidasMaquilaFilters({
   filters,
@@ -60,8 +51,6 @@ export function SalidasMaquilaFilters({
   onClearFilters,
   opFolioFromRows,
   rowsLoaded,
-  obFolioFromRows,
-  ordenRFolioFromRows,
 }: SalidasMaquilaFiltersProps) {
   const [isOpPickerOpen, setIsOpPickerOpen] = useState(false);
   const { maquileros, isLoading: isMaquilerosLoading } = useMaquileros();
@@ -81,10 +70,7 @@ export function SalidasMaquilaFilters({
       ? null
       : (knownFolio ?? (isResolvingFolio ? "Cargando OP..." : `OP #${filters.op}`));
 
-  const ordenesSoloUrl = [
-    { key: "ob" as const, sigla: "OB", id: filters.ob, folio: obFolioFromRows },
-    { key: "orden_r" as const, sigla: "OR", id: filters.orden_r, folio: ordenRFolioFromRows },
-  ].filter((o) => o.id !== undefined);
+  const opNoAplica = filters.origen !== undefined && filters.origen !== "OP";
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -93,12 +79,11 @@ export function SalidasMaquilaFilters({
         value={filters.origen ?? ""}
         onChange={(event) => {
           const value = event.target.value;
-          setFilter(
-            "origen",
-            (SALIDA_MAQUILA_ORIGEN_VALUES as readonly string[]).includes(value)
-              ? (value as SalidaMaquilaOrigen)
-              : undefined,
-          );
+          const origen = (SALIDA_MAQUILA_ORIGEN_VALUES as readonly string[]).includes(value)
+            ? (value as SalidaMaquilaOrigen)
+            : undefined;
+          if (origen !== undefined && origen !== "OP") setFilter("op", undefined);
+          setFilter("origen", origen);
         }}
       >
         <option value="" className={OPTION_CLS}>
@@ -106,7 +91,7 @@ export function SalidasMaquilaFilters({
         </option>
         {SALIDA_MAQUILA_ORIGEN_VALUES.map((origen) => (
           <option key={origen} value={origen} className={OPTION_CLS}>
-            {ORIGEN_LABEL[origen]}
+            {SALIDA_MAQUILA_ORIGENES[origen].etiqueta}
           </option>
         ))}
       </FormSelect>
@@ -114,10 +99,16 @@ export function SalidasMaquilaFilters({
       <div>
         <ItemPickerButton
           label="Orden de producción"
-          placeholder="Todas las OP"
+          placeholder={opNoAplica ? "Solo con origen OP" : "Todas las OP"}
           selectedLabel={selectedOpLabel}
+          disabled={opNoAplica && filters.op === undefined}
           onClick={() => setIsOpPickerOpen(true)}
         />
+        {opNoAplica && filters.op !== undefined && (
+          <p className="ml-1 mt-1 text-xs text-amber-700 dark:text-amber-300">
+            Una OP no tiene salidas de origen {filters.origen}: quita la OP o el origen.
+          </p>
+        )}
         {filters.op !== undefined && (
           <button
             type="button"
@@ -156,22 +147,7 @@ export function SalidasMaquilaFilters({
         ))}
       </FormSelect>
 
-      <div className="flex flex-col justify-end gap-1">
-        {ordenesSoloUrl.map((o) => (
-          <p key={o.key} className="text-sm text-slate-600 dark:text-slate-300">
-            Solo {o.sigla}{" "}
-            <span className="font-mono font-semibold">
-              {o.folio ?? (rowsLoaded ? `#${o.id}` : "…")}
-            </span>{" "}
-            <button
-              type="button"
-              onClick={() => setFilter(o.key, undefined)}
-              className="text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
-            >
-              Quitar
-            </button>
-          </p>
-        ))}
+      <div className="flex items-end">
         {hasActiveFilters && (
           <button
             type="button"

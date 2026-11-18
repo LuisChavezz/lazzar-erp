@@ -16,16 +16,14 @@ import { SALIDA_MAQUILA_ORIGEN_VALUES } from "./salidaMaquilaOrigen";
  * Sin `search` ni `ordering`: el endpoint no busca y su orden es fijo (`-id`).
  * El estatus no va aquí: lo reparten las pestañas sobre lo ya filtrado.
  *
- * `origen` (OP/OB/OR) y la orden concreta (`op`, `ob`, `orden_r`; EC-911). La
- * OP se elige del catálogo de OP; `ob` y `orden_r` solo se leen de la URL (sus
- * catálogos piden `R-PRODUCCION-OB`/`-OR`, que quien ve SM puede no tener).
+ * `origen` (OP/OB/OR, EC-911) y la OP concreta. Sin `ob` ni `orden_r`: nada
+ * enlaza al listado con ellos y sus catálogos piden `R-PRODUCCION-OB`/`-OR`,
+ * que quien ve SM puede no tener; las SM de una OB u OR se ven en su detalle.
  */
 export const SALIDAS_MAQUILA_TABLE = defineServerTable({
   filters: {
     origen: enumParam(SALIDA_MAQUILA_ORIGEN_VALUES),
     op: positiveIdParam,
-    ob: positiveIdParam,
-    orden_r: positiveIdParam,
     centro_confeccion: positiveIdParam,
   },
 });
