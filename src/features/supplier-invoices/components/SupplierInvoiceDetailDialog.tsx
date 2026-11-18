@@ -98,7 +98,8 @@ function SupplierInvoicePdfSection({
         ) : (
           <p className="text-xs italic text-slate-400 dark:text-slate-500">
             Sin PDF adjunto. Adjunta el PDF del proveedor (máximo {MAX_SUPPLIER_INVOICE_PDF_LABEL})
-            para descargar el documento OC + RC + factura.
+            {/* Sin OC (factura de maquila, EC-912) no hay documento fusionado. */}
+            {factura.oc == null ? "." : " para descargar el documento OC + RC + factura."}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
