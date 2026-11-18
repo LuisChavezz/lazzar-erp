@@ -8,6 +8,7 @@ import { useReceiptDetail } from "@/src/features/receipts/hooks/useReceiptDetail
 import { ReceiptDetailShell } from "@/src/features/receipts/components/ReceiptDetailShell";
 import { ReceiptPdfButton } from "@/src/features/receipts/components/ReceiptPdfButton";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { receiptTipoOrigenLabel } from "../constants/receiptOrigin";
 
 interface ReceiptDetailDialogProps {
   /** ID de la recepción a consultar. `null` mantiene la consulta deshabilitada. */
@@ -35,19 +36,20 @@ export function ReceiptDetailDialog({
     ? [
         {
           label: "Tipo de origen",
-          value:
-            receipt.tipo_origen === "OC"
-              ? "Orden de Compra"
-              : receipt.tipo_origen === "OP"
-                ? "Orden de Producción"
-                : "Desconocido",
+          value: receiptTipoOrigenLabel(receipt.tipo_origen),
         },
         { label: "Almacén", value: receipt.almacen_nombre },
         { label: "Fecha de recepción", value: formatLocalDate(receipt.fecha_recepcion) },
         { label: "Sucursal", value: receipt.sucursal_nombre },
-        // El proveedor solo es significativo en recepciones de origen OC.
-        ...(receipt.tipo_origen === "OC"
-          ? [{ label: "Proveedor", value: receipt.proveedor_nombre ?? "—" }]
+        // El proveedor solo es significativo en recepciones de origen OC, y en
+        // las de SM, donde es el maquilero (EC-912).
+        ...(receipt.tipo_origen === "OC" || receipt.tipo_origen === "SM"
+          ? [
+              {
+                label: receipt.tipo_origen === "SM" ? "Maquilero" : "Proveedor",
+                value: receipt.proveedor_nombre ?? "—",
+              },
+            ]
           : []),
       ]
     : [];

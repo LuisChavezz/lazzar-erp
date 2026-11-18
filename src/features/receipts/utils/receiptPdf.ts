@@ -24,7 +24,7 @@ export const receiptPdfDescriptor = (
 
 /** Origen de una recepción tal como lo dice el PDF. */
 export interface ReceiptOrigin {
-  /** "Orden de compra" / "Orden de producción". */
+  /** "Orden de compra" / "Orden de producción" / "Salida a maquila". */
   label: string;
   /** Folio de la OC o de la OP según `tipo_origen`; `null` si no llegó. */
   folio: string | null;
@@ -47,6 +47,10 @@ export const receiptOrigin = (receipt: {
   }
   if (receipt.tipo_origen === "OP") {
     return { label: "Orden de producción", folio: receipt.op_folio?.trim() || null };
+  }
+  if (receipt.tipo_origen === "SM") {
+    // Regreso de una SM de OB/OR (EC-912): el retrieve no trae su folio.
+    return { label: "Salida a maquila", folio: null };
   }
   return { label: "Desconocido", folio: null };
 };
