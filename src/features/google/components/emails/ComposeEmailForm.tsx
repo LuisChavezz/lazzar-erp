@@ -1,6 +1,7 @@
 "use client";
 
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { FormInput } from "@/src/components/FormInput";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormSubmitButton } from "@/src/components/FormButtons";
@@ -48,7 +49,7 @@ export function ComposeEmailForm({ open, onOpenChange }: ComposeEmailFormProps) 
       description="Completa los campos para enviar un correo desde tu cuenta de Google conectada."
       open={open}
       onOpenChange={onOpenChange}
-      maxWidth="580px"
+      maxWidth={DIALOG_WIDTH_FORM}
       actionButtonClose={false}
       actionButton={
         <FormSubmitButton
