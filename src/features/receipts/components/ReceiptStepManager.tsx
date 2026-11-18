@@ -32,12 +32,18 @@ import type {
 interface ReceiptStepManagerProps {
   /** Called when the full flow completes (form submitted successfully). */
   onClose?: () => void;
+  /** Avisa cada cambio de la orden elegida (el diálogo ajusta su subtítulo). */
+  onSelectionChange?: (candidate: ReceiptOrderCandidate | null) => void;
 }
 
-export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
+export function ReceiptStepManager({ onClose, onSelectionChange }: ReceiptStepManagerProps) {
   const [orderType, setOrderType] = useState<ReceiptOrderType>("compra");
-  const [selectedOrder, setSelectedOrder] =
+  const [selectedOrder, setSelectedOrderState] =
     useState<ReceiptOrderCandidate | null>(null);
+  const setSelectedOrder = (candidate: ReceiptOrderCandidate | null) => {
+    setSelectedOrderState(candidate);
+    onSelectionChange?.(candidate);
+  };
 
   const canAdvance = selectedOrder !== null;
   const { currentStep, steps, goNext, goBack, reset } =
@@ -48,6 +54,14 @@ export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
     setSelectedOrder(null);
     setOrderType("compra");
     onClose?.();
+  };
+
+  // La SM elegida dejó de ser recibible (400 en `salida_maquila`, EC-912):
+  // vuelve al paso 1 sin selección, con la lista ya refrescada y el toast del
+  // backend a la vista. Se queda en la pestaña de Producción.
+  const handleSalidaMaquilaRejected = () => {
+    reset();
+    setSelectedOrder(null);
   };
 
   return (
@@ -84,6 +98,7 @@ export function ReceiptStepManager({ onClose }: ReceiptStepManagerProps) {
 
             <ReceiptForm
               onSuccess={handleFormSuccess}
+              onSalidaMaquilaRejected={handleSalidaMaquilaRejected}
               candidate={selectedOrder}
             />
           </div>

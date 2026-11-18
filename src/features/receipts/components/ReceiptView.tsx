@@ -11,6 +11,8 @@ import { useReceipts } from "../hooks/useReceipts";
 import { receiptColumns } from "./ReceiptColumns";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
+import { receiptFlowSubtitle } from "../utils/receiptCandidates";
+import type { ReceiptOrderCandidate } from "../interfaces/receipt-onboarding.interface";
 
 // ─── View ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,13 @@ export function ReceiptView() {
   } = useReceipts();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Lo elegido en el paso 1, solo para el subtítulo del diálogo (OC, OP o SM).
+  const [selectedCandidate, setSelectedCandidate] = useState<ReceiptOrderCandidate | null>(null);
+  // Al cerrar, el asistente se desmonta y vuelve a empezar sin selección.
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) setSelectedCandidate(null);
+  };
 
   // Ver el listado exige `R-WMS-RECEPCIONES` (ver `routePermissions`); dar de
   // alta exige además `C-WMS-RECEPCIONES`. `hasPermission` ya cortocircuita
@@ -64,12 +73,12 @@ export function ReceiptView() {
             title={
               <DialogHeader
                 title="Nueva Recepción"
-                subtitle="Recepcionar Orden de Compra"
+                subtitle={receiptFlowSubtitle(selectedCandidate)}
                 statusColor="sky"
               />
             }
             open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
+            onOpenChange={handleDialogOpenChange}
             maxWidth="640px"
             showCloseButton={true}
             trigger={
@@ -82,7 +91,10 @@ export function ReceiptView() {
               </Button>
             }
           >
-            <ReceiptStepManager onClose={() => setIsDialogOpen(false)} />
+            <ReceiptStepManager
+              onClose={() => handleDialogOpenChange(false)}
+              onSelectionChange={setSelectedCandidate}
+            />
           </MainDialog>
           ) : undefined
         }

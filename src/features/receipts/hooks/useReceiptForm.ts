@@ -7,12 +7,7 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { buildReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.schema";
 import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
 import { useCreateReceipt } from "./useCreateReceipt";
-import type {
-  ReceiptOrderCandidate,
-  ReceiptCreatePayload,
-  ReceiptCreatePurchaseOrderDetalle,
-  ReceiptCreateProductionOrderDetalle,
-} from "../interfaces/receipt-onboarding.interface";
+import type { ReceiptOrderCandidate } from "../interfaces/receipt-onboarding.interface";
 import {
   almacenesDeSucursal,
   almacenPreseleccionado,
@@ -23,10 +18,17 @@ import {
   candidateKey,
   candidateSucursalId,
 } from "../utils/receiptCandidates";
+import { buildReceiptPayload } from "../utils/buildReceiptPayload";
+import { isSalidaMaquilaRejection } from "../utils/receiptErrors";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
   candidate: ReceiptOrderCandidate;
+  /**
+   * El backend rechazó la SM (400 en `salida_maquila`: ya recibida, cancelada…).
+   * El paso 1 vuelve a mostrar la lista ya refrescada (EC-912).
+   */
+  onSalidaMaquilaRejected?: () => void;
 }
 
 type ReceiptFormField = keyof ReceiptFormValues;
@@ -78,25 +80,11 @@ const scrollToFirstValidationError = (
   }
 };
 
-// Recorre el detalle de la orden y construye los renglones del payload,
-// descartando los que no tengan una cantidad recibida positiva. El tipo de
-// orden sólo afecta la forma del renglón (`buildRow`), que cada rama de
-// `onSubmit` define con su propia clave de id de detalle.
-function reduceDetalle<D extends { id: number }, T>(
-  detalle: D[],
-  cantidades: ReceiptFormValues["cantidades"],
-  buildRow: (item: D, cantidadRecibida: string) => T,
-): T[] {
-  return detalle.reduce<T[]>((acc, item) => {
-    const cantidad = cantidades[String(item.id)];
-    // Misma regla que el schema ("al menos una"): ver `tieneCantidadRecibida`.
-    if (cantidad === undefined || !tieneCantidadRecibida(cantidad)) return acc;
-    acc.push(buildRow(item, cantidad));
-    return acc;
-  }, []);
-}
-
-export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
+export function useReceiptForm({
+  onSuccess,
+  candidate,
+  onSalidaMaquilaRejected,
+}: UseReceiptFormParams) {
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
   const allWarehouses = onboardingData?.catalogos.almacenes ?? [];
@@ -224,77 +212,15 @@ export function useReceiptForm({ onSuccess, candidate }: UseReceiptFormParams) {
     onSubmit: async ({ value }) => {
       if (!validateForm(value)) return;
 
-      // Campos de cabecera compartidos (idénticos para ambos tipos de orden).
-      const recepcionBase = {
-        almacen: value.almacen,
-        serie_codigo: value.serie_codigo,
-        fecha_recepcion: new Date().toISOString(),
-        remision: value.remision,
-        factura_referencia: value.factura_referencia,
-        observaciones: value.observaciones,
-        transportista: null,
-      };
-
-      let payload: ReceiptCreatePayload;
-
-      switch (candidate.type) {
-        case "compra": {
-          const detalle = reduceDetalle<
-            typeof candidate.order.detalle[number],
-            ReceiptCreatePurchaseOrderDetalle
-          >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
-            orden_compra_detalle: d.id,
-            cantidad_recibida,
-          }));
-
-          payload = {
-            recepcion: {
-              orden_compra: candidate.order.id,
-              ...recepcionBase,
-            },
-            detalle,
-          };
-          break;
-        }
-        case "produccion": {
-          const detalle = reduceDetalle<
-            typeof candidate.order.detalle[number],
-            ReceiptCreateProductionOrderDetalle
-          >(candidate.order.detalle, value.cantidades, (d, cantidad_recibida) => ({
-            orden_produccion_detalle: d.id,
-            cantidad_recibida,
-            producto_variante: d.producto_variante_id ?? null,
-          }));
-
-          payload = {
-            recepcion: {
-              orden_produccion: candidate.order.id,
-              // SM de esta OP: misma recepción de OP, y el backend cierra la SM.
-              ...(candidate.salidaMaquila
-                ? { salida_maquila: candidate.salidaMaquila.id }
-                : {}),
-              ...recepcionBase,
-            },
-            detalle,
-          };
-          break;
-        }
-        case "salida-maquila":
-          // SM de OB/OR: solo cabecera; no mueve inventario.
-          payload = {
-            recepcion: {
-              salida_maquila: candidate.salidaMaquila.id,
-              ...recepcionBase,
-            },
-            detalle: [],
-          };
-          break;
-      }
+      const payload = buildReceiptPayload(candidate, value);
 
       createReceiptMutation.mutate(payload, {
         onSuccess: () => {
           form.reset(defaultValues);
           onSuccess();
+        },
+        onError: (error) => {
+          if (isSalidaMaquilaRejection(error)) onSalidaMaquilaRejected?.();
         },
       });
     },
