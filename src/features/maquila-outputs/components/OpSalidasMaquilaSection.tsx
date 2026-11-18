@@ -9,7 +9,7 @@ import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
-import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { GenerarSalidaMaquilaDialog } from "./GenerarSalidaMaquilaDialog";
@@ -23,6 +23,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
   const { salidas, isLoading, isInitialError } = useSalidasMaquila({ op: opId });
   const { data: session } = useSession();
   const canWrite = hasProductionPermission(session?.user, "OP", "C");
+  const canSeeAmounts = canSeeProductionCosts(session?.user);
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -82,9 +83,11 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
                 <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
                   {formatQuantityValue(s.total_piezas)} pz
                 </span>
-                <span className="text-sm tabular-nums font-semibold text-slate-900 dark:text-white">
-                  {formatAmountNoCurrency(s.total)}
-                </span>
+                {canSeeAmounts && (
+                  <span className="text-sm tabular-nums font-semibold text-slate-900 dark:text-white">
+                    {formatAmountNoCurrency(s.total)}
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -99,7 +102,12 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
           onClose={() => setCreating(false)}
         />
       )}
-      <SalidaMaquilaDetailDialog id={openId} onClose={() => setOpenId(null)} canWrite={canWrite} />
+      <SalidaMaquilaDetailDialog
+        id={openId}
+        onClose={() => setOpenId(null)}
+        canWrite={canWrite}
+        canSeeAmounts={canSeeAmounts}
+      />
     </SheetSection>
   );
 }

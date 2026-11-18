@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { getSalidaMaquilaColumns } from "./SalidaMaquilaColumns";
 import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
@@ -20,6 +20,7 @@ export function SalidasMaquilaView() {
   const { salidas, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } = useSalidasMaquila();
   const { data: session } = useSession();
   const canWrite = hasProductionPermission(session?.user, "OP", "C");
+  const canSeeAmounts = canSeeProductionCosts(session?.user);
   const [vista, setVista] = useState<Vista>("maquila");
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -27,7 +28,7 @@ export function SalidasMaquilaView() {
   const recibidas = salidas.filter((s) => s.estatus === "RECIBIDA");
   const canceladas = salidas.filter((s) => s.estatus === "CANCELADA");
   const rows = vista === "maquila" ? enMaquila : vista === "recibidas" ? recibidas : canceladas;
-  const columns = getSalidaMaquilaColumns(setOpenId);
+  const columns = getSalidaMaquilaColumns(setOpenId, canSeeAmounts);
 
   return (
     <div className="space-y-6">
@@ -62,7 +63,12 @@ export function SalidasMaquilaView() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando salidas a maquila"
       />
-      <SalidaMaquilaDetailDialog id={openId} onClose={() => setOpenId(null)} canWrite={canWrite} />
+      <SalidaMaquilaDetailDialog
+        id={openId}
+        onClose={() => setOpenId(null)}
+        canWrite={canWrite}
+        canSeeAmounts={canSeeAmounts}
+      />
     </div>
   );
 }

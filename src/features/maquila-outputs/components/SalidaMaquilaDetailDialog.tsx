@@ -22,16 +22,19 @@ import { SalidaMaquilaOrigenLink } from "./SalidaMaquilaOrigenLink";
 
 /**
  * Detalle de una SM. Se abre por id: el listado no trae renglones, así que el
- * detalle hace su propio GET.
+ * detalle hace su propio GET. Sin `R-PRODUCCION-COSTOS` (`canSeeAmounts`) no
+ * muestra precio, importe ni total; con él, una clave ausente es "—".
  */
 export function SalidaMaquilaDetailDialog({
   id,
   onClose,
   canWrite,
+  canSeeAmounts,
 }: {
   id: number | null;
   onClose: () => void;
   canWrite: boolean;
+  canSeeAmounts: boolean;
 }) {
   const { data, isLoading, isInitialError, isDefinitiveError } = useSalidaMaquila(id);
 
@@ -56,10 +59,15 @@ export function SalidaMaquilaDetailDialog({
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={data.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {formatQuantityValue(data.total_piezas)} piezas ·{" "}
-              <span className="font-semibold text-slate-800 dark:text-white tabular-nums">
-                {formatAmountNoCurrency(data.total)}
-              </span>
+              {formatQuantityValue(data.total_piezas)} piezas
+              {canSeeAmounts && (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-slate-800 dark:text-white tabular-nums">
+                    {formatAmountNoCurrency(data.total)}
+                  </span>
+                </>
+              )}
             </span>
           </div>
 
@@ -84,8 +92,12 @@ export function SalidaMaquilaDetailDialog({
                 <>
                   <th className="px-3 py-2 font-medium">Prenda</th>
                   <th className="px-3 py-2 font-medium text-right">Piezas</th>
-                  <th className="px-3 py-2 font-medium text-right">Precio</th>
-                  <th className="px-3 py-2 font-medium text-right">Importe</th>
+                  {canSeeAmounts && (
+                    <>
+                      <th className="px-3 py-2 font-medium text-right">Precio</th>
+                      <th className="px-3 py-2 font-medium text-right">Importe</th>
+                    </>
+                  )}
                 </>
               }
             >
@@ -93,10 +105,16 @@ export function SalidaMaquilaDetailDialog({
                 <tr key={d.id}>
                   <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{d.descripcion}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatQuantityValue(d.cantidad)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatAmountNoCurrency(d.precio_unitario)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                    {formatAmountNoCurrency(d.importe)}
-                  </td>
+                  {canSeeAmounts && (
+                    <>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatAmountNoCurrency(d.precio_unitario)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                        {formatAmountNoCurrency(d.importe)}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </LineItemsTable>
