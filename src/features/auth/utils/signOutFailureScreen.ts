@@ -1,3 +1,5 @@
+import { LAST_RESORT_ERROR_CLASSES as classes } from "@/src/styles/lastResortErrorClasses";
+
 /**
  * Pantalla completa "No se pudo cerrar la sesión" (EC-851).
  *
@@ -9,6 +11,9 @@
  * ya cargado (las clases de Tailwind de este archivo entran al build porque
  * Tailwind v4 escanea todo `src/`) y la clase `dark` que el layout raíz pone en
  * `<html>`.
+ *
+ * Usa las mismas clases que `src/app/global-error.tsx`
+ * (`lastResortErrorClasses`).
  *
  * Tapa la página y la deja `inert` (sin foco ni clics) para que no se siga
  * usando una sesión que ya no sirve. Es idempotente: si ya está montada, no
@@ -42,27 +47,24 @@ export const showSignOutFailureScreen = (onRetry: () => void) => {
   screen.setAttribute("aria-modal", "true");
   screen.setAttribute("aria-labelledby", titleId);
   screen.setAttribute("aria-describedby", messageId);
-  screen.className =
-    "fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-50 px-4 dark:bg-zinc-950";
+  screen.className = `fixed inset-0 z-[2147483647] ${classes.screen}`;
 
   const card = document.createElement("div");
-  card.className =
-    "w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900";
+  card.className = classes.card;
 
   const title = document.createElement("h1");
   title.id = titleId;
-  title.className = "text-lg font-semibold text-slate-900 dark:text-white";
+  title.className = classes.title;
   title.textContent = SIGN_OUT_FAILURE_TITLE;
 
   const message = document.createElement("p");
   message.id = messageId;
-  message.className = "mt-2 text-sm text-slate-600 dark:text-slate-400";
+  message.className = classes.message;
   message.textContent = SIGN_OUT_FAILURE_MESSAGE;
 
   const retry = document.createElement("button");
   retry.type = "button";
-  retry.className =
-    "mt-6 cursor-pointer rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:cursor-wait disabled:opacity-60";
+  retry.className = classes.primaryButton;
   retry.textContent = SIGN_OUT_FAILURE_RETRY_LABEL;
   retry.addEventListener("click", () => {
     // Evita el doble clic mientras la navegación arranca.
@@ -73,7 +75,11 @@ export const showSignOutFailureScreen = (onRetry: () => void) => {
     onRetry();
   });
 
-  card.append(title, message, retry);
+  const actions = document.createElement("div");
+  actions.className = classes.actions;
+  actions.append(retry);
+
+  card.append(title, message, actions);
   screen.append(card);
 
   for (const sibling of Array.from(document.body.children)) {

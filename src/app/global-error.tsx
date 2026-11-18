@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect } from "react";
 import "./globals.css";
+import { LAST_RESORT_ERROR_CLASSES as classes } from "@/src/styles/lastResortErrorClasses";
 
 /**
  * Pantalla de error de último recurso: atrapa lo que truena en el layout raíz
@@ -52,27 +53,27 @@ export default function GlobalError({
     <html lang="es" suppressHydrationWarning>
       <body className="antialiased">
         <title>Error | ERP</title>
-        <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-zinc-950">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <main className={classes.screen}>
+          <div className={classes.card}>
+            <h1 className={classes.title}>
               Algo salió mal
             </h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <p className={classes.message}>
               Ocurrió un error inesperado y no se pudo mostrar la página. Recárgala para
               continuar; si vuelve a pasar, avisa a soporte.
             </p>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <div className={classes.actions}>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="cursor-pointer rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+                className={classes.primaryButton}
               >
                 Recargar la página
               </button>
               <button
                 type="button"
                 onClick={() => retry()}
-                className="cursor-pointer rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                className={classes.secondaryButton}
               >
                 Reintentar
               </button>
