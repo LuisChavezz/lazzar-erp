@@ -2,7 +2,7 @@ import {
   PICKING_PRIORIDAD_CONFIG,
   PICKING_PRIORIDAD_ORDER,
 } from "../constants/pickingPrioridad";
-import type { PickingPrioridadCounts } from "../utils/pickingList";
+import { pickingPrioridadPercent, type PickingPrioridadCounts } from "../utils/pickingList";
 
 /**
  * Desglose del listado por prioridad. Los colores salen de
@@ -17,12 +17,19 @@ import type { PickingPrioridadCounts } from "../utils/pickingList";
  */
 export const PickingPriorityBreakdown = ({
   breakdown,
+  total,
   className = "",
 }: {
   breakdown: PickingPrioridadCounts;
+  /**
+   * Total del conjunto (`total` de `kpis/`): encabezado y base de los
+   * porcentajes, el MISMO número que la tarjeta "Total de Surtidos". Un
+   * picking con una prioridad fuera del catálogo cuenta aquí y en ningún
+   * bloque, así que los bloques pueden sumar menos (la barra no se llena).
+   */
+  total: number;
   className?: string;
 }) => {
-  const total = PICKING_PRIORIDAD_ORDER.reduce((acc, key) => acc + breakdown[key], 0);
 
   return (
     <div
@@ -67,7 +74,7 @@ export const PickingPriorityBreakdown = ({
         {PICKING_PRIORIDAD_ORDER.map((key) => {
           const style = PICKING_PRIORIDAD_CONFIG[key];
           const count = breakdown[key];
-          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const pct = pickingPrioridadPercent(count, total);
           return (
             <div
               key={key}

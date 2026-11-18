@@ -1,11 +1,20 @@
 import { expect, test } from "@playwright/test";
+import { partialMatchKey } from "@tanstack/react-query";
 import { readServerTableState, toServerTableCriteria } from "@/src/utils/serverTableParams";
 import {
+  PICKING_DETAIL_QUERY_KEY,
+  PICKINGS_QUERY_KEY,
+  pickingDetailQueryKey,
+  pickingKpisQueryKey,
+} from "@/src/features/picking/constants/pickingQueryKeys";
+import { toPickingDetailData } from "@/src/features/picking/utils/picking.utils";
+import {
+  pickingPrioridadPercent,
   pickingsTable,
   toPickingKpisParams,
   toPickingPrioridadCounts,
 } from "@/src/features/picking/utils/pickingList";
-import type { PickingKpis } from "@/src/features/picking/interfaces/picking.interface";
+import type { Picking, PickingKpis } from "@/src/features/picking/interfaces/picking.interface";
 
 /**
  * EC-915: listado de pickings en modo servidor contra `GET /wms/pickings/`
@@ -87,5 +96,29 @@ test.describe("indicadores del listado", () => {
       ],
     } as unknown as PickingKpis;
     expect(toPickingPrioridadCounts(kpis)).toEqual({ ALTA: 1, MEDIA: 0, BAJA: 0 });
+  });
+
+  test("el desglose usa el total del conjunto como base (como la tarjeta Total)", () => {
+    // 1 picking con prioridad fuera del catálogo: cuenta en `total` y en ningún bloque.
+    expect(pickingPrioridadPercent(3, 4)).toBe(75);
+    expect(pickingPrioridadPercent(0, 0)).toBe(0);
+  });
+});
+
+test.describe("llaves de caché del listado y del detalle", () => {
+  test("Actualizar datos alcanza lista, KPIs y TODOS los detalles", () => {
+    expect(partialMatchKey(["pickings", "list", { limit: 20 }], PICKINGS_QUERY_KEY)).toBe(true);
+    expect(partialMatchKey(pickingKpisQueryKey({ estado: "Parcial" }), PICKINGS_QUERY_KEY)).toBe(true);
+    expect(partialMatchKey(pickingDetailQueryKey(40), PICKING_DETAIL_QUERY_KEY)).toBe(true);
+    // El prefijo del listado no alcanza al detalle: por eso se invalidan ambos.
+    expect(partialMatchKey(pickingDetailQueryKey(40), PICKINGS_QUERY_KEY)).toBe(false);
+  });
+
+  test("la caché del detalle guarda el picking con el instante de la lectura", () => {
+    const before = Date.now();
+    const data = toPickingDetailData({ id: 40, folio: "PICK-000040" } as Picking);
+    expect(data.picking.folio).toBe("PICK-000040");
+    expect(data.fetchedAt).toBeGreaterThanOrEqual(before);
+    expect(data.fetchedAt).toBeLessThanOrEqual(Date.now());
   });
 });

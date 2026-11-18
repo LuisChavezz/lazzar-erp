@@ -61,3 +61,10 @@ export const toPickingPrioridadCounts = (kpis: PickingKpis): PickingPrioridadCou
   }
   return counts;
 };
+
+/**
+ * Porcentaje (entero) de `count` sobre el total del conjunto (`total` de
+ * `kpis/`, el de la tarjeta "Total de Surtidos"); 0 sin total.
+ */
+export const pickingPrioridadPercent = (count: number, total: number): number =>
+  total > 0 ? Math.round((count / total) * 100) : 0;

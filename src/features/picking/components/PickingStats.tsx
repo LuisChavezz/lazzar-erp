@@ -24,7 +24,7 @@ import { PickingPriorityBreakdown } from "./PickingPriorityBreakdown";
  * quede a la misma altura que las dos tarjetas.
  */
 export function PickingStats({ criteria }: { criteria: Readonly<Record<string, string>> }) {
-  const { data, isInitialError, isFetching, refetch } = usePickingKpis(criteria);
+  const { data, isInitialError, isFetching, isPlaceholderData, refetch } = usePickingKpis(criteria);
 
   if (!data) {
     return isInitialError ? (
@@ -60,12 +60,24 @@ export function PickingStats({ criteria }: { criteria: Readonly<Record<string, s
     },
   ];
 
+  // Con datos de los criterios ANTERIORES (`keepPreviousData`) mientras llegan
+  // los nuevos: atenuados y `aria-busy`, igual que las filas de la tabla.
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4" role="list">
+    <div
+      className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4${
+        isPlaceholderData ? " opacity-60 transition-opacity" : ""
+      }`}
+      role="list"
+      aria-busy={isPlaceholderData}
+    >
       {cards.map((item, index) => (
         <KpiCard key={`${item.label}-${index}`} item={item} />
       ))}
-      <PickingPriorityBreakdown breakdown={toPickingPrioridadCounts(data)} className="md:col-span-2" />
+      <PickingPriorityBreakdown
+        breakdown={toPickingPrioridadCounts(data)}
+        total={data.total}
+        className="md:col-span-2"
+      />
     </div>
   );
 }
