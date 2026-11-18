@@ -5,6 +5,7 @@ import type { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { createGoogleCalendarEvent } from "../services/actions";
 import type { GoogleCalendarEventCreate } from "../interfaces/google.interface";
+import { GOOGLE_CALENDAR_EVENTS_KEY } from "../utils/calendarRange";
 
 // --- Utilidad para extraer el mensaje de error ---
 
@@ -31,7 +32,8 @@ export const useCreateGoogleCalendarEvent = () => {
     mutationFn: createGoogleCalendarEvent,
     onSuccess: () => {
       toast.success("Evento creado en Google Calendar");
-      queryClient.invalidateQueries({ queryKey: ["google", "calendar", "events"] });
+      // Prefijo: refresca el rango visible del calendario y «Próximos eventos».
+      queryClient.invalidateQueries({ queryKey: GOOGLE_CALENDAR_EVENTS_KEY });
     },
     onError: (error) => {
       toast.error(extractErrorMessage(error, "No se pudo crear el evento."));

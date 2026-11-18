@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { GoogleEventsResponse } from "../interfaces/google.interface";
 import { googleGetCalendarEvents } from "../services/actions";
@@ -6,6 +7,7 @@ import {
   CalendarEventsPaginationError,
   fetchAllCalendarEventPages,
 } from "../utils/fetchAllCalendarEventPages";
+import { googleCalendarEventsQueryKey, toCalendarEventsParams } from "../utils/calendarRange";
 
 interface UseGoogleCalendarEventsOptions {
   /** Inicio del rango de tiempo en formato ISO 8601. Por defecto: 2 meses atrás. */
@@ -19,12 +21,21 @@ interface UseGoogleCalendarEventsOptions {
   maxResults?: number;
   /** Si es false, la query no se ejecuta. Por defecto: true. */
   enabled?: boolean;
+  /**
+   * Conserva los eventos del rango anterior mientras carga uno nuevo (el
+   * calendario al navegar entre meses): sin parpadeo en blanco. Mientras tanto
+   * `isPlaceholderData` es `true`.
+   */
+  keepPreviousRange?: boolean;
 }
 
 /**
  * Consulta los eventos del Google Calendar del usuario autenticado.
  *
- * Por defecto carga un rango de 2 meses atrás hasta 6 meses hacia adelante.
+ * Por defecto carga un rango de 2 meses atrás hasta 6 meses hacia adelante
+ * (lo usa «Próximos eventos»). El calendario pasa su rango VISIBLE
+ * (`timeMin`/`timeMax`, ver `calendarRange.ts`), así que cada mes o día
+ * navegado es una consulta propia, en caché por rango.
  * Trae TODAS las páginas del rango (`fetchAllCalendarEventPages`): con más de
  * 250 eventos, antes se perdían los siguientes.
  */
@@ -33,6 +44,7 @@ export const useGoogleCalendarEvents = ({
   timeMax,
   maxResults = 250,
   enabled = true,
+  keepPreviousRange = false,
 }: UseGoogleCalendarEventsOptions = {}) => {
   // Ventana de tiempo por defecto — estable por sesión gracias a deps vacías
   const defaultTimeMin = useMemo(() => {
@@ -50,21 +62,22 @@ export const useGoogleCalendarEvents = ({
   }, []);
 
   const params = useMemo<Record<string, string>>(
-    () => ({
-      timeMin: timeMin ?? defaultTimeMin,
-      timeMax: timeMax ?? defaultTimeMax,
-      maxResults: String(maxResults),
-    }),
+    () =>
+      toCalendarEventsParams(
+        { timeMin: timeMin ?? defaultTimeMin, timeMax: timeMax ?? defaultTimeMax },
+        maxResults,
+      ),
     [timeMin, timeMax, maxResults, defaultTimeMin, defaultTimeMax],
   );
 
   // `useGuardedQuery`: un refetch fallido conserva los eventos ya pintados y
   // avisa por toast; solo una carga inicial fallida es `isInitialError`, que
   // la pantalla muestra como error con "Reintentar" (antes, un calendario vacío).
-  const { data, isLoading, isFetching, isInitialError, error, refetch } =
+  const { data, isLoading, isFetching, isPlaceholderData, isInitialError, error, refetch } =
     useGuardedQuery<GoogleEventsResponse>(
       {
-        queryKey: ["google", "calendar", "events", params],
+        queryKey: googleCalendarEventsQueryKey(params),
+        placeholderData: keepPreviousRange ? keepPreviousData : undefined,
         queryFn: ({ signal }) =>
           fetchAllCalendarEventPages(
             (pageToken, pageSignal) =>
@@ -84,5 +97,5 @@ export const useGoogleCalendarEvents = ({
       },
     );
 
-  return { data, isLoading, isFetching, isInitialError, error, refetch };
+  return { data, isLoading, isFetching, isPlaceholderData, isInitialError, error, refetch };
 };

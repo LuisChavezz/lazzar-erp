@@ -1,7 +1,7 @@
 "use client";
 
 import FullCalendar from "@fullcalendar/react";
-import type { EventInput } from "@fullcalendar/core";
+import type { DatesSetArg, EventInput } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -18,6 +18,11 @@ import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 
 const GoogleCalendarEventForm = lazy(() => import("./GoogleCalendarEventForm"));
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
+import {
+  isSameCalendarRange,
+  monthGridRange,
+  toCalendarRange,
+} from "../utils/calendarRange";
 import { useGoogleCalendarStore } from "../stores/google-calendar.store";
 import { GoogleUpcomingEvents } from "./GoogleUpcomingEvents";
 import { GoogleEventDetails } from "./GoogleEventDetails";
@@ -58,8 +63,23 @@ export const GoogleCalendar = () => {
     setIsFormOpen(true);
   };
 
-  const { data, isLoading, isFetching, isInitialError, error, refetch } =
-    useGoogleCalendarEvents();
+  // Rango VISIBLE del calendario: cada mes o día navegado pide solo sus
+  // eventos (antes, una ventana fija de -2/+6 meses dejaba vacío, sin aviso,
+  // cualquier mes fuera de ella). El inicial es el mes actual, para pedir antes
+  // de montar FullCalendar; luego manda su `datesSet`.
+  const [range, setRange] = useState(() => monthGridRange(new Date()));
+
+  const handleDatesSet = (arg: DatesSetArg) => {
+    const next = toCalendarRange(arg.start, arg.end);
+    setRange((prev) => (isSameCalendarRange(prev, next) ? prev : next));
+  };
+
+  const { data, isLoading, isFetching, isPlaceholderData, isInitialError, error, refetch } =
+    useGoogleCalendarEvents({
+      timeMin: range.timeMin,
+      timeMax: range.timeMax,
+      keepPreviousRange: true,
+    });
   const rawEvents = data?.events;
 
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
@@ -96,20 +116,8 @@ export const GoogleCalendar = () => {
     openForm(info.dateStr);
   };
 
-  // Carga inicial fallida: el error con "Reintentar", nunca un calendario vacío
-  // que haga pensar que no hay eventos.
-  if (isInitialError) {
-    return (
-      <SectionErrorNotice
-        title="No se pudo cargar tu calendario"
-        message={extractErrorMessage(error, "Ocurrió un problema al consultar tus eventos de Google Calendar.")}
-        onRetry={() => void refetch()}
-        isRetrying={isFetching}
-      />
-    );
-  }
-
-  // Skeleton mientras se cargan los eventos
+  // Skeleton solo en la PRIMERA carga; al navegar se conservan los eventos del
+  // rango anterior (atenuados) hasta que llegan los del nuevo.
   if (isLoading) {
     return (
       <div
@@ -128,7 +136,26 @@ export const GoogleCalendar = () => {
       className={`grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-1 ${CALENDAR_HEIGHT_CLASS}`}
     >
       {/* Calendario principal */}
-      <div className="sales-fullcalendar-theme min-w-0 h-full min-h-0 relative">
+      <div
+        className={`sales-fullcalendar-theme min-w-0 h-full min-h-0 relative transition-opacity duration-200 ${
+          isPlaceholderData ? "opacity-60" : ""
+        }`}
+        aria-busy={isPlaceholderData || undefined}
+      >
+        {/* Carga fallida del rango visible: el aviso con "Reintentar" encima del
+            calendario, nunca un mes vacío que haga pensar que no hay eventos.
+            El calendario sigue montado para que reintentar no lo regrese al
+            mes actual. */}
+        {isInitialError && (
+          <div className="absolute inset-x-2 top-14 z-20">
+            <SectionErrorNotice
+              title="No se pudo cargar tu calendario"
+              message={extractErrorMessage(error, "Ocurrió un problema al consultar tus eventos de Google Calendar.")}
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
+          </div>
+        )}
         {/* Selector de vista y botón nuevo evento — flotando sobre el área derecha del header */}
         <div className="absolute top-2 right-2 z-10 flex items-stretch gap-1.5">
           <button
@@ -200,6 +227,7 @@ export const GoogleCalendar = () => {
           expandRows
           editable={false}
           events={calendarEvents}
+          datesSet={handleDatesSet}
           dateClick={handleDateClick}
           eventClick={(arg) => {
             // Previene la redirección nativa de FullCalendar si el evento tiene url
@@ -213,7 +241,7 @@ export const GoogleCalendar = () => {
       {/* Panel lateral: próximos eventos + detalle del evento seleccionado — scroll interno propio */}
       <div className="h-full min-h-0 overflow-y-auto">
         <div className="space-y-4">
-          <GoogleEventDetails />
+          <GoogleEventDetails events={rawEvents} />
           <GoogleUpcomingEvents hideViewAll />
         </div>
       </div>
