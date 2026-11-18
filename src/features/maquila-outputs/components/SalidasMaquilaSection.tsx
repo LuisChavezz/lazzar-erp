@@ -36,11 +36,11 @@ export interface GenerarSalidaMaquilaSlotProps {
  * Leer SM exige `R-PRODUCCION-OP`, la regla de la ruta del listado: sin él (un
  * rol con OB/OR pero sin OP) la sección no se monta ni pide las SM. En la OP
  * siempre pasa, porque su ruta exige el mismo código. Mientras la sesión carga
- * no se pinta.
+ * no se pinta, así que dentro ningún permiso está pendiente.
  */
 export function SalidasMaquilaSection(props: SalidasMaquilaSectionProps) {
-  const { canRead } = useSalidaMaquilaAccess();
-  return canRead ? <SalidasMaquilaSectionContent {...props} /> : null;
+  const access = useSalidaMaquilaAccess();
+  return access.canRead ? <SalidasMaquilaSectionContent {...props} access={access} /> : null;
 }
 
 interface SalidasMaquilaSectionProps {
@@ -55,16 +55,13 @@ function SalidasMaquilaSectionContent({
   ordenId,
   cancelada,
   renderGenerarDialog,
-}: SalidasMaquilaSectionProps) {
+  access,
+}: SalidasMaquilaSectionProps & { access: ReturnType<typeof useSalidaMaquilaAccess> }) {
   const { salidas, isLoading, isInitialError } = useSalidasMaquila({
     [SALIDA_MAQUILA_ORIGENES[origen].campo]: ordenId,
   });
-  const access = useSalidaMaquilaAccess();
   const { canWrite, canGenerate } = access;
   const canSeeAmounts = access.amounts === "allowed";
-  // Permiso de costos pendiente (sesión cargando): la lista espera en vez de
-  // pintarse sin totales y agregarlos después.
-  const isListLoading = isLoading || access.amounts === "pending";
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -90,13 +87,20 @@ function SalidasMaquilaSectionContent({
       }
       action={
         canGenerate && !cancelada ? (
-          <Button type="button" variant="primary" onClick={() => setCreating(true)} disabled={isLoading}>
+          // Sin la lista no se sabe cuánto ya salió: el tope del diálogo sería falso.
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setCreating(true)}
+            disabled={isLoading || isInitialError}
+            title={isInitialError ? "No se pudieron cargar las salidas de esta orden" : undefined}
+          >
             Generar SM
           </Button>
         ) : undefined
       }
     >
-      {isListLoading ? (
+      {isLoading ? (
         <EmptyLines>Cargando salidas…</EmptyLines>
       ) : isInitialError ? (
         <EmptyLines>No se pudieron cargar las salidas a maquila.</EmptyLines>
