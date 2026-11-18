@@ -7,27 +7,30 @@ import {
   cerrarSalidaMaquila,
   createSalidaMaquila,
 } from "../services/actions";
-import type { CreateSalidaMaquilaBody } from "../interfaces/salida-maquila.interface";
+import { salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
+import { SALIDA_MAQUILA_FORBIDDEN_TEXT } from "../utils/salidaMaquilaErrors";
+import type { CreateSalidaMaquilaBody, SalidaMaquilaOrigen } from "../interfaces/salida-maquila.interface";
 
 export const salidaMaquilaErrorText = (error: unknown, fallback: string) => {
   const status = (error as { response?: { status?: number } })?.response?.status;
-  if (status === 403) return "No tienes permiso de Producción para esta acción.";
+  if (status === 403) return SALIDA_MAQUILA_FORBIDDEN_TEXT;
   return firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback);
 };
 
-/** Una SM no cambia la OP, pero sí todas las listas de SM (prefijo). */
+/** Una SM no cambia su orden de origen, pero sí todas las listas de SM (prefijo). */
 const useRefresh = () => {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ["salidas-maquila"] });
 };
 
-export const useCreateSalidaMaquila = (opId: number) => {
+/** Alta desde una orden. Llave por orden: candado contra el doble envío. */
+export const useCreateSalidaMaquila = (origen: SalidaMaquilaOrigen, ordenId: number) => {
   const refresh = useRefresh();
   return useMutation({
-    mutationKey: ["salida-maquila-crear", opId],
+    mutationKey: ["salida-maquila-crear", origen, ordenId],
     mutationFn: (body: CreateSalidaMaquilaBody) => createSalidaMaquila(body),
     onSuccess: (sm) => {
-      toast.success(`Salida a maquila ${sm.folio} generada.`);
+      toast.success(`Salida a maquila ${salidaMaquilaFolio(sm)} generada.`);
       return refresh();
     },
   });
@@ -40,7 +43,7 @@ export const useSalidaMaquilaActions = (id: number) => {
     mutationKey: ["salida-maquila-cerrar", id],
     mutationFn: () => cerrarSalidaMaquila(id),
     onSuccess: (sm) => {
-      toast.success(`${sm.folio} marcada como recibida.`);
+      toast.success(`${salidaMaquilaFolio(sm)} marcada como recibida.`);
       return refresh();
     },
     onError: (error) => toast.error(salidaMaquilaErrorText(error, "No se pudo marcar como recibida.")),
@@ -49,7 +52,7 @@ export const useSalidaMaquilaActions = (id: number) => {
     mutationKey: ["salida-maquila-cancelar", id],
     mutationFn: () => cancelarSalidaMaquila(id),
     onSuccess: (sm) => {
-      toast.success(`${sm.folio} cancelada.`);
+      toast.success(`${salidaMaquilaFolio(sm)} cancelada.`);
       return refresh();
     },
     onError: (error) => toast.error(salidaMaquilaErrorText(error, "No se pudo cancelar la salida.")),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/src/components/Button";
 import { EmbarquesIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -9,19 +9,44 @@ import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderS
 import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
+import { SALIDA_MAQUILA_ORIGENES, salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
 import { useSalidaMaquilaAccess } from "../hooks/useSalidaMaquilaAccess";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
-import { GenerarSalidaMaquilaDialog } from "./GenerarSalidaMaquilaDialog";
+import type { SalidaMaquilaOrigen } from "../interfaces/salida-maquila.interface";
 import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
 
+/** Lo que el diálogo de alta recibe de la sección. */
+export interface GenerarSalidaMaquilaSlotProps {
+  /** Piezas de esta orden en SM no canceladas. */
+  yaEnviadas: number;
+  open: boolean;
+  onClose: () => void;
+}
+
 /**
- * Salidas a maquila de una OP, en su detalle: las que ya hay y "Generar SM".
- * No se genera sobre una OP cancelada (el backend la rechaza). "Generar SM"
- * exige `C-PRODUCCION-OP` y `R-PRODUCCION-COSTOS`; cerrar y cancelar, solo el
- * primero.
+ * Salidas a maquila de una orden (OP, OB u OR, EC-911), en su detalle: las que
+ * ya hay y "Generar SM". No se genera sobre una orden cancelada (el backend la
+ * rechaza). "Generar SM" exige `C-PRODUCCION-OP` y `R-PRODUCCION-COSTOS`;
+ * cerrar y cancelar, solo el primero. Mismos permisos en los tres orígenes.
+ *
+ * El diálogo de alta lo pone quien monta la sección (`renderGenerarDialog`):
+ * la OP pide su retrieve al abrirlo; OB y OR pasan los renglones que su página
+ * ya cargó.
  */
-export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; opCancelada: boolean }) {
-  const { salidas, isLoading, isInitialError } = useSalidasMaquila({ op: opId });
+export function SalidasMaquilaSection({
+  origen,
+  ordenId,
+  cancelada,
+  renderGenerarDialog,
+}: {
+  origen: SalidaMaquilaOrigen;
+  ordenId: number;
+  cancelada: boolean;
+  renderGenerarDialog: (props: GenerarSalidaMaquilaSlotProps) => ReactNode;
+}) {
+  const { salidas, isLoading, isInitialError } = useSalidasMaquila({
+    [SALIDA_MAQUILA_ORIGENES[origen].campo]: ordenId,
+  });
   const access = useSalidaMaquilaAccess();
   const { canWrite, canGenerate } = access;
   const canSeeAmounts = access.amounts === "allowed";
@@ -40,7 +65,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
     <SheetSection
       icon={<EmbarquesIcon className="w-5 h-5" />}
       title="Salidas a maquila"
-      subtitle="Prendas de esta OP que salieron a confeccionarse con un maquilero."
+      subtitle={`Prendas de esta ${origen} que salieron a confeccionarse con un maquilero.`}
       badges={
         salidas.length > 0 ? (
           <>
@@ -52,7 +77,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
         ) : undefined
       }
       action={
-        canGenerate && !opCancelada ? (
+        canGenerate && !cancelada ? (
           <Button type="button" variant="primary" onClick={() => setCreating(true)} disabled={isLoading}>
             Generar SM
           </Button>
@@ -64,7 +89,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
       ) : isInitialError ? (
         <EmptyLines>No se pudieron cargar las salidas a maquila.</EmptyLines>
       ) : salidas.length === 0 ? (
-        <EmptyLines>Esta OP no tiene salidas a maquila.</EmptyLines>
+        <EmptyLines>Esta {origen} no tiene salidas a maquila.</EmptyLines>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/5 rounded-2xl border border-slate-100 dark:border-white/10">
           {salidas.map((s) => (
@@ -75,7 +100,9 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
                 title="Ver detalle"
                 className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer"
               >
-                <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{s.folio}</span>
+                <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">
+                  {salidaMaquilaFolio(s)}
+                </span>
                 <StatusBadge status={s.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />
                 <span className="text-sm text-slate-700 dark:text-slate-200 flex-1 min-w-40">
                   {s.centro_confeccion_nombre}
@@ -98,14 +125,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
         </ul>
       )}
 
-      {creating && (
-        <GenerarSalidaMaquilaDialog
-          opId={opId}
-          yaEnviadas={yaEnviadas}
-          open={creating}
-          onClose={() => setCreating(false)}
-        />
-      )}
+      {creating && renderGenerarDialog({ yaEnviadas, open: creating, onClose: () => setCreating(false) })}
       <SalidaMaquilaDetailDialog
         id={openId}
         onClose={() => setOpenId(null)}
