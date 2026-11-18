@@ -2,6 +2,11 @@ import { getCsrfToken, signOut } from "next-auth/react";
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
 import { probeSession } from "./sessionRecovery";
+import {
+  clearSignOutFallbackAttempts,
+  registerSignOutFallbackAttempt,
+} from "./signOutFallbackGuard";
+import { showSignOutFailureScreen } from "./signOutFailureScreen";
 
 /** Clave del antiguo store de la Dirección fiscal en `localStorage` (EC-860). */
 export const LEGACY_SAT_STORAGE_KEY = "sat-storage";
@@ -25,6 +30,9 @@ export const LEGACY_SAT_STORAGE_KEY = "sat-storage";
  * - `theme-storage` y `sidebar-storage`: preferencias del navegador, no datos.
  * - `nextauth.message` (localStorage): el canal entre pestañas de next-auth.
  * - La marca anti-ciclo de `sessionRecovery` (sessionStorage).
+ * - La cuenta de la guarda del respaldo de cierre de sesión (sessionStorage,
+ *   EC-851): tiene que sobrevivir al cierre que la anota; la borra
+ *   `enterNewSession`.
  *
  * Un cambio de empresa del mismo usuario (EC-847) reusa esta misma limpieza
  * (`completeCompanySwitch`): la sucursal elegida es de la empresa anterior.
@@ -69,12 +77,29 @@ export const SERVER_LOGOUT_PATH = "/auth/logout";
 export const SIGN_OUT_TIMEOUT_MS = 8_000;
 
 /**
+ * "Reintentar" de la pantalla de error: empieza la cuenta de nuevo y navega
+ * siempre, aunque `sessionStorage` no esté disponible para anotar el intento
+ * (es un clic del usuario, no un ciclo).
+ */
+const retryServerLogout = () => {
+  clearSignOutFallbackAttempts();
+  registerSignOutFallbackAttempt();
+  window.location.href = SERVER_LOGOUT_PATH;
+};
+
+/**
  * Respaldo cuando `signOut` no sirvió: navega (carga completa) a
  * `/auth/logout`, que expira la cookie de sesión de NextAuth en el servidor y
- * manda al login.
+ * manda al login. Si ese respaldo ya se intentó demasiadas veces seguidas en
+ * esta pestaña (`signOutFallbackGuard`), deja de navegar y muestra la pantalla
+ * de error en lugar de recargar en ciclo.
  */
 const navigateToServerLogout = () => {
-  window.location.href = SERVER_LOGOUT_PATH;
+  if (registerSignOutFallbackAttempt()) {
+    window.location.href = SERVER_LOGOUT_PATH;
+    return;
+  }
+  showSignOutFailureScreen(retryServerLogout);
 };
 
 /**
@@ -99,7 +124,10 @@ const navigateToServerLogout = () => {
  * El respaldo NO puede ser navegar a `/auth/login`: con la cookie viva el
  * proxy lo rebota a `/` → `/select-branch`, esa página recibe 401, el refresh
  * falla y se vuelve a cerrar sesión, en ciclo. `/auth/logout` borra la cookie
- * del lado del servidor, que es el único que puede (es HttpOnly).
+ * del lado del servidor, que es el único que puede (es HttpOnly). Si aun así
+ * la pestaña vuelve a caer aquí en ciclo, la guarda de `signOutFallbackGuard`
+ * corta tras `SIGN_OUT_FALLBACK_MAX_ATTEMPTS` navegaciones y deja una pantalla
+ * de error estable con "Reintentar".
  *
  * `timeoutMs` existe para las pruebas; el código de la app usa el default.
  */
@@ -145,9 +173,14 @@ export const POST_LOGIN_PATH = "/select-branch";
  * Sin el workspace anterior, el proxy deja pasar solo a `/select-branch`, que
  * no lo necesita: lee la empresa de la sesión y escribe sucursal y cookie al
  * elegir.
+ *
+ * También reinicia la cuenta de la guarda del respaldo de cierre de sesión
+ * (EC-851): los intentos de la sesión anterior no deben bloquear el próximo
+ * cierre de esta.
  */
 export const enterNewSession = () => {
   clearUserScopedClientState();
+  clearSignOutFallbackAttempts();
   window.location.replace(POST_LOGIN_PATH);
 };
 
