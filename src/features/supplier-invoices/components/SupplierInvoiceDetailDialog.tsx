@@ -24,7 +24,7 @@ import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatC
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
+import { canDownloadMergedPdf, ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
@@ -121,7 +121,7 @@ function SupplierInvoicePdfSection({
                 ? "Reemplazar PDF"
                 : "Adjuntar PDF"}
           </Button>
-          {tienePdf && (
+          {canDownloadMergedPdf(factura) && (
             <Button
               type="button"
               variant="primary"
@@ -166,10 +166,14 @@ export function SupplierInvoiceDetailDialog({
   // su pathname (`canAccessRoute` va sin query, misma regla que el proxy). El
   // proveedor viaja para que el "Volver" regrese con él elegido; es el mismo que
   // filtra el listado, así que se toma de la factura.
-  const ocHref = purchaseOrderDetailHref(factura.oc, "supplier-invoices", {
-    proveedor: factura.proveedor,
-  });
-  const canOpenOc = canAccessRoute(ocHref.split("?")[0], session?.user);
+  // Sin OC (factura de maquila, EC-912) no hay a dónde enlazar.
+  const ocHref =
+    factura.oc == null
+      ? null
+      : purchaseOrderDetailHref(factura.oc, "supplier-invoices", {
+          proveedor: factura.proveedor,
+        });
+  const canOpenOc = ocHref !== null && canAccessRoute(ocHref.split("?")[0], session?.user);
   const money = (value: string) => formatMoneyValueOrDash(value, factura.moneda_codigo);
 
   return (
@@ -199,7 +203,7 @@ export function SupplierInvoiceDetailDialog({
             <span className="tabular-nums">{money(factura.total)}</span>
           </InfoTile>
           <InfoTile label="Orden de compra">
-            {canOpenOc ? (
+            {canOpenOc && ocHref ? (
               <Link
                 href={ocHref}
                 className="font-mono text-sky-600 dark:text-sky-400 hover:underline hover:text-sky-700 dark:hover:text-sky-300 transition-colors"

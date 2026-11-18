@@ -37,6 +37,7 @@ import {
 import { conditionalColumn } from "./shared/documentPdfColumns";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pdfDate, pdfMoney } from "./shared/financeDocumentPdf";
+import { SIN_OC_LABEL } from "@/src/features/supplier-invoices/utils/supplierInvoiceLabels";
 
 type SupplierInvoicePdfDocumentProps = {
   factura: FacturaProveedor;
@@ -90,7 +91,11 @@ export const SupplierInvoicePdfDocument = ({ factura, company }: SupplierInvoice
         <PdfInfoCard
           title="ORIGEN"
           items={[
-            { label: "Orden de compra", value: textOrDash(factura.oc_folio) },
+            // Sin OC: factura de maquila de una SM (EC-912).
+            {
+              label: "Orden de compra",
+              value: factura.oc == null ? SIN_OC_LABEL : textOrDash(factura.oc_folio),
+            },
             { label: "Recepción", value: textOrDash(factura.recepcion_folio) },
           ]}
         />

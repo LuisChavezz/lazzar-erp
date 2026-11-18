@@ -42,6 +42,7 @@ import {
 } from "../hooks/useSupplierInvoiceRowActions";
 import { SUPPLIER_INVOICE_PDF_ACCEPT } from "../constants/supplierInvoicePdf";
 import { validateSupplierInvoicePdf } from "../utils/validateSupplierInvoicePdf";
+import { canDownloadMergedPdf } from "../utils/supplierInvoiceLabels";
 import { getColumns, SUPPLIER_INVOICE_HEADER_FILTERS } from "./SupplierInvoiceColumns";
 import { SupplierInvoiceDetailDialog } from "./SupplierInvoiceDetailDialog";
 import SupplierInvoiceForm from "./SupplierInvoiceForm";
@@ -296,7 +297,7 @@ export default function SupplierInvoiceList({
 
   const handleDownloadMergedPdf = (id: number) => {
     const factura = facturas.find((item) => item.id === id);
-    if (!factura || downloadingIds.includes(id)) return;
+    if (!factura || downloadingIds.includes(id) || !canDownloadMergedPdf(factura)) return;
     downloadMergedPdf(factura);
   };
 
