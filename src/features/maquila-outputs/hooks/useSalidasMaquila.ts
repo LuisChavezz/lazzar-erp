@@ -7,7 +7,7 @@ import type { SalidaMaquilaFilters } from "../interfaces/salida-maquila.interfac
  * fijo, para que dos listas con filtros distintos no se dedupliquen entre sí.
  */
 export const salidasMaquilaToastId = (filters: SalidaMaquilaFilters): string =>
-  `salidas-maquila-refetch-error-op:${filters.op ?? "all"}-centro:${filters.centro_confeccion ?? "all"}-estatus:${filters.estatus ?? "all"}`;
+  `salidas-maquila-refetch-error-origen:${filters.origen ?? "all"}-op:${filters.op ?? "all"}-ob:${filters.ob ?? "all"}-orden_r:${filters.orden_r ?? "all"}-centro:${filters.centro_confeccion ?? "all"}-estatus:${filters.estatus ?? "all"}`;
 
 /**
  * Salidas a maquila (`GET /produccion/salidas-maquila/`). Llave
