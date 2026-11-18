@@ -54,6 +54,17 @@ export interface Pago {
   /** Calculado (`source="cuenta_bancaria.alias"`), solo lectura. */
   cuenta_bancaria_alias: string | null;
   /**
+   * Sucursal del pago (EC-874): la de las facturas de sus líneas, solo lectura.
+   * `null` mientras no tiene líneas (un Borrador vacío). En un Borrador se
+   * recalcula al cambiar las líneas. Nunca viaja en el cuerpo de alta o edición:
+   * el backend la deriva y una distinta responde 400.
+   */
+  sucursal: number | null;
+  /** `source="sucursal.nombre"`; `null` sin sucursal. */
+  sucursal_nombre: string | null;
+  /** `source="sucursal.codigo"`; `null` sin sucursal. */
+  sucursal_codigo: string | null;
+  /**
    * Fecha "YYYY-MM-DD". El modelo la declara
    * `DateField(default=timezone.localdate)` SIN `null=True`, así que en lectura
    * nunca es nula y en escritura admite omitirse pero NO `null` (ver

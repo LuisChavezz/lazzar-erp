@@ -76,6 +76,17 @@ export interface Cobro {
   cuenta_bancaria_moneda_codigo: string | null;
   /** `source="cuenta_bancaria.activo"` (EC-746): ¿la cuenta sigue activa? */
   cuenta_bancaria_activo: boolean;
+  /**
+   * Sucursal del cobro (EC-874): la de las facturas de sus líneas, solo lectura.
+   * `null` mientras no tiene líneas (un Borrador vacío). En un Borrador se
+   * recalcula al cambiar las líneas. Nunca viaja en el cuerpo de alta o edición:
+   * el backend la deriva y una distinta responde 400.
+   */
+  sucursal: number | null;
+  /** `source="sucursal.nombre"`; `null` sin sucursal. */
+  sucursal_nombre: string | null;
+  /** `source="sucursal.codigo"`; `null` sin sucursal. */
+  sucursal_codigo: string | null;
   /** Fecha-calendario "YYYY-MM-DD". */
   fecha_cobro: string;
   metodo_pago: CobroMetodoPago;
