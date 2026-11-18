@@ -75,8 +75,8 @@ const GRAVEDAD_INCIDENCIA_RANK: Record<GravedadIncidencia, number> = {
 /**
  * Peso de una gravedad, con degradación explícita a 0 ante un valor fuera del
  * enum: indexar el mapa a secas devolvería `undefined`, el comparador daría
- * `NaN` y toda la columna quedaría en un orden arbitrario. Mismo criterio que
- * `pickingPrioridadRank`.
+ * `NaN` y toda la columna quedaría en un orden arbitrario. Con 0, un valor
+ * desconocido queda como el menos grave y el orden de los demás se conserva.
  */
 export const gravedadIncidenciaRank = (gravedad: string): number =>
   GRAVEDAD_INCIDENCIA_RANK[gravedad as GravedadIncidencia] ?? 0;
