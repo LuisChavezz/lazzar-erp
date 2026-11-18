@@ -4,6 +4,7 @@ import { useState, useRef, lazy, Suspense } from "react";
 import { EmailListItem } from "./EmailListItem";
 import { EmailListSkeleton } from "./EmailListSkeleton";
 import { EmailEmptyState } from "./EmailEmptyState";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 
 // Carga diferida del formulario de redacción — solo se descarga al primer click
 const ComposeEmailForm = lazy(() =>
@@ -70,6 +71,8 @@ export const EmailList = ({
     messages,
     isPending,
     isFetching,
+    isInitialError,
+    errorMessage,
     hasNextPage,
     hasPreviousPage,
     currentPage,
@@ -229,6 +232,16 @@ export const EmailList = ({
       >
         {isPending ? (
           <EmailListSkeleton />
+        ) : isInitialError ? (
+          // Antes, un error de carga se veía como bandeja vacía.
+          <div className="px-4 py-10">
+            <SectionErrorNotice
+              title="No se pudieron cargar los correos"
+              message={errorMessage ?? "Ocurrió un problema al consultar tus correos de Gmail."}
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
+          </div>
         ) : messages.length === 0 ? (
           <EmailEmptyState />
         ) : (
@@ -247,8 +260,8 @@ export const EmailList = ({
         )}
       </div>
 
-      {/* Paginación */}
-      {!isPending && messages.length > 0 && (
+      {/* Paginación — también con el error de una página posterior, para volver */}
+      {!isPending && (messages.length > 0 || hasPreviousPage) && (
         <div
           className="flex items-center justify-between px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-zinc-900"
           aria-label="Controles de paginación"

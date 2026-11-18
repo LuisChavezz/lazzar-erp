@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { GoogleEventsResponse } from "../interfaces/google.interface";
 import { googleGetCalendarEvents } from "../services/actions";
 import { fetchAllCalendarEventPages } from "../utils/fetchAllCalendarEventPages";
@@ -55,12 +55,24 @@ export const useGoogleCalendarEvents = ({
     [timeMin, timeMax, maxResults, defaultTimeMin, defaultTimeMax],
   );
 
-  return useQuery<GoogleEventsResponse>({
-    queryKey: ["google", "calendar", "events", params],
-    queryFn: () =>
-      fetchAllCalendarEventPages((pageToken) =>
-        googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params),
-      ),
-    enabled,
-  });
+  // `useGuardedQuery`: un refetch fallido conserva los eventos ya pintados y
+  // avisa por toast; solo una carga inicial fallida es `isInitialError`, que
+  // la pantalla muestra como error con "Reintentar" (antes, un calendario vacío).
+  const { data, isLoading, isFetching, isInitialError, error, refetch } =
+    useGuardedQuery<GoogleEventsResponse>(
+      {
+        queryKey: ["google", "calendar", "events", params],
+        queryFn: () =>
+          fetchAllCalendarEventPages((pageToken) =>
+            googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params),
+          ),
+        enabled,
+      },
+      {
+        toastId: "google-calendar-events",
+        errorMessage: "No se pudo actualizar el calendario.",
+      },
+    );
+
+  return { data, isLoading, isFetching, isInitialError, error, refetch };
 };

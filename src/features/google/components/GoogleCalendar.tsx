@@ -12,6 +12,8 @@ import { DropdownMenu } from "@radix-ui/themes";
 import Calendar from "@/src/components/Calendar";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 
 const GoogleCalendarEventForm = lazy(() => import("./GoogleCalendarEventForm"));
@@ -45,7 +47,8 @@ export const GoogleCalendar = () => {
   // Fecha preseleccionada al hacer clic en un día del calendario (YYYY-MM-DD).
   const [selectedDate, setSelectedDate] = useState<string>("");
 
-  const { data, isLoading } = useGoogleCalendarEvents();
+  const { data, isLoading, isFetching, isInitialError, error, refetch } =
+    useGoogleCalendarEvents();
   const rawEvents = data?.events;
 
   const setSelectedEventId = useGoogleCalendarStore((s) => s.setSelectedEventId);
@@ -82,6 +85,19 @@ export const GoogleCalendar = () => {
     setSelectedDate(info.dateStr);
     setIsFormOpen(true);
   };
+
+  // Carga inicial fallida: el error con "Reintentar", nunca un calendario vacío
+  // que haga pensar que no hay eventos.
+  if (isInitialError) {
+    return (
+      <SectionErrorNotice
+        title="No se pudo cargar tu calendario"
+        message={extractErrorMessage(error, "Ocurrió un problema al consultar tus eventos de Google Calendar.")}
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
 
   // Skeleton mientras se cargan los eventos
   if (isLoading) {

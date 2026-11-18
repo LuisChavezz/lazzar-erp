@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
-import toast from "react-hot-toast";
+import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { googleGetEmailMessages } from "../services/actions";
 import { normalizeGmailMessages } from "../utils/normalizeGmailMessage";
 import type {
@@ -18,6 +18,14 @@ export interface useGoogleMessagesReturn {
   messages: GoogleEmailMessage[];
   /** Verdadero mientras se carga la primera página (sin datos en caché) */
   isPending: boolean;
+  /**
+   * Verdadero si la página pedida NUNCA cargó (carga inicial, cambio de
+   * carpeta, búsqueda o página): la lista muestra el error con "Reintentar"
+   * en vez de una bandeja vacía. Un refetch fallido con datos solo avisa.
+   */
+  isInitialError: boolean;
+  /** Mensaje para el usuario del error de `isInitialError` (`null` sin error). */
+  errorMessage: string | null;
   /** Verdadero durante cualquier fetching, incluido el cambio de página con placeholderData */
   isFetching: boolean;
   /** Verdadero si existe una página siguiente */
@@ -87,7 +95,7 @@ export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogle
 
   const currentToken = pageTokenHistory[pageTokenHistory.length - 1];
 
-  const { data, isPending, isFetching, isError, error, refetch } = useQuery<GoogleEmailMessagesResponse>({
+  const { data, isLoading, isFetching, isInitialError, error, refetch } = useGuardedQuery<GoogleEmailMessagesResponse>({
     queryKey: ["google", "email-messages", query, currentToken ?? "first"],
     queryFn: () => {
       const params: Record<string, string> = { ...BASE_PARAMS, q: query };
@@ -102,17 +110,10 @@ export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogle
     staleTime: 2 * 60 * 1000,
     // Mantiene los datos de la página anterior visibles mientras se carga la nueva.
     placeholderData: keepPreviousData,
+  }, {
+    toastId: "google-email-messages",
+    errorMessage: "No se pudieron actualizar los correos.",
   });
-
-  // Muestra toast de error sin interrumpir el árbol de componentes.
-  useEffect(() => {
-    if (!isError || !error) return;
-    const axiosData = (error as AxiosError<{ error?: string }>)?.response?.data;
-    const message =
-      axiosData?.error ??
-      (error instanceof Error ? error.message : "No se pudieron cargar los correos.");
-    toast.error(message);
-  }, [isError, error]);
 
   /** Reinicia la paginación a la primera página. */
   const fetchFirst = () => {
@@ -133,8 +134,15 @@ export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogle
   };
 
   return {
-    messages: data?.messages ?? [],
-    isPending,
+    // Con un error inicial no hay lista que mostrar (ni la de la página previa).
+    messages: isInitialError ? [] : (data?.messages ?? []),
+    // `isLoading` y no `isPending`: una consulta que falló sin datos sigue en
+    // `pending` para TanStack, y la lista se quedaría en skeleton para siempre.
+    isPending: isLoading,
+    isInitialError,
+    errorMessage: isInitialError
+      ? extractErrorMessage(error, "Ocurrió un problema al consultar tus correos de Gmail.")
+      : null,
     isFetching,
     hasNextPage: !!data?.nextPageToken,
     hasPreviousPage: pageTokenHistory.length > 1,
