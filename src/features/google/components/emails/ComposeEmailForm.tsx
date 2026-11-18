@@ -52,14 +52,12 @@ export function ComposeEmailForm({ open, onOpenChange }: ComposeEmailFormProps) 
       actionButtonClose={false}
       actionButton={
         <FormSubmitButton
-          // Al estar fuera del <form>, se usa type="button" y onClick
-          // para delegar en form.handleSubmit() sin depender del evento DOM.
+          // Al estar fuera del <form>, se usa type="button" y onClick: pasa
+          // por el mismo candado que el Enter del formulario.
           type="button"
           isPending={isPending}
           loadingLabel="Enviando..."
-          onClick={() => {
-            void form.handleSubmit();
-          }}
+          onClick={() => handleFormSubmit()}
         >
           Enviar correo
         </FormSubmitButton>
