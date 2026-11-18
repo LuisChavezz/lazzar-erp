@@ -19,6 +19,7 @@ import type {
 } from "../interfaces/salida-maquila.interface";
 import {
   draftProblems,
+  hasInvalidQty,
   initialDraft,
   lineImporte,
   lineQty,
@@ -268,7 +269,8 @@ function SalidaMaquilaForm({
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {lines.map((l) => {
                 const lineError = serverError?.lines[l.detalleId];
-                const qtyBad = touched && l.cantidad.trim() !== "" && !/^\d+$/.test(l.cantidad);
+                // Al momento, no solo tras enviar: lo tecleado se queda como está.
+                const qtyBad = hasInvalidQty(l);
                 const priceBad = touched && lineQty(l) > 0 && !(Number(l.precio) > 0);
                 return (
                   <tr key={l.detalleId} className={lineError ? "bg-rose-50/60 dark:bg-rose-500/5" : undefined}>
@@ -291,7 +293,7 @@ function SalidaMaquilaForm({
                         aria-invalid={qtyBad || !!lineError || undefined}
                         value={l.cantidad}
                         disabled={isPending}
-                        onChange={(e) => update(l.detalleId, { cantidad: e.target.value.replace(/[^\d]/g, "") })}
+                        onChange={(e) => update(l.detalleId, { cantidad: e.target.value })}
                         className={`w-20 rounded-lg border bg-white dark:bg-zinc-900 px-2 py-1 text-right font-semibold tabular-nums text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 ${
                           qtyBad || lineError ? "border-rose-400" : "border-slate-200 dark:border-white/10"
                         }`}
