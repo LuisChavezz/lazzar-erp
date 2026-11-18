@@ -34,6 +34,14 @@ interface EmailDetailProps {
 export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
   const { detail, isPending, isError } = useGoogleMessage(message.id);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Encabezado: el del listado al instante; si el listado lo trajo vacío (un
+  // mensaje que llegó solo como `{id}`), el del detalle en cuanto responde.
+  const header = {
+    subject: message.subject || detail?.subject || "",
+    from: message.from_full || message.from || detail?.from_full || detail?.from || "",
+    to: message.to || detail?.to || "",
+    date: message.date || detail?.date || "",
+  };
 
   /**
    * Ajusta la altura del iframe al contenido del documento interno.
@@ -82,14 +90,14 @@ export const EmailDetail = ({ message, onBack }: EmailDetailProps) => {
         <article className="max-w-3xl mx-auto w-full px-6 py-6">
         {/* Asunto */}
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-5 leading-snug">
-          {message.subject || "(Sin asunto)"}
+          {header.subject || "(Sin asunto)"}
         </h1>
 
         {/* Metadatos del mensaje — disponibles inmediatamente desde el listado */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-zinc-800/50 px-4 py-3 mb-6 space-y-1.5">
-          <MetaRow label="De" value={message.from_full || message.from} />
-          <MetaRowRecipients label="Para" value={message.to} />
-          <MetaRow label="Fecha" value={formatDetailDate(message.date)} />
+          <MetaRow label="De" value={header.from} />
+          <MetaRowRecipients label="Para" value={header.to} />
+          <MetaRow label="Fecha" value={formatDetailDate(header.date)} />
         </div>
 
         {/* Separador visual */}
