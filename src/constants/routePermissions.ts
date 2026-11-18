@@ -114,6 +114,8 @@ export const routePermissions: Array<{
   // backend no valida ningún permiso de Calidad: ambos controles son de UI.
   { prefix: "/wms/quality-inspections", permission: "R-WMS-CALIDAD" },
   { prefix: "/wms/picking", permission: "R-WMS-PICKING" },
+  // Avance de surtido por pedido (EC-913): vista de Surtido, mismo código.
+  { prefix: "/wms/order-fulfillment", permission: "R-WMS-PICKING" },
   { prefix: "/wms/packing", permission: "R-WMS-PACKING" },
   { prefix: "/wms/shipping", permission: "R-WMS-ENVIO" },
   { prefix: "/wms/rfid-labels", permission: "R-WMS-ETIQUETAS" },
