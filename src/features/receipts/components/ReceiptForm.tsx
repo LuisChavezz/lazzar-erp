@@ -17,13 +17,34 @@ import { VariantAttributesCaption } from "@/src/features/purchase-orders/compone
 import type {
   ReceiptOrderCandidate,
   ReceiptOnboardingOrderDetalleBase,
+  ReceiptOnboardingSalidaMaquila,
 } from "../interfaces/receipt-onboarding.interface";
 import { salidaMaquilaOrigenNombre } from "../utils/receiptCandidates";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
+  /** 400 en `salida_maquila`: la SM dejó de ser recibible (EC-912). */
+  onSalidaMaquilaRejected?: () => void;
   candidate: ReceiptOrderCandidate;
 }
+
+/** "2026-OB-00033 — SM-00006 · Bordado · Maquilero". */
+const salidaMaquilaSubtitle = (sm: ReceiptOnboardingSalidaMaquila): string =>
+  `${sm.origen_folio} — ${sm.folio} · ${salidaMaquilaOrigenNombre(sm)} · ${sm.centro_confeccion_nombre}`;
+
+/** Subtítulo de "Datos de Recepción": la orden, o la SM que se recibe. */
+const receiptFormSubtitle = (candidate: ReceiptOrderCandidate): string => {
+  switch (candidate.type) {
+    case "compra":
+      return `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`;
+    case "produccion":
+      return candidate.salidaMaquila
+        ? salidaMaquilaSubtitle(candidate.salidaMaquila)
+        : `Orden: ${candidate.order.folio}`;
+    case "salida-maquila":
+      return salidaMaquilaSubtitle(candidate.salidaMaquila);
+  }
+};
 
 const SERIE_CODIGO_OPTIONS: { value: string; label: string }[] = [
   { value: "RC", label: "RC" },
@@ -33,6 +54,7 @@ const SERIE_CODIGO_OPTIONS: { value: string; label: string }[] = [
 
 export default function ReceiptForm({
   onSuccess,
+  onSalidaMaquilaRejected,
   candidate,
 }: ReceiptFormProps) {
   const {
@@ -49,7 +71,7 @@ export default function ReceiptForm({
     handleCantidadChange,
     handleReset,
     handleFormSubmit,
-  } = useReceiptForm({ onSuccess, candidate });
+  } = useReceiptForm({ onSuccess, candidate, onSalidaMaquilaRejected });
 
   // Ambos tipos comparten la forma base del detalle; producción sólo añade
   // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
@@ -87,14 +109,7 @@ export default function ReceiptForm({
       {cantidadesError}
     </p>
   ) : null;
-  const headerSubtitle =
-    candidate.type === "compra"
-      ? `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`
-      : candidate.type === "produccion" && !candidate.salidaMaquila
-        ? `Orden: ${candidate.order.folio}`
-        : salidaMaquila
-          ? `${salidaMaquila.origen_folio} — ${salidaMaquila.folio} · ${salidaMaquilaOrigenNombre(salidaMaquila)} · ${salidaMaquila.centro_confeccion_nombre}`
-          : "";
+  const headerSubtitle = receiptFormSubtitle(candidate);
 
   return (
     <form

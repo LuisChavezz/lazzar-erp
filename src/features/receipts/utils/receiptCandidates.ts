@@ -52,6 +52,22 @@ export const candidateSucursalId = (candidate: ReceiptOrderCandidate): number | 
     ? candidate.salidaMaquila.sucursal_id
     : candidate.order.sucursal_id;
 
+/**
+ * Subtítulo del diálogo "Nueva Recepción" según lo elegido: OC, OP o SM (la de
+ * OP también es "Salida a Maquila"); neutro mientras no hay selección.
+ */
+export const receiptFlowSubtitle = (candidate: ReceiptOrderCandidate | null): string => {
+  if (!candidate) return "Selecciona la orden a recibir";
+  switch (candidate.type) {
+    case "compra":
+      return "Recepcionar Orden de Compra";
+    case "produccion":
+      return candidate.salidaMaquila ? "Recepcionar Salida a Maquila" : "Recepcionar Orden de Producción";
+    case "salida-maquila":
+      return "Recepcionar Salida a Maquila";
+  }
+};
+
 /** ¿El flujo captura renglones? Solo la SM de OB/OR va sin ellos (`detalle: []`). */
 export const candidateHasLines = (candidate: ReceiptOrderCandidate): boolean =>
   candidate.type !== "salida-maquila";
@@ -98,10 +114,8 @@ export const productionTabRowCandidate = (row: ProductionTabRow): ReceiptOrderCa
 };
 
 /** "Bordado", "Reflejante" o "Producción": la etiqueta del origen sin su sigla. */
-export const salidaMaquilaOrigenNombre = (salida: Pick<ReceiptOnboardingSalidaMaquila, "origen">): string => {
-  const etiqueta: string = SALIDA_MAQUILA_ORIGENES[salida.origen]?.etiqueta ?? salida.origen;
-  return etiqueta.split(" · ").at(-1) ?? etiqueta;
-};
+export const salidaMaquilaOrigenNombre = (salida: Pick<ReceiptOnboardingSalidaMaquila, "origen">): string =>
+  SALIDA_MAQUILA_ORIGENES[salida.origen]?.nombreCorto ?? salida.origen;
 
 /** Texto de búsqueda de una fila: folios (OP/SM/origen) y maquilero. */
 export const productionTabRowMatches = (row: ProductionTabRow, term: string): boolean => {
