@@ -132,6 +132,9 @@ export const routePermissions: Array<{
   { prefix: "/manufacturing/embroidery", permission: "R-PRODUCCION-OB" },
   { prefix: "/manufacturing/reflective-orders", permission: "R-PRODUCCION-OR" },
   { prefix: "/manufacturing/corte-manga", permission: "R-PRODUCCION-CM" },
+  // Salidas a maquila (SM): mismo código que su entrada en el sidebar, el de
+  // las OP de las que salen (EC-868).
+  { prefix: "/manufacturing/maquila-outputs", permission: "R-PRODUCCION-OP" },
   { prefix: "/manufacturing", permission: "R-PRODUCCION" },
 
   // ── Finanzas y Contabilidad ───────────────────────────────────────────────

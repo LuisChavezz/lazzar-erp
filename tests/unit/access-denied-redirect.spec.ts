@@ -21,13 +21,21 @@ test.describe("getRouteAccessRedirect", () => {
     expect(getRouteAccessRedirect("/manufacturing", profile)).toBeNull();
   });
 
-  test("R-PRODUCCION solo no abre ninguna de las cuatro secciones (modelo plano)", () => {
+  test("las salidas a maquila se abren con R-PRODUCCION-OP, como su entrada del sidebar (EC-868)", () => {
+    expect(getRouteAccessRedirect("/manufacturing/maquila-outputs", user(["R-PRODUCCION-OP"]))).toBeNull();
+    expect(getRouteAccessRedirect("/manufacturing/maquila-outputs", user(["R-PRODUCCION"]))).toBe(
+      ACCESS_DENIED_PATH,
+    );
+  });
+
+  test("R-PRODUCCION solo no abre ninguna de las secciones con código propio (modelo plano)", () => {
     const profile = user(["R-PRODUCCION"]);
     for (const path of [
       "/manufacturing/production-orders",
       "/manufacturing/embroidery",
       "/manufacturing/reflective-orders",
       "/manufacturing/corte-manga",
+      "/manufacturing/maquila-outputs",
     ]) {
       expect(getRouteAccessRedirect(path, profile)).toBe(ACCESS_DENIED_PATH);
     }
