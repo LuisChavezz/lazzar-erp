@@ -3,6 +3,7 @@ import { visibleProductionOrderStatusOptions } from "@/src/features/production-o
 import { isProductionOrderStatusQueryEnabled } from "@/src/features/production-order-status/hooks/useProductionOrderStatus";
 import {
   canGenerateSalidaMaquila,
+  canReadSalidaMaquila,
   canWriteSalidaMaquila,
 } from "@/src/features/maquila-outputs/utils/salidaMaquilaAccess";
 import { getSalidaMaquilaColumns } from "@/src/features/maquila-outputs/components/SalidaMaquilaColumns";
@@ -98,7 +99,17 @@ test.describe("salida a maquila: generar, cerrar y cancelar", () => {
     expect(canGenerateSalidaMaquila(undefined)).toBe(false);
   });
 
-  test("cerrar y cancelar no piden el permiso de costos", () => {
+  test("leer SM (sección de OB y OR) exige R-PRODUCCION-OP, como su listado (EC-911)", () => {
+    expect(canReadSalidaMaquila(user(["R-PRODUCCION", "R-PRODUCCION-OP"]))).toBe(true);
+    // Rol WMS real: OB, OR y CM, sin nada de OP.
+    expect(
+      canReadSalidaMaquila(user(["R-PRODUCCION", "R-PRODUCCION-OB", "C-PRODUCCION-OB", "R-PRODUCCION-OR", "R-PRODUCCION-CM"])),
+    ).toBe(false);
+    expect(canReadSalidaMaquila(admin)).toBe(true);
+    expect(canReadSalidaMaquila(undefined)).toBe(false);
+  });
+
+  test("cancelar no pide el permiso de costos", () => {
     expect(canWriteSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP"]))).toBe(true);
     expect(canWriteSalidaMaquila(soloLectura)).toBe(false);
   });
