@@ -10,9 +10,14 @@ export const PICKINGS_QUERY_KEY = ["pickings"] as const;
 export const pickingKpisQueryKey = (params: Readonly<Record<string, string>>) =>
   [...PICKINGS_QUERY_KEY, "kpis", params] as const;
 
+/** Prefijo de todos los detalles (lo invalida "Actualizar datos" del listado). */
+export const PICKING_DETAIL_QUERY_KEY = ["picking-detail"] as const;
+
 /**
  * Detalle de UN picking (`GET /wms/pickings/{id}/`). Fuera del prefijo del
  * listado a propósito: el detalle es la forma completa (con renglones) y no se
  * relee cada vez que cambia la lista.
  */
-export const pickingDetailQueryKey = (id: number | null) => ["picking-detail", id] as const;
+export const pickingDetailQueryKey = (id: number | null) =>
+  [...PICKING_DETAIL_QUERY_KEY, id] as const;
+

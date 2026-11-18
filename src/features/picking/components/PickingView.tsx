@@ -9,7 +9,11 @@ import { getPickingColumns } from "./PickingColumns";
 import { PickingDetailByIdDialog } from "./PickingDetailByIdDialog";
 import { PickingForm } from "./PickingForm";
 import { PickingStats } from "./PickingStats";
-import { PICKINGS_QUERY_KEY } from "../constants/pickingQueryKeys";
+import {
+  PICKING_DETAIL_QUERY_KEY,
+  PICKINGS_QUERY_KEY,
+  pickingDetailQueryKey,
+} from "../constants/pickingQueryKeys";
 import { usePickingsTable } from "../hooks/usePickingsTable";
 
 /**
@@ -40,7 +44,12 @@ export function PickingView() {
 
   const [detailPickingId, setDetailPickingId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // El detalle se relee al abrirlo: su llave (`["picking-detail", id]`) no se
+  // invalida cuando otra pantalla u otra persona cambia el surtido, y sin esto
+  // se serviría de caché hasta el `staleTime` global (15 min), desfasado de la
+  // fila. Mientras llega, se ve lo que hubiera en caché.
   const openDetail = (pickingId: number) => {
+    void queryClient.invalidateQueries({ queryKey: pickingDetailQueryKey(pickingId) });
     setDetailPickingId(pickingId);
     setIsDetailOpen(true);
   };
@@ -63,9 +72,15 @@ export function PickingView() {
           columns={columns}
           {...table.tableProps}
           // Invalida el PREFIJO y no solo la página: refresca también los
-          // indicadores (`["pickings", "kpis", …]`), para que tarjetas y tabla
-          // muestren el mismo momento.
-          onRefetch={() => queryClient.invalidateQueries({ queryKey: PICKINGS_QUERY_KEY })}
+          // indicadores (`["pickings", "kpis", …]`) y los detalles
+          // (`["picking-detail"]`), para que tarjetas, tabla y detalle muestren
+          // el mismo momento.
+          onRefetch={() =>
+            Promise.all([
+              queryClient.invalidateQueries({ queryKey: PICKINGS_QUERY_KEY }),
+              queryClient.invalidateQueries({ queryKey: PICKING_DETAIL_QUERY_KEY }),
+            ])
+          }
           // Identidad de la fila por registro, no por posición en la página.
           getRowId={(row) => String(row.id)}
           // Lo que busca `?search=` en el backend: folio del picking, folio del
