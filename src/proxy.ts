@@ -97,6 +97,8 @@ export const config = {
     // /auth/login entra en el matcher para redirigir a usuarios YA autenticados
     // hacia "/" (ver wrapper). A los NO autenticados se les sirve el login.
     "/auth/login",
+    // `/auth/logout` (EC-851) queda FUERA a propósito: lo visita quien todavía
+    // tiene la cookie de sesión, y la regla de arriba lo mandaría a "/".
     "/select-branch/:path*",
     // Página "sin acceso" (EC-895): exige sesión y workspace como el resto,
     // pero no tiene regla de permiso, así que no puede redirigirse a sí misma.
