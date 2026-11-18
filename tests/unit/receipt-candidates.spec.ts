@@ -14,6 +14,7 @@ import {
   buildReceiptFormSchema,
   CANTIDADES_REQUIRED_MESSAGE,
 } from "@/src/features/receipts/schemas/receipt.schema";
+import { firstNestedDrfMessage } from "@/src/utils/firstDrfMessage";
 import type {
   ReceiptOnboardingProductionOrder,
   ReceiptOnboardingSalidaMaquila,
@@ -102,6 +103,12 @@ test("nombre del origen sin la sigla", () => {
   expect(salidaMaquilaOrigenNombre({ origen: "OB" })).toBe("Bordado");
   expect(salidaMaquilaOrigenNombre({ origen: "OR" })).toBe("Reflejante");
   expect(salidaMaquilaOrigenNombre({ origen: "OP" })).toBe("Producción");
+});
+
+test("el 400 de salida_maquila (string plano, no lista) llega al toast", () => {
+  expect(firstNestedDrfMessage({ salida_maquila: "La SM SM-00012 está recibida." })).toBe(
+    "La SM SM-00012 está recibida.",
+  );
 });
 
 test("sin renglones no se exige ninguna cantidad", () => {
