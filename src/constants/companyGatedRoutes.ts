@@ -52,6 +52,11 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   // de inventario y la portada no pasan por aquí.
   { prefix: "/system/document-audit", gated: true },
 
+  // ── WMS: avance de surtido por pedido (EC-913) ────────────────────────────
+  // `documentos_wms_visibles` acota a la empresa activa (superusuario incluido):
+  // sin empresa la lista sale vacía, que se leería como "no hay pedidos".
+  { prefix: "/wms/order-fulfillment", gated: true },
+
   // ── Producción: Planeación ────────────────────────────────────────────────
   // El tablero de rotación se calcula sobre `user.empresa`: sin empresa el
   // backend responde 400 ("Tu usuario no tiene una empresa activa.").
