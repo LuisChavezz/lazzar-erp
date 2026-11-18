@@ -18,7 +18,8 @@ import {
  * ya no navega y se muestra la pantalla de error. Es solo un respaldo: en el
  * camino normal se anota un intento y la pestaña llega al login.
  *
- * Se borra al iniciar sesión (`enterNewSession`) y con "Reintentar".
+ * Se borra al empezar un inicio de sesión (`useLogin`), al terminarlo
+ * (`enterNewSession`) y con "Reintentar".
  */
 export const SIGN_OUT_ATTEMPTS_KEY = "erp:signout-attempts";
 export const SIGN_OUT_ATTEMPTS_WINDOW_MS = LOOP_GUARD_WINDOW_MS;
