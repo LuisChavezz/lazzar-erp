@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
+import { useSalidaMaquilaAccess } from "../hooks/useSalidaMaquilaAccess";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { useSalidasMaquilaFilters } from "../hooks/useSalidasMaquilaFilters";
 import { getSalidaMaquilaColumns } from "./SalidaMaquilaColumns";
@@ -20,13 +19,16 @@ type Vista = "maquila" | "recibidas" | "canceladas";
  *
  * La OP y el maquilero filtran en el SERVIDOR (`?op=`, `?centro_confeccion=`,
  * en la URL); las pestañas reparten por estatus lo que el servidor devolvió.
+ *
+ * Mientras la sesión carga, el permiso de costos está PENDIENTE: la tabla se
+ * queda cargando con la columna Total puesta, en vez de pintarse sin ella y
+ * agregarla después (solo se quita si resulta denegado).
  */
 export function SalidasMaquilaView() {
   const { filters, setFilter, hasActiveFilters, clearFilters } = useSalidasMaquilaFilters();
   const { salidas, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } = useSalidasMaquila(filters);
-  const { data: session } = useSession();
-  const canWrite = hasProductionPermission(session?.user, "OP", "C");
-  const canSeeAmounts = canSeeProductionCosts(session?.user);
+  const { amounts, canWrite } = useSalidaMaquilaAccess();
+  const isAccessPending = amounts === "pending";
   const [vista, setVista] = useState<Vista>("maquila");
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -34,7 +36,7 @@ export function SalidasMaquilaView() {
   const recibidas = salidas.filter((s) => s.estatus === "RECIBIDA");
   const canceladas = salidas.filter((s) => s.estatus === "CANCELADA");
   const rows = vista === "maquila" ? enMaquila : vista === "recibidas" ? recibidas : canceladas;
-  const columns = getSalidaMaquilaColumns(setOpenId, canSeeAmounts);
+  const columns = getSalidaMaquilaColumns(setOpenId, amounts !== "denied");
 
   return (
     <div className="space-y-6">
@@ -50,7 +52,7 @@ export function SalidasMaquilaView() {
         ariaLabel="Vista de salidas a maquila"
         value={vista}
         onChange={setVista}
-        isReady={hasLoaded}
+        isReady={hasLoaded && !isAccessPending}
         tabs={[
           { key: "maquila", label: "En maquila", count: enMaquila.length },
           { key: "recibidas", label: "Recibidas", count: recibidas.length },
@@ -72,7 +74,7 @@ export function SalidasMaquilaView() {
             : "No hay salidas en esta vista."
         }
         paginationResetKey={`${vista}|${filters.op ?? ""}|${filters.centro_confeccion ?? ""}`}
-        isLoading={isLoading}
+        isLoading={isLoading || isAccessPending}
         isError={isInitialError}
         errorTitle="Error al cargar las salidas a maquila"
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
@@ -83,7 +85,7 @@ export function SalidasMaquilaView() {
         id={openId}
         onClose={() => setOpenId(null)}
         canWrite={canWrite}
-        canSeeAmounts={canSeeAmounts}
+        canSeeAmounts={amounts === "allowed"}
       />
     </div>
   );

@@ -25,6 +25,9 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
   const access = useSalidaMaquilaAccess();
   const { canWrite, canGenerate } = access;
   const canSeeAmounts = access.amounts === "allowed";
+  // Permiso de costos pendiente (sesión cargando): la lista espera en vez de
+  // pintarse sin totales y agregarlos después.
+  const isListLoading = isLoading || access.amounts === "pending";
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -56,7 +59,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
         ) : undefined
       }
     >
-      {isLoading ? (
+      {isListLoading ? (
         <EmptyLines>Cargando salidas…</EmptyLines>
       ) : isInitialError ? (
         <EmptyLines>No se pudieron cargar las salidas a maquila.</EmptyLines>
