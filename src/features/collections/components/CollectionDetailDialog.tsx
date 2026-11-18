@@ -170,6 +170,8 @@ export function CollectionDetailDialog({
             {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". */}
             {formatShortDate(cobro.fecha_cobro, { timeZone: "UTC" })}
           </InfoTile>
+          {/* La deriva el backend de las facturas de las líneas: «—» en un Borrador sin líneas. */}
+          <InfoTile label="Sucursal">{textOrDash(cobro.sucursal_nombre)}</InfoTile>
           <InfoTile label="Cuenta bancaria">{textOrDash(cobro.cuenta_bancaria_alias)}</InfoTile>
           <InfoTile label="Método">
             <StatusBadge status={cobro.metodo_pago} config={COBRO_METODO_PAGO_CONFIG} />
