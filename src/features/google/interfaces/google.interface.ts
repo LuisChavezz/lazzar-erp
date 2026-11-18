@@ -45,6 +45,16 @@ export interface GoogleEmailPayload {
   attachments?: GoogleEmailAttachment[];
 }
 
+/**
+ * Respuesta CRUDA del listado: un mensaje cuyos metadatos no se pudieron leer
+ * llega solo como `{id}` (ver `normalizeGmailMessages`).
+ */
+export interface GoogleEmailMessagesApiResponse
+  extends Omit<GoogleEmailMessagesResponse, "messages"> {
+  messages: Array<Pick<GoogleEmailMessage, "id"> & Partial<GoogleEmailMessage>> | null;
+}
+
+/** El listado ya normalizado: cada mensaje con todos sus campos. */
 export interface GoogleEmailMessagesResponse {
   ok: boolean;
   messages: Array<GoogleEmailMessage>;
