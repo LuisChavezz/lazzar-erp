@@ -123,16 +123,9 @@ export function useComposeEmailForm({ onSuccess }: UseComposeEmailFormParams) {
   // Candado SÍNCRONO contra el doble envío (Enter repetido, Enter + clic):
   // el POST no es idempotente y `isPending` llega un render tarde. Lo comparten
   // el `onSubmit` del <form> y el botón del pie del diálogo.
-  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+  const { handleFormSubmit, isFormSubmitting } = useFormSubmitLock(form, {
     leavingRef,
   });
-
-  // --- Limpia el formulario y los errores ---
-  const handleReset = () => {
-    if (isSubmitLocked()) return;
-    form.reset(EMPTY_VALUES);
-    setClientErrors({});
-  };
 
   return {
     form,
@@ -140,7 +133,6 @@ export function useComposeEmailForm({ onSuccess }: UseComposeEmailFormParams) {
     getError,
     clearFieldErrors,
     validateField,
-    handleReset,
     handleFormSubmit,
   };
 }
