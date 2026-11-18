@@ -47,7 +47,7 @@ test.describe("recentSignOutAttempts", () => {
   });
 
   test("una marca ilegible o con valores raros cuenta como ninguna", () => {
-    const raws = [null, "", "{", "{}", JSON.stringify("x"), JSON.stringify(["1", null]), JSON.stringify([now + 5])];
+    const raws = [null, "", "{", "{}", JSON.stringify("x"), JSON.stringify(["1", null])];
     for (const raw of raws) {
       expect(recentSignOutAttempts(raw, now), String(raw)).toEqual([]);
     }

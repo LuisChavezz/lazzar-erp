@@ -1,3 +1,11 @@
+import {
+  clearLoopMark,
+  isRecentLoopMark,
+  LOOP_GUARD_WINDOW_MS,
+  readLoopMark,
+  writeLoopMark,
+} from "./loopGuardStorage";
+
 /**
  * Recuperación de la sesión de NextAuth en el cliente (EC-767).
  *
@@ -145,7 +153,7 @@ export const broadcastSignOut = () => {
  * acaba como agotada (aviso con "Reintentar").
  */
 export const NO_SESSION_RELOAD_KEY = "erp:no-session-reload";
-export const NO_SESSION_RELOAD_WINDOW_MS = 60_000;
+export const NO_SESSION_RELOAD_WINDOW_MS = LOOP_GUARD_WINDOW_MS;
 
 /** ¿Hay que recargar? `false` si ya se recargó por lo mismo hace poco. */
 export const shouldReloadForNoSession = (
@@ -156,8 +164,7 @@ export const shouldReloadForNoSession = (
   if (!previousMark) return true;
   try {
     const mark = JSON.parse(previousMark) as { url?: unknown; at?: unknown };
-    const recent = typeof mark.at === "number" && now - mark.at < NO_SESSION_RELOAD_WINDOW_MS;
-    return !(recent && mark.url === url);
+    return !(isRecentLoopMark(mark.at, now) && mark.url === url);
   } catch {
     return true;
   }
@@ -169,28 +176,19 @@ export const shouldReloadForNoSession = (
  * (sin poder anotar, recargar arriesga el ciclo).
  */
 export const reloadThroughProxy = (): boolean => {
-  try {
-    const url = window.location.href;
-    const now = Date.now();
-    if (!shouldReloadForNoSession(sessionStorage.getItem(NO_SESSION_RELOAD_KEY), url, now)) {
-      return false;
-    }
-    sessionStorage.setItem(NO_SESSION_RELOAD_KEY, JSON.stringify({ url, at: now }));
-  } catch {
+  const url = window.location.href;
+  const now = Date.now();
+  const previousMark = readLoopMark(NO_SESSION_RELOAD_KEY);
+  if (previousMark === undefined || !shouldReloadForNoSession(previousMark, url, now)) {
     return false;
   }
+  if (!writeLoopMark(NO_SESSION_RELOAD_KEY, JSON.stringify({ url, at: now }))) return false;
   window.location.reload();
   return true;
 };
 
 /** Olvida la marca de recarga (la sesión volvió a estar disponible). */
-export const clearNoSessionReloadMark = () => {
-  try {
-    sessionStorage.removeItem(NO_SESSION_RELOAD_KEY);
-  } catch {
-    // Sin sessionStorage no hay marca que borrar.
-  }
-};
+export const clearNoSessionReloadMark = () => clearLoopMark(NO_SESSION_RELOAD_KEY);
 
 /** Espera `ms` o hasta que se aborte `signal` (lo que pase primero). */
 export const waitFor = (ms: number, signal: AbortSignal) =>
