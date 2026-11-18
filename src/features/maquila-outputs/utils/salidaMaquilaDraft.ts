@@ -1,5 +1,5 @@
-import { SALIDA_MAQUILA_ORIGENES } from "../constants/salidaMaquilaOrigen";
 import type {
+  CreateSalidaMaquilaBody,
   CreateSalidaMaquilaDetalle,
   OpParaSalidaMaquila,
   OpParaSalidaMaquilaRenglon,
@@ -152,19 +152,37 @@ export const linesToSend = (lines: SalidaMaquilaDraftLine[]): SalidaMaquilaDraft
 /**
  * Solo viajan los renglones con piezas, con el campo de renglón de su origen.
  * El precio va siempre: en OB y OR es obligatorio y en la OP es el capturado.
+ * Un `switch` por origen y no una clave calculada: así el compilador revisa
+ * cada variante contra el contrato del alta.
  */
 export const toDetalles = (
   lines: SalidaMaquilaDraftLine[],
   origen: SalidaMaquilaOrigen,
-): CreateSalidaMaquilaDetalle[] => {
-  const campo = SALIDA_MAQUILA_ORIGENES[origen].campoRenglon;
-  return linesToSend(lines).map(
-    (l) =>
-      ({
-        [campo]: l.detalleId,
-        descripcion: l.descripcion,
-        cantidad: String(lineQty(l)),
-        precio_unitario: l.precio,
-      }) as CreateSalidaMaquilaDetalle,
-  );
+): CreateSalidaMaquilaDetalle[] =>
+  linesToSend(lines).map((l) => {
+    const base = { descripcion: l.descripcion, cantidad: String(lineQty(l)), precio_unitario: l.precio.trim() };
+    switch (origen) {
+      case "OP":
+        return { op_detalle: l.detalleId, ...base };
+      case "OB":
+        return { ob_detalle: l.detalleId, ...base };
+      case "OR":
+        return { or_detalle: l.detalleId, ...base };
+    }
+  });
+
+/** Cuerpo del alta con exactamente uno de `op`, `ob` u `orden_r`, según el origen. */
+export const buildCreateSalidaMaquilaBody = (
+  origen: SalidaMaquilaOrigen,
+  ordenId: number,
+  rest: Omit<CreateSalidaMaquilaBody, "op" | "ob" | "orden_r">,
+): CreateSalidaMaquilaBody => {
+  switch (origen) {
+    case "OP":
+      return { op: ordenId, ...rest };
+    case "OB":
+      return { ob: ordenId, ...rest };
+    case "OR":
+      return { orden_r: ordenId, ...rest };
+  }
 };

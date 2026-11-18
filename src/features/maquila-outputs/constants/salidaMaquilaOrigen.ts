@@ -10,39 +10,40 @@ import type {
 
 /**
  * Lo que cambia entre los tres documentos de los que sale una SM (EC-911): el
- * campo del alta y del filtro (`op` / `ob` / `orden_r`), el del renglón
- * (`op_detalle` / `ob_detalle` / `or_detalle`), su folio en la SM y su página.
+ * campo del filtro (`op` / `ob` / `orden_r`), su folio en la SM, su página y su
+ * etiqueta. El cuerpo del alta se arma en `buildCreateSalidaMaquilaBody`.
  * Los nombres de campo son los del backend, tal cual.
  */
 export const SALIDA_MAQUILA_ORIGENES = {
   OP: {
     campo: "op",
-    campoRenglon: "op_detalle",
     campoFolio: "op_folio",
     nombre: "orden de producción",
+    etiqueta: "OP · Producción",
     detailPath: productionOrderDetailPath,
   },
   OB: {
     campo: "ob",
-    campoRenglon: "ob_detalle",
     campoFolio: "ob_folio",
     nombre: "orden de bordado",
+    etiqueta: "OB · Bordado",
     detailPath: embroideryOrderDetailPath,
   },
   OR: {
     campo: "orden_r",
-    campoRenglon: "or_detalle",
     campoFolio: "orden_r_folio",
     nombre: "orden de reflejante",
+    etiqueta: "OR · Reflejante",
     detailPath: reflectiveOrderDetailPath,
   },
 } as const satisfies Record<
   SalidaMaquilaOrigen,
   {
     campo: "op" | "ob" | "orden_r";
-    campoRenglon: "op_detalle" | "ob_detalle" | "or_detalle";
     campoFolio: "op_folio" | "ob_folio" | "orden_r_folio";
     nombre: string;
+    /** Opción del filtro de origen del listado. */
+    etiqueta: string;
     detailPath: (id: number) => string;
   }
 >;
