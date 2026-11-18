@@ -54,9 +54,12 @@ const PICKINGS_POST = { urlPart: "/wms/pickings/", method: "POST" };
 const isOnboardingGet = (url: string, method: string) =>
   url.includes("/wms/pickings/onboarding/") && method === "GET";
 
-/** El `GET` del listado. Excluye `/onboarding/`, que cuelga de la misma raíz. */
+/**
+ * El `GET` del listado (`?resumen=1`, paginado). Excluye `/onboarding/` y
+ * `/kpis/`, que cuelgan de la misma raíz.
+ */
 const isPickingsListGet = (url: string, method: string) =>
-  url.includes("/wms/pickings/") && !url.includes("/onboarding") && method === "GET";
+  url.includes("/wms/pickings/?") && url.includes("resumen=1") && method === "GET";
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 
@@ -422,17 +425,15 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
   } else {
     await runStep("Paso 5 · Confirmar el picking en el listado", async () => {
       // `useCreatePicking` invalida `["pickings"]`, así que el listado se
-      // recarga solo; se espera ese GET antes de buscar para no filtrar sobre
-      // la caché anterior (que aún no trae el folio nuevo).
+      // recarga solo; se espera ese GET antes de buscar.
       await page
         .waitForResponse((r) => isPickingsListGet(r.url(), r.request().method()), {
           timeout: 30_000,
         })
         .catch(() => null);
 
-      // La caja de búsqueda de `DataTable` arranca colapsada (ancho 0): hay que
-      // desplegarla con su botón antes de escribir.
-      await page.getByRole("button", { name: "Buscar", exact: true }).click();
+      // Modo servidor (EC-915): la caja de búsqueda está siempre visible y
+      // busca en el backend (`?search=`), con debounce.
       const busqueda = page.getByLabel("Buscar folio, pedido u operador...");
       await expect(busqueda).toBeVisible();
       await busqueda.fill(folioCreado);
