@@ -35,6 +35,10 @@ import { EmbroideryOrderPdfButton } from "./EmbroideryOrderPdfButton";
 import { EmbroideryOrderGarmentGroups } from "./EmbroideryOrderGarmentGroups";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
 import { embroideryOrderDetailPath } from "@/src/constants/workOrderRoutes";
+import { ServicioSalidasMaquilaSection } from "@/src/features/maquila-outputs/components/ServicioSalidasMaquilaSection";
+
+/** Cancelado (legacy): el único estatus de OB sobre el que el backend rechaza una SM. */
+const OB_CANCELADA = 8;
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -392,6 +396,15 @@ export function EmbroideryOrderDetailContent({
       >
         <EmbroideryOrderGarmentGroups items={data.detalles} />
       </SheetSection>
+
+      {/* ── Salidas a maquila (SM, EC-911): mismo criterio que la OP ──────── */}
+      <ServicioSalidasMaquilaSection
+        origen="OB"
+        ordenId={data.id}
+        cancelada={data.estatus_bordado === OB_CANCELADA}
+        detalles={data.detalles}
+        proveedor={data.proveedor}
+      />
 
       {/* ── 4. Resumen de avance ────────────────────────────────────────── */}
       <EmbroideryProgressSummary resumenAvance={data.resumen_avance} />
