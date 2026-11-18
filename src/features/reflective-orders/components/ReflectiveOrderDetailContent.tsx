@@ -33,6 +33,7 @@ import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/compo
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { ReflectiveOrderPdfButton } from "./ReflectiveOrderPdfButton";
+import { ServicioSalidasMaquilaSection } from "@/src/features/maquila-outputs/components/ServicioSalidasMaquilaSection";
 import { reflectiveMetrosText } from "../utils/reflectiveMetros";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
 import {
@@ -355,6 +356,14 @@ export function ReflectiveOrderDetailContent({
       >
         <ReflectiveGarments items={data.detalles} />
       </SheetSection>
+
+      {/* ── Salidas a maquila (SM, EC-911): mismo criterio que la OP ──────── */}
+      <ServicioSalidasMaquilaSection
+        origen="OR"
+        ordenId={data.id}
+        cancelada={isTerminal}
+        detalles={data.detalles}
+      />
 
       {/* ── 6. Avance ──────────────────────────────────────────────────── */}
       <WorkOrderAvancesSection
