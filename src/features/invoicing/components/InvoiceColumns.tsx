@@ -2,7 +2,7 @@
 
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
-import { BanIcon, DownloadIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
+import { BanIcon, EmailIcon, ViewIcon } from "../../../components/Icons";
 import type { ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -43,11 +43,12 @@ import {
  * `InvoiceRowActionsProvider` (ver `useInvoiceListDocumentActions`), no por
  * las columnas. Abrir el menú no hace ninguna petición.
  *
- * "Descargar PDF" y "Enviar correo" piden el retrieve al activarse. "Enviar
- * correo" se oculta si el estatus no es enviable o si la fila trae
- * `activo === false`; además, al activarse se bloquea contra el retrieve
- * fresco. En una factura timbrada los dos se rotulan como no fiscales: el PDF
- * del ERP no es el CFDI (no lleva folio fiscal ni sello).
+ * "Enviar correo" pide el retrieve al activarse. Se oculta si el estatus no es
+ * enviable o si la fila trae `activo === false`; además, al activarse se
+ * bloquea contra el retrieve fresco. En una factura timbrada se rotula como no
+ * fiscal: el PDF del ERP que adjunta no es el CFDI (no lleva sello).
+ * "Descargar PDF" no va en el menú: vive en el encabezado del detalle (EC-855,
+ * EC-859).
  *
  * "Cancelar factura" sigue la regla única `canCancelInvoice` (permiso +
  * `activo === true` + Borrador o Emitida). Solo ABRE el diálogo, que vive en
@@ -68,7 +69,7 @@ import {
  */
 const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
   const invoiceLabel = invoice.folio || `#${invoice.id}`;
-  const { onDownloadPdf, onSendEmail, pendingIds, companyPending, canCancel, onCancel, canCancelCfdi, onCancelCfdi } =
+  const { onSendEmail, pendingIds, companyPending, canCancel, onCancel, canCancelCfdi, onCancelCfdi } =
     useInvoiceRowActionsContext();
   const pending = pendingIds.includes(invoice.id);
   const nonFiscalPdf = isInvoicePdfNonFiscal(invoice);
@@ -81,19 +82,11 @@ const FolioCell = ({ invoice }: { invoice: InvoiceListRow }) => {
       href: invoiceDetailHref(invoice.id, "invoicing"),
     },
     {
-      // El PDF del ERP sobre la plantilla base (EC-859), el mismo de la página.
-      label: "Descargar PDF",
-      icon: DownloadIcon,
-      onSelect: () => onDownloadPdf(invoice.id),
-      // Lleva la empresa en el encabezado: espera a que sus datos estén resueltos.
-      disabled: pending || companyPending,
-    },
-    {
       label: invoiceEmailLabel({ nonFiscal: nonFiscalPdf }),
       description: nonFiscalPdf ? INVOICE_NON_FISCAL_PDF_MESSAGE : undefined,
       icon: EmailIcon,
       onSelect: () => onSendEmail(invoice.id),
-      // El adjunto es el mismo PDF, con la empresa en el encabezado.
+      // El adjunto es el PDF del ERP, con la empresa en el encabezado.
       disabled: pending || companyPending,
       visible: invoice.activo !== false && isInvoiceSendable(invoice.estatus),
     },

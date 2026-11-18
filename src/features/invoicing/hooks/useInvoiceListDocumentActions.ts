@@ -4,7 +4,6 @@ import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-q
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
-import { isRecordMutating } from "@/src/utils/mutationRecordId";
 import {
   useSendEmailConfirmation,
   type SendEmailDialogSession,
@@ -12,10 +11,7 @@ import {
 import type { InvoiceListRow } from "../interfaces/invoice.interface";
 import { getInvoiceEmailBlocker } from "../utils/invoiceEmailBlocker";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
-import { requirePdfCompany, usePdfCompany } from "@/src/hooks/usePdfCompany";
-import { documentPdfFileName } from "@/src/pdfs/shared/documentPdfFileName";
-import { downloadBlob } from "@/src/utils/downloadBlob";
-import { generateInvoicePdfBlob } from "../services/pdf/invoicePdfBlob";
+import { usePdfCompany } from "@/src/hooks/usePdfCompany";
 import {
   usePrepareInvoiceEmail,
   useSendInvoiceEmail,
@@ -23,18 +19,16 @@ import {
 } from "./useSendInvoiceEmail";
 
 /**
- * - `pdf`: descarga el PDF.
  * - `email`: PREPARA el correo (valida y renderiza) para pedir confirmación.
  * - `send`: envía el correo ya preparado y confirmado.
  */
-export type InvoiceListDocumentAction = "pdf" | "email" | "send";
+export type InvoiceListDocumentAction = "email" | "send";
 
 type InvoiceListDocumentActionVariables =
-  | { id: number; action: "pdf" | "email" }
+  | { id: number; action: "email" }
   | { id: number; action: "send"; email: PreparedInvoiceEmail };
 
 const LOADING_MESSAGES: Record<InvoiceListDocumentAction, string> = {
-  pdf: "Generando PDF...",
   email: "Preparando correo...",
   send: "Enviando correo...",
 };
@@ -49,13 +43,12 @@ class InvoiceListActionError extends Error {}
 // columnas (ver `createRowActionsContext`).
 
 export interface InvoiceRowActionsContextValue {
-  onDownloadPdf: (id: number) => void;
   onSendEmail: (id: number) => void;
-  /** Ids de factura con una acción de PDF o correo en curso. */
+  /** Ids de factura con una acción de correo en curso. */
   pendingIds: number[];
   /**
-   * Datos de la empresa del encabezado aún cargando (`usePdfCompany`): "Descargar
-   * PDF" y "Enviar correo" (cuyo adjunto es ese PDF) esperan mientras tanto.
+   * Datos de la empresa del encabezado del PDF adjunto aún cargando
+   * (`usePdfCompany`): "Enviar correo" espera mientras tanto.
    */
   companyPending: boolean;
   /** ¿Se ofrece "Cancelar factura" en esta fila? (`canCancelInvoice`). */
@@ -76,16 +69,17 @@ export const InvoiceRowActionsProvider = Provider;
 export const useInvoiceRowActionsContext = useRowActionsContext;
 
 /**
- * "Descargar PDF" y "Enviar correo" desde el menú de las filas del listado.
+ * "Enviar correo" desde el menú de las filas del listado. "Descargar PDF" no
+ * está aquí: como en todos los documentos (EC-855), vive en el encabezado del
+ * detalle (`InvoicePdfButton`, EC-859).
  * Se llama UNA vez, en `InvoiceList`, y llega a cada celda por
  * `InvoiceRowActionsProvider`.
  *
  * El listado ligero no trae `factura_detalles`, `correo_facturas` ni `activo`,
  * así que cada acción pide el retrieve FRESCO al activarse (nunca al abrir el
- * menú; `invoiceRetrieveFreshOptions`). El PDF es el de la página
- * (`generateInvoicePdfBlob` con la empresa activa, `FAC-<folio>.pdf`, EC-859) y
- * el correo pasa por las MISMAS mutaciones (`usePrepareInvoiceEmail` /
- * `useSendInvoiceEmail`): mismo PDF, mismo correo y mismos avisos. El correo se bloquea con la misma regla
+ * menú; `invoiceRetrieveFreshOptions`) y pasa por las MISMAS mutaciones que el
+ * detalle (`usePrepareInvoiceEmail` / `useSendInvoiceEmail`): mismo correo,
+ * mismo PDF adjunto y mismos avisos. El correo se bloquea con la misma regla
  * (`getInvoiceEmailBlocker`), avisando el motivo, y como en el detalle se
  * prepara y se confirma (`emailDialog`, de `useSendEmailConfirmation`, que el
  * listado pinta con `InvoiceSendEmailConfirmDialog`) antes de enviarse.
@@ -131,16 +125,6 @@ export function useInvoiceListDocumentActions(): Omit<
         );
       }
 
-      if (variables.action === "pdf") {
-        try {
-          const blob = await generateInvoicePdfBlob(invoice, requirePdfCompany(pdfCompany));
-          downloadBlob(blob, documentPdfFileName("FAC", invoice.folio, invoice.id));
-        } catch (error) {
-          throw new InvoiceListActionError(extractErrorMessage(error, "No se pudo generar el PDF de la factura"));
-        }
-        toast.success("PDF generado y descargado correctamente");
-        return;
-      }
       const blocker = getInvoiceEmailBlocker(invoice);
       if (blocker) throw new InvoiceListActionError(blocker.message);
       return prepareEmail(invoice);
@@ -175,11 +159,6 @@ export function useInvoiceListDocumentActions(): Omit<
   });
 
   return {
-    onDownloadPdf: (id) => {
-      if (!isRecordMutating(queryClient, [invoiceListDocumentActionMutationKey], id)) {
-        mutate({ id, action: "pdf" });
-      }
-    },
     onSendEmail: email.request,
     pendingIds,
     companyPending: pdfCompany.pending,

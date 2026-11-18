@@ -48,7 +48,7 @@ export const InvoiceList = () => {
   // usuario), incluso si el conjunto cargado estaba vacío.
   const showError = isInitialLoadError(isError, hasLoaded);
 
-  // PDF y correo del menú de cada fila: una sola instancia, por contexto.
+  // Correo del menú de cada fila: una sola instancia, por contexto.
   const { emailDialog, ...documentActions } = useInvoiceListDocumentActions();
   const rowActions = {
     ...documentActions,
