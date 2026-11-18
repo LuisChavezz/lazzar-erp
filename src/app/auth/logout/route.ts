@@ -7,12 +7,13 @@ import {
 /**
  * Cierre de sesión del lado del servidor, por navegación (EC-851).
  *
- * Es el respaldo de `signOutToLogin` cuando `signOut` de next-auth falla, se
- * cuelga o no consigue el token CSRF: el cliente navega aquí con una carga
- * completa. Expira la cookie de sesión de NextAuth en todas sus formas y manda
- * a `/auth/login`. Sin esto la cookie seguía viva, el proxy rebotaba el login a
- * `/` → `/select-branch`, esa página recibía 401 y la pestaña recargaba en
- * ciclo.
+ * Es el único cierre de sesión de la app: `signOutToLogin` (logout manual y
+ * 401 forzado) navega aquí con una carga completa, sin `signOut` de next-auth.
+ * Expira la cookie de sesión de NextAuth en todas sus formas y manda a
+ * `/auth/login`, donde el login avisa a las otras pestañas. Antes, si el
+ * `signOut` de next-auth fallaba, la cookie seguía viva, el proxy rebotaba el
+ * login a `/` → `/select-branch`, esa página recibía 401 y la pestaña recargaba
+ * en ciclo.
  *
  * Fuera del `matcher` de `src/proxy.ts` a propósito: el proxy mandaría a `/` a
  * quien todavía tiene la cookie, que es justo quien necesita llegar aquí.
