@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ExternalLinkIcon, MapPinIcon, ClockIcon } from "@/src/components/Icons";
-import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
+import type { GoogleCalendarEvent } from "../interfaces/google.interface";
 import { useGoogleCalendarStore } from "../stores/google-calendar.store";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -50,14 +50,15 @@ const formatEventDateRange = (startIso: string, endIso: string): string => {
  * Muestra título, fecha, ubicación, descripción y un botón para abrir el
  * evento en Google Calendar en una nueva pestaña.
  */
-export const GoogleEventDetails = () => {
+export const GoogleEventDetails = ({ events }: { events: GoogleCalendarEvent[] | undefined }) => {
   const selectedEventId = useGoogleCalendarStore((s) => s.selectedEventId);
-  const { data } = useGoogleCalendarEvents();
 
-  // Busca el evento seleccionado dentro de los datos ya en caché — sin petición extra
+  // Busca el evento seleccionado entre los del rango que pinta el calendario
+  // (los recibe de `GoogleCalendar`): sin petición extra y también fuera de la
+  // ventana de «Próximos eventos».
   const event = useMemo(
-    () => data?.events?.find((e) => e.id === selectedEventId) ?? null,
-    [data?.events, selectedEventId],
+    () => events?.find((e) => e.id === selectedEventId) ?? null,
+    [events, selectedEventId],
   );
 
   if (!event) return null;
