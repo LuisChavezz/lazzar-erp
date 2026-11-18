@@ -33,7 +33,10 @@ export const invalidateSupplierInvoiceQueries = (
     factura.estatus === "Registrada"
       ? queryClient.invalidateQueries({ queryKey: ["cuentas-por-pagar"] })
       : Promise.resolve(),
-    queryClient.invalidateQueries({ queryKey: ["purchase-orders", factura.oc] }),
+    // Sin OC (factura de maquila, EC-912) no hay retrieve de OC que refrescar.
+    factura.oc == null
+      ? Promise.resolve()
+      : queryClient.invalidateQueries({ queryKey: ["purchase-orders", factura.oc] }),
     // "Diferencias de precio/costo" de Recepciones compara las partidas de las
     // facturas contra el precio de la OC: alta, edición y cancelación lo mueven.
     queryClient.invalidateQueries({ queryKey: purchaseOrderReceiptKpisQueryKey }),

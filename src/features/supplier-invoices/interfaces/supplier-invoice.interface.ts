@@ -68,8 +68,13 @@ export interface FacturaProveedor {
   sucursal: number;
   /** FK a `terceros.Proveedor`. La CxP que nazca de esta factura DEBE llevarlo. */
   proveedor: number;
-  /** FK a `compras.OrdenCompra`. NOT NULL. */
-  oc: number;
+  /**
+   * FK a `compras.OrdenCompra`. `null` en la factura de maquila que nace al
+   * recibir una SM (nucleo-erp #1217, EC-912): no tiene OC.
+   */
+  oc: number | null;
+  /** SM de la que nació la factura de maquila (EC-912); `null` en las demás. */
+  salida_maquila?: number | null;
   /** FK a `compras.Recepcion`. NOT NULL. */
   recepcion: number;
   /** FK a `nucleo.Moneda`. */
@@ -80,9 +85,10 @@ export interface FacturaProveedor {
   moneda_codigo: string | null;
   /**
    * Folio de la OC, solo lectura (EC-466). `null` mientras la OC está en
-   * Borrador: el folio de la OC se asigna después.
+   * Borrador: el folio de la OC se asigna después. AUSENTE (no `null`) sin
+   * OC: el serializer lo salta cuando `oc` es `null` (factura de maquila).
    */
-  oc_folio: string | null;
+  oc_folio?: string | null;
   /** Folio de la recepción, solo lectura (EC-466). Nunca nulo. */
   recepcion_folio: string;
   /**

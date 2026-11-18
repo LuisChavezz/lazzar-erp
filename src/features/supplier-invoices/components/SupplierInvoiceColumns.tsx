@@ -19,7 +19,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { motivoBloqueoRegistro } from "../schemas/supplier-invoice.schema";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
-import { ocFolioLabel } from "../utils/supplierInvoiceLabels";
+import { canDownloadMergedPdf, ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { useSupplierInvoiceRowActionsContext } from "../hooks/useSupplierInvoiceRowActions";
 
 const columnHelper = createColumnHelper<FacturaProveedor>();
@@ -63,8 +63,9 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
       icon: DownloadIcon,
       onSelect: () => callbacks.onDownloadMergedPdf(factura.id),
       disabled: downloading,
-      // Sin PDF adjunto el backend responde 400: la acción ni se ofrece.
-      visible: factura.tiene_pdf_adjunto,
+      // Sin PDF adjunto el backend responde 400, y sin OC (factura de maquila,
+      // EC-912) falla al pintarla: la acción ni se ofrece.
+      visible: canDownloadMergedPdf(factura),
     },
   ];
 
