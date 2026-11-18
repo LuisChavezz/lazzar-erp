@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { Button } from "@/src/components/Button";
 import { EmbarquesIcon } from "@/src/components/Icons";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -9,21 +8,23 @@ import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { OrderChip, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
-import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
+import { useSalidaMaquilaAccess } from "../hooks/useSalidaMaquilaAccess";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
 import { GenerarSalidaMaquilaDialog } from "./GenerarSalidaMaquilaDialog";
 import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
 
 /**
  * Salidas a maquila de una OP, en su detalle: las que ya hay y "Generar SM".
- * No se genera sobre una OP cancelada (el backend la rechaza).
+ * No se genera sobre una OP cancelada (el backend la rechaza). "Generar SM"
+ * exige `C-PRODUCCION-OP` y `R-PRODUCCION-COSTOS`; cerrar y cancelar, solo el
+ * primero.
  */
 export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; opCancelada: boolean }) {
   const { salidas, isLoading, isInitialError } = useSalidasMaquila({ op: opId });
-  const { data: session } = useSession();
-  const canWrite = hasProductionPermission(session?.user, "OP", "C");
-  const canSeeAmounts = canSeeProductionCosts(session?.user);
+  const access = useSalidaMaquilaAccess();
+  const { canWrite, canGenerate } = access;
+  const canSeeAmounts = access.amounts === "allowed";
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -48,7 +49,7 @@ export function OpSalidasMaquilaSection({ opId, opCancelada }: { opId: number; o
         ) : undefined
       }
       action={
-        canWrite && !opCancelada ? (
+        canGenerate && !opCancelada ? (
           <Button type="button" variant="primary" onClick={() => setCreating(true)} disabled={isLoading}>
             Generar SM
           </Button>

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { visibleProductionOrderStatusOptions } from "@/src/features/production-orders/utils/productionOrderPermissions";
 import { isProductionOrderStatusQueryEnabled } from "@/src/features/production-order-status/hooks/useProductionOrderStatus";
+import {
+  canGenerateSalidaMaquila,
+  canWriteSalidaMaquila,
+} from "@/src/features/maquila-outputs/utils/salidaMaquilaAccess";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
 
 const canEditProductionOrder = (u?: never) => hasProductionPermission(u, "OP", "E");
@@ -76,5 +80,25 @@ test.describe("GET estatus/ de la OP (EC-895)", () => {
     expect(isProductionOrderStatusQueryEnabled(47, true)).toBe(true);
     expect(isProductionOrderStatusQueryEnabled(47, false)).toBe(false);
     expect(isProductionOrderStatusQueryEnabled(0, true)).toBe(false);
+  });
+});
+
+/**
+ * EC-868: "Generar SM" captura y muestra precios de maquila, así que exige
+ * `R-PRODUCCION-COSTOS` además de `C-PRODUCCION-OP`; cerrar y cancelar siguen
+ * solo con `C-PRODUCCION-OP`.
+ */
+test.describe("salida a maquila: generar, cerrar y cancelar", () => {
+  test("generar exige C-PRODUCCION-OP y R-PRODUCCION-COSTOS", () => {
+    expect(canGenerateSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP", "R-PRODUCCION-COSTOS"]))).toBe(true);
+    expect(canGenerateSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP"]))).toBe(false);
+    expect(canGenerateSalidaMaquila(user(["R-PRODUCCION-OP", "R-PRODUCCION-COSTOS"]))).toBe(false);
+    expect(canGenerateSalidaMaquila(admin)).toBe(true);
+    expect(canGenerateSalidaMaquila(undefined)).toBe(false);
+  });
+
+  test("cerrar y cancelar no piden el permiso de costos", () => {
+    expect(canWriteSalidaMaquila(user(["R-PRODUCCION-OP", "C-PRODUCCION-OP"]))).toBe(true);
+    expect(canWriteSalidaMaquila(soloLectura)).toBe(false);
   });
 });
