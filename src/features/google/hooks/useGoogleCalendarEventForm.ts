@@ -1,9 +1,9 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useRef, useState } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import {
   GoogleCalendarEventSchema,
   type GoogleCalendarEventFormValues,
@@ -67,6 +67,9 @@ const buildEmptyValues = (initialDate?: string): GoogleCalendarEventFormValues =
 export function useGoogleCalendarEventForm({ onSuccess, initialDate }: UseGoogleCalendarEventFormParams) {
   const [clientErrors, setClientErrors] = useState<Partial<Record<EventFormField, string>>>({});
   const { mutateAsync: createEvent, isPending } = useCreateGoogleCalendarEvent();
+  // Marca de SALIDA del candado (`useFormSubmitLock`): tras crear el evento el
+  // diálogo se cierra y nada debe volver a enviar mientras se desmonta.
+  const leavingRef = useRef(false);
 
   // --- Limpia el error de un campo al editar ---
   const clearFieldError = (field: EventFormField) => {
@@ -126,8 +129,7 @@ export function useGoogleCalendarEventForm({ onSuccess, initialDate }: UseGoogle
 
       try {
         await createEvent(payload);
-        form.reset(buildEmptyValues(initialDate));
-        setClientErrors({});
+        leavingRef.current = true;
         onSuccess();
       } catch {
         // El error ya se notifica vía toast en useCreateGoogleCalendarEvent.
@@ -160,22 +162,22 @@ export function useGoogleCalendarEventForm({ onSuccess, initialDate }: UseGoogle
     });
   };
 
+  // Candado SÍNCRONO contra el doble envío (doble clic, Enter + clic): el POST
+  // crea un evento nuevo en cada llamada y `isPending` llega un render tarde.
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
+
   // --- Limpia el formulario y los errores ---
   const handleReset = () => {
+    if (isSubmitLocked()) return;
     form.reset(buildEmptyValues(initialDate));
     setClientErrors({});
   };
 
-  // --- Wrapper de submit para el evento DOM del formulario ---
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    form.handleSubmit();
-  };
-
   return {
     form,
-    isPending,
+    isPending: isPending || isFormSubmitting,
     getError,
     clearFieldError,
     handleAllDayToggle,

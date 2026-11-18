@@ -1,9 +1,9 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useRef, useState } from "react";
 import type { FormFieldError } from "../../../utils/getFieldError";
+import { useFormSubmitLock } from "@/src/hooks/useFormSubmitLock";
 import {
   ComposeEmailFormSchema,
   type ComposeEmailFormValues,
@@ -44,6 +44,9 @@ export function useComposeEmailForm({ onSuccess }: UseComposeEmailFormParams) {
     useState<Partial<Record<ComposeEmailField, string>>>({});
 
   const { mutateAsync: sendEmail, isPending } = useGoogleComposeEmail();
+  // Marca de SALIDA del candado (`useFormSubmitLock`): tras enviar, el diálogo
+  // se cierra y nada debe volver a enviar mientras se desmonta.
+  const leavingRef = useRef(false);
 
   // --- Limpia el error de un campo al cambiar su valor ---
   const clearFieldErrors = (field: ComposeEmailField) => {
@@ -108,8 +111,7 @@ export function useComposeEmailForm({ onSuccess }: UseComposeEmailFormParams) {
 
       try {
         await sendEmail(value);
-        form.reset(EMPTY_VALUES);
-        setClientErrors({});
+        leavingRef.current = true;
         onSuccess();
       } catch {
         // El error ya se notifica en useGoogleComposeEmail via toast.
@@ -118,22 +120,23 @@ export function useComposeEmailForm({ onSuccess }: UseComposeEmailFormParams) {
     },
   });
 
+  // Candado SÍNCRONO contra el doble envío (Enter repetido, Enter + clic):
+  // el POST no es idempotente y `isPending` llega un render tarde. Lo comparten
+  // el `onSubmit` del <form> y el botón del pie del diálogo.
+  const { handleFormSubmit, isSubmitLocked, isFormSubmitting } = useFormSubmitLock(form, {
+    leavingRef,
+  });
+
   // --- Limpia el formulario y los errores ---
   const handleReset = () => {
+    if (isSubmitLocked()) return;
     form.reset(EMPTY_VALUES);
     setClientErrors({});
   };
 
-  // --- Wrapper de submit para el evento DOM del formulario ---
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    form.handleSubmit();
-  };
-
   return {
     form,
-    isPending,
+    isPending: isPending || isFormSubmitting,
     getError,
     clearFieldErrors,
     validateField,
