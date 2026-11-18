@@ -33,11 +33,13 @@ export const isInvoicePdfNonFiscal = (invoice: {
 /**
  * Aviso para "Enviar correo" de una factura timbrada o con timbrado pendiente:
  * el PDF que adjunta (el del ERP) no es la representación impresa del CFDI: no
- * lleva sello. Se rotula; no se oculta. El CFDI oficial se baja con
- * "Descargar CFDI" o se manda con "Enviar CFDI" (EC-859).
+ * lleva sello. Se rotula; no se oculta. Lo leen también el menú del listado y
+ * quien no puede enviar el CFDI, así que no nombra acciones que quizá no vea:
+ * dice dónde está el oficial, el detalle de la factura ("Descargar CFDI", que
+ * cualquiera que ve la factura tiene una vez timbrada; EC-859).
  */
 export const INVOICE_NON_FISCAL_PDF_MESSAGE =
-  "El PDF del ERP no es el CFDI: no lleva sello digital. El CFDI oficial se envía con «Enviar CFDI».";
+  "El PDF del ERP no es el CFDI: no lleva sello digital. El CFDI oficial (PDF y XML) se descarga desde el detalle de la factura.";
 
 /**
  * Etiqueta de "Enviar correo": fuente única para la cabecera del detalle y el
