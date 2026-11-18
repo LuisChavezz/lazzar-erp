@@ -18,6 +18,7 @@ import type {
   ReceiptOrderCandidate,
   ReceiptOnboardingOrderDetalleBase,
 } from "../interfaces/receipt-onboarding.interface";
+import { salidaMaquilaOrigenNombre } from "../utils/receiptCandidates";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
@@ -41,6 +42,7 @@ export default function ReceiptForm({
     formKey,
     isPending,
     warehouses,
+    conRenglones,
     getError,
     clearFieldErrors,
     validateField,
@@ -49,11 +51,14 @@ export default function ReceiptForm({
     handleFormSubmit,
   } = useReceiptForm({ onSuccess, candidate });
 
-  const { order } = candidate;
   // Ambos tipos comparten la forma base del detalle; producción sólo añade
   // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
-  // a la base permite iterar sin narrowing en el JSX.
-  const detalle: ReceiptOnboardingOrderDetalleBase[] = order.detalle;
+  // a la base permite iterar sin narrowing en el JSX. La SM de OB/OR no tiene
+  // renglones (EC-912).
+  const detalle: ReceiptOnboardingOrderDetalleBase[] =
+    candidate.type === "salida-maquila" ? [] : candidate.order.detalle;
+  // SM que se cierra con esta recepción (de OP, o de OB/OR).
+  const salidaMaquila = candidate.type === "compra" ? null : candidate.salidaMaquila;
   // Compras añade la variante del renglón, cuyo color y talla distinguen dos
   // tallas del mismo producto (EC-684): renglón de OC por id.
   const renglonesCompra = new Map(
@@ -67,8 +72,9 @@ export default function ReceiptForm({
     detalle.length > 0 && detalle.every((d) => (topes.get(d.id) ?? 0) < 1);
   // Aviso en lugar de la captura: orden sin renglones, o con renglones pero
   // ninguno con una pieza entera pendiente.
-  const avisoSinPiezas =
-    detalle.length === 0
+  const avisoSinPiezas = !conRenglones
+    ? null
+    : detalle.length === 0
       ? "La orden no tiene productos para recibir."
       : ningunoRecibible
         ? "La orden no tiene piezas pendientes por recibir"
@@ -84,7 +90,11 @@ export default function ReceiptForm({
   const headerSubtitle =
     candidate.type === "compra"
       ? `Orden: ${candidate.order.folio ?? "Sin folio"} — ${candidate.order.proveedor_nombre}`
-      : `Orden: ${candidate.order.folio}`;
+      : candidate.type === "produccion" && !candidate.salidaMaquila
+        ? `Orden: ${candidate.order.folio}`
+        : salidaMaquila
+          ? `${salidaMaquila.origen_folio} — ${salidaMaquila.folio} · ${salidaMaquilaOrigenNombre(salidaMaquila)} · ${salidaMaquila.centro_confeccion_nombre}`
+          : "";
 
   return (
     <form
@@ -260,6 +270,17 @@ export default function ReceiptForm({
           </div>
         </section>
 
+        {/* ── SM de OB/OR: sin renglones (EC-912) ────────────────────── */}
+        {candidate.type === "salida-maquila" && (
+          <section className="rounded-3xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/60 dark:bg-sky-500/5 px-8 py-5 mb-8">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              Las prendas regresan de maquila sin entrar al inventario: no hay
+              cantidades que capturar. Al registrar, la {candidate.salidaMaquila.folio}{" "}
+              queda como Recibida.
+            </p>
+          </section>
+        )}
+
         {/* ── Detalle de la orden ───────────────────────────────────── */}
         {avisoSinPiezas && (
           <section
@@ -289,6 +310,13 @@ export default function ReceiptForm({
                 <p className="text-xs text-slate-500">
                   {detalle.length} producto{detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
                 </p>
+                {/* SM de OP: el backend la cierra con esta recepción aunque
+                    no se reciba todo (EC-912). */}
+                {salidaMaquila && (
+                  <p role="note" className="text-xs text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                    Al registrar, la {salidaMaquila.folio} queda como Recibida aunque la recepción sea parcial.
+                  </p>
+                )}
                 {cantidadesErrorAlert}
               </div>
             </div>

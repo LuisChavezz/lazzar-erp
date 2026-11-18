@@ -1,4 +1,5 @@
 import type { TipoCompra } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
+import type { SalidaMaquilaOrigen } from "@/src/features/maquila-outputs/interfaces/salida-maquila.interface";
 
 export interface ReceiptOnboardingUser {
   id: number;
@@ -95,9 +96,37 @@ export interface ReceiptOnboardingProductionOrder {
   detalle: ReceiptOnboardingProductionOrderDetalle[];
 }
 
+/**
+ * SM (salida a maquila) ENVIADA, pendiente de recibir (nucleo-erp #1217, EC-912).
+ * No trae renglones: la de OP se recibe con los de su OP (`ordenes_produccion`
+ * por `op_id`) y la de OB/OR se recibe sin renglones. `folio_display` es
+ * "SM-… · <folio del origen>", sin etiqueta del origen.
+ */
+export interface ReceiptOnboardingSalidaMaquila {
+  id: number;
+  folio: string;
+  folio_display: string;
+  origen: SalidaMaquilaOrigen;
+  origen_folio: string;
+  /** OP de la SM; `null` si viene de OB u OR. */
+  op_id: number | null;
+  centro_confeccion: number;
+  centro_confeccion_nombre: string;
+  sucursal_id: number;
+  fecha_envio: string;
+  total_piezas: number | string;
+  /**
+   * El backend lo manda sin revisar `R-PRODUCCION-COSTOS`: la UI NUNCA lo
+   * muestra. Opcional por si empieza a omitirlo.
+   */
+  total?: number | string;
+}
+
 export interface ReceiptOnboardingSearch {
   ordenes_compra: ReceiptOnboardingPurchaseOrder[];
   ordenes_produccion: ReceiptOnboardingProductionOrder[];
+  /** Opcional: un backend anterior a #1217 no lo manda. */
+  salidas_maquila?: ReceiptOnboardingSalidaMaquila[];
 }
 
 export interface ReceiptOnboardingData {
@@ -112,9 +141,20 @@ export interface ReceiptOnboardingData {
 // viaja junto con la orden para que el Paso 2 sepa con qué forma trabaja.
 export type ReceiptOrderType = "compra" | "produccion";
 
+//
+// Una SM se recibe de dos formas (EC-912):
+//  - de OP: es una recepción de su OP (mismos renglones y tope) que además
+//    manda `salida_maquila`, así que viaja como `produccion` con la SM puesta;
+//  - de OB/OR: sin renglones ni inventario (`salida-maquila`).
 export type ReceiptOrderCandidate =
   | { type: "compra"; order: ReceiptOnboardingPurchaseOrder }
-  | { type: "produccion"; order: ReceiptOnboardingProductionOrder };
+  | {
+      type: "produccion";
+      order: ReceiptOnboardingProductionOrder;
+      /** SM de esta OP que se recibe con ella; `null` = recepción normal de OP. */
+      salidaMaquila: ReceiptOnboardingSalidaMaquila | null;
+    }
+  | { type: "salida-maquila"; salidaMaquila: ReceiptOnboardingSalidaMaquila };
 
 // ─── POST /compras/recepciones/onboarding/ body ──────────────────────────────
 
@@ -136,6 +176,14 @@ export interface ReceiptCreatePurchaseOrderRecepcion
 export interface ReceiptCreateProductionOrderRecepcion
   extends ReceiptCreateRecepcionBase {
   orden_produccion: number;
+  /** SM de esta OP que se recibe con ella (EC-912); el backend la cierra. */
+  salida_maquila?: number;
+}
+
+/** SM de OB/OR: solo cabecera; el backend toma la orden y el maquilero de la SM. */
+export interface ReceiptCreateSalidaMaquilaRecepcion
+  extends ReceiptCreateRecepcionBase {
+  salida_maquila: number;
 }
 
 interface ReceiptCreateDetalleBase {
@@ -164,6 +212,13 @@ export interface ReceiptCreateProductionOrderPayload {
   detalle: ReceiptCreateProductionOrderDetalle[];
 }
 
+export interface ReceiptCreateSalidaMaquilaPayload {
+  recepcion: ReceiptCreateSalidaMaquilaRecepcion;
+  /** Siempre vacío: el regreso de una SM de OB/OR no mueve inventario. */
+  detalle: [];
+}
+
 export type ReceiptCreatePayload =
   | ReceiptCreatePurchaseOrderPayload
-  | ReceiptCreateProductionOrderPayload;
+  | ReceiptCreateProductionOrderPayload
+  | ReceiptCreateSalidaMaquilaPayload;
