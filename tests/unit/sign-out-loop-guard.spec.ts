@@ -62,7 +62,7 @@ test.describe("registerSignOutAttempt", () => {
       registerSignOutAttempt(2_000),
       registerSignOutAttempt(3_000),
     ]);
-    expect(results).toEqual([true, true, false]);
+    expect(results).toEqual(["registered", "registered", "exhausted"]);
     expect(JSON.parse(storage.get(SIGN_OUT_ATTEMPTS_KEY) ?? "null")).toEqual([1_000, 2_000]);
   });
 
@@ -71,11 +71,11 @@ test.describe("registerSignOutAttempt", () => {
     const result = withSessionStorage(storage, () =>
       registerSignOutAttempt(2_000 + SIGN_OUT_ATTEMPTS_WINDOW_MS)
     );
-    expect(result).toBe(true);
+    expect(result).toBe("registered");
   });
 
-  test("sin sessionStorage no navega (no puede contar) y no lanza", () => {
-    expect(withSessionStorage("blocked", () => registerSignOutAttempt())).toBe(false);
+  test("sin sessionStorage avisa que no puede contar, sin lanzar", () => {
+    expect(withSessionStorage("blocked", () => registerSignOutAttempt())).toBe("unavailable");
   });
 });
 

@@ -116,7 +116,8 @@ const retryServerLogout = () => {
  *
  * La guarda de `signOutLoopGuard` es solo un respaldo: si la pestaña vuelve a
  * caer aquí en ciclo, corta tras `SIGN_OUT_MAX_ATTEMPTS` cargas y deja una
- * pantalla de error estable con "Reintentar". Llamadas repetidas en la misma
+ * pantalla de error estable con "Reintentar". Sin `sessionStorage` no puede
+ * contar y navega siempre. Llamadas repetidas en la misma
  * carga no hacen ninguna petición: vuelven a navegar, o no hacen nada si la
  * pantalla ya está a la vista.
  */
@@ -124,7 +125,7 @@ export const signOutToLogin = (): void => {
   clearUserScopedClientState();
   if (signOutBlocked) return;
   if (!signOutStarted) {
-    if (!registerSignOutAttempt()) {
+    if (registerSignOutAttempt() === "exhausted") {
       signOutBlocked = true;
       showSignOutFailureScreen(retryServerLogout);
       return;
