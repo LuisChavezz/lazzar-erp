@@ -24,8 +24,11 @@ export interface useGoogleMessagesReturn {
    * en vez de una bandeja vacía. Un refetch fallido con datos solo avisa.
    */
   isInitialError: boolean;
-  /** Mensaje para el usuario del error de `isInitialError` (`null` sin error). */
-  errorMessage: string | null;
+  /**
+   * Mensaje para el usuario del error de `isInitialError` (backend o texto
+   * genérico); cadena vacía sin error. La copia de respaldo vive solo aquí.
+   */
+  errorMessage: string;
   /** Verdadero durante cualquier fetching, incluido el cambio de página con placeholderData */
   isFetching: boolean;
   /** Verdadero si existe una página siguiente */
@@ -142,7 +145,7 @@ export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogle
     isInitialError,
     errorMessage: isInitialError
       ? extractErrorMessage(error, "Ocurrió un problema al consultar tus correos de Gmail.")
-      : null,
+      : "",
     isFetching,
     hasNextPage: !!data?.nextPageToken,
     hasPreviousPage: pageTokenHistory.length > 1,
