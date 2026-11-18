@@ -1,3 +1,11 @@
+import {
+  clearLoopMark,
+  isRecentLoopMark,
+  LOOP_GUARD_WINDOW_MS,
+  readLoopMark,
+  writeLoopMark,
+} from "./loopGuardStorage";
+
 /**
  * Guarda contra ciclos del cierre de sesión (EC-851).
  *
@@ -13,7 +21,7 @@
  * Se borra al iniciar sesión (`enterNewSession`) y con "Reintentar".
  */
 export const SIGN_OUT_ATTEMPTS_KEY = "erp:signout-attempts";
-export const SIGN_OUT_ATTEMPTS_WINDOW_MS = 60_000;
+export const SIGN_OUT_ATTEMPTS_WINDOW_MS = LOOP_GUARD_WINDOW_MS;
 export const SIGN_OUT_MAX_ATTEMPTS = 2;
 
 /**
@@ -25,10 +33,7 @@ export const recentSignOutAttempts = (raw: string | null, now: number): number[]
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (at): at is number =>
-        typeof at === "number" && at <= now && now - at < SIGN_OUT_ATTEMPTS_WINDOW_MS
-    );
+    return parsed.filter((at): at is number => isRecentLoopMark(at, now));
   } catch {
     return [];
   }
@@ -39,21 +44,12 @@ export const recentSignOutAttempts = (raw: string | null, now: number): number[]
  * agotaron los intentos, o si `sessionStorage` no está disponible.
  */
 export const registerSignOutAttempt = (now = Date.now()): boolean => {
-  try {
-    const attempts = recentSignOutAttempts(sessionStorage.getItem(SIGN_OUT_ATTEMPTS_KEY), now);
-    if (attempts.length >= SIGN_OUT_MAX_ATTEMPTS) return false;
-    sessionStorage.setItem(SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([...attempts, now]));
-    return true;
-  } catch {
-    return false;
-  }
+  const raw = readLoopMark(SIGN_OUT_ATTEMPTS_KEY);
+  if (raw === undefined) return false;
+  const attempts = recentSignOutAttempts(raw, now);
+  if (attempts.length >= SIGN_OUT_MAX_ATTEMPTS) return false;
+  return writeLoopMark(SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([...attempts, now]));
 };
 
 /** Olvida los intentos (inicio de sesión, o "Reintentar"). Nunca lanza. */
-export const clearSignOutAttempts = () => {
-  try {
-    sessionStorage.removeItem(SIGN_OUT_ATTEMPTS_KEY);
-  } catch {
-    // Sin sessionStorage no hay intentos que borrar.
-  }
-};
+export const clearSignOutAttempts = () => clearLoopMark(SIGN_OUT_ATTEMPTS_KEY);
