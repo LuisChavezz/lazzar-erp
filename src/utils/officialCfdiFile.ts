@@ -57,9 +57,12 @@ export const cfdiFileToBlob = (file: unknown, format: CfdiFileFormat): Blob => {
  * 1. El archivo llegó vacío o no es base64.
  * 2. 403: el `detail` (o el motivo DRF) del backend.
  * 3. Sin respuesta del backend (red caída, CORS por un corte).
- * 4. Timeout del cliente o 502/503/504: Facturama o la puerta de enlace no
- *    entregaron el archivo. Leer es seguro, así que no se usa la redacción de
- *    "resultado desconocido" de las acciones que escriben.
+ * 4. Timeout del cliente o 502/503/504 (`isActionOutcomeUnknown`): Facturama o
+ *    la puerta de enlace no entregaron el archivo. Si el backend explica el
+ *    motivo (`{"cfdi": "Facturama no entregó el archivo: …"}` de
+ *    `facturas/{id}/cfdi/`), se muestra ese; si no, el genérico. Leer es
+ *    seguro, así que no se usa la redacción de "resultado desconocido" de las
+ *    acciones que escriben.
  * 5. Cuerpo del passthrough (`{ error: "FACTURAMA_…", message, details }`):
  *    Facturama rechazó la petición; `message` es un texto genérico en inglés.
  * 6. Errores DRF (`{"cfdi": "La factura no tiene CFDI timbrado."}`) y, al
@@ -75,7 +78,11 @@ export const officialCfdiErrorMessage = (error: unknown, ofDocument: string): st
     }
     const isTimeout = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
     if (!error.response && !isTimeout) return "No se recibió respuesta del servidor. Intenta de nuevo.";
-    if (isActionOutcomeUnknown(error)) return "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
+    if (isActionOutcomeUnknown(error)) {
+      // El cuerpo del passthrough (`error: "FACTURAMA_…"`) no es un mensaje para el usuario.
+      const reason = typeof data?.error === "string" ? undefined : firstDrfFieldMessage(error);
+      return reason ?? "Facturama no entregó el archivo. Intenta de nuevo más tarde.";
+    }
     if (typeof data?.error === "string" && data.error.startsWith("FACTURAMA_")) {
       return `Facturama no entregó el CFDI ${ofDocument} (HTTP ${status}).`;
     }
