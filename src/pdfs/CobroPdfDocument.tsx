@@ -7,8 +7,10 @@
  *
  * - Datos del cobro: cliente, estatus, método de pago, referencia, cuenta
  *   bancaria, moneda (la de la cuenta) y —fuera de MXN— tipo de cambio.
- * - Complemento de pago, si se timbró: su folio fiscal y fecha; o el UUID
- *   cancelado. El REP oficial se baja aparte; este PDF no lo sustituye.
+ * - Complemento de pago, si se timbró: su folio fiscal, fecha y estado (vigente
+ *   o con la cancelación solicitada ante el SAT); el UUID cancelado; o que el
+ *   timbrado está pendiente de confirmar. El REP oficial se baja aparte; este
+ *   PDF no lo sustituye.
  * - Facturas cobradas: folio de la factura (EC-904) e importe aplicado. SIN
  *   saldo: el de la CxC es el actual, no el del momento del cobro.
  * - Total cobrado y observaciones.
@@ -33,7 +35,7 @@ import {
 } from "./shared/DocumentPdfLayout";
 import { conditionalColumn, optionalInfoItem } from "./shared/documentPdfColumns";
 import type { PdfCompany } from "./shared/documentPdfModel";
-import { pdfCurrencyItems, pdfDate, pdfDateTime, pdfMoney } from "./shared/financeDocumentPdf";
+import { CFDI_STATE_LABELS, pdfCfdiState, pdfCurrencyItems, pdfDate, pdfDateTime, pdfMoney } from "./shared/financeDocumentPdf";
 
 type CobroPdfDocumentProps = {
   cobro: Cobro;
@@ -69,17 +71,27 @@ export const CobroPdfDocument = ({ cobro, company }: CobroPdfDocumentProps) => {
     },
   ];
 
+  // Mismos estados que el CFDI de la factura: vigente o con la cancelación
+  // solicitada, cancelado (el backend mueve el UUID a `rep_cancelado_uuid`) o
+  // timbrado sin confirmar (`rep_pendiente`, aún sin UUID).
   const rep = cobro.rep_uuid
     ? [
         { label: "Folio fiscal", value: cobro.rep_uuid },
         { label: "Timbrado", value: pdfDateTime(cobro.rep_fecha_timbrado) },
+        {
+          label: "Estado del REP",
+          value: pdfCfdiState({ cancelado: false, cancelacionSolicitada: cobro.rep_cancelacion_solicitada }),
+        },
       ]
     : cobro.rep_cancelado_uuid
       ? [
           { label: "Folio fiscal (cancelado)", value: cobro.rep_cancelado_uuid },
           { label: "Cancelado", value: pdfDateTime(cobro.rep_fecha_cancelacion) },
+          { label: "Estado del REP", value: CFDI_STATE_LABELS.cancelado },
         ]
-      : null;
+      : cobro.rep_pendiente
+        ? [{ label: "Estado del REP", value: CFDI_STATE_LABELS.pendiente }]
+        : null;
 
   return (
     <DocumentPdfLayout

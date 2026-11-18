@@ -42,7 +42,7 @@ import {
 } from "./shared/DocumentPdfLayout";
 import { conditionalColumn, optionalInfoItem } from "./shared/documentPdfColumns";
 import type { PdfCompany } from "./shared/documentPdfModel";
-import { pdfCurrencyItems, pdfDate, pdfDateTime, pdfMoney } from "./shared/financeDocumentPdf";
+import { pdfCfdiState, pdfCurrencyItems, pdfDate, pdfDateTime, pdfMoney } from "./shared/financeDocumentPdf";
 
 type InvoicePdfDocumentProps = {
   invoice: Invoice;
@@ -56,13 +56,6 @@ const codeAndName = (code: string | null | undefined, name: string | null | unde
   if (!codigo) return textOrDash(nombre);
   if (!nombre || nombre === codigo || nombre.startsWith(codigo)) return nombre || codigo;
   return `${codigo} - ${nombre}`;
-};
-
-/** Estado del CFDI timbrado, de sus banderas (no es un estatus de la factura). */
-const cfdiState = (invoice: Invoice): string => {
-  if (invoice.cfdi_cancelado) return "Cancelado ante el SAT";
-  if (invoice.cfdi_cancelacion_solicitada) return "Cancelación solicitada ante el SAT";
-  return "Vigente";
 };
 
 export const InvoicePdfDocument = ({ invoice, company }: InvoicePdfDocumentProps) => {
@@ -154,7 +147,13 @@ export const InvoicePdfDocument = ({ invoice, company }: InvoicePdfDocumentProps
             items={[
               { label: "Folio fiscal", value: textOrDash(invoice.cfdi_uuid) },
               { label: "Timbrado", value: pdfDateTime(invoice.cfdi_fecha_timbrado) },
-              { label: "Estado del CFDI", value: cfdiState(invoice) },
+              {
+                label: "Estado del CFDI",
+                value: pdfCfdiState({
+                  cancelado: invoice.cfdi_cancelado,
+                  cancelacionSolicitada: invoice.cfdi_cancelacion_solicitada,
+                }),
+              },
             ]}
           />
         </PdfCardRow>
