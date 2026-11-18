@@ -507,6 +507,22 @@ test.describe("PDF del cobro y archivo del REP", () => {
     expect(doc.totals).toEqual({ "TOTAL COBRADO": "$50.00" });
   });
 
+  test("el estado del REP sigue sus banderas, con las etiquetas del CFDI de la factura", () => {
+    const tarjeta = (overrides: Partial<Cobro>) => {
+      const doc = read(CobroPdfDocument({ cobro: cobro(overrides), company: COMPANY }), "FACTURAS COBRADAS");
+      return doc.cardTitles.includes("COMPLEMENTO DE PAGO (REP)") ? doc.card("COMPLEMENTO DE PAGO (REP)") : null;
+    };
+    expect(tarjeta({})?.["Estado del REP"]).toBe("Vigente");
+    expect(tarjeta({ rep_cancelacion_solicitada: true })?.["Estado del REP"]).toBe("Cancelación solicitada ante el SAT");
+    expect(
+      tarjeta({ rep_uuid: null, rep_facturama_id: null, rep_cancelado_uuid: "OLD-UUID", rep_fecha_cancelacion: "2026-11-01T10:00:00-06:00" }),
+    ).toMatchObject({ "Folio fiscal (cancelado)": "OLD-UUID", "Estado del REP": "Cancelado ante el SAT" });
+    expect(tarjeta({ rep_uuid: null, rep_facturama_id: "fm-rep", rep_pendiente: true })).toEqual({
+      "Estado del REP": "Timbrado pendiente de confirmar",
+    });
+    expect(tarjeta({ rep_uuid: null, rep_facturama_id: null })).toBeNull();
+  });
+
   test("el REP se descarga como REP-<folio del cobro>, sin permiso aparte", () => {
     expect(cobroRepFileName(cobro(), "pdf")).toBe("REP-COB-00001.pdf");
     expect(cobroRepFileName(cobro({ folio: "COB 00002/26" }), "xml")).toBe("REP-COB-00002-26.xml");

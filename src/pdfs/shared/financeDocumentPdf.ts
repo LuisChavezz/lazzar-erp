@@ -49,3 +49,21 @@ export const pdfCurrencyItems = (
   }
   return items;
 };
+
+/**
+ * Estado de un CFDI timbrado (factura o REP), de sus banderas: no es un
+ * estatus del documento. Mismas etiquetas en los dos PDF (EC-859).
+ */
+export const CFDI_STATE_LABELS = {
+  vigente: "Vigente",
+  cancelacionSolicitada: "Cancelación solicitada ante el SAT",
+  cancelado: "Cancelado ante el SAT",
+  pendiente: "Timbrado pendiente de confirmar",
+} as const;
+
+export const pdfCfdiState = (flags: { cancelado: boolean; cancelacionSolicitada: boolean }): string =>
+  flags.cancelado
+    ? CFDI_STATE_LABELS.cancelado
+    : flags.cancelacionSolicitada
+      ? CFDI_STATE_LABELS.cancelacionSolicitada
+      : CFDI_STATE_LABELS.vigente;
