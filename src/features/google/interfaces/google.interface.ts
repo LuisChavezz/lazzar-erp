@@ -46,12 +46,18 @@ export interface GoogleEmailPayload {
 }
 
 /**
- * Respuesta CRUDA del listado: un mensaje cuyos metadatos no se pudieron leer
- * llega solo como `{id}` (ver `normalizeGmailMessages`).
+ * Un mensaje del listado de Gmail tal como puede llegar del backend. Cuando
+ * falla la lectura de los metadatos de un mensaje, `/ai/google/gmail/messages/`
+ * lo devuelve solo con su id (`items.append({"id": msg_id})`), sin asunto,
+ * remitente ni fecha. Lo completa `normalizeGmailMessages`.
  */
+export type RawGoogleEmailMessage = Pick<GoogleEmailMessage, "id"> &
+  Partial<Record<Exclude<keyof GoogleEmailMessage, "id">, string | null>>;
+
+/** Respuesta CRUDA del listado (ver `RawGoogleEmailMessage`). */
 export interface GoogleEmailMessagesApiResponse
   extends Omit<GoogleEmailMessagesResponse, "messages"> {
-  messages: Array<Pick<GoogleEmailMessage, "id"> & Partial<GoogleEmailMessage>> | null;
+  messages: Array<RawGoogleEmailMessage> | null;
 }
 
 /** El listado ya normalizado: cada mensaje con todos sus campos. */

@@ -1,13 +1,7 @@
-import type { GoogleEmailMessage } from "../interfaces/google.interface";
-
-/**
- * Un mensaje del listado de Gmail tal como puede llegar del backend. Cuando
- * falla la lectura de los metadatos de un mensaje, `/ai/google/gmail/messages/`
- * lo devuelve solo con su id (`items.append({"id": msg_id})`), sin asunto,
- * remitente ni fecha.
- */
-export type RawGoogleEmailMessage = Pick<GoogleEmailMessage, "id"> &
-  Partial<Record<Exclude<keyof GoogleEmailMessage, "id">, string | null>>;
+import type {
+  GoogleEmailMessage,
+  RawGoogleEmailMessage,
+} from "../interfaces/google.interface";
 
 const text = (value: string | null | undefined): string =>
   typeof value === "string" ? value : "";
