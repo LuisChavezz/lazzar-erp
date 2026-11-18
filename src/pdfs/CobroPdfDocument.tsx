@@ -108,6 +108,7 @@ export const CobroPdfDocument = ({ cobro, company }: CobroPdfDocumentProps) => {
           items={[
             { label: "Cliente", value: cliente },
             { label: "Estatus", value: cobro.estatus },
+            { label: "Sucursal", value: textOrDash(cobro.sucursal_nombre) },
             { label: "Método de pago", value: textOrDash(cobro.metodo_pago) },
             { label: "Referencia", value: COBRO_REFERENCIA_LABELS[cobro.referencia] ?? textOrDash(cobro.referencia) },
             ...optionalInfoItem("Ref. de operación", cobro.referencia_operacion),
