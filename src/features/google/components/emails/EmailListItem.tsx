@@ -61,7 +61,7 @@ export const EmailListItem = memo(function EmailListItem({ message, isSelected, 
       onMouseEnter={handleMouseEnter}
       disabled={disabled}
       aria-current={isSelected ? true : undefined}
-      aria-label={`Correo de ${senderName}: ${message.subject}`}
+      aria-label={`Correo de ${senderName}: ${message.subject || "(Sin asunto)"}`}
       className={[
         "w-full text-left px-4 py-2.5 flex items-start gap-2.5",
         "border-b border-slate-100 dark:border-slate-800",

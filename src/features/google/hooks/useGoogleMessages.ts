@@ -5,6 +5,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { googleGetEmailMessages } from "../services/actions";
+import { normalizeGmailMessages } from "../utils/normalizeGmailMessage";
 import type {
   GoogleEmailMessage,
   GoogleEmailMessagesResponse,
@@ -91,7 +92,12 @@ export const useGoogleMessages = ({ query }: UseGoogleMessagesParams): useGoogle
     queryFn: () => {
       const params: Record<string, string> = { ...BASE_PARAMS, q: query };
       if (currentToken) params.pageToken = currentToken;
-      return googleGetEmailMessages(params);
+      // Un mensaje puede llegar solo como `{id}`: se normaliza aquí, una vez,
+      // para que ningún consumidor lea `undefined` (ver `normalizeGmailMessages`).
+      return googleGetEmailMessages(params).then((response) => ({
+        ...response,
+        messages: normalizeGmailMessages(response.messages),
+      }));
     },
     staleTime: 2 * 60 * 1000,
     // Mantiene los datos de la página anterior visibles mientras se carga la nueva.

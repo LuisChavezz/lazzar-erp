@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import { GoogleCalendarEventCreate, GoogleConnectResponse, GoogleEmailMessageDetailResponse, GoogleEmailMessagesResponse, GoogleEmailPayload, GoogleEventsResponse, GoogleSendEmailResponse, GoogleStatusResponse } from "../interfaces/google.interface";
+import { GoogleCalendarEventCreate, GoogleConnectResponse, GoogleEmailMessageDetailResponse, GoogleEmailMessagesApiResponse, GoogleEmailPayload, GoogleEventsResponse, GoogleSendEmailResponse, GoogleStatusResponse } from "../interfaces/google.interface";
 
 
 export const googleConnect = async (redirect_url: string): Promise<GoogleConnectResponse> => {
@@ -27,8 +27,8 @@ export const googleSendEmail = async (payload: GoogleEmailPayload): Promise<Goog
   return response.data;
 }
 
-export const googleGetEmailMessages = async (params: Record<string, string>): Promise<GoogleEmailMessagesResponse> => {
-  const response = await v1_api.get<GoogleEmailMessagesResponse>("/ai/google/gmail/messages/", { params });
+export const googleGetEmailMessages = async (params: Record<string, string>): Promise<GoogleEmailMessagesApiResponse> => {
+  const response = await v1_api.get<GoogleEmailMessagesApiResponse>("/ai/google/gmail/messages/", { params });
   return response.data;
 }
 

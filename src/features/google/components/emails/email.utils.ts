@@ -5,6 +5,9 @@
 
 // --- Formateo de remitentes ---
 
+/** Nombre a mostrar cuando el mensaje llega sin remitente (solo `{id}`). */
+export const UNKNOWN_SENDER_LABEL = "Remitente desconocido";
+
 /**
  * Extrae el nombre visible del remitente del campo `from_full`.
  * Ejemplo: "Juan Pérez <juan@example.com>" → "Juan Pérez"
@@ -12,7 +15,8 @@
  */
 export const parseSenderName = (fromFull: string): string => {
   const match = fromFull.match(/^"?([^"<]+)"?\s*</);
-  return match ? match[1].trim() : fromFull.split("@")[0];
+  const name = match ? match[1].trim() : fromFull.split("@")[0];
+  return name || UNKNOWN_SENDER_LABEL;
 };
 
 /**
@@ -20,6 +24,7 @@ export const parseSenderName = (fromFull: string): string => {
  * Si el nombre tiene al menos dos palabras, usa la inicial de cada una.
  */
 export const getSenderInitials = (name: string): string => {
+  if (!name.trim() || name === UNKNOWN_SENDER_LABEL) return "?";
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
