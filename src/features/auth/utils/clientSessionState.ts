@@ -1,7 +1,11 @@
 import { useWorkspaceStore } from "@/src/features/workspace/store/workspace.store";
 import { clearWorkspaceCookie } from "@/src/features/workspace/utils/workspaceCookie";
 import { broadcastSignOut, probeSession } from "./sessionRecovery";
-import { clearSignOutAttempts, registerSignOutAttempt } from "./signOutLoopGuard";
+import {
+  clearSignOutAttempts,
+  hasRecentSignOutAttempt,
+  registerSignOutAttempt,
+} from "./signOutLoopGuard";
 import { showSignOutFailureScreen } from "./signOutFailureScreen";
 
 /** Clave del antiguo store de la Dirección fiscal en `localStorage` (EC-860). */
@@ -182,10 +186,22 @@ export const enterNewSession = () => {
  * La cookie es la misma para todas las pestañas, así que "sin sesión" aquí lo
  * es en todas: avisar también al abrir el login sin venir de un cierre solo
  * hace que las demás relean una sesión que ya no tienen.
+ *
+ * Si en cambio HAY sesión y esta pestaña acaba de cerrar sesión (un intento
+ * reciente en la guarda), la cookie revivió: una lectura de
+ * `/api/auth/session` que ya estaba en vuelo al navegar a `/auth/logout`
+ * respondió después del borrado y, como esa ruta reescribe la cookie en cada
+ * lectura, la volvió a poner. Se vuelve a cerrar sesión; la guarda acota los
+ * reintentos. Sin un cierre reciente (la página servida desde la caché), no se
+ * toca nada.
  */
 export const settleSignedOutClientState = async (signal: AbortSignal) => {
-  if ((await probeSession(signal)) === "none" && !signal.aborted) {
+  const probe = await probeSession(signal);
+  if (signal.aborted) return;
+  if (probe === "none") {
     clearUserScopedClientState();
     broadcastSignOut();
+  } else if (probe === "session" && hasRecentSignOutAttempt()) {
+    signOutToLogin();
   }
 };

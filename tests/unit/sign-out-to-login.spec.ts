@@ -187,6 +187,19 @@ test.describe("settleSignedOutClientState (login montado)", () => {
     expect(typeof message.timestamp).toBe("number");
   });
 
+  test("con sesión tras un cierre reciente (cookie revivida), vuelve a cerrar sesión", async () => {
+    const session = new Map([[SIGN_OUT_ATTEMPTS_KEY, JSON.stringify([Date.now() - 1_000])]]);
+    const env = await withPage(
+      async () => {
+        globals.fetch = async () => ({ ok: true, json: async () => ({ user: { email: "a@b.c" } }) });
+        await settleSignedOutClientState(new AbortController().signal);
+      },
+      { session }
+    );
+    expect(env.location.href).toBe(SERVER_LOGOUT_PATH);
+    expect(attempts(session)).toHaveLength(2);
+  });
+
   test("con sesión, o si la consulta falla, no limpia ni avisa", async () => {
     for (const [ok, body] of [
       [true, { user: { email: "a@b.c" } }],
