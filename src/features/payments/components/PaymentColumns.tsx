@@ -1,4 +1,5 @@
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { createSucursalColumn, sucursalHeaderFilter } from "@/src/features/branches/components/sucursalColumn";
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -98,15 +99,8 @@ export const getColumns = () => {
         </span>
       ),
     }),
-    // Nombre resuelto por el backend (EC-874), como en el resto de listados. «—»
-    // en un Borrador sin líneas; la búsqueda no indexa un texto inventado.
-    columnHelper.accessor((row) => row.sucursal_nombre ?? "", {
-      id: "sucursal_nombre",
-      header: "Sucursal",
-      cell: (info) => (
-        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
-      ),
-    }),
+    // «—» solo en un pago sin líneas (EC-874).
+    createSucursalColumn<Pago>(),
     // Una cuenta SIN alias es un dato real, no un nombre sin resolver: la celda
     // pinta «—» y la búsqueda no indexa un texto inventado (`Cuenta #N`).
     columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {
@@ -157,6 +151,8 @@ export const getColumns = () => {
  *   comparan contra el id crudo y se rotulan con el nombre o alias (o
  *   `Proveedor #N` / `Cuenta #N`), así dos homónimos no se mezclan. Ambos FK son
  *   obligatorios en el modelo, así que no hay opción "Sin proveedor" ni "Sin cuenta".
+ * - La sucursal (EC-866): `sucursalHeaderFilter`, por id con el nombre que
+ *   trae la fila; es nullable, así que lleva la opción "Sin sucursal".
  * - La fecha de pago filtra por mes. Referencia y total no llevan filtro: son
  *   valores libres, los cubren la búsqueda y el orden.
  */
@@ -169,6 +165,7 @@ export const PAYMENT_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<Pag
   },
   proveedor_nombre: { type: "distinct", get: (r) => r.proveedor, label: getProveedorLabel, searchable: true },
   fecha_pago: { type: "month", get: (r) => r.fecha_pago },
+  sucursal_nombre: sucursalHeaderFilter<Pago>(),
   cuenta_bancaria_alias: { type: "distinct", get: (r) => r.cuenta_bancaria, label: getCuentaLabel },
   metodo_pago: {
     type: "options",
