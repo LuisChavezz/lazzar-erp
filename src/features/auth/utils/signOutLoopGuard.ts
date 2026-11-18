@@ -61,5 +61,14 @@ export const registerSignOutAttempt = (now = Date.now()): SignOutAttemptResult =
     : "unavailable";
 };
 
+/**
+ * ¿Esta pestaña cerró sesión hace menos de la ventana? Sin `sessionStorage`
+ * no se puede saber y responde `false`.
+ */
+export const hasRecentSignOutAttempt = (now = Date.now()): boolean => {
+  const raw = readLoopMark(SIGN_OUT_ATTEMPTS_KEY);
+  return raw !== undefined && recentSignOutAttempts(raw, now).length > 0;
+};
+
 /** Olvida los intentos (inicio de sesión, o "Reintentar"). Nunca lanza. */
 export const clearSignOutAttempts = () => clearLoopMark(SIGN_OUT_ATTEMPTS_KEY);
