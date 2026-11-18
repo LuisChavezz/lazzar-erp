@@ -12,6 +12,7 @@ import { DropdownMenu } from "@radix-ui/themes";
 import Calendar from "@/src/components/Calendar";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 
 const GoogleCalendarEventForm = lazy(() => import("./GoogleCalendarEventForm"));
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
@@ -194,12 +195,13 @@ export const GoogleCalendar = () => {
       {/* Diálogo de creación de evento */}
       <MainDialog
         title="Nuevo evento de Google Calendar"
+        description="Programa un evento en tu Google Calendar."
         open={isFormOpen}
         onOpenChange={(open) => {
           setIsFormOpen(open);
           if (!open) setSelectedDate("");
         }}
-        maxWidth="680px"
+        maxWidth={DIALOG_WIDTH_FORM}
       >
         <Suspense fallback={null}>
           {/* key={selectedDate} fuerza remontaje cuando cambia la fecha clicada */}
