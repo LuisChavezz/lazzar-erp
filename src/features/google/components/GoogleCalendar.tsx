@@ -46,6 +46,17 @@ export const GoogleCalendar = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Fecha preseleccionada al hacer clic en un día del calendario (YYYY-MM-DD).
   const [selectedDate, setSelectedDate] = useState<string>("");
+  // Una sesión por apertura: es la `key` del formulario, así cada apertura monta
+  // uno nuevo. Con solo `selectedDate`, reabrir con "+" mientras el diálogo
+  // aún animaba su salida reutilizaba el formulario ya enviado (valores viejos
+  // y candado de salida tomado: "Crear evento" no hacía nada).
+  const [formSession, setFormSession] = useState(0);
+
+  const openForm = (date: string) => {
+    setSelectedDate(date);
+    setFormSession((n) => n + 1);
+    setIsFormOpen(true);
+  };
 
   const { data, isLoading, isFetching, isInitialError, error, refetch } =
     useGoogleCalendarEvents();
@@ -82,8 +93,7 @@ export const GoogleCalendar = () => {
 
   // Abre el modal de nuevo evento con la fecha del día clicado preseleccionada.
   const handleDateClick = (info: DateClickArg) => {
-    setSelectedDate(info.dateStr);
-    setIsFormOpen(true);
+    openForm(info.dateStr);
   };
 
   // Carga inicial fallida: el error con "Reintentar", nunca un calendario vacío
@@ -124,7 +134,7 @@ export const GoogleCalendar = () => {
           <button
             type="button"
             aria-label="Nuevo evento de Google Calendar"
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => openForm("")}
             className="inline-flex items-center gap-1 rounded-md cursor-pointer border border-[#d1e1f5] dark:border-zinc-700 bg-[#f8fbff] dark:bg-zinc-800 text-[0.68rem] font-bold uppercase text-[#0f172a] dark:text-zinc-200 px-[0.45rem] py-[0.22rem] hover:bg-[#eef5ff] dark:hover:bg-zinc-700 transition-colors"
           >
             <PlusIcon className="h-3 w-3" aria-hidden="true" />
@@ -220,9 +230,9 @@ export const GoogleCalendar = () => {
         maxWidth={DIALOG_WIDTH_FORM}
       >
         <Suspense fallback={null}>
-          {/* key={selectedDate} fuerza remontaje cuando cambia la fecha clicada */}
+          {/* Una `key` por apertura (`formSession`): formulario nuevo cada vez. */}
           <GoogleCalendarEventForm
-            key={selectedDate}
+            key={formSession}
             initialDate={selectedDate || undefined}
             onSuccess={() => {
               setIsFormOpen(false);
