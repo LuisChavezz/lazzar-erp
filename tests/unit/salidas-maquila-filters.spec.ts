@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SALIDAS_MAQUILA_TABLE } from "../../src/features/maquila-outputs/constants/salidasMaquilaTable";
+import { salidasMaquilaToastId } from "@/src/features/maquila-outputs/hooks/useSalidasMaquila";
 import {
   readServerTableState,
   serverTableDefaultPageSize,
@@ -32,5 +33,21 @@ test.describe("filtros del listado de SM en la URL (EC-868)", () => {
     expect(write({ op: 82 })).toBe("op=82");
     expect(write({ op: 82, centro_confeccion: 8 })).toBe("op=82&centro_confeccion=8");
     expect(write({})).toBe("");
+  });
+});
+
+test.describe("toast de refetch del listado de SM (EC-868)", () => {
+  test("cada combinación de filtros tiene su propio id", () => {
+    const ids = [
+      salidasMaquilaToastId({}),
+      salidasMaquilaToastId({ op: 82 }),
+      salidasMaquilaToastId({ centro_confeccion: 8 }),
+      salidasMaquilaToastId({ op: 82, centro_confeccion: 8 }),
+      salidasMaquilaToastId({ estatus: "ENVIADA" }),
+    ];
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(salidasMaquilaToastId({ op: 82, centro_confeccion: 8 })).toBe(
+      salidasMaquilaToastId({ centro_confeccion: 8, op: 82 }),
+    );
   });
 });
