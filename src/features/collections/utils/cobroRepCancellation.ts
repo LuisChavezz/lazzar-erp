@@ -10,7 +10,7 @@ import {
   type SatCancelMotive,
 } from "@/src/constants/satCancelMotives";
 import type { Cobro } from "../interfaces/collection.interface";
-import { isActionOutcomeUnknown } from "./actionOutcome";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { cobroLabel } from "./collection.utils";
 
 type CobroRepCancelState = Pick<Cobro, "rep_uuid" | "rep_facturama_id">;

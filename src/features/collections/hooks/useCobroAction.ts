@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { PrecheckError, toPrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { getCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
-import { isActionOutcomeUnknown } from "../utils/actionOutcome";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { writeCobroToList } from "./cobroQueryCache";
 
 /**

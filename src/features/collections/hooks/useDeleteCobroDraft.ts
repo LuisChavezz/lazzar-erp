@@ -6,7 +6,7 @@ import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { deleteCobro } from "../services/actions";
 import type { Cobro } from "../interfaces/collection.interface";
 import { cobroLabel } from "../utils/collection.utils";
-import { isActionOutcomeUnknown } from "../utils/actionOutcome";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { COBRO_DRAFT_NOT_DRAFT_MESSAGE } from "../utils/cobroDraft";
 import { useCobroAction } from "./useCobroAction";
 
