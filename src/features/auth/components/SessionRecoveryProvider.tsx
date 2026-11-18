@@ -50,10 +50,11 @@ type RoundOutcome = "pending" | "exhausted";
  * relea; si esa relectura también falla, la ronda sigue con el siguiente
  * intento. En cuanto `useSession()` pasa a `authenticated` la ronda se cancela.
  *
- * No choca con el cierre de sesión: `signOut` (logout y 401 sin refresh) navega a
- * `/auth/login` sin pasar esta pestaña a `unauthenticated`, y el cierre en OTRA
- * pestaña llega como respuesta "sin sesión", que no se reintenta: recarga una
- * vez y el proxy la manda a login (con guarda contra ciclos).
+ * No choca con el cierre de sesión: `signOutToLogin` (logout y 401 sin refresh)
+ * navega a `/auth/logout` sin pasar esta pestaña a `unauthenticated`, y el cierre
+ * en OTRA pestaña llega (aviso `nextauth.message` que manda el login, EC-851)
+ * como respuesta "sin sesión", que no se reintenta: recarga una vez y el proxy
+ * la manda a login (con guarda contra ciclos).
  */
 export function SessionRecoveryProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();

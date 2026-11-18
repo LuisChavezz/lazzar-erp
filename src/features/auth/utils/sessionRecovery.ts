@@ -66,6 +66,9 @@ export const probeSession = async (signal: AbortSignal): Promise<SessionProbeRes
   }
 };
 
+/** Clave del canal entre pestañas de next-auth (`BroadcastChannel` de `client/_utils.js`). */
+export const NEXTAUTH_MESSAGE_KEY = "nextauth.message";
+
 /**
  * Pide a `SessionProvider` que vuelva a leer la sesión y la reparta a todos los
  * `useSession()`.
@@ -84,6 +87,9 @@ export const probeSession = async (signal: AbortSignal): Promise<SessionProbeRes
  * debe pasar con la versión nueva, porque monta el `SessionProvider` real.
  */
 export const requestSessionRefetch = () => {
+  // Autocontenida a propósito (literales, sin `NEXTAUTH_MESSAGE_KEY` ni
+  // `nextAuthSessionMessage`): `session-provider-refetch.spec.ts` la serializa y
+  // la ejecuta en Chromium, donde no existen los símbolos de este módulo.
   window.dispatchEvent(
     new StorageEvent("storage", {
       key: "nextauth.message",
@@ -94,6 +100,35 @@ export const requestSessionRefetch = () => {
       }),
     })
   );
+};
+
+/**
+ * Avisa a las OTRAS pestañas que se cerró la sesión, con el mismo mensaje que
+ * `signOut` de next-auth 4.24 (`broadcast.post` en `next-auth/react/index.js`):
+ * escribe `nextauth.message` en `localStorage`, el navegador dispara `storage`
+ * en las demás pestañas y su `SessionProvider` relee la sesión. Dentro de
+ * (Main) esa relectura vuelve vacía y `SessionRecoveryProvider` recarga por el
+ * proxy, que las manda al login (EC-851).
+ *
+ * Solo tiene sentido con la cookie YA borrada: si otra pestaña relee la sesión
+ * mientras la cookie sigue viva, la respuesta de `/api/auth/session` vuelve a
+ * escribirla. Por eso no se llama antes de navegar a `/auth/logout`, sino al
+ * montar el login con la sesión confirmada como vacía
+ * (`settleSignedOutClientState`). Nunca lanza: sin `localStorage` no hay canal.
+ */
+export const broadcastSignOut = () => {
+  try {
+    window.localStorage.setItem(
+      NEXTAUTH_MESSAGE_KEY,
+      JSON.stringify({
+        event: "session",
+        data: { trigger: "signout" },
+        timestamp: Math.floor(Date.now() / 1000),
+      })
+    );
+  } catch {
+    // Almacenamiento bloqueado: las otras pestañas se enteran en su siguiente 401.
+  }
 };
 
 /**

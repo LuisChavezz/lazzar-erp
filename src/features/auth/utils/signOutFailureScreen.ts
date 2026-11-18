@@ -1,7 +1,7 @@
 /**
  * Pantalla completa "No se pudo cerrar la sesión" (EC-851).
  *
- * La muestra `signOutToLogin` cuando la guarda de `signOutFallbackGuard` ya no
+ * La muestra `signOutToLogin` cuando la guarda de `signOutLoopGuard` ya no
  * deja navegar. Se construye con el DOM directamente, no con React, a
  * propósito: la llama `v1_api` (fuera de React) y la página de abajo es justo
  * la que está recibiendo 401, así que no puede depender de que esa página,
