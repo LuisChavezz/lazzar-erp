@@ -50,6 +50,13 @@ export const useCreateReceipt = () => {
     },
     // El 400 de `salida_maquila` llega como string plano (no lista):
     // `firstNestedDrfMessage` lo toma igual.
-    onError: (error) => toastDrfError(error, "Error al registrar la recepción"),
+    onError: (error, payload) => {
+      toastDrfError(error, "Error al registrar la recepción");
+      // La SM pudo recibirse o cancelarse en otra parte: el selector vuelve a
+      // pedir las pendientes para que deje de ofrecerla.
+      if ("salida_maquila" in payload.recepcion) {
+        queryClient.invalidateQueries({ queryKey: ["receipt-onboarding-data"] });
+      }
+    },
   });
 };
