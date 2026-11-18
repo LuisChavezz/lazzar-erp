@@ -86,7 +86,8 @@ export interface GoogleCalendarEvent {
   description: string;
   htmlLink: string;
   start: string; // ISO string
-  status: "confirmed" | "tentative" | "cancelled";
+  /** Ver `GOOGLE_EVENT_STATUSES`; `null` si Google no lo envía. */
+  status: string | null;
   creator: string;
   end: string;   // ISO string
   updated: string; // ISO string
