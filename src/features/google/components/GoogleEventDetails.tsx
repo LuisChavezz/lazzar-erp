@@ -6,6 +6,12 @@ import { es } from "date-fns/locale";
 import { ExternalLinkIcon, MapPinIcon, ClockIcon } from "@/src/components/Icons";
 import { useGoogleCalendarEvents } from "../hooks/useGoogleCalendarEvents";
 import { useGoogleCalendarStore } from "../stores/google-calendar.store";
+import { StatusBadge } from "@/src/components/StatusBadge";
+import {
+  GOOGLE_EVENT_STATUS_CFG,
+  GOOGLE_EVENT_STATUS_UNKNOWN_CFG,
+  toGoogleEventStatusKey,
+} from "../constants/googleEventStatus";
 
 // --- Utilidades ---
 
@@ -35,21 +41,6 @@ const formatEventDateRange = (startIso: string, endIso: string): string => {
   return `${startLabel} · ${startTime}–${endTime}`;
 };
 
-// --- Etiqueta de estado ---
-
-const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  confirmed: {
-    label: "Confirmado",
-    className:
-      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30",
-  },
-  tentative: {
-    label: "Tentativo",
-    className:
-      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30",
-  },
-};
-
 // --- Componente principal ---
 
 /**
@@ -72,7 +63,6 @@ export const GoogleEventDetails = () => {
   if (!event) return null;
 
   const dateRange = formatEventDateRange(event.start, event.end);
-  const statusMeta = STATUS_LABELS[event.status] ?? STATUS_LABELS.confirmed;
 
   return (
     <section className="google-event-details-enter bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-xl shadow-sm p-6">
@@ -84,10 +74,12 @@ export const GoogleEventDetails = () => {
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{dateRange}</p>
         </div>
-        <span
-          className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-semibold uppercase tracking-wide ${statusMeta.className}`}
-        >
-          {statusMeta.label}
+        <span className="shrink-0">
+          <StatusBadge
+            status={toGoogleEventStatusKey(event.status)}
+            config={GOOGLE_EVENT_STATUS_CFG}
+            defaultConfig={GOOGLE_EVENT_STATUS_UNKNOWN_CFG}
+          />
         </span>
       </div>
 
