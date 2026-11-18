@@ -24,12 +24,15 @@ interface ComposeEmailFormProps {
  * Combina `MainDialog` como contenedor visual con TanStack Form + Zod
  * para la gestión y validación del estado del formulario.
  *
- * El botón de envío se pasa como `actionButton` al diálogo y delega
- * directamente en `form.handleSubmit()`, separando la lógica de submit
- * del evento DOM del formulario interior.
+ * El botón de envío se pasa como `actionButton` al diálogo y pasa, igual que
+ * el Enter del formulario, por el candado de `useFormSubmitLock`.
  *
- * Al envío exitoso, el hook llama a `onSuccess`, que cierra el diálogo
- * y limpia el formulario para la próxima apertura.
+ * Al envío exitoso, el hook marca la salida del candado y llama a
+ * `onSuccess`, que cierra el diálogo. El formulario NO se limpia: el padre
+ * (`EmailList`) lo DESMONTA al cerrar (`isComposeOpen && …`), y cada apertura
+ * monta uno nuevo. Mantenerlo montado entre aperturas reabriría con el correo
+ * anterior y con el candado de salida tomado (ningún envío más); si eso
+ * cambia, hay que darle una `key` por apertura, como `GoogleCalendar`.
  */
 export function ComposeEmailForm({ open, onOpenChange }: ComposeEmailFormProps) {
   const {
