@@ -360,6 +360,16 @@ export const appRouteGroups: AppRouteGroup[] = [
         section: "operation",
       },
       {
+        key: "wms-order-fulfillment",
+        label: "Avance de surtido",
+        path: "/wms/order-fulfillment",
+        icon: TrendingUpIcon,
+        description: "Cuánto lleva surtido cada pedido y cuánto tiene todavía comprometido.",
+        // Sin código de sección propio en el catálogo: es una vista de Surtido.
+        permission: "R-WMS-PICKING",
+        section: "operation",
+      },
+      {
         key: "wms-packing",
         label: "Embarque",
         path: "/wms/packing",
