@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { useSalidaMaquilaActions } from "../hooks/useSalidaMaquilaMutations";
+import { salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
 import type { SalidaMaquilaListItem } from "../interfaces/salida-maquila.interface";
 
 type Pending = "cerrar" | "cancelar" | null;
@@ -16,6 +17,7 @@ export function SalidaMaquilaActions({ salida }: { salida: SalidaMaquilaListItem
   const { cerrar, cancelar } = useSalidaMaquilaActions(salida.id);
   const [pending, setPending] = useState<Pending>(null);
   const busy = cerrar.isPending || cancelar.isPending;
+  const folio = salidaMaquilaFolio(salida);
 
   const run = (which: "cerrar" | "cancelar") =>
     (which === "cerrar" ? cerrar : cancelar).mutate(undefined, { onSettled: () => setPending(null) });
@@ -32,7 +34,7 @@ export function SalidaMaquilaActions({ salida }: { salida: SalidaMaquilaListItem
       <ConfirmDialog
         open={pending === "cerrar"}
         onOpenChange={(open) => !open && !busy && setPending(null)}
-        title={`¿Recibir ${salida.folio}?`}
+        title={`¿Recibir ${folio}?`}
         description={`Confirma que almacén recibió las ${salida.total_piezas} piezas de ${salida.centro_confeccion_nombre} y que pasaron calidad. Ya no se podrá cancelar.`}
         confirmText={cerrar.isPending ? "Guardando…" : "Sí, recibida"}
         confirmColor="green"
@@ -43,8 +45,8 @@ export function SalidaMaquilaActions({ salida }: { salida: SalidaMaquilaListItem
       <ConfirmDialog
         open={pending === "cancelar"}
         onOpenChange={(open) => !open && !busy && setPending(null)}
-        title={`¿Cancelar ${salida.folio}?`}
-        description="Las piezas vuelven a quedar disponibles para otra salida de esta OP. No se puede deshacer."
+        title={`¿Cancelar ${folio}?`}
+        description="Las piezas vuelven a quedar disponibles para otra salida de la misma orden. No se puede deshacer."
         confirmText={cancelar.isPending ? "Cancelando…" : "Sí, cancelar"}
         confirmColor="red"
         closeOnConfirm={false}

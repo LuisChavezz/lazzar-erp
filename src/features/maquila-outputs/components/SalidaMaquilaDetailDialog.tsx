@@ -17,6 +17,7 @@ import {
   isSalidaMaquilaAbierta,
   SALIDA_MAQUILA_STATUS_CONFIG,
 } from "../constants/salidaMaquilaStatus";
+import { salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
 import { SalidaMaquilaActions } from "./SalidaMaquilaActions";
 import { SalidaMaquilaOrigenLink } from "./SalidaMaquilaOrigenLink";
 
@@ -42,7 +43,7 @@ export function SalidaMaquilaDetailDialog({
     <MainDialog
       open={id !== null}
       onOpenChange={(open) => !open && onClose()}
-      title={data ? `Salida a maquila ${data.folio}` : "Salida a maquila"}
+      title={data ? `Salida a maquila ${salidaMaquilaFolio(data)}` : "Salida a maquila"}
       description="Prendas que salieron a confeccionarse con un maquilero."
       maxWidth="820px"
     >
