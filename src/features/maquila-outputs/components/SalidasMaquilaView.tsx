@@ -7,17 +7,23 @@ import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { canSeeProductionCosts, hasProductionPermission } from "@/src/utils/productionPermissions";
 import { useSalidasMaquila } from "../hooks/useSalidasMaquila";
+import { useSalidasMaquilaFilters } from "../hooks/useSalidasMaquilaFilters";
 import { getSalidaMaquilaColumns } from "./SalidaMaquilaColumns";
 import { SalidaMaquilaDetailDialog } from "./SalidaMaquilaDetailDialog";
+import { SalidasMaquilaFilters } from "./SalidasMaquilaFilters";
 
 type Vista = "maquila" | "recibidas" | "canceladas";
 
 /**
  * Salidas a maquila (SM): lo que está con un maquilero, lo ya recibido y lo
  * cancelado. Las SM se generan desde el detalle de la OP.
+ *
+ * La OP y el maquilero filtran en el SERVIDOR (`?op=`, `?centro_confeccion=`,
+ * en la URL); las pestañas reparten por estatus lo que el servidor devolvió.
  */
 export function SalidasMaquilaView() {
-  const { salidas, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } = useSalidasMaquila();
+  const { filters, setFilter, hasActiveFilters, clearFilters } = useSalidasMaquilaFilters();
+  const { salidas, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } = useSalidasMaquila(filters);
   const { data: session } = useSession();
   const canWrite = hasProductionPermission(session?.user, "OP", "C");
   const canSeeAmounts = canSeeProductionCosts(session?.user);
@@ -32,6 +38,12 @@ export function SalidasMaquilaView() {
 
   return (
     <div className="space-y-6">
+      <SalidasMaquilaFilters
+        filters={filters}
+        setFilter={setFilter}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+      />
       <ListTabs
         ariaLabel="Vista de salidas a maquila"
         value={vista}
@@ -51,11 +63,13 @@ export function SalidasMaquilaView() {
         onRefetch={refetch}
         isRefetching={isFetching}
         emptyMessage={
-          vista === "maquila"
+          hasActiveFilters
+            ? "No hay salidas con estos filtros en esta vista."
+            : vista === "maquila"
             ? "No hay prendas en maquila. Genera una salida desde el detalle de la OP."
             : "No hay salidas en esta vista."
         }
-        paginationResetKey={vista}
+        paginationResetKey={`${vista}|${filters.op ?? ""}|${filters.centro_confeccion ?? ""}`}
         isLoading={isLoading}
         isError={isInitialError}
         errorTitle="Error al cargar las salidas a maquila"
