@@ -98,6 +98,15 @@ export const getColumns = () => {
         </span>
       ),
     }),
+    // Nombre resuelto por el backend (EC-874), como en el resto de listados. «—»
+    // en un Borrador sin líneas; la búsqueda no indexa un texto inventado.
+    columnHelper.accessor((row) => row.sucursal_nombre ?? "", {
+      id: "sucursal_nombre",
+      header: "Sucursal",
+      cell: (info) => (
+        <span className="text-slate-500 dark:text-slate-400">{info.getValue() || "—"}</span>
+      ),
+    }),
     // Una cuenta SIN alias es un dato real, no un nombre sin resolver: la celda
     // pinta «—» y la búsqueda no indexa un texto inventado (`Cuenta #N`).
     columnHelper.accessor((row) => row.cuenta_bancaria_alias ?? "", {

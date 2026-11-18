@@ -85,6 +85,7 @@ export function PaymentDetailDialog({
             {formatShortDate(pago.fecha_pago, { timeZone: "UTC" })}
           </InfoTile>
           <InfoTile label="Método">{pago.metodo_pago}</InfoTile>
+          <InfoTile label="Sucursal">{textOrDash(pago.sucursal_nombre)}</InfoTile>
           <InfoTile label="Cuenta bancaria">{textOrDash(pago.cuenta_bancaria_alias)}</InfoTile>
           <InfoTile label="Referencia">{textOrDash(pago.referencia)}</InfoTile>
           <InfoTile label="Referencia de operación">
