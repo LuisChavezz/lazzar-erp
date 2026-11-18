@@ -3,8 +3,11 @@ import { getReflectiveOrderDetail } from "../services/actions";
 import type { ReflectiveOrderDetail } from "../interfaces/reflective-order.interface";
 
 /** Llave del detalle; la comparte la mutación de edición para invalidarlo. */
+/** Prefijo de los detalles de OR: invalida todos los abiertos. */
+export const REFLECTIVE_ORDER_DETAIL_KEY = ["reflective-order-detail"] as const;
+
 export const reflectiveOrderDetailQueryKey = (id: number | null) =>
-  ["reflective-order-detail", id] as const;
+  [...REFLECTIVE_ORDER_DETAIL_KEY, id] as const;
 
 /**
  * Detalle de una orden de reflejante (`GET /produccion/orden-reflejante/{id}/`).
