@@ -54,9 +54,10 @@ export interface Pago {
   /** Calculado (`source="cuenta_bancaria.alias"`), solo lectura. */
   cuenta_bancaria_alias: string | null;
   /**
-   * Sucursal del pago (EC-874): la de las facturas de sus líneas, solo lectura.
-   * `null` mientras no tiene líneas (un Borrador vacío). En un Borrador se
-   * recalcula al cambiar las líneas. Nunca viaja en el cuerpo de alta o edición:
+   * Sucursal del pago (EC-874): la de las facturas de proveedor de sus líneas,
+   * fijada al CREARLO (los pagos solo reciben líneas en el alta y no se
+   * recalcula después). `null` solo en un pago sin líneas, como los previos a
+   * la sucursal que no pudieron asignarse. Nunca viaja en el cuerpo de alta:
    * el backend la deriva y una distinta responde 400.
    */
   sucursal: number | null;
