@@ -29,6 +29,11 @@ test.describe("filtros del listado de SM en la URL (EC-868)", () => {
     expect(read("op=0&centro_confeccion=8.5")).toEqual({});
   });
 
+  test("lee origen, ob y orden_r (EC-911); un origen desconocido se ignora", () => {
+    expect(read("origen=OR&orden_r=20&ob=7")).toEqual({ origen: "OR", orden_r: 20, ob: 7 });
+    expect(read("origen=XX&orden_r=abc")).toEqual({});
+  });
+
   test("escribe solo los filtros puestos, sin page ni page_size", () => {
     expect(write({ op: 82 })).toBe("op=82");
     expect(write({ op: 82, centro_confeccion: 8 })).toBe("op=82&centro_confeccion=8");
@@ -44,6 +49,9 @@ test.describe("toast de refetch del listado de SM (EC-868)", () => {
       salidasMaquilaToastId({ centro_confeccion: 8 }),
       salidasMaquilaToastId({ op: 82, centro_confeccion: 8 }),
       salidasMaquilaToastId({ estatus: "ENVIADA" }),
+      salidasMaquilaToastId({ origen: "OB" }),
+      salidasMaquilaToastId({ ob: 82 }),
+      salidasMaquilaToastId({ orden_r: 82 }),
     ];
     expect(new Set(ids).size).toBe(ids.length);
     expect(salidasMaquilaToastId({ op: 82, centro_confeccion: 8 })).toBe(
