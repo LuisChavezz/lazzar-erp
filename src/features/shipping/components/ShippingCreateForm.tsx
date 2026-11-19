@@ -53,7 +53,6 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
     availableRowsCount,
     alreadyShippedCount,
     embarque,
-    allLinesRequired,
     checkedIds,
     toggleLine,
     toggleAll,
@@ -239,6 +238,19 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
             />
           ) : (
             <fieldset disabled={isPending} className="space-y-5">
+              {/* Aviso, no bloqueo (nucleo-erp #1266): p. ej. el pedido no
+                  admite embarque parcial y aún faltan piezas por empacar. */}
+              {embarque?.motivo && (
+                <div
+                  role="status"
+                  className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-start gap-3"
+                >
+                  <InfoIcon className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    {embarque.motivo.replace(/^Aviso:\s*/i, "")} Puedes enviar lo que ya está empacado.
+                  </p>
+                </div>
+              )}
               <ShippingLinesTable
                 rows={rows}
                 checkedIds={checkedIds}
@@ -246,7 +258,6 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
                 selectedCount={selectedCount}
                 onToggleLine={toggleLine}
                 onToggleAll={toggleAll}
-                locked={allLinesRequired}
               />
             </fieldset>
           )}
