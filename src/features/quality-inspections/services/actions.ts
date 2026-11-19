@@ -2,6 +2,7 @@ import { v1_api } from "@/src/api/v1.api";
 import type {
   CreateQualityInspectionPayload,
   CreateQualityInspectionResponse,
+  QualityInspection,
   QualityInspectionOnboardingData,
 } from "../interfaces/quality-inspection.interface";
 
@@ -24,4 +25,12 @@ export const createQualityInspection = async (
     payload,
   );
   return data;
+};
+
+// Inspecciones ya registradas (historial), con sus renglones.
+export const getQualityInspections = async (): Promise<QualityInspection[]> => {
+  const { data } = await v1_api.get<QualityInspection[] | { results: QualityInspection[] }>(
+    "/compras/calidad-inspecciones/",
+  );
+  return Array.isArray(data) ? data : data.results;
 };

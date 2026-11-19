@@ -2,7 +2,11 @@
 
 import { HistoryIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
-import { useStockMovementDetail } from "@/src/features/stock-movements/hooks/useStockMovementDetail";
+import { useWarehouses } from "@/src/features/warehouses/hooks/useWarehouses";
+import {
+  useStockMovementDetail,
+  type StockMovementIdSource,
+} from "@/src/features/stock-movements/hooks/useStockMovementDetail";
 import { MOVEMENT_TYPE_CONFIG } from "../constants/movementTypes";
 import type { StockMovementDetailItem } from "@/src/features/stock-movements/interfaces/stock-movements.interface";
 
@@ -65,10 +69,10 @@ const DetalleTable = ({ items }: { items: StockMovementDetailItem[] }) => {
                   {item.producto_nombre}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {Math.round(parseFloat(item.cantidad_before))}
+                  {item.cantidad_before === "" ? "—" : Math.round(parseFloat(item.cantidad_before))}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                  {Math.round(parseFloat(item.cantidad_after))}
+                  {item.cantidad_after === "" ? "—" : Math.round(parseFloat(item.cantidad_after))}
                 </td>
                 <td
                   className={`px-3 py-2 text-right tabular-nums font-semibold ${
@@ -96,16 +100,25 @@ const DetalleTable = ({ items }: { items: StockMovementDetailItem[] }) => {
 interface StockMovementDetailDialogProps {
   /** ID del movimiento a consultar. `0` mantiene la consulta deshabilitada. */
   movementId: number;
+  /** De dónde viene el id; por defecto, del listado de movimientos (evento). */
+  fuente?: StockMovementIdSource;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function StockMovementDetailDialog({
   movementId,
+  fuente = "evento",
   open,
   onOpenChange,
 }: StockMovementDetailDialogProps) {
-  const { data, isLoading, isError, error } = useStockMovementDetail(movementId);
+  const { data, isLoading, isError, error } = useStockMovementDetail(movementId, fuente);
+  // El detalle formal solo trae el id del almacén: el nombre sale del catálogo.
+  const { data: almacenes } = useWarehouses();
+  const almacenNombre =
+    data?.almacen_nombre ||
+    almacenes?.find((a) => a.id_almacen === data?.almacen_id)?.nombre ||
+    "—";
 
   const tipoCfg = data
     ? (MOVEMENT_TYPE_CONFIG[data.tipo_movimiento] ?? null)
@@ -148,7 +161,11 @@ export function StockMovementDetailDialog({
             Error al cargar el detalle del movimiento
           </p>
           <p className="text-xs text-red-500 dark:text-red-300 mt-1">
-            {(error as Error)?.message ?? "Intenta nuevamente más tarde."}
+            {/* 400/404: el id no existe en el kardex (p. ej. el que manda una OC
+                en `documentos`, que no es el id del evento). No es reintentable. */}
+            {[400, 404].includes((error as { response?: { status?: number } })?.response?.status ?? 0)
+              ? "Este movimiento no se encontró. Puedes buscarlo en Inventario → Movimientos."
+              : "No se pudo cargar. Intenta nuevamente más tarde."}
           </p>
         </div>
       )}
@@ -172,7 +189,7 @@ export function StockMovementDetailDialog({
             </InfoField>
             <InfoField label="Fecha">{formatDateTime(data.fecha)}</InfoField>
             <InfoField label="Usuario">{data.usuario_nombre}</InfoField>
-            <InfoField label="Almacén">{data.almacen_nombre}</InfoField>
+            <InfoField label="Almacén">{almacenNombre}</InfoField>
             <InfoField label="Sucursal">{data.sucursal_nombre}</InfoField>
             <InfoField label="Empresa">{data.empresa_nombre}</InfoField>
             <InfoField label="Total de movimientos" className="col-span-2 sm:col-span-1">

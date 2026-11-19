@@ -180,3 +180,29 @@ test("subtítulo del diálogo según el flujo", () => {
     "Recepcionar Salida a Maquila",
   );
 });
+
+test("SM de OB con renglones (#1269): salida_maquila_detalle por renglón y cerrar con faltante", () => {
+  const renglon = (id: number) => ({
+    id,
+    ob_detalle: id + 1000,
+    producto_nombre: "PLAYERA",
+    sku: `SKU-${id}`,
+    talla: "M",
+    color: "NEGRO",
+    descripcion: null,
+    cantidad: "5",
+    cantidad_recibida: "0",
+    cantidad_pendiente: "5",
+  });
+  const salida = { ...sm(43, "OB"), detalle: [renglon(98), renglon(99)] };
+  expect(
+    buildReceiptPayload(
+      { type: "salida-maquila", salidaMaquila: salida },
+      { ...values({ "98": "4", "99": "0" }), cerrar_salida_maquila: true },
+      FECHA,
+    ),
+  ).toEqual({
+    recepcion: { salida_maquila: 43, cerrar_salida_maquila: true, ...cabecera },
+    detalle: [{ salida_maquila_detalle: 98, cantidad_recibida: "4" }],
+  });
+});

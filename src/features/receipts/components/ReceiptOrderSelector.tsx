@@ -54,6 +54,9 @@ interface ReceiptOrderSelectorProps {
   onSelect: (candidate: ReceiptOrderCandidate | null) => void;
 }
 
+/** Altura fija de la lista: llena el diálogo sin hueco y no salta al filtrar. */
+const LIST_HEIGHT = "h-72";
+
 const ORDER_TYPE_OPTIONS: { value: ReceiptOrderType; label: string }[] = [
   { value: "compra", label: "Orden de Compra" },
   { value: "produccion", label: "Orden de Producción" },
@@ -164,7 +167,7 @@ export function ReceiptOrderSelector({
       {/* Altura mínima fija del área de la lista: así filtrar por tipo o
           cambiar Compra/Producción no encoge el diálogo, que al estar
           centrado se recolocaría y movería los controles bajo el cursor. */}
-      <div className="flex flex-col gap-3 min-h-[25rem] sm:min-h-[21.5rem]">
+      <div className="flex flex-col gap-3">
         {activeCount === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">
             {isCompra
@@ -188,6 +191,7 @@ export function ReceiptOrderSelector({
               />
             </div>
             <SearchableSelectList<ReceiptOnboardingPurchaseOrder>
+              listClassName={LIST_HEIGHT}
               key="compra"
               items={filteredPurchaseOrders}
               searchPlaceholder="Buscar por folio, proveedor o tipo..."
@@ -228,6 +232,7 @@ export function ReceiptOrderSelector({
           <SearchableSelectList<ProductionTabRow>
             key="produccion"
             items={productionRows}
+            listClassName={LIST_HEIGHT}
             searchPlaceholder="Buscar por folio o maquilero..."
             filterPredicate={productionTabRowMatches}
             getKey={productionTabRowKey}

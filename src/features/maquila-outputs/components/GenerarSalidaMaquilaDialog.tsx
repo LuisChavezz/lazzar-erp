@@ -127,6 +127,10 @@ function SalidaMaquilaForm({
   );
   const [serverError, setServerError] = useState<SalidaMaquilaCreateError | null>(null);
   const [touched, setTouched] = useState(false);
+  const [mismoPrecio, setMismoPrecio] = useState("");
+  /** Al recibir piezas, un renglón sin precio toma el "mismo precio". */
+  const conPrecio = (l: SalidaMaquilaDraftLine): SalidaMaquilaDraftLine =>
+    mismoPrecio && lineQty(l) > 0 && !l.precio.trim() ? { ...l, precio: mismoPrecio } : l;
 
   const programadas = lines.reduce((acc, l) => acc + l.enOrden, 0);
   const quedan = Math.max(programadas - yaEnviadas, 0);
@@ -136,14 +140,27 @@ function SalidaMaquilaForm({
   const sinMaquilero = maquilero === "";
   const isPending = create.isPending;
 
+  // Salidas parciales: llenar o vaciar todo de un clic y luego ajustar.
+  const llenarTodas = (todas: boolean) => {
+    setServerError(null);
+    setLines((prev) =>
+      prev.map((l) => {
+        if (!todas) return { ...l, cantidad: "", precio: l.precio === mismoPrecio ? "" : l.precio };
+        return conPrecio({ ...l, cantidad: String(Math.round(l.enOrden)) });
+      }),
+    );
+  };
   const update = (detalleId: number, patch: Partial<SalidaMaquilaDraftLine>) => {
     setServerError(null);
-    setLines((prev) => prev.map((l) => (l.detalleId === detalleId ? { ...l, ...patch } : l)));
+    setLines((prev) => prev.map((l) => (l.detalleId === detalleId ? conPrecio({ ...l, ...patch }) : l)));
   };
 
+  // "Mismo precio": solo a los renglones que salen; los que se llenen después
+  // lo toman al recibir piezas (si no tienen ya un precio propio).
   const precioParaTodas = (precio: string) => {
     setServerError(null);
-    setLines((prev) => prev.map((l) => ({ ...l, precio })));
+    setMismoPrecio(precio);
+    setLines((prev) => prev.map((l) => (lineQty(l) > 0 ? { ...l, precio } : l)));
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -242,6 +259,25 @@ function SalidaMaquilaForm({
             {formatQuantityValue(programadas)} piezas por enviar
             {yaEnviadas > 0 && <> · {formatQuantityValue(yaEnviadas)} ya salieron</>}
           </p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Piezas:</span>
+            {(
+              [
+                [true, "Todas"],
+                [false, "Ninguna"],
+              ] as const
+            ).map(([todas, label]) => (
+              <button
+                key={label}
+                type="button"
+                disabled={isPending}
+                onClick={() => llenarTodas(todas)}
+                className="rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             Mismo precio para todas
             <input
@@ -274,7 +310,16 @@ function SalidaMaquilaForm({
                 // Lo tecleado no válido, al momento; el que falta, tras enviar.
                 const priceBad = hasInvalidPrice(l) || (touched && lineQty(l) > 0 && l.precio.trim() === "");
                 return (
-                  <tr key={l.detalleId} className={lineError ? "bg-rose-50/60 dark:bg-rose-500/5" : undefined}>
+                  <tr
+                    key={l.detalleId}
+                    className={
+                      lineError
+                        ? "bg-rose-50/60 dark:bg-rose-500/5"
+                        : lineQty(l) === 0 && !qtyBad
+                          ? "opacity-60"
+                          : undefined
+                    }
+                  >
                     <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
                       {l.descripcion}
                       {lineError && (
@@ -283,8 +328,16 @@ function SalidaMaquilaForm({
                         </p>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-500">
-                      {formatQuantityValue(l.enOrden)}
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        title="Enviar todas las de este renglón"
+                        onClick={() => update(l.detalleId, { cantidad: String(Math.round(l.enOrden)) })}
+                        className="rounded-md px-1.5 tabular-nums text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+                      >
+                        {formatQuantityValue(l.enOrden)}
+                      </button>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <input
@@ -342,6 +395,11 @@ function SalidaMaquilaForm({
           <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
             {formatAmountNoCurrency(total)}
           </span>
+          {piezas > 0 && piezas < quedan && (
+            <span className="block text-xs text-slate-500 dark:text-slate-400">
+              Salida parcial: {formatQuantityValue(quedan - piezas)} piezas quedan para otra salida.
+            </span>
+          )}
         </p>
         <div className="flex gap-2 justify-end">
           <FormCancelButton label="Cancelar" onClick={onClose} disabled={isPending} />

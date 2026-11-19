@@ -70,7 +70,7 @@ export const receiptFlowSubtitle = (candidate: ReceiptOrderCandidate | null): st
 
 /** ¿El flujo captura renglones? Solo la SM de OB/OR va sin ellos (`detalle: []`). */
 export const candidateHasLines = (candidate: ReceiptOrderCandidate): boolean =>
-  candidate.type !== "salida-maquila";
+  candidate.type !== "salida-maquila" || (candidate.salidaMaquila.detalle?.length ?? 0) > 0;
 
 /** Filas de la pestaña: las OP tal cual y, después, las SM con su OP (si es de OP). */
 export const buildProductionTabRows = (

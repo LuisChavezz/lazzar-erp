@@ -13,6 +13,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "wms",
   "picking",
   "order-fulfillment",
+  "quality",
   "packing",
   "shipping",
   "procurement",

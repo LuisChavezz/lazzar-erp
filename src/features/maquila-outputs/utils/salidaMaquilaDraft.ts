@@ -26,7 +26,12 @@ const PRICE = /^\d+(\.\d{1,4})?$/;
 export const describeRenglon = (r: OpParaSalidaMaquilaRenglon): string => {
   const v = r.producto_variante;
   if (v) return [v.sku, v.talla_nombre, v.color_nombre].filter(Boolean).join(" · ");
-  return r.variante_produccion?.sku || r.variante_produccion?.nombre || `Renglón ${r.op_detalle_id}`;
+  return (
+    r.variante_produccion_sku ||
+    r.variante_produccion?.sku ||
+    r.variante_produccion?.nombre ||
+    `Renglón ${r.op_detalle_id}`
+  );
 };
 
 /** Renglón de `detalles` de una OB u OR (mismos campos en las dos). */

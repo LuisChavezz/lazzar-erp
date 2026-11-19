@@ -10,6 +10,9 @@ import { draftKey, sanitizeQtyInput, type ResurtidoDraftLine } from "../utils/re
 
 const PAGE = 20;
 
+/** Solo para mostrar: "22539639" → "22,539,639". El valor guardado son dígitos. */
+const miles = (digits: string | number) => (digits === "" ? "" : Number(digits).toLocaleString("es-MX"));
+
 /**
  * Variantes que se pueden fabricar (BOM activo con materiales). Con variantes,
  * el backend deja `tipo_linea` del producto en `null` y lo decide por variante.
@@ -165,6 +168,15 @@ function PickerEntry({
 }) {
   const [qty, setQty] = useState<Record<number, string>>({});
   const variantes = fabricables(item);
+  // Primero el color, luego las tallas: con muchos colores, la cuadrícula
+  // talla × color completa es una letanía. Las piezas capturadas se conservan
+  // al cambiar de color.
+  const colores = [...new Set(variantes.map((v) => v.color ?? ""))].sort((a, b) => a.localeCompare(b, "es"));
+  const [color, setColor] = useState(colores[0] ?? "");
+  const conColores = colores.length > 1;
+  const visibles = conColores ? variantes.filter((v) => (v.color ?? "") === color) : variantes;
+  const piezasDe = (c: string) =>
+    variantes.filter((v) => (v.color ?? "") === c).reduce((acc, v) => acc + Number(qty[v.id] || 0), 0);
 
   const lines: ResurtidoDraftLine[] = variantes
     .filter((v) => Number(qty[v.id] || 0) > 0)
@@ -185,21 +197,55 @@ function PickerEntry({
 
   return (
     <div className="px-4 pb-4 pt-1">
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-        {variantes.map((v) => {
+      {conColores && (
+        <div className="mb-3">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">1. Elige el color</p>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Color">
+            {colores.map((c) => {
+              const active = c === color;
+              const pz = piezasDe(c);
+              return (
+                <button
+                  key={c || "sin-color"}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={disabled}
+                  onClick={() => setColor(c)}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                    active
+                      ? "border-sky-500 bg-sky-600 text-white"
+                      : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+                  }`}
+                >
+                  {c || "Sin color"}
+                  {pz > 0 && (
+                    <span className={`ml-1.5 tabular-nums ${active ? "text-sky-100" : "text-sky-600 dark:text-sky-400"}`}>{miles(pz)} pz</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            2. Piezas por talla · {color || "Sin color"}
+          </p>
+        </div>
+      )}
+      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 gap-1.5">
+        {visibles.map((v) => {
           const filled = Number(qty[v.id] || 0) > 0;
           return (
             <label
               key={v.id}
               title={v.sku}
-              className={`block rounded-xl border px-2.5 py-2 transition-colors ${
+              className={`flex items-center gap-2 rounded-lg border pl-2.5 pr-1 py-1 transition-colors focus-within:ring-2 focus-within:ring-sky-500 ${
                 filled
                   ? "border-sky-300 bg-white dark:border-sky-500/40 dark:bg-zinc-900"
                   : "border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/[0.02]"
               }`}
             >
-              <span className="block truncate text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                {[v.talla, v.color].filter(Boolean).join(" · ") || v.sku}
+              <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600 dark:text-slate-300">
+                {(conColores ? v.talla : [v.talla, v.color].filter(Boolean).join(" · ")) || v.sku}
               </span>
               <input
                 type="text"
@@ -208,25 +254,32 @@ function PickerEntry({
                 disabled={disabled}
                 value={qty[v.id] ?? ""}
                 onChange={(e) => setQty((p) => ({ ...p, [v.id]: sanitizeQtyInput(e.target.value, "fabricado") }))}
-                className="mt-1 w-full bg-transparent text-right text-base font-semibold tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:outline-none"
+                className="w-14 shrink-0 bg-transparent py-0.5 text-right text-sm font-semibold tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:outline-none"
               />
             </label>
           );
         })}
       </div>
-      <div className="mt-3 flex items-center justify-end gap-3">
-        {total > 0 && (
-          <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-            {lines.length} {lines.length === 1 ? "talla" : "tallas"} · <b className="text-slate-800 dark:text-white">{total}</b> pz
-          </span>
-        )}
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] px-3 py-2">
+        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+          {total > 0 ? (
+            <>
+              {lines.length} {lines.length === 1 ? "variante" : "variantes"} · <b className="text-base text-slate-900 dark:text-white">{miles(total)}</b> pz
+            </>
+          ) : (
+            "Escribe las piezas por talla."
+          )}
+        </span>
         <button
           type="button"
           disabled={disabled || lines.length === 0}
           onClick={() => onAdd(lines)}
-          className="rounded-full bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-sky-600/30 hover:bg-sky-700 active:scale-95 transition disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
         >
-          Agregar a la pre-orden
+          <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+          </svg>
+          {total > 0 ? `Agregar ${miles(total)} pz a la pre-orden` : "Agregar a la pre-orden"}
         </button>
       </div>
     </div>

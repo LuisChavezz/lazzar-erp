@@ -7,6 +7,8 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 
 interface SearchableSelectListProps<T> {
   items: T[];
+  /** Altura del área de la lista (por defecto `max-h-60`). */
+  listClassName?: string;
   searchPlaceholder: string;
   /** Determina si `item` coincide con el término de búsqueda (ya en minúsculas y sin espacios extremos). */
   filterPredicate: (item: T, term: string) => boolean;
@@ -60,6 +62,7 @@ interface SearchableSelectListProps<T> {
  */
 export function SearchableSelectList<T>({
   items,
+  listClassName,
   searchPlaceholder,
   filterPredicate,
   getKey,
@@ -100,7 +103,7 @@ export function SearchableSelectList<T>({
     <div className="flex flex-col gap-3">
       <SearchInput value={search} onChange={setSearch} placeholder={searchPlaceholder} />
 
-      <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+      <div className={`${listClassName ?? "max-h-60"} overflow-y-auto space-y-1 pr-1`}>
         {items.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">{emptyMessage}</p>
         ) : filteredItems.length === 0 ? (
