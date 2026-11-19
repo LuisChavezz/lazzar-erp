@@ -2,6 +2,7 @@ import type {
   ReceiptCreatePayload,
   ReceiptCreateProductionOrderDetalle,
   ReceiptCreatePurchaseOrderDetalle,
+  ReceiptCreateSalidaMaquilaDetalle,
   ReceiptOrderCandidate,
 } from "../interfaces/receipt-onboarding.interface";
 import type { ReceiptFormValues } from "../schemas/receipt.schema";
@@ -47,6 +48,8 @@ export function buildReceiptPayload(
     observaciones: values.observaciones,
     transportista: null,
   };
+  // Solo cuando se pide: sin él, el backend deja la SM Enviada si falta algo.
+  const cerrarSm = values.cerrar_salida_maquila ? { cerrar_salida_maquila: true } : {};
 
   switch (candidate.type) {
     case "compra":
@@ -64,7 +67,7 @@ export function buildReceiptPayload(
       return {
         recepcion: {
           orden_produccion: candidate.order.id,
-          ...(candidate.salidaMaquila ? { salida_maquila: candidate.salidaMaquila.id } : {}),
+          ...(candidate.salidaMaquila ? { salida_maquila: candidate.salidaMaquila.id, ...cerrarSm } : {}),
           ...recepcionBase,
         },
         detalle: reduceDetalle<
@@ -77,10 +80,14 @@ export function buildReceiptPayload(
         })),
       };
     case "salida-maquila":
-      // SM de OB/OR: no mueve inventario.
+      // SM de OB/OR: cuenta piezas por renglón sin mover inventario (#1269).
       return {
-        recepcion: { salida_maquila: candidate.salidaMaquila.id, ...recepcionBase },
-        detalle: [],
+        recepcion: { salida_maquila: candidate.salidaMaquila.id, ...cerrarSm, ...recepcionBase },
+        detalle: reduceDetalle<{ id: number }, ReceiptCreateSalidaMaquilaDetalle>(
+          candidate.salidaMaquila.detalle ?? [],
+          values.cantidades,
+          (d, cantidad_recibida) => ({ salida_maquila_detalle: d.id, cantidad_recibida }),
+        ),
       };
   }
 }

@@ -45,6 +45,18 @@ export interface ReceiptOnboardingOrderDetalleBase {
   cantidad_recibida: string;
   cantidad_pendiente: string;
   descripcion: string | null;
+  /** SKU de la variante o de la muestra (nucleo-erp #1268). */
+  sku?: string | null;
+  /** Muestra de fabricación especial (sin producto de catálogo). */
+  variante_produccion_id?: number | null;
+  /** Suma de todas las SM del renglón: solo referencia. */
+  cantidad_en_maquila?: string;
+  /**
+   * SM del renglón con su pendiente. Al recibir una SM, el tope del renglón es
+   * el `cantidad_pendiente` de ESA SM; los renglones sin ella no van en la SM.
+   * `cantidad_pendiente` del renglón es solo lo de la OP directa.
+   */
+  salidas_maquila?: { id: number; folio: string; cantidad_pendiente: string }[];
 }
 
 // Variante (SKU) del renglón de OC: solo en las de producto terminado
@@ -97,9 +109,28 @@ export interface ReceiptOnboardingProductionOrder {
 }
 
 /**
+ * Renglón de una SM de OB/OR (nucleo-erp #1269). `id` es el que viaja en el
+ * POST (`salida_maquila_detalle`); `cantidad_pendiente` es el tope de captura.
+ */
+export interface ReceiptOnboardingSalidaMaquilaDetalle {
+  id: number;
+  ob_detalle?: number | null;
+  or_detalle?: number | null;
+  producto_nombre: string | null;
+  sku: string | null;
+  talla: string | null;
+  color: string | null;
+  descripcion: string | null;
+  cantidad: string;
+  cantidad_recibida: string;
+  cantidad_pendiente: string;
+}
+
+/**
  * SM (salida a maquila) ENVIADA, pendiente de recibir (nucleo-erp #1217, EC-912).
- * No trae renglones: la de OP se recibe con los de su OP (`ordenes_produccion`
- * por `op_id`) y la de OB/OR se recibe sin renglones. `folio_display` es
+ * La de OP se recibe con los renglones de su OP (`ordenes_produccion` por
+ * `op_id`); la de OB/OR con sus propios renglones (`detalle`, #1269), que
+ * cuentan piezas sin mover inventario. `folio_display` es
  * "SM-… · <folio del origen>", sin etiqueta del origen.
  */
 export interface ReceiptOnboardingSalidaMaquila {
@@ -120,6 +151,8 @@ export interface ReceiptOnboardingSalidaMaquila {
    * muestra. Opcional por si empieza a omitirlo.
    */
   total?: number | string;
+  /** Solo SM de OB/OR; ausente en un backend anterior a #1269 (sin renglones). */
+  detalle?: ReceiptOnboardingSalidaMaquilaDetalle[];
 }
 
 export interface ReceiptOnboardingSearch {
@@ -176,14 +209,24 @@ export interface ReceiptCreatePurchaseOrderRecepcion
 export interface ReceiptCreateProductionOrderRecepcion
   extends ReceiptCreateRecepcionBase {
   orden_produccion: number;
-  /** SM de esta OP que se recibe con ella (EC-912); el backend la cierra. */
+  /** SM de esta OP que se recibe con ella (EC-912). */
   salida_maquila?: number;
+  /** Cierra la SM aunque falten piezas (#1269). */
+  cerrar_salida_maquila?: boolean;
 }
 
 /** SM de OB/OR: solo cabecera; el backend toma la orden y el maquilero de la SM. */
 export interface ReceiptCreateSalidaMaquilaRecepcion
   extends ReceiptCreateRecepcionBase {
   salida_maquila: number;
+  /** Cierra la SM aunque falten piezas (#1269). */
+  cerrar_salida_maquila?: boolean;
+}
+
+/** Piezas que regresaron de un renglón de la SM de OB/OR; no mueve inventario. */
+export interface ReceiptCreateSalidaMaquilaDetalle {
+  salida_maquila_detalle: number;
+  cantidad_recibida: string;
 }
 
 interface ReceiptCreateDetalleBase {
@@ -214,8 +257,8 @@ export interface ReceiptCreateProductionOrderPayload {
 
 export interface ReceiptCreateSalidaMaquilaPayload {
   recepcion: ReceiptCreateSalidaMaquilaRecepcion;
-  /** Siempre vacío: el regreso de una SM de OB/OR no mueve inventario. */
-  detalle: [];
+  /** Vacío = todo lo pendiente (backend anterior a #1269 o SM sin renglones). */
+  detalle: ReceiptCreateSalidaMaquilaDetalle[];
 }
 
 export type ReceiptCreatePayload =

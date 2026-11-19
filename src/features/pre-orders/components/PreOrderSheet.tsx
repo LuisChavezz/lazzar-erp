@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { AccessibleLink } from "@/src/components/AccessibleLink";
+import { purchaseOrderStatusEntry } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
 import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
@@ -15,7 +16,6 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { ChevronDownIcon, OrdenesIcon } from "@/src/components/Icons";
 import {
-  OrderChip,
   SheetPanel,
   SheetSection,
 } from "@/src/features/orders/components/OrderSheetPrimitives";
@@ -23,6 +23,7 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { usePreOrderDetail } from "../hooks/usePreOrders";
 import { usePreOrderActions } from "../hooks/usePreOrderActions";
+import { isDraftOc, usePreOrderDraftOcQty } from "../hooks/usePreOrderDraftOcQty";
 import {
   PRE_ORDER_NEXT_STEP,
   PRE_ORDER_STATUS_CFG,
@@ -99,7 +100,17 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
   const canCreateOp = hasProductionPermission(session?.user, "OP", "C");
 
   const faltaReal = (m: PreOrderDetail["materiales"][number]) => m.faltante_real ?? m.faltante;
-  const faltantes = data.materiales.filter((m) => faltaReal(m) > 0);
+  // Lo ya capturado en una OC en borrador: está pedido, falta que Compras la
+  // autorice. Sin restarlo, el material se vería como "falta pedir".
+  const enBorrador = usePreOrderDraftOcQty(data.ordenes_compra);
+  const sinPedir = (m: PreOrderDetail["materiales"][number]) =>
+    Math.max(0, faltaReal(m) - (enBorrador[m.producto_id]?.cantidad ?? 0));
+  // Ya convertida en OP: el material se surtió y la OP lo consumió. El backend
+  // recalcula contra la existencia de HOY, así que su "faltante" ya no
+  // significa nada (lo comprado y consumido vuelve a verse como faltante).
+  const convertida = data.estatus === "convertida";
+  const faltantes = convertida ? [] : data.materiales.filter((m) => sinPedir(m) > 0);
+  const borradores = data.ordenes_compra.filter(isDraftOc);
   const necesidades = data.necesidades ?? [];
   const [showHistory, setShowHistory] = useState(false);
   const piezas = data.detalles.reduce((acc, d) => acc + d.cantidad, 0);
@@ -261,6 +272,12 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                 : "Las muestras aún no tienen lista de materiales."}
             </EmptyLines>
           ) : (
+            <>
+            {convertida && (
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                Todo el material se surtió y pasó a la OP. La existencia es la de hoy, después de que la OP lo tomó.
+              </p>
+            )}
             <LineItemsTable
               head={
                 <>
@@ -269,12 +286,12 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                   <th className="px-3 py-2 font-medium text-right">Existencia</th>
                   <th className="px-3 py-2 font-medium text-right" title="Pedido en una OC y aún no recibido">En camino</th>
                   <th className="px-3 py-2 font-medium text-right" title="Lo apartan otras pre-órdenes abiertas">Otras pre-órdenes</th>
-                  <th className="px-3 py-2 font-medium text-right" title="Requerido − existencia − en camino">Falta pedir</th>
+                  <th className="px-3 py-2 font-medium text-right">Estado</th>
                 </>
               }
             >
               {data.materiales.map((m) => (
-                <tr key={m.producto_id} className={faltaReal(m) > 0 ? "bg-rose-50/50 dark:bg-rose-500/5" : undefined}>
+                <tr key={m.producto_id} className={!convertida && sinPedir(m) > 0 ? "bg-rose-50/50 dark:bg-rose-500/5" : undefined}>
                   <td className="px-3 py-2">
                     <span className="block font-medium text-slate-800 dark:text-white">{m.nombre}</span>
                     <span className="font-mono text-[11px] text-slate-400">{m.codigo}</span>
@@ -291,16 +308,18 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                   <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
                     {m.comprometido ? formatQuantityValue(m.comprometido) : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                    {faltaReal(m) > 0 ? (
-                      <span className="text-rose-600 dark:text-rose-400">{formatQuantityValue(faltaReal(m))}</span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400">Completo</span>
-                    )}
+                  <td className="px-3 py-2 text-right">
+                    <MaterialEstado
+                      surtido={convertida}
+                      falta={faltaReal(m)}
+                      enBorrador={Math.min(faltaReal(m), enBorrador[m.producto_id]?.cantidad ?? 0)}
+                      unidad={m.unidad}
+                    />
                   </td>
                 </tr>
               ))}
             </LineItemsTable>
+            </>
           )}
         </SheetPanel>
 
@@ -311,7 +330,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               {[
                 ["Piezas", formatQuantityValue(piezas || data.piezas_total)],
                 [resurtido ? "SKU" : "Tallas", String(data.detalles.length || data.tallas_total)],
-                ["Faltan", String(faltantes.length)],
+                ["Por pedir", String(faltantes.length)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/5 px-2 py-3">
                   <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</dt>
@@ -347,6 +366,13 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                 Ninguna todavía. Compras junta las necesidades de varios pedidos en una sola OC.
               </p>
             ) : (
+              <>
+              {borradores.length > 0 && (
+                <p className="mb-3 rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                  El material ya está en la OC, pero sigue en <b>borrador</b>. Cuando Compras la autorice y la envíe al
+                  proveedor, cuenta como <b>en camino</b>.
+                </p>
+              )}
               <ul className="space-y-2">
                 {data.ordenes_compra.map((oc) => (
                   <li key={oc.id} className="flex items-center justify-between gap-2 text-sm">
@@ -358,12 +384,16 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
                     >
                       {oc.folio || `OC #${oc.id}`}
                     </AccessibleLink>
-                    {(oc.estatus_display || oc.estatus_label) && (
-                      <OrderChip>{oc.estatus_display || oc.estatus_label}</OrderChip>
+                    {oc.estatus != null && (
+                      <StatusBadge
+                        status={String(oc.estatus)}
+                        config={{ [String(oc.estatus)]: purchaseOrderStatusEntry(Number(oc.estatus), oc.estatus_display || oc.estatus_label) }}
+                      />
                     )}
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </SheetPanel>
         </div>
@@ -517,5 +547,59 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
         onSubmit={(body) => crearOp.mutate(body, { onSuccess: () => setOpOpen(false) })}
       />
     </SheetSection>
+  );
+}
+
+/**
+ * Estado del material en palabras: cubierto, ya pedido en una OC en borrador
+ * (falta autorizarla) o cuánto falta pedir de verdad.
+ */
+function MaterialEstado({
+  falta,
+  enBorrador,
+  unidad,
+  surtido,
+}: {
+  falta: number;
+  enBorrador: number;
+  unidad: string | null;
+  /** La pre-orden ya es OP: el material se surtió, se ignora el faltante de hoy. */
+  surtido?: boolean;
+}) {
+  const u = unidad ? ` ${unidad}` : "";
+  if (surtido) {
+    return (
+      <span
+        className="inline-flex rounded-full bg-sky-50 dark:bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300 whitespace-nowrap"
+        title="El material se surtió y la OP ya lo tomó"
+      >
+        Surtido a la OP
+      </span>
+    );
+  }
+  const sinPedir = Math.max(0, falta - enBorrador);
+  if (falta <= 0) {
+    return (
+      <span className="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        Cubierto
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex flex-col items-end gap-1">
+      {enBorrador > 0 && (
+        <span
+          className="inline-flex rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
+          title="Ya está en una OC en borrador: falta que Compras la autorice"
+        >
+          Pedido · OC en borrador{sinPedir > 0 ? ` (${formatQuantityValue(enBorrador)}${u})` : ""}
+        </span>
+      )}
+      {sinPedir > 0 && (
+        <span className="inline-flex rounded-full bg-rose-50 dark:bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:text-rose-300">
+          Falta pedir {formatQuantityValue(sinPedir)}{u}
+        </span>
+      )}
+    </span>
   );
 }

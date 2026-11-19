@@ -1,5 +1,6 @@
 "use client";
 
+import { SalidaMaquilaPiezas } from "./SalidaMaquilaPiezas";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -13,6 +14,7 @@ import {
 import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useSalidaMaquila } from "../hooks/useSalidaMaquila";
+import { useSalidaMaquilaRegreso } from "../hooks/useSalidaMaquilaRegreso";
 import {
   isSalidaMaquilaAbierta,
   SALIDA_MAQUILA_STATUS_CONFIG,
@@ -38,6 +40,8 @@ export function SalidaMaquilaDetailDialog({
   canSeeAmounts: boolean;
 }) {
   const { data, isLoading, isInitialError, isDefinitiveError } = useSalidaMaquila(id);
+  // Qué regresó de cada renglón (de sus recepciones).
+  const { porRenglon } = useSalidaMaquilaRegreso(data);
 
   return (
     <MainDialog
@@ -60,7 +64,12 @@ export function SalidaMaquilaDetailDialog({
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={data.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {formatQuantityValue(data.total_piezas)} piezas
+              {formatQuantityValue(data.total_piezas)} piezas{" "}
+              <SalidaMaquilaPiezas
+                recibidas={data.piezas_recibidas}
+                faltantes={data.piezas_faltantes}
+                estatus={data.estatus}
+              />
               {canSeeAmounts && (
                 <>
                   {" · "}
@@ -92,7 +101,13 @@ export function SalidaMaquilaDetailDialog({
               head={
                 <>
                   <th className="px-3 py-2 font-medium">Prenda</th>
-                  <th className="px-3 py-2 font-medium text-right">Piezas</th>
+                  <th className="px-3 py-2 font-medium text-right">Enviadas</th>
+                  {porRenglon && (
+                    <>
+                      <th className="px-3 py-2 font-medium text-right">Regresaron</th>
+                      <th className="px-3 py-2 font-medium text-right">Estado</th>
+                    </>
+                  )}
                   {canSeeAmounts && (
                     <>
                       <th className="px-3 py-2 font-medium text-right">Precio</th>
@@ -102,10 +117,49 @@ export function SalidaMaquilaDetailDialog({
                 </>
               }
             >
-              {data.detalles.map((d) => (
-                <tr key={d.id}>
-                  <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{d.descripcion}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatQuantityValue(d.cantidad)}</td>
+              {data.detalles.map((d) => {
+                const regreso = porRenglon?.[d.id];
+                const enviadas = Number(d.cantidad) || 0;
+                // Lo pendiente del backend (#1270); si aún no lo manda, enviadas − recibidas.
+                const faltan =
+                  d.cantidad_pendiente !== undefined
+                    ? Number(d.cantidad_pendiente) || 0
+                    : Math.max(0, enviadas - (regreso?.recibidas ?? 0));
+                return (
+                <tr key={d.id} className={regreso && faltan > 0 ? "bg-amber-50/50 dark:bg-amber-500/5" : undefined}>
+                  <td className="px-3 py-2">
+                    <span className="block font-mono text-sm font-semibold text-slate-800 dark:text-white">{d.descripcion}</span>
+                    {regreso?.nombre && (
+                      <span className="block max-w-72 truncate text-[11px] text-slate-500 dark:text-slate-400" title={regreso.nombre}>
+                        {regreso.nombre}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatQuantityValue(enviadas)}</td>
+                  {regreso && (
+                    <>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-300">
+                        {formatQuantityValue(regreso.recibidas)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {faltan === 0 ? (
+                          <span className="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                            Completo
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${
+                              data.estatus === "RECIBIDA"
+                                ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                            }`}
+                          >
+                            {data.estatus === "RECIBIDA" ? `No regresaron ${formatQuantityValue(faltan)}` : `Faltan ${formatQuantityValue(faltan)}`}
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   {canSeeAmounts && (
                     <>
                       <td className="px-3 py-2 text-right tabular-nums">
@@ -117,7 +171,8 @@ export function SalidaMaquilaDetailDialog({
                     </>
                   )}
                 </tr>
-              ))}
+                );
+              })}
             </LineItemsTable>
           )}
 

@@ -18,6 +18,8 @@ export const buildReceiptFormSchema = ({ conRenglones }: { conRenglones: boolean
     remision: z.string().optional().default(""),
     factura_referencia: z.string().optional().default(""),
     observaciones: z.string().optional().default(""),
+    /** Cerrar la SM aunque regresen menos piezas de las enviadas (#1269). */
+    cerrar_salida_maquila: z.boolean().optional(),
     // El submit solo envía los renglones con cantidad > 0 (`reduceDetalle`): sin
     // ninguno el POST saldría con `detalle: []`, que el backend rechaza (EC-894).
     // También cubre una orden sin renglones, cuyo registro queda vacío (EC-893).

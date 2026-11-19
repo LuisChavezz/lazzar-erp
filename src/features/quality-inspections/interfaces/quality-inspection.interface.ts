@@ -26,6 +26,19 @@ export interface QualityPendingReception {
   almacen_id: number;
   fecha_recepcion: string;
   detalle: QualityPendingReceptionLine[];
+  /** Folio de la SM, OC u OP contra la que se recibió (nucleo-erp #1272). */
+  origen_folio?: string | null;
+  almacen_nombre?: string | null;
+  /** Pedido maestro principal; `null` si el origen no está ligado a un pedido. */
+  pedido_id?: number | null;
+  pedido_folio?: string | null;
+  /** Todos los pedidos, el principal primero (una OC consolidada trae varios). */
+  pedidos?: QualityPedidoRef[];
+}
+
+export interface QualityPedidoRef {
+  id: number;
+  folio: string | null;
 }
 
 /**
@@ -102,6 +115,9 @@ export interface QualityInspection {
   estado_label: string;
   observaciones: string | null;
   detalles: QualityInspectionDetalle[];
+  pedido_id?: number | null;
+  pedido_folio?: string | null;
+  pedidos?: QualityPedidoRef[];
 }
 
 /**

@@ -20,6 +20,8 @@ import type {
   ReceiptOnboardingSalidaMaquila,
 } from "../interfaces/receipt-onboarding.interface";
 import { salidaMaquilaOrigenNombre } from "../utils/receiptCandidates";
+import { useOpParaSalidaMaquila } from "@/src/features/maquila-outputs/hooks/useOpParaSalidaMaquila";
+import { describeRenglon } from "@/src/features/maquila-outputs/utils/salidaMaquilaDraft";
 
 interface ReceiptFormProps {
   onSuccess: () => void;
@@ -78,7 +80,24 @@ export default function ReceiptForm({
   // a la base permite iterar sin narrowing en el JSX. La SM de OB/OR no tiene
   // renglones (EC-912).
   const detalle: ReceiptOnboardingOrderDetalleBase[] =
-    candidate.type === "salida-maquila" ? [] : candidate.order.detalle;
+    candidate.type === "salida-maquila"
+      ? (candidate.salidaMaquila.detalle ?? []).map((r) => ({
+          id: r.id,
+          producto_id: 0,
+          producto_nombre: r.producto_nombre ?? "",
+          cantidad_ordenada: r.cantidad,
+          cantidad_recibida: r.cantidad_recibida,
+          cantidad_pendiente: r.cantidad_pendiente,
+          descripcion: r.descripcion,
+          sku: r.sku,
+        }))
+      : candidate.order.detalle;
+  // Talla y color de los renglones de una SM de OB/OR.
+  const atributosSm = new Map(
+    candidate.type === "salida-maquila"
+      ? (candidate.salidaMaquila.detalle ?? []).map((r) => [r.id, { color: r.color, talla: r.talla }])
+      : [],
+  );
   // SM que se cierra con esta recepción (de OP, o de OB/OR).
   const salidaMaquila = candidate.type === "compra" ? null : candidate.salidaMaquila;
   // Compras añade la variante del renglón, cuyo color y talla distinguen dos
@@ -89,7 +108,34 @@ export default function ReceiptForm({
   // Techo de captura por renglón (lo pendiente en piezas enteras). Del MISMO
   // dato salen la etiqueta de los renglones no recibibles y el aviso de "nada
   // por recibir", así que el tope y el aviso no pueden contradecirse.
-  const topes = new Map(detalle.map((d) => [d.id, topeRecepcion(d.cantidad_pendiente)]));
+  // Pendiente que aplica a ESTA recepción: con una SM, el de esa SM en el
+  // renglón (nucleo-erp #1268); sin SM, el de la OP directa. Un renglón sin la
+  // SM elegida no va en ella. Si el backend aún no manda `salidas_maquila`, se
+  // usa el pendiente del renglón como antes.
+  const pendienteDe = (d: ReceiptOnboardingOrderDetalleBase): string => {
+    if (!salidaMaquila || d.salidas_maquila === undefined) return d.cantidad_pendiente;
+    return d.salidas_maquila.find((sm) => sm.id === salidaMaquila.id)?.cantidad_pendiente ?? "0";
+  };
+  const fueraDeSm = (d: ReceiptOnboardingOrderDetalleBase) =>
+    Boolean(salidaMaquila && d.salidas_maquila && !d.salidas_maquila.some((sm) => sm.id === salidaMaquila.id));
+  const topes = new Map(detalle.map((d) => [d.id, topeRecepcion(pendienteDe(d))]));
+  // Las OP de fabricación especial llegan sin `producto_nombre`: el SKU sale
+  // del retrieve de la OP (mismo id de renglón).
+  const opId = candidate.type === "produccion" ? candidate.order.id : 0;
+  const { data: opRetrieve } = useOpParaSalidaMaquila(
+    opId,
+    opId > 0 && detalle.some((d) => !d.producto_nombre),
+  );
+  const nombresOp = new Map(
+    (opRetrieve?.orden_produccion_detalle ?? []).map((r) => [r.op_detalle_id, describeRenglon(r)]),
+  );
+  const nombreDe = (d: ReceiptOnboardingOrderDetalleBase) =>
+    d.producto_nombre || d.descripcion || nombresOp.get(d.id) || d.sku || `Renglón ${d.id}`;
+  const recibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) >= 1);
+  const noRecibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) < 1);
+  const piezasPendientes = recibibles.reduce((acc, d) => acc + (topes.get(d.id) ?? 0), 0);
+  const llenarTodo = (todo: boolean) =>
+    recibibles.forEach((d) => handleCantidadChange(d.id, todo ? String(topes.get(d.id) ?? 0) : "0"));
   const ningunoRecibible =
     detalle.length > 0 && detalle.every((d) => (topes.get(d.id) ?? 0) < 1);
   // Aviso en lugar de la captura: orden sin renglones, o con renglones pero
@@ -286,7 +332,7 @@ export default function ReceiptForm({
         </section>
 
         {/* ── SM de OB/OR: sin renglones (EC-912) ────────────────────── */}
-        {candidate.type === "salida-maquila" && (
+        {candidate.type === "salida-maquila" && !conRenglones && (
           <section className="rounded-3xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/60 dark:bg-sky-500/5 px-8 py-5 mb-8">
             <p className="text-sm text-slate-700 dark:text-slate-200">
               Las prendas regresan de maquila sin entrar al inventario: no hay
@@ -327,42 +373,67 @@ export default function ReceiptForm({
                 </p>
                 {/* SM de OP: el backend la cierra con esta recepción aunque
                     no se reciba todo (EC-912). */}
-                {salidaMaquila && (
-                  <p role="note" className="text-xs text-amber-700 dark:text-amber-300 mt-1 font-medium">
-                    Al registrar, la {salidaMaquila.folio} queda como Recibida aunque la recepción sea parcial.
+                {candidate.type === "salida-maquila" && (
+                  <p role="note" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Cuenta lo que regresó del maquilero. No entra al inventario.
                   </p>
                 )}
                 {cantidadesErrorAlert}
               </div>
+              {recibibles.length > 0 && (
+                <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => llenarTodo(true)}
+                    className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition cursor-pointer"
+                  >
+                    Recibir todo ({piezasPendientes})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => llenarTodo(false)}
+                    className="rounded-full border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="p-4">
               <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {detalle.map((d) => {
+                {[...recibibles, ...noRecibibles].map((d) => {
                   const fieldName = `cantidades.${d.id}` as const;
                   const renglonCompra = renglonesCompra.get(d.id);
                   const tope = topes.get(d.id) ?? 0;
-                  const sinTope = motivoSinTope(d.cantidad_pendiente);
+                  const sinTope = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
                   const atributos = variantAttributesLabel(
-                    renglonCompra?.producto_variante_color,
-                    renglonCompra?.producto_variante_talla,
+                    renglonCompra?.producto_variante_color ?? atributosSm.get(d.id)?.color,
+                    renglonCompra?.producto_variante_talla ?? atributosSm.get(d.id)?.talla,
                   );
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center gap-4 py-3 px-2"
+                      className={`flex items-center gap-4 py-2 px-2 ${sinTope ? "opacity-50" : ""}`}
                     >
                       {/* Product info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {d.producto_nombre}
+                          {nombreDe(d)}
                         </p>
                         <VariantAttributesCaption
-                          color={renglonCompra?.producto_variante_color}
-                          talla={renglonCompra?.producto_variante_talla}
+                          color={renglonCompra?.producto_variante_color ?? atributosSm.get(d.id)?.color}
+                          talla={renglonCompra?.producto_variante_talla ?? atributosSm.get(d.id)?.talla}
                         />
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Ordenado: {Number(d.cantidad_ordenada).toFixed(0)} &middot; Pendiente: {Number(d.cantidad_pendiente).toFixed(0)}
+                          Ordenado: {Number(d.cantidad_ordenada).toFixed(0)} &middot; Pendiente:{" "}
+                          <b className="text-slate-700 dark:text-slate-200">{Number(pendienteDe(d)).toFixed(0)}</b>
+                          {!salidaMaquila && Number(d.cantidad_en_maquila) > 0 && (
+                            <> &middot; En maquila: {Number(d.cantidad_en_maquila).toFixed(0)}</>
+                          )}
+                          {d.sku && d.sku !== nombreDe(d) && (
+                            <> &middot; <span className="font-mono">{d.sku}</span></>
+                          )}
                         </p>
                       </div>
 
@@ -383,7 +454,7 @@ export default function ReceiptForm({
                                 handleCantidadChange(d.id, String(Math.min(next, tope)))
                               }
                               min={0}
-                              label={`Cantidad de ${d.producto_nombre}${atributos ? ` (${atributos})` : ""}`}
+                              label={`Cantidad de ${nombreDe(d)}${atributos ? ` (${atributos})` : ""}`}
                             />
                           )}
                         </form.Field>
@@ -394,6 +465,58 @@ export default function ReceiptForm({
               </div>
             </div>
           </section>
+        )}
+
+        {/* ── SM: cuánto regresa y si se cierra con faltante (#1269) ─── */}
+        {salidaMaquila && conRenglones && recibibles.length > 0 && (
+          <form.Subscribe selector={(state) => state.values.cantidades}>
+            {(cantidades) => {
+              const capturadas = recibibles.reduce(
+                (acc, d) => acc + Math.min(Number(cantidades[String(d.id)]) || 0, topes.get(d.id) ?? 0),
+                0,
+              );
+              const faltan = piezasPendientes - capturadas;
+              return (
+                <section
+                  className={`rounded-3xl border px-6 py-4 mb-8 ${
+                    faltan > 0 && capturadas > 0
+                      ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/5"
+                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-zinc-900"
+                  }`}
+                >
+                  <p className="text-sm text-slate-700 dark:text-slate-200">
+                    Regresan <b className="tabular-nums">{capturadas}</b> de{" "}
+                    <b className="tabular-nums">{piezasPendientes}</b> piezas de la {salidaMaquila.folio}.
+                    {capturadas > 0 && (faltan > 0 ? (
+                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{faltan}</b>: la SM sigue Enviada para recibirlas después.</>
+                    ) : (
+                      <> Regresó todo: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b>.</>
+                    ))}
+                  </p>
+                  {capturadas > 0 && faltan > 0 && (
+                    <form.Field name="cerrar_salida_maquila">
+                      {(field) => (
+                        <label className="mt-3 flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={field.state.value ?? false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-amber-600 cursor-pointer"
+                          />
+                          <span>
+                            <b>Cerrar la SM con faltante</b>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">
+                              Las {faltan} piezas que no regresaron quedan como faltantes del maquilero y ya no se esperan.
+                            </span>
+                          </span>
+                        </label>
+                      )}
+                    </form.Field>
+                  )}
+                </section>
+              );
+            }}
+          </form.Subscribe>
         )}
 
         {/* ── Botones ────────────────────────────────────────────────── */}

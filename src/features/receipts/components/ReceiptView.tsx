@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
+import { ListTabs } from "@/src/components/ListTabs";
+import { withHeaderFilters } from "@/src/components/withHeaderFilters";
+import { receiptTipoOrigenLabel } from "../constants/receiptOrigin";
+import { getReceiptEstatusLabel } from "../constants/receiptStatus";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
@@ -16,6 +20,12 @@ import type { ReceiptOrderCandidate } from "../interfaces/receipt-onboarding.int
 
 // ─── View ──────────────────────────────────────────────────────────────────
 
+type ReceiptTab = "pendientes" | "completas" | "canceladas";
+
+/** 1 Borrador, 3 Parcial, 4 En calidad → pendientes; 2 Recibida, 5 Cerrada → completas; 6 → canceladas. */
+const receiptTabOf = (estatus: number): ReceiptTab =>
+  estatus === 6 ? "canceladas" : estatus === 2 || estatus === 5 ? "completas" : "pendientes";
+
 export function ReceiptView() {
   const {
     data: receipts = [],
@@ -27,6 +37,11 @@ export function ReceiptView() {
   } = useReceipts();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Pendientes: aún en proceso (borrador, parcial, en calidad). Completas:
+  // recibidas o cerradas. Canceladas aparte para no mezclarlas con lo hecho.
+  const [tab, setTab] = useState<ReceiptTab>("pendientes");
+  const porTab = (t: ReceiptTab) => receipts.filter((r) => receiptTabOf(r.estatus) === t);
+  const visibles = porTab(tab);
   // Lo elegido en el paso 1, solo para el subtítulo del diálogo (OC, OP o SM).
   const [selectedCandidate, setSelectedCandidate] = useState<ReceiptOrderCandidate | null>(null);
   // Al cerrar, el asistente se desmonta y vuelve a empezar sin selección.
@@ -54,9 +69,27 @@ export function ReceiptView() {
           conservando el toolbar—. `fillHeight`: el cuerpo llena el
           contenedor de altura acotada que da `wms/receipts/page.tsx`, en vez
           de reservar un alto fijo sin importar cuántas filas haya. */}
+      <ListTabs
+        ariaLabel="Recepciones por estado"
+        value={tab}
+        onChange={setTab}
+        isReady={!isLoading}
+        tabs={[
+          { key: "pendientes", label: "Pendientes", count: porTab("pendientes").length },
+          { key: "completas", label: "Completas", count: porTab("completas").length },
+          { key: "canceladas", label: "Canceladas", count: porTab("canceladas").length },
+        ]}
+      />
+      <div className="h-2 shrink-0" />
       <DataTable
-        columns={columns}
-        data={receipts}
+        key={tab}
+        columns={withHeaderFilters(columns, visibles, {
+          tipo_origen: { type: "distinct", get: (r) => r.tipo_origen, label: (r) => receiptTipoOrigenLabel(r.tipo_origen) },
+          proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true, emptyOption: "Sin proveedor (interno)" },
+          fecha_recepcion: { type: "month", get: (r) => r.fecha_recepcion },
+          estatus: { type: "distinct", get: (r) => r.estatus, label: (r) => getReceiptEstatusLabel(r.estatus) },
+        })}
+        data={visibles}
         searchPlaceholder="Buscar recepción..."
         fillHeight
         onRefetch={refetch}

@@ -17,6 +17,10 @@ export interface SalidaMaquilaDetalle {
   or_detalle?: number | null;
   descripcion: string;
   cantidad: string;
+  /** Piezas que ya regresaron de este renglón (retrieve, nucleo-erp #1270). */
+  cantidad_recibida?: string;
+  /** Piezas que faltan por regresar de este renglón (#1270). */
+  cantidad_pendiente?: string;
   /**
    * El backend lo manda siempre (no lo omite sin `R-PRODUCCION-COSTOS`); la UI
    * lo oculta, como `importe` y el `total` de la SM. Se tipa opcional por si
@@ -52,6 +56,10 @@ export interface SalidaMaquilaListItem {
   fecha_compromiso: string | null;
   fecha_recepcion: string | null;
   total_piezas: string;
+  /** Piezas que ya regresaron del maquilero (nucleo-erp #1269). */
+  piezas_recibidas?: string | number;
+  /** En una SM Recibida: lo que no regresó. Abierta: lo que falta por regresar. */
+  piezas_faltantes?: string | number;
   /** Ver `precio_unitario`: la UI lo oculta sin `R-PRODUCCION-COSTOS`. */
   total?: string;
   observaciones: string | null;
@@ -61,6 +69,8 @@ export interface SalidaMaquilaListItem {
 
 export interface SalidaMaquila extends SalidaMaquilaListItem {
   detalles: SalidaMaquilaDetalle[];
+  /** Recepciones con que regresó (retrieve). */
+  recepciones?: { id: number; folio: string | null; estatus: number; fecha_recepcion: string | null }[];
 }
 
 export interface SalidaMaquilaFilters {
@@ -124,6 +134,8 @@ export interface OpParaSalidaMaquilaRenglon {
     producto_codigo?: string | null;
   } | null;
   variante_produccion?: { sku?: string; nombre?: string } | null;
+  /** SKU de la variante de producción (fabricación especial, sin `producto_variante`). */
+  variante_produccion_sku?: string | null;
 }
 
 /**

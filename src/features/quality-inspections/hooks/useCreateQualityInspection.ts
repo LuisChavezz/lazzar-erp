@@ -22,6 +22,7 @@ export const CREATE_QUALITY_INSPECTION_MUTATION_KEY = ["create-quality-inspectio
  */
 const AFFECTED_QUERY_KEYS: readonly (readonly string[])[] = [
   QUALITY_INSPECTION_ONBOARDING_KEY,
+  ["quality-inspections"],
   // Estatus de la recepción: listado WMS, listado de Compras y su detalle.
   ["receipts"],
   ["purchase-order-receipts"],

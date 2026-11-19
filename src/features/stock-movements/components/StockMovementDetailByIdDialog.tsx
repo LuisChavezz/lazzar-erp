@@ -29,6 +29,9 @@ export function StockMovementDetailByIdDialog({
   return (
     <StockMovementDetailDialog
       movementId={orderId ?? 0}
+      // Los `documentos` (OC, pedido 360°, auditoría) mandan el id del
+      // movimiento formal, no el del evento del listado.
+      fuente="formal"
       open={open}
       onOpenChange={onOpenChange}
     />

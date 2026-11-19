@@ -152,6 +152,14 @@ export function QualityInspectionDialog({
               reception={reception}
               inspectores={inspectores}
               lineVariants={lineVariants}
+              lineInfo={
+                new Map(
+                  (detail.detalles ?? []).map((l) => [
+                    l.id,
+                    { sku: l.producto_variante_sku ?? null, codigo: l.producto_codigo ?? null, talla: l.producto_variante_talla },
+                  ]),
+                )
+              }
               canSubmit={canSubmit}
               onSuccess={onClose}
               onStale={onClose}

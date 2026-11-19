@@ -6,6 +6,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { useProductVariants } from "@/src/features/product-variants/hooks/useProductVariants";
 import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBranches";
@@ -69,15 +70,40 @@ const parseResurtidoErrors = (error: unknown, enviadas: ResurtidoDraftLine[]): R
 const fieldError = (message?: string) => (message ? { message } : undefined);
 const qty = (n: number | undefined) => (n === undefined ? "—" : formatQuantityValue(n));
 
+/** `YYYY-MM-DD` + n días, en UTC (no depende de la zona del navegador). */
+const plusDays = (date: string, n: number): string => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const FECHA_RAPIDA = [
+  ["1 semana", 7],
+  ["2 semanas", 14],
+  ["1 mes", 30],
+] as const;
+
+/** Renglones agrupados por prenda, en el orden en que se agregaron. */
+const groupByPrenda = (lineas: ResurtidoDraftLine[]) => {
+  const groups = new Map<string, ResurtidoDraftLine[]>();
+  for (const l of lineas) {
+    const k = l.nombre || "Por validar (SKU pegado)";
+    groups.set(k, [...(groups.get(k) ?? []), l]);
+  }
+  return [...groups.entries()];
+};
+
 /** Bloque numerado del formulario: el número dice el orden, el título qué se captura. */
 function Step({
   n,
   title,
   hint,
   aside,
+  done,
   children,
 }: {
   n: number;
+  /** Paso completo: el número cambia por una palomita. */
+  done?: boolean;
   title: string;
   hint?: string;
   aside?: ReactNode;
@@ -87,8 +113,18 @@ function Step({
     <section className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-4 sm:p-5">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-600 text-xs font-bold text-white shadow-sm shadow-sky-600/30">
-            {n}
+          <span
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white shadow-sm transition-colors ${
+              done ? "bg-emerald-600 shadow-emerald-600/30" : "bg-sky-600 shadow-sky-600/30"
+            }`}
+          >
+            {done ? (
+              <svg aria-label="Completo" viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="m5 10 3.5 3.5L15 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              n
+            )}
           </span>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
@@ -176,6 +212,15 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
   const canSubmit = Boolean(sucursal && fecha) && lineas.length > 0 && invalidas.length === 0 && !isPending;
   const piezas = lineas.reduce((acc, l) => acc + Number(l.cantidad || 0), 0);
   const conError = lineas.filter((l) => errors.porLinea[l.key]).length;
+  const [confirmClose, setConfirmClose] = useState(false);
+  const pedirCerrar = () => (lineas.length > 0 ? setConfirmClose(true) : onClose());
+  // Lo que falta para poder generar, dicho en palabras junto al botón.
+  const faltantes = [
+    !sucursal && "la sucursal",
+    !fecha && "la fecha compromiso",
+    lineas.length === 0 && "al menos una prenda",
+    invalidas.length > 0 && `piezas en ${invalidas.length} ${invalidas.length === 1 ? "prenda" : "prendas"}`,
+  ].filter(Boolean) as string[];
 
   const addLines = (incoming: ResurtidoDraftLine[], extra: string[] = []) => {
     const { lines, repeated } = mergeDraftLines(lineas, incoming);
@@ -245,7 +290,7 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2">
-          <Step n={1} title="Datos de la pre-orden" hint="Para qué sucursal y para cuándo.">
+          <Step n={1} title="Datos de la pre-orden" hint="Para qué sucursal y para cuándo." done={Boolean(sucursal && fecha)}>
             <div className="space-y-3">
               <FormSelect
                 label="Sucursal"
@@ -272,6 +317,28 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
                 disabled={isPending}
                 onChange={(e) => setFecha(e.target.value)}
               />
+              <div className="-mt-1 flex flex-wrap gap-1.5" aria-label="Fecha rápida">
+                {FECHA_RAPIDA.map(([label, dias]) => {
+                  const value = plusDays(today, dias);
+                  const active = fecha === value;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={isPending}
+                      aria-pressed={active}
+                      onClick={() => setFecha(value)}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                        active
+                          ? "border-sky-500 bg-sky-600 text-white"
+                          : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      En {label}
+                    </button>
+                  );
+                })}
+              </div>
               <FormInput
                 label="Notas (opcional)"
                 name="notas"
@@ -285,7 +352,7 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
           </Step>
         </div>
         <div className="lg:col-span-3">
-          <Step n={2} title="Ligar pedidos" hint="Opcional. Liga uno o varios pedidos que esta pre-orden va a cubrir.">
+          <Step n={2} done={pedidos.length > 0} title="Ligar pedidos" hint="Opcional. Liga uno o varios pedidos que esta pre-orden va a cubrir.">
             <PurchaseOrderPedidosField
               value={pedidos}
               onChange={setPedidos}
@@ -298,6 +365,7 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
 
       <Step
         n={3}
+        done={lineas.length > 0 && invalidas.length === 0}
         title="Prendas a fabricar"
         hint="Solo catálogo con BOM. Búscalas o pega tu lista de Excel."
         aside={
@@ -395,20 +463,32 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {lineas.map((l) => {
+                    {groupByPrenda(lineas).map(([prenda, grupo]) => [
+                      <tr key={`g-${prenda}`} className="bg-slate-50/80 dark:bg-white/[0.03]">
+                        <td colSpan={7} className="px-3 py-1.5">
+                          <span className="flex items-baseline justify-between gap-3">
+                            <span className="truncate text-xs font-bold text-slate-800 dark:text-white" title={prenda}>{prenda}</span>
+                            <span className="shrink-0 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+                              {grupo.length} {grupo.length === 1 ? "variante" : "variantes"} ·{" "}
+                              <b className="text-sky-700 dark:text-sky-300">
+                                {formatQuantityValue(grupo.reduce((a, l) => a + Number(l.cantidad || 0), 0))}
+                              </b>{" "}
+                              pz
+                            </span>
+                          </span>
+                        </td>
+                      </tr>,
+                      ...grupo.map((l) => {
                       const d = "variante" in l.ref ? porVariante.get(l.ref.variante) : undefined;
                       const err = errors.porLinea[l.key];
                       const qtyInvalid = l.cantidad !== "" && !isValidResurtidoQty(l.cantidad, "fabricado");
                       return (
                         <tr key={l.key} className={err ? "bg-rose-50/60 dark:bg-rose-500/5" : "hover:bg-slate-50/60 dark:hover:bg-white/[0.02]"}>
-                          <td className="px-3 py-2 max-w-80">
-                            <span className="block truncate font-medium text-slate-800 dark:text-white" title={l.nombre || l.codigo}>
-                              {l.nombre || <span className="text-amber-600 dark:text-amber-400">Se valida al enviar</span>}
+                          <td className="py-2 pl-6 pr-3 max-w-80">
+                            <span className="block font-medium text-slate-800 dark:text-white">
+                              {l.detalle || (l.nombre ? l.codigo : <span className="text-amber-600 dark:text-amber-400">Se valida al enviar</span>)}
                             </span>
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                              <span className="font-mono">{l.codigo}</span>
-                              {l.detalle && <> · {l.detalle}</>}
-                            </span>
+                            <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{l.codigo}</span>
                             {err && <span role="alert" className="block text-xs font-semibold text-rose-600 dark:text-rose-400">{err}</span>}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">{qty(d?.existencia)}</td>
@@ -423,10 +503,10 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
                               inputMode="numeric"
                               aria-label={`Piezas de ${l.codigo}`}
                               aria-invalid={qtyInvalid || undefined}
-                              value={l.cantidad}
+                              value={/^\d+$/.test(l.cantidad) ? Number(l.cantidad).toLocaleString("es-MX") : l.cantidad}
                               disabled={isPending}
                               onChange={(e) => setCantidad(l.key, e.target.value)}
-                              className={`w-20 rounded-lg border bg-white dark:bg-zinc-900 px-2 py-1 text-right font-semibold tabular-nums text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+                              className={`w-24 rounded-lg border bg-white dark:bg-zinc-900 px-2 py-1 text-right font-semibold tabular-nums text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 ${
                                 qtyInvalid ? "border-rose-400" : "border-slate-200 dark:border-white/10"
                               }`}
                             />
@@ -446,7 +526,8 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
                           </td>
                         </tr>
                       );
-                    })}
+                      }),
+                    ])}
                   </tbody>
                 </table>
               </div>
@@ -467,13 +548,26 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
           <Stat label={pedidos.length === 1 ? "Pedido" : "Pedidos"} value={String(pedidos.length)} />
           {invalidas.length > 0 && <Stat label="Sin piezas" value={String(invalidas.length)} tone="rose" />}
         </div>
-        <div className="flex justify-end gap-3">
-          <FormCancelButton label="Cancelar" onClick={onClose} disabled={isPending} />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {!isPending && faltantes.length > 0 && (
+            <span className="text-xs text-slate-500 dark:text-slate-400">Falta {faltantes.join(", ")}.</span>
+          )}
+          <FormCancelButton label="Cancelar" onClick={pedirCerrar} disabled={isPending} />
           <FormSubmitButton isPending={isPending} loadingLabel="Generando…" disabled={!canSubmit}>
             Generar pre-orden
           </FormSubmitButton>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmClose}
+        onOpenChange={setConfirmClose}
+        title="¿Descartar la pre-orden?"
+        description={`Llevas ${lineas.length} ${lineas.length === 1 ? "prenda" : "prendas"} capturadas. Si cierras, se pierden.`}
+        confirmText="Descartar"
+        cancelText="Seguir capturando"
+        confirmColor="red"
+        onConfirm={onClose}
+      />
     </form>
   );
 }

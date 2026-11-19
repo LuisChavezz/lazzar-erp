@@ -1,5 +1,6 @@
 "use client";
 
+import { SalidaMaquilaPiezas } from "./SalidaMaquilaPiezas";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/src/components/Button";
 import { EmbarquesIcon } from "@/src/components/Icons";
@@ -128,7 +129,8 @@ function SalidasMaquilaSectionContent({
                   {s.fecha_compromiso && <> · Compromiso {formatShortCalendarDate(s.fecha_compromiso)}</>}
                 </span>
                 <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
-                  {formatQuantityValue(s.total_piezas)} pz
+                  {formatQuantityValue(s.total_piezas)} pz{" "}
+                  <SalidaMaquilaPiezas recibidas={s.piezas_recibidas} faltantes={s.piezas_faltantes} estatus={s.estatus} />
                 </span>
                 {canSeeAmounts && (
                   <span className="text-sm tabular-nums font-semibold text-slate-900 dark:text-white">

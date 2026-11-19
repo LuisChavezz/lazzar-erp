@@ -1,5 +1,6 @@
 "use client";
 
+import { SalidaMaquilaPiezas } from "./SalidaMaquilaPiezas";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { ViewIcon } from "@/src/components/Icons";
@@ -71,7 +72,16 @@ const baseColumns = (onView: (id: number) => void) =>
       header: "Piezas",
       size: 100,
       meta: { align: "right" },
-      cell: (info) => <span className="tabular-nums">{formatQuantityValue(info.getValue())}</span>,
+      cell: (info) => (
+        <span className="flex flex-col items-end">
+          <span className="tabular-nums">{formatQuantityValue(info.getValue())}</span>
+          <SalidaMaquilaPiezas
+            recibidas={info.row.original.piezas_recibidas}
+            faltantes={info.row.original.piezas_faltantes}
+            estatus={info.row.original.estatus}
+          />
+        </span>
+      ),
     }),
   ] as ColumnDef<SalidaMaquilaListItem>[];
 

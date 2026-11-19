@@ -1,6 +1,15 @@
 'use client';
 
+import { useState } from 'react';
+import { ListTabs } from '@/src/components/ListTabs';
+import { surtidoPedidoColumns } from '@/src/features/order-fulfillment/components/SurtidoPedidoColumns';
+import { SurtidoPedidoRowActionsProvider } from '@/src/features/order-fulfillment/hooks/useSurtidoPedidoRowActions';
+import { SurtidoPedidoDetailDialog } from '@/src/features/order-fulfillment/components/SurtidoPedidoDetailDialog';
+import type { SurtidoPedido } from '@/src/features/order-fulfillment/interfaces/order-fulfillment.interface';
+import { useSurtidosCompletos } from '../hooks/useSurtidosCompletos';
+
 import { DataTable } from '@/src/components/DataTable';
+import { withHeaderFilters } from '@/src/components/withHeaderFilters';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import {
   SCHEDULED_PEDIDOS_LIMIT,
@@ -9,6 +18,10 @@ import {
 import { createWmsOrderColumns } from './WmsOrderColumns';
 
 const columns = createWmsOrderColumns();
+// Completos: sin "Comprometidas" (siempre 0 una vez surtido).
+const surtidoColumns = surtidoPedidoColumns.filter((c) => c.id !== 'comprometidas');
+
+type Tab = 'pendientes' | 'surtidos';
 
 /**
  * Pedidos de Almacén (`/wms/orders`): solo los pedidos programados por Mesa de
@@ -18,6 +31,11 @@ const columns = createWmsOrderColumns();
 export function WmsOrderListView() {
   const { pedidos, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } =
     useScheduledPedidos();
+  const [tab, setTab] = useState<Tab>('pendientes');
+  const done = useSurtidosCompletos();
+  // Detalle por talla del pedido surtido: el diálogo vive aquí, no en la celda.
+  const [detailPedido, setDetailPedido] = useState<SurtidoPedido | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Sin datos cargados nunca, una petición en vuelo (el "Reintentar" tras un
   // error inicial) es CARGA, no un refresco: el cuerpo vuelve al skeleton en vez
@@ -29,6 +47,45 @@ export function WmsOrderListView() {
 
   return (
     <div className="h-full flex flex-col min-h-0 gap-3">
+      <ListTabs
+        ariaLabel="Pedidos por surtido"
+        value={tab}
+        onChange={setTab}
+        isReady={tab === 'pendientes' ? hasLoaded : done.hasLoaded}
+        tabs={[
+          { key: 'pendientes', label: 'Por surtir', count: pedidos.length },
+          { key: 'surtidos', label: 'Surtidos', count: done.surtidos.length },
+        ]}
+      />
+      {tab === 'surtidos' ? (
+        <SurtidoPedidoRowActionsProvider
+          value={{ onViewDetail: (p) => { setDetailPedido(p); setIsDetailOpen(true); } }}
+        >
+        <div className="flex-1 min-h-0 flex flex-col">
+          <DataTable
+            key="surtidos"
+            columns={withHeaderFilters(surtidoColumns, done.surtidos, {
+              cliente_nombre: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
+              etapa: { type: 'distinct', get: (p) => p.etapa },
+            })}
+            data={done.surtidos}
+            getRowId={(p) => String(p.id)}
+            searchPlaceholder="Buscar por folio o cliente..."
+            fillHeight
+            isLoading={done.isLoading}
+            isError={done.isInitialError}
+            errorTitle="Error al cargar pedidos surtidos"
+            errorMessage={extractErrorMessage(done.error, 'No se pudo cargar la información.')}
+            onErrorRetry={() => void done.refetch()}
+            loadingAriaLabel="Cargando pedidos surtidos"
+            emptyMessage="Aún no hay pedidos surtidos por completo."
+            onRefetch={done.refetch}
+            isRefetching={done.isFetching}
+          />
+        </div>
+        <SurtidoPedidoDetailDialog pedido={detailPedido} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
+        </SurtidoPedidoRowActionsProvider>
+      ) : (<>
       {mayBeTruncated && (
         <p
           role="status"
@@ -40,7 +97,10 @@ export function WmsOrderListView() {
       )}
       <div className="flex-1 min-h-0 flex flex-col">
         <DataTable
-          columns={columns}
+          columns={withHeaderFilters(columns, pedidos, {
+            cliente: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
+            sucursal: { type: 'distinct', get: (p) => p.sucursal_nombre },
+          })}
           data={pedidos}
           getRowId={(pedido) => String(pedido.id)}
           searchPlaceholder="Buscar por folio, cliente, destino o almacén..."
@@ -57,6 +117,7 @@ export function WmsOrderListView() {
           isLoadingOverlay={isRefreshingLoaded}
         />
       </div>
+      </>)}
     </div>
   );
 }
