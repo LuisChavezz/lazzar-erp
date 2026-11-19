@@ -61,13 +61,10 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const availableRowsCount = availableIds.size;
   const alreadyShippedCount = rows.filter((row) => row.ya_despachado).length;
 
-  // Sin embarque parcial y con el pedido ya despachable, el backend exige que
-  // el despacho lleve TODAS las líneas pendientes del packing. Se marcan solas
-  // y no se pueden quitar: dejar elegir solo para rebotar en el POST no
-  // aportaría nada.
-  const allLinesRequired =
-    embarque !== null && !embarque.embarque_parcial && embarque.despachable;
-  const effectiveCheckedIds = allLinesRequired ? availableIds : checkedIds;
+  // Lo empacado siempre se puede despachar, en las líneas que se elijan
+  // (nucleo-erp #1266): `embarque_parcial` ya no bloquea ni obliga a llevar
+  // todas las líneas; su `motivo` solo es un aviso.
+  const effectiveCheckedIds = checkedIds;
 
   // Reconciliación: cuando cambian las filas (típicamente tras el refetch por
   // dato desactualizado, o al cambiar de packing) se descartan los ids
@@ -106,7 +103,6 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   };
 
   const toggleLine = (packingDetalleId: number) => {
-    if (allLinesRequired) return;
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(packingDetalleId)) next.delete(packingDetalleId);
@@ -117,7 +113,6 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   };
 
   const toggleAll = (checked: boolean) => {
-    if (allLinesRequired) return;
     setCheckedIds(checked ? new Set(availableIds) : new Set());
     if (serverBanner) setServerBanner(null);
   };
@@ -249,7 +244,6 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     availableRowsCount,
     alreadyShippedCount,
     embarque,
-    allLinesRequired,
     checkedIds: effectiveCheckedIds,
     toggleLine,
     toggleAll,
