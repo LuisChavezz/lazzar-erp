@@ -14,6 +14,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "picking",
   "order-fulfillment",
   "quality",
+  "receipts",
   "packing",
   "shipping",
   "procurement",
