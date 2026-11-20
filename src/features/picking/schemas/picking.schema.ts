@@ -45,6 +45,8 @@ export const PickingHeaderSchema = z.object({
   pedido: z.number().int().min(1, "El pedido es requerido"),
   operador: z.number().int().min(1, "El operador es requerido"),
   almacen_destino: z.number().int().min(1, "El almacén destino es requerido"),
+  /** Programación del pedido a la que abona el surtido (nucleo-erp#1279). */
+  programacion_destino: z.string().min(1, "Elige para qué programación es el surtido"),
   prioridad: z.enum(PICKING_PRIORIDADES),
   tipo: z.enum(PICKING_TIPOS),
   observaciones: z.string(),
@@ -57,6 +59,7 @@ export const createEmptyPickingHeaderValues = (): PickingHeaderValues => ({
   pedido: 0,
   operador: 0,
   almacen_destino: 0,
+  programacion_destino: "",
   prioridad: "MEDIA",
   tipo: "ORDER_PICKING",
   observaciones: "",

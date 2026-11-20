@@ -68,18 +68,19 @@ const headerDecimal = (label: string) =>
  */
 const numeroCajas = z
   .string()
-  .refine((value) => value.trim() === "" || /^-?\d+$/.test(value.trim()), {
+  // Obligatorio: todo embarque sale en al menos una caja.
+  .refine((value) => value.trim() !== "", { message: "Captura el número de cajas" })
+  .refine((value) => /^-?\d+$/.test(value.trim()), {
     message: "El número de cajas debe ser un número entero",
   })
-  .refine((value) => !/^-\d+$/.test(value.trim()), {
-    message: "El número de cajas debe ser mayor o igual a 0",
+  .refine((value) => Number(value.trim()) >= 1, {
+    message: "El número de cajas debe ser al menos 1",
   })
-  .transform((value) => (value.trim() === "" ? 0 : Number(value.trim())));
+  .transform((value) => Number(value.trim()));
 
 export const PackingHeaderSchema = z.object({
   numero_cajas: numeroCajas,
   peso_total: headerDecimal("El peso total"),
-  volumen_total: headerDecimal("El volumen total"),
   observaciones: z.string(),
 });
 /** Lo capturado en el formulario (`numero_cajas` como texto). */
@@ -91,6 +92,5 @@ export type PackingHeaderData = z.output<typeof PackingHeaderSchema>;
 export const createEmptyPackingHeaderValues = (): PackingHeaderValues => ({
   numero_cajas: "",
   peso_total: "",
-  volumen_total: "",
   observaciones: "",
 });

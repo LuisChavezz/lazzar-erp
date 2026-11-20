@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function WmsOrdersPage() {
   return (
     <main
-      className="w-full h-[calc(100dvh-13rem)] min-h-0 flex flex-col"
+      className="w-full h-[44rem] flex flex-col"
       aria-label="Pedidos de almacén"
     >
       <section aria-label="Lista de pedidos" className="flex-1 min-h-0 flex flex-col">

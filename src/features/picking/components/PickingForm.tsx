@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
-import { RouteIcon } from "@/src/components/Icons";
+import { PlusIcon } from "@/src/components/Icons";
 import { PickingStepManager } from "./PickingStepManager";
 
 /**
@@ -31,7 +31,7 @@ export const PickingForm = () => {
       showCloseButton={false}
       trigger={
         <Button variant="primary">
-          <RouteIcon className="w-4 h-4" />
+          <PlusIcon className="w-4 h-4" />
           Nuevo surtido
         </Button>
       }

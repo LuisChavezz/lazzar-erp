@@ -108,6 +108,22 @@ export interface Shipment {
   sucursal_nombre: string;
   envio_transportista: number | null;
   envio_transportista_nombre: string | null;
+  /**
+   * Cómo salió (nucleo-erp: tipo de envío, paquetería y chofer). Opcionales:
+   * los despachos anteriores llegan en `null`.
+   */
+  tipo_envio?: "PAQUETERIA" | "LOCAL" | null;
+  tipo_envio_display?: string | null;
+  paqueteria?: string | null;
+  paqueteria_display?: string | null;
+  chofer?: number | null;
+  chofer_nombre?: string | null;
+  /**
+   * Cuándo salió y quién lo registró. Opcionales: hoy `Despacho` no tiene
+   * timestamp; la columna "Salió" solo aparece cuando el backend los manda.
+   */
+  fecha_creacion?: string | null;
+  usuario_nombre?: string | null;
   despacho_detalle: ShipmentDetalleLine[];
 }
 
@@ -146,7 +162,12 @@ export interface CreateShipmentDetalleLine {
  */
 export interface CreateShipmentPayload {
   packing: number;
-  /** Texto libre, hasta 100 caracteres; se omite cuando no se capturó. */
+  /** Obligatoria por paquetería; hasta 100 caracteres. */
   guia?: string;
+  tipo_envio: "PAQUETERIA" | "LOCAL";
+  /** Obligatoria cuando `tipo_envio` es PAQUETERIA. */
+  paqueteria?: string;
+  /** Empleado chofer (catálogo `choferes` del onboarding); obligatorio si es LOCAL. */
+  chofer?: number;
   despacho_detalle: CreateShipmentDetalleLine[];
 }

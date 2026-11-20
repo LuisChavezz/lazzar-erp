@@ -10,7 +10,6 @@ import { Loader } from "@/src/components/Loader";
 import { InfoIcon, RouteIcon, ViewIcon } from "@/src/components/Icons";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import {
-  PICKING_PRIORIDADES,
   PICKING_TIPOS,
   PickingHeaderSchema,
   type PickingHeaderValues,
@@ -21,13 +20,12 @@ import {
   getDestinoOptions,
 } from "../utils/pickingDestino";
 import { PickingOrderDetailDialog } from "./PickingOrderDetailDialog";
-import { PickingProgramacionesHint } from "./PickingProgramacionesHint";
-
-const PRIORIDAD_LABELS: Record<(typeof PICKING_PRIORIDADES)[number], string> = {
-  BAJA: "Baja",
-  MEDIA: "Media",
-  ALTA: "Alta",
-};
+import { PickingProgramacionPicker } from "./PickingProgramacionPicker";
+import {
+  avancePorDestino,
+  conAlmacenPorDestino,
+  destinoSugerido,
+} from "../utils/pickingProgramacionAvance";
 
 const TIPO_LABELS: Record<(typeof PICKING_TIPOS)[number], string> = {
   ORDER_PICKING: "Por pedido",
@@ -47,9 +45,21 @@ interface PickingWizardStep1Props {
   onNext: (values: PickingHeaderValues) => void;
 }
 
-export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1Props) {
+export function PickingWizardStep1({
+  initialValues,
+  onNext,
+}: PickingWizardStep1Props) {
   const { data, isLoading, isError, isFetching } = usePickingOnboarding();
-  const pedidos = data?.pedidos ?? [];
+  // Lo que falta por surtir de cada pedido (Σ pendiente de sus programaciones):
+  // los cubiertos (todo en 0) van al final y marcados. Siguen elegibles: pasarse
+  // de lo programado se avisa, no se bloquea (nucleo-erp#1279).
+  const pendienteDe = (p: {
+    programaciones: { cantidad: number; pendiente?: number }[];
+  }) =>
+    p.programaciones.reduce((acc, x) => acc + (x.pendiente ?? x.cantidad), 0);
+  const pedidos = [...(data?.pedidos ?? [])].sort(
+    (a, b) => Number(pendienteDe(a) === 0) - Number(pendienteDe(b) === 0),
+  );
   const almacenesDestino = useMemo(() => data?.almacenes_destino ?? [], [data]);
   // Memoizado: sin esto, `data?.operadores ?? []` crea un arreglo nuevo en cada
   // render, lo que invalidaría la dependencia del `useEffect` de preselección de
@@ -59,8 +69,14 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
 
   const { data: session, status: sessionStatus } = useSession();
 
-  const [errors, setErrors] = useState<Partial<Record<HeaderField, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<HeaderField, string>>>(
+    {},
+  );
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
+  // Nota colapsada por defecto; abierta si ya trae texto (al "Regresar").
+  const [notaAbierta, setNotaAbierta] = useState(
+    initialValues.observaciones.trim() !== "",
+  );
 
   const getError = (field: HeaderField): FormFieldError | undefined => {
     const message = errors[field];
@@ -101,8 +117,18 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   // Suscripción reactiva al pedido/operador elegidos (los hooks van SIEMPRE
   // antes de cualquier retorno temprano — Rules of Hooks).
   const selectedPedidoId = useStore(form.store, (state) => state.values.pedido);
-  const selectedOperadorId = useStore(form.store, (state) => state.values.operador);
-  const selectedDestinoId = useStore(form.store, (state) => state.values.almacen_destino);
+  const selectedOperadorId = useStore(
+    form.store,
+    (state) => state.values.operador,
+  );
+  const selectedDestinoId = useStore(
+    form.store,
+    (state) => state.values.almacen_destino,
+  );
+  const selectedProgramacion = useStore(
+    form.store,
+    (state) => state.values.programacion_destino,
+  );
   const selectedPedido = pedidos.find((p) => p.id === selectedPedidoId) ?? null;
 
   /**
@@ -114,6 +140,16 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
     () => getDestinoOptions(almacenesDestino, selectedPedido),
     [almacenesDestino, selectedPedido],
   );
+  // `surtido`/`pendiente` vienen ya en el listado (nucleo-erp#1279/#1280).
+  const avance = selectedPedido
+    ? conAlmacenPorDestino(avancePorDestino(selectedPedido.programaciones), destinoOptions)
+    : [];
+  // Almacenes a los que van las programaciones del pedido: van primero en el selector.
+  const almacenesProgramados = new Set(
+    avance.flatMap((a) => (a.almacen_sugerido ? [a.almacen_sugerido.id] : [])),
+  );
+  const opcionesProgramadas = destinoOptions.filter((a) => almacenesProgramados.has(a.id));
+  const otrasOpciones = destinoOptions.filter((a) => !almacenesProgramados.has(a.id));
 
   /**
    * Quién puso el `almacen_destino` actual:
@@ -127,7 +163,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
    * Solo se lee en manejadores y efectos (nunca al renderizar), por eso es un ref.
    */
   const destinoOrigen = useRef<"auto" | "manual" | "previo">(
-    initialValues.pedido > 0 && initialValues.almacen_destino > 0 ? "manual" : "previo",
+    initialValues.pedido > 0 && initialValues.almacen_destino > 0
+      ? "manual"
+      : "previo",
   );
 
   /**
@@ -144,12 +182,45 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
    * Vive en el `onChange` del pedido y no en un efecto a propósito: así solo
    * actúa en ese momento.
    */
+  /**
+   * Elige la programación a la que abona el surtido y, si su destino tiene
+   * almacén entre las opciones del pedido (el del backend o el del mapa de
+   * `conAlmacenPorDestino`), lo pone como almacén destino: elegir la
+   * programación ES decir a dónde va.
+   */
+  const elegirProgramacion = (destino: string, pedidoId: number) => {
+    form.setFieldValue("programacion_destino", destino);
+    clearError("programacion_destino");
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido || !destino) return;
+    const opciones = getDestinoOptions(almacenesDestino, pedido);
+    const sugerido = conAlmacenPorDestino(
+      avancePorDestino(pedido.programaciones),
+      opciones,
+    ).find((a) => a.destino === destino)?.almacen_sugerido;
+    if (sugerido && opciones.some((o) => o.id === sugerido.id)) {
+      form.setFieldValue("almacen_destino", sugerido.id);
+      destinoOrigen.current = "auto";
+      clearError("almacen_destino");
+    }
+  };
+
   const recalcularDestino = (pedidoId: number) => {
-    if (destinoOrigen.current === "manual") return;
     const pedido = pedidos.find((p) => p.id === pedidoId);
     if (!pedido) return;
+    // Sugerencia: la primera programación con algo pendiente.
+    const sugerida = destinoSugerido(avancePorDestino(pedido.programaciones));
+    if (sugerida) {
+      elegirProgramacion(sugerida, pedidoId);
+      return;
+    }
+    form.setFieldValue("programacion_destino", "");
+    if (destinoOrigen.current === "manual") return;
     const opciones = getDestinoOptions(almacenesDestino, pedido);
-    const sugeridoId = getAlmacenSugeridoPreseleccionable(pedido.programaciones, opciones);
+    const sugeridoId = getAlmacenSugeridoPreseleccionable(
+      pedido.programaciones,
+      opciones,
+    );
     let siguiente: number | null = null;
     if (sugeridoId !== null) {
       siguiente = sugeridoId;
@@ -169,11 +240,15 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
    * puede haber salido solo del tope de pedidos que trae el listado. El select
    * ya no lo muestra, así que se dice por qué y no se deja avanzar con él.
    */
-  const pedidoNoDisponible = Boolean(data) && selectedPedidoId > 0 && !selectedPedido;
+  const pedidoNoDisponible =
+    Boolean(data) && selectedPedidoId > 0 && !selectedPedido;
   const pedidoError: FormFieldError | undefined =
     getError("pedido") ??
     (pedidoNoDisponible
-      ? { message: "Este pedido ya no aparece en la lista de pedidos por surtir. Elige otro." }
+      ? {
+          message:
+            "Este pedido ya no aparece en la lista de pedidos por surtir. Elige otro.",
+        }
       : undefined);
 
   /**
@@ -259,15 +334,20 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
 
   const missingItems: string[] = [];
   if (pedidos.length === 0) {
-    missingItems.push("Al menos un pedido programado por Mesa de Control (autorizado o en proceso)");
+    missingItems.push(
+      "Al menos un pedido programado por Mesa de Control (autorizado o en proceso)",
+    );
   }
-  if (operadores.length === 0) missingItems.push("Al menos un operador disponible");
+  if (operadores.length === 0)
+    missingItems.push("Al menos un operador disponible");
   // Se evalúa contra la lista CRUDA, no contra `destinoOptions`: sin almacenes
   // de entrada falta configuración del catálogo (esta pantalla), mientras que
   // "hay almacenes pero ninguno sirve para este pedido" es un caso del selector
   // —depende del pedido elegido— y se resuelve ahí, no bloqueando el asistente.
   if (almacenesDestino.length === 0) {
-    missingItems.push("Al menos un almacén que permita entradas (destino del surtido)");
+    missingItems.push(
+      "Al menos un almacén que permita entradas (destino del surtido)",
+    );
   }
 
   if (missingItems.length > 0) {
@@ -301,7 +381,12 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
   // pedido, que lo invalida) la lista visible es la de la caché y puede traer
   // aún el pedido rechazado: no se deja avanzar hasta tener la fresca.
   const canAdvance =
-    !isFetching && selectedPedido !== null && selectedOperadorId > 0 && selectedDestinoId > 0;
+    !isFetching &&
+    selectedPedido !== null &&
+    selectedOperadorId > 0 &&
+    selectedDestinoId > 0 &&
+    selectedProgramacion !== "";
+  const avanceElegido = avance.find((a) => a.destino === selectedProgramacion);
 
   return (
     <>
@@ -319,7 +404,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               <RouteIcon className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Detalles del surtido</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+                Detalles del surtido
+              </h3>
               <p className="text-[11px] text-slate-500">
                 Pedido a surtir, operador asignado y almacén destino
               </p>
@@ -359,6 +446,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         >
                           {p.folio}
                           {p.cliente_nombre ? ` — ${p.cliente_nombre}` : ""}
+                          {pendienteDe(p) === 0
+                            ? " · ✓ cubierto"
+                            : ` · faltan ${pendienteDe(p)}`}
                         </option>
                       ))}
                     </FormSelect>
@@ -407,7 +497,33 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               </form.Field>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {selectedPedido && (
+              <div className="space-y-2">
+                <PickingProgramacionPicker
+                  avance={avance}
+                  value={selectedProgramacion}
+                  onChange={(destino) =>
+                    elegirProgramacion(destino, selectedPedidoId)
+                  }
+                  error={getError("programacion_destino")?.message}
+                />
+                {avanceElegido && avanceElegido.pendiente === 0 && (
+                  <p
+                    role="status"
+                    className="rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+                  >
+                    Lo programado a este destino ya está surtido
+                    {avanceElegido.excedente > 0
+                      ? ` (y ${avanceElegido.excedente} de más)`
+                      : ""}
+                    . Puedes surtir de todos modos: quedará por encima de lo
+                    programado.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <form.Field name="almacen_destino">
                   {(field) => (
@@ -420,7 +536,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                         const next = Number(event.target.value);
                         field.handleChange(Number.isNaN(next) ? 0 : next);
                         destinoOrigen.current =
-                          form.getFieldValue("pedido") > 0 ? "manual" : "previo";
+                          form.getFieldValue("pedido") > 0
+                            ? "manual"
+                            : "previo";
                         clearError("almacen_destino");
                       }}
                       onBlur={field.handleBlur}
@@ -429,14 +547,29 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                       <option value="0" disabled>
                         Seleccionar almacén destino...
                       </option>
-                      {destinoOptions.map((a) => (
-                        <option
-                          key={a.id}
-                          value={a.id}
-                          className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                        >
-                          {a.nombre}
-                        </option>
+                      {opcionesProgramadas.length > 0 && (
+                        <optgroup label="Programados para este pedido">
+                          {opcionesProgramadas.map((a) => (
+                            <option key={a.id} value={a.id} className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                              {a.nombre}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {(opcionesProgramadas.length > 0 ? (
+                        <optgroup label="Otros almacenes">
+                          {otrasOpciones.map((a) => (
+                            <option key={a.id} value={a.id} className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                              {a.nombre}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : (
+                        otrasOpciones.map((a) => (
+                          <option key={a.id} value={a.id} className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white">
+                            {a.nombre}
+                          </option>
+                        ))
                       ))}
                     </FormSelect>
                   )}
@@ -452,36 +585,7 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                       : "No hay almacenes de entrada distintos del almacén de origen."}
                   </p>
                 )}
-                {selectedPedido && (
-                  <PickingProgramacionesHint programaciones={selectedPedido.programaciones} />
-                )}
               </div>
-
-              <form.Field name="prioridad">
-                {(field) => (
-                  <FormSelect
-                    label="Prioridad"
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value as (typeof PICKING_PRIORIDADES)[number]);
-                      clearError("prioridad");
-                    }}
-                    onBlur={field.handleBlur}
-                    error={getError("prioridad")}
-                  >
-                    {PICKING_PRIORIDADES.map((value) => (
-                      <option
-                        key={value}
-                        value={value}
-                        className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-                      >
-                        {PRIORIDAD_LABELS[value]}
-                      </option>
-                    ))}
-                  </FormSelect>
-                )}
-              </form.Field>
 
               <form.Field name="tipo">
                 {(field) => (
@@ -490,7 +594,9 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
                     name={field.name}
                     value={field.state.value}
                     onChange={(event) => {
-                      field.handleChange(event.target.value as (typeof PICKING_TIPOS)[number]);
+                      field.handleChange(
+                        event.target.value as (typeof PICKING_TIPOS)[number],
+                      );
                       clearError("tipo");
                     }}
                     onBlur={field.handleBlur}
@@ -510,23 +616,33 @@ export function PickingWizardStep1({ initialValues, onNext }: PickingWizardStep1
               </form.Field>
             </div>
 
-            <form.Field name="observaciones">
-              {(field) => (
-                <FormTextarea
-                  label="Observaciones (opcional)"
-                  placeholder="Notas del surtido"
-                  rows={2}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    clearError("observaciones");
-                  }}
-                  onBlur={field.handleBlur}
-                  error={getError("observaciones")}
-                />
-              )}
-            </form.Field>
+            {!notaAbierta ? (
+              <button
+                type="button"
+                onClick={() => setNotaAbierta(true)}
+                className="text-xs font-semibold text-sky-700 dark:text-sky-300 hover:underline cursor-pointer"
+              >
+                + Agregar nota
+              </button>
+            ) : (
+              <form.Field name="observaciones">
+                {(field) => (
+                  <FormTextarea
+                    label="Observaciones (opcional)"
+                    placeholder="Notas del surtido"
+                    rows={2}
+                    name={field.name}
+                    value={field.state.value}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      clearError("observaciones");
+                    }}
+                    onBlur={field.handleBlur}
+                    error={getError("observaciones")}
+                  />
+                )}
+              </form.Field>
+            )}
           </div>
         </section>
 

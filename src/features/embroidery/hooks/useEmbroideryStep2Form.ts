@@ -1,5 +1,6 @@
 "use client";
 
+import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { plural } from "@/src/utils/plural";
@@ -153,6 +154,15 @@ export function useEmbroideryStep2Form({
   const rows = useMemo(() => pedido?.detalles ?? [], [pedido]);
 
   /**
+   * Saldo de lo programado por Mesa de Control a Bordado (programado − ya en
+   * órdenes). Topa el TOTAL de la orden: sin él, el paso proponía todo el
+   * pendiente del pedido aunque lo programado ya estuviera en otra OB.
+   * `null` sin programación: sin tope.
+   */
+  const saldo = pedido ? getWorkOrderSaldo(pedido) : null;
+  const disponible = saldo?.disponible ?? null;
+
+  /**
    * Techo por línea, indexado por `pedido_detalle_talla_id`. Es un `Map` con
    * llave NUMÉRICA, igual que `checkedIds` y `quantities`: las tres colecciones
    * describen la misma entidad y tenerlas con el mismo tipo de llave elimina la
@@ -252,15 +262,18 @@ export function useEmbroideryStep2Form({
 
     const nextChecked = new Set<number>();
     const nextQuantities = new Map<number, string>();
+    // Se reparte solo lo disponible de lo programado, en el orden del pedido.
+    let restante = disponible ?? Number.POSITIVE_INFINITY;
     for (const row of rows) {
-      const ceiling = ceilingOf(row);
+      const ceiling = Math.min(ceilingOf(row), restante);
       if (ceiling <= 0 || !isEmbroideryRowEligible(row)) continue;
       nextChecked.add(row.pedido_detalle_talla_id);
       nextQuantities.set(row.pedido_detalle_talla_id, String(ceiling));
+      restante -= ceiling;
     }
     setCheckedIds(nextChecked);
     setQuantities(nextQuantities);
-  }, [rows, header.pedido]);
+  }, [rows, header.pedido, disponible]);
 
   /**
    * Reconciliación contra los saldos recién llegados: re-clampa lo capturado
@@ -490,6 +503,16 @@ export function useEmbroideryStep2Form({
       return;
     }
 
+    const totalOrden = lines.reduce((acc, l) => acc + l.cantidad, 0);
+    if (saldo && totalOrden > saldo.disponible) {
+      setServerBanner(
+        saldo.disponible === 0
+          ? "Lo que Mesa de Control programó a Bordado ya está en otras órdenes. Pide que programen más piezas para crear otra."
+          : `Mesa de Control programó ${saldo.programado} pzas a Bordado y ${saldo.enOrdenes} ya están en órdenes: esta orden puede llevar hasta ${saldo.disponible}, y lleva ${totalOrden}.`,
+      );
+      return;
+    }
+
     if (lines.length === 0) {
       setServerBanner(
         "Selecciona al menos una prenda del pedido para incluirla en la orden.",
@@ -521,8 +544,14 @@ export function useEmbroideryStep2Form({
     }
   };
 
+  /** Piezas marcadas ahora (para el conteo contra lo disponible). */
+  let selectedTotal = 0;
+  for (const id of checkedIds) selectedTotal += Number.parseInt(quantities.get(id) ?? "", 10) || 0;
+
   return {
     pedido,
+    saldo,
+    selectedTotal,
     rows,
     ceilings,
     availableRowsCount,

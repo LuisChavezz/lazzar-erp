@@ -144,6 +144,22 @@ export interface PickingOrdenTrabajo {
   orden_corte_manga_folio: string | null;
 }
 
+export type PickingEstadoEmpaque = "POR_EMPACAR" | "EMPACADO" | "ENVIADO";
+
+export interface PickingPackingRef {
+  id: number;
+  folio: string;
+  estado: string;
+  despachado: boolean;
+}
+
+export interface PickingProgramacionAvance {
+  destino: string;
+  /** `null` cuando el pedido no tiene programado ese destino (surtidos viejos). */
+  cantidad: number | null;
+  surtido: number;
+}
+
 /**
  * Renglón de `GET /wms/pickings/` (listado). Incluye `picking_detalle`
  * porque el backend lo devuelve en la misma respuesta del listado (a
@@ -208,6 +224,25 @@ export interface Picking {
   zona_almacen_nombre: string | null;
   lote: number | null;
   lote_nombre: string | null;
+  /**
+   * Programación del pedido a la que abona el surtido (nucleo-erp#1279):
+   * `BORDADO`, `EMBARQUE`… `null` en surtidos anteriores. Opcional: un backend
+   * sin la clave se lee como "sin programación".
+   */
+  programacion_destino?: string | null;
+  /**
+   * Avance del destino al que abona (nucleo-erp#1283): lo programado y lo ya
+   * surtido para ese destino en el pedido. `null` sin `programacion_destino`.
+   */
+  programacion_avance?: PickingProgramacionAvance | null;
+  /** Fecha de entrega del pedido ("AAAA-MM-DD", fecha-calendario) (#1283). */
+  pedido_fecha_entrega?: string | null;
+  /** Embarques (packings) que tomaron este surtido (#1283). */
+  packings?: PickingPackingRef[];
+  /** Folio del último embarque, o `null` si aún no se empaca (#1283). */
+  packing_folio?: string | null;
+  /** `POR_EMPACAR` sin packing, `ENVIADO` si alguno ya salió, si no `EMPACADO` (#1283). */
+  estado_empaque?: PickingEstadoEmpaque;
   prioridad: PickingPrioridad;
   tipo: PickingTipo;
   estado: PickingEstado;
@@ -337,6 +372,8 @@ export interface CreatePickingPayload {
   almacen: number;
   /** Almacén DESTINO elegido en el Paso 1. */
   almacen_destino: number;
+  /** Programación del pedido a la que abona (BORDADO, EMBARQUE…; nucleo-erp#1279). */
+  programacion_destino?: string;
   prioridad: PickingPrioridad;
   tipo: PickingTipo;
   observaciones?: string;
@@ -347,4 +384,34 @@ export interface CreatePickingPayload {
   fecha_fin?: string | null;
   fecha_limite?: string | null;
   picking_detalle: CreatePickingDetalleLine[];
+}
+
+/**
+ * Renglón de la lista ligera (`GET /wms/pickings/?vista=lista`, nucleo-erp#1284):
+ * el surtido SIN `picking_detalle` (ni órdenes de trabajo), con los totales ya
+ * calculados por el backend. Los renglones cancelados no cuentan.
+ */
+export interface PickingListItem extends Omit<Picking, "picking_detalle" | "ordenes_trabajo"> {
+  cliente_nombre: string | null;
+  piezas: number;
+  /** Producto + color distintos. */
+  productos: number;
+  /** Líneas (una por talla). */
+  tallas: number;
+}
+
+/** `GET /wms/pickings/resumen/`: KPIs sobre TODO el conjunto filtrado (#1284). */
+export interface PickingsResumen {
+  por_empacar: { surtidos: number; piezas: number };
+  /** `fecha` es el día de México con el que contó el backend. */
+  surtidos_hoy: { fecha: string; surtidos: number; piezas: number; pedidos: number };
+  /** `destino` `null` = sin programación. */
+  piezas_por_destino: { destino: string | null; piezas: number }[];
+  generado_en?: string;
+}
+
+/** `GET /wms/pickings/filtros/`: clientes y operadores que tienen surtidos (#1284). */
+export interface PickingsFiltros {
+  clientes: { id: number; nombre: string }[];
+  operadores: { id: number; nombre: string }[];
 }

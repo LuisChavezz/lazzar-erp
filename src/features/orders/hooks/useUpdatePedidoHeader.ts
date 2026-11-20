@@ -66,9 +66,9 @@ type UpdatePedidoHeaderVariables = {
  *
  * NUNCA `setQueryData` con la respuesta: el PATCH devuelve el detalle SIN el
  * filtro contable del `GET`. Se invalida y se vuelve a leer, lo que además trae
- * `fecha_entrega_min`/`max`, que el backend recalcula con los días de la
- * `clasificacion` contados desde `fecha_confirmacion` (sin ella, desde
- * `created_at`): editar CUALQUIERA de los dos campos las mueve.
+ * `fecha_entrega_min`/`max`. Desde nucleo-erp#1273 el backend las fija el día
+ * en que se asigna la `clasificacion`: solo cambiar la clasificación las mueve
+ * (contando desde ese día); `fecha_confirmacion` ya no las toca.
  *
  * La mutación sigue PENDIENTE hasta que terminan las relecturas del detalle y
  * de la trazabilidad (`onSuccess` devuelve su promesa): así el control no se

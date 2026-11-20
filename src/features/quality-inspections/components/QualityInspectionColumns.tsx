@@ -1,6 +1,7 @@
 "use client";
 
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import { FolioButton } from "@/src/components/FolioButton";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatLocalDate } from "@/src/utils/formatDate";
@@ -51,22 +52,6 @@ export interface QualityDoneRow {
 
 const miles = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
 
-/** Folio clicable: azul, subrayado y con ">" para que se note que abre algo. */
-function FolioLink({ folio, title, onClick }: { folio: string; title: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className="group inline-flex items-center gap-1 font-mono font-semibold text-sky-600 dark:text-sky-400 underline decoration-sky-400/60 underline-offset-4 hover:decoration-sky-600 cursor-pointer"
-    >
-      {folio}
-      <span aria-hidden="true" className="no-underline transition-transform group-hover:translate-x-0.5">
-        ›
-      </span>
-    </button>
-  );
-}
 
 /** Pedido(s) maestro(s): el principal enlazado al 360°; los demás, como "+N". */
 const PedidoCell = ({ pedidos }: { pedidos: QualityPedidoRef[] }) => {
@@ -141,7 +126,7 @@ export const getQualityPendingColumns = ({ onInspect }: { onInspect: (r: Quality
       header: "Recepción",
       cell: ({ row, getValue }) => (
         <span className="flex flex-col items-start gap-0.5">
-          <FolioLink folio={getValue()} title="Inspeccionar" onClick={() => onInspect(row.original.reception)} />
+          <FolioButton folio={getValue()} title="Inspeccionar" onClick={() => onInspect(row.original.reception)} />
           <span className="text-[11px] tabular-nums text-slate-400">Recibida {formatLocalDate(row.original.fecha_recepcion)}</span>
         </span>
       ),
@@ -187,7 +172,7 @@ export const getQualityDoneColumns = ({ onOpen }: { onOpen: (i: QualityInspectio
       header: "Recepción",
       cell: ({ row, getValue }) => (
         <span className="flex flex-col items-start gap-0.5">
-          <FolioLink folio={getValue()} title="Ver inspección" onClick={() => onOpen(row.original.inspection)} />
+          <FolioButton folio={getValue()} title="Ver inspección" onClick={() => onOpen(row.original.inspection)} />
           <span className="text-[11px] tabular-nums text-slate-400">Inspeccionada {formatLocalDate(row.original.fecha)}</span>
         </span>
       ),

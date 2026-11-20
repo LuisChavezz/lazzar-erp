@@ -180,6 +180,7 @@ export function EmbroideryOrderStep1({
                     <option
                       key={option.value}
                       value={option.value}
+                      disabled={option.agotado}
                       className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
                     >
                       {option.label}
@@ -190,7 +191,7 @@ export function EmbroideryOrderStep1({
                   {[REQUISITO_PROGRAMADO, REQUISITO_MUESTRAS].join(" ")}
                 </p>
                 {/* Solo informativo: no toca las cantidades del Paso 2. */}
-                {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
+                {selected && <MesaControlProgramadoIndicator programado={selected.programado} saldo={selected.saldo} />}
               </div>
             );
           }}

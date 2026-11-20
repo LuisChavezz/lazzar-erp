@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkOrderSaldoCounter } from "@/src/components/WorkOrderSaldoCounter";
 import { FormSecondaryButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { Loader } from "@/src/components/Loader";
 import {
@@ -43,6 +44,8 @@ export function EmbroideryOrderStep2({
     rows,
     ceilings,
     availableRowsCount,
+    saldo,
+    selectedTotal,
     ineligiblePendingCount,
     selectedCount,
     checkedIds,
@@ -304,6 +307,9 @@ export function EmbroideryOrderStep2({
                   </p>
                 </div>
               </div>
+            )}
+            {saldo && (
+              <WorkOrderSaldoCounter saldo={saldo} selectedTotal={selectedTotal} destino="Bordado" />
             )}
             <EmbroideryOrderLinesTable
               rows={rows}

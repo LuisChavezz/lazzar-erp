@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, type DataTableHandle } from "@/src/components/DataTable";
+import { ListExportButtons } from "@/src/components/ListExportButtons";
+import { useListExport } from "@/src/hooks/useListExport";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { ListTabs } from "@/src/components/ListTabs";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -19,14 +21,17 @@ import {
 } from "./QualityInspectionColumns";
 import { QualityInspectionDialog } from "./QualityInspectionDialog";
 import { QualityInspectionResultDialog } from "./QualityInspectionResultDialog";
+import {
+  QUALITY_DONE_EXPORT_COLUMNS,
+  QUALITY_PENDING_EXPORT_COLUMNS,
+  QUALITY_TIPO_LABEL,
+} from "../utils/qualityExport";
 import type { QualityInspection, QualityPedidoRef, QualityPendingReception } from "../interfaces/quality-inspection.interface";
 
 /** Tope de `recepciones_pendientes` en el backend (`recepciones_qs[:50]`). */
 const BACKEND_PENDING_LIMIT = 50;
 
 type Tab = "pendientes" | "inspeccionadas";
-
-const TIPO_LABEL: Record<string, string> = { OC: "Orden de compra", OP: "Orden de producción", SM: "Salida a maquila" };
 
 export function QualityInspectionView() {
   const [tab, setTab] = useState<Tab>("pendientes");
@@ -94,7 +99,7 @@ export function QualityInspectionView() {
   });
 
   // Filtros estilo Excel en cada encabezado (en memoria: la lista llega completa).
-  const tipoLabel = (r: { tipo_origen: string }) => TIPO_LABEL[r.tipo_origen] ?? r.tipo_origen;
+  const tipoLabel = (r: { tipo_origen: string }) => QUALITY_TIPO_LABEL[r.tipo_origen] ?? r.tipo_origen;
   const pendingColumns = withHeaderFilters(getQualityPendingColumns({ onInspect: setSelected }), pendingRows, {
     folio: { type: "month", get: (r) => r.fecha_recepcion, filterLabel: "mes de recepción" },
     pedido: { type: "distinct", get: (r) => r.pedidos[0]?.folio, searchable: true, emptyOption: "Sin pedido" },
@@ -109,6 +114,25 @@ export function QualityInspectionView() {
     estado: { type: "distinct", get: (r) => r.estado, label: (r) => QUALITY_ESTADO_CFG[r.estado]?.label ?? r.estado },
     rechazadas: { type: "presence", get: (r) => r.rechazadas, con: "Con rechazos", sin: "Sin rechazos" },
     inspector: { type: "distinct", get: (r) => r.inspector, searchable: true },
+  });
+
+  // Excel/PDF: EXACTAMENTE las filas que deja ver la pestaña activa (filtros
+  // de encabezado, búsqueda y orden).
+  const pendingRef = useRef<DataTableHandle<QualityPendingRow>>(null);
+  const doneRef = useRef<DataTableHandle<QualityDoneRow>>(null);
+  const pendingExport = useListExport({
+    getRows: () => pendingRef.current?.getFilteredRows() ?? [],
+    columns: QUALITY_PENDING_EXPORT_COLUMNS,
+    title: "Calidad · Por inspeccionar",
+    fileName: "calidad-por-inspeccionar",
+    summary: (rows) => `${rows.length} recepci${rows.length === 1 ? "ón" : "ones"}`,
+  });
+  const doneExport = useListExport({
+    getRows: () => doneRef.current?.getFilteredRows() ?? [],
+    columns: QUALITY_DONE_EXPORT_COLUMNS,
+    title: "Calidad · Inspeccionadas",
+    fileName: "calidad-inspeccionadas",
+    summary: (rows) => `${rows.length} inspecci${rows.length === 1 ? "ón" : "ones"}`,
   });
 
   return (
@@ -134,6 +158,7 @@ export function QualityInspectionView() {
           )}
           <DataTable
             key="pendientes"
+            ref={pendingRef}
             columns={pendingColumns}
             data={pendingRows}
             getRowId={(row) => String(row.id)}
@@ -148,11 +173,21 @@ export function QualityInspectionView() {
             onErrorRetry={refetch}
             loadingAriaLabel="Cargando recepciones en espera de calidad"
             emptyMessage="No hay recepciones en espera de calidad."
+            actionButton={
+              <div className="flex items-center gap-2 shrink-0">
+                <ListExportButtons
+                  subject="recepciones por inspeccionar"
+                  onExcel={() => void pendingExport.exportCsv()}
+                  onPdf={() => void pendingExport.exportPdf()}
+                />
+              </div>
+            }
           />
         </>
       ) : (
         <DataTable
           key="inspeccionadas"
+          ref={doneRef}
           columns={doneColumns}
           data={doneRows}
           getRowId={(row) => String(row.id)}
@@ -167,6 +202,15 @@ export function QualityInspectionView() {
           onErrorRetry={done.refetch}
           loadingAriaLabel="Cargando inspecciones"
           emptyMessage="Aún no hay inspecciones registradas."
+          actionButton={
+            <div className="flex items-center gap-2 shrink-0">
+              <ListExportButtons
+                subject="inspecciones"
+                onExcel={() => void doneExport.exportCsv()}
+                onPdf={() => void doneExport.exportPdf()}
+              />
+            </div>
+          }
         />
       )}
 

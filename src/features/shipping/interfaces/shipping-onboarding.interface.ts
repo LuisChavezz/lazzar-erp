@@ -112,6 +112,10 @@ export interface ShipmentOnboardingLine {
   ubicacion_nombre: string | null;
   caja: number | null;
   caja_numero: number | null;
+  /** Códigos de la prenda; opcionales hasta que el onboarding los mande. */
+  producto_variante_sku?: string | null;
+  producto_codigo?: string | null;
+  producto_cod_proscai?: string | null;
   cantidad_empacada: string;
   estado: string;
   ya_despachado: boolean;
@@ -160,4 +164,6 @@ export interface ShipmentOnboardingData {
   packing: ShipmentOnboardingPackingDetail | null;
   despacho_detalle: ShipmentOnboardingLine[];
   embarque: ShipmentOnboardingEmbarque | null;
+  /** Empleados marcados como chofer, para la entrega local. */
+  choferes?: { id: number; nombre: string }[];
 }

@@ -24,7 +24,6 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { plural } from "@/src/utils/plural";
 import { PICKING_LINEA_ESTADO_CONFIG } from "../constants/pickingLineaEstado";
-import { PICKING_PRIORIDAD_CONFIG } from "../constants/pickingPrioridad";
 import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
 import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
 import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
@@ -192,9 +191,6 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Estatus">
             <StatusBadge status={picking.estado} config={PICKING_STATUS_CONFIG} />
-          </InfoField>
-          <InfoField label="Prioridad">
-            <StatusBadge status={picking.prioridad} config={PICKING_PRIORIDAD_CONFIG} />
           </InfoField>
           {/* El backend manda el código crudo (`ORDER_PICKING`), sin etiqueta
               acompañante: se traduce con `PICKING_TIPO_LABELS`. */}

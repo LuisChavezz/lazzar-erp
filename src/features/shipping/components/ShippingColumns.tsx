@@ -1,154 +1,163 @@
 "use client";
 
-import { useState } from "react";
+import toast from "react-hot-toast";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import { ViewIcon } from "@/src/components/Icons";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
-import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { FolioButton } from "@/src/components/FolioButton";
+import { CopyIcon } from "@/src/components/Icons";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import { ShippingDetailDialog } from "./ShippingDetailDialog";
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import type { Shipment } from "../interfaces/shipping.interface";
-
-// ── Celda de acciones ────────────────────────────────────────────────────────
-
-const ActionsCell = ({ row }: { row: Shipment }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
-  ];
-
-  return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones del envío de ${row.packing_folio}`} />
-      {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
-          propio — `row` YA es el objeto completo (`despacho_detalle`
-          incluido), la misma forma que devuelve el detalle (listado y
-          detalle comparten `DespachoSerializer` en el backend, confirmado
-          leyendo `DespachoViewSet.get_queryset`/`get_serializer_class` en el
-          checkout de `nucleo-erp` — ninguno de los dos está condicionado por
-          `self.action`), así que no dispara ninguna petición nueva. */}
-      {isDetailOpen && (
-        <ShippingDetailDialog shipment={row} open={true} onOpenChange={setIsDetailOpen} />
-      )}
-    </div>
-  );
-};
 
 const columnHelper = createColumnHelper<Shipment>();
 
+/** Totales del contenido, calculados del `despacho_detalle` que ya trae la fila. */
+export function shipmentContenido(row: Shipment) {
+  const piezas = row.despacho_detalle.reduce((acc, l) => acc + (Number.parseFloat(l.cantidad_empacada) || 0), 0);
+  const cajas = new Set(row.despacho_detalle.map((l) => l.caja_numero).filter((c) => c !== null)).size;
+  return { piezas, lineas: row.despacho_detalle.length, cajas };
+}
+
 /**
- * Columnas del listado de despacho. `Despacho` no tiene folio, estado
- * significativo ni timestamp propios (ver `shipping.interface.ts`), así que
- * el set de columnas se apoya en los campos heredados/denormalizados que sí
- * identifican el renglón. Deliberadamente se omiten:
- * - `packing_estado`: siempre `"PENDIENTE"` en la práctica, no aporta señal.
- * - `envio_transportista_nombre`: siempre `null` (el modelo `Transportista`
- *   no tiene campo de nombre), por eso se muestra el id crudo en su lugar.
- * - Cualquier columna de fecha: no existe timestamp alguno en este modelo.
+ * Cómo salió, en una sola etiqueta (para el filtro y la celda): la paquetería,
+ * "Local", o "Sin dato" en los despachos anteriores a la captura obligatoria.
  */
-export const shipmentColumns = [
-  columnHelper.accessor("packing_folio", {
-    header: "Embarque",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
-    ),
-  }),
-  // `accessorFn` que colapsa `null` a `""` — mismo bug de
-  // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
-  // `CorteMangaOrderColumns.tsx`. `id` explícito conserva la
-  // visibilidad/orden de columna que guarda `DataTable`.
-  columnHelper.accessor((row) => row.pedido_folio ?? "", {
-    id: "pedido_folio",
-    header: "Pedido",
-    cell: (info) => (
-      <PedidoFolioLink
-        pedidoId={info.row.original.pedido}
-        folio={info.row.original.pedido_folio}
-        from="shipping"
-      />
-    ),
-  }),
-  columnHelper.accessor("cliente_nombre", {
-    header: "Cliente",
-    cell: (info) => (
-      <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
-    ),
-  }),
-  columnHelper.accessor("sucursal_nombre", {
-    header: "Sucursal",
-    cell: (info) => (
-      <span className="text-sm text-slate-600 dark:text-slate-300">{info.getValue()}</span>
-    ),
-  }),
-  // La guía capturada al registrar (`Despacho.guia`, texto libre; `""` cuando
-  // se registró sin ella).
-  columnHelper.accessor("guia", {
-    header: "Guía",
-    cell: (info) => (
-      <span className="text-sm text-slate-600 dark:text-slate-300">
-        {textOrDash(info.getValue())}
-      </span>
-    ),
-  }),
-  // Mismo `accessorFn` que `pedido_folio` y por el mismo motivo (ver el bloque
-  // de arriba), con un matiz propio de ser columna NUMÉRICA: lo buscable es el
-  // ID CRUDO (`3`), no la etiqueta renderizada (`"Envío #3"`). Por eso el
-  // accessor devuelve el id en texto y la celda sigue leyendo el valor sin
-  // formatear de `row.original` para armar su etiqueta — el accessor cambia
-  // qué participa en la búsqueda, no qué se ve.
-  columnHelper.accessor((row) => (row.envio !== null ? String(row.envio) : ""), {
-    id: "envio",
-    header: "Envío",
-    // `envio` es genuinamente `null` cuando el despacho se registró sin
-    // envío — el caso de casi todos los despachos creados desde este
-    // frontend (ver `shipping.interface.ts`), no un dato faltante a resolver.
-    //
-    // `sortingFn` explícito: el accessor de arriba devuelve el id como texto
-    // (necesario para la búsqueda), pero TanStack auto-detecta el comparador
-    // muestreando valores — si el muestreo cae solo en filas sin envío (`""`),
-    // decide un comparador de texto y ordena "10" antes que "2". Se compara el
-    // número crudo directamente para que el orden sea siempre numérico.
-    sortingFn: (rowA, rowB) => (rowA.original.envio ?? -Infinity) - (rowB.original.envio ?? -Infinity),
-    cell: (info) => {
-      const value = info.row.original.envio;
-      return (
-        <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
-          {value !== null ? `Envío #${value}` : "Sin envío"}
+export function shipmentTransporteLabel(row: Shipment): string {
+  if (row.tipo_envio === "LOCAL") return "Local";
+  return row.paqueteria_display || (row.guia ? "Paquetería" : "Sin dato");
+}
+
+const miles = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+
+interface ShipmentColumnsCallbacks {
+  onOpenDetail: (shipment: Shipment) => void;
+}
+
+/**
+ * Columnas del listado de envíos. Sin columna de acciones: la única acción es
+ * ver el detalle, y vive en el folio del embarque (botón con "›"). La fecha
+ * y quién lo registró solo se pintan si el backend los manda.
+ */
+export const getShipmentColumns = ({ onOpenDetail }: ShipmentColumnsCallbacks, conFecha: boolean) =>
+  [
+    columnHelper.accessor("packing_folio", {
+      header: "Embarque",
+      cell: ({ row }) => (
+        <FolioButton folio={row.original.packing_folio} onClick={() => onOpenDetail(row.original)} />
+      ),
+    }),
+    ...(conFecha
+      ? [
+          columnHelper.accessor((row) => row.fecha_creacion ?? "", {
+            id: "fecha_creacion",
+            header: "Salió",
+            cell: ({ row }) => (
+              <span className="flex flex-col leading-tight">
+                <span className="text-sm text-slate-700 dark:text-slate-200 tabular-nums">
+                  {row.original.fecha_creacion
+                    ? formatShortDate(row.original.fecha_creacion, { timeZone: MEXICO_TIME_ZONE })
+                    : "—"}
+                </span>
+                {row.original.usuario_nombre && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">{row.original.usuario_nombre}</span>
+                )}
+              </span>
+            ),
+          }),
+        ]
+      : []),
+    // Pedido + cliente en una celda: el cliente es el dato que el usuario
+    // reconoce; el folio enlaza al pedido 360°.
+    columnHelper.accessor((row) => `${row.pedido_folio ?? ""} ${row.cliente_nombre ?? ""}`, {
+      id: "cliente",
+      header: "Pedido / Cliente",
+      cell: ({ row }) => (
+        <span className="flex min-w-0 flex-col leading-tight">
+          <PedidoFolioLink
+            pedidoId={row.original.pedido}
+            folio={row.original.pedido_folio}
+            from="shipping"
+            className="font-mono text-xs font-semibold"
+          />
+          <span className="max-w-60 truncate text-sm text-slate-700 dark:text-slate-200" title={row.original.cliente_nombre}>
+            {row.original.cliente_nombre || "—"}
+          </span>
         </span>
-      );
-    },
-  }),
-  // Mismo criterio numérico que la columna "Envío", incluido el `sortingFn`
-  // explícito (mismo motivo: evitar que TanStack caiga en comparación de texto).
-  columnHelper.accessor(
-    (row) => (row.envio_transportista !== null ? String(row.envio_transportista) : ""),
-    {
-      id: "envio_transportista",
-      header: "Transportista",
-      // `envio_transportista_nombre` siempre viaja `null` (ver interfaz) — se
-      // muestra el id crudo con una etiqueta clara en vez de una celda vacía.
-      // `envio_transportista` en sí es `null` cuando no hay envío asociado,
-      // mismo criterio que la columna "Envío".
-      sortingFn: (rowA, rowB) =>
-        (rowA.original.envio_transportista ?? -Infinity) -
-        (rowB.original.envio_transportista ?? -Infinity),
-      cell: (info) => {
-        const value = info.row.original.envio_transportista;
+      ),
+    }),
+    columnHelper.accessor((row) => `${shipmentTransporteLabel(row)} ${row.chofer_nombre ?? ""}`, {
+      id: "transporte",
+      header: "Transporte",
+      cell: ({ row }) => <TransporteCell shipment={row.original} />,
+    }),
+    columnHelper.accessor("guia", {
+      header: "Guía",
+      cell: ({ row }) => <GuiaCell guia={row.original.guia} />,
+    }),
+    columnHelper.accessor((row) => shipmentContenido(row).piezas, {
+      id: "contenido",
+      header: "Contenido",
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const { piezas, lineas, cajas } = shipmentContenido(row.original);
         return (
-          <span className="text-sm tabular-nums text-slate-600 dark:text-slate-300">
-            {value !== null ? `Transportista #${value}` : "Sin transportista"}
+          <span className="flex flex-col items-end leading-tight tabular-nums">
+            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              {miles(piezas)} <span className="text-[11px] font-normal text-slate-400">pzas</span>
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              {lineas} {lineas === 1 ? "línea" : "líneas"}
+              {cajas > 0 && ` · ${cajas} ${cajas === 1 ? "caja" : "cajas"}`}
+            </span>
           </span>
         );
       },
+    }),
+  ] as ColumnDef<Shipment, unknown>[];
+
+const TRANSPORTE_TONE: Record<string, string> = {
+  Local: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300",
+  "Sin dato": "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400",
+};
+
+function TransporteCell({ shipment }: { shipment: Shipment }) {
+  const label = shipmentTransporteLabel(shipment);
+  const tone = TRANSPORTE_TONE[label] ?? "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300";
+  return (
+    <span className="flex flex-col items-start gap-0.5 leading-tight">
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{label}</span>
+      {shipment.tipo_envio === "LOCAL" && shipment.chofer_nombre && (
+        <span className="max-w-48 truncate text-[11px] text-slate-500 dark:text-slate-400" title={shipment.chofer_nombre}>
+          {shipment.chofer_nombre}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Guía en monoespaciada con botón de copiar (se pega en el rastreo de la paquetería). */
+function GuiaCell({ guia }: { guia: string }) {
+  if (!guia) return <span className="text-sm text-slate-400">—</span>;
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(guia);
+      toast.success("Guía copiada");
+    } catch {
+      toast.error("No se pudo copiar la guía");
     }
-  ),
-  columnHelper.display({
-    id: "actions",
-    header: "Acciones",
-    meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} />,
-  }),
-] as ColumnDef<Shipment>[];
+  };
+  return (
+    <span className="group inline-flex items-center gap-1.5">
+      <span className="font-mono text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">{guia}</span>
+      <button
+        type="button"
+        onClick={() => void copiar()}
+        aria-label={`Copiar guía ${guia}`}
+        title="Copiar guía"
+        className="rounded p-1 text-slate-400 opacity-0 transition hover:bg-slate-100 hover:text-sky-600 group-hover:opacity-100 focus-visible:opacity-100 dark:hover:bg-white/10 cursor-pointer"
+      >
+        <CopyIcon className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}

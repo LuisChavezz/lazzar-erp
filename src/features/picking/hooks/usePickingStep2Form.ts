@@ -168,6 +168,7 @@ function buildPickingPayload(
     operador: header.operador,
     almacen: PRODUCTO_TERMINADO_ALMACEN_ID,
     almacen_destino: header.almacen_destino,
+    ...(header.programacion_destino && { programacion_destino: header.programacion_destino }),
     prioridad: header.prioridad,
     tipo: header.tipo,
     picking_detalle: lines,

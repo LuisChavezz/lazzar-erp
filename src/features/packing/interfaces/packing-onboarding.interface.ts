@@ -77,6 +77,15 @@ export interface PackingOnboardingLine {
   producto_nombre: string | null;
   producto_variante: number | null;
   producto_variante_nombre: string | null;
+  /**
+   * Códigos para identificar la prenda al empacar. Opcionales: hoy el
+   * onboarding solo manda `sku_muestra`; el SKU de la variante, el código del
+   * producto y el código Proscai se pintan en cuanto el backend los mande.
+   */
+  sku_muestra?: string | null;
+  producto_variante_sku?: string | null;
+  producto_codigo?: string | null;
+  producto_cod_proscai?: string | null;
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
