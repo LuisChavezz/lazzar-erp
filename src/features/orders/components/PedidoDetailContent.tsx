@@ -99,6 +99,7 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // que `embroidery`.
   picking: { href: "/wms/picking", label: "Volver a Surtido" },
   quality: { href: "/wms/quality-inspections", label: "Volver a Calidad" },
+  receipts: { href: "/wms/receipts", label: "Volver a Recepciones" },
   // Avance de surtido por pedido (EC-913): vuelve a su listado.
   "order-fulfillment": { href: "/wms/order-fulfillment", label: "Volver a Avance de surtido" },
   packing: { href: "/wms/packing", label: "Volver a Embarque" },

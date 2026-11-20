@@ -7,13 +7,12 @@ import {
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormTextarea } from "@/src/components/FormTextarea";
-import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
 import { motivoSinTope, topeRecepcion } from "../utils/receiptQuantities";
-import { variantAttributesLabel } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
-import { VariantAttributesCaption } from "@/src/features/purchase-orders/components/VariantAttributesCaption";
+import { ReceiptLinesPanel } from "./ReceiptLinesPanel";
+import type { ReceiptScanLine } from "../utils/receiptScan";
 import type {
   ReceiptOrderCandidate,
   ReceiptOnboardingOrderDetalleBase,
@@ -95,7 +94,15 @@ export default function ReceiptForm({
   // Talla y color de los renglones de una SM de OB/OR.
   const atributosSm = new Map(
     candidate.type === "salida-maquila"
-      ? (candidate.salidaMaquila.detalle ?? []).map((r) => [r.id, { color: r.color, talla: r.talla }])
+      ? (candidate.salidaMaquila.detalle ?? []).map((r) => [
+          r.id,
+          {
+            color: r.color,
+            talla: r.talla,
+            codigo: r.producto_codigo?.trim() || null,
+            proscai: r.producto_cod_proscai?.trim() || null,
+          },
+        ])
       : [],
   );
   // SM que se cierra con esta recepción (de OP, o de OB/OR).
@@ -134,8 +141,25 @@ export default function ReceiptForm({
   const recibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) >= 1);
   const noRecibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) < 1);
   const piezasPendientes = recibibles.reduce((acc, d) => acc + (topes.get(d.id) ?? 0), 0);
-  const llenarTodo = (todo: boolean) =>
-    recibibles.forEach((d) => handleCantidadChange(d.id, todo ? String(topes.get(d.id) ?? 0) : "0"));
+  // Renglones listos para el panel de captura (escáner o manual).
+  const scanLines: ReceiptScanLine[] = [...recibibles, ...noRecibibles].map((d) => {
+    const renglonCompra = renglonesCompra.get(d.id);
+    const sinTope = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
+    return {
+      id: d.id,
+      nombre: nombreDe(d),
+      color: renglonCompra?.producto_variante_color ?? atributosSm.get(d.id)?.color ?? null,
+      talla: renglonCompra?.producto_variante_talla ?? atributosSm.get(d.id)?.talla ?? null,
+      sku: renglonCompra?.producto_variante_sku ?? d.sku ?? null,
+      codigo: d.producto_codigo?.trim() || atributosSm.get(d.id)?.codigo || null,
+      proscai: d.producto_cod_proscai?.trim() || atributosSm.get(d.id)?.proscai || null,
+      ordenado: Number(d.cantidad_ordenada) || 0,
+      pendiente: Number(pendienteDe(d)) || 0,
+      enMaquila: salidaMaquila ? 0 : Number(d.cantidad_en_maquila) || 0,
+      tope: sinTope ? 0 : (topes.get(d.id) ?? 0),
+      sinTope,
+    };
+  });
   const ningunoRecibible =
     detalle.length > 0 && detalle.every((d) => (topes.get(d.id) ?? 0) < 1);
   // Aviso en lugar de la captura: orden sin renglones, o con renglones pero
@@ -358,112 +382,30 @@ export default function ReceiptForm({
         {detalle.length > 0 && (
           <section
             ref={avisoSinPiezas ? undefined : cantidadesRef}
-            className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg transition-shadow duration-300 mb-8"
+            className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden mb-8"
           >
-            <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
-                <PackageCheckIcon className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 dark:text-white text-base">
-                  Detalle de Productos
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {detalle.length} producto{detalle.length > 1 ? "s" : ""} — Capturar cantidad recibida
-                </p>
-                {/* SM de OP: el backend la cierra con esta recepción aunque
-                    no se reciba todo (EC-912). */}
-                {candidate.type === "salida-maquila" && (
-                  <p role="note" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Cuenta lo que regresó del maquilero. No entra al inventario.
-                  </p>
-                )}
-                {cantidadesErrorAlert}
-              </div>
-              {recibibles.length > 0 && (
-                <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => llenarTodo(true)}
-                    className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition cursor-pointer"
-                  >
-                    Recibir todo ({piezasPendientes})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => llenarTodo(false)}
-                    className="rounded-full border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
-                  >
-                    Limpiar
-                  </button>
-                </div>
+            <form.Subscribe selector={(state) => state.values.cantidades}>
+              {(cantidades) => (
+                <ReceiptLinesPanel
+                  lines={scanLines}
+                  cantidades={cantidades}
+                  setCantidad={handleCantidadChange}
+                  notice={
+                    (candidate.type === "salida-maquila" || cantidadesErrorAlert) && (
+                      <>
+                        {/* SM de OB/OR: cuenta lo que regresó, sin inventario (EC-912). */}
+                        {candidate.type === "salida-maquila" && (
+                          <p role="note" className="text-xs text-slate-500 dark:text-slate-400">
+                            Cuenta lo que regresó del maquilero. No entra al inventario.
+                          </p>
+                        )}
+                        {cantidadesErrorAlert}
+                      </>
+                    )
+                  }
+                />
               )}
-            </div>
-
-            <div className="p-4">
-              <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {[...recibibles, ...noRecibibles].map((d) => {
-                  const fieldName = `cantidades.${d.id}` as const;
-                  const renglonCompra = renglonesCompra.get(d.id);
-                  const tope = topes.get(d.id) ?? 0;
-                  const sinTope = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
-                  const atributos = variantAttributesLabel(
-                    renglonCompra?.producto_variante_color ?? atributosSm.get(d.id)?.color,
-                    renglonCompra?.producto_variante_talla ?? atributosSm.get(d.id)?.talla,
-                  );
-                  return (
-                    <div
-                      key={d.id}
-                      className={`flex items-center gap-4 py-2 px-2 ${sinTope ? "opacity-50" : ""}`}
-                    >
-                      {/* Product info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {nombreDe(d)}
-                        </p>
-                        <VariantAttributesCaption
-                          color={renglonCompra?.producto_variante_color ?? atributosSm.get(d.id)?.color}
-                          talla={renglonCompra?.producto_variante_talla ?? atributosSm.get(d.id)?.talla}
-                        />
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Ordenado: {Number(d.cantidad_ordenada).toFixed(0)} &middot; Pendiente:{" "}
-                          <b className="text-slate-700 dark:text-slate-200">{Number(pendienteDe(d)).toFixed(0)}</b>
-                          {!salidaMaquila && Number(d.cantidad_en_maquila) > 0 && (
-                            <> &middot; En maquila: {Number(d.cantidad_en_maquila).toFixed(0)}</>
-                          )}
-                          {d.sku && d.sku !== nombreDe(d) && (
-                            <> &middot; <span className="font-mono">{d.sku}</span></>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Cantidad recibida: sin una pieza entera pendiente no
-                          hay captura, solo el motivo (decimales: EC-900). */}
-                      {sinTope ? (
-                        <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          {sinTope}
-                        </span>
-                      ) : (
-                        <form.Field name={fieldName}>
-                          {(field) => (
-                            <QuantitySelector
-                              value={Number(field.state.value) || 0}
-                              // `QuantitySelector` no tiene techo: se topa aquí,
-                              // así que nunca se captura más que lo pendiente.
-                              onChange={(next) =>
-                                handleCantidadChange(d.id, String(Math.min(next, tope)))
-                              }
-                              min={0}
-                              label={`Cantidad de ${nombreDe(d)}${atributos ? ` (${atributos})` : ""}`}
-                            />
-                          )}
-                        </form.Field>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            </form.Subscribe>
           </section>
         )}
 
