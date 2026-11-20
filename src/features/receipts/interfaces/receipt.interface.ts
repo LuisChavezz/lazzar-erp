@@ -33,6 +33,27 @@ export interface Receipt {
   tipo_origen: ReceiptTipoOrigen;
   /** SM que regresó con esta recepción (EC-912); `null` si no viene de una. */
   salida_maquila?: number | null;
+  /**
+   * ¿Esta recepción cubrió todo lo pendiente de su orden (OC/OP completa, o la
+   * SM si vino con una) o quedó algo por recibir? Se guarda al registrarla
+   * (nucleo-erp #1286); las anteriores vienen en `null`.
+   */
+  alcance_recepcion?: "PARCIAL" | "COMPLETA" | null;
+  /** Suma de `cantidad_recibida` y número de renglones (#1286). */
+  piezas_recibidas?: number | string | null;
+  renglones?: number | null;
+  /** Quién la registró (#1286). */
+  usuario_nombre?: string | null;
+  /** Pedidos ligados, igual que en Calidad (#1286). */
+  pedidos?: { id: number; folio: string | null }[];
+  /** De su ÚLTIMA inspección; `null` si no se ha inspeccionado (#1286). */
+  inspeccion_estado?: string | null;
+  piezas_aprobadas?: number | string | null;
+  piezas_rechazadas?: number | string | null;
+  /** Folio de esa SM, su origen (OB/OR/OP) y el folio del origen. */
+  salida_maquila_folio?: string | null;
+  salida_maquila_origen?: string | null;
+  salida_maquila_origen_folio?: string | null;
   almacen_nombre: string;
   proveedor_nombre: string | null;
   orden_compra_folio: string | null;

@@ -47,6 +47,10 @@ export interface ReceiptOnboardingOrderDetalleBase {
   descripcion: string | null;
   /** SKU de la variante o de la muestra (nucleo-erp #1268). */
   sku?: string | null;
+  /** Código raíz (modelo) del producto (nucleo-erp #1285). */
+  producto_codigo?: string | null;
+  /** Código Proscai del producto (nucleo-erp #1285). */
+  producto_cod_proscai?: string | null;
   /** Muestra de fabricación especial (sin producto de catálogo). */
   variante_produccion_id?: number | null;
   /** Suma de todas las SM del renglón: solo referencia. */
@@ -118,6 +122,10 @@ export interface ReceiptOnboardingSalidaMaquilaDetalle {
   or_detalle?: number | null;
   producto_nombre: string | null;
   sku: string | null;
+  /** Código raíz (modelo) del producto (nucleo-erp #1285). */
+  producto_codigo?: string | null;
+  /** Código Proscai del producto (nucleo-erp #1285). */
+  producto_cod_proscai?: string | null;
   talla: string | null;
   color: string | null;
   descripcion: string | null;

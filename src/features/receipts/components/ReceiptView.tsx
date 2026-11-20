@@ -103,13 +103,32 @@ export function ReceiptView() {
         key={tab}
         ref={tableRef}
         columns={withHeaderFilters(columns, visibles, {
-          tipo_origen: { type: "distinct", get: (r) => r.tipo_origen, label: (r) => receiptTipoOrigenLabel(r.tipo_origen) },
-          proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true, emptyOption: "Sin proveedor (interno)" },
-          fecha_recepcion: { type: "month", get: (r) => r.fecha_recepcion },
+          folio: { type: "month", get: (r) => r.fecha_recepcion, filterLabel: "mes de recepción" },
+          pedido: {
+            type: "distinct",
+            get: (r) => r.pedidos?.[0]?.folio,
+            searchable: true,
+            emptyOption: "Sin pedido",
+            filterLabel: "pedido",
+          },
+          origen: {
+            type: "distinct",
+            get: (r) => r.tipo_origen,
+            label: (r) => receiptTipoOrigenLabel(r.tipo_origen),
+            filterLabel: "tipo de origen",
+          },
+          proveedor_nombre: {
+            type: "distinct",
+            get: (r) => r.proveedor_nombre,
+            searchable: true,
+            emptyOption: "Interno (sin proveedor)",
+            filterLabel: "proveedor",
+          },
+          piezas: { type: "presence", get: (r) => Number(r.piezas_rechazadas) || 0, con: "Con rechazos", sin: "Sin rechazos", filterLabel: "rechazos" },
           estatus: { type: "distinct", get: (r) => r.estatus, label: (r) => getReceiptEstatusLabel(r.estatus) },
         })}
         data={visibles}
-        searchPlaceholder="Buscar recepción..."
+        searchPlaceholder="Buscar recepción, pedido, OC, OP, proveedor..."
         fillHeight
         onRefetch={refetch}
         isRefetching={isFetching}
