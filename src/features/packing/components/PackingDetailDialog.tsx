@@ -134,11 +134,6 @@ export function PackingDetailContent({ packing }: { packing: Packing }) {
               {formatExactQuantityValue(packing.peso_total)} kg
             </span>
           </InfoField>
-          <InfoField label="Volumen Total">
-            <span className="tabular-nums">
-              {formatExactQuantityValue(packing.volumen_total)} m³
-            </span>
-          </InfoField>
           {packing.fecha_inicio && (
             <InfoField label="Inicio">
               <span className="tabular-nums">

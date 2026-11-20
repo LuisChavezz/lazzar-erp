@@ -6,7 +6,7 @@ import { useForm } from "@tanstack/react-form";
 import { useSession } from "next-auth/react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { buildWorkOrderPedidoOption } from "@/src/utils/formatWorkOrderProgramado";
+import { buildWorkOrderPedidoOptions } from "@/src/utils/formatWorkOrderProgramado";
 import {
   CreateReflectiveOrderFormSchema,
   type CreateReflectiveOrderFormValues,
@@ -75,7 +75,7 @@ export function useReflectiveStep1Form({
 
   // ─── Opciones derivadas ───────────────────────────────────────────────────
   const pedidoOptions = useMemo(
-    () => pedidos.map(buildWorkOrderPedidoOption),
+    () => buildWorkOrderPedidoOptions(pedidos),
     [pedidos],
   );
 

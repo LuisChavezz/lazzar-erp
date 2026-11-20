@@ -1,50 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { UserIcon, ViewIcon } from "@/src/components/Icons";
-import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { ActionMenu } from "@/src/components/ActionMenu";
+import { FolioButton } from "@/src/components/FolioButton";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PACKING_STATUS_CONFIG } from "../constants/packingStatus";
-import { PackingDetailDialog } from "./PackingDetailDialog";
 import type { Packing } from "../interfaces/packing.interface";
-
-// ── Celda de acciones ────────────────────────────────────────────────────────
-
-const ActionsCell = ({ row }: { row: Packing }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
-  const menuItems: ActionMenuItem[] = [
-    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
-  ];
-
-  return (
-    <div className="flex items-center justify-center">
-      <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio}`} />
-      {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
-          propio — `row` YA es el objeto completo (`packing_detalle` incluido),
-          la misma forma que devuelve el detalle (listado y detalle comparten
-          `PackingSerializer` en el backend), así que no dispara ninguna
-          petición nueva. */}
-      {isDetailOpen && (
-        <PackingDetailDialog packing={row} open={true} onOpenChange={setIsDetailOpen} />
-      )}
-    </div>
-  );
-};
 
 const columnHelper = createColumnHelper<Packing>();
 
-export const packingColumns = [
+/**
+ * Columnas del listado de embarques. El detalle (un solo diálogo, sin fetch
+ * propio: la fila ya trae `packing_detalle`) vive en `PackingView`; el folio y
+ * "Ver Detalles" llaman a `onViewDetail`.
+ */
+export const getPackingColumns = ({ onViewDetail }: { onViewDetail: (packing: Packing) => void }) => [
   columnHelper.accessor("folio", {
     header: "Folio",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
+    cell: ({ row, getValue }) => (
+      <FolioButton folio={getValue()} onClick={() => onViewDetail(row.original)} />
     ),
   }),
   columnHelper.accessor("picking_folio", {
@@ -88,12 +66,12 @@ export const packingColumns = [
   // que se muestran tal cual, agrupados en una sola columna por densidad —
   // mismo criterio que la columna "Avance" de `PickingColumns`.
   columnHelper.display({
-    id: "peso_volumen",
-    header: "Peso / Volumen",
+    id: "peso",
+    header: "Peso",
+    meta: { align: "right" },
     cell: ({ row }) => (
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-300">
-        {formatExactQuantityValue(row.original.peso_total)} kg ·{" "}
-        {formatExactQuantityValue(row.original.volumen_total)} m³
+        {formatExactQuantityValue(row.original.peso_total)} kg
       </span>
     ),
   }),
@@ -121,6 +99,13 @@ export const packingColumns = [
     id: "actions",
     header: "Acciones",
     meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} />,
+    cell: ({ row }) => (
+      <div className="flex items-center justify-center">
+        <ActionMenu
+          items={[{ label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetail(row.original) }]}
+          ariaLabel={`Acciones de ${row.original.folio}`}
+        />
+      </div>
+    ),
   }),
 ] as ColumnDef<Packing>[];

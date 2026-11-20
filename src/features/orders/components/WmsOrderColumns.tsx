@@ -2,6 +2,7 @@
 
 import type { ColumnDef, FilterFn } from '@tanstack/react-table';
 import { FilterHeader, type ColumnFilterOption } from '@/src/components/ColumnHeaderFilter';
+import { BLUE_FOLIO_LINK_CLASS } from '@/src/components/FolioButton';
 import type { PickingOnboardingPedido } from '@/src/features/picking/interfaces/picking-onboarding.interface';
 import { getProgramacionDestinoLabel } from '@/src/features/picking/utils/pickingDestino';
 import {
@@ -44,7 +45,8 @@ export function createWmsOrderColumns(): ColumnDef<PickingOnboardingPedido, unkn
           pedidoId={row.original.id}
           folio={row.original.folio}
           from="wms"
-          className="font-mono text-sm font-bold text-slate-800 dark:text-white"
+          tone="accent"
+          className={BLUE_FOLIO_LINK_CLASS}
         />
       ),
     },

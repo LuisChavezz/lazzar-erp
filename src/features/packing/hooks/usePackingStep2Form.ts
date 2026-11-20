@@ -68,15 +68,14 @@ function buildPackingPayload(
     picking: pickingId,
     packing_detalle: lines,
   };
-  if (header.numero_cajas > 0) payload.numero_cajas = header.numero_cajas;
+  // Obligatorio desde el schema (≥ 1). El volumen ya no se captura.
+  payload.numero_cajas = header.numero_cajas;
   // `toSendableDecimal` (no un `.trim()` a secas) para que lo enviado sea un
   // decimal canónico: descarta lo que no sostiene un número y normaliza la
   // precisión. Un `.trim()` dejaría pasar tal cual cualquier residuo de
   // captura que el backend rechazaría al construir su `Decimal`.
   const peso = toSendableDecimal(header.peso_total, PACKING_HEADER_DECIMAL_PLACES);
   if (peso !== null) payload.peso_total = peso;
-  const volumen = toSendableDecimal(header.volumen_total, PACKING_HEADER_DECIMAL_PLACES);
-  if (volumen !== null) payload.volumen_total = volumen;
   const observaciones = header.observaciones.trim();
   if (observaciones.length > 0) payload.observaciones = observaciones;
   return payload;

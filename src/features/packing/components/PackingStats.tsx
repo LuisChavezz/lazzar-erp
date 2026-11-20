@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardListIcon, BoxIcon, WeightIcon, VolumeIcon } from "@/src/components/Icons";
+import { ClipboardListIcon, BoxIcon, WeightIcon } from "@/src/components/Icons";
 import KpiGrid, { type KpiItem } from "@/src/components/KpiGrid";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { computePackingKpis } from "../utils/packing.utils";
@@ -46,14 +46,6 @@ export function PackingStats({ items }: { items: Packing[] }) {
       label: "Peso Total",
       value: `${formatExactQuantityValue(kpis.pesoTotal)} kg`,
       icon: WeightIcon,
-      iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
-      iconClass: "text-amber-500",
-      subLabel: "Captura libre del operador",
-    },
-    {
-      label: "Volumen Total",
-      value: `${formatExactQuantityValue(kpis.volumenTotal)} m³`,
-      icon: VolumeIcon,
       iconBgClass: "bg-amber-50 dark:bg-amber-500/10",
       iconClass: "text-amber-500",
       subLabel: "Captura libre del operador",

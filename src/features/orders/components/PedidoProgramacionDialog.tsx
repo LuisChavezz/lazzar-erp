@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  esProgramacionSugerida,
+  faltantesDeSugerencia,
+  sugerirProgramacion,
+  type ProgramacionSugerida,
+} from "../utils/pedidoProgramacionSugerida";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -87,6 +93,8 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
     clearError,
     addRow,
     removeRow,
+    appendRows,
+    programaciones,
     handleFormSubmit,
   } = usePedidoProgramacionForm({ contexto, onSuccess: onClose });
 
@@ -126,6 +134,12 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
         <div className="border-t border-slate-200 dark:border-white/10 pt-4">
           <SectionTitle>Parcialidades</SectionTitle>
         </div>
+
+        <ProgramacionSugeridaCard
+          sugerida={sugerirProgramacion(contexto.renglones, destinosAplicables)}
+          programaciones={programaciones}
+          onAgregar={appendRows}
+        />
 
         {/* ── Resumen en vivo: piezas programadas contra el total ─────────── */}
         <div
@@ -309,6 +323,91 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
         </div>
       </fieldset>
     </form>
+  );
+}
+
+/**
+ * Sugerencia de destinos según los servicios de cada talla. La decisión final
+ * es de Mesa de Control. Lo ya programado se CONSERVA (puede tener ya una orden
+ * de trabajo): el botón agrega una parcialidad nueva por destino con solo lo
+ * que falta para la sugerencia, y todo se edita y se guarda como siempre.
+ */
+function ProgramacionSugeridaCard({
+  sugerida,
+  programaciones,
+  onAgregar,
+}: {
+  sugerida: ProgramacionSugerida[];
+  programaciones: readonly { destino: string; cantidad: string }[];
+  onAgregar: (rows: { destino: string; cantidad: number }[]) => void;
+}) {
+  if (sugerida.length === 0) return null;
+  const aplicada = esProgramacionSugerida(programaciones, sugerida);
+  const faltantes = faltantesDeSugerencia(programaciones, sugerida);
+  const porAgregar = faltantes.filter((f) => f.faltan > 0);
+  const hayProgramado = programaciones.some((p) => (Number(p.cantidad) || 0) > 0);
+  const conVarios = sugerida.reduce((acc, s) => acc + s.conVariosServicios, 0);
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        aplicada
+          ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-500/20 dark:bg-emerald-500/5"
+          : "border-sky-200 bg-sky-50/60 dark:border-sky-500/20 dark:bg-sky-500/5"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            {aplicada
+              ? "Coincide con la sugerencia del sistema"
+              : porAgregar.length === 0
+                ? "Ya cubre la sugerencia (con cantidades distintas)"
+                : "Sugerencia según los servicios de cada talla"}
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {faltantes.map((f) => (
+              <span
+                key={f.destino}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2.5 py-0.5 text-xs"
+              >
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {PEDIDO_PROGRAMACION_DESTINO_LABELS[f.destino]}
+                </span>
+                <span className="tabular-nums text-slate-500 dark:text-slate-400">{f.sugerido} pzas</span>
+                {f.programado > 0 && f.faltan > 0 && (
+                  <span className="tabular-nums font-semibold text-sky-700 dark:text-sky-300">
+                    faltan {f.faltan}
+                  </span>
+                )}
+                {f.programado >= f.sugerido && (
+                  <span title="Ya programado" className="text-emerald-600 dark:text-emerald-400">
+                    ✓
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
+        {porAgregar.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onAgregar(porAgregar.map((f) => ({ destino: f.destino, cantidad: f.faltan })))}
+            className="shrink-0 rounded-full bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 active:scale-95 transition cursor-pointer"
+          >
+            {hayProgramado
+              ? `Agregar lo que falta (${porAgregar.length} ${porAgregar.length === 1 ? "parcialidad" : "parcialidades"})`
+              : "Usar sugerencia"}
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+        Tallas con servicio van a su proceso; las demás, a Embarque.
+        {hayProgramado ? " Lo ya programado se conserva: lo que falta entra como parcialidad nueva." : ""}
+        {" Puedes ajustar cantidades o destinos antes de guardar."}
+        {conVarios > 0 &&
+          ` ${conVarios} pzas llevan más de un servicio: se proponen en el primero (Bordado → Reflejante → Corte de manga).`}
+      </p>
+    </div>
   );
 }
 

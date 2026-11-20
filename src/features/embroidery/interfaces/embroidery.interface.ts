@@ -713,6 +713,8 @@ export interface EmbroideryOnboardingPedido {
   /** Lo que Mesa de Control programó a bordado; solo informativo. */
   // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
   programado?: WorkOrderProgramado;
+  /** nucleo-erp#1274: lo programado a este destino menos lo que ya está en órdenes activas. */
+  disponible_programado?: number | null;
 }
 
 /**

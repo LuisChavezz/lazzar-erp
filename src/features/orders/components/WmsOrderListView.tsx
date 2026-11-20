@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ListTabs } from '@/src/components/ListTabs';
 import { surtidoPedidoColumns } from '@/src/features/order-fulfillment/components/SurtidoPedidoColumns';
 import { SurtidoPedidoRowActionsProvider } from '@/src/features/order-fulfillment/hooks/useSurtidoPedidoRowActions';
@@ -8,7 +8,12 @@ import { SurtidoPedidoDetailDialog } from '@/src/features/order-fulfillment/comp
 import type { SurtidoPedido } from '@/src/features/order-fulfillment/interfaces/order-fulfillment.interface';
 import { useSurtidosCompletos } from '../hooks/useSurtidosCompletos';
 
-import { DataTable } from '@/src/components/DataTable';
+import { DataTable, type DataTableHandle } from '@/src/components/DataTable';
+import { ListExportButtons } from '@/src/components/ListExportButtons';
+import { useListExport } from '@/src/hooks/useListExport';
+import type { PickingOnboardingPedido } from '@/src/features/picking/interfaces/picking-onboarding.interface';
+import { SURTIDO_PEDIDO_EXPORT_COLUMNS } from '@/src/features/order-fulfillment/utils/surtidoPedidoExport';
+import { WMS_ORDER_EXPORT_COLUMNS } from '../utils/wmsOrderExport';
 import { withHeaderFilters } from '@/src/components/withHeaderFilters';
 import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import {
@@ -45,6 +50,25 @@ export function WmsOrderListView() {
   const isRefreshingLoaded = hasLoaded && isFetching;
   const mayBeTruncated = pedidos.length >= SCHEDULED_PEDIDOS_LIMIT;
 
+  // Excel/PDF: EXACTAMENTE las filas que deja ver la pestaña activa (filtros
+  // de encabezado, búsqueda y orden).
+  const pendingRef = useRef<DataTableHandle<PickingOnboardingPedido>>(null);
+  const doneRef = useRef<DataTableHandle<SurtidoPedido>>(null);
+  const pendingExport = useListExport({
+    getRows: () => pendingRef.current?.getFilteredRows() ?? [],
+    columns: WMS_ORDER_EXPORT_COLUMNS,
+    title: 'Pedidos por surtir',
+    fileName: 'pedidos-por-surtir',
+    summary: (rows) => `${rows.length} pedido${rows.length === 1 ? '' : 's'}`,
+  });
+  const doneExport = useListExport({
+    getRows: () => doneRef.current?.getFilteredRows() ?? [],
+    columns: SURTIDO_PEDIDO_EXPORT_COLUMNS,
+    title: 'Pedidos surtidos',
+    fileName: 'pedidos-surtidos',
+    summary: (rows) => `${rows.length} pedido${rows.length === 1 ? '' : 's'}`,
+  });
+
   return (
     <div className="h-full flex flex-col min-h-0 gap-3">
       <ListTabs
@@ -64,6 +88,7 @@ export function WmsOrderListView() {
         <div className="flex-1 min-h-0 flex flex-col">
           <DataTable
             key="surtidos"
+            ref={doneRef}
             columns={withHeaderFilters(surtidoColumns, done.surtidos, {
               cliente_nombre: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
               etapa: { type: 'distinct', get: (p) => p.etapa },
@@ -81,6 +106,15 @@ export function WmsOrderListView() {
             emptyMessage="Aún no hay pedidos surtidos por completo."
             onRefetch={done.refetch}
             isRefetching={done.isFetching}
+            actionButton={
+              <div className="flex items-center gap-2 shrink-0">
+                <ListExportButtons
+                  subject="pedidos surtidos"
+                  onExcel={() => void doneExport.exportCsv()}
+                  onPdf={() => void doneExport.exportPdf()}
+                />
+              </div>
+            }
           />
         </div>
         <SurtidoPedidoDetailDialog pedido={detailPedido} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
@@ -97,6 +131,7 @@ export function WmsOrderListView() {
       )}
       <div className="flex-1 min-h-0 flex flex-col">
         <DataTable
+          ref={pendingRef}
           columns={withHeaderFilters(columns, pedidos, {
             cliente: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
             sucursal: { type: 'distinct', get: (p) => p.sucursal_nombre },
@@ -115,6 +150,15 @@ export function WmsOrderListView() {
           onRefetch={refetch}
           isRefetching={isRefreshingLoaded}
           isLoadingOverlay={isRefreshingLoaded}
+          actionButton={
+            <div className="flex items-center gap-2 shrink-0">
+              <ListExportButtons
+                subject="pedidos por surtir"
+                onExcel={() => void pendingExport.exportCsv()}
+                onPdf={() => void pendingExport.exportPdf()}
+              />
+            </div>
+          }
         />
       </div>
       </>)}

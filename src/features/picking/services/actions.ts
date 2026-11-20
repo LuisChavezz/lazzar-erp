@@ -1,26 +1,46 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import type {
   CreatePickingPayload,
   Picking,
+  PickingListItem,
+  PickingsFiltros,
+  PickingsResumen,
   TransferPickingPayload,
 } from "../interfaces/picking.interface";
+import { pickingsApiParams } from "../utils/pickingsApiParams";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
 
 /**
- * Lista los pickings (`GET /wms/pickings/`).
- *
- * Tenant-scoped por empresa/sucursal — el usuario solo ve pickings de los
- * almacenes a los que tiene acceso (mismo comportamiento que traspasos).
- *
- * Sin parámetros: el endpoint NO acepta ningún query param (no declara
- * ninguno y el backend no monta filter backend alguno), así que devuelve
- * siempre la lista completa sin paginar. Por eso el filtrado del listado vive
- * en cliente (ver `PickingView`) — mandar `?estado=`/`?prioridad=` aquí no
- * filtraría nada, solo aparentaría hacerlo.
+ * Página de la lista ligera de surtidos (`GET /wms/pickings/?vista=lista`,
+ * `?limit=&offset=`). Los filtros llegan validados desde `useServerTable`;
+ * `periodo`/`entrega` se traducen a rangos de fecha (`pickingsApiParams`).
  */
-export const getPickings = async (): Promise<Picking[]> => {
-  const response = await v1_api.get<Picking[]>("/wms/pickings/");
-  return response.data;
+export const getPickingsPage = async (
+  params: Record<string, string | number>,
+): Promise<PaginatedListResponse<PickingListItem>> => {
+  const { data } = await v1_api.get<PaginatedListResponse<PickingListItem>>("/wms/pickings/", {
+    params: { ...pickingsApiParams(params), vista: "lista" },
+  });
+  return data;
+};
+
+/** KPIs del conjunto filtrado (`GET /wms/pickings/resumen/`), con los mismos criterios que la lista. */
+export const getPickingsResumen = async (
+  params: Record<string, string | number>,
+): Promise<PickingsResumen> => {
+  const criterios = { ...params };
+  delete criterios.ordering;
+  const { data } = await v1_api.get<PickingsResumen>("/wms/pickings/resumen/", {
+    params: pickingsApiParams(criterios),
+  });
+  return data;
+};
+
+/** Clientes y operadores con surtidos, para los filtros de encabezado. */
+export const getPickingsFiltros = async (): Promise<PickingsFiltros> => {
+  const { data } = await v1_api.get<PickingsFiltros>("/wms/pickings/filtros/");
+  return data;
 };
 
 /**

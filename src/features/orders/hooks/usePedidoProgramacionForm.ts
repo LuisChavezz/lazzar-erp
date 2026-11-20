@@ -214,6 +214,23 @@ export function usePedidoProgramacionForm({
     resetRowErrors();
   };
 
+  /**
+   * Agrega parcialidades NUEVAS al final (p. ej. lo que falta de la
+   * sugerencia), sin tocar las que ya están: esas pueden tener ya una orden de
+   * trabajo. La decisión sigue siendo del usuario, que las edita antes de guardar.
+   */
+  const appendRows = (rows: { destino: string; cantidad: number }[]) => {
+    for (const row of rows) {
+      form.pushFieldValue("programaciones", {
+        destino: row.destino,
+        cantidad: String(row.cantidad),
+        comentarios: "",
+      });
+    }
+    setRowKeys((prev) => [...prev, ...rows.map(() => rowKeyCounter.current++)]);
+    clearError(LIST_ERROR_KEY);
+  };
+
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -235,6 +252,8 @@ export function usePedidoProgramacionForm({
     clearError,
     addRow,
     removeRow,
+    appendRows,
+    programaciones,
     handleFormSubmit,
   };
 }

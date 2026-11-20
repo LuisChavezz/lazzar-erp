@@ -23,4 +23,11 @@ export type WorkOrderProgramado = {
   cantidad: number;
   fecha: string;
   usuario_nombre: string | null;
+  /**
+   * nucleo-erp#1274: lo que ya está en órdenes activas de este destino y lo
+   * que queda (`cantidad - asignado`, acotado a 0). Opcionales: un backend
+   * anterior no los manda y el front los calcula (`getWorkOrderSaldo`).
+   */
+  asignado?: number;
+  disponible?: number;
 } | null;

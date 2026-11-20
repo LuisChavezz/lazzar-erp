@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { BLUE_FOLIO_LINK_CLASS } from "@/src/components/FolioButton";
 import { RowProgressBar } from "@/src/components/ProgressPrimitives";
 import { ListIcon } from "@/src/components/Icons";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
@@ -33,7 +34,8 @@ const PedidoCell = ({ pedido }: { pedido: SurtidoPedido }) => {
           pedidoId={pedido.id}
           folio={pedido.folio}
           from="order-fulfillment"
-          className="font-mono text-slate-700 dark:text-slate-200 font-semibold"
+          tone="accent"
+          className={BLUE_FOLIO_LINK_CLASS}
         />
         <div className="flex flex-wrap items-center gap-1">
           <span

@@ -17,20 +17,11 @@ interface ReceiptActionsCellProps {
   DetailDialog: ComponentType<ReceiptDetailDialogLikeProps>;
 }
 
-// ── Celda de acciones compartida ────────────────────────────────────────────
-// Reutilizada por la vista WMS (ReceiptColumns) y la vista Compras
-// (PurchaseOrderReceiptColumns): mismo estado de apertura por fila y mismo
-// menú; cada consumidor solo decide qué `*DetailDialog` renderizar mediante
-// `DetailDialog`. La consulta del detalle queda deshabilitada
-// (receiptId = null) mientras el diálogo esté cerrado.
-//
-// Nota: cada fila monta su propio `DetailDialog` (y por lo tanto su propio
-// `useReceiptDetail` deshabilitado) aunque solo uno pueda estar abierto a la
-// vez. Centralizar esto en un único diálogo a nivel de tabla requeriría que
-// `receiptColumns`/`purchaseOrderReceiptColumns` dejen de ser arreglos
-// estáticos y pasen a ser fábricas que reciban un callback `onView`, tocando
-// también `ReceiptView`/`PurchaseOrderReceiptList` — un cambio más disruptivo
-// que el alcance de esta limpieza. Se deja documentado para una pasada futura.
+// ── Celda de acciones de la vista Compras ───────────────────────────────────
+// La usa `PurchaseOrderReceiptColumns`: cada fila monta su propio
+// `DetailDialog` (consulta deshabilitada, receiptId = null, mientras está
+// cerrado). La vista WMS ya centraliza un solo diálogo en `ReceiptView`
+// (`getReceiptColumns({ onViewDetail })`); Compras puede migrar igual.
 export const ReceiptActionsCell = ({ row, DetailDialog }: ReceiptActionsCellProps) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 

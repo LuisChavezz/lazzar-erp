@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable } from "@/src/components/DataTable";
+import { DataTable, type DataTableHandle } from "@/src/components/DataTable";
+import { ListExportButtons } from "@/src/components/ListExportButtons";
+import { useListExport } from "@/src/hooks/useListExport";
 import { ListTabs } from "@/src/components/ListTabs";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { receiptTipoOrigenLabel } from "../constants/receiptOrigin";
@@ -12,11 +14,14 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { ReceiptStepManager } from "./ReceiptStepManager";
 import { useReceipts } from "../hooks/useReceipts";
-import { receiptColumns } from "./ReceiptColumns";
+import { getReceiptColumns } from "./ReceiptColumns";
+import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
+import { RECEIPT_EXPORT_COLUMNS } from "../utils/receiptExport";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { receiptFlowSubtitle } from "../utils/receiptCandidates";
 import type { ReceiptOrderCandidate } from "../interfaces/receipt-onboarding.interface";
+import type { Receipt } from "../interfaces/receipt.interface";
 
 // ─── View ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +60,20 @@ export function ReceiptView() {
   // para el rol "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-WMS-RECEPCIONES", session?.user);
-  const columns = useMemo(() => receiptColumns, []);
+  // Un solo diálogo de detalle para toda la tabla (no uno por fila).
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const columns = getReceiptColumns({ onViewDetail: (r) => setDetailId(r.id) });
+
+  // Excel/PDF: EXACTAMENTE las filas que deja ver la tabla (pestaña, filtros
+  // de encabezado, búsqueda y orden).
+  const tableRef = useRef<DataTableHandle<Receipt>>(null);
+  const { exportCsv, exportPdf } = useListExport({
+    getRows: () => tableRef.current?.getFilteredRows() ?? [],
+    columns: RECEIPT_EXPORT_COLUMNS,
+    title: "Recepciones",
+    fileName: "recepciones",
+    summary: (rows) => `${rows.length} recepci${rows.length === 1 ? "ón" : "ones"}`,
+  });
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -83,6 +101,7 @@ export function ReceiptView() {
       <div className="h-2 shrink-0" />
       <DataTable
         key={tab}
+        ref={tableRef}
         columns={withHeaderFilters(columns, visibles, {
           tipo_origen: { type: "distinct", get: (r) => r.tipo_origen, label: (r) => receiptTipoOrigenLabel(r.tipo_origen) },
           proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true, emptyOption: "Sin proveedor (interno)" },
@@ -101,7 +120,13 @@ export function ReceiptView() {
         onErrorRetry={refetch}
         loadingAriaLabel="Cargando recepciones"
         actionButton={
-          canCreate ? (
+          <div className="flex items-center gap-2 shrink-0">
+          <ListExportButtons
+            subject="recepciones"
+            onExcel={() => void exportCsv()}
+            onPdf={() => void exportPdf()}
+          />
+          {canCreate && (
           <MainDialog
             title={
               <DialogHeader
@@ -129,8 +154,16 @@ export function ReceiptView() {
               onSelectionChange={setSelectedCandidate}
             />
           </MainDialog>
-          ) : undefined
+          )}
+          </div>
         }
+      />
+      <ReceiptDetailDialog
+        receiptId={detailId}
+        open={detailId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailId(null);
+        }}
       />
     </div>
   );

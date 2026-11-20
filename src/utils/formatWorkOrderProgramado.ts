@@ -53,20 +53,83 @@ interface WorkOrderOnboardingPedido {
   folio: string | null;
   cliente_nombre: string | null;
   programado?: WorkOrderProgramado;
+  /** nucleo-erp#1274: lo programado menos lo que ya está en órdenes activas. */
+  disponible_programado?: number | null;
+  /** Tallas del onboarding: `cantidad_asignada` = lo que ya tomaron órdenes activas. */
+  detalles?: { cantidad_asignada: number | null }[];
 }
 
 /**
- * Opción del `<select>` de pedido de los tres onboardings: folio (o el id si
- * no hay folio, porque `folio` es nullable) y cliente, más el sufijo corto de
- * `programado`. Conserva `programado` para el bloque bajo el select.
+ * Saldo de lo que Mesa de Control programó a este destino: lo programado menos
+ * lo que ya tomaron las órdenes activas del pedido (Σ `cantidad_asignada`).
+ * `null` sin programación (`programado` ausente o `null`): no hay contra qué contar.
+ *
+ * Es la regla que evita volver a crear una orden sobre lo ya programado: el
+ * onboarding del backend sigue listando el pedido mientras quede pendiente
+ * contra el TOTAL del pedido, no contra lo programado.
  */
-export const buildWorkOrderPedidoOption = (pedido: WorkOrderOnboardingPedido) => ({
-  value: pedido.id,
-  label: [
-    [pedido.folio ?? `Pedido #${pedido.id}`, pedido.cliente_nombre].filter(Boolean).join(" — "),
-    formatProgramadoOptionText(pedido.programado),
-  ]
-    .filter(Boolean)
-    .join(" · "),
-  programado: pedido.programado,
-});
+export interface WorkOrderSaldo {
+  programado: number;
+  enOrdenes: number;
+  disponible: number;
+}
+
+export const getWorkOrderSaldo = (pedido: WorkOrderOnboardingPedido): WorkOrderSaldo | null => {
+  if (!pedido.programado) return null;
+  const programado = Math.floor(pedido.programado.cantidad);
+  // Con nucleo-erp#1274 el backend manda el saldo y es la fuente de la verdad
+  // (es lo mismo con lo que topa el POST). Sin él, se calcula igual que él:
+  // Σ `cantidad_asignada` de las tallas = lo que ya tomaron órdenes activas.
+  const { asignado, disponible } = pedido.programado;
+  if (typeof asignado === "number" && typeof disponible === "number") {
+    return { programado, enOrdenes: Math.floor(asignado), disponible: Math.max(0, Math.floor(disponible)) };
+  }
+  const enOrdenes = Math.floor(
+    (pedido.detalles ?? []).reduce((acc, d) => acc + (Number(d.cantidad_asignada) || 0), 0),
+  );
+  const calculado = Math.max(0, programado - enOrdenes);
+  const delPedido = pedido.disponible_programado;
+  return {
+    programado,
+    enOrdenes,
+    disponible: typeof delPedido === "number" ? Math.max(0, Math.floor(delPedido)) : calculado,
+  };
+};
+
+const formatSaldoOptionText = (pedido: WorkOrderOnboardingPedido, saldo: WorkOrderSaldo | null) => {
+  if (saldo) {
+    if (saldo.disponible === 0) return `Ya en órdenes ${formatPiezas(saldo.enOrdenes)} de ${formatPiezas(saldo.programado)} programadas`;
+    return saldo.enOrdenes > 0
+      ? `Disponibles ${formatPiezas(saldo.disponible)} de ${formatPiezas(saldo.programado)} programadas`
+      : `Prog. Mesa de Control: ${formatPiezas(saldo.programado)}`;
+  }
+  return formatProgramadoOptionText(pedido.programado);
+};
+
+/**
+ * Opción del `<select>` de pedido de los tres onboardings: folio (o el id si
+ * no hay folio, porque `folio` es nullable) y cliente, más el saldo de lo
+ * programado. Un pedido cuya programación ya tomaron otras órdenes sale
+ * deshabilitado (`agotado`): para otra orden, Mesa de Control debe programar más.
+ */
+export const buildWorkOrderPedidoOption = (pedido: WorkOrderOnboardingPedido) => {
+  const saldo = getWorkOrderSaldo(pedido);
+  return {
+    value: pedido.id,
+    label: [
+      [pedido.folio ?? `Pedido #${pedido.id}`, pedido.cliente_nombre].filter(Boolean).join(" — "),
+      formatSaldoOptionText(pedido, saldo),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    programado: pedido.programado,
+    saldo,
+    agotado: saldo !== null && saldo.disponible === 0,
+  };
+};
+
+/** Opciones de los tres onboardings: primero las que tienen saldo; las agotadas al final. */
+export const buildWorkOrderPedidoOptions = (pedidos: WorkOrderOnboardingPedido[]) => {
+  const options = pedidos.map(buildWorkOrderPedidoOption);
+  return [...options.filter((o) => !o.agotado), ...options.filter((o) => o.agotado)];
+};

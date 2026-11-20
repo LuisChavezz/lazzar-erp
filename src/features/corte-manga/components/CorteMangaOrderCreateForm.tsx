@@ -303,6 +303,7 @@ export function CorteMangaOrderCreateForm({
                     <option
                       key={option.value}
                       value={option.value}
+                      disabled={option.agotado}
                       className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
                     >
                       {option.label}
@@ -314,7 +315,7 @@ export function CorteMangaOrderCreateForm({
                   del pedido: se genera un renglón por cada talla marcada para corte de manga.
                 </p>
                 {/* Solo informativo: la orden sigue tomando todas las tallas. */}
-                {selected && <MesaControlProgramadoIndicator programado={selected.programado} />}
+                {selected && <MesaControlProgramadoIndicator programado={selected.programado} saldo={selected.saldo} />}
               </div>
             );
           }}

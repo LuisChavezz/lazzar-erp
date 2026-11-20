@@ -29,6 +29,25 @@ export const CreateShipmentDetalleLineSchema = z.object({
 export const SHIPMENT_GUIA_MAX_LENGTH = 100;
 
 /**
+ * Cómo sale el envío. Por paquetería exige paquetería + guía (sin guía no
+ * sale: no hay forma de rastrearlo ni de agregarla después). Local exige el
+ * chofer de la empresa que lo lleva.
+ */
+export type ShipmentTipoEnvio = "PAQUETERIA" | "LOCAL";
+
+export const SHIPMENT_PAQUETERIAS = [
+  { value: "ESTAFETA", label: "Estafeta" },
+  { value: "FEDEX", label: "FedEx" },
+  { value: "DHL", label: "DHL" },
+  { value: "PAQUETEXPRESS", label: "Paquetexpress" },
+  { value: "UPS", label: "UPS" },
+  { value: "99MINUTOS", label: "99 Minutos" },
+  { value: "OTRA", label: "Otra" },
+] as const;
+export type ShipmentPaqueteria = (typeof SHIPMENT_PAQUETERIAS)[number]["value"];
+
+
+/**
  * Body completo de `POST /wms/despachos/`.
  *
  * `guia` es opcional: un despacho sin guía se manda sin la clave (el backend
@@ -52,6 +71,9 @@ export const CreateShipmentPayloadSchema = z.object({
     .string()
     .max(SHIPMENT_GUIA_MAX_LENGTH, `La guía no puede tener más de ${SHIPMENT_GUIA_MAX_LENGTH} caracteres`)
     .optional(),
+  tipo_envio: z.enum(["PAQUETERIA", "LOCAL"]),
+  paqueteria: z.string().max(40).optional(),
+  chofer: z.number().int().min(1).optional(),
   despacho_detalle: z
     .array(CreateShipmentDetalleLineSchema)
     .min(1, "Marca al menos una línea para enviar"),

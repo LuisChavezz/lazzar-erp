@@ -1,48 +1,37 @@
 "use client";
 
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { FormSubmitButton } from "@/src/components/FormButtons";
-import { FormInput } from "@/src/components/FormInput";
 import { Loader } from "@/src/components/Loader";
-import {
-  ExclamationTriangleIcon,
-  InfoIcon,
-  RefreshIcon,
-} from "@/src/components/Icons";
+import { ExclamationTriangleIcon, InfoIcon, RefreshIcon } from "@/src/components/Icons";
 import { shippingOnboardingErrorMessage } from "../hooks/useShippingOnboarding";
 import { useShippingForm } from "../hooks/useShippingForm";
 import { ShippingLinesTable } from "./ShippingLinesTable";
 import { ShippingPackingSelector } from "./ShippingPackingSelector";
-import { SHIPMENT_GUIA_MAX_LENGTH } from "../schemas/shipping.schema";
+import {
+  SHIPMENT_GUIA_MAX_LENGTH,
+  SHIPMENT_PAQUETERIAS,
+  type ShipmentTipoEnvio,
+} from "../schemas/shipping.schema";
 
 interface ShippingCreateFormProps {
   /** Se invoca tras registrar el despacho correctamente (cierra el diálogo). */
   onSuccess: () => void;
 }
 
+const TIPOS_ENVIO: { value: ShipmentTipoEnvio; label: string; hint: string }[] = [
+  { value: "PAQUETERIA", label: "Paquetería", hint: "Con guía de rastreo" },
+  { value: "LOCAL", label: "Entrega local", hint: "La lleva un chofer de la empresa" },
+];
+
 /**
- * Captura de despacho en UN SOLO PASO.
+ * Captura de despacho en UN SOLO PASO: embarque → qué sale → cómo sale.
  *
- * Decisión de arquitectura (deliberadamente distinta de picking/packing, que
- * sí usan `StepProgressBar` + `...StepManager`): el contrato de
- * `POST /wms/despachos/` recibe `{ packing, despacho_detalle, guia }`, y
- * `despacho_detalle` no lleva cantidad ni ningún otro dato por línea. Del
- * encabezado solo se captura la guía (opcional) —ni cajas, ni peso, ni fechas,
- * ni observaciones—, así que un "Paso 1" cuyo único contenido sería el selector de packing no
- * agregaría ninguna decisión: solo una pantalla y un botón "Continuar" de más.
- * Con un solo paso, además, cambiar de packing es un clic en la lista (que
- * queda visible) en vez de un "Regresar". Mismo criterio —y mismo precedente—
- * que `CreateInvoiceDialog`, que documenta esta misma elección para un
- * endpoint igual de pequeño.
+ * Un envío NO sale sin saber cómo: por paquetería exige paquetería + guía
+ * (la guía no se puede agregar después: `Despacho` no tiene `PATCH`); local
+ * exige el chofer (empleado del catálogo `choferes` del onboarding).
  *
- * NO existe selector de envío, a propósito: `Despacho.envio` es nullable en el
- * backend y un `Envio` se puede crear por API (`POST /logistica/envios/`),
- * pero exige un `transportista` y `Transportista` no tiene nombre ni endpoint
- * de catálogo, así que el selector no tendría nada que mostrar. Y
- * tampoco hay un flujo de "asociar envío después": `Despacho` no expone
- * `PATCH`/`PUT`, no hay endpoint detrás de ese botón. Lo que sí se hace es
- * DECIRLO (aviso junto al botón de registro) y, como la guía tampoco se puede
- * agregar después, pedir confirmación cuando el envío va sin ella.
+ * El selector de embarque vive FUERA del <form>: su buscador es un input de
+ * texto y un Enter accidental ahí registraría un despacho irreversible.
  */
 export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
   const {
@@ -53,9 +42,6 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
     availableRowsCount,
     alreadyShippedCount,
     embarque,
-    checkedIds,
-    toggleLine,
-    toggleAll,
     selectedCount,
     isLoading,
     isError,
@@ -68,140 +54,89 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
     dismissStaleNotice,
     guia,
     setGuia,
-    confirmWithoutGuiaOpen,
-    setConfirmWithoutGuiaOpen,
-    confirmWithoutGuia,
+    tipoEnvio,
+    setTipoEnvio,
+    paqueteria,
+    setPaqueteria,
+    chofer,
+    setChofer,
+    choferes,
+    transporteFaltante,
     isPending,
     handleSubmit,
   } = useShippingForm({ onSuccess });
 
   const hasPacking = selectedPackingId !== null;
+  const listo = selectedCount > 0 && transporteFaltante === null;
+  const paqueteriaLabel = SHIPMENT_PAQUETERIAS.find((p) => p.value === paqueteria)?.label;
+  // Enter en un campo de texto no registra: el envío es irreversible.
+  const blockEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && !event.nativeEvent.isComposing) event.preventDefault();
+  };
 
   return (
-    <div className="w-full space-y-5">
-      {/* ── Selección del packing ────────────────────────────────────────
-          Vive FUERA del <form>: su buscador es un input de texto, y dentro
-          del formulario un Enter accidental ahí dispararía el envío implícito
-          —registrando un despacho irreversible con una sola tecla—. Mismo
-          motivo por el que `CreateInvoiceDialog` separa su selector. */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-            Embarque a enviar
-          </h3>
-          <p className="text-[11px] text-slate-500">
-            El pedido, el cliente y la sucursal se heredan del embarque elegido.
-          </p>
-        </div>
-        <ShippingPackingSelector
-          selectedPackingId={selectedPackingId}
-          onSelect={selectPacking}
-          disabled={isPending}
-        />
-      </section>
+    <div className="w-full space-y-4">
+      {!hasPacking && (
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">¿Qué embarque sale?</h3>
+            <p className="text-[11px] text-slate-500">El pedido, el cliente y la sucursal se heredan del embarque.</p>
+          </div>
+          <ShippingPackingSelector selectedPackingId={selectedPackingId} onSelect={selectPacking} disabled={isPending} />
+        </section>
+      )}
 
       {hasPacking && (
         <form
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             event.stopPropagation();
             void handleSubmit();
           }}
-          className="w-full space-y-5"
+          className="w-full space-y-4"
         >
-          {/* ── Resumen del packing elegido ──────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Embarque
-              </p>
-              <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {packing?.folio ?? "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Pedido
-              </p>
-              <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {packing?.pedido_folio ?? "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Cliente
-              </p>
-              <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {packing?.cliente_nombre ?? "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Almacén
-              </p>
-              <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+          {/* ── Embarque elegido en una línea, con "Cambiar" ─────────────── */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-2.5 text-xs">
+            <span className="font-mono font-bold text-slate-800 dark:text-white">{packing?.folio ?? "—"}</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
+            <span className="font-mono font-semibold text-sky-700 dark:text-sky-300">{packing?.pedido_folio ?? "—"}</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
+            <span className="min-w-0 truncate font-semibold text-slate-700 dark:text-slate-200">
+              {packing?.cliente_nombre ?? "—"}
+            </span>
+            <span className="ml-auto flex items-center gap-2">
+              <span className="rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                 {packing?.almacen_nombre ?? "—"}
-              </p>
-            </div>
+              </span>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => selectPacking(null)}
+                className="text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:underline cursor-pointer disabled:opacity-40"
+              >
+                Cambiar
+              </button>
+            </span>
           </div>
 
-          {/* ── Aviso de dato desactualizado (no fatal) ───────────────────── */}
           {staleNotice && (
-            <div
-              role="status"
-              className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-            >
-              <InfoIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <p className="min-w-0 flex-1 text-sm text-amber-800 dark:text-amber-200">
-                {staleNotice}
-              </p>
-              <button
-                type="button"
-                onClick={dismissStaleNotice}
-                aria-label="Descartar aviso"
-                className="shrink-0 p-1 rounded-lg text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
+            <Notice tone="amber" role="status" onDismiss={dismissStaleNotice}>
+              {staleNotice}
+            </Notice>
           )}
-
-          {/* ── Banner de error del backend ──────────────────────────────── */}
           {serverBanner && (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-800/60 dark:bg-rose-900/20 px-4 py-3"
-            >
-              <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
-              <p className="min-w-0 flex-1 text-sm font-semibold text-rose-700 dark:text-rose-300">
-                {serverBanner}
-              </p>
-              <button
-                type="button"
-                onClick={dismissBanner}
-                aria-label="Descartar aviso"
-                className="shrink-0 p-1 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
+            <Notice tone="rose" role="alert" onDismiss={dismissBanner}>
+              {serverBanner}
+            </Notice>
           )}
 
-          {/* ── Líneas del packing ───────────────────────────────────────── */}
           {isLoading ? (
-            <Loader
-              className="py-10"
-              title="Cargando líneas"
-              message="Consultando qué líneas de este embarque se pueden enviar..."
-            />
+            <Loader className="py-10" title="Cargando líneas" message="Consultando qué líneas de este embarque se pueden enviar..." />
           ) : isError ? (
             <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 space-y-3 text-center">
-              <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                No se pudieron cargar las líneas del embarque
-              </p>
-              <p className="text-xs text-red-500 dark:text-red-300">
-                {shippingOnboardingErrorMessage(error)}
-              </p>
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400">No se pudieron cargar las líneas del embarque</p>
+              <p className="text-xs text-red-500 dark:text-red-300">{shippingOnboardingErrorMessage(error)}</p>
               <button
                 type="button"
                 onClick={() => void refetch()}
@@ -212,131 +147,248 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
               </button>
             </div>
           ) : rows.length === 0 ? (
-            <InfoPanel
-              title="Este embarque no tiene líneas registradas"
-              subtitle="Elige otro embarque de la lista de arriba."
-            />
+            <InfoPanel title="Este embarque no tiene líneas registradas" subtitle="Cambia a otro embarque." />
           ) : embarque !== null && !embarque.despachable ? (
             // Va ANTES de "ya enviado": cuando el pedido no es despachable el
-            // backend manda todas las líneas como no disponibles, y sin esta
-            // rama se leería como un embarque que ya salió.
+            // backend manda todas las líneas como no disponibles.
             <InfoPanel
               title="Este embarque todavía no se puede enviar"
-              subtitle={
-                embarque.motivo ??
-                "El pedido no permite embarque parcial y aún tiene piezas por empacar."
-              }
+              subtitle={embarque.motivo ?? "El pedido no permite embarque parcial y aún tiene piezas por empacar."}
             />
           ) : availableRowsCount === 0 ? (
             <InfoPanel
               title="Este embarque ya fue enviado por completo"
               subtitle={`${
-                alreadyShippedCount === 1
-                  ? "Su 1 línea ya salió"
-                  : `Sus ${alreadyShippedCount} líneas ya salieron`
-              } en un envío anterior. Elige otro embarque de la lista de arriba.`}
+                alreadyShippedCount === 1 ? "Su 1 línea ya salió" : `Sus ${alreadyShippedCount} líneas ya salieron`
+              } en un envío anterior. Cambia a otro embarque.`}
             />
           ) : (
-            <fieldset disabled={isPending} className="space-y-5">
-              {/* Aviso, no bloqueo (nucleo-erp #1266): p. ej. el pedido no
-                  admite embarque parcial y aún faltan piezas por empacar. */}
+            <fieldset disabled={isPending} className="space-y-4">
+              {/* Aviso, no bloqueo (nucleo-erp #1266). */}
               {embarque?.motivo && (
-                <div
-                  role="status"
-                  className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-start gap-3"
-                >
-                  <InfoIcon className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <p className="text-xs text-amber-800 dark:text-amber-200">
-                    {embarque.motivo.replace(/^Aviso:\s*/i, "")} Puedes enviar lo que ya está empacado.
-                  </p>
-                </div>
+                <p className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
+                  <InfoIcon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {embarque.motivo.replace(/^Aviso:\s*/i, "").replace(/^./, (c) => c.toUpperCase())} Puedes enviar lo que ya está empacado.
+                </p>
               )}
-              <ShippingLinesTable
-                rows={rows}
-                checkedIds={checkedIds}
-                availableRowsCount={availableRowsCount}
-                selectedCount={selectedCount}
-                onToggleLine={toggleLine}
-                onToggleAll={toggleAll}
-              />
+
+              {/* ── 1. Qué sale ─────────────────────────────────────────── */}
+              <ShippingLinesTable rows={rows} />
+
+              {/* ── 2. Cómo sale (obligatorio) ──────────────────────────── */}
+              <section className="rounded-2xl border border-slate-200 dark:border-white/10 px-4 py-3 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <StepBadge n={2} done={transporteFaltante === null} />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cómo sale</h3>
+                </div>
+
+                {/* Segmentado: paquetería / local. */}
+                <div role="radiogroup" aria-label="Tipo de envío" className="grid grid-cols-2 gap-2">
+                  {TIPOS_ENVIO.map((t) => {
+                    const active = tipoEnvio === t.value;
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setTipoEnvio(t.value)}
+                        className={`rounded-xl border px-3 py-2 text-left transition cursor-pointer ${
+                          active
+                            ? "border-sky-500 bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-500"
+                            : "border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                        }`}
+                      >
+                        <span className={`block text-sm font-semibold ${active ? "text-sky-700 dark:text-sky-300" : "text-slate-700 dark:text-slate-200"}`}>
+                          {t.label}
+                        </span>
+                        <span className="block text-[11px] text-slate-500 dark:text-slate-400">{t.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {tipoEnvio === "PAQUETERIA" ? (
+                  <>
+                    <div>
+                      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Paquetería <span className="text-rose-500">*</span>
+                      </p>
+                      <div role="radiogroup" aria-label="Paquetería" className="flex flex-wrap gap-1.5">
+                        {SHIPMENT_PAQUETERIAS.map((p) => {
+                          const active = paqueteria === p.value;
+                          return (
+                            <button
+                              key={p.value}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              onClick={() => setPaqueteria(p.value)}
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer active:scale-95 ${
+                                active
+                                  ? "border-sky-600 bg-sky-600 text-white shadow-sm shadow-sky-600/30"
+                                  : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-sky-400"
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="guia" className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Guía <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        id="guia"
+                        name="guia"
+                        aria-required="true"
+                        autoComplete="off"
+                        placeholder={paqueteriaLabel ? `Número de guía de ${paqueteriaLabel}` : "Número de guía"}
+                        maxLength={SHIPMENT_GUIA_MAX_LENGTH}
+                        value={guia}
+                        onChange={(event) => setGuia(event.target.value.toUpperCase())}
+                        onKeyDown={blockEnter}
+                        className={`h-11 w-full rounded-xl border bg-white dark:bg-zinc-900 px-3 font-mono text-base font-bold tracking-wider text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+                          guia.trim() ? "border-slate-200 dark:border-white/10" : "border-amber-300 dark:border-amber-500/40"
+                        }`}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        Sin guía no sale: no se puede agregar después.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Chofer <span className="text-rose-500">*</span>
+                    </p>
+                    {choferes.length === 0 ? (
+                      <p className="rounded-xl bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                        No hay choferes dados de alta. Pide a RH que marque al empleado como chofer.
+                      </p>
+                    ) : (
+                      <div role="radiogroup" aria-label="Chofer" className="grid gap-1.5 sm:grid-cols-2">
+                        {choferes.map((c) => {
+                          const active = chofer === c.id;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              onClick={() => setChofer(c.id)}
+                              className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition cursor-pointer active:scale-[0.98] ${
+                                active
+                                  ? "border-sky-500 bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-500"
+                                  : "border-slate-200 dark:border-white/10 hover:border-sky-400"
+                              }`}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
+                                  active ? "bg-sky-600 text-white" : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300"
+                                }`}
+                              >
+                                {iniciales(c.nombre)}
+                              </span>
+                              <span className={`text-xs font-semibold leading-tight ${active ? "text-sky-700 dark:text-sky-300" : "text-slate-700 dark:text-slate-200"}`}>
+                                {c.nombre}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
             </fieldset>
           )}
 
           {isFetching && !isLoading && (
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-right">
-              Actualizando la disponibilidad de las líneas...
-            </p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-right">Actualizando la disponibilidad de las líneas...</p>
           )}
 
-          {/* ── Guía + aviso del transportista ────────────────────────────
-              Solo cuando la acción es alcanzable (hay líneas disponibles).
-              La guía no se puede agregar después (`Despacho` no tiene
-              `PATCH`): si va vacía, el registro pide confirmación aparte. */}
+          {/* ── Pie: qué falta / resumen + registrar ───────────────────── */}
           {availableRowsCount > 0 && (
-            <>
-              <FormInput
-                label="Guía (opcional)"
-                name="guia"
-                placeholder="Número de guía del envío"
-                maxLength={SHIPMENT_GUIA_MAX_LENGTH}
-                forceUppercase
-                value={guia}
-                disabled={isPending}
-                onChange={(event) => setGuia(event.target.value)}
-                // Enter aquí no registra: el envío es irreversible y no debe
-                // salir con una tecla al terminar de escribir la guía (mismo
-                // motivo por el que el selector vive fuera del formulario). El
-                // Enter que confirma una composición (IME) sí se deja pasar.
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                  }
-                }}
-              />
-
-              {/* Tono informativo (ámbar), no de error: es una limitación del
-                  registro que conviene conocer antes de confirmarlo. */}
-              <div
-                role="note"
-                className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
-              >
-                <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
-                  Por ahora no se puede capturar el transportista, y no podrá agregarse a este envío
-                  después.
-                </p>
-              </div>
-            </>
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 dark:border-white/10 pt-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {transporteFaltante ? (
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">{transporteFaltante}</span>
+                ) : (
+                  <>
+                    <b className="text-slate-800 dark:text-slate-100">
+                      {selectedCount} {selectedCount === 1 ? "línea" : "líneas"}
+                    </b>
+                    {" por "}
+                    <b className="text-slate-800 dark:text-slate-100">
+                      {tipoEnvio === "PAQUETERIA"
+                        ? `${paqueteriaLabel} · ${guia.trim()}`
+                        : choferes.find((c) => c.id === chofer)?.nombre ?? "chofer"}
+                    </b>
+                  </>
+                )}
+              </p>
+              {/* `disabled` incluye `isPending`: ver `FormSubmitButton`. */}
+              <FormSubmitButton isPending={isPending} loadingLabel="Registrando..." disabled={isPending || !listo}>
+                Registrar envío
+              </FormSubmitButton>
+            </div>
           )}
-
-          <div className="flex items-center justify-end gap-3 pt-1">
-            {/* `disabled` DEBE incluir `isPending`: `FormSubmitButton` esparce
-                `{...props}` después de su `disabled` interno, así que un
-                `disabled` propio lo sobrescribe — hay que "hornear" el pending
-                aquí para que el botón quede realmente inhabilitado durante el
-                envío (sin doble POST). */}
-            <FormSubmitButton
-              isPending={isPending}
-              loadingLabel="Registrando..."
-              disabled={isPending || selectedCount === 0}
-            >
-              Registrar envío
-            </FormSubmitButton>
-          </div>
         </form>
       )}
+    </div>
+  );
+}
 
-      <ConfirmDialog
-        open={confirmWithoutGuiaOpen}
-        onOpenChange={setConfirmWithoutGuiaOpen}
-        title="¿Registrar el envío sin guía?"
-        description="Se registrará sin guía ni transportista y no podrás agregarlos después."
-        confirmText={isPending ? "Registrando..." : "Registrar sin guía"}
-        confirmColor="amber"
-        closeOnConfirm={false}
-        busy={isPending}
-        onConfirm={() => void confirmWithoutGuia()}
-      />
+/** "SALVADOR LOPEZ ANGEL" → "SL". */
+function iniciales(nombre: string): string {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
+}
+
+/** Número de paso; se vuelve palomita cuando ya está completo. */
+export function StepBadge({ n, done }: { n: number; done: boolean }) {
+  return (
+    <span
+      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white transition-colors ${
+        done ? "bg-emerald-500" : "bg-sky-600"
+      }`}
+    >
+      {done ? "✓" : n}
+    </span>
+  );
+}
+
+function Notice({
+  tone,
+  role,
+  onDismiss,
+  children,
+}: {
+  tone: "amber" | "rose";
+  role: "status" | "alert";
+  onDismiss: () => void;
+  children: React.ReactNode;
+}) {
+  const c =
+    tone === "amber"
+      ? "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200"
+      : "border-rose-200 bg-rose-50 dark:border-rose-800/60 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 font-semibold";
+  const Icon = tone === "amber" ? InfoIcon : ExclamationTriangleIcon;
+  return (
+    <div role={role} className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${c}`}>
+      <Icon className="w-5 h-5 shrink-0 mt-0.5" />
+      <p className="min-w-0 flex-1 text-sm">{children}</p>
+      <button type="button" onClick={onDismiss} aria-label="Descartar aviso" className="shrink-0 p-1 rounded-lg hover:opacity-70 cursor-pointer">
+        ×
+      </button>
     </div>
   );
 }

@@ -55,6 +55,14 @@ export interface PickingOnboardingProgramacion {
   /** Nota de Mesa de Control; siempre string (`""` cuando no hay). */
   comentarios: string;
   /**
+   * nucleo-erp#1279: lo ya asignado en surtidos no cancelados que abonan a este
+   * destino, repartido de la primera a la última parcialidad del destino (lo
+   * que se pasa queda en la última, con `surtido > cantidad`), y lo que falta.
+   * Opcionales: un backend anterior no los manda.
+   */
+  surtido?: number;
+  pendiente?: number;
+  /**
    * `null` cuando el destino no tiene almacén propio (EMBARQUE, REFLEJANTE,
    * CORTE_MANGA) o la sucursal del pedido no tiene uno utilizable.
    */
@@ -220,6 +228,15 @@ export interface PickingOnboardingTalla {
   es_muestra?: boolean;
   sku_muestra?: string | null;
   variante_produccion?: number | null;
+  /**
+   * Códigos de la prenda, para mostrarlos y para reconocerla con el scanner.
+   * Opcionales hasta que el onboarding los mande.
+   */
+  producto_variante_sku?: string | null;
+  producto_codigo?: string | null;
+  producto_cod_proscai?: string | null;
+  /** Lo que trae impreso la etiqueta (EAN/código de barras), si es distinto del SKU. */
+  codigo_barras?: string | null;
 }
 
 /**

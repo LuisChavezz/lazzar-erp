@@ -2,169 +2,102 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { DataTable, type DataTableFilterConfig } from "@/src/components/DataTable";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
+import { useQueryClient } from "@tanstack/react-query";
+import { DataTable } from "@/src/components/DataTable";
+import { ListExportButtons } from "@/src/components/ListExportButtons";
+import { useListExport } from "@/src/hooks/useListExport";
+import { exportNum } from "@/src/utils/listExport";
 import { hasPermission } from "@/src/utils/permissions";
-import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { PICKINGS_KEY } from "../constants/pickingsTable";
+import { usePickingsResumen, usePickingsTable } from "../hooks/usePickingsTable";
 import { getPickingColumns } from "./PickingColumns";
-import { PickingDetailDialog } from "./PickingDetailDialog";
+import { PickingDetailByIdDialog } from "./PickingDetailByIdDialog";
 import { PickingForm } from "./PickingForm";
 import { PickingStats } from "./PickingStats";
-import {
-  PICKING_PRIORIDAD_CONFIG,
-  PICKING_PRIORIDAD_ORDER,
-} from "../constants/pickingPrioridad";
-import { PICKING_STATUS_CONFIG } from "../constants/pickingStatus";
-import { usePickings } from "../hooks/usePickings";
-import { mapPickingsToRows } from "../utils/picking.utils";
-
-// Opciones de filtro derivadas de los MISMOS catálogos que pintan los badges,
-// para que un estatus o una prioridad no puedan existir en la tabla sin existir
-// en el filtro (ni al revés). `DataTable` compara `String(fila[id]) === value`,
-// así que los `value` son los strings exactos de la respuesta del backend.
-const ESTADO_FILTER_OPTIONS = Object.entries(PICKING_STATUS_CONFIG).map(([value, cfg]) => ({
-  value,
-  label: cfg.label ?? value,
-}));
-
-const PRIORIDAD_FILTER_OPTIONS = PICKING_PRIORIDAD_ORDER.map((value) => ({
-  value,
-  label: PICKING_PRIORIDAD_CONFIG[value].label,
-}));
+import { PICKING_EXPORT_COLUMNS } from "../utils/pickingExport";
 
 /**
- * Vista de Picking: KPIs del listado (`PickingStats`) más el listado propio
- * (`GET /wms/pickings/`), con la captura de un nuevo picking
- * (`POST /wms/pickings/`, ver `PickingForm`) en el toolbar, y el detalle de
- * cada fila ("Ver Detalles", ver `PickingColumns`).
+ * Surtidos en MODO SERVIDOR (nucleo-erp#1284): la lista ligera
+ * (`?vista=lista`, sin `picking_detalle`) con filtros, búsqueda, orden y
+ * página resueltos por el backend y guardados en la URL; la página la envuelve
+ * en `<Suspense>`. Los KPIs salen de `resumen/` con los MISMOS criterios, así
+ * cuentan todo el conjunto filtrado y no solo la página.
  *
- * El diálogo de detalle lo monta ESTA vista, no la celda de acciones: guarda
- * solo el id del surtido abierto y lo resuelve en cada render contra `rows`
- * (la caché de `["pickings"]`). Así el diálogo sobrevive a ordenar, filtrar o
- * paginar —que desmontan las celdas— y refleja el registro actualizado cuando
- * la lista se refresca, p. ej. después de trasladarlo de almacén.
- *
- * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
- * un ternario propio): recibe `isLoading`/`isError` y alterna internamente
- * solo su ÁREA DE DATOS, dejando el toolbar —y por tanto `PickingForm`—
- * visible en su posición habitual durante la carga y el error. Mismo patrón
- * que `StockTransfersView`.
- *
- * FILTRADO EN CLIENTE, a propósito: `GET /wms/pickings/` no acepta ningún
- * query param (el endpoint no declara parámetros y el backend no monta ningún
- * filter backend), así que mandarlos no filtraría nada. Como además el
- * endpoint devuelve la lista COMPLETA sin paginar, filtrar en memoria sobre
- * `rows` recorre exactamente el mismo universo de registros que filtraría el
- * servidor: el resultado es idéntico, no una aproximación sobre una página.
- * Si el backend llegara a paginar o a aceptar filtros, esto tendría que
- * moverse a params de `usePickings`.
+ * El detalle se abre desde el folio y se trae por id (`PickingDetailByIdDialog`):
+ * la fila ligera no trae las líneas. Su estado vive aquí, nunca en la celda.
  */
 export function PickingView() {
-  const {
-    pickings,
-    dataUpdatedAt,
-    isLoading,
-    isError,
-    error,
-    hasLoaded,
-    refetch,
-    isFetching,
-  } = usePickings();
+  const table = usePickingsTable();
+  const resumen = usePickingsResumen(table.criteria);
+  const queryClient = useQueryClient();
+  // Excel/PDF exportan TODO lo que cumple los filtros vigentes, no solo la página.
+  const { exportCsv, exportPdf } = useListExport({
+    getRows: table.fetchAllRows,
+    columns: PICKING_EXPORT_COLUMNS,
+    title: "Surtidos",
+    fileName: "surtidos",
+    summary: (rows) =>
+      `${rows.length} surtido${rows.length === 1 ? "" : "s"} · ${rows
+        .reduce((acc, r) => acc + exportNum(r.piezas), 0)
+        .toLocaleString("es-MX")} pzas`,
+  });
 
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
   const canCreate = hasPermission("C-WMS-PICKING", session?.user);
 
-  // Solo se trata como error "de pantalla completa" cuando la consulta nunca
-  // cargó con éxito; un refetch fallido con datos en caché conserva la tabla
-  // (y los KPIs) y avisa por toast (ver `usePickings`). Mismo criterio que
-  // `AccountsReceivableList`.
-  const showError = isInitialLoadError(isError, hasLoaded);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // "Ahora" = el instante en que la query resolvió (`dataUpdatedAt`), UNO solo
-  // para todas las filas: ninguna queda evaluada contra un instante distinto y,
-  // a diferencia de un `Date.now()` en render, es una lectura pura —el React
-  // Compiler prohíbe la impura— que además se reevalúa exactamente cuando llega
-  // dato nuevo (refetch o botón de refrescar).
-  //
-  // Sigue siendo necesario aunque la tabla ya no muestre "Fecha Límite" ni
-  // filtre por "Vencido": `PickingRow.esta_vencida` alimenta el mismo
-  // resaltado en `PickingDetailDialog` (fuera de alcance de este cambio), que
-  // recibe la fila enriquecida —no el registro crudo— para no divergir de la
-  // definición de "vencido" en caso de que la columna regrese más adelante.
-  const rows = mapPickingsToRows(pickings, dataUpdatedAt);
-
-  const [detailPickingId, setDetailPickingId] = useState<number | null>(null);
-  const detailPicking =
-    detailPickingId === null ? null : (rows.find((row) => row.id === detailPickingId) ?? null);
-  // Si el surtido abierto deja de venir en la lista ya cargada (p. ej. un 404
-  // al trasladarlo refresca la lista y ya no está), se olvida su id: si no, el
-  // detalle se volvería a abrir solo si el surtido reapareciera más tarde.
-  if (detailPickingId !== null && hasLoaded && detailPicking === null) {
-    setDetailPickingId(null);
-  }
-
-  const columns = getPickingColumns({ onViewDetail: setDetailPickingId });
-
-  const filterConfig: DataTableFilterConfig[] = [
-    { id: "estado", label: "Estatus", options: ESTADO_FILTER_OPTIONS },
-    { id: "prioridad", label: "Prioridad", options: PRIORIDAD_FILTER_OPTIONS },
-  ];
+  // "Hoy" = el día de México con el que contó el backend: la urgencia de
+  // entrega y "Surtidos hoy" miden contra el mismo día.
+  const hoy = resumen.data?.surtidos_hoy.fecha ?? "";
+  const columns = getPickingColumns(
+    {
+      onViewDetail: (id) => {
+        setDetailId(id);
+        setIsDetailOpen(true);
+      },
+    },
+    hoy,
+  );
 
   return (
-    <div className="h-full flex flex-col min-h-0 space-y-6">
-      {/* KPIs: ocultos durante la carga INICIAL y ante un error de carga —no
-          hay datos que resumir—, igual que `OrderStats` en `PurchaseOrderView`.
-          `pickings` arranca en `[]`, así que sin este gate las tarjetas
-          mostrarían ceros que se leerían como datos reales. `shrink-0`: solo
-          la tabla de abajo debe crecer. */}
-      {!isLoading && !showError && (
-        <div className="shrink-0">
-          <PickingStats items={pickings} />
-        </div>
-      )}
+    <div className="flex flex-col space-y-6">
+      <div className="shrink-0">
+        <PickingStats resumen={resumen.data} isFiltered={table.hasActiveCriteria} />
+      </div>
 
-      {/* El placeholder de búsqueda NO menciona "almacén": la búsqueda global
-          de `DataTable` usa el filtro por defecto de TanStack, que solo recorre
-          columnas ACCESSOR, y la de almacén ya no existe — ofrecerla devolvería
-          "sin resultados" sobre pickings que sí coinciden. */}
-      {/* `min-h-120`: piso de la tabla cuando la fila de KPIs (con el
-          desglose por prioridad a su lado) deja poco espacio remanente —
-          sin esto, `flex-1` podía encoger la tabla a un puñado de filas
-          visibles en viewports más cortos. */}
-      <div className="flex-1 min-h-120 flex flex-col">
+      {/* Alto FIJO: en una laptop la tabla no se encoge por los KPIs; la página
+          hace scroll (los KPIs pueden quedar fuera de vista). */}
+      <div className="h-[44rem] flex flex-col">
         <DataTable
           columns={columns}
-          data={rows}
-          searchPlaceholder="Buscar folio, pedido u operador..."
-          filterConfig={filterConfig}
+          {...table.tableProps}
+          // Invalida el PREFIJO: lista, resumen y catálogos de filtros.
+          onRefetch={() => queryClient.invalidateQueries({ queryKey: PICKINGS_KEY })}
           getRowId={(row) => String(row.id)}
-          // El cuerpo llena el contenedor de altura acotada que da
-          // `wms/picking/page.tsx`, en vez de reservar un alto fijo.
+          searchPlaceholder="Buscar surtido, pedido o cliente..."
+          // El cuerpo llena el contenedor de alto fijo de arriba.
           fillHeight
-          onRefetch={refetch}
-          isRefetching={isFetching}
           emptyMessage="No hay surtidos registrados."
-          // Ver el listado exige `R-WMS-PICKING` (ver `routePermissions`); dar de
-          // alta exige además `C-WMS-PICKING`.
-          actionButton={canCreate ? <PickingForm /> : undefined}
-          isLoading={isLoading}
-          isError={showError}
+          // Ver el listado exige `R-WMS-PICKING`; dar de alta exige además `C-WMS-PICKING`.
+          actionButton={
+            <div className="flex items-center gap-2 shrink-0">
+              <ListExportButtons
+                subject="surtidos"
+                onExcel={() => void exportCsv()}
+                onPdf={() => void exportPdf()}
+              />
+              {canCreate && <PickingForm />}
+            </div>
+          }
           errorTitle="Error al cargar los surtidos"
-          errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
           loadingAriaLabel="Cargando surtidos"
         />
       </div>
 
-      {detailPicking && (
-        <PickingDetailDialog
-          picking={detailPicking}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setDetailPickingId(null);
-          }}
-        />
-      )}
+      <PickingDetailByIdDialog orderId={detailId} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
     </div>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useShippingOnboarding } from "./useShippingOnboarding";
 import { useCreateShipping, type ParsedShipmentError } from "./useCreateShipping";
 import {
   CreateShipmentPayloadSchema,
   type CreateShipmentPayloadValues,
+  type ShipmentPaqueteria,
+  type ShipmentTipoEnvio,
 } from "../schemas/shipping.schema";
 import type { CreateShipmentDetalleLine } from "../interfaces/shipping.interface";
 import type { ShipmentOnboardingLine } from "../interfaces/shipping-onboarding.interface";
@@ -25,13 +27,14 @@ interface UseShippingFormParams {
  */
 export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const [selectedPackingId, setSelectedPackingId] = useState<number | null>(null);
-  const [checkedIds, setCheckedIds] = useState<Set<number>>(() => new Set());
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const [guia, setGuiaState] = useState("");
-  // Confirmación de "registrar sin guía": la guía no se puede agregar después
-  // (`Despacho` no tiene `PATCH`), así que un envío sin ella se confirma aparte.
-  const [confirmWithoutGuiaOpen, setConfirmWithoutGuiaOpen] = useState(false);
+  // Cómo sale: por paquetería (paquetería + guía obligatorias) o local (chofer
+  // obligatorio). Sin estos datos el envío no sale.
+  const [tipoEnvio, setTipoEnvioState] = useState<ShipmentTipoEnvio>("PAQUETERIA");
+  const [paqueteria, setPaqueteriaState] = useState<ShipmentPaqueteria | null>(null);
+  const [chofer, setChoferState] = useState<number | null>(null);
   const submitInFlight = useRef(false);
 
   // Onboarding con alcance al packing elegido (elegibilidad por línea, caché
@@ -61,59 +64,49 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
   const availableRowsCount = availableIds.size;
   const alreadyShippedCount = rows.filter((row) => row.ya_despachado).length;
 
-  // Lo empacado siempre se puede despachar, en las líneas que se elijan
-  // (nucleo-erp #1266): `embarque_parcial` ya no bloquea ni obliga a llevar
-  // todas las líneas; su `motivo` solo es un aviso.
-  const effectiveCheckedIds = checkedIds;
+  // El packing ya confirmó qué va en cada caja y el envío no lo revalida:
+  // sale TODO lo disponible, sin casillas. Tras un refetch, `availableIds`
+  // ya excluye lo que despachó otro registro.
+  const effectiveCheckedIds = availableIds;
 
-  // Reconciliación: cuando cambian las filas (típicamente tras el refetch por
-  // dato desactualizado, o al cambiar de packing) se descartan los ids
-  // marcados que ya no existen o que dejaron de estar disponibles. Sin esto,
-  // una línea despachada por otro operador seguiría contando para el botón y
-  // viajaría en el POST. Equivalente al re-clamp de cantidades de packing.
-  //
-  // Depende de `availableIds`, memoizado sobre `data`/`selectedPackingId`, así
-  // que el efecto corre solo cuando hay algo nuevo que reconciliar.
-  useEffect(() => {
-    setCheckedIds((prev) => {
-      if (prev.size === 0) return prev;
-      const next = new Set<number>();
-      for (const id of prev) if (availableIds.has(id)) next.add(id);
-      return next.size === prev.size ? prev : next;
-    });
-  }, [availableIds]);
-
-  // Volver a hacer clic en el packing YA elegido no hace nada: el selector no
-  // alterna la selección, así que ese clic es accidental y borrar las casillas
-  // marcadas por él sería una pérdida de captura sin motivo.
-  const selectPacking = (packingId: number) => {
+  // Volver a hacer clic en el packing YA elegido no hace nada.
+  // `null` = volver al selector ("Cambiar").
+  const selectPacking = (packingId: number | null) => {
     if (packingId === selectedPackingId) return;
     setSelectedPackingId(packingId);
-    setCheckedIds(new Set());
     // La guía es de un embarque concreto: arrastrarla al siguiente lo
     // registraría con una guía ajena y sin la confirmación de "sin guía".
     setGuiaState("");
+    setPaqueteriaState(null);
+    setChoferState(null);
     setServerBanner(null);
     setStaleNotice(null);
   };
 
+  const setTipoEnvio = (value: ShipmentTipoEnvio) => {
+    setTipoEnvioState(value);
+    if (serverBanner) setServerBanner(null);
+  };
+  const setPaqueteria = (value: ShipmentPaqueteria) => {
+    setPaqueteriaState(value);
+    if (serverBanner) setServerBanner(null);
+  };
+  const setChofer = (value: number) => {
+    setChoferState(value);
+    if (serverBanner) setServerBanner(null);
+  };
+
+  /** Lo que falta para poder registrar (null = listo). Un solo mensaje, en orden. */
+  let transporteFaltante: string | null = null;
+  if (tipoEnvio === "PAQUETERIA") {
+    if (!paqueteria) transporteFaltante = "Elige la paquetería";
+    else if (!guia.trim()) transporteFaltante = "Captura la guía";
+  } else if (chofer === null) {
+    transporteFaltante = "Elige el chofer que lo lleva";
+  }
+
   const setGuia = (value: string) => {
     setGuiaState(value);
-    if (serverBanner) setServerBanner(null);
-  };
-
-  const toggleLine = (packingDetalleId: number) => {
-    setCheckedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(packingDetalleId)) next.delete(packingDetalleId);
-      else next.add(packingDetalleId);
-      return next;
-    });
-    if (serverBanner) setServerBanner(null);
-  };
-
-  const toggleAll = (checked: boolean) => {
-    setCheckedIds(checked ? new Set(availableIds) : new Set());
     if (serverBanner) setServerBanner(null);
   };
 
@@ -180,15 +173,24 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
       return null;
     }
 
+    if (transporteFaltante) {
+      setServerBanner(`${transporteFaltante} para que el envío pueda salir.`);
+      return null;
+    }
+
     // Se envía la SALIDA del parseo, no el objeto original: `z.object`
-    // descarta claves desconocidas, así que el body queda garantizado a
-    // `packing` + `despacho_detalle` + `guia` — `envio` no puede colarse (ver
-    // `CreateShipmentPayloadSchema`). Una guía vacía se omite.
-    const trimmedGuia = guia.trim();
+    // descarta claves desconocidas, así que `envio` no puede colarse (ver
+    // `CreateShipmentPayloadSchema`). La guía solo aplica a paquetería.
+    const trimmedGuia = tipoEnvio === "PAQUETERIA" ? guia.trim() : "";
+    const transporte =
+      tipoEnvio === "PAQUETERIA"
+        ? { tipo_envio: tipoEnvio, paqueteria: paqueteria ?? undefined }
+        : { tipo_envio: tipoEnvio, chofer: chofer ?? undefined };
     const parsed = CreateShipmentPayloadSchema.safeParse({
       packing: selectedPackingId,
       despacho_detalle: lines,
       ...(trimmedGuia.length > 0 ? { guia: trimmedGuia } : {}),
+      ...transporte,
     });
     if (!parsed.success) {
       setServerBanner(parsed.error.issues[0]?.message ?? "Revisa los datos del envío.");
@@ -205,9 +207,7 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
       onSuccess();
     } catch {
       // El error ya se repartió en `handleServerError` (banner / aviso stale) y
-      // el toast lo emitió la mutación. Se cierra la confirmación para que el
-      // banner quede a la vista.
-      setConfirmWithoutGuiaOpen(false);
+      // el toast lo emitió la mutación.
     } finally {
       submitInFlight.current = false;
     }
@@ -217,22 +217,6 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     setServerBanner(null);
     const payload = buildPayload();
     if (!payload) return;
-    // Sin guía se pide confirmación: no se podrá agregar después.
-    if (!payload.guia) {
-      setConfirmWithoutGuiaOpen(true);
-      return;
-    }
-    await send(payload);
-  };
-
-  const confirmWithoutGuia = async () => {
-    // Se vuelve a armar: las líneas pudieron cambiar por un refetch mientras
-    // la confirmación estaba abierta.
-    const payload = buildPayload();
-    if (!payload) {
-      setConfirmWithoutGuiaOpen(false);
-      return;
-    }
     await send(payload);
   };
 
@@ -244,9 +228,6 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     availableRowsCount,
     alreadyShippedCount,
     embarque,
-    checkedIds: effectiveCheckedIds,
-    toggleLine,
-    toggleAll,
     selectedCount,
     isLoading,
     isError,
@@ -259,9 +240,14 @@ export function useShippingForm({ onSuccess }: UseShippingFormParams) {
     dismissStaleNotice: () => setStaleNotice(null),
     guia,
     setGuia,
-    confirmWithoutGuiaOpen,
-    setConfirmWithoutGuiaOpen,
-    confirmWithoutGuia,
+    tipoEnvio,
+    setTipoEnvio,
+    paqueteria,
+    setPaqueteria,
+    chofer,
+    setChofer,
+    choferes: data?.choferes ?? [],
+    transporteFaltante,
     isPending,
     handleSubmit,
   };

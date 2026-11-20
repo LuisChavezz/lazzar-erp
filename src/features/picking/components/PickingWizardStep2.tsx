@@ -1,20 +1,19 @@
 "use client";
 
+import { avancePorDestino } from "../utils/pickingProgramacionAvance";
+import { getProgramacionDestinoLabel } from "../utils/pickingDestino";
 import {
   FormSecondaryButton,
   FormSubmitButton,
 } from "@/src/components/FormButtons";
-import { FormInput } from "@/src/components/FormInput";
 import { Loader } from "@/src/components/Loader";
-import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
+import { PickingLinesPanel } from "./PickingLinesPanel";
 import {
   ExclamationTriangleIcon,
   InfoIcon,
-  LayersIcon,
 } from "@/src/components/Icons";
-import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { plural } from "@/src/utils/plural";
-import { tallaProductoNombre, usePickingStep2Form } from "../hooks/usePickingStep2Form";
+import { usePickingStep2Form } from "../hooks/usePickingStep2Form";
 import type { PickingHeaderValues } from "../schemas/picking.schema";
 
 interface PickingWizardStep2Props {
@@ -84,6 +83,13 @@ export function PickingWizardStep2({
   }
 
   const noPending = rows.length === 0 || pendingRowsCount === 0;
+
+  // Avance de la programación elegida en el Paso 1 contra lo que se captura
+  // aquí. Pasarse NO bloquea (nucleo-erp#1279): solo se avisa.
+  const programacion = avancePorDestino(pedido?.programaciones ?? []).find(
+    (a) => a.destino === header.programacion_destino,
+  );
+  const capturado = Object.values(quantities).reduce((acc, v) => acc + (Number.parseFloat(v) || 0), 0);
   // El pedido SÍ tiene pendientes, pero ninguna línea tiene existencia con la
   // que surtirlos. Sin este caso la pantalla quedaría con todas las filas
   // deshabilitadas y el botón muerto, sin decir por qué.
@@ -99,30 +105,23 @@ export function PickingWizardStep2({
       className="w-full space-y-5"
     >
       {/* ── Resumen del encabezado capturado ────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs">
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Pedido</p>
-          <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{pedido?.folio ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Cliente</p>
-          <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{pedido?.cliente_nombre ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-            Almacén origen
-          </p>
-          <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{almacenNombre}</p>
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-            Almacén destino
-          </p>
-          <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-            {almacenDestinoNombre}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-2.5 text-xs">
+        <span className="font-mono font-bold text-sky-700 dark:text-sky-300">{pedido?.folio ?? "—"}</span>
+        <span className="text-slate-300 dark:text-slate-600">·</span>
+        <span className="min-w-0 truncate font-semibold text-slate-700 dark:text-slate-200">{pedido?.cliente_nombre ?? "—"}</span>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2.5 py-0.5 text-[11px] text-slate-600 dark:text-slate-300">
+          {almacenNombre} <span aria-label="hacia">→</span> <b className="text-slate-800 dark:text-slate-100">{almacenDestinoNombre}</b>
+        </span>
       </div>
+
+      {programacion && !noPending && (
+        <ProgramacionCounter
+          label={getProgramacionDestinoLabel(programacion.destino)}
+          programado={programacion.cantidad}
+          yaSurtido={programacion.surtido}
+          capturado={capturado}
+        />
+      )}
 
       {/* ── Aviso de dato desactualizado (no fatal) ─────────────────────── */}
       {staleNotice && (
@@ -208,136 +207,14 @@ export function PickingWizardStep2({
             </div>
           </div>
         ) : (
-          <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 bg-slate-50/50 dark:bg-white/2">
-              <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-                <LayersIcon className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Tallas por surtir</h3>
-                <p className="text-[11px] text-slate-500">
-                  Captura la cantidad a surtir en esta entrega (máximo: lo pendiente por talla,
-                  acotado por la existencia disponible en el almacén)
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4">
-              <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {rows.map((row) => {
-                  const key = String(row.pedido_detalle_talla);
-                  // Techo efectivo: el pendiente del pedido acotado por la
-                  // existencia disponible del almacén (ver `PickingLineLimits`).
-                  const { disponible, max, limitedByStock, sharedPool } = limits[key] ?? {
-                    disponible: null,
-                    max: 0,
-                    limitedByStock: false,
-                    sharedPool: false,
-                  };
-                  const sinCupo = max <= 0;
-                  const qtyValue = quantities[key] ?? "";
-                  const hasQty = qtyValue.trim() !== "" && Number.parseFloat(qtyValue) > 0;
-
-                  return (
-                    <div key={key} className={`py-3 px-2 ${sinCupo ? "opacity-50" : ""}`}>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {/* SIN `truncate`: como flex item, `truncate`
-                                (`white-space: nowrap`) fija el min-content del
-                                `<p>` al ancho COMPLETO del texto, y flexbox no
-                                puede encogerlo por debajo de eso — el
-                                `min-w-0` del contenedor padre sí encoge, pero
-                                el hijo desbordaba igual y empujaba el input de
-                                cantidad fuera de la tarjeta (scroll horizontal
-                                en nombres largos tipo "CHAMARRA BERLIN UNISEX
-                                DESMONTABLE DOBLE VISTA..."). Con `min-w-0` +
-                                `break-words` el nombre envuelve a 2-3 líneas y
-                                la fila crece de alto en vez de a lo ancho. */}
-                            <p className="min-w-0 break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
-                              {tallaProductoNombre(row)}
-                            </p>
-                            {row.talla_nombre && (
-                              <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
-                                Talla {row.talla_nombre}
-                              </span>
-                            )}
-                            {row.color_nombre && (
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400">{row.color_nombre}</span>
-                            )}
-                            {row.es_muestra && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
-                                Muestra
-                                {row.sku_muestra && <span className="font-mono">{row.sku_muestra}</span>}
-                              </span>
-                            )}
-                          </div>
-                          {/* Se resalta la restricción que MANDA: normalmente
-                              el pendiente del pedido, pero cuando la existencia
-                              es menor, es ella la que acota el input — se pinta
-                              en ámbar para que el techo no parezca arbitrario. */}
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-                            Pedida: {formatExactQuantityValue(row.cantidad_pedida)} · Asignada:{" "}
-                            {formatExactQuantityValue(row.cantidad_ya_asignada)} ·{" "}
-                            <span
-                              className={
-                                sinCupo || limitedByStock
-                                  ? ""
-                                  : "font-semibold text-slate-700 dark:text-slate-200"
-                              }
-                            >
-                              Pendiente: {formatExactQuantityValue(row.cantidad_pendiente)}
-                            </span>
-                            {disponible !== null && (
-                              <>
-                                {" · "}
-                                <span
-                                  className={
-                                    limitedByStock
-                                      ? "font-semibold text-amber-600 dark:text-amber-400"
-                                      : ""
-                                  }
-                                >
-                                  Disponible:{" "}
-                                  {formatExactQuantityValue(row.existencia_disponible)}
-                                  {/* Sin esta marca, dos filas mostrando
-                                      "Disponible: 10" se leerían como 20
-                                      piezas: es la MISMA existencia. */}
-                                  {sharedPool && " (compartido)"}
-                                </span>
-                              </>
-                            )}
-                          </p>
-                        </div>
-
-                        <DecimalQuantityInput
-                          value={qtyValue}
-                          max={max}
-                          disabled={sinCupo}
-                          onChange={(next) => setQuantity(row.pedido_detalle_talla, next)}
-                          label={`Cantidad a surtir de ${tallaProductoNombre(row)}`}
-                        />
-                      </div>
-
-                      {/* Observaciones por línea (opcional) — solo cuando hay cantidad. */}
-                      {hasQty && (
-                        <div className="mt-2 pl-1">
-                          <FormInput
-                            variant="compact"
-                            placeholder="Observaciones de esta línea (opcional)"
-                            forceUppercase
-                            value={observaciones[key] ?? ""}
-                            onChange={(event) => setObservacion(row.pedido_detalle_talla, event.target.value)}
-                            aria-label={`Observaciones de ${tallaProductoNombre(row)}`}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
+          <PickingLinesPanel
+            rows={rows}
+            limits={limits}
+            quantities={quantities}
+            observaciones={observaciones}
+            setQuantity={setQuantity}
+            setObservacion={setObservacion}
+          />
         )}
       </fieldset>
 
@@ -359,5 +236,69 @@ export function PickingWizardStep2({
         </FormSubmitButton>
       </div>
     </form>
+  );
+}
+
+/**
+ * "Para Bordado: 10 ya surtidas + 8 en este surtido = 18 de 20". La barra
+ * muestra lo previo (tenue) y lo de este surtido (fuerte); al pasarse se pone
+ * ámbar y dice por cuánto, sin bloquear.
+ */
+function ProgramacionCounter({
+  label,
+  programado,
+  yaSurtido,
+  capturado,
+}: {
+  label: string;
+  programado: number;
+  yaSurtido: number;
+  capturado: number;
+}) {
+  const total = yaSurtido + capturado;
+  const excede = total - programado;
+  const pendienteAntes = Math.max(0, programado - yaSurtido);
+  const base = Math.max(programado, total, 1);
+  const fmt = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+  return (
+    <div
+      role="status"
+      className={`rounded-xl border px-4 py-3 ${
+        excede > 0
+          ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-900/20"
+          : "border-slate-200 bg-white dark:border-white/10 dark:bg-white/2"
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
+        <p className="text-slate-600 dark:text-slate-300">
+          Para <b className="text-slate-900 dark:text-white">{label}</b>: {fmt(yaSurtido)} ya surtidas
+          {capturado > 0 && (
+            <>
+              {" + "}
+              <b className="text-sky-700 dark:text-sky-300">{fmt(capturado)}</b> en este surtido
+            </>
+          )}
+        </p>
+        <p className="tabular-nums font-bold text-slate-900 dark:text-white">
+          {fmt(total)} <span className="font-normal text-slate-500">de {fmt(programado)}</span>
+        </p>
+      </div>
+      <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+        <span className="h-full bg-slate-400 dark:bg-slate-500" style={{ width: `${(Math.min(yaSurtido, base) / base) * 100}%` }} />
+        <span
+          className={`h-full ${excede > 0 ? "bg-amber-500" : "bg-sky-500"} transition-all duration-200`}
+          style={{ width: `${(capturado / base) * 100}%` }}
+        />
+      </div>
+      <p className={`mt-1.5 text-[11px] ${excede > 0 ? "font-semibold text-amber-700 dark:text-amber-300" : "text-slate-500 dark:text-slate-400"}`}>
+        {excede > 0
+          ? `Te pasas por ${fmt(excede)} de lo programado. Se registrará igual.`
+          : capturado === 0
+            ? `Faltan ${fmt(pendienteAntes)} por surtir para esta programación.`
+            : total === programado
+              ? "Con este surtido queda cubierta la programación."
+              : `Quedarían ${fmt(programado - total)} por surtir.`}
+      </p>
+    </div>
   );
 }

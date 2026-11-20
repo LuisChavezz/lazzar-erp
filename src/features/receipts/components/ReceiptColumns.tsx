@@ -4,8 +4,9 @@ import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import type { Receipt } from "../interfaces/receipt.interface";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
-import { ReceiptDetailDialog } from "./ReceiptDetailDialog";
-import { ReceiptActionsCell } from "./ReceiptActionsCell";
+import { ActionMenu } from "@/src/components/ActionMenu";
+import { FolioButton } from "@/src/components/FolioButton";
+import { ViewIcon } from "@/src/components/Icons";
 import { getReceiptEstatusLabel, RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 import { createTipoCompraColumn } from "./TipoCompraColumn";
 import {
@@ -24,13 +25,15 @@ const ESTATUS_DESCONOCIDO_CFG: StatusBadgeConfigEntry = {
   dot: "bg-slate-400",
 };
 
-export const receiptColumns = [
+/**
+ * Columnas del listado WMS de recepciones. El detalle (un solo diálogo) vive en
+ * `ReceiptView`: el folio y "Ver Detalles" llaman a `onViewDetail`.
+ */
+export const getReceiptColumns = ({ onViewDetail }: { onViewDetail: (receipt: Receipt) => void }) => [
   columnHelper.accessor("folio", {
     header: "Folio",
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
+    cell: ({ row, getValue }) => (
+      <FolioButton folio={getValue()} onClick={() => onViewDetail(row.original)} />
     ),
   }),
   columnHelper.accessor("tipo_origen", {
@@ -109,7 +112,12 @@ export const receiptColumns = [
     header: "Acciones",
     meta: { align: "center" },
     cell: ({ row }) => (
-      <ReceiptActionsCell row={row.original} DetailDialog={ReceiptDetailDialog} />
+      <div className="flex justify-center">
+        <ActionMenu
+          items={[{ label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetail(row.original) }]}
+          ariaLabel={`Acciones de la recepción ${row.original.folio}`}
+        />
+      </div>
     ),
   }),
 ] as ColumnDef<Receipt>[];

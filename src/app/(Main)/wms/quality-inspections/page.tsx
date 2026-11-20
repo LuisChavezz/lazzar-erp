@@ -2,7 +2,7 @@ import { QualityInspectionView } from "@/src/features/quality-inspections/compon
 
 export default function QualityInspections() {
   return (
-    <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
+    <div className="w-full h-[44rem]">
       <QualityInspectionView />
     </div>
   );

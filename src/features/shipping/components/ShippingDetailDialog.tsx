@@ -1,5 +1,7 @@
 "use client";
 
+import { formatShortDate } from "@/src/utils/formatDate";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { ChevronRightIcon, EmbarquesIcon, PackingIcon, PedidosIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -21,17 +23,6 @@ function lineaProductoNombre(linea: ShipmentDetalleLine): string {
   return linea.producto_variante_nombre ?? linea.producto_nombre ?? "—";
 }
 
-/**
- * `envio`/`envio_transportista` en formato de texto. Mismo criterio y misma
- * copia EXACTA que `ShippingColumns.tsx` ("Sin envío"/"Sin transportista")
- * para que el listado y el detalle no digan cosas distintas del mismo dato.
- */
-function envioLabel(value: number | null): string {
-  return value !== null ? `Envío #${value}` : "Sin envío";
-}
-function transportistaLabel(value: number | null): string {
-  return value !== null ? `Transportista #${value}` : "Sin transportista";
-}
 
 const LineasTable = ({ items }: { items: ShipmentDetalleLine[] }) => {
   if (items.length === 0) {
@@ -121,11 +112,23 @@ export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingD
           <InfoField label="Pedido">{textOrDash(shipment.pedido_folio)}</InfoField>
           <InfoField label="Cliente">{textOrDash(shipment.cliente_nombre)}</InfoField>
           <InfoField label="Sucursal">{textOrDash(shipment.sucursal_nombre)}</InfoField>
-          <InfoField label="Guía">{textOrDash(shipment.guia)}</InfoField>
-          <InfoField label="Envío">{envioLabel(shipment.envio)}</InfoField>
-          <InfoField label="Transportista">
-            {transportistaLabel(shipment.envio_transportista)}
+          <InfoField label="Salió">
+            {shipment.fecha_creacion
+              ? formatShortDate(shipment.fecha_creacion, { timeZone: MEXICO_TIME_ZONE })
+              : "—"}
           </InfoField>
+          <InfoField label="Registró">{textOrDash(shipment.usuario_nombre)}</InfoField>
+          <InfoField label="Tipo de envío">{textOrDash(shipment.tipo_envio_display)}</InfoField>
+          {shipment.tipo_envio === "LOCAL" ? (
+            <InfoField label="Chofer">{textOrDash(shipment.chofer_nombre)}</InfoField>
+          ) : (
+            <>
+              <InfoField label="Paquetería">{textOrDash(shipment.paqueteria_display)}</InfoField>
+              <InfoField label="Guía">
+                <span className="font-mono">{textOrDash(shipment.guia)}</span>
+              </InfoField>
+            </>
+          )}
         </div>
 
         {/* Packing de origen */}
