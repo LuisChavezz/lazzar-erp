@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { safeJSONStorage } from "@/src/stores/safeStorage";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export const useThemeStore = create<ThemeState>()(
       {
         // Persistir sólo la preferencia del usuario, no el resolvedTheme
         name: "theme-storage",
+        storage: safeJSONStorage(),
         partialize: (state) => ({ theme: state.theme }),
       },
     ),

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { safeJSONStorage } from "@/src/stores/safeStorage";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export const useSidebarStore = create<SidebarState>()(
       }),
       { // Nombre del storage para persistencia
         name: "sidebar-storage",
+        storage: safeJSONStorage(),
       },
     ),
     { // Nombre del store para devtools
