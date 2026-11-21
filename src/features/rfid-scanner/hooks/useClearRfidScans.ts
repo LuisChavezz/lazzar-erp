@@ -38,7 +38,8 @@ const parseClearError = (error: unknown): string => {
  * ciertos; sin eso la barra seguiría anunciando las lecturas recién borradas.
  *
  * SIN actualización optimista, a diferencia de los `useDelete*` de catálogo: el
- * borrado es global e irreversible, así que la tabla se vacía en `onSuccess`,
+ * borrado es irreversible (todas las lecturas de la empresa activa, ver
+ * `clearRfidScans`), así que la tabla se vacía en `onSuccess`,
  * cuando el backend ya confirmó, y nunca en `onMutate`. Emite el toast aquí —y
  * no en el llamador, como hace `useRegisterRfidLabel`— porque el resultado no
  * admite matices: o borró N renglones o fue rechazado.
@@ -58,8 +59,9 @@ export const useClearRfidScans = () => {
       // obsoleta pero sin refrescar, y la tabla seguiría mostrando lecturas que
       // ya no existen.
       //
-      // No hace falta adivinar el estado resultante: la purga es total, así que
-      // después de un 200 no queda ni una lectura. Si nunca cargó (`old`
+      // No hace falta adivinar el estado resultante: la purga borra justo las
+      // lecturas que la tabla puede mostrar a quien la ejecuta (las de su
+      // empresa activa), así que después de un 200 no queda ni una. Si nunca cargó (`old`
       // indefinido) se deja intacta, para no convertir una consulta sin datos
       // en una "con datos vacíos".
       queryClient.setQueryData<RfidScansResponse>(["rfid-scans"], (old) =>
@@ -75,10 +77,15 @@ export const useClearRfidScans = () => {
       // `["rfid-scanner-stats"]` no tiene gate de `enabled`, así que sí está
       // activa y esta invalidación sí la refresca por sí sola.
       queryClient.invalidateQueries({ queryKey: ["rfid-scanner-stats"] });
+      // 0 es un 200 legítimo: no había lecturas de la empresa activa (o el
+      // superusuario no tiene empresa activa). Se dice así en vez de "0
+      // lecturas eliminadas", que parece un fallo.
       toast.success(
-        data.deleted === 1
-          ? "1 lectura eliminada."
-          : `${data.deleted.toLocaleString("es-MX")} lecturas eliminadas.`,
+        data.deleted === 0
+          ? "No había lecturas de la empresa activa para eliminar."
+          : data.deleted === 1
+            ? "1 lectura eliminada."
+            : `${data.deleted.toLocaleString("es-MX")} lecturas eliminadas.`,
       );
     },
     onError: (error) => {

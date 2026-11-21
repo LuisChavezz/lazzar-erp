@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { DeleteIcon, ScanLineIcon, XIcon } from "@/src/components/Icons";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
+import { useIsCompanyAdmin } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { rfidScanColumns } from "./RfidScanColumns";
 import { RfidScannerStats } from "./RfidScannerStats";
 import { useClearRfidScans } from "../hooks/useClearRfidScans";
@@ -22,7 +21,9 @@ import { useRfidScannerStats } from "../hooks/useRfidScannerStats";
  *
  * No hay alta ni edición: una lectura es un evento del lector, no un documento.
  * La única escritura es la purga del buffer ("Limpiar lecturas"), que el
- * backend restringe a superusuario o administrador de empresa.
+ * backend restringe a superusuario o administrador de empresa y acota a la
+ * empresa activa (EC-884). La barra de estado del lector sale de
+ * `scanner-stats`, restringido igual, así que también es solo para ellos.
  *
  * El interruptor de monitoreo controla el `enabled` del polling (3 s, ver
  * `useRfidScans`). Vive en el `actionButton` de `DataTable`, que es la única
@@ -42,6 +43,14 @@ export function RfidScannerView() {
   // actualizar — que quedaría parpadeando y rechazando clics cada 3 segundos.
   const [isManualRefetching, setIsManualRefetching] = useState(false);
 
+  // La purga (`scans/clear/`) y `scanner-stats` los permite el backend solo a
+  // superusuario o administrador de empresa; no mira ningún código del
+  // catálogo de permisos (`D-WMS-SCANNER` incluido). Es la misma regla que
+  // `useIsCompanyAdmin`, que falla cerrado: mientras la sesión no lo confirme,
+  // ni botón ni petición. Esto es solo UX: la frontera real es el backend, que
+  // responde 403 con su propio mensaje si rechaza la llamada.
+  const isCompanyAdmin = useIsCompanyAdmin();
+
   const { scans, isLoading, isError, isSuccess, error, hasLoaded, refetch } =
     useRfidScans(isMonitoring);
   const {
@@ -49,21 +58,15 @@ export function RfidScannerView() {
     isLoading: isStatsLoading,
     isSuccess: isStatsSuccess,
     refetch: refetchStats,
-  } = useRfidScannerStats(isMonitoring);
+  } = useRfidScannerStats(isMonitoring, isCompanyAdmin);
   const { mutate: clearScans, isPending: isClearing } = useClearRfidScans();
-
-  // La purga se rige por `D-WMS-SCANNER` del catálogo de permisos, igual que
-  // el resto de acciones de la app. `hasPermission` ya cortocircuita para el
-  // rol "admin". Esto es solo UX: la frontera real es el backend, que responde
-  // 403 con su propio mensaje si rechaza la llamada.
-  const { data: session } = useSession();
-  const canClearScans = hasPermission("D-WMS-SCANNER", session?.user);
 
   // "Nada que limpiar" exige que AMBAS fuentes lo confirmen con una respuesta
   // vigente: la tabla —solo con el monitoreo encendido, porque detenida es una
-  // foto congelada— y el total global de `scanner-stats`. En cualquier otro
-  // caso (cargando, error, monitoreo detenido, stats con 403) el botón queda
-  // habilitado: ante la duda se deja intentar, y el backend responde igual.
+  // foto congelada— y el total de `scanner-stats`, que cuenta las mismas
+  // lecturas que borra la purga (las de la empresa activa). En cualquier otro
+  // caso (cargando, error, monitoreo detenido) el botón queda habilitado: ante
+  // la duda se deja intentar, y el backend responde igual.
   // `isSuccess` y no `hasLoaded`: tras un refetch fallido la caché conserva
   // datos viejos, pero ya no confirman nada.
   const hasNothingToClear =
@@ -81,16 +84,19 @@ export function RfidScannerView() {
     // Al encender se revalida el estado del lector de inmediato, sin esperar
     // al primer ciclo de 15 s de `scanner-stats`. Es también lo que reanuda ese
     // polling si se había apagado por un error (ver `useRfidScannerStats`).
-    if (next) void refetchStats();
+    // Solo para administradores: `refetch()` ignora el `enabled: false` de la
+    // consulta, y a cualquier otro usuario el backend le respondería 403.
+    if (next && isCompanyAdmin) void refetchStats();
   };
 
   // El botón de refrescar de la tabla actualiza AMBAS consultas. `refetch()`
   // fuerza la petición aunque la consulta esté deshabilitada, así que también
-  // sirve como "traer una vez" con el monitoreo detenido.
+  // sirve como "traer una vez" con el monitoreo detenido. Por lo mismo,
+  // `scanner-stats` solo se pide para administradores (ver arriba).
   const handleRefetch = async () => {
     setIsManualRefetching(true);
     try {
-      await Promise.all([refetch(), refetchStats()]);
+      await Promise.all([refetch(), isCompanyAdmin ? refetchStats() : undefined]);
     } finally {
       setIsManualRefetching(false);
     }
@@ -99,10 +105,14 @@ export function RfidScannerView() {
   return (
     <div className="h-full flex flex-col min-h-0 space-y-6">
       {/* `shrink-0`: solo la tabla de abajo debe crecer para llenar el
-          espacio disponible. */}
-      <div className="shrink-0">
-        <RfidScannerStats stats={stats} isLoading={isStatsLoading} />
-      </div>
+          espacio disponible. Solo para administradores: a cualquier otro
+          usuario `scanner-stats` no se le pide, y la barra quedaría para
+          siempre en "Estado del lector desconocido". */}
+      {isCompanyAdmin && (
+        <div className="shrink-0">
+          <RfidScannerStats stats={stats} isLoading={isStatsLoading} />
+        </div>
+      )}
 
       {/* `min-h-120`: piso de la tabla cuando la barra de estado del lector
           deja poco espacio remanente — sin esto, `flex-1` podía encoger la
@@ -120,7 +130,7 @@ export function RfidScannerView() {
         isRefetching={isManualRefetching}
         actionButton={
           <div className="flex items-center gap-2">
-            {canClearScans && (
+            {isCompanyAdmin && (
               <>
                 {/* El `title` va en un `<span>` y no en el botón: un `<button>`
                     deshabilitado no recibe eventos de puntero, así que el
@@ -156,7 +166,7 @@ export function RfidScannerView() {
                   open={isClearOpen}
                   onOpenChange={setIsClearOpen}
                   title="Limpiar lecturas RFID"
-                  description="Se eliminarán todas las lecturas RFID de todas las empresas y sucursales. Esta acción no se puede deshacer."
+                  description="Se eliminarán las lecturas RFID de la empresa activa, de todas sus sucursales. Las de otras empresas y las que no están ligadas a ninguna empresa se conservan. Esta acción no se puede deshacer."
                   confirmationWord="LIMPIAR"
                   confirmText={isClearing ? "Eliminando..." : "Eliminar"}
                   confirmColor="red"

@@ -83,7 +83,8 @@ export interface RfidScannerLastScan {
 /** Respuesta de `GET /wms/etiquetas-rfid/scanner-stats/` (sin los campos de
  *  diagnóstico; ver la nota de arriba). */
 export interface RfidScannerStatsResponse {
-  /** Total de renglones en `RfidScan`, sin filtrar por empresa/sucursal. */
+  /** Total de lecturas de la empresa activa del usuario, todas sus sucursales
+   *  (EC-884): el mismo conjunto que borra `scans/clear/`. Sin empresa activa, 0. */
   total_rfidscan_rows: number;
   last_scan_ts: string | null;
   /**
@@ -104,7 +105,8 @@ export type RfidScannerStats = Pick<
 >;
 
 /** Respuesta de `POST /wms/etiquetas-rfid/scans/clear/`. `deleted` es el total
- *  de renglones borrados que devuelve el `.delete()` del ORM. */
+ *  de renglones borrados que devuelve el `.delete()` del ORM, acotado a la
+ *  empresa activa; 0 si no había lecturas o el usuario no tiene empresa. */
 export interface ClearRfidScansResponse {
   status: string;
   deleted: number;
