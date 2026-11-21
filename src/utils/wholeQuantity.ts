@@ -27,6 +27,14 @@ export const parseWholeQuantity = (raw: string, min: number): number | null => {
 };
 
 /**
+ * ¿`raw` solo AGREGA dígitos al final de lo que mostraba el input (`shown`)?
+ * Tras bloquear un separador, esos dígitos son la parte decimal ("1.5": el "5")
+ * y el selector los descarta, para que teclear "1.5" deje 1 y no 15.
+ */
+export const appendsDigitsAtEnd = (raw: string, shown: string): boolean =>
+  raw.length > shown.length && raw.startsWith(shown) && /^\d+$/.test(raw.slice(shown.length));
+
+/**
  * Pasos de "−" y "+". Con un valor fraccionario (fijado por el consumidor,
  * p. ej. el pendiente exacto de una recepción) van al entero de al lado:
  * 10.5 → 10 con "−" y 10.5 → 11 con "+". El techo lo pone el consumidor.
