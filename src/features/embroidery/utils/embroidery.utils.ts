@@ -1,7 +1,7 @@
 // Funciones puras de derivación para los KPIs del listado de Órdenes de
 // Bordado. Operan sobre `EmbroideryOrder[]` ya cargado por
 // `useEmbroideryOrders()` — sin fetch propio, mismo espíritu que
-// `computePickingKpis` (picking) / `computePackingKpis` (packing).
+// `computePackingKpis` (packing).
 //
 // No existe endpoint de agregación para este módulo: `OrdenBordadoViewSet`
 // solo expone `list`/`retrieve`/`create`/`onboarding` (verificado contra
@@ -18,8 +18,8 @@ export interface EmbroideryKpis {
    * que realmente hay que bordar. `cantidad` es un `FloatField` del backend
    * (número en el JSON, no el string decimal de inventario), así que se suma
    * directo; se descarta cualquier valor no finito para que un dato corrupto
-   * no envenene la suma entera con `NaN` (mismo criterio defensivo que el
-   * `Math.max(0, …)` de `computePickingKpis`).
+   * no envenene la suma entera con `NaN` (criterio defensivo: un dato
+   * corrupto nunca resta ni anula el total).
    */
   totalPrendas: number;
   /**
