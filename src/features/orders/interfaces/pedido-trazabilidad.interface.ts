@@ -112,9 +112,9 @@ export interface TrazabilidadResumen {
   /** Texto libre ya formateado en español; se muestra tal cual. */
   motivos: string[];
   /**
-   * Piezas de facturas EMITIDAS / piezas del pedido. No es la misma base que el
-   * "Avance facturado" del seguimiento de factura (que cuenta Borradores), por
-   * eso hoy no se muestra.
+   * Piezas de facturas EMITIDAS / piezas del pedido; se muestra como
+   * "Facturado (emitidas)". No es la base de "Piezas en facturas (incluye
+   * Borrador)" del seguimiento de factura (EC-522).
    */
   facturado_pct: number;
   /**
