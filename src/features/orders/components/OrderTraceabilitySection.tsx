@@ -364,13 +364,14 @@ interface OrderTraceabilitySectionProps {
  * carga y falla por su cuenta sin tocar el resto de la hoja. Mientras carga o
  * si falla no hay ningún control accionable salvo "Reintentar".
  *
+ * `resumen.facturado_pct` se rotula "Facturado (emitidas)": cuenta solo facturas
+ * EMITIDAS, mientras que el seguimiento de factura muestra "Piezas en facturas
+ * (incluye Borrador)". Son dos cifras distintas a propósito (EC-522).
+ *
  * Qué NO se pinta, a propósito:
  * - `pedido.folio`/`cliente`/`clasificacion`/`estatus_label`: la página ya los
  *   muestra desde el detalle, y `estatus_label` usa otro vocabulario.
  * - `pedido.total_piezas` suelto: los totales solo aparecen dentro de cada paso.
- * - `resumen.facturado_pct`: cuenta solo facturas EMITIDAS, mientras que el
- *   "Avance facturado" del seguimiento de factura cuenta también Borradores.
- *   Con bases distintas, dos pantallas darían dos cifras para "lo facturado".
  */
 export function OrderTraceabilitySection({
   trazabilidad,
@@ -470,6 +471,12 @@ export function OrderTraceabilitySection({
                   · {diasRestantes}
                 </span>
               )}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-600 dark:text-slate-300">
+              <span className="text-slate-400">Facturado (emitidas)</span>
+              <span className="font-semibold text-slate-800 dark:text-white">
+                {`${formatPedidoPct(resumen.facturado_pct)}%`}
+              </span>
             </span>
             {showAccounting && (
               // `null` con acceso contable = el pedido no tiene CxC: "—", nunca 0%.
