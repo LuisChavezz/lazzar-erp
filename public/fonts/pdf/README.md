@@ -5,7 +5,8 @@ del paquete npm `@expo-google-fonts/arimo@0.4.3`), bajo la **SIL Open Font Licen
 1.1** (`OFL.txt`). Proyecto: https://github.com/googlefonts/arimo.
 
 La registra `src/pdfs/shared/documentPdfFonts.ts` para la plantilla base
-(`DocumentPdfLayout`, EC-858). Sustituye a la Helvetica estándar de react-pdf,
+(`DocumentPdfLayout`, EC-858). El PDF de cotización (`QuotePdfStyles.ts`, fuera
+de la base) también la usa, vía `withDocumentPdfFont` (EC-892). Sustituye a la Helvetica estándar de react-pdf,
 que solo tiene WinAnsi y borraba en silencio cualquier otro carácter (flechas,
 ≥, comillas tipográficas fuera de WinAnsi…). Arimo tiene las mismas métricas que
 Arial/Helvetica, así que las tablas y tarjetas conservan sus anchos.

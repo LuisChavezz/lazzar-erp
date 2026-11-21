@@ -9,7 +9,8 @@
  *
  * Solo se REGISTRA aquí; react-pdf descarga el archivo al generar un PDF, así
  * que no pesa en ninguna pantalla. El PDF de cotización (estilos propios,
- * fuera de la base) sigue en Helvetica; el de factura pasó a la base (EC-859).
+ * fuera de la base) también usa Arimo, vía `withDocumentPdfFont` en
+ * `QuotePdfStyles.ts` (EC-892); el de factura pasó a la base (EC-859).
  */
 import { Font } from "@react-pdf/renderer";
 
@@ -41,9 +42,9 @@ type PdfStyleEntry = { fontFamily?: string | string[] };
 
 /**
  * Pasa una hoja de estilos de Helvetica a la fuente de la base: `Helvetica` →
- * Arimo normal y `Helvetica-Bold` → Arimo en negritas. La usa
- * `DocumentPdfStyles`, que parte de `basePdfStyles` (compartida con la
- * cotización, que sigue en Helvetica), así que el cambio queda solo en la base.
+ * Arimo normal y `Helvetica-Bold` → Arimo en negritas. La usan
+ * `DocumentPdfStyles` y `QuotePdfStyles` (EC-892), que parten de
+ * `basePdfStyles`, así que esa hoja compartida no cambia.
  */
 export function withDocumentPdfFont<Styles extends Record<string, PdfStyleEntry>>(styles: Styles): Styles {
   return Object.fromEntries(
