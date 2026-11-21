@@ -120,10 +120,10 @@ export const getTrazabilidadPasoLabel = (paso: Pick<TrazabilidadPaso, "clave" | 
   paso.label;
 
 /**
- * Llaves de `ORDER_DOCUMENT_DIALOGS` (el `doc.tipo` de `documentos[]`) de las
+ * Llaves de `ORDER_DOCUMENT_DIALOGS` (los tipos de documento del backend) de las
  * órdenes de trabajo. El vocabulario de `ordenes[].tipo` de la trazabilidad es
  * otro (`BORDADO`, `OP`…), así que se traduce aquí para abrir el MISMO diálogo
- * que "Documentos relacionados".
+ * que la hoja "Documentos".
  */
 export type OrdenTrabajoDocTipo =
   | "orden_bordado"

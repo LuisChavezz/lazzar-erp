@@ -436,28 +436,6 @@ export interface PedidoDetalleLinea {
 }
 
 /**
- * Documento relacionado a un pedido, tal como lo lista `documentos` en el
- * retrieve (`GET /ventas/pedidos/{id}/`). Es una vista uniforme sobre 13 tipos
- * distintos de documento (cotización, órdenes de trabajo, factura, picking,
- * etc.), por eso `folio`/`fecha`/`estatus` son laxos: no todos los tipos los
- * traen de verdad.
- *
- * OJO — datos crudos por tipo (el frontend los filtra al pintar): `envio`,
- * `entrega` y `devolucion` son modelos stub y traen `folio`/`fecha` = `str(id)`
- * (el PK disfrazado, NO una fecha real). `movimiento_inventario` trae `folio` =
- * `str(id)` pero su `fecha` SÍ es real (`fecha_movimiento`) y su `estatus`
- * siempre `null`. Los demás tipos traen los tres campos reales.
- */
-export interface PedidoDocumento {
-  id: number;
-  tipo: string;
-  label: string;
-  folio: string;
-  fecha: string | null;
-  estatus: string | null;
-}
-
-/**
  * Un picking del pedido, tal como lo lista `folios_picking` en el retrieve
  * (`GET /ventas/pedidos/{id}/`). Un pedido acumula VARIOS pickings a lo largo
  * del tiempo (son parciales y repetibles por talla), así que esto es el
@@ -511,8 +489,8 @@ export interface PedidoFolioPicking {
 
 /**
  * Respuesta de `GET /ventas/pedidos/{id}/`: la cabecera del pedido más
- * `detalles` (líneas producto+color con tallas anidadas) y `documentos` (los
- * documentos relacionados). Funciona igual con o sin cotización ligada
+ * `detalles` (líneas producto+color con tallas anidadas). Funciona igual con o
+ * sin cotización ligada
  * (`cotizacion: null`) — el detalle ya no depende de ella.
  *
  * Extiende `Order` (en vez de redeclarar) siguiendo el precedente de
@@ -522,20 +500,19 @@ export interface PedidoFolioPicking {
  * cabecera, TypeScript NO lo señalaría, porque este tipo hereda lo que sea que
  * declare aquel.
  *
- * `documentos` es opcional: puede faltar para usuarios sin permiso de
- * contabilidad o en casos borde, así que se tipa `?` y la UI cae al estado
- * vacío cuando no viene. `tracker_picking` y `folios_picking` siguen el mismo
- * criterio, por el mismo motivo — ver sus notas abajo.
+ * El backend también manda `documentos` (la lista de documentos del pedido),
+ * que el frontend ya no lee: la hoja "Documentos" sale de
+ * `GET /ventas/pedidos/{id}/documentos/` (EC-914), así que no se tipa.
+ * `tracker_picking` y `folios_picking` son opcionales — ver sus notas abajo.
  */
 export interface PedidoDetail extends Order {
   detalles: PedidoDetalleLinea[];
-  documentos?: PedidoDocumento[];
   /**
    * Avance de picking del PEDIDO COMPLETO. Va aquí y NO en `Order`: el
    * serializer del listado (`PedidoListSerializer` → `PedidoListItem`) no lo
    * expone, y `Order` es la forma que comparten listado y detalle.
    *
-   * OPCIONAL a propósito, igual que `documentos`: el backend que lo introdujo
+   * OPCIONAL a propósito: el backend que lo introdujo
    * es más nuevo que este frontend, así que un despliegue anterior (o un
    * rollback) responde sin el campo. Tipar el hueco obliga a que TODO consumidor
    * lo compruebe, en vez de dejar que el tipo prometa algo que la respuesta

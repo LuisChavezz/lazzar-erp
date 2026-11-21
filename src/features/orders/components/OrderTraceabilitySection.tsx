@@ -75,8 +75,8 @@ function AvanceCells({ avance }: { avance: AvanceView }) {
 }
 
 /**
- * Orden de trabajo vigente del proceso. El folio abre el MISMO diálogo que en
- * "Documentos relacionados" (registro `ORDER_DOCUMENT_DIALOGS`), nunca una
+ * Orden de trabajo vigente del proceso. El folio abre el MISMO diálogo que la
+ * hoja "Documentos" (registro `ORDER_DOCUMENT_DIALOGS`), nunca una
  * ruta, y con la misma condición: el permiso de la sección de la orden
  * (`canOpenOrderDocument`, EC-895). Un `tipo` sin diálogo (uno nuevo del
  * backend) o sin ese permiso deja el folio como texto: un enlace que no abre

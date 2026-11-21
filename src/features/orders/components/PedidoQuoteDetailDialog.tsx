@@ -10,7 +10,7 @@ import { useQuoteComentarios } from "@/src/features/quotes/hooks/useQuoteComenta
 import { usePedidoQuote } from "../hooks/usePedidoQuote";
 
 interface PedidoQuoteDetailDialogProps {
-  /** Id de la COTIZACIÓN (`doc.id` de `documentos[]`). */
+  /** Id de la COTIZACIÓN (`cotizaciones[].id` de `documentos/`). */
   orderId: number | null;
   /** Id del pedido 360° que la abre: el endpoint se lee por pedido. */
   pedidoId: number;

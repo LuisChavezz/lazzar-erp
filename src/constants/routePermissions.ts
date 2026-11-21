@@ -37,8 +37,8 @@ export const routePermissions: Array<{
   // `/orders/[id]` no cuelga de ningún módulo: se alcanza desde Ventas, Mesa de
   // Control, WMS, Compras y Producción vía `?from=`. Por eso NO exige un código
   // concreto sino CUALQUIERA de los que dan acceso legítimo al pedido o a los
-  // documentos que cuelgan de él (las cotizaciones, órdenes y pickings del
-  // bloque "Documentos relacionados" se consultan desde aquí con las
+  // documentos que cuelgan de él (las cotizaciones, órdenes y pickings de
+  // la hoja "Documentos" se consultan desde aquí con las
   // credenciales reales del usuario y el backend no filtra ese detalle por
   // permiso: esta regla es el único control de acceso).
   // Va arriba, antes que cualquier prefijo de módulo, para que ninguna regla
