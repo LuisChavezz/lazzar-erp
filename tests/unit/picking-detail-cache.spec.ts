@@ -4,7 +4,8 @@ import {
   PICKING_DETAIL_QUERY_KEY,
   pickingDetailQueryKey,
 } from "@/src/features/picking/constants/pickingQueryKeys";
-import { PICKINGS_KEY } from "@/src/features/picking/constants/pickingsTable";
+import { PICKINGS_KEY, pickingsTable } from "@/src/features/picking/constants/pickingsTable";
+import { readServerTableState, toServerTableCriteria } from "@/src/utils/serverTableParams";
 import { toPickingDetailData } from "@/src/features/picking/utils/picking.utils";
 import type { Picking } from "@/src/features/picking/interfaces/picking.interface";
 
@@ -31,4 +32,22 @@ test("la caché del detalle guarda el picking con el instante de la lectura", ()
   expect(data.picking.folio).toBe("PICK-000040");
   expect(data.fetchedAt).toBeGreaterThanOrEqual(before);
   expect(data.fetchedAt).toBeLessThanOrEqual(Date.now());
+});
+
+test.describe("orden del listado de surtidos", () => {
+  const criteriaOf = (query: string) => {
+    const params = new URLSearchParams(query);
+    return toServerTableCriteria(
+      pickingsTable,
+      readServerTableState(pickingsTable, (key) => params.get(key)),
+    );
+  };
+
+  test("el orden por defecto y cada columna ordenable llevan `-id` de desempate", () => {
+    expect(criteriaOf("").ordering).toBe("-created_at,-id");
+    for (const field of ["created_at", "pedido_fecha_entrega", "piezas", "estado_empaque"]) {
+      expect(criteriaOf(`ordering=${field}`).ordering).toBe(`${field},-id`);
+      expect(criteriaOf(`ordering=-${field}`).ordering).toBe(`-${field},-id`);
+    }
+  });
 });
