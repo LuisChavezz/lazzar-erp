@@ -1,12 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { PEDIDO_PROGRAMAR_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { PEDIDO_DETAIL_QUERY_ROOT } from "./usePedidoDetail";
+import { PEDIDO_DOCUMENTOS_QUERY_ROOT } from "./usePedidoDocumentos";
 import { PEDIDO_TRAZABILIDAD_QUERY_ROOT } from "./usePedidoTrazabilidad";
 
 /**
  * Invalida el detalle (`["pedido-detail", id]`), la trazabilidad
- * (`["pedido-trazabilidad", id]`) y el contexto de "Programar pedido"
- * (`["pedido-programar", id]`) de TODOS los pedidos en caché, por raíz.
+ * (`["pedido-trazabilidad", id]`), los documentos (`["pedido-documentos", id]`)
+ * y el contexto de "Programar pedido" (`["pedido-programar", id]`) de TODOS los
+ * pedidos en caché, por raíz.
  *
  * La llaman las mutaciones de otros módulos que cambian el avance de un pedido
  * (picking, packing, envío, órdenes de trabajo, avances, facturas, notas de
@@ -23,5 +25,6 @@ export const invalidatePedidoProgress = (queryClient: QueryClient) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: [PEDIDO_DETAIL_QUERY_ROOT] }),
     queryClient.invalidateQueries({ queryKey: [PEDIDO_TRAZABILIDAD_QUERY_ROOT] }),
+    queryClient.invalidateQueries({ queryKey: [PEDIDO_DOCUMENTOS_QUERY_ROOT] }),
     queryClient.invalidateQueries({ queryKey: PEDIDO_PROGRAMAR_QUERY_KEY }),
   ]);
