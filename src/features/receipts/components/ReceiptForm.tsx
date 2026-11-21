@@ -11,6 +11,7 @@ import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
 import { SERIES_SUCURSAL_EMPTY_MESSAGE } from "../schemas/receipt.schema";
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { motivoSinTope, sumarCantidades } from "../utils/receiptQuantities";
 import { ReceiptLinesPanel } from "./ReceiptLinesPanel";
 import type { ReceiptScanLine } from "../utils/receiptScan";
@@ -140,7 +141,7 @@ export default function ReceiptForm({
     const motivo = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
     const sinTope =
       motivo === "Sin pendiente" && enMaquila > 0
-        ? `En maquila ${enMaquila.toLocaleString("es-MX")}${enMaquilaFolios.length > 0 ? ` · ${enMaquilaFolios.join(", ")}` : ""}`
+        ? `En maquila ${formatExactQuantityValue(enMaquila)}${enMaquilaFolios.length > 0 ? ` · ${enMaquilaFolios.join(", ")}` : ""}`
         : motivo;
     return {
       id: d.id,
@@ -445,14 +446,14 @@ export default function ReceiptForm({
                   }`}
                 >
                   <p className="text-sm text-slate-700 dark:text-slate-200">
-                    Regresan <b className="tabular-nums">{capturadas}</b> de{" "}
-                    <b className="tabular-nums">{piezasPendientes}</b> piezas de la {salidaMaquila.folio}.
+                    Regresan <b className="tabular-nums">{formatExactQuantityValue(capturadas)}</b> de{" "}
+                    <b className="tabular-nums">{formatExactQuantityValue(piezasPendientes)}</b> piezas de la {salidaMaquila.folio}.
                     {desenlace === "sigue-enviada" && (
-                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{faltan}</b>: la SM sigue Enviada para recibirlas después.</>
+                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{formatExactQuantityValue(faltan)}</b>: la SM sigue Enviada para recibirlas después.</>
                     )}
                     {/* Con "Cerrar la SM con faltante" el backend la deja Recibida (EC-919). */}
                     {desenlace === "recibida-con-faltante" && (
-                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{faltan}</b>: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b> y esas piezas quedan como faltante del maquilero.</>
+                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{formatExactQuantityValue(faltan)}</b>: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b> y esas piezas quedan como faltante del maquilero.</>
                     )}
                     {desenlace === "recibida" && (
                       <> Regresó todo: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b>.</>
@@ -471,7 +472,7 @@ export default function ReceiptForm({
                           <span>
                             <b>Cerrar la SM con faltante</b>
                             <span className="block text-xs text-slate-500 dark:text-slate-400">
-                              Las {faltan} piezas que no regresaron quedan como faltantes del maquilero y ya no se esperan.
+                              Las {formatExactQuantityValue(faltan)} piezas que no regresaron quedan como faltantes del maquilero y ya no se esperan.
                             </span>
                           </span>
                         </label>

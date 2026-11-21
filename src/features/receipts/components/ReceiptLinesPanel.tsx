@@ -5,6 +5,7 @@ import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { ScanCapture, SizeProgressChip, type ScanModo, type ScanResult } from "@/src/components/ScanCapture";
 import { SkuCode } from "@/src/components/SkuCode";
 import { splitSku } from "@/src/utils/sku";
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { capturaManualRecepcion, sumarCantidades } from "../utils/receiptQuantities";
 import { findReceiptLineByScan, groupReceiptLines, receiptScanCodes, type ReceiptScanLine } from "../utils/receiptScan";
 
@@ -19,7 +20,8 @@ interface ReceiptLinesPanelProps {
   lineErrors?: Record<number, string>;
 }
 
-const fmt = (value: number) => value.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+/** Cantidades con su precisión completa (hasta 4 decimales), como el detalle de la recepción. */
+const fmt = formatExactQuantityValue;
 
 /**
  * "En maquila 4 (SM-00005)": piezas del renglón que están fuera con un
