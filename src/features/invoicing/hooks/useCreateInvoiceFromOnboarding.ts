@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
+import { pedidoDocumentosQueryKey } from "@/src/features/orders/hooks/usePedidoDocumentos";
 import { createInvoiceFromOnboarding } from "../services/actions";
 import type { InvoiceOnboardingPayload } from "../interfaces/invoice-onboarding.interface";
 import { invoiceOnboardingQueryKey } from "./useInvoiceOnboarding";
@@ -92,6 +93,7 @@ export const useCreateInvoiceFromOnboarding = () => {
       });
       queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(payload.pedido) });
       queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(payload.pedido) });
+      queryClient.invalidateQueries({ queryKey: pedidoDocumentosQueryKey(payload.pedido) });
       // Prefijo: alcanza también las variantes con filtros de la lista.
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       toast.success(`Factura ${invoice.folio} creada como Borrador`);

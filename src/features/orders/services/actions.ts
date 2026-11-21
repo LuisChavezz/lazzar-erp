@@ -23,6 +23,7 @@ import type {
 } from "../interfaces/pedido-sku-muestra.interface";
 import type { PedidoHeaderUpdate } from "../interfaces/pedido-update.interface";
 import type { PedidoTrazabilidad } from "../interfaces/pedido-trazabilidad.interface";
+import type { PedidoDocumentos } from "../interfaces/pedido-documentos.interface";
 import type { PedidoKpis } from "../interfaces/pedido-kpis.interface";
 import type {
   PedidoExportRow,
@@ -155,6 +156,16 @@ export const getPedidoCotizacion = async (pedidoId: number): Promise<QuoteDetail
  */
 export const getPedidoTrazabilidad = async (id: number): Promise<PedidoTrazabilidad> => {
   const response = await v1_api.get<PedidoTrazabilidad>(`/ventas/pedidos/${id}/trazabilidad/`);
+  return response.data;
+};
+
+/**
+ * Documentos de UN pedido (`GET /ventas/pedidos/{id}/documentos/`, EC-914): un
+ * bloque por tipo de documento, sin params ni paginación. Mismo alcance que la
+ * trazabilidad: un pedido que el usuario no ve responde 404.
+ */
+export const getPedidoDocumentos = async (id: number): Promise<PedidoDocumentos> => {
+  const response = await v1_api.get<PedidoDocumentos>(`/ventas/pedidos/${id}/documentos/`);
   return response.data;
 };
 

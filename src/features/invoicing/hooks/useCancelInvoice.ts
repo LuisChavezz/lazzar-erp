@@ -5,6 +5,7 @@ import { toastWarning } from "@/src/utils/toastWarning";
 import { ORDERS_QUERY_KEY } from "@/src/features/orders/hooks/useOrders";
 import { pedidoDetailQueryKey } from "@/src/features/orders/hooks/usePedidoDetail";
 import { pedidoTrazabilidadQueryKey } from "@/src/features/orders/hooks/usePedidoTrazabilidad";
+import { pedidoDocumentosQueryKey } from "@/src/features/orders/hooks/usePedidoDocumentos";
 import { cancelInvoice } from "../services/actions";
 import type { Invoice } from "../interfaces/invoice.interface";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
@@ -207,6 +208,7 @@ export const useCancelInvoice = (invoiceId: number) => {
         queryClient.invalidateQueries({ queryKey: invoiceOnboardingQueryKey(invoice.pedido) });
         queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(invoice.pedido) });
         queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(invoice.pedido) });
+        queryClient.invalidateQueries({ queryKey: pedidoDocumentosQueryKey(invoice.pedido) });
       }
       // Prefijos: alcanzan también las variantes con filtros y los detalles.
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });

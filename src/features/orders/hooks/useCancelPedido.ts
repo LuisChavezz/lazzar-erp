@@ -18,6 +18,7 @@ import { pedidoDetailQueryKey } from "./usePedidoDetail";
 import { pedidoMesaControlContextoQueryKey } from "./usePedidoMesaControlContexto";
 import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
+import { pedidoDocumentosQueryKey } from "./usePedidoDocumentos";
 import { pedidoCancelSummary } from "../utils/pedidoCancelSummary";
 
 interface CancelPedidoVariables {
@@ -44,6 +45,7 @@ export const cancelPedidoMutationKey = (pedidoId: number) =>
 const pedidoRecordQueryKeys = (pedidoId: number): QueryKey[] => [
   pedidoDetailQueryKey(pedidoId),
   pedidoTrazabilidadQueryKey(pedidoId),
+  pedidoDocumentosQueryKey(pedidoId),
   pedidoProgramarQueryKey(pedidoId),
   pedidoMesaControlContextoQueryKey(pedidoId),
 ];
