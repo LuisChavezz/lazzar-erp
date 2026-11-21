@@ -3,6 +3,7 @@ import {
   parseSupplierInvoicesFactura,
   parseSupplierInvoicesProveedor,
   parseSupplierInvoicesSalidaMaquila,
+  supplierInvoiceToOpen,
 } from "@/src/features/supplier-invoices/utils/supplierInvoicesListQuery";
 
 /**
@@ -13,7 +14,7 @@ import {
  * del detalle de OC (origen `supplier-invoices`). `?salida_maquila=<id>` lista
  * las facturas de maquila de esa SM y `?factura=<id>` abre su detalle: los pone
  * el detalle de la SM (EC-919). Se validan aquí; un valor inválido se trata
- * como ausente.
+ * como ausente, y `?factura=` sin ningún filtro se ignora.
  */
 export default async function SupplierInvoicesPage({
   searchParams,
@@ -21,13 +22,19 @@ export default async function SupplierInvoicesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { proveedor, salida_maquila, factura } = await searchParams;
+  const proveedorId = parseSupplierInvoicesProveedor(proveedor);
+  const salidaMaquilaId = parseSupplierInvoicesSalidaMaquila(salida_maquila);
 
   return (
     <div className="w-full h-[calc(100dvh-13rem)] min-h-0">
       <SupplierInvoiceList
-        initialProveedorId={parseSupplierInvoicesProveedor(proveedor) ?? 0}
-        initialSalidaMaquilaId={parseSupplierInvoicesSalidaMaquila(salida_maquila)}
-        initialFacturaId={parseSupplierInvoicesFactura(factura)}
+        initialProveedorId={proveedorId ?? 0}
+        initialSalidaMaquilaId={salidaMaquilaId}
+        initialFacturaId={supplierInvoiceToOpen({
+          proveedorId,
+          salidaMaquilaId,
+          facturaId: parseSupplierInvoicesFactura(factura),
+        })}
       />
     </div>
   );
