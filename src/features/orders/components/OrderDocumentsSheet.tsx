@@ -10,7 +10,6 @@ import { FacturacionIcon, FolioIcon, OrdenesIcon, RefreshIcon, WarehouseIcon } f
 import { KpiCurrencyAmount } from "@/src/components/KpiCurrency";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 import { SALIDA_MAQUILA_STATUS_CONFIG } from "@/src/features/maquila-outputs/constants/salidaMaquilaStatus";
 import { PreOrdenLink } from "@/src/features/production-orders/components/PreOrdenLink";
 import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrderStatus";
@@ -28,11 +27,13 @@ import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
 import type { PedidoDocumentosQuery } from "../hooks/usePedidoDocumentos";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import type {
-  PedidoDocumentoCobro,
   PedidoDocumentoFila,
   PedidoDocumentos,
 } from "../interfaces/pedido-documentos.interface";
+import { cobroRowKey, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
 import {
+  FACTURA_DOC_TIPO,
+  getOrderDocumentRoute,
   hasOrderDocumentDialog,
   MOVIMIENTO_INVENTARIO_DOC_TIPO,
   PACKING_DOC_TIPO,
@@ -122,16 +123,6 @@ function DocBlock({
   );
 }
 
-/**
- * Folio visible de una fila de los bloques compartidos con `pedido.documentos`.
- * La cotización no tiene folio (llega `null`): se muestra su id, como lo hacía
- * la antigua sección "Documentos relacionados" (que recibía `str(pk)`).
- */
-const filaFolio = (fila: PedidoDocumentoFila): string => fila.folio || String(fila.id);
-
-const filaEstatus = (fila: PedidoDocumentoFila): string | null =>
-  fila.estatus_label ?? (fila.estatus === null ? null : String(fila.estatus));
-
 /** Bloque con la forma común `{ id, folio, estatus, estatus_label, fecha }` (EC-920). */
 function FilaBlock({
   title,
@@ -180,10 +171,6 @@ function FilaBlock({
   );
 }
 
-/** Llave de un cobro: un mismo cobro aplicado a dos facturas llega dos veces. */
-const cobroRowKey = (cobro: PedidoDocumentoCobro, index: number): string =>
-  `${cobro.cobro_id}-${cobro.factura_folio ?? `sin-folio-${index}`}`;
-
 const movimientoTipoLabel = (tipo: string): string =>
   Object.hasOwn(MOVEMENT_TYPE_CONFIG, tipo)
     ? MOVEMENT_TYPE_CONFIG[tipo].label
@@ -208,6 +195,8 @@ function DocumentosBlocks({
   // `total` llega `null` a quien no tiene `R-PRODUCCION-COSTOS`: entonces la
   // columna no existe (no es un total en cero).
   const showSmTotal = docs.salidas_maquila.some((sm) => sm.total !== null);
+  // La factura abre su página (registro `ORDER_DOCUMENT_ROUTES`), no un diálogo.
+  const facturaRoute = getOrderDocumentRoute(FACTURA_DOC_TIPO);
   const { facturas, cobros } = docs;
 
   return (
@@ -481,14 +470,18 @@ function DocumentosBlocks({
                   <tr key={factura.id} className={ROW}>
                     <td className="px-3 py-2">
                       {/* Página propia con su regla de ruta: sin acceso, texto. */}
-                      <AccessibleLink
-                        href={invoiceDetailHref(factura.id, "order", { pedido: pedidoId })}
-                        title="Ver detalle"
-                        className={DOC_LINK_CLASS}
-                        fallbackClassName={DOC_TEXT_CLASS}
-                      >
-                        {factura.folio || `#${factura.id}`}
-                      </AccessibleLink>
+                      {facturaRoute ? (
+                        <AccessibleLink
+                          href={facturaRoute.href(factura.id, pedidoId)}
+                          title="Ver detalle"
+                          className={DOC_LINK_CLASS}
+                          fallbackClassName={DOC_TEXT_CLASS}
+                        >
+                          {factura.folio || `#${factura.id}`}
+                        </AccessibleLink>
+                      ) : (
+                        <span className={DOC_TEXT_CLASS}>{factura.folio || `#${factura.id}`}</span>
+                      )}
                     </td>
                     <td className={TD_DATE}>{formatShortCalendarDate(factura.fecha_emision)}</td>
                     <td className="px-3 py-2">
