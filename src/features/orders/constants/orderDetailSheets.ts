@@ -4,7 +4,9 @@
  *
  * - `order` ("Pedido"): el pedido con el formato de la cotización. Es la hoja
  *   por defecto y NO se escribe en la URL.
- * - `progress` ("Avances"): surtido y documentos relacionados.
+ * - `progress` ("Avances"): trazabilidad y surtido.
+ * - `documents` ("Documentos", EC-914): cada documento que nació del pedido,
+ *   leído de `documentos/` solo al abrir la hoja.
  * - `history` ("Historial", EC-854): la línea de tiempo de la bitácora de
  *   documentos (el pedido y sus derivados). Solo existe para quien puede leer
  *   la bitácora (`R-CORE` o `R-CORE-REPORTES`); sin ese permiso
@@ -14,11 +16,14 @@
  */
 export const ORDER_DETAIL_SHEET_PARAM = "sheet";
 
-export const ORDER_DETAIL_SHEETS = ["order", "progress", "history"] as const;
+export const ORDER_DETAIL_SHEETS = ["order", "progress", "documents", "history"] as const;
 
 export type OrderDetailSheet = (typeof ORDER_DETAIL_SHEETS)[number];
 
 export const DEFAULT_ORDER_DETAIL_SHEET: OrderDetailSheet = "order";
+
+/** Hoja de documentos del pedido (EC-914). */
+export const ORDER_DOCUMENTS_SHEET: OrderDetailSheet = "documents";
 
 /** Hoja que solo ve quien puede leer la bitácora de documentos. */
 export const ORDER_HISTORY_SHEET: OrderDetailSheet = "history";

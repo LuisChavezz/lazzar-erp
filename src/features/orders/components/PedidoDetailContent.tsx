@@ -17,6 +17,7 @@ import { useSatInfo } from "@/src/features/sat/hooks/useSatInfo";
 import { getQuoteOnboardingDataQueryOptions } from "@/src/features/quotes/hooks/useQuoteOnboardingData";
 import { usePedidoDetailPage } from "../hooks/usePedidoDetail";
 import { usePedidoTrazabilidad } from "../hooks/usePedidoTrazabilidad";
+import { usePedidoDocumentos } from "../hooks/usePedidoDocumentos";
 import { useSessionRecovery } from "@/src/features/auth/components/SessionRecoveryProvider";
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import { DOCUMENT_AUDIT_PERMISSION } from "@/src/features/document-audit/constants/documentAuditValues";
@@ -55,6 +56,7 @@ import { resolveInvoiceDetailSheet } from "@/src/features/invoicing/constants/in
 import {
   availableOrderDetailSheets,
   buildOrderDetailSheetHref,
+  ORDER_DOCUMENTS_SHEET,
   ORDER_HISTORY_SHEET,
   resolveOrderDetailSheet,
   type OrderDetailSearchParams,
@@ -64,6 +66,7 @@ import type { SampleSkuLinkBlock } from "../constants/sampleSkuLinking";
 import { canSeeAccounting } from "../utils/orderAccounting";
 import { isSampleLine } from "../utils/orderLines";
 import { OrderDetailSheetSelector } from "./OrderDetailSheetSelector";
+import { OrderDocumentsSheet } from "./OrderDocumentsSheet";
 import { OrderHistorySheet } from "./OrderHistorySheet";
 import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
@@ -249,7 +252,9 @@ interface PedidoDetailContentProps {
  *
  * - "Pedido" (`OrderMainSheet`, por defecto): el pedido con el formato del
  *   formulario de cotización, en solo lectura.
- * - "Avances" (`OrderProgressSheet`): surtido y documentos relacionados.
+ * - "Avances" (`OrderProgressSheet`): trazabilidad y surtido.
+ * - "Documentos" (`OrderDocumentsSheet`, EC-914): los documentos del pedido,
+ *   de `documentos/`, pedidos solo con la hoja abierta.
  * - "Historial" (`OrderHistorySheet`, EC-854): la línea de tiempo de la
  *   bitácora de documentos. Solo para quien puede leerla (`R-CORE` o
  *   `R-CORE-REPORTES`); sin ese permiso el selector no la ofrece y
@@ -335,6 +340,12 @@ export function PedidoDetailContent({
   const trazabilidad = usePedidoTrazabilidad(numericId, {
     enabled: sheet === "progress" && !cancelled && !isPedidoUnavailable,
   });
+  // Documentos de la hoja "Documentos" (EC-914): solo con esa hoja activa,
+  // nunca junto con la trazabilidad (que es de "Avances"). Mismas reglas de
+  // apagado que la trazabilidad; al volver a encenderse se relee.
+  const documentos = usePedidoDocumentos(numericId, {
+    enabled: sheet === ORDER_DOCUMENTS_SHEET && !cancelled && !isPedidoUnavailable,
+  });
   // Línea de tiempo de la hoja "Historial": solo con la hoja activa y el
   // permiso ya CONFIRMADO (nunca mientras la sesión carga). En paralelo con el
   // pedido, como la trazabilidad (EC-768).
@@ -351,7 +362,8 @@ export function PedidoDetailContent({
   });
   // Al cambiar de hoja (botón, atrás/adelante del navegador) el documento
   // abierto se cierra en el mismo render: cada diálogo se abre desde UNA hoja
-  // (los documentos, desde Avances; el SKU de muestra, desde Pedido) y no debe
+  // (los documentos, desde Documentos; las órdenes de trabajo y los folios de
+  // surtido, desde Avances; el SKU de muestra, desde Pedido) y no debe
   // quedarse colgado sobre la otra.
   const [renderedSheet, setRenderedSheet] = useState<OrderDetailSheet>(sheet);
   if (renderedSheet !== sheet) {
@@ -597,6 +609,8 @@ export function PedidoDetailContent({
           onOpenDoc={setOpenDoc}
           trazabilidad={trazabilidad}
         />
+      ) : sheet === ORDER_DOCUMENTS_SHEET ? (
+        <OrderDocumentsSheet pedido={data} documentos={documentos} onOpenDoc={setOpenDoc} />
       ) : (
         <OrderHistorySheet pedido={data} history={history} />
       )}
