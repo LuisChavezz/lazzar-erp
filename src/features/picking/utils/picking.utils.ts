@@ -1,5 +1,5 @@
 // Funciones puras de derivación sobre un picking (traslado y vencimiento). Los
-// KPIs del listado los calcula el backend (`GET /wms/pickings/kpis/`).
+// KPIs del listado los calcula el backend (`GET /wms/pickings/resumen/`).
 
 import { PICKING_ESTADOS_TRASLADABLES } from "../constants/pickingStatus";
 import type {
