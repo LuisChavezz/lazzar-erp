@@ -113,6 +113,26 @@ export const initialDraft = (
 export const lineQty = (l: SalidaMaquilaDraftLine): number =>
   QTY.test(l.cantidad.trim()) ? Number(l.cantidad.trim()) : 0;
 
+/**
+ * Piezas con que el botón de un renglón lo llena (EC-922). Sin salidas previas,
+ * todas las del renglón, como siempre. Con salidas previas el tope es por
+ * orden (`quedan`), no por renglón: el renglón toma a lo más lo que queda
+ * libre después de lo que ya llevan los demás, nunca menos de 0.
+ */
+export const piezasParaLlenar = (
+  lines: SalidaMaquilaDraftLine[],
+  detalleId: number,
+  quedan: number,
+  yaEnviadas: number,
+): number => {
+  const line = lines.find((l) => l.detalleId === detalleId);
+  if (!line) return 0;
+  const todas = Math.round(line.enOrden);
+  if (yaEnviadas <= 0) return todas;
+  const enOtros = lines.reduce((acc, l) => (l.detalleId === detalleId ? acc : acc + lineQty(l)), 0);
+  return Math.max(0, Math.min(todas, quedan - enOtros));
+};
+
 /** ¿Hay algo escrito en piezas que no es un entero? */
 export const hasInvalidQty = (l: SalidaMaquilaDraftLine): boolean =>
   l.cantidad.trim() !== "" && !QTY.test(l.cantidad.trim());

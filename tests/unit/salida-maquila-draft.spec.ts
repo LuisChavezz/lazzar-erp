@@ -8,6 +8,7 @@ import {
   lineQty,
   opRenglones,
   opSeed,
+  piezasParaLlenar,
   servicioSeed,
   toDetalles,
   type SalidaMaquilaDraftLine,
@@ -53,6 +54,41 @@ test.describe("salida a maquila: borrador", () => {
     expect(toDetalles(capturado, "OP")).toEqual([
       { op_detalle: 1, descripcion: "SKU-1 · M · BLANCO", cantidad: "10", precio_unitario: "5" },
     ]);
+  });
+
+  test.describe("botón de renglón (EC-922)", () => {
+    // OP de 4 renglones de 10 (40 programadas).
+    const lines = (cantidades: string[]): SalidaMaquilaDraftLine[] =>
+      cantidades.map((cantidad, i) => ({ ...line(cantidad, "5", i + 1), enOrden: 10 }));
+
+    test("sin salidas previas llena el renglón con todas sus piezas, como siempre", () => {
+      expect(piezasParaLlenar(lines(["10", "10", "10", ""]), 4, 40, 0)).toBe(10);
+      expect(piezasParaLlenar(lines(["", "", "", ""]), 1, 40, 0)).toBe(10);
+    });
+
+    test("con salidas previas llena hasta lo que queda libre de la orden", () => {
+      // Ya salieron 10: quedan 30.
+      expect(piezasParaLlenar(lines(["", "", "", ""]), 1, 30, 10)).toBe(10);
+      expect(piezasParaLlenar(lines(["10", "10", "", ""]), 3, 30, 10)).toBe(10);
+      expect(piezasParaLlenar(lines(["10", "10", "10", ""]), 4, 30, 10)).toBe(0);
+      expect(piezasParaLlenar(lines(["10", "15", "", ""]), 3, 30, 10)).toBe(5);
+      // Lo que el propio renglón ya tenía no cuenta como ocupado.
+      expect(piezasParaLlenar(lines(["10", "10", "7", ""]), 3, 30, 10)).toBe(10);
+    });
+
+    test("nunca negativo, aunque los demás ya rebasen lo que queda", () => {
+      expect(piezasParaLlenar(lines(["20", "20", "", ""]), 3, 30, 10)).toBe(0);
+    });
+
+    test("llenar los renglones uno por uno nunca rebasa el tope", () => {
+      let d = lines(["", "", "", ""]);
+      for (const id of [1, 2, 3, 4]) {
+        const n = piezasParaLlenar(d, id, 30, 10);
+        d = d.map((l) => (l.detalleId === id ? { ...l, cantidad: String(n) } : l));
+      }
+      expect(d.reduce((acc, l) => acc + lineQty(l), 0)).toBe(30);
+      expect(draftProblems(d, 30)).toEqual([]);
+    });
   });
 
   test("detecta sin piezas, exceso, piezas no enteras y precio faltante", () => {
