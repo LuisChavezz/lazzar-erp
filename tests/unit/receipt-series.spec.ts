@@ -3,6 +3,7 @@ import {
   receiptSerieCodigo,
   receiptSeriePreseleccionada,
   receiptSeriesDeSucursal,
+  receiptSeriesOfrecidas,
 } from "../../src/features/receipts/utils/receiptSeries";
 import {
   buildReceiptFormSchema,
@@ -37,6 +38,26 @@ test.describe("series de recepción (EC-922)", () => {
     expect(receiptSeriesDeSucursal(series, 2)).toEqual(["RC"]);
     expect(receiptSeriesDeSucursal(series, 3)).toEqual([]);
     expect(receiptSeriesDeSucursal(series, null)).toEqual([]);
+  });
+
+  test.describe("lista posiblemente recortada por el onboarding (tope de 50 filas)", () => {
+    // 50 filas de otras sucursales: la 7 no aparece, aunque podría tener series.
+    const filas = (n: number) =>
+      Array.from({ length: n }, (_, i) => serie("RECEPCION", ["RC", "RT", "RZ"][i % 3], 100 + Math.floor(i / 3)));
+
+    test("con exactamente 50 filas ofrece RC, RT y RZ sin filtrar y propone RC", () => {
+      const ofrecidas = receiptSeriesOfrecidas(filas(50), 7);
+      expect(ofrecidas).toEqual(["RC", "RT", "RZ"]);
+      expect(receiptSeriePreseleccionada(ofrecidas)).toBe("RC");
+      // Aunque la sucursal sí venga en la lista: no se filtra.
+      expect(receiptSeriesOfrecidas(filas(50), 100)).toEqual(["RC", "RT", "RZ"]);
+    });
+
+    test("con 49 filas la lista está completa: filtra por sucursal y puede quedar vacía", () => {
+      expect(receiptSeriesOfrecidas(filas(49), 7)).toEqual([]);
+      expect(receiptSeriesOfrecidas(filas(49), 100)).toEqual(["RC", "RT", "RZ"]);
+      expect(receiptSeriesOfrecidas([serie("RZ", "RZ", 7), ...filas(48)], 7)).toEqual(["RZ"]);
+    });
   });
 
   test("preselecciona RC si está, la única si hay una, y nada con varias sin RC o ninguna", () => {
