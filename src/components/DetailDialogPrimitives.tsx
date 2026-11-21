@@ -98,14 +98,44 @@ export const Section = ({
  * compensa (ni la posición ni el ancho útil de la fila cambian). El filete del
  * dato que abre línea sigue a 25px del dato, o sea 19px fuera del borde: sigue
  * recortado.
+ *
+ * `align` decide la alineación vertical de los datos dentro de cada línea:
+ *
+ * - `"center"` (por defecto): cada dato se centra en la altura de la línea.
+ *   Basta mientras todos midan lo mismo (etiqueta + una línea de valor, 36px).
+ * - `"start"`: para una fila donde algún dato es más alto que los demás (un
+ *   subtexto, una barra de progreso). Con `"center"` la etiqueta y el valor de
+ *   ese dato suben la mitad de su altura extra respecto a los vecinos, y su
+ *   filete queda por debajo de su propia línea etiqueta/valor. Con `"start"`
+ *   todas las etiquetas arrancan a la misma altura y cada filete se ancla a la
+ *   línea etiqueta/valor de su dato (ver `HeaderStat`), no al centro del bloque.
  */
-export const HeaderStatRow = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-[49px] gap-y-3 overflow-x-clip px-1.5 -mx-1.5">
+export const HeaderStatRow = ({
+  children,
+  align = "center",
+}: {
+  children: React.ReactNode;
+  align?: "center" | "start";
+}) => (
+  <div
+    data-align={align}
+    className={`group/header-stat-row flex flex-wrap ${
+      align === "start" ? "items-start" : "items-center"
+    } gap-x-6 sm:gap-x-[49px] gap-y-3 overflow-x-clip px-1.5 -mx-1.5`}
+  >
     {children}
   </div>
 );
 
-/** Un dato label-arriba/valor-abajo dentro de `HeaderStatRow`. */
+/**
+ * Un dato label-arriba/valor-abajo dentro de `HeaderStatRow`.
+ *
+ * El filete (`::before`, 24px de alto) se centra en la altura del dato, salvo
+ * en una fila con `align="start"`: ahí se centra a 18px del borde superior, el
+ * centro de la línea etiqueta/valor (etiqueta de 16.5px + primera línea del
+ * valor de 19.5px = 36px). En un dato de una sola línea ambos centros
+ * coinciden, así que solo cambia el filete de un dato más alto.
+ */
 export const HeaderStat = ({
   label,
   children,
@@ -115,7 +145,7 @@ export const HeaderStat = ({
   children: React.ReactNode;
   bold?: boolean;
 }) => (
-  <div className="relative shrink-0 before:absolute before:left-[-25px] before:top-1/2 before:-translate-y-1/2 before:hidden sm:before:block before:w-px before:h-6 before:bg-slate-200 dark:before:bg-white/10">
+  <div className="relative shrink-0 before:absolute before:left-[-25px] before:top-1/2 group-data-[align=start]/header-stat-row:before:top-[18px] before:-translate-y-1/2 before:hidden sm:before:block before:w-px before:h-6 before:bg-slate-200 dark:before:bg-white/10">
     <span className="block text-[11px] text-slate-400 dark:text-slate-500">
       {label}
     </span>
