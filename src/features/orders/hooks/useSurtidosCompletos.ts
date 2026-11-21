@@ -9,7 +9,7 @@ import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/
 export const SURTIDOS_LIMIT = 200;
 
 /**
- * Pedidos YA surtidos por completo (surtidas ≥ pedidas), de cualquier estatus,
+ * Pedidos YA surtidos por completo (nada comprometido), de cualquier estatus,
  * para la pestaña "Surtidos" de Pedidos WMS. La cifra la da el backend
  * (`/wms/surtido-pedidos/`); aquí solo se separan los completos.
  */

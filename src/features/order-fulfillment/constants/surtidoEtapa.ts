@@ -5,13 +5,16 @@ import {
 import type { SurtidoEtapa, SurtidoTotales } from "../interfaces/order-fulfillment.interface";
 
 /**
- * ¿La barra de % surtido se pinta "terminada" (verde + palomita)? Solo si lo
- * surtido cubre lo pedido. No se deriva de la etapa: DESPACHADO solo afirma
- * despachadas ≥ pedidas, y con agregados que no cuadran (nucleo-erp#1246) un
- * pedido despachado puede mostrar menos de 100% surtido.
+ * ¿Surtido completo? (barra "terminada" y pestaña "Surtidos" de Pedidos WMS):
+ * nada comprometido. `comprometidas` es Σ por talla de max(pedidas − surtidas, 0)
+ * (nucleo-erp #1247), así que una talla sobre-surtida no tapa a otra corta; en
+ * un renglón equivale a surtidas ≥ pedidas. No se deriva de `etapa`: su
+ * SURTIDO/DESPACHADO compara los totales del pedido.
  */
-export const isSurtidoCompleto = ({ pedidas, surtidas }: Pick<SurtidoTotales, "pedidas" | "surtidas">) =>
-  pedidas > 0 && surtidas >= pedidas;
+export const isSurtidoCompleto = ({
+  pedidas,
+  comprometidas,
+}: Pick<SurtidoTotales, "pedidas" | "comprometidas">) => pedidas > 0 && comprometidas === 0;
 
 /**
  * Etiqueta del estatus del pedido: la del mapa del ERP (`estatus_display` llega
