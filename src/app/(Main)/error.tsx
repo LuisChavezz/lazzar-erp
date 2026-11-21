@@ -12,8 +12,11 @@ import { LAST_RESORT_ERROR_CLASSES as classes } from "@/src/styles/lastResortErr
  *
  * Lo que truena en el propio `(Main)/layout.tsx` o más arriba (el `Provider`
  * raíz) sigue llegando a `global-error.tsx`, la pantalla de último recurso.
- * Usa sus mismas piezas visuales y sus mismas dos acciones; aquí "Reintentar"
- * (`retry`) vuelve a pedir y renderizar solo este segmento.
+ * Usa sus mismas piezas visuales y sus mismas dos acciones en el mismo orden:
+ * "Recargar la página" es la principal porque descarta el estado en memoria
+ * (la caché de consultas: con `staleTime` de 15 min, un dato cacheado que
+ * hace tronar la página volvería a hacerlo); "Reintentar" (`retry`) vuelve a
+ * pedir y renderizar solo este segmento, con la misma caché.
  */
 export default function MainError({ error, retry }: { error: unknown; retry: () => void }) {
   useEffect(() => {
@@ -25,19 +28,19 @@ export default function MainError({ error, retry }: { error: unknown; retry: () 
       <div className={classes.card}>
         <h1 className={classes.title}>Algo salió mal</h1>
         <p className={classes.message}>
-          Ocurrió un error inesperado y no se pudo mostrar esta página. Reinténtalo o recárgala; si
+          Ocurrió un error inesperado y no se pudo mostrar esta página. Recárgala o reinténtalo; si
           vuelve a pasar, avisa a soporte.
         </p>
         <div className={classes.actions}>
-          <button type="button" onClick={() => retry()} className={classes.primaryButton}>
-            Reintentar
-          </button>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className={classes.secondaryButton}
+            className={classes.primaryButton}
           >
             Recargar la página
+          </button>
+          <button type="button" onClick={() => retry()} className={classes.secondaryButton}>
+            Reintentar
           </button>
         </div>
       </div>
