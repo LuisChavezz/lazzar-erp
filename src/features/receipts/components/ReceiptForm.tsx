@@ -63,6 +63,7 @@ export default function ReceiptForm({
     seriesDisponibles,
     conRenglones,
     getError,
+    lineErrors,
     clearFieldErrors,
     validateField,
     handleCantidadChange,
@@ -111,16 +112,21 @@ export default function ReceiptForm({
   // Techo de captura por renglón (lo pendiente en piezas enteras). Del MISMO
   // dato salen la etiqueta de los renglones no recibibles y el aviso de "nada
   // por recibir", así que el tope y el aviso no pueden contradecirse.
-  // Pendiente que aplica a ESTA recepción: con una SM, el de esa SM en el
-  // renglón (nucleo-erp #1268); sin SM, el de la OP directa. Un renglón sin la
-  // SM elegida no va en ella. Si el backend aún no manda `salidas_maquila`, se
-  // usa el pendiente del renglón como antes.
+  // Pendiente que aplica a ESTA recepción (EC-919):
+  //  - SM de OP: el de esa SM en el renglón (`salidas_maquila`, nucleo-erp
+  //    #1268). Un renglón sin la SM no va en ella, y uno sin `salidas_maquila`
+  //    tampoco se puede recibir con ella (tope 0): su `cantidad_pendiente` es
+  //    lo de la OP DIRECTA, que el backend no deja recibir con la SM.
+  //  - OP directa: `cantidad_pendiente`, que ya descuenta las piezas en
+  //    maquila (`cantidad_en_maquila`, #1234).
+  //  - SM de OB/OR: el pendiente de su propio renglón.
+  const smDeOp = candidate.type === "produccion" ? candidate.salidaMaquila : null;
   const pendienteDe = (d: ReceiptOnboardingOrderDetalleBase): string => {
-    if (!salidaMaquila || d.salidas_maquila === undefined) return d.cantidad_pendiente;
-    return d.salidas_maquila.find((sm) => sm.id === salidaMaquila.id)?.cantidad_pendiente ?? "0";
+    if (!smDeOp) return d.cantidad_pendiente;
+    return d.salidas_maquila?.find((sm) => sm.id === smDeOp.id)?.cantidad_pendiente ?? "0";
   };
   const fueraDeSm = (d: ReceiptOnboardingOrderDetalleBase) =>
-    Boolean(salidaMaquila && d.salidas_maquila && !d.salidas_maquila.some((sm) => sm.id === salidaMaquila.id));
+    Boolean(smDeOp && !d.salidas_maquila?.some((sm) => sm.id === smDeOp.id));
   const topes = new Map(detalle.map((d) => [d.id, topeRecepcion(pendienteDe(d))]));
   // Las OP de fabricación especial llegan sin `producto_nombre`: el SKU sale
   // del retrieve de la OP (mismo id de renglón).
@@ -151,7 +157,9 @@ export default function ReceiptForm({
       proscai: d.producto_cod_proscai?.trim() || atributosSm.get(d.id)?.proscai || null,
       ordenado: Number(d.cantidad_ordenada) || 0,
       pendiente: Number(pendienteDe(d)) || 0,
+      // Solo en la OP directa: ahí esas piezas no se pueden recibir (va su SM).
       enMaquila: salidaMaquila ? 0 : Number(d.cantidad_en_maquila) || 0,
+      enMaquilaFolios: salidaMaquila ? [] : (d.salidas_maquila ?? []).map((sm) => sm.folio),
       tope: sinTope ? 0 : (topes.get(d.id) ?? 0),
       sinTope,
     };
@@ -399,6 +407,7 @@ export default function ReceiptForm({
                   lines={scanLines}
                   cantidades={cantidades}
                   setCantidad={handleCantidadChange}
+                  lineErrors={lineErrors}
                   notice={
                     (candidate.type === "salida-maquila" || cantidadesErrorAlert) && (
                       <>

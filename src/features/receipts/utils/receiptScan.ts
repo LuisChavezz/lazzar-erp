@@ -17,7 +17,10 @@ export interface ReceiptScanLine {
   proscai: string | null;
   ordenado: number;
   pendiente: number;
+  /** Piezas del renglón en SM Enviadas: se reciben con su SM, no aquí (nucleo-erp #1234). */
   enMaquila: number;
+  /** Folios de esas SM (`salidas_maquila[].folio` del renglón), para decir con cuál recibirlas. */
+  enMaquilaFolios: string[];
   tope: number;
   sinTope: string | null;
 }

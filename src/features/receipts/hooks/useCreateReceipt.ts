@@ -8,7 +8,11 @@ import { EMBROIDERY_ORDER_DETAIL_KEY } from "@/src/features/embroidery/hooks/use
 import { REFLECTIVE_ORDER_DETAIL_KEY } from "@/src/features/reflective-orders/hooks/useReflectiveOrderDetail";
 import { productionOrderOnboardingKey } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import { PURCHASE_ORDER_RECEIPTS_KEY } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptsTable";
-import { isSalidaMaquilaRejection } from "../utils/receiptErrors";
+import {
+  isSalidaMaquilaRejection,
+  receiptLineErrors,
+  receiptPayloadLineIds,
+} from "../utils/receiptErrors";
 import { QUALITY_INSPECTION_ONBOARDING_KEY } from "@/src/features/quality-inspections/hooks/useQualityInspectionOnboarding";
 
 export const useCreateReceipt = () => {
@@ -44,9 +48,10 @@ export const useCreateReceipt = () => {
         });
       }
       if ("salida_maquila" in recepcion && recepcion.salida_maquila !== undefined) {
-        // EC-912: la SM queda Recibida (listado, detalle y las secciones SM de
-        // la OP/OB/OR cuelgan de este prefijo) y nace su factura de maquila
-        // en Borrador para CxP.
+        // EC-912/EC-919: la SM avanza (Recibida al completarse o al cerrarla;
+        // si no, sigue Enviada con menos pendiente) —listado, detalle y las
+        // secciones SM de la OP/OB/OR cuelgan de este prefijo— y cada
+        // recepción crea su factura de maquila en Borrador para CxP.
         queryClient.invalidateQueries({ queryKey: ["salidas-maquila"] });
         queryClient.invalidateQueries({ queryKey: ["facturas-proveedor"] });
         if (!("orden_produccion" in recepcion)) {
@@ -59,9 +64,13 @@ export const useCreateReceipt = () => {
       toast.success("Recepción registrada correctamente");
     },
     // El 400 de `salida_maquila` llega como string plano (no lista):
-    // `firstNestedDrfMessage` lo toma igual.
-    onError: (error) => {
-      toastDrfError(error, "Error al registrar la recepción");
+    // `firstNestedDrfMessage` lo toma igual. Los errores que nombran un renglón
+    // se pintan en él (`useReceiptForm`); solo si queda alguno sin ubicar hay
+    // toast (EC-919).
+    onError: (error, payload) => {
+      if (!receiptLineErrors(error, receiptPayloadLineIds(payload)).completo) {
+        toastDrfError(error, "Error al registrar la recepción");
+      }
       // La SM pudo recibirse o cancelarse en otra parte: el selector vuelve a
       // pedir las pendientes para que deje de ofrecerla (el formulario regresa
       // al paso 1, ver `useReceiptForm`).

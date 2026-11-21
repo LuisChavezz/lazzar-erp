@@ -23,7 +23,11 @@ import {
   receiptSeriePreseleccionada,
   receiptSeriesOfrecidas,
 } from "../utils/receiptSeries";
-import { isSalidaMaquilaRejection } from "../utils/receiptErrors";
+import {
+  isSalidaMaquilaRejection,
+  receiptLineErrors,
+  receiptPayloadLineIds,
+} from "../utils/receiptErrors";
 
 interface UseReceiptFormParams {
   onSuccess: () => void;
@@ -135,6 +139,11 @@ export function useReceiptForm({
   const [clientErrors, setClientErrors] = useState<
     Partial<Record<ReceiptFormField, string>>
   >({});
+  /**
+   * 400 del backend repartido por renglón (EC-919), por id de renglón. Se
+   * borra el de un renglón al cambiar su cantidad, y todos al volver a enviar.
+   */
+  const [lineErrors, setLineErrors] = useState<Record<number, string>>({});
 
   // ── Valores por defecto ───────────────────────────────────────────────
   const defaultValues = useMemo<ReceiptFormValues>(
@@ -227,6 +236,7 @@ export function useReceiptForm({
       if (!validateForm(value)) return;
 
       const payload = buildReceiptPayload(candidate, value);
+      setLineErrors({});
 
       createReceiptMutation.mutate(payload, {
         onSuccess: () => {
@@ -234,7 +244,19 @@ export function useReceiptForm({
           onSuccess();
         },
         onError: (error) => {
-          if (isSalidaMaquilaRejection(error)) onSalidaMaquilaRejected?.();
+          if (isSalidaMaquilaRejection(error)) {
+            onSalidaMaquilaRejected?.();
+            return;
+          }
+          const { porRenglon } = receiptLineErrors(error, receiptPayloadLineIds(payload));
+          if (Object.keys(porRenglon).length === 0) return;
+          setLineErrors(porRenglon);
+          // El renglón con error queda abierto en el panel: se lleva la vista ahí.
+          setTimeout(() => {
+            cantidadesRef.current
+              ?.querySelector<HTMLElement>("[data-line-error]")
+              ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 0);
         },
       });
     },
@@ -247,6 +269,12 @@ export function useReceiptForm({
   const handleCantidadChange = (lineId: number, valor: string) => {
     const key = String(lineId);
     form.setFieldValue(`cantidades.${key}`, valor);
+    setLineErrors((prev) => {
+      if (!(lineId in prev)) return prev;
+      const next = { ...prev };
+      delete next[lineId];
+      return next;
+    });
     const cantidades = { ...form.state.values.cantidades, [key]: valor };
     if (Object.values(cantidades).some(tieneCantidadRecibida)) {
       clearFieldErrors("cantidades");
@@ -257,6 +285,7 @@ export function useReceiptForm({
   const handleReset = () => {
     form.reset(defaultValues);
     setClientErrors({});
+    setLineErrors({});
   };
 
   // ── Submit del DOM ────────────────────────────────────────────────────
@@ -280,6 +309,7 @@ export function useReceiptForm({
     conRenglones,
     candidate,
     getError,
+    lineErrors,
     clearFieldErrors,
     validateField,
     handleCantidadChange,

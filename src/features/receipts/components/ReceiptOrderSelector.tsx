@@ -43,6 +43,7 @@ import {
   productionTabRowKey,
   productionTabRowMatches,
   salidaMaquilaOrigenNombre,
+  salidaMaquilaPendienteTexto,
   type ProductionTabRow,
 } from "../utils/receiptCandidates";
 
@@ -268,8 +269,7 @@ export function ReceiptOrderSelector({
                   <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                     {row.salidaMaquila.origen_folio}
                   </p>
-                  {/* Sin el `total` de la SM: el onboarding lo manda sin
-                      revisar R-PRODUCCION-COSTOS. */}
+                  {/* Sin el `total` de la SM: recibir no es ver costos. */}
                   <p className="flex flex-wrap min-w-0 gap-x-1 text-xs text-slate-500 dark:text-slate-400">
                     <span className="whitespace-nowrap">
                       {row.salidaMaquila.folio} · {salidaMaquilaOrigenNombre(row.salidaMaquila)}
@@ -278,6 +278,11 @@ export function ReceiptOrderSelector({
                       · {row.salidaMaquila.centro_confeccion_nombre}
                     </span>
                   </p>
+                  {salidaMaquilaPendienteTexto(row.salidaMaquila) && (
+                    <p className="text-xs font-medium tabular-nums text-amber-700 dark:text-amber-300">
+                      {salidaMaquilaPendienteTexto(row.salidaMaquila)}
+                    </p>
+                  )}
                 </>
               )
             }
