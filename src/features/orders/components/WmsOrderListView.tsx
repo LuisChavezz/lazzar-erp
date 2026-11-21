@@ -23,7 +23,7 @@ import {
 import { createWmsOrderColumns } from './WmsOrderColumns';
 
 const columns = createWmsOrderColumns();
-// Completos: sin "Comprometidas" (siempre 0 una vez surtido).
+// Completos: sin "Comprometidas" (`isSurtidoCompleto` exige comprometidas = 0).
 const surtidoColumns = surtidoPedidoColumns.filter((c) => c.id !== 'comprometidas');
 
 type Tab = 'pendientes' | 'surtidos';
