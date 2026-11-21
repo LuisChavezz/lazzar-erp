@@ -138,23 +138,6 @@ async function selectedLabel(select: Locator): Promise<string> {
     .catch(() => "");
 }
 
-/**
- * Valor de una celda del encabezado del Paso 2 (`PEDIDO` / `CLIENTE` /
- * `ALMACÉN ORIGEN` / `ALMACÉN DESTINO`).
- *
- * Cada celda es un `<div>` con dos `<p>`: rótulo y valor. El rótulo se pinta en
- * `uppercase` por CSS pero el texto del DOM conserva la capitalización original
- * ("Almacén origen"), así que se busca por ese texto —insensible a mayúsculas—
- * y se lee el `<p>` hermano.
- */
-async function headerValue(dialog: Locator, label: string): Promise<string> {
-  const value = dialog
-    .getByText(new RegExp(`^${label}$`, "i"))
-    .first()
-    .locator("xpath=following-sibling::p[1]");
-  return (await value.innerText()).trim();
-}
-
 // ── Suite ────────────────────────────────────────────────────────────────────
 
 test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
@@ -264,6 +247,8 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
     // no lo ejercita, solo confirma que existe.
     await expect.soft(dialog.getByLabel("Tipo de surtido", { exact: true })).toBeVisible();
 
+    // La nota está colapsada tras "+ Agregar nota".
+    await dialog.getByRole("button", { name: "+ Agregar nota" }).click();
     await dialog
       .getByLabel("Observaciones (opcional)", { exact: true })
       .fill(OBSERVACIONES_E2E);
@@ -321,16 +306,26 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
         continue;
       }
 
-      // Encabezado del Paso 2: las cuatro celdas, incluida la de destino que se
-      // añadió junto al selector. Es la comprobación de que lo elegido en el
-      // Paso 1 llega intacto al Paso 2.
+      // Encabezado del Paso 2: la ruta "origen → destino" del resumen. Es la
+      // comprobación de que lo elegido en el Paso 1 llega intacto al Paso 2.
       await expect(dialog.getByRole("heading", { name: "Tallas por surtir" })).toBeVisible();
-      const origenMostrado = await headerValue(dialog, "Almacén origen");
-      const destinoMostrado = await headerValue(dialog, "Almacén destino");
+      const ruta = dialog.locator("span:has(> span[aria-label='hacia'])").first();
+      const origenMostrado = (await ruta.innerText()).split("→")[0].trim();
+      const destinoMostrado = (await ruta.locator("b").innerText()).trim();
       console.log(`  Encabezado — origen "${origenMostrado}" · destino "${destinoMostrado}"`);
       expect.soft(origenMostrado).not.toBe("—");
       expect.soft(destinoMostrado).toBe(destinoLabel);
       await shot(page, "picking-03-paso2-encabezado.png");
+
+      // Captura a mano (no con lector) y con los productos desplegados: las
+      // tallas viven en desplegables por producto + color, cerrados en modo
+      // escáner.
+      const manual = dialog.getByRole("radio", { name: "Manual" });
+      if (await manual.isVisible().catch(() => false)) await manual.click();
+      const cerrados = dialog.locator("li > button[aria-expanded='false']");
+      for (let i = 0; i < 20 && (await cerrados.count()) > 0; i += 1) {
+        await cerrados.first().click();
+      }
 
       // Primera talla con cupo. Los inputs deshabilitados son las tallas sin
       // pendiente o sin existencia, que la UI muestra en vez de ocultar.
