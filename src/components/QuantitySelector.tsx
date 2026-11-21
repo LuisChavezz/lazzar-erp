@@ -10,12 +10,13 @@
  *  - min: minimum allowed value (default 1)
  *  - label: aria-label for the input (default "Cantidad")
  *
- * Solo captura ENTEROS y nunca transforma lo escrito (EC-900): "." y "," se
- * bloquean al teclear y al pegar, y un texto que no sea entero se rechaza (el
- * valor no cambia) con un aviso. Tras un separador bloqueado, los dígitos que
- * se teclean al final se descartan también (son la parte decimal): "1.5" deja
- * 1, no 15, hasta que se borre, se mueva el cursor o se salga del campo.
- * Reglas en `src/utils/wholeQuantity.ts`.
+ * Solo captura ENTEROS y nunca convierte lo escrito en otro número (EC-900):
+ * "." y "," se bloquean al teclear y al pegar, un texto que no sea entero se
+ * rechaza (el valor no cambia) con un aviso, y tras un separador bloqueado lo
+ * que se teclee no cuenta ("1.5" deja 1; ".5" no deja 5) hasta que se borre,
+ * se mueva el cursor o se salga del campo. Las reglas viven en el reducer puro
+ * `reduceWholeQuantity` (`src/utils/wholeQuantity.ts`); aquí solo se conectan
+ * los eventos.
  *
  * `value` puede traer decimales si el consumidor lo fija por su cuenta (en
  * recepciones, "Todo" manda el pendiente exacto, p. ej. 10.5): se muestra tal
@@ -24,21 +25,14 @@
 
 "use client";
 
-import { useId, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useId, useState, type SyntheticEvent } from "react";
 import { PlusIcon } from "./Icons";
 import {
-  appendsDigitsAtEnd,
   INTEGER_ONLY_HINT,
-  isDecimalSeparatorKey,
-  isPastableWholeQuantity,
-  parseWholeQuantity,
-  stepWholeQuantity,
+  reduceWholeQuantity,
+  WHOLE_QUANTITY_IDLE,
+  type WholeQuantityEvent,
 } from "../utils/wholeQuantity";
-
-/** Teclas que borran o mueven el cursor. */
-const CARET_KEYS: ReadonlySet<string> = new Set([
-  "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
-]);
 
 interface QuantitySelectorProps {
   value: number;
@@ -54,49 +48,15 @@ export function QuantitySelector({
   label = "Cantidad",
 }: QuantitySelectorProps) {
   const hintId = useId();
-  const [showHint, setShowHint] = useState(false);
-  // Se bloqueó un separador y aún no se borra ni se sale del campo: lo que se
-  // teclee al final es la parte decimal y no cuenta.
-  const [fractionBlocked, setFractionBlocked] = useState(false);
+  const [inputState, setInputState] = useState(WHOLE_QUANTITY_IDLE);
+  const showHint = inputState.showHint;
 
-  const block = () => {
-    setShowHint(true);
-    setFractionBlocked(true);
-  };
-
-  const reset = () => {
-    setShowHint(false);
-    setFractionBlocked(false);
-  };
-
-  const accept = (next: number) => {
-    reset();
-    onChange(next);
-  };
-
-  // También cubre lo que no pasa por `onKeyDown`/`onPaste` (autocompletar, IME,
-  // teclados móviles que no informan la tecla): sin `onChange` el input
-  // controlado vuelve al valor actual.
-  const handleText = (raw: string) => {
-    const next = parseWholeQuantity(raw, min);
-    if (next === null || (fractionBlocked && appendsDigitsAtEnd(raw, String(value)))) block();
-    else accept(next);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (isDecimalSeparatorKey(event.key)) {
-      event.preventDefault();
-      block();
-      return;
-    }
-    // Borrar o mover el cursor cierra la "parte decimal": se vuelve a teclear normal.
-    if (fractionBlocked && CARET_KEYS.has(event.key)) setFractionBlocked(false);
-  };
-
-  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    if (isPastableWholeQuantity(event.clipboardData.getData("text"))) return;
-    event.preventDefault();
-    setShowHint(true);
+  // Sin `onChange` el input controlado vuelve a mostrar el valor actual.
+  const dispatch = (event: WholeQuantityEvent, native?: SyntheticEvent) => {
+    const result = reduceWholeQuantity(inputState, event);
+    if (result.preventDefault) native?.preventDefault();
+    setInputState(result.state);
+    if (result.value !== undefined) onChange(result.value);
   };
 
   return (
@@ -105,7 +65,7 @@ export function QuantitySelector({
         {/* Decrement */}
         <button
           type="button"
-          onClick={() => accept(stepWholeQuantity(value, -1, min))}
+          onClick={() => dispatch({ type: "step", value, direction: -1, min })}
           className="w-7 h-7 rounded-md border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer bg-transparent"
           aria-label="Reducir cantidad"
         >
@@ -117,10 +77,11 @@ export function QuantitySelector({
           type="text"
           inputMode="numeric"
           value={value}
-          onChange={(e) => handleText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          onBlur={reset}
+          onChange={(e) => dispatch({ type: "text", raw: e.target.value, shown: String(value), min })}
+          onKeyDown={(e) => dispatch({ type: "key", key: e.key }, e)}
+          onPaste={(e) => dispatch({ type: "paste", text: e.clipboardData.getData("text"), min }, e)}
+          onMouseDown={() => dispatch({ type: "pointer" })}
+          onBlur={() => dispatch({ type: "blur" })}
           onFocus={(e) => e.target.select()}
           className="w-12 text-center text-sm font-semibold bg-transparent border border-slate-300 dark:border-slate-600 rounded-md py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
           aria-label={label}
@@ -130,7 +91,7 @@ export function QuantitySelector({
         {/* Increment */}
         <button
           type="button"
-          onClick={() => accept(stepWholeQuantity(value, 1, min))}
+          onClick={() => dispatch({ type: "step", value, direction: 1, min })}
           className="w-7 h-7 rounded-md border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer bg-transparent"
           aria-label="Aumentar cantidad"
         >
