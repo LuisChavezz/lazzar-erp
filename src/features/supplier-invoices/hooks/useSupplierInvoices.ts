@@ -5,7 +5,8 @@ import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface"
 
 /**
  * Facturas de proveedor de UN proveedor
- * (`GET /finanzas/facturas-proveedor/?proveedor={id}`).
+ * (`GET /finanzas/facturas-proveedor/?proveedor={id}`), o de una SM
+ * (`?salida_maquila={id}`, facturas de maquila; EC-919), o ambas cosas.
  *
  * La respuesta no está paginada y anida `factura_proveedor_detalles` en cada
  * factura: sin acotar, cada carga, refetch o invalidación bajaría todos los
@@ -27,14 +28,18 @@ import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface"
  * sobre ellas. El tope de doble facturación las descarta con el mismo criterio
  * (`sumarFacturadoPorRecepcionDetalle`).
  */
-export const useSupplierInvoices = (proveedorId: number) => {
-  const params = { proveedor: proveedorId };
+export const useSupplierInvoices = (proveedorId: number, salidaMaquilaId: number | null = null) => {
+  // Por SM (EC-919) la consulta ya va acotada aunque no haya proveedor.
+  const params = {
+    ...(proveedorId > 0 ? { proveedor: proveedorId } : {}),
+    ...(salidaMaquilaId !== null ? { salida_maquila: salidaMaquilaId } : {}),
+  };
   const { data, isLoading, isError, errorUpdatedAt, error, refetch, isFetching } = useQuery<
     FacturaProveedor[]
   >({
     queryKey: ["facturas-proveedor", params],
     queryFn: () => getSupplierInvoices(params),
-    enabled: proveedorId > 0,
+    enabled: proveedorId > 0 || salidaMaquilaId !== null,
   });
 
   const { hasLoaded } = useHasLoadedQuery({

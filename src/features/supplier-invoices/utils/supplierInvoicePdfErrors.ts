@@ -52,7 +52,7 @@ export const uploadPdfErrorMessage = (error: unknown): string => {
 
 /** Mensaje del error de `GET .../pdf-fusionado/` (cuerpo ya decodificado por `readBlobErrorBody`). */
 export const mergedPdfErrorMessage = (error: unknown): string => {
-  const fallback = "No se pudo descargar el documento OC + RC + factura.";
+  const fallback = "No se pudo descargar el documento fusionado.";
   if (!(error instanceof AxiosError)) {
     return error instanceof Error && error.message ? error.message : fallback;
   }
@@ -64,7 +64,7 @@ export const mergedPdfErrorMessage = (error: unknown): string => {
   // Un PDF adjunto dañado o cifrado hace fallar la fusión con 500 hasta que se
   // adjunte otro: es el único arreglo al alcance del usuario.
   if (status !== undefined && status >= 500) {
-    return "No se pudo generar el documento OC + RC + factura. Si el problema persiste, vuelve a adjuntar el PDF de la factura: el archivo actual puede estar dañado o protegido con contraseña.";
+    return "No se pudo generar el documento fusionado. Si el problema persiste, vuelve a adjuntar el PDF de la factura: el archivo actual puede estar dañado o protegido con contraseña.";
   }
   return drfClientErrorMessage(error, "pdf_adjunto", fallback);
 };

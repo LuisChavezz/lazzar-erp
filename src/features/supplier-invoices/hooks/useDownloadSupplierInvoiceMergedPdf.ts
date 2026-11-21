@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 import { getSupplierInvoiceMergedPdf } from "../services/actions";
 import { mergedPdfFileName } from "../constants/supplierInvoicePdf";
+import { mergedPdfLabel } from "../utils/supplierInvoiceLabels";
+import { fileNameFromContentDisposition } from "@/src/features/stock/utils/stockReportExport";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { errorStatus, mergedPdfErrorMessage } from "../utils/supplierInvoicePdfErrors";
 
@@ -11,9 +13,10 @@ export const downloadSupplierInvoiceMergedPdfMutationKey = [
 ] as const;
 
 /**
- * Descarga el documento fusionado OC + RC + factura del proveedor, generado por
- * el backend. Recibe la fila (no el id) para armar el nombre del archivo, que el
- * navegador no puede leer del servidor (ver `mergedPdfFileName`).
+ * Descarga el documento fusionado (OC o SM) + RC + factura del proveedor,
+ * generado por el backend. El nombre es el del `Content-Disposition` del
+ * backend; recibe la fila (no el id) por si no se pudiera leer
+ * (`mergedPdfFileName`, mismo nombre) y para el aviso.
  */
 export const useDownloadSupplierInvoiceMergedPdf = () => {
   const queryClient = useQueryClient();
@@ -21,11 +24,11 @@ export const useDownloadSupplierInvoiceMergedPdf = () => {
   return useMutation({
     mutationKey: downloadSupplierInvoiceMergedPdfMutationKey,
     mutationFn: async (factura: FacturaProveedor) => {
-      const blob = await getSupplierInvoiceMergedPdf(factura.id);
-      downloadBlob(blob, mergedPdfFileName(factura));
+      const { blob, contentDisposition } = await getSupplierInvoiceMergedPdf(factura.id);
+      downloadBlob(blob, fileNameFromContentDisposition(contentDisposition) ?? mergedPdfFileName(factura));
     },
-    onSuccess: () => {
-      toast.success("Documento OC + RC + factura descargado");
+    onSuccess: (_data, factura) => {
+      toast.success(`Documento ${mergedPdfLabel(factura)} descargado`);
     },
     onError: (error) => {
       toast.error(mergedPdfErrorMessage(error), { duration: 9000 });

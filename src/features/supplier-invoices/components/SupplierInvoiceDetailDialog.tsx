@@ -6,10 +6,8 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
-  EmptyLines,
   InfoTile,
   InfoTileGrid,
-  LineItemsTable,
   SectionTitle,
   textOrDash,
 } from "@/src/components/DetailDialogPrimitives";
@@ -20,15 +18,16 @@ import {
   FacturaProveedorIcon,
   UploadIcon,
 } from "@/src/components/Icons";
-import { formatMoneyValueOrDash, formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { canDownloadMergedPdf, ocFolioLabel } from "../utils/supplierInvoiceLabels";
+import { canDownloadMergedPdf, mergedPdfLabel, ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { SupplierInvoicePdfButton } from "./SupplierInvoicePdfButton";
+import { SupplierInvoiceLines } from "./SupplierInvoiceLines";
 
 /**
  * Acciones del PDF del proveedor. Las POSEE la vista (`SupplierInvoiceList`):
@@ -58,6 +57,12 @@ interface SupplierInvoiceDetailDialogProps {
    */
   factura: FacturaProveedor;
   pdfActions: SupplierInvoicePdfActions;
+  /**
+   * Ajustar las líneas a la factura del maquilero (`ajustar-maquila/`, EC-919):
+   * solo una factura de maquila en Borrador y con permiso de escritura de
+   * finanzas. Lo decide la vista, que conoce el permiso.
+   */
+  canAdjust?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -67,8 +72,9 @@ const fecha = (value: string | null) =>
   value ? formatShortDate(value, { timeZone: "UTC" }) : "—";
 
 /**
- * PDF de la factura del proveedor y el documento fusionado OC + RC + factura.
- * Disponible en cualquier estatus, igual que en el backend.
+ * PDF de la factura del proveedor y el documento fusionado OC + RC + factura
+ * (SM + RC + factura en la de maquila, nucleo-erp #1233). Disponible en
+ * cualquier estatus, igual que en el backend.
  */
 function SupplierInvoicePdfSection({
   factura,
@@ -98,8 +104,7 @@ function SupplierInvoicePdfSection({
         ) : (
           <p className="text-xs italic text-slate-400 dark:text-slate-500">
             Sin PDF adjunto. Adjunta el PDF del proveedor (máximo {MAX_SUPPLIER_INVOICE_PDF_LABEL})
-            {/* Sin OC (factura de maquila, EC-912) no hay documento fusionado. */}
-            {factura.oc == null ? "." : " para descargar el documento OC + RC + factura."}
+            {` para descargar el documento ${mergedPdfLabel(factura)}.`}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
@@ -131,7 +136,7 @@ function SupplierInvoicePdfSection({
               onClick={actions.onDownloadMerged}
               disabled={actions.isDownloading}
             >
-              {actions.isDownloading ? "Generando documento..." : "Descargar OC + RC + factura"}
+              {actions.isDownloading ? "Generando documento..." : `Descargar ${mergedPdfLabel(factura)}`}
             </Button>
           )}
         </div>
@@ -153,12 +158,12 @@ function SupplierInvoicePdfSection({
  *
  * La OC y la recepción se muestran por su folio (`oc_folio`, `recepcion_folio`,
  * EC-466); la OC enlaza a su detalle si el usuario puede abrirlo. Los renglones
- * siguen exponiendo solo ids (no hay `producto_nombre`) y, sin una consulta
- * extra —que este diálogo no hace—, se muestran como `#id`.
+ * dicen su producto (o la descripción del renglón de maquila, EC-919).
  */
 export function SupplierInvoiceDetailDialog({
   factura,
   pdfActions,
+  canAdjust = false,
   open,
   onOpenChange,
 }: SupplierInvoiceDetailDialogProps) {
@@ -203,7 +208,8 @@ export function SupplierInvoiceDetailDialog({
           <InfoTile label="Total">
             <span className="tabular-nums">{money(factura.total)}</span>
           </InfoTile>
-          <InfoTile label="Orden de compra">
+          {/* La de maquila no tiene OC: se dice su SM (EC-919). */}
+          <InfoTile label={factura.oc == null ? "Origen" : "Orden de compra"}>
             {canOpenOc && ocHref ? (
               <Link
                 href={ocHref}
@@ -254,56 +260,7 @@ export function SupplierInvoiceDetailDialog({
           </div>
         )}
 
-        <div>
-          <SectionTitle>Partidas</SectionTitle>
-          {factura.factura_proveedor_detalles.length === 0 ? (
-            <EmptyLines>Esta factura no tiene partidas.</EmptyLines>
-          ) : (
-            <LineItemsTable
-              head={
-                <>
-                  <th className="px-3 py-2 font-medium">Producto</th>
-                  <th className="px-3 py-2 font-medium">Detalle OC / Recepción</th>
-                  <th className="px-3 py-2 font-medium text-right">Cantidad</th>
-                  <th className="px-3 py-2 font-medium text-right">Precio</th>
-                  <th className="px-3 py-2 font-medium text-right">Descuento</th>
-                  <th className="px-3 py-2 font-medium text-right">Subtotal</th>
-                  <th className="px-3 py-2 font-medium text-right">Impuesto</th>
-                  <th className="px-3 py-2 font-medium text-right">Total</th>
-                </>
-              }
-            >
-              {factura.factura_proveedor_detalles.map((linea) => (
-                <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                  <td className="px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-200">
-                    {`#${linea.producto}`}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
-                    {`#${linea.oc_detalle} / #${linea.recepcion_detalle}`}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {formatQuantityValue(linea.cantidad)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {money(linea.precio_unitario)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {money(linea.descuento)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {money(linea.subtotal)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                    {money(linea.impuesto)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
-                    {money(linea.total)}
-                  </td>
-                </tr>
-              ))}
-            </LineItemsTable>
-          )}
-        </div>
+        <SupplierInvoiceLines factura={factura} canAdjust={canAdjust} />
       </div>
     </MainDialog>
   );

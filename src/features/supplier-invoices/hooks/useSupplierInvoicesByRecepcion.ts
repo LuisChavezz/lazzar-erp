@@ -21,6 +21,8 @@ export const sumarFacturadoPorRecepcionDetalle = (
   for (const factura of facturas) {
     if (factura.estatus === "Cancelada" || factura.activo === false) continue;
     for (const detalle of factura.factura_proveedor_detalles) {
+      // Un renglón de maquila sin renglón de recepción no ocupa ninguno.
+      if (detalle.recepcion_detalle == null) continue;
       const units = qtyToUnits(detalle.cantidad) ?? 0;
       facturado.set(
         detalle.recepcion_detalle,

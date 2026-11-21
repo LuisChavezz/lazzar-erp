@@ -19,7 +19,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import { FACTURA_PROVEEDOR_ESTATUS_CONFIG } from "../constants/supplierInvoiceStatus";
 import { motivoBloqueoRegistro } from "../schemas/supplier-invoice.schema";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
-import { canDownloadMergedPdf, ocFolioLabel } from "../utils/supplierInvoiceLabels";
+import { canDownloadMergedPdf, mergedPdfLabel, ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { useSupplierInvoiceRowActionsContext } from "../hooks/useSupplierInvoiceRowActions";
 
 const columnHelper = createColumnHelper<FacturaProveedor>();
@@ -59,12 +59,12 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
       description: writeBlock.description,
     },
     {
-      label: downloading ? "Generando documento..." : "Descargar OC + RC + factura",
+      label: downloading ? "Generando documento..." : `Descargar ${mergedPdfLabel(factura)}`,
       icon: DownloadIcon,
       onSelect: () => callbacks.onDownloadMergedPdf(factura.id),
       disabled: downloading,
-      // Sin PDF adjunto el backend responde 400, y sin OC (factura de maquila,
-      // EC-912) falla al pintarla: la acción ni se ofrece.
+      // Sin PDF adjunto el backend responde 400: la acción ni se ofrece. Sin
+      // OC (factura de maquila) lleva la SM en su lugar (nucleo-erp #1233).
       visible: canDownloadMergedPdf(factura),
     },
   ];

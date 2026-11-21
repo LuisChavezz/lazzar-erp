@@ -2,6 +2,7 @@ import { v1_api } from "@/src/api/v1.api";
 import { readBlobErrorBody } from "@/src/utils/readBlobErrorBody";
 import type {
   AdjuntarPdfFacturaProveedorResponse,
+  AjusteMaquilaPayload,
   CreateFacturaProveedorPayload,
   FacturaProveedor,
   FacturaProveedorQueryParams,
@@ -109,23 +110,53 @@ export const uploadSupplierInvoicePdf = async ({
 };
 
 /**
- * Documento fusionado OC + RC + factura del proveedor (en ese orden):
+ * Documento fusionado OC + RC + factura del proveedor (en ese orden; en la de
+ * maquila, portada de la SM en lugar de la OC, nucleo-erp #1233):
  * `GET /finanzas/facturas-proveedor/{id}/pdf-fusionado/`, bytes `application/pdf`.
+ *
+ * Devuelve también el `Content-Disposition`, que el backend expone por CORS
+ * (`CORS_EXPOSE_HEADERS`): de ahí sale el nombre del archivo (EC-919).
  *
  * Con `responseType: "blob"` el cuerpo de un ERROR también llega como `Blob`
  * (p. ej. el 400 `{"pdf_adjunto": "..."}` cuando no hay PDF adjunto), así que se
  * decodifica antes de propagarlo para que los parsers de DRF lo lean como JSON.
  */
-export const getSupplierInvoiceMergedPdf = async (id: number): Promise<Blob> => {
+export const getSupplierInvoiceMergedPdf = async (
+  id: number,
+): Promise<{ blob: Blob; contentDisposition: string | undefined }> => {
   try {
-    const { data } = await v1_api.get<Blob>(
+    const response = await v1_api.get<Blob>(
       `/finanzas/facturas-proveedor/${id}/pdf-fusionado/`,
       { responseType: "blob" },
     );
-    return data;
+    const header: unknown = response.headers?.["content-disposition"];
+    return { blob: response.data, contentDisposition: typeof header === "string" ? header : undefined };
   } catch (error) {
     throw await readBlobErrorBody(error);
   }
+};
+
+/**
+ * Ajusta precio, descuento e impuesto de las líneas de una factura de maquila
+ * en Borrador para cuadrarla con la factura real del maquilero:
+ * `POST /finanzas/facturas-proveedor/{id}/ajustar-maquila/` (nucleo-erp #1242).
+ * No agrega ni quita líneas; el backend recalcula subtotal, total y el
+ * encabezado y responde la factura completa (forma de lectura). Exige
+ * `E-FIN-FACTURAS`; 400 si no es de maquila (`salida_maquila`), si no está en
+ * Borrador (`estatus`) o si una línea no es de la factura (`lineas`).
+ */
+export const ajustarFacturaMaquila = async ({
+  id,
+  payload,
+}: {
+  id: number;
+  payload: AjusteMaquilaPayload;
+}): Promise<FacturaProveedor> => {
+  const { data } = await v1_api.post<FacturaProveedor>(
+    `/finanzas/facturas-proveedor/${id}/ajustar-maquila/`,
+    payload,
+  );
+  return data;
 };
 
 /**
