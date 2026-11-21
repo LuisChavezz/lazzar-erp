@@ -25,6 +25,7 @@ import {
   lineImporte,
   lineQty,
   linesToSend,
+  piezasParaLlenar,
   toDetalles,
   type DraftProblem,
   type SalidaMaquilaDraftLine,
@@ -266,17 +267,21 @@ function SalidaMaquilaForm({
                 [true, "Todas"],
                 [false, "Ninguna"],
               ] as const
-            ).map(([todas, label]) => (
-              <button
-                key={label}
-                type="button"
-                disabled={isPending}
-                onClick={() => llenarTodas(todas)}
-                className="rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
-              >
-                {label}
-              </button>
-            ))}
+            )
+              // Con salidas previas "Todas" siempre rebasaría lo que queda (el
+              // tope es por orden, no por renglón): solo queda "Ninguna" (EC-922).
+              .filter(([todas]) => !todas || yaEnviadas === 0)
+              .map(([todas, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => llenarTodas(todas)}
+                  className="rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+                >
+                  {label}
+                </button>
+              ))}
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             Mismo precio para todas
@@ -332,8 +337,16 @@ function SalidaMaquilaForm({
                       <button
                         type="button"
                         disabled={isPending}
-                        title="Enviar todas las de este renglón"
-                        onClick={() => update(l.detalleId, { cantidad: String(Math.round(l.enOrden)) })}
+                        title={
+                          yaEnviadas > 0
+                            ? "Enviar las de este renglón, hasta lo que queda por enviar"
+                            : "Enviar todas las de este renglón"
+                        }
+                        onClick={() =>
+                          update(l.detalleId, {
+                            cantidad: String(piezasParaLlenar(lines, l.detalleId, quedan, yaEnviadas)),
+                          })
+                        }
                         className="rounded-md px-1.5 tabular-nums text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
                       >
                         {formatQuantityValue(l.enOrden)}
