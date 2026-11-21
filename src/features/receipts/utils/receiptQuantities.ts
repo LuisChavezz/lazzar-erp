@@ -92,10 +92,12 @@ export const totalCantidadRecibida = (
 
 /**
  * Cantidades capturadas que pasan del tope nuevo de su renglón, ya recortadas
- * (EC-919: tras releer el onboarding). El tope es el pendiente EXACTO (EC-900),
- * así que una captura de "Todo" que sigue cabiendo no cambia. Solo trae las que
- * cambian; las demás se conservan tal cual. Un renglón que ya no está en la
- * orden queda en "0".
+ * (EC-919: tras releer el onboarding). Una captura ENTERA (a mano o con el
+ * lector) se recorta al tope manual, el pendiente en piezas enteras: 11 con
+ * pendiente nuevo de 10.5 queda en 10, nunca en un decimal que el usuario no
+ * eligió. Solo una captura que ya era fraccionaria (la fijó "Todo") se recorta
+ * al pendiente exacto (EC-900). Solo trae las que cambian; las demás se
+ * conservan tal cual. Un renglón que ya no está en la orden queda en "0".
  */
 export const recortarCantidades = (
   cantidades: Record<string, string>,
@@ -104,6 +106,8 @@ export const recortarCantidades = (
   Object.fromEntries(
     Object.entries(cantidades).flatMap(([key, valor]) => {
       const tope = topes.get(Number(key)) ?? 0;
-      return (Number(valor) || 0) > tope ? [[key, String(tope)]] : [];
+      const cantidad = Number(valor) || 0;
+      if (cantidad <= tope) return [];
+      return [[key, String(Number.isInteger(cantidad) ? topeManualRecepcion(tope) : tope)]];
     }),
   );
