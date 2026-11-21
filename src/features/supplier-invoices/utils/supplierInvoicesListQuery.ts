@@ -20,6 +20,22 @@ export const parseSupplierInvoicesSalidaMaquila = parseSupplierInvoicesProveedor
 export const parseSupplierInvoicesFactura = parseSupplierInvoicesProveedor;
 
 /**
+ * Factura a abrir al entrar: solo si la URL trae también un filtro
+ * (`proveedor` o `salida_maquila`). Sin filtro no se consulta nada, y un
+ * `?factura=` suelto quedaría esperando y abriría el detalle por su cuenta al
+ * elegir después un proveedor que la tenga (EC-919).
+ */
+export const supplierInvoiceToOpen = ({
+  proveedorId,
+  salidaMaquilaId,
+  facturaId,
+}: {
+  proveedorId: number | null;
+  salidaMaquilaId: number | null;
+  facturaId: number | null;
+}): number | null => (proveedorId !== null || salidaMaquilaId !== null ? facturaId : null);
+
+/**
  * URL del listado de facturas de proveedor con sus filtros de servidor: el
  * proveedor y, opcionalmente, la SM (`salida_maquila`) y la factura a abrir.
  */
