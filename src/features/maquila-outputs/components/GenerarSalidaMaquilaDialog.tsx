@@ -123,7 +123,7 @@ function SalidaMaquilaForm({
   const [compromiso, setCompromiso] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [lines, setLines] = useState<SalidaMaquilaDraftLine[]>(() =>
-    initialDraft(seed.renglones, seed.precioSugerido, yaEnviadas),
+    initialDraft(seed.renglones, seed.precioSugerido),
   );
   const [serverError, setServerError] = useState<SalidaMaquilaCreateError | null>(null);
   const [touched, setTouched] = useState(false);

@@ -29,17 +29,30 @@ const line = (cantidad: string, precio: string, id = 1): SalidaMaquilaDraftLine 
 });
 
 test.describe("salida a maquila: borrador", () => {
-  test("arranca con las piezas de la OP y su costo, sin renglones inactivos", () => {
-    const d = initialDraft(opRenglones([renglon(1, "2.00"), renglon(2, "5.00", false)]), "35.5000", 0);
+  test("arranca con las piezas en blanco y el costo de la OP, sin renglones inactivos (EC-922)", () => {
+    const d = initialDraft(opRenglones([renglon(1, "2.00"), renglon(2, "5.00", false)]), "35.5000");
     expect(d).toEqual([
-      { detalleId: 1, descripcion: "SKU-1 · M · BLANCO", enOrden: 2, cantidad: "2", precio: "35.5" },
+      { detalleId: 1, descripcion: "SKU-1 · M · BLANCO", enOrden: 2, cantidad: "", precio: "35.5" },
     ]);
   });
 
-  test("con salidas previas arranca en blanco y sin costo deja el precio vacío", () => {
-    const d = initialDraft(opRenglones([renglon(1, "4.00")]), null, 3);
+  test("sin costo deja el precio vacío", () => {
+    const d = initialDraft(opRenglones([renglon(1, "4.00")]), null);
     expect(d[0].cantidad).toBe("");
     expect(d[0].precio).toBe("");
+  });
+
+  test("ningún renglón sale ni cuenta para la salida parcial hasta capturarlo (EC-922)", () => {
+    const d = initialDraft(opRenglones([renglon(1, "10.00"), renglon(2, "10.00"), renglon(3, "10.00")]), "5");
+    expect(d.reduce((acc, l) => acc + lineQty(l), 0)).toBe(0);
+    expect(toDetalles(d, "OP")).toEqual([]);
+    expect(draftProblems(d, 30)).toEqual(["sin_piezas"]);
+    // Se captura un renglón: solo ese sale y quedan las otras 20 para otra salida.
+    const capturado = d.map((l) => (l.detalleId === 1 ? { ...l, cantidad: "10" } : l));
+    expect(capturado.reduce((acc, l) => acc + lineQty(l), 0)).toBe(10);
+    expect(toDetalles(capturado, "OP")).toEqual([
+      { op_detalle: 1, descripcion: "SKU-1 · M · BLANCO", cantidad: "10", precio_unitario: "5" },
+    ]);
   });
 
   test("detecta sin piezas, exceso, piezas no enteras y precio faltante", () => {
@@ -119,13 +132,14 @@ test.describe("salida a maquila: OB y OR (EC-911)", () => {
     expect(servicioSeed("OR", 20, detalles, 5)).toMatchObject({ centroConfeccion: null, precioSugerido: null });
   });
 
-  test("el borrador de OB/OR arranca sin precio: no se puede enviar sin capturarlo", () => {
-    const d = initialDraft(servicioSeed("OR", 20, detalles).renglones, null, 0);
+  test("el borrador de OB/OR arranca sin piezas ni precio: no se puede enviar sin capturarlos", () => {
+    const d = initialDraft(servicioSeed("OR", 20, detalles).renglones, null);
     expect(d.map((l) => [l.cantidad, l.precio])).toEqual([
-      ["10", ""],
-      ["4", ""],
+      ["", ""],
+      ["", ""],
     ]);
-    expect(draftProblems(d, 14)).toEqual(["precio"]);
+    expect(draftProblems(d, 14)).toEqual(["sin_piezas"]);
+    expect(draftProblems([{ ...d[0], cantidad: "10" }, d[1]], 14)).toEqual(["precio"]);
   });
 
   test("envía ob_detalle u or_detalle según el origen, siempre con precio", () => {
