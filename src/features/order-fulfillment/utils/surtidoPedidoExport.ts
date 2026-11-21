@@ -15,4 +15,5 @@ export const SURTIDO_PEDIDO_EXPORT_COLUMNS: ListExportColumn<SurtidoPedido>[] = 
   { header: "Comprometidas", weight: 0.9, text: (r) => String(exportNum(r.comprometidas)) },
   { header: "Empacadas", weight: 0.8, text: (r) => String(exportNum(r.empacadas)) },
   { header: "Despachadas", weight: 0.8, text: (r) => String(exportNum(r.despachadas)) },
+  { header: "Salidas manuales", weight: 0.9, text: (r) => String(exportNum(r.salidas_manuales)) },
 ];

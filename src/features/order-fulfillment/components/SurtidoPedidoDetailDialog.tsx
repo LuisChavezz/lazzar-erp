@@ -33,8 +33,8 @@ const TD_MUTED_NUM = "px-2.5 py-2 text-right tabular-nums text-slate-400 dark:te
 
 /**
  * Avance por talla de un pedido (`GET /wms/surtido-pedidos/{id}/`). Las cifras
- * se pintan como llegan; las barras solo acotan su ANCHO a 100. Un producto o
- * SKU nulo (líneas de muestra) se muestra como "—".
+ * se pintan como llegan; las barras solo acotan su ANCHO a 100. En muestras,
+ * `producto_nombre` ya trae el nombre capturado; un SKU nulo se muestra como "—".
  */
 export function SurtidoPedidoDetailDialog({
   pedido,
@@ -112,7 +112,7 @@ function SurtidoPedidoDetailContent({ pedidoId }: { pedidoId: number }) {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <MetricCard label="Pedidas" done={formatQuantityValue(detalle.pedidas)} />
             <MetricCard
               label="Surtidas"
@@ -129,6 +129,11 @@ function SurtidoPedidoDetailContent({ pedidoId }: { pedidoId: number }) {
               label="Despachadas"
               done={formatQuantityValue(detalle.despachadas)}
               hint="Informativo"
+            />
+            <MetricCard
+              label="Salidas manuales"
+              done={formatQuantityValue(detalle.salidas_manuales)}
+              hint="Fuera de WMS · no suma al surtido"
             />
           </div>
 

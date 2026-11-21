@@ -88,8 +88,8 @@ const quantityColumn = (
  * comprometido. La barra de % surtido acota solo su ANCHO a 100 (el backend no
  * topa el porcentaje) y su texto muestra el valor real.
  *
- * `salidas_manuales` NO se muestra: incluye las salidas que genera el despacho
- * (ver `SurtidoPedido.salidas_manuales`).
+ * `salidas_manuales` es un dato aparte: se muestra en el diálogo del pedido y
+ * en la exportación, no como columna, para no ensanchar la tabla.
  */
 export const surtidoPedidoColumns: ColumnDef<SurtidoPedido>[] = [
   {
