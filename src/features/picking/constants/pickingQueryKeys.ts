@@ -8,3 +8,15 @@ export const PICKING_DETAIL_QUERY_KEY = ["picking-detail"] as const;
  */
 export const pickingDetailQueryKey = (id: number | null) =>
   [...PICKING_DETAIL_QUERY_KEY, id] as const;
+
+/**
+ * Filtros para invalidar TODOS los detalles desde "Actualizar datos" del
+ * listado. El diálogo de detalle sigue montado (con el último id) aunque esté
+ * cerrado: solo se relee en el acto si está abierto; cerrado, solo se marca
+ * viejo (`refetchType: "none"`) y se relee al reabrirlo.
+ */
+export const pickingDetailsRefreshFilters = (isDetailOpen: boolean) =>
+  ({
+    queryKey: PICKING_DETAIL_QUERY_KEY,
+    refetchType: isDetailOpen ? "active" : "none",
+  }) as const;

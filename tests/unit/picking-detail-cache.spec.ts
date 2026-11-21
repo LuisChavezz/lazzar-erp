@@ -3,6 +3,7 @@ import { partialMatchKey } from "@tanstack/react-query";
 import {
   PICKING_DETAIL_QUERY_KEY,
   pickingDetailQueryKey,
+  pickingDetailsRefreshFilters,
 } from "@/src/features/picking/constants/pickingQueryKeys";
 import { PICKINGS_KEY, pickingsTable } from "@/src/features/picking/constants/pickingsTable";
 import { readServerTableState, toServerTableCriteria } from "@/src/utils/serverTableParams";
@@ -19,6 +20,16 @@ import type { Picking } from "@/src/features/picking/interfaces/picking.interfac
 test.describe("llaves de caché del listado y del detalle", () => {
   test("el prefijo de detalles alcanza a cada detalle", () => {
     expect(partialMatchKey(pickingDetailQueryKey(40), PICKING_DETAIL_QUERY_KEY)).toBe(true);
+  });
+
+  test("Actualizar datos relee el detalle solo con su diálogo abierto", () => {
+    const abierto = pickingDetailsRefreshFilters(true);
+    const cerrado = pickingDetailsRefreshFilters(false);
+    expect(partialMatchKey(pickingDetailQueryKey(40), abierto.queryKey)).toBe(true);
+    expect(abierto.refetchType).toBe("active");
+    // Cerrado: solo se marca viejo; reabrirlo lo relee.
+    expect(partialMatchKey(pickingDetailQueryKey(40), cerrado.queryKey)).toBe(true);
+    expect(cerrado.refetchType).toBe("none");
   });
 
   test("el prefijo del listado NO alcanza al detalle: por eso se invalidan ambos", () => {
