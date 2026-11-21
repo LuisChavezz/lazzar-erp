@@ -772,7 +772,9 @@ export function PurchaseOrderPageContent({
             </p>
           </div>
 
-          <HeaderStatRow>
+          {/* `start`: la barra de progreso de "Recibido" lo hace más alto que
+              los demás datos; centrado, su etiqueta subiría respecto a ellos. */}
+          <HeaderStatRow align="start">
             {/* Ambas son `DateField` ("yyyy-mm-dd"): `parseLocalDate` antes de
                 `formatShortDate`, que con la fecha pelada la leería en UTC y
                 pintaría el día anterior en México. */}
