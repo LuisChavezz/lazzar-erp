@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { HistoryIcon, PedidosIcon, TrendingUpIcon } from "@/src/components/Icons";
+import { FolioIcon, HistoryIcon, PedidosIcon, TrendingUpIcon } from "@/src/components/Icons";
 import type { OrderDetailSheet } from "../constants/orderDetailSheets";
 
 const SHEET_LABELS: Record<OrderDetailSheet, { label: string; icon: ReactNode }> = {
   order: { label: "Pedido", icon: <PedidosIcon className="w-4 h-4" aria-hidden="true" /> },
   progress: { label: "Avances", icon: <TrendingUpIcon className="w-4 h-4" aria-hidden="true" /> },
+  documents: { label: "Documentos", icon: <FolioIcon className="w-4 h-4" aria-hidden="true" /> },
   history: { label: "Historial", icon: <HistoryIcon className="w-4 h-4" aria-hidden="true" /> },
 };
 

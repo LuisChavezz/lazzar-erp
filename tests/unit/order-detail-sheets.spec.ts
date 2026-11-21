@@ -13,6 +13,8 @@ test.describe("hojas del detalle de pedido", () => {
       expect(resolveOrderDetailSheet(undefined, { canSeeHistory })).toBe("order");
       expect(resolveOrderDetailSheet("order", { canSeeHistory })).toBe("order");
       expect(resolveOrderDetailSheet("progress", { canSeeHistory })).toBe("progress");
+      // EC-914: la hoja "Documentos" la ve cualquiera que vea el pedido.
+      expect(resolveOrderDetailSheet("documents", { canSeeHistory })).toBe("documents");
       expect(resolveOrderDetailSheet("constructor", { canSeeHistory })).toBe("order");
     }
   });
@@ -20,8 +22,8 @@ test.describe("hojas del detalle de pedido", () => {
   test("history solo con permiso; sin él cae en order", () => {
     expect(resolveOrderDetailSheet("history", { canSeeHistory: true })).toBe("history");
     expect(resolveOrderDetailSheet("history", { canSeeHistory: false })).toBe("order");
-    expect(availableOrderDetailSheets(false)).toEqual(["order", "progress"]);
-    expect(availableOrderDetailSheets(true)).toEqual(["order", "progress", "history"]);
+    expect(availableOrderDetailSheets(false)).toEqual(["order", "progress", "documents"]);
+    expect(availableOrderDetailSheets(true)).toEqual(["order", "progress", "documents", "history"]);
   });
 
   test("cambiar de hoja conserva from y quita la hoja por defecto", () => {

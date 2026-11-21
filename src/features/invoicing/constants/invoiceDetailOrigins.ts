@@ -1,6 +1,6 @@
 import {
   ORDER_DETAIL_SHEET_PARAM,
-  type OrderDetailSheet,
+  ORDER_DOCUMENTS_SHEET,
 } from "@/src/features/orders/constants/orderDetailSheets";
 import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import {
@@ -14,7 +14,7 @@ import {
  * mismo patrón de lista cerrada que `purchaseOrderDetailOrigins`:
  *
  * - `invoicing`: el listado de facturas.
- * - `order`: "Documentos relacionados" del detalle de pedido. Lleva además
+ * - `order`: la hoja "Documentos" del detalle de pedido. Lleva además
  *   `pedido=<id>` para volver a ESE pedido.
  *
  * La búsqueda global enlaza SIN `from` (precedente de las órdenes de
@@ -93,9 +93,6 @@ const DEFAULT_BACK: InvoiceBackTarget = {
   label: "Volver a Facturación",
 };
 
-/** Hoja "Avances" del pedido: ahí está la tabla de documentos de la que se vino. */
-const ORDER_PROGRESS_SHEET: OrderDetailSheet = "progress";
-
 /**
  * Resuelve el "Volver" desde el `?from=` crudo. `canOpen` dice si el usuario
  * puede abrir una ruta (la regla del proxy): el detalle de pedido exige otros
@@ -112,7 +109,8 @@ export function resolveInvoiceBack(
     const path = pedido === null ? null : `/orders/${pedido}`;
     if (!path || !canOpen(path)) return DEFAULT_BACK;
     return {
-      href: `${path}?${ORDER_DETAIL_SHEET_PARAM}=${ORDER_PROGRESS_SHEET}`,
+      // La hoja "Documentos" (EC-914): ahí está la factura de la que se vino.
+      href: `${path}?${ORDER_DETAIL_SHEET_PARAM}=${ORDER_DOCUMENTS_SHEET}`,
       label: "Volver al Pedido",
     };
   }
