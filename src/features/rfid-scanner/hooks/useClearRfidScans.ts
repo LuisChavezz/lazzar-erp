@@ -74,15 +74,19 @@ export const useClearRfidScans = () => {
       // marcada como obsoleta, de modo que al reanudarlo se pida de nuevo en vez
       // de servir la caché durante los 15 min de `staleTime` global.
       queryClient.invalidateQueries({ queryKey: ["rfid-scans"] });
-      // `["rfid-scanner-stats"]` no tiene gate de `enabled`, así que sí está
-      // activa y esta invalidación sí la refresca por sí sola.
+      // `["rfid-scanner-stats"]` SÍ está gateada (`enabled` =
+      // `useIsCompanyAdmin`), pero con la misma regla que esta purga: si la
+      // purga fue posible, la consulta está activa y esta invalidación la
+      // refresca por sí sola. Si algún día se separan las dos reglas, habría
+      // que escribir en su caché como arriba.
       queryClient.invalidateQueries({ queryKey: ["rfid-scanner-stats"] });
-      // 0 es un 200 legítimo: no había lecturas de la empresa activa (o el
-      // superusuario no tiene empresa activa). Se dice así en vez de "0
-      // lecturas eliminadas", que parece un fallo.
+      // 0 es un 200 legítimo: no había lecturas de la empresa activa, o el
+      // superusuario no tiene empresa activa. El texto no nombra la empresa
+      // para valer en los dos casos, y evita "0 lecturas eliminadas", que
+      // parece un fallo.
       toast.success(
         data.deleted === 0
-          ? "No había lecturas de la empresa activa para eliminar."
+          ? "No había lecturas para eliminar."
           : data.deleted === 1
             ? "1 lectura eliminada."
             : `${data.deleted.toLocaleString("es-MX")} lecturas eliminadas.`,
