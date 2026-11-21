@@ -71,8 +71,9 @@ export const useThemeStore = create<ThemeState>()(
          * que no tiene nada que guardar: la escritura que `persist` hace tras
          * cada `set` repetiría el `theme` recién leído, y el almacenamiento
          * (`safeJSONStorage`) la omite por idéntica (EC-852). Solo se escribe
-         * en la primera visita, sin nada guardado: `{ theme: "system" }`, que
-         * el script anti-FOUC del layout trata igual que la clave ausente.
+         * cuando lo guardado difiere de `{ theme }`: la primera visita (sin
+         * nada guardado, escribe `{ theme: "system" }`, que el script
+         * anti-FOUC trata igual que la clave ausente) o un formato anterior.
          */
         hydrate: (isSystemDark) => {
           set(

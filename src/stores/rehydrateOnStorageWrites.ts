@@ -31,6 +31,14 @@ export const rehydrateOnStorageWrites = (
 ): void => {
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
   window.addEventListener("storage", (event) => {
-    if (isOtherTabWrite(event, key, window.localStorage)) void persistApi.rehydrate();
+    // Con los datos del sitio bloqueados, el acceso a `localStorage` lanza
+    // (EC-852): sin almacenamiento no hay nada que releer.
+    let area: Storage;
+    try {
+      area = window.localStorage;
+    } catch {
+      return;
+    }
+    if (isOtherTabWrite(event, key, area)) void persistApi.rehydrate();
   });
 };
