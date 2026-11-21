@@ -16,6 +16,7 @@ const line = (over: Partial<ReceiptScanLine>): ReceiptScanLine => ({
   ordenado: 5,
   pendiente: 5,
   enMaquila: 0,
+  enMaquilaFolios: [],
   tope: 5,
   sinTope: null,
   ...over,

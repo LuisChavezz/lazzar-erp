@@ -153,10 +153,17 @@ export interface ReceiptOnboardingSalidaMaquila {
   centro_confeccion_nombre: string;
   sucursal_id: number;
   fecha_envio: string;
+  /** Número JSON (no string como los renglones). */
   total_piezas: number | string;
   /**
-   * El backend lo manda sin revisar `R-PRODUCCION-COSTOS`: la UI NUNCA lo
-   * muestra. Opcional por si empieza a omitirlo.
+   * Piezas que faltan por regresar: `total_piezas` menos lo recibido con la SM
+   * en recepciones vivas (nucleo-erp #1254). Número JSON. Opcional por si un
+   * backend anterior no lo manda.
+   */
+  piezas_pendientes?: number | string;
+  /**
+   * AUSENTE (no `null`) sin `R-PRODUCCION-COSTOS` (nucleo-erp #1235). La UI de
+   * recepciones no lo muestra.
    */
   total?: number | string;
   /** Solo SM de OB/OR; ausente en un backend anterior a #1269 (sin renglones). */

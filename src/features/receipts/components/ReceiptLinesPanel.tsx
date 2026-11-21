@@ -14,9 +14,18 @@ interface ReceiptLinesPanelProps {
   setCantidad: (lineId: number, value: string) => void;
   /** Avisos bajo el encabezado (SM, error de "al menos una"). */
   notice?: ReactNode;
+  /** 400 del backend por id de renglón (EC-919): su grupo se abre y el renglón lo dice. */
+  lineErrors?: Record<number, string>;
 }
 
 const fmt = (value: number) => value.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+
+/**
+ * "En maquila 4 (SM-00005)": piezas del renglón que están fuera con un
+ * maquilero. No cuentan en lo pendiente de la OP: se reciben con su SM.
+ */
+const enMaquilaTexto = (line: ReceiptScanLine) =>
+  `En maquila ${fmt(line.enMaquila)}${line.enMaquilaFolios.length > 0 ? ` (${line.enMaquilaFolios.join(", ")})` : ""}`;
 
 /** Talla visible: la del renglón o, si falta, la que trae el SKU. */
 const tallaDe = (line: ReceiptScanLine) => line.talla?.trim() || splitSku(line.sku)?.talla || null;
@@ -45,7 +54,7 @@ const codigosDelGrupo = (lines: readonly ReceiptScanLine[]) => {
  *
  * Los dos modos editan las mismas cantidades del formulario.
  */
-export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice }: ReceiptLinesPanelProps) {
+export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, lineErrors = {} }: ReceiptLinesPanelProps) {
   const recibibles = lines.filter((l) => l.tope >= 1);
   const noRecibibles = lines.filter((l) => l.tope < 1);
   const scannable = recibibles.some((l) => receiptScanCodes(l).length > 0);
@@ -128,7 +137,8 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice }: Re
 
       <ul className="max-h-[42vh] overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
         {grupos.map((grupo) => {
-          const abierto = abiertos.has(grupo.key) || (modo === "manual" && grupos.length <= 3);
+          const conError = grupo.lines.some((l) => lineErrors[l.id] !== undefined);
+          const abierto = conError || abiertos.has(grupo.key) || (modo === "manual" && grupos.length <= 3);
           const capturado = grupo.lines.reduce((acc, l) => acc + qtyOf(l), 0);
           const techo = grupo.lines.reduce((acc, l) => acc + l.tope, 0);
           const completo = techo > 0 && capturado >= techo;
@@ -199,11 +209,17 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice }: Re
                     const qty = qtyOf(line);
                     const lleno = qty >= line.tope;
                     const talla = tallaDe(line);
+                    const error = lineErrors[line.id];
                     return (
                       <li
                         key={line.id}
+                        data-line-error={error !== undefined || undefined}
                         className={`flex items-center gap-3 px-4 py-2 pl-9 transition-colors duration-500 ${
-                          resaltada === line.id ? "bg-sky-100/70 dark:bg-sky-500/10" : ""
+                          error !== undefined
+                            ? "bg-red-50/70 dark:bg-red-500/10"
+                            : resaltada === line.id
+                              ? "bg-sky-100/70 dark:bg-sky-500/10"
+                              : ""
                         }`}
                       >
                         {(line.sku || line.codigo || line.proscai) && (
@@ -229,8 +245,13 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice }: Re
                           <p className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
                             Pendiente <b className="text-slate-700 dark:text-slate-200">{fmt(line.pendiente)}</b>
                             {" · "}Ordenado {fmt(line.ordenado)}
-                            {line.enMaquila > 0 && <> · En maquila {fmt(line.enMaquila)}</>}
+                            {line.enMaquila > 0 && <> · {enMaquilaTexto(line)}</>}
                           </p>
+                          {error !== undefined && (
+                            <p role="alert" className="mt-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                              {error}
+                            </p>
+                          )}
                         </div>
                         {!lleno && (
                           <button

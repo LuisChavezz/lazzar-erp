@@ -117,6 +117,24 @@ export const productionTabRowCandidate = (row: ProductionTabRow): ReceiptOrderCa
 export const salidaMaquilaOrigenNombre = (salida: Pick<ReceiptOnboardingSalidaMaquila, "origen">): string =>
   SALIDA_MAQUILA_ORIGENES[salida.origen]?.nombreCorto ?? salida.origen;
 
+/**
+ * "Faltan 6 de 10 pzas" de una SM en el selector (EC-919): con recepciones
+ * parciales, cuánto le queda por regresar. `null` si el backend no manda
+ * `piezas_pendientes` o no es un número.
+ */
+export const salidaMaquilaPendienteTexto = (
+  salida: Pick<ReceiptOnboardingSalidaMaquila, "piezas_pendientes" | "total_piezas">,
+): string | null => {
+  if (salida.piezas_pendientes === undefined || salida.piezas_pendientes === null) return null;
+  const pendientes = Number(salida.piezas_pendientes);
+  if (!Number.isFinite(pendientes)) return null;
+  const total = Number(salida.total_piezas);
+  const fmt = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+  return Number.isFinite(total) && total > 0 && total !== pendientes
+    ? `Faltan ${fmt(pendientes)} de ${fmt(total)} pzas`
+    : `${fmt(pendientes)} pzas por regresar`;
+};
+
 /** Texto de búsqueda de una fila: folios (OP/SM/origen) y maquilero. */
 export const productionTabRowMatches = (row: ProductionTabRow, term: string): boolean => {
   const campos =
