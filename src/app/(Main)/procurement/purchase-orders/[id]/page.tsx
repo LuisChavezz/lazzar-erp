@@ -26,7 +26,7 @@ import {
  * `from` o con uno desconocido vuelve al listado de órdenes de compra.
  *
  * Convive con `PurchaseOrderDetailDialog`, que sigue montado sin cambios y
- * alimenta "Documentos relacionados" del detalle de pedido
+ * alimenta la hoja "Documentos" del detalle de pedido
  * (`CLICKABLE_DOC_TIPOS.orden_compra`). Esta página es la vista extendida, de
  * SOLO LECTURA: las acciones (editar, confirmar, cancelar, correo, PDF) viven
  * en el menú del listado.

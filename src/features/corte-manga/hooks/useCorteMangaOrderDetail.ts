@@ -25,7 +25,7 @@ export const corteMangaOrderDetailQueryKey = (id: number | null) =>
  *
  * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
  * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
- * sección "Documentos relacionados" del detalle de pedido). La vista de listado
+ * hoja "Documentos" del detalle de pedido). La vista de listado
  * NO lo usa: arma su diálogo con la fila en caché.
  */
 export const useCorteMangaOrderDetail = (id: number | null) => {

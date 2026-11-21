@@ -2,7 +2,6 @@ import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { getPedidoEstatusConfig, PEDIDO_ESTATUS } from "../constants/pedidoStatus";
 import type { PedidoTrazabilidadQuery } from "../hooks/usePedidoTrazabilidad";
 import type { PedidoDetail } from "../interfaces/order.interface";
-import { OrderDocumentsSection } from "./OrderDocumentsSection";
 import { OrderPickingBySizeSection } from "./OrderPickingBySizeSection";
 import { OrderPickingFoliosSection } from "./OrderPickingFoliosSection";
 import { OrderPickingProgressSection } from "./OrderPickingProgressSection";
@@ -15,7 +14,7 @@ interface OrderProgressSheetProps {
   pedido: PedidoDetail;
   /** `canSeeAccounting(pedido)`, calculado por la página. */
   showAccounting: boolean;
-  /** Abre un documento (o un folio de surtido) en su diálogo de detalle. */
+  /** Abre una orden de trabajo o un folio de surtido en su diálogo de detalle. */
   onOpenDoc: (doc: OpenOrderDocument) => void;
   /** Consulta de la trazabilidad, montada por la página desde su primer render. */
   trazabilidad: PedidoTrazabilidadQuery;
@@ -23,8 +22,8 @@ interface OrderProgressSheetProps {
 
 /**
  * Hoja 2, "Avances": el estado operativo del pedido — trazabilidad, avance de
- * surtido general, surtido por línea y talla, folios de surtido y documentos
- * relacionados. Los diálogos de detalle NO viven aquí: los monta la página
+ * surtido general, surtido por línea y talla y folios de surtido. Los
+ * documentos del pedido viven en su propia hoja ("Documentos", EC-914). Los diálogos de detalle NO viven aquí: los monta la página
  * (estado por encima de las hojas), para que cambiar de hoja nunca deje uno
  * huérfano ni abierto donde no corresponde.
  */
@@ -61,12 +60,6 @@ export function OrderProgressSheet({
       <OrderPickingProgressSection tracker={pedido.tracker_picking} />
       <OrderPickingBySizeSection detalles={pedido.detalles} />
       <OrderPickingFoliosSection folios={folios} onOpenFolio={onOpenDoc} />
-      <OrderDocumentsSection
-        pedidoId={pedido.id}
-        documentos={pedido.documentos ?? []}
-        foliosPicking={folios}
-        onOpenDoc={onOpenDoc}
-      />
     </div>
   );
 }

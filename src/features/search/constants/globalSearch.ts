@@ -71,7 +71,7 @@ export const SEARCH_APERTURA: Record<string, SearchApertura> = {
   // Único camino al detalle de cliente en toda la app.
   cliente: { modo: "ruta", href: (id) => customerDetailPath(id) },
   // Sin ruta de detalle: el diálogo self-fetching (`QuoteDetailByIdDialog`) que
-  // abre el bloque "Documentos relacionados" del pedido 360°.
+  // abre la hoja "Documentos" del pedido 360°.
   cotizacion: { modo: "dialogo-cotizacion" },
   // Órdenes de producción: su página de detalle, sin `?from=`. El "Volver" es
   // fijo al listado del módulo, que exige el mismo código de sección que la

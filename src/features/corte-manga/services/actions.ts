@@ -48,7 +48,7 @@ export const getCorteMangaOrders = async (): Promise<CorteMangaOrder[]> => {
  *
  * Lo consumen la página de detalle (`CorteMangaOrderPageContent`) y el
  * envoltorio por id del diálogo (`CorteMangaOrderDetailByIdDialog`, que usa la
- * sección "Documentos relacionados" del detalle de pedido), ambos vía
+ * hoja "Documentos" del detalle de pedido), ambos vía
  * `useCorteMangaOrderDetail`.
  *
  * Fuera de alcance (otra empresa/sucursal) responde `404`, no `403`: el

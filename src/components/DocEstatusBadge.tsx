@@ -1,8 +1,8 @@
 import { CheckIcon, ChevronRightIcon } from "@/src/components/Icons";
 
 /**
- * Badge y ">" de los "Documentos relacionados" (detalle de pedido y detalle de
- * orden de compra). El estatus de esos documentos llega como texto libre —cada
+ * Badge y ">" de los documentos ligados (hoja "Documentos" del detalle de
+ * pedido y "Documentos relacionados" del detalle de orden de compra). El estatus de esos documentos llega como texto libre —cada
  * tipo con su vocabulario: "AUTORIZADA", "Cerrada", "En calidad"…—, así que el
  * tono se decide por palabra clave y lo que no encaja queda neutro.
  */

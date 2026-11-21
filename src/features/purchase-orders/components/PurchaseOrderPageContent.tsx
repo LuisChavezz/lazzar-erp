@@ -624,7 +624,7 @@ interface PurchaseOrderPageContentProps {
  * Cuerpo de la PÁGINA de detalle de una orden de compra.
  *
  * NO confundir con `PurchaseOrderDetailDialog`, que es el DIÁLOGO: aquel se
- * abre por id desde "Documentos relacionados" del detalle de pedido y vive
+ * abre por id desde la hoja "Documentos" del detalle de pedido y vive
  * dentro de un `MainDialog`; este se pinta a página completa, con secciones y
  * su propio "Volver". Ambos consumen el mismo `usePurchaseOrder` y coexisten
  * sin tocarse.

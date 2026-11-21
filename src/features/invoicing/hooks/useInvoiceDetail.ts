@@ -9,8 +9,8 @@ import type { Invoice } from "../interfaces/invoice.interface";
  * Mismo patrón que `usePackingDetail`/`useCorteMangaOrderDetail`: id nullable y
  * `enabled` que mantiene la consulta APAGADA sin un id válido. Trae el detalle
  * con `factura_detalles` hidratados, que el listado (`useInvoices`) no
- * incluye, así que los consumidores que solo tienen el id —como la sección
- * "Documentos relacionados" del detalle de pedido— usan este hook en vez de una
+ * incluye, así que los consumidores que solo tienen el id usan este hook en
+ * vez de una
  * fila del listado.
  */
 export const useInvoiceDetail = (id: number | null) => {

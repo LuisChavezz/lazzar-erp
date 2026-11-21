@@ -501,7 +501,7 @@ export function GlobalSearchPalette() {
 
       {/*
         El detalle de cotización NO es una ruta: es este diálogo self-fetching por
-        id, el mismo que abre "Documentos relacionados" del pedido 360°. Vive
+        id, el mismo que abre la hoja "Documentos" del pedido 360°. Vive
         FUERA del `Dialog.Root` de la paleta —como hermano— para que nunca haya
         dos diálogos anidados.
       */}

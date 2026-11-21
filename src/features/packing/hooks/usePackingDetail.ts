@@ -12,8 +12,8 @@ import type { Packing } from "../interfaces/packing.interface";
  * crudo y no hay enriquecimiento por tiempo (`esta_vencida`) que calcular.
  *
  * No lo usa la vista de listado —que arma el diálogo con la fila en caché—, sino
- * consumidores que solo tienen el id, como la sección "Documentos relacionados"
- * del detalle de pedido.
+ * consumidores que solo tienen el id, como la hoja "Documentos" del detalle de
+ * pedido.
  */
 export const usePackingDetail = (id: number | null) => {
   return useQuery<Packing>({

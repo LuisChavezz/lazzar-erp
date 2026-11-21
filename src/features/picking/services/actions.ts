@@ -54,7 +54,7 @@ export const getPickingsFiltros = async (): Promise<PickingsFiltros> => {
  *
  * La vista de listado NO usa este action: arma el diálogo con la fila ya
  * enriquecida en caché. Existe para consumidores que solo tienen el id —p. ej.
- * la sección "Documentos relacionados" del detalle de pedido, vía
+ * la hoja "Documentos" del detalle de pedido, vía
  * `usePickingDetail`. Fuera de alcance (otro almacén/tenant) responde `404`.
  */
 export const getPickingDetail = async (id: number): Promise<Picking> => {
