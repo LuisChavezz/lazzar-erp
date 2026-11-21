@@ -14,6 +14,7 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency } from "@/src/utils/formatCurrency";
 import { clampPercentage } from "@/src/utils/percentage";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
+import { formatPedidoPct } from "@/src/features/orders/utils/pedidoFormat";
 import {
   INVOICE_ORIGIN_ID_PARAM,
   INVOICE_ORIGIN_SHEET_PARAM,
@@ -149,7 +150,7 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
                   Piezas en facturas (incluye Borrador)
                 </span>
                 <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-                  {Math.round(pctFacturado)}%
+                  {formatPedidoPct(pctFacturado)}%
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
