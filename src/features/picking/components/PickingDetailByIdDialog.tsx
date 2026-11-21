@@ -19,7 +19,7 @@ interface PickingDetailByIdDialogProps {
 
 /**
  * Detalle de un surtido POR ID, el único diálogo de detalle de picking: lo
- * abren el listado de picking (cuyas filas, de `?resumen=1`, no traen
+ * abren el listado de picking (cuyas filas, de `?vista=lista`, no traen
  * renglones), el detalle de pedido (registro `CLICKABLE_DOC_TIPOS`) y la
  * auditoría documental, con la firma `{ orderId, open, onOpenChange }`:
  *  1. trae el `Picking` completo por id (`usePickingDetail`);
@@ -44,7 +44,10 @@ export function PickingDetailByIdDialog({
   // traslado abierto con su aviso— sigue montado; sin datos se muestra el error.
   const row = picking ? mapPickingToRow(picking, fetchedAt) : null;
 
-  const subtitle = row ? row.folio : isLoading ? "Cargando…" : "Error al cargar";
+  // Sin id válido la consulta queda apagada (`usePickingDetail`): ni carga ni error.
+  const hasId = orderId !== null && orderId > 0;
+
+  const subtitle = row ? row.folio : !hasId ? "" : isLoading ? "Cargando…" : "Error al cargar";
 
   // "Descargar PDF" junto al título (EC-858), una vez cargado el surtido.
   const pdfAction = row ? <PickingPdfButton picking={row} /> : null;
@@ -73,11 +76,12 @@ export function PickingDetailByIdDialog({
     >
       {row ? (
         <PickingDetailContent picking={row} />
-      ) : isLoading ? (
+      ) : !hasId ? null : isLoading ? (
         <Loader title="Cargando detalle del surtido..." className="py-16" />
       ) : (
         // 404 definitivo (no existe o fuera de alcance: el backend fusiona ambos)
-        // o carga inicial fallida sin datos en caché.
+        // o carga inicial fallida sin datos en caché. Sin id (consulta apagada)
+        // no hay nada que mostrar: la rama de arriba deja el cuerpo vacío.
         <ErrorState
           title="No se pudo cargar el surtido"
           message={
