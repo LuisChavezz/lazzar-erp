@@ -25,6 +25,10 @@ import { createWmsOrderColumns } from './WmsOrderColumns';
 const columns = createWmsOrderColumns();
 // Completos: sin "Comprometidas" (`isSurtidoCompleto` exige comprometidas = 0).
 const surtidoColumns = surtidoPedidoColumns.filter((c) => c.id !== 'comprometidas');
+// La exportación tampoco lleva "Salidas manuales": esta vista no la muestra.
+const surtidoExportColumns = SURTIDO_PEDIDO_EXPORT_COLUMNS.filter(
+  (c) => c.header !== 'Salidas manuales',
+);
 
 type Tab = 'pendientes' | 'surtidos';
 
@@ -63,7 +67,7 @@ export function WmsOrderListView() {
   });
   const doneExport = useListExport({
     getRows: () => doneRef.current?.getFilteredRows() ?? [],
-    columns: SURTIDO_PEDIDO_EXPORT_COLUMNS,
+    columns: surtidoExportColumns,
     title: 'Pedidos surtidos',
     fileName: 'pedidos-surtidos',
     summary: (rows) => `${rows.length} pedido${rows.length === 1 ? '' : 's'}`,
