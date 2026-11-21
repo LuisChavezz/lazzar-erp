@@ -29,6 +29,11 @@ type RfcValidationTone = "success" | "error";
 
 const normalizeRfc = (value: string) => value.trim().toUpperCase();
 
+// Al editar, el RFC guardado cuenta como verificado para poder guardar sin
+// volver a verificarlo, pero nadie lo revisó al abrir: el aviso es neutro y no
+// afirma que pase la regla actual del backend.
+const STORED_RFC_MESSAGE = "RFC guardado";
+
 export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierFormProps) {
   const isEditMode = Boolean(supplierToEdit?.id);
   const [isRfcVerified, setIsRfcVerified] = useState(isEditMode);
@@ -36,11 +41,9 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
     isEditMode && supplierToEdit?.rfc ? normalizeRfc(supplierToEdit.rfc) : null
   );
   const [rfcValidationMessage, setRfcValidationMessage] = useState<string | null>(
-    isEditMode ? "RFC previamente validado" : null
+    isEditMode ? STORED_RFC_MESSAGE : null
   );
-  const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(
-    isEditMode ? "success" : null
-  );
+  const [rfcValidationTone, setRfcValidationTone] = useState<RfcValidationTone | null>(null);
   const { verifyRfcAsync, isVerifyingRfc, resetVerifyRfc } = useVerifyRfc();
 
   const {
@@ -119,8 +122,8 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
       // En edición, restaura el RFC original del proveedor.
       setIsRfcVerified(true);
       setVerifiedRfc(normalizeRfc(supplierToEdit.rfc));
-      setRfcValidationMessage("RFC previamente validado");
-      setRfcValidationTone("success");
+      setRfcValidationMessage(STORED_RFC_MESSAGE);
+      setRfcValidationTone(null);
     } else {
       setIsRfcVerified(false);
       setVerifiedRfc(null);
