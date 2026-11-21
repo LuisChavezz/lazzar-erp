@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { safeJSONStorage } from "@/src/stores/safeStorage";
 import { Branch } from "../../branches/interfaces/branch.interface";
 import { rehydrateOnStorageWrites } from "@/src/stores/rehydrateOnStorageWrites";
 
@@ -81,6 +82,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       }),
       { // Nombre del storage para persistencia
         name: "workspace-storage",
+        // Nunca lanza: sin almacenamiento la hidratación termina igual (EC-852).
+        storage: safeJSONStorage(),
         /* EC-842: v1 dejó de guardar `selectedCompany` (la empresa sale de la
          * sesión) y v2 `availableBranches` (copia de la caché de TanStack Query:
          * las sucursales se leen con `useCompanyBranches(useSessionCompanyId())`).
