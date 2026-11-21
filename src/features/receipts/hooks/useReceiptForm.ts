@@ -21,7 +21,7 @@ import {
 import { buildReceiptPayload } from "../utils/buildReceiptPayload";
 import {
   receiptSeriePreseleccionada,
-  receiptSeriesDeSucursal,
+  receiptSeriesOfrecidas,
 } from "../utils/receiptSeries";
 import { isSalidaMaquilaRejection } from "../utils/receiptErrors";
 
@@ -103,8 +103,9 @@ export function useReceiptForm({
   const conRenglones = candidateHasLines(candidate);
 
   // Solo las series de la sucursal de la orden (EC-922): la recepción se folia
-  // con la serie de esa sucursal (la de la OC, la OP o la SM).
-  const seriesDisponibles = receiptSeriesDeSucursal(
+  // con la serie de esa sucursal (la de la OC, la OP o la SM). Si la lista del
+  // onboarding pudo venir recortada, RC, RT y RZ (`receiptSeriesOfrecidas`).
+  const seriesDisponibles = receiptSeriesOfrecidas(
     onboardingData?.catalogos.series_recepcion ?? [],
     candidateSucursalId(candidate),
   );

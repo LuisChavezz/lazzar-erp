@@ -44,6 +44,29 @@ export const receiptSeriesDeSucursal = (
 };
 
 /**
+ * Tope de filas de `catalogos.series_recepcion`: el onboarding corta la lista a
+ * 50 filas de TODA la empresa, ordenadas por serie (`compras/api/views.py`,
+ * `[:50]`). Con exactamente 50 puede faltar la serie de alguna sucursal.
+ */
+export const SERIES_RECEPCION_TOPE_ONBOARDING = 50;
+
+/**
+ * Series que ofrece el formulario (EC-922). Con menos de 50 filas la lista
+ * está completa y se ofrecen las de la sucursal (`receiptSeriesDeSucursal`).
+ * Con exactamente 50 puede venir recortada: filtrar ocultaría (o dejaría sin
+ * ninguna) una sucursal que sí tiene series, así que se ofrecen RC, RT y RZ
+ * tal cual, como antes. Quitar este respaldo cuando el backend deje de
+ * recortar la lista.
+ */
+export const receiptSeriesOfrecidas = (
+  series: readonly ReceiptOnboardingSerieFolio[],
+  sucursalId: number | null,
+): ReceiptSerieCodigo[] =>
+  series.length === SERIES_RECEPCION_TOPE_ONBOARDING
+    ? [...RECEIPT_SERIE_CODES]
+    : receiptSeriesDeSucursal(series, sucursalId);
+
+/**
  * Serie que el formulario propone (EC-922): RC si la sucursal la tiene (la que
  * el backend usa cuando no se indica ninguna); si no, la única que haya. Con
  * varias y ninguna RC no se propone nada: el formulario no sabe si la
