@@ -43,7 +43,8 @@ type StockTransferPdfDocumentProps = {
 
 export const StockTransferPdfDocument = ({ transfer, company }: StockTransferPdfDocumentProps) => {
   const lineas = transfer.transferencia_detalle ?? [];
-  // Sin flecha: la Helvetica estándar del PDF (WinAnsi) no tiene "→" y la omite.
+  // Ruta en texto ("De … a …"): viene de cuando la Helvetica estándar (WinAnsi)
+  // omitía "→"; desde EC-858 este PDF usa Arimo, que sí la imprime.
   const ruta = `De ${textOrDash(transfer.almacen_origen_nombre)} a ${textOrDash(transfer.almacen_destino_nombre)}`;
 
   const columns: PdfColumn<TransferenciaDetalleLine>[] = [
