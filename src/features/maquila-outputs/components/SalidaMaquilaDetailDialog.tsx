@@ -15,13 +15,12 @@ import { formatAmountNoCurrency, formatQuantityValue } from "@/src/utils/formatC
 import { formatShortCalendarDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { useSalidaMaquila } from "../hooks/useSalidaMaquila";
 import { useSalidaMaquilaRegreso } from "../hooks/useSalidaMaquilaRegreso";
-import {
-  isSalidaMaquilaAbierta,
-  SALIDA_MAQUILA_STATUS_CONFIG,
-} from "../constants/salidaMaquilaStatus";
+import { SALIDA_MAQUILA_STATUS_CONFIG } from "../constants/salidaMaquilaStatus";
+import { puedeCancelarSalidaMaquila } from "../utils/salidaMaquilaDocumentos";
 import { salidaMaquilaFolio } from "../constants/salidaMaquilaOrigen";
 import { SalidaMaquilaActions } from "./SalidaMaquilaActions";
 import { SalidaMaquilaOrigenLink } from "./SalidaMaquilaOrigenLink";
+import { SalidaMaquilaDocumentos } from "./SalidaMaquilaDocumentos";
 
 /**
  * Detalle de una SM. Se abre por id: el listado no trae renglones, así que el
@@ -176,7 +175,11 @@ export function SalidaMaquilaDetailDialog({
             </LineItemsTable>
           )}
 
-          {canWrite && isSalidaMaquilaAbierta(data.estatus) && <SalidaMaquilaActions salida={data} />}
+          <SalidaMaquilaDocumentos salida={data} />
+
+          {/* Con una recepción viva, lo que falta se cierra desde WMS ("Cerrar la
+              SM con faltante"), no cancelando la SM (EC-919). */}
+          {canWrite && puedeCancelarSalidaMaquila(data) && <SalidaMaquilaActions salida={data} />}
         </div>
       )}
     </MainDialog>

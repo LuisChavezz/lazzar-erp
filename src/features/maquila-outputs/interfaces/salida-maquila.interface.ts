@@ -65,12 +65,43 @@ export interface SalidaMaquilaListItem {
   observaciones: string | null;
   usuario: number | null;
   created_at: string;
+  /** Folio de la última recepción viva con que regresó (nucleo-erp #1239); `null` si ninguna. */
+  recepcion_folio?: string | null;
+}
+
+/**
+ * Recepción con que regresó la SM (retrieve, nucleo-erp #1239). Incluye las
+ * canceladas (`estatus` 6): la UI las atenúa, no las oculta.
+ */
+export interface SalidaMaquilaRecepcion {
+  id: number;
+  folio: string | null;
+  /** `Recepcion.EstatusRecepcion` (número). */
+  estatus: number;
+  fecha_recepcion: string | null;
+}
+
+/**
+ * Factura de maquila que nació de una recepción de la SM (retrieve, #1239).
+ * Incluye las canceladas. `folio` es `null` hasta que se captura el del
+ * maquilero; `total` (número JSON) llega solo con `R-PRODUCCION-COSTOS`.
+ */
+export interface SalidaMaquilaFacturaProveedor {
+  id: number;
+  folio: string | null;
+  /** "Borrador" | "Registrada" | "Cancelada", tal cual el backend. */
+  estatus: string;
+  /** Recepción de la que nació. */
+  recepcion: number | null;
+  total?: number | string | null;
 }
 
 export interface SalidaMaquila extends SalidaMaquilaListItem {
   detalles: SalidaMaquilaDetalle[];
   /** Recepciones con que regresó (retrieve). */
-  recepciones?: { id: number; folio: string | null; estatus: number; fecha_recepcion: string | null }[];
+  recepciones?: SalidaMaquilaRecepcion[];
+  /** Facturas de maquila de sus recepciones (retrieve). */
+  facturas_proveedor?: SalidaMaquilaFacturaProveedor[];
 }
 
 export interface SalidaMaquilaFilters {
