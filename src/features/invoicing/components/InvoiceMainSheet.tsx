@@ -319,7 +319,9 @@ function InvoiceCfdiStamp({ invoice }: { invoice: Invoice }) {
     );
   }
   return (
-    <HeaderStatRow>
+    // `start`: "Estado del CFDI" puede llevar una o dos líneas de nota bajo el
+    // valor; centrado, su etiqueta subiría respecto a la del UUID y la fecha.
+    <HeaderStatRow align="start">
       <HeaderStat label="Folio fiscal (UUID)">
         <span className="font-mono break-all select-all">{invoice.cfdi_uuid}</span>
       </HeaderStat>
