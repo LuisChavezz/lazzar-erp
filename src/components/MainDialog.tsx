@@ -4,6 +4,7 @@ import { Dialog, Flex } from '@radix-ui/themes';
 import React from 'react';
 import { Button } from './Button';
 import { XIcon } from './Icons';
+import { isEscapeFromSelect } from '../utils/dialogEscape';
 
 interface MainDialogProps {
   trigger?: React.ReactNode; // El botón o elemento que abre el modal
@@ -57,6 +58,12 @@ export function MainDialog({
       <Dialog.Content
         maxWidth={maxWidth}
         onPointerDownOutside={(event) => event.preventDefault()}
+        // Escape desde un `<select>` (su lista abierta, en Firefox) no cierra el
+        // diálogo ni pierde lo capturado (EC-922). Desde cualquier otro lado,
+        // Escape sigue cerrándolo.
+        onEscapeKeyDown={(event) => {
+          if (isEscapeFromSelect(event)) event.preventDefault();
+        }}
         onCloseAutoFocus={onCloseAutoFocus}
         className="bg-white! dark:bg-zinc-900! dark:text-white!"
       >

@@ -6,6 +6,7 @@ import { LoadingSpinnerIcon } from "@/src/components/Icons";
 import { ProductVariantCodeBadges } from "@/src/features/product-variants/components/ProductVariantCodeBadges";
 import { useProductVariantSearch } from "@/src/features/product-variants/hooks/useProductVariantSelector";
 import type { ProductVariantSelectorItem } from "@/src/features/product-variants/interfaces/product-variant-selector.interface";
+import { useEscapeClosesPopup } from "@/src/hooks/useEscapeClosesPopup";
 import { useServerSearchTerm } from "@/src/hooks/useServerSearchTerm";
 import { CATALOG_SELECTOR_DEBOUNCE_MS } from "@/src/utils/catalogSelectorQuery";
 import type { FormFieldError } from "@/src/utils/getFieldError";
@@ -179,15 +180,17 @@ export function ProductVariantSearchDropdown({
           handleSelect(selectableVariants[activeIndex]);
         }
         break;
-      case "Escape":
-        event.preventDefault();
-        setIsOpen(false);
-        if (value > 0 && selectedLabel) {
-          setSearchQuery(selectedLabel);
-        }
-        break;
     }
   };
+
+  // Escape cierra solo la lista, no el diálogo de movimiento (EC-922): ver
+  // `useEscapeClosesPopup`. Restaura la etiqueta elegida, si la hay.
+  useEscapeClosesPopup(showDropdown, inputRef, () => {
+    setIsOpen(false);
+    if (value > 0 && selectedLabel) {
+      setSearchQuery(selectedLabel);
+    }
+  });
 
   const renderBody = () => {
     if (isInitialError) {

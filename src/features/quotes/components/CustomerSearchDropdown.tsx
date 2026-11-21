@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FormInput } from "@/src/components/FormInput";
+import { useEscapeClosesPopup } from "@/src/hooks/useEscapeClosesPopup";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 
 /** Lo que el buscador lee de un cliente, venga del catálogo que venga. */
@@ -133,21 +134,13 @@ export function CustomerSearchDropdown<C extends CustomerSearchOption>({
       ?.scrollIntoView({ block: "nearest" });
   }, [showDropdown, highlightedIndex]);
 
-  // Escape cierra SOLO la lista. Se escucha en `window` en fase de captura
-  // porque un diálogo de Radix que contenga el buscador escucha Escape en
-  // `document` (también en captura) y se cerraría entero, con lo capturado.
-  useEffect(() => {
-    if (!showDropdown) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.target !== inputRef.current) return;
-      event.stopPropagation();
-      setIsOpen(false);
-      setActiveIndex(-1);
-      setHasTyped(false);
-    };
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [showDropdown]);
+  // Escape cierra SOLO la lista, no el diálogo que contenga el buscador (ver
+  // `useEscapeClosesPopup`).
+  useEscapeClosesPopup(showDropdown, inputRef, () => {
+    setIsOpen(false);
+    setActiveIndex(-1);
+    setHasTyped(false);
+  });
 
   const optionId = (index: number) => `${listId}-option-${index}`;
 
