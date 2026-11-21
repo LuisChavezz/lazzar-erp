@@ -19,6 +19,10 @@ import {
   candidateSucursalId,
 } from "../utils/receiptCandidates";
 import { buildReceiptPayload } from "../utils/buildReceiptPayload";
+import {
+  receiptSeriePreseleccionada,
+  receiptSeriesDeSucursal,
+} from "../utils/receiptSeries";
 import { isSalidaMaquilaRejection } from "../utils/receiptErrors";
 
 interface UseReceiptFormParams {
@@ -97,7 +101,14 @@ export function useReceiptForm({
   // La SM de OB/OR se recibe sin renglones (`detalle: []`, EC-912): ahí no se
   // exige ninguna cantidad.
   const conRenglones = candidateHasLines(candidate);
-  const formSchema = buildReceiptFormSchema({ conRenglones });
+
+  // Solo las series de la sucursal de la orden (EC-922): la recepción se folia
+  // con la serie de esa sucursal (la de la OC, la OP o la SM).
+  const seriesDisponibles = receiptSeriesDeSucursal(
+    onboardingData?.catalogos.series_recepcion ?? [],
+    candidateSucursalId(candidate),
+  );
+  const formSchema = buildReceiptFormSchema({ conRenglones, seriesDisponibles });
 
   // Almacén destino elegido en la OC, si está entre los ofrecidos. Se calcula
   // UNA vez al montar (el formulario se monta de nuevo con cada orden elegida):
@@ -107,6 +118,8 @@ export function useReceiptForm({
       ? almacenPreseleccionado(candidate.order.almacen_id, warehouses)
       : 0,
   );
+  // Igual con la serie: RC si la sucursal la tiene, o la única que haya.
+  const [serieInicial] = useState(() => receiptSeriePreseleccionada(seriesDisponibles));
 
   // ── Mutación ──────────────────────────────────────────────────────────
   const createReceiptMutation = useCreateReceipt();
@@ -126,13 +139,13 @@ export function useReceiptForm({
   const defaultValues = useMemo<ReceiptFormValues>(
     () => ({
       almacen: almacenInicial,
-      serie_codigo: "",
+      serie_codigo: serieInicial,
       remision: "",
       factura_referencia: "",
       observaciones: "",
       cantidades: {},
     }),
-    [almacenInicial],
+    [almacenInicial, serieInicial],
   );
 
   // ── Limpia error de un campo ──────────────────────────────────────────
@@ -262,6 +275,7 @@ export function useReceiptForm({
     formKey,
     isPending: createReceiptMutation.isPending,
     warehouses,
+    seriesDisponibles,
     conRenglones,
     candidate,
     getError,
