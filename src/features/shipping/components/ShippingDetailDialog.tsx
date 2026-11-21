@@ -53,8 +53,9 @@ const LineasTable = ({ items }: { items: ShipmentDetalleLine[] }) => {
           <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
             {linea.color_nombre ?? "—"}
           </td>
-          {/* Informativa: `Despacho` no decrementa ni valida esta cantidad,
-              solo la hereda de la línea de packing que referencia. */}
+          {/* La hereda de la línea de packing que referencia. Es la cantidad
+              que el despacho sacó del inventario (SALIDA del almacén actual
+              del picking). */}
           <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 dark:text-white">
             {formatExactQuantityValue(linea.cantidad_empacada)}
           </td>
