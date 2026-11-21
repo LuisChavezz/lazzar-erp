@@ -4,8 +4,10 @@
  * backend tal cual.
  *
  * Reglas del backend (`wms/api/surtido.py`):
- * - `surtidas` = lo surtido por picking (pickings y renglones no cancelados).
- * - `comprometidas` = max(pedidas − surtidas, 0).
+ * - `surtidas` = lo surtido por picking (pickings y renglones no cancelados)
+ *   con talla del pedido.
+ * - `comprometidas` = Σ por talla de max(pedidas − surtidas, 0): una talla
+ *   sobre-surtida no compensa a otra, y el encabezado = Σ renglones (#1247).
  * - `empacadas` y `despachadas` son informativas.
  * - El front NO recalcula ninguna cifra: solo acota el ANCHO de las barras.
  *
@@ -42,10 +44,9 @@ export interface SurtidoPedido extends SurtidoTotales {
   created_at: string | null;
   etapa: SurtidoEtapa;
   /**
-   * Salidas de inventario ligadas al pedido y sin OP. NO se muestra: desde
-   * nucleo-erp 33d4369d el despacho también genera una SALIDA con `pedido` y
-   * sin `op`, así que este total incluye lo despachado y no significa
-   * "salidas manuales" (EC-913). Se tipa para documentar el contrato.
+   * Neto de salidas menos entradas de inventario ligadas al pedido FUERA de
+   * WMS: movimientos activos, sin OP ni despacho; nunca negativo (nucleo-erp
+   * #1249, #1250). Dato aparte: NO suma al surtido.
    */
   salidas_manuales: number;
 }
@@ -55,8 +56,14 @@ export interface SurtidoPedidoRenglon extends SurtidoTotales {
   pedido_detalle_talla_id: number;
   pedido_detalle_id: number;
   producto_id: number | null;
-  /** `null` en líneas de muestra (producto sin catálogo). */
+  /**
+   * Nombre del producto de catálogo o, en muestras sin catálogo, el nombre
+   * capturado (`producto_nombre_externo`, nucleo-erp #1248). `null` si no hay
+   * nombre de catálogo ni capturado.
+   */
   producto_nombre: string | null;
+  /** Nombre capturado de la línea (muestras); `null` si no hay. */
+  producto_nombre_externo: string | null;
   /** `null` si la talla no tiene variante (p. ej. muestras). */
   sku: string | null;
   talla: string | null;
