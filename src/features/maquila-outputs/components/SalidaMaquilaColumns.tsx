@@ -83,6 +83,15 @@ const baseColumns = (onView: (id: number) => void) =>
         </span>
       ),
     }),
+    // Última recepción viva con que regresó (nucleo-erp #1239).
+    columnHelper.accessor((row) => row.recepcion_folio ?? "", {
+      id: "recepcion_folio",
+      header: "Recepción",
+      size: 120,
+      cell: (info) => (
+        <span className="font-mono text-sm text-slate-700 dark:text-slate-200">{info.getValue() || "—"}</span>
+      ),
+    }),
   ] as ColumnDef<SalidaMaquilaListItem>[];
 
 /**
