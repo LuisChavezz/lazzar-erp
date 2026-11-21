@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { partialMatchKey, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createShipment } from "../services/actions";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
+import { PEDIDO_PROGRAMAR_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
 /**
  * Mensajes de "dato desactualizado": la línea ya se despachó entre que se
@@ -213,7 +214,11 @@ export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) 
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
       void invalidatePedidoProgress(queryClient);
-      void invalidateStockQueries(queryClient);
+      // "Programar pedido" ya lo invalida `invalidatePedidoProgress`: se excluye
+      // aquí para no pedirlo dos veces.
+      void invalidateStockQueries(queryClient, {
+        exclude: (query) => partialMatchKey(query.queryKey, PEDIDO_PROGRAMAR_QUERY_KEY),
+      });
       toast.success("Envío registrado correctamente");
     },
     onError: (error) => {
