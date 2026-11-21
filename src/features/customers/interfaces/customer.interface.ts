@@ -194,18 +194,6 @@ export interface CustomerCreate {
   limite_credito?: string;
 }
 
-/**
- * Respuesta de Facturama (`/customers/status`). El flujo de clientes ya no la
- * usa: sigue aquí porque la importa `verifyRfc.server.ts`, del Route Handler
- * `/api/facturama/customers/status`, del que aún depende Proveedores.
- */
-export interface VerifyRfcResponse {
-  Rfc: string;
-  FormatoCorrecto: boolean;
-  Activo: boolean;
-  Localizado: boolean;
-}
-
 /** Parámetros de `GET /terceros/clientes/verificar-rfc/`. */
 export interface VerifyCustomerRfcParams {
   rfc: string;

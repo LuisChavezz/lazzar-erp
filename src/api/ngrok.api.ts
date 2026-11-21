@@ -38,10 +38,10 @@ const ngrok_api = axios.create({
   proxy: false,
 });
 
-/* Configuración perezosa (mismo patrón que `facturama.api.ts`): resolver las
- * variables por petición hace que una variable faltante falle con un error
- * claro, en vez de mandar silenciosamente `Bearer undefined` al servidor de
- * archivos y recibir un 401 difícil de diagnosticar. */
+/* Configuración perezosa: resolver las variables por petición hace que una
+ * variable faltante falle con un error claro, en vez de mandar silenciosamente
+ * `Bearer undefined` al servidor de archivos y recibir un 401 difícil de
+ * diagnosticar. */
 ngrok_api.interceptors.request.use((config) => {
   const { baseURL, token } = getNgrokConfig();
 
