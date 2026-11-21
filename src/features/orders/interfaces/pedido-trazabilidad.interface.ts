@@ -114,7 +114,9 @@ export interface TrazabilidadResumen {
   /**
    * Piezas de facturas EMITIDAS / piezas del pedido; se muestra como
    * "Facturado (emitidas)". No es la base de "Piezas en facturas (incluye
-   * Borrador)" del seguimiento de factura (EC-522).
+   * Borrador)" del seguimiento de factura (EC-522). El backend (`_facturado`)
+   * filtra solo por `estatus`: una factura EMITIDA cuenta aunque traiga
+   * `cfdi_cancelado` o `cfdi_cancelacion_solicitada`; el front no lo distingue.
    */
   facturado_pct: number;
   /**
