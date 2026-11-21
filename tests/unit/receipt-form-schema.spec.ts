@@ -4,9 +4,12 @@ import {
   ReceiptFormSchema,
 } from "@/src/features/receipts/schemas/receipt.schema";
 import {
+  capturaManualRecepcion,
   motivoSinTope,
+  pendienteRecepcion,
+  sumarCantidades,
   tieneCantidadRecibida,
-  topeRecepcion,
+  topeManualRecepcion,
 } from "@/src/features/receipts/utils/receiptQuantities";
 
 /**
@@ -77,21 +80,59 @@ test.describe("tieneCantidadRecibida (schema y payload comparten la regla)", () 
   });
 });
 
-test.describe("topeRecepcion y motivoSinTope", () => {
-  test("el tope es lo pendiente en piezas enteras", () => {
-    expect(topeRecepcion("100.0000")).toBe(100);
-    expect(topeRecepcion("6.7500")).toBe(6);
-    expect(topeRecepcion("0.5000")).toBe(0);
-    expect(topeRecepcion("0")).toBe(0);
-    expect(topeRecepcion("-3")).toBe(0);
-    expect(topeRecepcion("abc")).toBe(0);
+test.describe("pendiente exacto y tope manual (EC-900)", () => {
+  test("el pendiente se toma exacto, entero o fraccionario", () => {
+    expect(pendienteRecepcion("100.0000")).toBe(100);
+    expect(pendienteRecepcion("10.5000")).toBe(10.5);
+    expect(pendienteRecepcion("0.5000")).toBe(0.5);
+    expect(pendienteRecepcion("6.75")).toBe(6.75);
+    expect(pendienteRecepcion("0")).toBe(0);
+    expect(pendienteRecepcion("-3")).toBe(0);
+    expect(pendienteRecepcion("abc")).toBe(0);
   });
 
-  test("motivo solo cuando no hay una pieza entera pendiente", () => {
+  test("la captura manual se topa en piezas enteras", () => {
+    expect(topeManualRecepcion(100)).toBe(100);
+    expect(topeManualRecepcion(10.5)).toBe(10);
+    expect(topeManualRecepcion(0.5)).toBe(0);
+    expect(topeManualRecepcion(0)).toBe(0);
+  });
+
+  test("con pendiente entero la captura manual se topa en lo pendiente", () => {
+    expect(capturaManualRecepcion(3, 2, 5)).toBe(3);
+    expect(capturaManualRecepcion(9, 2, 5)).toBe(5);
+    expect(capturaManualRecepcion(6, 5, 5)).toBe(5);
+    expect(capturaManualRecepcion(0, 5, 5)).toBe(0);
+  });
+
+  test("con pendiente fraccionario la captura manual no pasa del entero ni baja lo que fijó Todo", () => {
+    // 10.5 pendiente: teclear topa en 10…
+    expect(capturaManualRecepcion(12, 3, 10.5)).toBe(10);
+    expect(capturaManualRecepcion(10, 3, 10.5)).toBe(10);
+    // …pero un "+" (11) o un número de más sobre el 10.5 de "Todo" lo conservan.
+    expect(capturaManualRecepcion(11, 10.5, 10.5)).toBe(10.5);
+    expect(capturaManualRecepcion(40, 10.5, 10.5)).toBe(10.5);
+    // "−" sobre 10.5 (10) sí baja.
+    expect(capturaManualRecepcion(10, 10.5, 10.5)).toBe(10);
+    // 0.5 pendiente: a mano no se captura nada; "Todo" fija 0.5 y "+" lo deja.
+    expect(capturaManualRecepcion(1, 0, 0.5)).toBe(0);
+    expect(capturaManualRecepcion(1, 0.5, 0.5)).toBe(0.5);
+    expect(capturaManualRecepcion(0, 0.5, 0.5)).toBe(0);
+  });
+
+  test("solo no se puede recibir lo que no tiene pendiente", () => {
     expect(motivoSinTope("1.0000")).toBeNull();
-    expect(motivoSinTope("6.7500")).toBeNull();
-    expect(motivoSinTope("0.5000")).toBe("Pendiente fraccionario");
+    expect(motivoSinTope("10.5000")).toBeNull();
+    expect(motivoSinTope("0.5000")).toBeNull();
     expect(motivoSinTope("0.0000")).toBe("Sin pendiente");
     expect(motivoSinTope("0")).toBe("Sin pendiente");
+  });
+
+  test("las sumas no arrastran ruido de punto flotante", () => {
+    expect(0.1 + 0.2).not.toBe(0.3);
+    expect(sumarCantidades([0.1, 0.2])).toBe(0.3);
+    expect(sumarCantidades([10.5, 0.5, 3])).toBe(14);
+    expect(sumarCantidades([10.3, -0.1])).toBe(10.2);
+    expect(sumarCantidades([])).toBe(0);
   });
 });

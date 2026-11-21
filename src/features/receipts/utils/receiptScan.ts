@@ -2,8 +2,10 @@ import { normalizeScanCode } from "@/src/features/picking/utils/pickingScan";
 
 /**
  * Renglón del alta de recepción, ya resuelto para pintarlo y escanearlo:
- * nombre, atributos, códigos y el techo de captura (lo pendiente en piezas
- * enteras). `sinTope` es el motivo por el que no se puede recibir, o `null`.
+ * nombre, atributos, códigos y el techo: `tope`, lo pendiente exacto (lo que
+ * mandan "Todo" y "Recibir todo", EC-900); la captura manual lo topa en
+ * enteros (`capturaManualRecepcion`). `sinTope` es el motivo por el que no se
+ * puede recibir, o `null`.
  */
 export interface ReceiptScanLine {
   id: number;

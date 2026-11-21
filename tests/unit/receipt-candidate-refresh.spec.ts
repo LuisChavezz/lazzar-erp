@@ -88,6 +88,30 @@ test("lo capturado se conserva y solo se recorta al tope nuevo", () => {
   expect(recortarCantidades({ "122": "1", "999": "3" }, topes)).toEqual({ "999": "0" });
 });
 
+test("EC-900: los topes son el pendiente exacto, también fraccionario", () => {
+  const fraccionaria: ReceiptOrderCandidate = { type: "produccion", order: op("0.50", "10.50"), salidaMaquila: sm };
+  expect(candidateLineTopes(fraccionaria).get(121)).toBe(0.5);
+  expect(candidateLineTopes(fraccionaria).get(122)).toBe(10.5);
+  const directa: ReceiptOrderCandidate = {
+    type: "produccion",
+    order: { ...op(null, null), detalle: [renglon(121, null, "9.5000"), renglon(122, null, "0")] },
+    salidaMaquila: null,
+  };
+  expect(candidateLineTopes(directa).get(121)).toBe(9.5);
+  expect(candidateLineTopes(directa).get(122)).toBe(0);
+});
+
+test("EC-900: tras un 400 se recorta al pendiente exacto nuevo", () => {
+  // Lo capturado con "Todo" (10.5) cabe si el pendiente sigue igual…
+  expect(recortarCantidades({ "121": "10.5", "122": "0.5" }, new Map([[121, 10.5], [122, 0.5]]))).toEqual({});
+  // …y baja al pendiente exacto nuevo, entero o fraccionario, si se redujo.
+  expect(
+    recortarCantidades({ "121": "10.5", "122": "3", "123": "2" }, new Map([[121, 10.25], [122, 2.5], [123, 2]])),
+  ).toEqual({ "121": "10.25", "122": "2.5" });
+  // Un renglón que quedó sin pendiente baja a 0.
+  expect(recortarCantidades({ "121": "0.5" }, new Map([[121, 0]]))).toEqual({ "121": "0" });
+});
+
 test("#N se resuelve contra el detalle ENVIADO (sin los renglones en 0)", () => {
   const candidate: ReceiptOrderCandidate = {
     type: "produccion",

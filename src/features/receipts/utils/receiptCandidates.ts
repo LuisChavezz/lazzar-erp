@@ -6,7 +6,7 @@ import type {
   ReceiptOnboardingSearch,
   ReceiptOrderCandidate,
 } from "../interfaces/receipt-onboarding.interface";
-import { topeRecepcion } from "./receiptQuantities";
+import { pendienteRecepcion } from "./receiptQuantities";
 
 /**
  * Fila de la pestaña "Orden de Producción" del paso 1 (EC-912): una OP o una
@@ -197,9 +197,13 @@ export const candidateLineFueraDeSm = (
   return Boolean(smDeOp && !d.salidas_maquila?.some((sm) => sm.id === smDeOp.id));
 };
 
-/** Techo de captura por id de renglón (lo pendiente en piezas enteras). */
+/**
+ * Techo por id de renglón: lo pendiente EXACTO que aplica a esta recepción
+ * (EC-900, hasta 4 decimales). La captura manual se topa aparte en enteros
+ * (`topeManualRecepcion`).
+ */
 export const candidateLineTopes = (candidate: ReceiptOrderCandidate): Map<number, number> =>
-  new Map(candidateDetalle(candidate).map((d) => [d.id, topeRecepcion(candidateLinePendiente(candidate, d))]));
+  new Map(candidateDetalle(candidate).map((d) => [d.id, pendienteRecepcion(candidateLinePendiente(candidate, d))]));
 
 /**
  * El mismo candidato armado con datos frescos del onboarding (EC-919): tras un
