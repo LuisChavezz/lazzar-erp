@@ -54,8 +54,9 @@ NEXT_PUBLIC_API_URL=https://TU_API_ERP/api/v1
 
 Variables adicionales (según las funciones que utilices), incluidas en `.env.example`:
 
-- `FACTURAMA_URL`, `FACTURAMA_USER`, `FACTURAMA_PASSWORD`: credenciales **solo-servidor** para la integración de facturación (Facturama).
 - `NEXT_PUBLIC_NGROK_BASE_URL`, `NEXT_PUBLIC_NGROK_API_TOKEN`: endpoint y token del servicio externo de carga de imágenes (galería de bordados en cotizaciones).
+
+Facturama no necesita variables en el frontend: la verificación de RFC, el timbrado y la descarga de CFDI pasan por el backend, que guarda las credenciales.
 
 > Cualquier cambio en `.env.local` requiere reiniciar el servidor de desarrollo para que tenga efecto.
 

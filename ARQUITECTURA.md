@@ -68,7 +68,7 @@ Ruta base del proyecto:
     - `getSidebarItems.ts` – filtrado de navegación por permisos.
 - `src/api/`
   - Clientes HTTP configurados (ver §5.1):
-    - `v1.api.ts` (principal), `api.ts` (solo-auth), `facturama.api.ts` (solo-servidor) y `ngrok.api.ts` (carga de imágenes).
+    - `v1.api.ts` (principal), `api.ts` (solo-auth) y `ngrok.api.ts` (carga de imágenes).
 - `src/types/`
   - Tipos globales, ej. `next-auth.d.ts` para extender `Session`/`User`.
 - `src/interfaces/`
@@ -171,14 +171,15 @@ Ruta base del proyecto:
 
 ### 5.1 Clientes HTTP (`src/api/`)
 
-El proyecto usa **autenticación basada en cookies** (`withCredentials: true`); el backend gestiona los `Set-Cookie` (`auth-jwt` / `auth-refresh-jwt`), por lo que el cliente ya **no inyecta** el token en una cabecera `Authorization`. Hay cuatro instancias de `axios` con responsabilidades distintas:
+El proyecto usa **autenticación basada en cookies** (`withCredentials: true`); el backend gestiona los `Set-Cookie` (`auth-jwt` / `auth-refresh-jwt`), por lo que el cliente ya **no inyecta** el token en una cabecera `Authorization`. Hay tres instancias de `axios` con responsabilidades distintas:
 
 - **`v1.api.ts`** (`v1_api`) – cliente principal para todas las llamadas de los features.
   - `baseURL: process.env.NEXT_PUBLIC_API_URL`, `withCredentials: true`, `proxy: false`.
   - Interceptor de **response** con **refresh token y mutex**: ante un **401** intenta refrescar la sesión (`POST /auth/token/refresh/`) una sola vez; las solicitudes concurrentes que también reciban 401 se **encolan** y se reintentan al completarse el refresh. Si el refresh falla (o el reintento vuelve a dar 401), ejecuta `signOut({ callbackUrl: "/auth/login" })`.
 - **`api.ts`** (`api`) – cliente **solo-auth**, sin interceptores. Quita `/api/v1` de `NEXT_PUBLIC_API_URL` (`removeApiVersion`) para los endpoints de login/logout/refresh.
-- **`facturama.api.ts`** – cliente **solo-servidor** (`import "server-only"`) con Basic auth desde variables de entorno; se usa únicamente en Route Handlers.
 - **`ngrok.api.ts`** (`ngrok_api`) – cliente para el endpoint externo (ngrok) de carga de imágenes; cabeceras fijas (`Authorization: Bearer`, `ngrok-skip-browser-warning`) y variables `NEXT_PUBLIC_NGROK_*`.
+
+El frontend no habla con Facturama: la verificación de RFC (`GET /terceros/clientes/verificar-rfc/`, en clientes y proveedores), el timbrado y los archivos de CFDI van por `v1_api` al backend, que guarda las credenciales.
 
 ### 5.2 Servicios y hooks de datos
 
@@ -264,7 +265,6 @@ Los flujos de alta complejos se modelan como **asistentes dentro de `MainDialog`
   - `NEXTAUTH_URL`: URL pública de la app (ej. `http://localhost:3000` en desarrollo).
   - `NEXTAUTH_SECRET`: secreto para firmar JWT de NextAuth.
   - `NEXT_PUBLIC_API_URL`: base URL de la API v1 (ej. `https://nucleo-erp.vercel.app/api/v1`).
-  - `FACTURAMA_URL`, `FACTURAMA_USER`, `FACTURAMA_PASSWORD`: credenciales **solo-servidor** para el Route Handler de Facturama.
   - `NEXT_PUBLIC_NGROK_BASE_URL`, `NEXT_PUBLIC_NGROK_API_TOKEN`: endpoint y token del servicio externo de carga de imágenes.
 - **next.config.ts**:
   - `reactCompiler: true` y `removeConsole` en producción.

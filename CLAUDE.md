@@ -80,23 +80,21 @@ Mock files call `faker.seed(<fixed number>)` at module scope, every `faker.date.
 
 ### API Clients (`src/api/`)
 
-Four Axios instances with distinct roles:
+Three Axios instances with distinct roles:
 
 | File | Purpose |
 |------|---------|
 | `v1.api.ts` | Main client with `withCredentials: true` and a 401 refresh interceptor (mutex-queued concurrent retries, `signOut` on refresh failure) |
 | `api.ts` | Auth-only client (no interceptors) — strips `/api/v1` from `NEXT_PUBLIC_API_URL` for login/logout/refresh endpoints |
-| `facturama.api.ts` | Server-only (`import "server-only"`) — Basic auth from env vars, used only in Route Handlers |
 | `ngrok.api.ts` | Server-only (`import "server-only"`) — image file server behind an ngrok tunnel. Its `NGROK_API_TOKEN` is a write-capable shared secret and must never become `NEXT_PUBLIC_`; browsers reach it only through `/api/embroidery-images/*`. `NEXT_PUBLIC_NGROK_BASE_URL` stays public on purpose (hostname for rendering stored image URLs) |
 
-Always use `v1_api` for normal feature API calls. Never import `facturama.api.ts` or `ngrok.api.ts` in client components.
+Always use `v1_api` for normal feature API calls. Never import `ngrok.api.ts` in client components. The frontend holds no Facturama credentials: RFC verification (`GET /terceros/clientes/verificar-rfc/`, shared by the customer and supplier forms, EC-535), stamping and CFDI files all go through the backend.
 
 ### Route Handlers (`src/app/api/`)
 
-Only seven exist under `src/app/api/` (plus `src/app/auth/logout/route.ts`, the server-side sign-out fallback described under Authentication, which needs no session check), and none of them proxy ordinary CRUD — that goes browser → backend directly. They exist for work that *requires* a server: rendering (react-email/react-pdf), or holding a secret.
+Only six exist under `src/app/api/` (plus `src/app/auth/logout/route.ts`, the server-side sign-out fallback described under Authentication, which needs no session check), and none of them proxy ordinary CRUD — that goes browser → backend directly. They exist for work that *requires* a server: rendering (react-email/react-pdf), or holding a secret.
 
 - `auth/[...nextauth]` — NextAuth
-- `facturama/customers/status` — Facturama proxy (server-only credentials)
 - `embroidery-images` + `embroidery-images/upload` — proxy to the ngrok file server (server-only token)
 - `quotes/[quoteId]/send-email`, `invoices/[invoiceId]/send-email`, `purchase-orders/[orderId]/send-email` — render an email template to HTML/text and return it; the client fetched the record itself and passes it in the body
 
@@ -176,11 +174,6 @@ The root `layout.tsx` inlines a synchronous script via `dangerouslySetInnerHTML`
 NEXTAUTH_URL=
 NEXTAUTH_SECRET=
 NEXT_PUBLIC_API_URL=          # e.g. https://nucleo-erp.vercel.app/api/v1
-
-# Server-only (Facturama Route Handler)
-FACTURAMA_URL=
-FACTURAMA_USER=
-FACTURAMA_PASSWORD=
 
 # External image file server (quotes embroidery gallery)
 NEXT_PUBLIC_NGROK_BASE_URL=   # public hostname, used to render image URLs
