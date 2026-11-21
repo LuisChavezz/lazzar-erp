@@ -42,6 +42,11 @@ export interface ShipmentOnboardingPacking {
   sucursal_nombre: string | null;
   picking: number;
   picking_folio: string | null;
+  /**
+   * Almacén ORIGEN del picking (`picking.almacen`), no su almacén actual: el
+   * despacho saca la SALIDA del almacén actual (normalmente APARTADOS), que
+   * este onboarding todavía no expone.
+   */
   almacen: number;
   almacen_nombre: string | null;
   estado: string;

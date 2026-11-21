@@ -115,7 +115,8 @@ export function ShippingPackingSelector({
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {packing.cliente_nombre ?? "—"} · {packing.almacen_nombre ?? "—"}
+              {/* Almacén ORIGEN del picking (ver `ShippingCreateForm`). */}
+              {packing.cliente_nombre ?? "—"} · Origen: {packing.almacen_nombre ?? "—"}
             </p>
           </>
         )}

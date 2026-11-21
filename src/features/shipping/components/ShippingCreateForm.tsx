@@ -106,8 +106,11 @@ export function ShippingCreateForm({ onSuccess }: ShippingCreateFormProps) {
               {packing?.cliente_nombre ?? "—"}
             </span>
             <span className="ml-auto flex items-center gap-2">
+              {/* `almacen_nombre` es el almacén ORIGEN del picking, no de donde
+                  sale hoy la SALIDA del despacho (su almacén actual, que el
+                  onboarding aún no expone): se rotula como origen. */}
               <span className="rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                {packing?.almacen_nombre ?? "—"}
+                Origen: {packing?.almacen_nombre ?? "—"}
               </span>
               <button
                 type="button"
