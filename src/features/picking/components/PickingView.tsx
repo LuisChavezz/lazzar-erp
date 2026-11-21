@@ -8,6 +8,7 @@ import { ListExportButtons } from "@/src/components/ListExportButtons";
 import { useListExport } from "@/src/hooks/useListExport";
 import { exportNum } from "@/src/utils/listExport";
 import { hasPermission } from "@/src/utils/permissions";
+import { PICKING_DETAIL_QUERY_KEY, pickingDetailQueryKey } from "../constants/pickingQueryKeys";
 import { PICKINGS_KEY } from "../constants/pickingsTable";
 import { usePickingsResumen, usePickingsTable } from "../hooks/usePickingsTable";
 import { getPickingColumns } from "./PickingColumns";
@@ -54,7 +55,12 @@ export function PickingView() {
   const hoy = resumen.data?.surtidos_hoy.fecha ?? "";
   const columns = getPickingColumns(
     {
+      // El detalle se relee al abrirlo: su llave (`["picking-detail", id]`) no se
+      // invalida cuando otra pantalla u otra persona cambia el surtido, y sin
+      // esto se serviría de caché hasta el `staleTime` global (15 min),
+      // desfasado de la fila. Mientras llega, se ve lo que hubiera en caché.
       onViewDetail: (id) => {
+        void queryClient.invalidateQueries({ queryKey: pickingDetailQueryKey(id) });
         setDetailId(id);
         setIsDetailOpen(true);
       },
@@ -74,8 +80,15 @@ export function PickingView() {
         <DataTable
           columns={columns}
           {...table.tableProps}
-          // Invalida el PREFIJO: lista, resumen y catálogos de filtros.
-          onRefetch={() => queryClient.invalidateQueries({ queryKey: PICKINGS_KEY })}
+          // Invalida el PREFIJO (lista, resumen y catálogos de filtros) y los
+          // detalles (`["picking-detail"]`), para que tabla y detalle muestren el
+          // mismo momento.
+          onRefetch={() =>
+            Promise.all([
+              queryClient.invalidateQueries({ queryKey: PICKINGS_KEY }),
+              queryClient.invalidateQueries({ queryKey: PICKING_DETAIL_QUERY_KEY }),
+            ])
+          }
           getRowId={(row) => String(row.id)}
           searchPlaceholder="Buscar surtido, pedido o cliente..."
           // El cuerpo llena el contenedor de alto fijo de arriba.
