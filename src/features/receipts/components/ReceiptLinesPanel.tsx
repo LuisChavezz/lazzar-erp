@@ -5,6 +5,7 @@ import { QuantitySelector } from "@/src/components/QuantitySelector";
 import { ScanCapture, SizeProgressChip, type ScanModo, type ScanResult } from "@/src/components/ScanCapture";
 import { SkuCode } from "@/src/components/SkuCode";
 import { splitSku } from "@/src/utils/sku";
+import { capturaManualRecepcion, sumarCantidades } from "../utils/receiptQuantities";
 import { findReceiptLineByScan, groupReceiptLines, receiptScanCodes, type ReceiptScanLine } from "../utils/receiptScan";
 
 interface ReceiptLinesPanelProps {
@@ -50,13 +51,16 @@ const codigosDelGrupo = (lines: readonly ReceiptScanLine[]) => {
  *
  *  - **Escanear** (por defecto): cada etiqueta leída suma 1 pieza a su
  *    renglón y abre su producto. Nunca pasa de lo pendiente.
- *  - **Manual**: el mismo selector de cantidad de siempre.
+ *  - **Manual**: el mismo selector de cantidad de siempre, solo enteros.
  *
- * Los dos modos editan las mismas cantidades del formulario.
+ * Los dos modos editan las mismas cantidades del formulario. "Todo" y "Recibir
+ * todo" mandan lo pendiente EXACTO (EC-900): un pendiente fraccionario (0.5 o
+ * 10.5) se recibe completo sin teclearlo, y un renglón con menos de una pieza
+ * pendiente se recibe solo así.
  */
 export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, lineErrors = {} }: ReceiptLinesPanelProps) {
-  const recibibles = lines.filter((l) => l.tope >= 1);
-  const noRecibibles = lines.filter((l) => l.tope < 1);
+  const recibibles = lines.filter((l) => l.tope > 0);
+  const noRecibibles = lines.filter((l) => l.tope <= 0);
   const scannable = recibibles.some((l) => receiptScanCodes(l).length > 0);
   const [modo, setModo] = useState<ScanModo>(scannable ? "scanner" : "manual");
   const [abiertos, setAbiertos] = useState<ReadonlySet<string>>(() => new Set());
@@ -64,8 +68,8 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
 
   const qtyOf = (line: ReceiptScanLine) => Math.min(Number(cantidades[String(line.id)]) || 0, line.tope);
   const grupos = groupReceiptLines(recibibles);
-  const totalCapturado = recibibles.reduce((acc, l) => acc + qtyOf(l), 0);
-  const totalTecho = recibibles.reduce((acc, l) => acc + l.tope, 0);
+  const totalCapturado = sumarCantidades(recibibles.map(qtyOf));
+  const totalTecho = sumarCantidades(recibibles.map((l) => l.tope));
 
   const toggleGrupo = (key: string) =>
     setAbiertos((prev) => {
@@ -78,17 +82,25 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
   const llenarTodo = (todo: boolean) => recibibles.forEach((l) => setCantidad(l.id, todo ? String(l.tope) : "0"));
 
   const procesarLectura = (leido: string): ScanResult => {
-    const line = findReceiptLineByScan(lines, leido, (l) => qtyOf(l) < l.tope);
+    // Con cupo = cabe una pieza más (un renglón con 0.5 por recibir no la tiene).
+    const line = findReceiptLineByScan(lines, leido, (l) => qtyOf(l) + 1 <= l.tope);
     if (!line) return { tone: "error", title: "No está en esta orden", detail: `Código ${leido}` };
     const talla = tallaDe(line);
     const nombre = `${line.nombre}${talla ? ` · ${talla}` : ""}`;
-    if (line.tope < 1) return { tone: "warn", title: line.sinTope ?? "Sin pendiente", detail: nombre };
+    if (line.tope <= 0) return { tone: "warn", title: line.sinTope ?? "Sin pendiente", detail: nombre };
     const grupo = grupos.find((g) => g.lines.includes(line));
     if (grupo) setAbiertos((prev) => new Set(prev).add(grupo.key));
     setResaltada(line.id);
     const actual = qtyOf(line);
     if (actual + 1 > line.tope) {
-      return { tone: "warn", title: "Ya está completo", detail: `${nombre}: ${fmt(actual)} de ${fmt(line.tope)}` };
+      // Queda menos de una pieza (pendiente fraccionario): una etiqueta no cabe.
+      return actual < line.tope
+        ? {
+            tone: "warn",
+            title: "Falta menos de una pieza",
+            detail: `${nombre}: ${fmt(actual)} de ${fmt(line.tope)}. Usa "Todo" para recibir el resto.`,
+          }
+        : { tone: "warn", title: "Ya está completo", detail: `${nombre}: ${fmt(actual)} de ${fmt(line.tope)}` };
     }
     setCantidad(line.id, String(actual + 1));
     return { tone: "ok", title: `+1 ${nombre}`, detail: `${fmt(actual + 1)} de ${fmt(line.tope)}` };
@@ -139,8 +151,8 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
         {grupos.map((grupo) => {
           const conError = grupo.lines.some((l) => lineErrors[l.id] !== undefined);
           const abierto = conError || abiertos.has(grupo.key) || (modo === "manual" && grupos.length <= 3);
-          const capturado = grupo.lines.reduce((acc, l) => acc + qtyOf(l), 0);
-          const techo = grupo.lines.reduce((acc, l) => acc + l.tope, 0);
+          const capturado = sumarCantidades(grupo.lines.map(qtyOf));
+          const techo = sumarCantidades(grupo.lines.map((l) => l.tope));
           const completo = techo > 0 && capturado >= techo;
           const { base, raiz, proscai } = codigosDelGrupo(grupo.lines);
           return (
@@ -264,8 +276,9 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                         )}
                         <QuantitySelector
                           value={qty}
-                          // `QuantitySelector` no tiene techo: se topa aquí.
-                          onChange={(next) => setCantidad(line.id, String(Math.min(next, line.tope)))}
+                          // `QuantitySelector` no tiene techo: se topa aquí, en enteros. Si
+                          // "Todo" dejó el pendiente fraccionario, un "+" no lo baja.
+                          onChange={(next) => setCantidad(line.id, String(capturaManualRecepcion(next, qty, line.tope)))}
                           min={0}
                           label={`Cantidad recibida de ${line.nombre}${talla ? ` talla ${talla}` : ""}`}
                         />

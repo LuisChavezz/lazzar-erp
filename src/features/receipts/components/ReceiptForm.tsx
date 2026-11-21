@@ -11,7 +11,7 @@ import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
 import { SERIES_SUCURSAL_EMPTY_MESSAGE } from "../schemas/receipt.schema";
-import { motivoSinTope } from "../utils/receiptQuantities";
+import { motivoSinTope, sumarCantidades } from "../utils/receiptQuantities";
 import { ReceiptLinesPanel } from "./ReceiptLinesPanel";
 import type { ReceiptScanLine } from "../utils/receiptScan";
 import type {
@@ -104,9 +104,11 @@ export default function ReceiptForm({
   const renglonesCompra = new Map(
     candidate.type === "compra" ? candidate.order.detalle.map((d) => [d.id, d]) : [],
   );
-  // Techo de captura por renglón (lo pendiente en piezas enteras). Del MISMO
-  // dato salen la etiqueta de los renglones no recibibles y el aviso de "nada
-  // por recibir", así que el tope y el aviso no pueden contradecirse.
+  // Techo por renglón: lo pendiente EXACTO (EC-900), que mandan "Todo" y
+  // "Recibir todo"; la captura manual lo topa en enteros
+  // (`capturaManualRecepcion`). Del MISMO dato salen la etiqueta de los
+  // renglones no recibibles y el aviso de "nada por recibir", así que el tope
+  // y el aviso no pueden contradecirse.
   // Pendiente que aplica a ESTA recepción (SM de OP, OP directa o SM de
   // OB/OR): ver `candidateLinePendiente` (EC-919).
   const pendienteDe = (d: ReceiptOnboardingOrderDetalleBase) => candidateLinePendiente(candidate, d);
@@ -124,9 +126,10 @@ export default function ReceiptForm({
   );
   const nombreDe = (d: ReceiptOnboardingOrderDetalleBase) =>
     d.producto_nombre || d.descripcion || nombresOp.get(d.id) || d.sku || `Renglón ${d.id}`;
-  const recibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) >= 1);
-  const noRecibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) < 1);
-  const piezasPendientes = recibibles.reduce((acc, d) => acc + (topes.get(d.id) ?? 0), 0);
+  // Un pendiente menor a una pieza (0.5) también se recibe, con "Todo" (EC-900).
+  const recibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) > 0);
+  const noRecibibles = detalle.filter((d) => (topes.get(d.id) ?? 0) <= 0);
+  const piezasPendientes = sumarCantidades(recibibles.map((d) => topes.get(d.id) ?? 0));
   // Renglones listos para el panel de captura (escáner o manual).
   const scanLines: ReceiptScanLine[] = [...recibibles, ...noRecibibles].map((d) => {
     const renglonCompra = renglonesCompra.get(d.id);
@@ -157,9 +160,9 @@ export default function ReceiptForm({
     };
   });
   const ningunoRecibible =
-    detalle.length > 0 && detalle.every((d) => (topes.get(d.id) ?? 0) < 1);
+    detalle.length > 0 && detalle.every((d) => (topes.get(d.id) ?? 0) <= 0);
   // Aviso en lugar de la captura: orden sin renglones, o con renglones pero
-  // ninguno con una pieza entera pendiente.
+  // ninguno con algo pendiente.
   const avisoSinPiezas = !conRenglones
     ? null
     : detalle.length === 0
@@ -428,11 +431,10 @@ export default function ReceiptForm({
             })}
           >
             {({ cantidades, cerrar }) => {
-              const capturadas = recibibles.reduce(
-                (acc, d) => acc + Math.min(Number(cantidades[String(d.id)]) || 0, topes.get(d.id) ?? 0),
-                0,
+              const capturadas = sumarCantidades(
+                recibibles.map((d) => Math.min(Number(cantidades[String(d.id)]) || 0, topes.get(d.id) ?? 0)),
               );
-              const faltan = piezasPendientes - capturadas;
+              const faltan = sumarCantidades([piezasPendientes, -capturadas]);
               const desenlace = salidaMaquilaDesenlace({ capturadas, pendientes: piezasPendientes, cerrar });
               return (
                 <section
