@@ -10,7 +10,7 @@ import { FormSection } from "../../../components/FormSection";
 import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "../../../constants/formStyles";
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
-import { useVerifyRfc } from "../../facturama/hooks/useVerifyRfc";
+import { useVerifyRfc } from "../../customers/hooks/useVerifyRfc";
 
 interface SupplierFormProps {
   onSuccess: () => void;
@@ -20,6 +20,15 @@ interface SupplierFormProps {
 const RFC_MIN_LENGTH = 12;
 
 type RfcValidationTone = "success" | "error";
+
+// Mismo endpoint y mismos textos que el formulario de clientes
+// (`GET /terceros/clientes/verificar-rfc/`, EC-535): formato y dígito
+// verificador solo si la empresa usa Facturama; si no, únicamente la longitud.
+// Ninguno consulta el estatus del RFC en el SAT.
+const RFC_VERIFIED_MESSAGE = "Formato y dígito verificador correctos.";
+const RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE =
+  "RFC aceptado. Tu empresa no valida formato ni dígito verificador.";
+const RFC_VERIFY_FAILED_MESSAGE = "No se pudo validar el RFC en este momento. Intenta nuevamente.";
 
 const normalizeRfc = (value: string) => value.trim().toUpperCase();
 
@@ -66,17 +75,40 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
     return "text-slate-500 dark:text-slate-400";
   }, [rfcValidationTone]);
 
-  const getInvalidRfcMessage = (status: {
-    FormatoCorrecto: boolean;
-    Activo: boolean;
-    Localizado: boolean;
-  }) => {
-    const reasons: string[] = [];
-    if (!status.FormatoCorrecto) reasons.push("formato incorrecto");
-    if (!status.Activo) reasons.push("RFC inactivo");
-    if (!status.Localizado) reasons.push("RFC no localizado");
-    if (reasons.length === 0) return "No fue posible validar el RFC.";
-    return `RFC inválido: ${reasons.join(", ")}.`;
+  const handleVerifyRfc = async (rfcToVerify: string) => {
+    const showVerifyFailed = (message: string) => {
+      setIsRfcVerified(false);
+      setVerifiedRfc(null);
+      setRfcValidationTone("error");
+      setRfcValidationMessage(message);
+    };
+
+    try {
+      // Sin `cliente`: aplica la regla de la empresa del usuario, la misma a la
+      // que el backend asigna el proveedor y la única desde la que lo edita.
+      // `cliente` es un id de cliente; nunca se le pasa el de un proveedor.
+      const result = await verifyRfcAsync({ rfc: rfcToVerify });
+
+      // Si el RFC cambió mientras se verificaba, el resultado ya no le aplica.
+      if (normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify) {
+        return;
+      }
+
+      if (!result.valido) {
+        showVerifyFailed(result.error || RFC_VERIFY_FAILED_MESSAGE);
+        return;
+      }
+
+      setIsRfcVerified(true);
+      setVerifiedRfc(rfcToVerify);
+      setRfcValidationTone("success");
+      setRfcValidationMessage(
+        result.formato_verificado ? RFC_VERIFIED_MESSAGE : RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE
+      );
+      clearFieldErrors("rfc");
+    } catch {
+      showVerifyFailed(RFC_VERIFY_FAILED_MESSAGE);
+    }
   };
 
   // Función para resetear el estado de validación del RFC al cancelar o resetear el formulario
@@ -220,36 +252,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
                                 return;
                               }
 
-                              try {
-                                const response = await verifyRfcAsync(rfcToVerify);
-                                const isValid =
-                                  response.FormatoCorrecto &&
-                                  response.Activo &&
-                                  response.Localizado;
-
-                                if (isValid) {
-                                  setIsRfcVerified(true);
-                                  setVerifiedRfc(rfcToVerify);
-                                  setRfcValidationTone("success");
-                                  setRfcValidationMessage(
-                                    "RFC validado correctamente ante el servicio fiscal. Puedes continuar."
-                                  );
-                                  clearFieldErrors("rfc");
-                                  return;
-                                }
-
-                                setIsRfcVerified(false);
-                                setVerifiedRfc(null);
-                                setRfcValidationTone("error");
-                                setRfcValidationMessage(getInvalidRfcMessage(response));
-                              } catch {
-                                setIsRfcVerified(false);
-                                setVerifiedRfc(null);
-                                setRfcValidationTone("error");
-                                setRfcValidationMessage(
-                                  "No se pudo validar el RFC en este momento. Intenta nuevamente."
-                                );
-                              }
+                              await handleVerifyRfc(rfcToVerify);
                             }}
                           >
                             {isVerifyingRfc ? "Verificando RFC..." : "Verificar RFC"}
