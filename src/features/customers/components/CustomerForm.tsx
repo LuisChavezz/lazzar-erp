@@ -135,6 +135,9 @@ export default function CustomerForm({
       setRfcValidationTone("error");
       setRfcValidationMessage(message);
     };
+    // Si el RFC cambió mientras se verificaba, el resultado (éxito o fallo) ya
+    // no le aplica: no se muestra nada bajo el RFC nuevo.
+    const rfcChangedMeanwhile = () => normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify;
 
     try {
       const result = await verifyRfcAsync({
@@ -143,8 +146,7 @@ export default function CustomerForm({
         cliente: customerToEdit?.id ? Number(customerToEdit.id) : undefined,
       });
 
-      // Si el RFC cambió mientras se verificaba, el resultado ya no le aplica.
-      if (normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify) {
+      if (rfcChangedMeanwhile()) {
         return;
       }
 
@@ -162,6 +164,9 @@ export default function CustomerForm({
       );
       clearFieldErrors("rfc");
     } catch {
+      if (rfcChangedMeanwhile()) {
+        return;
+      }
       showVerifyFailed(RFC_VERIFY_FAILED_MESSAGE);
     }
   };
