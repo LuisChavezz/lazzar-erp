@@ -6,6 +6,7 @@ import {
   productionOrderDetailPath,
   reflectiveOrderDetailPath,
 } from "@/src/constants/workOrderRoutes";
+import { SALIDAS_MAQUILA_PATH } from "@/src/features/maquila-outputs/utils/salidaMaquilaAccess";
 
 /**
  * Ruta de sección de cada orden de trabajo que el pedido 360° abre en un
@@ -19,6 +20,9 @@ const ORDER_DOCUMENT_SECTION_PATHS: Record<string, (id: number) => string> = {
   orden_bordado: embroideryOrderDetailPath,
   orden_reflejante: reflectiveOrderDetailPath,
   orden_corte_manga: corteMangaOrderDetailPath,
+  // La SM no tiene página por id: su regla de lectura es la de su listado
+  // (`canReadSalidaMaquila`, `R-PRODUCCION-OP`).
+  salida_maquila: () => SALIDAS_MAQUILA_PATH,
 };
 
 /**
