@@ -45,7 +45,15 @@ export const safeLocalStorage: StateStorage = {
   },
   setItem: (name, value) => {
     try {
-      getLocalStorage().setItem(name, value);
+      const storage = getLocalStorage();
+      // `persist` escribe el estado persistido en CADA `set`, aunque el `set`
+      // solo cambie campos que `partialize` deja fuera (p. ej. `hydrate()` del
+      // tema, que solo toca `resolvedTheme`). Si lo guardado ya es idéntico no
+      // hay nada que escribir: ni evento `storage` para las otras pestañas (el
+      // navegador tampoco lo manda por un valor igual) ni un intento más
+      // contra una cuota llena.
+      if (storage.getItem(name) === value) return;
+      storage.setItem(name, value);
     } catch (error) {
       warnOnce("setItem", name, error);
     }
