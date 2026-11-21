@@ -87,20 +87,21 @@ export const servicioSeed = (
 });
 
 /**
- * Borrador inicial: un renglón por cada renglón de la orden, con todas sus
- * piezas si aún no se ha enviado nada y en blanco si ya hubo salidas (el tope
- * es por orden, no por renglón, así que no se puede saber qué talla falta).
+ * Borrador inicial: un renglón por cada renglón de la orden, siempre con las
+ * piezas en blanco (EC-922). Solo sale lo que el usuario captura: un renglón
+ * prellenado que no se tocó viajaba igual, y el aviso de salida parcial lo
+ * contaba. "Todas" y el botón de cada renglón siguen llenándolos de un clic.
+ * El precio sí parte del costo de maquila de la OP, si lo hay.
  */
 export const initialDraft = (
   renglones: SalidaMaquilaRenglonOrigen[],
   precioSugerido: string | null,
-  yaEnviadas: number,
 ): SalidaMaquilaDraftLine[] =>
   renglones.map((r) => ({
     detalleId: r.detalleId,
     descripcion: r.descripcion,
     enOrden: r.cantidad,
-    cantidad: yaEnviadas > 0 ? "" : String(Math.round(r.cantidad)),
+    cantidad: "",
     precio: precioSugerido && Number(precioSugerido) > 0 ? String(Number(precioSugerido)) : "",
   }));
 
