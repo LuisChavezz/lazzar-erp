@@ -146,7 +146,15 @@ export default function ReceiptForm({
   // Renglones listos para el panel de captura (escáner o manual).
   const scanLines: ReceiptScanLine[] = [...recibibles, ...noRecibibles].map((d) => {
     const renglonCompra = renglonesCompra.get(d.id);
-    const sinTope = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
+    // OP directa: si lo que queda está con un maquilero, se dice con qué SM
+    // recibirlo en vez de "Sin pendiente" (EC-919).
+    const enMaquila = salidaMaquila ? 0 : Number(d.cantidad_en_maquila) || 0;
+    const enMaquilaFolios = salidaMaquila ? [] : (d.salidas_maquila ?? []).map((sm) => sm.folio);
+    const motivo = fueraDeSm(d) ? "No va en esta SM" : motivoSinTope(pendienteDe(d));
+    const sinTope =
+      motivo === "Sin pendiente" && enMaquila > 0
+        ? `En maquila ${enMaquila.toLocaleString("es-MX")}${enMaquilaFolios.length > 0 ? ` · ${enMaquilaFolios.join(", ")}` : ""}`
+        : motivo;
     return {
       id: d.id,
       nombre: nombreDe(d),
@@ -158,8 +166,8 @@ export default function ReceiptForm({
       ordenado: Number(d.cantidad_ordenada) || 0,
       pendiente: Number(pendienteDe(d)) || 0,
       // Solo en la OP directa: ahí esas piezas no se pueden recibir (va su SM).
-      enMaquila: salidaMaquila ? 0 : Number(d.cantidad_en_maquila) || 0,
-      enMaquilaFolios: salidaMaquila ? [] : (d.salidas_maquila ?? []).map((sm) => sm.folio),
+      enMaquila,
+      enMaquilaFolios,
       tope: sinTope ? 0 : (topes.get(d.id) ?? 0),
       sinTope,
     };
