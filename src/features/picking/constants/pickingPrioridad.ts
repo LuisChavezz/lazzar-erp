@@ -51,29 +51,3 @@ export const PICKING_PRIORIDAD_CONFIG: Record<PickingPrioridad, PickingPrioridad
     chip: "text-sky-600 dark:text-sky-400",
   },
 };
-
-/** De la más urgente a la menos: orden de lectura del desglose y del filtro. */
-export const PICKING_PRIORIDAD_ORDER: PickingPrioridad[] = ["ALTA", "MEDIA", "BAJA"];
-
-/**
- * Peso de urgencia para ordenar la columna "Prioridad". Sin esto el sort es
- * alfabético sobre el string crudo (ALTA → BAJA → MEDIA), que mezcla la más
- * urgente con la menos y no significa nada para el usuario.
- */
-const PICKING_PRIORIDAD_RANK: Record<PickingPrioridad, number> = {
-  ALTA: 3,
-  MEDIA: 2,
-  BAJA: 1,
-};
-
-/**
- * Peso de una prioridad, con degradación explícita ante un valor fuera del
- * enum: indexar el mapa a secas devolvería `undefined` y el comparador daría
- * `NaN`, que no solo desordena la fila desconocida sino que vuelve
- * INCONSISTENTE toda la comparación (con `NaN` ningún par cumple `<`, `>` ni
- * `=`), dejando la columna entera en un orden arbitrario. El resto del módulo
- * ya degrada así (el fallback de `StatusBadge`, la guarda `in` de
- * `computePickingKpis`).
- */
-export const pickingPrioridadRank = (prioridad: PickingPrioridad): number =>
-  PICKING_PRIORIDAD_RANK[prioridad] ?? 0;
