@@ -107,9 +107,20 @@ export function reduceWholeQuantity(state: WholeQuantityState, event: WholeQuant
       return { state: WHOLE_QUANTITY_IDLE, value: next };
     }
 
-    case "paste":
-      if (isPastableWholeQuantity(event.text)) return { state };
-      return { state: { ...state, showHint: true }, preventDefault: true };
+    case "paste": {
+      if (!isPastableWholeQuantity(event.text)) {
+        return { state: { ...state, showHint: true }, preventDefault: true };
+      }
+      // Solo dígitos: el navegador lo inserta y pasa por "text".
+      if (/^\d+$/.test(event.text)) return { state };
+      // Con espacios alrededor ("12 " de una hoja de cálculo): el input no los
+      // aceptaría, así que se cancela y se toma el entero recortado.
+      return {
+        state: WHOLE_QUANTITY_IDLE,
+        value: Math.max(event.min, Number.parseInt(event.text.trim(), 10)),
+        preventDefault: true,
+      };
+    }
 
     case "pointer":
       return state.fractionBlocked ? { state: { ...state, fractionBlocked: false } } : { state };
