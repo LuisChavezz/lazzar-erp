@@ -29,8 +29,9 @@ interface InvoiceTallaLinesTableProps {
  * servicios que no aplican.
  *
  * Las tallas que no pueden facturarse se ven deshabilitadas, no se ocultan: las
- * ya facturadas («Facturada») y las de renglones fuera de catálogo («Fuera de
- * catálogo»), que el backend rechaza.
+ * que ya están completas en facturas, Borrador incluido («En facturas»), y
+ * las de renglones fuera de catálogo («Fuera de catálogo»), que el backend
+ * rechaza.
  */
 export function InvoiceTallaLinesTable({
   tallas,
@@ -115,7 +116,7 @@ export function InvoiceTallaLinesTable({
                     ) : (
                       talla.cantidad_pendiente <= 0 && (
                         <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                          Facturada
+                          En facturas
                         </span>
                       )
                     )}
@@ -128,7 +129,7 @@ export function InvoiceTallaLinesTable({
                     ) : (
                       <>P.U. {formatCentavos(talla.precio_unitario_centavos, monedaCodigo)} (sin IVA)</>
                     )}{" "}
-                    · Pedida: {talla.cantidad_pedida} pzas · Facturada: {talla.cantidad_facturada} pzas ·{" "}
+                    · Pedida: {talla.cantidad_pedida} pzas · En facturas: {talla.cantidad_facturada} pzas ·{" "}
                     <span
                       className={
                         talla.facturable ? "font-semibold text-slate-700 dark:text-slate-200" : ""
