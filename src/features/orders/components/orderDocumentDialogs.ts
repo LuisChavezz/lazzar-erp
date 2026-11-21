@@ -8,19 +8,23 @@ import { PackingDetailByIdDialog } from "@/src/features/packing/components/Packi
 import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/components/PurchaseOrderDetailDialog";
 import { PedidoQuoteDetailDialog } from "./PedidoQuoteDetailDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
+import { SalidaMaquilaDetailByIdDialog } from "@/src/features/maquila-outputs/components/SalidaMaquilaDetailByIdDialog";
 import { invoiceDetailHref, invoiceDetailPath } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 
 /**
- * Llave del registro que abre el detalle de un picking. La usan DOS tablas de
- * la hoja de Avances: "Documentos relacionados" (donde llega como `doc.tipo`
- * del backend) y "Folios de surtido" (donde la ponemos nosotros para reusar el
- * mismo diálogo sin inventar una ruta). Debe coincidir con el `tipo` que emite
- * el backend.
+ * Llave del registro que abre el detalle de un picking. La usan la hoja
+ * "Documentos" (bloque de surtidos) y "Folios de surtido" en Avances.
  */
 export const PICKING_DOC_TIPO = "picking";
 
-/** Llave del registro para el detalle de un packing (= `doc.tipo`). */
+/** Llave del registro para el detalle de un packing (bloque de embarques y despachos). */
 export const PACKING_DOC_TIPO = "packing";
+
+/** Llave del registro para el detalle de una salida a maquila (SM). */
+export const SALIDA_MAQUILA_DOC_TIPO = "salida_maquila";
+
+/** Llave del registro para el detalle de un movimiento de inventario. */
+export const MOVIMIENTO_INVENTARIO_DOC_TIPO = "movimiento_inventario";
 
 /** Documento a abrir: el `tipo` elige el diálogo y el `id` es el del documento. */
 export interface OpenOrderDocument {
@@ -30,9 +34,10 @@ export interface OpenOrderDocument {
 
 /**
  * Registro de tipos de documento con detalle navegable desde el pedido. La
- * llave es el `doc.tipo`; el valor, el diálogo que lo abre. Todos comparten la
+ * llave es el tipo de documento (las de `DOCUMENTOS_CONFIG` del backend, más
+ * `salida_maquila`); el valor, el diálogo que lo abre. Todos comparten la
  * MISMA firma (`{ orderId, pedidoId, open, onOpenChange }`) y se auto-abastecen
- * del detalle por id (= `doc.id`), así que se montan de forma uniforme;
+ * del detalle por id, así que se montan de forma uniforme;
  * `pedidoId` (el pedido 360° que los abre) solo lo usa la cotización. Un tipo
  * ausente del registro queda como texto estático.
  *
@@ -74,10 +79,13 @@ export const ORDER_DOCUMENT_DIALOGS: Record<string, DocDetailDialog> = {
   // Cotización: se lee por el PEDIDO (`/ventas/pedidos/{id}/cotizacion/`,
   // EC-792), así que es el único que usa `pedidoId`.
   cotizacion: PedidoQuoteDetailDialog,
+  // Salida a maquila: self-fetching por id con otra firma (`id` + `onClose` y
+  // sus permisos); `SalidaMaquilaDetailByIdDialog` la adapta.
+  [SALIDA_MAQUILA_DOC_TIPO]: SalidaMaquilaDetailByIdDialog,
   // La factura NO está aquí: tiene página propia (ver `ORDER_DOCUMENT_ROUTES`).
   // Movimiento de inventario sí es self-fetching, pero con prop `movementId`
   // no-nullable; `StockMovementDetailByIdDialog` solo adapta la firma.
-  movimiento_inventario: StockMovementDetailByIdDialog,
+  [MOVIMIENTO_INVENTARIO_DOC_TIPO]: StockMovementDetailByIdDialog,
 };
 
 /**
