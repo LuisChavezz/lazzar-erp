@@ -4,6 +4,7 @@ import type { FormFieldError } from "@/src/utils/getFieldError";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { useEscapeClosesPopup } from "@/src/hooks/useEscapeClosesPopup";
 import { FormInput } from "@/src/components/FormInput";
 import { FormSelect } from "@/src/components/FormSelect";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
@@ -581,6 +582,8 @@ function SampleSkuAutocomplete({
     onChange(sku);
     setOpen(false);
   };
+  // Escape cierra solo la lista de sugerencias, no el diálogo de movimiento (EC-922).
+  useEscapeClosesPopup(showList, inputRef, () => setOpen(false));
 
   return (
     <div className="relative">
@@ -619,8 +622,6 @@ function SampleSkuAutocomplete({
           } else if (event.key === "Enter") {
             event.preventDefault();
             pick(results[highlighted]?.sku_muestra ?? value);
-          } else if (event.key === "Escape") {
-            setOpen(false);
           }
         }}
         error={error}
