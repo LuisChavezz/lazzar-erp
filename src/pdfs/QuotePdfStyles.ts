@@ -7,12 +7,21 @@
  * entre ambos documentos vía `basePdfStyles`, y solo declara aquí lo que es
  * específico de cotización (badge de folio + estatus, tarjeta de envío,
  * columnas de tabla, addons de bordado/reflejante/manga).
+ *
+ * Fuente: la Arimo de la base (`documentPdfFonts`, EC-858), no la fuente
+ * estándar de react-pdf, que solo codifica WinAnsi y borraba sin aviso
+ * cualquier otro carácter del backend (EC-892). Arimo conserva los anchos de
+ * los caracteres, pero su alto de línea es ~2.5 % mayor: una cotización que
+ * llena justo una página puede pasar a una más. `withDocumentPdfFont` traduce
+ * a Arimo los bloques
+ * compartidos de `basePdfStyles`; los de aquí ya la nombran.
  */
 import { StyleSheet } from "@react-pdf/renderer";
 import { PDF_COLORS as C } from "./QuotePdfColors";
 import { basePdfStyles } from "./shared/BasePdfStyles";
+import { DOCUMENT_PDF_FONT_FAMILY, withDocumentPdfFont } from "./shared/documentPdfFonts";
 
-export const pdfStyles = StyleSheet.create({
+export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   ...basePdfStyles(C),
 
   /* ── Encabezado — específico de cotización ───── */
@@ -25,7 +34,8 @@ export const pdfStyles = StyleSheet.create({
   },
   quoteIdText: {
     fontSize: 14,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.white,
   },
   statusBadge: {
@@ -38,7 +48,8 @@ export const pdfStyles = StyleSheet.create({
   },
   statusText: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.badgeText,
   },
 
@@ -69,7 +80,8 @@ export const pdfStyles = StyleSheet.create({
   shippingValue: {
     fontSize: 8.5,
     color: C.textPrimary,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     lineHeight: 1.35,
   },
 
@@ -125,19 +137,22 @@ export const pdfStyles = StyleSheet.create({
   },
   addonSectionHeaderTextEmbroidery: {
     fontSize: 7,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.addonEmbText,
     letterSpacing: 1,
   },
   addonSectionHeaderTextReflective: {
     fontSize: 7,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.addonReflText,
     letterSpacing: 1,
   },
   addonSectionHeaderTextSleeve: {
     fontSize: 7,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.addonSleeveText,
     letterSpacing: 1,
   },
@@ -155,7 +170,8 @@ export const pdfStyles = StyleSheet.create({
   },
   embGroupLabel: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.embBadgeText,
     backgroundColor: C.embBadgeBg,
     paddingHorizontal: 6,
@@ -196,7 +212,8 @@ export const pdfStyles = StyleSheet.create({
   },
   embLocationTitle: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.textPrimary,
   },
   embLocationDetail: {
@@ -249,7 +266,8 @@ export const pdfStyles = StyleSheet.create({
   },
   reflGroupHeaderLabel: {
     fontSize: 7,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.reflHeaderText,
   },
   reflGroupSizes: {
@@ -276,7 +294,8 @@ export const pdfStyles = StyleSheet.create({
   reflSpecLabel: {
     fontSize: 6,
     color: C.reflLabelText,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     letterSpacing: 0.5,
   },
   reflSpecValue: {
@@ -300,7 +319,8 @@ export const pdfStyles = StyleSheet.create({
   },
   sleeveBadgeText: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: DOCUMENT_PDF_FONT_FAMILY,
+    fontWeight: "bold",
     color: C.sleeveText,
   },
-});
+}));
