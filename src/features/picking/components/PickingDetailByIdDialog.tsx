@@ -18,42 +18,36 @@ interface PickingDetailByIdDialogProps {
 }
 
 /**
- * Envoltorio self-fetching de `PickingDetailDialog`. El diálogo original recibe
- * la fila YA ENRIQUECIDA (`PickingRow` = `Picking` + `esta_vencida`), no la trae
- * él, no acepta `null` y no tiene estados de carga/error. Este wrapper cierra
- * todas esas brechas SIN tocar su API pública, para exponer la firma por id
- * (`{ orderId, open, onOpenChange }`) que exige el registro `CLICKABLE_DOC_TIPOS`
- * del detalle de pedido:
- *  1. trae el `Picking` crudo por id (`usePickingDetail`);
+ * Detalle de un surtido POR ID, el único diálogo de detalle de picking: lo
+ * abren el listado de picking (cuyas filas, de `?resumen=1`, no traen
+ * renglones), el detalle de pedido (registro `CLICKABLE_DOC_TIPOS`) y la
+ * auditoría documental, con la firma `{ orderId, open, onOpenChange }`:
+ *  1. trae el `Picking` completo por id (`usePickingDetail`);
  *  2. lo enriquece a `PickingRow` con `mapPickingToRow(picking, dataUpdatedAt)`
- *     —el MISMO helper del listado, así el "vencido" no diverge—;
+ *     (`esta_vencida`);
  *  3. renderiza un ÚNICO `MainDialog` que solo intercambia su contenido
  *     (loader → error → `PickingDetailContent`): al mantener el mismo shell
  *     montado, la transición carga→dato NO remonta el modal (sin parpadeo de
- *     cierre/apertura ni reset de foco). Mismo chrome que `PickingDetailDialog`
- *     (RouteIcon, `maxWidth="820px"`, "Detalle de Surtido").
+ *     cierre/apertura ni reset de foco).
  *
- * No depende de la query del listado (`usePickings`): fetchea por id.
+ * No depende de la consulta del listado: fetchea por id.
  */
 export function PickingDetailByIdDialog({
   orderId,
   open,
   onOpenChange,
 }: PickingDetailByIdDialogProps) {
-  const { picking, dataUpdatedAt, isLoading, isError, error } =
-    usePickingDetail(orderId);
+  const { picking, fetchedAt, isLoading, isNotFound, error } = usePickingDetail(orderId);
 
-  // `dataUpdatedAt` como "ahora": misma fuente de vencimiento que el listado.
-  const row = picking ? mapPickingToRow(picking, dataUpdatedAt) : null;
+  // `fetchedAt` como "ahora": fijado al leer, no en render (ver `usePickingDetail`).
+  // Un refetch fallido CONSERVA `picking` (solo toast), así que el cuerpo —y un
+  // traslado abierto con su aviso— sigue montado; sin datos se muestra el error.
+  const row = picking ? mapPickingToRow(picking, fetchedAt) : null;
 
-  const subtitle = isLoading
-    ? "Cargando…"
-    : isError || !row
-      ? "Error al cargar"
-      : row.folio;
+  const subtitle = row ? row.folio : isLoading ? "Cargando…" : "Error al cargar";
 
   // "Descargar PDF" junto al título (EC-858), una vez cargado el surtido.
-  const pdfAction = !isLoading && !isError && row ? <PickingPdfButton picking={row} /> : null;
+  const pdfAction = row ? <PickingPdfButton picking={row} /> : null;
 
   return (
     <MainDialog
@@ -77,20 +71,21 @@ export function PickingDetailByIdDialog({
         </div>
       }
     >
-      {isLoading ? (
+      {row ? (
+        <PickingDetailContent picking={row} />
+      ) : isLoading ? (
         <Loader title="Cargando detalle del surtido..." className="py-16" />
-      ) : isError || !row ? (
-        // Error de red o consulta resuelta sin registro (404 fuera de tenant / id
-        // inexistente): el backend fusiona ambos en un 404, un solo estado basta.
+      ) : (
+        // 404 definitivo (no existe o fuera de alcance: el backend fusiona ambos)
+        // o carga inicial fallida sin datos en caché.
         <ErrorState
           title="No se pudo cargar el surtido"
-          message={extractErrorMessage(
-            error,
-            "No existe, no tienes acceso a él o falló la conexión.",
-          )}
+          message={
+            isNotFound
+              ? "No existe o no tienes acceso a él."
+              : extractErrorMessage(error, "No existe, no tienes acceso a él o falló la conexión.")
+          }
         />
-      ) : (
-        <PickingDetailContent picking={row} />
       )}
     </MainDialog>
   );

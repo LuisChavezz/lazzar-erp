@@ -10,7 +10,10 @@ import {
 } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { PICKINGS_KEY } from "../constants/pickingsTable";
+import { pickingDetailQueryKey } from "../constants/pickingQueryKeys";
 import { transferPicking } from "../services/actions";
+import { toPickingDetailData, type PickingDetailData } from "../utils/picking.utils";
 import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
@@ -83,12 +86,14 @@ const isEstadoRejection = (error: unknown): boolean => {
  * crea una transferencia (folio TR) COMPLETADA que mueve las existencias del
  * almacén actual al nuevo. Sin escritura optimista; al terminar bien:
  *
- * - la respuesta (forma idéntica al detalle y a cada fila del listado) se
- *   escribe en `["picking-detail", id]` —lo que pinta `PickingDetailByIdDialog`—
- *   y en su fila de `["pickings"]` —de la que lee el detalle abierto desde el
- *   listado—, para que ambos muestren la ubicación nueva sin esperar al refetch;
- * - la lista se marca vieja sin relectura inmediata (`refetchType: "none"`: la
- *   fila ya trae la respuesta) y se invalidan el detalle y la trazabilidad de los pedidos
+ * - la respuesta (forma idéntica al detalle, con renglones) se escribe en
+ *   `["picking-detail", id]` —lo que pinta `PickingDetailByIdDialog` en todos
+ *   sus lugares—, para que muestre la ubicación nueva sin esperar a un refetch;
+ * - se invalida el prefijo `["pickings"]`: la página visible del listado y sus
+ *   indicadores (`resumen/`) se releen. No se escribe la respuesta en una fila:
+ *   la llave del listado depende de filtros, orden y página, y sus filas son la
+ *   forma ligera (`?vista=lista`);
+ * - se invalidan también la trazabilidad de los pedidos
  *   (`folios_picking` trae la ubicación actual), el onboarding de empaque
  *   (hereda el `almacen_nombre` del picking) y, porque se movió inventario, los
  *   traspasos (`["transferencias"]`), toda vista de existencias y el onboarding
@@ -109,8 +114,8 @@ export const useTransferPicking = (pickingId: number) => {
   const queryClient = useQueryClient();
 
   const refreshPicking = () => {
-    void queryClient.invalidateQueries({ queryKey: ["pickings"] });
-    void queryClient.invalidateQueries({ queryKey: ["picking-detail", pickingId] });
+    void queryClient.invalidateQueries({ queryKey: PICKINGS_KEY });
+    void queryClient.invalidateQueries({ queryKey: pickingDetailQueryKey(pickingId) });
     // El pedido también lista sus folios de surtido.
     void invalidatePedidoProgress(queryClient);
   };
@@ -119,13 +124,13 @@ export const useTransferPicking = (pickingId: number) => {
     mutationKey: ["picking-transfer", pickingId],
     mutationFn: (payload: TransferPickingPayload) => transferPicking(pickingId, payload),
     onSuccess: (picking: Picking) => {
-      queryClient.setQueryData<Picking>(["picking-detail", pickingId], picking);
-      queryClient.setQueryData<Picking[]>(["pickings"], (list) =>
-        list?.map((item) => (item.id === picking.id ? picking : item)),
+      queryClient.setQueryData<PickingDetailData>(
+        pickingDetailQueryKey(pickingId),
+        toPickingDetailData(picking),
       );
-      // La fila ya tiene la respuesta (misma forma que el listado): se marca
-      // vieja sin volver a pedir el listado completo ahora.
-      void queryClient.invalidateQueries({ queryKey: ["pickings"], refetchType: "none" });
+      // Listado (página visible) e indicadores: la llave depende de filtros,
+      // orden y página, así que se invalida el prefijo en vez de escribir filas.
+      void queryClient.invalidateQueries({ queryKey: PICKINGS_KEY });
       void invalidatePedidoProgress(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
       void queryClient.invalidateQueries({ queryKey: ["picking-onboarding"] });
