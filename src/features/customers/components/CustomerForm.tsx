@@ -19,6 +19,7 @@ import { useVerifyRfc } from "../hooks/useVerifyRfc";
 import { getFacturamaFormWarning } from "../utils/facturamaVerification";
 import {
   RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE,
+  RFC_INVALID_MESSAGE,
   RFC_VERIFIED_MESSAGE,
   RFC_VERIFY_FAILED_MESSAGE,
 } from "../constants/rfcVerification";
@@ -151,7 +152,7 @@ export default function CustomerForm({
       }
 
       if (!result.valido) {
-        showVerifyFailed(result.error || RFC_VERIFY_FAILED_MESSAGE);
+        showVerifyFailed(result.error || RFC_INVALID_MESSAGE);
         return;
       }
 

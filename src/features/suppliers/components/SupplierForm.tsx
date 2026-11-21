@@ -13,6 +13,7 @@ import { useSupplierForm } from "../hooks/useSupplierForm";
 import { useVerifyRfc } from "../../customers/hooks/useVerifyRfc";
 import {
   RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE,
+  RFC_INVALID_MESSAGE,
   RFC_VERIFIED_MESSAGE,
   RFC_VERIFY_FAILED_MESSAGE,
 } from "../../customers/constants/rfcVerification";
@@ -93,7 +94,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
       }
 
       if (!result.valido) {
-        showVerifyFailed(result.error || RFC_VERIFY_FAILED_MESSAGE);
+        showVerifyFailed(result.error || RFC_INVALID_MESSAGE);
         return;
       }
 
