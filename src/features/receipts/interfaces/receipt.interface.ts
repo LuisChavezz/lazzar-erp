@@ -109,8 +109,16 @@ export interface ReceiptDetailLine {
 
 export interface ReceiptDetail {
   id: number;
-  // "SM" trae los dos folios en null: el retrieve no expone la SM (EC-912).
+  // "SM" (regreso de una SM de OB/OR) trae los dos folios en null; la SM y su
+  // origen van en `salida_maquila*`. Una SM de OP llega como "OP" con la SM puesta.
   tipo_origen: ReceiptTipoOrigen;
+  /** SM con que regresó (nucleo-erp #1237); `null` si no es de una SM. */
+  salida_maquila?: number | null;
+  /** Folio de la SM tal cual (depende de la serie: "SM-00005", "SM61-00005"); no se parsea. */
+  salida_maquila_folio?: string | null;
+  salida_maquila_origen?: "OP" | "OB" | "OR" | null;
+  /** Folio de la OP/OB/OR de la SM. */
+  salida_maquila_origen_folio?: string | null;
   // Folio del origen (EC-879): el de la OC en origen OC, el de la OP en origen
   // OP; el otro llega null. `OrdenCompra.folio` también puede ser null.
   orden_compra_folio: string | null;

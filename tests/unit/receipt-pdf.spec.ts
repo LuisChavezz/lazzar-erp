@@ -96,24 +96,70 @@ test.describe("receiptPdfDescriptor", () => {
 
 test.describe("receiptOrigin", () => {
   test("toma el folio que corresponde a tipo_origen, no el que venga", () => {
-    expect(receiptOrigin(receipt())).toEqual({ label: "Orden de compra", folio: "OC-00010-2026" });
+    expect(receiptOrigin(receipt())).toEqual({ label: "Orden de compra", folio: "OC-00010-2026", salidaMaquila: null });
     expect(
       receiptOrigin(receipt({ tipo_origen: "OP", orden_compra_folio: "OC-X", op_folio: "OP-000042" })),
-    ).toEqual({ label: "Orden de producción", folio: "OP-000042" });
+    ).toEqual({ label: "Orden de producción", folio: "OP-000042", salidaMaquila: null });
     expect(receiptOrigin(receipt({ orden_compra_folio: null })).folio).toBeNull();
   });
 
-  test("SM (EC-912) se dice Salida a maquila, sin folio", () => {
+  test("SM de OB/OR (EC-919): el folio de origen es la SM con el de su orden", () => {
     expect(
-      receiptOrigin({ tipo_origen: "SM", orden_compra_folio: null, op_folio: null }),
-    ).toEqual({ label: "Salida a maquila", folio: null });
+      receiptOrigin({
+        tipo_origen: "SM",
+        orden_compra_folio: null,
+        op_folio: null,
+        salida_maquila_folio: "SM61-00005",
+        salida_maquila_origen_folio: "2026-OB-00012",
+      }),
+    ).toEqual({
+      label: "Salida a maquila",
+      folio: "SM61-00005 · 2026-OB-00012",
+      salidaMaquila: "SM61-00005 · 2026-OB-00012",
+    });
+    // Sin los campos (backend anterior a #1237): sin folio.
+    expect(receiptOrigin({ tipo_origen: "SM", orden_compra_folio: null, op_folio: null })).toEqual({
+      label: "Salida a maquila",
+      folio: null,
+      salidaMaquila: null,
+    });
+  });
+
+  test("SM de OP: origen la OP, y la SM aparte", () => {
+    expect(
+      receiptOrigin({
+        tipo_origen: "OP",
+        orden_compra_folio: null,
+        op_folio: "2026-OP-00029",
+        salida_maquila_folio: "SM-00022",
+        salida_maquila_origen_folio: "2026-OP-00029",
+      }),
+    ).toEqual({ label: "Orden de producción", folio: "2026-OP-00029", salidaMaquila: "SM-00022 · 2026-OP-00029" });
   });
 
   test("un tipo_origen que no es OC ni OP se dice Desconocido, sin folio", () => {
     expect(
       receiptOrigin({ tipo_origen: "TR", orden_compra_folio: "OC-X", op_folio: "OP-Y" }),
-    ).toEqual({ label: "Desconocido", folio: null });
+    ).toEqual({ label: "Desconocido", folio: null, salidaMaquila: null });
   });
+});
+
+test("el PDF de una SM de OP lleva la SM en los datos de la recepción", () => {
+  const { datos } = documentOf(
+    receipt({
+      tipo_origen: "OP",
+      orden_compra_folio: null,
+      op_folio: "2026-OP-00029",
+      salida_maquila: 45,
+      salida_maquila_folio: "SM-00022",
+      salida_maquila_origen: "OP",
+      salida_maquila_origen_folio: "2026-OP-00029",
+    }),
+  );
+  expect(datos["Folio de origen"]).toBe("2026-OP-00029");
+  expect(datos["Salida a maquila"]).toBe("SM-00022 · 2026-OP-00029");
+  // Sin SM no aparece la fila.
+  expect(documentOf(receipt()).datos["Salida a maquila"]).toBeUndefined();
 });
 
 function documentOf(detail: ReceiptDetail) {
