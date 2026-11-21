@@ -1,7 +1,6 @@
 // Funciones puras de derivación para los KPIs del listado de Packing. Operan
 // sobre `Packing[]` ya cargado por `usePackings()` — sin fetch propio, mismo
-// espíritu que `computePickingKpis` (picking) / `computeCxcKpis`
-// (accounts-receivable).
+// espíritu que `computeCxcKpis` (accounts-receivable).
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { Packing } from "../interfaces/packing.interface";

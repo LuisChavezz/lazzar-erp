@@ -17,8 +17,8 @@ import type { Packing, PackingDetalleLine } from "../interfaces/packing.interfac
 import { PackingPdfButton } from "./PackingPdfButton";
 
 /** Nombre del producto/variante empacado en una línea. Solo uno de los dos
- *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
- *  `PickingDetailDialog`. */
+ *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que el
+ *  detalle de picking (`PickingDetailContent`). */
 function lineaProductoNombre(linea: PackingDetalleLine): string {
   return linea.producto_variante_nombre ?? linea.producto_nombre ?? "—";
 }
