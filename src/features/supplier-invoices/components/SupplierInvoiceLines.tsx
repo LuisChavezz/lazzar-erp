@@ -21,6 +21,12 @@ import {
 } from "../utils/ajusteMaquila";
 import { useAjustarFacturaMaquila } from "../hooks/useAjustarFacturaMaquila";
 
+/** Renglón del formulario: los importes capturados y el id de su línea. */
+type AjusteFormLinea = AjusteLineaValores & { id: number };
+
+const valoresPorLinea = (lineas: readonly AjusteFormLinea[]): Record<string, AjusteLineaValores> =>
+  Object.fromEntries(lineas.map(({ id, ...valores }) => [String(id), valores]));
+
 const CAMPO_LABEL: Record<AjusteCampo, string> = {
   precio_unitario: "Precio",
   descuento: "Descuento",
@@ -50,18 +56,22 @@ function LineaProducto({ linea }: { linea: FacturaProveedor["factura_proveedor_d
  */
 function MaquilaLinesEditor({ factura, onDone }: { factura: FacturaProveedor; onDone: () => void }) {
   const lineas = factura.factura_proveedor_detalles;
+  const lineaPorId = new Map(lineas.map((l) => [l.id, l]));
   const ajustar = useAjustarFacturaMaquila();
   const money = (cents: number) => formatMoneyValueOrDash(String(cents / 100), factura.moneda_codigo);
 
   const form = useForm({
-    // En el mismo orden que `lineas`: el renglón i del formulario es la línea i.
-    defaultValues: { lineas: lineas.map((l): AjusteLineaValores => ajusteValoresIniciales(l)) },
+    // Cada renglón del formulario lleva el id de su línea: si un refetch cambia
+    // el orden de `lineas`, lo capturado sigue en su línea.
+    defaultValues: {
+      lineas: lineas.map((l): AjusteFormLinea => ({ id: l.id, ...ajusteValoresIniciales(l) })),
+    },
     onSubmit: ({ value }) => {
-      if (lineas.some((l, i) => ajusteLineaError(l.cantidad, value.lineas[i]))) return;
-      const cambios = ajusteMaquilaCambios(
-        lineas,
-        Object.fromEntries(lineas.map((l, i) => [String(l.id), value.lineas[i]])),
-      );
+      const porId = valoresPorLinea(value.lineas);
+      if (lineas.some((l) => ajusteLineaError(l.cantidad, porId[String(l.id)] ?? ajusteValoresIniciales(l)))) {
+        return;
+      }
+      const cambios = ajusteMaquilaCambios(lineas, porId);
       if (cambios.length === 0) {
         toast("Sin cambios que guardar.", { id: `ajuste-maquila-sin-cambios-${factura.id}` });
         return;
@@ -71,8 +81,10 @@ function MaquilaLinesEditor({ factura, onDone }: { factura: FacturaProveedor; on
   });
 
   const aplicarIva = () => {
-    lineas.forEach((linea, i) => {
-      form.setFieldValue(`lineas[${i}].impuesto`, ivaDeLinea(linea.cantidad, form.state.values.lineas[i]));
+    const cantidades = new Map(lineas.map((l) => [l.id, l.cantidad]));
+    form.state.values.lineas.forEach((valores, i) => {
+      const cantidad = cantidades.get(valores.id);
+      if (cantidad !== undefined) form.setFieldValue(`lineas[${i}].impuesto`, ivaDeLinea(cantidad, valores));
     });
   };
 
@@ -111,8 +123,9 @@ function MaquilaLinesEditor({ factura, onDone }: { factura: FacturaProveedor; on
                 </>
               }
             >
-              {lineas.map((linea, i) => {
-                const actual = valores[i];
+              {valores.map((actual, i) => {
+                const linea = lineaPorId.get(actual.id);
+                if (!linea) return null;
                 const { subtotal, total } = ajusteLineaCentavos(linea.cantidad, actual);
                 const error = ajusteLineaError(linea.cantidad, actual);
                 const nombre = facturaLineaProducto(linea);
@@ -156,11 +169,15 @@ function MaquilaLinesEditor({ factura, onDone }: { factura: FacturaProveedor; on
 
         <form.Subscribe selector={(state) => state.values.lineas}>
           {(valores) => {
-            const totalCents = lineas.reduce(
-              (acc, l, i) => acc + ajusteLineaCentavos(l.cantidad, valores[i]).total,
+            const conLinea = valores.flatMap((v) => {
+              const linea = lineaPorId.get(v.id);
+              return linea ? [{ cantidad: linea.cantidad, v }] : [];
+            });
+            const totalCents = conLinea.reduce(
+              (acc, { cantidad, v }) => acc + ajusteLineaCentavos(cantidad, v).total,
               0,
             );
-            const conError = lineas.some((l, i) => ajusteLineaError(l.cantidad, valores[i]) !== null);
+            const conError = conLinea.some(({ cantidad, v }) => ajusteLineaError(cantidad, v) !== null);
             return (
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <span className="text-sm text-slate-600 dark:text-slate-300">
@@ -199,7 +216,9 @@ export function SupplierInvoiceLines({
   const [editing, setEditing] = useState(false);
   const lineas = factura.factura_proveedor_detalles;
   const money = (value: string) => formatMoneyValueOrDash(value, factura.moneda_codigo);
-  // Si la factura deja de ser ajustable (otra persona la registró), sale de edición.
+  // Si la factura deja de ser ajustable (otra persona la registró, la sesión
+  // se recupera…), sale de edición y no vuelve a abrirla sola. Ajuste en render.
+  if (editing && !canAdjust) setEditing(false);
   const editando = editing && canAdjust;
 
   return (
@@ -215,9 +234,10 @@ export function SupplierInvoiceLines({
       {lineas.length === 0 ? (
         <EmptyLines>Esta factura no tiene partidas.</EmptyLines>
       ) : editando ? (
-        // `key`: cada edición arranca de los importes vigentes de la factura.
+        // Se monta al entrar en edición, con los importes vigentes. La `key` es
+        // solo el id: un refetch (p. ej. adjuntar el PDF) no borra lo capturado.
         <MaquilaLinesEditor
-          key={`${factura.id}-${factura.updated_at ?? ""}`}
+          key={factura.id}
           factura={factura}
           onDone={() => setEditing(false)}
         />
