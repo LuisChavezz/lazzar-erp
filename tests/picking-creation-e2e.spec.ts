@@ -54,9 +54,12 @@ const PICKINGS_POST = { urlPart: "/wms/pickings/", method: "POST" };
 const isOnboardingGet = (url: string, method: string) =>
   url.includes("/wms/pickings/onboarding/") && method === "GET";
 
-/** El `GET` del listado. Excluye `/onboarding/`, que cuelga de la misma raíz. */
+/**
+ * El `GET` del listado (`?vista=lista`, paginado). Excluye `/onboarding/`,
+ * `/resumen/` y `/filtros/`, que cuelgan de la misma raíz.
+ */
 const isPickingsListGet = (url: string, method: string) =>
-  url.includes("/wms/pickings/") && !url.includes("/onboarding") && method === "GET";
+  url.includes("/wms/pickings/?") && url.includes("vista=lista") && method === "GET";
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 
@@ -257,9 +260,8 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
     }
     console.log(`  Operador: ${await selectedLabel(selOperador)}`);
 
-    // Prioridad y tipo ya vienen con default ("Media" / "Por pedido"): se
-    // dejan tal cual — la prueba no los ejercita, solo confirma que existen.
-    await expect.soft(dialog.getByLabel("Prioridad", { exact: true })).toBeVisible();
+    // Tipo ya viene con default ("Por pedido"): se deja tal cual — la prueba
+    // no lo ejercita, solo confirma que existe.
     await expect.soft(dialog.getByLabel("Tipo de surtido", { exact: true })).toBeVisible();
 
     await dialog
@@ -422,18 +424,16 @@ test("Alta de picking parcial — asistente de 2 pasos", async ({ page }) => {
   } else {
     await runStep("Paso 5 · Confirmar el picking en el listado", async () => {
       // `useCreatePicking` invalida `["pickings"]`, así que el listado se
-      // recarga solo; se espera ese GET antes de buscar para no filtrar sobre
-      // la caché anterior (que aún no trae el folio nuevo).
+      // recarga solo; se espera ese GET antes de buscar.
       await page
         .waitForResponse((r) => isPickingsListGet(r.url(), r.request().method()), {
           timeout: 30_000,
         })
         .catch(() => null);
 
-      // La caja de búsqueda de `DataTable` arranca colapsada (ancho 0): hay que
-      // desplegarla con su botón antes de escribir.
-      await page.getByRole("button", { name: "Buscar", exact: true }).click();
-      const busqueda = page.getByLabel("Buscar folio, pedido u operador...");
+      // Modo servidor: la caja de búsqueda está siempre visible y busca en el
+      // backend (`?search=`), con debounce.
+      const busqueda = page.getByLabel("Buscar surtido, pedido o cliente...");
       await expect(busqueda).toBeVisible();
       await busqueda.fill(folioCreado);
 
