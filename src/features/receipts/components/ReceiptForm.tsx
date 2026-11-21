@@ -10,6 +10,7 @@ import { FormTextarea } from "@/src/components/FormTextarea";
 import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
+import { SERIES_SUCURSAL_EMPTY_MESSAGE } from "../schemas/receipt.schema";
 import { motivoSinTope, topeRecepcion } from "../utils/receiptQuantities";
 import { ReceiptLinesPanel } from "./ReceiptLinesPanel";
 import type { ReceiptScanLine } from "../utils/receiptScan";
@@ -47,12 +48,6 @@ const receiptFormSubtitle = (candidate: ReceiptOrderCandidate): string => {
   }
 };
 
-const SERIE_CODIGO_OPTIONS: { value: string; label: string }[] = [
-  { value: "RC", label: "RC" },
-  { value: "RT", label: "RT" },
-  { value: "RZ", label: "RZ" },
-];
-
 export default function ReceiptForm({
   onSuccess,
   onSalidaMaquilaRejected,
@@ -65,6 +60,7 @@ export default function ReceiptForm({
     formKey,
     isPending,
     warehouses,
+    seriesDisponibles,
     conRenglones,
     getError,
     clearFieldErrors,
@@ -305,18 +301,31 @@ export default function ReceiptForm({
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block transition-colors group-focus-within/field:text-brand-500">
                       Serie de Recepción
                     </label>
-                    <SegmentedControl
-                      options={SERIE_CODIGO_OPTIONS}
-                      value={field.state.value}
-                      onChange={(opt) => {
-                        const next = field.state.value === opt ? "" : opt;
-                        field.handleChange(next);
-                        clearFieldErrors("serie_codigo");
-                        field.handleBlur();
-                        validateField("serie_codigo", next);
-                      }}
-                    />
-                    {getError("serie_codigo") && (
+                    {seriesDisponibles.length > 0 ? (
+                      <SegmentedControl
+                        options={seriesDisponibles.map((codigo) => ({ value: codigo, label: codigo }))}
+                        value={field.state.value}
+                        onChange={(opt) => {
+                          const next = field.state.value === opt ? "" : opt;
+                          field.handleChange(next);
+                          clearFieldErrors("serie_codigo");
+                          field.handleBlur();
+                          validateField("serie_codigo", next);
+                        }}
+                      />
+                    ) : (
+                      // Sin series en la sucursal de la orden no se ofrece
+                      // ninguna "por si acaso" (EC-922): el backend foliaría
+                      // con otra en silencio o rechazaría el alta.
+                      <p
+                        role="alert"
+                        className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300"
+                      >
+                        {SERIES_SUCURSAL_EMPTY_MESSAGE} Configúralas en Configuración → Series y Folios
+                        para poder registrar la recepción.
+                      </p>
+                    )}
+                    {seriesDisponibles.length > 0 && getError("serie_codigo") && (
                       <p className="text-xs text-red-600 mt-1 font-medium animate-in slide-in-from-top-1 fade-in duration-200">
                         {getError("serie_codigo")?.message}
                       </p>
@@ -466,6 +475,7 @@ export default function ReceiptForm({
           <FormCancelButton onClick={handleReset} disabled={isPending} />
           <FormSubmitButton
             isPending={isPending}
+            disabled={seriesDisponibles.length === 0}
             loadingLabel="Registrando..."
           >
             Registrar Recepción
