@@ -137,7 +137,7 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <MetricCard label="Piezas del pedido" done={`${avance.piezas_pedidas} pzas`} />
               <MetricCard
-                label="Piezas facturadas"
+                label="Piezas en facturas"
                 done={String(avance.piezas_facturadas)}
                 total={`${avance.piezas_pedidas} pzas`}
               />
@@ -158,6 +158,9 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
                   style={{ width: `${pctFacturado}%` }}
                 />
               </div>
+              <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
+                No cuenta las facturas canceladas.
+              </p>
             </div>
           </>
         ) : (
