@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createShipment } from "../services/actions";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 
 /**
  * Mensajes de "dato desactualizado": la línea ya se despachó entre que se
@@ -81,7 +82,9 @@ export interface ParsedShipmentError {
  *     `{"packing": ["This field is required."]}`, o `despacho_detalle` con un
  *     objeto por posición.
  *  C. Objeto con clave y STRING plano (rechazos de servicio):
- *     `{"despacho_detalle": "Debe enviar al menos una línea para despachar."}`.
+ *     `{"despacho_detalle": "Debe enviar al menos una línea para despachar."}`,
+ *     o la falta de existencia al sacar las prendas del inventario
+ *     (`"No hay existencia en APARTADOS para despachar …: faltan N."`).
  *
  * Siempre devuelve un objeto (nunca `null`): ante un error inesperado deja un
  * `formError` genérico para que el banner siempre aparezca.
@@ -190,6 +193,16 @@ export function parseShipmentError(error: unknown): ParsedShipmentError {
  * fallo del usuario, solo cambió la elegibilidad de una línea. Invalida
  * `["shipments"]` (el listado) y `["shipping-onboarding"]` (el catálogo y
  * cualquier alcance por packing: despachar líneas cambia su elegibilidad).
+ *
+ * El despacho crea la SALIDA de inventario de lo despachado (desde el almacén
+ * actual del picking, normalmente APARTADOS): por eso invalida también las
+ * vistas de existencias y movimientos (`invalidateStockQueries`) y, con
+ * `invalidatePedidoProgress`, el avance y la hoja "Documentos" del pedido
+ * (donde aparecen el despacho y su movimiento).
+ *
+ * Si no hay existencia suficiente en ese almacén el backend responde 400
+ * `{"despacho_detalle": "No hay existencia en … faltan N."}` (string plano,
+ * forma C de `parseShipmentError`), que llega tal cual al banner y al toast.
  */
 export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) => void) => {
   const queryClient = useQueryClient();
@@ -200,6 +213,7 @@ export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) 
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
       void invalidatePedidoProgress(queryClient);
+      void invalidateStockQueries(queryClient);
       toast.success("Envío registrado correctamente");
     },
     onError: (error) => {

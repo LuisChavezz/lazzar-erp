@@ -5,9 +5,10 @@
  * (`packing`, `envio`) más líneas `despacho_detalle` que referencian
  * `packing_detalle` sin cantidad, folio, estado ni timestamps propios.
  * Representa "estas cajas se entregaron a este transportista para este
- * envío" — puramente documental, sin efectos sobre inventario (la mercancía
- * ya salió del pool vendible en `Picking`, al moverse al almacén APARTADOS;
- * `Packing` y `Despacho` nunca tocan `Existencia`/`MovimientoInventario`).
+ * envío". Al crearse, el backend saca lo despachado del inventario: un
+ * `MovimientoInventario` SALIDA ligado al pedido, desde el almacén donde está
+ * hoy el picking (normalmente APARTADOS), que descuenta `Existencia` y se costea
+ * al promedio. La respuesta del despacho no cambia de forma por eso.
  *
  * Los nombres de campo se conservan en español, tal cual el contrato del API.
  */

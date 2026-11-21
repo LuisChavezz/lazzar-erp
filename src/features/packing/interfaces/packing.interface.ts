@@ -11,8 +11,11 @@ import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vi
  *
  * Hoy el backend solo asigna `estado: "PENDIENTE"` — los otros tres valores
  * existen en el modelo pero nada los asigna todavía (no existe endpoint de
- * transición). Este módulo es, por ahora, un registro documental: crear un
- * packing NO mueve inventario ni cambia el estado del picking origen.
+ * transición). Crear un packing NO mueve inventario ni cambia el estado del
+ * picking origen; el inventario sale al DESPACHAR (`Despacho` crea la SALIDA).
+ * Solo se empaca un picking cuyas prendas ya están en APARTADOS: con otro, el
+ * POST responde 400 `{"picking": "El picking X está en Y; trasládalo a
+ * APARTADOS para empacarlo."}` (lo muestra `parsePackingError`).
  *
  * Los nombres de campo se conservan en español, tal cual el contrato del API.
  */
