@@ -1,22 +1,29 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { FormFieldError } from "@/src/utils/getFieldError";
 import { buildReceiptFormSchema, type ReceiptFormValues } from "../schemas/receipt.schema";
 import { useReceiptOnboardingData } from "./useReceiptOnboardingData";
 import { useCreateReceipt } from "./useCreateReceipt";
-import type { ReceiptOrderCandidate } from "../interfaces/receipt-onboarding.interface";
+import type {
+  ReceiptOnboardingData,
+  ReceiptOrderCandidate,
+} from "../interfaces/receipt-onboarding.interface";
 import {
   almacenesDeSucursal,
   almacenPreseleccionado,
 } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
-import { tieneCantidadRecibida } from "../utils/receiptQuantities";
+import { recortarCantidades, tieneCantidadRecibida } from "../utils/receiptQuantities";
 import {
   candidateHasLines,
   candidateKey,
+  candidateLineTopes,
   candidateSucursalId,
+  refreshCandidate,
 } from "../utils/receiptCandidates";
 import { buildReceiptPayload } from "../utils/buildReceiptPayload";
 import {
@@ -37,6 +44,12 @@ interface UseReceiptFormParams {
    * El paso 1 vuelve a mostrar la lista ya refrescada (EC-912).
    */
   onSalidaMaquilaRejected?: () => void;
+  /**
+   * Tras un 400 por renglón se relee el onboarding y el candidato se rearma con
+   * esos datos (EC-919): topes y resumen dejan de ser los de la foto vieja.
+   * `null` = la orden o la SM ya no está para recibir: vuelve al paso 1.
+   */
+  onCandidateRefreshed?: (candidate: ReceiptOrderCandidate | null) => void;
 }
 
 type ReceiptFormField = keyof ReceiptFormValues;
@@ -92,7 +105,9 @@ export function useReceiptForm({
   onSuccess,
   candidate,
   onSalidaMaquilaRejected,
+  onCandidateRefreshed,
 }: UseReceiptFormParams) {
+  const queryClient = useQueryClient();
   // ── Catálogos desde onboarding ────────────────────────────────────────
   const { onboardingData } = useReceiptOnboardingData();
   const allWarehouses = onboardingData?.catalogos.almacenes ?? [];
@@ -252,11 +267,36 @@ export function useReceiptForm({
           if (Object.keys(porRenglon).length === 0) return;
           setLineErrors(porRenglon);
           // El renglón con error queda abierto en el panel: se lleva la vista ahí.
-          setTimeout(() => {
-            cantidadesRef.current
-              ?.querySelector<HTMLElement>("[data-line-error]")
-              ?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }, 0);
+          const verError = () =>
+            setTimeout(() => {
+              cantidadesRef.current
+                ?.querySelector<HTMLElement>("[data-line-error]")
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 0);
+          verError();
+          // El 400 dice que la foto del candidato está vieja (otra recepción se
+          // adelantó): se relee el onboarding y se rearma con lo que hay ahora.
+          // Lo capturado se conserva, recortado al tope nuevo de cada renglón.
+          void (async () => {
+            await queryClient.invalidateQueries({ queryKey: ["receipt-onboarding-data"] });
+            const data = queryClient.getQueryData<ReceiptOnboardingData>(["receipt-onboarding-data"]);
+            if (!data) return;
+            const fresh = refreshCandidate(candidate, data.busqueda);
+            if (!fresh) {
+              toast.error(
+                "La orden ya no tiene piezas por recibir (se recibió o canceló en otra parte). Elige otra.",
+                { duration: 8000 },
+              );
+              onCandidateRefreshed?.(null);
+              return;
+            }
+            const recortadas = recortarCantidades(form.state.values.cantidades, candidateLineTopes(fresh));
+            for (const [key, valor] of Object.entries(recortadas)) {
+              form.setFieldValue(`cantidades.${key}`, valor);
+            }
+            onCandidateRefreshed?.(fresh);
+            verError();
+          })();
         },
       });
     },

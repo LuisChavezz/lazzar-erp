@@ -11,7 +11,7 @@ import { SegmentedControl } from "@/src/components/SegmentedControl";
 import { PackageCheckIcon } from "@/src/components/Icons";
 import { useReceiptForm } from "../hooks/useReceiptForm";
 import { SERIES_SUCURSAL_EMPTY_MESSAGE } from "../schemas/receipt.schema";
-import { motivoSinTope, topeRecepcion } from "../utils/receiptQuantities";
+import { motivoSinTope } from "../utils/receiptQuantities";
 import { ReceiptLinesPanel } from "./ReceiptLinesPanel";
 import type { ReceiptScanLine } from "../utils/receiptScan";
 import type {
@@ -19,7 +19,14 @@ import type {
   ReceiptOnboardingOrderDetalleBase,
   ReceiptOnboardingSalidaMaquila,
 } from "../interfaces/receipt-onboarding.interface";
-import { salidaMaquilaOrigenNombre } from "../utils/receiptCandidates";
+import {
+  candidateDetalle,
+  candidateLineFueraDeSm,
+  candidateLinePendiente,
+  candidateLineTopes,
+  salidaMaquilaDesenlace,
+  salidaMaquilaOrigenNombre,
+} from "../utils/receiptCandidates";
 import { useOpParaSalidaMaquila } from "@/src/features/maquila-outputs/hooks/useOpParaSalidaMaquila";
 import { describeRenglon } from "@/src/features/maquila-outputs/utils/salidaMaquilaDraft";
 
@@ -27,6 +34,8 @@ interface ReceiptFormProps {
   onSuccess: () => void;
   /** 400 en `salida_maquila`: la SM dejó de ser recibible (EC-912). */
   onSalidaMaquilaRejected?: () => void;
+  /** Candidato rearmado tras un 400 por renglón; `null` si ya no se puede recibir (EC-919). */
+  onCandidateRefreshed?: (candidate: ReceiptOrderCandidate | null) => void;
   candidate: ReceiptOrderCandidate;
 }
 
@@ -51,6 +60,7 @@ const receiptFormSubtitle = (candidate: ReceiptOrderCandidate): string => {
 export default function ReceiptForm({
   onSuccess,
   onSalidaMaquilaRejected,
+  onCandidateRefreshed,
   candidate,
 }: ReceiptFormProps) {
   const {
@@ -69,25 +79,10 @@ export default function ReceiptForm({
     handleCantidadChange,
     handleReset,
     handleFormSubmit,
-  } = useReceiptForm({ onSuccess, candidate, onSalidaMaquilaRejected });
+  } = useReceiptForm({ onSuccess, candidate, onSalidaMaquilaRejected, onCandidateRefreshed });
 
-  // Ambos tipos comparten la forma base del detalle; producción sólo añade
-  // `producto_variante_id` (consumido en el submit, no en el render). Normalizar
-  // a la base permite iterar sin narrowing en el JSX. La SM de OB/OR no tiene
-  // renglones (EC-912).
-  const detalle: ReceiptOnboardingOrderDetalleBase[] =
-    candidate.type === "salida-maquila"
-      ? (candidate.salidaMaquila.detalle ?? []).map((r) => ({
-          id: r.id,
-          producto_id: 0,
-          producto_nombre: r.producto_nombre ?? "",
-          cantidad_ordenada: r.cantidad,
-          cantidad_recibida: r.cantidad_recibida,
-          cantidad_pendiente: r.cantidad_pendiente,
-          descripcion: r.descripcion,
-          sku: r.sku,
-        }))
-      : candidate.order.detalle;
+  // Forma base del detalle (OC/OP, o la SM de OB/OR normalizada).
+  const detalle: ReceiptOnboardingOrderDetalleBase[] = candidateDetalle(candidate);
   // Talla y color de los renglones de una SM de OB/OR.
   const atributosSm = new Map(
     candidate.type === "salida-maquila"
@@ -112,22 +107,11 @@ export default function ReceiptForm({
   // Techo de captura por renglón (lo pendiente en piezas enteras). Del MISMO
   // dato salen la etiqueta de los renglones no recibibles y el aviso de "nada
   // por recibir", así que el tope y el aviso no pueden contradecirse.
-  // Pendiente que aplica a ESTA recepción (EC-919):
-  //  - SM de OP: el de esa SM en el renglón (`salidas_maquila`, nucleo-erp
-  //    #1268). Un renglón sin la SM no va en ella, y uno sin `salidas_maquila`
-  //    tampoco se puede recibir con ella (tope 0): su `cantidad_pendiente` es
-  //    lo de la OP DIRECTA, que el backend no deja recibir con la SM.
-  //  - OP directa: `cantidad_pendiente`, que ya descuenta las piezas en
-  //    maquila (`cantidad_en_maquila`, #1234).
-  //  - SM de OB/OR: el pendiente de su propio renglón.
-  const smDeOp = candidate.type === "produccion" ? candidate.salidaMaquila : null;
-  const pendienteDe = (d: ReceiptOnboardingOrderDetalleBase): string => {
-    if (!smDeOp) return d.cantidad_pendiente;
-    return d.salidas_maquila?.find((sm) => sm.id === smDeOp.id)?.cantidad_pendiente ?? "0";
-  };
-  const fueraDeSm = (d: ReceiptOnboardingOrderDetalleBase) =>
-    Boolean(smDeOp && !d.salidas_maquila?.some((sm) => sm.id === smDeOp.id));
-  const topes = new Map(detalle.map((d) => [d.id, topeRecepcion(pendienteDe(d))]));
+  // Pendiente que aplica a ESTA recepción (SM de OP, OP directa o SM de
+  // OB/OR): ver `candidateLinePendiente` (EC-919).
+  const pendienteDe = (d: ReceiptOnboardingOrderDetalleBase) => candidateLinePendiente(candidate, d);
+  const fueraDeSm = (d: ReceiptOnboardingOrderDetalleBase) => candidateLineFueraDeSm(candidate, d);
+  const topes = candidateLineTopes(candidate);
   // Las OP de fabricación especial llegan sin `producto_nombre`: el SKU sale
   // del retrieve de la OP (mismo id de renglón).
   const opId = candidate.type === "produccion" ? candidate.order.id : 0;
@@ -437,13 +421,19 @@ export default function ReceiptForm({
 
         {/* ── SM: cuánto regresa y si se cierra con faltante (#1269) ─── */}
         {salidaMaquila && conRenglones && recibibles.length > 0 && (
-          <form.Subscribe selector={(state) => state.values.cantidades}>
-            {(cantidades) => {
+          <form.Subscribe
+            selector={(state) => ({
+              cantidades: state.values.cantidades,
+              cerrar: state.values.cerrar_salida_maquila ?? false,
+            })}
+          >
+            {({ cantidades, cerrar }) => {
               const capturadas = recibibles.reduce(
                 (acc, d) => acc + Math.min(Number(cantidades[String(d.id)]) || 0, topes.get(d.id) ?? 0),
                 0,
               );
               const faltan = piezasPendientes - capturadas;
+              const desenlace = salidaMaquilaDesenlace({ capturadas, pendientes: piezasPendientes, cerrar });
               return (
                 <section
                   className={`rounded-3xl border px-6 py-4 mb-8 ${
@@ -455,11 +445,16 @@ export default function ReceiptForm({
                   <p className="text-sm text-slate-700 dark:text-slate-200">
                     Regresan <b className="tabular-nums">{capturadas}</b> de{" "}
                     <b className="tabular-nums">{piezasPendientes}</b> piezas de la {salidaMaquila.folio}.
-                    {capturadas > 0 && (faltan > 0 ? (
+                    {desenlace === "sigue-enviada" && (
                       <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{faltan}</b>: la SM sigue Enviada para recibirlas después.</>
-                    ) : (
+                    )}
+                    {/* Con "Cerrar la SM con faltante" el backend la deja Recibida (EC-919). */}
+                    {desenlace === "recibida-con-faltante" && (
+                      <> Faltan <b className="tabular-nums text-amber-700 dark:text-amber-300">{faltan}</b>: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b> y esas piezas quedan como faltante del maquilero.</>
+                    )}
+                    {desenlace === "recibida" && (
                       <> Regresó todo: la SM queda <b className="text-emerald-700 dark:text-emerald-300">Recibida</b>.</>
-                    ))}
+                    )}
                   </p>
                   {capturadas > 0 && faltan > 0 && (
                     <form.Field name="cerrar_salida_maquila">

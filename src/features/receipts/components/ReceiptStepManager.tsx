@@ -64,6 +64,18 @@ export function ReceiptStepManager({ onClose, onSelectionChange }: ReceiptStepMa
     setSelectedOrder(null);
   };
 
+  // Tras un 400 por renglón el formulario relee el onboarding (EC-919): sigue
+  // con el candidato fresco (mismo formulario, misma captura) o, si la orden ya
+  // no está, vuelve al paso 1.
+  const handleCandidateRefreshed = (candidate: ReceiptOrderCandidate | null) => {
+    if (candidate) {
+      setSelectedOrder(candidate);
+      return;
+    }
+    reset();
+    setSelectedOrder(null);
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* Step progress bar */}
@@ -99,6 +111,7 @@ export function ReceiptStepManager({ onClose, onSelectionChange }: ReceiptStepMa
             <ReceiptForm
               onSuccess={handleFormSuccess}
               onSalidaMaquilaRejected={handleSalidaMaquilaRejected}
+              onCandidateRefreshed={handleCandidateRefreshed}
               candidate={selectedOrder}
             />
           </div>
