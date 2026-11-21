@@ -11,6 +11,11 @@ import { COMPACT_FIELD_CLS, READ_ONLY_INPUT_CLS } from "../../../constants/formS
 import { Supplier } from "../interfaces/supplier.interface";
 import { useSupplierForm } from "../hooks/useSupplierForm";
 import { useVerifyRfc } from "../../customers/hooks/useVerifyRfc";
+import {
+  RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE,
+  RFC_VERIFIED_MESSAGE,
+  RFC_VERIFY_FAILED_MESSAGE,
+} from "../../customers/constants/rfcVerification";
 
 interface SupplierFormProps {
   onSuccess: () => void;
@@ -20,15 +25,6 @@ interface SupplierFormProps {
 const RFC_MIN_LENGTH = 12;
 
 type RfcValidationTone = "success" | "error";
-
-// Mismo endpoint y mismos textos que el formulario de clientes
-// (`GET /terceros/clientes/verificar-rfc/`, EC-535): formato y dígito
-// verificador solo si la empresa usa Facturama; si no, únicamente la longitud.
-// Ninguno consulta el estatus del RFC en el SAT.
-const RFC_VERIFIED_MESSAGE = "Formato y dígito verificador correctos.";
-const RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE =
-  "RFC aceptado. Tu empresa no valida formato ni dígito verificador.";
-const RFC_VERIFY_FAILED_MESSAGE = "No se pudo validar el RFC en este momento. Intenta nuevamente.";
 
 const normalizeRfc = (value: string) => value.trim().toUpperCase();
 

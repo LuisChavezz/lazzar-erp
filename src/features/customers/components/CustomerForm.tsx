@@ -17,6 +17,11 @@ import { Customer } from "../interfaces/customer.interface";
 import { normalizeRfc, useCustomerForm } from "../hooks/useCustomerForm";
 import { useVerifyRfc } from "../hooks/useVerifyRfc";
 import { getFacturamaFormWarning } from "../utils/facturamaVerification";
+import {
+  RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE,
+  RFC_VERIFIED_MESSAGE,
+  RFC_VERIFY_FAILED_MESSAGE,
+} from "../constants/rfcVerification";
 
 interface CustomerFormProps {
   onSuccess?: () => void;
@@ -40,14 +45,6 @@ const RFC_MIN_LENGTH = 12;
 const SECTION_GRID_CLS = "grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3";
 
 type RfcValidationTone = "success" | "error";
-
-// El backend dice exactamente qué revisó: formato y dígito verificador solo si
-// la empresa usa Facturama; si no, únicamente la longitud. Ninguno consulta el
-// estatus del RFC en el SAT, así que el mensaje no promete más que eso.
-const RFC_VERIFIED_MESSAGE = "Formato y dígito verificador correctos.";
-const RFC_ACCEPTED_WITHOUT_FORMAT_MESSAGE =
-  "RFC aceptado. Tu empresa no valida formato ni dígito verificador.";
-const RFC_VERIFY_FAILED_MESSAGE = "No se pudo validar el RFC en este momento. Intenta nuevamente.";
 
 export default function CustomerForm({
   onSuccess,
