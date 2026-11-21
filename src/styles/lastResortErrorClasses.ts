@@ -3,7 +3,9 @@
  * cuando la app ya no puede pintar su propia interfaz. La usan
  * `src/app/global-error.tsx` (React, reemplaza el layout raíz) y
  * `signOutFailureScreen.ts` (DOM directo, EC-851), para que las dos se vean
- * igual y un cambio de estilo se haga en un solo lugar.
+ * igual y un cambio de estilo se haga en un solo lugar. `(Main)/error.tsx`
+ * (EC-852) reusa la tarjeta, el texto y los botones (no `screen`: se pinta
+ * dentro del layout de la app, no a pantalla completa).
  *
  * Son cadenas literales completas para que Tailwind v4 las encuentre al
  * escanear `src/`; no se arman por partes.
