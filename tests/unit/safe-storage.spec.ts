@@ -15,7 +15,11 @@ const fail = () => {
   throw new DOMException("cuota", "QuotaExceededError");
 };
 
-type Mode = "ok" | "write-fails" | "blocked";
+/**
+ * `quota`: cuota llena, `setItem` lanza pero leer y borrar funcionan.
+ * `write-fails`: escribir y borrar lanzan. `blocked`: el acceso lanza.
+ */
+type Mode = "ok" | "quota" | "write-fails" | "blocked";
 
 /** Instala un `window.localStorage` falso mientras corre `run`. */
 const withLocalStorage = <T>(mode: Mode, data: Map<string, string>, run: () => T): T => {
@@ -23,7 +27,7 @@ const withLocalStorage = <T>(mode: Mode, data: Map<string, string>, run: () => T
   const storage = {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: mode === "ok" ? (key: string, value: string) => void data.set(key, value) : fail,
-    removeItem: mode === "ok" ? (key: string) => void data.delete(key) : fail,
+    removeItem: mode === "ok" || mode === "quota" ? (key: string) => void data.delete(key) : fail,
   };
   globals.window =
     mode === "blocked"
@@ -74,6 +78,23 @@ test.describe("safeLocalStorage", () => {
       safeLocalStorage.setItem("igual", "v");
     });
     expect(warnings).toHaveLength(0);
+  });
+
+  test("con la cuota llena, una escritura que falla borra la clave en vez de dejar el valor viejo", () => {
+    const data = new Map([["k", "viejo"]]);
+    withLocalStorage("quota", data, () => {
+      expect(() => safeLocalStorage.setItem("k", "nuevo")).not.toThrow();
+      expect(data.has("k")).toBe(false);
+      expect(safeLocalStorage.getItem("k")).toBeNull();
+    });
+  });
+
+  test("con la cuota llena, un valor idéntico no se borra", () => {
+    const data = new Map([["k", "v"]]);
+    withLocalStorage("quota", data, () => {
+      safeLocalStorage.setItem("k", "v");
+      expect(data.get("k")).toBe("v");
+    });
   });
 
   test("no lanza si escribir o borrar falla", () => {
@@ -144,6 +165,32 @@ test.describe("persist con safeJSONStorage", () => {
       expect(store.getState().hydrated).toBe(true);
       expect(writes).toBe(0);
       expect(data.get("prueba-storage")).toBe(stored);
+    });
+  });
+
+  test("con la cuota llena, un set que falla borra lo guardado: la siguiente carga no hidrata el valor viejo", () => {
+    const data = new Map([["prueba-storage", JSON.stringify({ state: { value: 5 }, version: 0 })]]);
+    withLocalStorage("quota", data, () => {
+      const store = makeStore();
+      expect(store.getState().value).toBe(5);
+      store.getState().bump();
+      expect(store.getState().value).toBe(6);
+      expect(data.has("prueba-storage")).toBe(false);
+      // La "recarga": un store nuevo empieza del estado inicial, no del 5.
+      expect(makeStore().getState()).toMatchObject({ value: 0, hydrated: true });
+    });
+  });
+
+  test("un valor corrupto se trata como nada guardado, se borra y la hidratación termina", () => {
+    const data = new Map([["prueba-storage", '{"state":']]);
+    withLocalStorage("ok", data, () => {
+      const store = makeStore();
+      expect(store.getState()).toMatchObject({ value: 0, hydrated: true });
+      // Se borró al leerlo, y el set de `onRehydrateStorage` lo reescribió ya
+      // válido con el estado inicial.
+      expect(JSON.parse(data.get("prueba-storage")!)).toEqual({ state: { value: 0 }, version: 0 });
+      store.getState().bump();
+      expect(JSON.parse(data.get("prueba-storage")!)).toEqual({ state: { value: 1 }, version: 0 });
     });
   });
 
