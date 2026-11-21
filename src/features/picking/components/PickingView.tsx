@@ -8,7 +8,7 @@ import { ListExportButtons } from "@/src/components/ListExportButtons";
 import { useListExport } from "@/src/hooks/useListExport";
 import { exportNum } from "@/src/utils/listExport";
 import { hasPermission } from "@/src/utils/permissions";
-import { PICKING_DETAIL_QUERY_KEY, pickingDetailQueryKey } from "../constants/pickingQueryKeys";
+import { pickingDetailQueryKey, pickingDetailsRefreshFilters } from "../constants/pickingQueryKeys";
 import { PICKINGS_KEY } from "../constants/pickingsTable";
 import { usePickingsResumen, usePickingsTable } from "../hooks/usePickingsTable";
 import { getPickingColumns } from "./PickingColumns";
@@ -82,11 +82,11 @@ export function PickingView() {
           {...table.tableProps}
           // Invalida el PREFIJO (lista, resumen y catálogos de filtros) y los
           // detalles (`["picking-detail"]`), para que tabla y detalle muestren el
-          // mismo momento.
+          // mismo momento. El detalle solo se relee ya si su diálogo está abierto.
           onRefetch={() =>
             Promise.all([
               queryClient.invalidateQueries({ queryKey: PICKINGS_KEY }),
-              queryClient.invalidateQueries({ queryKey: PICKING_DETAIL_QUERY_KEY }),
+              queryClient.invalidateQueries(pickingDetailsRefreshFilters(isDetailOpen)),
             ])
           }
           getRowId={(row) => String(row.id)}
