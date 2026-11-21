@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  appendsDigitsAtEnd,
   isDecimalSeparatorKey,
   isPastableWholeQuantity,
   parseWholeQuantity,
@@ -45,4 +46,15 @@ test("los pasos sobre un valor fraccionario van al entero de al lado", () => {
   expect(stepWholeQuantity(3, -1, 0)).toBe(2);
   expect(stepWholeQuantity(3, 1, 0)).toBe(4);
   expect(stepWholeQuantity(1, -1, 1)).toBe(1);
+});
+
+test("tras un separador bloqueado, los dígitos agregados al final son la parte decimal", () => {
+  // "1" + "." (bloqueado) + "5": el input mostraba "1" y llega "15".
+  expect(appendsDigitsAtEnd("15", "1")).toBe(true);
+  expect(appendsDigitsAtEnd("1275", "12")).toBe(true);
+  // Reemplazar todo (foco selecciona), insertar antes o borrar no es agregar al final.
+  expect(appendsDigitsAtEnd("3", "1")).toBe(false);
+  expect(appendsDigitsAtEnd("21", "1")).toBe(false);
+  expect(appendsDigitsAtEnd("1", "12")).toBe(false);
+  expect(appendsDigitsAtEnd("1", "1")).toBe(false);
 });
