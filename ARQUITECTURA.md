@@ -177,7 +177,7 @@ El proyecto usa **autenticación basada en cookies** (`withCredentials: true`); 
   - `baseURL: process.env.NEXT_PUBLIC_API_URL`, `withCredentials: true`, `proxy: false`.
   - Interceptor de **response** con **refresh token y mutex**: ante un **401** intenta refrescar la sesión (`POST /auth/token/refresh/`) una sola vez; las solicitudes concurrentes que también reciban 401 se **encolan** y se reintentan al completarse el refresh. Si el refresh falla (o el reintento vuelve a dar 401), ejecuta `signOut({ callbackUrl: "/auth/login" })`.
 - **`api.ts`** (`api`) – cliente **solo-auth**, sin interceptores. Quita `/api/v1` de `NEXT_PUBLIC_API_URL` (`removeApiVersion`) para los endpoints de login/logout/refresh.
-- **`ngrok.api.ts`** (`ngrok_api`) – cliente para el endpoint externo (ngrok) de carga de imágenes; cabeceras fijas (`Authorization: Bearer`, `ngrok-skip-browser-warning`) y variables `NEXT_PUBLIC_NGROK_*`.
+- **`ngrok.api.ts`** (`ngrok_api`) – cliente **solo-servidor** (`import "server-only"`) para el endpoint externo (ngrok) de carga de imágenes; cabeceras fijas (`Authorization: Bearer`, `ngrok-skip-browser-warning`), `NEXT_PUBLIC_NGROK_BASE_URL` y el token `NGROK_API_TOKEN`. El navegador llega a él solo por los Route Handlers `/api/embroidery-images/*`.
 
 El frontend no habla con Facturama: la verificación de RFC (`GET /terceros/clientes/verificar-rfc/`, en clientes y proveedores), el timbrado y los archivos de CFDI van por `v1_api` al backend, que guarda las credenciales.
 
@@ -265,7 +265,8 @@ Los flujos de alta complejos se modelan como **asistentes dentro de `MainDialog`
   - `NEXTAUTH_URL`: URL pública de la app (ej. `http://localhost:3000` en desarrollo).
   - `NEXTAUTH_SECRET`: secreto para firmar JWT de NextAuth.
   - `NEXT_PUBLIC_API_URL`: base URL de la API v1 (ej. `https://nucleo-erp.vercel.app/api/v1`).
-  - `NEXT_PUBLIC_NGROK_BASE_URL`, `NEXT_PUBLIC_NGROK_API_TOKEN`: endpoint y token del servicio externo de carga de imágenes.
+  - `NEXT_PUBLIC_NGROK_BASE_URL`: dominio público del servicio externo de carga de imágenes (para mostrar las URLs guardadas).
+  - `NGROK_API_TOKEN`: token **solo-servidor** con permiso de escritura de ese servicio; nunca con prefijo `NEXT_PUBLIC_`.
 - **next.config.ts**:
   - `reactCompiler: true` y `removeConsole` en producción.
   - Configuración de dominios permitidos para imágenes (`images.unsplash.com`, `raw.githubusercontent.com`).

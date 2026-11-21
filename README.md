@@ -54,7 +54,8 @@ NEXT_PUBLIC_API_URL=https://TU_API_ERP/api/v1
 
 Variables adicionales (según las funciones que utilices), incluidas en `.env.example`:
 
-- `NEXT_PUBLIC_NGROK_BASE_URL`, `NEXT_PUBLIC_NGROK_API_TOKEN`: endpoint y token del servicio externo de carga de imágenes (galería de bordados en cotizaciones).
+- `NEXT_PUBLIC_NGROK_BASE_URL`: dominio público del servicio externo de carga de imágenes (galería de bordados en cotizaciones); se usa para mostrar las URLs de las imágenes guardadas.
+- `NGROK_API_TOKEN`: token **solo-servidor** de ese servicio, con permiso de escritura. Nunca debe llevar el prefijo `NEXT_PUBLIC_`: el navegador llega al servicio solo a través de `/api/embroidery-images/*`.
 
 Facturama no necesita variables en el frontend: la verificación de RFC, el timbrado y la descarga de CFDI pasan por el backend, que guarda las credenciales.
 
