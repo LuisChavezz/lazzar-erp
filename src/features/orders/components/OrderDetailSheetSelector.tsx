@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { FolioIcon, HistoryIcon, PedidosIcon, TrendingUpIcon } from "@/src/components/Icons";
 import type { OrderDetailSheet } from "../constants/orderDetailSheets";
 
@@ -26,8 +26,24 @@ interface OrderDetailSheetSelectorProps {
  * hojas que el usuario puede ver (`availableOrderDetailSheets`).
  */
 export function OrderDetailSheetSelector({ sheets, active, hrefFor }: OrderDetailSheetSelectorProps) {
+  const navRef = useRef<HTMLElement>(null);
+  // En un teléfono el selector se desplaza en horizontal y arranca al inicio:
+  // al montar y al cambiar de hoja, la píldora activa se trae a la vista
+  // moviendo SOLO el `scrollLeft` del selector (`scrollIntoView` también
+  // desplazaría la página en vertical).
+  useEffect(() => {
+    const nav = navRef.current;
+    const pill = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !pill) return;
+    const navBox = nav.getBoundingClientRect();
+    const pillBox = pill.getBoundingClientRect();
+    if (pillBox.left < navBox.left) nav.scrollLeft -= navBox.left - pillBox.left;
+    else if (pillBox.right > navBox.right) nav.scrollLeft += pillBox.right - navBox.right;
+  }, [active]);
+
   return (
     <nav
+      ref={navRef}
       aria-label="Hojas del pedido"
       // Con cuatro hojas no cabe en un teléfono: se desplaza en horizontal en
       // vez de salirse de la barra.
