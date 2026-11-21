@@ -80,7 +80,7 @@ export function InvoiceOnboardingStep2({
           Pedido <span className="font-mono font-semibold">{pedidoLabel}</span>
         </p>
         <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-          Pedidas {data.total_piezas_pedidas} pzas · Facturadas {data.total_piezas_facturadas} pzas ·{" "}
+          Pedidas {data.total_piezas_pedidas} pzas · En facturas (incluye Borrador) {data.total_piezas_facturadas} pzas ·{" "}
           <span className="font-semibold text-slate-700 dark:text-slate-200">
             Pendientes {data.total_piezas_pendientes} pzas
           </span>
