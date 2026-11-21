@@ -78,6 +78,9 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
       setRfcValidationTone("error");
       setRfcValidationMessage(message);
     };
+    // Si el RFC cambió mientras se verificaba, el resultado (éxito o fallo) ya
+    // no le aplica: no se muestra nada bajo el RFC nuevo.
+    const rfcChangedMeanwhile = () => normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify;
 
     try {
       // Sin `cliente`: aplica la regla de la empresa del usuario, la misma a la
@@ -85,8 +88,7 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
       // `cliente` es un id de cliente; nunca se le pasa el de un proveedor.
       const result = await verifyRfcAsync({ rfc: rfcToVerify });
 
-      // Si el RFC cambió mientras se verificaba, el resultado ya no le aplica.
-      if (normalizeRfc(form.state.values.rfc ?? "") !== rfcToVerify) {
+      if (rfcChangedMeanwhile()) {
         return;
       }
 
@@ -103,6 +105,9 @@ export default function SupplierForm({ onSuccess, supplierToEdit }: SupplierForm
       );
       clearFieldErrors("rfc");
     } catch {
+      if (rfcChangedMeanwhile()) {
+        return;
+      }
       showVerifyFailed(RFC_VERIFY_FAILED_MESSAGE);
     }
   };
