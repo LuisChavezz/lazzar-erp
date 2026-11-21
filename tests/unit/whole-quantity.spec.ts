@@ -95,9 +95,11 @@ function capturar(inicial: number, pasos: Paso[], min = 0) {
         insertar(p.tecla);
       }
     } else if ("pegar" in p) {
-      const r = reduceWholeQuantity(state, { type: "paste", text: p.pegar, min });
-      state = r.state;
-      if (!r.preventDefault) insertar(p.pegar);
+      const r = aplicar({ type: "paste", text: p.pegar, min });
+      if (!r.preventDefault) {
+        sel = [0, String(value).length]; // el foco seleccionó todo
+        insertar(p.pegar);
+      }
     } else if ("clicAlFinal" in p) {
       aplicar({ type: "pointer" });
     } else if ("paso" in p) {
@@ -147,6 +149,12 @@ test.describe("reduceWholeQuantity: secuencias de captura", () => {
     expect(capturar(4, [{ pegar: "1.5" }])).toEqual({ value: 4, hint: true });
     expect(capturar(4, [{ pegar: "1,5" }])).toEqual({ value: 4, hint: true });
     expect(capturar(4, [{ pegar: "12" }])).toEqual({ value: 12, hint: false });
+  });
+
+  test("pegar un entero con espacios alrededor toma el entero recortado", () => {
+    expect(capturar(4, [{ pegar: " 12 " }])).toEqual({ value: 12, hint: false });
+    expect(capturar(4, [{ pegar: "12	" }])).toEqual({ value: 12, hint: false });
+    expect(capturar(4, [{ pegar: " 0 " }], 1)).toEqual({ value: 1, hint: false });
   });
 
   test("un valor fraccionario fijado por \"Todo\" va al entero de al lado con \"−\" / \"+\"", () => {
