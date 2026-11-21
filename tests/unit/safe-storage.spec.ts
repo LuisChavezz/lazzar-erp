@@ -50,6 +50,32 @@ test.describe("safeLocalStorage", () => {
     });
   });
 
+  test("no reescribe un valor idéntico al guardado", () => {
+    const data = new Map([["k", "v"]]);
+    let writes = 0;
+    const set = data.set.bind(data);
+    data.set = (key, value) => {
+      writes++;
+      return set(key, value);
+    };
+    withLocalStorage("ok", data, () => {
+      safeLocalStorage.setItem("k", "v");
+      expect(writes).toBe(0);
+      safeLocalStorage.setItem("k", "otro");
+      expect(writes).toBe(1);
+    });
+  });
+
+  test("con la cuota llena, un valor idéntico no intenta escribir ni avisa", () => {
+    const data = new Map([["igual", "v"]]);
+    const warnings: unknown[] = [];
+    withLocalStorage("write-fails", data, () => {
+      console.warn = (...args: unknown[]) => void warnings.push(args);
+      safeLocalStorage.setItem("igual", "v");
+    });
+    expect(warnings).toHaveLength(0);
+  });
+
   test("no lanza si escribir o borrar falla", () => {
     const data = new Map([["k", "guardado"]]);
     withLocalStorage("write-fails", data, () => {
@@ -102,6 +128,24 @@ test.describe("persist con safeJSONStorage", () => {
       });
     });
   }
+
+  test("un set que solo cambia campos no persistidos no escribe", () => {
+    const stored = JSON.stringify({ state: { value: 5 }, version: 0 });
+    const data = new Map([["prueba-storage", stored]]);
+    let writes = 0;
+    const set = data.set.bind(data);
+    data.set = (key, value) => {
+      writes++;
+      return set(key, value);
+    };
+    withLocalStorage("ok", data, () => {
+      const store = makeStore();
+      // `onRehydrateStorage` hizo un set de `hydrated`, que no se persiste.
+      expect(store.getState().hydrated).toBe(true);
+      expect(writes).toBe(0);
+      expect(data.get("prueba-storage")).toBe(stored);
+    });
+  });
 
   test("con almacenamiento sano carga lo guardado y persiste los cambios", () => {
     const data = new Map([["prueba-storage", JSON.stringify({ state: { value: 5 }, version: 0 })]]);
