@@ -69,11 +69,11 @@ export const Section = ({
 /**
  * Contenedor de los `HeaderStat` de la cabecera en FILA de una página de
  * detalle (identidad a la izquierda con `mr-auto`, datos a la derecha).
- * Originado en la orden de bordado. Lo usan hoy: la página de OB
- * (`EmbroideryOrderDetailContent`), la de OP (`ProductionOrderPageContent`), la
- * de orden de compra (`PurchaseOrderPageContent`) y el diálogo de inventory
- * pipeline (`InventoryPipelineDetailDialog`). Un cambio aquí se revisa en los
- * cuatro.
+ * Originado en la orden de bordado. Lo usan hoy: la página de orden de compra
+ * (`PurchaseOrderPageContent`, con `align="start"`), el bloque del CFDI de la
+ * factura (`InvoiceCfdiStamp` en `InvoiceMainSheet`, con `align="start"` en la
+ * fila del timbre) y el diálogo de inventory pipeline
+ * (`InventoryPipelineDetailDialog`). Un cambio aquí se revisa en los tres.
  *
  * El filete entre datos NO es un elemento propio: es el `::before` de cada
  * `HeaderStat`, colgado en el centro del hueco que lo separa del anterior. Así
