@@ -42,7 +42,7 @@ import {
 } from "../hooks/useSupplierInvoiceRowActions";
 import { SUPPLIER_INVOICE_PDF_ACCEPT } from "../constants/supplierInvoicePdf";
 import { validateSupplierInvoicePdf } from "../utils/validateSupplierInvoicePdf";
-import { canDownloadMergedPdf } from "../utils/supplierInvoiceLabels";
+import { canDownloadMergedPdf, isFacturaMaquila } from "../utils/supplierInvoiceLabels";
 import { getColumns, SUPPLIER_INVOICE_HEADER_FILTERS } from "./SupplierInvoiceColumns";
 import { SupplierInvoiceDetailDialog } from "./SupplierInvoiceDetailDialog";
 import SupplierInvoiceForm from "./SupplierInvoiceForm";
@@ -71,9 +71,15 @@ const editStaleMessages = (etiqueta: string) => ({
 
 export default function SupplierInvoiceList({
   initialProveedorId = 0,
+  initialSalidaMaquilaId = null,
+  initialFacturaId = null,
 }: {
   /** Proveedor preseleccionado al montar (`?proveedor=` ya validado por la página). */
   initialProveedorId?: number;
+  /** SM cuyas facturas de maquila se listan (`?salida_maquila=`, EC-919). */
+  initialSalidaMaquilaId?: number | null;
+  /** Factura cuyo detalle se abre al cargar (`?factura=`, EC-919). */
+  initialFacturaId?: number | null;
 }) {
   // Toda escritura de facturas de proveedor exige `FINANCE_WRITE_PERMISSION`
   // (EC-733). Sin él, "+ Nueva factura" se oculta y las acciones del menú y del
@@ -89,6 +95,11 @@ export default function SupplierInvoiceList({
    * `useSupplierInvoices`).
    */
   const [proveedorId, setProveedorId] = useState(initialProveedorId);
+  /**
+   * Filtro de servidor `salida_maquila` (EC-919): las facturas de maquila de
+   * una SM. Basta para acotar la consulta sin proveedor. Se quita con su chip.
+   */
+  const [salidaMaquilaId, setSalidaMaquilaId] = useState(initialSalidaMaquilaId);
   const router = useRouter();
   /**
    * Cambia el proveedor y lo REFLEJA en `?proveedor=`, para que recargar no
@@ -102,7 +113,12 @@ export default function SupplierInvoiceList({
   const selectProveedor = (id: number) => {
     if (id === proveedorId) return;
     setProveedorId(id);
-    router.replace(supplierInvoicesHref(id > 0 ? id : null), { scroll: false });
+    router.replace(supplierInvoicesHref(id > 0 ? id : null, { salidaMaquilaId }), { scroll: false });
+  };
+  /** Quita el filtro por SM; la URL deja de llevarlo (y la factura a abrir). */
+  const clearSalidaMaquila = () => {
+    setSalidaMaquilaId(null);
+    router.replace(supplierInvoicesHref(proveedorId > 0 ? proveedorId : null), { scroll: false });
   };
   const {
     suppliers,
@@ -116,9 +132,15 @@ export default function SupplierInvoiceList({
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "es"));
   const { facturas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
-    useSupplierInvoices(proveedorId);
-  // `refetch` ignora `enabled`: sin proveedor no se pide nada.
-  const refetchIfSelected = () => (proveedorId > 0 ? refetch() : undefined);
+    useSupplierInvoices(proveedorId, salidaMaquilaId);
+  // `refetch` ignora `enabled`: sin proveedor ni SM no se pide nada.
+  const refetchIfSelected = () =>
+    proveedorId > 0 || salidaMaquilaId !== null ? refetch() : undefined;
+  const salidaMaquilaFolio =
+    salidaMaquilaId === null
+      ? null
+      : facturas.find((f) => f.salida_maquila === salidaMaquilaId)?.salida_maquila_folio?.trim() ||
+        `SM #${salidaMaquilaId}`;
   // `mutateAsync`, no `mutate`: el candado se libera sobre la PROMESA de cada
   // llamada. Los callbacks de `mutate` solo corren para la última llamada del
   // observer, y con dos filas en vuelo el `finally` de la primera se perdería.
@@ -130,7 +152,8 @@ export default function SupplierInvoiceList({
   // Estado de TODOS los diálogos en la vista, nunca en la celda: una celda se
   // desmonta al ordenar, filtrar o paginar, y registrar/cancelar cambian el
   // `estatus`, que es justo el filtro de la tabla.
-  const [openDetailId, setOpenDetailId] = useState<number | null>(null);
+  // Arranca con la factura de `?factura=` (EC-919), si la hay.
+  const [openDetailId, setOpenDetailId] = useState<number | null>(initialFacturaId);
   const [registrarTargetId, setRegistrarTargetId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
   /**
@@ -316,7 +339,8 @@ export default function SupplierInvoiceList({
   // Si la factura desaparece del payload completo, el id no puede quedar colgado
   // (un refetch posterior reabriría el diálogo solo). Ajuste en RENDER, no en un
   // efecto (`react-hooks/set-state-in-effect`). Mismo patrón que `PolizaList`.
-  if (openDetailId !== null && detailFactura === null) setOpenDetailId(null);
+  // Solo con el listado cargado: la factura de `?factura=` aún no llega al montar.
+  if (openDetailId !== null && detailFactura === null && hasLoaded) setOpenDetailId(null);
 
   const findFactura = (id: number | null) =>
     id !== null ? (facturas.find((f) => f.id === id) ?? null) : null;
@@ -446,9 +470,11 @@ export default function SupplierInvoiceList({
             onRefetch={refetchIfSelected}
             isRefetching={isFetching}
             emptyMessage={
-              proveedorId > 0
-                ? "Este proveedor no tiene facturas registradas."
-                : "Selecciona un proveedor para ver sus facturas."
+              salidaMaquilaId !== null
+                ? "No hay facturas de maquila de esta salida con este filtro."
+                : proveedorId > 0
+                  ? "Este proveedor no tiene facturas registradas."
+                  : "Selecciona un proveedor para ver sus facturas."
             }
             isLoading={isLoading}
             isError={showError}
@@ -458,9 +484,23 @@ export default function SupplierInvoiceList({
             loadingAriaLabel="Cargando facturas de proveedor"
             getRowId={(row) => String(row.id)}
             // Cambiar de proveedor o un alta nueva vuelven a la página 1.
-            paginationResetKey={`${proveedorId}-${facturas.length}`}
+            paginationResetKey={`${proveedorId}-${salidaMaquilaId}-${facturas.length}`}
             actionButton={
               <div className="flex items-center gap-2">
+                {/* Filtro por SM (EC-919): lo pone el detalle de la SM. */}
+                {salidaMaquilaFolio && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 pl-3 pr-1 py-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                    <span className="font-mono">Maquila · {salidaMaquilaFolio}</span>
+                    <button
+                      type="button"
+                      onClick={clearSalidaMaquila}
+                      aria-label={`Quitar el filtro de la salida a maquila ${salidaMaquilaFolio}`}
+                      className="rounded-full px-1.5 leading-none hover:bg-sky-100 dark:hover:bg-sky-500/20 cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
                 <div className="w-64">
                   <FormSelect
                     name="proveedor"
@@ -539,6 +579,7 @@ export default function SupplierInvoiceList({
               isDownloading: downloadingIds.includes(detailFactura.id),
               attachBlock: financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON),
             }}
+            canAdjust={canWrite && detailFactura.estatus === "Borrador" && isFacturaMaquila(detailFactura)}
             open={true}
             onOpenChange={(open) => {
               if (!open) setOpenDetailId(null);

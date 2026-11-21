@@ -18,9 +18,17 @@ export const MAX_SUPPLIER_INVOICE_PDF_LABEL = "4 MB";
 export const SUPPLIER_INVOICE_PDF_ACCEPT = "application/pdf,.pdf";
 
 /**
- * Nombre de descarga del documento fusionado. El navegador no puede leer el
- * `Content-Disposition` del servidor (CORS no lo expone), así que se replica su
- * mismo nombre: `OC-RC-Factura-{folio o id}.pdf`.
+ * Nombre de RESPALDO del documento fusionado, si el `Content-Disposition` del
+ * backend no se pudo leer (EC-919: se usa el suyo). Replica su regla
+ * (`pdf_fusionado`, nucleo-erp #1233): `OC-RC-Factura-{folio o id}.pdf` con
+ * OC, `SM-RC-Factura-…` en la de maquila, y sin prefijo si no tiene ninguna.
  */
-export const mergedPdfFileName = (factura: { id: number; folio: string | null }): string =>
-  `OC-RC-Factura-${factura.folio || factura.id}.pdf`;
+export const mergedPdfFileName = (factura: {
+  id: number;
+  folio: string | null;
+  oc: number | null;
+  salida_maquila?: number | null;
+}): string => {
+  const prefijo = factura.oc != null ? "OC-" : factura.salida_maquila != null ? "SM-" : "";
+  return `${prefijo}RC-Factura-${factura.folio || factura.id}.pdf`;
+};

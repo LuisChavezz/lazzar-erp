@@ -33,12 +33,26 @@ export interface FacturaProveedorDetalle {
   id: number;
   /** FK a la factura padre. Solo lectura en el serializer. */
   factura_proveedor: number;
-  /** FK a `compras.OrdenCompraDetalle`. Debe pertenecer a la OC de la factura. */
-  oc_detalle: number;
-  /** FK a `compras.RecepcionDetalle`. Debe pertenecer a la recepción de la factura. */
-  recepcion_detalle: number;
-  /** FK a `catalogo.Producto`. Debe coincidir con el de `oc_detalle` y `recepcion_detalle`. */
-  producto: number;
+  /**
+   * FK a `compras.OrdenCompraDetalle`. Debe pertenecer a la OC de la factura.
+   * `null` en la factura de maquila (sin OC, nucleo-erp #1242).
+   */
+  oc_detalle: number | null;
+  /**
+   * FK a `compras.RecepcionDetalle`. Debe pertenecer a la recepción de la
+   * factura. Puede ser `null` en la de maquila de una SM de OB/OR.
+   */
+  recepcion_detalle: number | null;
+  /**
+   * FK a `catalogo.Producto`. Debe coincidir con el de `oc_detalle` y
+   * `recepcion_detalle`. `null` en un renglón de maquila sin producto (SM de
+   * OB/OR): lo que se facturó va en `descripcion`.
+   */
+  producto: number | null;
+  /** Texto del renglón; en la factura de maquila, la descripción del renglón de la SM. */
+  descripcion?: string | null;
+  /** Renglón de la SM del que nació el de la factura de maquila (#1242); `null` en las demás. */
+  salida_maquila_detalle?: number | null;
   /** Decimal(18,2) en string. */
   cantidad: string;
   /** Decimal en string. */
@@ -54,7 +68,7 @@ export interface FacturaProveedorDetalle {
   /**
    * Nombre y código del producto (EC-904). SOLO en listado y retrieve (no en
    * las respuestas de alta o edición), por eso opcionales; el código es `null`
-   * si el producto no tiene. Los lee el PDF.
+   * si el producto no tiene. Los lee el PDF. `null` sin producto (maquila).
    */
   producto_nombre?: string | null;
   producto_codigo?: string | null;
@@ -75,6 +89,8 @@ export interface FacturaProveedor {
   oc: number | null;
   /** SM de la que nació la factura de maquila (EC-912); `null` en las demás. */
   salida_maquila?: number | null;
+  /** Folio de esa SM (nucleo-erp #1233), tal cual; `null` en las demás. */
+  salida_maquila_folio?: string | null;
   /** FK a `compras.Recepcion`. NOT NULL. */
   recepcion: number;
   /** FK a `nucleo.Moneda`. */
@@ -85,8 +101,9 @@ export interface FacturaProveedor {
   moneda_codigo: string | null;
   /**
    * Folio de la OC, solo lectura (EC-466). `null` mientras la OC está en
-   * Borrador: el folio de la OC se asigna después. AUSENTE (no `null`) sin
-   * OC: el serializer lo salta cuando `oc` es `null` (factura de maquila).
+   * Borrador (el folio de la OC se asigna después) y en la factura de maquila,
+   * que no tiene OC: desde nucleo-erp #1233 la llave viene siempre. Opcional
+   * en el tipo por las respuestas de alta y edición.
    */
   oc_folio?: string | null;
   /** Folio de la recepción, solo lectura (EC-466). Nunca nulo. */
@@ -171,6 +188,24 @@ export interface FacturaProveedorQueryParams {
   moneda?: number;
   oc?: number;
   recepcion?: number;
+  /** Facturas de maquila de una SM (nucleo-erp #1233). */
+  salida_maquila?: number;
+}
+
+/**
+ * Renglón del cuerpo de `POST /finanzas/facturas-proveedor/{id}/ajustar-maquila/`
+ * (nucleo-erp #1242): solo viajan los campos que cambian. Decimales con 2
+ * posiciones, >= 0. `impuesto` es un MONTO, no una tasa.
+ */
+export interface AjusteMaquilaLinea {
+  id: number;
+  precio_unitario?: string;
+  descuento?: string;
+  impuesto?: string;
+}
+
+export interface AjusteMaquilaPayload {
+  lineas: AjusteMaquilaLinea[];
 }
 
 /**

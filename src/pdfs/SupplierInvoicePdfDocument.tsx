@@ -37,7 +37,7 @@ import {
 import { conditionalColumn } from "./shared/documentPdfColumns";
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pdfDate, pdfMoney } from "./shared/financeDocumentPdf";
-import { SIN_OC_LABEL } from "@/src/features/supplier-invoices/utils/supplierInvoiceLabels";
+import { facturaLineaProducto, SIN_OC_LABEL } from "@/src/features/supplier-invoices/utils/supplierInvoiceLabels";
 
 type SupplierInvoicePdfDocumentProps = {
   factura: FacturaProveedor;
@@ -60,7 +60,8 @@ export const SupplierInvoicePdfDocument = ({ factura, company }: SupplierInvoice
       id: "producto",
       header: "Producto",
       flex: 4,
-      cell: (line) => <PdfCellText bold>{line.producto_nombre?.trim() || `Producto #${line.producto}`}</PdfCellText>,
+      // Nombre del producto, o la descripción del renglón de maquila sin producto (EC-919).
+      cell: (line) => <PdfCellText bold>{facturaLineaProducto(line)}</PdfCellText>,
     },
     { id: "cantidad", header: "Cantidad", flex: 1.2, align: "right", cell: (line) => formatQuantityValue(line.cantidad) },
     { id: "precio", header: "Precio u.", flex: 1.6, align: "right", cell: (line) => money(line.precio_unitario) },
@@ -96,6 +97,10 @@ export const SupplierInvoicePdfDocument = ({ factura, company }: SupplierInvoice
               label: "Orden de compra",
               value: factura.oc == null ? SIN_OC_LABEL : textOrDash(factura.oc_folio),
             },
+            // La SM de la que nació la factura de maquila (EC-919).
+            ...(factura.salida_maquila_folio?.trim()
+              ? [{ label: "Salida a maquila", value: factura.salida_maquila_folio.trim() }]
+              : []),
             { label: "Recepción", value: textOrDash(factura.recepcion_folio) },
           ]}
         />
