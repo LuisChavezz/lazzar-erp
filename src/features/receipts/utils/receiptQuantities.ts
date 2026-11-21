@@ -59,3 +59,19 @@ export const totalCantidadRecibida = (
     const cantidad = Number.parseFloat(linea.cantidad_recibida);
     return Number.isNaN(cantidad) ? sum : sum + Math.round(cantidad * ESCALA);
   }, 0) / ESCALA;
+
+/**
+ * Cantidades capturadas que pasan del tope nuevo de su renglón, ya recortadas
+ * (EC-919: tras releer el onboarding). Solo trae las que cambian; las demás se
+ * conservan tal cual. Un renglón que ya no está en la orden queda en "0".
+ */
+export const recortarCantidades = (
+  cantidades: Record<string, string>,
+  topes: ReadonlyMap<number, number>,
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(cantidades).flatMap(([key, valor]) => {
+      const tope = topes.get(Number(key)) ?? 0;
+      return (Number(valor) || 0) > tope ? [[key, String(tope)]] : [];
+    }),
+  );

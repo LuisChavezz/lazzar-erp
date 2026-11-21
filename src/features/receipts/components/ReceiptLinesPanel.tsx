@@ -279,18 +279,32 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
         })}
 
         {/* Renglones sin nada que recibir: al final y atenuados, con su motivo. */}
-        {noRecibibles.map((line) => (
-          <li key={line.id} className="flex items-center gap-3 px-4 py-2.5 opacity-50">
-            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
-              {line.nombre}
-              {tallaDe(line) && <span className="text-slate-400"> · {tallaDe(line)}</span>}
-            </span>
-            <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-              {line.sinTope}
-            </span>
-          </li>
-        ))}
+        {noRecibibles.map((line) => {
+          // Tras releer el onboarding (EC-919), el renglón rechazado puede haber
+          // quedado sin tope: su error sigue a la vista aquí.
+          const error = lineErrors[line.id];
+          return (
+            <li
+              key={line.id}
+              data-line-error={error !== undefined || undefined}
+              className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-4 py-2.5 ${error !== undefined ? "bg-red-50/70 dark:bg-red-500/10" : "opacity-50"}`}
+            >
+              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
+                {line.nombre}
+                {tallaDe(line) && <span className="text-slate-400"> · {tallaDe(line)}</span>}
+              </span>
+              <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                {line.sinTope}
+              </span>
+              {error !== undefined && (
+                <p role="alert" className="basis-full pl-5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                  {error}
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

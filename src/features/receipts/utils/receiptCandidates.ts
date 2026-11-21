@@ -1,9 +1,12 @@
 import { SALIDA_MAQUILA_ORIGENES } from "@/src/features/maquila-outputs/constants/salidaMaquilaOrigen";
 import type {
+  ReceiptOnboardingOrderDetalleBase,
   ReceiptOnboardingProductionOrder,
   ReceiptOnboardingSalidaMaquila,
+  ReceiptOnboardingSearch,
   ReceiptOrderCandidate,
 } from "../interfaces/receipt-onboarding.interface";
+import { topeRecepcion } from "./receiptQuantities";
 
 /**
  * Fila de la pestaña "Orden de Producción" del paso 1 (EC-912): una OP o una
@@ -148,4 +151,102 @@ export const productionTabRowMatches = (row: ProductionTabRow, term: string): bo
           salidaMaquilaOrigenNombre(row.salidaMaquila),
         ];
   return campos.some((campo) => (campo ?? "").toLowerCase().includes(term));
+};
+
+/**
+ * Renglones del candidato con la forma base del detalle: los de la OC/OP, o
+ * los de la SM de OB/OR normalizados (EC-912).
+ */
+export const candidateDetalle = (candidate: ReceiptOrderCandidate): ReceiptOnboardingOrderDetalleBase[] =>
+  candidate.type === "salida-maquila"
+    ? (candidate.salidaMaquila.detalle ?? []).map((r) => ({
+        id: r.id,
+        producto_id: 0,
+        producto_nombre: r.producto_nombre ?? "",
+        cantidad_ordenada: r.cantidad,
+        cantidad_recibida: r.cantidad_recibida,
+        cantidad_pendiente: r.cantidad_pendiente,
+        descripcion: r.descripcion,
+        sku: r.sku,
+      }))
+    : candidate.order.detalle;
+
+/**
+ * Pendiente de un renglón que aplica a ESTA recepción (EC-919):
+ *  - SM de OP: el de esa SM en el renglón (`salidas_maquila`, nucleo-erp
+ *    #1268). Un renglón sin la SM (o sin `salidas_maquila`) no se puede
+ *    recibir con ella: "0". Su `cantidad_pendiente` es lo de la OP DIRECTA.
+ *  - OP directa: `cantidad_pendiente`, que ya descuenta las piezas en maquila.
+ *  - SM de OB/OR: el pendiente de su propio renglón.
+ */
+export const candidateLinePendiente = (
+  candidate: ReceiptOrderCandidate,
+  d: ReceiptOnboardingOrderDetalleBase,
+): string => {
+  const smDeOp = candidate.type === "produccion" ? candidate.salidaMaquila : null;
+  if (!smDeOp) return d.cantidad_pendiente;
+  return d.salidas_maquila?.find((sm) => sm.id === smDeOp.id)?.cantidad_pendiente ?? "0";
+};
+
+/** ¿El renglón no va en la SM de OP que se recibe? */
+export const candidateLineFueraDeSm = (
+  candidate: ReceiptOrderCandidate,
+  d: ReceiptOnboardingOrderDetalleBase,
+): boolean => {
+  const smDeOp = candidate.type === "produccion" ? candidate.salidaMaquila : null;
+  return Boolean(smDeOp && !d.salidas_maquila?.some((sm) => sm.id === smDeOp.id));
+};
+
+/** Techo de captura por id de renglón (lo pendiente en piezas enteras). */
+export const candidateLineTopes = (candidate: ReceiptOrderCandidate): Map<number, number> =>
+  new Map(candidateDetalle(candidate).map((d) => [d.id, topeRecepcion(candidateLinePendiente(candidate, d))]));
+
+/**
+ * El mismo candidato armado con datos frescos del onboarding (EC-919): tras un
+ * 400 por renglón, los topes y el resumen salen de lo que el backend dice
+ * ahora. `null` si la orden o la SM ya no aparecen (se completó, se canceló o
+ * dejó de ser recibible): no hay con qué seguir.
+ */
+export const refreshCandidate = (
+  candidate: ReceiptOrderCandidate,
+  busqueda: ReceiptOnboardingSearch,
+): ReceiptOrderCandidate | null => {
+  const sm = (id: number) => busqueda.salidas_maquila?.find((s) => s.id === id) ?? null;
+  switch (candidate.type) {
+    case "compra": {
+      const order = busqueda.ordenes_compra.find((o) => o.id === candidate.order.id);
+      return order ? { type: "compra", order } : null;
+    }
+    case "produccion": {
+      const order = busqueda.ordenes_produccion.find((o) => o.id === candidate.order.id);
+      if (!order) return null;
+      if (!candidate.salidaMaquila) return { type: "produccion", order, salidaMaquila: null };
+      const salidaMaquila = sm(candidate.salidaMaquila.id);
+      return salidaMaquila ? { type: "produccion", order, salidaMaquila } : null;
+    }
+    case "salida-maquila": {
+      const salidaMaquila = sm(candidate.salidaMaquila.id);
+      return salidaMaquila ? { type: "salida-maquila", salidaMaquila } : null;
+    }
+  }
+};
+
+/**
+ * Qué le pasa a la SM con esta recepción, para el resumen del formulario
+ * (EC-919). Sin nada capturado no se dice nada; si regresa todo, o falta algo
+ * pero se marca "Cerrar la SM con faltante" (`cerrar_salida_maquila`), queda
+ * Recibida; si falta algo y no se cierra, sigue Enviada.
+ */
+export const salidaMaquilaDesenlace = ({
+  capturadas,
+  pendientes,
+  cerrar,
+}: {
+  capturadas: number;
+  pendientes: number;
+  cerrar: boolean;
+}): "nada" | "sigue-enviada" | "recibida-con-faltante" | "recibida" => {
+  if (capturadas <= 0) return "nada";
+  if (capturadas >= pendientes) return "recibida";
+  return cerrar ? "recibida-con-faltante" : "sigue-enviada";
 };
