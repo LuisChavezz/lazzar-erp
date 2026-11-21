@@ -9,6 +9,7 @@ import { ReceiptDetailShell } from "@/src/features/receipts/components/ReceiptDe
 import { ReceiptPdfButton } from "@/src/features/receipts/components/ReceiptPdfButton";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { receiptTipoOrigenLabel } from "../constants/receiptOrigin";
+import { receiptSalidaMaquilaRef } from "../utils/receiptPdf";
 
 interface ReceiptDetailDialogProps {
   /** ID de la recepción a consultar. `null` mantiene la consulta deshabilitada. */
@@ -32,12 +33,15 @@ export function ReceiptDetailDialog({
   // Vista WMS: mezcla recepciones de ambos orígenes, por lo que el encabezado
   // INCLUYE `tipo_origen` y adapta qué campos se muestran. Toda la lógica
   // condicional por origen vive aquí; `ReceiptDetailShell` permanece genérico.
+  const salidaMaquila = receipt ? receiptSalidaMaquilaRef(receipt) : null;
   const headerFields = receipt
     ? [
         {
           label: "Tipo de origen",
           value: receiptTipoOrigenLabel(receipt.tipo_origen),
         },
+        // SM con que regresó y su OP/OB/OR: "SM-00005 · OB-00012" (EC-919).
+        ...(salidaMaquila ? [{ label: "Salida a maquila", value: salidaMaquila }] : []),
         { label: "Almacén", value: receipt.almacen_nombre },
         { label: "Fecha de recepción", value: formatLocalDate(receipt.fecha_recepcion) },
         { label: "Sucursal", value: receipt.sucursal_nombre },

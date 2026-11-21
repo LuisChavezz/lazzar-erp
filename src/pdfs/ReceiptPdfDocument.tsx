@@ -122,6 +122,11 @@ export const ReceiptPdfDocument = ({ receipt, company }: ReceiptPdfDocumentProps
             { label: "Estatus", value: textOrDash(receipt.estatus_label) },
             { label: "Origen", value: origin.label },
             { label: "Folio de origen", value: origin.folio ?? EMPTY_VALUE },
+            // Una SM de OP regresa como recepción de su OP: la SM va aparte
+            // (en "SM" ya es el folio de origen). EC-919.
+            ...(origin.salidaMaquila && origin.folio !== origin.salidaMaquila
+              ? [{ label: "Salida a maquila", value: origin.salidaMaquila }]
+              : []),
             { label: "Remisión", value: textOrDash(receipt.remision) },
             { label: "Factura de referencia", value: textOrDash(receipt.factura_referencia) },
           ]}

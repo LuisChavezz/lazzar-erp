@@ -26,9 +26,30 @@ export const receiptPdfDescriptor = (
 export interface ReceiptOrigin {
   /** "Orden de compra" / "Orden de producción" / "Salida a maquila". */
   label: string;
-  /** Folio de la OC o de la OP según `tipo_origen`; `null` si no llegó. */
+  /**
+   * Folio de la OC o de la OP según `tipo_origen`; en "SM", la referencia de la
+   * SM (`receiptSalidaMaquilaRef`). `null` si no llegó.
+   */
   folio: string | null;
+  /** SM con que regresó, si es de una ("SM-00005 · OB-00012"); `null` si no. */
+  salidaMaquila: string | null;
 }
+
+type ReceiptSalidaMaquilaFields = Partial<
+  Pick<ReceiptDetail, "salida_maquila_folio" | "salida_maquila_origen_folio">
+>;
+
+/**
+ * "SM-00005 · 2026-OB-00012": la SM con que regresó la recepción y el folio de
+ * su OP/OB/OR (EC-919). Los folios se muestran tal cual (dependen de la serie).
+ * `null` si la recepción no es de una SM.
+ */
+export const receiptSalidaMaquilaRef = (receipt: ReceiptSalidaMaquilaFields): string | null => {
+  const sm = receipt.salida_maquila_folio?.trim();
+  if (!sm) return null;
+  const origen = receipt.salida_maquila_origen_folio?.trim();
+  return origen ? `${sm} · ${origen}` : sm;
+};
 
 /**
  * Origen por `tipo_origen`: el folio de la OC (`orden_compra_folio`) o el de
@@ -37,20 +58,24 @@ export interface ReceiptOrigin {
  * `tipo_origen` que no sea "OC" ni "OP" se dice "Desconocido", como en el
  * diálogo de WMS, en vez de suponer una orden de compra.
  */
-export const receiptOrigin = (receipt: {
-  tipo_origen: string;
-  orden_compra_folio: string | null;
-  op_folio: string | null;
-}): ReceiptOrigin => {
+export const receiptOrigin = (
+  receipt: {
+    tipo_origen: string;
+    orden_compra_folio: string | null;
+    op_folio: string | null;
+  } & ReceiptSalidaMaquilaFields,
+): ReceiptOrigin => {
+  const salidaMaquila = receiptSalidaMaquilaRef(receipt);
   if (receipt.tipo_origen === "OC") {
-    return { label: "Orden de compra", folio: receipt.orden_compra_folio?.trim() || null };
+    return { label: "Orden de compra", folio: receipt.orden_compra_folio?.trim() || null, salidaMaquila };
   }
   if (receipt.tipo_origen === "OP") {
-    return { label: "Orden de producción", folio: receipt.op_folio?.trim() || null };
+    // Una SM de OP regresa como recepción de su OP, con la SM puesta.
+    return { label: "Orden de producción", folio: receipt.op_folio?.trim() || null, salidaMaquila };
   }
   if (receipt.tipo_origen === "SM") {
-    // Regreso de una SM de OB/OR (EC-912): el retrieve no trae su folio.
-    return { label: "Salida a maquila", folio: null };
+    // Regreso de una SM de OB/OR: su folio de origen es la SM (nucleo-erp #1237).
+    return { label: "Salida a maquila", folio: salidaMaquila, salidaMaquila };
   }
-  return { label: "Desconocido", folio: null };
+  return { label: "Desconocido", folio: null, salidaMaquila };
 };
