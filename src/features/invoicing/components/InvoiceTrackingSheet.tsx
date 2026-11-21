@@ -145,7 +145,9 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
             </div>
             <div className="mt-4">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-500 dark:text-slate-400">Avance facturado</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  Piezas en facturas (incluye Borrador)
+                </span>
                 <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">
                   {Math.round(pctFacturado)}%
                 </span>
@@ -156,9 +158,6 @@ export function InvoiceTrackingSheet({ data, query, canOpen }: InvoiceTrackingSh
                   style={{ width: `${pctFacturado}%` }}
                 />
               </div>
-              <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
-                Cuenta las facturas activas no canceladas del pedido, Borrador incluido.
-              </p>
             </div>
           </>
         ) : (
