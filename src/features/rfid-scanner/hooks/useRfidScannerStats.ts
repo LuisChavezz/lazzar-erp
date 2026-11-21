@@ -14,15 +14,20 @@ export const RFID_SCANNER_STATS_POLL_INTERVAL_MS = 15000;
  * Estado del lector RFID (`GET /wms/etiquetas-rfid/scanner-stats/`).
  * Llave `["rfid-scanner-stats"]`.
  *
+ * `enabled`: el backend solo responde a superusuario o administrador de
+ * empresa (403 a cualquier otro), así que quien llama pasa
+ * `useIsCompanyAdmin()` y a los demás no se les pide. Deshabilitada, la
+ * consulta no carga ni sondea (`stats` indefinido, `isLoading` falso); ojo,
+ * `refetch()` sí la forzaría, por eso `RfidScannerView` también lo condiciona.
+ *
  * Se trae al montar y, mientras `polling` esté encendido (el monitoreo de la
  * pantalla), se vuelve a pedir cada 15 s. Sin ese ciclo el total quedaba como
  * una foto del montaje: tras una purga marcaba 0 para siempre y dejaba el botón
- * "Limpiar lecturas" deshabilitado aunque llegaran lecturas que la tabla de un
- * no-superusuario no muestra (ver `fetchRfidScans`).
+ * "Limpiar lecturas" deshabilitado aunque siguieran llegando lecturas nuevas a
+ * la empresa activa — con el monitoreo detenido la tabla no las trae.
  *
- * El polling se APAGA en cuanto la consulta falla —un 403 para quien no es
- * administrador, o cualquier otro error— para no repetir cada 15 s una
- * petición que va a seguir fallando. `refetchInterval` se recalcula en cada
+ * El polling se APAGA en cuanto la consulta falla —sea el error que sea— para
+ * no repetir cada 15 s una petición que va a seguir fallando. `refetchInterval` se recalcula en cada
  * actualización de la consulta, así que vuelve solo cuando un refetch tiene
  * éxito, y eso únicamente ocurre por los disparadores explícitos: encender el
  * monitoreo, el botón de actualizar o una purga (ver `RfidScannerView` y
@@ -37,10 +42,11 @@ export const RFID_SCANNER_STATS_POLL_INTERVAL_MS = 15000;
  * indicador de estado sería ruido. El fallo se comunica en la propia barra
  * (estado "desconocido"), sin fingir que el lector está caído.
  */
-export const useRfidScannerStats = (polling: boolean) => {
+export const useRfidScannerStats = (polling: boolean, enabled: boolean) => {
   const query = useQuery<RfidScannerStatsResponse>({
     queryKey: ["rfid-scanner-stats"],
     queryFn: fetchScannerStats,
+    enabled,
     refetchInterval: (query) =>
       polling && query.state.status !== "error"
         ? RFID_SCANNER_STATS_POLL_INTERVAL_MS

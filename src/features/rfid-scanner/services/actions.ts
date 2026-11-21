@@ -36,13 +36,16 @@ export const fetchScannerStats = async (): Promise<RfidScannerStatsResponse> => 
 /**
  * Vacía el buffer de lecturas (`POST /wms/etiquetas-rfid/scans/clear/`).
  *
- * DESTRUCTIVO Y GLOBAL: hace `RfidScan.objects.all().delete()` — sin filtro por
- * empresa, sucursal ni fecha, porque el modelo todavía no tiene FK a empresa.
- * Un administrador borra también las lecturas de las demás empresas del ERP.
+ * DESTRUCTIVO: borra TODAS las lecturas de la empresa activa del usuario, de
+ * todas sus sucursales y sin filtro de fecha (`RfidScan.objects.visibles_para`,
+ * EC-884). No toca las de otras empresas ni las que no tienen empresa (tags
+ * ajenos sin lector); esas solo se borran desde el Django admin. Un
+ * superusuario sin empresa activa recibe 200 con `deleted: 0`.
  *
  * El backend lo restringe a superusuario o administrador de empresa y responde
  * 403 `{ detail }` a cualquier otro usuario — esa es la frontera real; el gate
- * de la UI (ver `RfidScannerView`) solo evita ofrecer un botón que fallaría.
+ * de la UI (`useIsCompanyAdmin` en `RfidScannerView`) solo evita ofrecer un
+ * botón que fallaría. No depende de ningún código del catálogo de permisos.
  */
 export const clearRfidScans = async (): Promise<ClearRfidScansResponse> => {
   const response = await v1_api.post<ClearRfidScansResponse>(
