@@ -9,7 +9,7 @@ import { PurchaseOrderDetailDialog } from "@/src/features/purchase-orders/compon
 import { PedidoQuoteDetailDialog } from "./PedidoQuoteDetailDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import { SalidaMaquilaDetailByIdDialog } from "@/src/features/maquila-outputs/components/SalidaMaquilaDetailByIdDialog";
-import { invoiceDetailHref, invoiceDetailPath } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
+import { invoiceDetailHref } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
 
 /**
  * Llave del registro que abre el detalle de un picking. La usan la hoja
@@ -98,10 +98,13 @@ export function hasOrderDocumentDialog(tipo: string): boolean {
   return Object.hasOwn(ORDER_DOCUMENT_DIALOGS, tipo);
 }
 
+/** Tipo de documento de la factura en el registro de páginas de detalle. */
+export const FACTURA_DOC_TIPO = "factura";
+
 /**
  * Tipos de documento que se abren en su PÁGINA de detalle en vez de un diálogo.
- * `path` es la ruta que evalúa el proxy (para ofrecer el enlace solo a quien
- * puede abrirla); `href`, la URL con el origen para su "Volver".
+ * `href` es la URL con el origen para su "Volver"; el enlace pasa por
+ * `AccessibleLink`, que evalúa su ruta con la regla del proxy.
  *
  * A diferencia de los diálogos de arriba —que la regla `/orders` deja abrir a
  * cualquiera que vea el pedido, porque el backend no filtra ese detalle por
@@ -109,13 +112,11 @@ export function hasOrderDocumentDialog(tipo: string): boolean {
  * respeta esa regla: sin permiso, el documento queda como texto.
  */
 interface OrderDocumentRoute {
-  path: (docId: number) => string;
   href: (docId: number, pedidoId: number) => string;
 }
 
 export const ORDER_DOCUMENT_ROUTES: Record<string, OrderDocumentRoute> = {
-  factura: {
-    path: invoiceDetailPath,
+  [FACTURA_DOC_TIPO]: {
     href: (docId, pedidoId) => invoiceDetailHref(docId, "order", { pedido: pedidoId }),
   },
 };
