@@ -527,7 +527,9 @@ export function PedidoDetailContent({
           contenido y debajo de diálogos y popovers (van en portal). */}
       <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 dark:border-white/5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-sm dark:shadow-none px-6 md:px-8 py-3">
         {BackLink}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* `min-w-0 max-w-full`: en un teléfono el selector de hojas se
+            desplaza dentro de la barra en vez de ensancharla. */}
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           {/* Cambio de hoja: enlaces reales que conservan `from` y el resto de la query. */}
           <OrderDetailSheetSelector
             sheets={sheets}

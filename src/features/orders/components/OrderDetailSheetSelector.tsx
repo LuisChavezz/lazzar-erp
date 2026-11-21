@@ -29,7 +29,9 @@ export function OrderDetailSheetSelector({ sheets, active, hrefFor }: OrderDetai
   return (
     <nav
       aria-label="Hojas del pedido"
-      className="inline-flex rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-1"
+      // Con cuatro hojas no cabe en un teléfono: se desplaza en horizontal en
+      // vez de salirse de la barra.
+      className="inline-flex max-w-full overflow-x-auto rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-1"
     >
       {sheets.map((sheet) => {
         const isActive = sheet === active;
@@ -38,7 +40,7 @@ export function OrderDetailSheetSelector({ sheets, active, hrefFor }: OrderDetai
             key={sheet}
             href={hrefFor(sheet)}
             aria-current={isActive ? "page" : undefined}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+            className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
               isActive
                 ? "bg-white dark:bg-zinc-800 text-sky-700 dark:text-sky-300 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
