@@ -6,11 +6,9 @@ import { useSession } from "next-auth/react";
 import {
   ExclamationTriangleIcon,
   PedidosIcon,
-  RouteIcon,
   TraspasosIcon,
   WarehouseIcon,
 } from "@/src/components/Icons";
-import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   EmptyLines,
@@ -29,7 +27,6 @@ import { PICKING_TIPO_LABELS } from "../constants/pickingTipo";
 import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.interface";
 import { isPickingTrasladable } from "../utils/picking.utils";
 import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
-import { PickingPdfButton } from "./PickingPdfButton";
 import { PickingTransferDialog } from "./PickingTransferDialog";
 
 /** Nombre del producto/variante surtido en una línea. Solo uno de los dos
@@ -118,59 +115,21 @@ const InfoStep = ({
   </div>
 );
 
-interface PickingDetailDialogProps {
-  /** La fila ya cargada por el listado — sin fetch propio (ver
-   *  `Picking.picking_detalle`, presente tanto en listado como en detalle).
-   *  Es la fila enriquecida (`PickingRow`), no el registro crudo, para que el
-   *  diálogo marque el vencimiento con la MISMA definición que la tabla. */
-  picking: PickingRow;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export function PickingDetailDialog({ picking, open, onOpenChange }: PickingDetailDialogProps) {
-  return (
-    <MainDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      maxWidth="820px"
-      showCloseButton={true}
-      // "Descargar PDF" junto al título (EC-858); el encabezado de `MainDialog`
-      // ya reserva el espacio de la X.
-      headerAction={<PickingPdfButton picking={picking} />}
-      title={
-        <div className="flex items-center gap-2.5">
-          <RouteIcon className="w-5 h-5 text-sky-500 shrink-0" />
-          <div>
-            <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
-              Detalle de Surtido
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {picking.folio}
-            </p>
-          </div>
-        </div>
-      }
-    >
-      <PickingDetailContent picking={picking} />
-    </MainDialog>
-  );
-}
-
 /**
- * Cuerpo del detalle de picking, extraído para que el diálogo original y el
- * envoltorio por id (`PickingDetailByIdDialog`) compartan un ÚNICO `MainDialog`
- * y solo intercambien el contenido (loader → cuerpo), sin remontar el modal.
+ * Cuerpo del detalle de picking. Lo monta `PickingDetailByIdDialog` dentro de
+ * un ÚNICO `MainDialog` que solo intercambia el contenido (loader → cuerpo),
+ * sin remontar el modal.
  *
- * Aquí vive también la acción "Trasladar a otro almacén", así que está en los
- * dos lugares donde se abre el detalle (el listado de picking y el detalle del
- * pedido). Se ofrece con `C-WMS-PICKING` (el mismo código que da de alta un
- * surtido; `hasPermission` ya deja pasar al rol admin) y solo si el picking es
- * trasladable (`isPickingTrasladable`): estatus trasladable, aunque ya esté
- * surtido. Tras un traslado exitoso ambos dueños reciben el `picking`
- * actualizado sin desmontar este cuerpo. Si el surtido deja de existir (404),
- * este cuerpo SÍ desaparece al refrescarse —y con él el diálogo—, por eso ese
- * error se avisa con un toast (ver `useTransferPicking`).
+ * Aquí vive también la acción "Trasladar a otro almacén", así que está en todos
+ * los lugares donde se abre el detalle (el listado de picking, el detalle del
+ * pedido y la auditoría documental). Se ofrece con `C-WMS-PICKING` (el mismo
+ * código que da de alta un surtido; `hasPermission` ya deja pasar al rol admin)
+ * y solo si el picking es trasladable (`isPickingTrasladable`): estatus
+ * trasladable, aunque ya esté surtido. Tras un traslado exitoso el detalle
+ * recibe el `picking` actualizado (`["picking-detail", id]`) sin desmontar este
+ * cuerpo. Si el surtido deja de existir (404), este cuerpo SÍ desaparece al
+ * refrescarse —y con él el diálogo—, por eso ese error se avisa con un toast
+ * (ver `useTransferPicking`).
  */
 export function PickingDetailContent({ picking }: { picking: PickingRow }) {
   const { data: session } = useSession();

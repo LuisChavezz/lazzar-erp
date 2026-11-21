@@ -7,9 +7,9 @@ import { pickingPdfDescriptor } from "../utils/pickingPdf";
 import { pickingPdfSource } from "../utils/pickingPdfSource";
 
 /**
- * "Descargar PDF" de un surtido (EC-858), junto al título de sus dos diálogos de
- * detalle: `PickingDetailDialog` (listado de picking) y `PickingDetailByIdDialog`
- * (detalle del pedido y bitácora de documentos).
+ * "Descargar PDF" de un surtido (EC-858), junto al título de su diálogo de
+ * detalle (`PickingDetailByIdDialog`: listado de picking, detalle del pedido y
+ * bitácora de documentos).
  */
 export function PickingPdfButton({ picking }: { picking: Pick<Picking, "id" | "folio" | "estado"> }) {
   return (
