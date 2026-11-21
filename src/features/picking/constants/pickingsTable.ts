@@ -52,8 +52,10 @@ export const PICKING_ENTREGA_LABELS: Record<PickingEntregaVentana, string> = {
  * - `periodo` y `entrega` son de la URL: `pickingsApiParams` los traduce a los
  *   rangos de fecha del backend con el día de México.
  * - `search`: folio, pedido o cliente.
- * - `ordering`: `created_at`, `pedido_fecha_entrega`, `piezas`, `estado_empaque`;
- *   el backend desempata por `id` en la misma dirección.
+ * - `ordering`: `created_at`, `pedido_fecha_entrega`, `piezas`, `estado_empaque`,
+ *   con `-id` de desempate fijo (como el resto de las listas en modo servidor):
+ *   sin él, las filas con el mismo valor pueden repetirse o perderse entre
+ *   páginas si el backend cambia su desempate implícito.
  * - Paginación `limit`/`offset`.
  */
 export const pickingsTable = defineServerTable({
@@ -70,6 +72,7 @@ export const pickingsTable = defineServerTable({
   ordering: {
     fields: ["created_at", "pedido_fecha_entrega", "piezas", "estado_empaque"],
     default: "-created_at",
+    tiebreaker: "-id",
   },
   pageSizes: [20, 50, 100],
   defaultPageSize: 20,
