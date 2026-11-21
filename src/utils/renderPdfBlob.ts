@@ -16,8 +16,10 @@
  *
  * Si falla la DESCARGA de un chunk (`isChunkLoadError`), se lanza un error con
  * un mensaje legible propio del PDF en vez del "Failed to load chunk …" del
- * bundler; el original queda en `cause`. Cualquier otro error —al evaluar el
- * módulo o al renderizar el PDF— se propaga tal cual.
+ * bundler; el original queda en `cause`. Lo mismo si al renderizar falla la
+ * descarga de la fuente del PDF (`isPdfFontLoadError`: la Arimo de
+ * `documentPdfFonts`, que react-pdf pide a `/fonts/pdf`). Cualquier otro error
+ * —al evaluar el módulo o al renderizar el PDF— se propaga tal cual.
  *
  * La lógica vive en `renderPdfBlobWith`, que además recibe de dónde cargar el
  * renderer: lo usan las pruebas unitarias con uno falso. Los generadores usan
@@ -30,6 +32,23 @@ import { isChunkLoadError } from "./isChunkLoadError";
 
 export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
   "No se pudo cargar el generador de PDF. Recarga la página e intenta de nuevo.";
+
+/** Pide recargar: react-pdf guarda la descarga fallida y no la reintenta en la misma página. */
+export const PDF_FONT_LOAD_ERROR_MESSAGE =
+  "No se pudo cargar la fuente del PDF. Recarga la página e intenta de nuevo.";
+
+/**
+ * ¿Falló la descarga de la fuente al renderizar? react-pdf la pide con
+ * `fetch`: sin red lanza un `TypeError` cuyo texto depende del navegador
+ * (Chrome "Failed to fetch", Firefox "NetworkError when attempting to fetch
+ * resource.", Safari "Load failed"); si en lugar del archivo llega otra cosa
+ * (una página HTML de error), fontkit lanza "Unknown font format". Las
+ * imágenes que fallan no llegan aquí: react-pdf las omite sin lanzar.
+ */
+export const isPdfFontLoadError = (error: unknown): boolean =>
+  error instanceof Error &&
+  ((error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message)) ||
+    error.message === "Unknown font format");
 
 /** Lo único que se usa de `@react-pdf/renderer` (misma firma que su `pdf`). */
 export interface PdfRenderer {
@@ -60,5 +79,10 @@ export async function renderPdfBlobWith<P extends object>(
   // Cada documento de `src/pdfs/` es un componente cuya raíz es `<Document>`,
   // pero su elemento lleva SUS props, no las de `Document`; el tipo no puede
   // expresar esa relación (con JSX se perdía igual, como `JSX.Element`).
-  return renderer.pdf(createElement(PdfDocument, props) as ReactElement<DocumentProps>).toBlob();
+  return renderer
+    .pdf(createElement(PdfDocument, props) as ReactElement<DocumentProps>)
+    .toBlob()
+    .catch((error: unknown) => {
+      throw isPdfFontLoadError(error) ? new Error(PDF_FONT_LOAD_ERROR_MESSAGE, { cause: error }) : error;
+    });
 }

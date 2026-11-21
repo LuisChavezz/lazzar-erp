@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { ReactElement } from "react";
 import {
+  PDF_FONT_LOAD_ERROR_MESSAGE,
   PDF_GENERATOR_LOAD_ERROR_MESSAGE,
   renderPdfBlobWith,
   type PdfRenderer,
@@ -104,6 +105,37 @@ test("un error de import que no es de chunk se propaga sin cambios", async () =>
     () => Promise.reject(original),
     { label: "x" },
   ).catch((e: unknown) => e);
+
+  expect(error).toBe(original);
+});
+
+// EC-892: la fuente del PDF (Arimo) se descarga al renderizar.
+for (const [caso, original] of [
+  ["sin red (Chrome)", new TypeError("Failed to fetch")],
+  ["sin red (Firefox)", new TypeError("NetworkError when attempting to fetch resource.")],
+  ["sin red (Safari)", new TypeError("Load failed")],
+  ["respuesta que no es una fuente", new Error("Unknown font format")],
+] as const) {
+  test(`un fallo al descargar la fuente al renderizar se traduce: ${caso}`, async () => {
+    const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
+
+    const error = await renderPdfBlobWith(loadRenderer, async () => SampleDocument, {
+      label: "x",
+    }).catch((e: unknown) => e);
+
+    expect((error as Error).message).toBe(PDF_FONT_LOAD_ERROR_MESSAGE);
+    expect((error as Error).cause).toBe(original);
+    expect(extractErrorMessage(error, "fallback")).toBe(PDF_FONT_LOAD_ERROR_MESSAGE);
+  });
+}
+
+test("un TypeError al renderizar que no es de red se propaga sin cambios", async () => {
+  const original = new TypeError("Cannot read properties of undefined (reading 'x')");
+  const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
+
+  const error = await renderPdfBlobWith(loadRenderer, async () => SampleDocument, {
+    label: "x",
+  }).catch((e: unknown) => e);
 
   expect(error).toBe(original);
 });
