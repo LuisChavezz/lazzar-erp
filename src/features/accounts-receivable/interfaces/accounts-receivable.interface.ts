@@ -41,6 +41,21 @@ export interface CuentaPorCobrar {
   observaciones: string | null;
   created_at: string;
   updated_at: string;
+  // Estado del CFDI de la factura (nucleo-erp#1187, EC-928). Opcionales: el
+  // esquema desplegado los marca obligatorios, pero sin ellos la CxC se trata
+  // como antes y el backend sigue rechazando el cobro al aplicarlo.
+  /** CFDI ya cancelado ante el SAT. */
+  factura_cfdi_cancelado?: boolean;
+  /** Cancelación solicitada; falta que el receptor la acepte. */
+  factura_cfdi_cancelacion_solicitada?: boolean;
+  /** Facturama no confirmó el timbrado de la factura. */
+  factura_cfdi_pendiente?: boolean;
+  /**
+   * ¿Admite un cobro al aplicarlo? `false` con saldo en 0, CxC `Cancelada`,
+   * factura cancelada o en cancelación (también la cancelación en curso, que no
+   * tiene campo propio) o con timbrado pendiente. Ver `getCxcCobroEligibility`.
+   */
+  cobrable?: boolean;
 }
 
 /**
