@@ -87,7 +87,18 @@ export type WholeQuantityEvent =
   /** Tecla pulsada (`keydown`). */
   | { type: "key"; key: string }
   /** Texto nuevo del input (`change`); `shown` es el que mostraba antes. */
-  | { type: "text"; raw: string; shown: string; min: number }
+  | {
+      type: "text";
+      raw: string;
+      shown: string;
+      min: number;
+      /**
+       * El navegador lo reportó como borrado (`inputType` "delete…"): solo así
+       * se truncan los decimales (EC-924). Reemplazar una selección tecleando
+       * puede dejar el mismo texto que un borrado y no cuenta.
+       */
+      deletion?: boolean;
+    }
   /** Texto pegado (`paste`), antes de que el navegador lo inserte. */
   | { type: "paste"; text: string; min: number }
   /** Clic en el campo: el cursor se movió con el mouse. */
@@ -125,7 +136,8 @@ export function reduceWholeQuantity(state: WholeQuantityState, event: WholeQuant
         return { state: { fractionBlocked: true, showHint: true } };
       }
       const next =
-        parseWholeQuantity(event.raw, event.min) ?? truncateFractionDeletion(event.raw, event.shown, event.min);
+        parseWholeQuantity(event.raw, event.min) ??
+        (event.deletion ? truncateFractionDeletion(event.raw, event.shown, event.min) : null);
       if (next === null) {
         // Un separador que no pasó por `keydown` (IME, teclado móvil) abre la
         // parte decimal; una letra o un signo solo se rechazan.
