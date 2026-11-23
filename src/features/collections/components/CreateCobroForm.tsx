@@ -60,6 +60,8 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
     bankAccountOptions,
     selectorMoneda,
     saldoFor,
+    lineApplyBlockReason,
+    applyBlockReason,
     lineKeys,
     serverBanner,
     dismissBanner,
@@ -387,13 +389,21 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                     <div className="space-y-3">
                       {arrayField.state.value.map((line, index) => {
                         const lineFormError = getError(`cobro_detalles.${index}._form`);
+                        // CFDI de la factura cancelado, en cancelación o con timbrado
+                        // pendiente (EC-928): aviso en la línea; aplicar queda bloqueado,
+                        // guardar el borrador no. Si el envío ya lo marcó como error, no
+                        // se repite.
+                        const lineWarning = lineApplyBlockReason(line);
+                        const showLineWarning = lineWarning !== null && lineFormError?.message !== lineWarning;
                         return (
                           <div
                             key={lineKeys[index] ?? index}
                             className={`rounded-2xl border px-4 py-3 space-y-2 ${
                               lineFormError
                                 ? "border-rose-300 dark:border-rose-500/40 bg-rose-50/60 dark:bg-rose-500/5"
-                                : "border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5"
+                                : lineWarning
+                                  ? "border-amber-300 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/5"
+                                  : "border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -424,6 +434,11 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
                             {lineFormError && (
                               <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
                                 {lineFormError.message}
+                              </p>
+                            )}
+                            {showLineWarning && (
+                              <p role="status" className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                {lineWarning}
                               </p>
                             )}
 
@@ -490,7 +505,18 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
           </FormSection>
 
           {/* Guardar como borrador no mueve saldos ni exige líneas; registrar
-              (o aplicar, en edición) valida el cobro completo. */}
+              (o aplicar, en edición) valida el cobro completo. Una línea cuyo
+              CFDI ya no admite cobros bloquea solo registrar/aplicar, con el
+              motivo junto a los botones (mismo patrón que "Emitir nota"). */}
+          {applyBlockReason && (
+            <p
+              id="cobro-apply-block-reason"
+              role="status"
+              className="-mb-2 text-xs font-medium text-amber-700 dark:text-amber-400 text-right"
+            >
+              {applyBlockReason}
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
             {/* En edición cierra sin guardar; en el alta limpia el formulario. */}
             <FormCancelButton
@@ -514,8 +540,10 @@ export function CreateCobroForm({ onSuccess, draft, onCancel, submitLockRef }: C
             />
             <FormSubmitButton
               isPending={isPending}
-              disabled={isBlocked}
-              aria-describedby={blockedNoteIds}
+              disabled={isBlocked || applyBlockReason !== null}
+              aria-describedby={
+                [blockedNoteIds, applyBlockReason && "cobro-apply-block-reason"].filter(Boolean).join(" ") || undefined
+              }
               loadingLabel={
                 submittingEstatus === "Borrador" ? (isEdit ? "Aplicar cobro" : "Registrar cobro") : isEdit ? "Aplicando..." : "Registrando..."
               }
