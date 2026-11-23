@@ -6,7 +6,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { useReceiptDetail } from "@/src/features/receipts/hooks/useReceiptDetail";
 import { ReceiptDetailShell } from "@/src/features/receipts/components/ReceiptDetailShell";
-import { ReceiptPdfButton } from "@/src/features/receipts/components/ReceiptPdfButton";
+import { ReceiptHeaderActions } from "@/src/features/receipts/components/ReceiptHeaderActions";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { receiptTipoOrigenLabel } from "../constants/receiptOrigin";
 import { receiptSalidaMaquilaRef } from "../utils/receiptPdf";
@@ -58,8 +58,9 @@ export function ReceiptDetailDialog({
       ]
     : [];
 
-  // "Descargar PDF" junto al título (EC-856), una vez cargada la recepción.
-  const pdfAction = receipt && !isError ? <ReceiptPdfButton receipt={receipt} /> : null;
+  // "Descargar PDF" (EC-856) y, si `puede_cancelar`, "Cancelar" (EC-925) junto
+  // al título, una vez cargada la recepción.
+  const pdfAction = receipt && !isError ? <ReceiptHeaderActions receipt={receipt} /> : null;
 
   return (
     <MainDialog
