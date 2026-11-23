@@ -7,6 +7,8 @@ import { RECEIPT_STATUS_CONFIG } from "../constants/receiptStatus";
 import { SkuCode } from "@/src/components/SkuCode";
 import { hasLineCode } from "@/src/utils/sku";
 import { formatCantidadRecibida, totalCantidadRecibida } from "../utils/receiptQuantities";
+import { formatShortDateTime } from "@/src/utils/formatDate";
+import { isReceiptCancelled } from "../utils/receiptPdf";
 
 // ── Shell presentacional compartido del detalle de recepción ──────────────────
 // Recibe un `ReceiptDetail` YA CARGADO (no hace fetch — eso vive en el diálogo
@@ -91,6 +93,35 @@ const DetalleList = ({ detalles }: { detalles: ReceiptDetailLine[] }) => {
   );
 };
 
+/**
+ * Quién, cuándo y por qué se canceló (EC-925; campos de nucleo-erp EC-926).
+ * Solo en una recepción cancelada. Una cancelada antes de EC-926 sin evento de
+ * auditoría trae los tres en `null`: se dice "—" en vez de esconder el bloque.
+ */
+const CancellationInfo = ({ receipt }: { receipt: ReceiptDetail }) => (
+  <section
+    aria-label="Cancelación"
+    className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 space-y-2"
+  >
+    <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+      Recepción cancelada
+    </h3>
+    <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-line wrap-break-word">
+      {receipt.motivo_cancelacion?.trim() || "Sin motivo registrado."}
+    </p>
+    <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+      <div className="flex gap-1.5">
+        <dt className="text-slate-500 dark:text-slate-400">Fecha:</dt>
+        <dd>{formatShortDateTime(receipt.fecha_cancelacion)}</dd>
+      </div>
+      <div className="flex gap-1.5">
+        <dt className="text-slate-500 dark:text-slate-400">Canceló:</dt>
+        <dd>{receipt.cancelado_por_nombre?.trim() || "—"}</dd>
+      </div>
+    </dl>
+  </section>
+);
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function ReceiptDetailShell({
@@ -120,6 +151,8 @@ export function ReceiptDetailShell({
           {lineas} {lineas === 1 ? "producto" : "productos"}
         </span>
       </div>
+
+      {isReceiptCancelled(receipt) && <CancellationInfo receipt={receipt} />}
 
       {/* Información general (+ remisión / factura en OC) */}
       <InfoTileGrid>
