@@ -9,12 +9,9 @@ import {
   CheckCircleIcon,
 } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
-import {
-  resolveNotificationIconVariant,
-} from "../constants/notificationTargets";
 import type { NotificacionesListState } from "../hooks/useNotificaciones";
 import { refocusOnUnmount } from "../utils/refocusOnUnmount";
-import { NotificationIcon } from "./NotificationIcon";
+import { NotificationTypeIcon } from "./NotificationIcon";
 import { NotificationsListStatus } from "./NotificationsListStatus";
 import { NotificationTimestamp } from "./NotificationTimestamp";
 
@@ -221,9 +218,7 @@ function NotificationsDialogBody({
                   }`}
                   role="listitem"
                 >
-                  <NotificationIcon
-                    variant={resolveNotificationIconVariant(notificacion.tipo)}
-                  />
+                  <NotificationTypeIcon tipo={notificacion.tipo} />
                   <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-2">
                     <div className="min-w-0">
                       {actionable ? (
