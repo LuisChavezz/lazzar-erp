@@ -1,7 +1,9 @@
 /**
  * Reglas de captura de `QuantitySelector`, que solo acepta ENTEROS (EC-900).
  * Lo escrito nunca se transforma en otro número: antes se borraba todo lo que
- * no fuera dígito y "1.5" se guardaba como 15.
+ * no fuera dígito y "1.5" se guardaba como 15. La única excepción es borrar
+ * decimales de un valor fraccionario ya mostrado, que lo trunca al entero
+ * (EC-924, `truncateFractionDeletion`).
  *
  * `reduceWholeQuantity` decide, a partir del estado del selector y de un
  * evento del input, el valor nuevo (si cambia), el estado siguiente y si se
@@ -33,6 +35,30 @@ export const parseWholeQuantity = (raw: string, min: number): number | null => {
   if (raw === "") return min;
   if (!/^\d+$/.test(raw)) return null;
   return Math.max(min, Number.parseInt(raw, 10));
+};
+
+/** ¿`sub` se obtiene de `full` borrando caracteres (sin insertar ni reemplazar)? */
+const isDeletionOf = (sub: string, full: string): boolean => {
+  if (sub.length >= full.length) return false;
+  let i = 0;
+  for (const char of full) if (char === sub[i]) i += 1;
+  return i === sub.length;
+};
+
+/**
+ * Entero que queda al BORRAR parte de los decimales de un valor fraccionario
+ * mostrado (EC-924): "10.5" → "10." y "10.25" → "10.2" dejan 10 (al menos
+ * `min`). Así un valor fijado por "Todo" se puede corregir con Backspace en
+ * lugar de quedarse pegado. `null` si el cambio no es eso: un texto escrito
+ * ("10.7" sobre "10.5"), un borrado que toca la parte entera ("1.5" desde
+ * "10.5") o un valor mostrado que ya era entero; esos siguen las reglas de
+ * siempre. Nunca acepta un decimal: el resultado es la parte entera.
+ */
+export const truncateFractionDeletion = (raw: string, shown: string, min: number): number | null => {
+  const shownMatch = /^(\d+)\.\d+$/.exec(shown);
+  const rawMatch = /^(\d+)\.\d*$/.exec(raw);
+  if (!shownMatch || !rawMatch || rawMatch[1] !== shownMatch[1] || !isDeletionOf(raw, shown)) return null;
+  return Math.max(min, Number.parseInt(rawMatch[1], 10));
 };
 
 /**
@@ -98,7 +124,8 @@ export function reduceWholeQuantity(state: WholeQuantityState, event: WholeQuant
       if (state.fractionBlocked && event.raw.length >= event.shown.length) {
         return { state: { fractionBlocked: true, showHint: true } };
       }
-      const next = parseWholeQuantity(event.raw, event.min);
+      const next =
+        parseWholeQuantity(event.raw, event.min) ?? truncateFractionDeletion(event.raw, event.shown, event.min);
       if (next === null) {
         // Un separador que no pasó por `keydown` (IME, teclado móvil) abre la
         // parte decimal; una letra o un signo solo se rechazan.

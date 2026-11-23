@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { capturaManualRecepcion } from "@/src/features/receipts/utils/receiptQuantities";
 import {
   isDecimalSeparatorKey,
   isPastableWholeQuantity,
   parseWholeQuantity,
   reduceWholeQuantity,
   stepWholeQuantity,
+  truncateFractionDeletion,
   WHOLE_QUANTITY_IDLE,
   type WholeQuantityEvent,
   type WholeQuantityState,
@@ -163,5 +165,86 @@ test.describe("reduceWholeQuantity: secuencias de captura", () => {
     expect(capturar(0.5, [{ paso: -1 }])).toEqual({ value: 0, hint: false });
     // Teclear sobre el 10.5 seleccionado lo reemplaza por un entero.
     expect(capturar(10.5, teclas("7"))).toEqual({ value: 7, hint: false });
+  });
+});
+
+/** EC-924: borrar los decimales de un valor fijado por "Todo" lo deja en el entero. */
+test.describe("truncateFractionDeletion: borrar decimales trunca al entero", () => {
+  test("borrar solo de la parte decimal deja la parte entera", () => {
+    expect(truncateFractionDeletion("10.", "10.5", 0)).toBe(10);
+    expect(truncateFractionDeletion("10.2", "10.25", 0)).toBe(10);
+    expect(truncateFractionDeletion("10.5", "10.25", 0)).toBe(10);
+    expect(truncateFractionDeletion("0.", "0.5", 0)).toBe(0);
+    expect(truncateFractionDeletion("0.", "0.5", 1)).toBe(1);
+  });
+
+  test("lo que no es borrar decimales de un fraccionario no se trunca", () => {
+    // Borrar en la parte entera.
+    expect(truncateFractionDeletion("1.5", "10.5", 0)).toBeNull();
+    // Escribir o reemplazar un decimal.
+    expect(truncateFractionDeletion("10.7", "10.5", 0)).toBeNull();
+    expect(truncateFractionDeletion("10.3", "10.25", 0)).toBeNull();
+    expect(truncateFractionDeletion("10.57", "10.5", 0)).toBeNull();
+    // El valor mostrado ya era entero: "10." solo pudo llegar escribiendo.
+    expect(truncateFractionDeletion("10.", "10", 0)).toBeNull();
+    expect(truncateFractionDeletion("1.", "10", 0)).toBeNull();
+    // La coma nunca se muestra (`String(value)` usa "."): solo pudo escribirse.
+    expect(truncateFractionDeletion("10,", "10.5", 0)).toBeNull();
+  });
+});
+
+test.describe("reduceWholeQuantity: borrar sobre un valor fraccionario (EC-924)", () => {
+  const borrar = (raw: string, shown: string, min = 0) =>
+    reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw, shown, min });
+
+  test("Backspace al final de \"10.5\" deja 10 sin aviso (antes se quedaba en 10.5)", () => {
+    expect(capturar(10.5, [{ clicAlFinal: true }, { tecla: "Backspace" }])).toEqual({ value: 10, hint: false });
+    expect(capturar(10.25, [{ clicAlFinal: true }, { tecla: "Backspace" }])).toEqual({ value: 10, hint: false });
+    expect(capturar(0.5, [{ clicAlFinal: true }, { tecla: "Backspace" }])).toEqual({ value: 0, hint: false });
+    // Un Backspace más ya borra sobre el entero.
+    expect(capturar(10.5, [{ clicAlFinal: true }, { tecla: "Backspace" }, { tecla: "Backspace" }])).toEqual({
+      value: 1,
+      hint: false,
+    });
+  });
+
+  test("los demás borrados siguen como antes", () => {
+    // Borrar "5" y "." juntos (selección) o solo el ".": son dígitos.
+    expect(borrar("10", "10.5")).toEqual({ state: WHOLE_QUANTITY_IDLE, value: 10 });
+    expect(borrar("105", "10.5")).toEqual({ state: WHOLE_QUANTITY_IDLE, value: 105 });
+    // Borrar todo: `min`.
+    expect(borrar("", "10.5", 0)).toEqual({ state: WHOLE_QUANTITY_IDLE, value: 0 });
+    // Borrar el "0" deja un decimal nuevo: se rechaza con el aviso.
+    expect(borrar("1.5", "10.5")).toEqual({ state: { fractionBlocked: true, showHint: true } });
+  });
+
+  test("escribir un decimal se sigue rechazando con el aviso", () => {
+    expect(reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw: "10.7", shown: "10", min: 0 })).toEqual({
+      state: { fractionBlocked: true, showHint: true },
+    });
+    expect(reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw: "10.57", shown: "10.5", min: 0 })).toEqual({
+      state: { fractionBlocked: true, showHint: true },
+    });
+    expect(capturar(0, teclas("10.7"))).toEqual({ value: 10, hint: true });
+    expect(capturar(0, teclas("1.5"))).toEqual({ value: 1, hint: true });
+    expect(capturar(10.5, [{ clicAlFinal: true }, ...teclas("7")])).toEqual({ value: 10.5, hint: true });
+  });
+
+  test("sobre un valor entero nada cambia", () => {
+    expect(borrar("1", "10")).toEqual({ state: WHOLE_QUANTITY_IDLE, value: 1 });
+    expect(borrar("", "10", 1)).toEqual({ state: WHOLE_QUANTITY_IDLE, value: 1 });
+    expect(reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw: "10.", shown: "10", min: 0 })).toEqual({
+      state: { fractionBlocked: true, showHint: true },
+    });
+  });
+
+  test("el entero truncado pasa por el tope manual de la recepción como cualquier captura", () => {
+    // Pendiente 10.5, "Todo" fijó 10.5: Backspace deja 10, dentro del tope manual (10).
+    const truncado = borrar("10.", "10.5").value!;
+    expect(capturaManualRecepcion(truncado, 10.5, 10.5)).toBe(10);
+    // Pendiente 0.5: el 0 truncado queda en 0.
+    expect(capturaManualRecepcion(borrar("0.", "0.5").value!, 0.5, 0.5)).toBe(0);
+    // Borrar solo el "." da 105, por encima del tope: se conserva el 10.5 de "Todo" (regla EC-900, sin cambios).
+    expect(capturaManualRecepcion(borrar("105", "10.5").value!, 10.5, 10.5)).toBe(10.5);
   });
 });

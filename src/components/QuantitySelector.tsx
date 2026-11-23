@@ -21,6 +21,8 @@
  * `value` puede traer decimales si el consumidor lo fija por su cuenta (en
  * recepciones, "Todo" manda el pendiente exacto, p. ej. 10.5): se muestra tal
  * cual y no cambia mientras el usuario no lo cambie.
+ * Borrar sus decimales con Backspace ("10.5" → "10.") lo deja en el entero
+ * (10) en lugar de rechazarlo (EC-924); escribir un decimal se sigue rechazando.
  */
 
 "use client";
