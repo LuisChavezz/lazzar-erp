@@ -284,3 +284,19 @@ test("nota de crédito: compone «Factura <folio>: <causa>.» y, si es pendiente
   // El pendiente se elige (solo para borrador).
   expect(getCreditNoteCxcSelectionBlockReason(conMotivo("CFDI_PENDIENTE", "CFDI pendiente de timbrar"))).toBeNull();
 });
+
+test("una causa que ya termina en punto no sale con «..» en ningún documento", () => {
+  expect(getCxcCobroEligibility(conMotivo("FACTURA_CANCELADA", "Factura cancelada."))).toEqual({
+    kind: "blocked",
+    reason: "Factura F-10: Factura cancelada.",
+  });
+  expect(getCreditNoteCxcEligibility(conMotivo("CFDI_PENDIENTE", " CFDI pendiente de timbrar. "))).toEqual({
+    kind: "draftOnly",
+    reason: "Factura F-10: CFDI pendiente de timbrar. Guarda la nota como borrador y emítela cuando se confirme.",
+  });
+  // Solo un punto: un texto que es solo «.» cuenta como sin texto.
+  expect(getCxcInvoiceCfdiEligibility(conMotivo("CFDI_CANCELADO", "."), TEST_REASONS)).toEqual({
+    kind: "blocked",
+    reason: "cancelado F-10",
+  });
+});
