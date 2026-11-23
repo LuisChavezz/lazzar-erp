@@ -127,3 +127,25 @@ test("resumen del bloqueo de aplicar: ninguno, uno o varios", () => {
     "2 facturas del cobro no admiten aplicarlo: revisa el aviso de cada línea. Puedes guardarlo como borrador.",
   );
 });
+
+test("con motivo_no_cobrable (EC-938): CFDI_PENDIENTE se elige pero no se aplica; una cancelación ni se elige", () => {
+  const pendiente = {
+    ...base,
+    cobrable: false,
+    factura_cfdi_pendiente: true,
+    motivo_no_cobrable: "CFDI_PENDIENTE" as const,
+    motivo_no_cobrable_display: "CFDI pendiente de timbrar",
+  };
+  expect(getCxcSelectionBlockReason(pendiente)).toBeNull();
+  expect(getCxcApplyBlockReason(pendiente)).toBe(
+    "Factura F-10: CFDI pendiente de timbrar. Guarda el cobro como borrador y aplícalo cuando se confirme.",
+  );
+  const enCurso = {
+    ...base,
+    cobrable: false,
+    motivo_no_cobrable: "CANCELACION_EN_CURSO" as const,
+    motivo_no_cobrable_display: "Cancelación del CFDI en curso",
+  };
+  expect(getCxcSelectionBlockReason(enCurso)).toBe("Factura F-10: Cancelación del CFDI en curso.");
+  expect(getCxcApplyBlockReason(enCurso)).toBe("Factura F-10: Cancelación del CFDI en curso.");
+});
