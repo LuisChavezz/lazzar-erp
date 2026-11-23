@@ -29,7 +29,8 @@ import { refocusOnUnmount } from "../utils/refocusOnUnmount";
  * vuelva un scroll largo dentro de un dropdown. Bajo `md` el ancho sigue al
  * viewport (288–382px) y el alto de la lista lo acota el viewport (hasta ~179px
  * en horizontal), así que pueden caber menos filas completas. El recorte es
- * del cliente —el endpoint no tiene parámetro de límite—.
+ * del cliente: la lista se pide sin `?limit=` (que el endpoint sí acepta) y se
+ * comparte con el modal "Ver todas", que necesita el historial completo.
  */
 const DROPDOWN_LIMIT = 5;
 

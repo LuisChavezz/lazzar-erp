@@ -276,10 +276,12 @@ function NotificationsDialogBody({
 /**
  * Lista completa de notificaciones ("Ver todas").
  *
- * La búsqueda y el orden son CLIENTE: `?search=` y `?ordering=` los acepta DRF
- * pero no hacen nada, y el endpoint devuelve el historial entero de una sola
- * vez, así que filtrar en memoria es lo correcto aquí. Ese estado vive en
- * `NotificationsDialogBody` para que Radix lo reinicie al cerrar.
+ * La búsqueda y el orden son CLIENTE: el cliente pide el historial entero de
+ * una sola vez (sin `?limit=`), así que filtrar y ordenar en memoria es lo
+ * correcto aquí. `?search=` el backend lo acepta pero no hace nada;
+ * `?ordering=` sí aplica, pero no se usa (ver la nota del contrato en
+ * `interfaces/`). Ese estado vive en `NotificationsDialogBody` para que Radix
+ * lo reinicie al cerrar.
  */
 export function NotificationsDialog({
   open,
