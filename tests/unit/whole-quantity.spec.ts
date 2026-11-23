@@ -254,7 +254,7 @@ test.describe("reduceWholeQuantity: borrar sobre un valor fraccionario (EC-924)"
     expect(capturaManualRecepcion(truncado, 10.5, 10.5)).toBe(10);
     // Pendiente 0.5: el 0 truncado queda en 0.
     expect(capturaManualRecepcion(borrar("0.", "0.5").value!, 0.5, 0.5)).toBe(0);
-    // Borrar solo el "." da 105, por encima del tope: se conserva el 10.5 de "Todo" (regla EC-900, sin cambios).
-    expect(capturaManualRecepcion(borrar("105", "10.5").value!, 10.5, 10.5)).toBe(10.5);
+    // Borrar solo el "." da 105, por encima del tope: lo tecleado se topa en 10.
+    expect(capturaManualRecepcion(borrar("105", "10.5").value!, 10.5, 10.5, true)).toBe(10);
   });
 });

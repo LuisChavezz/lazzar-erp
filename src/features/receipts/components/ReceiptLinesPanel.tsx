@@ -279,8 +279,10 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                         <QuantitySelector
                           value={qty}
                           // `QuantitySelector` no tiene techo: se topa aquí, en enteros. Si
-                          // "Todo" dejó el pendiente fraccionario, un "+" no lo baja.
-                          onChange={(next) => setCantidad(line.id, String(capturaManualRecepcion(next, qty, line.tope)))}
+                          // "Todo" dejó el pendiente fraccionario, un "+" no lo baja (teclear sí).
+                          onChange={(next, origin) =>
+                            setCantidad(line.id, String(capturaManualRecepcion(next, qty, line.tope, origin === "input")))
+                          }
                           min={0}
                           label={`Cantidad recibida de ${line.nombre}${talla ? ` talla ${talla}` : ""}`}
                         />
