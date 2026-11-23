@@ -1,9 +1,4 @@
-import {
-  formatShortCalendarDate,
-  formatShortDate,
-  LOCAL_TIME_ZONE,
-  parseLocalDate,
-} from "@/src/utils/formatDate";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
 /**
@@ -42,16 +37,15 @@ export function formatFechaCalendario(value: string | null): string {
 }
 
 /**
- * `fecha_confirmacion` del pedido como "14 jul 2026", en la zona LOCAL del
- * navegador y no en la de México: se ESCRIBE como la medianoche del navegador
- * (`toLocalMidnightIso` en `PedidoFechaConfirmacionField`), así que solo en
- * esa zona sale el día que se capturó, el mismo que muestra el
- * `<input type="date">` del editor. Lectura única de la hoja del pedido, el
- * pedido especial, el PDF y la exportación de surtido; cambia junto con la
- * escritura (EC-936). "—" sin valor o si no parsea.
+ * `fecha_confirmacion` del pedido como "14 jul 2026", con su día de México:
+ * se escribe como la medianoche de México del día elegido
+ * (`toFechaConfirmacionPayload`), así que sale ese día con el navegador en
+ * cualquier zona, el mismo que muestra el `<input type="date">` del editor.
+ * Lectura única de la hoja del pedido, el pedido especial, el PDF y la
+ * exportación de surtido. "—" sin valor o si no parsea.
  */
 export function formatFechaConfirmacion(value: string | null | undefined): string {
-  return formatShortDate(parseLocalDate(value), { timeZone: LOCAL_TIME_ZONE });
+  return formatShortCalendarDate(value);
 }
 
 /**

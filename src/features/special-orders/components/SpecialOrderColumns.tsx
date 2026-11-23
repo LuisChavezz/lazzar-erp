@@ -9,10 +9,10 @@ import {
   getPedidoClasificacionLabel,
   PEDIDO_CLASIFICACION_CONFIG,
 } from "@/src/features/orders/constants/pedidoStatus";
-import { parseLocalDate } from "@/src/utils/formatDate";
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { localMonthFilterValue, optionsFromConfig } from "@/src/utils/columnFilterOptions";
+import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { isAtrasadoActivo } from "../utils/specialOrderAlert";
 import { ServiciosCell } from "./ServiceOrdersTracking";
@@ -251,16 +251,15 @@ export const getSpecialOrderColumns = ({
     cell: ({ row }) => <SkuProgressCell order={row.original} />,
   },
   {
-    // Mismo formato y parseo que "Fecha confirmada" del listado de pedidos
-    // (`SharedOrderColumns`): el valor es medianoche LOCAL con offset, y
-    // `parseLocalDate` lo interpreta en la zona del navegador sin forzar UTC.
+    // Mismo formato que "Fecha confirmada" del listado de pedidos: el día de
+    // México del valor (medianoche de México con offset), en cualquier zona.
     id: "fecha_confirmacion",
     accessorFn: (order) => order.fecha_confirmacion ?? "",
     header: "Fecha confirmada",
     // El valor crudo es un ISO: buscar en él no corresponde a nada visible.
     enableGlobalFilter: false,
     cell: ({ row }) => {
-      const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
+      const parsedDate = toMexicoDayLocalDate(row.original.fecha_confirmacion);
       return (
         <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {parsedDate ? format(parsedDate, "d MMM yyyy", { locale: es }) : "—"}
@@ -292,10 +291,10 @@ export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSp
     options: optionsFromConfig(PEDIDO_CLASIFICACION_CONFIG),
     label: (r) => getPedidoClasificacionLabel(r.clasificacion),
   },
-  // Mes LOCAL, como la celda: `fecha_confirmacion` se lee en la zona del navegador (EC-936).
+  // Mes del día de México, como la celda (`monthFilterKey` lee un datetime en México).
   fecha_confirmacion: {
     type: "month",
-    get: (r) => localMonthFilterValue(r.fecha_confirmacion),
+    get: (r) => r.fecha_confirmacion,
     emptyLabel: "Sin confirmar",
   },
   siguiente_paso: { type: "distinct", get: (r) => getSiguientePaso(r)?.label ?? null },

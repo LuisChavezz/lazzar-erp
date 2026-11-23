@@ -59,7 +59,6 @@ export function OrderFechaConfirmacionField({
   /** Tras un guardado fallido: reenfocar el editor cuando deje de estar pendiente. */
   const [refocusEditor, setRefocusEditor] = useState(false);
 
-  // Zona del NAVEGADOR, no la de México: ver `formatFechaConfirmacion` (EC-936).
   const label = formatFechaConfirmacion(value);
 
   useEffect(() => {

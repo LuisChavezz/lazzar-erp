@@ -1,6 +1,7 @@
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { formatOrderAmountOrDash } from "./orderAmountFormat";
 import { formatLocalDate } from "@/src/utils/formatDate";
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoListItem } from "../interfaces/order.interface";
 import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
@@ -28,8 +29,11 @@ export const getProcurementOrderColumnText = (
       return [order.cliente_razon_social, order.cliente_nombre].filter(Boolean).join(" — ");
     case "created_at":
       return formatLocalDate(order.created_at);
-    case "fecha_confirmacion":
-      return formatLocalDate(order.fecha_confirmacion);
+    case "fecha_confirmacion": {
+      // Día de México, como la celda del listado (EC-936).
+      const dia = toMexicoDayLocalDate(order.fecha_confirmacion);
+      return dia ? dia.toLocaleDateString("es-MX") : formatLocalDate(order.fecha_confirmacion);
+    }
     case "gran_total":
       return formatOrderAmountOrDash(order.gran_total);
     default:

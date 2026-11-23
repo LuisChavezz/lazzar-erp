@@ -275,7 +275,7 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
     { label: "Estatus", value: getPedidoEstatusConfig(pedido.estatus).label },
     { label: "Tipo de pedido", value: getTipoPedidoConfig(pedido.tipo_pedido).label },
     { label: "Clasificación", value: getPedidoClasificacionLabel(pedido.clasificacion) },
-    // Zona del navegador, como en la hoja: ver `formatFechaConfirmacion` (EC-936).
+    // Misma lectura que la hoja: `formatFechaConfirmacion`.
     { label: "Fecha confirmada", value: formatFechaConfirmacion(pedido.fecha_confirmacion) },
     {
       label: "Entrega estimada",

@@ -6,7 +6,6 @@ import { es } from 'date-fns/locale';
 import { FolioActionMenu } from '@/src/components/FolioActionMenu';
 import { ViewIcon } from '@/src/components/Icons';
 import { StatusBadge, type StatusBadgeConfigEntry } from '@/src/components/StatusBadge';
-import { parseLocalDate } from '@/src/utils/formatDate';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
@@ -117,7 +116,7 @@ function PedidoFolioCell({ order, from }: { order: PedidoListItem; from: PedidoD
 /** Confirmado / Por confirmar según `fecha_confirmacion`, con los puntos del filtro. */
 function PedidoConfirmacionCell({ order }: { order: PedidoListItem }) {
   const confirmed = isOrderConfirmed(order);
-  const fecha = parseLocalDate(order.fecha_confirmacion);
+  const fecha = toMexicoDayLocalDate(order.fecha_confirmacion);
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap"
