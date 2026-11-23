@@ -6,6 +6,17 @@ import type {
   CuentaPorCobrarQueryParams,
 } from "../interfaces/accounts-receivable.interface";
 
+interface UseCuentasPorCobrarOptions {
+  /**
+   * `"always"`: este observador vuelve a pedir la lista al montarse aunque la
+   * caché siga fresca (el selector de facturas de notas de crédito, que decide
+   * con los campos del CFDI que trae cada CxC; igual que `useCobrableCxcs` en
+   * cobros). Mientras tanto se leen los datos en caché. Sin la opción, el
+   * `refetchOnMount` por defecto.
+   */
+  refetchOnMount?: "always";
+}
+
 /**
  * useCuentasPorCobrar
  *
@@ -27,10 +38,14 @@ import type {
  * Las tarjetas y la tabla comparten el mismo `toastId`, así que un refetch
  * fallido genera UN solo toast aunque ambos componentes usen este hook.
  */
-export const useCuentasPorCobrar = (params?: CuentaPorCobrarQueryParams) => {
+export const useCuentasPorCobrar = (
+  params?: CuentaPorCobrarQueryParams,
+  { refetchOnMount }: UseCuentasPorCobrarOptions = {},
+) => {
   const query = useQuery<CuentaPorCobrar[]>({
     queryKey: ["accounts-receivable", params ?? {}],
     queryFn: () => getCuentasPorCobrar(params),
+    ...(refetchOnMount ? { refetchOnMount } : {}),
   });
 
   const { hasLoaded } = useHasLoadedQuery({
