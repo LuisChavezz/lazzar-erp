@@ -30,6 +30,10 @@ export const isDeletableCobroDraft = (cobro: Pick<Cobro, "estatus" | "folio">): 
 export const COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE =
   "Agrega al menos una cuenta por cobrar al borrador antes de aplicarlo.";
 
+/** "Aplicar" del detalle sin el listado de CxC (EC-928): como "Cancelar cobro". */
+export const COBRO_DRAFT_APPLY_UNAVAILABLE_CXC_MESSAGE =
+  "No se pudieron consultar las cuentas por cobrar del cobro: no se puede confirmar que sus facturas admitan aplicarlo.";
+
 export const COBRO_DRAFT_NOT_DRAFT_MESSAGE = "El cobro ya no está en borrador.";
 
 /**
