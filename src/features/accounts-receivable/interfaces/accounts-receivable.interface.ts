@@ -14,6 +14,19 @@ import type { CurrencyTotal } from "@/src/utils/currencyTotals";
  */
 export type CxCEstatus = "Pendiente" | "Parcial" | "Pagada" | "Cancelada";
 
+/**
+ * Por qué una CxC no admite cobros (`CuentaPorCobrar.MotivoNoCobrable`,
+ * nucleo-erp#1328). El backend devuelve la PRIMERA que aplica, en este orden.
+ */
+export type MotivoNoCobrable =
+  | "CXC_CANCELADA"
+  | "FACTURA_CANCELADA"
+  | "CFDI_CANCELADO"
+  | "CANCELACION_SOLICITADA"
+  | "CANCELACION_EN_CURSO"
+  | "CFDI_PENDIENTE"
+  | "SALDO_CERO";
+
 /** Elemento de la respuesta de `GET /finanzas/cuentas-por-cobrar/`. */
 export interface CuentaPorCobrar {
   id: number;
@@ -51,11 +64,17 @@ export interface CuentaPorCobrar {
   /** Facturama no confirmó el timbrado de la factura. */
   factura_cfdi_pendiente?: boolean;
   /**
-   * ¿Admite un cobro al aplicarlo? `false` con saldo en 0, CxC `Cancelada`,
-   * factura cancelada o en cancelación (también la cancelación en curso, que no
-   * tiene campo propio) o con timbrado pendiente. Ver `getCxcCobroEligibility`.
+   * ¿Admite un cobro al aplicarlo? Es `motivo_no_cobrable === null`: `false` con
+   * saldo en 0, CxC `Cancelada`, factura cancelada o en cancelación, o con
+   * timbrado pendiente. Ver `getCxcCobroEligibility`.
    */
   cobrable?: boolean;
+  // Causa exacta de `cobrable: false` (nucleo-erp#1328, EC-938). Opcionales: sin
+  // ellos la regla vuelve a decidir con los campos del CFDI de arriba.
+  /** `null` si la CxC admite cobros. */
+  motivo_no_cobrable?: MotivoNoCobrable | null;
+  /** Texto corto de la causa («CFDI pendiente de timbrar»); `null` si admite cobros. */
+  motivo_no_cobrable_display?: string | null;
 }
 
 /**
