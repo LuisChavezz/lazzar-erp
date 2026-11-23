@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getPurchaseOrderProgress, progressBarClass } from "../utils/purchaseOrderProgress";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
@@ -19,7 +20,11 @@ import {
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
-import { useConfirmPurchaseOrder } from "../hooks/useConfirmPurchaseOrder";
+import {
+  confirmPurchaseOrderMutationKey,
+  useConfirmPurchaseOrder,
+} from "../hooks/useConfirmPurchaseOrder";
+import { isRecordMutating } from "@/src/utils/mutationRecordId";
 import { useDeletePurchaseOrder } from "../hooks/useDeletePurchaseOrder";
 import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail";
 import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
@@ -71,10 +76,15 @@ const FolioCell = ({
   onCancel: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
-  const { onSendEmail, emailPendingCompany } = usePurchaseOrderRowActionsContext();
+  const { onSendEmail, emailPendingCompany, confirmPendingIds } =
+    usePurchaseOrderRowActionsContext();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const { mutate: confirmOrder, isPending } = useConfirmPurchaseOrder();
+  const queryClient = useQueryClient();
+  const { mutate: confirmOrder } = useConfirmPurchaseOrder();
+  // Desde la MutationCache (contexto de la vista), no del `isPending` de esta
+  // instancia: sobrevive a que la celda se remonte con la confirmación en vuelo.
+  const isPending = confirmPendingIds.includes(order.id);
   const { mutate: deleteOrder, isPending: isDeletePending } = useDeletePurchaseOrder();
   const { isPreparingEmail, isSendingEmail } = usePurchaseOrderEmailStatus(order.id);
   const isEmailBusy = isPreparingEmail || isSendingEmail;
@@ -281,7 +291,11 @@ const FolioCell = ({
           confirmText={isPending ? "Confirmando..." : "Confirmar"}
           confirmColor="blue"
           onConfirm={() => {
-            confirmOrder(order.id);
+            // Candado síncrono: el diálogo pudo abrirse antes de que otra
+            // instancia de esta celda lanzara la misma confirmación.
+            if (!isRecordMutating(queryClient, [confirmPurchaseOrderMutationKey], order.id)) {
+              confirmOrder(order.id);
+            }
             setIsConfirmOpen(false);
           }}
         />

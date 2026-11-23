@@ -22,6 +22,8 @@ import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailCon
 import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
 import { PurchaseOrderRowActionsProvider } from "../hooks/purchaseOrderRowActionsContext";
 import { usePdfCompany } from "@/src/hooks/usePdfCompany";
+import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
+import { confirmPurchaseOrderMutationKey } from "../hooks/useConfirmPurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 
 // ─── Vista principal ─────────────────────────────────────────────────────────
@@ -93,7 +95,8 @@ export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewPr
   // `request` llega al menú de cada fila por contexto (ver el Provider abajo).
   const email = usePurchaseOrderEmailConfirmation();
   const { pending: emailPendingCompany } = usePdfCompany();
-  const rowActions = { onSendEmail: email.request, emailPendingCompany };
+  const confirmPendingIds = usePendingRecordIds(confirmPurchaseOrderMutationKey);
+  const rowActions = { onSendEmail: email.request, emailPendingCompany, confirmPendingIds };
 
   // Callbacks inline (solo setters, estables): la factoría no se recalcula.
   const columns = getColumns(

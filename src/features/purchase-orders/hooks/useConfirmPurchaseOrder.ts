@@ -19,10 +19,18 @@ import { toastDrfError } from "@/src/utils/toastDrfError";
  * `{ "estatus": "La orden ya no puede aceptarse." }` dice que la fila en
  * caché está vieja, y sin refetch seguiría ofreciendo la acción.
  */
+/**
+ * Clave de la mutación: el "en vuelo" por fila (`usePendingRecordIds` en
+ * `PurchaseOrderView`) la lee de la `MutationCache`, así que sobrevive a que
+ * la celda del folio se desmonte al ordenar, paginar o filtrar.
+ */
+export const confirmPurchaseOrderMutationKey = ["confirm-purchase-order"] as const;
+
 export const useConfirmPurchaseOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: confirmPurchaseOrderMutationKey,
     mutationFn: (ordenCompraId: number) => confirmPurchaseOrder(ordenCompraId),
     onSuccess: async (response) => {
       // Best-effort: sin `orden_compra` (otra forma de respuesta) no se escribe

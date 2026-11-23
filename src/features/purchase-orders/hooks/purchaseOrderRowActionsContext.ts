@@ -15,6 +15,12 @@ export interface PurchaseOrderRowActionsContextValue {
    * cargando (`usePdfCompany`): "Enviar correo" se deshabilita mientras tanto.
    */
   emailPendingCompany: boolean;
+  /**
+   * Órdenes con una confirmación EN CURSO (`usePendingRecordIds` sobre
+   * `confirmPurchaseOrderMutationKey`). Una sola suscripción en la vista: el
+   * `isPending` de la mutación de la celda se pierde si la celda se remonta.
+   */
+  confirmPendingIds: readonly number[];
 }
 
 const { Provider, useRowActionsContext } =
