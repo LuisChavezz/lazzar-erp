@@ -63,8 +63,8 @@ export default function MobileSidebar() {
 
         {/* Right Side */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <Notifications />
+          {/* Notifications: abrir el cajón cierra su panel */}
+          <Notifications closeWhen={isMobileOpen} />
 
           {/* Menú de usuario (incluye "Cerrar sesión") */}
           <UserMenu />
