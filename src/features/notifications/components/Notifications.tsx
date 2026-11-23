@@ -22,12 +22,14 @@ import { refocusOnUnmount } from "../utils/refocusOnUnmount";
 /**
  * Cuántas notificaciones muestra el dropdown.
  *
- * El panel mide `w-80` (320px) y la lista `max-h-96` (384px). Con el mensaje
- * limitado a dos líneas cada fila queda en ~96px, así que 4 caben completas y
- * la quinta asoma: es el corte que llena el panel y deja visible que hay más,
- * empujando a "Ver todas" sin que la lista se vuelva un scroll largo dentro de
- * un dropdown. El recorte es del cliente —el endpoint no tiene parámetro de
- * límite—.
+ * En escritorio (`md` y más) el panel mide `w-80` (320px) y la lista
+ * `max-h-96` (384px). Con el mensaje limitado a dos líneas cada fila queda en
+ * ~96px, así que 4 caben completas y la quinta asoma: es el corte que llena el
+ * panel y deja visible que hay más, empujando a "Ver todas" sin que la lista se
+ * vuelva un scroll largo dentro de un dropdown. Bajo `md` el ancho sigue al
+ * viewport (288–382px) y el alto de la lista lo acota el viewport (hasta ~179px
+ * en horizontal), así que pueden caber menos filas completas. El recorte es
+ * del cliente —el endpoint no tiene parámetro de límite—.
  */
 const DROPDOWN_LIMIT = 5;
 
@@ -165,14 +167,37 @@ export const Notifications = ({ closeWhen = false }: NotificationsProps) => {
     Escape cierra el panel y devuelve el foco a la campana. Solo escucha con
     el panel abierto; abrir "Ver todas" o un destino diálogo cierra antes el
     panel, así que nunca compite con el Escape de esos diálogos. La guarda de
-    `defaultPrevented` deja pasar el Escape que otro componente ya atendió.
+    `defaultPrevented` deja pasar el Escape que otro componente ya atendió, y
+    el Escape que cancela una composición IME no cuenta.
+
+    Solo actúa con el foco DENTRO del panel o en la campana: si el usuario salió
+    con Tab a la página, ese Escape es de lo que tenga el foco (el panel se
+    cierra con el clic fuera). Eso también deja fuera a la instancia oculta
+    (el header móvil pasa a `display:none` al crecer la ventana): un elemento
+    oculto pierde el foco. Aun así, el foco solo vuelve a la campana si está
+    visible.
   */
   useEffect(() => {
     if (!isNotifOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        event.isComposing
+      ) {
+        return;
+      }
+      const focused = document.activeElement;
+      const isFocusInside =
+        focused !== null &&
+        (dropdownRef.current?.contains(focused) === true ||
+          btnRef.current?.contains(focused) === true);
+      if (!isFocusInside) return;
+
+      event.preventDefault();
       setIsNotifOpen(false);
-      btnRef.current?.focus();
+      const bell = btnRef.current;
+      if (bell && bell.offsetParent !== null) bell.focus();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
