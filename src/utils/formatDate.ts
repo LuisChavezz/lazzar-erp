@@ -137,15 +137,26 @@ export const formatShortDate = (
 
 /**
  * Fecha-calendario como "14 jul 2026" (mismo formato que `formatShortDate`)
- * sin correr el día: un "YYYY-MM-DD" se lee como ese día en la zona local
- * (`parseLocalDate`), no como medianoche UTC. Un datetime con hora se acepta
- * igual que en `formatLocalDate` y se muestra el día en la zona del usuario.
+ * sin correr el día EN NINGUNA ZONA: un "YYYY-MM-DD" se arma como la
+ * medianoche UTC de ese día y se formatea en UTC, así que sale el mismo día
+ * con el navegador en México, en Tokio o en Los Ángeles (EC-931). No pasa por
+ * una medianoche local: formateada en otra zona que la del navegador (la de
+ * México de `formatShortDate`), al este de México caería en el día anterior.
+ *
+ * Un datetime con hora (con "T") se delega en `formatShortDate`, que muestra
+ * su día en la zona de esta: sirve a los listados que mezclan fechas y
+ * datetimes en la misma columna (las filas de documentos del pedido). Para un
+ * valor que SIEMPRE es datetime, usa `formatShortDate` directamente.
+ *
  * Devuelve "—" para valores vacíos o que no parseen, incluidas las fechas
- * imposibles ("2026-02-30"), que `parseLocalDate` desbordaría a otro día.
+ * imposibles ("2026-02-30"), que `new Date` desbordaría a otro día.
  */
 export const formatShortCalendarDate = (value: string | null | undefined): string => {
-  if (value && !value.includes("T") && !isValidDateKey(value)) return "—";
-  return formatShortDate(parseLocalDate(value));
+  if (!value) return "—";
+  if (value.includes("T")) return formatShortDate(value);
+  if (!isValidDateKey(value)) return "—";
+  const [year, month, day] = value.split("-").map(Number);
+  return formatShortDate(new Date(Date.UTC(year, month - 1, day)), { timeZone: "UTC" });
 };
 
 /**

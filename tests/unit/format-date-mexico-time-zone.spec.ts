@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { formatShortDateTime, formatShortTime } from "@/src/utils/formatDate";
+import { formatEntregaEstimada, formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
+import {
+  formatShortCalendarDate,
+  formatShortDate,
+  formatShortDateTime,
+  formatShortTime,
+} from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /*
@@ -98,4 +104,66 @@ test.describe("formatShortTime / formatShortDateTime", () => {
       });
     }
   });
+});
+
+/** Fechas-calendario en bordes de mes y año (y un 29 de febrero), con su salida. */
+const CALENDAR_CASES = [
+  { value: "2026-01-01", label: "01 ene 2026" },
+  { value: "2026-01-31", label: "31 ene 2026" },
+  { value: "2026-02-01", label: "01 feb 2026" },
+  { value: "2026-02-28", label: "28 feb 2026" },
+  { value: "2026-03-01", label: "01 mar 2026" },
+  { value: "2024-02-29", label: "29 feb 2024" },
+  { value: "2026-07-14", label: "14 jul 2026" },
+  { value: "2026-12-31", label: "31 dic 2026" },
+  { value: "2027-01-01", label: "01 ene 2027" },
+] as const;
+
+test.describe("formatShortCalendarDate: el mismo día en cualquier zona", () => {
+  for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+    test(`con el navegador en ${zone} un YYYY-MM-DD sale en su mismo día`, () => {
+      withProcessTimeZone(zone, () => {
+        for (const { value, label } of CALENDAR_CASES) {
+          expect(formatShortCalendarDate(value)).toBe(label);
+          // Igual que los consumidores de finanzas que pasan `timeZone: "UTC"`.
+          expect(formatShortCalendarDate(value)).toBe(formatShortDate(value, { timeZone: "UTC" }));
+        }
+      });
+    });
+  }
+
+  test("un datetime (con \"T\") sale igual que con `formatShortDate`", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const { value } of DATETIME_CASES) {
+          expect(formatShortCalendarDate(value)).toBe(formatShortDate(value));
+        }
+      });
+    }
+  });
+
+  test("— para vacíos, valores que no parsean y fechas imposibles, en cualquier zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const value of [...EMPTY_VALUES, "2026-02-30", "2026-13-01", "26-07-14", "2026-07-14T"]) {
+          expect(formatShortCalendarDate(value)).toBe("—");
+        }
+      });
+    }
+  });
+});
+
+test.describe("fechas-calendario del pedido (`pedidoFormat`)", () => {
+  for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+    test(`con el navegador en ${zone} no se corre el día`, () => {
+      withProcessTimeZone(zone, () => {
+        expect(formatFechaCalendario("2026-12-31")).toBe("31 dic 2026");
+        expect(formatFechaCalendario(null)).toBe("—");
+        expect(formatEntregaEstimada("2026-12-31", "2027-01-01")).toBe("31 dic 2026 – 01 ene 2027");
+        expect(formatEntregaEstimada("2026-03-01", "2026-03-01")).toBe("01 mar 2026");
+        expect(formatEntregaEstimada("2026-03-01", null)).toBe("—");
+        expect(formatEntregaEstimada(null, "2026-03-01")).toBe("—");
+      });
+    });
+  }
 });

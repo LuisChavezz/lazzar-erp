@@ -7,7 +7,7 @@ import type { PurchaseOrderOnboardingData } from "../interfaces/purchase-order-o
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderEditHeader } from "../schemas/purchase-order-edit.schema";
 import { usePurchaseOrderEditForm } from "../hooks/usePurchaseOrderEditForm";
-import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { TIPO_COMPRA_OPTIONS } from "../constants/purchaseOrderTipoCompra";
 import type { TipoCompra } from "../interfaces/purchase-order.interface";
 import type { PurchaseOrderHeaderFieldErrors } from "../utils/purchaseOrderHeaderErrors";
@@ -253,7 +253,7 @@ export function PurchaseOrderEditStep1({
         <FormInput
           label="Fecha de generación"
           name="fecha_oc"
-          value={formatShortDate(parseLocalDate(fechaGeneracion))}
+          value={formatShortCalendarDate(fechaGeneracion)}
           readOnly
           disabled
         />

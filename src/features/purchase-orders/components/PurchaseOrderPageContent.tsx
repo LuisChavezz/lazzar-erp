@@ -27,7 +27,7 @@ import {
   formatMoneyValueOrDash,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatLocalDate, formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
@@ -775,14 +775,14 @@ export function PurchaseOrderPageContent({
           {/* `start`: la barra de progreso de "Recibido" lo hace más alto que
               los demás datos; centrado, su etiqueta subiría respecto a ellos. */}
           <HeaderStatRow align="start">
-            {/* Ambas son `DateField` ("yyyy-mm-dd"): `parseLocalDate` antes de
-                `formatShortDate`, que con la fecha pelada la leería en UTC y
-                pintaría el día anterior en México. */}
+            {/* Ambas son `DateField` ("yyyy-mm-dd"): `formatShortCalendarDate`
+                da ese mismo día en cualquier zona; `formatShortDate` con la
+                fecha pelada la leería en UTC y pintaría el día anterior. */}
             <HeaderStat label="Fecha de generación">
-              {formatShortDate(parseLocalDate(data.fecha_oc))}
+              {formatShortCalendarDate(data.fecha_oc)}
             </HeaderStat>
             <HeaderStat label="Fecha de vencimiento">
-              {formatShortDate(parseLocalDate(data.fecha_vencimiento))}
+              {formatShortCalendarDate(data.fecha_vencimiento)}
             </HeaderStat>
             {/* `total_piezas` NO es un campo financiero: llega siempre, sin
                 importar el rol, así que se pinta fuera de cualquier condición. */}

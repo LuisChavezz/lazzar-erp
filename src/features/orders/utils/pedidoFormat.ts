@@ -1,4 +1,4 @@
-import { formatShortDate, parseLocalDate } from "@/src/utils/formatDate";
+import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
 /**
@@ -15,29 +15,25 @@ export function formatFolioCorto(folio: string | null | undefined): string {
 /**
  * Rango de entrega estimado (`fecha_entrega_min`–`fecha_entrega_max`).
  *
- * Son fechas-calendario `"YYYY-MM-DD"`: pasan por `parseLocalDate` ANTES de
- * `formatShortDate`, que con el string crudo haría `new Date("YYYY-MM-DD")`
- * (medianoche UTC) y en México pintaría el día anterior. Con el `Date` local ya
- * construido, `formatShortDate` solo aplica el formato "14 jul 2026" que usa el
- * resto de la cabecera.
+ * Son fechas-calendario `"YYYY-MM-DD"`: van por `formatShortCalendarDate`, que
+ * da el mismo día en cualquier zona del navegador (con `formatShortDate` y el
+ * string crudo sería medianoche UTC, en México el día anterior), con el formato
+ * "14 jul 2026" que usa el resto de la cabecera. "—" si falta un extremo.
  */
 export function formatEntregaEstimada(min: string | null, max: string | null): string {
-  const desde = parseLocalDate(min);
-  const hasta = parseLocalDate(max);
-  if (!desde || !hasta) return "—";
-  const desdeLabel = formatShortDate(desde);
-  const hastaLabel = formatShortDate(hasta);
+  const desdeLabel = formatShortCalendarDate(min);
+  const hastaLabel = formatShortCalendarDate(max);
+  if (desdeLabel === "—" || hastaLabel === "—") return "—";
   return desdeLabel === hastaLabel ? desdeLabel : `${desdeLabel} – ${hastaLabel}`;
 }
 
 /**
  * Fecha-calendario `"YYYY-MM-DD"` (p. ej. `fecha_compromiso`) con el MISMO
- * formato y la misma lectura local que cada extremo de `formatEntregaEstimada`.
+ * formato y la misma lectura que cada extremo de `formatEntregaEstimada`.
  * "—" sin valor.
  */
 export function formatFechaCalendario(value: string | null): string {
-  const date = parseLocalDate(value);
-  return date ? formatShortDate(date) : "—";
+  return formatShortCalendarDate(value);
 }
 
 /**
