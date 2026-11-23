@@ -25,6 +25,7 @@ import {
 } from "../schemas/createCobro.schema";
 import type { CobroEstatus } from "../interfaces/collection.interface";
 import { useCobrableCxcs } from "./useCobrableCxcs";
+import { getCxcApplyBlockReason, summarizeApplyBlockReasons } from "../utils/cxcCobroEligibility";
 import { buildCobroPayload } from "../services/actions";
 import { useSaveCobro } from "./useSaveCobro";
 import {
@@ -65,6 +66,11 @@ interface CobroSubmitMeta {
    * convención de CLAUDE.md, EC-701). `null` solo en el meta por defecto.
    */
   withFreshSaldos: ((values: CobroFormValues) => CobroFormValues) | null;
+  /**
+   * `lineApplyBlockReason` del render que envía (EC-928), por la misma razón:
+   * lee las CxC vigentes. Solo cuenta al aplicar; un borrador no lo consulta.
+   */
+  lineApplyBlockReason: ((line: Pick<CobroLineFormValues, "cxc">) => string | null) | null;
 }
 
 /** Siembra una línea a partir de la CxC elegida en el selector. */
@@ -261,7 +267,7 @@ export function useCreateCobroForm({
     // Enter y el botón principal registran/aplican; "Guardar borrador" pasa el suyo.
     // Por defecto NO envía: un envío que no pase los saldos vigentes (cualquier
     // otra vía que `handleFormSubmit`/`handleSaveDraft`) no puede validarlos.
-    onSubmitMeta: { estatus: "Aplicado", withFreshSaldos: null } as CobroSubmitMeta,
+    onSubmitMeta: { estatus: "Aplicado", withFreshSaldos: null, lineApplyBlockReason: null } as CobroSubmitMeta,
     onSubmit: async ({ value, meta }) => {
       if (!meta.withFreshSaldos) return;
       setServerBanner(null);
@@ -273,6 +279,14 @@ export function useCreateCobroForm({
       }
       if (bankAccounts.find((account) => account.id === value.cuenta_bancaria)?.activo === false) {
         blockers.push({ path: ["cuenta_bancaria"], message: COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE });
+      }
+      // Aplicar con una línea cuyo CFDI ya no lo admite (EC-928): el backend lo
+      // rechazaría con `400 cobro_detalles`. Guardar el borrador sí procede.
+      if (meta.estatus === "Aplicado" && meta.lineApplyBlockReason) {
+        value.cobro_detalles.forEach((line, index) => {
+          const reason = meta.lineApplyBlockReason?.(line) ?? null;
+          if (reason) blockers.push({ path: ["cobro_detalles", String(index), "_form"], message: reason });
+        });
       }
       if (blockers.length > 0) {
         applyValidationIssues(blockers);
@@ -350,6 +364,21 @@ export function useCreateCobroForm({
     return hasLoadedFreshCxcs ? "0.00" : line.saldo;
   };
 
+  /**
+   * Motivo por el que la línea impide APLICAR el cobro (EC-928), o `null`: el
+   * CFDI de su factura se canceló, tiene la cancelación solicitada o un
+   * timbrado pendiente. Se lee de la CxC VIGENTE (`byId`), así que aparece en
+   * cuanto la consulta se refresca (al abrir el selector, tras un error de
+   * guardado); sin ella, `null`, y el `400` del backend sigue de red. Guardar
+   * como borrador no lo consulta.
+   */
+  const lineApplyBlockReason = (line: Pick<CobroLineFormValues, "cxc">): string | null => {
+    const fresh = freshCxcs.get(line.cxc);
+    return fresh ? getCxcApplyBlockReason(fresh) : null;
+  };
+  const lines = useStore(form.store, (state) => state.values.cobro_detalles);
+  const applyBlockReason = summarizeApplyBlockReasons(lines.map(lineApplyBlockReason));
+
   const withFreshSaldos = (values: CobroFormValues): CobroFormValues => ({
     ...values,
     cobro_detalles: values.cobro_detalles.map((line) => ({ ...line, saldo: saldoFor(line) })),
@@ -422,7 +451,7 @@ export function useCreateCobroForm({
 
   // ── Submit / reset ────────────────────────────────────────────────────────
   const submitWith = (estatus: CobroSubmitMeta["estatus"]) => {
-    void runWithSubmitLock(submitLockRef, () => form.handleSubmit({ estatus, withFreshSaldos }));
+    void runWithSubmitLock(submitLockRef, () => form.handleSubmit({ estatus, withFreshSaldos, lineApplyBlockReason }));
   };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -456,6 +485,8 @@ export function useCreateCobroForm({
     bankAccountOptions,
     selectorMoneda,
     saldoFor,
+    lineApplyBlockReason,
+    applyBlockReason,
     lineKeys,
     serverBanner,
     dismissBanner: () => setServerBanner(null),
