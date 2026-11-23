@@ -3,18 +3,26 @@
  *
  * Autenticación por cookie JWT + `IsAuthenticated`. NINGUNO de estos endpoints
  * evalúa un `Permiso`, así que cualquier usuario autenticado lee y marca SUS
- * propias notificaciones.
+ * propias notificaciones (el único alcance es `usuario`: un usuario con varias
+ * empresas ve las de todas).
  *
- * `GET /notificaciones/` devuelve un ARRAY PLANO, no un sobre paginado: no hay
- * `{count, next, previous, results}` en ninguna capa y tampoco parámetro de
- * límite —el corte a las N más recientes es del cliente—. Viene ordenado por
- * `created_at DESC`, pero SIN desempate por `id`: las filas se crean con
- * `bulk_create`, así que el orden entre timestamps idénticos no es
- * determinista. `?search=` y `?ordering=` los acepta DRF pero no hacen nada
- * (el ViewSet no declara `search_fields` ni `ordering_fields`).
+ * `GET /notificaciones/` sin `?limit=` devuelve un ARRAY PLANO con el
+ * historial completo; con `?limit=` (tope 500) y `?offset=` devuelve
+ * `{count, next, previous, results}`, y un `limit`/`offset` inválido responde
+ * 400. Filtros: `?leido=true|false|1|0` y `?modulo=` (sin distinguir
+ * mayúsculas). Viene ordenado por `created_at DESC`, pero SIN desempate por
+ * `id`: las filas se crean con `bulk_create`, así que el orden entre
+ * timestamps idénticos no es determinista. `?search=` y `?ordering=` los
+ * acepta DRF pero no hacen nada. El cliente usa hoy la forma sin `?limit=`
+ * (`getNotificaciones`) y corta a las N más recientes por su cuenta.
+ *
+ * `GET /notificaciones/stream/` (SSE) ya no existe (nucleo-erp #1315); la
+ * campana sondea `sin-leer/count/` (EC-555).
  *
  * `empresa` y `usuario` NO se exponen: el backend ya filtra por el usuario de
- * la sesión.
+ * la sesión. `data.url`, cuando viene, es una ruta del BACKEND
+ * (`/compras/ordenes/12`, `/rh/vacaciones/3`) que no existe en el front: nunca
+ * se navega a ella (ver `constants/notificationTargets.ts`).
  */
 
 /*
