@@ -1,4 +1,9 @@
-import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
+import {
+  CXC_NOT_COBRABLE_FALLBACK_REASON,
+  getCxcInvoiceCfdiEligibility,
+  type CxcInvoiceCfdiFields,
+  type CxcInvoiceCfdiReasons,
+} from "@/src/features/accounts-receivable/utils/cxcInvoiceCfdiEligibility";
 
 /**
  * Qué admite una CxC según el estado del CFDI de su factura (EC-928):
@@ -9,8 +14,9 @@ import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfa
  *   (`400 cobro_detalles`) y no valida un borrador.
  * - `blocked`: factura cancelada o en cancelación. No se elige.
  *
- * Es la ÚNICA regla: la usan el selector de CxC, el formulario y el "Aplicar"
- * del detalle de un borrador, para que nunca se contradigan.
+ * La usan el selector de CxC, el formulario y el "Aplicar" del detalle de un
+ * borrador, para que nunca se contradigan. La regla vive en
+ * `getCxcInvoiceCfdiEligibility`, compartida con las notas de crédito (EC-929).
  */
 export type CxcCobroEligibility =
   | { kind: "cobrable" }
@@ -25,69 +31,34 @@ export type CxcCobroEligibility =
  */
 export type CxcEligibilityContext = "form" | "savedDraft";
 
-/** Respaldo cuando `cobrable` es `false` y ningún campo dice por qué. */
-export const CXC_NOT_COBRABLE_FALLBACK_REASON = "Factura cancelada o en proceso de cancelación";
+export { CXC_NOT_COBRABLE_FALLBACK_REASON };
 
-const invoiceLabel = (folio: string | null | undefined): string =>
-  folio ? `La factura ${folio}` : "La factura";
+const invoiceLabel = (folio: string | null): string => (folio ? `La factura ${folio}` : "La factura");
+
+/** Textos del cobro para cada causa de `getCxcInvoiceCfdiEligibility`. */
+const cobroReasons = (context: CxcEligibilityContext): CxcInvoiceCfdiReasons => ({
+  cfdiCancelled: (folio) => `${invoiceLabel(folio)} tiene su CFDI cancelado ante el SAT: no admite cobros.`,
+  cancellationRequested: (folio) =>
+    `${invoiceLabel(folio)} tiene la cancelación de su CFDI pendiente de que el receptor la acepte: no admite cobros.`,
+  stampPending: (folio) =>
+    context === "savedDraft"
+      ? `${invoiceLabel(folio)} tiene un timbrado pendiente de confirmación: aplica el cobro cuando se confirme.`
+      : `${invoiceLabel(folio)} tiene un timbrado pendiente de confirmación: guarda el cobro como borrador y aplícalo cuando se confirme.`,
+});
 
 const COBRABLE: CxcCobroEligibility = { kind: "cobrable" };
 
 /**
- * Elegibilidad de una CxC para un cobro. Prioridad, de la causa más definitiva
- * a la menos: CFDI cancelado → cancelación solicitada → timbrado pendiente →
- * CxC `Cancelada` o `cobrable: false` sin causa expuesta (respaldo). Un CFDI
- * cancelado con el timbrado aún marcado pendiente es, ante todo, cancelado.
- *
- * El timbrado pendiente va ANTES del respaldo: el backend no deja cancelar una
- * factura con timbrado pendiente, así que `cobrable: false` +
- * `factura_cfdi_pendiente` es el pendiente, no otra causa oculta.
- *
- * El SALDO no se decide aquí: un saldo en 0 (CxC `Pagada`, o ya fuera del
- * listado de saldos pendientes) también da `cobrable: false`, pero lo cubre la
- * regla de saldo del formulario y del detalle; tratarlo como "cancelada" daría
- * un motivo falso. Sin los campos (respuesta vieja), la CxC es cobrable, como
- * antes de EC-928: el backend sigue rechazando al aplicar.
+ * Elegibilidad de una CxC para un cobro: la regla compartida con las notas de
+ * crédito (`getCxcInvoiceCfdiEligibility`, donde están la prioridad de causas y
+ * el porqué del saldo) con los textos del cobro.
  */
 export const getCxcCobroEligibility = (
-  cuenta: Pick<
-    CuentaPorCobrar,
-    | "factura_folio"
-    | "estatus"
-    | "saldo"
-    | "cobrable"
-    | "factura_cfdi_cancelado"
-    | "factura_cfdi_cancelacion_solicitada"
-    | "factura_cfdi_pendiente"
-  >,
+  cuenta: CxcInvoiceCfdiFields,
   context: CxcEligibilityContext = "form",
 ): CxcCobroEligibility => {
-  const label = invoiceLabel(cuenta.factura_folio);
-  if (cuenta.factura_cfdi_cancelado === true) {
-    return { kind: "blocked", reason: `${label} tiene su CFDI cancelado ante el SAT: no admite cobros.` };
-  }
-  if (cuenta.factura_cfdi_cancelacion_solicitada === true) {
-    return {
-      kind: "blocked",
-      reason: `${label} tiene la cancelación de su CFDI pendiente de que el receptor la acepte: no admite cobros.`,
-    };
-  }
-  if (cuenta.factura_cfdi_pendiente === true) {
-    return {
-      kind: "draftOnly",
-      reason:
-        context === "savedDraft"
-          ? `${label} tiene un timbrado pendiente de confirmación: aplica el cobro cuando se confirme.`
-          : `${label} tiene un timbrado pendiente de confirmación: guarda el cobro como borrador y aplícalo cuando se confirme.`,
-    };
-  }
-  if (cuenta.estatus === "Cancelada") {
-    return { kind: "blocked", reason: CXC_NOT_COBRABLE_FALLBACK_REASON };
-  }
-  if (cuenta.cobrable === false && cuenta.estatus !== "Pagada" && Number(cuenta.saldo) > 0) {
-    return { kind: "blocked", reason: CXC_NOT_COBRABLE_FALLBACK_REASON };
-  }
-  return COBRABLE;
+  const eligibility = getCxcInvoiceCfdiEligibility(cuenta, cobroReasons(context));
+  return eligibility.kind === "eligible" ? COBRABLE : eligibility;
 };
 
 /** Motivo por el que la CxC no se puede ELEGIR en el selector, o `null`. */
