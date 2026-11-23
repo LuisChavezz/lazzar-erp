@@ -24,40 +24,17 @@ import { InvoiceLinesSelectorDialog } from "./InvoiceLinesSelectorDialog";
 import {
   CREDIT_NOTE_EMIT_PERMISSION_REASON,
   CREDIT_NOTE_EMIT_STAMP_WARNING,
-  getInvoiceNotCreditableReason,
   getInvoiceUnstampedEmitWarning,
-  getRelatedInvoiceEmitBlockReason,
 } from "../utils/creditNoteStamping";
 import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
-import { useInvoiceRetrieveFresh } from "@/src/features/invoicing/hooks/useInvoiceRetrieveFresh";
-import type { Invoice } from "@/src/features/invoicing/interfaces/invoice.interface";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { useCreditNoteInvoice } from "../hooks/useCreditNoteInvoice";
+import { getCreditNoteInvoiceGate, getCreditNoteInvoiceState } from "../utils/creditNoteInvoiceGate";
 
 interface CreditNoteFormProps {
   onSuccess: () => void;
   /** Candado del envío, del diálogo (ver `useCreditNoteForm`). */
   submitLockRef: RefObject<boolean>;
 }
-
-/** "Emitir nota" mientras llega la lectura fresca de la factura elegida. */
-const INVOICE_STATE_CHECKING_REASON = "Consultando el estado de la factura elegida…";
-
-/** "Emitir nota" sin poder consultar la factura elegida (fallo que no es `404`). */
-const INVOICE_STATE_UNKNOWN_REASON =
-  "No se pudo confirmar el estado de la factura elegida: guarda la nota como borrador o vuelve a consultarla para emitirla.";
-
-/**
- * Factura elegida según su retrieve FRESCO: `none` sin factura, `checking`
- * mientras llega la lectura de esta elección (o su reintento), `notFound` con un
- * `404` (eliminada o fuera del alcance del usuario), `unavailable` con otro
- * fallo, `loaded` con la factura.
- */
-type SelectedInvoiceState =
-  | { status: "none" }
-  | { status: "checking" }
-  | { status: "notFound" }
-  | { status: "unavailable" }
-  | { status: "loaded"; invoice: Invoice };
 
 /** Campos de importe de una línea, para pintarlos sin repetir el mismo bloque. */
 const LINE_MONEY_FIELDS = [
@@ -118,35 +95,20 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
 
   const selectedDetalleIds = lines.map((line) => line.factura_detalle);
 
-  // Estado de la factura elegida, leído FRESCO por id (`useInvoiceRetrieveFresh`:
-  // `staleTime: 0` y `refetchOnMount: "always"`, misma llave que el selector de
-  // conceptos). Eliminada, cancelada o con su timbrado sin confirmar
-  // (`cfdi_pendiente`) se puede guardar un borrador, pero no emitir
-  // (`getRelatedInvoiceEmitBlockReason`): el backend rechazaría la eliminada
-  // (#736) y la cancelada, y un timbrado pendiente volvería con un `cfdi` que
-  // bloquea este formulario. Mientras la lectura de ESTA elección no llegue, o
-  // si falló, tampoco se emite: la copia en caché pudo quedar vieja.
-  const {
-    data: facturaFresh,
-    error: invoiceError,
-    isError: isInvoiceError,
-    isFetching: isFetchingInvoice,
-    isFetchedAfterMount: isInvoiceFetchedAfterMount,
-    refetch: refetchInvoice,
-  } = useInvoiceRetrieveFresh(factura > 0 ? factura : null);
-  const isInvoiceNotFound = isInvoiceError && isNotFoundError(invoiceError);
-  const selectedInvoice: SelectedInvoiceState =
-    factura <= 0
-      ? { status: "none" }
-      : isFetchingInvoice && (isInvoiceError || !isInvoiceFetchedAfterMount)
-        ? { status: "checking" }
-        : isInvoiceNotFound
-          ? { status: "notFound" }
-          : isInvoiceError
-            ? { status: "unavailable" }
-            : facturaFresh
-              ? { status: "loaded", invoice: facturaFresh }
-              : { status: "checking" };
+  // Estado de la factura elegida, leído FRESCO por id (`useCreditNoteInvoice`).
+  // Manda sobre el selector, cuya lista de CxC pudo quedar vieja: una factura
+  // cancelada, con su CFDI cancelado o en cancelación, o eliminada no admite la
+  // nota ni como borrador; con el timbrado sin confirmar (`cfdi_pendiente`) se
+  // guarda un borrador, pero no se emite (el backend volvería con un `cfdi` que
+  // bloquea este formulario). Mientras la lectura de ESTA elección no llegue, si
+  // falló o si el usuario no puede consultarla (`403`), tampoco se emite. La
+  // regla completa vive en `getCreditNoteInvoiceState` / `getCreditNoteInvoiceGate`.
+  const { refetch: refetchInvoice, ...invoiceRead } = useCreditNoteInvoice(
+    factura > 0 ? factura : null,
+  );
+  const selectedInvoice = getCreditNoteInvoiceState(invoiceRead);
+  const invoiceGate = getCreditNoteInvoiceGate(selectedInvoice, facturaFolio || null);
+  const draftBlockReason = invoiceGate.draftBlockReason;
   // Sin el permiso de timbrado, "Emitir nota" queda deshabilitado con su motivo
   // (el backend respondería 403); guardar como borrador sigue disponible.
   // Mientras la sesión carga se deshabilita SIN motivo (`financeWriteBlock`):
@@ -156,21 +118,17 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
     getFinanceWriteState(session?.user, sessionStatus),
     CREDIT_NOTE_EMIT_PERMISSION_REASON,
   );
-  const emitBlockReason = emitPermissionBlock.disabled
-    ? (emitPermissionBlock.description ?? null)
-    : selectedInvoice.status === "loaded"
-      ? getRelatedInvoiceEmitBlockReason(selectedInvoice.invoice)
-      : selectedInvoice.status === "checking"
-        ? INVOICE_STATE_CHECKING_REASON
-        : selectedInvoice.status === "notFound"
-          ? getInvoiceNotCreditableReason(facturaFolio || null, undefined)
-          : selectedInvoice.status === "unavailable"
-            ? INVOICE_STATE_UNKNOWN_REASON
-            : null;
+  // Lo que bloquea los dos botones va primero; después, el permiso de emitir.
+  const emitBlockReason =
+    draftBlockReason ??
+    (emitPermissionBlock.disabled
+      ? (emitPermissionBlock.description ?? null)
+      : invoiceGate.emitBlockReason);
   // Aviso (no bloqueo) de factura sin timbrar: en la empresa de Facturama el
   // backend rechazaría la emisión con un `cfdi` sin `nota_credito`, que deja
   // este formulario bloqueado (decisión de EC-639); fuera de ella procede.
-  const emitDisabled = emitPermissionBlock.disabled || emitBlockReason !== null;
+  const emitDisabled =
+    draftBlockReason !== null || emitPermissionBlock.disabled || emitBlockReason !== null;
   const unstampedWarning =
     !emitDisabled && selectedInvoice.status === "loaded"
       ? getInvoiceUnstampedEmitWarning(selectedInvoice.invoice)
@@ -187,7 +145,16 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
 
   return (
     <>
-      <form onSubmit={handleFormSubmit} className="w-full">
+      {/* El envío implícito del formulario guarda como borrador: con la factura
+          bloqueada para borrador tampoco envía. */}
+      <form
+        onSubmit={(event) => {
+          if (draftBlockReason === null) return handleFormSubmit(event);
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        className="w-full"
+      >
         {/* Bloqueado cuando la nota pudo quedar registrada: todo queda de solo
             lectura y la salida es el "Cerrar" del diálogo (ver `isSubmissionLocked`). */}
         <fieldset disabled={isPending || isSubmissionLocked} className="space-y-6">
@@ -252,12 +219,12 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
             </div>
             {/* Sin poder consultar la factura elegida (no un `404`): se puede
                 guardar como borrador, y emitir tras reintentar la consulta. */}
-            {isInvoiceError && !isInvoiceNotFound && factura > 0 && (
+            {invoiceRead.isInitialError && (
               <SectionErrorNotice
                 title="No se pudo consultar el estado de la factura"
                 message="Puedes guardar la nota como borrador; para emitirla, vuelve a consultar la factura."
-                onRetry={() => void refetchInvoice()}
-                isRetrying={isFetchingInvoice}
+                onRetry={refetchInvoice}
+                isRetrying={invoiceRead.isFetching}
               />
             )}
             {getError("factura") && (
@@ -595,6 +562,8 @@ export default function CreditNoteForm({ onSuccess, submitLockRef }: CreditNoteF
                 <FormSubmitButton
                   type="button"
                   onClick={() => submitAs("Borrador")}
+                  disabled={draftBlockReason !== null}
+                  aria-describedby={draftBlockReason ? "credit-note-emit-block-reason" : undefined}
                   isPending={isPending && estatusIntent === "Borrador"}
                   loadingLabel="Guardando..."
                   className="bg-slate-600! hover:bg-slate-700! focus:ring-slate-500!"
