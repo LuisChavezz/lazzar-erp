@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
-import { CheckCircleIcon } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
-import { refocusOnUnmount } from "../utils/refocusOnUnmount";
+import { MarkReadPill } from "./MarkReadPill";
 import { NotificationTypeIcon } from "./NotificationIcon";
 import { NotificationTimestamp } from "./NotificationTimestamp";
 
@@ -75,15 +74,11 @@ export function NotificationItem({
         />
         {/* Mismo control que el modal "Ver todas" para las filas sin destino. */}
         {!isActionable && !notificacion.leido && (
-          <button
-            ref={refocusOnUnmount(focusFallbackRef)}
-            type="button"
+          <MarkReadPill
             onClick={onMarkRead}
-            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-700 px-2 py-1 rounded-full cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors"
-          >
-            <CheckCircleIcon className="w-3 h-3" aria-hidden="true" />
-            Marcar leída
-          </button>
+            focusFallbackRef={focusFallbackRef}
+            className="mt-2"
+          />
         )}
       </div>
       {!notificacion.leido && (
