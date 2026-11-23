@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   CXC_NOT_COBRABLE_FALLBACK_REASON,
   getCxcInvoiceCfdiEligibility,
+  upperFirst,
   type CxcInvoiceCfdiReasons,
 } from "@/src/features/accounts-receivable/utils/cxcInvoiceCfdiEligibility";
 import type { MotivoNoCobrable } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
@@ -299,4 +300,9 @@ test("una causa que ya termina en punto no sale con «..» en ningún documento"
     kind: "blocked",
     reason: "cancelado F-10",
   });
+});
+
+test("upperFirst: solo la primera letra, el resto (siglas incluidas) intacto", () => {
+  expect(upperFirst("guarda el CFDI")).toBe("Guarda el CFDI");
+  expect(upperFirst("")).toBe("");
 });

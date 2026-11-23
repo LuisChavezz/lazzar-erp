@@ -1,5 +1,6 @@
 import {
   getCxcInvoiceCfdiEligibility,
+  upperFirst,
   type CxcInvoiceCfdiEligibility,
   type CxcInvoiceCfdiFields,
   type CxcInvoiceCfdiReasons,
@@ -16,7 +17,7 @@ const CREDIT_NOTE_REASONS: CxcInvoiceCfdiReasons = {
   // «Factura F-1: CFDI pendiente de timbrar. Guarda la nota como borrador…»
   withCauseLabel: (folio, causeLabel, kind) =>
     kind === "draftOnly"
-      ? `${causeInvoiceLabel(folio)}: ${causeLabel}. ${STAMP_PENDING_ACTION.charAt(0).toUpperCase()}${STAMP_PENDING_ACTION.slice(1)}`
+      ? `${causeInvoiceLabel(folio)}: ${causeLabel}. ${upperFirst(STAMP_PENDING_ACTION)}`
       : `${causeInvoiceLabel(folio)}: ${causeLabel}.`,
   cfdiCancelled: (folio) =>
     `${invoiceLabel(folio)} tiene su CFDI cancelado ante el SAT: no admite notas de crédito.`,

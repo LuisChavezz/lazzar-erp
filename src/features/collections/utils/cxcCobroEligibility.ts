@@ -1,6 +1,7 @@
 import {
   CXC_NOT_COBRABLE_FALLBACK_REASON,
   getCxcInvoiceCfdiEligibility,
+  upperFirst,
   type CxcInvoiceCfdiFields,
   type CxcInvoiceCfdiReasons,
 } from "@/src/features/accounts-receivable/utils/cxcInvoiceCfdiEligibility";
@@ -45,14 +46,12 @@ const stampPendingAction = (context: CxcEligibilityContext): string =>
     ? "aplica el cobro cuando se confirme."
     : "guarda el cobro como borrador y aplícalo cuando se confirme.";
 
-const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-
 /** Textos del cobro para cada causa de `getCxcInvoiceCfdiEligibility`. */
 const cobroReasons = (context: CxcEligibilityContext): CxcInvoiceCfdiReasons => ({
   // «Factura F-1: CFDI pendiente de timbrar. Guarda el cobro como borrador…»
   withCauseLabel: (folio, causeLabel, kind) =>
     kind === "draftOnly"
-      ? `${causeInvoiceLabel(folio)}: ${causeLabel}. ${capitalize(stampPendingAction(context))}`
+      ? `${causeInvoiceLabel(folio)}: ${causeLabel}. ${upperFirst(stampPendingAction(context))}`
       : `${causeInvoiceLabel(folio)}: ${causeLabel}.`,
   cfdiCancelled: (folio) => `${invoiceLabel(folio)} tiene su CFDI cancelado ante el SAT: no admite cobros.`,
   cancellationRequested: (folio) =>
