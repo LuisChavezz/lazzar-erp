@@ -9,6 +9,14 @@ import {
   formatFechaConfirmacion,
 } from "@/src/features/orders/utils/pedidoFormat";
 import {
+  toFechaConfirmacionInputValue,
+  toFechaConfirmacionPayload,
+} from "@/src/features/orders/utils/pedidoConfirmacion";
+import { getProcurementOrderColumnText } from "@/src/features/orders/utils/procurementOrderExport";
+import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
+import type { PedidoExportRow } from "@/src/features/orders/interfaces/pedido-list.interface";
+import type { DataTableVisibleColumn } from "@/src/components/DataTable";
+import {
   buildMonthFilterOptions,
   localMonthFilterValue,
   matchesMonthFilter,
@@ -19,9 +27,8 @@ import {
   formatShortDate,
   formatShortDateTime,
   formatShortTime,
-  LOCAL_TIME_ZONE,
+  formatLocalDate,
   parseLocalDate,
-  toLocalMidnightIso,
 } from "@/src/utils/formatDate";
 import { exportDate } from "@/src/utils/listExport";
 import { MEXICO_TIME_ZONE, toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
@@ -239,85 +246,121 @@ test.describe("formatShortDate: el día de un datetime en México", () => {
   });
 });
 
-test.describe("`LOCAL_TIME_ZONE`: el modo local de `formatShortDate`", () => {
-  test("omite `timeZone`: sale lo mismo que `toLocaleDateString` sin zona", () => {
-    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
-      withProcessTimeZone(zone, () => {
-        for (const { value } of DATETIME_CASES) {
-          const sinZona = new Date(value).toLocaleDateString("es-MX", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          });
-          expect(formatShortDate(value, { timeZone: LOCAL_TIME_ZONE })).toBe(sinZona);
-        }
-      });
-    }
-  });
-
-  test("no lanza aunque ICU no identifique la zona del proceso", () => {
-    // Pasarla explícita ("Etc/Unknown") sí lanzaría `RangeError`.
-    withProcessTimeZone(
-      "Etc/Unknown",
-      () => {
-        expect(() =>
-          formatShortDate("2026-11-21T08:51:44-06:00", { timeZone: LOCAL_TIME_ZONE }),
-        ).not.toThrow();
-      },
-      { checkResolved: false },
-    );
-  });
-});
-
 const surtidoConfirmado = (fecha_confirmacion: string | null) =>
   SURTIDO_PEDIDO_EXPORT_COLUMNS.find((c) => c.header === "Confirmado")?.text({
     fecha_confirmacion,
   } as SurtidoPedido);
 
-test.describe("`formatFechaConfirmacion`: en la zona del navegador (EC-936)", () => {
+/** Lo que mostraba la hoja ANTES de EC-936: el día LOCAL (sin `timeZone`). */
+const oldLocalLabel = (value: string) =>
+  new Date(value).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+
+const procurementConfirmado = (fecha_confirmacion: string | null) =>
+  getProcurementOrderColumnText(
+    { fecha_confirmacion } as PedidoExportRow,
+    { id: "fecha_confirmacion" } as DataTableVisibleColumn<PedidoListItem>,
+  );
+
+/** Celdas de Compras y pedidos especiales, y el tooltip de Ventas (date-fns). */
+const cellLabel = (value: string | null) => {
+  const date = toMexicoDayLocalDate(value);
+  return date ? format(date, "d MMM yyyy", { locale: es }) : "—";
+};
+
+test.describe("`fecha_confirmacion`: un día de México en cualquier zona (EC-936)", () => {
   for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
-    test(`con el navegador en ${zone} la medianoche local guardada sale en el día capturado`, () => {
+    test(`con el navegador en ${zone} se escribe la medianoche de México y todos leen el día elegido`, () => {
       withProcessTimeZone(zone, () => {
         for (const { value, label } of CALENDAR_CASES) {
-          // Lo que escribe `PedidoFechaConfirmacionField` y lo que leen la hoja,
-          // el pedido especial, el PDF y la exportación de surtido.
-          const stored = toLocalMidnightIso(value);
+          // Lo que manda `PedidoFechaConfirmacionField`: no depende de la zona.
+          const stored = toFechaConfirmacionPayload(value);
+          expect(stored).toBe(`${value}T00:00:00-06:00`);
+          // El editor vuelve a mostrar el día elegido.
+          expect(toFechaConfirmacionInputValue(stored)).toBe(value);
+          // Hoja, pedido especial, PDF y exportación de surtido.
           expect(formatFechaConfirmacion(stored)).toBe(label);
           expect(surtidoConfirmado(stored)).toBe(label);
+          // Celdas (Compras, especiales), tooltip de Ventas y exportación de Compras.
+          const [anio, mes, dia] = value.split("-").map(Number);
+          const local = new Date(anio, mes - 1, dia);
+          expect(cellLabel(stored)).toBe(format(local, "d MMM yyyy", { locale: es }));
+          expect(procurementConfirmado(stored)).toBe(local.toLocaleDateString("es-MX"));
+          // Filtro de mes de pedidos especiales: el mes del día visible.
+          expect(monthFilterKey(stored)).toBe(value.slice(0, 7));
         }
         expect(formatFechaConfirmacion(null)).toBe("—");
         expect(formatFechaConfirmacion("sin fecha")).toBe("—");
         expect(surtidoConfirmado(null)).toBe("");
+        expect(procurementConfirmado(null)).toBe("—");
+        expect(cellLabel(null)).toBe("—");
       });
     });
   }
 
-  test("con el navegador en Asia/Tokyo no se lee en la zona de México", () => {
-    withProcessTimeZone("Asia/Tokyo", () => {
-      const stored = toLocalMidnightIso("2026-12-31");
-      expect(stored).toBe("2026-12-31T00:00:00+09:00");
-      expect(formatShortDate(stored)).toBe("30 dic 2026");
-      expect(formatFechaConfirmacion(stored)).toBe("31 dic 2026");
-      expect(surtidoConfirmado(stored)).toBe("31 dic 2026");
-    });
+  test("el editor toma el día de México aunque el valor se haya guardado desde otra zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        // Medianoche de Los Ángeles del 31 de enero = 02:00 del 31 en México.
+        expect(toFechaConfirmacionInputValue("2026-01-31T00:00:00-08:00")).toBe("2026-01-31");
+        // Medianoche de Tokio del 1 de febrero = 09:00 del 31 de enero en México.
+        expect(toFechaConfirmacionInputValue("2026-02-01T00:00:00+09:00")).toBe("2026-01-31");
+        expect(formatFechaConfirmacion("2026-02-01T00:00:00+09:00")).toBe("31 ene 2026");
+        // Las dos filas de prueba con hora (12:00 de México) caen en su día.
+        expect(toFechaConfirmacionInputValue("2026-12-15T18:00:00Z")).toBe("2026-12-15");
+        expect(formatFechaConfirmacion("2026-12-15T18:00:00Z")).toBe("15 dic 2026");
+        // Un "YYYY-MM-DD" pelado es el día tal cual; vacíos e inválidos, `null`.
+        expect(toFechaConfirmacionInputValue("2026-01-31")).toBe("2026-01-31");
+        expect(toFechaConfirmacionInputValue("2026-02-30")).toBeNull();
+        expect(toFechaConfirmacionInputValue(null)).toBeNull();
+        expect(toFechaConfirmacionInputValue("")).toBeNull();
+        expect(toFechaConfirmacionInputValue("sin fecha")).toBeNull();
+      });
+    }
   });
 
-  test("con el navegador en America/Los_Angeles un valor guardado en México sale en el día local", () => {
-    withProcessTimeZone("America/Los_Angeles", () => {
-      // Medianoche de México = 22:00 del día anterior en Los Ángeles (como antes de EC-931).
-      expect(formatFechaConfirmacion("2027-01-15T00:00:00-06:00")).toBe("14 ene 2027");
-      expect(formatShortDate("2027-01-15T00:00:00-06:00")).toBe("15 ene 2027");
-    });
+  test("en el cambio de mes y de año no se corre el día en ninguna zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const [value, label, mes] of [
+          ["2026-10-31", "31 oct 2026", "2026-10"],
+          ["2026-11-01", "01 nov 2026", "2026-11"],
+          ["2026-12-31", "31 dic 2026", "2026-12"],
+          ["2027-01-01", "01 ene 2027", "2027-01"],
+        ] as const) {
+          const stored = toFechaConfirmacionPayload(value);
+          expect(toFechaConfirmacionInputValue(stored)).toBe(value);
+          expect(formatFechaConfirmacion(stored)).toBe(label);
+          expect(monthFilterKey(stored)).toBe(mes);
+        }
+      });
+    }
   });
 
-  test("en México sale lo mismo que leían antes los tres lectores y la exportación", () => {
+  test("un día inválido no produce valor (no se manda `null`, que borraría la confirmación)", () => {
+    expect(toFechaConfirmacionPayload("2026-02-30")).toBeNull();
+    expect(toFechaConfirmacionPayload("")).toBeNull();
+    expect(toFechaConfirmacionPayload("2026-01-15T00:00:00-06:00")).toBeNull();
+  });
+
+  test("en México se escribe y se lee lo mismo que antes del cambio", () => {
     for (const { value } of CALENDAR_CASES) {
-      const stored = toLocalMidnightIso(value);
-      // Hoja (`parseLocalDate` + `formatShortDate`), pedido especial y PDF (string crudo).
-      expect(formatFechaConfirmacion(stored)).toBe(formatShortDate(parseLocalDate(stored)));
-      expect(formatFechaConfirmacion(stored)).toBe(formatShortDate(stored));
+      const stored = toFechaConfirmacionPayload(value);
+      if (!stored) throw new Error(`sin valor para ${value}`);
+      // Antes: `toLocalMidnightIso`, que en México daba la misma medianoche.
+      expect(stored).toBe(`${value}T00:00:00-06:00`);
+      // Editor (antes `toLocalDateKey(parseLocalDate(value))`).
+      expect(toFechaConfirmacionInputValue(stored)).toBe(value);
+      // Hoja, pedido especial y PDF (antes en la zona local).
+      expect(formatFechaConfirmacion(stored)).toBe(oldLocalLabel(stored));
       // Exportación de surtido (antes `exportDate`).
       expect(surtidoConfirmado(stored)).toBe(exportDate(stored));
+      // Celdas y tooltip (antes `format(parseLocalDate(value))`).
+      const parsed = parseLocalDate(stored);
+      expect(parsed && cellLabel(stored)).toBe(parsed && format(parsed, "d MMM yyyy", { locale: es }));
+      // Exportación de Compras (antes `formatLocalDate`).
+      expect(procurementConfirmado(stored)).toBe(formatLocalDate(stored));
+      // Filtro de mes de pedidos especiales (antes `localMonthFilterValue`).
+      expect(monthFilterKey(stored)).toBe(monthFilterKey(localMonthFilterValue(stored)));
     }
   });
 });
