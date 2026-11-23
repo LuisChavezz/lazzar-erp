@@ -5,20 +5,33 @@ import type {
   RfidScansResponse,
 } from "../interfaces/rfid-scanner.interface";
 
+/** Filtros de `GET /wms/etiquetas-rfid/scans/` (nucleo-erp#1331). */
+export interface RfidScansParams {
+  /** Solo lecturas que cruzan con una etiqueta impresa por el ERP. */
+  soloMatch: boolean;
+}
+
 /**
- * Últimas 50 lecturas del lector RFID, ya cruzadas contra las etiquetas
+ * Últimas lecturas del lector RFID, ya cruzadas contra las etiquetas
  * impresas (`GET /wms/etiquetas-rfid/scans/`).
  *
- * Sin params: los que acepta (`?epc=`) solo alimentan `debug_get`, que esta
- * pantalla no consume.
+ * Siempre pide `unicos=1` (la última lectura de cada EPC): el FX repite la
+ * misma etiqueta varias veces por segundo y, sin deduplicar, las etiquetas
+ * ajenas de alrededor llenaban el límite de 50 y empujaban fuera las del ERP.
+ * `solo_match=1` deja solo las impresas por el ERP. Un backend sin #1331
+ * ignora ambos params y responde como antes.
  *
  * El backend devuelve las 50 lecturas más recientes, coincidan o no: las que
  * no cruzan con una etiqueta impresa llegan con `match_impresion: false` (p.
  * ej. tags ajenos `3035…`) en vez de descartarse (EC-786). Los EPC llegan en
  * mayúsculas.
  */
-export const fetchRfidScans = async (): Promise<RfidScansResponse> => {
-  const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/");
+export const fetchRfidScans = async ({
+  soloMatch,
+}: RfidScansParams): Promise<RfidScansResponse> => {
+  const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/", {
+    params: { unicos: 1, ...(soloMatch ? { solo_match: 1 } : {}) },
+  });
   return response.data;
 };
 

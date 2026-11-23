@@ -7,6 +7,7 @@ import { SkuCode } from "@/src/components/SkuCode";
 import { splitSku } from "@/src/utils/sku";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { capturaManualRecepcion, sumarCantidades } from "../utils/receiptQuantities";
+import { RfidFeedStrip } from "@/src/features/rfid-scanner/components/RfidFeedStrip";
 import { findReceiptLineByScan, groupReceiptLines, receiptScanCodes, type ReceiptScanLine } from "../utils/receiptScan";
 
 interface ReceiptLinesPanelProps {
@@ -124,13 +125,14 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="receipt-scan"
         onScan={procesarLectura}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} />}
         actions={
           recibibles.length > 0 && (
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => llenarTodo(true)}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
+                className="rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
               >
                 Recibir todo
               </button>
@@ -138,7 +140,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                 <button
                   type="button"
                   onClick={() => llenarTodo(false)}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+                  className="rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
                 >
                   Limpiar
                 </button>
@@ -163,7 +165,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                 type="button"
                 onClick={() => toggleGrupo(grupo.key)}
                 aria-expanded={abierto}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5"
               >
                 <span
                   aria-hidden="true"
@@ -175,16 +177,16 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                   <span className="flex min-w-0 items-center gap-2">
                     {base && (
                       <span
-                        className="shrink-0 rounded-md bg-slate-900 dark:bg-white/10 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-white"
+                        className="shrink-0 rounded-md bg-slate-900 dark:bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] font-bold tracking-wide text-white"
                         title="SKU: modelo / color"
                       >
                         {base}
                       </span>
                     )}
-                    <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{grupo.nombre}</span>
+                    <span className="truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{grupo.nombre}</span>
                   </span>
                   {(raiz || proscai || grupo.color) && (
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10.5px] text-slate-500 dark:text-slate-400">
                       {raiz && (
                         <span>
                           Raíz <b className="font-mono text-slate-700 dark:text-slate-200">{raiz}</b>
@@ -205,7 +207,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                   </span>
                 </span>
                 <span
-                  className={`shrink-0 text-sm font-bold tabular-nums ${
+                  className={`shrink-0 text-[13px] font-bold tabular-nums ${
                     completo ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"
                   }`}
                 >
@@ -237,7 +239,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                         }`}
                       >
                         {(line.sku || line.codigo || line.proscai) && (
-                          <div className="w-28 shrink-0 text-xs">
+                          <div className="w-28 shrink-0 text-[11.5px]">
                             <SkuCode
                               linea={{
                                 producto_variante_sku: line.sku,
@@ -250,13 +252,13 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                         <div className="min-w-0 flex-1">
                           <p className="flex flex-wrap items-center gap-2">
                             {talla && (
-                              <span className="rounded-md bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                              <span className="rounded-md bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 text-[11.5px] font-bold text-slate-700 dark:text-slate-200">
                                 {talla}
                               </span>
                             )}
-                            {lleno && <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✓ completo</span>}
+                            {lleno && <span className="text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">✓ completo</span>}
                           </p>
-                          <p className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+                          <p className="mt-0.5 text-[10.5px] tabular-nums text-slate-500 dark:text-slate-400">
                             Pendiente <b className="text-slate-700 dark:text-slate-200">{fmt(line.pendiente)}</b>
                             {" · "}Ordenado {fmt(line.ordenado)}
                             {line.enMaquila > 0 && <> · {enMaquilaTexto(line)}</>}
@@ -271,7 +273,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
                           <button
                             type="button"
                             onClick={() => setCantidad(line.id, String(line.tope))}
-                            className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 cursor-pointer"
+                            className="shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 cursor-pointer"
                           >
                             Todo ({fmt(line.tope)})
                           </button>
@@ -307,15 +309,15 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
               className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-4 py-2.5 ${error !== undefined ? "bg-red-50/70 dark:bg-red-500/10" : "opacity-50"}`}
             >
               <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
+              <span className="min-w-0 flex-1 truncate text-[13px] text-slate-700 dark:text-slate-200">
                 {line.nombre}
                 {tallaDe(line) && <span className="text-slate-400"> · {tallaDe(line)}</span>}
               </span>
-              <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">
                 {line.sinTope}
               </span>
               {error !== undefined && (
-                <p role="alert" className="basis-full pl-5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                <p role="alert" className="basis-full pl-5 text-[10.5px] font-medium text-red-600 dark:text-red-400">
                   {error}
                 </p>
               )}

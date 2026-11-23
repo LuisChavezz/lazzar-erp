@@ -55,6 +55,9 @@ export interface RfidScan {
   sku?: string | null;
   color?: string | null;
   talla?: string | null;
+  /** Código impreso en el código de barras de la etiqueta. Es el SKU cuando
+   *  la variante lo tiene, o el código del producto ("018Q") cuando no. */
+  barcode_value?: string | null;
   /** `EtiquetaRFIDDetalle.serial` — es CharField, no entero ("0001"). */
   serial?: string | null;
   /** Estado de la etiqueta leída (`"LEIDO"`). Solo en lecturas con match (EC-786). */
@@ -80,6 +83,23 @@ export interface RfidScannerLastScan {
   ts: string | null;
 }
 
+/** Estado de un lector según su heartbeat (nucleo-erp #1289). */
+export type RfidLectorEstado = "SIN_CONEXION" | "CONECTADO_SIN_TAGS" | "LEYENDO";
+
+/** Un lector de la empresa activa con su último heartbeat y su última lectura. */
+export interface RfidLector {
+  id: number;
+  nombre: string;
+  sucursal_id: number | null;
+  activo: boolean;
+  ultima_conexion: string | null;
+  ultima_lectura: string | null;
+  segundos_desde_conexion: number | null;
+  segundos_desde_lectura: number | null;
+  /** SIN_CONEXION: >300 s sin heartbeat o nunca; lo calcula el backend. */
+  estado: RfidLectorEstado;
+}
+
 /** Respuesta de `GET /wms/etiquetas-rfid/scanner-stats/` (sin los campos de
  *  diagnóstico; ver la nota de arriba). */
 export interface RfidScannerStatsResponse {
@@ -95,13 +115,15 @@ export interface RfidScannerStatsResponse {
    */
   last_scan_seconds_ago: number | null;
   last_5_scans: RfidScannerLastScan[];
+  /** Lectores de la empresa activa (#1289). Opcional hasta que todo backend lo traiga. */
+  lectores?: RfidLector[];
 }
 
 /** Lo que necesita la barra de estado del lector: un subconjunto de la
  *  respuesta, para que el componente no reciba campos que no usa. */
 export type RfidScannerStats = Pick<
   RfidScannerStatsResponse,
-  "total_rfidscan_rows" | "last_scan_seconds_ago" | "last_5_scans"
+  "total_rfidscan_rows" | "last_scan_seconds_ago" | "last_5_scans" | "lectores"
 >;
 
 /** Respuesta de `POST /wms/etiquetas-rfid/scans/clear/`. `deleted` es el total

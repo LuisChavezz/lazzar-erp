@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import { FormInput } from "@/src/components/FormInput";
 import { ScanCapture, SizeProgressChip, type ScanModo, type ScanResult } from "@/src/components/ScanCapture";
+import { RfidFeedStrip } from "@/src/features/rfid-scanner/components/RfidFeedStrip";
 import { SkuCode } from "@/src/components/SkuCode";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { hasLineCode, splitSku } from "@/src/utils/sku";
@@ -115,6 +116,7 @@ export function PickingLinesPanel({
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="picking-scan"
         onScan={procesarLectura}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} />}
       />
 
       {/* ── Productos (desplegables) ──────────────────────────────────── */}
