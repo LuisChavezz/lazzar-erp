@@ -72,7 +72,12 @@ export function NotificationItem({
           createdAt={notificacion.created_at}
           className="text-[10px] text-slate-400 mt-2 block"
         />
-        {/* Mismo control que el modal "Ver todas" para las filas sin destino. */}
+        {/*
+          Solo en las filas SIN destino. Aquí la fila entera es el botón que
+          abre el destino (y de paso la marca como leída), y un botón anidado
+          dentro de otro no sería válido. El modal la ofrece en TODA fila no
+          leída porque allí solo el título es botón.
+        */}
         {!isActionable && !notificacion.leido && (
           <MarkReadPill
             onClick={onMarkRead}
