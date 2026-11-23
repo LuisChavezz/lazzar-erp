@@ -106,11 +106,11 @@ test("nota de crédito: en el selector solo se deshabilita lo bloqueado (el pend
   expect(getCreditNoteCxcSelectionBlockReason(CASES.respaldo)).toBe(CXC_NOT_COBRABLE_FALLBACK_REASON);
 });
 
-test("nota de crédito: sin los campos nuevos o sin folio", () => {
+test("nota de crédito: sin los campos nuevos, o sin folio (la nombra como el resto del módulo)", () => {
   expect(getCreditNoteCxcEligibility({ factura_folio: null, estatus: "Parcial", saldo: "5.00" }).kind).toBe(
     "eligible",
   );
   expect(getCreditNoteCxcSelectionBlockReason({ ...CASES.cancelado, factura_folio: null })).toBe(
-    "La factura tiene su CFDI cancelado ante el SAT: no admite notas de crédito.",
+    "La factura relacionada tiene su CFDI cancelado ante el SAT: no admite notas de crédito.",
   );
 });
