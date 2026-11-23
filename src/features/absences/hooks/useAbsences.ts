@@ -12,7 +12,7 @@ export const ABSENCES_KEY = ["absences"] as const;
  * distingue "sin registros" de "aún no hay datos".
  */
 export const useAbsences = () => {
-  const { data, isLoading, isError, error, errorUpdatedAt } = useQuery<Absence[]>({
+  const { data, isLoading, isError, error, errorUpdatedAt, refetch } = useQuery<Absence[]>({
     queryKey: ABSENCES_KEY,
     queryFn: getAbsences,
   });
@@ -32,5 +32,7 @@ export const useAbsences = () => {
     isLoading,
     isInitialError,
     error: isInitialError ? error : null,
+    /** Para `useUrlDetailParam`: verifica un id que aún no está en la caché. */
+    refetch,
   };
 };

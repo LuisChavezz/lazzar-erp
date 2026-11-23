@@ -15,7 +15,7 @@ export const VACATIONS_KEY = ["vacations"] as const;
  * traslape del formulario no puede evaluarse contra un listado que no llegó.
  */
 export const useVacations = () => {
-  const { data, isLoading, isError, error, errorUpdatedAt } = useQuery<Vacation[]>({
+  const { data, isLoading, isError, error, errorUpdatedAt, refetch } = useQuery<Vacation[]>({
     queryKey: VACATIONS_KEY,
     queryFn: getVacations,
   });
@@ -35,5 +35,7 @@ export const useVacations = () => {
     isLoading,
     isInitialError,
     error: isInitialError ? error : null,
+    /** Para `useUrlDetailParam`: verifica un id que aún no está en la caché. */
+    refetch,
   };
 };
