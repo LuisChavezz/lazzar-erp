@@ -83,8 +83,8 @@ function ReceptionSelectorContent({
           <div className="shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
             <p>{recepcion.estatus_label}</p>
             <p>
-              {/* `fecha_recepcion` es un datetime ISO: sin `timeZone` fija, se
-                  pinta en la zona del usuario, que es lo correcto para un instante. */}
+              {/* `fecha_recepcion` es un datetime ISO: sin `timeZone`, se pinta
+                  su día en México, que es lo correcto para un instante. */}
               {formatShortDate(recepcion.fecha_recepcion)} · {recepcion.detalles.length}{" "}
               {recepcion.detalles.length === 1 ? "partida" : "partidas"}
             </p>

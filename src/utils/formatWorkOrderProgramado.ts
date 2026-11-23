@@ -19,7 +19,7 @@ export const formatPiezas = (cantidad: number) => `${formatQuantityValue(cantida
 
 /**
  * Detalle secundario: fecha corta + quién programó. `fecha` es un datetime con
- * zona, así que va SIN `timeZone` (día en la zona del usuario, ver
+ * zona, así que va SIN `timeZone` (día en la zona de México, ver
  * `formatShortDate`). Se omite cada parte inutilizable —la fecha cuando cae
  * en el "—" de respaldo, el usuario cuando viene vacío— sin dejar separadores
  * colgando; `null` si no queda ninguna.

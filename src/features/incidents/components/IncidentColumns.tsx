@@ -177,8 +177,9 @@ export const getColumns = (permissions: IncidentColumnPermissions) =>
         <span className="text-slate-500 dark:text-slate-400">{info.getValue()}</span>
       ),
     }),
-    // Timestamp real con offset: fecha y hora en la zona LOCAL del navegador
-    // (sin `timeZone: "UTC"`, que es solo para fechas-calendario). El orden va
+    // Timestamp real con offset: fecha y hora en la zona de México, la de
+    // omisión de los helpers (sin `timeZone: "UTC"`, que es solo para
+    // fechas-calendario). El orden va
     // sobre el instante, no sobre el texto.
     columnHelper.accessor(
       (row) => `${formatShortDate(row.fecha_reporte)} ${formatShortTime(row.fecha_reporte)}`,

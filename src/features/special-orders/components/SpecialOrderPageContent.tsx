@@ -20,7 +20,7 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { EntregaCell } from "./SpecialOrderPriorityCells";
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate, getBrowserTimeZone } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
 import { canActOnSpecialOrderLines } from "../utils/lineActions";
@@ -174,10 +174,15 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
                 </span>
               </InfoField>
               <div className="grid grid-cols-2 gap-4">
-                {/* Mismo formateo que el detalle de pedido (`PedidoDetailContent`). */}
+                {/* Mismo formateo que el detalle de pedido (`OrderFechaConfirmacionField`):
+                  `fecha_confirmacion` se ESCRIBE como la medianoche del navegador
+                  (`toLocalMidnightIso`): se lee en esa misma zona, no en la de
+                  México, para que muestre el día que se capturó (EC-931). */}
                 <InfoField label="Confirmación">
                   <span className="tabular-nums">
-                    {data.fecha_confirmacion ? formatShortDate(data.fecha_confirmacion) : "—"}
+                    {data.fecha_confirmacion
+                      ? formatShortDate(data.fecha_confirmacion, { timeZone: getBrowserTimeZone() })
+                      : "—"}
                   </span>
                 </InfoField>
                 <InfoField label="Entrega">

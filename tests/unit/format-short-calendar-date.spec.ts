@@ -30,13 +30,13 @@ test.describe("fechas-calendario en America/Mexico_City", () => {
     expect(formatShortCalendarDate("2026-07-14")).toMatch(/^14 jul\.? 2026$/);
   });
 
-  test("un datetime con -06:00 sale en el día local", () => {
+  test("un datetime con -06:00 sale en su día de México", () => {
     expect(formatShortCalendarDate("2026-07-14T23:30:00-06:00")).toBe(
       formatShortDate("2026-07-14", { timeZone: "UTC" }),
     );
   });
 
-  test("un datetime con +00:00 sale en el día local, no en el UTC", () => {
+  test("un datetime con +00:00 sale en el día de México, no en el UTC", () => {
     // 03:00 UTC del 15 = 21:00 del 14 en México.
     expect(formatShortCalendarDate("2026-07-15T03:00:00+00:00")).toBe(
       formatShortDate("2026-07-14", { timeZone: "UTC" }),

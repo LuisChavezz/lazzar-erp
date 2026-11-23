@@ -2,9 +2,11 @@
  * Fechas y horas en la zona horaria del BACKEND (`TIME_ZONE` de nucleo-erp),
  * no en la del navegador.
  *
- * Los helpers de `formatDate.ts` trabajan en la zona LOCAL del navegador, que
- * es lo correcto para mostrar fechas-calendario. Aquí se necesita otra cosa:
- * el backend interpreta una hora local de checada ("YYYY-MM-DD HH:MM:SS") en
+ * Los helpers de MOSTRAR de `formatDate.ts` (`formatShortDate`,
+ * `formatShortTime`, `formatShortDateTime`) ya usan `MEXICO_TIME_ZONE` por
+ * omisión (EC-931); los de parsear y armar claves (`parseLocalDate`,
+ * `toLocalDateKey`, `toLocalMidnightIso`) siguen en la zona LOCAL. Aquí se
+ * necesita otra cosa: el backend interpreta una hora local de checada ("YYYY-MM-DD HH:MM:SS") en
  * `America/Mexico_City` y exige que su día local coincida con `fecha`. Si el
  * navegador estuviera en otra zona, anclarse a la suya enviaría otro instante
  * u otro día.
