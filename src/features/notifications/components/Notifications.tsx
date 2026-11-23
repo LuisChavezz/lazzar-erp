@@ -143,6 +143,25 @@ export const Notifications = () => {
     };
   }, []);
 
+  /*
+    Escape cierra el panel y devuelve el foco a la campana. Solo escucha con
+    el panel abierto; abrir "Ver todas" o un destino diálogo cierra antes el
+    panel, así que nunca compite con el Escape de esos diálogos. La guarda de
+    `defaultPrevented` deja pasar el Escape que otro componente ya atendió.
+  */
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setIsNotifOpen(false);
+      btnRef.current?.focus();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNotifOpen]);
+
   const applyTarget = (target: NotificationTarget) => {
     if (target.kind === "route") {
       router.push(target.href);
