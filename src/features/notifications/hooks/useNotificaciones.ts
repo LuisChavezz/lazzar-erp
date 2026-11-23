@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getNotificaciones } from "../services/actions";
+import { NOTIFICACIONES_QUERY_KEY } from "../constants/notificationQueryKeys";
+import { trackNotificationArrivals } from "../utils/notificationArrivals";
 import type { Notificacion } from "../interfaces/notification.interface";
 
-/** Llave compartida por el dropdown, el modal y las dos mutaciones. */
-export const NOTIFICACIONES_QUERY_KEY = ["notificaciones"] as const;
+export { NOTIFICACIONES_QUERY_KEY };
 
 /**
  * Estado de la lista, ya resuelto por el hook.
@@ -47,9 +48,22 @@ export type NotificacionesListState = "loading" | "offline" | "error" | "ready";
  * de hora viendo una lista vieja.
  */
 export const useNotificaciones = (enabled: boolean) => {
+  const queryClient = useQueryClient();
   const query = useQuery<Notificacion[]>({
     queryKey: NOTIFICACIONES_QUERY_KEY,
-    queryFn: getNotificaciones,
+    // La lista también cuenta como "vista": una notificación que se abre desde
+    // aquí antes del siguiente sondeo del contador igual refresca lo
+    // relacionado (ver `trackNotificationArrivals`).
+    queryFn: async ({ signal }) => {
+      const notificaciones = await getNotificaciones();
+      if (!signal.aborted) {
+        trackNotificationArrivals(queryClient, {
+          maxId: notificaciones.reduce((max, n) => Math.max(max, n.id), 0),
+          unread: notificaciones.filter((n) => !n.leido).length,
+        });
+      }
+      return notificaciones;
+    },
     enabled,
     staleTime: 0,
   });
