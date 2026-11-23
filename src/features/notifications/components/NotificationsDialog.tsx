@@ -216,7 +216,13 @@ function NotificationsDialogBody({
                   role="listitem"
                 >
                   <NotificationTypeIcon tipo={notificacion.tipo} />
-                  <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-2">
+                  {/*
+                    Bajo `sm` la columna de la derecha (fecha, punto o "Leída",
+                    "Marcar leída") baja a una fila propia debajo del texto: a
+                    375px le dejaba al título ~117px. Desde `sm`, igual que
+                    siempre.
+                  */}
+                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
                     <div className="min-w-0">
                       {actionable ? (
                         <button
@@ -236,7 +242,7 @@ function NotificationsDialogBody({
                         {notificacion.mensaje}
                       </p>
                     </div>
-                    <div className="flex items-end flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:flex-nowrap sm:items-end sm:gap-1">
                       <div className="flex items-center gap-2">
                         {!notificacion.leido ? (
                           <span
