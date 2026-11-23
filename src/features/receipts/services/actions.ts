@@ -29,3 +29,20 @@ export const createReceipt = async (
   const { data } = await v1_api.post("/compras/recepciones/onboarding/", payload);
   return data;
 }
+
+/**
+ * Cancela una recepción (`POST /compras/recepciones/{id}/cancelar/`, EC-925).
+ * Responde la forma PLANA de `RecepcionSerializer` (como el listado, sin
+ * `detalles` ni `puede_cancelar`), no la del retrieve: por eso quien la llama
+ * invalida el detalle en vez de escribir esta respuesta en su caché.
+ */
+export const cancelReceipt = async ({
+  id,
+  motivo,
+}: {
+  id: number;
+  motivo: string;
+}): Promise<Receipt> => {
+  const { data } = await v1_api.post<Receipt>(`/compras/recepciones/${id}/cancelar/`, { motivo });
+  return data;
+}

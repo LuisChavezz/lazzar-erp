@@ -7,7 +7,24 @@ import type { TipoCompra } from "@/src/features/purchase-orders/constants/purcha
  */
 export type ReceiptTipoOrigen = "OC" | "OP" | "SM";
 
-export interface Receipt {
+/**
+ * Datos de la cancelación de una recepción (nucleo-erp EC-926). Los llena
+ * `POST /compras/recepciones/{id}/cancelar/`; vienen en el listado, el
+ * retrieve y la respuesta de `cancelar/`, todos `null` si no está cancelada.
+ * Opcionales en el tipo: una respuesta anterior a EC-926 no los trae.
+ */
+export interface ReceiptCancellationFields {
+  /** Motivo completo (hasta 500 caracteres). */
+  motivo_cancelacion?: string | null;
+  /** ISO 8601. */
+  fecha_cancelacion?: string | null;
+  /** Id del usuario que canceló; `null` si después se borró al usuario. */
+  cancelado_por?: number | null;
+  /** Nombre completo o email de quien canceló. */
+  cancelado_por_nombre?: string | null;
+}
+
+export interface Receipt extends ReceiptCancellationFields {
   id: number;
   folio: string;
   remision: string | null;
@@ -65,6 +82,8 @@ export interface Receipt {
   orden_compra_tipo_compra: TipoCompra | null;
 }
 
+
+
 // ── Detalle de recepción ───────────────────────────────────────────────────────
 // Forma que devuelve GET /compras/recepciones/{id}/. Es un recurso DISTINTO del
 // listado `Receipt`: no trae los ids `orden_compra`/`op` ni `activo`, y en cambio
@@ -107,7 +126,7 @@ export interface ReceiptDetailLine {
   cantidad_recibida: string; // string numérico, p.ej. "1.0000"
 }
 
-export interface ReceiptDetail {
+export interface ReceiptDetail extends ReceiptCancellationFields {
   id: number;
   // "SM" (regreso de una SM de OB/OR) trae los dos folios en null; la SM y su
   // origen van en `salida_maquila*`. Una SM de OP llega como "OP" con la SM puesta.
@@ -142,5 +161,11 @@ export interface ReceiptDetail {
   created_at: string;
   updated_at: string;
   detalles: ReceiptDetailLine[];
+  /**
+   * ¿`cancelar/` procedería para el usuario que consulta? (nucleo-erp EC-926).
+   * Ya incluye el admin de la empresa y cada regla que bloquea (estatus, origen,
+   * inspección, movimiento, OP completada, factura viva): es lo ÚNICO que decide
+   * si se ofrece "Cancelar". Solo en el retrieve; ausente = no se ofrece.
+   */
+  puede_cancelar?: boolean;
 }
-
