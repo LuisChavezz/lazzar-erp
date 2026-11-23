@@ -1,4 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { QUOTES_QUERY_KEY } from "@/src/features/quotes/constants/quotesQueryKeys";
+import { submitQuoteForReviewMutationKey } from "@/src/features/quotes/hooks/useSubmitQuoteForReview";
 import { NOTIFICATION_RELATED_QUERY_KEYS } from "../constants/notificationInvalidations";
 import { NOTIFICACIONES_QUERY_KEY } from "../constants/notificationQueryKeys";
 
@@ -44,13 +46,20 @@ const observe = (queryClient: QueryClient, next: NotificationsSeen): boolean => 
  * exigiría traer el historial completo (el endpoint no pagina) por cada aviso;
  * invalidar el conjunto entero es correcto y barato, porque solo se vuelven a
  * pedir las consultas montadas: las demás quedan marcadas como viejas.
+ *
+ * `["quotes"]` se salta mientras vuela un envío a revisión: el arrastre del
+ * tablero escribe su estado optimista y un refetch a medias devolvería la
+ * tarjeta a su columna; esa mutación ya invalida `["quotes"]` en `onSettled`.
  */
 const invalidateAfterNewNotification = (queryClient: QueryClient) => {
   void queryClient.invalidateQueries({
     queryKey: NOTIFICACIONES_QUERY_KEY,
     exact: true,
   });
+  const skipQuotes =
+    queryClient.isMutating({ mutationKey: submitQuoteForReviewMutationKey }) > 0;
   NOTIFICATION_RELATED_QUERY_KEYS.forEach((queryKey) => {
+    if (skipQuotes && queryKey === QUOTES_QUERY_KEY) return;
     void queryClient.invalidateQueries({ queryKey });
   });
 };
