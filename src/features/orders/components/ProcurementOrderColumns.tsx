@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRightIcon } from '@/src/components/Icons';
 import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
-import { parseLocalDate } from '@/src/utils/formatDate';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { getPedidoEstatusBadge } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
@@ -171,7 +170,8 @@ export function createProcurementOrderColumns({
       ),
       size: 160,
       cell: ({ row }) => {
-        const parsedDate = parseLocalDate(row.original.fecha_confirmacion);
+        // Día de México, como el filtro `mes_confirmacion` del servidor (EC-936).
+        const parsedDate = toMexicoDayLocalDate(row.original.fecha_confirmacion);
         return (
           <span className="text-[13px] text-slate-600 dark:text-slate-300 tabular-nums whitespace-nowrap">
             {parsedDate ? format(parsedDate, 'd MMM yyyy', { locale: es }) : '—'}

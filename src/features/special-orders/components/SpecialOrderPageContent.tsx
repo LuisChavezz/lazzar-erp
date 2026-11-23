@@ -174,8 +174,7 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
                 </span>
               </InfoField>
               <div className="grid grid-cols-2 gap-4">
-                {/* Misma lectura que el detalle de pedido: en la zona del
-                    navegador, ver `formatFechaConfirmacion` (EC-936). */}
+                {/* Misma lectura que el detalle de pedido (`formatFechaConfirmacion`). */}
                 <InfoField label="Confirmación">
                   <span className="tabular-nums">
                     {formatFechaConfirmacion(data.fecha_confirmacion)}

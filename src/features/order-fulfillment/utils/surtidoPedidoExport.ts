@@ -8,7 +8,7 @@ export const SURTIDO_PEDIDO_EXPORT_COLUMNS: ListExportColumn<SurtidoPedido>[] = 
   { header: "Pedido", weight: 1.1, text: (r) => r.folio ?? `#${r.id}` },
   { header: "Estatus", weight: 1.1, text: (r) => surtidoEstatusLabel(r.estatus, r.estatus_display) },
   { header: "Cliente", weight: 2.2, text: (r) => r.cliente_nombre ?? "" },
-  // Misma lectura que la hoja del pedido (zona del navegador, EC-936).
+  // Misma lectura que la hoja del pedido (`formatFechaConfirmacion`).
   {
     header: "Confirmado",
     weight: 1,
