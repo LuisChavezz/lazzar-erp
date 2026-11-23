@@ -20,7 +20,7 @@ import {
   formatQuantityValue,
   safeParseAmount,
 } from "@/src/utils/formatCurrency";
-import { formatShortCalendarDate } from "@/src/utils/formatDate";
+import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
@@ -162,6 +162,9 @@ function FilaBlock({
                 onOpenDoc={onOpenDoc}
               />
             </td>
+            {/* `fecha` mezcla tipos según el documento: `DateField` (OC, factura) o
+                datetime (cotización, órdenes de trabajo, movimientos), así que va
+                por `formatShortCalendarDate`, que acepta las dos formas. */}
             <td className={TD_DATE}>{formatShortCalendarDate(fila.fecha)}</td>
             <td className="px-3 py-2">{estatus ? <DocEstatusBadge estatus={estatus} /> : "—"}</td>
           </tr>
@@ -258,7 +261,7 @@ export function DocumentosBlocks({
                     "—"
                   )}
                 </td>
-                <td className={TD_DATE}>{formatShortCalendarDate(pre.created_at)}</td>
+                <td className={TD_DATE}>{formatShortDate(pre.created_at)}</td>
                 <td className="px-3 py-2">
                   <StatusBadge status={pre.estatus} config={PRE_ORDER_STATUS_CFG} />
                 </td>
@@ -307,7 +310,7 @@ export function DocumentosBlocks({
                   </td>
                   <td className={TD}>{textOrDash(sm.centro_confeccion_nombre)}</td>
                   <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_envio)}</td>
-                  <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_recepcion)}</td>
+                  <td className={TD_DATE}>{formatShortDate(sm.fecha_recepcion)}</td>
                   <td className={`${TD} text-right tabular-nums`}>{formatQuantityValue(sm.total_piezas)}</td>
                   {showSmTotal && (
                     <td className={TD_AMOUNT}>{sm.total === null ? "—" : formatAmountNoCurrency(sm.total)}</td>
@@ -435,7 +438,7 @@ export function DocumentosBlocks({
                   />
                 </td>
                 <td className={TD}>{movimientoTipoLabel(mov.tipo_movimiento)}</td>
-                <td className={TD_DATE}>{formatShortCalendarDate(mov.fecha_movimiento)}</td>
+                <td className={TD_DATE}>{formatShortDate(mov.fecha_movimiento)}</td>
                 <td className={`${TD} font-mono`}>{textOrDash(mov.transferencia_folio)}</td>
                 <td className={TD}>
                   {mov.origen || mov.destino ? `${textOrDash(mov.origen)} → ${textOrDash(mov.destino)}` : "—"}
