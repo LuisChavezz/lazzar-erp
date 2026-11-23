@@ -48,6 +48,7 @@ import {
   COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
 } from "../utils/cobroDraft";
 import { hasCobroRepFile } from "../utils/cobroRepDownload";
+import { getCxcApplyBlockReason } from "../utils/cxcCobroEligibility";
 import { CobroAmount } from "./CobroAmount";
 import { CobroRepDownloadButtons } from "./CobroRepDownloadButtons";
 import { CobroPdfButton } from "./CobroPdfButton";
@@ -128,13 +129,24 @@ export function CollectionDetailDialog({
     : getCobroCancelBlockReason(cobro, hasLoadedCxc ? cxcIndex : null);
   const cancelNoteId = `cobro-${cobro.id}-cancel-note`;
   // Un borrador sin líneas se guarda, pero no se aplica: el backend pide al menos
-  // una. Tampoco con su cuenta bancaria desactivada: el backend la rechaza.
+  // una. Tampoco con su cuenta bancaria desactivada: el backend la rechaza. Ni
+  // con una línea cuyo CFDI ya no admite cobros (EC-928), leída del listado de
+  // CxC que este detalle ya carga; mientras no carga, el `400` sigue de red.
   const applyBlockReason =
     cobro.cobro_detalles.length === 0
       ? COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE
       : cobro.cuenta_bancaria_activa === false
         ? COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE
-        : null;
+        : // Aquí las líneas no llevan aviso propio: se listan todos los motivos.
+          [
+            ...new Set(
+              cobro.cobro_detalles.flatMap((linea) => {
+                const cxc = cxcIndex.get(linea.cxc);
+                const reason = cxc ? getCxcApplyBlockReason(cxc) : null;
+                return reason ? [reason] : [];
+              }),
+            ),
+          ].join(" ") || null;
   const canApply = applyBlockReason === null;
   const applyNoteId = `cobro-${cobro.id}-apply-note`;
 
