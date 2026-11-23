@@ -15,6 +15,22 @@ export const attendanceParamsInclude = (params: unknown, fecha: string): boolean
 };
 
 /**
+ * ¿La respuesta del alta tiene lo mínimo para escribirse en un listado? `id`
+ * entero, `fecha` ISO y `estado`; si no, no se escribe (EC-927, best-effort).
+ */
+export const isAttendanceRecord = (value: unknown): value is Attendance => {
+  if (typeof value !== "object" || value === null) return false;
+  const { id, fecha, estado } = value as Partial<Attendance>;
+  return (
+    typeof id === "number" &&
+    Number.isInteger(id) &&
+    typeof fecha === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(fecha) &&
+    typeof estado === "string"
+  );
+};
+
+/**
  * Inserta el registro en un listado en caché, o lo reemplaza si ya está (mismo
  * `id`). Al insertar, respeta el orden del endpoint (`-fecha`): va antes del
  * primer registro de una fecha anterior. Devuelve la MISMA referencia si

@@ -3,7 +3,11 @@ import toast from "react-hot-toast";
 import { createAttendance } from "../services/actions";
 import type { Attendance } from "../interfaces/attendance.interface";
 import type { AttendanceRowTarget } from "../utils/attendanceRowTarget";
-import { attendanceParamsInclude, upsertAttendanceRow } from "../utils/attendanceCache";
+import {
+  attendanceParamsInclude,
+  isAttendanceRecord,
+  upsertAttendanceRow,
+} from "../utils/attendanceCache";
 import { ATTENDANCE_KEY_ROOT } from "./useAttendance";
 import {
   DUPLICATE_ATTENDANCE_MESSAGE,
@@ -29,15 +33,25 @@ export interface MarkAbsenceVariables {
  *
  * Cancela antes lo que esté en vuelo bajo la raíz (traería el estado
  * anterior). No invalida: eso queda en `onSettled`, como siempre.
+ *
+ * Best-effort, como `cachedRows`: una respuesta sin `id`, `fecha` o `estado`
+ * no escribe nada, y nada de aquí lanza (un error convertiría el alta, ya
+ * aplicada, en un aviso de fallo).
  */
-const writeAttendanceToLists = async (queryClient: QueryClient, record: Attendance) => {
-  await queryClient.cancelQueries({ queryKey: ATTENDANCE_KEY_ROOT });
-  for (const [key, data] of queryClient.getQueriesData<Attendance[]>({
-    queryKey: ATTENDANCE_KEY_ROOT,
-  })) {
-    if (!attendanceParamsInclude(key[ATTENDANCE_KEY_ROOT.length], record.fecha)) continue;
-    const next = upsertAttendanceRow(data, record);
-    if (next !== data) queryClient.setQueryData(key, next);
+const writeAttendanceToLists = async (queryClient: QueryClient, response: unknown) => {
+  if (!isAttendanceRecord(response)) return;
+  const record = response;
+  try {
+    await queryClient.cancelQueries({ queryKey: ATTENDANCE_KEY_ROOT });
+    for (const [key, data] of queryClient.getQueriesData<Attendance[]>({
+      queryKey: ATTENDANCE_KEY_ROOT,
+    })) {
+      if (!attendanceParamsInclude(key[ATTENDANCE_KEY_ROOT.length], record.fecha)) continue;
+      const next = upsertAttendanceRow(data, record);
+      if (next !== data) queryClient.setQueryData(key, next);
+    }
+  } catch (error) {
+    console.error("No se pudo escribir la falta en la caché", error);
   }
 };
 

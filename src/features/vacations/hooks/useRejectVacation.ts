@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { rejectVacation } from "../services/actions";
 import { Vacation, VacationRejectVariables } from "../interfaces/vacation.interface";
 import { VACATIONS_KEY } from "./useVacations";
@@ -35,7 +35,7 @@ export const useRejectVacation = ({ onReasonError }: UseRejectVacationOptions = 
       rejectVacation(id, { motivo_rechazo }),
     onSuccess: async (vacation) => {
       // Misma forma que la fila del listado: se escribe antes del refetch (EC-927).
-      await patchCachedRowById<Vacation>(queryClient, VACATIONS_KEY, vacation.id, () => vacation);
+      await replaceCachedRow<Vacation>(queryClient, VACATIONS_KEY, vacation, ["estado"]);
       toast.success("Solicitud de vacaciones rechazada");
     },
     onError: (error) => {
