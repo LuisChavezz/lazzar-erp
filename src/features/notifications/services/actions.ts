@@ -6,13 +6,15 @@ import type {
 } from "../interfaces/notification.interface";
 
 /** Contador de no leídas del usuario de la sesión (dos consultas indexadas). */
-export const getNotificacionesSinLeer =
-  async (): Promise<NotificacionesSinLeer> => {
-    const response = await v1_api.get<NotificacionesSinLeer>(
-      "/notificaciones/sin-leer/count/",
-    );
-    return response.data;
-  };
+export const getNotificacionesSinLeer = async (
+  signal?: AbortSignal,
+): Promise<NotificacionesSinLeer> => {
+  const response = await v1_api.get<NotificacionesSinLeer>(
+    "/notificaciones/sin-leer/count/",
+    { signal },
+  );
+  return response.data;
+};
 
 /**
  * Historial completo de notificaciones del usuario de la sesión.
