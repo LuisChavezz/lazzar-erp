@@ -19,8 +19,9 @@ interface CobrableCxcsParams {
  * CxC que el selector del cobro OFRECE: del cliente, con saldo, en la moneda de
  * la cuenta bancaria y con estatus Pendiente o Parcial. Las que el CFDI de su
  * factura no deja cobrar SIGUEN en la lista: el selector las muestra
- * deshabilitadas con su motivo (`getCxcCobroEligibility`, EC-928). Por eso no se
- * pide `?cobrable=true`, y por eso `byId` tampoco.
+ * deshabilitadas con su motivo (`getCxcCobroEligibility`, EC-928; la causa
+ * exacta sale de `motivo_no_cobrable`, EC-938). Por eso no se pide
+ * `?cobrable=true`, y por eso `byId` tampoco.
  *
  * El SALDO tiene que ser fresco: es el importe con que se siembra cada línea y
  * el techo que valida el formulario. Por eso `refetchOnMount: "always"`: cada
