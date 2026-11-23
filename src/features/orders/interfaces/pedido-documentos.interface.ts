@@ -7,8 +7,11 @@
  * - Listas sin paginar, ordenadas por `id`.
  * - Todo es de la empresa del pedido. Para quien no es admin, OB/OR/OCM,
  *   pickings, packings y despachos se acotan además a sus sucursales.
- * - `facturas` y `cobros` son `null` cuando el backend oculta la contabilidad
- *   al usuario (`puede_ver_contabilidad`): la sección no se muestra.
+ * - `salidas_maquila`, `facturas` y `cobros` son `null` cuando el usuario no
+ *   tiene el permiso de lectura de su módulo (nucleo-erp #1304):
+ *   `R-PRODUCCION-OP`; `R-CONTABILIDAD` o `R-CONTABILIDAD-FACTURACION`;
+ *   `R-CONTABILIDAD` o `R-CONTABILIDAD-CXC`. Su bloque no se muestra (no es
+ *   "sin registros"). Las demás llaves siempre son listas.
  * - Fechas: un `DateField` llega como "YYYY-MM-DD" y un `DateTimeField` como
  *   ISO con hora; los dos pasan por `formatShortCalendarDate`.
  * - Decimales como NÚMERO JSON (`106185.24`), no como string: el endpoint arma
@@ -126,7 +129,8 @@ export interface PedidoDocumentos {
   ordenes_bordado: PedidoDocumentoFila[];
   ordenes_reflejante: PedidoDocumentoFila[];
   ordenes_corte_manga: PedidoDocumentoFila[];
-  salidas_maquila: PedidoDocumentoSalidaMaquila[];
+  /** `null` sin `R-PRODUCCION-OP` (nucleo-erp #1304): el bloque no se muestra. */
+  salidas_maquila: PedidoDocumentoSalidaMaquila[] | null;
   pickings: PedidoDocumentoPicking[];
   packings: PedidoDocumentoFila[];
   despachos: PedidoDocumentoDespacho[];

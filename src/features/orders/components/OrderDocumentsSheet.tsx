@@ -181,7 +181,7 @@ const PRE_ORDEN_ORIGEN_LABEL: Record<string, string> = {
   resurtido: "Resurtido de stock",
 };
 
-function DocumentosBlocks({
+export function DocumentosBlocks({
   pedidoId,
   docs,
   canOpen,
@@ -192,12 +192,12 @@ function DocumentosBlocks({
   canOpen: CanOpenDoc;
   onOpenDoc: (doc: OpenOrderDocument) => void;
 }) {
-  // `total` llega `null` a quien no tiene `R-PRODUCCION-COSTOS`: entonces la
-  // columna no existe (no es un total en cero).
-  const showSmTotal = docs.salidas_maquila.some((sm) => sm.total !== null);
   // La factura abre su página (registro `ORDER_DOCUMENT_ROUTES`), no un diálogo.
   const facturaRoute = getOrderDocumentRoute(FACTURA_DOC_TIPO);
-  const { facturas, cobros } = docs;
+  const { salidas_maquila: salidasMaquila, facturas, cobros } = docs;
+  // `total` llega `null` a quien no tiene `R-PRODUCCION-COSTOS`: entonces la
+  // columna no existe (no es un total en cero).
+  const showSmTotal = salidasMaquila?.some((sm) => sm.total !== null) ?? false;
 
   return (
     <>
@@ -265,53 +265,56 @@ function DocumentosBlocks({
           <FilaBlock title="Órdenes de bordado" tipo="orden_bordado" filas={docs.ordenes_bordado} canOpen={canOpen} onOpenDoc={onOpenDoc} />
           <FilaBlock title="Órdenes de reflejante" tipo="orden_reflejante" filas={docs.ordenes_reflejante} canOpen={canOpen} onOpenDoc={onOpenDoc} />
           <FilaBlock title="Órdenes de corte de manga" tipo="orden_corte_manga" filas={docs.ordenes_corte_manga} canOpen={canOpen} onOpenDoc={onOpenDoc} />
-          <DocBlock
-            title="Salidas a maquila"
-            count={docs.salidas_maquila.length}
-            head={
-              <>
-                <th className={TH}>Folio</th>
-                <th className={TH}>Origen</th>
-                <th className={TH}>Centro de confección</th>
-                <th className={TH}>Envío</th>
-                <th className={TH}>Recepción</th>
-                <th className={TH_RIGHT}>Piezas</th>
-                {showSmTotal && (
-                  <th className={TH_RIGHT} title="Total del documento SM, que puede cubrir más de un pedido">
-                    Total del documento SM
-                  </th>
-                )}
-                <th className={TH}>Estatus</th>
-              </>
-            }
-          >
-            {docs.salidas_maquila.map((sm) => (
-              <tr key={sm.id} className={ROW}>
-                <td className="px-3 py-2">
-                  <DocFolioButton
-                    tipo={SALIDA_MAQUILA_DOC_TIPO}
-                    id={sm.id}
-                    label={sm.folio || `#${sm.id}`}
-                    canOpen={canOpen}
-                    onOpenDoc={onOpenDoc}
-                  />
-                </td>
-                <td className={`${TD} font-mono`}>
-                  {textOrDash([sm.op_folio, sm.ob_folio, sm.or_folio].filter(Boolean).join(" · "))}
-                </td>
-                <td className={TD}>{textOrDash(sm.centro_confeccion_nombre)}</td>
-                <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_envio)}</td>
-                <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_recepcion)}</td>
-                <td className={`${TD} text-right tabular-nums`}>{formatQuantityValue(sm.total_piezas)}</td>
-                {showSmTotal && (
-                  <td className={TD_AMOUNT}>{sm.total === null ? "—" : formatAmountNoCurrency(sm.total)}</td>
-                )}
-                <td className="px-3 py-2">
-                  <StatusBadge status={sm.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />
-                </td>
-              </tr>
-            ))}
-          </DocBlock>
+          {/* `null` = sin `R-PRODUCCION-OP` (#1304): el bloque no existe. */}
+          {salidasMaquila !== null && (
+            <DocBlock
+              title="Salidas a maquila"
+              count={salidasMaquila.length}
+              head={
+                <>
+                  <th className={TH}>Folio</th>
+                  <th className={TH}>Origen</th>
+                  <th className={TH}>Centro de confección</th>
+                  <th className={TH}>Envío</th>
+                  <th className={TH}>Recepción</th>
+                  <th className={TH_RIGHT}>Piezas</th>
+                  {showSmTotal && (
+                    <th className={TH_RIGHT} title="Total del documento SM, que puede cubrir más de un pedido">
+                      Total del documento SM
+                    </th>
+                  )}
+                  <th className={TH}>Estatus</th>
+                </>
+              }
+            >
+              {salidasMaquila.map((sm) => (
+                <tr key={sm.id} className={ROW}>
+                  <td className="px-3 py-2">
+                    <DocFolioButton
+                      tipo={SALIDA_MAQUILA_DOC_TIPO}
+                      id={sm.id}
+                      label={sm.folio || `#${sm.id}`}
+                      canOpen={canOpen}
+                      onOpenDoc={onOpenDoc}
+                    />
+                  </td>
+                  <td className={`${TD} font-mono`}>
+                    {textOrDash([sm.op_folio, sm.ob_folio, sm.or_folio].filter(Boolean).join(" · "))}
+                  </td>
+                  <td className={TD}>{textOrDash(sm.centro_confeccion_nombre)}</td>
+                  <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_envio)}</td>
+                  <td className={TD_DATE}>{formatShortCalendarDate(sm.fecha_recepcion)}</td>
+                  <td className={`${TD} text-right tabular-nums`}>{formatQuantityValue(sm.total_piezas)}</td>
+                  {showSmTotal && (
+                    <td className={TD_AMOUNT}>{sm.total === null ? "—" : formatAmountNoCurrency(sm.total)}</td>
+                  )}
+                  <td className="px-3 py-2">
+                    <StatusBadge status={sm.estatus} config={SALIDA_MAQUILA_STATUS_CONFIG} />
+                  </td>
+                </tr>
+              ))}
+            </DocBlock>
+          )}
         </div>
       </SheetSection>
 
@@ -444,8 +447,8 @@ function DocumentosBlocks({
         </div>
       </SheetSection>
 
-      {/* `null` = el backend oculta la contabilidad a este usuario: la sección
-          no existe (no es "Sin registros"). */}
+      {/* `null` = sin el permiso de lectura de su sección (#1304): el bloque no
+          existe (no es "Sin registros"); sin los dos, tampoco la sección. */}
       {(facturas !== null || cobros !== null) && (
         <SheetSection
           icon={<FacturacionIcon className="w-5 h-5" />}
@@ -537,8 +540,9 @@ function DocumentosBlocks({
  * `pedido.documentos`). La consulta la monta la página y solo se enciende con
  * esta hoja activa (`usePedidoDocumentos`).
  *
- * Un bloque por tipo; una lista vacía es "Sin registros". `facturas`/`cobros`
- * en `null` ocultan su bloque (y la sección si faltan los dos). Los documentos
+ * Un bloque por tipo; una lista vacía es "Sin registros". `salidas_maquila`,
+ * `facturas` y `cobros` en `null` (sin el permiso de su módulo, nucleo-erp
+ * #1304) ocultan su bloque; sin facturas ni cobros, también su sección. Los documentos
  * con diálogo lo abren por el registro de la página (`onOpenDoc`), con la regla
  * de su sección (`canOpenOrderDocument`); la factura enlaza a su página con
  * `AccessibleLink`; los que no tienen detalle por id (despacho, envío, cobro)
