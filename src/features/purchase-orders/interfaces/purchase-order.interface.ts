@@ -368,6 +368,30 @@ export interface CancelPurchaseOrderParams {
 }
 
 /**
+ * Lo que se LEE de la respuesta de `cancelar/`. El backend responde con la
+ * forma del retrieve (`OrdenCompraRetrieveSerializer`, importes filtrados por
+ * rol), pero sin la anotación de progreso: `piezas_*` y `progreso_pct` llegan
+ * en `null` aunque la orden tenga recepciones. Por eso el tipo solo expone los
+ * campos de la cancelación, los únicos que se escriben en la fila del listado
+ * (EC-927).
+ */
+export type CancelPurchaseOrderResponse = Pick<
+  PurchaseOrder,
+  "id" | "estatus" | "estatus_label" | "motivo_cancelacion"
+>;
+
+/**
+ * Respuesta de `POST /compras/ordenes/{id}/aceptar/`: la orden ENVUELTA en
+ * `orden_compra` (`OrdenCompraSerializer`). El tipo solo expone los campos de
+ * la confirmación: esta respuesta NO filtra importes por rol (a diferencia del
+ * listado), así que nunca se copian de aquí a la caché, y tampoco el progreso,
+ * que llega en `null` (EC-927).
+ */
+export interface ConfirmPurchaseOrderResponse {
+  orden_compra: Pick<PurchaseOrder, "id" | "estatus" | "folio" | "fecha_autorizacion">;
+}
+
+/**
  * Renglón tal como lo devuelven el PUT y el POST de onboarding (ambos responden
  * con la misma función del backend): el modelo plano del detalle (FKs como
  * ids), distinto de {@link PurchaseOrderDetalle} del retrieve. Forma observada

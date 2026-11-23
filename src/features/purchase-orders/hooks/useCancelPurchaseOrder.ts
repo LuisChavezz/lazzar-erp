@@ -2,7 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { patchCachedRowById } from "@/src/utils/cachedRows";
 import { cancelPurchaseOrder } from "../services/actions";
+import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
+import { serverTableListPrefix } from "@/src/utils/serverTableParams";
+import { PURCHASE_ORDERS_KEY } from "./usePurchaseOrdersTable";
 import { invalidateReceiptOrderOptions } from "../utils/invalidateReceiptOrderOptions";
 import { purchaseOrderReceiptKpisQueryKey } from "@/src/features/purchase-order-receipts/hooks/usePurchaseOrderReceiptKpis";
 
@@ -37,7 +41,17 @@ export const useCancelPurchaseOrder = ({ onReasonError }: UseCancelPurchaseOrder
 
   return useMutation({
     mutationFn: cancelPurchaseOrder,
-    onSuccess: () => {
+    onSuccess: async ({ id, estatus, estatus_label, motivo_cancelacion }) => {
+      // La fila se escribe con lo que respondió la acción ANTES de invalidar:
+      // si ese refetch falla, el listado conserva lo cargado y la orden ya
+      // cancelada seguiría ofreciendo "Cancelar" (EC-927). SOLO los campos de
+      // la cancelación: la respuesta trae el progreso en `null`.
+      await patchCachedRowById<PurchaseOrder>(queryClient, serverTableListPrefix(PURCHASE_ORDERS_KEY), id, (row) => ({
+        ...row,
+        estatus,
+        estatus_label,
+        motivo_cancelacion,
+      }));
       queryClient.invalidateQueries({
         queryKey: ["purchase-order-onboarding"],
       });
