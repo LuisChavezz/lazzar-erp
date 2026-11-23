@@ -45,12 +45,17 @@ export const useNotificacionesSinLeer = () => {
   const { data } = useGuardedQuery<NotificacionesSinLeer>(
     {
       queryKey: NOTIFICACIONES_SIN_LEER_QUERY_KEY,
-      queryFn: async () => {
-        const next = await getNotificacionesSinLeer();
-        trackNotificationArrivals(queryClient, {
-          maxId: next.ultima_notificacion_id,
-          unread: next.count,
-        });
+      // Las mutaciones de marcar como leída cancelan el prefijo
+      // `["notificaciones"]`: una respuesta cancelada no se registra, porque
+      // TanStack la descarta y el siguiente fetch volvería a detectarla.
+      queryFn: async ({ signal }) => {
+        const next = await getNotificacionesSinLeer(signal);
+        if (!signal.aborted) {
+          trackNotificationArrivals(queryClient, {
+            maxId: next.ultima_notificacion_id,
+            unread: next.count,
+          });
+        }
         return next;
       },
       enabled: status === "authenticated",
