@@ -142,7 +142,7 @@ export function CollectionDetailDialog({
             ...new Set(
               cobro.cobro_detalles.flatMap((linea) => {
                 const cxc = cxcIndex.get(linea.cxc);
-                const reason = cxc ? getCxcApplyBlockReason(cxc) : null;
+                const reason = cxc ? getCxcApplyBlockReason(cxc, "savedDraft") : null;
                 return reason ? [reason] : [];
               }),
             ),

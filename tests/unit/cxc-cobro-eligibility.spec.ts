@@ -57,6 +57,20 @@ test("timbrado pendiente: se elige, solo para borrador", () => {
   );
 });
 
+test("timbrado pendiente en el detalle de un borrador ya guardado: solo falta aplicarlo", () => {
+  const cuenta = { ...base, cobrable: false, factura_cfdi_pendiente: true };
+  expect(getCxcCobroEligibility(cuenta, "savedDraft")).toEqual({
+    kind: "draftOnly",
+    reason: "La factura F-10 tiene un timbrado pendiente de confirmación: aplica el cobro cuando se confirme.",
+  });
+  expect(getCxcApplyBlockReason(cuenta, "savedDraft")).toBe(
+    "La factura F-10 tiene un timbrado pendiente de confirmación: aplica el cobro cuando se confirme.",
+  );
+  // El contexto solo cambia ese texto: un CFDI cancelado dice lo mismo en ambos.
+  const cancelado = { ...base, cobrable: false, factura_cfdi_cancelado: true };
+  expect(getCxcApplyBlockReason(cancelado, "savedDraft")).toBe(getCxcApplyBlockReason(cancelado));
+});
+
 test("cobrable false sin campo que lo explique: respaldo", () => {
   const cuenta = { ...base, cobrable: false };
   expect(getCxcCobroEligibility(cuenta)).toEqual({ kind: "blocked", reason: CXC_NOT_COBRABLE_FALLBACK_REASON });

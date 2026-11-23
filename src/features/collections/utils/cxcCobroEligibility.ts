@@ -17,6 +17,14 @@ export type CxcCobroEligibility =
   | { kind: "draftOnly"; reason: string }
   | { kind: "blocked"; reason: string };
 
+/**
+ * Dónde se muestra el motivo: el formulario del cobro (`form`), que todavía
+ * puede guardarse como borrador, o el detalle de un borrador ya guardado
+ * (`savedDraft`), donde solo falta aplicarlo. Solo cambia el texto del timbrado
+ * pendiente.
+ */
+export type CxcEligibilityContext = "form" | "savedDraft";
+
 /** Respaldo cuando `cobrable` es `false` y ningún campo dice por qué. */
 export const CXC_NOT_COBRABLE_FALLBACK_REASON = "Factura cancelada o en proceso de cancelación";
 
@@ -52,6 +60,7 @@ export const getCxcCobroEligibility = (
     | "factura_cfdi_cancelacion_solicitada"
     | "factura_cfdi_pendiente"
   >,
+  context: CxcEligibilityContext = "form",
 ): CxcCobroEligibility => {
   const label = invoiceLabel(cuenta.factura_folio);
   if (cuenta.factura_cfdi_cancelado === true) {
@@ -66,7 +75,10 @@ export const getCxcCobroEligibility = (
   if (cuenta.factura_cfdi_pendiente === true) {
     return {
       kind: "draftOnly",
-      reason: `${label} tiene un timbrado pendiente de confirmación: guarda el cobro como borrador y aplícalo cuando se confirme.`,
+      reason:
+        context === "savedDraft"
+          ? `${label} tiene un timbrado pendiente de confirmación: aplica el cobro cuando se confirme.`
+          : `${label} tiene un timbrado pendiente de confirmación: guarda el cobro como borrador y aplícalo cuando se confirme.`,
     };
   }
   if (cuenta.estatus === "Cancelada") {
@@ -89,8 +101,9 @@ export const getCxcSelectionBlockReason = (
 /** Motivo por el que la CxC impide APLICAR el cobro, o `null`. */
 export const getCxcApplyBlockReason = (
   cuenta: Parameters<typeof getCxcCobroEligibility>[0],
+  context: CxcEligibilityContext = "form",
 ): string | null => {
-  const eligibility = getCxcCobroEligibility(cuenta);
+  const eligibility = getCxcCobroEligibility(cuenta, context);
   return eligibility.kind === "cobrable" ? null : eligibility.reason;
 };
 
