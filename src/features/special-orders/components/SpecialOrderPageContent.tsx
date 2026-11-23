@@ -20,7 +20,6 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { EntregaCell } from "./SpecialOrderPriorityCells";
 import { getPedidoClasificacionLabel } from "@/src/features/orders/constants/pedidoStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { formatShortDate, getBrowserTimeZone } from "@/src/utils/formatDate";
 import { hasPermission } from "@/src/utils/permissions";
 import { useSpecialOrderDetail } from "../hooks/useSpecialOrderDetail";
 import { canActOnSpecialOrderLines } from "../utils/lineActions";
@@ -29,6 +28,7 @@ import { SampleSkuOnboardingDialog } from "./SampleSkuOnboardingDialog";
 import { SpecialOrderLines } from "./SpecialOrderLines";
 import { SpecialOrderSummary } from "./SpecialOrderSummary";
 import { ServiceOrdersSection } from "./ServiceOrdersTracking";
+import { formatFechaConfirmacion } from "@/src/features/orders/utils/pedidoFormat";
 
 // Destino fijo del "Volver": la ruta cuelga de `/manufacturing` y solo se
 // alcanza desde el listado del propio módulo (mismo criterio que
@@ -174,15 +174,11 @@ export function SpecialOrderPageContent({ orderId }: SpecialOrderPageContentProp
                 </span>
               </InfoField>
               <div className="grid grid-cols-2 gap-4">
-                {/* Mismo formateo que el detalle de pedido (`OrderFechaConfirmacionField`):
-                  `fecha_confirmacion` se ESCRIBE como la medianoche del navegador
-                  (`toLocalMidnightIso`): se lee en esa misma zona, no en la de
-                  México, para que muestre el día que se capturó (EC-931). */}
+                {/* Misma lectura que el detalle de pedido: en la zona del
+                    navegador, ver `formatFechaConfirmacion` (EC-936). */}
                 <InfoField label="Confirmación">
                   <span className="tabular-nums">
-                    {data.fecha_confirmacion
-                      ? formatShortDate(data.fecha_confirmacion, { timeZone: getBrowserTimeZone() })
-                      : "—"}
+                    {formatFechaConfirmacion(data.fecha_confirmacion)}
                   </span>
                 </InfoField>
                 <InfoField label="Entrega">
