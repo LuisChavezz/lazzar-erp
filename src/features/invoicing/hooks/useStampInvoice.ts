@@ -87,7 +87,8 @@ export const useStampInvoice = (invoiceId: number) => {
       const sentRequest = result?.outcome !== "not-stampable";
       if (sentRequest) void invalidatePedidoProgress(queryClient);
       invalidateInvoiceBaseQueries(queryClient, invoiceId, { sentRequest });
-      // La CxC trae `factura_cfdi_pendiente` y `cobrable` (EC-928): los lee Cobros.
+      // Cobros decide con `motivo_no_cobrable` de la CxC (EC-938) y, sin él, con
+      // `factura_cfdi_pendiente` y `cobrable` (EC-928).
       if (sentRequest) queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
     },
   });
