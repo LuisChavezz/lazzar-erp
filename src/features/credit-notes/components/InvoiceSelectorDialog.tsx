@@ -39,10 +39,15 @@ function InvoiceSelectorContent({
   // `saldo_pendiente: true` → el backend filtra a `saldo > 0` y excluye las
   // cuentas `Cancelada`. Es el filtro que deja las facturas con saldo que
   // acreditar; que la factura ADMITA la nota lo dicen los campos del CFDI que
-  // la propia CxC trae (nucleo-erp#1187, `getCreditNoteCxcEligibility`).
-  const { cuentas, isLoading, isError } = useCuentasPorCobrar({
-    saldo_pendiente: true,
-  });
+  // la propia CxC trae (nucleo-erp#1187, `getCreditNoteCxcEligibility`). Se
+  // vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede tener
+  // hasta 15 minutos y la factura pudo cancelarse en otra sesión. Mientras ese
+  // refresco viaja se decide con la copia en caché; el formulario vuelve a
+  // consultar la factura elegida antes de guardar o emitir.
+  const { cuentas, isLoading, isError } = useCuentasPorCobrar(
+    { saldo_pendiente: true },
+    { refetchOnMount: "always" },
+  );
 
   return (
     <SingleSelectPickerDialogContent<CuentaPorCobrar>
