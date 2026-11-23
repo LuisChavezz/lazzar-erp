@@ -180,8 +180,8 @@ export const getInvoiceUnstampedEmitWarning = (invoice: {
 
 /**
  * Motivo por el que una factura NO admite notas de crédito nuevas, ni siquiera
- * como borrador, o `null`. `invoice` es la factura tal como la devuelve el
- * listado o el retrieve; `undefined` si no figura en el listado. Sin ella, o
+ * como borrador, o `null`. `invoice` es la factura tal como la devuelve su
+ * retrieve; `undefined` si respondió `404`. Sin ella, o
  * eliminada (`activo` distinto de `true`), no se puede confirmar su estado y
  * se trata como no acreditable; si no, aplica `getRelatedInvoiceCancelledReason`.
  */
