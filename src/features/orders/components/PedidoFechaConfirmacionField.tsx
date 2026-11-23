@@ -4,28 +4,21 @@ import { useRef } from "react";
 import toast from "react-hot-toast";
 import { FormInput } from "@/src/components/FormInput";
 import { useInlineDraft } from "@/src/hooks/useInlineDraft";
-import { parseLocalDate, toLocalDateKey, toLocalMidnightIso } from "@/src/utils/formatDate";
+import {
+  toFechaConfirmacionInputValue,
+  toFechaConfirmacionPayload,
+} from "../utils/pedidoConfirmacion";
 
 interface PedidoFechaConfirmacionFieldProps {
   /** Valor canónico del servidor: datetime ISO con offset, o `null`. */
   value: string | null;
   /**
-   * Se invoca al confirmar un cambio: medianoche local del día elegido con
-   * offset explícito (`toLocalMidnightIso`), o `null` si se vació.
+   * Se invoca al confirmar un cambio: medianoche de México del día elegido con
+   * offset explícito (`toFechaConfirmacionPayload`), o `null` si se vació.
    */
   onSave: (fechaConfirmacion: string | null) => void | Promise<unknown>;
   isPending?: boolean;
 }
-
-/**
- * Día calendario LOCAL de `fecha_confirmacion`, como lo necesita
- * `<input type="date">`. No `value.slice(0, 10)`: eso toma el día del offset en
- * que lo guardó el servidor, que no tiene por qué ser la zona del navegador.
- */
-const toDateInputValue = (value: string | null): string | null => {
-  const date = parseLocalDate(value);
-  return date ? toLocalDateKey(date) : null;
-};
 
 /**
  * Fecha de confirmación editable en línea, en la cabecera del detalle.
@@ -57,14 +50,14 @@ export function PedidoFechaConfirmacionField({
   /** `validity.badInput` de la última interacción (ver arriba por qué no en el blur). */
   const incompleteRef = useRef(false);
   const { draft, setDraft, handleBlur, revert } = useInlineDraft(
-    toDateInputValue(value),
+    toFechaConfirmacionInputValue(value),
     // Se DEVUELVE lo que devuelva `onSave`: si es una promesa rechazada,
     // `useInlineDraft` regresa el campo al valor del servidor.
     (next) => {
       if (next === null) return onSave(null);
       // Un día que no se pudiera convertir NO se manda como `null`: eso
       // borraría la confirmación en lugar de fallar.
-      const iso = toLocalMidnightIso(next);
+      const iso = toFechaConfirmacionPayload(next);
       return iso ? onSave(iso) : undefined;
     },
   );

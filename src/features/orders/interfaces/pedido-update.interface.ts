@@ -15,8 +15,9 @@ export type PedidoHeaderUpdate =
   | { clasificacion: PedidoClasificacion | null }
   | {
       /**
-       * Datetime ISO con offset explícito (medianoche local del día elegido,
-       * ver `toLocalMidnightIso`), o `null` para quitar la confirmación.
+       * Datetime ISO con offset explícito (medianoche de México del día
+       * elegido, ver `toFechaConfirmacionPayload`), o `null` para quitar la
+       * confirmación.
        */
       fecha_confirmacion: string | null;
     };
