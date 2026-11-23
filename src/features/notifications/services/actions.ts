@@ -2,7 +2,17 @@ import { v1_api } from "@/src/api/v1.api";
 import type {
   MarcarTodasLeidasResponse,
   Notificacion,
+  NotificacionesSinLeer,
 } from "../interfaces/notification.interface";
+
+/** Contador de no leídas del usuario de la sesión (dos consultas indexadas). */
+export const getNotificacionesSinLeer =
+  async (): Promise<NotificacionesSinLeer> => {
+    const response = await v1_api.get<NotificacionesSinLeer>(
+      "/notificaciones/sin-leer/count/",
+    );
+    return response.data;
+  };
 
 /**
  * Historial completo de notificaciones del usuario de la sesión.
