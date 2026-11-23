@@ -77,7 +77,12 @@ export const CREDIT_NOTE_WRITE_PERMISSION_REASON =
 export const CREDIT_NOTE_EMIT_PERMISSION_REASON =
   "No tienes permiso para emitir notas de crédito: emitir registra la nota en la cuenta por cobrar e intenta timbrar su CFDI, y requiere el permiso de facturación.";
 
-const relatedInvoiceLabel = (folio: string | null): string =>
+/**
+ * Cómo se nombra la factura de una nota en los motivos del módulo: por su folio
+ * o, sin él, "La factura relacionada". Lo comparten el formulario, el listado y
+ * el selector de facturas (`creditNoteCxcEligibility`).
+ */
+export const relatedInvoiceLabel = (folio: string | null): string =>
   folio ? `La factura ${folio}` : "La factura relacionada";
 
 /**

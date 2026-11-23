@@ -4,8 +4,7 @@ import {
   type CxcInvoiceCfdiFields,
   type CxcInvoiceCfdiReasons,
 } from "@/src/features/accounts-receivable/utils/cxcInvoiceCfdiEligibility";
-
-const invoiceLabel = (folio: string | null): string => (folio ? `La factura ${folio}` : "La factura");
+import { relatedInvoiceLabel as invoiceLabel } from "./creditNoteStamping";
 
 /** Textos de la nota de crédito para cada causa de `getCxcInvoiceCfdiEligibility`. */
 const CREDIT_NOTE_REASONS: CxcInvoiceCfdiReasons = {
