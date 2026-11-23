@@ -6,10 +6,19 @@ import {
 } from "@/src/features/orders/constants/pedidoDetailOrigins";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import { canAccessRoute } from "@/src/utils/routeAccess";
+import { HR_SOLICITUD_PARAM } from "@/src/features/hr/constants/solicitudDetailParam";
 import {
   TIPO_COTIZACION_AUTORIZADA,
   TIPO_COTIZACION_EN_REVISION,
   TIPO_COTIZACION_RECHAZADA,
+  TIPO_OC_AUTORIZADA,
+  TIPO_PERMISO_AUSENCIA_APROBADO,
+  TIPO_PERMISO_AUSENCIA_RECHAZADO,
+  TIPO_PERMISO_AUSENCIA_SOLICITADA,
+  TIPO_PRE_ORDEN_OC_AUTORIZADA,
+  TIPO_VACACIONES_APROBADO,
+  TIPO_VACACIONES_RECHAZADO,
+  TIPO_VACACIONES_SOLICITADA,
   type Notificacion,
 } from "../interfaces/notification.interface";
 
@@ -79,14 +88,43 @@ const pedidoDetailTarget = (pedidoId: number): NotificationTarget => ({
   pathname: pedidoDetailPath(pedidoId),
 });
 
+/**
+ * Listado de Recepciones de WMS: donde Almacén —el destinatario de
+ * `oc_autorizada`— recibe la OC. Se abre el listado SIN preselección: no lee
+ * nada de la URL, una OC recién autorizada aún no tiene recepciones que
+ * filtrar, y preseleccionarla en "Nueva Recepción" exigiría rehacer el
+ * asistente. El detalle de la OC (`/procurement/purchase-orders/[id]`) pide
+ * `R-COMPRAS-OC`, que Almacén normalmente no tiene.
+ */
+const WMS_RECEIPTS_PATH = "/wms/receipts";
+
+/**
+ * Lista de RH que abre su diálogo de detalle con `?solicitud=<id>` (ver
+ * `useUrlDetailParam`). El id sale de `data.solicitud_id`, validado; el
+ * listado decide por `tipo`, no por `data.tipo_solicitud` ni `data.url`.
+ */
+const hrSolicitudTarget =
+  (pathname: string) =>
+  (data: unknown): NotificationTarget | null => {
+    const solicitudId = readPositiveId(data, "solicitud_id");
+    if (solicitudId === null) return null;
+    const query = new URLSearchParams({ [HR_SOLICITUD_PARAM]: String(solicitudId) });
+    return { kind: "route", href: `${pathname}?${query}`, pathname };
+  };
+
+const vacationTarget = hrSolicitudTarget("/hr/vacations");
+const absenceTarget = hrSolicitudTarget("/hr/absences");
+
 type TargetResolver = (
   data: unknown,
   user?: PermissionContext | null,
 ) => NotificationTarget | null;
 
 /**
- * Mapa `tipo` → destino. Vive SOLO en el frontend: el backend no manda ruta y
- * no se va a cambiar para que lo haga.
+ * Mapa `tipo` → destino. Vive SOLO en el frontend: el `data.url` que manda el
+ * backend es una ruta SUYA (`/compras/ordenes/12`, `/rh/vacaciones/3`) que no
+ * existe aquí, así que nunca se navega a ella; el destino se arma con ids de
+ * `data` validados con `readPositiveId`.
  *
  * Un `tipo` ausente del mapa —o presente pero con un `data` que no trae lo que
  * necesita— resuelve `null`: la notificación se pinta normal pero no es
@@ -149,6 +187,23 @@ const NOTIFICATION_TARGETS: Record<string, TargetResolver> = {
       ? null
       : { kind: "quote-dialog", quoteId, source: "cotizaciones" };
   },
+  /*
+    Destinatario: el departamento WMS (Almacén). El listado de Recepciones no
+    usa el id, pero sin un `orden_compra_id` válido el aviso no describe una
+    OC y no se ofrece destino, igual que los demás `tipo`.
+  */
+  [TIPO_OC_AUTORIZADA]: (data) =>
+    readPositiveId(data, "orden_compra_id") === null
+      ? null
+      : { kind: "route", href: WMS_RECEIPTS_PATH, pathname: WMS_RECEIPTS_PATH },
+  // Solicitudes de RH: `_solicitada` al departamento RH; la resolución, a
+  // quien la capturó. Las dos listas piden `R-RH`.
+  [TIPO_VACACIONES_SOLICITADA]: vacationTarget,
+  [TIPO_VACACIONES_APROBADO]: vacationTarget,
+  [TIPO_VACACIONES_RECHAZADO]: vacationTarget,
+  [TIPO_PERMISO_AUSENCIA_SOLICITADA]: absenceTarget,
+  [TIPO_PERMISO_AUSENCIA_APROBADO]: absenceTarget,
+  [TIPO_PERMISO_AUSENCIA_RECHAZADO]: absenceTarget,
 };
 
 /**
@@ -184,6 +239,14 @@ const NOTIFICATION_ICON_VARIANTS: Record<string, NotificationIconVariant> = {
   [TIPO_COTIZACION_EN_REVISION]: "info",
   [TIPO_COTIZACION_AUTORIZADA]: "success",
   [TIPO_COTIZACION_RECHAZADA]: "error",
+  [TIPO_OC_AUTORIZADA]: "info",
+  [TIPO_VACACIONES_SOLICITADA]: "info",
+  [TIPO_PERMISO_AUSENCIA_SOLICITADA]: "info",
+  [TIPO_VACACIONES_APROBADO]: "success",
+  [TIPO_PERMISO_AUSENCIA_APROBADO]: "success",
+  [TIPO_VACACIONES_RECHAZADO]: "error",
+  [TIPO_PERMISO_AUSENCIA_RECHAZADO]: "error",
+  [TIPO_PRE_ORDEN_OC_AUTORIZADA]: "success",
   pre_orden_lista: "success",
   pre_orden_regreso: "error",
   pre_orden_semaforo_rojo: "error",
