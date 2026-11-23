@@ -4,6 +4,7 @@ import {
   getCxcInvoiceCfdiEligibility,
   type CxcInvoiceCfdiReasons,
 } from "@/src/features/accounts-receivable/utils/cxcInvoiceCfdiEligibility";
+import type { MotivoNoCobrable } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { getCxcCobroEligibility } from "@/src/features/collections/utils/cxcCobroEligibility";
 import {
   getCreditNoteCxcEligibility,
@@ -35,6 +36,7 @@ const CASES = {
 
 test("núcleo: cada causa elige el texto que le pasa el documento", () => {
   const reasons: CxcInvoiceCfdiReasons = {
+    withCauseLabel: (folio, label, kind) => `${kind} ${folio} ${label}`,
     cfdiCancelled: (folio) => `cancelado ${folio}`,
     cancellationRequested: (folio) => `solicitada ${folio}`,
     stampPending: (folio) => `pendiente ${folio}`,
@@ -113,4 +115,144 @@ test("nota de crédito: sin los campos nuevos, o sin folio (la nombra como el re
   expect(getCreditNoteCxcSelectionBlockReason({ ...CASES.cancelado, factura_folio: null })).toBe(
     "La factura relacionada tiene su CFDI cancelado ante el SAT: no admite notas de crédito.",
   );
+});
+
+// ── EC-938: la causa exacta del backend (`motivo_no_cobrable`) ──────────────
+
+/** Textos de prueba: dejan ver qué rama eligió el núcleo. */
+const TEST_REASONS: CxcInvoiceCfdiReasons = {
+  withCauseLabel: (folio, label, kind) => `${kind}|${folio}|${label}`,
+  cfdiCancelled: (folio) => `cancelado ${folio}`,
+  cancellationRequested: (folio) => `solicitada ${folio}`,
+  stampPending: (folio) => `pendiente ${folio}`,
+};
+
+/** CxC con motivo; sin `display` explícito, uno de prueba (`undefined` explícito: sin texto). */
+const conMotivo = (motivo: MotivoNoCobrable | null, ...display: [string | null | undefined] | []) => ({
+  ...base,
+  cobrable: motivo === null,
+  motivo_no_cobrable: motivo,
+  motivo_no_cobrable_display: display.length > 0 ? display[0] : `texto ${motivo}`,
+});
+
+test("motivo: cada valor decide su tipo y el texto lleva la causa del backend", () => {
+  const blocked: MotivoNoCobrable[] = [
+    "CXC_CANCELADA",
+    "FACTURA_CANCELADA",
+    "CFDI_CANCELADO",
+    "CANCELACION_SOLICITADA",
+    "CANCELACION_EN_CURSO",
+  ];
+  for (const motivo of blocked) {
+    expect(getCxcInvoiceCfdiEligibility(conMotivo(motivo), TEST_REASONS)).toEqual({
+      kind: "blocked",
+      reason: `blocked|F-10|texto ${motivo}`,
+    });
+  }
+  expect(getCxcInvoiceCfdiEligibility(conMotivo("CFDI_PENDIENTE"), TEST_REASONS)).toEqual({
+    kind: "draftOnly",
+    reason: "draftOnly|F-10|texto CFDI_PENDIENTE",
+  });
+  expect(getCxcInvoiceCfdiEligibility(conMotivo(null, null), TEST_REASONS)).toEqual({ kind: "eligible" });
+});
+
+test("motivo: SALDO_CERO no bloquea aquí (lo cubre la regla de saldo)", () => {
+  expect(getCxcInvoiceCfdiEligibility({ ...conMotivo("SALDO_CERO"), saldo: "0.00" }, TEST_REASONS)).toEqual({
+    kind: "eligible",
+  });
+});
+
+test("motivo: manda sobre los campos del CFDI cuando no coinciden", () => {
+  // Campos de cancelado, motivo pendiente: decide el motivo.
+  expect(
+    getCxcInvoiceCfdiEligibility({ ...conMotivo("CFDI_PENDIENTE"), factura_cfdi_cancelado: true }, TEST_REASONS).kind,
+  ).toBe("draftOnly");
+  // Campos de pendiente, sin motivo (cobrable): elegible.
+  expect(
+    getCxcInvoiceCfdiEligibility({ ...conMotivo(null, null), factura_cfdi_pendiente: true }, TEST_REASONS).kind,
+  ).toBe("eligible");
+  // CxC Cancelada por estatus, motivo de su factura: bloqueada con ese texto.
+  expect(
+    getCxcInvoiceCfdiEligibility({ ...conMotivo("FACTURA_CANCELADA"), estatus: "Cancelada" }, TEST_REASONS),
+  ).toEqual({ kind: "blocked", reason: "blocked|F-10|texto FACTURA_CANCELADA" });
+});
+
+test("motivo sin texto: el de la regla por campos para ese motivo", () => {
+  for (const display of [null, undefined, "", "   "]) {
+    expect(getCxcInvoiceCfdiEligibility(conMotivo("CFDI_CANCELADO", display), TEST_REASONS)).toEqual({
+      kind: "blocked",
+      reason: "cancelado F-10",
+    });
+    expect(getCxcInvoiceCfdiEligibility(conMotivo("CANCELACION_SOLICITADA", display), TEST_REASONS)).toEqual({
+      kind: "blocked",
+      reason: "solicitada F-10",
+    });
+    expect(getCxcInvoiceCfdiEligibility(conMotivo("CFDI_PENDIENTE", display), TEST_REASONS)).toEqual({
+      kind: "draftOnly",
+      reason: "pendiente F-10",
+    });
+    for (const motivo of ["CXC_CANCELADA", "FACTURA_CANCELADA", "CANCELACION_EN_CURSO"] as const) {
+      expect(getCxcInvoiceCfdiEligibility(conMotivo(motivo, display), TEST_REASONS)).toEqual({
+        kind: "blocked",
+        reason: CXC_NOT_COBRABLE_FALLBACK_REASON,
+      });
+    }
+  }
+});
+
+test("sin motivo_no_cobrable (o con un valor desconocido): la regla por campos de siempre", () => {
+  // Sin el campo: idéntico a EC-928/929.
+  expect(getCxcInvoiceCfdiEligibility(CASES.cancelado, TEST_REASONS)).toEqual({
+    kind: "blocked",
+    reason: "cancelado F-10",
+  });
+  expect(getCxcInvoiceCfdiEligibility(CASES.respaldo, TEST_REASONS)).toEqual({
+    kind: "blocked",
+    reason: CXC_NOT_COBRABLE_FALLBACK_REASON,
+  });
+  // Un motivo que este front aún no conoce no se lee como "cobrable".
+  const desconocido = {
+    ...CASES.pendiente,
+    motivo_no_cobrable: "OTRA_CAUSA" as unknown as MotivoNoCobrable,
+    motivo_no_cobrable_display: "Otra causa",
+  };
+  expect(getCxcInvoiceCfdiEligibility(desconocido, TEST_REASONS)).toEqual({
+    kind: "draftOnly",
+    reason: "pendiente F-10",
+  });
+});
+
+test("cobro: compone «Factura <folio>: <causa>.» y, si es pendiente, qué hacer", () => {
+  expect(getCxcCobroEligibility(conMotivo("CANCELACION_EN_CURSO", "Cancelación del CFDI en curso"))).toEqual({
+    kind: "blocked",
+    reason: "Factura F-10: Cancelación del CFDI en curso.",
+  });
+  expect(getCxcCobroEligibility(conMotivo("CFDI_PENDIENTE", "CFDI pendiente de timbrar"))).toEqual({
+    kind: "draftOnly",
+    reason: "Factura F-10: CFDI pendiente de timbrar. Guarda el cobro como borrador y aplícalo cuando se confirme.",
+  });
+  expect(getCxcCobroEligibility(conMotivo("CFDI_PENDIENTE", "CFDI pendiente de timbrar"), "savedDraft")).toEqual({
+    kind: "draftOnly",
+    reason: "Factura F-10: CFDI pendiente de timbrar. Aplica el cobro cuando se confirme.",
+  });
+  expect(
+    getCxcCobroEligibility({ ...conMotivo("FACTURA_CANCELADA", "Factura cancelada"), factura_folio: null }),
+  ).toEqual({ kind: "blocked", reason: "Factura: Factura cancelada." });
+  expect(getCxcCobroEligibility(conMotivo("SALDO_CERO", "Sin saldo por cobrar"))).toEqual({ kind: "cobrable" });
+});
+
+test("nota de crédito: compone «Factura <folio>: <causa>.» y, si es pendiente, qué hacer", () => {
+  expect(getCreditNoteCxcEligibility(conMotivo("CFDI_CANCELADO", "CFDI cancelado ante el SAT"))).toEqual({
+    kind: "blocked",
+    reason: "Factura F-10: CFDI cancelado ante el SAT.",
+  });
+  expect(getCreditNoteCxcEligibility(conMotivo("CFDI_PENDIENTE", "CFDI pendiente de timbrar"))).toEqual({
+    kind: "draftOnly",
+    reason: "Factura F-10: CFDI pendiente de timbrar. Guarda la nota como borrador y emítela cuando se confirme.",
+  });
+  expect(
+    getCreditNoteCxcSelectionBlockReason({ ...conMotivo("CXC_CANCELADA", "CxC cancelada"), factura_folio: null }),
+  ).toBe("Factura relacionada: CxC cancelada.");
+  // El pendiente se elige (solo para borrador).
+  expect(getCreditNoteCxcSelectionBlockReason(conMotivo("CFDI_PENDIENTE", "CFDI pendiente de timbrar"))).toBeNull();
 });
