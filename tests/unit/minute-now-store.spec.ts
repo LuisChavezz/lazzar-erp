@@ -134,6 +134,34 @@ test.describe("createMinuteNowStore", () => {
     expect(fake.listeners()).toBe(0);
   });
 
+  test("sin suscriptores, el primer render tras reabrir ya lee un 'ahora' vigente y estable", () => {
+    const fake = createFakeEnv();
+    const store = createMinuteNowStore(fake.env);
+    store.subscribe(() => {})();
+    expect(store.getSnapshot()).toBe(1_000);
+
+    // Menos de un periodo: se conserva el valor guardado.
+    fake.advance(30_000);
+    expect(store.getSnapshot()).toBe(1_000);
+
+    // Tres horas cerrada: el render previo a `subscribe` ya ve la hora actual…
+    fake.advance(3 * 60 * 60_000);
+    const first = store.getSnapshot();
+    expect(first).toBe(1_000 + 30_000 + 3 * 60 * 60_000);
+    // …y lecturas seguidas del mismo render devuelven lo mismo aunque el reloj avance.
+    fake.advance(5);
+    expect(store.getSnapshot()).toBe(first);
+  });
+
+  test("con suscriptores, getSnapshot no relee el reloj por su cuenta", () => {
+    const fake = createFakeEnv();
+    const store = createMinuteNowStore(fake.env);
+    const unsubscribe = store.subscribe(() => {});
+    fake.advance(5 * 60_000);
+    expect(store.getSnapshot()).toBe(1_000);
+    unsubscribe();
+  });
+
   test("volver a suscribirse tras quedarse sin suscriptores relee el reloj", () => {
     const fake = createFakeEnv();
     const store = createMinuteNowStore(fake.env);

@@ -45,6 +45,12 @@ export const createMinuteNowStore = (
     for (const notify of subscribers) notify();
   };
 
+  /*
+    El intervalo arranca con la suscripción, sin alinearse al minuto de reloj:
+    cada etiqueta cruza sus umbrales en un instante distinto, así que alinearlo
+    no quitaría el desfase. Una etiqueta puede ir hasta un periodo (60 s)
+    atrasada, y se acepta.
+  */
   const startInterval = () => {
     if (intervalId !== undefined) return;
     intervalId = env.setInterval(refresh, periodMs);
@@ -82,7 +88,13 @@ export const createMinuteNowStore = (
       };
     },
     getSnapshot: () => {
-      current ??= env.now();
+      // Sin suscriptores nadie renueva el valor: al reabrir una vista, el
+      // primer render (antes de `subscribe`) usaría el "ahora" de cuando se
+      // fue el último. Se relee si ya venció un periodo y se guarda, así que
+      // las lecturas seguidas del mismo render devuelven el mismo valor.
+      if (current === null || (subscribers.size === 0 && env.now() - current >= periodMs)) {
+        current = env.now();
+      }
       return current;
     },
   };
