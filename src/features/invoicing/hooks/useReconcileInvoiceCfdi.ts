@@ -39,8 +39,9 @@ export type ReconcileInvoiceCfdiResult =
  *   se hace el POST y se avisa.
  * - Al terminar, con cualquier resultado, refresca listado, retrieve y desglose.
  *   La respuesta NO se escribe en la caché: el refetch muestra el estado real.
- *   Conciliar no toca estatus, CxC, póliza ni el avance del pedido (ninguna
- *   vista del pedido lee el timbre de sus facturas), así que no se invalida.
+ *   Conciliar no toca estatus, póliza ni el avance del pedido (ninguna vista
+ *   del pedido lee el timbre de sus facturas), así que no se invalidan. Sí se
+ *   invalidan las CxC: traen `factura_cfdi_pendiente` y `cobrable` (EC-928).
  *
  * Con `aviso` (EC-761) el CFDI quedó vigente ante el SAT aunque la factura esté
  * cancelada o eliminada: en lugar del toast de éxito se muestra ese aviso del
@@ -81,10 +82,12 @@ export const reconcileInvoiceCfdiMutationOptions = (
         error instanceof PrecheckError ? error.message : reconcileInvoiceCfdiErrorMessage(error),
       );
     },
-    onSettled: (result) =>
-      invalidateInvoiceBaseQueries(queryClient, invoiceId, {
-        sentRequest: result?.outcome !== "not-pending",
-      }),
+    onSettled: (result) => {
+      const sentRequest = result?.outcome !== "not-pending";
+      invalidateInvoiceBaseQueries(queryClient, invoiceId, { sentRequest });
+      // La CxC trae `factura_cfdi_pendiente` y `cobrable` (EC-928): los lee Cobros.
+      if (sentRequest) queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
+    },
   });
 
 /**
