@@ -44,6 +44,7 @@ import {
   COBRO_REP_CANCELLATION_REQUESTED_LABEL,
 } from "../utils/cobroRepCancellation";
 import {
+  COBRO_DRAFT_APPLY_UNAVAILABLE_CXC_MESSAGE,
   COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE,
   COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE,
 } from "../utils/cobroDraft";
@@ -131,13 +132,19 @@ export function CollectionDetailDialog({
   // Un borrador sin líneas se guarda, pero no se aplica: el backend pide al menos
   // una. Tampoco con su cuenta bancaria desactivada: el backend la rechaza. Ni
   // con una línea cuyo CFDI ya no admite cobros (EC-928), leída del listado de
-  // CxC que este detalle ya carga; mientras no carga, el `400` sigue de red.
+  // CxC que este detalle ya carga. Igual que "Cancelar cobro": mientras ese
+  // listado carga, deshabilitado (sin motivo, con la nota de consulta); si no se
+  // pudo cargar, bloqueado (no se puede saber si alguna factura lo admite).
   const applyBlockReason =
     cobro.cobro_detalles.length === 0
       ? COBRO_DRAFT_APPLY_WITHOUT_LINES_MESSAGE
       : cobro.cuenta_bancaria_activa === false
         ? COBRO_DRAFT_INACTIVE_ACCOUNT_MESSAGE
-        : // Aquí las líneas no llevan aviso propio: se listan todos los motivos.
+        : isCxcPending
+          ? null
+          : !hasLoadedCxc
+            ? COBRO_DRAFT_APPLY_UNAVAILABLE_CXC_MESSAGE
+            : // Aquí las líneas no llevan aviso propio: se listan todos los motivos.
           [
             ...new Set(
               cobro.cobro_detalles.flatMap((linea) => {
@@ -147,7 +154,8 @@ export function CollectionDetailDialog({
               }),
             ),
           ].join(" ") || null;
-  const canApply = applyBlockReason === null;
+  const isApplyPending = applyBlockReason === null && isCxcPending;
+  const canApply = applyBlockReason === null && !isCxcPending;
   const applyNoteId = `cobro-${cobro.id}-apply-note`;
 
   return (
@@ -233,7 +241,7 @@ export function CollectionDetailDialog({
             </div>
             {onApply && !canApply && (
               <p id={applyNoteId} className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
-                {applyBlockReason}
+                {isApplyPending ? "Consultando las cuentas por cobrar del cobro…" : applyBlockReason}
               </p>
             )}
           </div>
