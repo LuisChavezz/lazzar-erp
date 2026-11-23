@@ -9,8 +9,14 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
  * (`applyOperationsQuoteActionResult`): cancelar lo que esté en vuelo,
  * escribir, y después invalidar como siempre (el refetch reconcilia).
  *
- * Funciones PURAS (`patchRowById`) más una envoltura sobre `QueryClient`, para
- * probarlas sin React.
+ * BEST-EFFORT: se corre dentro del `onSuccess` de la mutación, ANTES de su
+ * toast y sus invalidaciones. Una respuesta con otra forma (otro backend
+ * desplegado, un campo renombrado) no debe convertir una acción aplicada en un
+ * error: nada de aquí lanza. Sin un id válido o sin los campos esperados, no
+ * se escribe nada y el refetch queda como única fuente.
+ *
+ * Funciones PURAS (`patchRowById`, `pickPresentFields`) más envolturas sobre
+ * `QueryClient`, para probarlas sin React.
  */
 
 interface RowWithId {
@@ -20,11 +26,36 @@ interface RowWithId {
 /** Las dos formas de listado en caché: arreglo plano o página `{ results }` de DRF. */
 type RowsContainer<TRow> = TRow[] | { results: TRow[] };
 
+const asObject = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+/** El `id` del resultado si es un entero positivo; si no, `null`. */
+export const resultRecordId = (value: unknown): number | null => {
+  const id = asObject(value)?.id;
+  return typeof id === "number" && Number.isInteger(id) && id > 0 ? id : null;
+};
+
+/**
+ * Solo los `fields` que `source` trae (presentes y distintos de `undefined`).
+ * Así una respuesta sin un campo nunca escribe `undefined` sobre la fila.
+ */
+export const pickPresentFields = <TRow>(
+  source: unknown,
+  fields: readonly (keyof TRow & string)[],
+): Partial<TRow> => {
+  const object = asObject(source);
+  if (!object) return {};
+  const picked: Record<string, unknown> = {};
+  for (const field of fields) {
+    if (object[field] !== undefined) picked[field] = object[field];
+  }
+  return picked as Partial<TRow>;
+};
+
 const isPage = <TRow>(value: unknown): value is { results: TRow[] } =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value) &&
-  Array.isArray((value as { results?: unknown }).results);
+  asObject(value) !== null && Array.isArray((value as { results?: unknown }).results);
 
 /**
  * Aplica `patch` a la fila con ese `id`, en un arreglo plano o en la página
@@ -49,17 +80,65 @@ export const patchRowById = <TRow extends RowWithId>(
  * contenga. Las variantes sin esa fila, o con otra forma (detalle, KPIs), no
  * se tocan: `setQueryData` las marcaría frescas sin haber cambiado nada.
  *
- * No invalida: cada hook conserva sus invalidaciones de siempre.
+ * Un `id` que no es un entero positivo no escribe nada. Nunca lanza (ver el
+ * encabezado). No invalida: cada hook conserva sus invalidaciones de siempre.
  */
 export const patchCachedRowById = async <TRow extends RowWithId>(
   queryClient: QueryClient,
   queryKey: QueryKey,
-  id: number,
+  id: unknown,
   patch: (row: TRow) => TRow,
 ) => {
-  await queryClient.cancelQueries({ queryKey });
-  for (const [key, data] of queryClient.getQueriesData<RowsContainer<TRow>>({ queryKey })) {
-    const next = patchRowById(data, id, patch);
-    if (next !== data) queryClient.setQueryData(key, next);
+  if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) return;
+  try {
+    await queryClient.cancelQueries({ queryKey });
+    for (const [key, data] of queryClient.getQueriesData<RowsContainer<TRow>>({ queryKey })) {
+      const next = patchRowById(data, id, patch);
+      if (next !== data) queryClient.setQueryData(key, next);
+    }
+  } catch (error) {
+    console.error("No se pudo escribir el resultado de la acción en la caché", error);
+  }
+};
+
+/**
+ * Reemplaza la fila por el registro que respondió la acción, cuando esa
+ * respuesta tiene la MISMA forma que la fila del listado (mismo serializer).
+ * Solo si trae un `id` válido y todos los `requiredFields`; si no, no escribe.
+ */
+export const replaceCachedRow = <TRow extends RowWithId>(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  record: unknown,
+  requiredFields: readonly (keyof TRow & string)[],
+) => {
+  const complete = requiredFields.every((field) => asObject(record)?.[field] !== undefined);
+  return patchCachedRowById<TRow>(
+    queryClient,
+    queryKey,
+    complete ? resultRecordId(record) : null,
+    () => record as TRow,
+  );
+};
+
+/**
+ * Fusiona en el DETALLE en caché del registro `id` (la entrada exacta
+ * `queryKey`, un objeto, no una lista) los `values` ya elegidos. Solo si esa
+ * entrada existe y es el mismo registro; nunca lanza.
+ */
+export const mergeCachedRecord = async (
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  id: number,
+  values: Record<string, unknown>,
+) => {
+  if (Object.keys(values).length === 0) return;
+  try {
+    await queryClient.cancelQueries({ queryKey, exact: true });
+    const current = asObject(queryClient.getQueryData(queryKey));
+    if (current?.id !== id) return;
+    queryClient.setQueryData(queryKey, { ...current, ...values });
+  } catch (error) {
+    console.error("No se pudo escribir el resultado de la acción en la caché", error);
   }
 };

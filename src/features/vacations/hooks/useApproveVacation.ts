@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { approveVacation } from "../services/actions";
 import type { Vacation } from "../interfaces/vacation.interface";
 import { VACATIONS_KEY } from "./useVacations";
@@ -28,7 +28,7 @@ export const useApproveVacation = () => {
       // La respuesta es el registro completo con la forma de la fila del
       // listado (`VacacionesSerializer`): se escribe antes del refetch, que si
       // falla dejaría la fila pendiente y con "Aprobar" disponible (EC-927).
-      await patchCachedRowById<Vacation>(queryClient, VACATIONS_KEY, vacation.id, () => vacation);
+      await replaceCachedRow<Vacation>(queryClient, VACATIONS_KEY, vacation, ["estado"]);
       toast.success("Solicitud de vacaciones aprobada");
     },
     onError: (error) => {

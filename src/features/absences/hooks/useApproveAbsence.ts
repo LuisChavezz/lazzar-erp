@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { approveAbsence } from "../services/actions";
 import type { Absence } from "../interfaces/absence.interface";
 import { getAusenciaVocabulary, TIPO_FALTA_INJUSTIFICADA } from "../constants/absenceChoices";
@@ -28,7 +28,7 @@ export const useApproveAbsence = () => {
       // La respuesta es el registro completo con la forma de la fila del
       // listado (`PermisoAusenciaSerializer`): se escribe antes del refetch,
       // que si falla dejaría la fila pendiente y con "Aprobar" disponible.
-      await patchCachedRowById<Absence>(queryClient, ABSENCES_KEY, absence.id, () => absence);
+      await replaceCachedRow<Absence>(queryClient, ABSENCES_KEY, absence, ["estado"]);
       toast.success(
         tipo === TIPO_FALTA_INJUSTIFICADA
           ? "Falta injustificada confirmada"

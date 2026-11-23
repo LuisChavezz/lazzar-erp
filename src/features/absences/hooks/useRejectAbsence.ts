@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { rejectAbsence } from "../services/actions";
 import { Absence, AbsenceRejectVariables } from "../interfaces/absence.interface";
 import { getAusenciaVocabulary, TIPO_FALTA_INJUSTIFICADA } from "../constants/absenceChoices";
@@ -31,7 +31,7 @@ export const useRejectAbsence = ({ onReasonError }: UseRejectAbsenceOptions = {}
       rejectAbsence(id, { motivo_rechazo }),
     onSuccess: async (absence, { tipo }) => {
       // Misma forma que la fila del listado: se escribe antes del refetch (EC-927).
-      await patchCachedRowById<Absence>(queryClient, ABSENCES_KEY, absence.id, () => absence);
+      await replaceCachedRow<Absence>(queryClient, ABSENCES_KEY, absence, ["estado"]);
       toast.success(
         tipo === TIPO_FALTA_INJUSTIFICADA
           ? "Falta injustificada descartada"

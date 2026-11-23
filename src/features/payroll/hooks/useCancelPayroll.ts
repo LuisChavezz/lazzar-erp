@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { cancelPayroll } from "../services/actions";
 import type { Payroll } from "../interfaces/payroll.interface";
 import { PAYROLL_KEY_ROOT } from "./usePayrolls";
@@ -17,7 +17,7 @@ export const useCancelPayroll = () => {
     mutationFn: (id: number) => cancelPayroll(id),
     onSuccess: async (payroll) => {
       // Misma forma que la fila: se escribe antes del refetch (EC-927).
-      await patchCachedRowById<Payroll>(queryClient, PAYROLL_KEY_ROOT, payroll.id, () => payroll);
+      await replaceCachedRow<Payroll>(queryClient, PAYROLL_KEY_ROOT, payroll, ["estado"]);
       toast.success("Nómina cancelada");
     },
     onError: (error) => {

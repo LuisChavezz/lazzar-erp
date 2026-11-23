@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { patchCachedRowById } from "@/src/utils/cachedRows";
+import { replaceCachedRow } from "@/src/utils/cachedRows";
 import { payPayroll } from "../services/actions";
 import type { Payroll, PayrollPayVariables } from "../interfaces/payroll.interface";
 import { PAYROLL_KEY_ROOT } from "./usePayrolls";
@@ -30,7 +30,7 @@ export const usePayPayroll = ({ onFechaPagoError }: UsePayPayrollOptions = {}) =
       // caché antes del refetch, que si falla dejaría "Marcar como pagada"
       // disponible (EC-927). `verifyPayrollPendiente` sigue siendo la guarda
       // antes de escribir.
-      await patchCachedRowById<Payroll>(queryClient, PAYROLL_KEY_ROOT, payroll.id, () => payroll);
+      await replaceCachedRow<Payroll>(queryClient, PAYROLL_KEY_ROOT, payroll, ["estado"]);
       toast.success("Nómina marcada como pagada");
     },
     onError: (error) => {
