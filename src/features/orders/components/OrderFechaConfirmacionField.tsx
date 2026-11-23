@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PencilSquareIcon } from "@/src/components/Icons";
-import { formatShortDate, getBrowserTimeZone, parseLocalDate } from "@/src/utils/formatDate";
+import { formatFechaConfirmacion } from "../utils/pedidoFormat";
 import { PedidoFechaConfirmacionField } from "./PedidoFechaConfirmacionField";
 
 interface OrderFechaConfirmacionFieldProps {
@@ -59,11 +59,8 @@ export function OrderFechaConfirmacionField({
   /** Tras un guardado fallido: reenfocar el editor cuando deje de estar pendiente. */
   const [refocusEditor, setRefocusEditor] = useState(false);
 
-  // La zona del NAVEGADOR, no la de México de `formatShortDate`: el editor
-  // guarda la medianoche local (`toLocalMidnightIso`), así que en esa zona sale
-  // el día que se capturó y el mismo que muestra el `<input type="date">`.
-  const date = parseLocalDate(value);
-  const label = date ? formatShortDate(date, { timeZone: getBrowserTimeZone() }) : "—";
+  // Zona del NAVEGADOR, no la de México: ver `formatFechaConfirmacion` (EC-936).
+  const label = formatFechaConfirmacion(value);
 
   useEffect(() => {
     if (isEditing) {

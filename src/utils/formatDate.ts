@@ -105,6 +105,12 @@ export const formatLocalDateRange = (range: { fecha_inicio: string; fecha_fin: s
   `${formatLocalDate(range.fecha_inicio)} – ${formatLocalDate(range.fecha_fin)}`;
 
 /**
+ * Valor de `timeZone` para `formatShortDate` que formatea en la zona LOCAL del
+ * navegador (la de omisión de `Intl`), que ya no es la de omisión del helper.
+ */
+export const LOCAL_TIME_ZONE = "local";
+
+/**
  * Formatea una fecha (`Date` o string parseable por `Date`, p.ej. un ISO
  * completo) como "14 jul 2026" (es-MX: día 2 dígitos, mes abreviado, año).
  * Devuelve "—" para valores vacíos o que no parseen a una fecha válida.
@@ -120,9 +126,9 @@ export const formatLocalDateRange = (range: { fecha_inicio: string; fecha_fin: s
  * - Un `Date` armado a medianoche LOCAL (`parseLocalDate`, `new Date(y, m, d)`)
  *   tampoco va aquí sin zona: en México, al este de la zona del navegador, cae
  *   en el día anterior. Usa `formatShortCalendarDate` con su "YYYY-MM-DD".
- * - `timeZone: getBrowserTimeZone()` mantiene a propósito la zona del
- *   navegador, para un valor que se escribió en esa zona (ver
- *   `fecha_confirmacion` del pedido).
+ * - `timeZone: LOCAL_TIME_ZONE` mantiene a propósito la zona del navegador
+ *   (omite `timeZone`, como antes de EC-931), para un valor que se escribió en
+ *   esa zona (ver `formatFechaConfirmacion` del pedido).
  */
 export const formatShortDate = (
   value: string | Date | null | undefined,
@@ -135,16 +141,12 @@ export const formatShortDate = (
     day: "2-digit",
     month: "short",
     year: "numeric",
-    timeZone: options.timeZone ?? MEXICO_TIME_ZONE,
+    // El modo local OMITE `timeZone` en vez de pasar la zona IANA del
+    // navegador: un sistema con una zona que ICU no identifica la reporta como
+    // "Etc/Unknown", y pasarla explícita lanzaría `RangeError`.
+    timeZone: options.timeZone === LOCAL_TIME_ZONE ? undefined : (options.timeZone ?? MEXICO_TIME_ZONE),
   });
 };
-
-/**
- * Zona IANA del navegador (la del proceso en el servidor). Para pasarla como
- * `timeZone` a `formatShortDate` cuando un valor debe seguir mostrándose en la
- * zona LOCAL, que ya no es la de omisión.
- */
-export const getBrowserTimeZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /**
  * Fecha-calendario como "14 jul 2026" (mismo formato que `formatShortDate`)

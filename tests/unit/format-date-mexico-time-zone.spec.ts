@@ -1,13 +1,21 @@
 import { expect, test } from "@playwright/test";
-import { formatEntregaEstimada, formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
+import { SURTIDO_PEDIDO_EXPORT_COLUMNS } from "@/src/features/order-fulfillment/utils/surtidoPedidoExport";
+import type { SurtidoPedido } from "@/src/features/order-fulfillment/interfaces/order-fulfillment.interface";
+import {
+  formatEntregaEstimada,
+  formatFechaCalendario,
+  formatFechaConfirmacion,
+} from "@/src/features/orders/utils/pedidoFormat";
 import {
   formatShortCalendarDate,
   formatShortDate,
   formatShortDateTime,
   formatShortTime,
-  getBrowserTimeZone,
+  LOCAL_TIME_ZONE,
+  parseLocalDate,
   toLocalMidnightIso,
 } from "@/src/utils/formatDate";
+import { exportDate } from "@/src/utils/listExport";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /*
@@ -27,12 +35,16 @@ import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 /** Zonas al este (Tokio, Madrid) y al oeste (Los Ángeles) de México, y UTC. */
 const OTHER_ZONES = ["Asia/Tokyo", "Europe/Madrid", "America/Los_Angeles", "UTC"] as const;
 
-const withProcessTimeZone = (timeZone: string, run: () => void) => {
+const withProcessTimeZone = (
+  timeZone: string,
+  run: () => void,
+  { checkResolved = true }: { checkResolved?: boolean } = {},
+) => {
   const original = process.env.TZ;
   try {
     process.env.TZ = timeZone;
     // El cambio de zona debe haber surtido efecto antes de confiar en el caso.
-    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(timeZone);
+    if (checkResolved) expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(timeZone);
     run();
   } finally {
     // Asignar `undefined` guardaría el texto "undefined", una zona inválida.
@@ -219,33 +231,85 @@ test.describe("formatShortDate: el día de un datetime en México", () => {
   });
 });
 
-test.describe("`getBrowserTimeZone`: la lectura local de `fecha_confirmacion`", () => {
-  test("es la zona del proceso", () => {
-    expect(getBrowserTimeZone()).toBe(MEXICO_TIME_ZONE);
-    for (const zone of OTHER_ZONES) {
-      withProcessTimeZone(zone, () => expect(getBrowserTimeZone()).toBe(zone));
+test.describe("`LOCAL_TIME_ZONE`: el modo local de `formatShortDate`", () => {
+  test("omite `timeZone`: sale lo mismo que `toLocaleDateString` sin zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const { value } of DATETIME_CASES) {
+          const sinZona = new Date(value).toLocaleDateString("es-MX", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          expect(formatShortDate(value, { timeZone: LOCAL_TIME_ZONE })).toBe(sinZona);
+        }
+      });
     }
   });
 
+  test("no lanza aunque ICU no identifique la zona del proceso", () => {
+    // Pasarla explícita ("Etc/Unknown") sí lanzaría `RangeError`.
+    withProcessTimeZone(
+      "Etc/Unknown",
+      () => {
+        expect(() =>
+          formatShortDate("2026-11-21T08:51:44-06:00", { timeZone: LOCAL_TIME_ZONE }),
+        ).not.toThrow();
+      },
+      { checkResolved: false },
+    );
+  });
+});
+
+const surtidoConfirmado = (fecha_confirmacion: string | null) =>
+  SURTIDO_PEDIDO_EXPORT_COLUMNS.find((c) => c.header === "Confirmado")?.text({
+    fecha_confirmacion,
+  } as SurtidoPedido);
+
+test.describe("`formatFechaConfirmacion`: en la zona del navegador (EC-936)", () => {
   for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
     test(`con el navegador en ${zone} la medianoche local guardada sale en el día capturado`, () => {
       withProcessTimeZone(zone, () => {
         for (const { value, label } of CALENDAR_CASES) {
-          // Lo que escribe `PedidoFechaConfirmacionField` y lo que lee la hoja.
+          // Lo que escribe `PedidoFechaConfirmacionField` y lo que leen la hoja,
+          // el pedido especial, el PDF y la exportación de surtido.
           const stored = toLocalMidnightIso(value);
-          expect(formatShortDate(stored, { timeZone: getBrowserTimeZone() })).toBe(label);
+          expect(formatFechaConfirmacion(stored)).toBe(label);
+          expect(surtidoConfirmado(stored)).toBe(label);
         }
+        expect(formatFechaConfirmacion(null)).toBe("—");
+        expect(formatFechaConfirmacion("sin fecha")).toBe("—");
+        expect(surtidoConfirmado(null)).toBe("");
       });
     });
   }
 
-  test("al este de México, leerla en la zona de México daría el día anterior", () => {
-    // Por eso esos lectores no usan la zona de omisión.
+  test("con el navegador en Asia/Tokyo no se lee en la zona de México", () => {
     withProcessTimeZone("Asia/Tokyo", () => {
       const stored = toLocalMidnightIso("2026-12-31");
       expect(stored).toBe("2026-12-31T00:00:00+09:00");
       expect(formatShortDate(stored)).toBe("30 dic 2026");
-      expect(formatShortDate(stored, { timeZone: getBrowserTimeZone() })).toBe("31 dic 2026");
+      expect(formatFechaConfirmacion(stored)).toBe("31 dic 2026");
+      expect(surtidoConfirmado(stored)).toBe("31 dic 2026");
     });
+  });
+
+  test("con el navegador en America/Los_Angeles un valor guardado en México sale en el día local", () => {
+    withProcessTimeZone("America/Los_Angeles", () => {
+      // Medianoche de México = 22:00 del día anterior en Los Ángeles (como antes de EC-931).
+      expect(formatFechaConfirmacion("2027-01-15T00:00:00-06:00")).toBe("14 ene 2027");
+      expect(formatShortDate("2027-01-15T00:00:00-06:00")).toBe("15 ene 2027");
+    });
+  });
+
+  test("en México sale lo mismo que leían antes los tres lectores y la exportación", () => {
+    for (const { value } of CALENDAR_CASES) {
+      const stored = toLocalMidnightIso(value);
+      // Hoja (`parseLocalDate` + `formatShortDate`), pedido especial y PDF (string crudo).
+      expect(formatFechaConfirmacion(stored)).toBe(formatShortDate(parseLocalDate(stored)));
+      expect(formatFechaConfirmacion(stored)).toBe(formatShortDate(stored));
+      // Exportación de surtido (antes `exportDate`).
+      expect(surtidoConfirmado(stored)).toBe(exportDate(stored));
+    }
   });
 });
