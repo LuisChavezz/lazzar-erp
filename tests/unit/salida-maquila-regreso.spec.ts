@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 import {
-  recepcionesVivasIds,
+  recepcionesIds,
   regresoPorRenglon,
 } from "@/src/features/maquila-outputs/utils/salidaMaquilaRegreso";
 
 /**
  * EC-925: lo que regresó de cada renglón de una SM no cuenta las recepciones
- * canceladas (`estatus` 6), que devolvieron lo recibido a pendiente.
- * Corren con `npm run test:unit`.
+ * canceladas (`estatus` 6), que devolvieron lo recibido a pendiente; pero de
+ * ellas sí sale el nombre de la prenda. Corren con `npm run test:unit`.
  */
 
 const recepcion = (id: number, estatus: number) => ({
@@ -17,12 +17,11 @@ const recepcion = (id: number, estatus: number) => ({
   fecha_recepcion: null,
 });
 
-test("solo se piden las recepciones no canceladas, ordenadas", () => {
+test("se piden todas las recepciones de la SM, canceladas incluidas, ordenadas", () => {
   expect(
-    recepcionesVivasIds({ recepciones: [recepcion(9, 5), recepcion(3, 6), recepcion(4, 4)] }),
-  ).toEqual([4, 9]);
-  expect(recepcionesVivasIds({ recepciones: [recepcion(3, 6)] })).toEqual([]);
-  expect(recepcionesVivasIds(undefined)).toEqual([]);
+    recepcionesIds({ recepciones: [recepcion(9, 5), recepcion(3, 6), recepcion(4, 4)] }),
+  ).toEqual([3, 4, 9]);
+  expect(recepcionesIds(undefined)).toEqual([]);
 });
 
 test("sin cantidad_recibida del backend, suma solo los renglones de recepciones vivas", () => {
@@ -42,14 +41,30 @@ test("sin cantidad_recibida del backend, suma solo los renglones de recepciones 
       estatus: 6,
       detalles: [
         { salida_maquila_detalle: 1, cantidad_recibida: "10.0000", producto_nombre: "CANCELADA" },
-        { producto_variante_sku: "SKU-B", cantidad_recibida: "7" },
+        { producto_variante_sku: "SKU-B", cantidad_recibida: "7", producto_nombre: "PANTALON" },
       ],
     },
   ]);
   expect(result).toEqual({
     1: { recibidas: 4, nombre: "CAMISA" },
-    2: { recibidas: 2.5, nombre: null },
+    // El nombre puede salir de una recepción cancelada; sus piezas no cuentan.
+    2: { recibidas: 2.5, nombre: "PANTALON" },
   });
+});
+
+test("SM cuya única recepción está cancelada: nombre presente y 0 piezas regresadas", () => {
+  const result = regresoPorRenglon(
+    [{ id: 1, descripcion: "SKU-A", cantidad_recibida: undefined }],
+    [
+      {
+        estatus: 6,
+        detalles: [
+          { salida_maquila_detalle: 1, cantidad_recibida: "1.0000", producto_nombre: "BATA EJECUTIVA UNISEX" },
+        ],
+      },
+    ],
+  );
+  expect(result).toEqual({ 1: { recibidas: 0, nombre: "BATA EJECUTIVA UNISEX" } });
 });
 
 test("con cantidad_recibida del backend, se usa esa cifra", () => {

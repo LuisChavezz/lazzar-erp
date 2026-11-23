@@ -4,7 +4,7 @@ import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { getReceiptDetail } from "@/src/features/receipts/services/actions";
 import type { SalidaMaquila } from "../interfaces/salida-maquila.interface";
 import {
-  recepcionesVivasIds,
+  recepcionesIds,
   regresoPorRenglon,
   type RecepcionDeRegreso,
 } from "../utils/salidaMaquilaRegreso";
@@ -15,11 +15,11 @@ export type { RegresoRenglon } from "../utils/salidaMaquilaRegreso";
  * Cuánto regresó de CADA renglón de la SM. Lo manda el backend por renglón
  * (`cantidad_recibida`, nucleo-erp #1270). Las recepciones de la SM se leen
  * para el nombre de la prenda y, si el backend aún no manda la cifra, para
- * calcularla (`regresoPorRenglon`). Solo las no canceladas (EC-925): una
- * cancelada devolvió lo recibido a pendiente.
+ * calcularla (`regresoPorRenglon`): todas dan el nombre, pero las canceladas
+ * no suman piezas (devolvieron lo recibido a pendiente, EC-925).
  */
 export const useSalidaMaquilaRegreso = (salida: SalidaMaquila | undefined) => {
-  const ids = recepcionesVivasIds(salida);
+  const ids = recepcionesIds(salida);
   const { data, isLoading } = useGuardedQuery(
     {
       queryKey: ["receipts", "salida-maquila-regreso", salida?.id, ids],

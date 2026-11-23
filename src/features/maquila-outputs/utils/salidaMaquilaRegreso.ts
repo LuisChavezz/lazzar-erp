@@ -22,33 +22,31 @@ export interface RegresoRenglon {
 }
 
 /**
- * Ids de las recepciones de la SM que cuentan: las no canceladas (EC-925). Una
- * recepción cancelada devolvió lo recibido a pendiente en el backend, así que
- * sus renglones no son piezas que regresaron. Ordenados, para la llave.
+ * Ids de TODAS las recepciones de la SM, canceladas incluidas: de ellas sale el
+ * nombre de la prenda aunque la única recepción esté cancelada (EC-925); las
+ * canceladas se excluyen solo de la suma (`regresoPorRenglon`). Ordenados, para
+ * la llave.
  */
-export const recepcionesVivasIds = (salida: Pick<SalidaMaquila, "recepciones"> | undefined): number[] =>
-  (salida?.recepciones ?? [])
-    .filter((r) => r.estatus !== RECEPCION_CANCELADA)
-    .map((r) => r.id)
-    .sort((a, b) => a - b);
+export const recepcionesIds = (salida: Pick<SalidaMaquila, "recepciones"> | undefined): number[] =>
+  (salida?.recepciones ?? []).map((r) => r.id).sort((a, b) => a - b);
 
 /**
  * Cuánto regresó de CADA renglón de la SM. Lo manda el backend por renglón
  * (`cantidad_recibida`, nucleo-erp #1270); si no, se suma de los renglones de
  * sus recepciones: por `salida_maquila_detalle` cuando viene, y si no, por SKU
- * (= `descripcion` del renglón de la SM). Las recepciones canceladas no cuentan
- * aunque lleguen (p. ej. una SM en caché anterior a la cancelación).
+ * (= `descripcion` del renglón de la SM). Las recepciones canceladas no suman
+ * piezas (devolvieron lo recibido a pendiente, EC-925), pero sí dan el nombre.
  */
 export const regresoPorRenglon = (
   detallesSm: Pick<SalidaMaquila["detalles"][number], "id" | "descripcion" | "cantidad_recibida">[],
   recepciones: RecepcionDeRegreso[],
 ): Record<number, RegresoRenglon> => {
-  const renglones = recepciones
-    .filter((r) => r.estatus !== RECEPCION_CANCELADA)
-    .flatMap((r) => r.detalles ?? []);
+  const renglones = recepciones.flatMap((r) =>
+    (r.detalles ?? []).map((renglon) => ({ renglon, viva: r.estatus !== RECEPCION_CANCELADA })),
+  );
   const porRenglon: Record<number, RegresoRenglon> = {};
   for (const d of detallesSm) {
-    const mios = renglones.filter((r) =>
+    const mios = renglones.filter(({ renglon: r }) =>
       r.salida_maquila_detalle != null
         ? r.salida_maquila_detalle === d.id
         : !!r.producto_variante_sku && r.producto_variante_sku === d.descripcion,
@@ -57,8 +55,10 @@ export const regresoPorRenglon = (
       recibidas:
         d.cantidad_recibida !== undefined
           ? Number(d.cantidad_recibida) || 0
-          : mios.reduce((acc, r) => acc + (Number(r.cantidad_recibida) || 0), 0),
-      nombre: mios.find((r) => r.producto_nombre)?.producto_nombre ?? null,
+          : mios
+              .filter(({ viva }) => viva)
+              .reduce((acc, { renglon }) => acc + (Number(renglon.cantidad_recibida) || 0), 0),
+      nombre: mios.find(({ renglon }) => renglon.producto_nombre)?.renglon.producto_nombre ?? null,
     };
   }
   return porRenglon;
