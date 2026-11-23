@@ -1,3 +1,5 @@
+import { MEXICO_TIME_ZONE } from "./mexicoTime";
+
 /**
  * Convierte un string "yyyy-mm-dd" en una fecha local, evitando el desfase por
  * UTC que produce `new Date("yyyy-mm-dd")`. También acepta un datetime ISO
@@ -147,32 +149,46 @@ export const formatShortCalendarDate = (value: string | null | undefined): strin
 };
 
 /**
- * Formatea la HORA (hh:mm, es-MX) de un timestamp real con offset propio —
- * pareja de `formatShortDate` para cuando fecha y hora se muestran por
- * separado (p.ej. "14 jul 2026" · "10:32"). Sin `timeZone: "UTC"`: es para
- * timestamps con hora, no para fechas-calendario (ver nota en
- * `formatShortDate`). Devuelve "—" para valores vacíos o que no parseen.
+ * Formatea la HORA (es-MX, 12 h: "08:51 a.m.") de un timestamp real con offset
+ * propio — pareja de `formatShortDate` para cuando fecha y hora se muestran por
+ * separado (p.ej. "14 jul 2026" · "10:32 a.m."). Es para timestamps con hora,
+ * no para fechas-calendario (ver nota en `formatShortDate`). Devuelve "—" para
+ * valores vacíos o que no parseen.
+ *
+ * La hora sale en `MEXICO_TIME_ZONE` (la del backend y la de las
+ * notificaciones), no en la del navegador: un equipo fuera de México o con la
+ * zona mal configurada vería otra hora que el resto del sistema (EC-931).
+ * `timeZone` la cambia de forma explícita.
  */
 export const formatShortTime = (
   value: string | Date | null | undefined,
+  options: { timeZone?: string } = {},
 ): string => {
   if (!value) return "—";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: options.timeZone ?? MEXICO_TIME_ZONE,
+  });
 };
 
 /**
- * Fecha + hora de un timestamp real como "14 jul 2026 · 10:32", combinando
- * `formatShortDate` y `formatShortTime` (zona horaria del usuario, sin
- * `timeZone`). Un solo "—" —y no "— · —"— para valores vacíos o que no parseen.
+ * Fecha + hora de un timestamp real como "14 jul 2026 · 10:32 a.m.",
+ * combinando `formatShortDate` y `formatShortTime` en la MISMA zona
+ * (`MEXICO_TIME_ZONE` por omisión, como `formatShortTime`), para que el día y
+ * la hora nunca vengan de zonas distintas. Un solo "—" —y no "— · —"— para
+ * valores vacíos o que no parseen.
  */
 export const formatShortDateTime = (
   value: string | Date | null | undefined,
+  options: { timeZone?: string } = {},
 ): string => {
-  const date = formatShortDate(value);
+  const timeZone = options.timeZone ?? MEXICO_TIME_ZONE;
+  const date = formatShortDate(value, { timeZone });
   if (date === "—") return "—";
-  return `${date} · ${formatShortTime(value)}`;
+  return `${date} · ${formatShortTime(value, { timeZone })}`;
 };
 
 const CALENDAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;

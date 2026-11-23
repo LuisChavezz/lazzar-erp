@@ -90,9 +90,9 @@ export const formatRelativeTime = (
 };
 
 /**
- * Fecha y hora completas en México, "13 nov 2026 · 16:20": el mismo estilo que
- * `formatShortDateTime`, que en cambio usa la zona del navegador. Para el
- * `title` del timestamp. `null` si el valor falta o no parsea.
+ * Fecha y hora completas en México, "13 nov 2026 · 16:20": el estilo de
+ * `formatShortDateTime` (que también usa la zona de México), pero con la hora
+ * en 24 h, la de "Ayer, HH:mm". Para el `title` del timestamp. `null` si el valor falta o no parsea.
  */
 export const formatMexicoDateTime = (value: string | null | undefined): string | null => {
   if (parseTimestamp(value) === null) return null;
