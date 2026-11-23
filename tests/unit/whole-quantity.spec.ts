@@ -63,6 +63,7 @@ type Paso =
   | { tecla: string }
   | { pegar: string }
   | { clicAlFinal: true }
+  | { seleccionar: [number, number] }
   | { paso: -1 | 1 }
   | { salir: true };
 
@@ -92,7 +93,7 @@ function capturar(inicial: number, pasos: Paso[], min = 0) {
       if (p.tecla === "Backspace") {
         const shown = String(value);
         const [a, b] = sel[0] === sel[1] ? [Math.max(0, sel[0] - 1), sel[1]] : sel;
-        aplicar({ type: "text", raw: shown.slice(0, a) + shown.slice(b), shown, min });
+        aplicar({ type: "text", raw: shown.slice(0, a) + shown.slice(b), shown, min, deletion: true });
       } else if (p.tecla.length === 1) {
         insertar(p.tecla);
       }
@@ -104,6 +105,9 @@ function capturar(inicial: number, pasos: Paso[], min = 0) {
       }
     } else if ("clicAlFinal" in p) {
       aplicar({ type: "pointer" });
+    } else if ("seleccionar" in p) {
+      state = reduceWholeQuantity(state, { type: "pointer" }).state;
+      sel = p.seleccionar;
     } else if ("paso" in p) {
       aplicar({ type: "step", value, direction: p.paso, min });
     } else {
@@ -195,7 +199,7 @@ test.describe("truncateFractionDeletion: borrar decimales trunca al entero", () 
 
 test.describe("reduceWholeQuantity: borrar sobre un valor fraccionario (EC-924)", () => {
   const borrar = (raw: string, shown: string, min = 0) =>
-    reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw, shown, min });
+    reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw, shown, min, deletion: true });
 
   test("Backspace al final de \"10.5\" deja 10 sin aviso (antes se quedaba en 10.5)", () => {
     expect(capturar(10.5, [{ clicAlFinal: true }, { tecla: "Backspace" }])).toEqual({ value: 10, hint: false });
@@ -228,6 +232,12 @@ test.describe("reduceWholeQuantity: borrar sobre un valor fraccionario (EC-924)"
     expect(capturar(0, teclas("10.7"))).toEqual({ value: 10, hint: true });
     expect(capturar(0, teclas("1.5"))).toEqual({ value: 1, hint: true });
     expect(capturar(10.5, [{ clicAlFinal: true }, ...teclas("7")])).toEqual({ value: 10.5, hint: true });
+    // Teclear sobre decimales seleccionados deja un texto igual al de un borrado ("10.2", "10.5"), pero no lo es.
+    expect(capturar(10.25, [{ seleccionar: [3, 5] }, ...teclas("2")])).toEqual({ value: 10.25, hint: true });
+    expect(capturar(10.25, [{ seleccionar: [3, 5] }, ...teclas("5")])).toEqual({ value: 10.25, hint: true });
+    expect(reduceWholeQuantity(WHOLE_QUANTITY_IDLE, { type: "text", raw: "10.5", shown: "10.25", min: 0 })).toEqual({
+      state: { fractionBlocked: true, showHint: true },
+    });
   });
 
   test("sobre un valor entero nada cambia", () => {

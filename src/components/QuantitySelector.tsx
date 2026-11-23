@@ -79,7 +79,15 @@ export function QuantitySelector({
           type="text"
           inputMode="numeric"
           value={value}
-          onChange={(e) => dispatch({ type: "text", raw: e.target.value, shown: String(value), min })}
+          onChange={(e) =>
+            dispatch({
+              type: "text",
+              raw: e.target.value,
+              shown: String(value),
+              min,
+              deletion: (e.nativeEvent as InputEvent).inputType?.startsWith("delete") ?? false,
+            })
+          }
           onKeyDown={(e) => dispatch({ type: "key", key: e.key }, e)}
           onPaste={(e) => dispatch({ type: "paste", text: e.clipboardData.getData("text"), min }, e)}
           onMouseDown={() => dispatch({ type: "pointer" })}
