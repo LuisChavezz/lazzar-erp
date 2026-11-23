@@ -12,6 +12,7 @@ import {
   ALL_FILTER_OPTION,
   buildDistinctFilterOptions,
   buildMonthFilterOptions,
+  localMonthFilterValue,
   matchesMonthFilter,
   matchesRangeFilter,
   type RangeFilterOption,
@@ -91,7 +92,8 @@ export function buildOperationsQuoteFilterOptions(
       ALL_FILTER_OPTION,
       ...buildQuoteClienteFilterOptions(buildQuoteClienteOptionsFromRows(quotes)),
     ],
-    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(quotes.map((q) => q.created_at))],
+    // La celda muestra `created_at` en la zona local (`formatQuoteDateTime`): el filtro de mes, también.
+    meses: [ALL_FILTER_OPTION, ...buildMonthFilterOptions(quotes.map((q) => localMonthFilterValue(q.created_at)))],
     codigosPostales: [
       ALL_FILTER_OPTION,
       ...buildDistinctFilterOptions(quotes, (q) => q.codigo_postal),
@@ -401,7 +403,7 @@ export const getOperationsQuoteColumns = (
       <FilterHeader title="Fecha" column={column} options={filterOptions.meses} label="mes" />
     ),
     filterFn: (row, _columnId, filterValue) =>
-      matchesMonthFilter(row.original.created_at, filterValue),
+      matchesMonthFilter(localMonthFilterValue(row.original.created_at), filterValue),
     cell: ({ row }) => (
       <span className="text-slate-600 dark:text-slate-300">
         {formatOperationsQuoteDateTime(
