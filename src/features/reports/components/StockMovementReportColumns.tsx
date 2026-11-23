@@ -6,17 +6,7 @@ import type { StockMovementReportRow } from "@/src/features/stock/interfaces/sto
 // `TRANSFERENCIA` a lo que allá es `TRASPASO`).
 import { STOCK_MOVEMENT_REPORT_TYPE_CONFIG } from "@/src/features/stock/constants/stockMovementReportTypes";
 import { formatMoneyValue, formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
-
-// Formato de hora, espejo de la tabla de movimientos (no existe un util
-// compartido de fecha+hora en el proyecto).
-function formatTime(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleTimeString("es-MX", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 
 // Marcador para valores de texto vacíos, con el mismo estilo que el resto de
 // tablas del proyecto (StockColumns / StockReportColumns).
@@ -40,7 +30,7 @@ export const stockMovementReportColumns: ColumnDef<StockMovementReportRow>[] = [
             {formatShortDate(raw)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-            {formatTime(raw)}
+            {formatShortTime(raw)}
           </span>
         </div>
       );

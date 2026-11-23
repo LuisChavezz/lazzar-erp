@@ -53,7 +53,7 @@ export const getMovementLedgerColumns = (): ColumnDef<MovementLedgerRow>[] => [
     cell: ({ row }) => {
       const raw = row.original.fecha;
       if (!raw) return <Dash />;
-      // Timestamp real (UTC): fecha y hora en la zona del usuario.
+      // Timestamp real (UTC): fecha y hora en la zona de México.
       return (
         <div className="flex flex-col leading-tight whitespace-nowrap">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">

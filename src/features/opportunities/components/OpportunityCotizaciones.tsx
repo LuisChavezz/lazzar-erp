@@ -62,7 +62,7 @@ interface OpportunityCotizacionesProps {
  *   que se enlaza siempre que el usuario pueda abrir `/orders`. El origen
  *   `opportunities` lleva el id para que "Volver" regrese a ESTA oportunidad, y
  *   el estado del listado para que desde aquí se siga pudiendo volver a él.
- * - **Fechas**: timestamps reales (llegan en UTC), en la zona del usuario.
+ * - **Fechas**: timestamps reales (llegan en UTC), en la zona de México.
  * - **Total**: `gran_total` en la `moneda` de la cotización; sin moneda, sin
  *   símbolo.
  * - **Quitar**: no en una autorizada (el backend responde 400: la oportunidad

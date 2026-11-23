@@ -5,13 +5,17 @@ import {
   formatShortDate,
   formatShortDateTime,
   formatShortTime,
+  getBrowserTimeZone,
+  toLocalMidnightIso,
 } from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 
 /*
   EC-931: los helpers de `formatDate.ts` que muestran una hora (o el día de un
   datetime) formatean en `MEXICO_TIME_ZONE`, la zona del backend, y no en la del
-  navegador.
+  navegador; las fechas-calendario ("YYYY-MM-DD") salen en su mismo día en
+  cualquier zona. Con el proceso en México ningún texto cambia: las salidas
+  esperadas de estas tablas son las que daban los helpers antes del cambio.
 
   La suite corre en México (`playwright.unit.config.ts`). Para probar un
   navegador en otra zona se cambia `process.env.TZ` dentro del proceso, como en
@@ -166,4 +170,82 @@ test.describe("fechas-calendario del pedido (`pedidoFormat`)", () => {
       });
     });
   }
+});
+
+test.describe("formatShortDate: el día de un datetime en México", () => {
+  /** Día de cada caso: la parte de fecha de `formatShortDateTime`. */
+  const dayOf = (dateTime: string) => dateTime.split(" · ")[0];
+
+  for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+    test(`con el navegador en ${zone} sale el día de México`, () => {
+      withProcessTimeZone(zone, () => {
+        for (const { value, dateTime } of DATETIME_CASES) {
+          expect(formatShortDate(value)).toBe(dayOf(dateTime));
+          expect(formatShortDate(new Date(value))).toBe(dayOf(dateTime));
+        }
+      });
+    });
+  }
+
+  test("`timeZone: \"UTC\"` explícito (finanzas) no cambia en ninguna zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const { value, label } of CALENDAR_CASES) {
+          expect(formatShortDate(value, { timeZone: "UTC" })).toBe(label);
+        }
+        // Un datetime se formatea en UTC, no en México: 23:55 del 21 en México es el 22 en UTC.
+        expect(formatShortDate("2026-11-21T23:55:00-06:00", { timeZone: "UTC" })).toBe("22 nov 2026");
+        expect(formatShortDate("2026-12-31T23:30:00-06:00", { timeZone: "UTC" })).toBe("01 ene 2027");
+      });
+    }
+  });
+
+  test("`timeZone: MEXICO_TIME_ZONE` explícito da lo mismo que omitirlo", () => {
+    withProcessTimeZone("Asia/Tokyo", () => {
+      for (const { value } of DATETIME_CASES) {
+        expect(formatShortDate(value, { timeZone: MEXICO_TIME_ZONE })).toBe(formatShortDate(value));
+      }
+    });
+  });
+
+  test("— para vacíos o valores que no parsean, en cualquier zona", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const value of EMPTY_VALUES) {
+          expect(formatShortDate(value)).toBe("—");
+        }
+      });
+    }
+  });
+});
+
+test.describe("`getBrowserTimeZone`: la lectura local de `fecha_confirmacion`", () => {
+  test("es la zona del proceso", () => {
+    expect(getBrowserTimeZone()).toBe(MEXICO_TIME_ZONE);
+    for (const zone of OTHER_ZONES) {
+      withProcessTimeZone(zone, () => expect(getBrowserTimeZone()).toBe(zone));
+    }
+  });
+
+  for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+    test(`con el navegador en ${zone} la medianoche local guardada sale en el día capturado`, () => {
+      withProcessTimeZone(zone, () => {
+        for (const { value, label } of CALENDAR_CASES) {
+          // Lo que escribe `PedidoFechaConfirmacionField` y lo que lee la hoja.
+          const stored = toLocalMidnightIso(value);
+          expect(formatShortDate(stored, { timeZone: getBrowserTimeZone() })).toBe(label);
+        }
+      });
+    });
+  }
+
+  test("al este de México, leerla en la zona de México daría el día anterior", () => {
+    // Por eso esos lectores no usan la zona de omisión.
+    withProcessTimeZone("Asia/Tokyo", () => {
+      const stored = toLocalMidnightIso("2026-12-31");
+      expect(stored).toBe("2026-12-31T00:00:00+09:00");
+      expect(formatShortDate(stored)).toBe("30 dic 2026");
+      expect(formatShortDate(stored, { timeZone: getBrowserTimeZone() })).toBe("31 dic 2026");
+    });
+  });
 });

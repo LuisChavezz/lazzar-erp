@@ -95,7 +95,7 @@ export function buildResumenKpiItems(resumen: ResumenComercial): KpiItem[] {
         ultimo && ultimoEstatus ? (
           <span className="block">
             {/* `fecha` es un timestamp real (con hora y offset): sin
-                `timeZone: "UTC"`, para mostrar el día en la zona del usuario. */}
+                `timeZone: "UTC"`, para mostrar su día en México (`formatShortDate`). */}
             <span className="block">{formatShortDate(ultimo.fecha)}</span>
             {/* Folio + estatus: el backend incluye cancelados en
                 `ultimo_pedido`, así que el chip deja visible si lo está. */}

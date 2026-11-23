@@ -60,11 +60,11 @@ import {
   summarizeLineService,
   type LineServiceFlag,
 } from "@/src/features/orders/utils/orderLines";
-import { formatEntregaEstimada, formatFechaCalendario } from "@/src/features/orders/utils/pedidoFormat";
+import { formatEntregaEstimada } from "@/src/features/orders/utils/pedidoFormat";
 import { pedidoPdfDescriptor } from "@/src/features/orders/utils/pedidoPdfDescriptor";
 import type { PedidoPdfCurrency } from "@/src/features/orders/utils/loadPedidoForPdf";
 import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate, getBrowserTimeZone } from "@/src/utils/formatDate";
 import { EMPTY_VALUE, textOrDash } from "@/src/utils/textOrDash";
 import {
   DocumentPdfLayout,
@@ -275,7 +275,12 @@ export const PedidoPdfDocument = ({ pedido, company, currency }: PedidoPdfDocume
     { label: "Estatus", value: getPedidoEstatusConfig(pedido.estatus).label },
     { label: "Tipo de pedido", value: getTipoPedidoConfig(pedido.tipo_pedido).label },
     { label: "Clasificación", value: getPedidoClasificacionLabel(pedido.clasificacion) },
-    { label: "Fecha confirmada", value: formatFechaCalendario(pedido.fecha_confirmacion) },
+    // Zona del navegador, como en la hoja (`OrderFechaConfirmacionField`): se
+    // escribe como la medianoche local (`toLocalMidnightIso`), no la de México.
+    {
+      label: "Fecha confirmada",
+      value: formatShortDate(pedido.fecha_confirmacion, { timeZone: getBrowserTimeZone() }),
+    },
     {
       label: "Entrega estimada",
       value: formatEntregaEstimada(pedido.fecha_entrega_min, pedido.fecha_entrega_max),

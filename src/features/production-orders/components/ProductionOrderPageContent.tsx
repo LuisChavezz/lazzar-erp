@@ -62,8 +62,8 @@ const BACK = {
 
 /**
  * Fecha corta de un timestamp, con la fecha + hora completas en el `title`
- * nativo (`formatShortDateTime`, sin `timeZone`: la misma combinación que la
- * cabecera pintaba antes, así que la hora del tooltip es la que se veía). Vacío
+ * nativo (`formatShortDateTime`). Los dos, sin `timeZone`, en la zona de
+ * México: el día del texto y el del tooltip siempre coinciden. Vacío
  * o no parseable: un solo "—" y sin `title`.
  */
 const DateWithTimeTitle = ({ value }: { value: string | null }) => {
