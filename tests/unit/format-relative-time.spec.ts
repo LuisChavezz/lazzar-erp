@@ -83,6 +83,13 @@ test.describe("formatRelativeTime: zona de México, no la del navegador ni UTC",
     expect(label("2025-12-31T20:00:00-06:00", "2026-01-15T10:00:00-06:00")).toMatch(/^31 dic\.? 2025$/);
   });
 
+  /*
+    Excepción acotada a la regla de `playwright.unit.config.ts` (fijar la zona
+    solo ahí): un proyecto aparte no puede tener otra zona, porque la config la
+    fija para todos los workers, y un proceso hijo necesitaría ejecutar
+    TypeScript con el alias `@/`, sin runner disponible. El cambio es síncrono
+    —ningún otro test del worker corre en medio— y `finally` lo deshace.
+  */
   test("con el proceso en otra zona (Tokio) el resultado no cambia", () => {
     const original = process.env.TZ;
     try {
@@ -94,7 +101,9 @@ test.describe("formatRelativeTime: zona de México, no la del navegador ni UTC",
       expect(label("2025-12-31T20:00:00-06:00", "2026-01-15T10:00:00-06:00")).toMatch(/^31 dic\.? 2025$/);
       expect(formatMexicoDateTime("2026-11-13T16:20:05-06:00")).toMatch(/^13 nov\.? 2026 · 16:20$/);
     } finally {
-      process.env.TZ = original;
+      // Asignar `undefined` guardaría el texto "undefined", una zona inválida.
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
     }
   });
 });
