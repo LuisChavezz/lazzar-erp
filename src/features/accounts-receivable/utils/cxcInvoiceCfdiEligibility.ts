@@ -92,11 +92,12 @@ const fieldTextFor = (motivo: MotivoNoCobrable, folio: string | null, reasons: C
 };
 
 /**
- * Texto de la causa del backend listo para componer, sin espacios de sobra, o
+ * Texto de la causa del backend listo para componer: sin espacios de sobra ni
+ * su punto final (cada documento pone el suyo, y no debe salir «..»), o
  * `undefined` si no llegó.
  */
 const causeLabelOf = (cuenta: CxcInvoiceCfdiFields): string | undefined =>
-  cuenta.motivo_no_cobrable_display?.trim() || undefined;
+  cuenta.motivo_no_cobrable_display?.trim().replace(/\.$/, "").trimEnd() || undefined;
 
 /**
  * Elegibilidad con el motivo del backend (EC-938): el código decide, aunque los
