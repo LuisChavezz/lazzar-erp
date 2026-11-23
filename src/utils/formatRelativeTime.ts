@@ -6,10 +6,22 @@ const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
 /**
- * Año final de `formatShortDate` ("13 nov 2026" → "13 nov"). Se recorta en vez
- * de pedir a `Intl` solo día y mes porque `es-MX` los une con guion ("13-nov").
+ * Día y mes en México con las mismas opciones que `formatShortDate`. Se arma
+ * con `formatToParts` porque `format` en `es-MX` los une con guion ("13-nov").
  */
-const YEAR_SUFFIX = /\s+\d{4}$/;
+const dayMonthFormatter = new Intl.DateTimeFormat("es-MX", {
+  day: "2-digit",
+  month: "short",
+  timeZone: MEXICO_TIME_ZONE,
+});
+
+/** "13 nov": día y mes abreviado, sin año. */
+const formatDayMonth = (timestamp: number): string => {
+  const parts = dayMonthFormatter.formatToParts(timestamp);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${part("day")} ${part("month")}`;
+};
 
 /** Instante en ms, o `null` si el valor falta o no parsea. */
 const parseTimestamp = (value: string | null | undefined): number | null => {
@@ -72,10 +84,9 @@ export const formatRelativeTime = (
 
   if (days < 7) return `Hace ${days} días`;
 
-  const fullDate = formatShortDate(value, { timeZone: MEXICO_TIME_ZONE });
   return createdKey.slice(0, 4) === nowKey.slice(0, 4)
-    ? fullDate.replace(YEAR_SUFFIX, "")
-    : fullDate;
+    ? formatDayMonth(timestamp)
+    : formatShortDate(value, { timeZone: MEXICO_TIME_ZONE });
 };
 
 /**
