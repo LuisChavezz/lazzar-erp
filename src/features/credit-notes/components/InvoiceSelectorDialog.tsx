@@ -4,14 +4,12 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { SingleSelectPickerDialogContent } from "@/src/components/SingleSelectPickerDialogContent";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { SectionErrorNotice } from "@/src/components/SectionErrorNotice";
 import { useCuentasPorCobrar } from "@/src/features/accounts-receivable/hooks/useCuentasPorCobrar";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
-import { useInvoices } from "@/src/features/invoicing/hooks/useInvoices";
-import { getInvoiceNotCreditableReason } from "../utils/creditNoteStamping";
-
-/** Motivo de las filas mientras el listado de facturas sigue cargando. */
-const INVOICE_STATE_LOADING_REASON = "Consultando el estado de la factura…";
+import {
+  getCreditNoteCxcEligibility,
+  getCreditNoteCxcSelectionBlockReason,
+} from "../utils/creditNoteCxcEligibility";
 
 interface InvoiceSelectorDialogProps {
   open: boolean;
@@ -40,80 +38,35 @@ function InvoiceSelectorContent({
 }) {
   // `saldo_pendiente: true` → el backend filtra a `saldo > 0` y excluye las
   // cuentas `Cancelada`. Es el filtro que deja las facturas con saldo que
-  // acreditar; que la factura ADMITA la nota se decide abajo.
+  // acreditar; que la factura ADMITA la nota lo dicen los campos del CFDI que
+  // la propia CxC trae (nucleo-erp#1187, `getCreditNoteCxcEligibility`).
   const { cuentas, isLoading, isError } = useCuentasPorCobrar({
     saldo_pendiente: true,
   });
 
-  // La CxC no trae el estado del CFDI de su factura: se cruza con el listado de
-  // facturas, que sí lo trae (`cfdi_cancelado`, `cfdi_cancelacion_solicitada`).
-  // Una factura cancelada antes de que el receptor acepte su cancelación sigue
-  // `Emitida` y con saldo, y el backend rechaza emitir notas sobre ella.
-  //
-  // Se vuelve a pedir al abrir (`refetchOnMount: "always"`): la caché puede
-  // tener hasta 15 minutos. Mientras ese refresco viaja, con datos en caché, se
-  // decide con ellos. El backend rechaza emitir sobre una factura cancelada, en
-  // cancelación o eliminada (#736) sin guardar nada; este selector (`activo`) y
-  // el formulario lo avisan antes.
-  const {
-    invoices,
-    hasLoaded: hasLoadedInvoices,
-    isError: isErrorInvoices,
-    isFetching: isFetchingInvoices,
-    refetch: refetchInvoices,
-  } = useInvoices({ refetchOnMount: "always" });
-  const invoicesById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
-  // Sin datos, mientras no haya fallado o haya una petición en vuelo —la carga
-  // inicial, o el reintento de una que falló, que deja la consulta en `error`
-  // mientras viaja— las filas esperan deshabilitadas.
-  const isCheckingInvoices = !hasLoadedInvoices && (isFetchingInvoices || !isErrorInvoices);
-  // Sin el listado no se sabe qué factura admite notas. Las filas quedan
-  // seleccionables como antes: el backend rechaza emitir sobre una factura
-  // cancelada, en cancelación o eliminada, y el formulario no deja emitir
-  // mientras no conozca la factura elegida (ver `CreditNoteForm`).
-  const isInvoiceStateUnavailable = isErrorInvoices && !hasLoadedInvoices;
-
-  const getDisabledReason = (cuenta: CuentaPorCobrar): string | null => {
-    if (isCheckingInvoices) return INVOICE_STATE_LOADING_REASON;
-    if (isInvoiceStateUnavailable) return null;
-    return getInvoiceNotCreditableReason(
-      cuenta.factura_folio,
-      invoicesById.get(cuenta.factura_id),
-    );
-  };
-
   return (
-    <>
-      {isInvoiceStateUnavailable && (
-        <div className="mb-4">
-          <SectionErrorNotice
-            title="No se pudo consultar el estado de las facturas"
-            message="La lista puede incluir facturas canceladas, eliminadas o con su cancelación pendiente. Podrás guardar la nota como borrador, pero no emitirla hasta que se pueda consultar la factura."
-            onRetry={() => void refetchInvoices()}
-            isRetrying={isFetchingInvoices}
-          />
-        </div>
-      )}
-      <SingleSelectPickerDialogContent<CuentaPorCobrar>
-        title="Seleccionar Factura a Acreditar"
-        subtitle="Solo facturas con saldo por cobrar: una nota de crédito se aplica sobre el saldo pendiente"
-        statusColor="violet"
-        items={cuentas}
-        isLoading={isLoading}
-        isError={isError}
-        loadingTitle="Cargando facturas"
-        loadingMessage="Obteniendo las facturas con saldo por cobrar..."
-        errorMessage="Error al cargar las facturas por cobrar."
-        searchPlaceholder="Buscar por folio de factura o cliente..."
-        filterPredicate={(cuenta, term) =>
-          (cuenta.factura_folio ?? "").toLowerCase().includes(term) ||
-          (cuenta.cliente_nombre ?? "").toLowerCase().includes(term)
-        }
-        getKey={(cuenta) => cuenta.factura_id}
-        selectedKey={selectedFacturaId > 0 ? selectedFacturaId : null}
-        emptyMessage="No hay facturas con saldo por cobrar."
-        noResultsMessage="No se encontraron facturas"
-        renderContent={(cuenta) => (
+    <SingleSelectPickerDialogContent<CuentaPorCobrar>
+      title="Seleccionar Factura a Acreditar"
+      subtitle="Solo facturas con saldo por cobrar: una nota de crédito se aplica sobre el saldo pendiente"
+      statusColor="violet"
+      items={cuentas}
+      isLoading={isLoading}
+      isError={isError}
+      loadingTitle="Cargando facturas"
+      loadingMessage="Obteniendo las facturas con saldo por cobrar..."
+      errorMessage="Error al cargar las facturas por cobrar."
+      searchPlaceholder="Buscar por folio de factura o cliente..."
+      filterPredicate={(cuenta, term) =>
+        (cuenta.factura_folio ?? "").toLowerCase().includes(term) ||
+        (cuenta.cliente_nombre ?? "").toLowerCase().includes(term)
+      }
+      getKey={(cuenta) => cuenta.factura_id}
+      selectedKey={selectedFacturaId > 0 ? selectedFacturaId : null}
+      emptyMessage="No hay facturas con saldo por cobrar."
+      noResultsMessage="No se encontraron facturas"
+      renderContent={(cuenta) => {
+        const eligibility = getCreditNoteCxcEligibility(cuenta);
+        return (
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
@@ -129,33 +82,33 @@ function InvoiceSelectorContent({
                 {cuenta.estatus} · Vence{" "}
                 {formatShortDate(cuenta.fecha_vencimiento, { timeZone: "UTC" })}
               </p>
+              {/* Timbrado pendiente: se puede elegir, pero la nota solo se
+                  guarda como borrador hasta que se confirme. */}
+              {eligibility.kind === "draftOnly" && (
+                <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                  {eligibility.reason}
+                </p>
+              )}
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                Saldo por cobrar
-              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Saldo por cobrar</p>
               <p className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
                 {/* En la moneda de la FACTURA; sin ella, sin símbolo. */}
-                {formatMoneyValueOrDash(
-                  cuenta.saldo,
-                  cuenta.moneda_codigo,
-                )}
+                {formatMoneyValueOrDash(cuenta.saldo, cuenta.moneda_codigo)}
               </p>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
-                de{" "}
-                {formatMoneyValueOrDash(
-                  cuenta.total,
-                  cuenta.moneda_codigo,
-                )}
+                de {formatMoneyValueOrDash(cuenta.total, cuenta.moneda_codigo)}
               </p>
             </div>
           </div>
-        )}
-        getItemDisabledReason={getDisabledReason}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />
-    </>
+        );
+      }}
+      // CFDI cancelado o en cancelación: a la vista, deshabilitada con su
+      // motivo (EC-560); no se elige ni para borrador.
+      getItemDisabledReason={getCreditNoteCxcSelectionBlockReason}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }
 
@@ -170,12 +123,14 @@ function InvoiceSelectorContent({
  * que se elige sea una factura. Motivo: el renglón de CxC trae de UNA sola
  * consulta todo lo que la nota necesita —`factura_id`, `factura_folio`,
  * `cliente`, `moneda_codigo` y, sobre todo, el `saldo`, que es el techo de
- * `total`—, mientras que partir del listado de facturas obligaría a una segunda
- * consulta a `/cuentas-por-cobrar/?factura={id}` para obtener el saldo. "Tener
- * una CxC con saldo" es una de las condiciones que el backend exige para
+ * `total`— y el estado del CFDI de su factura (`factura_cfdi_*`, `cobrable`,
+ * nucleo-erp#1187), mientras que partir del listado de facturas obligaría a una
+ * segunda consulta a `/cuentas-por-cobrar/?factura={id}` para obtener el saldo.
+ * "Tener una CxC con saldo" es una de las condiciones que el backend exige para
  * emitir; la otra, que la factura no esté cancelada ni con su cancelación en
- * curso, sale del listado de facturas (`useInvoices`): esas filas se muestran
- * deshabilitadas con su motivo, no se ocultan.
+ * curso, sale de esos campos: esas filas se muestran deshabilitadas con su
+ * motivo, no se ocultan. Las de timbrado pendiente se eligen con el aviso de que
+ * solo admiten borrador (`getCreditNoteCxcEligibility`).
  *
  * Es presentacional respecto del formulario: no escribe en él, solo entrega la
  * cuenta elegida —objeto completo— por `onConfirm`.
