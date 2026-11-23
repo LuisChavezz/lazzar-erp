@@ -1,5 +1,5 @@
 import { useMinuteNow } from "@/src/hooks/useMinuteNow";
-import { formatMexicoDateTime, formatRelativeTime } from "@/src/utils/formatRelativeTime";
+import { getNotificationTimestampView } from "../utils/notificationTimestampView";
 
 interface Props {
   /** `created_at` de la notificación: ISO 8601 con offset. */
@@ -15,16 +15,12 @@ interface Props {
  * Sin valor válido no pinta nada.
  */
 export function NotificationTimestamp({ createdAt, className }: Props) {
-  const nowMs = useMinuteNow();
-  if (nowMs === null || !createdAt) return null;
-
-  const label = formatRelativeTime(createdAt, nowMs);
-  const full = formatMexicoDateTime(createdAt);
-  if (label === null || full === null) return null;
+  const view = getNotificationTimestampView(createdAt, useMinuteNow());
+  if (view === null) return null;
 
   return (
-    <time dateTime={createdAt} title={full} className={className}>
-      {label}
+    <time dateTime={view.dateTime} title={view.title} className={className}>
+      {view.label}
     </time>
   );
 }
