@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { parseLocalDate } from "./formatDate";
+import { parseLocalDate, toLocalDateKey } from "./formatDate";
+import { getMexicoTodayDate } from "./mexicoTime";
 
 /**
  * Opciones y comparadores para los filtros de encabezado (estilo Excel) de
@@ -31,10 +32,27 @@ export const NO_DATE_FILTER_VALUE = "__sin_fecha__";
  */
 export const EMPTY_VALUE_FILTER_VALUE = "__sin_valor__";
 
-/** Mes de una fecha como `"yyyy-MM"`, o `NO_DATE_FILTER_VALUE` si no hay fecha válida. */
+/**
+ * Mes de una fecha como `"yyyy-MM"`, o `NO_DATE_FILTER_VALUE` si no hay fecha
+ * válida. Un datetime (con "T") toma el mes de su día en México, el mismo que
+ * muestran sus celdas con `formatShortDate` (EC-931); una fecha-calendario
+ * "YYYY-MM-DD" toma el suyo tal cual, sin pasar por ninguna zona.
+ */
 export const monthFilterKey = (value: string | null | undefined): string => {
   const date = parseLocalDate(value);
-  return date ? format(date, "yyyy-MM") : NO_DATE_FILTER_VALUE;
+  if (!date) return NO_DATE_FILTER_VALUE;
+  return value?.includes("T") ? getMexicoTodayDate(date).slice(0, 7) : format(date, "yyyy-MM");
+};
+
+/**
+ * Valor para el filtro de mes de una columna cuya celda muestra el día LOCAL
+ * del navegador (no el de México de `formatShortDate`): un datetime se
+ * convierte en su "YYYY-MM-DD" local, que `monthFilterKey` toma tal cual, para
+ * que la opción del mes coincida con la fecha visible. Lo demás pasa igual.
+ */
+export const localMonthFilterValue = (value: string | null | undefined): string | null | undefined => {
+  const date = value?.includes("T") ? parseLocalDate(value) : null;
+  return date ? toLocalDateKey(date) : value;
 };
 
 /**

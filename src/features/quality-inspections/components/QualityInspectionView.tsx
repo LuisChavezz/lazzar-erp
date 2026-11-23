@@ -27,6 +27,7 @@ import {
   QUALITY_TIPO_LABEL,
 } from "../utils/qualityExport";
 import type { QualityInspection, QualityPedidoRef, QualityPendingReception } from "../interfaces/quality-inspection.interface";
+import { localMonthFilterValue } from "@/src/utils/columnFilterOptions";
 
 /** Tope de `recepciones_pendientes` en el backend (`recepciones_qs[:50]`). */
 const BACKEND_PENDING_LIMIT = 50;
@@ -101,13 +102,14 @@ export function QualityInspectionView() {
   // Filtros estilo Excel en cada encabezado (en memoria: la lista llega completa).
   const tipoLabel = (r: { tipo_origen: string }) => QUALITY_TIPO_LABEL[r.tipo_origen] ?? r.tipo_origen;
   const pendingColumns = withHeaderFilters(getQualityPendingColumns({ onInspect: setSelected }), pendingRows, {
-    folio: { type: "month", get: (r) => r.fecha_recepcion, filterLabel: "mes de recepción" },
+    // La celda muestra el día local (`formatLocalDate`): el filtro, también.
+    folio: { type: "month", get: (r) => localMonthFilterValue(r.fecha_recepcion), filterLabel: "mes de recepción" },
     pedido: { type: "distinct", get: (r) => r.pedidos[0]?.folio, searchable: true, emptyOption: "Sin pedido" },
     origen: { type: "distinct", get: (r) => r.tipo_origen, label: tipoLabel, filterLabel: "tipo de origen" },
     proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true, emptyOption: "Interno" },
   });
   const doneColumns = withHeaderFilters(getQualityDoneColumns({ onOpen: setViewing }), doneRows, {
-    recepcion_folio: { type: "month", get: (r) => r.fecha, filterLabel: "mes de inspección" },
+    recepcion_folio: { type: "month", get: (r) => localMonthFilterValue(r.fecha), filterLabel: "mes de inspección" },
     pedido: { type: "distinct", get: (r) => r.pedidos[0]?.folio, searchable: true, emptyOption: "Sin pedido" },
     origen: { type: "distinct", get: (r) => r.tipo_origen, label: tipoLabel, filterLabel: "tipo de origen" },
     proveedor_nombre: { type: "distinct", get: (r) => r.proveedor_nombre, searchable: true, emptyOption: "Interno" },

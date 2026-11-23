@@ -12,7 +12,7 @@ import {
 import { parseLocalDate } from "@/src/utils/formatDate";
 import type { SpecialOrderRow } from "../utils/specialOrderFilters";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
+import { localMonthFilterValue, optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { StatusBadge, type StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
 import { isAtrasadoActivo } from "../utils/specialOrderAlert";
 import { ServiciosCell } from "./ServiceOrdersTracking";
@@ -292,6 +292,11 @@ export const SPECIAL_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSp
     options: optionsFromConfig(PEDIDO_CLASIFICACION_CONFIG),
     label: (r) => getPedidoClasificacionLabel(r.clasificacion),
   },
-  fecha_confirmacion: { type: "month", get: (r) => r.fecha_confirmacion, emptyLabel: "Sin confirmar" },
+  // Mes LOCAL, como la celda: `fecha_confirmacion` se lee en la zona del navegador (EC-936).
+  fecha_confirmacion: {
+    type: "month",
+    get: (r) => localMonthFilterValue(r.fecha_confirmacion),
+    emptyLabel: "Sin confirmar",
+  },
   siguiente_paso: { type: "distinct", get: (r) => getSiguientePaso(r)?.label ?? null },
 };

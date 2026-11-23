@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { format } from "date-fns";
 import { SURTIDO_PEDIDO_EXPORT_COLUMNS } from "@/src/features/order-fulfillment/utils/surtidoPedidoExport";
 import type { SurtidoPedido } from "@/src/features/order-fulfillment/interfaces/order-fulfillment.interface";
 import {
@@ -6,6 +7,12 @@ import {
   formatFechaCalendario,
   formatFechaConfirmacion,
 } from "@/src/features/orders/utils/pedidoFormat";
+import {
+  buildMonthFilterOptions,
+  localMonthFilterValue,
+  matchesMonthFilter,
+  monthFilterKey,
+} from "@/src/utils/columnFilterOptions";
 import {
   formatShortCalendarDate,
   formatShortDate,
@@ -310,6 +317,59 @@ test.describe("`formatFechaConfirmacion`: en la zona del navegador (EC-936)", ()
       expect(formatFechaConfirmacion(stored)).toBe(formatShortDate(stored));
       // Exportación de surtido (antes `exportDate`).
       expect(surtidoConfirmado(stored)).toBe(exportDate(stored));
+    }
+  });
+});
+
+test.describe("filtros de mes de encabezado", () => {
+  /** El `monthFilterKey` anterior a EC-931: el mes LOCAL. */
+  const oldMonthKey = (value: string | null | undefined) => {
+    const date = parseLocalDate(value);
+    return date ? format(date, "yyyy-MM") : "__sin_fecha__";
+  };
+  const VALUES = [
+    ...DATETIME_CASES.map((c) => c.value),
+    ...CALENDAR_CASES.map((c) => c.value),
+    null,
+    "",
+    "sin fecha",
+  ];
+
+  test("en México las claves son las de antes", () => {
+    for (const value of VALUES) expect(monthFilterKey(value)).toBe(oldMonthKey(value));
+  });
+
+  for (const zone of OTHER_ZONES) {
+    test(`con el navegador en ${zone} un datetime cae en el mes de su día en México`, () => {
+      withProcessTimeZone(zone, () => {
+        // 00:30 del 1 de noviembre en México: en Los Ángeles aún es 31 de octubre.
+        expect(monthFilterKey("2026-11-01T00:30:00-06:00")).toBe("2026-11");
+        // 23:30 del 31 de octubre en México: en Tokio ya es 1 de noviembre.
+        expect(monthFilterKey("2026-10-31T23:30:00-06:00")).toBe("2026-10");
+        expect(matchesMonthFilter("2026-11-01T00:30:00-06:00", "2026-11")).toBe(true);
+        expect(buildMonthFilterOptions(["2026-11-01T00:30:00-06:00"])).toEqual([
+          { value: "2026-11", label: "Noviembre 2026" },
+        ]);
+        // Las fechas-calendario no pasan por ninguna zona.
+        for (const { value } of CALENDAR_CASES) expect(monthFilterKey(value)).toBe(value.slice(0, 7));
+        // La etiqueta del mes coincide con el día visible de la celda.
+        for (const { value, dateTime } of DATETIME_CASES) {
+          const [, mes, anio] = dateTime.split(" · ")[0].split(" ");
+          const { label } = buildMonthFilterOptions([value])[0];
+          expect(label.toLowerCase().startsWith(mes)).toBe(true);
+          expect(label.endsWith(anio)).toBe(true);
+        }
+      });
+    });
+  }
+
+  test("`localMonthFilterValue` conserva el mes LOCAL en cualquier zona (celdas locales)", () => {
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        for (const value of VALUES) {
+          expect(monthFilterKey(localMonthFilterValue(value))).toBe(oldMonthKey(value));
+        }
+      });
     }
   });
 });
