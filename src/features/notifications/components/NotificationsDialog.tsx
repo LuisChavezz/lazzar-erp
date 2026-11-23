@@ -92,10 +92,18 @@ function NotificationsDialogBody({
       )
     : notificaciones;
 
+  // Una fecha que no parsea va a `-Infinity`: restar `NaN` rompería el orden.
+  const sortTime = (value: string) => {
+    const time = new Date(value).getTime();
+    return Number.isNaN(time) ? -Infinity : time;
+  };
+
   const filteredAndSorted = [...filtered].sort((a, b) => {
-    const aTime = new Date(a.created_at).getTime();
-    const bTime = new Date(b.created_at).getTime();
-    return sortDirection === "asc" ? aTime - bTime : bTime - aTime;
+    const aTime = sortTime(a.created_at);
+    const bTime = sortTime(b.created_at);
+    if (aTime === bTime) return 0;
+    const ascending = aTime < bTime ? -1 : 1;
+    return sortDirection === "asc" ? ascending : -ascending;
   });
 
   const isReady = listState === "ready";
