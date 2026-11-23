@@ -87,7 +87,6 @@ export const Notifications = () => {
     isEmpty,
     hasUnread,
     error,
-    dataUpdatedAt,
     refetch,
   } = useNotificaciones(isNotifOpen || isDialogOpen);
 
@@ -206,7 +205,6 @@ export const Notifications = () => {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         notificaciones={notificaciones}
-        nowMs={dataUpdatedAt}
         listState={listState}
         isEmpty={isEmpty}
         hasUnread={hasUnread}
@@ -328,7 +326,6 @@ export const Notifications = () => {
                   <div key={notificacion.id} role="listitem">
                     <NotificationItem
                       notificacion={notificacion}
-                      nowMs={dataUpdatedAt}
                       isActionable={isActionable(notificacion)}
                       onActivate={() =>
                         handleActivateFromDropdown(notificacion)

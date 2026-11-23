@@ -103,11 +103,6 @@ export const useNotificaciones = (enabled: boolean) => {
     /** `true` solo con la lista cargada y al menos una no leída. */
     hasUnread: hasLoaded && notificaciones.some((n) => !n.leido),
     error: query.error,
-    /**
-     * Instante de la última respuesta exitosa. Es el "ahora" que se le pasa a
-     * `formatRelativeTime`, para no leer el reloj durante el render.
-     */
-    dataUpdatedAt: query.dataUpdatedAt,
     refetch: query.refetch,
   };
 };
