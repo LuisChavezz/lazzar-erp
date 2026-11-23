@@ -46,6 +46,34 @@ export const TIPO_COTIZACION_AUTORIZADA = "cotizacion_autorizada";
  */
 export const TIPO_COTIZACION_RECHAZADA = "cotizacion_rechazada";
 
+/**
+ * OC autorizada (`aceptar/`), para el departamento WMS (Almacén), que la
+ * recibirá. `modulo: "compras"`. `data: { orden_compra_id, folio,
+ * proveedor_nombre, sucursal_id, fecha_entrega_estimada, url }`.
+ */
+export const TIPO_OC_AUTORIZADA = "oc_autorizada";
+
+/**
+ * Avisos de solicitudes de RH (`modulo: "rh"`), `<clave>_<evento>` con clave
+ * `vacaciones` o `permiso_ausencia`. `_solicitada` va al departamento RH;
+ * `_aprobado`/`_rechazado`, solo a quien capturó la solicitud
+ * (`solicitado_por`). `data: { solicitud_id, tipo_solicitud, empleado_id,
+ * empleado_nombre, fecha_inicio, fecha_fin, url }`, más `estado` en la
+ * resolución y `motivo_rechazo` solo en el rechazo.
+ */
+export const TIPO_VACACIONES_SOLICITADA = "vacaciones_solicitada";
+export const TIPO_VACACIONES_APROBADO = "vacaciones_aprobado";
+export const TIPO_VACACIONES_RECHAZADO = "vacaciones_rechazado";
+export const TIPO_PERMISO_AUSENCIA_SOLICITADA = "permiso_ausencia_solicitada";
+export const TIPO_PERMISO_AUSENCIA_APROBADO = "permiso_ausencia_aprobado";
+export const TIPO_PERMISO_AUSENCIA_RECHAZADO = "permiso_ausencia_rechazado";
+
+/**
+ * OC de faltantes de una pre-orden autorizada, para Producción. Entra por la
+ * regla de prefijo `pre_orden_`. `data: { pre_orden, pedido, origen, url }`.
+ */
+export const TIPO_PRE_ORDEN_OC_AUTORIZADA = "pre_orden_oc_autorizada";
+
 export interface Notificacion {
   id: number;
   titulo: string;
