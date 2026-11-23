@@ -79,3 +79,29 @@ export const removeQuoteFromPage = (
   quoteId: number,
 ): QuoteListResponse | undefined =>
   page && { ...page, results: page.results.filter((row) => row.id !== quoteId) };
+
+/**
+ * Dónde está una cotización en lo cargado del tablero, FUERA de la columna
+ * `targetEstatus`: en las filas de `tablero/` o en las páginas de "cargar más"
+ * de alguna columna. Devuelve su fila y la columna de origen, o `null` si no
+ * está cargada o ya está en la de destino (p. ej. porque el arrastre ya la
+ * movió de forma optimista).
+ */
+export const findQuoteOutsideColumn = (
+  board: QuoteBoard,
+  morePagesByEstatus: ReadonlyArray<{ estatus: number; pages: readonly QuoteListResponse[] | undefined }>,
+  quoteId: number,
+  targetEstatus: number,
+): { quote: Quote; sourceEstatus: number } | null => {
+  for (const column of board.columnas) {
+    if (column.estatus === targetEstatus) continue;
+    const quote = column.results.find((row) => row.id === quoteId);
+    if (quote) return { quote, sourceEstatus: column.estatus };
+  }
+  for (const { estatus, pages } of morePagesByEstatus) {
+    if (estatus === targetEstatus) continue;
+    const quote = (pages ?? []).flatMap((page) => page.results).find((row) => row.id === quoteId);
+    if (quote) return { quote, sourceEstatus: estatus };
+  }
+  return null;
+};
