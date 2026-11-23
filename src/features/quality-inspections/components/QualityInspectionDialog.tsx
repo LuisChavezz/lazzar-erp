@@ -48,10 +48,14 @@ export function QualityInspectionDialog({
   const {
     data: detail,
     isLoading,
-    isInitialError: isError,
+    isInitialError,
+    isNotFound,
     error,
     refetch,
   } = useReceiptDetail(reception?.id ?? null);
+  // Un 404 es definitivo en `useReceiptDetail` (EC-925); aquí se sigue
+  // mostrando como error de carga, igual que antes.
+  const isError = isInitialError || isNotFound;
 
   const isOp = reception?.tipo_origen === "OP";
   const variantIdByLine = new Map(
