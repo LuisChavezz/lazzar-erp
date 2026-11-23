@@ -48,6 +48,21 @@ const numericNullsLast = (rowA: Row<RfidScan>, rowB: Row<RfidScan>, columnId: st
   return a === b ? 0 : a > b ? 1 : -1;
 };
 
+/**
+ * SKU separado para leerlo de un vistazo: producto / color / talla
+ * ("10005032XG" → "1000/503/2XG"). El SKU se arma como código del producto +
+ * clave de color de 3 dígitos + talla, y la talla llega aparte en la lectura,
+ * así que se separa por el final. Si no termina en la talla, o queda demasiado
+ * corto, se muestra tal cual en vez de partirlo mal. Solo es presentación: la
+ * búsqueda sigue usando el SKU original.
+ */
+export const formatSku = (sku: string, talla: string | null | undefined): string => {
+  if (!sku || !talla || !sku.endsWith(talla)) return sku;
+  const base = sku.slice(0, -talla.length);
+  if (base.length <= 3) return sku;
+  return `${base.slice(0, -3)}/${base.slice(-3)}/${talla}`;
+};
+
 const columnHelper = createColumnHelper<RfidScan>();
 
 /**
@@ -82,15 +97,28 @@ export const rfidScanColumns = [
         </div>
       ),
   }),
-  columnHelper.accessor("epc", {
-    header: "EPC",
-    size: 260,
+  columnHelper.accessor((row) => row.producto_nombre ?? "", {
+    id: "producto_nombre",
+    header: "Producto",
+    size: 280,
     cell: (info) => (
       <span
-        className="block truncate font-mono text-xs text-slate-700 dark:text-slate-200 font-semibold"
-        title={info.getValue()}
+        className="block truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100"
+        title={info.getValue() || undefined}
       >
-        {info.getValue()}
+        {textOrDash(info.getValue())}
+      </span>
+    ),
+  }),
+  // Código del código de barras: el SKU cuando la variante lo tiene, o el
+  // código del producto cuando no (insumos como "018Q" no tienen SKU).
+  columnHelper.accessor((row) => row.barcode_value ?? "", {
+    id: "barcode_value",
+    header: "Código",
+    size: 130,
+    cell: (info) => (
+      <span className="font-mono text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+        {textOrDash(info.getValue())}
       </span>
     ),
   }),
@@ -98,8 +126,11 @@ export const rfidScanColumns = [
     id: "sku",
     header: "SKU",
     cell: (info) => (
-      <span className="font-mono text-sm text-slate-700 dark:text-slate-200 font-semibold">
-        {textOrDash(info.getValue())}
+      <span
+        className="font-mono text-[13px] text-slate-700 dark:text-slate-200 font-semibold"
+        title={info.getValue() || undefined}
+      >
+        {textOrDash(formatSku(info.getValue(), info.row.original.talla))}
       </span>
     ),
   }),
@@ -107,7 +138,7 @@ export const rfidScanColumns = [
     id: "color",
     header: "Color",
     cell: (info) => (
-      <span className="text-sm text-slate-600 dark:text-slate-300">
+      <span className="text-[13px] text-slate-600 dark:text-slate-300">
         {textOrDash(info.getValue())}
       </span>
     ),
@@ -117,7 +148,7 @@ export const rfidScanColumns = [
     header: "Talla",
     size: 90,
     cell: (info) => (
-      <span className="text-sm text-slate-600 dark:text-slate-300">
+      <span className="text-[13px] text-slate-600 dark:text-slate-300">
         {textOrDash(info.getValue())}
       </span>
     ),
@@ -126,8 +157,30 @@ export const rfidScanColumns = [
     id: "impresion_folio",
     header: "Folio",
     cell: (info) => (
-      <span className="font-mono text-sm text-slate-600 dark:text-slate-300">
+      <span className="font-mono text-[13px] text-slate-600 dark:text-slate-300">
         {textOrDash(info.getValue())}
+      </span>
+    ),
+  }),
+  columnHelper.accessor((row) => row.serial ?? "", {
+    id: "serial",
+    header: "Serie",
+    size: 80,
+    cell: (info) => (
+      <span className="font-mono text-[13px] tabular-nums text-slate-600 dark:text-slate-300">
+        {textOrDash(info.getValue())}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("epc", {
+    header: "EPC",
+    size: 240,
+    cell: (info) => (
+      <span
+        className="block truncate font-mono text-[11.5px] text-slate-700 dark:text-slate-200 font-semibold"
+        title={info.getValue()}
+      >
+        {info.getValue()}
       </span>
     ),
   }),
@@ -143,7 +196,7 @@ export const rfidScanColumns = [
     size: 90,
     sortingFn: numericNullsLast,
     cell: (info) => (
-      <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
+      <span className="text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
         {textOrDash(String(info.getValue()))}
       </span>
     ),
@@ -154,7 +207,7 @@ export const rfidScanColumns = [
     size: 90,
     sortingFn: numericNullsLast,
     cell: (info) => (
-      <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
+      <span className="text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
         {textOrDash(String(info.getValue()))}
       </span>
     ),
@@ -164,7 +217,7 @@ export const rfidScanColumns = [
     size: 110,
     sortingFn: "datetime",
     cell: (info) => (
-      <span className="text-sm tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+      <span className="text-[13px] tabular-nums font-semibold text-slate-700 dark:text-slate-200">
         {formatScanTime(info.getValue())}
       </span>
     ),

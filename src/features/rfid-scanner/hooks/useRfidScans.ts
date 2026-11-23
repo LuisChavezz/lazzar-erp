@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { fetchRfidScans } from "../services/actions";
+import { fetchRfidScans, type RfidScansParams } from "../services/actions";
 import type { RfidScansResponse } from "../interfaces/rfid-scanner.interface";
 
 /**
@@ -13,11 +13,11 @@ export const RFID_SCANS_POLL_INTERVAL_MS = 3000;
 
 /**
  * Lecturas del lector RFID en vivo (`GET /wms/etiquetas-rfid/scans/`).
- * Llave `["rfid-scans"]`.
+ * Llave `["rfid-scans", params]`.
  *
  * Hace polling, y por eso está gateada por `enabled`: sin el interruptor, abrir
  * la pantalla y olvidarla dejaría una petición cada 3 s indefinidamente. (El
- * mismo interruptor gobierna el ciclo de 15 s de `useRfidScannerStats`.) `refetchIntervalInBackground: false`
+ * `useRfidScannerStats` sondea aparte, cada 30 s, siempre.) `refetchIntervalInBackground: false`
  * (el default, explícito aquí por ser justo el punto delicado) detiene el ciclo
  * mientras la pestaña no está visible y lo reanuda al volver.
  *
@@ -25,10 +25,10 @@ export const RFID_SCANS_POLL_INTERVAL_MS = 3000;
  * cargado en caché: al detener el monitoreo la tabla se congela con las últimas
  * lecturas en pantalla en vez de vaciarse.
  */
-export const useRfidScans = (enabled: boolean) => {
+export const useRfidScans = (enabled: boolean, params: RfidScansParams) => {
   const query = useQuery<RfidScansResponse>({
-    queryKey: ["rfid-scans"],
-    queryFn: fetchRfidScans,
+    queryKey: ["rfid-scans", params],
+    queryFn: () => fetchRfidScans(params),
     enabled,
     refetchInterval: RFID_SCANS_POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,

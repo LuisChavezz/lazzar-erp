@@ -64,7 +64,7 @@ export const useClearRfidScans = () => {
       // empresa activa), así que después de un 200 no queda ni una. Si nunca cargó (`old`
       // indefinido) se deja intacta, para no convertir una consulta sin datos
       // en una "con datos vacíos".
-      queryClient.setQueryData<RfidScansResponse>(["rfid-scans"], (old) =>
+      queryClient.setQueriesData<RfidScansResponse>({ queryKey: ["rfid-scans"] }, (old) =>
         old ? { ...old, scans: [] } : old,
       );
       // DESPUÉS de escribir, nunca antes: `setQueryData` despacha un "success"

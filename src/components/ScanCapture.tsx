@@ -29,6 +29,9 @@ interface ScanCaptureProps {
   inputId: string;
   /** Procesa UNA lectura (el lector teclea el código y Enter). */
   onScan: (code: string) => ScanResult;
+  /** Captura en vivo extra (p. ej. la antena RFID), visible solo mientras se
+   *  escanea: al pausar se desmonta y deja de sondear. */
+  liveFeed?: ReactNode;
   /** Acciones extra del encabezado (p. ej. "Recibir todo"). */
   actions?: ReactNode;
 }
@@ -55,6 +58,7 @@ export function ScanCapture({
   placeholder,
   inputId,
   onScan,
+  liveFeed,
   actions,
 }: ScanCaptureProps) {
   // El lector arranca con un "Iniciar escaneo" explícito: el usuario sabe
@@ -82,7 +86,7 @@ export function ScanCapture({
   return (
     <>
       {/* ── Encabezado: avance total + modo ───────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-slate-50/60 dark:bg-white/2 border-b border-slate-100 dark:border-white/5">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-slate-50/60 dark:bg-white/2 border-b border-slate-100 dark:border-white/5">
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
           <p className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
@@ -150,7 +154,7 @@ export function ScanCapture({
 
       {/* ── Lector: escuchando ────────────────────────────────────────── */}
       {modo === "scanner" && escaneando && (
-        <div className="space-y-2 px-4 py-3 border-b border-slate-100 dark:border-white/5">
+        <div className="space-y-2 px-4 py-2.5 border-b border-slate-100 dark:border-white/5">
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
               <span aria-hidden="true" className="relative flex h-2 w-2">
@@ -186,7 +190,7 @@ export function ScanCapture({
               }
             }}
             placeholder={placeholder}
-            className="h-12 w-full rounded-xl border-2 border-dashed border-sky-300 dark:border-sky-500/40 bg-sky-50/40 dark:bg-sky-500/5 px-4 font-mono text-base font-semibold tracking-wider text-slate-900 dark:text-white placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 focus:border-solid focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+            className="h-10 w-full rounded-xl border-2 border-dashed border-sky-300 dark:border-sky-500/40 bg-sky-50/40 dark:bg-sky-500/5 px-4 font-mono text-sm font-semibold tracking-wider text-slate-900 dark:text-white placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 focus:border-solid focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
           />
           {feedback && (
             <p
@@ -207,6 +211,7 @@ export function ScanCapture({
           )}
         </div>
       )}
+      {modo === "scanner" && escaneando && liveFeed}
     </>
   );
 }
