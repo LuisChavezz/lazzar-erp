@@ -31,11 +31,29 @@ import { refocusOnUnmount } from "../utils/refocusOnUnmount";
  */
 const DROPDOWN_LIMIT = 5;
 
-export const Notifications = () => {
+interface NotificationsProps {
+  /**
+   * Cierra el panel cada vez que pasa a `true`. `MobileSidebar` le pasa el
+   * estado de su cajón: el cajón (`z-60`) tapa el panel, que se quedaba abierto
+   * debajo cuando el menú se abría sin un `mousedown` fuera (teclado). El
+   * header de escritorio no lo pasa.
+   */
+  closeWhen?: boolean;
+}
+
+export const Notifications = ({ closeWhen = false }: NotificationsProps) => {
   const router = useRouter();
   const { data: session } = useSession();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  // Ajuste durante el render al cambiar la prop (sin efecto ni render extra
+  // con el panel visible): solo el flanco a `true` cierra.
+  const [prevCloseWhen, setPrevCloseWhen] = useState(closeWhen);
+  if (closeWhen !== prevCloseWhen) {
+    setPrevCloseWhen(closeWhen);
+    if (closeWhen) setIsNotifOpen(false);
+  }
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   /*
     El id y el recurso del que se lee viajan JUNTOS, y los decide
