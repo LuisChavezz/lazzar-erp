@@ -270,17 +270,33 @@ export const Notifications = () => {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/*
+        Dropdown. Posición por breakpoint (EC-934):
+        - Bajo `sm`, `fixed` a 16px de cada lado y a 8px bajo el header móvil
+          (`h-16` = 64px → `top-18` = 72px). La campana queda a 88px del borde
+          derecho, así que anclado a ella un panel de 320px se salía por la
+          izquierda en cualquier ancho menor a 432px. El `backdrop-blur` del
+          header lo vuelve el bloque contenedor del `fixed`, pero ese header
+          ocupa todo el ancho desde (0,0): las coordenadas son las del viewport.
+        - Desde `sm`, 320px anclado a la derecha, sin estirarse en tablets.
+        - Desde `md` (header de escritorio), las clases de siempre:
+          `absolute right-0 mt-4 w-80`.
+        El alto se acota al viewport (`dvh`, por las barras del navegador
+        móvil) menos el desplazamiento superior y 16px de margen: 72px en móvil
+        y 74px en escritorio (borde inferior de la campana más `mt-4`). Solo la
+        lista hace scroll; encabezado y pie quedan fijos. Con alturas de
+        ventana normales el tope no se alcanza y el panel mide lo mismo.
+      */}
       {isNotifOpen && (
         <div
           ref={dropdownRef}
           id="notifications-dropdown"
-          className="absolute right-0 mt-4 w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden transform origin-top-right transition-all duration-200"
+          className="fixed left-4 right-4 top-18 max-h-[calc(100dvh-88px)] sm:left-auto sm:w-80 md:absolute md:left-auto md:right-0 md:top-auto md:mt-4 md:max-h-[calc(100dvh-90px)] flex flex-col bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden transform origin-top-right transition-all duration-200"
           role="dialog"
           aria-label="Notificaciones recientes"
         >
           {/* Encabezado */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-2 bg-slate-50/50 dark:bg-black/20">
+          <div className="shrink-0 p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-2 bg-slate-50/50 dark:bg-black/20">
             <h3 className="font-bold text-slate-800 dark:text-white truncate">
               Notificaciones
             </h3>
@@ -307,7 +323,7 @@ export const Notifications = () => {
           <div
             ref={listRef}
             tabIndex={-1}
-            className="max-h-96 overflow-y-auto custom-scrollbar outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500/40"
+            className="max-h-96 min-h-0 overflow-y-auto custom-scrollbar outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500/40"
             role="group"
             aria-label="Lista de notificaciones recientes"
           >
@@ -341,7 +357,7 @@ export const Notifications = () => {
 
           {/* Pie — se oculta entero para no dejar una franja vacía */}
           {showVerTodas && (
-            <div className="p-3 text-center border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
+            <div className="shrink-0 p-3 text-center border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20">
               <button
                 type="button"
                 className="text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 transition-colors cursor-pointer"
