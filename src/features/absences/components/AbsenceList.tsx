@@ -131,7 +131,7 @@ export default function AbsenceList() {
     dataUpdatedAt,
     hasRow: (id) => absences.some((row) => row.id === id),
     refetch,
-    notFoundMessage: "La solicitud de permiso o ausencia ya no está disponible.",
+    notFoundMessage: "No se encontró el permiso de ausencia en la empresa activa.",
     toastId: "absence-url-detail-not-found",
   });
   // El detalle abierto desde una fila manda; si no hay, el de la URL.

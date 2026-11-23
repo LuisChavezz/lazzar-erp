@@ -152,7 +152,7 @@ export default function VacationList() {
     dataUpdatedAt,
     hasRow: (id) => vacations.some((row) => row.id === id),
     refetch,
-    notFoundMessage: "La solicitud de vacaciones ya no está disponible.",
+    notFoundMessage: "No se encontró la solicitud de vacaciones en la empresa activa.",
     toastId: "vacation-url-detail-not-found",
   });
   // El detalle abierto desde una fila manda; si no hay, el de la URL.
