@@ -9,6 +9,7 @@ import type { QuoteSubmitForReviewResponse } from "../interfaces/quote.interface
 import { submitQuoteForReview } from "../services/actions";
 import { extractProcessCompatibilityMessage } from "../utils/quoteValidationErrors";
 import { QUOTE_COMENTARIOS_KEY } from "./useQuoteComentarios";
+import { applySubmittedQuoteToCache } from "./submittedQuoteCache";
 
 export const submitQuoteForReviewMutationKey = ["submit-quote-for-review"] as const;
 
@@ -28,7 +29,9 @@ export const useSubmitQuoteForReview = () => {
   return useMutation<QuoteSubmitForReviewResponse, unknown, SubmitQuoteForReviewVariables>({
     mutationKey: submitQuoteForReviewMutationKey,
     mutationFn: ({ id, comentario }) => submitQuoteForReview(id, comentario),
-    onSuccess: () => {
+    onSuccess: async (response) => {
+      // Lista y tablero con el estatus nuevo antes del refetch (EC-927).
+      await applySubmittedQuoteToCache(queryClient, response);
       toast.success("Cotización enviada a revisión correctamente");
     },
     onError: (error) => {
