@@ -1,7 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createAttendance } from "../services/actions";
+import type { Attendance } from "../interfaces/attendance.interface";
 import type { AttendanceRowTarget } from "../utils/attendanceRowTarget";
+import { attendanceParamsInclude, upsertAttendanceRow } from "../utils/attendanceCache";
 import { ATTENDANCE_KEY_ROOT } from "./useAttendance";
 import {
   DUPLICATE_ATTENDANCE_MESSAGE,
@@ -18,6 +20,28 @@ export interface MarkAbsenceVariables {
 }
 
 /**
+ * Escribe la falta recién creada en cada listado en caché cuyo filtro de fecha
+ * la incluye: el pase de lista del día (`["attendance", { fecha }]`) y los
+ * periodos del historial (`["attendance", { fecha__gte, fecha__lte }]`). Sin
+ * esto, si el refetch falla, la fila sigue "Sin registro" y ofrece "Registrar
+ * entrada", que el backend acepta (200) y que convierte la falta en puntual o
+ * retardo sin aviso (EC-927).
+ *
+ * Cancela antes lo que esté en vuelo bajo la raíz (traería el estado
+ * anterior). No invalida: eso queda en `onSettled`, como siempre.
+ */
+const writeAttendanceToLists = async (queryClient: QueryClient, record: Attendance) => {
+  await queryClient.cancelQueries({ queryKey: ATTENDANCE_KEY_ROOT });
+  for (const [key, data] of queryClient.getQueriesData<Attendance[]>({
+    queryKey: ATTENDANCE_KEY_ROOT,
+  })) {
+    if (!attendanceParamsInclude(key[ATTENDANCE_KEY_ROOT.length], record.fecha)) continue;
+    const next = upsertAttendanceRow(data, record);
+    if (next !== data) queryClient.setQueryData(key, next);
+  }
+};
+
+/**
  * "Marcar falta": alta manual con empleado, turno y fecha, SIN horas. El
  * servidor deriva `estado` = `falta`. Si otra persona ya creó el registro del
  * día, el 400 de unicidad llega como `DUPLICATE_ATTENDANCE_MESSAGE` y el
@@ -30,7 +54,9 @@ export const useMarkAbsence = () => {
     mutationKey: markAbsenceMutationKey,
     mutationFn: ({ target, turno }: MarkAbsenceVariables) =>
       createAttendance({ empleado: target.empleado, turno, fecha: target.fecha }),
-    onSuccess: () => {
+    onSuccess: async (record) => {
+      // 201 con el registro completo (`AsistenciaSerializer`, `estado: "falta"`).
+      await writeAttendanceToLists(queryClient, record);
       toast.success("Falta registrada en el pase de lista");
     },
     onError: (error) => {
