@@ -16,8 +16,11 @@ interface CobrableCxcsParams {
 }
 
 /**
- * CxC que un cobro puede aplicar: del cliente, con saldo, en la moneda de la
- * cuenta bancaria y con estatus Pendiente o Parcial.
+ * CxC que el selector del cobro OFRECE: del cliente, con saldo, en la moneda de
+ * la cuenta bancaria y con estatus Pendiente o Parcial. Las que el CFDI de su
+ * factura no deja cobrar SIGUEN en la lista: el selector las muestra
+ * deshabilitadas con su motivo (`getCxcCobroEligibility`, EC-928). Por eso no se
+ * pide `?cobrable=true`, y por eso `byId` tampoco.
  *
  * El SALDO tiene que ser fresco: es el importe con que se siembra cada línea y
  * el techo que valida el formulario. Por eso `refetchOnMount: "always"`: cada
@@ -27,7 +30,8 @@ interface CobrableCxcsParams {
  * invalidación de CxC la alcanza.
  *
  * `byId` incluye TODO lo que devolvió el servidor (no solo lo cobrable), para
- * que el formulario lea el saldo vigente de las líneas ya agregadas.
+ * que el formulario lea el saldo vigente y el estado del CFDI de las líneas ya
+ * agregadas: una CxC que falta en él se da por liquidada (`saldoFor`).
  */
 export const useCobrableCxcs = ({ clienteId, moneda }: CobrableCxcsParams) => {
   const params = { cliente: clienteId, saldo_pendiente: true, moneda: moneda?.id ?? 0 };

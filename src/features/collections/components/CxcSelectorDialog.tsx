@@ -6,6 +6,7 @@ import { formatShortDate } from "@/src/utils/formatDate";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { useCobrableCxcs } from "../hooks/useCobrableCxcs";
 import { formatCobroAmount } from "../utils/collection.utils";
+import { getCxcCobroEligibility, getCxcSelectionBlockReason } from "../utils/cxcCobroEligibility";
 
 interface CxcSelectorDialogProps {
   open: boolean;
@@ -60,7 +61,12 @@ function CxcSelectorContent({
       noResultsMessage="No se encontraron cuentas por cobrar"
       countLabel={{ singular: "cuenta seleccionada", plural: "cuentas seleccionadas" }}
       pinSelected
-      renderContent={(cuenta) => (
+      // CFDI cancelado o en cancelación: a la vista, deshabilitada con su motivo
+      // (EC-928, mismo patrón que el selector de facturas de notas de crédito).
+      getItemDisabledReason={getCxcSelectionBlockReason}
+      renderContent={(cuenta) => {
+        const eligibility = getCxcCobroEligibility(cuenta);
+        return (
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
@@ -70,6 +76,13 @@ function CxcSelectorContent({
               {/* `timeZone: "UTC"`: fecha-calendario "YYYY-MM-DD". */}
               {cuenta.estatus} · Vence {formatShortDate(cuenta.fecha_vencimiento, { timeZone: "UTC" })}
             </p>
+            {/* Timbrado pendiente: se puede elegir, pero el cobro solo se guarda
+                como borrador hasta que se confirme. */}
+            {eligibility.kind === "draftOnly" && (
+              <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                {eligibility.reason}
+              </p>
+            )}
           </div>
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">Saldo</p>
@@ -78,7 +91,8 @@ function CxcSelectorContent({
             </p>
           </div>
         </div>
-      )}
+        );
+      }}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />
@@ -89,7 +103,9 @@ function CxcSelectorContent({
  * Selector MÚLTIPLE de cuentas por cobrar, apilado encima del formulario de
  * cobro (que sigue montado detrás). Solo ofrece las CxC del cliente, en la
  * moneda de la cuenta bancaria y con estatus Pendiente o Parcial; entrega los
- * objetos completos para sembrar cada línea con su saldo.
+ * objetos completos para sembrar cada línea con su saldo. Las de factura con
+ * CFDI cancelado o en cancelación se ven deshabilitadas con su motivo; las de
+ * timbrado pendiente se eligen con el aviso de que solo admiten borrador.
  */
 export function CxcSelectorDialog({ open, onOpenChange, ...props }: CxcSelectorDialogProps) {
   return (
