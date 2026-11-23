@@ -49,13 +49,24 @@ export function SelectListRow({
       aria-pressed={selected}
       className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
         disabledReason !== null
-          ? "border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-black/20 opacity-70 cursor-not-allowed"
+          ? "border-dashed border-slate-300 dark:border-slate-500 bg-slate-100/70 dark:bg-black/20 opacity-70 cursor-not-allowed"
           : selected
             ? "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-900/20 cursor-pointer"
             : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer"
       }`}
     >
-      {indicator}
+      {/* Con la fila deshabilitada, el indicador (casilla o radio, lo pinta cada
+          lista) se ve apagado: relleno gris y borde punteado, como la fila, para
+          que no parezca marcable. `contents` no añade caja al layout. */}
+      <span
+        className={
+          disabledReason !== null
+            ? "contents [&>span]:border-dashed [&>span]:border-slate-300 [&>span]:bg-slate-200 dark:[&>span]:border-slate-500 dark:[&>span]:bg-slate-700"
+            : "contents"
+        }
+      >
+        {indicator}
+      </span>
       <div className="min-w-0 flex-1">
         {children}
         {disabledReason !== null && (
