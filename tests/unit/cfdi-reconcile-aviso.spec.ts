@@ -113,7 +113,8 @@ const CFDI_ERROR = "El timbrado es muy reciente; espera un minuto y vuelve a con
 test.describe("conciliar-cfdi/ de una factura", () => {
   const options = (queryClient: QueryClient) => reconcileInvoiceCfdiMutationOptions(queryClient, ID);
   const pendiente = { id: ID, folio: "F-1", cfdi_pendiente: true, cfdi_uuid: null };
-  const invoiceKeys = [["invoices"], ["invoice-detail", ID], ["invoice-desglose", ID]];
+  // `["accounts-receivable"]`: la CxC trae `factura_cfdi_pendiente` y `cobrable` (EC-928).
+  const invoiceKeys = [["invoices"], ["invoice-detail", ID], ["invoice-desglose", ID], ["accounts-receivable"]];
 
   test("con aviso: el aviso tal cual como advertencia, sin éxito, e invalida igual", async () => {
     const run = await runReconcile(options, pendiente, () => ({

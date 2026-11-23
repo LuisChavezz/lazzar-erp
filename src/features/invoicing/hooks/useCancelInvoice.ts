@@ -227,15 +227,20 @@ export const useCancelInvoice = (invoiceId: number) => {
     },
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
     onSettled: (result) => {
-      // Solo cambió `cfdi_cancelacion_solicitada`, que traen el listado y el retrieve.
+      // Solo cambió `cfdi_cancelacion_solicitada`, que traen el listado, el retrieve
+      // y la CxC (`factura_cfdi_cancelacion_solicitada`, `cobrable`; EC-928).
       if (result?.outcome === "requested") {
         queryClient.invalidateQueries({ queryKey: ["invoices"] });
         queryClient.invalidateQueries({ queryKey: ["invoice-detail", invoiceId] });
+        queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
         return;
       }
       invalidateInvoiceBaseQueries(queryClient, invoiceId, {
         sentRequest: result === undefined || result.outcome === "cancelled",
       });
+      // Ante un error, la cancelación pudo quedar en curso (la CxC deja de ser
+      // cobrable); el éxito ya la invalida en `onSuccess`.
+      if (result === undefined) queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
     },
   });
 
