@@ -210,15 +210,43 @@ test("sin motivo_no_cobrable (o con un valor desconocido): la regla por campos d
     kind: "blocked",
     reason: CXC_NOT_COBRABLE_FALLBACK_REASON,
   });
-  // Un motivo que este front aún no conoce no se lee como "cobrable".
+  // Un motivo que este front aún no conoce no se lee como "cobrable": el tipo
+  // sale de los campos y, sin texto de la causa, también el motivo.
   const desconocido = {
     ...CASES.pendiente,
     motivo_no_cobrable: "OTRA_CAUSA" as unknown as MotivoNoCobrable,
-    motivo_no_cobrable_display: "Otra causa",
+    motivo_no_cobrable_display: null,
   };
   expect(getCxcInvoiceCfdiEligibility(desconocido, TEST_REASONS)).toEqual({
     kind: "draftOnly",
     reason: "pendiente F-10",
+  });
+});
+
+test("motivo desconocido con texto: el tipo de los campos, el motivo con la causa del backend", () => {
+  const desconocido = (cuenta: object, display: string | null) =>
+    ({
+      ...cuenta,
+      motivo_no_cobrable: "CLIENTE_INACTIVO" as unknown as MotivoNoCobrable,
+      motivo_no_cobrable_display: display,
+    }) as typeof base & { motivo_no_cobrable: MotivoNoCobrable; motivo_no_cobrable_display: string | null };
+  // `cobrable: false`, sin campos del CFDI y con saldo: bloqueada con la causa real.
+  expect(getCxcInvoiceCfdiEligibility(desconocido(CASES.respaldo, "Cliente dado de baja"), TEST_REASONS)).toEqual({
+    kind: "blocked",
+    reason: "blocked|F-10|Cliente dado de baja",
+  });
+  expect(getCxcCobroEligibility(desconocido(CASES.respaldo, "Cliente dado de baja"))).toEqual({
+    kind: "blocked",
+    reason: "Factura F-10: Cliente dado de baja.",
+  });
+  // Pendiente por campos: sigue siendo solo borrador, con la causa del backend.
+  expect(getCxcInvoiceCfdiEligibility(desconocido(CASES.pendiente, "Otra causa"), TEST_REASONS)).toEqual({
+    kind: "draftOnly",
+    reason: "draftOnly|F-10|Otra causa",
+  });
+  // Lo que los campos dejan elegir no se bloquea por traer texto.
+  expect(getCxcInvoiceCfdiEligibility(desconocido(CASES.vigente, "Otra causa"), TEST_REASONS)).toEqual({
+    kind: "eligible",
   });
 });
 

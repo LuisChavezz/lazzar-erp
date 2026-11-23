@@ -92,6 +92,13 @@ const fieldTextFor = (motivo: MotivoNoCobrable, folio: string | null, reasons: C
 };
 
 /**
+ * Texto de la causa del backend listo para componer, sin espacios de sobra, o
+ * `undefined` si no llegó.
+ */
+const causeLabelOf = (cuenta: CxcInvoiceCfdiFields): string | undefined =>
+  cuenta.motivo_no_cobrable_display?.trim() || undefined;
+
+/**
  * Elegibilidad con el motivo del backend (EC-938): el código decide, aunque los
  * campos del CFDI digan otra cosa (los calcula el mismo backend en el orden de
  * `CuentaPorCobrar.motivo_no_cobrable`). El motivo es el texto de la causa con
@@ -105,7 +112,7 @@ const eligibilityFromMotivo = (
   const kind = motivo === null ? null : KIND_BY_MOTIVO[motivo];
   if (motivo === null || kind === null) return ELIGIBLE;
   const folio = cuenta.factura_folio || null;
-  const causeLabel = cuenta.motivo_no_cobrable_display?.trim();
+  const causeLabel = causeLabelOf(cuenta);
   const reason = causeLabel
     ? reasons.withCauseLabel(folio, causeLabel, kind)
     : fieldTextFor(motivo, folio, reasons);
@@ -155,7 +162,9 @@ const eligibilityFromCfdiFields = (
 /**
  * Elegibilidad de una CxC. Con `motivo_no_cobrable` (EC-938) decide el motivo
  * del backend; sin él (respuesta vieja) o con un valor que este front no
- * conoce, los campos del CFDI, como antes.
+ * conoce, los campos del CFDI, como antes. Con un valor desconocido que trae su
+ * texto, el tipo sigue saliendo de los campos, pero el motivo es ese texto: la
+ * causa real, no el respaldo genérico.
  */
 export const getCxcInvoiceCfdiEligibility = (
   cuenta: CxcInvoiceCfdiFields,
@@ -163,5 +172,11 @@ export const getCxcInvoiceCfdiEligibility = (
 ): CxcInvoiceCfdiEligibility => {
   const motivo = cuenta.motivo_no_cobrable;
   if (motivo === null || isKnownMotivo(motivo)) return eligibilityFromMotivo(motivo, cuenta, reasons);
-  return eligibilityFromCfdiFields(cuenta, reasons);
+  const eligibility = eligibilityFromCfdiFields(cuenta, reasons);
+  const causeLabel = motivo !== undefined ? causeLabelOf(cuenta) : undefined;
+  if (eligibility.kind === "eligible" || !causeLabel) return eligibility;
+  return {
+    kind: eligibility.kind,
+    reason: reasons.withCauseLabel(cuenta.factura_folio || null, causeLabel, eligibility.kind),
+  };
 };
