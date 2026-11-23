@@ -50,11 +50,19 @@ export const topeManualRecepcion = (pendiente: number): number => Math.max(0, Ma
  * `actual` y cuyo pendiente exacto es `pendiente`. Hasta el tope manual se
  * toma tal cual; por encima se topa ahí, salvo que `actual` ya lo rebase (lo
  * fijó "Todo" con el pendiente fraccionario, p. ej. 10.5 con tope 10): entonces
- * se conserva, para que un "+" o un número de más no lo bajen.
+ * se conserva, para que un "+" no lo baje. Lo TECLEADO (`tecleado`) sobre un
+ * `actual` fraccionario sí se topa (EC-924): borrar el "." de 10.5 deja "105"
+ * y el renglón queda en 10, en lugar de volver a 10.5 sin explicación.
  */
-export const capturaManualRecepcion = (next: number, actual: number, pendiente: number): number => {
+export const capturaManualRecepcion = (
+  next: number,
+  actual: number,
+  pendiente: number,
+  tecleado = false,
+): number => {
   const tope = topeManualRecepcion(pendiente);
   if (next <= tope) return next;
+  if (tecleado && !Number.isInteger(actual)) return tope;
   return actual > tope ? actual : tope;
 };
 

@@ -109,15 +109,35 @@ test.describe("pendiente exacto y tope manual (EC-900)", () => {
     // 10.5 pendiente: teclear topa en 10…
     expect(capturaManualRecepcion(12, 3, 10.5)).toBe(10);
     expect(capturaManualRecepcion(10, 3, 10.5)).toBe(10);
-    // …pero un "+" (11) o un número de más sobre el 10.5 de "Todo" lo conservan.
+    // …pero un "+" (11) sobre el 10.5 de "Todo" lo conserva.
     expect(capturaManualRecepcion(11, 10.5, 10.5)).toBe(10.5);
-    expect(capturaManualRecepcion(40, 10.5, 10.5)).toBe(10.5);
+    expect(capturaManualRecepcion(11, 10.5, 10.5, false)).toBe(10.5);
     // "−" sobre 10.5 (10) sí baja.
     expect(capturaManualRecepcion(10, 10.5, 10.5)).toBe(10);
     // 0.5 pendiente: a mano no se captura nada; "Todo" fija 0.5 y "+" lo deja.
     expect(capturaManualRecepcion(1, 0, 0.5)).toBe(0);
     expect(capturaManualRecepcion(1, 0.5, 0.5)).toBe(0.5);
     expect(capturaManualRecepcion(0, 0.5, 0.5)).toBe(0);
+  });
+
+  test("lo tecleado de más sobre un valor fraccionario se topa en el entero (EC-924)", () => {
+    // Borrar el "." de 10.5 deja "105": queda en 10, no vuelve a 10.5.
+    expect(capturaManualRecepcion(105, 10.5, 10.5, true)).toBe(10);
+    expect(capturaManualRecepcion(40, 10.5, 10.5, true)).toBe(10);
+    expect(capturaManualRecepcion(1, 0.5, 0.5, true)).toBe(0);
+    // Dentro del tope se toma tal cual, igual que antes.
+    expect(capturaManualRecepcion(7, 10.5, 10.5, true)).toBe(7);
+    // El "+" (no tecleado) sobre 10.5 lo conserva.
+    expect(capturaManualRecepcion(11, 10.5, 10.5, false)).toBe(10.5);
+    expect(capturaManualRecepcion(1, 0.5, 0.5, false)).toBe(0.5);
+  });
+
+  test("en un renglón entero lo tecleado se topa igual que un paso", () => {
+    expect(capturaManualRecepcion(9, 2, 5, true)).toBe(5);
+    expect(capturaManualRecepcion(9, 2, 5, false)).toBe(5);
+    expect(capturaManualRecepcion(105, 10, 10.5, true)).toBe(10);
+    expect(capturaManualRecepcion(11, 10, 10.5, false)).toBe(10);
+    expect(capturaManualRecepcion(3, 2, 5, true)).toBe(3);
   });
 
   test("solo no se puede recibir lo que no tiene pendiente", () => {

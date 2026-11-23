@@ -6,7 +6,8 @@
  *
  * Props:
  *  - value: current quantity
- *  - onChange: called with the new quantity after sanitisation
+ *  - onChange: called with the new quantity after sanitisation, and whether it
+ *    came from "−"/"+" (`"step"`) or from typing/pasting (`"input"`)
  *  - min: minimum allowed value (default 1)
  *  - label: aria-label for the input (default "Cantidad")
  *
@@ -36,9 +37,12 @@ import {
   type WholeQuantityEvent,
 } from "../utils/wholeQuantity";
 
+/** De dónde salió el valor nuevo: "−"/"+" o lo tecleado/pegado en el campo. */
+export type QuantityChangeOrigin = "step" | "input";
+
 interface QuantitySelectorProps {
   value: number;
-  onChange: (next: number) => void;
+  onChange: (next: number, origin: QuantityChangeOrigin) => void;
   min?: number;
   label?: string;
 }
@@ -58,7 +62,7 @@ export function QuantitySelector({
     const result = reduceWholeQuantity(inputState, event);
     if (result.preventDefault) native?.preventDefault();
     setInputState(result.state);
-    if (result.value !== undefined) onChange(result.value);
+    if (result.value !== undefined) onChange(result.value, event.type === "step" ? "step" : "input");
   };
 
   return (
