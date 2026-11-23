@@ -215,7 +215,11 @@ export function DocumentosBlocks({
       <SheetSection
         icon={<OrdenesIcon className="w-5 h-5" />}
         title="Producción"
-        subtitle="Pre-órdenes, órdenes de trabajo y salidas a maquila."
+        subtitle={
+          salidasMaquila != null
+            ? "Pre-órdenes, órdenes de trabajo y salidas a maquila."
+            : "Pre-órdenes y órdenes de trabajo."
+        }
       >
         <div className="space-y-6">
           <DocBlock
@@ -266,7 +270,7 @@ export function DocumentosBlocks({
           <FilaBlock title="Órdenes de reflejante" tipo="orden_reflejante" filas={docs.ordenes_reflejante} canOpen={canOpen} onOpenDoc={onOpenDoc} />
           <FilaBlock title="Órdenes de corte de manga" tipo="orden_corte_manga" filas={docs.ordenes_corte_manga} canOpen={canOpen} onOpenDoc={onOpenDoc} />
           {/* `null` = sin `R-PRODUCCION-OP` (#1304): el bloque no existe. */}
-          {salidasMaquila !== null && (
+          {salidasMaquila != null && (
             <DocBlock
               title="Salidas a maquila"
               count={salidasMaquila.length}

@@ -5,8 +5,11 @@
  * Contrato:
  * - Siempre llegan TODAS las llaves. Una lista vacía es "sin registros".
  * - Listas sin paginar, ordenadas por `id`.
- * - Todo es de la empresa del pedido. Para quien no es admin, OB/OR/OCM,
- *   pickings, packings y despachos se acotan además a sus sucursales.
+ * - Todo es de la empresa del pedido. Para quien no es admin ni superusuario,
+ *   se acotan además a sus sucursales (nucleo-erp #1304): salidas a maquila,
+ *   pickings, despachos, movimientos de inventario, facturas, cobros, OB/OR/OCM
+ *   y packings. `pre_ordenes`, `envios`, `cotizaciones`, `ordenes_compra` y
+ *   `ordenes_produccion` solo se acotan por empresa.
  * - `salidas_maquila`, `facturas` y `cobros` son `null` cuando el usuario no
  *   tiene el permiso de lectura de su módulo (nucleo-erp #1304):
  *   `R-PRODUCCION-OP`; `R-CONTABILIDAD` o `R-CONTABILIDAD-FACTURACION`;
