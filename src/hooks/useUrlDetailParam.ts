@@ -1,66 +1,83 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
-import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { urlWithoutSearchParam } from "@/src/utils/removeSearchParam";
+import { decideUrlDetail, isCurrentUrlDetailId } from "@/src/utils/urlDetailParamDecision";
 
 interface UseUrlDetailParamOptions {
   /** Parámetro de la query que lleva el id (`?solicitud=12`). */
   param: string;
   /** `true` cuando el listado ya llegó (vacío incluido). */
   hasLoaded: boolean;
+  /** `dataUpdatedAt` de la consulta del listado. */
+  dataUpdatedAt: number;
   /** ¿El listado COMPLETO cargado contiene ese id? */
   hasRow: (id: number) => boolean;
   /**
-   * Refetch del listado. Se llama UNA vez cuando el id no está en la caché:
-   * puede ser un registro creado después de la última carga (la notificación
-   * que trae aquí es justamente un aviso de algo nuevo).
+   * Refetch del listado, para un id que no está en una caché anterior al
+   * parámetro: puede ser un registro creado después de la última carga (la
+   * notificación que trae aquí es justamente un aviso de algo nuevo).
    */
-  refetch: () => Promise<{ data?: ReadonlyArray<{ id: number }>; isError: boolean }>;
-  /** Aviso si el id tampoco está tras el refetch (borrado, de otra empresa…). */
+  refetch: () => Promise<{ isError: boolean }>;
+  /** Aviso si el id no está en el listado fresco (borrado, de otra empresa…). */
   notFoundMessage: string;
   /** `id` del toast, para que un doble render no lo duplique. */
   toastId: string;
 }
+
+/** Valor crudo del parámetro y cuándo se vio por primera vez. */
+interface SeenParam {
+  raw: string | null;
+  seenAt: number;
+}
+
+const readCurrentParam = (param: string) =>
+  new URLSearchParams(window.location.search).get(param);
 
 /**
  * Abre el diálogo de detalle de un listado desde la URL (`?<param>=<id>`), la
  * vía con la que una notificación lleva a un registro concreto sin ruta
  * `[id]` propia.
  *
- * - Lee el id con `useSearchParams` (la página que monta el listado necesita
- *   un `<Suspense>`). Un valor que no es entero positivo se ignora.
- * - `urlDetailId` es ese id SOLO cuando el listado cargado lo contiene; el
- *   listado decide su diálogo con `detailTargetId ?? urlDetailId`.
- * - Si el listado cargó y el id no está, refetchea una vez; si sigue sin
- *   estar, avisa con `notFoundMessage` y quita el parámetro. Un refetch
- *   fallido ya lo avisa el propio listado: solo se quita el parámetro.
- * - `clear()` (al cerrar el diálogo) quita el parámetro con
- *   `history.replaceState`: cerrar no es navegar, así que no deja una entrada
- *   en el historial. Mientras la URL se pone al día, el id ya descartado no
- *   reabre el diálogo.
+ * - El parámetro lo lee `SearchParamReader` (con `useSearchParams`), que el
+ *   listado monta en su propio `<Suspense fallback={null}>` con `readerProps`:
+ *   así el listado sigue prerenderizándose con su estado de carga.
+ * - La decisión es pura (`decideUrlDetail`): `urlDetailId` es el id SOLO
+ *   cuando el listado cargado lo contiene; el listado decide su diálogo con
+ *   `detailTargetId ?? urlDetailId`.
+ * - Un id que no está se refetchea una vez solo si la caché es ANTERIOR al
+ *   parámetro; si no está en un listado fresco, se avisa y se quita. Un
+ *   parámetro inválido se quita sin aviso. Todo se escribe con
+ *   `history.replaceState`: no deja entradas en el historial.
+ * - `clear()` (al cerrar el diálogo) quita el parámetro. Mientras la URL se
+ *   pone al día, el id ya descartado no reabre el diálogo.
  */
 export function useUrlDetailParam({
   param,
   hasLoaded,
+  dataUpdatedAt,
   hasRow,
   refetch,
   notFoundMessage,
   toastId,
 }: UseUrlDetailParamOptions) {
-  const searchParams = useSearchParams();
-  const urlId = parsePositiveId(searchParams.get(param));
+  const [seen, setSeen] = useState<SeenParam>({ raw: null, seenAt: 0 });
+  const onParamChange = (raw: string | null) => setSeen({ raw, seenAt: Date.now() });
 
   // Id ya cerrado cuya URL aún no se actualiza. Vuelve a `null` en cuanto la
   // URL deja de traerlo, así que la siguiente llegada del MISMO id sí abre.
   const [dismissedId, setDismissedId] = useState<number | null>(null);
-  if (dismissedId !== null && urlId !== dismissedId) setDismissedId(null);
 
-  const isPresent = urlId !== null && hasLoaded && hasRow(urlId);
-  const isMissing = urlId !== null && hasLoaded && !hasRow(urlId);
-  const urlDetailId = isPresent && urlId !== dismissedId ? urlId : null;
+  const decision = decideUrlDetail({
+    raw: seen.raw,
+    seenAt: seen.seenAt,
+    hasLoaded,
+    dataUpdatedAt,
+    hasRow,
+    dismissedId,
+  });
+  if (dismissedId !== null && decision.id !== dismissedId) setDismissedId(null);
 
   const removeParam = () => {
     const next = urlWithoutSearchParam(window.location.pathname, window.location.search, param);
@@ -68,34 +85,39 @@ export function useUrlDetailParam({
   };
 
   const clear = () => {
-    if (urlId !== null) setDismissedId(urlId);
+    if (decision.id !== null) setDismissedId(decision.id);
     removeParam();
   };
 
-  // Id ya verificado contra el servidor: el refetch corre una sola vez por id.
-  const checkedIdRef = useRef<number | null>(null);
+  // Id ya refetcheado: la verificación corre una sola vez por aparición.
+  const verifiedIdRef = useRef<number | null>(null);
 
-  const verifyMissing = useEffectEvent((id: number) => {
-    if (checkedIdRef.current === id) return;
-    checkedIdRef.current = id;
-    void refetch().then((result) => {
-      if (result.isError) {
-        removeParam();
-        return;
-      }
-      if (result.data?.some((row) => row.id === id)) return;
+  const act = useEffectEvent(() => {
+    const { id, action } = decision;
+    if (id === null) verifiedIdRef.current = null;
+    if (action === "remove-invalid") {
+      removeParam();
+    } else if (action === "not-found") {
       toast.error(notFoundMessage, { id: toastId });
       removeParam();
-    });
+    } else if (action === "verify" && id !== null && verifiedIdRef.current !== id) {
+      verifiedIdRef.current = id;
+      // Con éxito, el listado llega con un `dataUpdatedAt` nuevo y la decisión
+      // pasa sola a abrir o a `not-found`. Un fallo ya lo avisa el listado:
+      // solo se quita el parámetro, y nunca uno que ya no sea este id.
+      void refetch().then((result) => {
+        if (result.isError && isCurrentUrlDetailId(id, readCurrentParam(param))) removeParam();
+      });
+    }
   });
 
   useEffect(() => {
-    if (urlId === null) {
-      checkedIdRef.current = null;
-      return;
-    }
-    if (isMissing) verifyMissing(urlId);
-  }, [urlId, isMissing]);
+    act();
+  }, [seen.raw, decision.id, decision.action]);
 
-  return { urlDetailId, clear };
+  return {
+    urlDetailId: decision.urlDetailId,
+    clear,
+    readerProps: { param, onChange: onParamChange },
+  };
 }

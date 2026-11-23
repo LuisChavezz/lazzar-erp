@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -13,6 +13,7 @@ import { AbsenceIcon } from "@/src/components/Icons";
 import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useUrlDetailParam } from "@/src/hooks/useUrlDetailParam";
+import { SearchParamReader } from "@/src/components/SearchParamReader";
 import { HR_SOLICITUD_PARAM } from "@/src/features/hr/constants/solicitudDetailParam";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -76,7 +77,7 @@ export default function AbsenceList() {
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla.
   const busyIds = usePendingAbsenceIds();
 
-  const { absences, hasLoaded, isLoading, isInitialError, error, refetch } = useAbsences();
+  const { absences, hasLoaded, dataUpdatedAt, isLoading, isInitialError, error, refetch } = useAbsences();
   const { employees } = useEmployees();
   const { data: users, isError: isUsersError } = useUsers();
   const { mutate: deleteAbsence } = useDeleteAbsence();
@@ -120,9 +121,14 @@ export default function AbsenceList() {
 
   // `?solicitud=<id>`: el detalle que abre una notificación de RH (EC-935).
   // Se resuelve contra el MISMO listado completo que los diálogos de fila.
-  const { urlDetailId, clear: clearUrlDetail } = useUrlDetailParam({
+  const {
+    urlDetailId,
+    clear: clearUrlDetail,
+    readerProps: urlDetailReaderProps,
+  } = useUrlDetailParam({
     param: HR_SOLICITUD_PARAM,
     hasLoaded,
+    dataUpdatedAt,
     hasRow: (id) => absences.some((row) => row.id === id),
     refetch,
     notFoundMessage: "La solicitud de permiso o ausencia ya no está disponible.",
@@ -285,6 +291,12 @@ export default function AbsenceList() {
           ) : null
         }
       />
+
+      {/* Solo el lector de `?solicitud=` sale del prerender: el listado se
+          sigue prerenderizando con su propio estado de carga. */}
+      <Suspense fallback={null}>
+        <SearchParamReader {...urlDetailReaderProps} />
+      </Suspense>
 
       {/*
         Montados mientras haya una copia: `open` sale del id, así que al
