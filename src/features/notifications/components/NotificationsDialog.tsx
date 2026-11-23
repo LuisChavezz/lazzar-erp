@@ -13,14 +13,13 @@ import {
   resolveNotificationIconVariant,
 } from "../constants/notificationTargets";
 import type { NotificacionesListState } from "../hooks/useNotificaciones";
-import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { refocusOnUnmount } from "../utils/refocusOnUnmount";
 import { NotificationIcon } from "./NotificationIcon";
 import { NotificationsListStatus } from "./NotificationsListStatus";
+import { NotificationTimestamp } from "./NotificationTimestamp";
 
 interface NotificationsDialogBodyProps {
   notificaciones: Notificacion[];
-  nowMs: number;
   /** Discriminador único del hook — ver `NotificacionesListState`. */
   listState: NotificacionesListState;
   /** Del hook: `true` solo en `ready` y sin ninguna notificación. */
@@ -66,7 +65,6 @@ interface NotificationsDialogProps extends NotificationsDialogBodyProps {
  */
 function NotificationsDialogBody({
   notificaciones,
-  nowMs,
   listState,
   isEmpty,
   hasUnread,
@@ -250,9 +248,10 @@ function NotificationsDialogBody({
                             Leída
                           </span>
                         )}
-                        <span className="text-[11px] text-slate-400 whitespace-nowrap">
-                          {formatRelativeTime(notificacion.created_at, nowMs)}
-                        </span>
+                        <NotificationTimestamp
+                          createdAt={notificacion.created_at}
+                          className="text-[11px] text-slate-400 whitespace-nowrap"
+                        />
                       </div>
                       {!notificacion.leido && (
                         <button

@@ -2,17 +2,12 @@ import type { RefObject } from "react";
 import { CheckCircleIcon } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
 import { resolveNotificationIconVariant } from "../constants/notificationTargets";
-import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { refocusOnUnmount } from "../utils/refocusOnUnmount";
 import { NotificationIcon } from "./NotificationIcon";
+import { NotificationTimestamp } from "./NotificationTimestamp";
 
 interface Props {
   notificacion: Notificacion;
-  /**
-   * Instante contra el que se calcula la etiqueta relativa. Lo aporta el
-   * `dataUpdatedAt` de la consulta; nunca se lee el reloj aquí.
-   */
-  nowMs: number;
   /**
    * `false` cuando la notificación no tiene destino (`tipo` fuera del mapa,
    * `data` sin el id que necesita o ruta que el usuario no puede abrir): la
@@ -35,7 +30,6 @@ interface Props {
 
 export function NotificationItem({
   notificacion,
-  nowMs,
   isActionable,
   onActivate,
   onMarkRead,
@@ -78,9 +72,10 @@ export function NotificationItem({
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug line-clamp-2">
           {notificacion.mensaje}
         </p>
-        <span className="text-[10px] text-slate-400 mt-2 block">
-          {formatRelativeTime(notificacion.created_at, nowMs)}
-        </span>
+        <NotificationTimestamp
+          createdAt={notificacion.created_at}
+          className="text-[10px] text-slate-400 mt-2 block"
+        />
         {/* Mismo control que el modal "Ver todas" para las filas sin destino. */}
         {!isActionable && !notificacion.leido && (
           <button
