@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { patchCachedRowById } from "@/src/utils/cachedRows";
 import { payPayroll } from "../services/actions";
-import type { PayrollPayVariables } from "../interfaces/payroll.interface";
+import type { Payroll, PayrollPayVariables } from "../interfaces/payroll.interface";
 import { PAYROLL_KEY_ROOT } from "./usePayrolls";
 import { payrollActionErrorMessage } from "./payrollErrorMessages";
 
@@ -23,7 +24,13 @@ export const usePayPayroll = ({ onFechaPagoError }: UsePayPayrollOptions = {}) =
   return useMutation({
     mutationKey: payPayrollMutationKey,
     mutationFn: ({ id, fecha_pago }: PayrollPayVariables) => payPayroll(id, fecha_pago),
-    onSuccess: () => {
+    onSuccess: async (payroll) => {
+      // La respuesta es el registro completo con la forma de la fila
+      // (`NominaSerializer`, con `detalles`): se escribe en la quincena en
+      // caché antes del refetch, que si falla dejaría "Marcar como pagada"
+      // disponible (EC-927). `verifyPayrollPendiente` sigue siendo la guarda
+      // antes de escribir.
+      await patchCachedRowById<Payroll>(queryClient, PAYROLL_KEY_ROOT, payroll.id, () => payroll);
       toast.success("Nómina marcada como pagada");
     },
     onError: (error) => {
