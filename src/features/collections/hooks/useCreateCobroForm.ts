@@ -261,6 +261,12 @@ export function useCreateCobroForm({
 
   const { mutateAsync: saveCobroMutation, isPending: isSaving } = useSaveCobro(applyServerError);
 
+  // Errores `cobro_detalles.<i>._form` que puso el bloqueo de aplicar (EC-928),
+  // con su texto: se quitan solos cuando la línea vuelve a admitir el cobro (ver
+  // el efecto junto a `lineApplyBlockReason`). Cualquier otro error de la línea
+  // (de saldo, del backend) no está aquí y no se toca.
+  const applyGateErrorsRef = useRef(new Map<string, string>());
+
   // ── Formulario ────────────────────────────────────────────────────────────
   const form = useForm({
     defaultValues: draft?.values ?? createEmptyCobroForm(),
@@ -290,6 +296,11 @@ export function useCreateCobroForm({
       }
       if (blockers.length > 0) {
         applyValidationIssues(blockers);
+        applyGateErrorsRef.current = new Map(
+          blockers
+            .filter((blocker) => blocker.path[0] === "cobro_detalles")
+            .map((blocker) => [blocker.path.join("."), blocker.message]),
+        );
         return;
       }
       // La moneda sale de la cuenta elegida; la sembrada solo cubre un catálogo
@@ -378,6 +389,22 @@ export function useCreateCobroForm({
   };
   const lines = useStore(form.store, (state) => state.values.cobro_detalles);
   const applyBlockReason = summarizeApplyBlockReasons(lines.map(lineApplyBlockReason));
+
+  // El error que dejó el bloqueo de aplicar en una línea se quita en cuanto la
+  // línea vuelve a admitir el cobro (p. ej. se confirmó el timbrado y la consulta
+  // se refrescó). Solo ese error: si el texto ya cambió, otro lo reemplazó.
+  useEffect(() => {
+    const gateErrors = applyGateErrorsRef.current;
+    for (const [key, message] of gateErrors) {
+      const line = lines[Number(key.split(".")[1])];
+      if (getError(key)?.message !== message) {
+        gateErrors.delete(key);
+      } else if (!line || lineApplyBlockReason(line) === null) {
+        gateErrors.delete(key);
+        clearError(key);
+      }
+    }
+  });
 
   const withFreshSaldos = (values: CobroFormValues): CobroFormValues => ({
     ...values,
