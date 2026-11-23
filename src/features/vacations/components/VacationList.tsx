@@ -12,6 +12,8 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { VacationIcon } from "@/src/components/Icons";
 import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useUrlDetailParam } from "@/src/hooks/useUrlDetailParam";
+import { HR_SOLICITUD_PARAM } from "@/src/features/hr/constants/solicitudDetailParam";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
@@ -82,7 +84,7 @@ export default function VacationList() {
   // menús por contexto y a las guardas de abajo.
   const busyIds = usePendingVacationIds();
 
-  const { vacations, isLoading, isInitialError, error } = useVacations();
+  const { vacations, hasLoaded, isLoading, isInitialError, error, refetch } = useVacations();
   const { employees } = useEmployees();
   // Solo para resolver la trazabilidad. No bloquea la tabla: mientras carga
   // dice "…" y si falla cae a "Usuario #N" (ver `resolveUserName`).
@@ -137,7 +139,20 @@ export default function VacationList() {
   const findRow = (id: number | null) =>
     id !== null ? (rows.find((row) => row.id === id) ?? null) : null;
 
-  const detailTarget = findRow(detailTargetId);
+  // `?solicitud=<id>`: el detalle que abre una notificación de RH (EC-935).
+  // Se resuelve contra el MISMO listado completo que los diálogos de fila.
+  const { urlDetailId, clear: clearUrlDetail } = useUrlDetailParam({
+    param: HR_SOLICITUD_PARAM,
+    hasLoaded,
+    hasRow: (id) => vacations.some((row) => row.id === id),
+    refetch,
+    notFoundMessage: "La solicitud de vacaciones ya no está disponible.",
+    toastId: "vacation-url-detail-not-found",
+  });
+  // El detalle abierto desde una fila manda; si no hay, el de la URL.
+  const openDetailId = detailTargetId ?? urlDetailId;
+
+  const detailTarget = findRow(openDetailId);
   const approveTarget = findRow(approveTargetId);
   const rejectTarget = findRow(rejectTargetId);
   const deleteTarget = findRow(deleteRequest?.id ?? null);
@@ -205,7 +220,7 @@ export default function VacationList() {
 
   // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
   // a la animación de salida cuando el id vuelve a `null`.
-  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const detailSession = useDialogSession(openDetailId !== null, detailTarget);
   const approveSession = useDialogSession(approveTargetId !== null, approveTarget);
   const rejectSession = useDialogSession(rejectTargetId !== null, rejectTarget);
   const deleteSession = useDialogSession(deleteRequest !== null, deleteTarget);
@@ -304,9 +319,12 @@ export default function VacationList() {
           key={`detail-${detailSession.id}`}
           // El detalle sí sigue a los refetch mientras su solicitud exista.
           vacation={detailTarget ?? detailSession.snapshot}
-          open={detailTargetId !== null}
+          open={openDetailId !== null}
           onOpenChange={(open) => {
-            if (!open) setDetailTargetId(null);
+            if (!open) {
+              setDetailTargetId(null);
+              clearUrlDetail();
+            }
           }}
         />
       )}

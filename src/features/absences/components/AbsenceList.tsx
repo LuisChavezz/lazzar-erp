@@ -12,6 +12,8 @@ import { DialogHeader } from "@/src/components/DialogHeader";
 import { AbsenceIcon } from "@/src/components/Icons";
 import { employeeHeaderFilter, withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { useUrlDetailParam } from "@/src/hooks/useUrlDetailParam";
+import { HR_SOLICITUD_PARAM } from "@/src/features/hr/constants/solicitudDetailParam";
 import { DIALOG_WIDTH_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
@@ -74,7 +76,7 @@ export default function AbsenceList() {
   // Acciones de fila en vuelo: UNA suscripción para toda la tabla.
   const busyIds = usePendingAbsenceIds();
 
-  const { absences, isLoading, isInitialError, error } = useAbsences();
+  const { absences, hasLoaded, isLoading, isInitialError, error, refetch } = useAbsences();
   const { employees } = useEmployees();
   const { data: users, isError: isUsersError } = useUsers();
   const { mutate: deleteAbsence } = useDeleteAbsence();
@@ -116,7 +118,20 @@ export default function AbsenceList() {
   const findRow = (id: number | null) =>
     id !== null ? (rows.find((row) => row.id === id) ?? null) : null;
 
-  const detailTarget = findRow(detailTargetId);
+  // `?solicitud=<id>`: el detalle que abre una notificación de RH (EC-935).
+  // Se resuelve contra el MISMO listado completo que los diálogos de fila.
+  const { urlDetailId, clear: clearUrlDetail } = useUrlDetailParam({
+    param: HR_SOLICITUD_PARAM,
+    hasLoaded,
+    hasRow: (id) => absences.some((row) => row.id === id),
+    refetch,
+    notFoundMessage: "La solicitud de permiso o ausencia ya no está disponible.",
+    toastId: "absence-url-detail-not-found",
+  });
+  // El detalle abierto desde una fila manda; si no hay, el de la URL.
+  const openDetailId = detailTargetId ?? urlDetailId;
+
+  const detailTarget = findRow(openDetailId);
   const approveTarget = findRow(approveTargetId);
   const rejectTarget = findRow(rejectTargetId);
   const deleteTarget = findRow(deleteRequest?.id ?? null);
@@ -178,7 +193,7 @@ export default function AbsenceList() {
 
   // Copias al ABRIR cada diálogo: el texto no sigue a los refetch y sobrevive
   // a la animación de salida cuando el id vuelve a `null`.
-  const detailSession = useDialogSession(detailTargetId !== null, detailTarget);
+  const detailSession = useDialogSession(openDetailId !== null, detailTarget);
   const approveSession = useDialogSession(approveTargetId !== null, approveTarget);
   const rejectSession = useDialogSession(rejectTargetId !== null, rejectTarget);
   const deleteSession = useDialogSession(deleteRequest !== null, deleteTarget);
@@ -280,9 +295,12 @@ export default function AbsenceList() {
           key={`detail-${detailSession.id}`}
           // El detalle sí sigue a los refetch mientras su registro exista.
           absence={detailTarget ?? detailSession.snapshot}
-          open={detailTargetId !== null}
+          open={openDetailId !== null}
           onOpenChange={(open) => {
-            if (!open) setDetailTargetId(null);
+            if (!open) {
+              setDetailTargetId(null);
+              clearUrlDetail();
+            }
           }}
         />
       )}
