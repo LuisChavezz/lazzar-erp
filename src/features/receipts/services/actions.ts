@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { Receipt, ReceiptDetail } from "../interfaces/receipt.interface";
+import type { Receipt, ReceiptCancellationFields, ReceiptDetail } from "../interfaces/receipt.interface";
 import type { ReceiptOnboardingData, ReceiptCreatePayload } from "../interfaces/receipt-onboarding.interface";
 
 
@@ -31,6 +31,12 @@ export const createReceipt = async (
 }
 
 /**
+ * Lo que garantiza la respuesta de `cancelar/` (forma plana de
+ * `RecepcionSerializer`): sin los campos enriquecidos del listado.
+ */
+export type CancelledReceipt = Pick<Receipt, "id" | "folio" | "estatus"> & ReceiptCancellationFields;
+
+/**
  * Cancela una recepción (`POST /compras/recepciones/{id}/cancelar/`, EC-925).
  * Responde la forma PLANA de `RecepcionSerializer` (como el listado, sin
  * `detalles` ni `puede_cancelar`), no la del retrieve: por eso quien la llama
@@ -42,7 +48,7 @@ export const cancelReceipt = async ({
 }: {
   id: number;
   motivo: string;
-}): Promise<Receipt> => {
-  const { data } = await v1_api.post<Receipt>(`/compras/recepciones/${id}/cancelar/`, { motivo });
+}): Promise<CancelledReceipt> => {
+  const { data } = await v1_api.post<CancelledReceipt>(`/compras/recepciones/${id}/cancelar/`, { motivo });
   return data;
 }

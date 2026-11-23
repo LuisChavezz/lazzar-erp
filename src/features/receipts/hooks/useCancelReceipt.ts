@@ -10,7 +10,7 @@ import { cancelReceipt } from "../services/actions";
 import { classifyReceiptCancelError } from "../utils/receiptCancelErrors";
 
 /** Lock por recepción: el doble envío lo frena la propia mutación. */
-export const cancelReceiptMutationKey = (receiptId: number | null) =>
+export const cancelReceiptMutationKey = (receiptId: number) =>
   ["cancelar-recepcion", receiptId] as const;
 
 /** Las listas y el detalle de recepciones: lo que hay que releer pase lo que pase. */
@@ -68,15 +68,16 @@ interface UseCancelReceiptOptions {
  *
  * Errores (`classifyReceiptCancelError`): `motivo` bajo el campo; cualquier
  * otro, toast con el mensaje del backend tal cual. Si la recepción ya no se
- * puede cancelar (400 `estatus`/`op`/`facturas_proveedores`, o 404) se releen
- * sus vistas para que el botón desaparezca; el diálogo decide cerrarse.
+ * puede cancelar (400 `estatus`/`op`/`facturas_proveedores`, o 404) se relee
+ * todo lo que una cancelación toca, para que el botón desaparezca y la OC/SM
+ * se vean al día; el diálogo decide cerrarse.
  */
-export const useCancelReceipt = (receiptId: number | null, { onMotivoError }: UseCancelReceiptOptions = {}) => {
+export const useCancelReceipt = (receiptId: number, { onMotivoError }: UseCancelReceiptOptions = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationKey: cancelReceiptMutationKey(receiptId),
-    mutationFn: (motivo: string) => cancelReceipt({ id: receiptId as number, motivo }),
+    mutationFn: (motivo: string) => cancelReceipt({ id: receiptId, motivo }),
     onSuccess: () => {
       invalidateAfterCancel(queryClient);
       toast.success("Recepción cancelada correctamente");
@@ -88,8 +89,11 @@ export const useCancelReceipt = (receiptId: number | null, { onMotivoError }: Us
         return;
       }
       toast.error(classified.message);
+      // Ya no se puede cancelar: la caché está vieja (otra pestaña u otro admin
+      // la canceló, pasó por calidad…). Se relee todo lo que una cancelación
+      // toca; el 404 del detalle es definitivo y no suma otro toast.
       if (classified.kind === "blocked" || classified.kind === "not-found") {
-        invalidateReceiptViews(queryClient);
+        invalidateAfterCancel(queryClient);
       }
     },
   });
