@@ -2,24 +2,29 @@ import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
 import type { ReceiptDetail } from "../interfaces/receipt.interface";
 
 /** `Recepcion.EstatusRecepcion.CANCELADA` (nucleo-erp, compras/models.py). */
-const RECEIPT_ESTATUS_CANCELADA = 6;
+export const RECEIPT_ESTATUS_CANCELADA = 6;
+
+/** ¿La recepción está cancelada? (`estatus` 6, EC-925). */
+export const isReceiptCancelled = (receipt: Pick<ReceiptDetail, "estatus">): boolean =>
+  receipt.estatus === RECEIPT_ESTATUS_CANCELADA;
 
 /**
  * Identidad de una recepción para su PDF (EC-856). Un solo código, `RC`, para
  * ambos orígenes: comparten la serie de folios (RC/RT/RZ) y el origen se dice
  * DENTRO del PDF, no en el nombre del archivo.
  *
- * Hoy ningún flujo cancela una recepción (no hay acción ni motivo), así que la
- * marca solo saldría si algún día llega `estatus` 6; se deja la regla de la base
- * tal cual, sin motivo.
+ * Cancelada (EC-925): banner, marca de agua y pie de la base con el
+ * `motivo_cancelacion` (EC-926), como el PDF de la OC. Sale del detalle fresco
+ * que lee la fuente, no del que muestra el diálogo.
  */
 export const receiptPdfDescriptor = (
-  receipt: Pick<ReceiptDetail, "id" | "folio" | "estatus">,
+  receipt: Pick<ReceiptDetail, "id" | "folio" | "estatus" | "motivo_cancelacion">,
 ): DocumentPdfDescriptor => ({
   type: "RC",
   id: receipt.id,
   folio: receipt.folio,
-  cancelled: receipt.estatus === RECEIPT_ESTATUS_CANCELADA,
+  cancelled: isReceiptCancelled(receipt),
+  cancellationReason: receipt.motivo_cancelacion ?? null,
 });
 
 /** Origen de una recepción tal como lo dice el PDF. */

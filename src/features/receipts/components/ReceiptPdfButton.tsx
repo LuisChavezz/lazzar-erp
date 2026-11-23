@@ -12,7 +12,7 @@ import { receiptPdfSource } from "../utils/receiptPdfSource";
  * detalle (`PurchaseOrderReceiptDetailDialog` en Compras y `ReceiptDetailDialog`
  * en WMS y auditoría). Sirve para ambos orígenes (OC y OP).
  */
-export function ReceiptPdfButton({ receipt }: { receipt: Pick<ReceiptDetail, "id" | "folio" | "estatus"> }) {
+export function ReceiptPdfButton({ receipt }: { receipt: Pick<ReceiptDetail, "id" | "folio" | "estatus" | "motivo_cancelacion"> }) {
   const queryClient = useQueryClient();
 
   return (

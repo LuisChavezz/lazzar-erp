@@ -76,6 +76,7 @@ test.describe("receiptPdfDescriptor", () => {
       id: 5,
       folio: "RC-000123",
       cancelled: false,
+      cancellationReason: null,
     });
     expect(fileNameOf(receipt())).toBe("RC-000123.pdf");
     // Las series RT y RZ también son de recepción: el folio se usa tal cual.
@@ -86,10 +87,16 @@ test.describe("receiptPdfDescriptor", () => {
     expect(fileNameOf(receipt({ folio: "" }))).toBe("RC-ID5.pdf");
   });
 
-  test("solo el estatus 6 (Cancelada) lleva la marca, sin motivo", () => {
-    const cancelada = receiptPdfDescriptor(receipt({ estatus: 6 }));
+  test("solo el estatus 6 (Cancelada) lleva la marca, con su motivo_cancelacion (EC-925)", () => {
+    const cancelada = receiptPdfDescriptor(
+      receipt({ estatus: 6, motivo_cancelacion: "Captura duplicada" }),
+    );
     expect(cancelada.cancelled).toBe(true);
-    expect(cancelada.cancellationReason).toBeUndefined();
+    expect(cancelada.cancellationReason).toBe("Captura duplicada");
+    // Cancelada antes de EC-926 sin evento de auditoría: marca sin motivo.
+    expect(
+      receiptPdfDescriptor(receipt({ estatus: 6, motivo_cancelacion: null })).cancellationReason,
+    ).toBeNull();
     expect(receiptPdfDescriptor(receipt({ estatus: 4 })).cancelled).toBe(false);
   });
 });
@@ -181,6 +188,15 @@ function documentOf(detail: ReceiptDetail) {
 }
 
 test.describe("ReceiptPdfDocument", () => {
+  test("cancelada: el marco recibe la marca y el motivo_cancelacion (EC-925)", () => {
+    const root = ReceiptPdfDocument({
+      receipt: receipt({ estatus: 6, motivo_cancelacion: "Captura duplicada" }),
+      company: { name: "LAZZAR MEXICO", rfc: null },
+    }) as { props: { descriptor?: { cancelled: boolean; cancellationReason?: string | null } } };
+    expect(root.props.descriptor?.cancelled).toBe(true);
+    expect(root.props.descriptor?.cancellationReason).toBe("Captura duplicada");
+  });
+
   test("desde OC: origen con el folio de la OC y el nombre del proveedor", () => {
     const doc = documentOf(receipt());
     expect(doc.datos.Origen).toBe("Orden de compra");
