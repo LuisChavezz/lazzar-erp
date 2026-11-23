@@ -68,26 +68,6 @@ export const isCompleteDateEntry = (value: string | null | undefined): value is 
   isValidDateKey(value) && value >= "1900-01-01";
 
 /**
- * Medianoche LOCAL de un día "yyyy-mm-dd" como datetime ISO con offset
- * explícito, p. ej. "2026-09-23T00:00:00-06:00".
- *
- * Ni `toISOString()` (convierte a UTC: "2026-09-23T06:00:00Z", que un backend
- * que guarde fecha en otra zona puede leer como otro día) ni la fecha pelada
- * (el campo es datetime). El offset es el que rige ESE día en la zona del
- * navegador, no el de hoy, por si la zona tuviera horario de verano.
- * Devuelve `null` si el valor no es un día válido.
- */
-export const toLocalMidnightIso = (dateKey: string): string | null => {
-  const date = parseLocalDate(dateKey);
-  if (!date || dateKey.includes("T")) return null;
-  const offsetMinutes = -date.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const hours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
-  const minutes = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
-  return `${toLocalDateKey(date)}T00:00:00${sign}${hours}:${minutes}`;
-};
-
-/**
  * Formatea un string "yyyy-mm-dd" como fecha local es-MX. Devuelve "—" cuando
  * no hay valor y el valor original cuando no puede parsearse.
  */
@@ -105,12 +85,6 @@ export const formatLocalDateRange = (range: { fecha_inicio: string; fecha_fin: s
   `${formatLocalDate(range.fecha_inicio)} – ${formatLocalDate(range.fecha_fin)}`;
 
 /**
- * Valor de `timeZone` para `formatShortDate` que formatea en la zona LOCAL del
- * navegador (la de omisión de `Intl`), que ya no es la de omisión del helper.
- */
-export const LOCAL_TIME_ZONE = "local";
-
-/**
  * Formatea una fecha (`Date` o string parseable por `Date`, p.ej. un ISO
  * completo) como "14 jul 2026" (es-MX: día 2 dígitos, mes abreviado, año).
  * Devuelve "—" para valores vacíos o que no parseen a una fecha válida.
@@ -126,9 +100,6 @@ export const LOCAL_TIME_ZONE = "local";
  * - Un `Date` armado a medianoche LOCAL (`parseLocalDate`, `new Date(y, m, d)`)
  *   tampoco va aquí sin zona: en México, al este de la zona del navegador, cae
  *   en el día anterior. Usa `formatShortCalendarDate` con su "YYYY-MM-DD".
- * - `timeZone: LOCAL_TIME_ZONE` mantiene a propósito la zona del navegador
- *   (omite `timeZone`, como antes de EC-931), para un valor que se escribió en
- *   esa zona (ver `formatFechaConfirmacion` del pedido).
  */
 export const formatShortDate = (
   value: string | Date | null | undefined,
@@ -141,10 +112,7 @@ export const formatShortDate = (
     day: "2-digit",
     month: "short",
     year: "numeric",
-    // El modo local OMITE `timeZone` en vez de pasar la zona IANA del
-    // navegador: un sistema con una zona que ICU no identifica la reporta como
-    // "Etc/Unknown", y pasarla explícita lanzaría `RangeError`.
-    timeZone: options.timeZone === LOCAL_TIME_ZONE ? undefined : (options.timeZone ?? MEXICO_TIME_ZONE),
+    timeZone: options.timeZone ?? MEXICO_TIME_ZONE,
   });
 };
 
