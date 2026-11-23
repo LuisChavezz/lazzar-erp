@@ -1,9 +1,8 @@
 import type { RefObject } from "react";
 import { CheckCircleIcon } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
-import { resolveNotificationIconVariant } from "../constants/notificationTargets";
 import { refocusOnUnmount } from "../utils/refocusOnUnmount";
-import { NotificationIcon } from "./NotificationIcon";
+import { NotificationTypeIcon } from "./NotificationIcon";
 import { NotificationTimestamp } from "./NotificationTimestamp";
 
 interface Props {
@@ -62,9 +61,7 @@ export function NotificationItem({
       className={`${baseClass}${stateClass}${interactiveClass}`}
       {...interactiveProps}
     >
-      <NotificationIcon
-        variant={resolveNotificationIconVariant(notificacion.tipo)}
-      />
+      <NotificationTypeIcon tipo={notificacion.tipo} />
       <div className="min-w-0 pr-3">
         <p className="text-sm font-semibold text-slate-800 dark:text-white">
           {notificacion.titulo}

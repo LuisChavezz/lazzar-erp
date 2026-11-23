@@ -1,5 +1,8 @@
 import { ErrorIcon, CheckCircleIcon, InfoIcon } from "../../../components/Icons";
-import type { NotificationIconVariant } from "../constants/notificationTargets";
+import {
+  resolveNotificationIconVariant,
+  type NotificationIconVariant,
+} from "../constants/notificationTargets";
 
 interface Props {
   /**
@@ -31,4 +34,12 @@ export function NotificationIcon({ variant }: Props) {
       <InfoIcon className="w-4 h-4" aria-hidden="true" />
     </div>
   );
+}
+
+/**
+ * Icono de una notificación a partir de su `tipo` del backend: la traducción a
+ * variante visual que repetían el dropdown y el modal.
+ */
+export function NotificationTypeIcon({ tipo }: { tipo: string }) {
+  return <NotificationIcon variant={resolveNotificationIconVariant(tipo)} />;
 }
