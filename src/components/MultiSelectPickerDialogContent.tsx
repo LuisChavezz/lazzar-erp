@@ -6,6 +6,7 @@ import { Loader } from "@/src/components/Loader";
 import { Button } from "@/src/components/Button";
 import { SearchableSelectList } from "@/src/components/SearchableSelectList";
 import { renderCheckboxIndicator } from "@/src/components/CheckboxIndicator";
+import { deriveMultiPickerSelection } from "@/src/components/multiSelectPickerSelection";
 
 interface MultiSelectPickerDialogContentProps<T> {
   title: string;
@@ -102,27 +103,19 @@ export function MultiSelectPickerDialogContent<T>({
     () => new Set(),
   );
 
-  // Lo que CUENTA como seleccionado: con la lista ya cargada, solo las claves
-  // que siguen en `items` (una relectura puede quitar un ítem ya marcado, p. ej.
-  // porque otra persona lo tomó); sin esto el contador lo seguiría contando y
-  // "Confirmar" quedaría habilitado sin nada que confirmar. `items` es la lista
-  // COMPLETA —la búsqueda filtra dentro de `SearchableSelectList`—, así que lo
-  // marcado y oculto por la búsqueda sigue contando. Es derivado: el conjunto
-  // tentativo no se poda, y un ítem que vuelve a la lista vuelve marcado. Con
-  // `isLoading`/`isError` la lista se sustituye (hay consumidores que pasan `[]`
-  // mientras refrescan) y se usa el conjunto tal cual. El React Compiler lo
-  // recalcula solo cuando cambian `items` o la selección, no en cada tecla.
-  //
-  // Un ítem deshabilitado (`getItemDisabledReason`) tampoco cuenta: no se puede
-  // marcar, pero pudo quedar marcado antes de una relectura que lo deshabilitó.
-  const isEnabled = (item: T) => (getItemDisabledReason?.(item) ?? null) === null;
-  const listedKeys = new Set(items.filter(isEnabled).map(getKey));
-  const selectedKeys =
-    isLoading || isError
-      ? tentativeKeys
-      : new Set([...tentativeKeys].filter((key) => listedKeys.has(key)));
-
-  const selectedCount = selectedKeys.size;
+  // Lo que cuenta, se pinta marcado y se confirma (`deriveMultiPickerSelection`).
+  // `items` es la lista COMPLETA —la búsqueda filtra dentro de
+  // `SearchableSelectList`—, así que lo marcado y oculto por la búsqueda sigue
+  // contando. Con `isLoading`/`isError` la lista se sustituye (hay consumidores
+  // que pasan `[]` mientras refrescan) y se usa el conjunto tal cual. El React
+  // Compiler lo recalcula solo cuando cambian `items` o la selección.
+  const { isTicked, selectedCount, confirmable } = deriveMultiPickerSelection({
+    items,
+    tentativeKeys,
+    getKey,
+    getItemDisabledReason,
+    isListReplaced: isLoading || isError,
+  });
   // También con `isLoading`/`isError`, igual que el selector único: ambas ramas
   // sustituyen la lista, pero el conjunto tentativo SOBREVIVE a que `items` se
   // vacíe o se quede viejo (p. ej. un consumidor que trata un refetch en segundo
@@ -145,11 +138,8 @@ export function MultiSelectPickerDialogContent<T>({
   };
 
   const handleConfirm = () => {
-    // Se recorre `items` (no el `Set`) para devolverlos en el ORDEN de la lista,
-    // no en el orden en que el usuario fue marcando.
-    const selected = items.filter((item) => tentativeKeys.has(getKey(item)) && isEnabled(item));
-    if (selected.length === 0) return;
-    onConfirm(selected);
+    if (confirmable.length === 0) return;
+    onConfirm(confirmable);
   };
 
   return (
@@ -175,7 +165,7 @@ export function MultiSelectPickerDialogContent<T>({
             searchPlaceholder={searchPlaceholder}
             filterPredicate={filterPredicate}
             getKey={getKey}
-            isSelected={(item) => tentativeKeys.has(getKey(item))}
+            isSelected={isTicked}
             onSelect={toggle}
             emptyMessage={emptyMessage}
             noResultsMessage={noResultsMessage}
