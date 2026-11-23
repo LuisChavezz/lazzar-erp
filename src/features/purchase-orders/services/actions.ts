@@ -7,6 +7,8 @@ import type {
 } from "../interfaces/purchase-order-critical-path.interface";
 import {
   CancelPurchaseOrderParams,
+  CancelPurchaseOrderResponse,
+  ConfirmPurchaseOrderResponse,
   PurchaseOrder,
   PurchaseOrderDetail,
   UpdatePurchaseOrderParams,
@@ -112,8 +114,13 @@ export const postPurchaseOrder = async (
   return response.data;
 }
 
-export const confirmPurchaseOrder = async (ordenCompraId: number): Promise<void> => {
-  await v1_api.post(`/compras/ordenes/${ordenCompraId}/aceptar/`);
+export const confirmPurchaseOrder = async (
+  ordenCompraId: number,
+): Promise<ConfirmPurchaseOrderResponse> => {
+  const response = await v1_api.post<ConfirmPurchaseOrderResponse>(
+    `/compras/ordenes/${ordenCompraId}/aceptar/`,
+  );
+  return response.data;
 }
 
 /**
@@ -124,8 +131,8 @@ export const confirmPurchaseOrder = async (ordenCompraId: number): Promise<void>
 export const cancelPurchaseOrder = async ({
   id,
   payload,
-}: CancelPurchaseOrderParams): Promise<PurchaseOrder> => {
-  const response = await v1_api.post<PurchaseOrder>(
+}: CancelPurchaseOrderParams): Promise<CancelPurchaseOrderResponse> => {
+  const response = await v1_api.post<CancelPurchaseOrderResponse>(
     `/compras/ordenes/${id}/cancelar/`,
     payload,
   );

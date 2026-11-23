@@ -676,6 +676,16 @@ export const serverTableRequest = <
 });
 
 /**
+ * Prefijo de TODAS las páginas de una lista en modo servidor (cualquier
+ * filtro, orden o página), sin las demás consultas del recurso (detalle,
+ * KPIs). Para escribir en la caché de la lista el resultado de una acción.
+ */
+export const serverTableListPrefix = (queryKey: readonly unknown[]): unknown[] => [
+  ...queryKey,
+  "list",
+];
+
+/**
  * Llave de la consulta de una lista: `[...prefijo, "list", petición]`. La única
  * fuente de esa forma: la usan `useServerTable` y `serverTableDefaultQuery`, así
  * que un prefetch siempre llena la entrada que la tabla lee.
@@ -683,7 +693,7 @@ export const serverTableRequest = <
 export const serverTableListKey = (
   queryKey: readonly unknown[],
   request: ServerTableRequest,
-): unknown[] => [...queryKey, "list", request];
+): unknown[] => [...serverTableListPrefix(queryKey), request];
 
 /**
  * Llave y consulta de la VISTA POR DEFECTO de una lista (página 1, tamaño por
