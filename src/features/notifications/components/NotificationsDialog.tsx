@@ -3,14 +3,11 @@
 import { useRef, useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { SearchInput } from "@/src/components/SearchInput";
-import {
-  ChevronUpIcon,
-  ChevronDownIcon,
-  CheckCircleIcon,
-} from "../../../components/Icons";
+import { ChevronUpIcon, ChevronDownIcon } from "../../../components/Icons";
 import type { Notificacion } from "../interfaces/notification.interface";
 import type { NotificacionesListState } from "../hooks/useNotificaciones";
 import { refocusOnUnmount } from "../utils/refocusOnUnmount";
+import { MarkReadPill } from "./MarkReadPill";
 import { NotificationTypeIcon } from "./NotificationIcon";
 import { NotificationsListStatus } from "./NotificationsListStatus";
 import { NotificationTimestamp } from "./NotificationTimestamp";
@@ -257,20 +254,12 @@ function NotificationsDialogBody({
                         />
                       </div>
                       {!notificacion.leido && (
-                        <button
+                        <MarkReadPill
                           // El optimista la oculta en el acto: mismo destino de
                           // foco que los demás botones que desaparecen al pulsarse.
-                          ref={refocusOnUnmount(listRef)}
-                          type="button"
+                          focusFallbackRef={listRef}
                           onClick={() => onMarkRead(notificacion)}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-700 px-2 py-1 rounded-full cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors"
-                        >
-                          <CheckCircleIcon
-                            className="w-3 h-3"
-                            aria-hidden="true"
-                          />
-                          Marcar leída
-                        </button>
+                        />
                       )}
                     </div>
                   </div>
