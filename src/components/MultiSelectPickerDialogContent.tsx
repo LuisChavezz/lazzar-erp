@@ -34,6 +34,13 @@ interface MultiSelectPickerDialogContentProps<T> {
    * `SearchableSelectList.pinSelected`, issue #262).
    */
   pinSelected?: boolean;
+  /**
+   * OPCIONAL (apagado por defecto): motivo por el que un ítem NO se puede
+   * marcar, o `null` (ver `SearchableSelectList.getItemDisabledReason`). Un
+   * ítem que quedó marcado y pasa a deshabilitado tras una relectura deja de
+   * contar y no se confirma. Sin la prop, todo se puede marcar, como siempre.
+   */
+  getItemDisabledReason?: (item: T) => string | null;
   /** Etiqueta del contador, en singular y plural (p. ej. "cuenta"/"cuentas"). */
   countLabel?: { singular: string; plural: string };
   /**
@@ -82,6 +89,7 @@ export function MultiSelectPickerDialogContent<T>({
   onConfirm,
   onCancel,
   pinSelected = false,
+  getItemDisabledReason,
   countLabel = { singular: "seleccionado", plural: "seleccionados" },
   isConfirming = false,
   confirmingText = "Guardando…",
@@ -104,7 +112,11 @@ export function MultiSelectPickerDialogContent<T>({
   // `isLoading`/`isError` la lista se sustituye (hay consumidores que pasan `[]`
   // mientras refrescan) y se usa el conjunto tal cual. El React Compiler lo
   // recalcula solo cuando cambian `items` o la selección, no en cada tecla.
-  const listedKeys = new Set(items.map(getKey));
+  //
+  // Un ítem deshabilitado (`getItemDisabledReason`) tampoco cuenta: no se puede
+  // marcar, pero pudo quedar marcado antes de una relectura que lo deshabilitó.
+  const isEnabled = (item: T) => (getItemDisabledReason?.(item) ?? null) === null;
+  const listedKeys = new Set(items.filter(isEnabled).map(getKey));
   const selectedKeys =
     isLoading || isError
       ? tentativeKeys
@@ -135,7 +147,7 @@ export function MultiSelectPickerDialogContent<T>({
   const handleConfirm = () => {
     // Se recorre `items` (no el `Set`) para devolverlos en el ORDEN de la lista,
     // no en el orden en que el usuario fue marcando.
-    const selected = items.filter((item) => tentativeKeys.has(getKey(item)));
+    const selected = items.filter((item) => tentativeKeys.has(getKey(item)) && isEnabled(item));
     if (selected.length === 0) return;
     onConfirm(selected);
   };
@@ -170,6 +182,7 @@ export function MultiSelectPickerDialogContent<T>({
             renderIndicator={renderCheckboxIndicator}
             renderContent={renderContent}
             pinSelected={pinSelected}
+            getItemDisabledReason={getItemDisabledReason}
           />
         </div>
       )}
