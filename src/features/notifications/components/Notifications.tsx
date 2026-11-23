@@ -11,6 +11,7 @@ import {
   type NotificationTarget,
 } from "../constants/notificationTargets";
 import { useNotificaciones } from "../hooks/useNotificaciones";
+import { useNotificacionesSinLeer } from "../hooks/useNotificacionesSinLeer";
 import { useMarcarNotificacionLeida } from "../hooks/useMarcarNotificacionLeida";
 import { useMarcarTodasLeidas } from "../hooks/useMarcarTodasLeidas";
 import { NotificationItem } from "./NotificationItem";
@@ -89,6 +90,9 @@ export const Notifications = () => {
     dataUpdatedAt,
     refetch,
   } = useNotificaciones(isNotifOpen || isDialogOpen);
+
+  const { unreadCount } = useNotificacionesSinLeer();
+  const showBadge = unreadCount !== undefined && unreadCount > 0;
 
   const marcarLeida = useMarcarNotificacionLeida();
   const marcarTodas = useMarcarTodasLeidas();
@@ -238,14 +242,18 @@ export const Notifications = () => {
       )}
 
       {/*
-        Sin indicador de no leídas: no hay conteo ni polling, y la lista solo se
-        trae al abrir, así que cualquier punto en la campana estaría en blanco o
-        mentiría hasta la primera apertura.
+        El badge sale del contador sondeado (`useNotificacionesSinLeer`), no de
+        la lista, que solo se trae con el panel abierto. Oculto con 0 y
+        mientras no hay un conteo válido; el número va en el `aria-label`.
       */}
       <button
         ref={btnRef}
         type="button"
-        aria-label="Abrir panel de notificaciones"
+        aria-label={
+          showBadge
+            ? `Abrir panel de notificaciones (${unreadCount} sin leer)`
+            : "Abrir panel de notificaciones"
+        }
         aria-haspopup="dialog"
         aria-expanded={isNotifOpen}
         aria-controls="notifications-dropdown"
@@ -254,6 +262,14 @@ export const Notifications = () => {
         className="p-2 cursor-pointer text-slate-400 hover:text-sky-600 transition relative outline-none"
       >
         <BellIcon className="w-5 h-5" aria-hidden="true" />
+        {showBadge && (
+          <span
+            aria-hidden="true"
+            className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-4 text-center tabular-nums"
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Dropdown */}

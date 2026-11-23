@@ -40,10 +40,11 @@ export type NotificacionesListState = "loading" | "offline" | "error" | "ready";
  * o el modal están abiertos. Ambas superficies comparten la llave, así que
  * abren sobre la misma caché.
  *
- * `staleTime: 0` es una desviación deliberada del default global de 15 min: sin
- * badge, sin `sin-leer/count` y sin polling, la única oportunidad de traer
- * datos frescos es la apertura, y con el default el usuario podría reabrir
- * durante un cuarto de hora viendo una lista vieja.
+ * `staleTime: 0` es una desviación deliberada del default global de 15 min: la
+ * lista no se sondea (solo el contador, `useNotificacionesSinLeer`, que la
+ * invalida al detectar una nueva), así que la apertura es su momento de traer
+ * datos frescos, y con el default el usuario podría reabrir durante un cuarto
+ * de hora viendo una lista vieja.
  */
 export const useNotificaciones = (enabled: boolean) => {
   const query = useQuery<Notificacion[]>({
