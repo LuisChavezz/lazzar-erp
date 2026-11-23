@@ -12,6 +12,7 @@ import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import { pedidoDetailHref, type PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import {
   getPedidoClasificacionLabel,
   getPedidoEstatusBadge,
@@ -224,9 +225,10 @@ export function createSalesOrderColumns({
       size: 120,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
+        // Día de México, el mismo que la hoja del pedido (`formatShortDate`).
         return (
           <span className="text-[13px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {createdAt ? format(new Date(createdAt), 'd MMM yyyy', { locale: es }) : '—'}
+            {createdAt ? format(toMexicoDayLocalDate(createdAt) ?? new Date(createdAt), 'd MMM yyyy', { locale: es }) : '—'}
           </span>
         );
       },

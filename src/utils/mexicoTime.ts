@@ -185,6 +185,24 @@ export const getMexicoTimeHHMM = (value: string | null | undefined): string => {
   return `${pad(wall.hour)}:${pad(wall.minute)}`;
 };
 
+/**
+ * Día de México de un datetime ISO como un `Date` a medianoche LOCAL, para
+ * formatearlo con date-fns (que formatea en la zona del navegador) sin que el
+ * día se corra: "2026-11-01T00:30:00-06:00" es el 1 de noviembre también con
+ * el navegador en Los Ángeles. `null` si no hay valor o no parsea.
+ */
+export const toMexicoDayLocalDate = (value: string | null | undefined): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const wall = toWallClock(date);
+  return new Date(wall.year, wall.month - 1, wall.day);
+};
+
 /** Quincena en curso en México (año, mes, mitad), sin importar la zona del navegador. */
 export const getMexicoCurrentQuincena = (now: Date = new Date()): Quincena =>
   quincenaOfDateKey(getMexicoTodayDate(now));

@@ -25,6 +25,7 @@ import {
 } from "../constants/productionOrderStatus";
 import { opListPedidoRefs, pedidoRefLabel } from "../utils/opPedidos";
 import { PreOrdenLink } from "./PreOrdenLink";
+import { formatShortDate } from "@/src/utils/formatDate";
 
 const columnHelper = createColumnHelper<ProductionOrderListItem>();
 
@@ -215,10 +216,10 @@ export function getProductionOrderColumns(
       header: 'Fecha inicio',
       size: 130,
       cell: ({ getValue }) => {
-        const fecha = new Date(getValue());
+        // Día de México, el mismo que el detalle de la OP (`formatShortDate`).
         return (
           <span className="text-xs tabular-nums text-slate-600 dark:text-slate-400 whitespace-nowrap">
-            {fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {formatShortDate(getValue())}
           </span>
         );
       },
@@ -251,7 +252,7 @@ export function getProductionOrderColumns(
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >
-            {fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {formatShortDate(val)}
           </span>
         );
       },

@@ -17,6 +17,7 @@ import {
   PedidoRangeHeaderFilter,
 } from './PedidoHeaderFilters';
 import { GRAN_TOTAL_RANGE_OPTIONS } from '../utils/pedidoListParams';
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 
 /**
  * Columnas de "Pedidos" vistos desde Compras/SCM (`GET /ventas/pedidos/`,
@@ -142,9 +143,10 @@ export function createProcurementOrderColumns({
       size: 120,
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
+        // Día de México, el mismo que la hoja del pedido (`formatShortDate`).
         return (
           <span className="text-[13px] text-slate-600 dark:text-slate-300 tabular-nums whitespace-nowrap">
-            {createdAt ? format(new Date(createdAt), 'd MMM yyyy', { locale: es }) : '—'}
+            {createdAt ? format(toMexicoDayLocalDate(createdAt) ?? new Date(createdAt), 'd MMM yyyy', { locale: es }) : '—'}
           </span>
         );
       },
