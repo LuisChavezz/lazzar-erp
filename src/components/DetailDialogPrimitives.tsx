@@ -109,6 +109,8 @@ export const Section = ({
  *   filete queda por debajo de su propia línea etiqueta/valor. Con `"start"`
  *   todas las etiquetas arrancan a la misma altura y cada filete se ancla a la
  *   línea etiqueta/valor de su dato (ver `HeaderStat`), no al centro del bloque.
+ *   Supone que la primera línea de cada dato es texto (etiqueta + valor), no un
+ *   control editable en línea, que es más alto y descolocaría el filete.
  */
 export const HeaderStatRow = ({
   children,
@@ -135,6 +137,9 @@ export const HeaderStatRow = ({
  * centro de la línea etiqueta/valor (etiqueta de 16.5px + primera línea del
  * valor de 19.5px = 36px). En un dato de una sola línea ambos centros
  * coinciden, así que solo cambia el filete de un dato más alto.
+ * El offset se calcula como `(11px + 13px) * 0.75`: la mitad de ambos tamaños
+ * por la altura de línea heredada de 1.5. Si cambian `text-[11px]` o
+ * `text-[13px]` de abajo, o su altura de línea, hay que ajustarlo.
  */
 export const HeaderStat = ({
   label,
@@ -145,7 +150,7 @@ export const HeaderStat = ({
   children: React.ReactNode;
   bold?: boolean;
 }) => (
-  <div className="relative shrink-0 before:absolute before:left-[-25px] before:top-1/2 group-data-[align=start]/header-stat-row:before:top-[18px] before:-translate-y-1/2 before:hidden sm:before:block before:w-px before:h-6 before:bg-slate-200 dark:before:bg-white/10">
+  <div className="relative shrink-0 before:absolute before:left-[-25px] before:top-1/2 group-data-[align=start]/header-stat-row:before:top-[calc((11px_+_13px)*0.75)] before:-translate-y-1/2 before:hidden sm:before:block before:w-px before:h-6 before:bg-slate-200 dark:before:bg-white/10">
     <span className="block text-[11px] text-slate-400 dark:text-slate-500">
       {label}
     </span>
