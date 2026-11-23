@@ -57,6 +57,13 @@ export interface CxcInvoiceCfdiReasons {
  */
 export const CXC_NOT_COBRABLE_FALLBACK_REASON = "Factura cancelada o en proceso de cancelación";
 
+/**
+ * Pone en mayúscula SOLO la primera letra, para que una misma frase de acción
+ * sirva a media oración y al inicio de una (`withCauseLabel`). No es
+ * `src/utils/capitalize`, que pasa el resto a minúsculas («CFDI» → «cfdi»).
+ */
+export const upperFirst = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+
 const ELIGIBLE: CxcInvoiceCfdiEligibility = { kind: "eligible" };
 
 /**
