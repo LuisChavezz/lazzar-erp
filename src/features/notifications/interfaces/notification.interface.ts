@@ -64,6 +64,20 @@ export interface Notificacion {
   created_at: string;
 }
 
+/**
+ * Respuesta de `GET /notificaciones/sin-leer/count/`. Ambos campos cuentan
+ * solo las NO leídas del usuario de la sesión.
+ */
+export interface NotificacionesSinLeer {
+  count: number;
+  /**
+   * `id` máximo entre las no leídas; `0` sin ninguna. Los `id` solo crecen,
+   * así que una notificación nueva siempre lo sube, y marcar como leída solo
+   * puede bajarlo.
+   */
+  ultima_notificacion_id: number;
+}
+
 /** Respuesta de `POST /notificaciones/marcar-todas-leidas/`. */
 export interface MarcarTodasLeidasResponse {
   actualizadas: number;
