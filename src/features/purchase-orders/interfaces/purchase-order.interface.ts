@@ -388,7 +388,10 @@ export type CancelPurchaseOrderResponse = Pick<
  * que llega en `null` (EC-927).
  */
 export interface ConfirmPurchaseOrderResponse {
-  orden_compra: Pick<PurchaseOrder, "id" | "estatus" | "folio" | "fecha_autorizacion">;
+  orden_compra: Pick<
+    PurchaseOrder,
+    "id" | "estatus" | "estatus_label" | "folio" | "fecha_autorizacion"
+  >;
 }
 
 /**
