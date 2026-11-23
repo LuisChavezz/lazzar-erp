@@ -27,6 +27,7 @@ export function ReceiptDetailDialog({
     data: receipt,
     isLoading,
     isInitialError: isError,
+    isNotFound,
     error,
   } = useReceiptDetail(receiptId);
 
@@ -86,6 +87,14 @@ export function ReceiptDetailDialog({
     >
       {/* ── Estado: cargando ──────────────────────────────────────────────── */}
       {isLoading && <Loader title="Cargando detalle de la recepción..." className="py-16" />}
+
+      {/* ── Estado: no disponible (404 definitivo: dada de baja o de otra empresa) ── */}
+      {isNotFound && (
+        <ErrorState
+          title="Recepción no disponible"
+          message="La recepción no existe o no tienes acceso a ella."
+        />
+      )}
 
       {/* ── Estado: error ─────────────────────────────────────────────────── */}
       {isError && (

@@ -1,4 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getReceiptDetail } from "../services/actions";
 import type { ReceiptDetail } from "../interfaces/receipt.interface";
 
@@ -16,9 +17,13 @@ export const receiptDetailQueryKey = (id: number | null) => ["receipt-detail", i
  * cargado y avisa por toast, en vez de cambiar el diálogo a su estado de error
  * (y quitarle el botón "Descargar PDF") con los datos todavía a mano. Solo una
  * carga inicial fallida es error (`isInitialError`), como antes.
+ *
+ * El 404 es DEFINITIVO (EC-925): una recepción dada de baja o de otra empresa
+ * no se reintenta ni avisa por toast, y su detalle ya cargado se descarta
+ * (`isNotFound`) en vez de seguir mostrándose con `puede_cancelar: true`.
  */
 export const useReceiptDetail = (id: number | null) => {
-  const { data, isLoading, isInitialError, error, refetch } = useGuardedQuery<ReceiptDetail>(
+  const { data, isLoading, isInitialError, isDefinitiveError, error, refetch } = useGuardedQuery<ReceiptDetail>(
     {
       queryKey: receiptDetailQueryKey(id),
       queryFn: () => getReceiptDetail(id as number),
@@ -27,8 +32,9 @@ export const useReceiptDetail = (id: number | null) => {
     {
       toastId: "receipt-detail-refetch-error",
       errorMessage: "No se pudo actualizar la recepción. Mostrando datos anteriores.",
+      isDefinitiveError: isNotFoundError,
     },
   );
 
-  return { data, isLoading, isInitialError, error, refetch };
+  return { data, isLoading, isInitialError, isNotFound: isDefinitiveError, error, refetch };
 };
