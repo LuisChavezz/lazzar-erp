@@ -12,9 +12,16 @@
  * 400. Filtros: `?leido=true|false|1|0` y `?modulo=` (sin distinguir
  * mayúsculas). Viene ordenado por `created_at DESC`, pero SIN desempate por
  * `id`: las filas se crean con `bulk_create`, así que el orden entre
- * timestamps idénticos no es determinista. `?search=` y `?ordering=` los
- * acepta DRF pero no hacen nada. El cliente usa hoy la forma sin `?limit=`
- * (`getNotificaciones`) y corta a las N más recientes por su cuenta.
+ * timestamps idénticos no es determinista. `?ordering=` SÍ aplica (el
+ * `OrderingFilter` global de DRF; la vista no declara `ordering_fields`)
+ * sobre los campos del serializer: `id`, `titulo`, `mensaje`, `modulo`,
+ * `tipo`, `leido`, `leido_at`, `data` y `created_at`, con `-` para
+ * descendente. REEMPLAZA el orden por defecto, tampoco agrega desempate por
+ * `id`, y un campo fuera de esa lista se ignora sin error (queda el
+ * `created_at DESC`). `?search=` lo acepta pero no hace nada (la vista no
+ * declara `search_fields`). El cliente usa hoy la forma sin `?limit=` ni
+ * `?ordering=` (`getNotificaciones`) y corta a las N más recientes por su
+ * cuenta.
  *
  * `GET /notificaciones/stream/` (SSE) ya no existe (nucleo-erp #1315); la
  * campana sondea `sin-leer/count/` (EC-555).

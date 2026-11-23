@@ -18,8 +18,9 @@ export const getNotificacionesSinLeer = async (
 
 /**
  * Historial completo de notificaciones del usuario de la sesión.
- * Devuelve un array plano (ver la nota del contrato en `interfaces/`): no hay
- * paginación ni parámetro de límite, el recorte lo hace el cliente.
+ * Sin `?limit=` el endpoint devuelve un array plano con todo el historial (ver
+ * la nota del contrato en `interfaces/`); no se pide paginado ni con
+ * `?ordering=`, y el recorte lo hace el cliente.
  */
 export const getNotificaciones = async (): Promise<Notificacion[]> => {
   const response = await v1_api.get<Notificacion[]>("/notificaciones/");
