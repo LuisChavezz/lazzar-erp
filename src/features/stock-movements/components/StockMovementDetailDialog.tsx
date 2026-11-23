@@ -7,13 +7,17 @@ import {
   useStockMovementDetail,
   type StockMovementIdSource,
 } from "@/src/features/stock-movements/hooks/useStockMovementDetail";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { MOVEMENT_TYPE_CONFIG } from "../constants/movementTypes";
 import type { StockMovementDetailItem } from "@/src/features/stock-movements/interfaces/stock-movements.interface";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
+// En la zona de México, como la fila de la tabla (`formatShortDate` +
+// `formatShortTime`): el mismo movimiento no puede verse a otra hora aquí.
 const formatDateTime = (iso: string) =>
   new Date(iso).toLocaleString("es-MX", {
+    timeZone: MEXICO_TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",

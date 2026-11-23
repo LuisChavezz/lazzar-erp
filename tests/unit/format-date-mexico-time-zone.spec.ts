@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { SURTIDO_PEDIDO_EXPORT_COLUMNS } from "@/src/features/order-fulfillment/utils/surtidoPedidoExport";
 import type { SurtidoPedido } from "@/src/features/order-fulfillment/interfaces/order-fulfillment.interface";
 import {
@@ -23,7 +24,7 @@ import {
   toLocalMidnightIso,
 } from "@/src/utils/formatDate";
 import { exportDate } from "@/src/utils/listExport";
-import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { MEXICO_TIME_ZONE, toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 
 /*
   EC-931: los helpers de `formatDate.ts` que muestran una hora (o el día de un
@@ -370,6 +371,45 @@ test.describe("filtros de mes de encabezado", () => {
           expect(monthFilterKey(localMonthFilterValue(value))).toBe(oldMonthKey(value));
         }
       });
+    }
+  });
+});
+
+test.describe("`toMexicoDayLocalDate`: la fecha de los listados de pedidos (date-fns)", () => {
+  const cell = (value: string) =>
+    format(toMexicoDayLocalDate(value) ?? new Date(value), "d MMM yyyy", { locale: es });
+
+  test("en México sale lo mismo que antes (`format(new Date(created_at))`)", () => {
+    for (const { value } of DATETIME_CASES) {
+      expect(cell(value)).toBe(format(new Date(value), "d MMM yyyy", { locale: es }));
+    }
+  });
+
+  for (const zone of OTHER_ZONES) {
+    test(`con el navegador en ${zone} sale el día de México, como la hoja del pedido`, () => {
+      withProcessTimeZone(zone, () => {
+        for (const { value } of DATETIME_CASES) {
+          // Mismo día que `formatShortDate` (que pone el día a 2 dígitos).
+          const [dia, mes, anio] = formatShortDate(value).split(" ");
+          expect(cell(value)).toBe(`${Number(dia)} ${mes} ${anio}`);
+        }
+      });
+    });
+  }
+
+  test("null si no hay valor o no parsea", () => {
+    for (const value of [null, undefined, "", "sin fecha"]) {
+      expect(toMexicoDayLocalDate(value)).toBeNull();
+    }
+  });
+});
+
+test.describe("celdas de fecha de la lista de órdenes de producción", () => {
+  test("en México `formatShortDate` da lo mismo que el `toLocaleDateString` sin zona de antes", () => {
+    for (const { value } of DATETIME_CASES) {
+      expect(formatShortDate(value)).toBe(
+        new Date(value).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }),
+      );
     }
   });
 });

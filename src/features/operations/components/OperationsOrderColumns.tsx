@@ -26,6 +26,7 @@ import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/p
 import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
 import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
 import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/constants/pedidoDetailOrigins";
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import {
   PedidoCatalogHeaderFilter,
   PedidoConfirmadoHeaderFilter,
@@ -418,9 +419,10 @@ export function buildOperationsOrderColumns(
       ),
       cell: ({ row }) => {
         const createdAt = row.original.created_at;
+        // Día de México, el mismo que la hoja del pedido (`formatShortDate`).
         return (
           <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {createdAt ? format(new Date(createdAt), "d MMM yyyy", { locale: es }) : "—"}
+            {createdAt ? format(toMexicoDayLocalDate(createdAt) ?? new Date(createdAt), "d MMM yyyy", { locale: es }) : "—"}
           </span>
         );
       },
