@@ -36,17 +36,18 @@ export function PackingDetailByIdDialog({
   open,
   onOpenChange,
 }: PackingDetailByIdDialogProps) {
-  const { data: packing, isLoading, isError, error } = usePackingDetail(orderId);
+  const { packing, isLoading, isNotFound, error } = usePackingDetail(orderId);
 
-  const subtitle = isLoading
-    ? "Cargando…"
-    : isError || !packing
-      ? "Error al cargar"
-      : packing.folio;
+  // Sin id válido la consulta queda apagada (`usePackingDetail`): ni carga ni error.
+  const hasId = orderId !== null && orderId > 0;
+
+  // Un refetch fallido CONSERVA `packing` (solo toast, `useGuardedQuery`): el
+  // cuerpo y sus acciones siguen montados; sin datos se muestra el error.
+  const subtitle = packing ? packing.folio : !hasId ? "" : isLoading ? "Cargando…" : "Error al cargar";
 
   // "Descargar PDF" (EC-858) y "Cancelar" (EC-945) junto al título, una vez
-  // cargado el embarque. Nada accionable mientras carga o falla.
-  const pdfAction = !isLoading && !isError && packing ? <PackingHeaderActions packing={packing} /> : null;
+  // cargado el embarque. Nada accionable mientras carga o falla sin datos.
+  const pdfAction = packing ? <PackingHeaderActions packing={packing} /> : null;
 
   return (
     <MainDialog
@@ -70,20 +71,21 @@ export function PackingDetailByIdDialog({
         </div>
       }
     >
-      {isLoading ? (
+      {packing ? (
+        <PackingDetailContent packing={packing} />
+      ) : !hasId ? null : isLoading ? (
         <Loader title="Cargando detalle del embarque..." className="py-16" />
-      ) : isError || !packing ? (
-        // Error de red o consulta resuelta sin registro (404 fuera de tenant / id
-        // inexistente): el backend fusiona ambos en un 404, un solo estado basta.
+      ) : (
+        // 404 definitivo (no existe o fuera de alcance: el backend fusiona ambos)
+        // o carga inicial fallida sin datos en caché.
         <ErrorState
           title="No se pudo cargar el embarque"
-          message={extractErrorMessage(
-            error,
-            "No existe, no tienes acceso a él o falló la conexión.",
-          )}
+          message={
+            isNotFound
+              ? "No existe o no tienes acceso a él."
+              : extractErrorMessage(error, "No existe, no tienes acceso a él o falló la conexión.")
+          }
         />
-      ) : (
-        <PackingDetailContent packing={packing} />
       )}
     </MainDialog>
   );
