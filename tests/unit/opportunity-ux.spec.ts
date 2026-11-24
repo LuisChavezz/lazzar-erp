@@ -129,6 +129,21 @@ test.describe("nombre del cliente (EC-810)", () => {
       { value: "24", label: "Cliente #24 (inactivo)" },
     ]);
   });
+
+  test("un cliente sin nombres en null nunca recibe el id de homónimo (EC-940)", () => {
+    const options = buildOpportunityClienteFilterOptions([
+      { id: 31, razon_social: null, nombre: null, activo: true },
+      { id: 32, razon_social: null, nombre: null, activo: true },
+      { id: 33, razon_social: "LAZZAR", nombre: "A", activo: true },
+    ]);
+    expect(options).toEqual([
+      { value: undefined, label: "Todos" },
+      { value: "31", label: "Cliente no visible" },
+      { value: "32", label: "Cliente no visible" },
+      { value: "33", label: "LAZZAR" },
+    ]);
+    for (const option of options) expect(option.label).not.toMatch(/#\d/);
+  });
 });
 
 /** Lo que el aviso mira de una lectura (registro o detalle). */

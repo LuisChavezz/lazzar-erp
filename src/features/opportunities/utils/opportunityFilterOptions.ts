@@ -2,6 +2,11 @@ import type { ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
 import { withHomonymClienteIds } from "@/src/features/quotes/utils/quoteClienteLabel";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
+import {
+  CLIENTE_NO_VISIBLE_LABEL,
+  getOpportunityClienteLabel,
+  isOpportunityClienteHidden,
+} from "./opportunityClienteLabel";
 
 /**
  * Opciones de los filtros de encabezado del listado de oportunidades. Puras:
@@ -50,10 +55,14 @@ interface CustomerOptionSource {
 
 /**
  * Filtro de CLIENTE desde el catálogo de clientes, rotulado como la celda
- * (EC-810): la razón social tal cual; en blanco, el nombre; sin ninguno,
- * `Cliente #<id>`. Si dos clientes comparten la etiqueta, solo esos llevan su
- * id para distinguirlos (`withHomonymClienteIds`, la MISMA regla que el filtro
- * de cotizaciones).
+ * (`getOpportunityClienteLabel`, EC-810): la razón social tal cual; en blanco,
+ * el nombre; sin ninguno, `Cliente #<id>`. Si dos clientes comparten la
+ * etiqueta, solo esos llevan su id para distinguirlos (`withHomonymClienteIds`,
+ * la MISMA regla que el filtro de cotizaciones).
+ *
+ * El catálogo solo trae clientes que el usuario ve; aun así, uno sin `nombre`
+ * se rotula como la celda de un cliente oculto ("Cliente no visible", EC-940) y
+ * NO pasa por la regla de homónimos, que le pegaría el id.
  *
  * `Customer.id` está tipado como string pero el backend manda un número: el
  * valor es su forma en texto, que es como viaja en la URL.
@@ -61,13 +70,21 @@ interface CustomerOptionSource {
 export const buildOpportunityClienteFilterOptions = (
   customers: readonly CustomerOptionSource[]
 ): ColumnFilterOption[] => {
-  const entries = customers.map((customer) => {
-    const id = String(Number(customer.id));
-    return {
-      value: id,
-      label: customer.razon_social?.trim() || customer.nombre?.trim() || `Cliente #${id}`,
+  const visibles: OpportunityCatalogEntry[] = [];
+  const ocultos: OpportunityCatalogEntry[] = [];
+  for (const customer of customers) {
+    const id = Number(customer.id);
+    const cliente = {
+      cliente: id,
+      cliente_razon_social: customer.razon_social ?? null,
+      cliente_nombre: customer.nombre ?? null,
+    };
+    const entry = {
+      value: String(id),
+      label: getOpportunityClienteLabel(cliente) ?? CLIENTE_NO_VISIBLE_LABEL,
       active: customer.activo,
     };
-  });
-  return sortOpportunityCatalogOptions(withHomonymClienteIds(entries));
+    (isOpportunityClienteHidden(cliente) ? ocultos : visibles).push(entry);
+  }
+  return sortOpportunityCatalogOptions([...withHomonymClienteIds(visibles), ...ocultos]);
 };
