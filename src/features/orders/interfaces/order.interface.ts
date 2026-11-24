@@ -299,6 +299,33 @@ export interface PedidoListItem {
   piezas_surtidas?: number;
   /** Vendedor de la cotización de origen; `null` si el pedido no viene de una (EC-571). */
   vendedor_nombre: string | null;
+  /**
+   * Retenido por Mesa de Control (`retener/`, nucleo-erp#1352): congelado sin
+   * cancelarse. El listado solo trae la bandera y el motivo; la fecha y quién
+   * lo retuvo vienen en el detalle (`PedidoRetencion`). Opcionales por
+   * despliegues anteriores del backend: ausente se lee como no retenido.
+   */
+  retenido?: boolean;
+  /** `""` sin retención. */
+  motivo_retencion?: string;
+}
+
+/**
+ * Retención de Mesa de Control en el DETALLE (`GET /ventas/pedidos/{id}/`) y en
+ * la respuesta de `retener/` y `liberar/` (nucleo-erp#1352, #1369). Solo
+ * cambia por esas dos acciones (de solo lectura en `PATCH` y en
+ * `editar-mesa-control/`) y no toca `estatus`. Sin retención: `retenido:
+ * false`, `motivo_retencion: ""` y los otros tres `null`.
+ */
+export interface PedidoRetencion {
+  retenido: boolean;
+  motivo_retencion: string;
+  /** ISO 8601 con hora. */
+  fecha_retencion: string | null;
+  /** Id del usuario que lo retuvo. */
+  retenido_por: number | null;
+  /** Nombre completo o correo de quien lo retuvo; `null` si no hay. */
+  retenido_por_nombre: string | null;
 }
 
 /**
@@ -559,4 +586,13 @@ export interface PedidoDetail extends Order {
    */
   fecha_entrega_min: string | null;
   fecha_entrega_max: string | null;
+  /**
+   * Retención de Mesa de Control (ver `PedidoRetencion`). Opcionales por
+   * despliegues anteriores del backend: ausentes se leen como no retenido.
+   */
+  retenido?: PedidoRetencion["retenido"];
+  motivo_retencion?: PedidoRetencion["motivo_retencion"];
+  fecha_retencion?: PedidoRetencion["fecha_retencion"];
+  retenido_por?: PedidoRetencion["retenido_por"];
+  retenido_por_nombre?: PedidoRetencion["retenido_por_nombre"];
 }

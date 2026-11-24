@@ -19,6 +19,10 @@ import type {
   PedidoCancelResponse,
 } from "../interfaces/pedido-cancel.interface";
 import type {
+  PedidoRetenerPayload,
+  PedidoRetencionResponse,
+} from "../interfaces/pedido-retencion.interface";
+import type {
   VincularSkuMuestraPayload,
   VincularSkuMuestraResponse,
 } from "../interfaces/pedido-sku-muestra.interface";
@@ -337,6 +341,35 @@ export const cancelPedido = async (
   const response = await v1_api.post<PedidoCancelResponse>(
     `/ventas/pedidos/${id}/cancelar/`,
     payload,
+  );
+  return response.data;
+};
+
+/**
+ * Retiene un pedido (`POST /ventas/pedidos/{id}/retener/`, motivo obligatorio):
+ * lo congela SIN cancelarlo. Mientras siga retenido no sale en los onboardings
+ * y cualquier alta sobre él (picking, packing, despacho, OB, OR, OCM, OP)
+ * responde 400 con el motivo. Ver `PedidoRetencionResponse`.
+ */
+export const retenerPedido = async (
+  id: number,
+  payload: PedidoRetenerPayload,
+): Promise<PedidoRetencionResponse> => {
+  const response = await v1_api.post<PedidoRetencionResponse>(
+    `/ventas/pedidos/${id}/retener/`,
+    payload,
+  );
+  return response.data;
+};
+
+/**
+ * Libera un pedido retenido (`POST /ventas/pedidos/{id}/liberar/`): sigue su
+ * flujo donde iba. El backend admite un `comentario` opcional que solo guarda
+ * en su auditoría; no se envía.
+ */
+export const liberarPedido = async (id: number): Promise<PedidoRetencionResponse> => {
+  const response = await v1_api.post<PedidoRetencionResponse>(
+    `/ventas/pedidos/${id}/liberar/`,
   );
   return response.data;
 };
