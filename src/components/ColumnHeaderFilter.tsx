@@ -1,6 +1,14 @@
 'use client';
 
-import { useContext, useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type ComponentType,
+  type SVGProps,
+} from 'react';
 import type { Column } from '@tanstack/react-table';
 import { FilterIcon } from './Icons';
 import { DataTableModeContext, type DataTableServerFilters } from './DataTableModeContext';
@@ -21,6 +29,12 @@ interface ColumnHeaderFilterProps<TData> {
    * `server.filters`) el ícono no se pinta, porque no hay a qué ligarlo.
    */
   serverFilterKey?: string;
+  /**
+   * Ícono del botón, en lugar del embudo: para distinguir un segundo filtro en
+   * el mismo encabezado (p. ej. el candado de la retención junto al embudo de
+   * la confirmación en Folio). Mismo tamaño y mismos estilos activo/inactivo.
+   */
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
   /**
    * Variante con buscador, para catálogos grandes (clientes, vendedores). Por
    * defecto `false`: el menú de siempre, sin ningún cambio. Con `true` (o un
@@ -124,6 +138,7 @@ export function ColumnHeaderFilter<TData>({
   options: optionsProp,
   label,
   serverFilterKey: serverFilterKeyProp,
+  icon: Icon = FilterIcon,
   searchable = false,
   serverSearch,
   isLoading = false,
@@ -367,7 +382,7 @@ export function ColumnHeaderFilter<TData>({
         aria-haspopup="menu"
         title={activeLabel ? `Filtro activo: ${activeLabel}` : `Filtrar por ${label}`}
       >
-        <FilterIcon className="w-3 h-3" />
+        <Icon className="w-3 h-3" aria-hidden="true" />
       </button>
       {isOpen && !isSearchable && (
         <div
