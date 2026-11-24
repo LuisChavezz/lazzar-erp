@@ -4,12 +4,21 @@ import {
   isSignOutUnderway,
   signOutToLogin,
 } from "@/src/features/auth/utils/clientSessionState";
+import { DEFAULT_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 
 // Extiende la config de axios para soportar el flag de reintento y evitar bucles
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+/**
+ * `timeout`: tope por defecto de cada petición (EC-939); una llamada lenta pasa
+ * el suyo (`SLOW_REQUEST_TIMEOUT_MS`) y el reintento tras el refresh lo conserva,
+ * porque reenvía la misma config. `clarifyTimeoutError`: un timeout llega con
+ * código `ETIMEDOUT` y no con `ECONNABORTED`, que es también el de una petición
+ * que aborta el navegador; ver `isRequestTimeoutError`. Axios fusiona
+ * `transitional` con sus valores por defecto, así que el parseo de JSON no cambia.
+ */
 const v1_api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
@@ -17,6 +26,8 @@ const v1_api = axios.create({
     "Content-Type": "application/json",
   },
   proxy: false,
+  timeout: DEFAULT_REQUEST_TIMEOUT_MS,
+  transitional: { clarifyTimeoutError: true },
 });
 
 // Estado del mutex de refresco — módulo-nivel para ser compartido entre llamadas concurrentes
@@ -49,6 +60,8 @@ const forceSignOut = (): void => {
  *   2. Las solicitudes concurrentes que también reciban 401 se encolan y se reintentan
  *      automáticamente cuando el refresh termine con éxito.
  *   3. Si el refresh falla (refresh token expirado), cierra la sesión (`forceSignOut`).
+ *      Un refresh que vence el tope de `api` (EC-939) falla igual: rechaza la cola y
+ *      cierra la sesión, así que ninguna solicitud encolada espera más que ese tope.
  *   4. Si el retry también falla con 401 (_retry = true), cierra la sesión directamente.
  *   5. Si ya hay un cierre de sesión en marcha en esta carga (navegando, o detenido en
  *      la pantalla de error de la guarda), no intenta otro refresh: rechaza sin red.
