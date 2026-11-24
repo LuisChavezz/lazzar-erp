@@ -33,3 +33,11 @@ export const isCancelledDocEstatus = (estatus: string | null | undefined): boole
 /** Cuántos de `items` están cancelados, leyendo su estatus con `estatusOf`. */
 export const countCancelledDocs = <T>(items: readonly T[], estatusOf: (item: T) => string | null | undefined): number =>
   items.filter((item) => isCancelledDocEstatus(estatusOf(item))).length;
+
+/**
+ * Cancelados que un bloque con la forma común (`FilaBlock`) cuenta aparte: solo
+ * si el bloque lo pide (Embarques, EC-945). Cotización, OC y órdenes de
+ * producción siguen contando todas sus filas, como antes.
+ */
+export const filaBlockCancelledCount = (filas: readonly PedidoDocumentoFila[], countCancelledApart: boolean): number =>
+  countCancelledApart ? countCancelledDocs(filas, filaEstatus) : 0;

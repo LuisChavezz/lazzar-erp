@@ -3,6 +3,7 @@ import { resolveInvoiceBack } from "@/src/features/invoicing/constants/invoiceDe
 import {
   cobroRowKey,
   countCancelledDocs,
+  filaBlockCancelledCount,
   filaFolio,
   isCancelledDocEstatus,
 } from "@/src/features/orders/utils/pedidoDocumentos";
@@ -57,4 +58,13 @@ test("EC-945: los surtidos, embarques y envíos cancelados se cuentan aparte", (
   expect(isCancelledDocEstatus(undefined)).toBe(false);
   const despachos = [{ estado: "ACTIVO" }, { estado: "CANCELADO" }, {}] as { estado?: string }[];
   expect(countCancelledDocs(despachos, (d) => d.estado)).toBe(1);
+});
+
+test("EC-945: solo Embarques cuenta aparte sus cancelados; cotización, OC y órdenes cuentan todo", () => {
+  const filas = [
+    { id: 1, folio: "OC-1", estatus: "CANCELADA", estatus_label: "Cancelada", fecha: null },
+    { id: 2, folio: "OC-2", estatus: "AUTORIZADA", estatus_label: "Autorizada", fecha: null },
+  ] satisfies PedidoDocumentoFila[];
+  expect(filaBlockCancelledCount(filas, false)).toBe(0);
+  expect(filaBlockCancelledCount(filas, true)).toBe(1);
 });
