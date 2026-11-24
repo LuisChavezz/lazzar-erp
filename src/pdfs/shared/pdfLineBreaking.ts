@@ -18,6 +18,7 @@
  * separación (el diccionario de textkit), así que un pedazo entre dos de ellos
  * más ancho que la columna se sale igual que con la separación por omisión
  * ("NO/AMAR-" en una columna de talla de 33 pt).
+ *
  * Un `hyphenationCallback` que devolviera palabras enteras (como el de los
  * encabezados de la base) la quitaría también para esas palabras.
  *
