@@ -7,6 +7,7 @@ import { pdfStyles } from "@/src/pdfs/QuotePdfStyles";
 import { BASE_PDF_COLORS } from "@/src/pdfs/shared/BasePdfColors";
 import { basePdfStyles } from "@/src/pdfs/shared/BasePdfStyles";
 import { elementsOf, type TreeElement } from "./support/pdfElementTree";
+import { layoutPdfPages } from "./support/pdfLayout";
 
 /**
  * Celdas de la tabla de productos del PDF de cotización (EC-952). La cotización
@@ -89,5 +90,39 @@ test.describe("Margen lateral de las celdas del PDF de cotización (EC-952)", ()
     const base = basePdfStyles(BASE_PDF_COLORS);
     expect(base.tableHeader.paddingHorizontal).toBe(8);
     expect(base.tableRow.paddingHorizontal).toBe(8);
+  });
+});
+
+/**
+ * Cómo se parten los renglones del producto (EC-952). Por omisión react-pdf
+ * separa en sílabas aunque la palabra quepa entera en el renglón siguiente: en
+ * la cotización #308 "BLUSA RAYAS GRUESAS DAMA MANGA LARGA" salía
+ * "…DAMA MAN-" / "GA LARGA". Las palabras se parten solo si no caben enteras
+ * en su columna. MAQUETA la cotización real: la decisión es de
+ * `@react-pdf/layout`, no de los estilos.
+ */
+const layoutQuote = (quote: QuoteById) =>
+  layoutPdfPages(QuotePdfDocument({ quote, model: buildQuotePdfModel(quote, "MXN") }));
+
+test.describe("Renglones del producto en el PDF de cotización (EC-952)", () => {
+  test("se parte entre palabras cuando la palabra cabe en el renglón siguiente", async () => {
+    test.setTimeout(60_000);
+    // Con los anchos de la tabla, la separación por omisión deja
+    // "…CORTA CA-" / "BALLERO PIQUE" e "…IMPER-" / "MEABLE UNISEX".
+    const [page] = await layoutQuote(quoteWith("PLAYERA POLO MANGA CORTA CABALLERO PIQUE", "10878012XC"));
+    expect(page).toContain("CABALLERO");
+    expect(page).not.toMatch(/CA-\s*BALLERO/);
+    const [other] = await layoutQuote(quoteWith("CHAMARRA ROMPEVIENTOS IMPERMEABLE UNISEX", "10878012XC"));
+    expect(other).toContain("IMPERMEABLE");
+    expect(other).not.toMatch(/IMPER-\s*MEABLE/);
+  });
+
+  test("una palabra más ancha que su columna se sigue partiendo en vez de salirse", async () => {
+    test.setTimeout(60_000);
+    const word = "ELECTROENCEFALOGRAFISTAINTERCONTINENTALES";
+    const [page] = await layoutQuote(quoteWith(`CAMISA ${word}`, "10878012XC"));
+    expect(page).not.toContain(word);
+    expect(page).toMatch(/ELECTRO\w*-/);
+    expect(page).toContain("10878012XC");
   });
 });
