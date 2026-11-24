@@ -25,7 +25,10 @@ export interface SpecialOrderListItem {
   cliente_nombre: string | null;
   /** Código crudo (`A`…`F`, `X`) o `null`; la etiqueta vive en `pedidoStatus`. */
   clasificacion: string | null;
-  /** Datetime ISO con offset (medianoche local, p. ej. `…T00:00:00-06:00`) o `null`. */
+  /**
+   * Datetime ISO con offset (medianoche de México, p. ej. `…T00:00:00-06:00`) o
+   * `null`; se lee como día de México (`formatFechaConfirmacion`).
+   */
   fecha_confirmacion: string | null;
   /**
    * Avance del alta de SKU, para leerlo sin entrar al detalle. Opcionales:

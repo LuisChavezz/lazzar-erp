@@ -20,9 +20,9 @@ interface OrderFechaConfirmacionFieldProps {
  * la fecha formateada (o "—") y, solo si se puede editar, un lápiz que muestra
  * el editor existente (`PedidoFechaConfirmacionField`, sin tocar).
  *
- * El día se lee con `parseLocalDate`, el MISMO parseo local que usa el editor,
- * para que la lectura y el `<input type="date">` muestren el mismo día
- * calendario (una fecha sin hora no se interpreta como medianoche UTC).
+ * El valor se guarda como medianoche de México y se lee como día de México:
+ * la lectura (`formatFechaConfirmacion`) y el `<input type="date">` del editor
+ * (`toFechaConfirmacionInputValue`) muestran el mismo día en cualquier zona.
  *
  * Ciclo del editor:
  * - Guardado correcto → vuelve a lectura. `mutateAsync` resuelve tras releer

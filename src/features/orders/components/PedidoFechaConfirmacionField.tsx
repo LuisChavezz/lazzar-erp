@@ -86,6 +86,14 @@ export function PedidoFechaConfirmacionField({
           toast.error("La fecha está incompleta; no se guardó.");
           return;
         }
+        // Una fecha completa que no se puede convertir (p. ej. el año 0026 que
+        // deja teclear "15/01/26") tampoco se guarda, y se AVISA igual. Vaciar
+        // el campo (`draft === ""`) sigue mandando `null`.
+        if (draft && toFechaConfirmacionPayload(draft) === null) {
+          revert();
+          toast.error("La fecha no es válida; no se guardó.");
+          return;
+        }
         handleBlur();
       }}
       onKeyDown={(event) => {

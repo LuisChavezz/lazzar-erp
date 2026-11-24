@@ -340,6 +340,26 @@ test.describe("`fecha_confirmacion`: un día de México en cualquier zona (EC-93
     expect(toFechaConfirmacionPayload("2026-02-30")).toBeNull();
     expect(toFechaConfirmacionPayload("")).toBeNull();
     expect(toFechaConfirmacionPayload("2026-01-15T00:00:00-06:00")).toBeNull();
+    // Año 0026 (teclear "15/01/26"): día completo que el editor rechaza con aviso.
+    expect(toFechaConfirmacionPayload("0026-01-15")).toBeNull();
+  });
+
+  test("la exportación de Compras pone `created_at` en su día de México, como la celda", () => {
+    const createdText = (created_at: string | null) =>
+      getProcurementOrderColumnText(
+        { created_at } as PedidoExportRow,
+        { id: "created_at" } as DataTableVisibleColumn<PedidoListItem>,
+      );
+    // 18:00 del 9 de octubre en México: en Tokio ya es el 10.
+    const value = "2026-10-09T18:00:00-06:00";
+    for (const zone of [MEXICO_TIME_ZONE, ...OTHER_ZONES]) {
+      withProcessTimeZone(zone, () => {
+        expect(createdText(value)).toBe(new Date(2026, 9, 9).toLocaleDateString("es-MX"));
+        expect(createdText(null)).toBe("—");
+      });
+    }
+    // En México, lo mismo que antes (`formatLocalDate`).
+    expect(createdText(value)).toBe(formatLocalDate(value));
   });
 
   test("en México se escribe y se lee lo mismo que antes del cambio", () => {
