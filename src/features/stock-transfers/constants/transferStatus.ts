@@ -4,8 +4,9 @@ import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
  * Colores por estatus de un traspaso: los cinco de
  * `Transferencia.TransferenciaStatus` (nucleo-erp, `wms/models.py`), con sus
  * mismas etiquetas. El backend fija `"COMPLETADA"` al crear (ver `Transferencia`
- * en `stock-transfer.interface.ts`) y hoy ningún flujo asigna otro, pero el
- * modelo los admite y el PDF marca `CANCELADA` y `FALLIDA` (EC-858).
+ * en `stock-transfer.interface.ts`); `revertir/` deja la original `CANCELADA`
+ * (EC-945), en rose como los demás documentos cancelados. El PDF marca
+ * `CANCELADA` y `FALLIDA` (EC-858).
  * `StatusBadge` degrada a su estilo gris ante un valor fuera de esta lista.
  */
 export const TRANSFER_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
@@ -26,8 +27,8 @@ export const TRANSFER_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> = {
   },
   CANCELADA: {
     label: "Cancelada",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
-    dot: "bg-slate-400",
+    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
+    dot: "bg-rose-500",
   },
   FALLIDA: {
     label: "Fallida",
