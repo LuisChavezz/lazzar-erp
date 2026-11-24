@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronRightIcon, TraspasosIcon, WarehouseIcon } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
@@ -70,6 +71,23 @@ interface StockTransferDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Folio de la TR enlazada, o su `#id` mientras el backend no manda el folio. */
+const linkedFolio = (folio: string | null | undefined, id: number) => folio?.trim() || `#${id}`;
+
+/** Botón al detalle de la otra TR del par original ↔ reversa (mismo estilo que un folio de tabla). */
+function LinkedTransferButton({ label, onOpen }: { label: string; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="font-mono hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+      title="Ver detalle"
+    >
+      {label}
+    </button>
+  );
+}
+
 export function StockTransferDetailDialog({
   transferId,
   open,
@@ -77,6 +95,14 @@ export function StockTransferDetailDialog({
 }: StockTransferDetailDialogProps) {
   const { data, isLoading, isInitialError, isNotFound, error } =
     useTransferenciaDetail(transferId);
+  // La otra TR del par original ↔ reversa (EC-945), abierta encima de esta. El
+  // id se guarda al abrir: el detalle se relee y no debe saltar a otra TR.
+  const [linkedId, setLinkedId] = useState(0);
+  const [isLinkedOpen, setIsLinkedOpen] = useState(false);
+  const openLinked = (id: number) => {
+    setLinkedId(id);
+    setIsLinkedOpen(true);
+  };
 
   // "Descargar PDF" (EC-858) y, con `WMS-CANCELAR`, "Revertir" (EC-945) junto
   // al título, una vez cargado el traspaso. Un 403/404 definitivo no conserva
@@ -163,6 +189,24 @@ export function StockTransferDetailDialog({
               </span>
             </InfoField>
             <InfoField label="Usuario">{data.usuario_nombre}</InfoField>
+            {/* Original ↔ reversa (`revertir/`): la reversa trae `reversa_de`
+                (#1348) y la original `reversa` (EC-949); sus folios, EC-949. */}
+            {data.reversa_de ? (
+              <InfoField label="Reversa de">
+                <LinkedTransferButton
+                  label={linkedFolio(data.reversa_de_folio, data.reversa_de)}
+                  onOpen={() => data.reversa_de && openLinked(data.reversa_de)}
+                />
+              </InfoField>
+            ) : null}
+            {data.reversa ? (
+              <InfoField label="Revertida por">
+                <LinkedTransferButton
+                  label={linkedFolio(data.reversa_folio, data.reversa)}
+                  onOpen={() => data.reversa && openLinked(data.reversa)}
+                />
+              </InfoField>
+            ) : null}
             {data.observaciones && (
               <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
                 {data.observaciones}
@@ -196,6 +240,10 @@ export function StockTransferDetailDialog({
             <LineasTable items={data.transferencia_detalle} />
           </div>
         </div>
+      )}
+
+      {linkedId > 0 && (
+        <StockTransferDetailDialog transferId={linkedId} open={isLinkedOpen} onOpenChange={setIsLinkedOpen} />
       )}
     </MainDialog>
   );
