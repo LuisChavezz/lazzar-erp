@@ -14,6 +14,14 @@ interface ColumnHeaderFilterProps<TData> {
   /** Qué se está filtrando, para el tooltip/aria-label del ícono y el menú. */
   label: string;
   /**
+   * Clave del filtro de SERVIDOR de este ícono, en lugar de la de la columna
+   * (`meta.serverFilter`): para un segundo filtro en el mismo encabezado (p.
+   * ej. Folio filtra por confirmación y por retención). Sin ella, la de
+   * siempre. Solo para modo servidor: fuera de él (o si la tabla no recibe
+   * `server.filters`) el ícono no se pinta, porque no hay a qué ligarlo.
+   */
+  serverFilterKey?: string;
+  /**
    * Variante con buscador, para catálogos grandes (clientes, vendedores). Por
    * defecto `false`: el menú de siempre, sin ningún cambio. Con `true` (o un
    * objeto con el `placeholder`) el menú abre con un campo de texto que acota
@@ -53,18 +61,21 @@ interface ColumnHeaderFilterProps<TData> {
 
 /**
  * Filtro de SERVIDOR de una columna: los filtros de la tabla, la clave
- * (`meta.serverFilter`) y su valor activo. `filters`/`key` son `undefined`
+ * (`meta.serverFilter`, o `keyOverride` si se da) y su valor activo. `filters`/`key` son `undefined`
  * fuera del modo servidor o si la columna no declara la clave; entonces el
  * encabezado filtra con el estado de columna de TanStack. Única lectura de esa
  * regla: la comparten `ColumnHeaderFilter` y `ServerSearchHeaderFilter`.
  */
-export function useColumnServerFilter<TData>(column: Column<TData, unknown>): {
+export function useColumnServerFilter<TData>(
+  column: Column<TData, unknown>,
+  keyOverride?: string,
+): {
   filters: DataTableServerFilters | undefined;
   key: string | undefined;
   value: string | undefined;
 } {
   const tableMode = useContext(DataTableModeContext);
-  const key = column.columnDef.meta?.serverFilter;
+  const key = keyOverride ?? column.columnDef.meta?.serverFilter;
   const filters = tableMode.mode === 'server' && key !== undefined ? tableMode.filters : undefined;
   return {
     filters,
@@ -112,6 +123,7 @@ export function ColumnHeaderFilter<TData>({
   column,
   options: optionsProp,
   label,
+  serverFilterKey: serverFilterKeyProp,
   searchable = false,
   serverSearch,
   isLoading = false,
@@ -129,7 +141,7 @@ export function ColumnHeaderFilter<TData>({
     filters: serverFilters,
     key: serverFilterKey,
     value: serverFilterValue,
-  } = useColumnServerFilter(column);
+  } = useColumnServerFilter(column, serverFilterKeyProp);
   const activeValue =
     serverFilters !== undefined
       ? serverFilterValue
@@ -244,6 +256,7 @@ export function ColumnHeaderFilter<TData>({
 
   if (tableMode.mode === 'server-pagination') return null;
   if (tableMode.mode === 'server' && serverFilters === undefined) return null;
+  if (serverFilterKeyProp !== undefined && serverFilters === undefined) return null;
 
   // Opciones a pintar. Sin buscador: todas, en su orden (como siempre). Con
   // buscador: "Todos" y la seleccionada fijas arriba, y después las

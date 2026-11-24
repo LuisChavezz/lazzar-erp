@@ -35,8 +35,9 @@ import { pedidoDetailHref, pedidoDetailPath } from "@/src/features/orders/consta
 import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import {
   PedidoCatalogHeaderFilter,
-  PedidoConfirmadoHeaderFilter,
+  PedidoFolioHeaderFilters,
   PedidoRangeHeaderFilter,
+  PedidoSinSurtirHeaderFilter,
 } from "@/src/features/orders/components/PedidoHeaderFilters";
 import {
   PIEZAS_RANGE_OPTIONS,
@@ -343,7 +344,8 @@ export function buildOperationsOrderColumns(
       // de `SalesOrderColumns.tsx`.
       size: 190,
       meta: { label: "Folio", serverSort: "folio", serverFilter: "confirmado" },
-      header: ({ column }) => <PedidoConfirmadoHeaderFilter column={column} title="Folio" />,
+      // Dos filtros: confirmación (la clave de la columna) y retención.
+      header: ({ column }) => <PedidoFolioHeaderFilters column={column} title="Folio" />,
       cell: ({ row }) => <FolioCell order={row.original} {...callbacks} />,
     },
     {
@@ -412,8 +414,14 @@ export function buildOperationsOrderColumns(
       // Piezas surtidas por WMS (pickings): la misma anotación que ordena.
       id: "surtido",
       accessorFn: (order) => order.piezas_surtidas,
-      header: "Surtido",
-      meta: { align: "right", label: "Surtido", serverSort: "piezas_surtidas" },
+      // Filtro "Sin surtir" (`sin_surtir`): programados sin picking vivo.
+      meta: {
+        align: "right",
+        label: "Surtido",
+        serverSort: "piezas_surtidas",
+        serverFilter: "sin_surtir",
+      },
+      header: ({ column }) => <PedidoSinSurtirHeaderFilter column={column} title="Surtido" />,
       size: 150,
       cell: ({ row }) => <SurtidoCell order={row.original} />,
     },

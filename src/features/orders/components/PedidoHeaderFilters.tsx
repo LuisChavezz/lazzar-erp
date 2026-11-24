@@ -1,7 +1,11 @@
 "use client";
 
 import type { Column } from "@tanstack/react-table";
-import { FilterHeader, type ColumnFilterOption } from "@/src/components/ColumnHeaderFilter";
+import {
+  ColumnHeaderFilter,
+  FilterHeader,
+  type ColumnFilterOption,
+} from "@/src/components/ColumnHeaderFilter";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { usePedidoFilterOptions } from "../hooks/usePedidosTable";
 import type { PedidoFilterOptions } from "../interfaces/pedido-list.interface";
@@ -45,6 +49,71 @@ export function PedidoConfirmadoHeaderFilter<TData>({
       column={column}
       options={CONFIRMADO_OPTIONS}
       label="estado de confirmación"
+    />
+  );
+}
+
+/**
+ * Retención de Mesa de Control (`?retenido=true|false`, nucleo-erp#1352). Va en
+ * el encabezado de Folio junto a la confirmación, con su propia clave
+ * (`serverFilterKey`), porque la columna ya liga `confirmado`.
+ */
+export const RETENIDO_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "true", label: "Retenidos", dotClassName: "bg-orange-500" },
+  { value: "false", label: "No retenidos", dotClassName: "bg-slate-400" },
+];
+
+/**
+ * Encabezado de Folio de Mesa de Control: dos filtros, la confirmación (la
+ * clave de la columna, `meta.serverFilter`) y la retención (`retenido`).
+ */
+export function PedidoFolioHeaderFilters<TData>({
+  column,
+  title,
+}: {
+  column: PedidoColumn<TData>;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{title}</span>
+      <ColumnHeaderFilter column={column} options={CONFIRMADO_OPTIONS} label="estado de confirmación" />
+      <ColumnHeaderFilter
+        column={column}
+        serverFilterKey="retenido"
+        options={RETENIDO_FILTER_OPTIONS}
+        label="retención"
+      />
+    </div>
+  );
+}
+
+/**
+ * "Sin surtir" (`?sin_surtir=true`): programados, no cancelados y sin un solo
+ * picking vivo, retenidos incluidos (regla del backend). Solo la opción
+ * encendida: `false` sería "todo lo demás", sin programar incluido, que no es
+ * lo contrario de lo que se lee.
+ */
+export const SIN_SURTIR_FILTER_OPTIONS: ColumnFilterOption[] = [
+  ALL_FILTER_OPTION,
+  { value: "true", label: "Sin surtir", dotClassName: "bg-amber-500" },
+];
+
+export function PedidoSinSurtirHeaderFilter<TData>({
+  column,
+  title,
+}: {
+  column: PedidoColumn<TData>;
+  title: string;
+}) {
+  return (
+    <FilterHeader
+      title={title}
+      column={column}
+      options={SIN_SURTIR_FILTER_OPTIONS}
+      label="pedidos sin surtir"
+      menuAlign="end"
     />
   );
 }
