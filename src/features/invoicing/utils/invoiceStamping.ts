@@ -3,6 +3,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { INVOICE_STATUS } from "../constants/invoiceStatus";
 import type { InvoiceEstatus } from "../interfaces/invoice.interface";
 
@@ -98,6 +99,16 @@ export const isInvoiceStampPending = (invoice: { cfdi_pendiente?: boolean }): bo
 export const INVOICE_STAMP_PENDING_MESSAGE =
   "La factura tiene un timbrado pendiente de confirmación con Facturama: no se puede timbrar. Concílialo con \"Conciliar con Facturama\" para traer el timbre o liberarlo.";
 
+/**
+ * Aviso cuando la petición de timbrado se cortó sin respuesta del backend
+ * (`isActionOutcomeUnknown`): el backend pudo timbrar ante el SAT sin alcanzar a
+ * responder. `useStampInvoice` relee la factura al terminar, con cualquier
+ * resultado; el precheck del siguiente intento no vuelve a timbrar una ya
+ * timbrada ni una con el timbrado pendiente.
+ */
+export const INVOICE_STAMP_UNCONFIRMED_MESSAGE =
+  "No se recibió respuesta del servidor: la factura pudo haberse timbrado ante el SAT. Actualiza los datos antes de volver a intentarlo; si quedó con el timbrado pendiente de confirmación, concílialo con \"Conciliar con Facturama\".";
+
 /** Indicador de la cabecera, en el lugar del bloque del folio fiscal. */
 export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación";
 
@@ -107,12 +118,15 @@ export const INVOICE_STAMP_PENDING_LABEL = "Timbrado pendiente de confirmación"
  * MXN, que además llega repetido bajo `tipo_cambio` (#669); aquí basta el de
  * `cfdi`, que lo resume—, rechazo o falla de Facturama) o bajo `estatus`
  * (inactiva o cancelada), como string o como lista; `drfFieldMessage`
- * lee las dos formas. Si no viene ninguno (403, 404, 500, red), cae en el
- * extractor genérico.
+ * lee las dos formas. Un corte sin respuesta del backend (red, timeout o
+ * 502/503/504, `isActionOutcomeUnknown`) avisa que pudo timbrarse, como el REP
+ * (`stampCobroRepErrorMessage`, EC-939). Si no, el resto (403, 404, 500) cae en
+ * el extractor genérico.
  */
 export const stampInvoiceErrorMessage = (error: unknown): string =>
   drfFieldMessage(error, "cfdi") ??
   drfFieldMessage(error, "estatus") ??
+  (isActionOutcomeUnknown(error) ? INVOICE_STAMP_UNCONFIRMED_MESSAGE : undefined) ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo timbrar la factura.");
 
