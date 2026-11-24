@@ -54,7 +54,7 @@ export function RfidScannerView() {
 
   // La purga (`scans/clear/`) y `scanner-stats` los permite el backend solo a
   // superusuario o administrador de empresa; no mira ningún código del
-  // catálogo de permisos (`D-WMS-SCANNER` incluido). Es la misma regla que
+  // catálogo de permisos. Es la misma regla que
   // `useIsCompanyAdmin`, que falla cerrado: mientras la sesión no lo confirme,
   // ni botón ni petición. Esto es solo UX: la frontera real es el backend, que
   // responde 403 con su propio mensaje si rechaza la llamada.
