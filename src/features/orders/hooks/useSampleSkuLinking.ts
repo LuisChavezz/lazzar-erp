@@ -109,7 +109,7 @@ interface LinkError {
  *   quien vea la acción sin cumplir la regla recibe este 400.
  * - 404: `get_object` acota por empresa; pedido ajeno, inexistente o de baja.
  * - 401 / 403: sesión caducada o sin acceso.
- * - Tiempo de espera vencido (el tope propio de `vincularSkuMuestra`).
+ * - Tiempo de espera vencido: el tope por defecto de `v1_api` (`ETIMEDOUT`).
  * - Sin respuesta (red caída, petición abortada) y 5xx.
  * - Cualquier otro cuerpo: `detail` / `error` si los trae.
  */
