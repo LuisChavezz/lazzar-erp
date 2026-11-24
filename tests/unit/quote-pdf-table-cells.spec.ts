@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createElement } from "react";
 import { Text } from "@react-pdf/renderer";
 import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface";
 import { buildQuotePdfModel } from "@/src/features/quotes/utils/quotePdfTemplateHelpers";
@@ -83,7 +84,7 @@ test.describe("Margen lateral de las celdas del PDF de cotización (EC-952)", ()
  * `@react-pdf/layout`, no de los estilos.
  */
 const layoutQuote = (quote: QuoteById) =>
-  layoutPdfPages(QuotePdfDocument({ quote, model: buildQuotePdfModel(quote, "MXN") }));
+  layoutPdfPages(createElement(QuotePdfDocument, { quote, model: buildQuotePdfModel(quote, "MXN") }));
 
 test.describe("Renglones del producto en el PDF de cotización (EC-952)", () => {
   test("se parte entre palabras cuando la palabra cabe en el renglón siguiente", async () => {
@@ -109,7 +110,7 @@ test.describe("Renglones del producto en el PDF de cotización (EC-952)", () => 
 
     // Partida no basta: cada renglón de la celda debe caber en su columna
     // (ancho de la celda menos su relleno), o el pedazo invadiría la del SKU.
-    const texts = await layoutPdfTexts(QuotePdfDocument({ quote, model: buildQuotePdfModel(quote, "MXN") }));
+    const texts = await layoutPdfTexts(createElement(QuotePdfDocument, { quote, model: buildQuotePdfModel(quote, "MXN") }));
     const cell = texts.find((text) => text.lines.map((line) => line.text).join("").includes("ELECTRO"));
     expect(cell, "la celda del producto").toBeDefined();
     expect(cell!.lines.length).toBeGreaterThan(1);

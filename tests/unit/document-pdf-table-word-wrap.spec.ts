@@ -123,7 +123,7 @@ test.describe("Celdas de la tabla base al partir renglones (EC-952)", () => {
         estado: "SURTIDA",
       })),
     } as unknown as Picking;
-    const texts = await layoutPdfTexts(PickingPdfDocument({ picking, company: { name: "EMPRESA", rfc: null } }));
+    const texts = await layoutPdfTexts(createElement(PickingPdfDocument, { picking, company: { name: "EMPRESA", rfc: null } }));
     // Las dos celdas se parten en renglones, pero ninguna palabra queda cortada.
     const cells = cellsWith(texts, ["PESCADOR", "PIQUE"]);
     expect(cells).toHaveLength(2);
