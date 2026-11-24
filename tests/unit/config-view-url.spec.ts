@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { configViewQuery, resolveConfigView } from "@/src/features/config/utils/configViewUrl";
+import {
+  configViewQuery,
+  nextOpenedFromMenu,
+  resolveConfigView,
+} from "@/src/features/config/utils/configViewUrl";
 
 /** EC-956: la vista abierta de /config vive en `?view=`. */
 
@@ -40,5 +44,24 @@ test.describe("configViewQuery", () => {
     );
     expect(configViewQuery("?view=bom", null)).toBe("");
     expect(configViewQuery("", null)).toBe("");
+  });
+});
+
+test.describe("nextOpenedFromMenu", () => {
+  test("pasar del menú a una vista (tarjeta o \"adelante\") la marca", () => {
+    expect(nextOpenedFromMenu(null, "products", false)).toBe(true);
+    expect(nextOpenedFromMenu(null, "suppliers", true)).toBe(true);
+  });
+
+  test("cualquier otro cambio de vista la quita", () => {
+    expect(nextOpenedFromMenu("products", null, true)).toBe(false);
+    expect(nextOpenedFromMenu("products", "suppliers", true)).toBe(false);
+    expect(nextOpenedFromMenu("products", "suppliers", false)).toBe(false);
+  });
+
+  test("sin cambio de vista (la tabla reescribe su URL) se conserva", () => {
+    expect(nextOpenedFromMenu("products", "products", true)).toBe(true);
+    expect(nextOpenedFromMenu("products", "products", false)).toBe(false);
+    expect(nextOpenedFromMenu(null, null, false)).toBe(false);
   });
 });

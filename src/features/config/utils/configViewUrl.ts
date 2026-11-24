@@ -25,3 +25,18 @@ export const configViewQuery = (current: string, view: string | null): string =>
   else query.set(CONFIG_VIEW_PARAM, view);
   return query.toString();
 };
+
+/**
+ * ¿La entrada actual del historial es una vista que está JUSTO después del
+ * menú? Se recalcula cada vez que cambia `?view=` en esta sesión montada:
+ * pasar del menú (`null`) a una vista —abrir una tarjeta o "adelante" del
+ * navegador— la marca; cualquier otro cambio la quita. Al montar (recarga,
+ * enlace directo) arranca en `false`. Vive en memoria y no en
+ * `history.state`, porque las tablas escriben su URL con
+ * `replaceState(null, …)` y borrarían una marca guardada ahí.
+ */
+export const nextOpenedFromMenu = (
+  previousView: string | null,
+  nextView: string | null,
+  previousMark: boolean,
+): boolean => (previousView === nextView ? previousMark : previousView === null && nextView !== null);
