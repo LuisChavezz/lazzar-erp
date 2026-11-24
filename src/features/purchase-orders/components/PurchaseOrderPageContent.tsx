@@ -28,6 +28,7 @@ import {
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
 import { formatLocalDate, formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
+import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
@@ -940,7 +941,9 @@ export function PurchaseOrderPageContent({
           <InfoField label="Moneda">{textOrDash(data.moneda_codigo)}</InfoField>
           <InfoField label="Fecha de autorización">
             <span className="tabular-nums">
-              {formatLocalDate(data.fecha_autorizacion)}
+              {/* Datetime: su día de México, en cualquier zona (EC-936). */}
+              {toMexicoDayLocalDate(data.fecha_autorizacion)?.toLocaleDateString("es-MX") ??
+                formatLocalDate(data.fecha_autorizacion)}
             </span>
           </InfoField>
           {/* Bajó de la cabecera: el backend no expone forma de fijarla (solo
