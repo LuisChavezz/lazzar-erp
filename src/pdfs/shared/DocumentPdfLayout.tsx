@@ -20,6 +20,7 @@
 import type { ReactNode } from "react";
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { documentPdfStyles as s } from "./DocumentPdfStyles";
+import { BREAK_BETWEEN_WORDS } from "./pdfLineBreaking";
 import {
   documentPdfCancelledMark,
   documentPdfCancellationReason,
@@ -222,9 +223,10 @@ const TABLE_TITLE_MIN_PRESENCE_AHEAD = 50;
  * quepa entera en el siguiente ("En esta or-/den"); sin puntos de separación,
  * la palabra pasa completa al renglón de abajo. Solo los encabezados: son texto
  * fijo y cada columna es lo bastante ancha para su palabra más larga. Las
- * celdas conservan la separación por omisión porque sus datos no se conocen de
- * antemano: sin ella, una palabra más ancha que su columna ("MARINO/AMARILLO/
- * REY") se saldría sobre la de al lado en vez de partirse.
+ * celdas no pueden quitar la separación: sus datos no se conocen de antemano y
+ * una palabra más ancha que su columna ("MARINO/AMARILLO/REY") se saldría sobre
+ * la de al lado. Usan `BREAK_BETWEEN_WORDS` (EC-952), que parte entre palabras
+ * y separa en sílabas solo esa palabra.
  */
 const wholeWords = (word: string): string[] => [word];
 
@@ -294,7 +296,7 @@ export function PdfLineItemsTable<Row>({
                   ...(column.align === "right" ? [s.cellRight] : []),
                 ];
                 return typeof content === "string" || typeof content === "number" ? (
-                  <Text key={column.id} style={cellStyle}>
+                  <Text key={column.id} {...BREAK_BETWEEN_WORDS} style={cellStyle}>
                     {content}
                   </Text>
                 ) : (
@@ -313,12 +315,20 @@ export function PdfLineItemsTable<Row>({
 
 /** Texto principal de una celda compuesta (negritas), para usar en `cell`. */
 export function PdfCellText({ children, bold = false }: { children: ReactNode; bold?: boolean }) {
-  return <Text style={bold ? s.tableCellBold : s.tableCell}>{children}</Text>;
+  return (
+    <Text {...BREAK_BETWEEN_WORDS} style={bold ? s.tableCellBold : s.tableCell}>
+      {children}
+    </Text>
+  );
 }
 
 /** Línea secundaria pequeña bajo el texto de una celda compuesta. */
 export function PdfCellCaption({ children }: { children: ReactNode }) {
-  return <Text style={s.cellCaption}>{children}</Text>;
+  return (
+    <Text {...BREAK_BETWEEN_WORDS} style={s.cellCaption}>
+      {children}
+    </Text>
+  );
 }
 
 // ── Totales ───────────────────────────────────────────────────────────────────
