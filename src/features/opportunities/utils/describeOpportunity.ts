@@ -37,7 +37,8 @@ export const describeOpportunity = (opportunity: Opportunity): string => {
 /**
  * De quién es una oportunidad sin título: su cliente (razón social o, en
  * blanco, su nombre, EC-810) o, si no tiene o el usuario no lo ve, su contacto.
- * Un cliente oculto no se nombra "Cliente #id" aquí: el contacto dice más.
+ * A diferencia de `getOpportunityClienteLabel` ("Cliente no visible"), aquí un
+ * cliente oculto cae al contacto capturado: dice más de quién es (EC-940).
  */
 const getOpportunityWho = (opportunity: Opportunity): string | undefined =>
   opportunity.cliente_razon_social?.trim() ||
