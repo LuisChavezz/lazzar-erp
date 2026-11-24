@@ -30,7 +30,7 @@ import type {
   PedidoDocumentoFila,
   PedidoDocumentos,
 } from "../interfaces/pedido-documentos.interface";
-import { cobroRowKey, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
+import { cobroRowKey, countCancelledDocs, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
 import {
   FACTURA_DOC_TIPO,
   getOrderDocumentRoute,
@@ -96,15 +96,22 @@ function DocAmount({ value, moneda }: { value: number | string; moneda: string |
   );
 }
 
-/** Un bloque de documentos: título, conteo y su tabla, o "Sin registros". */
+/**
+ * Un bloque de documentos: título, conteo y su tabla, o "Sin registros".
+ * `count` son las filas; `cancelledCount`, cuántas de ellas están canceladas
+ * (surtidos, embarques y envíos, EC-945): el conteo dice solo las vigentes y las
+ * canceladas aparte, aunque sus filas sigan en la tabla con su estatus.
+ */
 function DocBlock({
   title,
   count,
+  cancelledCount = 0,
   head,
   children,
 }: {
   title: string;
   count: number;
+  cancelledCount?: number;
   head: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -112,7 +119,10 @@ function DocBlock({
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
         {title}{" "}
-        <span className="font-normal text-slate-400 dark:text-slate-500 tabular-nums">({count})</span>
+        <span className="font-normal text-slate-400 dark:text-slate-500 tabular-nums">
+          ({count - cancelledCount})
+          {cancelledCount > 0 && ` · ${cancelledCount} ${cancelledCount === 1 ? "cancelado" : "cancelados"}`}
+        </span>
       </h3>
       {count === 0 ? (
         <EmptyLines>Sin registros</EmptyLines>
@@ -141,6 +151,7 @@ function FilaBlock({
     <DocBlock
       title={title}
       count={filas.length}
+      cancelledCount={countCancelledDocs(filas, filaEstatus)}
       head={
         <>
           <th className={TH}>Folio</th>
@@ -334,6 +345,7 @@ export function DocumentosBlocks({
           <DocBlock
             title="Surtidos"
             count={docs.pickings.length}
+            cancelledCount={countCancelledDocs(docs.pickings, (picking) => picking.estado)}
             head={
               <>
                 <th className={TH}>Folio</th>
@@ -364,12 +376,14 @@ export function DocumentosBlocks({
           <DocBlock
             title="Despachos"
             count={docs.despachos.length}
+            cancelledCount={countCancelledDocs(docs.despachos, (despacho) => despacho.estado)}
             head={
               <>
                 <th className={TH}>Despacho</th>
                 <th className={TH}>Embarque</th>
                 <th className={TH}>Guía</th>
                 <th className={TH}>Envío</th>
+                <th className={TH}>Estado</th>
               </>
             }
           >
@@ -388,6 +402,16 @@ export function DocumentosBlocks({
                 <td className={`${TD} font-mono`}>{textOrDash(despacho.guia)}</td>
                 <td className={`${TD} font-mono`}>
                   {despacho.envio_id === null ? "—" : `#${despacho.envio_id}`}
+                </td>
+                {/* `estado` (#1348); el motivo de un cancelado, al pasar el cursor. */}
+                <td className="px-3 py-2">
+                  {despacho.estado ? (
+                    <span title={despacho.motivo_cancelacion?.trim() || undefined}>
+                      <DocEstatusBadge estatus={despacho.estado} />
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
