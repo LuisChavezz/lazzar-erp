@@ -1,25 +1,10 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
-import { hasPermission } from "@/src/utils/permissions";
+import { canActAsMesaControl } from "@/src/utils/permissions";
+import { MESA_CONTROL_PEDIDOS_PERMISSION } from "@/src/constants/mesaControlActionPermissions";
 
 const OPERATIONS_ORDERS_PATH = "/operations/orders";
-
-/**
- * Código de edición de pedidos de Mesa de Control, del catálogo de la tabla
- * `permisos`.
- *
- * DIVERGENCIA CONSCIENTE con el backend: el endpoint
- * `POST /ventas/pedidos/{id}/editar-mesa-control/` NO valida este código.
- * `PedidoViewSet._require_mesa_control` exige ser superuser, `is_admin_empresa`
- * o tener un rol ACTIVO de la empresa del usuario cuya clave de departamento sea
- * EXACTAMENTE `MESACONTROL` (un rol `MESACONTROLYVENTAS` se rechaza). O sea que
- * este permiso gobierna la UI —esta ruta y los dos disparadores— y la frontera
- * real de seguridad es esa regla, evaluada en Django en cada guardado. Quien
- * tenga el permiso sin cumplirla llegará a la pantalla y recibirá un 400
- * `{ permiso }` al guardar (400, no 403).
- */
-const EDIT_PEDIDO_PERMISSION = "E-MESACONTROL-PEDIDOS";
 
 /**
  * Guard de la ruta /orders/[id]/edit-mesa-control — alcance DELIBERADAMENTE
@@ -28,21 +13,25 @@ const EDIT_PEDIDO_PERMISSION = "E-MESACONTROL-PEDIDOS";
  * Hace DOS chequeos, ambos LOCALES (sin red):
  *
  *   1. La forma del id.
- *   2. El permiso `E-MESACONTROL-PEDIDOS` en la sesión de NextAuth.
+ *   2. Ser Mesa de Control según la sesión de NextAuth (`canActAsMesaControl`):
+ *      `es_mesa_control`, la MISMA decisión que el backend aplica en
+ *      `POST /ventas/pedidos/{id}/editar-mesa-control/` (superuser,
+ *      `is_admin_empresa` o rol activo de departamento `MESACONTROL` de su
+ *      empresa, EC-943/EC-944). Una sesión anterior que no la trae cae al
+ *      código `E-MESACONTROL-PEDIDOS` hasta el siguiente inicio de sesión.
  *
- * DOS PERMISOS, NO UNO. Este guard exige `E-MESACONTROL-PEDIDOS`, pero NO es
- * la primera puerta: `src/proxy.ts` evalúa antes la regla "/orders" de
- * `routePermissions`, que exige CUALQUIERA de once códigos de LECTURA. O sea
- * que el rol de Mesa de Control necesita los dos —`R-MESACONTROL-PEDIDOS` para
- * llegar y `E-MESACONTROL-PEDIDOS` para editar—, y hoy el despliegue los asigna
- * juntos. Con solo el de edición, el proxy rebota al home antes de que esta
- * función corra y los dos disparadores quedarían visibles sin llevar a ninguna
- * parte. NO se duplica aquí la comprobación de lectura: el proxy ya la hace y
- * repetirla solo añadiría una segunda fuente de verdad que puede divergir.
+ * DOS PUERTAS, NO UNA. Este guard NO es la primera: `src/proxy.ts` evalúa
+ * antes la regla "/orders" de `routePermissions`, que exige CUALQUIERA de once
+ * códigos de LECTURA. O sea que hay que poder llegar (p. ej.
+ * `R-MESACONTROL-PEDIDOS`) y además ser Mesa de Control para editar. Sin
+ * lectura, el proxy rebota antes de que esta función corra y los dos
+ * disparadores quedarían visibles sin llevar a ninguna parte. NO se duplica
+ * aquí la comprobación de lectura: el proxy ya la hace y repetirla solo
+ * añadiría una segunda fuente de verdad que puede divergir.
  *
- * El chequeo de permiso aquí es posible porque la sesión de NextAuth NO es la credencial del
- * backend: su JWT viaja en una cookie del ORIGEN DE ESTA APP y lleva `role` +
- * `permissions` — la misma fuente que `src/proxy.ts` lee con `getToken`. Hace
+ * El chequeo aquí es posible porque la sesión de NextAuth NO es la credencial del
+ * backend: su JWT viaja en una cookie del ORIGEN DE ESTA APP y lleva `role`,
+ * `permissions` y `es_mesa_control` — la misma fuente que `src/proxy.ts` lee con `getToken`. Hace
  * falta aquí porque `routePermissions` no puede expresar esta ruta: el segmento
  * dinámico va EN MEDIO, y la regla "/orders" que sí la cubre exige CUALQUIERA de
  * once permisos de lectura, ninguno de los cuales autoriza a editar.
@@ -63,16 +52,20 @@ export async function redirectIfPedidoCannotBeEdited(pedidoId: number): Promise<
     redirect(OPERATIONS_ORDERS_PATH);
   }
 
-  // `hasPermission` ya cortocircuita para el rol "admin". Sin sesión no se llega
-  // hasta aquí (el proxy redirige antes al login), pero el `?.` deja el guard
-  // cerrado en vez de abierto si eso cambiara.
+  // Sin sesión no se llega hasta aquí (el proxy redirige antes al login), pero
+  // el `?.` deja el guard cerrado en vez de abierto si eso cambiara: sin
+  // bandera ni permisos, `canActAsMesaControl` responde `false`.
   const session = await getServerSession(authOptions);
 
   if (
-    !hasPermission(EDIT_PEDIDO_PERMISSION, {
-      role: session?.user?.role,
-      permissions: session?.user?.permissions,
-    })
+    !canActAsMesaControl(
+      {
+        role: session?.user?.role,
+        permissions: session?.user?.permissions,
+        es_mesa_control: session?.user?.es_mesa_control,
+      },
+      MESA_CONTROL_PEDIDOS_PERMISSION,
+    )
   ) {
     redirect(OPERATIONS_ORDERS_PATH);
   }

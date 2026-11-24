@@ -5,7 +5,7 @@
  *
  * - `closed`: el pedido ya terminó (`isPedidoTerminal`). Va primero: cerrado,
  *   nadie puede, tenga o no el permiso.
- * - `permission`: falta `E-MESACONTROL-PEDIDOS` (y no es rol "admin").
+ * - `permission`: no es Mesa de Control (`canActAsMesaControl`, EC-943).
  */
 export type SampleSkuLinkBlock = "closed" | "permission";
 

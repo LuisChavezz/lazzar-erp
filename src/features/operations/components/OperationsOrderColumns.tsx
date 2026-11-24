@@ -4,6 +4,8 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { useCanActAsMesaControl } from "@/src/hooks/useCanActAsMesaControl";
+import { MESA_CONTROL_PEDIDOS_PERMISSION } from "@/src/constants/mesaControlActionPermissions";
 import {
   BanIcon,
   CalendarDaysIcon,
@@ -184,6 +186,9 @@ const FolioCell = ({
 } & OperationsOrderColumnCallbacks) => {
   const confirmed = isOrderConfirmed(order);
   const muestrasLabel = getMuestrasLabel(order);
+  // Programar, Editar y Cancelar son acciones de Mesa de Control: las decide
+  // `es_mesa_control` de la sesión, la misma regla que el backend (EC-943).
+  const canActAsMesaControl = useCanActAsMesaControl(MESA_CONTROL_PEDIDOS_PERMISSION);
 
   const items: ActionMenuItem[] = [
     {
@@ -201,8 +206,7 @@ const FolioCell = ({
       label: "Programar",
       icon: CalendarDaysIcon,
       onSelect: () => onProgramar(order),
-      permission: "E-MESACONTROL-PEDIDOS",
-      visible: canProgramarPedido(order),
+      visible: canActAsMesaControl && canProgramarPedido(order),
     },
     // La fecha de confirmación se edita en la cabecera del detalle del pedido.
     {
@@ -211,8 +215,7 @@ const FolioCell = ({
       label: "Editar",
       icon: EditIcon,
       href: `${pedidoDetailPath(order.id)}/edit-mesa-control`,
-      permission: "E-MESACONTROL-PEDIDOS",
-      visible: canEditPedidoMesaControl(order.estatus),
+      visible: canActAsMesaControl && canEditPedidoMesaControl(order.estatus),
       tone: "warning",
     },
     // Un CANCELADO legado (`activo = true`, de antes de `/cancelar/`) sigue
@@ -221,8 +224,7 @@ const FolioCell = ({
       label: "Cancelar pedido",
       icon: BanIcon,
       onSelect: () => onCancel(order),
-      permission: "E-MESACONTROL-PEDIDOS",
-      visible: order.estatus !== PEDIDO_ESTATUS.CANCELADO,
+      visible: canActAsMesaControl && order.estatus !== PEDIDO_ESTATUS.CANCELADO,
       tone: "danger",
     },
   ];

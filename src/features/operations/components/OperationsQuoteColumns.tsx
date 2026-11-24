@@ -3,6 +3,11 @@
 import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { createContext, useContext } from "react";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { useCanActAsMesaControl } from "@/src/hooks/useCanActAsMesaControl";
+import {
+  MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION,
+  MESA_CONTROL_REJECT_QUOTE_PERMISSION,
+} from "@/src/constants/mesaControlActionPermissions";
 import {
   ColumnHeaderFilter,
   FilterHeader,
@@ -184,6 +189,11 @@ const OperationsQuoteIdCell = ({
   const isAcceptingChangesOperationsQuote = busy.acceptChanges.includes(operationsQuote.id);
   const isRejectingChangesOperationsQuote = busy.rejectChanges.includes(operationsQuote.id);
 
+  // Autorizar/aceptar y rechazar (también los cambios) son acciones de Mesa de
+  // Control: las decide `es_mesa_control` de la sesión, la misma regla que el
+  // backend (EC-943). Cada una conserva su código solo como respaldo.
+  const canApprove = useCanActAsMesaControl(MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION);
+  const canReject = useCanActAsMesaControl(MESA_CONTROL_REJECT_QUOTE_PERMISSION);
   const canAuthorizeOperationsQuote =
     canManageOperationsQuoteAuthorization(operationsQuote.estatus);
   const canAcceptOperationsQuoteChanges = canAcceptOperationsQuoteChangesStatus(
@@ -217,34 +227,30 @@ const OperationsQuoteIdCell = ({
       onSelect: () => requestAction("view", operationsQuote),
     },
     {
-      // Aprobar/rechazar tienen códigos propios en el catálogo:
-      // A-MESACONTROL-COTI y D-MESACONTROL-COTI. `visible` sigue siendo la regla
-      // de NEGOCIO (estatus de la cotización); el permiso es independiente.
+      // `visible` combina la regla de NEGOCIO (estatus de la cotización) con
+      // ser Mesa de Control.
       label: "Autorizar",
       icon: CheckCircleIcon,
       onSelect: handleOpenAuthorizeDialog,
       disabled: isAuthorizingOperationsQuote || isRejectingOperationsQuote,
-      permission: "A-MESACONTROL-COTI",
-      visible: canAuthorizeOperationsQuote,
+      visible: canApprove && canAuthorizeOperationsQuote,
     },
     {
       label: "Rechazar",
       icon: RejectIcon,
       onSelect: handleOpenRejectDialog,
       disabled: isRejectingOperationsQuote || isAuthorizingOperationsQuote,
-      permission: "D-MESACONTROL-COTI",
-      visible: canAuthorizeOperationsQuote,
+      visible: canReject && canAuthorizeOperationsQuote,
     },
     {
       // Aceptar/rechazar CAMBIOS es la misma capacidad de aprobación sobre la
-      // cotización, aplicada a una revisión: reutiliza los mismos códigos.
+      // cotización, aplicada a una revisión: misma regla y mismos respaldos.
       label: "Aceptar cambios",
       icon: SyncIcon,
       onSelect: handleOpenAcceptChangesDialog,
       disabled:
         isAcceptingChangesOperationsQuote || isRejectingChangesOperationsQuote,
-      permission: "A-MESACONTROL-COTI",
-      visible: canAcceptOperationsQuoteChanges,
+      visible: canApprove && canAcceptOperationsQuoteChanges,
     },
     {
       label: "Rechazar cambios",
@@ -252,8 +258,7 @@ const OperationsQuoteIdCell = ({
       onSelect: handleOpenRejectChangesDialog,
       disabled:
         isRejectingChangesOperationsQuote || isAcceptingChangesOperationsQuote,
-      permission: "D-MESACONTROL-COTI",
-      visible: canAcceptOperationsQuoteChanges,
+      visible: canReject && canAcceptOperationsQuoteChanges,
     },
   ];
 

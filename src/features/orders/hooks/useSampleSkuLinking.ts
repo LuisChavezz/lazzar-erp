@@ -105,8 +105,9 @@ interface LinkError {
  *   real es del backend (`_require_mesa_control`): superuser, `is_admin_empresa`
  *   o un rol activo de la empresa del usuario cuya clave de departamento sea
  *   EXACTAMENTE `MESACONTROL` (un rol `MESACONTROLYVENTAS` se rechaza). La UI
- *   solo decide la visibilidad —`E-MESACONTROL-PEDIDOS` o rol "admin"—, así que
- *   quien vea la acción sin cumplir la regla recibe este 400.
+ *   solo decide la visibilidad —`canActAsMesaControl`, esa misma decisión vía
+ *   `es_mesa_control` de la sesión (EC-943)—; quien la vea sin cumplirla (sesión
+ *   anterior con solo el código, o rol cambiado tras iniciar sesión) recibe este 400.
  * - 404: `get_object` acota por empresa; pedido ajeno, inexistente o de baja.
  * - 401 / 403: sesión caducada o sin acceso.
  * - Tiempo de espera vencido: el tope por defecto de `v1_api` (`ETIMEDOUT`).
