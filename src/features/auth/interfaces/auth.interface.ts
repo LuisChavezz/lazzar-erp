@@ -116,6 +116,14 @@ export interface MfaLoginUser {
   is_superuser: boolean;
   is_staff: boolean;
   /**
+   * ¿Puede ejecutar las acciones de Mesa de Control? (EC-944). La misma
+   * decisión que aplica el backend en esas acciones (superusuario, admin de
+   * empresa o rol activo de departamento `MESACONTROL` de su empresa). Solo en
+   * el perfil propio (`/auth/user/`, el `user` del login y `cambiar-empresa`);
+   * opcional porque un backend anterior a EC-944 no la manda.
+   */
+  es_mesa_control?: boolean;
+  /**
    * Mismo valor que `empresa`, pero el schema lo publica como string
    * (SerializerMethodField). Usar `empresa`.
    */

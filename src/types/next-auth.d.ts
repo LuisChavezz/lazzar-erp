@@ -10,6 +10,12 @@ declare module "next-auth" {
     is_admin_empresa?: boolean;
     is_superuser?: boolean;
     /**
+     * Decisión del backend sobre las acciones de Mesa de Control
+     * (`es_mesa_control` de `/auth/user/`, EC-944). Ausente en un token anterior
+     * a EC-943: "no se sabe", nunca `false`. Ver `canActAsMesaControl`.
+     */
+    es_mesa_control?: boolean;
+    /**
      * Empresa del usuario (`empresa` de `/auth/user/`): pk, `null` si no tiene,
      * ausente en un token anterior a EC-842 ("no se sabe", nunca "sin
      * empresa"). Ver `src/lib/sessionEmpresa.ts`.
@@ -29,6 +35,12 @@ declare module "next-auth" {
       is_admin_empresa?: boolean;
       is_superuser?: boolean;
       /**
+       * Decisión del backend sobre las acciones de Mesa de Control
+       * (`es_mesa_control` de `/auth/user/`, EC-944). Ausente en un token anterior
+       * a EC-943: "no se sabe", nunca `false`. Ver `canActAsMesaControl`.
+       */
+      es_mesa_control?: boolean;
+      /**
        * Empresa del usuario (`empresa` de `/auth/user/`): pk, `null` si no tiene,
        * ausente en un token anterior a EC-842 ("no se sabe", nunca "sin
        * empresa"). Ver `src/lib/sessionEmpresa.ts`.
@@ -44,6 +56,7 @@ declare module "next-auth/jwt" {
     permissions?: string[];
     is_admin_empresa?: boolean;
     is_superuser?: boolean;
+    es_mesa_control?: boolean;
     empresa?: number | null;
   }
 }
