@@ -7,6 +7,7 @@ import {
   reportExportMutationOptions,
 } from "@/src/features/stock/hooks/useReportExport";
 import { exportStockReport } from "@/src/features/stock/services/actions";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import {
   fileNameFromContentDisposition,
   type ReportFile,
@@ -380,7 +381,11 @@ test.describe("reportExportMutationOptions", () => {
     expect(calls).toEqual([
       {
         url: "/inventarios/existencias/reporte-existencias-periodo/exportar/",
-        config: { params: { ...PARAMS_A, formato: "xlsx" }, responseType: "blob" },
+        config: {
+          params: { ...PARAMS_A, formato: "xlsx" },
+          responseType: "blob",
+          timeout: SLOW_REQUEST_TIMEOUT_MS,
+        },
       },
     ]);
     expect(stockReportExportErrorMessage(caught, "xlsx")).toBe(MESSAGE);

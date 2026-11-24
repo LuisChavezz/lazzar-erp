@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import { readBlobErrorBody } from "@/src/utils/readBlobErrorBody";
 import type {
   AdjuntarPdfFacturaProveedorResponse,
@@ -92,6 +93,7 @@ export const updateSupplierInvoice = async ({
  * corta el cuerpo en ~4.5 MB ANTES de Django y sin cabeceras CORS, así que un
  * archivo grande llega aquí como error de red sin `response` — por eso la
  * vista valida el tamaño antes de llamar (`validateSupplierInvoicePdf`).
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): es una subida de archivo.
  */
 export const uploadSupplierInvoicePdf = async ({
   id,
@@ -105,6 +107,7 @@ export const uploadSupplierInvoicePdf = async ({
   const { data } = await v1_api.postForm<AdjuntarPdfFacturaProveedorResponse>(
     `/finanzas/facturas-proveedor/${id}/adjuntar-pdf/`,
     formData,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -120,6 +123,7 @@ export const uploadSupplierInvoicePdf = async ({
  * Con `responseType: "blob"` el cuerpo de un ERROR también llega como `Blob`
  * (p. ej. el 400 `{"pdf_adjunto": "..."}` cuando no hay PDF adjunto), así que se
  * decodifica antes de propagarlo para que los parsers de DRF lo lean como JSON.
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): el backend fusiona los PDF al vuelo.
  */
 export const getSupplierInvoiceMergedPdf = async (
   id: number,
@@ -127,7 +131,7 @@ export const getSupplierInvoiceMergedPdf = async (
   try {
     const response = await v1_api.get<Blob>(
       `/finanzas/facturas-proveedor/${id}/pdf-fusionado/`,
-      { responseType: "blob" },
+      { responseType: "blob", timeout: SLOW_REQUEST_TIMEOUT_MS },
     );
     const header: unknown = response.headers?.["content-disposition"];
     return { blob: response.data, contentDisposition: typeof header === "string" ? header : undefined };

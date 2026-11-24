@@ -1,5 +1,6 @@
 import type { CfdiFileFormat, FacturamaCfdiFile } from "@/src/utils/officialCfdiFile";
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import { decimalToCents } from "@/src/features/orders/utils/orderAccounting";
 import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import type {
@@ -105,7 +106,8 @@ export const createInvoiceFromOnboarding = async (
  * ahí `motivo` también se guardaría, pero ese diálogo no pide nota); en
  * cualquier otra ya cancelada responde `200` sin efecto. El error se deja
  * propagar (p. ej. el `400` bajo `estatus` si tiene notas de crédito emitidas,
- * o bajo `motivo_sat`).
+ * o bajo `motivo_sat`). Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): puede esperar a
+ * Facturama para cancelar el CFDI.
  */
 export const cancelInvoice = async ({
   id,
@@ -127,6 +129,7 @@ export const cancelInvoice = async ({
       ...(motivo ? { motivo } : {}),
       ...(motivoSat ? { motivo_sat: motivoSat } : {}),
     },
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -172,10 +175,13 @@ export const emitInvoice = async (id: number): Promise<InvoiceEmitResponse> => {
  * `cfdi_fecha_timbrado`. No cambia `estatus`, CxC ni póliza. El error se deja
  * propagar: los `400` traen el motivo bajo `cfdi` (ya timbrada, datos
  * fiscales faltantes, rechazo o falla de Facturama) o bajo `estatus` (inactiva
- * o cancelada), como string o como lista.
+ * o cancelada), como string o como lista. Tope lento (`SLOW_REQUEST_TIMEOUT_MS`):
+ * espera a Facturama de forma síncrona.
  */
 export const stampInvoice = async (id: number): Promise<Invoice> => {
-  const { data } = await v1_api.post<Invoice>(`/finanzas/facturas/${id}/timbrar/`);
+  const { data } = await v1_api.post<Invoice>(`/finanzas/facturas/${id}/timbrar/`, undefined, {
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
+  });
   return data;
 };
 
@@ -185,11 +191,14 @@ export const stampInvoice = async (id: number): Promise<Invoice> => {
  * el CFDI en Facturama: si existe guarda su timbre (`resultado: "timbrado"`),
  * si no libera la reserva (`"liberado"`). Los `400` traen el motivo bajo `cfdi`
  * (no hay pendiente, timbrado muy reciente, Facturama no respondió, varios
- * CFDIs iguales…) y no cambian nada. El error se deja propagar.
+ * CFDIs iguales…) y no cambian nada. El error se deja propagar. Tope lento
+ * (`SLOW_REQUEST_TIMEOUT_MS`): el backend pagina el listado de Facturama.
  */
 export const reconcileInvoiceCfdi = async (id: number): Promise<InvoiceCfdiReconcileResponse> => {
   const { data } = await v1_api.post<InvoiceCfdiReconcileResponse>(
     `/finanzas/facturas/${id}/conciliar-cfdi/`,
+    undefined,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -199,8 +208,8 @@ export const reconcileInvoiceCfdi = async (id: number): Promise<InvoiceCfdiRecon
  * de Facturama (`POST /finanzas/facturas/{id}/enviar-cfdi/`). Siempre manda el
  * `email` que el usuario confirmó en el diálogo: sin él, el backend usaría
  * `correo_facturas` por su cuenta. Admite UNA sola dirección. Es síncrono (dos
- * descargas de Facturama más el SMTP) y puede tardar cerca de un minuto; el
- * cliente no tiene timeout que lo corte. Responde `200 { enviado_a }`. El error
+ * descargas de Facturama más el SMTP) y puede tardar cerca de un minuto, así que
+ * lleva el tope lento (`SLOW_REQUEST_TIMEOUT_MS`). Responde `200 { enviado_a }`. El error
  * se deja propagar: los `400` traen el motivo bajo `cfdi` (sin CFDI, o
  * Facturama no entregó un archivo) o bajo `email` (correo inválido); un fallo
  * del SMTP llega como `500` sin cuerpo útil.
@@ -215,6 +224,7 @@ export const sendInvoiceCfdi = async ({
   const { data } = await v1_api.post<InvoiceCfdiEmailResponse>(
     `/finanzas/facturas/${id}/enviar-cfdi/`,
     { email },
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -225,10 +235,12 @@ export const sendInvoiceCfdi = async ({
  * facturas de la empresa y con el permiso de lectura de Facturación. Sin
  * `facturama_id` responde `400 {"cfdi": "La factura no tiene CFDI timbrado."}`;
  * si Facturama falla, `502 {"cfdi": ...}`. Lo decodifica `cfdiFileToBlob`.
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): el backend lo descarga de Facturama.
  */
 export const getInvoiceCfdiFile = async (id: number, format: CfdiFileFormat): Promise<FacturamaCfdiFile> => {
   const { data } = await v1_api.get<FacturamaCfdiFile>(`/finanzas/facturas/${id}/cfdi/`, {
     params: { formato: format },
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
   });
   return data;
 };
