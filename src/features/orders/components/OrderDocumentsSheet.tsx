@@ -30,7 +30,7 @@ import type {
   PedidoDocumentoFila,
   PedidoDocumentos,
 } from "../interfaces/pedido-documentos.interface";
-import { cobroRowKey, countCancelledDocs, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
+import { cobroRowKey, countCancelledDocs, filaBlockCancelledCount, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
 import {
   FACTURA_DOC_TIPO,
   getOrderDocumentRoute,
@@ -133,25 +133,31 @@ function DocBlock({
   );
 }
 
-/** Bloque con la forma común `{ id, folio, estatus, estatus_label, fecha }` (EC-920). */
+/**
+ * Bloque con la forma común `{ id, folio, estatus, estatus_label, fecha }` (EC-920).
+ * `countCancelledApart`: el conteo dice solo los vigentes y los cancelados aparte
+ * (solo Embarques, EC-945; los demás bloques cuentan todas sus filas).
+ */
 function FilaBlock({
   title,
   tipo,
   filas,
   canOpen,
   onOpenDoc,
+  countCancelledApart = false,
 }: {
   title: string;
   tipo: string;
   filas: PedidoDocumentoFila[];
   canOpen: CanOpenDoc;
   onOpenDoc: (doc: OpenOrderDocument) => void;
+  countCancelledApart?: boolean;
 }) {
   return (
     <DocBlock
       title={title}
       count={filas.length}
-      cancelledCount={countCancelledDocs(filas, filaEstatus)}
+      cancelledCount={filaBlockCancelledCount(filas, countCancelledApart)}
       head={
         <>
           <th className={TH}>Folio</th>
@@ -372,7 +378,14 @@ export function DocumentosBlocks({
               </tr>
             ))}
           </DocBlock>
-          <FilaBlock title="Embarques" tipo={PACKING_DOC_TIPO} filas={docs.packings} canOpen={canOpen} onOpenDoc={onOpenDoc} />
+          <FilaBlock
+            title="Embarques"
+            tipo={PACKING_DOC_TIPO}
+            filas={docs.packings}
+            canOpen={canOpen}
+            onOpenDoc={onOpenDoc}
+            countCancelledApart
+          />
           <DocBlock
             title="Despachos"
             count={docs.despachos.length}
