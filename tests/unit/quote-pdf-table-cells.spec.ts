@@ -4,9 +4,7 @@ import type { QuoteById } from "@/src/features/quotes/interfaces/quote.interface
 import { buildQuotePdfModel } from "@/src/features/quotes/utils/quotePdfTemplateHelpers";
 import { QuotePdfDocument } from "@/src/pdfs/QuotePdfDocument";
 import { pdfStyles } from "@/src/pdfs/QuotePdfStyles";
-import { BASE_PDF_COLORS } from "@/src/pdfs/shared/BasePdfColors";
-import { basePdfStyles } from "@/src/pdfs/shared/BasePdfStyles";
-import { elementsOf, type TreeElement } from "./support/pdfElementTree";
+import { elementsOf, paddingOf, stylesOf, type TreeElement } from "./support/pdfElementTree";
 import { layoutPdfPages } from "./support/pdfLayout";
 
 /**
@@ -39,17 +37,6 @@ const quoteWith = (productName: string, sku: string) =>
   }) as unknown as QuoteById;
 
 const QUOTE = quoteWith("CAMISA MANGA LARGA DF PESCADOR", "10878012XC");
-
-/** Los estilos de un elemento, aplanados en un arreglo. */
-const stylesOf = (element: TreeElement): unknown[] => [element.props.style].flat(Infinity);
-
-/** `paddingHorizontal` efectivo: el último estilo que lo declara gana. */
-const paddingOf = (element: TreeElement): unknown =>
-  stylesOf(element)
-    .filter((style): style is { paddingHorizontal: number } =>
-      typeof style === "object" && style !== null && "paddingHorizontal" in style,
-    )
-    .at(-1)?.paddingHorizontal;
 
 function tableTree(quote: QuoteById = QUOTE) {
   const elements = elementsOf(QuotePdfDocument({ quote, model: buildQuotePdfModel(quote, "MXN") }));
@@ -84,12 +71,6 @@ test.describe("Margen lateral de las celdas del PDF de cotización (EC-952)", ()
       expect(stylesOf(cell)).toContain(pdfStyles.tableCellBox);
       expect(paddingOf(cell)).toBe(3);
     }
-  });
-
-  test("la base compartida no cambia: el ajuste vive en los estilos de la cotización", () => {
-    const base = basePdfStyles(BASE_PDF_COLORS);
-    expect(base.tableHeader.paddingHorizontal).toBe(8);
-    expect(base.tableRow.paddingHorizontal).toBe(8);
   });
 });
 

@@ -17,6 +17,17 @@ export function elementsOf(node: unknown): TreeElement[] {
   return [element, ...elementsOf(element.props.children)];
 }
 
+/** Los estilos de un elemento, aplanados en un arreglo. */
+export const stylesOf = (element: TreeElement): unknown[] => [element.props.style].flat(Infinity);
+
+/** `paddingHorizontal` efectivo de un elemento: el último estilo que lo declara gana. */
+export const paddingOf = (element: TreeElement): unknown =>
+  stylesOf(element)
+    .filter((style): style is { paddingHorizontal: number } =>
+      typeof style === "object" && style !== null && "paddingHorizontal" in style,
+    )
+    .at(-1)?.paddingHorizontal;
+
 /** Columnas visibles (como las pinta `PdfLineItemsTable`) y filas de la tabla con ese título. */
 export function pdfTable<Row>(elements: TreeElement[], title: string) {
   const table = elements.find(

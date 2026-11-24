@@ -10,7 +10,7 @@ import {
   type PdfColumn,
   type PdfLineItemsTableProps,
 } from "@/src/pdfs/shared/DocumentPdfLayout";
-import { elementsOf, type TreeElement } from "./support/pdfElementTree";
+import { elementsOf, paddingOf, stylesOf, type TreeElement } from "./support/pdfElementTree";
 
 /**
  * Margen lateral de las celdas de la tabla base (EC-891). Sin él, el texto de
@@ -39,17 +39,6 @@ const COLUMNS: PdfColumn<Row>[] = [
 const ROWS: Row[] = [{ razon: "COMERCIALIZADORA SA DE CV", rfc: "DMS050731LX7" }];
 
 const CELL_BOX = documentPdfStyles.tableCellBox;
-
-/** Los estilos de un elemento, aplanados en un arreglo. */
-const stylesOf = (element: TreeElement): unknown[] => [element.props.style].flat(Infinity);
-
-/** `paddingHorizontal` efectivo: el último estilo que lo declara gana. */
-const paddingOf = (element: TreeElement): unknown =>
-  stylesOf(element)
-    .filter((style): style is { paddingHorizontal: number } =>
-      typeof style === "object" && style !== null && "paddingHorizontal" in style,
-    )
-    .at(-1)?.paddingHorizontal;
 
 function tableTree() {
   const props: PdfLineItemsTableProps<Row> = { title: "PEDIDO", rows: ROWS, columns: COLUMNS, emptyMessage: "-" };
