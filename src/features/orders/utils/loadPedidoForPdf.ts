@@ -5,9 +5,17 @@ import { findCurrency, getCurrencyLabel } from "@/src/features/currency/utils/cu
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { getPedidoDetail } from "../services/actions";
 import { canSeeAccounting } from "./orderAccounting";
+import { isRequestTimeoutError } from "@/src/utils/requestTimeout";
 
 /** Reintentos del catálogo de monedas antes de abortar el PDF. */
 const CATALOGO_REINTENTOS = 2;
+
+/**
+ * `CATALOGO_REINTENTOS` reintentos del catálogo, salvo tras un timeout
+ * (`isRequestTimeoutError`, EC-939): ya esperó su tope entero.
+ */
+export const retryPedidoPdfCatalog = (failureCount: number, error: unknown): boolean =>
+  !isRequestTimeoutError(error) && failureCount < CATALOGO_REINTENTOS;
 
 export const PEDIDO_PDF_CURRENCY_ERROR =
   "No se pudo cargar el catálogo de monedas; intenta de nuevo para generar el PDF con la moneda del pedido.";
@@ -53,7 +61,7 @@ export const loadPedidoForPdf = async (
   // El resultado del catálogo se captura (no queda una promesa rechazada sin
   // atender si el usuario no ve importes y nadie la espera).
   const catalog: Promise<CatalogResult> = queryClient
-    .ensureQueryData({ ...currenciesQueryOptions(), retry: CATALOGO_REINTENTOS })
+    .ensureQueryData({ ...currenciesQueryOptions(), retry: retryPedidoPdfCatalog })
     .then(
       (currencies) => ({ ok: true, currencies }),
       (error: unknown) => ({ ok: false, error }),

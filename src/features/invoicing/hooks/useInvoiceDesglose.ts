@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessNotFound } from "@/src/utils/defaultQueryRetry";
 import { getInvoiceDesglose } from "../services/actions";
 import type { InvoiceDesglose } from "../interfaces/invoice-desglose.interface";
 
@@ -23,5 +23,5 @@ export const useInvoiceDesglose = (id: number) =>
     staleTime: 0,
     gcTime: 60_000,
     refetchOnMount: "always",
-    retry: (failureCount, error) => !isNotFoundError(error) && failureCount < 1,
+    retry: retryUnlessNotFound,
   });

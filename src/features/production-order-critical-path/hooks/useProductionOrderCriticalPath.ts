@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessNotFound } from "@/src/utils/defaultQueryRetry";
 import { getProductionOrderCriticalPath } from "../services/actions";
 import type { ProductionOrderCriticalPath } from "../interfaces/production-order-critical-path.interface";
 
@@ -36,7 +36,7 @@ export const useProductionOrderCriticalPath = (opId: number) => {
     enabled: isValidOpId(opId),
     refetchOnMount: "always",
     refetchOnReconnect: false,
-    retry: (failureCount, error) => !isNotFoundError(error) && failureCount < 1,
+    retry: retryUnlessNotFound,
   });
 
   const { isInitialError } = useHasLoadedQuery({

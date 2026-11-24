@@ -3,9 +3,17 @@ import { currenciesQueryOptions } from "@/src/features/currency/hooks/useCurrenc
 import { findCurrency } from "@/src/features/currency/utils/currencyLookup";
 import type { QuoteById } from "../interfaces/quote.interface";
 import { getQuoteById } from "../services/actions";
+import { isRequestTimeoutError } from "@/src/utils/requestTimeout";
 
 /** Reintentos del catálogo de monedas antes de abortar el documento. */
 const CATALOGO_REINTENTOS = 2;
+
+/**
+ * `CATALOGO_REINTENTOS` reintentos del catálogo, salvo tras un timeout
+ * (`isRequestTimeoutError`, EC-939): ya esperó su tope entero.
+ */
+export const retryQuoteDocumentCatalog = (failureCount: number, error: unknown): boolean =>
+  !isRequestTimeoutError(error) && failureCount < CATALOGO_REINTENTOS;
 
 export const CATALOGO_MONEDAS_ERROR =
   "No se pudo cargar el catálogo de monedas; intenta de nuevo para generar el documento con la moneda de la cotización.";
@@ -32,7 +40,7 @@ export const loadQuoteForDocument = async (
   const [quote, currencies] = await Promise.all([
     getQuoteById(quoteId),
     queryClient
-      .ensureQueryData({ ...currenciesQueryOptions(), retry: CATALOGO_REINTENTOS })
+      .ensureQueryData({ ...currenciesQueryOptions(), retry: retryQuoteDocumentCatalog })
       .catch((error: unknown) => {
         throw new Error(CATALOGO_MONEDAS_ERROR, { cause: error });
       }),

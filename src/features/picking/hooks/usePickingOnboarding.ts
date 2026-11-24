@@ -3,6 +3,7 @@ import { getPickingOnboarding } from "../services/actions";
 import type { PickingOnboardingData } from "../interfaces/picking-onboarding.interface";
 import { parsePickingError } from "../utils/parsePickingError";
 import { isAxiosError } from "axios";
+import { defaultQueryRetry } from "@/src/utils/defaultQueryRetry";
 
 /**
  * Prefijo de la llamada SIN pedido (el catálogo del Paso 1): coincide con
@@ -22,12 +23,13 @@ export const invalidateScheduledPedidos = (queryClient: QueryClient) =>
 /**
  * Sin reintento solo ante un rechazo DEFINITIVO del backend (400/403/404: el
  * pedido dejó de estar programado, no es accesible o no existe). Un 408/429 u
- * otro fallo pasajero conserva el `retry: 1` global de `Provider.tsx`.
+ * otro fallo pasajero conserva el `retry` global de `Provider.tsx`
+ * (`defaultQueryRetry`, que no reintenta un timeout).
  */
 export const retryUnlessDefinitiveRejection = (failureCount: number, error: unknown) => {
   const status = isAxiosError(error) ? error.response?.status : undefined;
   if (status === 400 || status === 403 || status === 404) return false;
-  return failureCount < 1;
+  return defaultQueryRetry(failureCount, error);
 };
 
 /**
