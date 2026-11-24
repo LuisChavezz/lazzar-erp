@@ -1,5 +1,5 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { isNotFoundError } from "@/src/utils/drfWriteErrors";
+import { retryUnlessNotFound } from "@/src/utils/defaultQueryRetry";
 import { getInvoiceDetail } from "../services/actions";
 
 /**
@@ -18,7 +18,7 @@ export const invoiceRetrieveFreshOptions = (id: number) =>
     queryKey: ["invoice-detail", id],
     queryFn: () => getInvoiceDetail(id),
     staleTime: 0,
-    retry: (failureCount, error) => !isNotFoundError(error) && failureCount < 1,
+    retry: retryUnlessNotFound,
   });
 
 /**

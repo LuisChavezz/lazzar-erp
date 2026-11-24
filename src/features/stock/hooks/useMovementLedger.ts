@@ -1,4 +1,5 @@
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { defaultQueryRetry } from "@/src/utils/defaultQueryRetry";
 import { MOVEMENT_LEDGER_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 import { isDrfActionRejection, isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getMovementLedger } from "../services/actions";
@@ -7,6 +8,14 @@ import {
   type MovementLedgerParams,
   type MovementLedgerResponse,
 } from "../interfaces/movement-ledger.interface";
+
+/**
+ * `retry` del kardex: sin reintento ante un 400/403/409 (`isDrfActionRejection`)
+ * o un 404; el resto sigue al global (`defaultQueryRetry`, que no reintenta un
+ * timeout).
+ */
+export const retryMovementLedger = (failureCount: number, error: unknown): boolean =>
+  !isDrfActionRejection(error) && !isNotFoundError(error) && defaultQueryRetry(failureCount, error);
 
 /**
  * Auxiliar de movimientos (kardex de una variante). `params` es `null`
@@ -26,8 +35,7 @@ export const useMovementLedger = (params: MovementLedgerParams | null) => {
         queryKey: [...MOVEMENT_LEDGER_QUERY_KEY, params],
         queryFn: () => getMovementLedger(params as MovementLedgerParams),
         enabled: params !== null,
-        retry: (failureCount, failure) =>
-          !isDrfActionRejection(failure) && !isNotFoundError(failure) && failureCount < 1,
+        retry: retryMovementLedger,
         placeholderData: (previous) =>
           previous &&
           isResolvedMovementLedger(previous) &&

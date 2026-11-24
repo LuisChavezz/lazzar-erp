@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
+import { defaultQueryRetry } from "@/src/utils/defaultQueryRetry";
 import { GoogleEventsResponse } from "../interfaces/google.interface";
 import { googleGetCalendarEvents } from "../services/actions";
 import {
@@ -28,6 +29,14 @@ interface UseGoogleCalendarEventsOptions {
    */
   keepPreviousRange?: boolean;
 }
+
+/**
+ * `retry` de los eventos: un error de paginación (demasiadas páginas, token
+ * repetido) es determinista, y reintentarlo solo repetiría toda la cadena. El
+ * resto sigue al global (`defaultQueryRetry`, que no reintenta un timeout).
+ */
+export const retryCalendarEvents = (failureCount: number, error: unknown): boolean =>
+  !(error instanceof CalendarEventsPaginationError) && defaultQueryRetry(failureCount, error);
 
 /**
  * Consulta los eventos del Google Calendar del usuario autenticado.
@@ -84,11 +93,7 @@ export const useGoogleCalendarEvents = ({
               googleGetCalendarEvents(pageToken ? { ...params, pageToken } : params, pageSignal),
             { signal },
           ),
-        // Un error de paginación (demasiadas páginas, token repetido) es
-        // determinista: reintentarlo solo repetiría toda la cadena. El resto
-        // conserva el reintento único del `QueryClient`.
-        retry: (failureCount, retryError) =>
-          !(retryError instanceof CalendarEventsPaginationError) && failureCount < 1,
+        retry: retryCalendarEvents,
         enabled,
       },
       {

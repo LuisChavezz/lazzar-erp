@@ -128,7 +128,8 @@ test.describe("loadQuoteForDocument", () => {
       expect((error as Error).message).toBe(CATALOGO_MONEDAS_ERROR);
       expect((error as Error).cause).toBe(network);
     });
-    // El catálogo se reintenta antes de abortar.
-    expect(options?.retry).toBeGreaterThan(0);
+    // El catálogo se reintenta antes de abortar (salvo tras un timeout, EC-939).
+    const retry = options?.retry as (failureCount: number, error: unknown) => boolean;
+    expect(retry(0, network)).toBe(true);
   });
 });
