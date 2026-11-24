@@ -1,7 +1,7 @@
 "use client";
 
 import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButtonClass";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { ConfigCard } from "./ConfigCard";
@@ -14,7 +14,47 @@ import { configGroups, type ConfigCardItem } from "../constants/configCardItems"
 const canPrefetch = (card: ConfigCardItem) =>
   card.prefetchQuery !== undefined || (card.prefetchKey !== undefined && card.prefetchFn !== undefined);
 
+/**
+ * Placeholders con las mismas dimensiones que las TiltCards de grupos, para
+ * reservar el espacio en la grilla. Esto evita el salto de layout (CLS) cuando
+ * los permisos resuelven y los grupos pasan de 0 a N elementos.
+ */
+function ConfigMenuSkeleton({ groups }: { groups: readonly { group: string }[] }) {
+  return (
+    <div className="w-full grid grid-cols-1 min-h-128">
+      <div className="col-start-1 row-start-1 w-full">
+        {/* Esqueleto de la barra de búsqueda */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="relative w-full sm:w-80 h-10 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />
+        </div>
+        {/* Esqueleto del grid de grupos — reserva el espacio exacto */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {groups.map((group) => (
+            <div
+              key={group.group}
+              className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 min-h-56"
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * La vista abierta se lee de la URL (`?view=`, EC-956) con `useSearchParams`,
+ * que requiere un límite de Suspense para que `/config` siga siendo estática.
+ */
 export function ConfigContent() {
+  return (
+    <Suspense fallback={<ConfigMenuSkeleton groups={configGroups} />}>
+      <ConfigMenu />
+    </Suspense>
+  );
+}
+
+function ConfigMenu() {
   const { data: session, status } = useSession();
 
   // Obtener el cliente de consulta para hacer prefetch de datos
@@ -24,6 +64,7 @@ export function ConfigContent() {
   const {
     selectedView,
     isGridVisible,
+    isGridReturning,
     selectedGroup,
     searchTerm,
     setSearchTerm,
@@ -69,35 +110,11 @@ export function ConfigContent() {
     return () => window.cancelAnimationFrame(frame);
   }, [selectedGroup]);
 
-  /**
-   * Durante la carga de sesión, renderiza placeholders con las mismas dimensiones
-   * que las TiltCards de grupos para reservar el espacio en la grilla.
-   * Esto evita el salto de layout (CLS) cuando los permisos resuelven y los
-   * grupos pasan de 0 a N elementos.
-   *
-   * Todos los hooks deben llamarse antes de este return condicional.
-   */
+  // Durante la carga de sesión, esqueleto del menú (la vista de la URL se
+  // valida contra los permisos, que aún no se conocen). Todos los hooks deben
+  // llamarse antes de este return condicional.
   if (status === "loading") {
-    return (
-      <div className="w-full grid grid-cols-1 min-h-128">
-        <div className="col-start-1 row-start-1 w-full">
-          {/* Esqueleto de la barra de búsqueda */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="relative w-full sm:w-80 h-10 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />
-          </div>
-          {/* Esqueleto del grid de grupos — reserva el espacio exacto */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-            {loadingGroups.map((group) => (
-              <div
-                key={group.group}
-                className="cursor-pointer rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-6 sm:p-8 min-h-56"
-                aria-hidden="true"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <ConfigMenuSkeleton groups={loadingGroups} />;
   }
 
   return (
@@ -112,6 +129,7 @@ export function ConfigContent() {
               : "opacity-100 translate-y-0 scale-100"
             }
             ${!isGridVisible ? "hidden" : ""}
+            ${isGridReturning ? "starting:opacity-0 starting:-translate-y-20 starting:scale-95" : ""}
           `}
         >
           {!selectedGroup ? (
