@@ -1,4 +1,14 @@
-import { createElement, forwardRef, Fragment, memo, type ComponentType, type ReactElement, type ReactNode } from "react";
+import {
+  createContext,
+  createElement,
+  forwardRef,
+  Fragment,
+  memo,
+  useContext,
+  type ComponentType,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 /**
  * Elementos de React reales a partir del JSX que compila el runner, para
@@ -19,9 +29,32 @@ export type PwElement = { __pw_type: "jsx"; type: unknown; props: Record<string,
 export const isPwElement = (node: unknown): node is PwElement =>
   typeof node === "object" && node !== null && (node as { __pw_type?: unknown }).__pw_type === "jsx";
 
+/** El `onRender` que recibe el `<Document>` de react-pdf dentro de este proveedor. */
+type PdfRenderListener = (params: Record<string, unknown>) => void;
+export const PdfRenderListenerContext = createContext<PdfRenderListener | null>(null);
+
+/**
+ * `<Document>` de react-pdf (el elemento anfitrión `"DOCUMENT"`) que, dentro de
+ * un `PdfRenderListenerContext`, recibe además ese `onRender`: así una prueba
+ * lee lo que el renderer entrega al terminar (el árbol maquetado) sin tocar el
+ * documento ni llamar sus componentes fuera de React. Sin proveedor, el
+ * `Document` queda igual.
+ */
+function PdfDocumentWithListener(props: Record<string, unknown> & { onRender?: PdfRenderListener }) {
+  const listener = useContext(PdfRenderListenerContext);
+  if (!listener) return createElement("DOCUMENT", props);
+  const own = props.onRender;
+  const onRender: PdfRenderListener = (params) => {
+    own?.(params);
+    listener(params);
+  };
+  return createElement("DOCUMENT", { ...props, onRender });
+}
+
 const wrappedComponents = new WeakMap<object, ComponentType<Record<string, unknown>>>();
 
 const wrapType = (type: unknown): unknown => {
+  if (type === "DOCUMENT") return PdfDocumentWithListener;
   if (typeof type === "object" && type !== null && "__pw_jsx_fragment" in type) return Fragment;
   if (typeof type === "object" && type !== null) {
     // `forwardRef` y `memo` son objetos: lo que devuelve su función también

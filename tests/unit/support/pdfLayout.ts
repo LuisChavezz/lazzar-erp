@@ -1,7 +1,7 @@
 import { inflateSync } from "node:zlib";
-import { cloneElement, type ReactElement } from "react";
+import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { toReactElement } from "./pwJsx";
+import { PdfRenderListenerContext, toReactElement } from "./pwJsx";
 
 /**
  * MAQUETAR de verdad un documento de react-pdf en las pruebas unitarias: el
@@ -145,24 +145,22 @@ type LayoutNode = {
  * Maqueta el documento con react-pdf y devuelve cada `Text` con sus renglones,
  * para medir si un texto cabe en su caja. Los anchos vienen del árbol de
  * `@react-pdf/layout`, que el renderer entrega al `onRender` del `Document`
- * (`_INTERNAL__LAYOUT__DATA_`): interno, pero es el layout real. `xAdvance` es
- * lo que avanzan los glifos del renglón, no el ancho de la caja.
- *
- * Para llegar al `Document` se llaman los componentes de función de la raíz
- * (`QuotePdfDocument`, `DocumentPdfLayout`): deben ser funciones sin hooks.
+ * (`_INTERNAL__LAYOUT__DATA_`): interno, pero es el layout real. El `onRender`
+ * lo pone `PdfRenderListenerContext` (`pwJsx`) mientras React renderiza el
+ * documento tal cual, así que sus componentes pueden usar hooks, `memo` o
+ * `forwardRef`. `xAdvance` es lo que avanzan los glifos del renglón, no el
+ * ancho de la caja.
  */
 export async function layoutPdfTexts(document: unknown): Promise<PdfLayoutText[]> {
-  let root = toReactElement(document) as ReactElement<Record<string, unknown>>;
-  while (typeof root.type === "function") {
-    root = toReactElement((root.type as (props: unknown) => unknown)(root.props)) as ReactElement<Record<string, unknown>>;
-  }
-  if (root.type !== "DOCUMENT") throw new Error("La raíz no llega a un <Document> de react-pdf");
-
   let layout: LayoutNode | undefined;
-  const onRender = ({ _INTERNAL__LAYOUT__DATA_: data }: { _INTERNAL__LAYOUT__DATA_?: LayoutNode }) => {
-    layout = data;
+  const listener = ({ _INTERNAL__LAYOUT__DATA_: data }: { _INTERNAL__LAYOUT__DATA_?: unknown }) => {
+    layout = data as LayoutNode;
   };
-  await renderToBuffer(cloneElement(root, { onRender }) as Parameters<typeof renderToBuffer>[0]);
+  await renderToBuffer(
+    createElement(PdfRenderListenerContext, { value: listener }, toReactElement(document)) as Parameters<
+      typeof renderToBuffer
+    >[0],
+  );
   if (!layout) throw new Error("react-pdf no entregó el árbol maquetado");
 
   const texts: PdfLayoutText[] = [];
