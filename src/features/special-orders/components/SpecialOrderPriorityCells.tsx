@@ -7,20 +7,16 @@ import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { useClientNow } from "@/src/hooks/useClientNow";
 import { PreOrderTrackerMini } from "@/src/features/pre-orders/components/PreOrderTracker";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { formatShortDate } from "@/src/utils/formatDate";
-import { getMexicoTodayDate, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import {
   isClosedProductionOrderStatus,
   productionOrderStatusEntry,
 } from "@/src/features/production-orders/constants/productionOrderStatus";
+import { entregaDias, entregaLabel } from "../utils/specialOrderEntrega";
 import type { SpecialOrderListItem } from "../interfaces/special-order.interface";
 
 const DASH = <span className="text-sm text-slate-400 dark:text-slate-600">—</span>;
-
-/** Días de calendario entre dos llaves `YYYY-MM-DD` (b − a). */
-const daysBetween = (a: string, b: string) =>
-  Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
 /**
  * Fecha compromiso con los días que faltan. El conteo se calcula después de
@@ -30,7 +26,7 @@ export function EntregaCell({ fecha }: { fecha: string | null | undefined }) {
   const now = useClientNow();
   if (!fecha) return DASH;
   const key = fecha.slice(0, 10);
-  const dias = now === null ? null : daysBetween(getMexicoTodayDate(new Date(now)), key);
+  const dias = now === null ? null : entregaDias(fecha, now);
   const tone =
     dias === null
       ? "text-slate-500 dark:text-slate-400"
@@ -39,7 +35,7 @@ export function EntregaCell({ fecha }: { fecha: string | null | undefined }) {
         : dias <= 7
           ? "text-amber-600 dark:text-amber-400"
           : "text-slate-500 dark:text-slate-400";
-  const label = dias === null ? null : formatDeadlineText(dias, { gender: "m" });
+  const label = now === null ? null : entregaLabel(fecha, now);
 
   return (
     <div className="flex flex-col">
