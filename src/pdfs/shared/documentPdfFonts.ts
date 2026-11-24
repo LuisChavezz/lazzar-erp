@@ -8,8 +8,8 @@
  * para que tablas y tarjetas conserven sus anchos. No cubre emoji ni ✓.
  *
  * Dónde y cuándo se registra: en el navegador, justo antes de cada PDF,
- * `renderPdfBlob` llama a `ensureDocumentPdfFonts` (`documentPdfFontLoader`),
- * que descarga los archivos y reintenta tras un fallo sin recargar (EC-942);
+ * `renderPdfBlob` usa `documentPdfFontLoader`, que descarga los archivos (a la
+ * vez que los chunks), los registra y reintenta tras un fallo sin recargar (EC-942);
  * así no pesa en ninguna pantalla. En Node (las pruebas que maquetan un PDF
  * real) no hay servidor que los sirva: se registran aquí, al importar, por
  * ruta de disco. El PDF de cotización (estilos propios, fuera de la base)

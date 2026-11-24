@@ -7,7 +7,11 @@ import {
   type PdfRenderer,
 } from "@/src/utils/renderPdfBlob";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { PdfFontLoadError, type PdfFontRegistry } from "@/src/pdfs/shared/documentPdfFontLoader";
+import {
+  PdfFontLoadError,
+  type DocumentPdfFontLoader,
+  type PdfFontRegistry,
+} from "@/src/pdfs/shared/documentPdfFontLoader";
 
 /**
  * Pruebas unitarias de EC-700: `renderPdfBlob` (vía `renderPdfBlobWith`, con
@@ -18,9 +22,9 @@ import { PdfFontLoadError, type PdfFontRegistry } from "@/src/pdfs/shared/docume
  * llama, y el mensaje del PDF sobrevive a `extractErrorMessage`. Corren con
  * `npm run test:unit`.
  *
- * Usan un renderer falso: no se renderiza un PDF real en Node. El registro de
- * la fuente (`ensureFonts`, EC-942) también se inyecta: por defecto no hace
- * nada, y las pruebas de la fuente lo sustituyen.
+ * Usan un renderer falso: no se renderiza un PDF real en Node. El cargador de
+ * la fuente (`fonts`, EC-942) también se inyecta: por defecto no hace nada, y
+ * las pruebas de la fuente lo sustituyen.
  */
 
 type Props = { label: string };
@@ -46,13 +50,15 @@ const fakeRenderer = (toBlob: () => Promise<Blob>) => {
   return { rendered, renderer, loadRenderer: async () => renderer };
 };
 
-/** `renderPdfBlobWith` con un registro de fuente que no hace nada salvo que se pase otro. */
+const noopFonts: DocumentPdfFontLoader = { download: async () => [], register() {} };
+
+/** `renderPdfBlobWith` con un cargador de fuente que no hace nada salvo que se pase otro. */
 const renderWith = <P extends object>(
   loadRenderer: Parameters<typeof renderPdfBlobWith<P>>[0],
   loadDocument: Parameters<typeof renderPdfBlobWith<P>>[1],
   props: P,
-  ensureFonts: (font: PdfFontRegistry) => Promise<void> = async () => {},
-) => renderPdfBlobWith(loadRenderer, loadDocument, props, ensureFonts);
+  fonts: DocumentPdfFontLoader = noopFonts,
+) => renderPdfBlobWith(loadRenderer, loadDocument, props, fonts);
 
 test("renderiza el documento cargado con sus props y devuelve el Blob del renderer", async () => {
   const blob = new Blob(["%PDF-"], { type: "application/pdf" });
@@ -164,45 +170,89 @@ test("un Error que no es TypeError con «network error» se propaga sin cambios"
   expect(error).toBe(original);
 });
 
-// EC-942: la fuente se registra (y se reintenta) antes de renderizar.
-test("registra la fuente con el Font del renderer ANTES de renderizar", async () => {
+// EC-942: la fuente se descarga a la vez que los chunks y se registra antes de renderizar.
+test("empieza la descarga de la fuente antes de que terminen de cargar los chunks", async () => {
+  const { loadRenderer } = fakeRenderer(async () => new Blob());
+  const events: string[] = [];
+  let releaseRenderer!: () => void;
+  const rendererGate = new Promise<void>((resolve) => (releaseRenderer = resolve));
+
+  const pending = renderWith(
+    async () => {
+      events.push("renderer:start");
+      await rendererGate;
+      events.push("renderer:end");
+      return loadRenderer();
+    },
+    async () => SampleDocument,
+    { label: "x" },
+    {
+      download: async () => {
+        events.push("fonts:start");
+        return ["blob:a", "blob:b"];
+      },
+      register: () => void events.push("fonts:register"),
+    },
+  );
+
+  await expect.poll(() => events.includes("fonts:start")).toBe(true);
+  expect(events).not.toContain("renderer:end");
+  releaseRenderer();
+  await pending;
+  expect(events.indexOf("fonts:register")).toBeGreaterThan(events.indexOf("renderer:end"));
+});
+
+test("registra con el Font del renderer y las URLs descargadas ANTES de renderizar", async () => {
   const blob = new Blob(["%PDF-"], { type: "application/pdf" });
   const { renderer, rendered, loadRenderer } = fakeRenderer(async () => blob);
-  const fontsSeen: PdfFontRegistry[] = [];
-  let renderedWhenFontsCalled = -1;
+  const registered: [PdfFontRegistry, readonly string[], number][] = [];
 
-  const result = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, async (font) => {
-    fontsSeen.push(font);
-    renderedWhenFontsCalled = rendered.length;
+  const result = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, {
+    download: async () => ["blob:a", "blob:b"],
+    register: (font, urls) => void registered.push([font, urls, rendered.length]),
   });
 
   expect(result).toBe(blob);
-  expect(fontsSeen).toEqual([renderer.Font]);
-  expect(renderedWhenFontsCalled).toBe(0);
+  expect(registered).toEqual([[renderer.Font, ["blob:a", "blob:b"], 0]]);
 });
 
-test("si falla la descarga de la fuente se traduce y no se renderiza", async () => {
+test("si falla la descarga de la fuente se traduce, no se registra y no se renderiza", async () => {
   const original = new PdfFontLoadError("La fuente /fonts/pdf/Arimo-Regular.ttf respondió 404");
   const { rendered, loadRenderer } = fakeRenderer(async () => new Blob());
+  let registerCalls = 0;
 
-  const error = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, () =>
-    Promise.reject(original),
-  ).catch((e: unknown) => e);
+  const error = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, {
+    download: () => Promise.reject(original),
+    register: () => void registerCalls++,
+  }).catch((e: unknown) => e);
 
   expect((error as Error).message).toBe(PDF_FONT_LOAD_ERROR_MESSAGE);
   expect((error as Error).cause).toBe(original);
+  expect(registerCalls).toBe(0);
   expect(rendered).toHaveLength(0);
 });
 
-test("un error del registro que no es de descarga se propaga sin cambios", async () => {
-  const original = new Error("register exploded");
+test("un error de la descarga que no es de la fuente se propaga sin cambios", async () => {
+  const original = new Error("download exploded");
   const { loadRenderer } = fakeRenderer(async () => new Blob());
 
-  const error = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, () =>
-    Promise.reject(original),
-  ).catch((e: unknown) => e);
+  const error = await renderWith(loadRenderer, async () => SampleDocument, { label: "x" }, {
+    download: () => Promise.reject(original),
+    register() {},
+  }).catch((e: unknown) => e);
 
   expect(error).toBe(original);
+});
+
+test("si fallan el chunk y la fuente a la vez gana el mensaje del chunk", async () => {
+  const original = chunkLoadError();
+
+  const error = await renderWith(() => Promise.reject(original), async () => SampleDocument, { label: "x" }, {
+    download: () => Promise.reject(new PdfFontLoadError("sin red")),
+    register() {},
+  }).catch((e: unknown) => e);
+
+  expect((error as Error).message).toBe(PDF_GENERATOR_LOAD_ERROR_MESSAGE);
 });
 
 test("el mensaje de la fuente ya no pide recargar", () => {

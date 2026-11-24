@@ -18,8 +18,9 @@
  * un mensaje legible propio del PDF en vez del "Failed to load chunk …" del
  * bundler; el original queda en `cause`. Lo mismo si falla la descarga de la
  * fuente del PDF (`isPdfFontLoadError`): la Arimo de `/fonts/pdf`, que se
- * registra justo antes de renderizar (`ensureDocumentPdfFonts`, EC-942) y se
- * vuelve a pedir en el siguiente intento, sin recargar la página. Cualquier
+ * descarga a la vez que los chunks y se registra justo antes de renderizar
+ * (`documentPdfFontLoader`, EC-942); si falla, se vuelve a pedir en el
+ * siguiente intento, sin recargar la página. Cualquier
  * otro error —al evaluar el módulo o al renderizar el PDF— se propaga tal cual.
  *
  * La lógica vive en `renderPdfBlobWith`, que además recibe de dónde cargar el
@@ -31,8 +32,9 @@ import { createElement, type ComponentType, type ReactElement } from "react";
 import type { DocumentProps } from "@react-pdf/renderer";
 // Sin `@react-pdf/*`: recibe el `Font` del renderer ya cargado.
 import {
-  ensureDocumentPdfFonts,
+  documentPdfFontLoader,
   PdfFontLoadError,
+  type DocumentPdfFontLoader,
   type PdfFontRegistry,
 } from "@/src/pdfs/shared/documentPdfFontLoader";
 import { isChunkLoadError } from "./isChunkLoadError";
@@ -44,7 +46,7 @@ export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
 export const PDF_FONT_LOAD_ERROR_MESSAGE = "No se pudo cargar la fuente del PDF. Intenta de nuevo.";
 
 /**
- * ¿Falló la descarga de la fuente? La nuestra (`ensureDocumentPdfFonts`)
+ * ¿Falló la descarga de la fuente? La nuestra (`documentPdfFontLoader`)
  * lanza `PdfFontLoadError` por cualquier fallo: sin red, una respuesta que no
  * es `ok` o una que no es una fuente. Las otras dos ramas cubren a react-pdf si
  * llegara a pedir una fuente por su cuenta: sin red, `fetch` lanza un
@@ -77,15 +79,21 @@ export function renderPdfBlob<P extends object>(
 }
 
 /**
- * `renderPdfBlob` con el renderer (y el registro de la fuente) inyectables,
+ * `renderPdfBlob` con el renderer (y el cargador de la fuente) inyectables,
  * para las pruebas unitarias.
  */
 export async function renderPdfBlobWith<P extends object>(
   loadRenderer: () => Promise<PdfRenderer>,
   loadDocument: () => Promise<ComponentType<P>>,
   props: P,
-  ensureFonts: (font: PdfFontRegistry) => Promise<void> = ensureDocumentPdfFonts,
+  fonts: DocumentPdfFontLoader = documentPdfFontLoader,
 ): Promise<Blob> {
+  // La descarga empieza YA, a la vez que los chunks: no necesita `Font`. Su
+  // rechazo se atiende más abajo; el `catch` vacío solo evita un
+  // "unhandledrejection" si antes falla la carga de un chunk.
+  const fontUrls = fonts.download();
+  fontUrls.catch(() => {});
+
   const [renderer, PdfDocument] = await Promise.all([loadRenderer(), loadDocument()]).catch(
     (error: unknown) => {
       throw isChunkLoadError(error)
@@ -94,11 +102,12 @@ export async function renderPdfBlobWith<P extends object>(
     },
   );
 
-  // Antes de renderizar: si falla, no se registra nada y el siguiente intento
-  // la vuelve a descargar.
-  await ensureFonts(renderer.Font).catch((error: unknown) => {
+  // Antes de renderizar: si la descarga falló, no se registra nada y el
+  // siguiente intento la vuelve a pedir.
+  const urls = await fontUrls.catch((error: unknown) => {
     throw toPdfFontLoadError(error);
   });
+  fonts.register(renderer.Font, urls);
 
   // Cada documento de `src/pdfs/` es un componente cuya raíz es `<Document>`,
   // pero su elemento lleva SUS props, no las de `Document`; el tipo no puede

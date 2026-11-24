@@ -10,7 +10,7 @@ import {
 
 /**
  * EC-942: la fuente de los PDFs (Arimo) se descarga y registra en el navegador
- * justo antes de renderizar, y un fallo ya no deja la página sin PDFs hasta
+ * justo antes de renderizar (`download` + `register`), y un fallo ya no deja la página sin PDFs hasta
  * recargar: el siguiente intento vuelve a descargar. Con `fetch`, `Font` y
  * `createObjectURL` falsos; las respuestas llevan los bytes reales de
  * `public/fonts/pdf/`.
@@ -29,14 +29,16 @@ const harness = (respond: (url: string, call: number) => Promise<Response>) => {
   const registrations: Registration[] = [];
   const font: PdfFontRegistry = { register: (data) => void registrations.push(data) };
   let objectUrls = 0;
-  const ensure = createDocumentPdfFontLoader({
+  const loader = createDocumentPdfFontLoader({
     fetch: (url) => {
       requested.push(url);
       return respond(url, requested.length);
     },
     createObjectURL: () => `blob:test/${++objectUrls}`,
   });
-  return { ensure, font, requested, registrations };
+  /** Lo mismo que hace `renderPdfBlob`: descargar y, ya con el `Font`, registrar. */
+  const ensure = async (target: PdfFontRegistry) => loader.register(target, await loader.download());
+  return { loader, ensure, font, requested, registrations };
 };
 
 const FILES = ["/fonts/pdf/Arimo-Regular.ttf", "/fonts/pdf/Arimo-Bold.ttf"];
@@ -53,6 +55,23 @@ test("descarga los dos pesos y registra la familia una sola vez desde URLs blob:
       fonts: [
         { src: "blob:test/1", fontWeight: "normal" },
         { src: "blob:test/2", fontWeight: "bold" },
+      ],
+    },
+  ]);
+});
+
+test("register solo llama a Font.register la primera vez", () => {
+  const { loader, font, registrations } = harness(async (url) => fontResponse(url));
+
+  loader.register(font, ["blob:a", "blob:b"]);
+  loader.register(font, ["blob:c", "blob:d"]);
+
+  expect(registrations).toEqual([
+    {
+      family: DOCUMENT_PDF_FONT_FAMILY,
+      fonts: [
+        { src: "blob:a", fontWeight: "normal" },
+        { src: "blob:b", fontWeight: "bold" },
       ],
     },
   ]);
@@ -126,13 +145,13 @@ test("si falla solo uno de los dos archivos no registra ninguno", async () => {
 
 test("dos llamadas simultáneas comparten una sola descarga por archivo", async () => {
   const pendingResponses: (() => void)[] = [];
-  const { ensure, font, requested, registrations } = harness(
+  const { loader, ensure, font, requested, registrations } = harness(
     (url) => new Promise((resolve) => pendingResponses.push(() => resolve(fontResponse(url)))),
   );
 
+  expect(loader.download()).toBe(loader.download());
   const first = ensure(font);
   const second = ensure(font);
-  expect(second).toBe(first);
 
   await expect.poll(() => pendingResponses.length).toBe(2);
   pendingResponses.forEach((release) => release());
@@ -161,24 +180,22 @@ test("dos llamadas simultáneas que fallan reciben el mismo error, y la siguient
 });
 
 test("un intento que termina de fallar después de que empezó otro no borra el nuevo", async () => {
-  // El primer intento falla; mientras el segundo sigue en curso, el `catch`
-  // del primero ya corrió: el segundo no se olvida ni se duplica.
   const releases: (() => void)[] = [];
   let call = 0;
-  const { ensure, font, requested, registrations } = harness((url) => {
+  const { loader, ensure, font, requested, registrations } = harness((url) => {
     call += 1;
     if (call <= 2) return Promise.reject(new TypeError("Failed to fetch"));
     return new Promise((resolve) => releases.push(() => resolve(fontResponse(url))));
   });
 
   await expect(ensure(font)).rejects.toBeInstanceOf(PdfFontLoadError);
+  expect(loader.download()).toBe(loader.download());
   const second = ensure(font);
   const third = ensure(font);
-  expect(third).toBe(second);
 
   await expect.poll(() => releases.length).toBe(2);
   releases.forEach((release) => release());
-  await second;
+  await Promise.all([second, third]);
 
   expect(requested).toHaveLength(4);
   expect(registrations).toHaveLength(1);
