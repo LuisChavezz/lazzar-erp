@@ -9,6 +9,7 @@ import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { formatCurrency, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
+import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useBackendToday } from "@/src/hooks/useBackendToday";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
@@ -132,7 +133,9 @@ function DetailDialogContent({
           {estaVencida && (
             <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-2.5 text-sm">
               <p className="text-red-700 dark:text-red-400">
-                Cuenta vencida hace {diasDeAtraso} {diasDeAtraso === 1 ? "día" : "días"}
+                {/* `diasDeAtraso` es positivo (días de atraso); el helper los
+                    recibe con signo, negativo = vencido. */}
+                Cuenta {formatDeadlineText(-diasDeAtraso, { gender: "f", capitalize: false })}
                 , con un saldo de{" "}
                 <span className="font-semibold tabular-nums">
                   {money(cuenta.saldo)}
