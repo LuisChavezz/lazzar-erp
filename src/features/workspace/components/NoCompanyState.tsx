@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BuildingIcon } from "@/src/components/Icons";
@@ -21,6 +23,12 @@ export const NO_ACTIVE_COMPANY_TITLE = "No tienes una empresa activa";
 /** Texto del aviso para el superusuario sin empresa activa (#506). */
 export const NO_ACTIVE_COMPANY_MESSAGE =
   "Los datos se muestran por la empresa activa. Elige una para ver esta información.";
+/**
+ * Variante compacta (paleta de búsqueda): no lleva botón, así que el texto
+ * dice dónde se elige la empresa, el "Sin empresa activa" del encabezado.
+ */
+export const NO_ACTIVE_COMPANY_COMPACT_MESSAGE =
+  "Los datos se muestran por la empresa activa. Elígela desde “Sin empresa activa”, en el encabezado.";
 
 /**
  * Selector de empresa del superusuario (EC-847): vive en /select-branch
@@ -37,14 +45,18 @@ const COMPANY_SELECTOR_PATH = "/select-branch";
  *
  * Para el superusuario la causa es otra: no le falta una asignación, sino
  * elegir una empresa activa, cosa que puede hacer él mismo (EC-847). Por eso
- * su aviso lo dice y, fuera de la variante compacta, lleva al selector. Los
- * demás usuarios ven el texto de siempre. `action` reemplaza la acción en
- * ambos casos.
+ * su aviso lo dice y lleva al selector (en la variante compacta, que no lleva
+ * botón, dice dónde está). Los demás usuarios ven el texto de siempre.
+ * `action` reemplaza la acción en ambos casos.
  */
 export default function NoCompanyState({ action, compact = false }: NoCompanyStateProps) {
   const isSuperuser = useIsSuperuser();
   const title = isSuperuser ? NO_ACTIVE_COMPANY_TITLE : NO_COMPANY_TITLE;
-  const message = isSuperuser ? NO_ACTIVE_COMPANY_MESSAGE : NO_COMPANY_MESSAGE;
+  const message = isSuperuser
+    ? compact
+      ? NO_ACTIVE_COMPANY_COMPACT_MESSAGE
+      : NO_ACTIVE_COMPANY_MESSAGE
+    : NO_COMPANY_MESSAGE;
   const resolvedAction =
     action ??
     (isSuperuser && !compact ? (
