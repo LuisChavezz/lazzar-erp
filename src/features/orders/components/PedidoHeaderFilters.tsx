@@ -6,6 +6,7 @@ import {
   FilterHeader,
   type ColumnFilterOption,
 } from "@/src/components/ColumnHeaderFilter";
+import { LockIcon } from "@/src/components/Icons";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { usePedidoFilterOptions } from "../hooks/usePedidosTable";
 import type { PedidoFilterOptions } from "../interfaces/pedido-list.interface";
@@ -66,7 +67,8 @@ export const RETENIDO_FILTER_OPTIONS: ColumnFilterOption[] = [
 
 /**
  * Encabezado de Folio de Mesa de Control: dos filtros, la confirmación (la
- * clave de la columna, `meta.serverFilter`) y la retención (`retenido`).
+ * clave de la columna, `meta.serverFilter`, con el embudo) y la retención
+ * (`retenido`, con un candado, el mismo ícono que la acción Retener).
  */
 export function PedidoFolioHeaderFilters<TData>({
   column,
@@ -82,6 +84,7 @@ export function PedidoFolioHeaderFilters<TData>({
       <ColumnHeaderFilter
         column={column}
         serverFilterKey="retenido"
+        icon={LockIcon}
         options={RETENIDO_FILTER_OPTIONS}
         label="retención"
       />
