@@ -53,7 +53,7 @@ export function formatFechaConfirmacion(value: string | null | undefined): strin
  * Plazo que queda hasta la fecha compromiso, a partir de `dias_restantes` del
  * backend (`compromiso - hoy`, NEGATIVO cuando ya venció). En minúscula
  * porque va a media línea, tras la fecha ("17 mar 2027 · faltan 113 días").
- * `null` sin dato.
+ * `null` sin dato o si el dato no es un entero.
  */
 export function formatDiasRestantes(dias: number | null): string | null {
   if (dias === null) return null;

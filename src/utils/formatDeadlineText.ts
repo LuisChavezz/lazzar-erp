@@ -22,12 +22,15 @@ const daysLabel = (n: number) => `${n} ${n === 1 ? "día" : "días"}`;
  * - `> 1`: "Faltan 5 días".
  *
  * Solo arma el texto: cada pantalla sigue calculando los días con su propio
- * "hoy" (el del backend o el día de México del navegador).
+ * "hoy" (el del backend o el día de México del navegador). `null` si el valor
+ * no es un entero (NaN, Infinity, una fracción: p. ej. una fecha que no se
+ * pudo leer): no se redondea, quien llama no pinta etiqueta.
  */
 export function formatDeadlineText(
   daysRemaining: number,
   { gender, capitalize = true }: DeadlineTextOptions,
-): string {
+): string | null {
+  if (!Number.isInteger(daysRemaining)) return null;
   let text: string;
   if (daysRemaining < 0) {
     text = `${gender === "f" ? "vencida" : "vencido"} hace ${daysLabel(-daysRemaining)}`;

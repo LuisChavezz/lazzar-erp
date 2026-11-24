@@ -31,6 +31,14 @@ test.describe("formatDeadlineText", () => {
     }
   });
 
+  test("un valor que no es entero no da texto: NaN, Infinity, fracción", () => {
+    expect(formatDeadlineText(Number.NaN, { gender: "m" })).toBeNull();
+    expect(formatDeadlineText(Number.POSITIVE_INFINITY, { gender: "f" })).toBeNull();
+    expect(formatDeadlineText(Number.NEGATIVE_INFINITY, { gender: "m" })).toBeNull();
+    expect(formatDeadlineText(1.5, { gender: "m", capitalize: false })).toBeNull();
+    expect(formatDeadlineText(-0.96, { gender: "f" })).toBeNull();
+  });
+
   test("capitalize: true es el valor por defecto", () => {
     expect(formatDeadlineText(3, { gender: "m", capitalize: true })).toBe(formatDeadlineText(3, { gender: "m" }));
   });
