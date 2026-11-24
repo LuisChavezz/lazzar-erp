@@ -95,6 +95,11 @@ export const authOptions: NextAuthOptions = {
         token.permissions = user.permissions;
         token.is_admin_empresa = user.is_admin_empresa;
         token.is_superuser = user.is_superuser;
+        /* Solo al iniciar sesión: no se refresca a media sesión (igual que
+         * `permissions` e `is_admin_empresa`), y `update()` del cliente no la
+         * escribe. Tras un cambio de rol, la UI puede mostrar controles
+         * desactualizados hasta el siguiente inicio de sesión; el backend
+         * sigue rechazando cada acción con el 400 `permiso`. */
         token.es_mesa_control = user.es_mesa_control;
         token.empresa = user.empresa ?? null;
         token.sub = user.id || token.sub;
