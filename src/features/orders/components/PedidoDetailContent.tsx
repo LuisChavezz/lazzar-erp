@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeftIcon, BanIcon, EditIcon, RefreshIcon } from "@/src/components/Icons";
+import {
+  ArrowLeftIcon,
+  BanIcon,
+  CheckCircleIcon,
+  EditIcon,
+  LockIcon,
+  RefreshIcon,
+} from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
 import { canActAsMesaControl, meetsPermissionRequirement } from "@/src/utils/permissions";
 import { MESA_CONTROL_PEDIDOS_PERMISSION } from "@/src/constants/mesaControlActionPermissions";
@@ -73,6 +80,10 @@ import { OrderMainSheet } from "./OrderMainSheet";
 import { OrderProgressSheet } from "./OrderProgressSheet";
 import { OrderRecompraAction } from "./OrderRecompraAction";
 import { PedidoCancelDialog, type PedidoCancelTarget } from "./PedidoCancelDialog";
+import { PedidoLiberarDialog } from "./PedidoLiberarDialog";
+import { PedidoRetenerDialog } from "./PedidoRetenerDialog";
+import { PedidoRetencionNotice } from "./PedidoRetencionNotice";
+import { pedidoRetencionAction } from "../utils/pedidoRetencion";
 import { PedidoPdfButton } from "./PedidoPdfButton";
 import { CUSTOMERS_LIST_PATH } from "@/src/features/customers/constants/customerRoutes";
 import { SampleSkuLinkDialog, SampleSkuSizeCatalogPrefetch } from "./SampleSkuLinkDialog";
@@ -308,8 +319,8 @@ export function PedidoDetailContent({
   // que la sección, que lo encuentra fresco (24 h) y no lo vuelve a pedir; sus
   // respaldos mientras carga no cambian. Solo en la hoja que lo pinta.
   useSatInfo({ enabled: sheet === "order" && !isPedidoUnavailable && !isHistoryAccessPending });
-  // Acciones de Mesa de Control (edición en línea, SKU de muestra, Editar y
-  // Cancelar): la decisión del backend (`es_mesa_control` de la sesión,
+  // Acciones de Mesa de Control (edición en línea, SKU de muestra, Editar,
+  // Cancelar, Retener y Liberar): la decisión del backend (`es_mesa_control` de la sesión,
   // EC-943), con el código `E-MESACONTROL-PEDIDOS` solo para una sesión
   // anterior que no la trae. Ver `canActAsMesaControl`.
   const canEditMesaControl = canActAsMesaControl(session?.user, MESA_CONTROL_PEDIDOS_PERMISSION);
@@ -328,6 +339,9 @@ export function PedidoDetailContent({
   const [sampleSkuLineId, setSampleSkuLineId] = useState<number | null>(null);
   // Pedido cuyo diálogo de cancelación está abierto (`null` = cerrado).
   const [cancelTarget, setCancelTarget] = useState<PedidoCancelTarget | null>(null);
+  // Pedido cuyo diálogo de Retener / Liberar está abierto (`null` = cerrado).
+  const [retenerTarget, setRetenerTarget] = useState<PedidoCancelTarget | null>(null);
+  const [liberarTarget, setLiberarTarget] = useState<PedidoCancelTarget | null>(null);
   // Ya cancelado, a la espera de que termine la navegación de salida: la página
   // deja de ofrecer acciones y hojas, que volverían a pedir el pedido (404).
   const [cancelled, setCancelled] = useState(false);
@@ -513,6 +527,9 @@ export function PedidoDetailContent({
   if (sampleSkuLineId !== null && sampleSkuLine === null) {
     setSampleSkuLineId(null);
   }
+  // Retener o Liberar (solo la que aplica): Mesa de Control y pedido no
+  // cancelado (`pedidoRetencionAction`).
+  const retencionAction = canEditMesaControl ? pedidoRetencionAction(data) : null;
   // Hojas que se ofrecen: "Historial" solo con el permiso confirmado.
   const sheets = availableOrderDetailSheets(canSeeHistory);
 
@@ -570,6 +587,30 @@ export function PedidoDetailContent({
               </Link>
             </Button>
           )}
+          {/* Retener / Liberar por Mesa de Control (nucleo-erp#1352): congela
+              el pedido sin cancelarlo, o lo libera. Solo la que aplica. */}
+          {retencionAction === "retener" && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setRetenerTarget({ id: data.id, folio: data.folio })}
+              className="inline-flex items-center gap-2"
+            >
+              <LockIcon className="w-4 h-4" aria-hidden="true" />
+              Retener
+            </Button>
+          )}
+          {retencionAction === "liberar" && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setLiberarTarget({ id: data.id, folio: data.folio })}
+              className="inline-flex items-center gap-2"
+            >
+              <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+              Liberar
+            </Button>
+          )}
           {/* Cancelar: misma regla que Editar. Un CANCELADO legado
               (`activo = true`, de antes de `/cancelar/`) no lo ofrece. */}
           {canEditMesaControl && data.estatus !== PEDIDO_ESTATUS.CANCELADO && (
@@ -587,6 +628,9 @@ export function PedidoDetailContent({
           <PedidoPdfButton pedido={data} />
         </div>
       </div>
+
+      {/* Visible en todas las hojas mientras el pedido siga retenido. */}
+      <PedidoRetencionNotice pedido={data} />
 
       {sheet === "order" ? (
         <OrderMainSheet
@@ -643,6 +687,8 @@ export function PedidoDetailContent({
       )}
 
       {cancelDialog}
+      <PedidoRetenerDialog pedido={retenerTarget} onClose={() => setRetenerTarget(null)} />
+      <PedidoLiberarDialog pedido={liberarTarget} onClose={() => setLiberarTarget(null)} />
 
       {/* Detalle del documento (se monta solo al abrir; cada diálogo trae su
           propio detalle por id). El componente se resuelve del registro. */}

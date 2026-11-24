@@ -10,6 +10,8 @@ import {
   ListaPreciosIcon,
   PedidosIcon,
 } from '@/src/components/Icons';
+import { PedidoRetenerDialog } from '@/src/features/orders/components/PedidoRetenerDialog';
+import { PedidoLiberarDialog } from '@/src/features/orders/components/PedidoLiberarDialog';
 import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
 import type { CurrencyTotal } from '@/src/utils/currencyTotals';
 import { safeParseAmount } from '@/src/utils/formatCurrency';
@@ -53,6 +55,12 @@ const buildKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
       hideProgress: true,
     },
     {
+  // Retener / Liberar: montados siempre, como el de cancelar (la fila puede
+  // salir de una vista filtrada por `retenido` al cambiar).
+  const [selectedOrderForRetener, setSelectedOrderForRetener] =
+    useState<PedidoListItem | null>(null);
+  const [selectedOrderForLiberar, setSelectedOrderForLiberar] =
+    useState<PedidoListItem | null>(null);
       label: 'Por confirmar',
       value: count(kpis.por_confirmar),
       icon: ClockIcon,
@@ -98,6 +106,8 @@ export function OperationsOrderPanel() {
   // se envían tal cual (el backend los ignora a quien no los ve).
   const [puedeVerImportes, setPuedeVerImportes] = useState<boolean | undefined>(undefined);
   const table = usePedidosTable({
+        onRetener={setSelectedOrderForRetener}
+        onLiberar={setSelectedOrderForLiberar}
     definition: mesaPedidosTable,
     queryKey: ORDERS_QUERY_KEY,
     puedeVerImportes,
@@ -117,6 +127,14 @@ export function OperationsOrderPanel() {
     useState<PedidoListItem | null>(null);
   // Al cancelarse, la fila SALE del listado: por eso el diálogo vive aquí y se
   // monta siempre (`PedidoCancelDialog` conserva su copia del pedido).
+      <PedidoRetenerDialog
+        pedido={selectedOrderForRetener}
+        onClose={() => setSelectedOrderForRetener(null)}
+      />
+      <PedidoLiberarDialog
+        pedido={selectedOrderForLiberar}
+        onClose={() => setSelectedOrderForLiberar(null)}
+      />
   const [selectedOrderForCancel, setSelectedOrderForCancel] =
     useState<PedidoListItem | null>(null);
 

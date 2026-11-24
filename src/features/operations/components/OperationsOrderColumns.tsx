@@ -9,9 +9,11 @@ import { MESA_CONTROL_PEDIDOS_PERMISSION } from "@/src/constants/mesaControlActi
 import {
   BanIcon,
   CalendarDaysIcon,
+  CheckCircleIcon,
   ChevronRightIcon,
   EditIcon,
   EyeIcon,
+  LockIcon,
 } from "@/src/components/Icons";
 import { formatOrderAmountOrDash } from "@/src/features/orders/utils/orderAmountFormat";
 import type { PedidoListItem } from "@/src/features/orders/interfaces/order.interface";
@@ -24,6 +26,8 @@ import {
   TIPO_PEDIDO,
 } from "@/src/features/orders/constants/pedidoStatus";
 import { isOrderConfirmed } from "@/src/features/orders/utils/pedidoConfirmacion";
+import { pedidoRetencionAction } from "@/src/features/orders/utils/pedidoRetencion";
+import { PedidoRetenidoBadge } from "@/src/features/orders/components/PedidoRetenidoBadge";
 import { formatFolioCorto, hasMeaningfulOc } from "@/src/features/orders/utils/pedidoFormat";
 import { getProgramacionesValidas } from "@/src/features/orders/utils/pedidoProgramacion";
 import { getPedidoProgramadoProgress } from "@/src/features/orders/utils/pedidoProgramadoProgress";
@@ -50,6 +54,8 @@ import {
 export interface OperationsOrderColumnCallbacks {
   onProgramar: (order: PedidoListItem) => void;
   onCancel: (order: PedidoListItem) => void;
+  onRetener: (order: PedidoListItem) => void;
+  onLiberar: (order: PedidoListItem) => void;
 }
 
 /**
@@ -181,14 +187,19 @@ const FolioCell = ({
   order,
   onProgramar,
   onCancel,
+  onRetener,
+  onLiberar,
 }: {
   order: PedidoListItem;
 } & OperationsOrderColumnCallbacks) => {
   const confirmed = isOrderConfirmed(order);
   const muestrasLabel = getMuestrasLabel(order);
-  // Programar, Editar y Cancelar son acciones de Mesa de Control: las decide
-  // `es_mesa_control` de la sesión, la misma regla que el backend (EC-943).
+  // Programar, Editar, Retener, Liberar y Cancelar son acciones de Mesa de
+  // Control: las decide `es_mesa_control` de la sesión, la misma regla que el
+  // backend (EC-943).
   const canActAsMesaControl = useCanActAsMesaControl(MESA_CONTROL_PEDIDOS_PERMISSION);
+  // Solo la que aplica; ninguna en un pedido cancelado.
+  const retencionAction = canActAsMesaControl ? pedidoRetencionAction(order) : null;
 
   const items: ActionMenuItem[] = [
     {
@@ -217,6 +228,20 @@ const FolioCell = ({
       href: `${pedidoDetailPath(order.id)}/edit-mesa-control`,
       visible: canActAsMesaControl && canEditPedidoMesaControl(order.estatus),
       tone: "warning",
+    },
+    // Congela el pedido sin cancelarlo (nucleo-erp#1352), o lo libera.
+    {
+      label: "Retener",
+      icon: LockIcon,
+      onSelect: () => onRetener(order),
+      visible: retencionAction === "retener",
+      tone: "warning",
+    },
+    {
+      label: "Liberar",
+      icon: CheckCircleIcon,
+      onSelect: () => onLiberar(order),
+      visible: retencionAction === "liberar",
     },
     // Un CANCELADO legado (`activo = true`, de antes de `/cancelar/`) sigue
     // listándose, pero no hay nada que cancelar.
@@ -267,6 +292,7 @@ const FolioCell = ({
         >
           {confirmed ? "Confirmado" : "Por confirmar"}
         </span>
+        <PedidoRetenidoBadge pedido={order} />
         {muestrasLabel && (
           <span
             className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${MUESTRA_BADGE_CLASS}`}

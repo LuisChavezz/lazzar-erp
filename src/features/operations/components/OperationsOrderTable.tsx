@@ -27,9 +27,14 @@ export function OperationsOrderTable({
   showAmounts,
   onProgramar,
   onCancel,
+  onRetener,
+  onLiberar,
   onRefetch,
 }: OperationsOrderTableProps) {
-  const columns = buildOperationsOrderColumns({ onProgramar, onCancel }, { showAmounts });
+  const columns = buildOperationsOrderColumns(
+    { onProgramar, onCancel, onRetener, onLiberar },
+    { showAmounts },
+  );
 
   return (
     <DataTable
