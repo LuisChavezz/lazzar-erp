@@ -9,16 +9,18 @@ import {
   type DocumentPdfLayoutProps,
   type PdfColumn,
 } from "@/src/pdfs/shared/DocumentPdfLayout";
-import { layoutPdfPages } from "./support/pdfLayout";
+import type { Picking } from "@/src/features/picking/interfaces/picking.interface";
+import { PickingPdfDocument } from "@/src/pdfs/PickingPdfDocument";
+import { layoutPdfPages, layoutPdfTexts, type PdfLayoutText } from "./support/pdfLayout";
 
 /**
  * Cómo se parten los renglones de la tabla base (EC-891). Por omisión react-pdf
  * separa en sílabas al partir un renglón aunque la palabra quepa entera en el
  * siguiente: el encabezado "En esta orden" de la OB salía "En esta or-/den".
- * Los encabezados se parten solo entre palabras; las celdas conservan la
- * separación para que un dato más ancho que su columna no se salga sobre la de
- * al lado. Como `document-pdf-table-page-break.spec.ts`, MAQUETA un documento
- * real: la separación la decide `@react-pdf/layout`.
+ * Encabezados y celdas se parten entre palabras; una celda separa en sílabas
+ * solo la palabra que no cabe entera en su columna (EC-952). Como
+ * `document-pdf-table-page-break.spec.ts`, MAQUETA un documento real: la
+ * separación la decide `@react-pdf/layout`.
  *
  * Las columnas copian la tabla de prendas de la OB (anchos de EC-891), donde
  * "En esta orden" no cabe en un renglón pero "orden" sí.
@@ -58,6 +60,19 @@ const documentWith = (rows: Row[]) =>
     createElement(PdfLineItemsTable<Row>, { key: "tabla", title: "PRENDAS", rows, columns: COLUMNS, emptyMessage: "-" }),
   );
 
+/** Las celdas de texto cuyo contenido (sin los guiones de corte) incluye alguna de esas palabras. */
+const cellsWith = (texts: PdfLayoutText[], words: string[]) =>
+  texts.filter((text) => {
+    const content = text.lines.map((line) => line.text.replace(/-\s*$/, "")).join("");
+    return words.some((word) => content.includes(word));
+  });
+
+/** Celdas con un renglón que termina partiendo una palabra ("MAN-"), como texto. */
+const hyphenated = (cells: PdfLayoutText[]) =>
+  cells
+    .filter((cell) => cell.lines.some((line) => /\p{L}-\s*$/u.test(line.text)))
+    .map((cell) => cell.lines.map((line) => line.text.trim()).join(" / "));
+
 test.describe("PdfLineItemsTable al partir renglones", () => {
   test("un encabezado que no cabe en un renglón pasa la palabra entera al siguiente", async () => {
     test.setTimeout(60_000);
@@ -77,5 +92,61 @@ test.describe("PdfLineItemsTable al partir renglones", () => {
     const [page] = await layoutPdfPages(documentWith([{ talla: "MARINO/AMARILLO/REY", texto: "A" }]));
     expect(page).not.toContain("MARINO/AMARILLO/REY");
     expect(page).toContain("10012-100-2XCH");
+  });
+});
+
+test.describe("Celdas de la tabla base al partir renglones (EC-952)", () => {
+  // Nombres reales: con la separación por omisión, la columna Producto del
+  // surtido (~87 pt) los dejaba en "CAMISA MAN-" / "GA LARGA DF" y "PLAYERA POLO
+  // MAN-" / "GA CORTA CA-" / "BALLERO PIQUE", aunque cada palabra cabe entera.
+  const NAMES = ["CAMISA MANGA LARGA DF PESCADOR", "PLAYERA POLO MANGA CORTA CABALLERO PIQUE"];
+
+  test("una celda de texto se parte entre palabras cuando cada palabra cabe en su columna", async () => {
+    test.setTimeout(60_000);
+    const picking = {
+      id: 1,
+      folio: "PICK-000001",
+      estado: "SURTIDA",
+      prioridad: "NORMAL",
+      picking_detalle: NAMES.map((name, index) => ({
+        id: index + 1,
+        sku: "10012-100-2XCH",
+        producto_nombre: name,
+        producto_variante_nombre: null,
+        color_nombre: "MARINO",
+        talla_nombre: "M",
+        ubicacion_nombre: "CF-05-05-06",
+        cantidad_solicitada: "12",
+        cantidad_asignada: "12",
+        cantidad_surtida: "12",
+        diferencia: "0",
+        estado: "SURTIDA",
+      })),
+    } as unknown as Picking;
+    const texts = await layoutPdfTexts(PickingPdfDocument({ picking, company: { name: "EMPRESA", rfc: null } }));
+    // Las dos celdas se parten en renglones, pero ninguna palabra queda cortada.
+    const cells = cellsWith(texts, ["PESCADOR", "PIQUE"]);
+    expect(cells).toHaveLength(2);
+    for (const cell of cells) expect(cell.lines.length).toBeGreaterThan(1);
+    expect(hyphenated(cells)).toEqual([]);
+  });
+
+  test("el texto y la línea secundaria de una celda compuesta también se parten entre palabras", async () => {
+    test.setTimeout(60_000);
+    // En la columna Bordado de la OB (~177 pt) salían "…REFLEJANTE CA-" /
+    // "BALLERO" en el texto y en la línea secundaria, y "…CABALLERO MEZ-" /
+    // "CLILLA" en una de las dos.
+    const texts = await layoutPdfTexts(
+      documentWith(
+        ["OVEROL INDUSTRIAL CON REFLEJANTE CABALLERO", "PANTALON CARGO GABARDINA CABALLERO MEZCLILLA"].map((texto) => ({
+          talla: "M",
+          texto,
+        })),
+      ),
+    );
+    // Dos filas, cada una con su texto y su línea secundaria.
+    const cells = cellsWith(texts, ["CABALLERO"]);
+    expect(cells).toHaveLength(4);
+    expect(hyphenated(cells)).toEqual([]);
   });
 });

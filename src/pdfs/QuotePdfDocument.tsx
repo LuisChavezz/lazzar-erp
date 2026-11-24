@@ -12,30 +12,7 @@ import type { QuotePdfModel } from "../features/quotes/utils/quotePdfTemplateHel
 import { getQuoteDetailProductName } from "../features/quotes/utils/quoteDetailsFormatters";
 import { OPCION_LABEL, POSICION_LABEL, TIPO_LABEL } from "../features/quotes/utils/reflective-labels";
 import { pdfStyles as s } from "./QuotePdfStyles";
-
-/**
- * Las celdas de la tabla de productos se parten entre palabras y solo separan
- * en sílabas la palabra que no cabe entera en su columna (EC-952). Por omisión
- * react-pdf penaliza poco el guion (600) y su algoritmo de renglones prefiere
- * "…CORTA CA-" / "BALLERO PIQUE" a un renglón más corto, aunque "CABALLERO"
- * quepa entera en el siguiente.
- *
- * Con la penalización en 10 000 (el "infinito" del algoritmo de Knuth-Plass de
- * `@react-pdf/textkit`), un punto de separación nunca es candidato. Si todas
- * las palabras caben, los renglones se parten solo entre palabras; si una no
- * cabe, el algoritmo no encuentra solución y textkit cae a su "best fit", que
- * parte entre palabras siempre que puede y separa en sílabas solo la palabra
- * que no cabe. Así un dato más ancho que su columna no se sale sobre la de al
- * lado, que es por lo que EC-891 dejó la separación en las celdas de la base.
- * Un `hyphenationCallback` que devolviera palabras enteras la quitaría también
- * para esas palabras.
- *
- * `hyphenationPenalty` lo lee `@react-pdf/layout` de las props del `Text`
- * (`getLayoutOptions`), pero los tipos públicos de `Text` no lo declaran: por
- * eso va en un objeto que se esparce. Lo cubre
- * `tests/unit/quote-pdf-table-cells.spec.ts`; revisarlo al actualizar react-pdf.
- */
-const BREAK_BETWEEN_WORDS = { hyphenationPenalty: 10_000 };
+import { BREAK_BETWEEN_WORDS } from "./shared/pdfLineBreaking";
 
 type QuotePdfDocumentProps = {
   quote: QuoteById;
