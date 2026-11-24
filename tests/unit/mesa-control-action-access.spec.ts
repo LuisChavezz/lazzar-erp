@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import "./support/authSecretEnv";
+import { restoreAuthSecretEnv } from "./support/authSecretEnv";
 import { api } from "@/src/api/api";
 import { authOptions } from "@/src/lib/auth";
 import type { JWT } from "next-auth/jwt";
@@ -16,7 +16,10 @@ import {
  * sesión anterior que no la trae cae al código de permiso del control.
  */
 
-const conCodigo = { role: "user", permissions: [MESA_CONTROL_PEDIDOS_PERMISSION] };
+// `authOptions` ya resolvió su secreto al importarse: el worker no se queda con el de prueba.
+restoreAuthSecretEnv();
+
+const conCodigo ={ role: "user", permissions: [MESA_CONTROL_PEDIDOS_PERMISSION] };
 const sinCodigo = { role: "user", permissions: ["R-MESACONTROL-PEDIDOS"] };
 
 test.describe("canActAsMesaControl", () => {
