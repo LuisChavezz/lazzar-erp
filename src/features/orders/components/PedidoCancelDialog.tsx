@@ -3,19 +3,16 @@
 import type { FormEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
-import { FormTextarea } from "@/src/components/FormTextarea";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { isDrfActionRejection } from "@/src/utils/drfWriteErrors";
 import { useCancelPedido } from "../hooks/useCancelPedido";
 import {
-  PEDIDO_CANCEL_MOTIVO_MAX,
   PedidoCancelFormSchema,
-  fitPedidoCancelMotivo,
-  pedidoCancelMotivoLength,
   type PedidoCancelFormValues,
 } from "../schemas/pedido-cancel.schema";
+import { PedidoMotivoField } from "./PedidoMotivoField";
 
 type PedidoCancelFormField = keyof PedidoCancelFormValues;
 
@@ -141,42 +138,19 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
     <form onSubmit={handleFormSubmit} className="space-y-4 py-1">
       <form.Field name="motivo">
         {(field) => (
-          <div>
-            {/* Sin `maxLength` nativo: cuenta otra cosa que el backend (ver
-                `PEDIDO_CANCEL_MOTIVO_MAX`); el tope lo pone `fitPedidoCancelMotivo`.
-                Sin validación en blur (como `PurchaseOrderCancelDialog`): al
-                pulsar "Volver" o al cerrar, pintaría "Indica el motivo…" con el
-                campo vacío. Se valida al enviar. */}
-            <FormTextarea
-              label="Motivo de cancelación"
-              name={field.name}
-              rows={3}
-              placeholder="Explica por qué se cancela el pedido"
-              value={field.state.value}
-              forceUppercase
-              disabled={isCancelling}
-              error={getError("motivo")}
-              onChange={(event) => {
-                const textarea = event.currentTarget;
-                const fitted = fitPedidoCancelMotivo(field.state.value, textarea.value);
-                // El recorte se escribe en el DOM ANTES de pasarlo al estado,
-                // con el cursor al final de lo que sí entró: así el valor del
-                // DOM ya coincide con el del estado, React no lo reescribe y
-                // el cursor no salta al final (mismo truco que `forceUppercase`
-                // en `FormTextarea`).
-                if (fitted) {
-                  textarea.value = fitted.value;
-                  textarea.setSelectionRange(fitted.caret, fitted.caret);
-                }
-                field.handleChange(textarea.value);
-                clearFieldErrors("motivo");
-              }}
-              onBlur={field.handleBlur}
-            />
-            <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
-              {pedidoCancelMotivoLength(field.state.value)}/{PEDIDO_CANCEL_MOTIVO_MAX}
-            </p>
-          </div>
+          <PedidoMotivoField
+            label="Motivo de cancelación"
+            name={field.name}
+            placeholder="Explica por qué se cancela el pedido"
+            value={field.state.value}
+            disabled={isCancelling}
+            error={getError("motivo")}
+            onValueChange={(value) => {
+              field.handleChange(value);
+              clearFieldErrors("motivo");
+            }}
+            onBlur={field.handleBlur}
+          />
         )}
       </form.Field>
       <div className="flex justify-end gap-3 pt-1">
