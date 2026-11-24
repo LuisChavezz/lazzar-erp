@@ -83,6 +83,7 @@ export function NotificationItem({
             onClick={onMarkRead}
             focusFallbackRef={focusFallbackRef}
             titulo={notificacion.titulo}
+            createdAt={notificacion.created_at}
             className="mt-2"
           />
         )}

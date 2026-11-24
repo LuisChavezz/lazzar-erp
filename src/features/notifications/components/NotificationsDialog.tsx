@@ -265,6 +265,7 @@ function NotificationsDialogBody({
                           // foco que los demás botones que desaparecen al pulsarse.
                           focusFallbackRef={listRef}
                           titulo={notificacion.titulo}
+                          createdAt={notificacion.created_at}
                           onClick={() => onMarkRead(notificacion)}
                         />
                       )}
