@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "./firstDrfMessage";
 import { firstDrfFieldMessage } from "./firstDrfFieldMessage";
+import { isRequestTimeoutError, REQUEST_TIMEOUT_MESSAGE } from "./requestTimeout";
 
 /**
  * Manejo de los errores de escritura de DRF que comparten los módulos de RH
@@ -18,7 +19,8 @@ import { firstDrfFieldMessage } from "./firstDrfFieldMessage";
  * (`non_field_errors`/`detail`) o, si el error cae en un campo que el form no
  * muestra, ese mensaje, para que no se pierda. Un 403 muestra su `detail`
  * (`forbiddenDetailMessage`: el motivo de `PermissionDenied`) o el respaldo, y
- * nunca pinta campos. Cualquier otro error (red, 5xx) cae al respaldo en
+ * nunca pinta campos. Un timeout (`isRequestTimeoutError`, EC-939) devuelve
+ * `REQUEST_TIMEOUT_MESSAGE`. Cualquier otro error (red, 5xx) cae al respaldo en
  * español.
  */
 export const handleDrfWriteError = <F extends string>(
@@ -30,6 +32,7 @@ export const handleDrfWriteError = <F extends string>(
   if (isForbiddenError(error)) {
     return forbiddenDetailMessage(error) ?? fallback;
   }
+  if (isRequestTimeoutError(error)) return REQUEST_TIMEOUT_MESSAGE;
   if (!(error instanceof AxiosError) || error.response?.status !== 400) {
     return fallback;
   }
@@ -141,8 +144,9 @@ export const isDrfActionRejection = (error: unknown): boolean => {
  * 400 trae su `detail` en español y un 403 su motivo (`forbiddenDetailMessage`:
  * nunca el valor de un campo). Un 409 (conflicto: el borrado que
  * choca con registros que dependen de él, una checada ya registrada) muestra
- * su `detail` cuando es texto, porque es lo único que explica QUÉ chocó. Red
- * y 5xx caen al respaldo.
+ * su `detail` cuando es texto, porque es lo único que explica QUÉ chocó. Un
+ * timeout (EC-939) devuelve `REQUEST_TIMEOUT_MESSAGE`; red y 5xx caen al
+ * respaldo.
  */
 export const drfActionErrorMessage = (
   error: unknown,
@@ -152,6 +156,7 @@ export const drfActionErrorMessage = (
   if (isNotFoundError(error)) {
     return notFoundMessage;
   }
+  if (isRequestTimeoutError(error)) return REQUEST_TIMEOUT_MESSAGE;
   if (!isDrfActionRejection(error)) {
     return fallback;
   }
