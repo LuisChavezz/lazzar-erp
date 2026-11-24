@@ -26,7 +26,8 @@ test("logout rechaza si el backend se cuelga más que el timeout", async () => {
   api.defaults.adapter = "http";
   const started = Date.now();
   try {
-    await expect(logout(200)).rejects.toMatchObject({ code: "ECONNABORTED" });
+    // `api` activa `clarifyTimeoutError` desde EC-939: el timeout es `ETIMEDOUT`.
+    await expect(logout(200)).rejects.toMatchObject({ code: "ETIMEDOUT" });
     expect(Date.now() - started).toBeLessThan(2_000);
   } finally {
     Object.assign(api.defaults, previous);
