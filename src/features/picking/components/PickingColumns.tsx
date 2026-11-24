@@ -10,7 +10,6 @@ import {
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
 } from "@/src/features/orders/constants/pedidoProgramacion";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
-import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { getMexicoTimeHHMM, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { PICKING_EMPAQUE_CONFIG } from "../constants/pickingEmpaque";
@@ -27,7 +26,7 @@ import {
 import type { PickingListItem } from "../interfaces/picking.interface";
 import { usePickingsFiltros } from "../hooks/usePickingsTable";
 import { getProgramacionDestinoLabel } from "../utils/pickingDestino";
-import { urgenciaEntrega } from "../utils/pickingListado";
+import { entregaDetalle, urgenciaEntrega } from "../utils/pickingListado";
 
 /**
  * Callbacks de la tabla. El diálogo de detalle NO vive en la celda (las celdas
@@ -356,13 +355,10 @@ const URGENCIA_CLS = {
 } as const;
 
 function EntregaCell({ row, hoy }: { row: PickingListItem; hoy: string }) {
-  const { urgencia, dias } = urgenciaEntrega(row, hoy);
+  const { urgencia } = urgenciaEntrega(row, hoy);
   if (urgencia === "sin") return <span className="text-xs text-slate-400">Sin fecha</span>;
-  // Solo si ya venció o vence en los próximos días ("pronto"); "vencida" por la entrega.
-  const detalle =
-    dias !== null && (urgencia === "vencida" || urgencia === "pronto")
-      ? formatDeadlineText(dias, { gender: "f" })
-      : "";
+  // Femenino: el plazo es el de la entrega ("Vencida hace N días").
+  const detalle = entregaDetalle(row, hoy);
   return (
     <span className="flex flex-col leading-tight">
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200 whitespace-nowrap">

@@ -1,3 +1,4 @@
+import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import type { Picking } from "../interfaces/picking.interface";
 
 /** Días de `desde` a `hasta` (claves "AAAA-MM-DD"); `null` si alguna no se lee. */
@@ -27,4 +28,18 @@ export function urgenciaEntrega(
   if (dias < 0) return { urgencia: "vencida", dias };
   if (dias <= 3) return { urgencia: "pronto", dias };
   return { urgencia: "normal", dias };
+}
+
+/**
+ * Texto bajo la fecha de entrega: solo si ya venció o vence pronto
+ * (`urgenciaEntrega`); `null` en cualquier otro caso. Femenino: el plazo es
+ * el de la entrega ("Vencida hace N días").
+ */
+export function entregaDetalle(
+  picking: Pick<Picking, "pedido_fecha_entrega" | "estado" | "estado_empaque">,
+  hoy: string,
+): string | null {
+  const { urgencia, dias } = urgenciaEntrega(picking, hoy);
+  if (dias === null || (urgencia !== "vencida" && urgencia !== "pronto")) return null;
+  return formatDeadlineText(dias, { gender: "f" });
 }
