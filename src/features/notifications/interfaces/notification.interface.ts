@@ -11,8 +11,10 @@
  * `{count, next, previous, results}`, y un `limit`/`offset` inválido responde
  * 400. Filtros: `?leido=true|false|1|0` y `?modulo=` (sin distinguir
  * mayúsculas). Viene ordenado por `created_at DESC`, pero SIN desempate por
- * `id`: las filas se crean con `bulk_create`, así que el orden entre
- * timestamps idénticos no es determinista. `?ordering=` SÍ aplica (el
+ * `id`. Con ese orden los empates son improbables (cada fila toma su propio
+ * `created_at` con microsegundos), pero con `?ordering=` sobre campos de pocos
+ * valores (`leido`, `modulo`, `tipo`, `leido_at`) son comunes y el orden
+ * entre ellos no es determinista (nucleo-erp#1345). `?ordering=` SÍ aplica (el
  * `OrderingFilter` global de DRF; la vista no declara `ordering_fields`)
  * sobre los campos del serializer: `id`, `titulo`, `mensaje`, `modulo`,
  * `tipo`, `leido`, `leido_at`, `data` y `created_at`, con `-` para

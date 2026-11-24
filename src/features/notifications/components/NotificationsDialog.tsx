@@ -134,7 +134,7 @@ function NotificationsDialogBody({
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Buscar por título o mensaje..."
+              placeholder="Buscar por título, mensaje o módulo..."
             />
           </div>
           <button
@@ -264,6 +264,7 @@ function NotificationsDialogBody({
                           // El optimista la oculta en el acto: mismo destino de
                           // foco que los demás botones que desaparecen al pulsarse.
                           focusFallbackRef={listRef}
+                          titulo={notificacion.titulo}
                           onClick={() => onMarkRead(notificacion)}
                         />
                       )}
