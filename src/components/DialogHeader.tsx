@@ -34,15 +34,21 @@ export const DialogHeader = ({
 
   const colors = colorMap[statusColor] || colorMap.sky;
 
+  // Dentro de la fila con `headerAction` de `MainDialog`, el divisor (y su
+  // relleno y margen) lo pone la fila a todo lo ancho; aquí solo cubriría la
+  // columna del título.
   return (
-    <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+    <div
+      data-dialog-header=""
+      className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/10 mb-4 [[data-dialog-header-row]_&]:pb-0 [[data-dialog-header-row]_&]:border-b-0 [[data-dialog-header-row]_&]:mb-0"
+    >
       {Icon && (
         <span className={`grid place-items-center w-10 h-10 rounded-xl shrink-0 ${colors.badge}`}>
           <Icon className="w-5 h-5" aria-hidden="true" />
         </span>
       )}
-      {/* `--dialog-close-clearance` lo fija `MainDialog` (sin `headerAction`):
-          aparta el texto de la X sin acortar el divisor de abajo. */}
+      {/* `--dialog-close-clearance` lo fija `MainDialog` (con o sin
+          `headerAction`): aparta el texto de la X sin acortar el divisor. */}
       <div className="pr-[var(--dialog-close-clearance,0px)]">
         <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
           {title}
