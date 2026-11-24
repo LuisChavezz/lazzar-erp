@@ -68,15 +68,34 @@ export function MainDialog({
         className="bg-white! dark:bg-zinc-900! dark:text-white!"
       >
         {headerAction ? (
-          // El título y la acción en una fila; `pr-10` deja libre la X de
-          // cierre (absoluta, arriba a la derecha). Al angostarse, la acción
-          // baja debajo del título. La acción va FUERA de `Dialog.Title` para
-          // no entrar en el nombre accesible del diálogo.
-          <Flex align="start" justify="between" gap="3" wrap="wrap" mb="3" className="pr-10">
-            <Dialog.Title mb="0" className="min-w-0">
+          // El título y la acción en una fila. Al angostarse, la acción baja
+          // debajo del título. La acción va FUERA de `Dialog.Title` para no
+          // entrar en el nombre accesible del diálogo.
+          //
+          // Con un `DialogHeader` como título, el divisor lo dibuja la FILA (a
+          // todo lo ancho, debajo del título y de la acción) y `DialogHeader`
+          // apaga el suyo, que solo medía la columna del título. El espacio de
+          // la X pasa de la fila a la acción, y al texto del título vía
+          // `--dialog-close-clearance` (por si la acción baja y el título queda
+          // solo bajo la X). `mb-7` = el `mb-4` de `DialogHeader` + el `mb-3`
+          // de la fila, para que el contenido quede donde estaba.
+          //
+          // Con cualquier otro título no hay divisor: la fila conserva su
+          // `pr-10` y su `mb-3` de siempre. El margen va como clase y no como
+          // prop `mb` de `Flex`: el CSS de Radix no está en una capa y le
+          // ganaría a la variante `has-*`.
+          <Flex
+            align="start"
+            justify="between"
+            gap="3"
+            wrap="wrap"
+            data-dialog-header-row=""
+            className="group/header-row mb-3 pr-10 has-[[data-dialog-header]]:mb-7 has-[[data-dialog-header]]:pr-0 has-[[data-dialog-header]]:pb-4 has-[[data-dialog-header]]:border-b has-[[data-dialog-header]]:border-slate-200 dark:has-[[data-dialog-header]]:border-white/10"
+          >
+            <Dialog.Title mb="0" className="min-w-0 [--dialog-close-clearance:2.5rem]">
               {title}
             </Dialog.Title>
-            <div className="shrink-0">{headerAction}</div>
+            <div className="shrink-0 group-has-[[data-dialog-header]]/header-row:pr-10">{headerAction}</div>
           </Flex>
         ) : (
           // La X ocupa de 12 a 56 px del borde y el relleno de Radix solo deja
