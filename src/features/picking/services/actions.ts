@@ -118,3 +118,15 @@ export const transferPicking = async (
   const response = await v1_api.post<Picking>(`/wms/pickings/${id}/trasladar/`, data);
   return response.data;
 };
+
+/**
+ * Cancela un surtido (`POST /wms/pickings/{id}/cancelar/`, #1348): sus líneas
+ * quedan `CANCELADA` y las piezas vuelven a estar por surtir. No mueve
+ * inventario: si una TR ya movió las prendas, se quedan ahí hasta revertirla.
+ * Responde el `PickingSerializer` (la forma del detalle) con `estado: "Cancelado"`.
+ * Con un packing vivo u órdenes de trabajo vivas responde `400 {"picking": …}`.
+ */
+export const cancelPicking = async ({ id, motivo }: { id: number; motivo: string }): Promise<Picking> => {
+  const response = await v1_api.post<Picking>(`/wms/pickings/${id}/cancelar/`, { motivo });
+  return response.data;
+};

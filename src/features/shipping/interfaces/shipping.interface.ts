@@ -1,3 +1,4 @@
+import type { WmsCancellationFields } from "@/src/features/wms-cancellations/interfaces/wms-cancellation.interface";
 /**
  * Contratos del endpoint de despacho (`/wms/despachos/`).
  *
@@ -93,8 +94,16 @@ export interface ShipmentDetalleLine {
  * `CreateShipmentPayload`). No es un hueco de datos a resolver, es el estado
  * real de la mayoría de los despachos.
  */
-export interface Shipment {
+/**
+ * Estado del despacho (nucleo-erp #1348). Los anteriores a la migración quedaron
+ * `ACTIVO`. Uno `CANCELADO` devolvió sus prendas al almacén (ENTRADA que espeja
+ * su SALIDA) y ya no cuenta como despachado.
+ */
+export type ShipmentEstado = "ACTIVO" | "CANCELADO";
+
+export interface Shipment extends WmsCancellationFields {
   id: number;
+  estado: ShipmentEstado;
   packing: number;
   envio: number | null;
   /** Texto libre capturado al registrar; `""` cuando se registró sin guía. */

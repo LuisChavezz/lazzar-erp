@@ -1,3 +1,4 @@
+import type { WmsCancellationFields } from "@/src/features/wms-cancellations/interfaces/wms-cancellation.interface";
 import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 /**
@@ -85,7 +86,7 @@ export interface PackingDetalleLine {
  * como ids crudos, sin `_nombre` resuelto (a diferencia de todos los demás
  * FK de esta forma) — no se intenta mostrar su nombre en la UI.
  */
-export interface Packing {
+export interface Packing extends WmsCancellationFields {
   id: number;
   folio: string;
   estado: PackingEstado;

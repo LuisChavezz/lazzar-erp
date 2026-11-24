@@ -1,3 +1,4 @@
+import type { WmsCancellationFields } from "@/src/features/wms-cancellations/interfaces/wms-cancellation.interface";
 /**
  * Contratos del endpoint de traspasos almacén→almacén (`/wms/transferencias/`).
  *
@@ -84,7 +85,7 @@ export interface Transferencia {
  * respuesta de `create()` (`Transferencia` arriba) — el backend no los
  * unifica, así que no se puede reusar ese tipo para el listado.
  */
-export interface TransferenciaListItem {
+export interface TransferenciaListItem extends WmsCancellationFields {
   id: number;
   folio: string;
   status: string;
@@ -96,6 +97,16 @@ export interface TransferenciaListItem {
   almacen_destino_nombre: string;
   usuario: number;
   usuario_nombre: string;
+  /**
+   * Enlace original ↔ reversa (`revertir/`). En la REVERSA, `reversa_de` es la
+   * TR que deshace (#1348) y `reversa_de_folio` su folio; en la ORIGINAL,
+   * `reversa` es la TR que la deshizo y `reversa_folio` su folio (EC-949).
+   * `null` si no hay; ausentes en un backend anterior.
+   */
+  reversa_de?: number | null;
+  reversa_de_folio?: string | null;
+  reversa?: number | null;
+  reversa_folio?: string | null;
 }
 
 /**

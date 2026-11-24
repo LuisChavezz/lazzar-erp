@@ -60,3 +60,14 @@ export const createPacking = async (data: CreatePackingPayload): Promise<Packing
   const response = await v1_api.post<Packing>("/wms/packings/", data);
   return response.data;
 };
+
+/**
+ * Cancela un embarque (`POST /wms/packings/{id}/cancelar/`, #1348). No mueve
+ * inventario: el surtido vuelve a quedar por empacar. Responde el
+ * `PackingSerializer` (la forma del listado y del detalle). Con un despacho
+ * activo responde `400 {"packing": "Tiene despachos activos: … Cancélalos primero."}`.
+ */
+export const cancelPacking = async ({ id, motivo }: { id: number; motivo: string }): Promise<Packing> => {
+  const response = await v1_api.post<Packing>(`/wms/packings/${id}/cancelar/`, { motivo });
+  return response.data;
+};

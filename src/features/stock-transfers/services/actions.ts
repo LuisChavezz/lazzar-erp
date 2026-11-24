@@ -37,3 +37,31 @@ export const getTransferenciaDetail = async (id: number): Promise<TransferenciaD
   const response = await v1_api.get<TransferenciaDetail>(`/wms/transferencias/${id}/`);
   return response.data;
 };
+
+/** Respuesta de `revertir/`: las dos TR en la forma del listado. */
+export interface RevertTransferenciaResult {
+  /** La TR revertida, ya `CANCELADA`, con `reversa`/`reversa_folio` (EC-949). */
+  original: TransferenciaListItem;
+  /** La TR inversa nueva (folio propio), con `reversa_de`/`reversa_de_folio`. */
+  reversa: TransferenciaListItem;
+}
+
+/**
+ * Revierte una TR (`POST /wms/transferencias/{id}/revertir/`, #1348 y EC-949):
+ * crea la TR inversa y la original queda `CANCELADA`. `201 {original, reversa}`.
+ * Las reglas (TR completada, manual o de un surtido ya cancelado, la última de su
+ * cadena) las aplica el backend; sin stock en el destino responde `400` con una
+ * LISTA plana (`["Inventario insuficiente …"]`), no con un diccionario.
+ */
+export const revertTransferencia = async ({
+  id,
+  motivo,
+}: {
+  id: number;
+  motivo: string;
+}): Promise<RevertTransferenciaResult> => {
+  const response = await v1_api.post<RevertTransferenciaResult>(`/wms/transferencias/${id}/revertir/`, {
+    motivo,
+  });
+  return response.data;
+};
