@@ -7,36 +7,29 @@
  * licencia en `public/fonts/pdf/`), con las mismas métricas que Arial/Helvetica
  * para que tablas y tarjetas conserven sus anchos. No cubre emoji ni ✓.
  *
- * Solo se REGISTRA aquí; react-pdf descarga el archivo al generar un PDF, así
- * que no pesa en ninguna pantalla. El PDF de cotización (estilos propios,
- * fuera de la base) también usa Arimo, vía `withDocumentPdfFont` en
- * `QuotePdfStyles.ts` (EC-892); el de factura pasó a la base (EC-859).
+ * Dónde y cuándo se registra: en el navegador, justo antes de cada PDF,
+ * `renderPdfBlob` llama a `ensureDocumentPdfFonts` (`documentPdfFontLoader`),
+ * que descarga los archivos y reintenta tras un fallo sin recargar (EC-942);
+ * así no pesa en ninguna pantalla. En Node (las pruebas que maquetan un PDF
+ * real) no hay servidor que los sirva: se registran aquí, al importar, por
+ * ruta de disco. El PDF de cotización (estilos propios, fuera de la base)
+ * también usa Arimo, vía `withDocumentPdfFont` en `QuotePdfStyles.ts`
+ * (EC-892); el de factura pasó a la base (EC-859).
  */
 import { Font } from "@react-pdf/renderer";
+import { DOCUMENT_PDF_FONT_FAMILY, DOCUMENT_PDF_FONT_FILES } from "./documentPdfFontLoader";
 
-/** Familia de la base; los estilos la usan con `fontWeight` normal o `"bold"`. */
-export const DOCUMENT_PDF_FONT_FAMILY = "Arimo";
+export { DOCUMENT_PDF_FONT_FAMILY };
 
-/**
- * Donde están los archivos: en el navegador, la URL de `public/`; en Node (las
- * pruebas que maquetan un PDF real), la misma carpeta en disco, porque ahí no
- * hay servidor que la sirva.
- */
-export const documentPdfFontBaseUrl = (): string =>
-  typeof window === "undefined" ? `${process.cwd()}/public/fonts/pdf` : "/fonts/pdf";
-
-/** Registra los dos pesos de la base. */
-function registerDocumentPdfFonts(baseUrl: string): void {
+if (typeof window === "undefined") {
   Font.register({
     family: DOCUMENT_PDF_FONT_FAMILY,
-    fonts: [
-      { src: `${baseUrl}/Arimo-Regular.ttf`, fontWeight: "normal" },
-      { src: `${baseUrl}/Arimo-Bold.ttf`, fontWeight: "bold" },
-    ],
+    fonts: DOCUMENT_PDF_FONT_FILES.map(({ file, fontWeight }) => ({
+      src: `${process.cwd()}/public/fonts/pdf/${file}`,
+      fontWeight,
+    })),
   });
 }
-
-registerDocumentPdfFonts(documentPdfFontBaseUrl());
 
 type PdfStyleEntry = { fontFamily?: string | string[] };
 
