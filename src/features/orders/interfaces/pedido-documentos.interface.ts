@@ -92,6 +92,13 @@ export interface PedidoDocumentoDespacho {
   envio_id: number | null;
   packing_id: number;
   packing_folio: string;
+  /**
+   * `Despacho.estado` (nucleo-erp #1348): `"ACTIVO"` | `"CANCELADO"`. Opcional:
+   * ausente en un backend anterior. Uno cancelado sigue en la lista, con su motivo.
+   */
+  estado?: string;
+  /** `""` si no está cancelado. */
+  motivo_cancelacion?: string;
 }
 
 /** `logistica.Envio`: el modelo no guarda más que el transportista (sin nombre en la respuesta). */

@@ -1,3 +1,4 @@
+import type { WmsCancellationFields } from "@/src/features/wms-cancellations/interfaces/wms-cancellation.interface";
 import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
 /**
@@ -167,7 +168,7 @@ export interface PickingProgramacionAvance {
  * distintas) — se tipa aquí para que `Picking` sirva tanto para el listado
  * de hoy como para el detalle de una tarea futura, sin duplicar la interfaz.
  */
-export interface Picking {
+export interface Picking extends WmsCancellationFields {
   id: number;
   folio: string;
   empresa: number;

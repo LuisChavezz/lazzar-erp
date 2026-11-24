@@ -1,19 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getShipments } from "../services/actions";
-import type { Shipment } from "../interfaces/shipping.interface";
+import type { Shipment, ShipmentEstado } from "../interfaces/shipping.interface";
 
 /**
- * Lista los despachos (`GET /wms/despachos/`). Llave `["shipments"]`.
+ * Lista los despachos (`GET /wms/despachos/`). Llave `["shipments", estado]`:
+ * `estado` (`ACTIVO`/`CANCELADO`, `null` = todos) filtra en el backend (#1348).
+ * Las mutaciones invalidan por el prefijo `["shipments"]`.
  *
  * `hasLoaded` distingue una carga inicial fallida (mostrar `ErrorState`) de un
  * refetch fallido con datos en caché (toast + conservar la tabla). Mismo
  * patrón que `usePackings`.
  */
-export const useShipments = () => {
+export const useShipments = (estado: ShipmentEstado | null = null) => {
   const query = useQuery<Shipment[]>({
-    queryKey: ["shipments"],
-    queryFn: getShipments,
+    queryKey: ["shipments", estado],
+    queryFn: () => getShipments(estado),
   });
 
   const { hasLoaded } = useHasLoadedQuery({
