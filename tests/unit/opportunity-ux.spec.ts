@@ -8,6 +8,7 @@ import { describeOpportunity } from "@/src/features/opportunities/utils/describe
 import {
   getOpportunityClienteContacto,
   getOpportunityClienteLabel,
+  isOpportunityClienteHidden,
 } from "@/src/features/opportunities/utils/opportunityClienteLabel";
 import {
   OPPORTUNITY_ESTADO_FILTER_OPTIONS,
@@ -73,18 +74,27 @@ test.describe("nombre del cliente (EC-810)", () => {
     expect(getOpportunityClienteLabel(opportunity({ cliente_razon_social: "  " }))).toBe("JUAN PÉREZ");
   });
 
-  test("cliente oculto (los dos nombres en null): Cliente #id", () => {
+  test("cliente oculto (id y los dos nombres en null): Cliente no visible, sin id (EC-940)", () => {
     const hidden = opportunity({ cliente_nombre: null, cliente_razon_social: null });
-    expect(getOpportunityClienteLabel(hidden)).toBe("Cliente #21");
+    expect(isOpportunityClienteHidden(hidden)).toBe(true);
+    expect(getOpportunityClienteLabel(hidden)).toBe("Cliente no visible");
+    expect(getOpportunityClienteLabel(hidden)).not.toContain("21");
     expect(getOpportunityClienteContacto(hidden)).toBeNull();
   });
 
-  test("sin cliente: null, y cada pantalla decide", () => {
-    expect(
-      getOpportunityClienteLabel(
-        opportunity({ cliente: null, cliente_nombre: null, cliente_razon_social: null })
-      )
-    ).toBeNull();
+  test("cliente visible con nombre y razón social en blanco: Cliente #id", () => {
+    const blank = opportunity({ cliente_nombre: "", cliente_razon_social: "" });
+    expect(isOpportunityClienteHidden(blank)).toBe(false);
+    expect(getOpportunityClienteLabel(blank)).toBe("Cliente #21");
+    expect(getOpportunityClienteLabel(opportunity({ cliente_nombre: " ", cliente_razon_social: "" }))).toBe(
+      "Cliente #21"
+    );
+  });
+
+  test("sin cliente: null, y cada pantalla decide (Sin cliente)", () => {
+    const sinCliente = opportunity({ cliente: null, cliente_nombre: null, cliente_razon_social: null });
+    expect(isOpportunityClienteHidden(sinCliente)).toBe(false);
+    expect(getOpportunityClienteLabel(sinCliente)).toBeNull();
   });
 
   test("el contacto del cliente solo cuando aporta algo", () => {
