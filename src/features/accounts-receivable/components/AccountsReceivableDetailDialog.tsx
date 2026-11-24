@@ -15,7 +15,7 @@ import { useBackendToday } from "@/src/hooks/useBackendToday";
 import { CXC_ESTATUS_CONFIG } from "../constants/cxcEstatus";
 import { useCuentaPorCobrarDetail } from "../hooks/useCuentaPorCobrarDetail";
 import {
-  diasVencido,
+  daysUntilDue,
   formatFolioCxc,
   isCuentaVencida,
 } from "../utils/accounts-receivable.utils";
@@ -84,7 +84,14 @@ function DetailDialogContent({
   // estatus "Vencida" y una cuenta vencida sigue llegando como
   // `Pendiente`/`Parcial`. Así el detalle no contradice a la fila.
   const estaVencida = cuenta ? isCuentaVencida(cuenta, today) : false;
-  const diasDeAtraso = cuenta ? diasVencido(cuenta.fecha_vencimiento, today) : 0;
+  // Días con signo hasta el vencimiento (negativo = vencida): el MISMO cálculo
+  // con que `isCuentaVencida` decide, así que con el aviso visible siempre es
+  // negativo y el texto dice "vencida hace N días".
+  const plazoVencimiento = cuenta ? daysUntilDue(cuenta.fecha_vencimiento, today) : null;
+  const textoVencimiento =
+    plazoVencimiento === null
+      ? null
+      : formatDeadlineText(plazoVencimiento, { gender: "f", capitalize: false });
   const money = (value: string) =>
     formatCurrency(safeParseAmount(value), cuenta?.moneda_codigo ?? null);
 
@@ -130,12 +137,10 @@ function DetailDialogContent({
           {/* Aviso de vencimiento: derivado de `isCuentaVencida`, NO del
               `estatus` crudo, así que concuerda siempre con la fila, el KPI
               "Vencido" y la antigüedad. */}
-          {estaVencida && (
+          {estaVencida && textoVencimiento && (
             <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 px-4 py-2.5 text-sm">
               <p className="text-red-700 dark:text-red-400">
-                {/* `diasDeAtraso` es positivo (días de atraso); el helper los
-                    recibe con signo, negativo = vencido. */}
-                Cuenta {formatDeadlineText(-diasDeAtraso, { gender: "f", capitalize: false })}
+                Cuenta {textoVencimiento}
                 , con un saldo de{" "}
                 <span className="font-semibold tabular-nums">
                   {money(cuenta.saldo)}
