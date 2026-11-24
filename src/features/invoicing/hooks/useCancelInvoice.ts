@@ -118,8 +118,11 @@ const requestedSinceShown = (current: Invoice, shownRequested: boolean): boolean
  * Mensaje de un fallo de una cancelación: el del precheck tal cual, o el del
  * backend. Compartido con `useCancelCancelledInvoiceCfdi` (mismo endpoint).
  */
-export const cancelInvoiceMutationErrorMessage = (error: unknown): string =>
-  error instanceof PrecheckError ? error.message : cancelInvoiceErrorMessage(error);
+export const cancelInvoiceMutationErrorMessage = (
+  error: unknown,
+  unconfirmedMessage?: string,
+): string =>
+  error instanceof PrecheckError ? error.message : cancelInvoiceErrorMessage(error, unconfirmedMessage);
 
 /**
  * `POST cancelar/` con la cancelación solicitada separada: un `400` con la

@@ -4,6 +4,7 @@ import { toastWarning } from "@/src/utils/toastWarning";
 import { useMutationLock } from "@/src/hooks/useMutationLock";
 import type { Invoice, InvoiceCancelResponse } from "../interfaces/invoice.interface";
 import {
+  CANCELLED_INVOICE_CFDI_CANCEL_UNCONFIRMED_MESSAGE,
   cancelledInvoiceCfdiNotCancellableMessage,
   isCancelledInvoiceCfdiCancellable,
   isInvoiceCfdiCancellationRequested,
@@ -127,7 +128,9 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       }
     },
     onError: (error) => {
-      toast.error(cancelInvoiceMutationErrorMessage(error));
+      toast.error(
+        cancelInvoiceMutationErrorMessage(error, CANCELLED_INVOICE_CFDI_CANCEL_UNCONFIRMED_MESSAGE),
+      );
     },
     onSettled: (result) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
