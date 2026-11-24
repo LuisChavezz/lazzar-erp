@@ -10,6 +10,7 @@ import {
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
 } from "@/src/features/orders/constants/pedidoProgramacion";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
+import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
 import { getMexicoTimeHHMM, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { PICKING_EMPAQUE_CONFIG } from "../constants/pickingEmpaque";
@@ -357,13 +358,11 @@ const URGENCIA_CLS = {
 function EntregaCell({ row, hoy }: { row: PickingListItem; hoy: string }) {
   const { urgencia, dias } = urgenciaEntrega(row, hoy);
   if (urgencia === "sin") return <span className="text-xs text-slate-400">Sin fecha</span>;
-  let detalle = "";
-  if (dias !== null && (urgencia === "vencida" || urgencia === "pronto")) {
-    if (dias < 0) detalle = `Vencida hace ${-dias} ${dias === -1 ? "día" : "días"}`;
-    else if (dias === 0) detalle = "Hoy";
-    else if (dias === 1) detalle = "Mañana";
-    else detalle = `En ${dias} días`;
-  }
+  // Solo si ya venció o vence en los próximos días ("pronto"); "vencida" por la entrega.
+  const detalle =
+    dias !== null && (urgencia === "vencida" || urgencia === "pronto")
+      ? formatDeadlineText(dias, { gender: "f" })
+      : "";
   return (
     <span className="flex flex-col leading-tight">
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200 whitespace-nowrap">
