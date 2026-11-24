@@ -12,7 +12,10 @@ import {
   cotizarOpportunityMutationKey,
   useCotizarOpportunity,
 } from "../hooks/useCotizarOpportunity";
-import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
+import {
+  getOpportunityClienteLabel,
+  isOpportunityClienteHidden,
+} from "../utils/opportunityClienteLabel";
 import type { Opportunity } from "../interfaces/opportunity.interface";
 
 interface OpportunityCotizarActionProps {
@@ -71,12 +74,14 @@ export function OpportunityCotizarAction({
         (customer) => String(customer.id) === String(opportunity.cliente)
       );
       if (!isQuotable) {
-        // Un cliente oculto llega justo aquí (no está entre los cotizables): se
-        // nombra "Cliente no visible", nunca por su id (EC-940).
+        // Un cliente oculto llega justo aquí (no está entre los cotizables): no
+        // se nombra ni se le pide revisar algo que no ve (EC-940).
         toast.error(
-          `No puedes cotizar a ${
-            getOpportunityClienteLabel(opportunity) ?? "este cliente"
-          }: no está entre tus clientes activos para cotizar. Revisa que esté activo y asignado a ti.`,
+          isOpportunityClienteHidden(opportunity)
+            ? "No puedes cotizar: el cliente de esta oportunidad no es visible para ti."
+            : `No puedes cotizar a ${
+                getOpportunityClienteLabel(opportunity) ?? "este cliente"
+              }: no está entre tus clientes activos para cotizar. Revisa que esté activo y asignado a ti.`,
           { id: CUSTOMER_CHECK_TOAST_ID, duration: 8000 }
         );
         return;
