@@ -153,7 +153,11 @@ export function MainDialog({
             adorno) para que reciba foco, se active con Enter/Espacio y se
             anuncie como botón. Va al FINAL del contenido, aunque se vea arriba:
             al abrir, Radix enfoca el primer elemento tabulable, y con la X
-            primero el foco dejaría de caer en el primer campo del diálogo. */}
+            primero el foco dejaría de caer en el primer campo del diálogo. Si
+            el diálogo no tiene NINGÚN otro control enfocable (sin "Cerrar" en
+            el pie, sin `actionButton` y con un cuerpo de solo lectura), el foco
+            inicial cae en la X: es a propósito, y el título se sigue anunciando
+            porque nombra al diálogo. */}
         <Dialog.Close>
           <button
             type="button"
