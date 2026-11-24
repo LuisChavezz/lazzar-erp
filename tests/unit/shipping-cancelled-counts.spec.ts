@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { shipmentPiezasVigentes } from "@/src/features/shipping/components/ShippingColumns";
 import { shippingExportSummary } from "@/src/features/shipping/utils/shippingExport";
+import {
+  parseShipmentEstadoParam,
+  withShipmentEstadoParam,
+} from "@/src/features/shipping/utils/shipmentEstadoParam";
 import type { Shipment } from "@/src/features/shipping/interfaces/shipping.interface";
 
 /** EC-945: un envío cancelado no suma piezas en el filtro de contenido ni en el resumen de la exportación. */
@@ -21,4 +25,14 @@ test("el resumen cuenta los envíos vigentes y sus piezas, y los cancelados apar
   expect(
     shippingExportSummary([shipment("ACTIVO", ["2"]), shipment("CANCELADO", ["9"]), shipment("CANCELADO", ["1"])]),
   ).toBe("1 envío · 2 pzas · 2 cancelados");
+});
+
+test("el filtro de estado se lee y se escribe en la URL; Todos va sin parámetro", () => {
+  expect(parseShipmentEstadoParam("CANCELADO")).toBe("CANCELADO");
+  expect(parseShipmentEstadoParam("activo")).toBe("ACTIVO");
+  expect(parseShipmentEstadoParam(null)).toBeNull();
+  expect(parseShipmentEstadoParam("BORRADO")).toBeNull();
+  expect(withShipmentEstadoParam("search=x", "CANCELADO")).toBe("search=x&estado=CANCELADO");
+  expect(withShipmentEstadoParam("estado=CANCELADO&search=x", null)).toBe("search=x");
+  expect(withShipmentEstadoParam("estado=ACTIVO", null)).toBe("");
 });
