@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
 import { toastWarning } from "@/src/utils/toastWarning";
@@ -28,6 +28,34 @@ import {
   invalidateInvoiceBaseQueries,
 } from "./invoiceActionMutation";
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
+import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
+import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
+
+/**
+ * Lo que una cancelación REAL mueve fuera de la factura: las piezas pendientes
+ * del pedido (onboarding), el pedido 360° y su lista, las cuentas por cobrar
+ * (listado y detalle), las pólizas (contrapóliza) y los clientes de
+ * contabilidad (saldo a favor). Corre tras el éxito y tras un corte sin
+ * respuesta, cuando la cancelación pudo aplicarse (EC-939). Sin `pedidoId`
+ * (no se conoce) solo relee los prefijos, que ya alcanzan la lista de pedidos.
+ */
+const invalidateInvoiceCancelEffects = (
+  queryClient: QueryClient,
+  pedidoId: Invoice["pedido"] | undefined,
+) => {
+  if (pedidoId) {
+    queryClient.invalidateQueries({ queryKey: invoiceOnboardingQueryKey(pedidoId) });
+    queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(pedidoId) });
+    queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(pedidoId) });
+    queryClient.invalidateQueries({ queryKey: pedidoDocumentosQueryKey(pedidoId) });
+  }
+  // Prefijos: alcanzan también las variantes con filtros y los detalles.
+  queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
+  queryClient.invalidateQueries({ queryKey: ["accounts-receivable-detail"] });
+  queryClient.invalidateQueries({ queryKey: ["polizas"] });
+  queryClient.invalidateQueries({ queryKey: ["accounting-customers"] });
+};
 
 /** Candado de la cancelación, ÚNICO por factura (ver `useCancelInvoice`). */
 export const cancelInvoiceMutationKey = (invoiceId: number) =>
@@ -204,18 +232,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       }
       // El diálogo muestra el aviso y pide confirmar de nuevo; no hay toast.
       if (outcome === "needs-confirmation") return;
-      if (invoice.pedido) {
-        queryClient.invalidateQueries({ queryKey: invoiceOnboardingQueryKey(invoice.pedido) });
-        queryClient.invalidateQueries({ queryKey: pedidoDetailQueryKey(invoice.pedido) });
-        queryClient.invalidateQueries({ queryKey: pedidoTrazabilidadQueryKey(invoice.pedido) });
-        queryClient.invalidateQueries({ queryKey: pedidoDocumentosQueryKey(invoice.pedido) });
-      }
-      // Prefijos: alcanzan también las variantes con filtros y los detalles.
-      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: ["accounts-receivable"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts-receivable-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["polizas"] });
-      queryClient.invalidateQueries({ queryKey: ["accounting-customers"] });
+      invalidateInvoiceCancelEffects(queryClient, invoice.pedido);
       toast.success(
         isInvoiceCfdiCancelled(invoice)
           ? `Factura ${label} cancelada; su CFDI quedó cancelado ante el SAT.`
@@ -224,6 +241,15 @@ export const useCancelInvoice = (invoiceId: number) => {
     },
     onError: (error) => {
       toast.error(errorMessageOf(error));
+      // Sin respuesta del backend (`isActionOutcomeUnknown`, EC-939) la cancelación
+      // pudo aplicarse: como `useCancelCobro`, se relee TODO lo que mueve, no solo
+      // la factura. El pedido sale del retrieve fresco que dejó el precheck.
+      if (isActionOutcomeUnknown(error)) {
+        const current = queryClient.getQueryData<Invoice>(
+          invoiceRetrieveFreshOptions(invoiceId).queryKey,
+        );
+        invalidateInvoiceCancelEffects(queryClient, current?.pedido);
+      }
     },
     // Si el precheck detuvo la acción, el retrieve ya está fresco en la caché.
     onSettled: (result) => {
