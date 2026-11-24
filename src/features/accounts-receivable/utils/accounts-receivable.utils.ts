@@ -29,7 +29,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * que `Date.parse` lee como medianoche UTC, así que la resta es un entero exacto
  * sin importar la zona del navegador. `null` ante una fecha ausente o inválida.
  */
-const daysUntilDue = (fechaVencimiento: string | null, today: string): number | null => {
+export const daysUntilDue = (fechaVencimiento: string | null, today: string): number | null => {
   if (fechaVencimiento === null || !ISO_DATE_RE.test(fechaVencimiento)) return null;
   const venc = Date.parse(fechaVencimiento);
   const hoy = Date.parse(today);
