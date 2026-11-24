@@ -3,7 +3,6 @@ import { withHomonymClienteIds } from "@/src/features/quotes/utils/quoteClienteL
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { ESTADO_OPORTUNIDAD_CFG } from "../constants/opportunityChoices";
 import {
-  CLIENTE_NO_VISIBLE_LABEL,
   getOpportunityClienteLabel,
   isOpportunityClienteHidden,
 } from "./opportunityClienteLabel";
@@ -61,8 +60,8 @@ interface CustomerOptionSource {
  * la MISMA regla que el filtro de cotizaciones).
  *
  * El catálogo solo trae clientes que el usuario ve; aun así, uno sin `nombre`
- * se rotula como la celda de un cliente oculto ("Cliente no visible", EC-940) y
- * NO pasa por la regla de homónimos, que le pegaría el id.
+ * contaría como oculto (EC-940): no se ofrece, porque no se puede nombrar ni
+ * distinguir de otro sin delatar su id.
  *
  * `Customer.id` está tipado como string pero el backend manda un número: el
  * valor es su forma en texto, que es como viaja en la URL.
@@ -71,7 +70,6 @@ export const buildOpportunityClienteFilterOptions = (
   customers: readonly CustomerOptionSource[]
 ): ColumnFilterOption[] => {
   const visibles: OpportunityCatalogEntry[] = [];
-  const ocultos: OpportunityCatalogEntry[] = [];
   for (const customer of customers) {
     const id = Number(customer.id);
     const cliente = {
@@ -79,12 +77,9 @@ export const buildOpportunityClienteFilterOptions = (
       cliente_razon_social: customer.razon_social ?? null,
       cliente_nombre: customer.nombre ?? null,
     };
-    const entry = {
-      value: String(id),
-      label: getOpportunityClienteLabel(cliente) ?? CLIENTE_NO_VISIBLE_LABEL,
-      active: customer.activo,
-    };
-    (isOpportunityClienteHidden(cliente) ? ocultos : visibles).push(entry);
+    const label = getOpportunityClienteLabel(cliente);
+    if (label === null || isOpportunityClienteHidden(cliente)) continue;
+    visibles.push({ value: String(id), label, active: customer.activo });
   }
-  return sortOpportunityCatalogOptions([...withHomonymClienteIds(visibles), ...ocultos]);
+  return sortOpportunityCatalogOptions(withHomonymClienteIds(visibles));
 };
