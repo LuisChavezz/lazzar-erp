@@ -2,91 +2,19 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import KpiGrid, { KpiGridSkeleton, type KpiCompactItem } from '@/src/components/KpiGrid';
+import KpiGrid, { KpiGridSkeleton } from '@/src/components/KpiGrid';
 import { SectionErrorNotice } from '@/src/components/SectionErrorNotice';
-import {
-  CheckCircleIcon,
-  ClockIcon,
-  ListaPreciosIcon,
-  PedidosIcon,
-} from '@/src/components/Icons';
-import { PedidoRetenerDialog } from '@/src/features/orders/components/PedidoRetenerDialog';
-import { PedidoLiberarDialog } from '@/src/features/orders/components/PedidoLiberarDialog';
-import { CurrencyTotalsValue } from '@/src/components/CurrencyTotalsValue';
-import type { CurrencyTotal } from '@/src/utils/currencyTotals';
-import { safeParseAmount } from '@/src/utils/formatCurrency';
-import { hiddenAmountCard } from '@/src/features/purchase-orders/utils/kpiAmountCards';
 import { ORDERS_QUERY_KEY } from '@/src/features/orders/constants/ordersQueryKeys';
-import { HIDDEN_PEDIDO_AMOUNTS_REASON } from '@/src/features/orders/constants/pedidoKpis';
 import { usePedidoKpisMesa, usePedidosTable } from '@/src/features/orders/hooks/usePedidosTable';
-import type { PedidoKpisMesa } from '@/src/features/orders/interfaces/pedido-list.interface';
 import type { PedidoListItem } from '@/src/features/orders/interfaces/order.interface';
 import { mesaPedidosTable } from '@/src/features/orders/utils/pedidoListParams';
 import { PedidoProgramacionDialog } from '@/src/features/orders/components/PedidoProgramacionDialog';
 import { PedidoCancelDialog } from '@/src/features/orders/components/PedidoCancelDialog';
+import { PedidoRetenerDialog } from '@/src/features/orders/components/PedidoRetenerDialog';
+import { PedidoLiberarDialog } from '@/src/features/orders/components/PedidoLiberarDialog';
 import { OperationsOrderTable } from './OperationsOrderTable';
-import { MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
-
-/** Valor por moneda de `kpis-mesa/` (código ISO del backend; nunca se suman monedas). */
-const valorPorMoneda = (kpis: PedidoKpisMesa): CurrencyTotal[] =>
-  kpis.por_moneda.map((fila) => ({
-    moneda: fila.moneda,
-    total: safeParseAmount(String(fila.valor ?? 0)),
-    ...(fila.moneda ? {} : { etiqueta: `Moneda ${fila.moneda_id}` }),
-  }));
-
-/**
- * Tarjetas de Mesa de Control a partir de `kpis-mesa/`, el MISMO conjunto que
- * la tabla con los mismos filtros y búsqueda. `total` excluye los cancelados
- * (= por confirmar + confirmados); el conteo `cancelados` del backend no se
- * pinta.
- */
-const buildKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
-  const pct = (n: number) => (kpis.total ? Math.round((n / kpis.total) * 100) : 0);
-  const count = (n: number) => n.toLocaleString('es-MX');
-  const valorBase = { label: 'Valor total', icon: ListaPreciosIcon };
-  return [
-    {
-      label: 'Total pedidos',
-      value: count(kpis.total),
-      icon: PedidosIcon,
-      iconClass: 'text-sky-500',
-      detail: 'En mesa de control · sin cancelados',
-      hideProgress: true,
-    },
-    {
-  // Retener / Liberar: montados siempre, como el de cancelar (la fila puede
-  // salir de una vista filtrada por `retenido` al cambiar).
-  const [selectedOrderForRetener, setSelectedOrderForRetener] =
-    useState<PedidoListItem | null>(null);
-  const [selectedOrderForLiberar, setSelectedOrderForLiberar] =
-    useState<PedidoListItem | null>(null);
-      label: 'Por confirmar',
-      value: count(kpis.por_confirmar),
-      icon: ClockIcon,
-      iconClass: 'text-amber-500',
-      progress: pct(kpis.por_confirmar),
-      detail: `${pct(kpis.por_confirmar)}% del total · fecha pendiente`,
-    },
-    {
-      label: 'Confirmados',
-      value: count(kpis.confirmados),
-      icon: CheckCircleIcon,
-      iconClass: 'text-cyan-500',
-      progress: pct(kpis.confirmados),
-      detail: `${pct(kpis.confirmados)}% del total · con fecha`,
-    },
-    !kpis.puede_ver_importes
-      ? hiddenAmountCard(valorBase, HIDDEN_PEDIDO_AMOUNTS_REASON)
-      : {
-          ...valorBase,
-          value: <CurrencyTotalsValue totals={valorPorMoneda(kpis)} />,
-          iconClass: 'text-emerald-500',
-          hideProgress: true,
-          info: 'Suma del total con IVA de los pedidos por moneda; cada moneda se muestra por separado.',
-        },
-  ];
-};
+import { MESA_CONTROL_KPI_COLUMNS, MESA_CONTROL_KPI_LIST } from '../constants/listHeight';
+import { buildMesaPedidoKpis } from '../utils/mesaPedidoKpis';
 
 /**
  * Mesa de Control de Pedidos en MODO SERVIDOR: filtros, búsqueda, orden y
@@ -106,8 +34,6 @@ export function OperationsOrderPanel() {
   // se envían tal cual (el backend los ignora a quien no los ve).
   const [puedeVerImportes, setPuedeVerImportes] = useState<boolean | undefined>(undefined);
   const table = usePedidosTable({
-        onRetener={setSelectedOrderForRetener}
-        onLiberar={setSelectedOrderForLiberar}
     definition: mesaPedidosTable,
     queryKey: ORDERS_QUERY_KEY,
     puedeVerImportes,
@@ -127,15 +53,13 @@ export function OperationsOrderPanel() {
     useState<PedidoListItem | null>(null);
   // Al cancelarse, la fila SALE del listado: por eso el diálogo vive aquí y se
   // monta siempre (`PedidoCancelDialog` conserva su copia del pedido).
-      <PedidoRetenerDialog
-        pedido={selectedOrderForRetener}
-        onClose={() => setSelectedOrderForRetener(null)}
-      />
-      <PedidoLiberarDialog
-        pedido={selectedOrderForLiberar}
-        onClose={() => setSelectedOrderForLiberar(null)}
-      />
   const [selectedOrderForCancel, setSelectedOrderForCancel] =
+    useState<PedidoListItem | null>(null);
+  // Retener / Liberar: montados siempre, como el de cancelar (la fila puede
+  // salir de una vista filtrada por `retenido` al cambiar).
+  const [selectedOrderForRetener, setSelectedOrderForRetener] =
+    useState<PedidoListItem | null>(null);
+  const [selectedOrderForLiberar, setSelectedOrderForLiberar] =
     useState<PedidoListItem | null>(null);
 
   // "Actualizar datos" relee la lista y los indicadores juntos, para que
@@ -161,7 +85,7 @@ export function OperationsOrderPanel() {
           siguen; un refetch fallido conserva las cifras y avisa por toast. */}
       <div className="shrink-0">
         {kpis.data ? (
-          <KpiGrid compact items={buildKpis(kpis.data)} />
+          <KpiGrid compact columns={MESA_CONTROL_KPI_COLUMNS} items={buildMesaPedidoKpis(kpis.data)} />
         ) : kpis.isInitialError ? (
           // Solo si nunca cargaron: un refetch fallido conserva las cifras y
           // avisa por toast (`useGuardedQuery`).
@@ -172,7 +96,7 @@ export function OperationsOrderPanel() {
             isRetrying={kpis.isFetching}
           />
         ) : (
-          <KpiGridSkeleton compact count={4} />
+          <KpiGridSkeleton compact columns={MESA_CONTROL_KPI_COLUMNS} count={6} />
         )}
       </div>
 
@@ -182,6 +106,8 @@ export function OperationsOrderPanel() {
         showAmounts={showAmounts}
         onProgramar={setSelectedOrderForSchedule}
         onCancel={setSelectedOrderForCancel}
+        onRetener={setSelectedOrderForRetener}
+        onLiberar={setSelectedOrderForLiberar}
         onRefetch={handleRefetch}
       />
       </div>
@@ -200,6 +126,14 @@ export function OperationsOrderPanel() {
       <PedidoCancelDialog
         pedido={selectedOrderForCancel}
         onClose={() => setSelectedOrderForCancel(null)}
+      />
+      <PedidoRetenerDialog
+        pedido={selectedOrderForRetener}
+        onClose={() => setSelectedOrderForRetener(null)}
+      />
+      <PedidoLiberarDialog
+        pedido={selectedOrderForLiberar}
+        onClose={() => setSelectedOrderForLiberar(null)}
       />
     </div>
     </div>

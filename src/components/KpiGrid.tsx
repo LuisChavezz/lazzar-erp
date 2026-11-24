@@ -112,8 +112,14 @@ export function buildUntypedKpiCard(
 
 type KpiGridProps =
   | { items: KpiItem[]; compact?: false }
-  /** Variante compacta (ver `KpiCompactCard`). */
-  | { items: KpiCompactItem[]; compact: true };
+  /**
+   * Variante compacta (ver `KpiCompactCard`). `columns`: columnas de la rejilla
+   * ancha, 4 por defecto; 3 para seis tarjetas en dos filas parejas.
+   */
+  | { items: KpiCompactItem[]; compact: true; columns?: KpiCompactColumns };
+
+/** Columnas de la rejilla compacta en su ancho mayor. */
+export type KpiCompactColumns = 3 | 4;
 
 type KpiCardProps =
   | { item: KpiItem; compact?: false }
@@ -313,14 +319,23 @@ const KPI_COMPACT_CONTAINER_CLASS = "@container";
 // Por debajo de 34rem no es rejilla sino carrusel horizontal con snap (una
 // sola fila; ver `KpiCompactRail`), con la barra de scroll oculta: los puntos
 // de abajo hacen de indicador.
-const KPI_COMPACT_GRID_CLASS =
+// 3 columnas (`columns={3}`): 3×259 + 2×16 = 809px → 51rem (816px).
+const KPI_COMPACT_GRID_BASE_CLASS =
   "flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden " +
   "@min-[34rem]:grid @min-[34rem]:grid-cols-2 @min-[34rem]:gap-4 @min-[34rem]:overflow-visible @min-[34rem]:pb-0 " +
-  "@min-[68.75rem]:grid-cols-4 items-stretch " +
+  "items-stretch " +
   // Ancho de cada tarjeta en el carrusel (la siguiente asoma); en rejilla, el
   // de su celda. En el contenedor y no en la tarjeta: `KpiCard` también se
   // monta suelta, fuera de esta grilla.
   "*:w-[85%] *:shrink-0 *:snap-start @min-[34rem]:*:w-auto";
+
+const KPI_COMPACT_GRID_COLUMNS_CLASS: Record<KpiCompactColumns, string> = {
+  3: "@min-[51rem]:grid-cols-3",
+  4: "@min-[68.75rem]:grid-cols-4",
+};
+
+const kpiCompactGridClass = (columns: KpiCompactColumns = 4) =>
+  `${KPI_COMPACT_GRID_BASE_CLASS} ${KPI_COMPACT_GRID_COLUMNS_CLASS[columns]}`;
 
 const KPI_GRID_CLASS = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-4";
 
@@ -328,7 +343,7 @@ export default function KpiGrid(props: KpiGridProps) {
   if (props.compact) {
     return (
       <div className={KPI_COMPACT_CONTAINER_CLASS}>
-        <KpiCompactRail className={KPI_COMPACT_GRID_CLASS} count={props.items.length}>
+        <KpiCompactRail className={kpiCompactGridClass(props.columns)} count={props.items.length}>
           {props.items.map((item, index) => (
             <KpiCard key={`${item.label}-${index}`} item={item} index={index} compact />
           ))}
@@ -352,10 +367,13 @@ export default function KpiGrid(props: KpiGridProps) {
 export function KpiGridSkeleton({
   count = 4,
   compact = false,
+  columns,
   label = "Cargando indicadores",
 }: {
   count?: number;
   compact?: boolean;
+  /** Las mismas columnas que la grilla compacta que reemplaza. */
+  columns?: KpiCompactColumns;
   label?: string;
 }) {
   const cells = Array.from({ length: count }, (_, index) => (
@@ -367,7 +385,7 @@ export function KpiGridSkeleton({
   if (compact) {
     return (
       <div className={KPI_COMPACT_CONTAINER_CLASS}>
-        <div className={KPI_COMPACT_GRID_CLASS} aria-busy="true" aria-label={label}>
+        <div className={kpiCompactGridClass(columns)} aria-busy="true" aria-label={label}>
           {cells}
         </div>
       </div>

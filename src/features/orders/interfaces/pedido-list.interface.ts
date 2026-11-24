@@ -34,6 +34,13 @@ export interface PedidoKpisMesa {
   confirmados: number;
   por_confirmar: number;
   cancelados: number;
+  /** Vigentes retenidos por Mesa de Control (nucleo-erp#1352). */
+  retenidos: number;
+  /**
+   * Programados, no cancelados y sin un solo picking vivo: lo que Mesa ya
+   * liberó y almacén aún no toma. Incluye los retenidos (regla del backend).
+   */
+  sin_surtir: number;
   /** Solo monedas con pedidos vigentes. */
   por_moneda: PedidoKpisMesaMoneda[];
   /** Regla de importes de pedidos (contabilidad de ventas o de compras, EC-784). */
