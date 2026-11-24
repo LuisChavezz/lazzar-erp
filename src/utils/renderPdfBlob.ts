@@ -88,6 +88,11 @@ export async function renderPdfBlobWith<P extends object>(
   props: P,
   fonts: DocumentPdfFontLoader = documentPdfFontLoader,
 ): Promise<Blob> {
+  // Todos los documentos de `src/pdfs/` usan Arimo (la base y la cotización),
+  // así que se descarga para cualquiera. Si alguno dejara de usarla, que su
+  // generador lo diga (una opción aquí) en vez de pagar la descarga y fallar
+  // con el mensaje de la fuente sin necesitarla.
+  //
   // La descarga empieza YA, a la vez que los chunks: no necesita `Font`. Su
   // rechazo se atiende más abajo; el `catch` vacío solo evita un
   // "unhandledrejection" si antes falla la carga de un chunk.

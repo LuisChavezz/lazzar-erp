@@ -19,7 +19,11 @@
 /** Familia de la base; los estilos la usan con `fontWeight` normal o `"bold"`. */
 export const DOCUMENT_PDF_FONT_FAMILY = "Arimo";
 
-/** Los dos pesos de la base, con el archivo de `public/fonts/pdf/` de cada uno. */
+/**
+ * Los dos pesos de la base, con el archivo de `public/fonts/pdf/` de cada uno.
+ * Tienen que ser TTF u OTF: `isFontFile` solo reconoce esas firmas, así que un
+ * WOFF/WOFF2 se tomaría por "no es una fuente".
+ */
 export const DOCUMENT_PDF_FONT_FILES = [
   { file: "Arimo-Regular.ttf", fontWeight: "normal" },
   { file: "Arimo-Bold.ttf", fontWeight: "bold" },
@@ -97,7 +101,9 @@ export interface DocumentPdfFontLoader {
  * - Llamadas simultáneas a `download` comparten UNA descarga por archivo (la
  *   misma promesa).
  * - Si falla, se olvida esa promesa (solo si sigue siendo la vigente) y la
- *   siguiente llamada vuelve a descargar.
+ *   siguiente llamada vuelve a descargar. Si falla solo uno de los dos
+ *   archivos, el reintento vuelve a pedir también el que sí llegó (~320 KB):
+ *   se acepta para no guardar estado por archivo en un caso raro.
  * - Tras el éxito, la promesa resuelta se queda: nunca se descarga de nuevo, y
  *   `register` llama a `Font.register` una sola vez.
  *
