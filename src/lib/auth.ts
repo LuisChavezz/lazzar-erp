@@ -65,6 +65,12 @@ export const authOptions: NextAuthOptions = {
             is_admin_empresa:
               typeof user.is_admin_empresa === "boolean" ? user.is_admin_empresa : undefined,
             is_superuser: typeof user.is_superuser === "boolean" ? user.is_superuser : undefined,
+            /* Decisión del backend sobre las acciones de Mesa de Control
+             * (EC-943/EC-944). Mismo trato: solo un booleano; ausente (backend
+             * anterior a EC-944) se queda `undefined` y `canActAsMesaControl`
+             * cae al código de permiso. */
+            es_mesa_control:
+              typeof user.es_mesa_control === "boolean" ? user.es_mesa_control : undefined,
             /* La empresa con la que el backend acota todo (EC-798). Se escribe
              * SIEMPRE, con `null` explícito si el usuario no tiene: una clave
              * ausente queda reservada para los tokens anteriores a EC-842. */
@@ -89,6 +95,7 @@ export const authOptions: NextAuthOptions = {
         token.permissions = user.permissions;
         token.is_admin_empresa = user.is_admin_empresa;
         token.is_superuser = user.is_superuser;
+        token.es_mesa_control = user.es_mesa_control;
         token.empresa = user.empresa ?? null;
         token.sub = user.id || token.sub;
       }
@@ -112,6 +119,8 @@ export const authOptions: NextAuthOptions = {
         session.user.permissions = token.permissions;
         session.user.is_admin_empresa = token.is_admin_empresa;
         session.user.is_superuser = token.is_superuser;
+        // Ausente en un token anterior a EC-943: se deja ausente ("no se sabe").
+        session.user.es_mesa_control = token.es_mesa_control;
         // Ausente en un token anterior a EC-842: se deja ausente ("no se sabe").
         if (token.empresa !== undefined) session.user.empresa = token.empresa;
       }
