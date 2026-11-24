@@ -7,7 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeftIcon, BanIcon, EditIcon, RefreshIcon } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
-import { hasPermission, meetsPermissionRequirement } from "@/src/utils/permissions";
+import { canActAsMesaControl, meetsPermissionRequirement } from "@/src/utils/permissions";
+import { MESA_CONTROL_PEDIDOS_PERMISSION } from "@/src/constants/mesaControlActionPermissions";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -307,12 +308,11 @@ export function PedidoDetailContent({
   // que la sección, que lo encuentra fresco (24 h) y no lo vuelve a pedir; sus
   // respaldos mientras carga no cambian. Solo en la hoja que lo pinta.
   useSatInfo({ enabled: sheet === "order" && !isPedidoUnavailable && !isHistoryAccessPending });
-  // Permiso del catálogo. OJO: el backend NO lo valida en las acciones de mesa
-  // de control —exige superuser, `is_admin_empresa` o un rol activo cuya clave
-  // de departamento sea exactamente `MESACONTROL`—, así que esto solo gobierna
-  // la UI; un desajuste llega como el 400 `permiso` del backend. Ver
-  // `pedidoEditAccess.server.ts`.
-  const canEditMesaControl = hasPermission("E-MESACONTROL-PEDIDOS", session?.user);
+  // Acciones de Mesa de Control (edición en línea, SKU de muestra, Editar y
+  // Cancelar): la decisión del backend (`es_mesa_control` de la sesión,
+  // EC-943), con el código `E-MESACONTROL-PEDIDOS` solo para una sesión
+  // anterior que no la trae. Ver `canActAsMesaControl`.
+  const canEditMesaControl = canActAsMesaControl(session?.user, MESA_CONTROL_PEDIDOS_PERMISSION);
   // Recompra aterriza en /sales/quotes/{id}/edit, así que exige EXACTAMENTE lo
   // que exige esa ruta (regla del proxy + guard de la página, ver
   // `canLandOnQuoteEdit`); si no, el usuario crearía la cotización y rebotaría
@@ -489,8 +489,8 @@ export function PedidoDetailContent({
   }
 
   const showAccounting = canSeeAccounting(data);
-  // Edición en línea de Fecha confirmada y Clasificación: permiso de Mesa de
-  // Control y pedido no terminado. Independiente de `canEditPedidoMesaControl`,
+  // Edición en línea de Fecha confirmada y Clasificación: ser Mesa de Control
+  // y pedido no terminado. Independiente de `canEditPedidoMesaControl`,
   // que gobierna el botón Editar (guardado destructivo) con su propia regla.
   const canEditHeader = canEditMesaControl && !isPedidoTerminal(data.estatus);
   // Vincular SKU de muestra: misma regla que la edición en línea de la
@@ -542,7 +542,7 @@ export function PedidoDetailContent({
             <OrderRecompraAction pedidoId={data.id} pedidoFolio={data.folio} />
           )}
           {/* Editar por Mesa de Control. Tres condiciones, todas necesarias:
-              el PERMISO (`hasPermission` ya cortocircuita para "admin"), tener
+              ser Mesa de Control (`canEditMesaControl`), tener
               cotización de origen —sin ella el endpoint responde 400, porque su
               contrato es editar-y-espejar— y un `estatus` editable (un pedido
               CANCELADO no se toca). */}
@@ -570,7 +570,7 @@ export function PedidoDetailContent({
               </Link>
             </Button>
           )}
-          {/* Cancelar: mismo permiso que Editar. Un CANCELADO legado
+          {/* Cancelar: misma regla que Editar. Un CANCELADO legado
               (`activo = true`, de antes de `/cancelar/`) no lo ofrece. */}
           {canEditMesaControl && data.estatus !== PEDIDO_ESTATUS.CANCELADO && (
             <Button

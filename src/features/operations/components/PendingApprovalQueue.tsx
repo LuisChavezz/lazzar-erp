@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -27,7 +26,11 @@ import { rejectOperationsQuoteMutationKey } from "@/src/features/operations/hook
 import { RejectQuoteDialog } from "@/src/features/operations/components/RejectQuoteDialog";
 import { selectMutationRecordId } from "@/src/utils/mutationRecordId";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { hasPermission } from "@/src/utils/permissions";
+import { useCanActAsMesaControl } from "@/src/hooks/useCanActAsMesaControl";
+import {
+  MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION,
+  MESA_CONTROL_REJECT_QUOTE_PERMISSION,
+} from "@/src/constants/mesaControlActionPermissions";
 import { useOperationsQuotes } from "@/src/features/operations/hooks/useOperationsQuotes";
 import type { OperationsQuote } from "@/src/features/operations/interfaces/operations-quote.interface";
 import { getQuoteDialogStatusColor } from "@/src/features/quotes/constants/quoteStatus";
@@ -64,11 +67,11 @@ const MAX_VISIBLE = 6;
 
 export const PendingApprovalQueue = () => {
   const { operationsQuotes, isLoading } = useOperationsQuotes();
-  // Mismos códigos y misma comprobación que el menú de la tabla de
-  // Cotizaciones (`ActionMenu` → `getVisibleActionItems` → `hasPermission`).
-  const { data: session } = useSession();
-  const canAuthorize = hasPermission("A-MESACONTROL-COTI", session?.user);
-  const canReject = hasPermission("D-MESACONTROL-COTI", session?.user);
+  // Misma regla que el menú de la tabla de Cotizaciones: ser Mesa de Control
+  // (`es_mesa_control` de la sesión, EC-943). Solo decide los BOTONES; la
+  // bandeja se ve igual.
+  const canAuthorize = useCanActAsMesaControl(MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION);
+  const canReject = useCanActAsMesaControl(MESA_CONTROL_REJECT_QUOTE_PERMISSION);
   const approveOperationsQuote = useApproveOperationsQuote();
   const rejectingOperationsQuoteIds = useMutationState({
     filters: { mutationKey: [...rejectOperationsQuoteMutationKey], status: "pending" },

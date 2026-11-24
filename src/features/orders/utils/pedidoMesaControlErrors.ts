@@ -46,10 +46,12 @@ export const SERVICIOS_EXTRAS_MULTI_TOAST_DURATION_MS = 9000;
  * anidado bajo su clave**, no un 403 ni un `{ error }`:
  *
  * - `permiso`: `_require_mesa_control` — "Acción disponible solo para mesa de
- *   control." Es el caso del usuario que tiene `E-MESACONTROL-PEDIDOS` pero no
- *   cumple lo que el backend valida de verdad: ser superuser, `is_admin_empresa`
- *   o tener un rol activo de su empresa cuya clave de departamento sea
- *   EXACTAMENTE `MESACONTROL` (p. ej. `MESACONTROLYVENTAS` se rechaza).
+ *   control." El backend exige ser superuser, `is_admin_empresa` o tener un rol
+ *   activo de su empresa cuya clave de departamento sea `MESACONTROL` (p. ej.
+ *   `MESACONTROLYVENTAS` se rechaza). La UI ya muestra la acción con esa misma
+ *   decisión (`es_mesa_control`, EC-943); llega a verse si la sesión es anterior
+ *   y decide por el código `E-MESACONTROL-PEDIDOS`, o si el rol cambió después
+ *   de iniciar sesión.
  * - `pedido` / `cotizacion`: el pedido no tiene cotización ligada (o se
  *   borró), así que no hay nada que espejar. (`pedido` también es la clave de
  *   los errores de campo de la cabecera, ver abajo.)

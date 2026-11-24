@@ -34,8 +34,8 @@ interface PedidoMesaControlEditPageProps {
  * Cuelga de la ruta NEUTRA `/orders/[id]` —de donde se alcanza el detalle 360°—
  * pero, a diferencia de aquella, NO es de solo lectura: la regla "/orders" de
  * `routePermissions` admite cualquiera de once permisos de lectura, así que el
- * control de acceso de ESTA pantalla lo pone el guard local, que exige
- * `E-MESACONTROL-PEDIDOS`.
+ * control de acceso de ESTA pantalla lo pone el guard local, que exige ser Mesa
+ * de Control (`canActAsMesaControl`, EC-943).
  */
 export default async function PedidoMesaControlEditPage({
   params,

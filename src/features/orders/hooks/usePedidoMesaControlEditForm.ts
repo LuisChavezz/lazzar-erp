@@ -100,14 +100,14 @@ import type {
  * WRAPPER desestructura antes de hacer spread, igual que hace `QuoteEditForm`
  * con `quoteLoadFailed`.
  *
- * PERMISOS — divergencia consciente: la pantalla se protege en el frontend con
- * `E-MESACONTROL-PEDIDOS` (guard de ruta + botones), pero el endpoint NO valida
- * ese código: `PedidoViewSet._require_mesa_control` exige ser superuser,
- * `is_admin_empresa` o tener un rol activo de la empresa del usuario cuya clave
- * de departamento sea EXACTAMENTE `MESACONTROL` (`MESACONTROLYVENTAS` se
- * rechaza). O sea que el permiso del catálogo es consistencia de UI y la
- * frontera real es esa regla. Un usuario con el permiso que no la cumpla
- * llegará a la pantalla y recibirá un 400 `{ permiso }` al guardar.
+ * PERMISOS: la pantalla se protege en el frontend (guard de ruta + botones) con
+ * `canActAsMesaControl`, que lee `es_mesa_control` de la sesión: la misma
+ * decisión de `PedidoViewSet._require_mesa_control` (superuser,
+ * `is_admin_empresa` o un rol activo de la empresa del usuario con clave de
+ * departamento `MESACONTROL`), EC-943. La frontera real sigue siendo esa regla,
+ * evaluada en cada guardado: una sesión anterior que aún decide por el código
+ * `E-MESACONTROL-PEDIDOS`, o un rol que cambió después de iniciar sesión, puede
+ * llegar a la pantalla y recibir un 400 `{ permiso }` al guardar.
  */
 
 // ─── Catálogos y constantes (mismos valores que los hooks de cotización) ──────

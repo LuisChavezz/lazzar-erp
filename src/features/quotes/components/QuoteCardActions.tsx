@@ -2,6 +2,11 @@
 
 import type { ReactNode } from "react";
 import { ActionMenu, ActionMenuItem } from "@/src/components/ActionMenu";
+import { useCanActAsMesaControl } from "@/src/hooks/useCanActAsMesaControl";
+import {
+  MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION,
+  MESA_CONTROL_REJECT_QUOTE_PERMISSION,
+} from "@/src/constants/mesaControlActionPermissions";
 import {
   CheckCircleIcon,
   DownloadIcon,
@@ -64,6 +69,10 @@ export function useQuoteActionItems(quote: Quote): ActionMenuItem[] {
   // ─── Permisos de acción por estatus ───────────────────────────────────────
   const canEdit = canEditQuote(quote.estatus);
   const canManageAuthorization = canManageQuoteAuthorization(quote.estatus);
+  // Autorizar/rechazar llaman a los mismos endpoints de Mesa de Control
+  // (`/ventas/mesa-control/{id}/autorizar|rechazar/`): misma regla (EC-943).
+  const canApprove = useCanActAsMesaControl(MESA_CONTROL_AUTHORIZE_QUOTE_PERMISSION);
+  const canReject = useCanActAsMesaControl(MESA_CONTROL_REJECT_QUOTE_PERMISSION);
 
   const items: ActionMenuItem[] = [
     {
@@ -111,23 +120,20 @@ export function useQuoteActionItems(quote: Quote): ActionMenuItem[] {
     },
     {
       // Autorizar/rechazar desde el tablero de Ventas es la misma capacidad de
-      // Mesa de Control, con sus códigos propios del catálogo
-      // (A-MESACONTROL-COTI / D-MESACONTROL-COTI). Sigue siendo un permiso de
-      // OTRO módulo a propósito: quien aprueba es Mesa de Control.
+      // Mesa de Control, y se decide igual que allí (`es_mesa_control`): quien
+      // aprueba es Mesa de Control, no Ventas.
       label: "Autorizar",
       icon: CheckCircleIcon,
       onSelect: () => onAction("authorize", quote),
       disabled: isAuthorizing || isRejecting || isPreparingEmail || isSendingEmail,
-      permission: "A-MESACONTROL-COTI",
-      visible: canManageAuthorization,
+      visible: canApprove && canManageAuthorization,
     },
     {
       label: "Rechazar",
       icon: RejectIcon,
       onSelect: () => onAction("reject", quote),
       disabled: isRejecting || isAuthorizing || isPreparingEmail || isSendingEmail,
-      permission: "D-MESACONTROL-COTI",
-      visible: canManageAuthorization,
+      visible: canReject && canManageAuthorization,
     },
   ];
 
