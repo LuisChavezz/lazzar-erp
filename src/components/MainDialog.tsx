@@ -67,14 +67,6 @@ export function MainDialog({
         onCloseAutoFocus={onCloseAutoFocus}
         className="bg-white! dark:bg-zinc-900! dark:text-white!"
       >
-        {/* Botón X de cierre en la esquina superior derecha */}
-        <Dialog.Close
-          aria-label="Cerrar diálogo"
-          className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-white/10 transition-colors cursor-pointer"
-        >
-          <XIcon className="w-8 h-8" aria-hidden="true" />
-        </Dialog.Close>
-
         {headerAction ? (
           // El título y la acción en una fila; `pr-10` deja libre la X de
           // cierre (absoluta, arriba a la derecha). Al angostarse, la acción
@@ -130,6 +122,23 @@ export function MainDialog({
               actionButton
             ))}
         </Flex>
+
+        {/* X de cierre, arriba a la derecha. `Dialog.Close` de Radix Themes no
+            pinta un elemento propio: fusiona sus props sobre su único hijo, así
+            que el hijo tiene que ser el `<button>` (con el icono SOLO como
+            adorno) para que reciba foco, se active con Enter/Espacio y se
+            anuncie como botón. Va al FINAL del contenido, aunque se vea arriba:
+            al abrir, Radix enfoca el primer elemento tabulable, y con la X
+            primero el foco dejaría de caer en el primer campo del diálogo. */}
+        <Dialog.Close>
+          <button
+            type="button"
+            aria-label="Cerrar diálogo"
+            className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-white/10 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <XIcon className="w-8 h-8" aria-hidden="true" />
+          </button>
+        </Dialog.Close>
       </Dialog.Content>
     </Dialog.Root>
   );
