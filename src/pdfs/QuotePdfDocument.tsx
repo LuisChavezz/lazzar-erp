@@ -106,11 +106,11 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
         <View>
           {/* Encabezado de la tabla — se repite en cada página */}
           <View style={s.tableHeader} fixed>
-            <Text style={[s.tableHeaderCell, s.colProduct]}>Producto</Text>
-            <Text style={[s.tableHeaderCell, s.colSizes]}>SKU</Text>
-            <Text style={[s.tableHeaderCell, s.colQty]}>Pzas.</Text>
-            <Text style={[s.tableHeaderCell, s.colPrice]}>Precio u.</Text>
-            <Text style={[s.tableHeaderCell, s.colSubtotal]}>Subtotal</Text>
+            <Text style={[s.tableHeaderCell, s.tableCellBox, s.colProduct]}>Producto</Text>
+            <Text style={[s.tableHeaderCell, s.tableCellBox, s.colSizes]}>SKU</Text>
+            <Text style={[s.tableHeaderCell, s.tableCellBox, s.colQty]}>Pzas.</Text>
+            <Text style={[s.tableHeaderCell, s.tableCellBox, s.colPrice]}>Precio u.</Text>
+            <Text style={[s.tableHeaderCell, s.tableCellBox, s.colSubtotal]}>Subtotal</Text>
           </View>
 
           {detailRows.map(({ detail, quantity, lineSubtotal }, i) => {
@@ -122,13 +122,13 @@ export const QuotePdfDocument = ({ quote, model }: QuotePdfDocumentProps) => {
               <View key={detail.id}>
                 {/* Fila principal del producto */}
                 <View style={[s.tableRow, i % 2 !== 0 ? s.tableRowAlt : {}]} wrap={false}>
-                  <Text style={[s.tableCellBold, s.colProduct]}>{getQuoteDetailProductName(detail)}</Text>
-                  <Text style={[s.tableCell, s.colSizes]}>{model.skuSummaries[i]}</Text>
-                  <Text style={[s.tableCell, s.colQty]}>{quantity}</Text>
-                  <Text style={[s.tableCell, s.colPrice]}>
+                  <Text style={[s.tableCellBold, s.tableCellBox, s.colProduct]}>{getQuoteDetailProductName(detail)}</Text>
+                  <Text style={[s.tableCell, s.tableCellBox, s.colSizes]}>{model.skuSummaries[i]}</Text>
+                  <Text style={[s.tableCell, s.tableCellBox, s.colQty]}>{quantity}</Text>
+                  <Text style={[s.tableCell, s.tableCellBox, s.colPrice]}>
                     {model.formatMoney(detail.precio_unitario)}
                   </Text>
-                  <Text style={[s.tableCellBold, s.colSubtotal]}>
+                  <Text style={[s.tableCellBold, s.tableCellBox, s.colSubtotal]}>
                     {model.formatMoney(lineSubtotal)}
                   </Text>
                 </View>
