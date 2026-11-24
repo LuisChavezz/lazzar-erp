@@ -21,8 +21,10 @@ import { PDF_COLORS as C } from "./QuotePdfColors";
 import { basePdfStyles } from "./shared/BasePdfStyles";
 import { DOCUMENT_PDF_FONT_FAMILY, withDocumentPdfFont } from "./shared/documentPdfFonts";
 
+const base = basePdfStyles(C);
+
 export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
-  ...basePdfStyles(C),
+  ...base,
 
   /* ── Encabezado — específico de cotización ───── */
   quoteIdBadge: {
@@ -86,6 +88,23 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
 
   /* ── Tabla de productos — columnas específicas de cotización ── */
+  // Margen lateral de cada celda, el mismo de la plantilla base (EC-891,
+  // `DocumentPdfStyles`), que la cotización no usa (EC-952): sin él, el texto de
+  // una columna que llena la suya toca el de la siguiente ("…PESCADOR10878012XC").
+  // Va en cada celda del encabezado y del renglón; la fila y el encabezado bajan
+  // su relleno de 8 a 5 para que el texto de los extremos siga a 8 pt del borde:
+  // entre columnas quedan 3 + 3 = 6 pt.
+  tableCellBox: {
+    paddingHorizontal: 3,
+  },
+  tableHeader: {
+    ...base.tableHeader,
+    paddingHorizontal: 5,
+  },
+  tableRow: {
+    ...base.tableRow,
+    paddingHorizontal: 5,
+  },
   colProduct: { flex: 3 },
   colSizes: { flex: 3 },
   colQty: { flex: 1, textAlign: "right" },
