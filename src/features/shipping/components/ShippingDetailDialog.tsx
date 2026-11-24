@@ -101,7 +101,7 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
-      // Sin PDF propio: solo "Cancelar" (EC-945), con `WMS-CANCELAR`.
+      // Sin PDF propio: solo "Cancelar" (EC-945), con `WMS-CANCELAR` o Mesa de Control.
       headerAction={
         canCancel ? (
           <WmsCancelHeaderActions

@@ -23,7 +23,8 @@ interface WmsCancelHeaderActionsProps<TResult> {
 /**
  * Acciones del encabezado del detalle de un documento de WMS (EC-945): la
  * cancelación (o la reversa de una TR) junto a "Descargar PDF". Se ofrece solo
- * con `WMS-CANCELAR` (`useCanCancelWmsDocuments`) y si el documento la admite.
+ * con `WMS-CANCELAR` o a Mesa de Control (`useCanCancelWmsDocuments`) y si el
+ * documento la admite.
  *
  * El diálogo se monta aparte del botón, con el permiso: al cancelar, el botón
  * desaparece (el documento ya no la admite), pero el diálogo debe poder
