@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DataTable, type DataTableHandle } from "@/src/components/DataTable";
 import { ListExportButtons } from "@/src/components/ListExportButtons";
@@ -17,6 +18,7 @@ import { ShippingForm } from "./ShippingForm";
 import { useShipments } from "../hooks/useShipments";
 import type { Shipment, ShipmentEstado } from "../interfaces/shipping.interface";
 import { SHIPPING_EXPORT_COLUMNS, shippingExportSummary } from "../utils/shippingExport";
+import { SHIPMENT_ESTADO_PARAM, parseShipmentEstadoParam, withShipmentEstadoParam } from "../utils/shipmentEstadoParam";
 
 type EstadoFilter = ShipmentEstado | "TODOS";
 
@@ -30,7 +32,9 @@ const ESTADO_OPTIONS: { value: EstadoFilter; label: string }[] = [
 /**
  * Vista de Envíos: el listado (`GET /wms/despachos/`) con filtros por
  * encabezado, el filtro de estado (`?estado=`, en el backend, EC-945) y la
- * captura de un envío nuevo en el toolbar. El detalle se abre
+ * captura de un envío nuevo en el toolbar. El filtro de estado vive en la URL
+ * (`?estado=ACTIVO|CANCELADO`; "Todos" sin parámetro), así que la página que lo
+ * monta lo envuelve en `<Suspense>`. El detalle se abre
  * desde el folio del embarque; su estado vive aquí, nunca en la celda (las
  * celdas se desmontan al ordenar, paginar o filtrar).
  *
@@ -38,10 +42,18 @@ const ESTADO_OPTIONS: { value: EstadoFilter; label: string }[] = [
  * así el toolbar —y `ShippingForm`— siguen visibles durante la carga y el error.
  */
 export function ShippingView() {
-  const [estado, setEstado] = useState<EstadoFilter>("TODOS");
-  const { shipments, isLoading, isError, error, hasLoaded, refetch, isFetching } = useShipments(
-    estado === "TODOS" ? null : estado,
-  );
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const estadoParam = parseShipmentEstadoParam(searchParams.get(SHIPMENT_ESTADO_PARAM));
+  const estado: EstadoFilter = estadoParam ?? "TODOS";
+  // `history.replaceState`, como los listados en modo servidor: cambiar el filtro
+  // no es navegar (Atrás regresa a la pantalla anterior) y Next sincroniza
+  // `useSearchParams` con él.
+  const setEstado = (value: EstadoFilter) => {
+    const qs = withShipmentEstadoParam(searchParams.toString(), value === "TODOS" ? null : value);
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  };
+  const { shipments, isLoading, isError, error, hasLoaded, refetch, isFetching } = useShipments(estadoParam);
 
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
@@ -97,6 +109,8 @@ export function ShippingView() {
         data={shipments}
         searchPlaceholder="Buscar embarque, pedido, cliente, guía, paquetería o chofer..."
         getRowId={(row) => String(row.id)}
+        // Otro estado es otro conjunto: vuelve a la página 1 sin tocar orden ni búsqueda.
+        paginationResetKey={estado}
         // El cuerpo llena el contenedor de altura acotada que da `wms/shipping/page.tsx`.
         fillHeight
         onRefetch={refetch}
