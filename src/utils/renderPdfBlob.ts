@@ -48,15 +48,16 @@ export const PDF_FONT_LOAD_ERROR_MESSAGE = "No se pudo cargar la fuente del PDF.
  * lanza `PdfFontLoadError` por cualquier fallo: sin red, una respuesta que no
  * es `ok` o una que no es una fuente. Las otras dos ramas cubren a react-pdf si
  * llegara a pedir una fuente por su cuenta: sin red, `fetch` lanza un
- * `TypeError` cuyo texto depende del navegador (Chrome "Failed to fetch",
- * Firefox "NetworkError when attempting to fetch resource.", Safari "Load
- * failed"), y si llega otra cosa fontkit lanza "Unknown font format". Las
- * imágenes que fallan no llegan aquí: react-pdf las omite sin lanzar.
+ * `TypeError` cuyo texto depende del navegador (Chrome "Failed to fetch", o
+ * "network error" si la descarga se corta a medias; Firefox "NetworkError when
+ * attempting to fetch resource."; Safari "Load failed"), y si llega otra cosa
+ * fontkit lanza "Unknown font format". Las imágenes que fallan no llegan aquí:
+ * react-pdf las omite sin lanzar.
  */
 export const isPdfFontLoadError = (error: unknown): boolean =>
   error instanceof PdfFontLoadError ||
   (error instanceof Error &&
-    ((error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message)) ||
+    ((error instanceof TypeError && /failed to fetch|network ?error|load failed/i.test(error.message)) ||
       error.message === "Unknown font format"));
 
 const toPdfFontLoadError = (error: unknown): unknown =>
