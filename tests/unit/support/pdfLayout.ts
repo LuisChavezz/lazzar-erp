@@ -122,7 +122,7 @@ export function pdfPageTexts(pdf: Buffer): string[] {
 export const layoutPdfPages = async (document: unknown) =>
   pdfPageTexts(await renderToBuffer(toReactElement(document) as Parameters<typeof renderToBuffer>[0]));
 
-/** Un renglón maquetado de un `Text`: su texto y el ancho real de sus glifos. */
+/** Un renglón maquetado de un `Text`: su texto y el ancho real de sus glifos, sin los espacios del final. */
 export interface PdfLayoutLine {
   text: string;
   width: number;
@@ -137,7 +137,7 @@ export interface PdfLayoutText {
 type LayoutNode = {
   type?: string;
   box?: { width: number; paddingLeft?: number; paddingRight?: number };
-  lines?: { string: string; xAdvance: number }[];
+  lines?: { string: string; xAdvance: number; runs?: { positions?: { xAdvance: number }[] }[] }[];
   children?: LayoutNode[];
 };
 
@@ -148,8 +148,8 @@ type LayoutNode = {
  * (`_INTERNAL__LAYOUT__DATA_`): interno, pero es el layout real. El `onRender`
  * lo pone `PdfRenderListenerContext` (`pwJsx`) mientras React renderiza el
  * documento tal cual, así que sus componentes pueden usar hooks, `memo` o
- * `forwardRef`. `xAdvance` es lo que avanzan los glifos del renglón, no el
- * ancho de la caja.
+ * `forwardRef`. El ancho de un renglón es lo que avanzan sus glifos (sin los
+ * espacios del final), no el ancho de la caja.
  */
 export async function layoutPdfTexts(document: unknown): Promise<PdfLayoutText[]> {
   let layout: LayoutNode | undefined;
@@ -163,13 +163,26 @@ export async function layoutPdfTexts(document: unknown): Promise<PdfLayoutText[]
   );
   if (!layout) throw new Error("react-pdf no entregó el árbol maquetado");
 
+  /**
+   * Ancho de los glifos de un renglón. El `xAdvance` de textkit incluye el
+   * espacio en que se partió el renglón ("CORTA " mide 2.2 pt más que "CORTA"),
+   * que no se pinta: se le resta lo que avanzan los espacios del final, uno por
+   * glifo en `runs[].positions`.
+   */
+  const lineWidth = (line: NonNullable<LayoutNode["lines"]>[number]): number => {
+    const trailing = line.string.length - line.string.trimEnd().length;
+    const positions = line.runs?.flatMap((run) => run.positions ?? []) ?? [];
+    if (trailing === 0 || positions.length < trailing) return line.xAdvance;
+    return positions.slice(-trailing).reduce((width, position) => width - position.xAdvance, line.xAdvance);
+  };
+
   const texts: PdfLayoutText[] = [];
   const walk = (node: LayoutNode) => {
     if (node.type === "TEXT" && node.box && node.lines) {
       const { width, paddingLeft = 0, paddingRight = 0 } = node.box;
       texts.push({
         contentWidth: width - paddingLeft - paddingRight,
-        lines: node.lines.map((line) => ({ text: line.string, width: line.xAdvance })),
+        lines: node.lines.map((line) => ({ text: line.string, width: lineWidth(line) })),
       });
     }
     node.children?.forEach(walk);
