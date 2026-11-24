@@ -6,6 +6,12 @@ import { getPedidoEstatusConfig } from "../constants/pedidoStatus";
 import type { PedidoListItem } from "../interfaces/order.interface";
 import type { PedidoExportRow } from "../interfaces/pedido-list.interface";
 
+/** Día de México de un datetime como "d/m/yyyy" (es-MX); lo demás, como `formatLocalDate`. */
+const formatMexicoDay = (value: string | null): string => {
+  const dia = toMexicoDayLocalDate(value);
+  return dia ? dia.toLocaleDateString("es-MX") : formatLocalDate(value);
+};
+
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado de
  * "Pedidos" en Compras (`useProcurementOrderCsvExport`/
@@ -27,13 +33,11 @@ export const getProcurementOrderColumnText = (
         .join(" · ");
     case "cliente":
       return [order.cliente_razon_social, order.cliente_nombre].filter(Boolean).join(" — ");
+    // Día de México, como las celdas del listado (EC-936).
     case "created_at":
-      return formatLocalDate(order.created_at);
-    case "fecha_confirmacion": {
-      // Día de México, como la celda del listado (EC-936).
-      const dia = toMexicoDayLocalDate(order.fecha_confirmacion);
-      return dia ? dia.toLocaleDateString("es-MX") : formatLocalDate(order.fecha_confirmacion);
-    }
+      return formatMexicoDay(order.created_at);
+    case "fecha_confirmacion":
+      return formatMexicoDay(order.fecha_confirmacion);
     case "gran_total":
       return formatOrderAmountOrDash(order.gran_total);
     default:
