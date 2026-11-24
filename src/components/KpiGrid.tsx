@@ -114,12 +114,14 @@ type KpiGridProps =
   | { items: KpiItem[]; compact?: false }
   /**
    * Variante compacta (ver `KpiCompactCard`). `columns`: columnas de la rejilla
-   * ancha, 4 por defecto; 3 para seis tarjetas en dos filas parejas.
+   * ancha, 4 por defecto; 3 para seis tarjetas en dos filas parejas; `"3-6"`
+   * para seis tarjetas en dos filas de tres y, desde una VENTANA `2xl`
+   * (1536px), en una sola fila de seis.
    */
   | { items: KpiCompactItem[]; compact: true; columns?: KpiCompactColumns };
 
 /** Columnas de la rejilla compacta en su ancho mayor. */
-export type KpiCompactColumns = 3 | 4;
+export type KpiCompactColumns = 3 | 4 | "3-6";
 
 type KpiCardProps =
   | { item: KpiItem; compact?: false }
@@ -320,6 +322,11 @@ const KPI_COMPACT_CONTAINER_CLASS = "@container";
 // sola fila; ver `KpiCompactRail`), con la barra de scroll oculta: los puntos
 // de abajo hacen de indicador.
 // 3 columnas (`columns={3}`): 3×259 + 2×16 = 809px → 51rem (816px).
+// `"3-6"`: las 3 de arriba solo por debajo de `2xl` (`max-2xl:`) y 6 desde
+// `2xl` por la VENTANA, no por el contenedor: el umbral `mesa-fit-kpi` de
+// `globals.css` es una media query y debe saber cuántas filas hay sin medir el
+// listado. Seis tarjetas no caben con el ancho mínimo de 259px; las de Mesa de
+// Control, sin acción ni insignia, se midieron legibles a 1536px.
 const KPI_COMPACT_GRID_BASE_CLASS =
   "flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden " +
   "@min-[34rem]:grid @min-[34rem]:grid-cols-2 @min-[34rem]:gap-4 @min-[34rem]:overflow-visible @min-[34rem]:pb-0 " +
@@ -332,6 +339,9 @@ const KPI_COMPACT_GRID_BASE_CLASS =
 const KPI_COMPACT_GRID_COLUMNS_CLASS: Record<KpiCompactColumns, string> = {
   3: "@min-[51rem]:grid-cols-3",
   4: "@min-[68.75rem]:grid-cols-4",
+  // `!`: Tailwind emite las container queries (`@min-[34rem]:grid-cols-2` de la
+  // base) DESPUÉS de las media queries, así que sin él la de 2 columnas ganaría.
+  "3-6": "@min-[51rem]:max-2xl:grid-cols-3 2xl:grid-cols-6!",
 };
 
 const kpiCompactGridClass = (columns: KpiCompactColumns = 4) =>

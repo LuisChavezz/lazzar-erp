@@ -25,24 +25,29 @@
  *   filas se parten en dos líneas en anchos angostos), Cotizaciones ~768,
  *   Programados 725, Existencias 703. Sin KPIs ni cuenta del ancho del
  *   listado: nada encima de la tabla cambia de alto con él.
- * - `mesa-fit-kpi` (Pedidos): seis KPIs en DOS filas de tres
- *   (`MESA_CONTROL_KPI_COLUMNS`, EC-946). 988px de alto —172 (cromo) + 262
- *   (las dos filas de KPIs y su separación: 134 de una fila + 128 de la
- *   segunda) + 141 (toolbar, paginador y bordes) + 53 (encabezado) + 6 filas ×
- *   59 = 982px— y el listado de al menos 51rem (816px) de ANCHO, medido con la
- *   container query `mesa-list`: por debajo los KPIs pasan a dos columnas
- *   (tres filas) y el ajustado volvería a ~4 filas. Se mide el listado y no el
- *   viewport porque la barra lateral anclada (`w-72`) le quita 208px respecto
- *   a la colapsada (`w-20`). En una laptop (menos de 988px de alto) queda el
- *   modo natural: la tabla mide `h-120` y la página scrollea.
+ * - `mesa-fit-kpi` (Pedidos): seis KPIs (`MESA_CONTROL_KPI_COLUMNS`, EC-946)
+ *   acomodados según el ancho de la VENTANA, así que el umbral tiene dos ramas:
+ *   - desde `2xl` (1536px) van en UNA fila de seis: 860px de alto, como antes
+ *     de EC-946 con cuatro —172 (cromo) + 134 (KPIs y su separación) + 141
+ *     (toolbar, paginador y bordes) + 53 (encabezado) + 6 filas × 59 = 854px—.
+ *     A ese ancho el listado mide al menos ~1150px, sin condición propia;
+ *   - por debajo van en DOS filas de tres: 988px de alto —el mismo cálculo con
+ *     262 de KPIs (134 + 128 de la segunda fila) = 982px— y el listado de al
+ *     menos 51rem (816px) de ANCHO, medido con la container query `mesa-list`:
+ *     más angosto pasan a dos columnas (tres filas) y el ajustado volvería a ~4
+ *     filas. Se mide el listado y no el viewport porque la barra lateral anclada
+ *     (`w-72`) le quita 208px respecto a la colapsada (`w-20`). En una laptop
+ *     (menos de 988px de alto) queda el modo natural: la tabla mide `h-120` y
+ *     la página scrollea.
  */
 
 /**
- * Columnas de los KPIs de Pedidos en su ancho mayor (`KpiGrid columns`): seis
- * tarjetas en dos filas de tres. El umbral `mesa-fit-kpi` de `globals.css`
- * cuenta con esas dos filas; si cambia, se recalcula allí.
+ * Columnas de los KPIs de Pedidos (`KpiGrid columns`): seis tarjetas en dos
+ * filas de tres y, desde una ventana `2xl`, en una fila de seis. Las dos ramas
+ * del umbral `mesa-fit-kpi` de `globals.css` cuentan con esas filas; si cambia,
+ * se recalcula allí.
  */
-export const MESA_CONTROL_KPI_COLUMNS = 3;
+export const MESA_CONTROL_KPI_COLUMNS = "3-6";
 
 /** Clases de un listado sin KPIs (`mesa-fit`). */
 export const MESA_CONTROL_LIST = {
