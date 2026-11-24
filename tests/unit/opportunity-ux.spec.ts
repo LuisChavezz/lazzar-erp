@@ -8,6 +8,7 @@ import { describeOpportunity } from "@/src/features/opportunities/utils/describe
 import {
   getOpportunityClienteContacto,
   getOpportunityClienteLabel,
+  getSelectedOpportunityClienteLabel,
   isOpportunityClienteHidden,
 } from "@/src/features/opportunities/utils/opportunityClienteLabel";
 import {
@@ -141,6 +142,37 @@ test.describe("nombre del cliente (EC-810)", () => {
       { value: "33", label: "LAZZAR" },
     ]);
     for (const option of options) expect(option.label).not.toMatch(/#\d/);
+  });
+});
+
+test.describe("cliente elegido en el formulario (EC-940)", () => {
+  const catalogo = { razon_social: "PRUEBA SA DE CV", nombre: "PRUEBA" };
+
+  test("del catálogo: su razón social, o su nombre si está en blanco", () => {
+    expect(getSelectedOpportunityClienteLabel(catalogo, 29, null)).toBe("PRUEBA SA DE CV");
+    expect(getSelectedOpportunityClienteLabel({ razon_social: "", nombre: "PRUEBA" }, 29, null)).toBe(
+      "PRUEBA"
+    );
+  });
+
+  test("cliente oculto de la oportunidad que se edita: Cliente no visible, sin id", () => {
+    const hidden = opportunity({ cliente: 43, cliente_nombre: null, cliente_razon_social: null });
+    expect(getSelectedOpportunityClienteLabel(undefined, 43, hidden)).toBe("Cliente no visible");
+  });
+
+  test("cliente visible de la oportunidad fuera del catálogo (cargando): su nombre", () => {
+    expect(getSelectedOpportunityClienteLabel(undefined, 21, opportunity())).toBe(
+      "ABARROTES ABEJA, SA DE CV"
+    );
+  });
+
+  test("elegido del catálogo y ya no está en él: Cliente #id", () => {
+    expect(getSelectedOpportunityClienteLabel(undefined, 29, null)).toBe("Cliente #29");
+    expect(getSelectedOpportunityClienteLabel(undefined, 29, opportunity())).toBe("Cliente #29");
+  });
+
+  test("sin cliente: vacío", () => {
+    expect(getSelectedOpportunityClienteLabel(undefined, null, opportunity())).toBe("");
   });
 });
 
