@@ -26,9 +26,9 @@ const valorPorMoneda = (kpis: PedidoKpisMesa): CurrencyTotal[] =>
  * Tarjetas de Mesa de Control a partir de `kpis-mesa/`, el MISMO conjunto que
  * la tabla con los mismos filtros y búsqueda. `total` excluye los cancelados
  * (= por confirmar + confirmados); el conteo `cancelados` del backend no se
- * pinta. Seis tarjetas en dos filas de tres (`MESA_CONTROL_KPI_COLUMNS`): la
- * primera, el embudo de confirmación; la segunda, lo detenido (retenidos y sin
- * surtir) y el valor.
+ * pinta. Seis tarjetas (`MESA_CONTROL_KPI_COLUMNS`): en dos filas de tres,
+ * la primera es el embudo de confirmación y la segunda lo detenido (retenidos
+ * y sin surtir) y el valor; desde una ventana `2xl`, todas en una fila.
  */
 export const buildMesaPedidoKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
   const pct = (n: number) => (kpis.total ? Math.round((n / kpis.total) * 100) : 0);
