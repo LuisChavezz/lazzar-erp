@@ -57,6 +57,12 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   // sin empresa la lista sale vacía, que se leería como "no hay pedidos".
   { prefix: "/wms/order-fulfillment", gated: true },
 
+  // ── WMS: Scanner RFID (#506) ──────────────────────────────────────────────
+  // Desde EC-884 las lecturas, `scanner-stats` y la purga se acotan a la
+  // empresa activa: a un superusuario sin empresa le llegan vacías, que se
+  // leería como "el lector no ha leído nada".
+  { prefix: "/wms/rfid-scanner", gated: true },
+
   // ── Producción: Planeación ────────────────────────────────────────────────
   // El tablero de rotación se calcula sobre `user.empresa`: sin empresa el
   // backend responde 400 ("Tu usuario no tiene una empresa activa.").

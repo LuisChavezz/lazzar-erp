@@ -28,6 +28,8 @@ const GATED = [
   "/orders/2121/edit-mesa-control",
   "/system/document-audit",
   "/manufacturing/planning",
+  "/wms/order-fulfillment",
+  "/wms/rfid-scanner",
 ];
 
 const NOT_GATED = [
@@ -45,6 +47,8 @@ const NOT_GATED = [
   "/manufacturing",
   "/manufacturing/planning-archive",
   "/wms",
+  "/wms/rfid-labels",
+  "/wms/picking",
   "/hr",
   "/system",
   "/system/reports/existencias",
