@@ -1,4 +1,6 @@
 import {
+  booleanFlagParam,
+  booleanParam,
   csvEnumParam,
   defineServerTable,
   enumParam,
@@ -235,6 +237,10 @@ export const mesaPedidosTable = defineServerTable({
     clasificacion: csvEnumParam(PEDIDO_CLASIFICACIONES),
     rango_piezas: rangeParam(PIEZAS_RANGE_OPTIONS),
     rango_subtotal: rangeParam(SUBTOTAL_RANGE_OPTIONS),
+    // Retención de Mesa de Control (nucleo-erp#1352): con sus dos valores.
+    retenido: booleanParam,
+    // Programados sin picking vivo: solo encendido (ver `SIN_SURTIR_FILTER_OPTIONS`).
+    sin_surtir: booleanFlagParam,
   },
   search: { param: "q" },
   ordering: {

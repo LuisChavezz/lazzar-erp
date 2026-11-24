@@ -220,6 +220,8 @@ test.describe("Mesa de Control y Compras no cambian con EC-755", () => {
       "clasificacion",
       "rango_piezas",
       "rango_subtotal",
+      "retenido",
+      "sin_surtir",
     ]);
     expect(mesaPedidosTable.ordering?.fields).toEqual([
       "folio",
