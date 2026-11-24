@@ -4,6 +4,7 @@
 
 import { safeParseAmount } from "@/src/utils/formatCurrency";
 import type { Packing } from "../interfaces/packing.interface";
+import { isPackingCancelled } from "./packingCancelAction";
 
 export interface PackingKpis {
   /**
@@ -20,7 +21,7 @@ export interface PackingKpis {
    * por admin/API que no respete la misma invariante).
    */
   totalLineasEmpacadas: number;
-  /** Suma de `numero_cajas` a través de todos los packings. */
+  /** Suma de `numero_cajas` de los packings no cancelados (igual los demás KPIs). */
   totalCajas: number;
   /** Suma de `peso_total` (kg, `decimal_places=3`) a través de todos los packings. */
   pesoTotal: number;
@@ -35,6 +36,9 @@ export const computePackingKpis = (packings: Packing[]): PackingKpis => {
   let volumenTotal = 0;
 
   for (const packing of packings) {
+    // Un embarque cancelado ya no está empacado (EC-945): sus líneas quedan
+    // CANCELADO y el surtido vuelve a quedar por empacar. No suma a ningún KPI.
+    if (isPackingCancelled(packing)) continue;
     totalLineasEmpacadas += packing.packing_detalle.filter(
       (linea) => safeParseAmount(linea.cantidad_empacada) > 0,
     ).length;
