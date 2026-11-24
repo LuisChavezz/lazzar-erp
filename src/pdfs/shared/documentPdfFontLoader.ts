@@ -76,37 +76,64 @@ const downloadFont = async (deps: FontLoaderDeps, url: string): Promise<Blob> =>
   }
 };
 
+/** Una URL `blob:` por archivo, en el orden de `DOCUMENT_PDF_FONT_FILES`. */
+export type DocumentPdfFontUrls = readonly string[];
+
 /**
- * Crea un `ensure(font)` con su propio estado (las pruebas inyectan `fetch`).
+ * Las dos mitades del registro, separadas para que `renderPdfBlob` empiece la
+ * descarga a la vez que carga los chunks del renderer y del documento: la
+ * descarga no necesita `Font`, solo el registro.
+ */
+export interface DocumentPdfFontLoader {
+  /** Descarga y valida los archivos; devuelve sus URLs `blob:`. */
+  download(): Promise<DocumentPdfFontUrls>;
+  /** Registra la familia en react-pdf; solo la primera vez hace algo. */
+  register(font: PdfFontRegistry, urls: DocumentPdfFontUrls): void;
+}
+
+/**
+ * Crea un cargador con su propio estado (las pruebas inyectan `fetch`).
  *
- * - Llamadas simultáneas comparten UNA descarga por archivo (la misma promesa).
+ * - Llamadas simultáneas a `download` comparten UNA descarga por archivo (la
+ *   misma promesa).
  * - Si falla, se olvida esa promesa (solo si sigue siendo la vigente) y la
  *   siguiente llamada vuelve a descargar.
- * - Tras el éxito, `register` ya se llamó una vez y nunca se descarga ni se
- *   registra de nuevo: la promesa resuelta se queda.
+ * - Tras el éxito, la promesa resuelta se queda: nunca se descarga de nuevo, y
+ *   `register` llama a `Font.register` una sola vez.
  *
  * Las URLs `blob:` no se revocan: el registro dura lo que dura la página y
  * react-pdf podría leerlas en cualquier render posterior.
  */
-export function createDocumentPdfFontLoader(deps: FontLoaderDeps, baseUrl = DOCUMENT_PDF_FONT_PUBLIC_PATH) {
-  let pending: Promise<void> | null = null;
+export function createDocumentPdfFontLoader(
+  deps: FontLoaderDeps,
+  baseUrl = DOCUMENT_PDF_FONT_PUBLIC_PATH,
+): DocumentPdfFontLoader {
+  let pending: Promise<DocumentPdfFontUrls> | null = null;
+  let registered = false;
 
-  const load = async (font: PdfFontRegistry): Promise<void> => {
+  const load = async (): Promise<DocumentPdfFontUrls> => {
     const blobs = await Promise.all(DOCUMENT_PDF_FONT_FILES.map(({ file }) => downloadFont(deps, `${baseUrl}/${file}`)));
-    font.register({
-      family: DOCUMENT_PDF_FONT_FAMILY,
-      fonts: DOCUMENT_PDF_FONT_FILES.map(({ fontWeight }, i) => ({ src: deps.createObjectURL(blobs[i]), fontWeight })),
-    });
+    return blobs.map((blob) => deps.createObjectURL(blob));
   };
 
-  return function ensureDocumentPdfFonts(font: PdfFontRegistry): Promise<void> {
-    if (pending) return pending;
-    const attempt = load(font).catch((error: unknown) => {
-      if (pending === attempt) pending = null;
-      throw error;
-    });
-    pending = attempt;
-    return attempt;
+  return {
+    download() {
+      if (pending) return pending;
+      const attempt = load().catch((error: unknown) => {
+        if (pending === attempt) pending = null;
+        throw error;
+      });
+      pending = attempt;
+      return attempt;
+    },
+    register(font, urls) {
+      if (registered) return;
+      font.register({
+        family: DOCUMENT_PDF_FONT_FAMILY,
+        fonts: DOCUMENT_PDF_FONT_FILES.map(({ fontWeight }, i) => ({ src: urls[i], fontWeight })),
+      });
+      registered = true;
+    },
   };
 }
 
@@ -114,7 +141,7 @@ export function createDocumentPdfFontLoader(deps: FontLoaderDeps, baseUrl = DOCU
  * El de la página: `fetch` y `URL.createObjectURL` del navegador. Se resuelven
  * al llamar (no al importar) para que el módulo se pueda importar en Node.
  */
-export const ensureDocumentPdfFonts = createDocumentPdfFontLoader({
+export const documentPdfFontLoader = createDocumentPdfFontLoader({
   fetch: (url) => fetch(url),
   createObjectURL: (blob) => URL.createObjectURL(blob),
 });
