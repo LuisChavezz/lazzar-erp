@@ -193,6 +193,10 @@ test("un error del registro que no es de descarga se propaga sin cambios", async
   expect(error).toBe(original);
 });
 
+test("el mensaje de la fuente ya no pide recargar", () => {
+  expect(PDF_FONT_LOAD_ERROR_MESSAGE).toBe("No se pudo cargar la fuente del PDF. Intenta de nuevo.");
+});
+
 test("extractErrorMessage conserva el mensaje del PDF ya traducido", () => {
   const translated = new Error(PDF_GENERATOR_LOAD_ERROR_MESSAGE, { cause: chunkLoadError() });
 

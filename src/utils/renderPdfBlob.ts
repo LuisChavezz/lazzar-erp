@@ -40,9 +40,8 @@ import { isChunkLoadError } from "./isChunkLoadError";
 export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
   "No se pudo cargar el generador de PDF. Recarga la página e intenta de nuevo.";
 
-/** Pide recargar: react-pdf guarda la descarga fallida y no la reintenta en la misma página. */
-export const PDF_FONT_LOAD_ERROR_MESSAGE =
-  "No se pudo cargar la fuente del PDF. Recarga la página e intenta de nuevo.";
+/** Sin recargar: el siguiente intento vuelve a descargar la fuente (EC-942). */
+export const PDF_FONT_LOAD_ERROR_MESSAGE = "No se pudo cargar la fuente del PDF. Intenta de nuevo.";
 
 /**
  * ¿Falló la descarga de la fuente? La nuestra (`ensureDocumentPdfFonts`)
