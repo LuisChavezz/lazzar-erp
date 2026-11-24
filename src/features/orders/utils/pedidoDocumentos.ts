@@ -1,6 +1,8 @@
 import type {
   PedidoDocumentoCobro,
+  PedidoDocumentoDespacho,
   PedidoDocumentoFila,
+  PedidoDocumentos,
 } from "../interfaces/pedido-documentos.interface";
 
 /**
@@ -41,3 +43,30 @@ export const countCancelledDocs = <T>(items: readonly T[], estatusOf: (item: T) 
  */
 export const filaBlockCancelledCount = (filas: readonly PedidoDocumentoFila[], countCancelledApart: boolean): number =>
   countCancelledApart ? countCancelledDocs(filas, filaEstatus) : 0;
+
+/**
+ * Escribe en los documentos del pedido el resultado de cancelar un despacho
+ * desde su fila (EC-946): `estado` y `motivo_cancelacion` del despacho con ese
+ * `id`, para que la fila deje de ofrecer "Cancelar" aunque la relectura que
+ * sigue falle (EC-927). Devuelve la MISMA referencia si no hay nada que
+ * escribir (otra forma, sin esa fila o sin `estado` en la respuesta).
+ */
+export const patchDocumentosDespacho = (
+  docs: PedidoDocumentos | undefined,
+  despacho: { id: number; estado?: string; motivo_cancelacion?: string } | null | undefined,
+): PedidoDocumentos | undefined => {
+  if (!docs || !Array.isArray(docs.despachos) || !despacho || typeof despacho.estado !== "string") {
+    return docs;
+  }
+  if (!docs.despachos.some((fila) => fila.id === despacho.id)) return docs;
+  const { estado, motivo_cancelacion } = despacho;
+  return {
+    ...docs,
+    despachos: docs.despachos.map(
+      (fila): PedidoDocumentoDespacho =>
+        fila.id === despacho.id
+          ? { ...fila, estado, ...(motivo_cancelacion !== undefined ? { motivo_cancelacion } : {}) }
+          : fila,
+    ),
+  };
+};
