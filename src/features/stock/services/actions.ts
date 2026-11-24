@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import { readBlobErrorBody } from "@/src/utils/readBlobErrorBody";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
 import { StockItem } from "../interfaces/stock.interface";
@@ -101,7 +102,8 @@ export const getStockReport = async (
  * Pide el cuerpo como `blob`; si falla, `readBlobErrorBody` deja el JSON del
  * error en `response.data` para que el hook muestre el motivo. Devuelve también
  * el `Content-Disposition` cuando el navegador lo puede leer (CORS aún no lo
- * expone, EC-824).
+ * expone, EC-824). Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): el backend arma el
+ * reporte entero y genera el archivo al vuelo.
  */
 const getReportFile = async (
   url: string,
@@ -112,6 +114,7 @@ const getReportFile = async (
     const response = await v1_api.get<Blob>(url, {
       params: { ...params, formato },
       responseType: "blob",
+      timeout: SLOW_REQUEST_TIMEOUT_MS,
     });
     const header: unknown = response.headers?.["content-disposition"];
     return {

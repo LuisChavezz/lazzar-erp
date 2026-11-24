@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import type {
   CreateNotaCreditoPayload,
   EmitirNotaCreditoPayload,
@@ -48,7 +49,8 @@ export const getNotaCredito = async (id: number): Promise<NotaCredito> => {
  * esa transacción: si falla, el `400` trae `cfdi` y `nota_credito: {id, estatus}`
  * con la nota ya guardada (`Cancelada` si Facturama rechazó, `Emitida` con el
  * timbrado pendiente si no confirmó). Exige `E-FIN-FACTURAS` en la empresa de
- * Facturama (`403` sin guardar nada).
+ * Facturama (`403` sin guardar nada). Tope lento (`SLOW_REQUEST_TIMEOUT_MS`):
+ * un alta `Emitida` espera el timbrado de Facturama.
  */
 export const createNotaCredito = async (
   payload: CreateNotaCreditoPayload,
@@ -56,6 +58,7 @@ export const createNotaCredito = async (
   const { data } = await v1_api.post<NotaCredito>(
     "/finanzas/notas-credito/",
     payload,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -73,13 +76,15 @@ export const createNotaCredito = async (
  * `perform_update` aplica el crédito y timbra cuando el estatus PASA a
  * `Emitida` desde otro valor, con las mismas validaciones y el mismo permiso que
  * el alta emitida. Si Facturama rechaza, la nota vuelve a `Borrador` con el
- * saldo intacto y el `400` lo dice en `nota_credito`.
+ * saldo intacto y el `400` lo dice en `nota_credito`. Tope lento
+ * (`SLOW_REQUEST_TIMEOUT_MS`): espera el timbrado de Facturama.
  */
 export const emitirNotaCredito = async (id: number): Promise<NotaCredito> => {
   const payload: EmitirNotaCreditoPayload = { estatus: "Emitida" };
   const { data } = await v1_api.patch<NotaCredito>(
     `/finanzas/notas-credito/${id}/`,
     payload,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -91,11 +96,14 @@ export const emitirNotaCredito = async (id: number): Promise<NotaCredito> => {
  * retorna sin hacer nada. Si la nota estaba `Emitida`, el backend DEVUELVE el
  * importe acreditado al saldo de la cuenta por cobrar y reajusta su estatus
  * (`Pendiente` o `Parcial`); si estaba en `Borrador` solo la marca `Cancelada`,
- * porque nunca tocó la CxC.
+ * porque nunca tocó la CxC. Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): puede
+ * cancelar su CFDI ante Facturama.
  */
 export const cancelarNotaCredito = async (id: number): Promise<NotaCredito> => {
   const { data } = await v1_api.post<NotaCredito>(
     `/finanzas/notas-credito/${id}/cancelar/`,
+    undefined,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -122,12 +130,14 @@ export const deleteNotaCredito = async (id: number): Promise<void> => {
  * la nota completa (`cfdi_uuid`, `cfdi_fecha_timbrado`…). No cambia estatus,
  * saldos ni pólizas. Los rechazos llegan como 400 con la clave `cfdi` (ya
  * timbrada, pendiente, factura sin timbrar, datos fiscales, Facturama) o
- * `estatus` (no `Emitida`); un timeout deja la nota con `cfdi_pendiente`.
+ * `estatus` (no `Emitida`); un timeout deja la nota con `cfdi_pendiente`. Tope
+ * lento (`SLOW_REQUEST_TIMEOUT_MS`): espera a Facturama de forma síncrona.
  */
 export const timbrarNotaCredito = async (id: number): Promise<NotaCredito> => {
   const { data } = await v1_api.post<NotaCredito>(
     `/finanzas/notas-credito/${id}/timbrar/`,
     {},
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -137,12 +147,15 @@ export const timbrarNotaCredito = async (id: number): Promise<NotaCredito> => {
  * (`POST /finanzas/notas-credito/{id}/conciliar-cfdi/`, EC-709). Sin cuerpo.
  * `resultado: "timbrado"` si el CFDI existía (ya trae `cfdi_uuid`),
  * `"liberado"` si no. Los `400` traen el motivo bajo `cfdi` y no cambian nada.
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): el backend pagina el listado de Facturama.
  */
 export const conciliarCfdiNotaCredito = async (
   id: number,
 ): Promise<NotaCreditoCfdiReconcileResponse> => {
   const { data } = await v1_api.post<NotaCreditoCfdiReconcileResponse>(
     `/finanzas/notas-credito/${id}/conciliar-cfdi/`,
+    undefined,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };

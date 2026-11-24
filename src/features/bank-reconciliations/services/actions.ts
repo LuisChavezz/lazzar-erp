@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import type {
   ConciliacionBancaria,
   ConciliacionBancariaQueryParams,
@@ -64,6 +65,7 @@ export const prepararConciliacion = async (
   const { data } = await v1_api.post<PrepararConciliacionResponse>(
     "/finanzas/conciliaciones-bancarias/preparar/",
     payload,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -82,13 +84,17 @@ export const prepararConciliacion = async (
  *  - `{"diferencia": [...]}` cuando el periodo no cuadra;
  *  - `{"estatus": [...]}` al intentar cerrar una cancelada.
  *
- * Es idempotente sobre una ya cerrada: responde 200 sin hacer nada.
+ * Es idempotente sobre una ya cerrada: responde 200 sin hacer nada. Tope lento
+ * (`SLOW_REQUEST_TIMEOUT_MS`), como preparar y cancelar: recorren los
+ * movimientos del periodo.
  */
 export const cerrarConciliacion = async (
   id: number,
 ): Promise<ConciliacionBancaria> => {
   const { data } = await v1_api.post<ConciliacionBancaria>(
     `/finanzas/conciliaciones-bancarias/${id}/cerrar/`,
+    undefined,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };
@@ -106,6 +112,8 @@ export const cancelarConciliacion = async (
 ): Promise<ConciliacionBancaria> => {
   const { data } = await v1_api.post<ConciliacionBancaria>(
     `/finanzas/conciliaciones-bancarias/${id}/cancelar/`,
+    undefined,
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
 };

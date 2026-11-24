@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import type {
   Payroll,
   PayrollCreate,
@@ -52,10 +53,13 @@ export const cancelPayroll = async (id: number): Promise<Payroll> => {
 /**
  * Genera la quincena de una sucursal: una nómina por empleado ACTIVO. Todo o
  * nada: 409 si alguno ya tiene una pendiente o pagada de ese periodo exacto.
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): crea una nómina por empleado.
  */
 export const generatePayrollPeriod = async (
   body: PayrollGenerateBody
 ): Promise<PayrollGenerateResponse> => {
-  const { data } = await v1_api.post<PayrollGenerateResponse>(`${BASE}generar_periodo/`, body);
+  const { data } = await v1_api.post<PayrollGenerateResponse>(`${BASE}generar_periodo/`, body, {
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
+  });
   return data;
 };

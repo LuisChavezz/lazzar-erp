@@ -1,5 +1,6 @@
 import type { SatCancelMotive } from "@/src/constants/satCancelMotives";
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import { centavosAMoneda, sumImportesEnCentavos } from "@/src/utils/sumImportesEnCentavos";
 import { normalizeCapturedDecimal } from "@/src/utils/decimal";
 import type {
@@ -42,9 +43,12 @@ export const getCobro = async (id: number): Promise<Cobro> => {
  * (`POST /finanzas/cobros/{id}/timbrar-rep/`). El endpoint no lee el cuerpo:
  * va vacío. Responde el cobro completo con `rep_uuid` y demás `rep_*`; los
  * errores de negocio llegan como `{ rep: [...] }` (ver `stampCobroRepErrorMessage`).
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): espera a Facturama de forma síncrona.
  */
 export const stampCobroRep = async (id: number): Promise<Cobro> => {
-  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/timbrar-rep/`);
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/timbrar-rep/`, undefined, {
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
+  });
   return data;
 };
 
@@ -59,6 +63,7 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
  * aceptar la cancelación, como `{ cancelacion_pendiente: [...] }`; sin
  * respuesta de Facturama, `{ rep_incierto }`; con el motivo faltante, inválido
  * o distinto del ya fijado, `{ motivo_sat }` (ver `cancelCobroRepErrorMessage`).
+ * Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): espera a Facturama de forma síncrona.
  */
 export const cancelCobroRep = async ({
   id,
@@ -67,9 +72,11 @@ export const cancelCobroRep = async ({
   id: number;
   motivoSat: SatCancelMotive;
 }): Promise<Cobro> => {
-  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar-rep/`, {
-    motivo_sat: motivoSat,
-  });
+  const { data } = await v1_api.post<Cobro>(
+    `/finanzas/cobros/${id}/cancelar-rep/`,
+    { motivo_sat: motivoSat },
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
+  );
   return data;
 };
 
@@ -78,10 +85,13 @@ export const cancelCobroRep = async ({
  * Responde el cobro completo (`CobroSerializer`). Un `Aplicado` revierte saldos
  * de CxC, banco y póliza; un `Borrador` solo cambia de estatus; uno ya
  * `Cancelado` responde 200 sin hacer nada. Con REP (`rep_uuid` o
- * `rep_pendiente`) responde 400 `{ rep: [...] }`.
+ * `rep_pendiente`) responde 400 `{ rep: [...] }`. Tope lento
+ * (`SLOW_REQUEST_TIMEOUT_MS`): revierte CxC, banco y póliza en una sola petición.
  */
 export const cancelCobro = async (id: number): Promise<Cobro> => {
-  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar/`);
+  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar/`, undefined, {
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
+  });
   return data;
 };
 

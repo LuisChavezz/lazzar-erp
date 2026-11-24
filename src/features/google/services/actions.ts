@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import { SLOW_REQUEST_TIMEOUT_MS } from "@/src/constants/httpTimeouts";
 import { GoogleCalendarEventCreate, GoogleConnectResponse, GoogleEmailMessageDetailResponse, GoogleEmailMessagesApiResponse, GoogleEmailPayload, GoogleEventsResponse, GoogleSendEmailResponse, GoogleStatusResponse } from "../interfaces/google.interface";
 
 
@@ -20,9 +21,10 @@ export const googleDisconnect = async (): Promise<{ok: boolean}> => {
 }
 
 export const googleSendEmail = async (payload: GoogleEmailPayload): Promise<GoogleSendEmailResponse> => {
-  // Timeout propio (no global) — este endpoint puede llevar un adjunto PDF de varios MB en base64.
+  // Tope lento (`SLOW_REQUEST_TIMEOUT_MS`), no el de 30 s de `v1_api`: este endpoint puede
+  // llevar un adjunto PDF de varios MB en base64.
   const response = await v1_api.post<GoogleSendEmailResponse>("/ai/google/gmail/send/", payload, {
-    timeout: 60000,
+    timeout: SLOW_REQUEST_TIMEOUT_MS,
   });
   return response.data;
 }
