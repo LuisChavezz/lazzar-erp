@@ -46,6 +46,41 @@ export const getOpportunityClienteLabel = (
   return getQuoteClienteLabel(opportunity);
 };
 
+/** Lo que el formulario sabe del cliente elegido en el catálogo. */
+interface CatalogClienteFields {
+  razon_social?: string | null;
+  nombre?: string | null;
+}
+
+/**
+ * Texto del cliente elegido en el formulario de oportunidad. `""` sin cliente.
+ *
+ * 1. En el catálogo: su razón social, o su nombre (EC-810). Un cliente del
+ *    catálogo lo ve el usuario por definición, así que nunca es "no visible".
+ * 2. Fuera del catálogo pero es el cliente de la oportunidad que se edita: la
+ *    etiqueta de la celda, que da "Cliente no visible" si está oculto (EC-940).
+ * 3. Cualquier otro: `Cliente #<id>`. Solo pudo elegirse del catálogo propio
+ *    (que se recargó sin él, o no ha cargado), así que el id no delata nada.
+ */
+export const getSelectedOpportunityClienteLabel = (
+  catalogCustomer: CatalogClienteFields | undefined,
+  watchedCliente: number | null,
+  opportunityToEdit: OpportunityClienteFields | null | undefined
+): string => {
+  if (watchedCliente === null) return "";
+  if (catalogCustomer) {
+    return getQuoteClienteLabel({
+      cliente: watchedCliente,
+      cliente_razon_social: catalogCustomer.razon_social ?? "",
+      cliente_nombre: catalogCustomer.nombre ?? "",
+    });
+  }
+  if (opportunityToEdit && watchedCliente === opportunityToEdit.cliente) {
+    return getOpportunityClienteLabel(opportunityToEdit) ?? CLIENTE_NO_VISIBLE_LABEL;
+  }
+  return `Cliente #${watchedCliente}`;
+};
+
 /**
  * Persona de contacto del cliente (`cliente_nombre`) para una línea secundaria
  * rotulada, o `null` cuando no aporta nada (sin cliente, oculto, igual a la
