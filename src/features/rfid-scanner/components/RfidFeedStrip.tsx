@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { ScanResult } from "@/src/components/ScanCapture";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
+import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
+import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
 
 interface RfidFeedStripProps {
@@ -29,6 +31,9 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * etiqueta del ERP entra por el mismo camino que una lectura con pistola
  * (`onCode`), una sola vez, y queda en la lista con su resultado: sumó,
  * ya estaba completo, o no es de esta orden.
+ *
+ * Las lecturas se acotan a la empresa activa (EC-884): sin empresa no se
+ * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
 export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
   const [detectadas, setDetectadas] = useState<Detectada[]>([]);
@@ -49,7 +54,9 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
       ...prev,
     ]);
   };
-  const { isError } = useRfidEpcFeed(true, handleEpc);
+  const hasNoCompany = useSessionCompany().status === "none";
+  const isSuperuser = useIsSuperuser();
+  const { isError } = useRfidEpcFeed(!hasNoCompany, handleEpc);
 
   const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;
 
@@ -61,7 +68,13 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
         </span>
         <span className="font-semibold text-slate-700 dark:text-slate-200">Antena RFID</span>
-        {isError ? (
+        {hasNoCompany ? (
+          <span className="text-slate-500 dark:text-slate-400">
+            {isSuperuser
+              ? "· sin empresa activa: elígela desde “Sin empresa activa”, en el encabezado"
+              : "· tu usuario no tiene una empresa asignada"}
+          </span>
+        ) : isError ? (
           <span className="text-rose-600 dark:text-rose-400">· sin respuesta del lector</span>
         ) : (
           <span className="text-slate-500 dark:text-slate-400">
@@ -77,7 +90,7 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
         )}
       </div>
 
-      {detectadas.length === 0 ? (
+      {hasNoCompany ? null : detectadas.length === 0 ? (
         <p className="px-4 pb-2.5 text-[11.5px] text-slate-400 dark:text-slate-500">
           Esperando etiquetas frente a la antena…
         </p>

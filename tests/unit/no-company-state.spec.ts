@@ -4,6 +4,7 @@ import type { Session } from "next-auth";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import NoCompanyState, {
+  NO_ACTIVE_COMPANY_COMPACT_MESSAGE,
   NO_ACTIVE_COMPANY_MESSAGE,
   NO_ACTIVE_COMPANY_TITLE,
   NO_COMPANY_MESSAGE,
@@ -49,10 +50,19 @@ test("a superuser is told to pick an active company and pointed to the selector"
   expect(html).toContain("Elegir empresa");
 });
 
-test("the compact variant shows the superuser text without the link", () => {
+test("the compact variant points the superuser to the header instead of a link", () => {
   const html = render(true, { compact: true });
   expect(html).toContain(NO_ACTIVE_COMPANY_TITLE);
+  // `renderToStaticMarkup` no escapa las comillas tipográficas.
+  expect(html).toContain(NO_ACTIVE_COMPANY_COMPACT_MESSAGE);
+  expect(html).not.toContain(NO_ACTIVE_COMPANY_MESSAGE);
   expect(html).not.toContain('href="/select-branch"');
+});
+
+test("the compact variant keeps the original copy for a regular user", () => {
+  const html = render(false, { compact: true });
+  expect(html).toContain(NO_COMPANY_TITLE);
+  expect(html).toContain(NO_COMPANY_MESSAGE);
 });
 
 test("an explicit action replaces the default one", () => {
