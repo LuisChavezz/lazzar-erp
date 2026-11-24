@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { isAxiosError } from "axios";
+import { loginErrorToastMessage } from "../utils/loginErrorMessage";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -143,7 +144,7 @@ export const useLoginForm = ({ onShowMfaOptIn, onMfaRequired }: UseLoginFormPara
 				const status = isAxiosError(error) ? error.response?.status : undefined;
 				const message = error instanceof Error ? error.message : String(error);
 				console.error("Login error:", { message, status });
-				toast.error("Error de conexión");
+				toast.error(loginErrorToastMessage(error));
 			}
 		},
 	});
