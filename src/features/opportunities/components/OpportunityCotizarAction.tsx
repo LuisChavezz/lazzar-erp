@@ -71,6 +71,8 @@ export function OpportunityCotizarAction({
         (customer) => String(customer.id) === String(opportunity.cliente)
       );
       if (!isQuotable) {
+        // Un cliente oculto llega justo aquí (no está entre los cotizables): se
+        // nombra "Cliente no visible", nunca por su id (EC-940).
         toast.error(
           `No puedes cotizar a ${
             getOpportunityClienteLabel(opportunity) ?? "este cliente"

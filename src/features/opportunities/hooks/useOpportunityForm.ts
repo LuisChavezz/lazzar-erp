@@ -26,7 +26,10 @@ import {
 } from "../schemas/opportunity.schema";
 import { useCreateOpportunity } from "./useCreateOpportunity";
 import { useUpdateOpportunity } from "./useUpdateOpportunity";
-import { getOpportunityClienteLabel } from "../utils/opportunityClienteLabel";
+import {
+  CLIENTE_NO_VISIBLE_LABEL,
+  getOpportunityClienteLabel,
+} from "../utils/opportunityClienteLabel";
 
 interface UseOpportunityFormParams {
   onSuccess: () => void;
@@ -307,16 +310,25 @@ export function useOpportunityForm({ onSuccess, opportunityToEdit }: UseOpportun
     watchedCliente === null
       ? undefined
       : customers.find((customer) => Number(customer.id) === watchedCliente);
-  // Sin catálogo (cargando o caído) se usa el nombre que trae la oportunidad.
+  // Del catálogo, con la etiqueta de la celda. Si el cliente no está en él
+  // (catálogo cargando o caído, o un cliente que el usuario no ve), el de la
+  // oportunidad que se edita: un cliente oculto es "Cliente no visible", nunca
+  // su id (EC-940). Otro cliente fuera del catálogo solo pudo elegirse de él, y
+  // tampoco se nombra por id.
   const selectedCustomerLabel =
     watchedCliente === null
       ? ""
-      : selectedCustomer?.razon_social?.trim() ||
-        selectedCustomer?.nombre?.trim() ||
+      : (selectedCustomer
+          ? getOpportunityClienteLabel({
+              cliente: watchedCliente,
+              cliente_razon_social: selectedCustomer.razon_social ?? null,
+              cliente_nombre: selectedCustomer.nombre ?? null,
+            })
+          : null) ??
         (watchedCliente === opportunityToEdit?.cliente
           ? getOpportunityClienteLabel(opportunityToEdit)
-          : null) ||
-        `Cliente #${watchedCliente}`;
+          : null) ??
+        CLIENTE_NO_VISIBLE_LABEL;
   // Una oportunidad ya ligada a un cliente inactivo lo conserva al editar.
   const isSelectedCustomerInactive = selectedCustomer !== undefined && !selectedCustomer.activo;
 
