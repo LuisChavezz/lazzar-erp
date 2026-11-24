@@ -124,6 +124,7 @@ test("un error de import que no es de chunk se propaga sin cambios", async () =>
 // EC-892: la fuente del PDF (Arimo) se descarga al renderizar.
 for (const [caso, original] of [
   ["sin red (Chrome)", new TypeError("Failed to fetch")],
+  ["descarga cortada a medias (Chrome)", new TypeError("network error")],
   ["sin red (Firefox)", new TypeError("NetworkError when attempting to fetch resource.")],
   ["sin red (Safari)", new TypeError("Load failed")],
   ["respuesta que no es una fuente", new Error("Unknown font format")],
@@ -143,6 +144,17 @@ for (const [caso, original] of [
 
 test("un TypeError al renderizar que no es de red se propaga sin cambios", async () => {
   const original = new TypeError("Cannot read properties of undefined (reading 'x')");
+  const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
+
+  const error = await renderWith(loadRenderer, async () => SampleDocument, {
+    label: "x",
+  }).catch((e: unknown) => e);
+
+  expect(error).toBe(original);
+});
+
+test("un Error que no es TypeError con «network error» se propaga sin cambios", async () => {
+  const original = new Error("network error");
   const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
 
   const error = await renderWith(loadRenderer, async () => SampleDocument, {
