@@ -5,7 +5,7 @@ import { buildQuotePdfModel } from "@/src/features/quotes/utils/quotePdfTemplate
 import { QuotePdfDocument } from "@/src/pdfs/QuotePdfDocument";
 import { pdfStyles } from "@/src/pdfs/QuotePdfStyles";
 import { elementsOf, paddingOf, stylesOf, type TreeElement } from "./support/pdfElementTree";
-import { layoutPdfPages } from "./support/pdfLayout";
+import { layoutPdfPages, layoutPdfTexts } from "./support/pdfLayout";
 
 /**
  * Celdas de la tabla de productos del PDF de cotización (EC-952). La cotización
@@ -101,9 +101,22 @@ test.describe("Renglones del producto en el PDF de cotización (EC-952)", () => 
   test("una palabra más ancha que su columna se sigue partiendo en vez de salirse", async () => {
     test.setTimeout(60_000);
     const word = "ELECTROENCEFALOGRAFISTAINTERCONTINENTALES";
-    const [page] = await layoutQuote(quoteWith(`CAMISA ${word}`, "10878012XC"));
+    const quote = quoteWith(`CAMISA ${word}`, "10878012XC");
+    const [page] = await layoutQuote(quote);
     expect(page).not.toContain(word);
     expect(page).toMatch(/ELECTRO\w*-/);
     expect(page).toContain("10878012XC");
+
+    // Partida no basta: cada renglón de la celda debe caber en su columna
+    // (ancho de la celda menos su relleno), o el pedazo invadiría la del SKU.
+    const texts = await layoutPdfTexts(QuotePdfDocument({ quote, model: buildQuotePdfModel(quote, "MXN") }));
+    const cell = texts.find((text) => text.lines.map((line) => line.text).join("").includes("ELECTRO"));
+    expect(cell, "la celda del producto").toBeDefined();
+    expect(cell!.lines.length).toBeGreaterThan(1);
+    for (const line of cell!.lines) {
+      expect(line.width, `"${line.text}" debe caber en ${cell!.contentWidth.toFixed(1)} pt`).toBeLessThanOrEqual(
+        cell!.contentWidth + 0.01,
+      );
+    }
   });
 });
