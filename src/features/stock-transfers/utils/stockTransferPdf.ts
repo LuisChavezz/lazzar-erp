@@ -1,5 +1,6 @@
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
 import type { TransferenciaListItem } from "../interfaces/stock-transfer.interface";
+import { wmsPdfCancellationReason } from "@/src/features/wms-cancellations/utils/wmsPdfCancellationReason";
 
 /**
  * Leyenda de la marca de un traspaso que no se completó (EC-858): el backend
@@ -13,10 +14,12 @@ const TRANSFER_PDF_MARKS: Partial<Record<string, string>> = {
 
 /**
  * Identidad de un traspaso para su PDF (EC-858): código `TR`; sus folios ya
- * empiezan con `TR` (`TR-00033.pdf`), así que no hace falta alias de serie.
+ * empiezan con `TR` (`TR-00033.pdf`), así que no hace falta alias de serie. Una
+ * TR `CANCELADA` (revertida, EC-945) lleva su `motivo_cancelacion`; una `FALLIDA`
+ * no tiene motivo.
  */
 export const stockTransferPdfDescriptor = (
-  transfer: Pick<TransferenciaListItem, "id" | "folio" | "status">,
+  transfer: Pick<TransferenciaListItem, "id" | "folio" | "status" | "motivo_cancelacion">,
 ): DocumentPdfDescriptor => {
   const mark = transfer.status ? TRANSFER_PDF_MARKS[transfer.status] : undefined;
   return {
@@ -25,5 +28,6 @@ export const stockTransferPdfDescriptor = (
     folio: transfer.folio,
     cancelled: mark !== undefined,
     ...(mark ? { cancelledLabel: mark } : {}),
+    ...wmsPdfCancellationReason(transfer.status === "CANCELADA", transfer.motivo_cancelacion),
   };
 };

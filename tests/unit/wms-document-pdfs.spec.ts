@@ -504,3 +504,24 @@ test.describe("fuentes de los PDF de WMS", () => {
     expect(tr.descriptor).toMatchObject({ cancelled: true, cancelledLabel: "FALLIDA" });
   });
 });
+
+test.describe("motivo de cancelación en los PDF de WMS (EC-945)", () => {
+  test("surtido, embarque y traspaso cancelados imprimen su motivo; los vigentes no", () => {
+    const motivo = "El cliente cambió la talla";
+    expect(pickingPdfDescriptor(picking({ estado: "Cancelado", motivo_cancelacion: motivo })).cancellationReason).toBe(motivo);
+    expect(packingPdfDescriptor(packing({ estado: "CANCELADO", motivo_cancelacion: motivo })).cancellationReason).toBe(motivo);
+    expect(
+      stockTransferPdfDescriptor(transfer({ status: "CANCELADA", motivo_cancelacion: motivo })).cancellationReason,
+    ).toBe(motivo);
+    // Vigente, sin motivo o FALLIDA: la llave no se agrega.
+    expect(pickingPdfDescriptor(picking({ estado: "Pendiente", motivo_cancelacion: motivo }))).not.toHaveProperty(
+      "cancellationReason",
+    );
+    expect(packingPdfDescriptor(packing({ estado: "CANCELADO", motivo_cancelacion: "  " }))).not.toHaveProperty(
+      "cancellationReason",
+    );
+    expect(
+      stockTransferPdfDescriptor(transfer({ status: "FALLIDA", motivo_cancelacion: motivo })),
+    ).not.toHaveProperty("cancellationReason");
+  });
+});
