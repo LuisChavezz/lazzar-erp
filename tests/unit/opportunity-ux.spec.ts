@@ -130,7 +130,7 @@ test.describe("nombre del cliente (EC-810)", () => {
     ]);
   });
 
-  test("un cliente sin nombres en null nunca recibe el id de homónimo (EC-940)", () => {
+  test("un cliente sin nombres en null no se ofrece en el filtro, ni con el id de homónimo (EC-940)", () => {
     const options = buildOpportunityClienteFilterOptions([
       { id: 31, razon_social: null, nombre: null, activo: true },
       { id: 32, razon_social: null, nombre: null, activo: true },
@@ -138,8 +138,6 @@ test.describe("nombre del cliente (EC-810)", () => {
     ]);
     expect(options).toEqual([
       { value: undefined, label: "Todos" },
-      { value: "31", label: "Cliente no visible" },
-      { value: "32", label: "Cliente no visible" },
       { value: "33", label: "LAZZAR" },
     ]);
     for (const option of options) expect(option.label).not.toMatch(/#\d/);
