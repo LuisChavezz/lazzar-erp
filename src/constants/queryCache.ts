@@ -41,8 +41,9 @@ export const LIST_QUERY_GC_TIME = 30 * 60 * 1000; // 30 minutos
 export const PROCUREMENT_KPI_STALE_TIME = 30 * 1000; // 30 segundos
 
 /**
- * `retry` por defecto del `QueryClient` (`Provider.tsx`). Exportado para que
- * las políticas de `retry` propias (`retryUnlessClientError`) sigan al global
- * en vez de copiar su número.
+ * Reintentos por defecto del `QueryClient` (`Provider.tsx`, a través de
+ * `defaultQueryRetry`, que no reintenta un timeout). Exportado para que las
+ * políticas de `retry` propias (`retryUnlessClientError`) sigan al global en vez
+ * de copiar su número.
  */
 export const DEFAULT_QUERY_RETRY = 1;
