@@ -7,6 +7,7 @@ import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { useClientNow } from "@/src/hooks/useClientNow";
 import { PreOrderTrackerMini } from "@/src/features/pre-orders/components/PreOrderTracker";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { getMexicoTodayDate, MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import {
@@ -38,14 +39,7 @@ export function EntregaCell({ fecha }: { fecha: string | null | undefined }) {
         : dias <= 7
           ? "text-amber-600 dark:text-amber-400"
           : "text-slate-500 dark:text-slate-400";
-  const label =
-    dias === null
-      ? null
-      : dias < 0
-        ? `Vencido hace ${-dias} ${-dias === 1 ? "día" : "días"}`
-        : dias === 0
-          ? "Vence hoy"
-          : `Faltan ${dias} ${dias === 1 ? "día" : "días"}`;
+  const label = dias === null ? null : formatDeadlineText(dias, { gender: "m" });
 
   return (
     <div className="flex flex-col">
