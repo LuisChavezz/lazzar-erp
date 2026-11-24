@@ -1,3 +1,4 @@
+import type { WmsCancelDialogContent } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { patchCachedRowById, pickPresentFields } from "@/src/utils/cachedRows";
 import type { WmsCancelAction } from "@/src/features/wms-cancellations/hooks/useWmsCancelMutation";
 import { pickingDetailQueryKey } from "../constants/pickingQueryKeys";
@@ -43,4 +44,16 @@ export const pickingCancelAction = (pickingId: number): WmsCancelAction<Picking>
   },
   successMessage: (picking) => `Surtido ${picking?.folio || `#${pickingId}`} cancelado`,
   fallbackErrorMessage: "Error al cancelar el surtido",
+});
+
+/** Texto del diálogo de "Cancelar surtido". */
+export const pickingCancelDialogContent = (
+  picking: Pick<Picking, "id" | "folio">,
+): WmsCancelDialogContent<Picking> => ({
+  action: pickingCancelAction(picking.id),
+  title: "Cancelar surtido",
+  description: `El surtido ${picking.folio || `#${picking.id}`} quedará cancelado y sus piezas volverán a quedar por surtir en el pedido. No mueve inventario: si un traspaso ya movió las prendas, se quedan donde están hasta revertirlo.`,
+  submitLabel: "Cancelar surtido",
+  pendingLabel: "Cancelando…",
+  motivoPlaceholder: "Explica por qué se cancela el surtido",
 });

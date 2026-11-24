@@ -1,3 +1,4 @@
+import type { WmsCancelDialogContent } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { mergeCachedRecord, replaceCachedRow } from "@/src/utils/cachedRows";
 import type { WmsCancelAction } from "@/src/features/wms-cancellations/hooks/useWmsCancelMutation";
 import { cancelPacking } from "../services/actions";
@@ -26,4 +27,16 @@ export const packingCancelAction = (packingId: number): WmsCancelAction<Packing>
   },
   successMessage: (packing) => `Embarque ${packing?.folio || `#${packingId}`} cancelado`,
   fallbackErrorMessage: "Error al cancelar el embarque",
+});
+
+/** Texto del diálogo de "Cancelar embarque". */
+export const packingCancelDialogContent = (
+  packing: Pick<Packing, "id" | "folio">,
+): WmsCancelDialogContent<Packing> => ({
+  action: packingCancelAction(packing.id),
+  title: "Cancelar embarque",
+  description: `El embarque ${packing.folio || `#${packing.id}`} quedará cancelado y su surtido volverá a quedar por empacar. No mueve inventario.`,
+  submitLabel: "Cancelar embarque",
+  pendingLabel: "Cancelando…",
+  motivoPlaceholder: "Explica por qué se cancela el embarque",
 });

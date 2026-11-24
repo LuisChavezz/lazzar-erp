@@ -1,3 +1,4 @@
+import type { WmsCancelDialogContent } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { mergeCachedRecord, replaceCachedRow } from "@/src/utils/cachedRows";
 import type { WmsCancelAction } from "@/src/features/wms-cancellations/hooks/useWmsCancelMutation";
 import { revertTransferencia, type RevertTransferenciaResult } from "../services/actions";
@@ -34,4 +35,16 @@ export const transferRevertAction = (transferId: number): WmsCancelAction<Revert
   successMessage: (result) =>
     result?.reversa?.folio ? `Traspaso revertido con ${result.reversa.folio}` : "Traspaso revertido",
   fallbackErrorMessage: "Error al revertir el traspaso",
+});
+
+/** Texto del diálogo de "Revertir traspaso". */
+export const transferRevertDialogContent = (
+  transfer: Pick<TransferenciaListItem, "id" | "folio" | "almacen_origen_nombre" | "almacen_destino_nombre">,
+): WmsCancelDialogContent<RevertTransferenciaResult> => ({
+  action: transferRevertAction(transfer.id),
+  title: "Revertir traspaso",
+  description: `Se creará un traspaso inverso, de ${transfer.almacen_destino_nombre} a ${transfer.almacen_origen_nombre}, con las mismas piezas, y ${transfer.folio || `#${transfer.id}`} quedará cancelado.`,
+  submitLabel: "Revertir traspaso",
+  pendingLabel: "Revirtiendo…",
+  motivoPlaceholder: "Explica por qué se revierte el traspaso",
 });

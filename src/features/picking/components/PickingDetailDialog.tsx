@@ -28,6 +28,8 @@ import type { PickingDetalleLine, PickingRow } from "../interfaces/picking.inter
 import { isPickingTrasladable } from "../utils/picking.utils";
 import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
 import { PickingTransferDialog } from "./PickingTransferDialog";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { isPickingCancelled } from "../utils/pickingCancelAction";
 
 /** Nombre del producto/variante surtido en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
@@ -146,6 +148,15 @@ export function PickingDetailContent({ picking }: { picking: PickingRow }) {
 
   return (
       <div className="space-y-5">
+        {isPickingCancelled(picking) && (
+          <CancellationInfo
+            title="Surtido cancelado"
+            motivo={picking.motivo_cancelacion}
+            fecha={picking.fecha_cancelacion}
+            canceladoPor={picking.cancelado_por_nombre}
+          />
+        )}
+
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Estatus">
