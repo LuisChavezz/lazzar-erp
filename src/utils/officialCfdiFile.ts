@@ -12,6 +12,7 @@ import { base64ToBlob } from "@/src/utils/base64ToBlob";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { isRequestTimeoutError } from "@/src/utils/requestTimeout";
 
 export type CfdiFileFormat = "pdf" | "xml";
 
@@ -76,8 +77,9 @@ export const officialCfdiErrorMessage = (error: unknown, ofDocument: string): st
     if (isForbiddenError(error)) {
       return forbiddenDetailMessage(error) ?? `No tienes permiso para descargar el CFDI ${ofDocument}.`;
     }
-    const isTimeout = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
-    if (!error.response && !isTimeout) return "No se recibió respuesta del servidor. Intenta de nuevo.";
+    // Un `ECONNABORTED` del navegador ("Request aborted") no es un timeout: cae en
+    // "No se recibió respuesta" (EC-939).
+    if (!error.response && !isRequestTimeoutError(error)) return "No se recibió respuesta del servidor. Intenta de nuevo.";
     if (isActionOutcomeUnknown(error)) {
       // El cuerpo del passthrough (`error: "FACTURAMA_…"`) no es un mensaje para el usuario.
       const reason = typeof data?.error === "string" ? undefined : firstDrfFieldMessage(error);

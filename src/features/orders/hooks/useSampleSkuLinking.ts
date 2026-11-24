@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 import { firstRejectionMessage } from "@/src/utils/firstDrfMessage";
+import { isRequestTimeoutError } from "@/src/utils/requestTimeout";
 import { plural } from "@/src/utils/kpiFormat";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import { sampleSkuLineSummary } from "../utils/orderLines";
@@ -116,7 +117,9 @@ const describeLinkError = (error: unknown): LinkError => {
   const order = (message: string): LinkError => ({ message, scope: "order" });
   if (!(error instanceof AxiosError)) return order(FALLBACK_ERROR);
 
-  if (error.code === AxiosError.ECONNABORTED || error.code === AxiosError.ETIMEDOUT) {
+  // `ETIMEDOUT` desde EC-939; un `ECONNABORTED` del navegador ya no cuenta como
+  // timeout y cae en "sin conexión", abajo.
+  if (isRequestTimeoutError(error)) {
     return order("El servidor tardó demasiado en responder.");
   }
   const response = error.response;
