@@ -10,16 +10,27 @@ import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { getShipmentColumns, shipmentContenido, shipmentTransporteLabel } from "./ShippingColumns";
+import { SegmentedControl } from "@/src/components/SegmentedControl";
+import { getShipmentColumns, shipmentPiezasVigentes, shipmentTransporteLabel } from "./ShippingColumns";
 import { ShippingDetailDialog } from "./ShippingDetailDialog";
 import { ShippingForm } from "./ShippingForm";
 import { useShipments } from "../hooks/useShipments";
-import type { Shipment } from "../interfaces/shipping.interface";
-import { SHIPPING_EXPORT_COLUMNS } from "../utils/shippingExport";
+import type { Shipment, ShipmentEstado } from "../interfaces/shipping.interface";
+import { SHIPPING_EXPORT_COLUMNS, shippingExportSummary } from "../utils/shippingExport";
+
+type EstadoFilter = ShipmentEstado | "TODOS";
+
+/** Filtro de estado del listado (`?estado=`, en el backend). */
+const ESTADO_OPTIONS: { value: EstadoFilter; label: string }[] = [
+  { value: "TODOS", label: "Todos" },
+  { value: "ACTIVO", label: "Activos" },
+  { value: "CANCELADO", label: "Cancelados" },
+];
 
 /**
  * Vista de Envíos: el listado (`GET /wms/despachos/`) con filtros por
- * encabezado y la captura de un envío nuevo en el toolbar. El detalle se abre
+ * encabezado, el filtro de estado (`?estado=`, en el backend, EC-945) y la
+ * captura de un envío nuevo en el toolbar. El detalle se abre
  * desde el folio del embarque; su estado vive aquí, nunca en la celda (las
  * celdas se desmontan al ordenar, paginar o filtrar).
  *
@@ -27,7 +38,10 @@ import { SHIPPING_EXPORT_COLUMNS } from "../utils/shippingExport";
  * así el toolbar —y `ShippingForm`— siguen visibles durante la carga y el error.
  */
 export function ShippingView() {
-  const { shipments, isLoading, isError, error, hasLoaded, refetch, isFetching } = useShipments();
+  const [estado, setEstado] = useState<EstadoFilter>("TODOS");
+  const { shipments, isLoading, isError, error, hasLoaded, refetch, isFetching } = useShipments(
+    estado === "TODOS" ? null : estado,
+  );
 
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
@@ -44,7 +58,7 @@ export function ShippingView() {
     columns: SHIPPING_EXPORT_COLUMNS,
     title: "Envíos",
     fileName: "envios",
-    summary: (rows) => `${rows.length} envío${rows.length === 1 ? "" : "s"}`,
+    summary: shippingExportSummary,
   });
 
   // La fecha solo existe si el backend la manda (ver `Shipment.fecha_creacion`).
@@ -65,7 +79,8 @@ export function ShippingView() {
     guia: { type: "presence", get: (r) => r.guia, con: "Con guía", sin: "Sin guía" },
     contenido: {
       type: "range",
-      get: (r) => shipmentContenido(r).piezas,
+      // Un envío cancelado no entra en ningún rango: sus piezas regresaron al almacén.
+      get: shipmentPiezasVigentes,
       ranges: [
         { value: "1-50", label: "1 a 50 pzas", min: 1, max: 50 },
         { value: "51-200", label: "51 a 200 pzas", min: 51, max: 200 },
@@ -90,6 +105,12 @@ export function ShippingView() {
         // Ver el listado exige `R-WMS-ENVIO`; dar de alta exige además `C-WMS-ENVIO`.
         actionButton={
           <div className="flex items-center gap-2 shrink-0">
+            <SegmentedControl
+              options={ESTADO_OPTIONS}
+              value={estado}
+              onChange={setEstado}
+              className="[&>button]:px-3! [&>button]:py-1.5!"
+            />
             <ListExportButtons subject="envíos" onExcel={() => void exportCsv()} onPdf={() => void exportPdf()} />
             {canCreate && <ShippingForm />}
           </div>
@@ -105,7 +126,9 @@ export function ShippingView() {
       {dialog.snapshot && (
         <ShippingDetailDialog
           key={dialog.id}
-          shipment={dialog.snapshot}
+          // La fila VIVA del listado si sigue en él (tras cancelar trae el nuevo
+          // estado); si no, la copia de cuando se abrió.
+          shipment={shipments.find((row) => row.id === dialog.snapshot?.id) ?? dialog.snapshot}
           open={detalle !== null}
           onOpenChange={(open) => !open && setDetalle(null)}
         />

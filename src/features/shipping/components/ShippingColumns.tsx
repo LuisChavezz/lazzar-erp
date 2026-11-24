@@ -7,9 +7,20 @@ import { CopyIcon } from "@/src/components/Icons";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
+import { StatusBadge } from "@/src/components/StatusBadge";
 import type { Shipment } from "../interfaces/shipping.interface";
+import { SHIPMENT_STATUS_CONFIG } from "../constants/shipmentStatus";
+import { isShipmentCancelled } from "../utils/shipmentCancelAction";
 
 const columnHelper = createColumnHelper<Shipment>();
+
+/**
+ * Piezas que cuentan para los totales del listado (filtro de contenido y
+ * resumen de la exportación): las del envío, o `null` si está cancelado (sus
+ * piezas ya regresaron al almacén, EC-945).
+ */
+export const shipmentPiezasVigentes = (row: Shipment): number | null =>
+  isShipmentCancelled(row) ? null : shipmentContenido(row).piezas;
 
 /** Totales del contenido, calculados del `despacho_detalle` que ya trae la fila. */
 export function shipmentContenido(row: Shipment) {
@@ -34,16 +45,20 @@ interface ShipmentColumnsCallbacks {
 }
 
 /**
- * Columnas del listado de envíos. Sin columna de acciones: la única acción es
- * ver el detalle, y vive en el folio del embarque (botón con "›"). La fecha
- * y quién lo registró solo se pintan si el backend los manda.
+ * Columnas del listado de envíos. Sin columna de acciones: el detalle se abre
+ * desde el folio del embarque (botón con "›"), y ahí vive "Cancelar" (EC-945).
+ * El estado del envío va bajo el folio, en la primera columna. La fecha y quién
+ * lo registró solo se pintan si el backend los manda.
  */
 export const getShipmentColumns = ({ onOpenDetail }: ShipmentColumnsCallbacks, conFecha: boolean) =>
   [
     columnHelper.accessor("packing_folio", {
       header: "Embarque",
       cell: ({ row }) => (
-        <FolioButton folio={row.original.packing_folio} onClick={() => onOpenDetail(row.original)} />
+        <span className="flex flex-col items-start gap-1">
+          <FolioButton folio={row.original.packing_folio} onClick={() => onOpenDetail(row.original)} />
+          {row.original.estado && <StatusBadge status={row.original.estado} config={SHIPMENT_STATUS_CONFIG} />}
+        </span>
       ),
     }),
     ...(conFecha
@@ -100,8 +115,13 @@ export const getShipmentColumns = ({ onOpenDetail }: ShipmentColumnsCallbacks, c
       meta: { align: "right" },
       cell: ({ row }) => {
         const { piezas, lineas, cajas } = shipmentContenido(row.original);
+        // Cancelado: su contenido regresó al almacén; se tacha para que no se lea como enviado.
+        const cancelled = isShipmentCancelled(row.original);
         return (
-          <span className="flex flex-col items-end leading-tight tabular-nums">
+          <span
+            className={`flex flex-col items-end leading-tight tabular-nums ${cancelled ? "line-through opacity-60" : ""}`}
+            title={cancelled ? "Envío cancelado: sus piezas regresaron al almacén" : undefined}
+          >
             <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
               {miles(piezas)} <span className="text-[11px] font-normal text-slate-400">pzas</span>
             </span>
