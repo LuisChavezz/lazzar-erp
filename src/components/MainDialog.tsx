@@ -95,7 +95,12 @@ export function MainDialog({
             <Dialog.Title mb="0" className="min-w-0 [--dialog-close-clearance:2.5rem]">
               {title}
             </Dialog.Title>
-            <div className="shrink-0 group-has-[[data-dialog-header]]/header-row:pr-10">{headerAction}</div>
+            {/* `min-w-0` y no `shrink-0`: si la acción no cabe ni en su propia
+                línea (varios botones en un teléfono), se encoge al ancho de la
+                fila y sus botones bajan, en vez de salirse del diálogo. En
+                escritorio no cambia nada: la fila parte en líneas antes de
+                encoger a nadie. */}
+            <div className="min-w-0 group-has-[[data-dialog-header]]/header-row:pr-10">{headerAction}</div>
           </Flex>
         ) : (
           // La X ocupa de 12 a 56 px del borde y el relleno de Radix solo deja
