@@ -1,12 +1,20 @@
 "use client";
 
 import type React from "react";
+import { useState } from "react";
 import { AccessibleLink } from "@/src/components/AccessibleLink";
 import { Button } from "@/src/components/Button";
 import { EmptyLines, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { DocChevron, DocEstatusBadge } from "@/src/components/DocEstatusBadge";
 import { ErrorState } from "@/src/components/ErrorState";
-import { FacturacionIcon, FolioIcon, OrdenesIcon, RefreshIcon, WarehouseIcon } from "@/src/components/Icons";
+import {
+  BanIcon,
+  FacturacionIcon,
+  FolioIcon,
+  OrdenesIcon,
+  RefreshIcon,
+  WarehouseIcon,
+} from "@/src/components/Icons";
 import { KpiCurrencyAmount } from "@/src/components/KpiCurrency";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -15,6 +23,7 @@ import { PreOrdenLink } from "@/src/features/production-orders/components/PreOrd
 import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrderStatus";
 import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/constants/movementTypes";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
+import { useCanCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
 import {
   formatAmountNoCurrency,
   formatQuantityValue,
@@ -27,10 +36,19 @@ import { canOpenOrderDocument } from "../constants/orderDocumentAccess";
 import type { PedidoDocumentosQuery } from "../hooks/usePedidoDocumentos";
 import type { PedidoDetail } from "../interfaces/order.interface";
 import type {
+  PedidoDocumentoDespacho,
   PedidoDocumentoFila,
   PedidoDocumentos,
 } from "../interfaces/pedido-documentos.interface";
-import { cobroRowKey, countCancelledDocs, filaBlockCancelledCount, filaEstatus, filaFolio } from "../utils/pedidoDocumentos";
+import {
+  cobroRowKey,
+  countCancelledDocs,
+  filaBlockCancelledCount,
+  filaEstatus,
+  filaFolio,
+  isCancelledDocEstatus,
+} from "../utils/pedidoDocumentos";
+import { OrderDespachoCancelDialog } from "./OrderDespachoCancelDialog";
 import {
   FACTURA_DOC_TIPO,
   getOrderDocumentRoute,
@@ -218,6 +236,10 @@ export function DocumentosBlocks({
   // `total` llega `null` a quien no tiene `R-PRODUCCION-COSTOS`: entonces la
   // columna no existe (no es un total en cero).
   const showSmTotal = salidasMaquila?.some((sm) => sm.total !== null) ?? false;
+  // "Cancelar" en la fila de un despacho (EC-946): con `WMS-CANCELAR` o siendo
+  // Mesa de Control. Surtidos y embarques lo ofrecen en su propio diálogo.
+  const canCancelDespachos = useCanCancelWmsDocuments();
+  const [despachoToCancel, setDespachoToCancel] = useState<PedidoDocumentoDespacho | null>(null);
 
   return (
     <>
@@ -397,6 +419,11 @@ export function DocumentosBlocks({
                 <th className={TH}>Guía</th>
                 <th className={TH}>Envío</th>
                 <th className={TH}>Estado</th>
+                {canCancelDespachos && (
+                  <th className={`${TH} text-center`}>
+                    <span className="sr-only">Acciones</span>
+                  </th>
+                )}
               </>
             }
           >
@@ -426,6 +453,22 @@ export function DocumentosBlocks({
                     "—"
                   )}
                 </td>
+                {canCancelDespachos && (
+                  <td className="px-3 py-2 text-center">
+                    {!isCancelledDocEstatus(despacho.estado) && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setDespachoToCancel(despacho)}
+                        aria-label={`Cancelar el envío del embarque ${despacho.packing_folio || `#${despacho.packing_id}`}`}
+                        className="px-2.5! py-1! text-xs! text-rose-600! dark:text-rose-400!"
+                      >
+                        <BanIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                        Cancelar
+                      </Button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </DocBlock>
@@ -573,6 +616,15 @@ export function DocumentosBlocks({
             )}
           </div>
         </SheetSection>
+      )}
+      {/* Montado con el permiso (no con la fila): sobrevive a que la fila deje
+          de ofrecer "Cancelar" al cancelarse, y cierra con su animación. */}
+      {canCancelDespachos && (
+        <OrderDespachoCancelDialog
+          pedidoId={pedidoId}
+          despacho={despachoToCancel}
+          onClose={() => setDespachoToCancel(null)}
+        />
       )}
     </>
   );
