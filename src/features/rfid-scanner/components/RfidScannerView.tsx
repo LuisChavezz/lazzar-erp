@@ -26,6 +26,10 @@ import { useRfidScannerStats } from "../hooks/useRfidScannerStats";
  * empresa activa (EC-884). La barra de estado del lector sale de
  * `scanner-stats`, restringido igual, así que también es solo para ellos.
  *
+ * Todo lo que lee se acota a la empresa activa, así que la ruta pasa por
+ * `CompanyGate` (`companyGatedRoutes`): sin empresa no se monta esta vista ni
+ * se pide nada, y se muestra el aviso de "sin empresa" en su lugar (#506).
+ *
  * El interruptor de monitoreo controla el `enabled` del polling (3 s, ver
  * `useRfidScans`). Vive en el `actionButton` de `DataTable`, que es la única
  * zona del armazón que permanece montada durante la carga y el error: si el
