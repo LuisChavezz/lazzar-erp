@@ -236,6 +236,13 @@ export const INVOICE_CANCEL_UNCONFIRMED_MESSAGE =
   "No se recibió respuesta del servidor: la factura pudo haberse cancelado, y su CFDI ante el SAT. Actualiza los datos antes de volver a intentarlo.";
 
 /**
+ * El mismo aviso para "Cancelar CFDI" de una factura que YA estaba `Cancelada`
+ * (`useCancelCancelledInvoiceCfdi`): ahí solo el CFDI pudo cambiar.
+ */
+export const CANCELLED_INVOICE_CFDI_CANCEL_UNCONFIRMED_MESSAGE =
+  "No se recibió respuesta del servidor: el CFDI de la factura pudo haberse cancelado ante el SAT. Actualiza los datos antes de volver a intentarlo.";
+
+/**
  * Mensaje de un fallo de `cancelar/`. El backend pone el motivo bajo `cfdi`
  * (el SAT o Facturama no cancelaron el CFDI o no respondieron, otra
  * cancelación en curso, CFDI sin id de Facturama), bajo `motivo_sat` (falta,
@@ -249,12 +256,16 @@ export const INVOICE_CANCEL_UNCONFIRMED_MESSAGE =
  * distinguir casos por su texto. Un corte sin respuesta del backend (red,
  * timeout o 502/503/504, `isActionOutcomeUnknown`) avisa que pudo cancelarse,
  * como el REP y el cobro (`cancelCobroRepErrorMessage`, EC-939). Si no, el
- * resto (403, 404, 500) cae en el extractor genérico.
+ * resto (403, 404, 500) cae en el extractor genérico. `unconfirmedMessage`: el
+ * aviso de ese corte (el de cancelar solo el CFDI lo cambia).
  */
-export const cancelInvoiceErrorMessage = (error: unknown): string =>
+export const cancelInvoiceErrorMessage = (
+  error: unknown,
+  unconfirmedMessage: string = INVOICE_CANCEL_UNCONFIRMED_MESSAGE,
+): string =>
   drfFieldMessage(error, "cfdi") ??
   drfFieldMessage(error, "motivo_sat") ??
   drfFieldMessage(error, "estatus") ??
-  (isActionOutcomeUnknown(error) ? INVOICE_CANCEL_UNCONFIRMED_MESSAGE : undefined) ??
+  (isActionOutcomeUnknown(error) ? unconfirmedMessage : undefined) ??
   firstDrfFieldMessage(error) ??
   extractErrorMessage(error, "No se pudo cancelar la factura.");
