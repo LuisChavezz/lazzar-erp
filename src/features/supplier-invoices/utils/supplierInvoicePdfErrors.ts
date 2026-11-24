@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { isRequestTimeoutError, REQUEST_TIMEOUT_MESSAGE } from "@/src/utils/requestTimeout";
 import { MAX_SUPPLIER_INVOICE_PDF_LABEL } from "../constants/supplierInvoicePdf";
 import {
   parseSupplierInvoiceError,
@@ -39,7 +40,9 @@ export const uploadPdfErrorMessage = (error: unknown): string => {
   }
   const status = error.response?.status;
   // Sin respuesta: casi siempre Vercel cortó un cuerpo demasiado grande antes de
-  // Django (y sin CORS el navegador no puede leer el 413), o se cayó la red.
+  // Django (y sin CORS el navegador no puede leer el 413), o se cayó la red. Un
+  // timeout tampoco trae respuesta, pero no es el tamaño ni la red (EC-939).
+  if (isRequestTimeoutError(error)) return REQUEST_TIMEOUT_MESSAGE;
   if (!error.response || status === 413) {
     return `No se pudo enviar el archivo. Es posible que supere el tamaño permitido (${MAX_SUPPLIER_INVOICE_PDF_LABEL}) o que se haya perdido la conexión. Intenta de nuevo.`;
   }
@@ -57,6 +60,7 @@ export const mergedPdfErrorMessage = (error: unknown): string => {
     return error instanceof Error && error.message ? error.message : fallback;
   }
   const status = error.response?.status;
+  if (isRequestTimeoutError(error)) return REQUEST_TIMEOUT_MESSAGE;
   if (!error.response) {
     return "No se pudo conectar con el servidor para generar el documento. Revisa tu conexión e intenta de nuevo.";
   }

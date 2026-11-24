@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { isRequestTimeoutError, REQUEST_TIMEOUT_MESSAGE } from "@/src/utils/requestTimeout";
 import type { StockMovementReportType } from "../interfaces/stock-movement-report.interface";
 
 /**
@@ -146,6 +147,8 @@ export const stockReportExportErrorMessage = (
   if (!isAxiosError(error)) {
     return error instanceof Error && error.message ? error.message : fallback;
   }
+  // Un timeout tampoco trae respuesta, pero no es la conexión (EC-939).
+  if (isRequestTimeoutError(error)) return REQUEST_TIMEOUT_MESSAGE;
   if (!error.response) {
     return "No se pudo conectar con el servidor para generar el reporte. Revisa tu conexión e intenta de nuevo.";
   }
