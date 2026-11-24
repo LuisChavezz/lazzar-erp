@@ -82,6 +82,7 @@ export function NotificationItem({
           <MarkReadPill
             onClick={onMarkRead}
             focusFallbackRef={focusFallbackRef}
+            titulo={notificacion.titulo}
             className="mt-2"
           />
         )}
