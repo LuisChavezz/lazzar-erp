@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { StockTransferForm } from "./StockTransferForm";
-import { stockTransfersColumns } from "./StockTransfersColumns";
+import { getStockTransfersColumns } from "./StockTransfersColumns";
+import { StockTransferDetailDialog } from "./StockTransferDetailDialog";
 import { useTransferencias } from "../hooks/useTransferencias";
 
 /**
  * Vista de Traspasos: el listado (`GET /wms/transferencias/`) más, por fila,
  * la acción "Ver Detalles" que abre `StockTransferDetailDialog`
- * (`GET /wms/transferencias/{id}/`, ver `StockTransfersColumns`).
+ * (`GET /wms/transferencias/{id}/`). El id abierto vive aquí, no en la celda:
+ * revertir una TR (EC-945) refresca la lista y la fila puede cambiar de página.
  *
  * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en un
  * ternario propio): recibe `isLoading`/`isError` y alterna internamente solo su
@@ -31,10 +34,15 @@ export function StockTransfersView() {
   const { data: session } = useSession();
   const canCreate = hasPermission("C-CONFIGURACION", session?.user);
 
+  // Montaje condicional: el diálogo —y con él su `useTransferenciaDetail`— no
+  // existe hasta abrirlo, así que renderizar la tabla no pide ningún detalle.
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const columns = getStockTransfersColumns({ onOpenDetail: setDetailId });
+
   return (
     <div className="space-y-6">
       <DataTable
-        columns={stockTransfersColumns}
+        columns={columns}
         data={transferencias}
         searchPlaceholder="Buscar folio, almacén o usuario..."
         getRowId={(row) => String(row.id)}
@@ -48,6 +56,15 @@ export function StockTransfersView() {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando traspasos"
       />
+      {detailId !== null && (
+        <StockTransferDetailDialog
+          transferId={detailId}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setDetailId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

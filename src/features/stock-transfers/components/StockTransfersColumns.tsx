@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ChevronRightIcon, UserIcon, ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
@@ -8,38 +7,40 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
-import { StockTransferDetailDialog } from "./StockTransferDetailDialog";
 import type { TransferenciaListItem } from "../interfaces/stock-transfer.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: TransferenciaListItem }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
+/**
+ * Solo el menú: el estado del detalle vive en `StockTransfersView`, nunca en la
+ * celda (las celdas se desmontan al ordenar, paginar o filtrar; revertir una TR
+ * agrega una fila arriba y puede mover la abierta a otra página, EC-945).
+ */
+const ActionsCell = ({
+  row,
+  onOpenDetail,
+}: {
+  row: TransferenciaListItem;
+  onOpenDetail: (transferId: number) => void;
+}) => {
   const menuItems: ActionMenuItem[] = [
-    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
+    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => onOpenDetail(row.id) },
   ];
 
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={menuItems} ariaLabel={`Acciones de ${row.folio}`} />
-      {/* Montaje condicional: el diálogo —y con él su `useTransferenciaDetail`—
-          no existe hasta abrirlo, así que renderizar la tabla no dispara
-          ninguna petición de detalle. Mismo patrón que `AccountsReceivableColumns`. */}
-      {isDetailOpen && (
-        <StockTransferDetailDialog
-          transferId={row.id}
-          open={true}
-          onOpenChange={setIsDetailOpen}
-        />
-      )}
     </div>
   );
 };
 
 const columnHelper = createColumnHelper<TransferenciaListItem>();
 
-export const stockTransfersColumns = [
+interface StockTransfersColumnsCallbacks {
+  onOpenDetail: (transferId: number) => void;
+}
+
+export const getStockTransfersColumns = ({ onOpenDetail }: StockTransfersColumnsCallbacks) => [
   columnHelper.accessor("folio", {
     header: "Folio",
     cell: (info) => (
@@ -116,6 +117,6 @@ export const stockTransfersColumns = [
     id: "actions",
     header: "Acciones",
     meta: { align: "center" },
-    cell: ({ row }) => <ActionsCell row={row.original} />,
+    cell: ({ row }) => <ActionsCell row={row.original} onOpenDetail={onOpenDetail} />,
   }),
 ] as ColumnDef<TransferenciaListItem>[];
