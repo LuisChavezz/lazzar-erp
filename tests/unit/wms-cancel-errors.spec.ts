@@ -37,7 +37,6 @@ test("los 400 de orden y de cadena llegan tal cual y cierran el diálogo", () =>
     { picking: "Tiene órdenes de trabajo vivas: OB-12. Cancélalas primero." },
     { despacho: "El despacho ya está cancelado." },
     { transferencia: "Sólo se revierte la última TR del picking PICK-1. Revierte primero TR-31." },
-    { transferencia: "La TR cambió mientras se revertía. Intenta de nuevo." },
   ];
   for (const body of cases) {
     const classified = classifyWmsCancelError(httpError(400, body), FALLBACK);
@@ -78,4 +77,19 @@ test("Revertir solo en una TR completada que no es reversa ni está revertida", 
   expect(isTransferRevertible({ status: "COMPLETADA", reversa_de: 4, reversa: null })).toBe(false);
   expect(isTransferRevertible({ status: "COMPLETADA", reversa_de: null, reversa: 9 })).toBe(false);
   expect(isTransferRevertible({ status: "FALLIDA", reversa_de: null, reversa: null })).toBe(false);
+});
+
+test("el cambio concurrente de EC-949 deja el diálogo abierto para reintentar", () => {
+  for (const message of [
+    "La TR cambió mientras se revertía. Intenta de nuevo.",
+    "La TR cambio mientras se revertia. INTENTALO DE NUEVO",
+    "Otro proceso la modificó; vuelve a intentar.",
+  ]) {
+    const classified = classifyWmsCancelError(httpError(400, { transferencia: message }), FALLBACK);
+    expect(classified).toEqual({ kind: "retryable", message });
+    expect(wmsCancelErrorClosesDialog(classified)).toBe(false);
+  }
+  // Las reglas que no salen al reintentar siguen cerrando.
+  const orden = classifyWmsCancelError(httpError(400, { packing: "Tiene despachos activos: 54. Cancélalos primero." }), FALLBACK);
+  expect(orden.kind).toBe("blocked");
 });

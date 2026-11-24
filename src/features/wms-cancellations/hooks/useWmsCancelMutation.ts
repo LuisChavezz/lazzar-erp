@@ -63,7 +63,8 @@ export const useWmsCancelMutation = <TResult>(
         return;
       }
       toast.error(classified.message);
-      if (classified.kind === "blocked" || classified.kind === "not-found") {
+      // Ya no se puede (o cambió en otro lado): la caché está vieja, se relee.
+      if (classified.kind === "blocked" || classified.kind === "not-found" || classified.kind === "retryable") {
         void invalidateAfterWmsCancellation(queryClient);
       }
     },
