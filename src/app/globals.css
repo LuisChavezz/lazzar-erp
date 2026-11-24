@@ -15,15 +15,15 @@
  * `src/features/operations/constants/listHeight.ts`.
  * - `mesa-fit`: listados sin KPIs. Desde `lg` (toolbar en una fila) y con
  *   altura suficiente para ~6 filas.
- * - `mesa-fit-kpi`: Pedidos. Altura para ~6 filas bajo los KPIs, y el ancho
- *   REAL del listado (container query `mesa-list`, no el viewport) donde los
- *   KPIs caben en una fila (`@min-[68.75rem]` de `KpiGrid`), con la barra
- *   lateral anclada o colapsada.
+ * - `mesa-fit-kpi`: Pedidos. Altura para ~6 filas bajo sus dos filas de KPIs,
+ *   y el ancho REAL del listado (container query `mesa-list`, no el viewport)
+ *   donde los seis KPIs caben en dos filas de tres (`@min-[51rem]` de
+ *   `KpiGrid columns={3}`), con la barra lateral anclada o colapsada.
  */
 @custom-variant mesa-fit (@media (min-width: 64rem) and (min-height: 810px));
 @custom-variant mesa-fit-kpi {
-  @media (min-height: 860px) {
-    @container mesa-list (min-width: 68.75rem) {
+  @media (min-height: 988px) {
+    @container mesa-list (min-width: 51rem) {
       @slot;
     }
   }
