@@ -179,7 +179,7 @@ test("dos llamadas simultáneas que fallan reciben el mismo error, y la siguient
   expect(registrations).toHaveLength(1);
 });
 
-test("un intento que termina de fallar después de que empezó otro no borra el nuevo", async () => {
+test("el reintento tras un fallo también lo comparten las llamadas simultáneas", async () => {
   const releases: (() => void)[] = [];
   let call = 0;
   const { loader, ensure, font, requested, registrations } = harness((url) => {
