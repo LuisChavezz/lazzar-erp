@@ -17,6 +17,9 @@ import { TRANSFER_STATUS_CONFIG } from "../constants/transferStatus";
 import { useTransferenciaDetail } from "../hooks/useTransferenciaDetail";
 import type { TransferenciaDetalleLine } from "../interfaces/stock-transfer.interface";
 import { StockTransferPdfButton } from "./StockTransferPdfButton";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { WmsCancelHeaderActions } from "@/src/features/wms-cancellations/components/WmsCancelHeaderActions";
+import { isTransferRevertible, transferRevertDialogContent } from "../utils/transferRevertAction";
 
 /** Nombre del producto/variante trasladado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. */
@@ -75,9 +78,19 @@ export function StockTransferDetailDialog({
   const { data, isLoading, isInitialError, isNotFound, error } =
     useTransferenciaDetail(transferId);
 
-  // "Descargar PDF" junto al título (EC-858), una vez cargado el traspaso. Un
-  // 403/404 definitivo no conserva datos, así que tampoco ofrece el botón.
-  const pdfAction = data && !isNotFound ? <StockTransferPdfButton transfer={data} /> : null;
+  // "Descargar PDF" (EC-858) y, con `WMS-CANCELAR`, "Revertir" (EC-945) junto
+  // al título, una vez cargado el traspaso. Un 403/404 definitivo no conserva
+  // datos, así que tampoco ofrece los botones.
+  const pdfAction =
+    data && !isNotFound ? (
+      <WmsCancelHeaderActions
+        available={isTransferRevertible(data)}
+        buttonLabel="Revertir"
+        content={transferRevertDialogContent(data)}
+      >
+        <StockTransferPdfButton transfer={data} />
+      </WmsCancelHeaderActions>
+    ) : null;
 
   return (
     <MainDialog
@@ -128,6 +141,17 @@ export function StockTransferDetailDialog({
       {/* ── Estado: datos cargados ────────────────────────────────────────── */}
       {!isLoading && data && (
         <div className="space-y-5">
+          {/* Solo `CANCELADA` trae motivo, fecha y quién (#1348): una TR
+              `FALLIDA` no pasó por `revertir/`. */}
+          {data.status === "CANCELADA" && (
+            <CancellationInfo
+              title={data.reversa ? "Traspaso revertido" : "Traspaso cancelado"}
+              motivo={data.motivo_cancelacion}
+              fecha={data.fecha_cancelacion}
+              canceladoPor={data.cancelado_por_nombre}
+            />
+          )}
+
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             <InfoField label="Estatus">

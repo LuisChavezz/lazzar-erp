@@ -9,6 +9,8 @@ import { usePickingDetail } from "../hooks/usePickingDetail";
 import { mapPickingToRow } from "../utils/picking.utils";
 import { PickingDetailContent } from "./PickingDetailDialog";
 import { PickingPdfButton } from "./PickingPdfButton";
+import { WmsCancelHeaderActions } from "@/src/features/wms-cancellations/components/WmsCancelHeaderActions";
+import { isPickingCancelled, pickingCancelDialogContent } from "../utils/pickingCancelAction";
 
 interface PickingDetailByIdDialogProps {
   /** Id del picking a consultar. `null` mantiene la consulta apagada. */
@@ -49,8 +51,17 @@ export function PickingDetailByIdDialog({
 
   const subtitle = row ? row.folio : !hasId ? "" : isLoading ? "Cargando…" : "Error al cargar";
 
-  // "Descargar PDF" junto al título (EC-858), una vez cargado el surtido.
-  const pdfAction = row ? <PickingPdfButton picking={row} /> : null;
+  // "Descargar PDF" (EC-858) y, con `WMS-CANCELAR`, "Cancelar" (EC-945) junto
+  // al título, una vez cargado el surtido.
+  const pdfAction = row ? (
+    <WmsCancelHeaderActions
+      available={!isPickingCancelled(row)}
+      buttonLabel="Cancelar"
+      content={pickingCancelDialogContent(row)}
+    >
+      <PickingPdfButton picking={row} />
+    </WmsCancelHeaderActions>
+  ) : null;
 
   return (
     <MainDialog

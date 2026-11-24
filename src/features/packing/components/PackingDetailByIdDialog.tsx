@@ -6,8 +6,7 @@ import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { usePackingDetail } from "../hooks/usePackingDetail";
-import { PackingDetailContent } from "./PackingDetailDialog";
-import { PackingPdfButton } from "./PackingPdfButton";
+import { PackingDetailContent, PackingHeaderActions } from "./PackingDetailDialog";
 
 interface PackingDetailByIdDialogProps {
   /** Id del packing a consultar. `null` mantiene la consulta apagada. */
@@ -45,8 +44,9 @@ export function PackingDetailByIdDialog({
       ? "Error al cargar"
       : packing.folio;
 
-  // "Descargar PDF" junto al título (EC-858), una vez cargado el embarque.
-  const pdfAction = !isLoading && !isError && packing ? <PackingPdfButton packing={packing} /> : null;
+  // "Descargar PDF" (EC-858) y "Cancelar" (EC-945) junto al título, una vez
+  // cargado el embarque. Nada accionable mientras carga o falla.
+  const pdfAction = !isLoading && !isError && packing ? <PackingHeaderActions packing={packing} /> : null;
 
   return (
     <MainDialog

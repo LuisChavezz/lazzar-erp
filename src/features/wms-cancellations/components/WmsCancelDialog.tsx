@@ -28,6 +28,11 @@ export interface WmsCancelDialogContent<TResult> {
   submitLabel: string;
   pendingLabel: string;
   motivoPlaceholder: string;
+  /**
+   * Tras el éxito, con la respuesta: para un detalle que muestra una fila que
+   * puede salir de su listado (p. ej. el envío bajo `?estado=ACTIVO`).
+   */
+  onSuccess?: (result: TResult) => void;
 }
 
 interface WmsCancelDialogProps<TResult> {
@@ -115,7 +120,10 @@ function WmsCancelForm<TResult>({
       clearClientFieldError("motivo");
 
       mutate(parsed.data.motivo, {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: (result) => {
+          content.onSuccess?.(result);
+          onOpenChange(false);
+        },
         onError: (error) => {
           const classified = classifyWmsCancelError(error, content.action.fallbackErrorMessage);
           if (wmsCancelErrorClosesDialog(classified)) onOpenChange(false);

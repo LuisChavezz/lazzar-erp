@@ -1,3 +1,4 @@
+import type { WmsCancelDialogContent } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { replaceCachedRow } from "@/src/utils/cachedRows";
 import type { WmsCancelAction } from "@/src/features/wms-cancellations/hooks/useWmsCancelMutation";
 import { cancelShipment } from "../services/actions";
@@ -28,4 +29,20 @@ export const shipmentCancelAction = (shipmentId: number): WmsCancelAction<Shipme
     ]),
   successMessage: () => "Envío cancelado: sus piezas regresaron al almacén",
   fallbackErrorMessage: "Error al cancelar el envío",
+});
+
+/**
+ * Texto del diálogo de "Cancelar envío". Dice que las piezas regresan al
+ * almacén y que no sustituye una devolución: el backend no sabe si el envío ya
+ * se entregó (nucleo-erp#1361), así que este aviso es la única advertencia.
+ */
+export const shipmentCancelDialogContent = (
+  shipment: Pick<Shipment, "id" | "packing_folio">,
+): WmsCancelDialogContent<Shipment> => ({
+  action: shipmentCancelAction(shipment.id),
+  title: "Cancelar envío",
+  description: `El envío del embarque ${shipment.packing_folio || `#${shipment.id}`} quedará cancelado y sus piezas regresarán al almacén del que salieron; el embarque volverá a quedar por enviar. Si la mercancía ya se entregó al cliente, no lo canceles: eso es una devolución.`,
+  submitLabel: "Cancelar envío",
+  pendingLabel: "Cancelando…",
+  motivoPlaceholder: "Explica por qué se cancela el envío",
 });

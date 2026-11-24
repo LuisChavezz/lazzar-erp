@@ -105,7 +105,9 @@ export function PackingView() {
 
       {detail && (
         <PackingDetailDialog
-          packing={detail}
+          // La fila VIVA del listado: tras cancelar, la caché trae el nuevo
+          // estado (`packingCancelAction`) y el detalle abierto lo refleja.
+          packing={packings.find((row) => row.id === detail.id) ?? detail}
           open={true}
           onOpenChange={(open) => {
             if (!open) setDetail(null);

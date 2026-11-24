@@ -15,6 +15,9 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { PACKING_STATUS_CONFIG } from "../constants/packingStatus";
 import type { Packing, PackingDetalleLine } from "../interfaces/packing.interface";
 import { PackingPdfButton } from "./PackingPdfButton";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { WmsCancelHeaderActions } from "@/src/features/wms-cancellations/components/WmsCancelHeaderActions";
+import { isPackingCancelled, packingCancelDialogContent } from "../utils/packingCancelAction";
 
 /** Nombre del producto/variante empacado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que el
@@ -90,9 +93,9 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
-      // "Descargar PDF" junto al título (EC-858); el encabezado de `MainDialog`
-      // ya reserva el espacio de la X.
-      headerAction={<PackingPdfButton packing={packing} />}
+      // "Descargar PDF" junto al título (EC-858) y, con `WMS-CANCELAR`,
+      // "Cancelar" (EC-945); el encabezado de `MainDialog` ya reserva la X.
+      headerAction={<PackingHeaderActions packing={packing} />}
       title={
         <div className="flex items-center gap-2.5">
           <PackingIcon className="w-5 h-5 text-sky-500 shrink-0" />
@@ -113,6 +116,22 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
 }
 
 /**
+ * Acciones del encabezado del detalle de un embarque: "Cancelar" (EC-945) y
+ * "Descargar PDF" (EC-858). La comparten el diálogo del listado y el de por id.
+ */
+export function PackingHeaderActions({ packing }: { packing: Packing }) {
+  return (
+    <WmsCancelHeaderActions
+      available={!isPackingCancelled(packing)}
+      buttonLabel="Cancelar"
+      content={packingCancelDialogContent(packing)}
+    >
+      <PackingPdfButton packing={packing} />
+    </WmsCancelHeaderActions>
+  );
+}
+
+/**
  * Cuerpo del detalle de packing, extraído para que el diálogo original y el
  * envoltorio por id (`PackingDetailByIdDialog`) compartan un ÚNICO `MainDialog`
  * y solo intercambien el contenido (loader → cuerpo), sin remontar el modal.
@@ -120,6 +139,15 @@ export function PackingDetailDialog({ packing, open, onOpenChange }: PackingDeta
 export function PackingDetailContent({ packing }: { packing: Packing }) {
   return (
       <div className="space-y-5">
+        {isPackingCancelled(packing) && (
+          <CancellationInfo
+            title="Embarque cancelado"
+            motivo={packing.motivo_cancelacion}
+            fecha={packing.fecha_cancelacion}
+            canceladoPor={packing.cancelado_por_nombre}
+          />
+        )}
+
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Estatus">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { ChevronRightIcon, EmbarquesIcon, PackingIcon, PedidosIcon } from "@/src/components/Icons";
@@ -15,6 +16,11 @@ import {
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { SHIPPING_LINE_STATUS_CONFIG } from "../constants/shippingLineStatus";
 import type { Shipment, ShipmentDetalleLine } from "../interfaces/shipping.interface";
+import { SHIPMENT_STATUS_CONFIG } from "../constants/shipmentStatus";
+import { isShipmentCancelled, shipmentCancelDialogContent } from "../utils/shipmentCancelAction";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { WmsCancelHeaderActions } from "@/src/features/wms-cancellations/components/WmsCancelHeaderActions";
+import { useCanCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
 
 /** Nombre del producto/variante despachado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
@@ -81,15 +87,33 @@ interface ShippingDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingDetailDialogProps) {
+export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: ShippingDetailDialogProps) {
+  // La respuesta de "Cancelar envío" (EC-945): cancelar es terminal, y bajo
+  // `?estado=ACTIVO` la fila sale del listado, así que el detalle abierto se
+  // queda con lo que respondió el backend en vez de volver a la copia vieja.
+  const [cancelled, setCancelled] = useState<Shipment | null>(null);
+  const shipment = cancelled?.id === row.id ? cancelled : row;
+  const canCancel = useCanCancelWmsDocuments();
+
   return (
     <MainDialog
       open={open}
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
+      // Sin PDF propio: solo "Cancelar" (EC-945), con `WMS-CANCELAR`.
+      headerAction={
+        canCancel ? (
+          <WmsCancelHeaderActions
+            available={!isShipmentCancelled(shipment)}
+            buttonLabel="Cancelar"
+            content={{ ...shipmentCancelDialogContent(shipment), onSuccess: setCancelled }}
+          />
+        ) : null
+      }
       title={
-        <div className="flex items-center gap-2.5 pr-8">
+        // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
+        <div className={`flex items-center gap-2.5 ${canCancel ? "" : "pr-8"}`}>
           <EmbarquesIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
@@ -103,12 +127,24 @@ export function ShippingDetailDialog({ shipment, open, onOpenChange }: ShippingD
       }
     >
       <div className="space-y-5">
+        {isShipmentCancelled(shipment) && (
+          <CancellationInfo
+            title="Envío cancelado"
+            motivo={shipment.motivo_cancelacion}
+            fecha={shipment.fecha_cancelacion}
+            canceladoPor={shipment.cancelado_por_nombre}
+          />
+        )}
+
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+          <InfoField label="Estado del envío">
+            {shipment.estado ? <StatusBadge status={shipment.estado} config={SHIPMENT_STATUS_CONFIG} /> : "—"}
+          </InfoField>
           {/* `packing_estado` es siempre "PENDIENTE" en la práctica (no hay
-              endpoint de transición sobre packing) — se muestra como texto
-              plano, no como `StatusBadge`, para no leerse como un indicador
-              de avance que en realidad no existe. */}
+              endpoint de transición sobre packing, salvo cancelarlo) — se
+              muestra como texto plano, no como `StatusBadge`, para no leerse
+              como un indicador de avance que en realidad no existe. */}
           <InfoField label="Estatus del embarque">{textOrDash(shipment.packing_estado)}</InfoField>
           <InfoField label="Pedido">{textOrDash(shipment.pedido_folio)}</InfoField>
           <InfoField label="Cliente">{textOrDash(shipment.cliente_nombre)}</InfoField>
