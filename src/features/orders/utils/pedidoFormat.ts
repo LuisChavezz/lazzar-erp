@@ -1,3 +1,4 @@
+import { formatDeadlineText } from "@/src/utils/formatDeadlineText";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { formatPercentageNumber } from "@/src/utils/percentage";
 
@@ -50,16 +51,13 @@ export function formatFechaConfirmacion(value: string | null | undefined): strin
 
 /**
  * Plazo que queda hasta la fecha compromiso, a partir de `dias_restantes` del
- * backend (`compromiso - hoy`, NEGATIVO cuando ya venció). `null` sin dato.
+ * backend (`compromiso - hoy`, NEGATIVO cuando ya venció). En minúscula
+ * porque va a media línea, tras la fecha ("17 mar 2027 · faltan 113 días").
+ * `null` sin dato.
  */
 export function formatDiasRestantes(dias: number | null): string | null {
   if (dias === null) return null;
-  if (dias === 0) return "vence hoy";
-  const abs = Math.abs(dias);
-  const unidad = abs === 1 ? "día" : "días";
-  return dias > 0
-    ? `${abs === 1 ? "falta" : "faltan"} ${abs} ${unidad}`
-    : `vencido hace ${abs} ${unidad}`;
+  return formatDeadlineText(dias, { gender: "m", capitalize: false });
 }
 
 /**
