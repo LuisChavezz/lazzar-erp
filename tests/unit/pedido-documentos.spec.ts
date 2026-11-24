@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { resolveInvoiceBack } from "@/src/features/invoicing/constants/invoiceDetailOrigins";
-import { cobroRowKey, filaFolio } from "@/src/features/orders/utils/pedidoDocumentos";
+import {
+  cobroRowKey,
+  countCancelledDocs,
+  filaFolio,
+  isCancelledDocEstatus,
+} from "@/src/features/orders/utils/pedidoDocumentos";
 import type {
   PedidoDocumentoCobro,
   PedidoDocumentoFila,
@@ -42,4 +47,14 @@ test("la cotización sin folio muestra su id", () => {
   });
   expect(filaFolio(fila(null))).toBe("89");
   expect(filaFolio(fila("2026-OB-00024"))).toBe("2026-OB-00024");
+});
+
+test("EC-945: los surtidos, embarques y envíos cancelados se cuentan aparte", () => {
+  expect(isCancelledDocEstatus("Cancelado")).toBe(true);
+  expect(isCancelledDocEstatus("CANCELADO")).toBe(true);
+  expect(isCancelledDocEstatus("ACTIVO")).toBe(false);
+  expect(isCancelledDocEstatus("Completado")).toBe(false);
+  expect(isCancelledDocEstatus(undefined)).toBe(false);
+  const despachos = [{ estado: "ACTIVO" }, { estado: "CANCELADO" }, {}] as { estado?: string }[];
+  expect(countCancelledDocs(despachos, (d) => d.estado)).toBe(1);
 });

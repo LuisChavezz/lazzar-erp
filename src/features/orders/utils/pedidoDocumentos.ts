@@ -21,3 +21,15 @@ export const filaEstatus = (fila: PedidoDocumentoFila): string | null =>
  */
 export const cobroRowKey = (cobro: PedidoDocumentoCobro, index: number): string =>
   `${cobro.cobro_id}-${cobro.factura_folio ?? `sin-folio-${index}`}`;
+
+/**
+ * ¿El estatus de un documento ligado es el de cancelado? Cada documento tiene su
+ * vocabulario (surtido `"Cancelado"`, embarque y envío `"CANCELADO"`), así que
+ * se reconoce por la palabra, como el tono de `DocEstatusBadge`.
+ */
+export const isCancelledDocEstatus = (estatus: string | null | undefined): boolean =>
+  typeof estatus === "string" && /cancel/i.test(estatus);
+
+/** Cuántos de `items` están cancelados, leyendo su estatus con `estatusOf`. */
+export const countCancelledDocs = <T>(items: readonly T[], estatusOf: (item: T) => string | null | undefined): number =>
+  items.filter((item) => isCancelledDocEstatus(estatusOf(item))).length;
