@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CancelReasonDialogFor } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import { creditNoteCancelDialogContent } from "../utils/creditNoteCancelAction";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
@@ -30,10 +33,6 @@ import {
   useEmitirNotaCredito,
 } from "../hooks/useEmitirNotaCredito";
 import {
-  cancelNotaCreditoMutationKey,
-  useCancelNotaCredito,
-} from "../hooks/useCancelNotaCredito";
-import {
   deleteNotaCreditoMutationKey,
   useDeleteNotaCredito,
 } from "../hooks/useDeleteNotaCredito";
@@ -60,7 +59,7 @@ export default function CreditNoteList() {
   // Toda escritura de notas exige `E-FIN-FACTURAS` (`getFinanceWriteState`).
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
-  const { mutateAsync: cancelNotaAsync } = useCancelNotaCredito();
+  const queryClient = useQueryClient();
   const { mutateAsync: deleteNotaAsync } = useDeleteNotaCredito();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -118,16 +117,16 @@ export default function CreditNoteList() {
   } | null>(null);
 
   // Un candado POR ACCIÓN, cada uno con las notas que tiene en vuelo (ver
-  // `useRowActionLock`). Emitir y cancelar son las dos confirmaciones que MUEVEN
-  // el saldo de la cuenta por cobrar: dos peticiones simultáneas sobre la misma
-  // nota lo aplicarían o lo devolverían dos veces, porque el backend decide
-  // comparando contra el estatus anterior, que ambas leerían igual.
+  // `useRowActionLock`). Emitir MUEVE el saldo de la cuenta por cobrar: dos
+  // peticiones simultáneas sobre la misma nota lo aplicarían dos veces, porque
+  // el backend decide comparando contra el estatus anterior, que ambas leerían
+  // igual. Cancelar tiene el candado por nota de `CancelReasonDialog`
+  // (`creditNoteCancelDialogContent`).
   //
   // El `isPending` de la mutación no sirve de guarda —solo se ve tras un
   // re-render, y los dos clics de un doble clic llegan antes; verificado en el
   // navegador, donde esa guarda dejó pasar un segundo POST—; la ref sí.
   const emitLock = useRowActionLock();
-  const cancelLock = useRowActionLock();
   // El borrado necesita el suyo desde que su diálogo sobrevive a la desaparición
   // optimista de la fila: un DELETE repetido responde 404 y pintaría un error
   // justo después de un borrado que sí funcionó.
@@ -136,7 +135,6 @@ export default function CreditNoteList() {
   // sobrevive a un remontaje de la vista (el candado de fila no): pinta la
   // confirmación ocupada (`guardClose(..., extraBusy)`).
   const emittingIds = usePendingRecordIds(emitirNotaCreditoMutationKey);
-  const cancellingIds = usePendingRecordIds(cancelNotaCreditoMutationKey);
   const deletingIds = usePendingRecordIds(deleteNotaCreditoMutationKey);
 
   // Un error de refetch transitorio no debe descartar la tabla ya cargada; solo
@@ -399,43 +397,17 @@ export default function CreditNoteList() {
         />
       )}
 
-      {cancelTargetId !== null && (
-        <ConfirmDialog
-          open={true}
-          // En vuelo queda abierta y bloqueada (`guardClose`).
-          {...cancelLock.guardClose(
-            cancelTargetId,
-            () => setCancelTargetId(null),
-            cancellingIds.includes(cancelTargetId),
-          )}
-          title="Cancelar Nota de Crédito"
-          description={`¿Deseas cancelar la nota ${etiqueta(cancelTargetId)}? Si estaba emitida, su importe se devolverá al saldo por cobrar de la factura. La nota se conserva en el listado con estatus Cancelada.`}
-          confirmText={
-            cancelLock.isPending(cancelTargetId) || cancellingIds.includes(cancelTargetId)
-              ? "Cancelando..."
-              : "Cancelar nota"
-          }
-          cancelText="Volver"
-          closeOnConfirm={false}
-          // Misma guarda de reenvío que en la emisión, por el motivo simétrico:
-          // dos cancelaciones de una nota EMITIDA devolverían su importe DOS
-          // VECES al saldo de la cuenta por cobrar. Que la operación sea
-          // idempotente en el backend no cubre este caso: lo es cuando la nota
-          // YA está cancelada, no cuando dos peticiones simultáneas la
-          // encuentran todavía emitida.
-          onConfirm={() => {
-            const id = cancelTargetId;
-            if (!cancelLock.acquire(id)) return;
-            cancelNotaAsync(id)
-              .catch(() => {})
-              .finally(() => {
-                cancelLock.release(id);
-                setCancelTargetId((current) => (current === id ? null : current));
-              });
-          }}
-          confirmColor="amber"
-        />
-      )}
+      {/* Cancelar con el motivo obligatorio (EC-950). El candado contra el doble
+          envío es la mutación por nota del diálogo: dos cancelaciones de una
+          nota EMITIDA devolverían su importe dos veces a la cuenta por cobrar. */}
+      <CancelReasonDialogFor
+        target={cancelTargetId === null ? null : { id: cancelTargetId, folio: etiqueta(cancelTargetId) }}
+        content={(nota) => creditNoteCancelDialogContent(queryClient, nota)}
+        open={cancelTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTargetId(null);
+        }}
+      />
 
       {deleteTarget !== null && (
         <ConfirmDialog
