@@ -25,7 +25,7 @@ interface UseEmbroideryStep1FormParams {
 }
 
 /**
- * Paso 1 del alta de orden de bordado: encabezado (pedido, prioridad,
+ * Paso 1 del alta de orden de bordado: encabezado (pedido y
  * observaciones). NO envía nada al backend — solo valida y entrega el
  * encabezado al orquestador, igual que `PickingWizardStep1`.
  *
@@ -33,14 +33,6 @@ interface UseEmbroideryStep1FormParams {
  * el bloque de duplicado: el único punto de envío es el Paso 2, y con él se
  * fueron el reparto de errores del backend y la guarda de doble envío (ver
  * `useEmbroideryStep2Form`).
- *
- * `prioridad` arranca en `1`, que es el default del propio backend
- * (`IntegerField(default=1)`): omitir el campo produciría exactamente el mismo
- * valor almacenado, así que preseleccionarlo muestra la verdad en vez de
- * fingir que "sin elegir" es un estado posible. Ojo con la consecuencia: bajo
- * la convención de etiquetas del proyecto ese `1` se lee "Alta", de modo que
- * el default efectivo de TODA orden de bordado es prioridad Alta — es una
- * herencia del backend, no una decisión de esta pantalla.
  */
 export function useEmbroideryStep1Form({
   initialValues,

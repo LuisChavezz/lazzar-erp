@@ -148,13 +148,6 @@ export interface EmbroideryOrder {
    * fuera de 1-8, que el mapa local no podría nombrar.
    */
   estatus_bordado_display: string;
-  /**
-   * Entero libre: el modelo lo declara `IntegerField(default=1)` SIN
-   * `choices`, así que el backend acepta cualquier entero. La UI rotula 1-3
-   * (Alta/Media/Baja, el mismo mapeo que usa el alta de órdenes de
-   * producción) y cae a un badge neutro para cualquier otro valor.
-   */
-  prioridad: number;
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
   fecha_inicio: string;
   /** Siempre `null` hoy — ningún endpoint la fija. */
@@ -793,7 +786,6 @@ export interface EmbroideryOrderDetalleOverride {
  */
 export interface CreateEmbroideryOrderPayload {
   pedido: number;
-  prioridad?: number;
   observaciones?: string;
   detalles_override?: EmbroideryOrderDetalleOverride[];
 }
@@ -808,7 +800,6 @@ export interface CreateEmbroideryOrderPayload {
 export interface UpdateEmbroideryOrderPayload {
   estatus_bordado?: EmbroideryOrderStatus;
   maquina_asignada?: string | null;
-  prioridad?: number;
   observaciones?: string | null;
   usuario_asignado?: number | null;
   /**

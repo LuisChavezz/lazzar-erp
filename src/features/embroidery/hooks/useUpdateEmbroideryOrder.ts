@@ -15,7 +15,7 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  *  - `["embroidery-order-detail", id]` — el detalle de ESTA orden, para que el
  *    re-fetch traiga los `avances`/`resumen_avance` y demás campos recalculados
  *    por el backend.
- *  - `["embroidery-orders"]` — el listado, donde `estatus_bordado`/`prioridad`/
+ *  - `["embroidery-orders"]` — el listado, donde `estatus_bordado`/
  *    `maquina_asignada`/`proveedor` de la fila cambian.
  */
 export const useUpdateEmbroideryOrder = (id: number) => {

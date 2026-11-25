@@ -69,10 +69,7 @@ const FolioCell = ({
  * `EmbroideryOrderDetailDialog`); `fecha_fin` siempre es `null` y `activo`
  * siempre `true` (el queryset filtra `activo=True`), así que ninguna
  * aportaría información aquí. El contenido de `detalles` se resume en una
- * sola columna — su desglose vive en el diálogo de detalle. `prioridad` también
- * se omite: el modelo la declara sin `choices` y hoy llega constante, así que en
- * la tabla era una columna de un solo valor; sigue visible (y editable) en el
- * detalle de la orden.
+ * sola columna — su desglose vive en el diálogo de detalle.
  *
  * Sin anotación de tipo en el retorno (el cast va al final del arreglo) para
  * evitar el mismo error de inferencia documentado en

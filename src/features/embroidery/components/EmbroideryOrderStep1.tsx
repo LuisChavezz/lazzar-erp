@@ -51,19 +51,6 @@ const getCatalogErrorMessage = (error: unknown): string =>
       ? firstDrfFieldMessage(error)
       : undefined) ?? CATALOG_ERROR_FALLBACK;
 
-/**
- * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja replica el de
- * `ProductionOrderStep1`, la otra alta del dominio de producción: el backend
- * declara `prioridad` como entero libre (`IntegerField(default=1)`, sin
- * `choices`), así que este conjunto cerrado es una convención del frontend, no
- * una regla del API. Ver la nota del schema.
- */
-const PRIORIDAD_OPTIONS = [
-  { value: 1, label: "Alta" },
-  { value: 2, label: "Media" },
-  { value: 3, label: "Baja" },
-];
-
 interface EmbroideryOrderStep1Props {
   initialValues: CreateEmbroideryOrderFormValues;
   onNext: (values: CreateEmbroideryOrderFormValues) => void;
@@ -197,27 +184,6 @@ export function EmbroideryOrderStep1({
           }}
         </form.Field>
 
-        {/* Prioridad y operador lado a lado: son datos cortos. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-        {/* ── Prioridad ──────────────────────────────────────────────────── */}
-        <form.Field name="prioridad">
-          {(field) => (
-            <FormSelect
-              label="Prioridad"
-              className="py-2!"
-              name={field.name}
-              options={PRIORIDAD_OPTIONS}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(Number(event.target.value));
-                clearError("prioridad");
-              }}
-              onBlur={field.handleBlur}
-              error={getError("prioridad")}
-            />
-          )}
-        </form.Field>
-
         {/* ── Operador asignado (solo lectura) ───────────────────────────── */}
         <div className="w-full">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
@@ -232,8 +198,6 @@ export function EmbroideryOrderStep1({
           <p className="text-[11px] text-slate-500 mt-1 ml-1">
             Se asigna a quien crea la orden.
           </p>
-        </div>
-
         </div>
 
         {/* ── Observaciones ──────────────────────────────────────────────── */}
