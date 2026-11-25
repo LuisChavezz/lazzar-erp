@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { cancelErrorMeansStaleCache, type CancelError } from "../utils/cancelErrors";
+import { cancelErrorMeansStaleCache, cancelErrorTarget, type CancelError } from "../utils/cancelErrors";
 
 /**
  * Una cancelación con motivo (o la reversa de una TR): lo único que cambia entre
@@ -69,15 +69,16 @@ export const useCancelMutation = <TResult>(
     },
     onError: (error) => {
       const classified = action.classifyError(error);
-      if (classified.kind === "motivo" && onMotivoError) {
-        onMotivoError(classified.message);
+      const target = cancelErrorTarget(classified, {
+        hasMotivoHandler: onMotivoError !== undefined,
+        hasBlockedHandler: onBlockedError !== undefined,
+      });
+      if (target === "motivo") {
+        onMotivoError?.(classified.message);
         return;
       }
-      if ((classified.kind === "blocked" || classified.kind === "retryable") && onBlockedError) {
-        onBlockedError(classified.message);
-      } else {
-        toast.error(classified.message);
-      }
+      if (target === "dialog") onBlockedError?.(classified.message);
+      else toast.error(classified.message);
       // Ya no se puede (o cambió en otro lado): la caché está vieja, se relee.
       if (cancelErrorMeansStaleCache(classified)) action.refresh(queryClient);
     },
