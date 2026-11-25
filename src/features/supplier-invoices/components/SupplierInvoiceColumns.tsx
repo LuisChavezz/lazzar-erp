@@ -8,6 +8,7 @@ import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import {
   BanIcon,
   CheckCircleIcon,
+  DeleteIcon,
   DownloadIcon,
   EditIcon,
   UploadIcon,
@@ -69,10 +70,9 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
     },
   ];
 
-  // Solo un `Borrador` es editable y registrable y cancelable:
-  //  - `Registrada` tiene una CxP viva y el backend rechaza regresarla a
-  //    borrador o cancelarla;
-  //  - `Cancelada` no admite ninguna acción que mute.
+  // Solo un `Borrador` es editable, registrable y eliminable (`DELETE`, EC-950);
+  // una `Registrada` se cancela con motivo (`cancelar/`); `Cancelada` no admite
+  // ninguna acción que mute.
   if (factura.estatus === "Borrador") {
     menuItems.push({
       label: "Editar",
@@ -97,11 +97,22 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
     });
 
     menuItems.push({
+      label: "Eliminar borrador",
+      icon: DeleteIcon,
+      onSelect: () => callbacks.onDelete(factura.id),
+      disabled: writeBlock.disabled,
+      description: writeBlock.description,
+    });
+  }
+
+  if (factura.estatus === "Registrada") {
+    const cancelBlock = financeWriteBlock(callbacks.cancel, callbacks.cancel.reason);
+    menuItems.push({
       label: "Cancelar factura",
       icon: BanIcon,
       onSelect: () => callbacks.onCancel(factura.id),
-      disabled: writeBlock.disabled,
-      description: writeBlock.description,
+      disabled: cancelBlock.disabled,
+      description: cancelBlock.description,
     });
   }
 

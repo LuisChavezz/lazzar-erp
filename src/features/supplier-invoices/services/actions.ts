@@ -77,6 +77,27 @@ export const updateSupplierInvoice = async ({
 };
 
 /**
+ * Cancela una factura de proveedor con el motivo obligatorio:
+ * `POST /finanzas/facturas-proveedor/{id}/cancelar/` (nucleo-erp#1356, EC-950;
+ * exige `CANCELAR-FIN-PAGOS`). Su CxP queda `Cancelada` y su póliza con
+ * contrapóliza; con pagos aplicados responde `400`. Responde la factura con los
+ * datos de la cancelación.
+ */
+export const cancelSupplierInvoice = async (id: number, motivo: string): Promise<FacturaProveedor> => {
+  const { data } = await v1_api.post<FacturaProveedor>(`/finanzas/facturas-proveedor/${id}/cancelar/`, { motivo });
+  return data;
+};
+
+/**
+ * Elimina un BORRADOR: `DELETE /finanzas/facturas-proveedor/{id}/`. Desde
+ * nucleo-erp#1356 solo procede en `Borrador`; en otro estatus responde
+ * `400 estatus` y hay que cancelarla (`cancelSupplierInvoice`).
+ */
+export const deleteSupplierInvoice = async (id: number): Promise<void> => {
+  await v1_api.delete(`/finanzas/facturas-proveedor/${id}/`);
+};
+
+/**
  * Adjunta (o REEMPLAZA: no hay borrado) el PDF del proveedor:
  * `POST /finanzas/facturas-proveedor/{id}/adjuntar-pdf/`, multipart con el único
  * campo `archivo`. Se permite en cualquier estatus, incluida `Cancelada`.

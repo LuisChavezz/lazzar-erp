@@ -18,8 +18,19 @@ import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import { DIALOG_WIDTH_FORM, DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { financeWriteBlock, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
-import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import {
+  financeWriteBlock,
+  getFinanceCancelState,
+  getFinanceWriteState,
+  guardFinanceWrite,
+} from "@/src/utils/financeWrite";
+import { FINANCE_CANCEL_PERMISSION, FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { CancelReasonDialogFor } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import {
+  cancelSupplierInvoiceMutationKey,
+  supplierInvoiceCancelDialogContent,
+} from "../utils/supplierInvoiceCancelAction";
+import { deleteSupplierInvoiceMutationKey, useDeleteSupplierInvoice } from "../hooks/useDeleteSupplierInvoice";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -88,6 +99,9 @@ export default function SupplierInvoiceList({
   const { data: session, status: sessionStatus } = useSession();
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
+  // Cancelar una `Registrada` pide además `CANCELAR-FIN-PAGOS` (nucleo-erp#1356, EC-950).
+  const cancel = getFinanceCancelState(session?.user, sessionStatus, FINANCE_CANCEL_PERMISSION.pagos);
+  const { mutateAsync: deleteAsync } = useDeleteSupplierInvoice();
   /**
    * Proveedor cuyas facturas se listan (`0` = ninguno). Es la ENTRADA de la
    * pantalla: sin él no se consulta nada, porque el listado sin acotar bajaría
@@ -155,7 +169,10 @@ export default function SupplierInvoiceList({
   // Arranca con la factura de `?factura=` (EC-919), si la hay.
   const [openDetailId, setOpenDetailId] = useState<number | null>(initialFacturaId);
   const [registrarTargetId, setRegistrarTargetId] = useState<number | null>(null);
+  // "Cancelar factura" (una `Registrada`, con motivo) y "Eliminar borrador"
+  // (un `Borrador`, `DELETE`): EC-950.
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   /**
    * La edición guarda una FOTO de la factura al abrir, no solo el id: el
    * formulario inicializa sus valores con ella, y si leyera la fila viva un
@@ -176,6 +193,9 @@ export default function SupplierInvoiceList({
   // registrar y cancelar las confirmaciones quedan ocupadas aunque la vista se
   // haya remontado y su candado de fila esté vacío.
   const pendingUpdateIds = usePendingRecordIds(updateSupplierInvoiceMutationKey);
+  // Cancelaciones y borrados en vuelo (la cancelación lleva el id en su llave).
+  const pendingCancelIds = usePendingRecordIds(cancelSupplierInvoiceMutationKey);
+  const pendingDeleteIds = usePendingRecordIds(deleteSupplierInvoiceMutationKey);
 
   /**
    * `true` —con aviso— si la fila ya tiene una acción en vuelo. Se consulta al
@@ -234,11 +254,19 @@ export default function SupplierInvoiceList({
   };
 
   const handleCancel = (id: number) => {
+    if (!guardFinanceWrite(cancel, cancel.reason)) return;
+    const factura = facturas.find((item) => item.id === id);
+    // Solo una `Registrada` (ver `SupplierInvoiceColumns`).
+    if (factura?.estatus !== "Registrada" || accionEnCurso(id)) return;
+    setCancelTargetId(id);
+  };
+
+  const handleDelete = (id: number) => {
     if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
-    // Solo borradores (ver `SupplierInvoiceColumns`).
+    // Solo borradores: el backend responde `400` en otro estatus.
     if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
-    setCancelTargetId(id);
+    setDeleteTargetId(id);
   };
 
   // ── PDF del proveedor y documento fusionado ────────────────────────────────
@@ -368,13 +396,26 @@ export default function SupplierInvoiceList({
     targetId: cancelTargetId,
     target: findFactura(cancelTargetId),
     statusField: "estatus",
-    expectedEstado: "Borrador",
-    isBusy: cancelTargetId !== null && rowLock.isPending(cancelTargetId),
+    expectedEstado: "Registrada",
+    isBusy: cancelTargetId !== null && pendingCancelIds.includes(cancelTargetId),
     messages: SUPPLIER_INVOICE_STALE_MESSAGES,
   });
   if (staleCancel) {
     setCancelTargetId(null);
     setStaleNotice(staleCancel);
+  }
+  const staleDelete = getStaleRowDialogNotice({
+    resource: "supplier-invoice",
+    targetId: deleteTargetId,
+    target: findFactura(deleteTargetId),
+    statusField: "estatus",
+    expectedEstado: "Borrador",
+    isBusy: deleteTargetId !== null && (rowLock.isPending(deleteTargetId) || pendingDeleteIds.includes(deleteTargetId)),
+    messages: SUPPLIER_INVOICE_STALE_MESSAGES,
+  });
+  if (staleDelete) {
+    setDeleteTargetId(null);
+    setStaleNotice(staleDelete);
   }
   if (replacePdfTargetId !== null && findFactura(replacePdfTargetId) === null) {
     setReplacePdfTargetId(null);
@@ -427,7 +468,7 @@ export default function SupplierInvoiceList({
   /** Ejecuta una acción de fila bajo el candado de la fila y cierra SU diálogo al terminar. */
   const runRowAction = (
     id: number,
-    estatus: "Registrada" | "Cancelada",
+    estatus: "Registrada",
     close: (updater: (current: number | null) => number | null) => void,
   ) => {
     if (!rowLock.acquire(id)) return;
@@ -452,11 +493,13 @@ export default function SupplierInvoiceList({
         onEdit: handleEdit,
         onRegistrar: handleRegistrar,
         onCancel: handleCancel,
+        onDelete: handleDelete,
         onAttachPdf: handleAttachPdf,
         onDownloadMergedPdf: handleDownloadMergedPdf,
         uploadingIds,
         downloadingIds,
         write,
+        cancel,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -617,7 +660,7 @@ export default function SupplierInvoiceList({
               pendingUpdateIds.includes(registrarTargetId),
             )}
             title="Registrar Factura de Proveedor"
-            description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador o cancelarse.`}
+            description={`¿Deseas registrar la factura ${etiqueta(registrarTargetId)}? Se generará su cuenta por pagar (CxP) con el total de la factura y sus importes quedarán congelados: después ya no podrá cambiar el total, el proveedor ni la moneda, ni volver a borrador; solo podrá cancelarse con un motivo.`}
             confirmText={
               rowLock.isPending(registrarTargetId) ? "Registrando..." : "Registrar y generar CxP"
             }
@@ -630,21 +673,42 @@ export default function SupplierInvoiceList({
           />
         )}
 
-        {cancelTargetId !== null && (
+        {/* Cancelar una `Registrada` con el motivo obligatorio (EC-950). */}
+        <CancelReasonDialogFor
+          target={cancelTargetId === null ? null : findFactura(cancelTargetId)}
+          content={supplierInvoiceCancelDialogContent}
+          open={cancelTargetId !== null}
+          onOpenChange={(open) => {
+            if (!open) setCancelTargetId(null);
+          }}
+        />
+
+        {deleteTargetId !== null && (
           <ConfirmDialog
             open={true}
             // En vuelo queda abierta y bloqueada (ver `guardClose`).
             {...rowLock.guardClose(
-              cancelTargetId,
-              () => setCancelTargetId(null),
-              pendingUpdateIds.includes(cancelTargetId),
+              deleteTargetId,
+              () => setDeleteTargetId(null),
+              pendingDeleteIds.includes(deleteTargetId),
             )}
-            title="Cancelar Factura de Proveedor"
-            description={`¿Deseas cancelar el borrador ${etiqueta(cancelTargetId)}? No genera cuenta por pagar. La factura se conserva en el listado con estatus Cancelada y ya no admite cambios.`}
-            confirmText={rowLock.isPending(cancelTargetId) ? "Cancelando..." : "Cancelar factura"}
+            title="Eliminar borrador"
+            description={`¿Deseas eliminar el borrador ${etiqueta(deleteTargetId)}? Todavía no genera cuenta por pagar ni póliza: se borra del listado y no se puede deshacer.`}
+            confirmText={rowLock.isPending(deleteTargetId) ? "Eliminando..." : "Eliminar borrador"}
             cancelText="Volver"
             closeOnConfirm={false}
-            onConfirm={() => runRowAction(cancelTargetId, "Cancelada", setCancelTargetId)}
+            onConfirm={() => {
+              const id = deleteTargetId;
+              const factura = findFactura(id);
+              if (!factura || !rowLock.acquire(id)) return;
+              deleteAsync(factura)
+                // El hook ya avisó del error con su toast.
+                .catch(() => {})
+                .finally(() => {
+                  rowLock.release(id);
+                  setDeleteTargetId((current) => (current === id ? null : current));
+                });
+            }}
             confirmColor="red"
           />
         )}

@@ -57,9 +57,7 @@ export const useUpdateSupplierInvoice = (
       toast.success(
         pedido === "Registrada" && factura.estatus === "Registrada"
           ? `Factura ${etiqueta} registrada: se generó su cuenta por pagar`
-          : pedido === "Cancelada" && factura.estatus === "Cancelada"
-            ? `Factura ${etiqueta} cancelada`
-            : `Factura ${etiqueta} actualizada`,
+          : `Factura ${etiqueta} actualizada`,
       );
       return refetch;
     },
