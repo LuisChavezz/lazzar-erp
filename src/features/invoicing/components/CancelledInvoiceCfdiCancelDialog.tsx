@@ -8,6 +8,9 @@ import {
   type SatCancelMotive,
 } from "@/src/constants/satCancelMotives";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { FormTextarea } from "@/src/components/FormTextarea";
+import { CANCEL_REASON_MAX } from "@/src/features/document-cancellation/constants/documentCancellation";
+import { CancelReasonFormSchema } from "@/src/features/document-cancellation/schemas/cancel-reason.schema";
 import { useCancelCancelledInvoiceCfdi } from "../hooks/useCancelCancelledInvoiceCfdi";
 import {
   CANCEL_CANCELLED_INVOICE_CFDI_LABEL,
@@ -43,9 +46,10 @@ const REQUESTED_SINCE_OPENED_MESSAGE =
 /**
  * Confirmación de "Cancelar CFDI ante el SAT" para una factura que YA está
  * `Cancelada` en el ERP y cuyo CFDI sigue vigente (EC-764). Distinto de
- * `InvoiceCancelDialog`: no pide nota interna (desde EC-806 el backend sí la
- * guardaría en `observaciones`, pero este diálogo no la ofrece) y el texto
- * dice que en el ERP no cambia nada más. Pide el motivo SAT
+ * `InvoiceCancelDialog`: el texto dice que en el ERP no cambia nada más, y el
+ * `motivo` que exige toda cancelación (EC-950) lleva una nota: NO reemplaza el
+ * motivo de cancelación ya registrado (el backend solo lo agrega a
+ * `observaciones`). Su `400` se pinta bajo el campo. Pide el motivo SAT
  * (`SatCancelMotiveSelect`, EC-808): obligatorio y sin valor por defecto;
  * Confirmar queda deshabilitado sin él. Con la cancelación ya solicitada o un
  * intento sin respuesta muestra el motivo fijo, bloqueado.
@@ -59,9 +63,9 @@ const REQUESTED_SINCE_OPENED_MESSAGE =
  * hace el POST: el diálogo sigue abierto con la factura fresca, su aviso y
  * una nota, y pide confirmar de nuevo.
  *
- * El motivo elegido y la factura fresca son estado de ESTA apertura (llevan el
- * `session.id`): una apertura nueva arranca sin motivo sin remontar el
- * `Dialog.Root`.
+ * El motivo SAT elegido, el motivo escrito y la factura fresca son estado de
+ * ESTA apertura (llevan el `session.id`): una apertura nueva arranca en blanco
+ * sin remontar el `Dialog.Root`.
  */
 export function CancelledInvoiceCfdiCancelDialog({
   invoice,
@@ -85,6 +89,12 @@ export function CancelledInvoiceCfdiCancelDialog({
   const requested = target ? isInvoiceCfdiCancellationRequested(target) : false;
   const lockedMotive = target ? getInvoiceLockedSatCancelMotive(target) : null;
   const chosenMotive = choice !== null && choice.sessionId === session.id ? choice.motive : null;
+  // Motivo escrito y su error en ESTA apertura.
+  const [reason, setReason] = useState<{ sessionId: number; text: string; error: string | null } | null>(
+    null,
+  );
+  const motivo = reason !== null && reason.sessionId === session.id ? reason.text : "";
+  const motivoError = reason !== null && reason.sessionId === session.id ? reason.error : null;
   const motivoSat = lockedMotive ?? chosenMotive;
 
   const { cancelCfdi, isCancelling, isIdle } = useCancelCancelledInvoiceCfdi(target?.id ?? 0);
@@ -111,10 +121,16 @@ export function CancelledInvoiceCfdiCancelDialog({
       onConfirm={() => {
         if (!target || motivoSat === null) return;
         const sessionId = session.id;
+        const parsed = CancelReasonFormSchema.safeParse({ motivo });
+        if (!parsed.success) {
+          setReason({ sessionId, text: motivo, error: parsed.error.issues[0]?.message ?? "Motivo inválido" });
+          return;
+        }
         cancelCfdi(
-          { shownRequested: requested, motivoSat },
+          { shownRequested: requested, motivoSat, motivo: parsed.data.motivo },
           {
             onDone: () => onOpenChange(false),
+            onMotivoError: (message) => setReason({ sessionId, text: motivo, error: message }),
             onNeedsConfirmation: (invoice) =>
               setFresh({
                 sessionId,
@@ -130,13 +146,37 @@ export function CancelledInvoiceCfdiCancelDialog({
       }}
     >
       {target && (
-        <SatCancelMotiveSelect
-          id={`cancelled-invoice-cfdi-motivo-sat-${target.id}`}
-          value={chosenMotive}
-          lockedMotive={lockedMotive}
-          disabled={isCancelling}
-          onChange={(motive) => setChoice({ sessionId: session.id, motive })}
-        />
+        <div className="space-y-4">
+          <SatCancelMotiveSelect
+            id={`cancelled-invoice-cfdi-motivo-sat-${target.id}`}
+            value={chosenMotive}
+            lockedMotive={lockedMotive}
+            disabled={isCancelling}
+            onChange={(motive) => setChoice({ sessionId: session.id, motive })}
+          />
+          <div>
+            <FormTextarea
+              id={`cancelled-invoice-cfdi-motivo-${target.id}`}
+              label="Motivo"
+              aria-describedby={`cancelled-invoice-cfdi-motivo-${target.id}-help`}
+              name="motivo"
+              rows={3}
+              placeholder="Explica por qué se cancela el CFDI"
+              value={motivo}
+              maxLength={CANCEL_REASON_MAX}
+              disabled={isCancelling}
+              error={motivoError ? { message: motivoError } : undefined}
+              onChange={(event) => setReason({ sessionId: session.id, text: event.target.value, error: null })}
+            />
+            <p
+              id={`cancelled-invoice-cfdi-motivo-${target.id}-help`}
+              className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
+            >
+              No reemplaza el motivo con que se canceló la factura: queda como nota en sus observaciones. Máximo{" "}
+              {CANCEL_REASON_MAX} caracteres.
+            </p>
+          </div>
+        </div>
       )}
     </StampConfirmDialog>
   );

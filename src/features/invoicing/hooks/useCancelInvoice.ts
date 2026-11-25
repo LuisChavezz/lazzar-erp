@@ -30,6 +30,14 @@ import {
 import { PrecheckError, useMutationLock } from "@/src/hooks/useMutationLock";
 import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { invoiceRetrieveFreshOptions } from "./useInvoiceRetrieveFresh";
+import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+
+/**
+ * El `400 {"motivo": ...}` de `cancelar/` (EC-950): el diálogo lo pinta bajo su
+ * campo, así que no va en toast. Compartido con `useCancelCancelledInvoiceCfdi`.
+ */
+export const cancelInvoiceMotivoError = (error: unknown): string | undefined =>
+  error instanceof PrecheckError ? undefined : drfFieldMessage(error, "motivo");
 
 /**
  * Lo que una cancelación REAL mueve fuera de la factura: las piezas pendientes
@@ -81,9 +89,10 @@ export type CancelInvoiceResult =
   | { outcome: "needs-confirmation"; invoice: Invoice }
   | { outcome: "requested"; message: string };
 
-/** Lo que manda el diálogo: la nota, el motivo SAT y qué decía su aviso del CFDI. */
+/** Lo que manda el diálogo: el motivo, el motivo SAT y qué decía su aviso del CFDI. */
 interface CancelInvoiceVariables {
-  motivo?: string;
+  /** Motivo de la cancelación, obligatorio (nucleo-erp#1356, EC-950). */
+  motivo: string;
   /**
    * Motivo SAT elegido (o el fijo), obligatorio cuando el diálogo mostraba un
    * CFDI vigente (`willInvoiceCancelReachSat`); `null` cuando no iba al SAT.
@@ -227,7 +236,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       if (outcome === "not-cancellable") {
         toast.error(
           invoice.estatus === INVOICE_STATUS.CANCELADA
-            ? `La factura ${label} ya estaba cancelada; no se guardó la nota interna.`
+            ? `La factura ${label} ya estaba cancelada; no se guardó el motivo.`
             : (getInvoiceCancelBlockReason(invoice) ??
               `La factura ${label} ya no puede cancelarse.`),
         );
@@ -243,6 +252,8 @@ export const useCancelInvoice = (invoiceId: number) => {
       );
     },
     onError: (error) => {
+      // El `400` de `motivo` lo pinta el diálogo bajo el campo; no cambió nada.
+      if (cancelInvoiceMotivoError(error)) return;
       toast.error(errorMessageOf(error));
       // Sin respuesta del backend (`isActionOutcomeUnknown`, EC-939) la cancelación
       // pudo aplicarse: como `useCancelCobro`, se relee TODO lo que mueve, no solo
@@ -283,7 +294,7 @@ export const useCancelInvoice = (invoiceId: number) => {
    * diálogo); `onNeedsConfirmation` recibe la factura fresca cuando se timbró,
    * su cancelación quedó solicitada o su motivo SAT quedó fijo después de
    * abrirlo; `onError`, el mismo
-   * mensaje que el toast.
+   * mensaje que el toast; `onMotivoError`, el `400` de `motivo` (sin toast).
    */
   const cancel = (
     variables: CancelInvoiceVariables,
@@ -291,6 +302,7 @@ export const useCancelInvoice = (invoiceId: number) => {
       onSuccess?: () => void;
       onNeedsConfirmation?: (invoice: Invoice) => void;
       onError?: (message: string) => void;
+      onMotivoError?: (message: string) => void;
     } = {},
   ) => {
     if (!isIdle()) return;
@@ -299,7 +311,11 @@ export const useCancelInvoice = (invoiceId: number) => {
         result.outcome === "needs-confirmation"
           ? options.onNeedsConfirmation?.(result.invoice)
           : options.onSuccess?.(),
-      onError: (error) => options.onError?.(errorMessageOf(error)),
+      onError: (error) => {
+        const motivoError = cancelInvoiceMotivoError(error);
+        if (motivoError) options.onMotivoError?.(motivoError);
+        else options.onError?.(errorMessageOf(error));
+      },
     });
   };
 

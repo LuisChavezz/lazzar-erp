@@ -20,10 +20,8 @@ import {
   willInvoiceCancelReachSat,
 } from "../utils/invoiceCancellation";
 import { isInvoiceStamped } from "../utils/invoiceStamping";
-import {
-  CancelInvoiceFormSchema,
-  INVOICE_CANCEL_MOTIVO_MAX_LENGTH,
-} from "../schemas/invoice-cancel.schema";
+import { CANCEL_REASON_MAX } from "@/src/features/document-cancellation/constants/documentCancellation";
+import { CancelReasonFormSchema } from "@/src/features/document-cancellation/schemas/cancel-reason.schema";
 
 /**
  * Lo mínimo para cancelar y nombrar la factura y avisar de su CFDI; sirve
@@ -50,7 +48,9 @@ interface InvoiceCancelDialogProps {
 
 /**
  * Diálogo de CANCELACIÓN de una factura
- * (`POST /finanzas/facturas/{id}/cancelar/`), con motivo opcional.
+ * (`POST /finanzas/facturas/{id}/cancelar/`), con el motivo OBLIGATORIO de toda
+ * cancelación de Finanzas (nucleo-erp#1356, EC-950): el mismo schema y tope
+ * que `CancelReasonDialog`.
  *
  * Lo monta el dueño de la vista (`InvoiceList`, `InvoiceMainSheet`), NO la
  * celda de la fila: al cancelar, el refetch puede sacar la fila de un listado
@@ -60,7 +60,7 @@ interface InvoiceCancelDialogProps {
  * El doble envío lo corta el candado por factura de `useCancelInvoice` (la
  * mutación misma). Solo se cierra cuando la petición termina bien —incluido
  * el caso "ya estaba cancelada", que el hook avisa—; ante un error queda
- * abierto con la nota escrita para reintentar y muestra el mensaje del
+ * abierto con el motivo escrito para reintentar y muestra el mensaje del
  * backend tal cual (además del toast).
  *
  * En una factura timbrada avisa que `cancelar/` cancela primero el CFDI ante
@@ -69,8 +69,9 @@ interface InvoiceCancelDialogProps {
  * (`willInvoiceCancelReachSat`) pide el motivo SAT (`SatCancelMotiveSelect`,
  * obligatorio y sin valor por defecto; fijo y bloqueado si ya hay una
  * solicitud pendiente o un intento sin respuesta) y lo manda como
- * `motivo_sat` (EC-808). La nota interna NO va al SAT: el backend solo la
- * agrega a `observaciones`. Si la factura se timbró después de
+ * `motivo_sat` (EC-808). El `motivo` NO va al SAT: el backend lo guarda como
+ * `motivo_cancelacion` (y una nota en `observaciones`); su `400` se pinta bajo
+ * el campo. Si la factura se timbró después de
  * abrir el diálogo (sin ese aviso), `useCancelInvoice` no hace el POST: el
  * formulario pasa a mostrar la factura fresca con el aviso del SAT y pide
  * confirmar de nuevo.
@@ -153,7 +154,7 @@ interface InvoiceCancelFormProps {
    */
   onSubmit: (
     variables: {
-      motivo: string | undefined;
+      motivo: string;
       motivoSat: SatCancelMotive | null;
       shownStamped: boolean;
       shownRequested: boolean;
@@ -161,17 +162,18 @@ interface InvoiceCancelFormProps {
     callbacks: {
       onNeedsConfirmation: (invoice: InvoiceCancelTarget) => void;
       onError: (message: string) => void;
+      onMotivoError: (message: string) => void;
     },
   ) => void;
 }
 
 /**
  * Contenido del diálogo; se monta nuevo en cada apertura (`key`), así que la
- * nota, el error y la factura mostrada arrancan desde el `target` de esa
+ * motivo, el error y la factura mostrada arrancan desde el `target` de esa
  * apertura. `shown` es lo que el usuario ve: pasa a la factura fresca si se
  * timbró, su cancelación quedó solicitada o su motivo SAT quedó fijo después
- * de abrir. El campo de la nota sigue llamándose `motivo` porque es el nombre
- * del backend; el motivo SAT es otro (`motivoSat`).
+ * de abrir. `motivo` es el nombre del backend; el motivo SAT es otro
+ * (`motivoSat`).
  */
 function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCancelFormProps) {
   const [shown, setShown] = useState(target);
@@ -191,7 +193,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsed = CancelInvoiceFormSchema.safeParse({ motivo });
+    const parsed = CancelReasonFormSchema.safeParse({ motivo });
     const missingMotivoSat = reachesSat && effectiveMotivoSat === null;
     if (missingMotivoSat) setMotivoSatError(MOTIVO_SAT_REQUIRED_MESSAGE);
     if (!parsed.success) {
@@ -202,7 +204,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
     setReconfirmNotice(null);
     onSubmit(
       {
-        motivo: parsed.data.motivo || undefined,
+        motivo: parsed.data.motivo,
         motivoSat: reachesSat ? effectiveMotivoSat : null,
         shownStamped: isInvoiceStamped(shown),
         shownRequested: cancellationRequested,
@@ -220,6 +222,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
           );
         },
         onError: setSubmitError,
+        onMotivoError: setMotivoError,
       },
     );
   };
@@ -254,14 +257,13 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
       )}
       <FormTextarea
         id={motivoId}
-        label="Nota interna (opcional)"
+        label="Motivo"
         aria-describedby={motivoHelpId}
         name="motivo"
         rows={3}
         placeholder="Explica por qué se cancela la factura"
         value={motivo}
-        maxLength={INVOICE_CANCEL_MOTIVO_MAX_LENGTH}
-        forceUppercase
+        maxLength={CANCEL_REASON_MAX}
         disabled={isPending}
         error={motivoError ? { message: motivoError } : undefined}
         onChange={(event) => {
@@ -270,7 +272,7 @@ function InvoiceCancelForm({ target, isPending, onClose, onSubmit }: InvoiceCanc
         }}
       />
       <p id={motivoHelpId} className="-mt-2 ml-1 text-xs text-slate-500 dark:text-slate-400">
-        Se guarda en las observaciones de la factura; no se envía al SAT.
+        Queda como motivo de la cancelación; no se envía al SAT. Máximo {CANCEL_REASON_MAX} caracteres.
       </p>
       <FormErrorBanner message={submitError} />
       <div className="flex justify-end gap-3 pt-1">

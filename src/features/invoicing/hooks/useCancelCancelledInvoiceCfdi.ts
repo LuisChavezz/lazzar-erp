@@ -17,6 +17,7 @@ import {
 } from "@/src/constants/satCancelMotives";
 import { fetchFreshInvoice } from "./invoiceActionMutation";
 import {
+  cancelInvoiceMotivoError,
   cancelInvoiceMutationErrorMessage,
   cancelInvoiceMutationKey,
   postInvoiceCancel,
@@ -44,8 +45,14 @@ type CancelCancelledInvoiceCfdiResult =
 const labelOf = (invoice: { id: number; folio: string | null }) =>
   invoice.folio || `#${invoice.id}`;
 
-/** Lo que manda el diálogo. Los dos campos son obligatorios: omitir uno no compila. */
+/** Lo que manda el diálogo. Los tres campos son obligatorios: omitir uno no compila. */
 interface CancelCancelledInvoiceCfdiVariables {
+  /**
+   * Motivo obligatorio de toda cancelación (nucleo-erp#1356, EC-950). En una
+   * factura ya `Cancelada` el backend NO lo guarda como `motivo_cancelacion`
+   * (no reescribe el rastro): solo va a la nota de `observaciones`.
+   */
+  motivo: string;
   /** ¿El diálogo mostraba la cancelación ya solicitada (con su aviso)? */
   shownRequested: boolean;
   /** Motivo SAT elegido, o el fijo: este caso siempre cancela un CFDI vigente. */
@@ -67,9 +74,9 @@ interface CancelCancelledInvoiceCfdiVariables {
  *   elegido (`isSatCancelMotiveLockedElsewhere`), tampoco: `needs-confirmation`,
  *   como en `useCancelInvoice`. Un CFDI que ya estaba cancelado es un aviso ℹ️, no
  *   un error: lo que se buscaba ya ocurrió.
- * - Manda `motivo_sat` (obligatorio: siempre cancela un CFDI vigente). No
- *   manda la nota interna `motivo`: el diálogo no la pide (el backend sí la
- *   guardaría en `observaciones` desde EC-806).
+ * - Manda `motivo_sat` (obligatorio: siempre cancela un CFDI vigente) y el
+ *   `motivo` que exige toda cancelación (EC-950). Su `400` va bajo el campo del
+ *   diálogo, sin toast, y el diálogo sigue abierto.
  * - Un `200` no basta: el backend también responde `200` sin efecto. Solo
  *   `cfdi_cancelado === true` en la respuesta es éxito; si no, se avisa que
  *   no se confirmó.
@@ -89,7 +96,7 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
     CancelCancelledInvoiceCfdiVariables
   >({
     mutationKey,
-    mutationFn: async ({ shownRequested, motivoSat }) => {
+    mutationFn: async ({ shownRequested, motivoSat, motivo }) => {
       const current = await fetchFreshInvoice(queryClient, invoiceId);
       if (!isCancelledInvoiceCfdiCancellable(current)) {
         return { outcome: "not-cancellable", invoice: current };
@@ -100,7 +107,7 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       ) {
         return { outcome: "needs-confirmation", invoice: current };
       }
-      const posted = await postInvoiceCancel({ id: invoiceId, motivoSat });
+      const posted = await postInvoiceCancel({ id: invoiceId, motivo, motivoSat });
       return posted.outcome === "requested"
         ? posted
         : { outcome: "done", invoice: posted.invoice };
@@ -128,6 +135,7 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
       }
     },
     onError: (error) => {
+      if (cancelInvoiceMotivoError(error)) return;
       toast.error(
         cancelInvoiceMutationErrorMessage(error, CANCELLED_INVOICE_CFDI_CANCEL_UNCONFIRMED_MESSAGE),
       );
@@ -146,11 +154,16 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
    * (consulta síncrona a la caché). `shownRequested`: si el diálogo mostraba
    * la cancelación ya solicitada; `motivoSat`: el motivo que va al SAT. `onDone` corre al terminar con cualquier
    * resultado salvo `needs-confirmation`, que en su lugar pasa la factura
-   * fresca a `onNeedsConfirmation`.
+   * fresca a `onNeedsConfirmation`, y el `400` de `motivo`, que pasa su
+   * mensaje a `onMotivoError` (el diálogo sigue abierto).
    */
   const cancelCfdi = (
     variables: CancelCancelledInvoiceCfdiVariables,
-    options: { onDone?: () => void; onNeedsConfirmation?: (invoice: Invoice) => void } = {},
+    options: {
+      onDone?: () => void;
+      onNeedsConfirmation?: (invoice: Invoice) => void;
+      onMotivoError?: (message: string) => void;
+    } = {},
   ) => {
     if (!isIdle()) return;
     mutation.mutate(
@@ -160,7 +173,11 @@ export const useCancelCancelledInvoiceCfdi = (invoiceId: number) => {
           result.outcome === "needs-confirmation"
             ? options.onNeedsConfirmation?.(result.invoice)
             : options.onDone?.(),
-        onError: () => options.onDone?.(),
+        onError: (error) => {
+          const motivoError = cancelInvoiceMotivoError(error);
+          if (motivoError) options.onMotivoError?.(motivoError);
+          else options.onDone?.();
+        },
       },
     );
   };
