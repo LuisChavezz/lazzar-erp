@@ -185,10 +185,16 @@ export function ColumnHeaderFilter<TData>({
   // filas: ver `HeaderFilterCell` en `withHeaderFilters`) y se respalda en la
   // tabla, porque `isLoading` sí lo desmonta (skeleton) y al volver arranca
   // desde ese respaldo.
-  const rememberFilterOption =
-    tableMode.mode === 'client' ? tableMode.rememberFilterOption : undefined;
+  //
+  // Un ícono con `serverFilterKey` fuera del modo servidor no se pinta (ver
+  // abajo) y tampoco recuerda ni reporta nada: esos respaldos van por
+  // `column.id`, el del filtro PRINCIPAL de la columna, y su etiqueta
+  // pisaría la de ese filtro en el chip.
+  const isDetachedOverride = serverFilterKeyProp !== undefined && serverFilters === undefined;
+  const reportsToClientTable = tableMode.mode === 'client' && !isDetachedOverride;
+  const rememberFilterOption = reportsToClientTable ? tableMode.rememberFilterOption : undefined;
   const [rememberedOption, setRememberedOption] = useState<ColumnFilterOption | undefined>(() =>
-    tableMode.mode === 'client' ? tableMode.getRememberedFilterOption?.(column.id) : undefined,
+    reportsToClientTable ? tableMode.getRememberedFilterOption?.(column.id) : undefined,
   );
   const { options, active: activeOption } = pinActiveFilterOption(
     optionsProp,
@@ -205,8 +211,7 @@ export function ColumnHeaderFilter<TData>({
   // Etiqueta del valor activo para el chip "Filtrado por" de `DataTable`
   // (modo cliente). Sin opción que coincida ni recuerdo de ella (catálogo aún
   // cargando) no se reporta nada y el chip muestra solo el nombre de la columna.
-  const reportFilterValueLabel =
-    tableMode.mode === 'client' ? tableMode.reportFilterValueLabel : undefined;
+  const reportFilterValueLabel = reportsToClientTable ? tableMode.reportFilterValueLabel : undefined;
   const activeLabel = activeOption?.label;
   useEffect(() => {
     reportFilterValueLabel?.(column.id, activeLabel);
@@ -214,6 +219,23 @@ export function ColumnHeaderFilter<TData>({
   useEffect(() => {
     if (rememberedOption) rememberFilterOption?.(column.id, rememberedOption);
   }, [rememberFilterOption, column.id, rememberedOption]);
+  // Solo en desarrollo: el aviso de `DataTable` valida el `meta.serverFilter`
+  // de cada columna, pero no ve esta clave (vive en el encabezado). Una clave
+  // que la lista no conoce dejaría el filtro sin efecto: se avisa igual.
+  const unknownServerFilterKey =
+    process.env.NODE_ENV !== 'production' &&
+    serverFilterKeyProp !== undefined &&
+    serverFilters?.keys !== undefined &&
+    !serverFilters.keys.includes(serverFilterKeyProp)
+      ? serverFilterKeyProp
+      : undefined;
+  useEffect(() => {
+    if (unknownServerFilterKey) {
+      console.warn(
+        `[ColumnHeaderFilter] columna "${column.id}": serverFilterKey "${unknownServerFilterKey}" no es un filtro de la lista`,
+      );
+    }
+  }, [unknownServerFilterKey, column.id]);
   const searchPlaceholder =
     (typeof searchable === 'object' ? searchable.placeholder : undefined) ?? 'Buscar…';
 
@@ -271,7 +293,7 @@ export function ColumnHeaderFilter<TData>({
 
   if (tableMode.mode === 'server-pagination') return null;
   if (tableMode.mode === 'server' && serverFilters === undefined) return null;
-  if (serverFilterKeyProp !== undefined && serverFilters === undefined) return null;
+  if (isDetachedOverride) return null;
 
   // Opciones a pintar. Sin buscador: todas, en su orden (como siempre). Con
   // buscador: "Todos" y la seleccionada fijas arriba, y después las
