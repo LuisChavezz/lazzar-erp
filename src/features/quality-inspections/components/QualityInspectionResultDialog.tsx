@@ -31,6 +31,7 @@ export function QualityInspectionResultDialog({
   inspection,
   isAdmin,
   canRevert,
+  ordenCompraId,
   onClose,
 }: {
   inspection: QualityInspection | null;
@@ -38,6 +39,8 @@ export function QualityInspectionResultDialog({
   isAdmin: boolean;
   /** Admin y la inspección revertible (`isQualityInspectionRevertible`). */
   canRevert: boolean;
+  /** OC de la recepción (`orden_compra` de su fila), para escribir su estatus al revertir. */
+  ordenCompraId: number | null;
   onClose: () => void;
 }) {
   const open = inspection !== null;
@@ -60,7 +63,7 @@ export function QualityInspectionResultDialog({
           </Button>
         )}
         <WmsCancelDialog
-          content={qualityRevertDialogContent(data, onClose)}
+          content={qualityRevertDialogContent(data, ordenCompraId, onClose)}
           open={isRevertOpen}
           onOpenChange={setIsRevertOpen}
         />

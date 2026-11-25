@@ -236,6 +236,7 @@ export function QualityInspectionView() {
           viewing !== null &&
           isQualityInspectionRevertible(viewing, receiptById.get(viewing.recepcion)?.estatus)
         }
+        ordenCompraId={viewing ? (receiptById.get(viewing.recepcion)?.orden_compra ?? null) : null}
         onClose={() => setViewing(null)}
       />
     </div>
