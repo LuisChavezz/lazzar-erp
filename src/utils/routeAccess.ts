@@ -1,6 +1,6 @@
 import { routePermissions } from "../constants/routePermissions";
 import type { PermissionContext } from "../interfaces/permission-context.interface";
-import { hasAnyPermission } from "./permissions";
+import { hasAnyPermission, type PermissionRequirement } from "./permissions";
 import { matchesRoutePrefix } from "./matchesRoutePrefix";
 
 /**
@@ -12,6 +12,17 @@ export function findRoutePermissionRule(pathname: string) {
   return routePermissions.find(
     ({ prefix }) => matchesRoutePrefix(pathname, prefix),
   );
+}
+
+/**
+ * Requisito de permiso de `pathname` según el proxy: el `permission` de la
+ * regla de `findRoutePermissionRule` (un código, o un arreglo que se cumple con
+ * CUALQUIERA). `undefined` si la ruta no tiene regla. Es la ÚNICA fuente del
+ * permiso de las hojas de navegación (`appRoutes`, EC-960): así el sidebar
+ * nunca ofrece un enlace que el proxy rebote.
+ */
+export function getRouteRequirement(pathname: string): PermissionRequirement | undefined {
+  return findRoutePermissionRule(pathname)?.permission;
 }
 
 /**
