@@ -26,10 +26,11 @@ import {
   DOCUMENT_PDF_FONT_FAMILY,
   DOCUMENT_PDF_FONT_FILES,
   DOCUMENT_PDF_FONT_STACK,
+  documentPdfFontStack,
   documentPdfFontRegistrations,
 } from "./documentPdfFontLoader";
 
-export { DOCUMENT_PDF_FONT_FAMILY, DOCUMENT_PDF_FONT_STACK };
+export { DOCUMENT_PDF_FONT_FAMILY, DOCUMENT_PDF_FONT_STACK, documentPdfFontStack };
 
 if (typeof window === "undefined") {
   documentPdfFontRegistrations(
@@ -49,10 +50,10 @@ export function withDocumentPdfFont<Styles extends Record<string, PdfStyleEntry>
   return Object.fromEntries(
     Object.entries(styles).map(([name, style]) => {
       if (style.fontFamily === "Helvetica-Bold") {
-        return [name, { ...style, fontFamily: DOCUMENT_PDF_FONT_STACK, fontWeight: "bold" }];
+        return [name, { ...style, fontFamily: documentPdfFontStack(), fontWeight: "bold" }];
       }
       if (style.fontFamily === "Helvetica") {
-        return [name, { ...style, fontFamily: DOCUMENT_PDF_FONT_STACK }];
+        return [name, { ...style, fontFamily: documentPdfFontStack() }];
       }
       return [name, style];
     }),
