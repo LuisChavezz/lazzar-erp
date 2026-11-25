@@ -10,6 +10,7 @@ import { getPedidoEstatusBadge } from '../constants/pedidoStatus';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
 import type { PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { PedidoFolioLink } from './PedidoFolioLink';
+import { PedidoRetenidoBadge } from './PedidoRetenidoBadge';
 import {
   PedidoCatalogHeaderFilter,
   PedidoEstatusHeaderFilter,
@@ -86,6 +87,8 @@ export function createProcurementOrderColumns({
               {/* Estatus como badge discreto (mismo que Recepciones) junto a la OC. */}
               <div className="flex items-center gap-1 min-w-0">
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${badge.cls}`}>{badge.label}</span>
+                {/* Retenido por Mesa de Control (EC-946): solo se avisa, sin acciones. */}
+                <PedidoRetenidoBadge pedido={order} />
                 {hasMeaningfulOc(order.oc) && (
                   <span
                     className="inline-flex max-w-32 items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
