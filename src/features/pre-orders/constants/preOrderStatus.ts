@@ -65,7 +65,8 @@ export const isClosedPreOrderStatus = (s: PreOrderStatus) =>
   s === "convertida" || s === "cancelada" || s === "rechazada";
 /**
  * ¿Su OP ligada está cancelada? (`op_estatus`, EC-968). Una pre-orden Convertida
- * con su OP cancelada se puede cancelar para que el pedido genere otra.
+ * con su OP cancelada se puede cancelar para poder generar otra (el pedido crea
+ * una nueva; un resurtido, planeación).
  */
 export const isPreOrderOpCancelled = (s: PreOrderStatus, opEstatus?: number | null) =>
   s === "convertida" && opEstatus === PRODUCTION_ORDER_STATUS_CODE.CANCELLED;
@@ -80,7 +81,7 @@ export const canCancelPreOrder = (s: PreOrderStatus, opEstatus?: number | null) 
 /** Qué sigue, con el caso de la Convertida cuya OP se canceló. */
 export const preOrderNextStep = (s: PreOrderStatus, opEstatus?: number | null) =>
   isPreOrderOpCancelled(s, opEstatus)
-    ? "La OP se canceló: cancela la pre-orden para que el pedido genere otra."
+    ? "La OP se canceló: cancela la pre-orden para poder generar otra."
     : PRE_ORDER_NEXT_STEP[s];
 export const canAcceptPreOrder = (s: PreOrderStatus) => s === "pendiente_aceptar";
 
