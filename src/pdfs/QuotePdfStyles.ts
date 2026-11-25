@@ -16,13 +16,13 @@
  * a Arimo los bloques
  * compartidos de `basePdfStyles`; los de aquí ya la nombran. Siempre como la
  * pila `DOCUMENT_PDF_FONT_STACK` (Arimo y su respaldo de símbolos, EC-958),
- * nunca la familia suelta: así ✓, ⇒ o ★ se imprimen sin cambiar el alto de
- * línea.
+ * en una copia por estilo (`documentPdfFontStack()`), nunca la familia
+ * suelta: así ✓, ⇒ o ★ se imprimen sin cambiar el alto de línea.
  */
 import { StyleSheet } from "@react-pdf/renderer";
 import { PDF_COLORS as C } from "./QuotePdfColors";
 import { basePdfStyles } from "./shared/BasePdfStyles";
-import { DOCUMENT_PDF_FONT_STACK, withDocumentPdfFont } from "./shared/documentPdfFonts";
+import { documentPdfFontStack, withDocumentPdfFont } from "./shared/documentPdfFonts";
 
 const base = basePdfStyles(C);
 
@@ -39,7 +39,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   quoteIdText: {
     fontSize: 14,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.white,
   },
@@ -53,7 +53,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   statusText: {
     fontSize: 7.5,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.badgeText,
   },
@@ -85,7 +85,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   shippingValue: {
     fontSize: 8.5,
     color: C.textPrimary,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     lineHeight: 1.35,
   },
@@ -159,21 +159,21 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   addonSectionHeaderTextEmbroidery: {
     fontSize: 7,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.addonEmbText,
     letterSpacing: 1,
   },
   addonSectionHeaderTextReflective: {
     fontSize: 7,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.addonReflText,
     letterSpacing: 1,
   },
   addonSectionHeaderTextSleeve: {
     fontSize: 7,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.addonSleeveText,
     letterSpacing: 1,
@@ -192,7 +192,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   embGroupLabel: {
     fontSize: 7.5,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.embBadgeText,
     backgroundColor: C.embBadgeBg,
@@ -234,7 +234,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   embLocationTitle: {
     fontSize: 7.5,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.textPrimary,
   },
@@ -288,7 +288,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   reflGroupHeaderLabel: {
     fontSize: 7,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.reflHeaderText,
   },
@@ -316,7 +316,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   reflSpecLabel: {
     fontSize: 6,
     color: C.reflLabelText,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     letterSpacing: 0.5,
   },
@@ -341,7 +341,7 @@ export const pdfStyles = withDocumentPdfFont(StyleSheet.create({
   },
   sleeveBadgeText: {
     fontSize: 7.5,
-    fontFamily: DOCUMENT_PDF_FONT_STACK,
+    fontFamily: documentPdfFontStack(),
     fontWeight: "bold",
     color: C.sleeveText,
   },

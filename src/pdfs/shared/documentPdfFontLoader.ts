@@ -35,10 +35,21 @@ export const DOCUMENT_PDF_FALLBACK_FONT_FAMILY = "PdfSymbolsFallback";
  * Pila de familias de los estilos de la base y de la cotización: textkit elige
  * por punto de código la primera que tenga el glifo. Es la única fuente de
  * verdad para `fontFamily`; ninguna hoja de estilos debe nombrar las familias
- * por separado. (`string[]` y no tupla `readonly`: es el tipo que acepta el
- * `fontFamily` de react-pdf; textkit la copia antes de usarla.)
+ * por separado. Congelada: los estilos usan una copia propia
+ * (`documentPdfFontStack()`), así que ni un render ni react-pdf pueden
+ * modificar la de todos.
  */
-export const DOCUMENT_PDF_FONT_STACK: string[] = [DOCUMENT_PDF_FONT_FAMILY, DOCUMENT_PDF_FALLBACK_FONT_FAMILY];
+export const DOCUMENT_PDF_FONT_STACK: readonly string[] = Object.freeze([
+  DOCUMENT_PDF_FONT_FAMILY,
+  DOCUMENT_PDF_FALLBACK_FONT_FAMILY,
+]);
+
+/**
+ * Una copia nueva de la pila para el `fontFamily` de un estilo: react-pdf pide
+ * un `string[]` mutable, y textkit hoy la copia antes de agregarle Helvetica,
+ * pero no hay que depender de eso.
+ */
+export const documentPdfFontStack = (): string[] => [...DOCUMENT_PDF_FONT_STACK];
 
 /**
  * Los archivos de `public/fonts/pdf/` que se registran, con su familia y peso.
