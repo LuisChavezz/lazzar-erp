@@ -12,7 +12,6 @@ import { drfActionErrorMessage } from "./drfWriteErrors";
  *  - Solo producción: superusuario, admin de empresa o un rol del departamento
  *    PRODUCCION; el resto recibe `400 {"permiso": [...]}`. El frontend lo
  *    aproxima con el código `E-` de la sección (ver `hasProductionPermission`).
- *  - `prioridad` solo 1, 2 o 3; otro entero responde `400`.
  *  - Una orden en `7` (Cancelado) ya no se edita: cualquier `PATCH` responde
  *    `400` en el campo de estatus.
  *
@@ -29,13 +28,6 @@ const WORK_ORDER_STATUS_CODES: readonly WorkOrderStatus[] = [1, 2, 3, 4, 5, 6, 7
 
 /** Cancelado: sin salida, y nunca ofrecido como destino. */
 const CANCELLED_STATUS: WorkOrderStatus = 7;
-
-/**
- * Las únicas prioridades que ofrece el selector de la ficha (1 Alta, 2 Media,
- * 3 Baja). Son también las únicas que acepta el `PATCH` del backend
- * (nucleo-erp #786); cualquier otro entero responde `400`.
- */
-export const WORK_ORDER_PRIORITY_CODES = [1, 2, 3] as const;
 
 /**
  * ¿La orden está en un estatus terminal? Es la fuente ÚNICA de esa pregunta:
