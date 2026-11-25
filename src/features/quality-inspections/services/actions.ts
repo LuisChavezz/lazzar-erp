@@ -4,6 +4,7 @@ import type {
   CreateQualityInspectionResponse,
   QualityInspection,
   QualityInspectionOnboardingData,
+  RevertQualityInspectionResponse,
 } from "../interfaces/quality-inspection.interface";
 
 // Recepciones en `EN_CALIDAD` de la empresa (máx. 50) + catálogo de inspectores.
@@ -23,6 +24,23 @@ export const createQualityInspection = async (
   const { data } = await v1_api.post<CreateQualityInspectionResponse>(
     "/compras/calidad-inspecciones/onboarding/",
     payload,
+  );
+  return data;
+};
+
+// Revierte una inspección liberada por error (EC-947, solo admin de empresa o
+// superusuario): saca del almacén lo que entró, la inspección queda `anulada` y
+// la recepción vuelve a En calidad. Motivo obligatorio.
+export const revertQualityInspection = async ({
+  id,
+  motivo,
+}: {
+  id: number;
+  motivo: string;
+}): Promise<RevertQualityInspectionResponse> => {
+  const { data } = await v1_api.post<RevertQualityInspectionResponse>(
+    `/compras/calidad-inspecciones/${id}/revertir/`,
+    { motivo },
   );
   return data;
 };

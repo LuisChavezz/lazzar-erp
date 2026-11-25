@@ -111,10 +111,23 @@ export interface QualityInspection {
   inspector: number;
   inspector_nombre: string | null;
   fecha: string;
-  estado: "pendiente" | "aprobada" | "rechazada" | "aprobada_condicion";
+  /**
+   * `anulada` (EC-947): un admin revirtió la inspección
+   * (`calidad-inspecciones/{id}/revertir/`); lo que liberó salió del almacén y
+   * la recepción volvió a En calidad.
+   */
+  estado: "pendiente" | "aprobada" | "rechazada" | "aprobada_condicion" | "anulada";
   estado_label: string;
   observaciones: string | null;
   detalles: QualityInspectionDetalle[];
+  /**
+   * Datos de la reversa (nucleo-erp#1353), solo lectura. `""`/`null` en una
+   * inspección no anulada; opcionales por si un backend anterior no los manda.
+   * `anulada_por` es solo el id del usuario (sin nombre): no se muestra.
+   */
+  motivo_anulacion?: string;
+  fecha_anulacion?: string | null;
+  anulada_por?: number | null;
   pedido_id?: number | null;
   pedido_folio?: string | null;
   pedidos?: QualityPedidoRef[];
@@ -126,6 +139,21 @@ export interface QualityInspection {
  */
 export interface CreateQualityInspectionResponse {
   calidad_inspeccion: QualityInspection;
+  movimiento_id: number | null;
+  movimiento_inventario_id: number | null;
+}
+
+/**
+ * Respuesta 200 de `POST calidad-inspecciones/{id}/revertir/` (EC-947): la
+ * inspección ya anulada, el estatus al que volvió la recepción (4, En calidad)
+ * y el de su OC (`null` si la recepción es de una OP). `movimiento_id` es el
+ * `AuditoriaEvento` de la SALIDA y `movimiento_inventario_id` la SALIDA misma;
+ * ambos `null` si la inspección no había metido nada al almacén.
+ */
+export interface RevertQualityInspectionResponse {
+  calidad_inspeccion: QualityInspection;
+  recepcion_estatus: number;
+  orden_compra_estatus: number | null;
   movimiento_id: number | null;
   movimiento_inventario_id: number | null;
 }

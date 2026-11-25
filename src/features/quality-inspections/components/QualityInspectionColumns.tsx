@@ -162,6 +162,8 @@ export const QUALITY_ESTADO_CFG: Record<string, StatusBadgeConfigEntry> = {
   aprobada_condicion: { cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300", dot: "bg-amber-500", label: "Aprobada con condición" },
   rechazada: { cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300", dot: "bg-rose-500", label: "Rechazada" },
   pendiente: { cls: "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300", dot: "bg-slate-400", label: "Pendiente" },
+  // EC-947: revertida por un admin; lo liberado salió del almacén.
+  anulada: { cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-500/10 dark:text-zinc-400", dot: "bg-zinc-400", label: "Anulada" },
 };
 
 const doneHelper = createColumnHelper<QualityDoneRow>();

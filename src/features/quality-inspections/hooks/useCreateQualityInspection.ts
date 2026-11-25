@@ -15,12 +15,13 @@ const FALLBACK_ERROR = "Error al registrar la inspección de calidad";
 export const CREATE_QUALITY_INSPECTION_MUTATION_KEY = ["create-quality-inspection"] as const;
 
 /**
- * Queries que cambian al inspeccionar una recepción. El POST, en una sola
+ * Queries que cambian al inspeccionar una recepción (y al revertir la
+ * inspección, EC-947, que deshace lo mismo). El POST, en una sola
  * transacción: cierra la recepción (`CERRADA`), abona lo aprobado a
  * `Existencia` + `MovimientoInventario`, y recalcula el estatus de su OC/OP
  * (lo rechazado vuelve a quedar pendiente y puede reabrirla).
  */
-const AFFECTED_QUERY_KEYS: readonly (readonly string[])[] = [
+export const QUALITY_INSPECTION_AFFECTED_QUERY_KEYS: readonly (readonly string[])[] = [
   QUALITY_INSPECTION_ONBOARDING_KEY,
   ["quality-inspections"],
   // Estatus de la recepción: listado WMS, listado de Compras y su detalle.
@@ -53,7 +54,7 @@ export const useCreateQualityInspection = ({
     mutationKey: CREATE_QUALITY_INSPECTION_MUTATION_KEY,
     mutationFn: (payload: CreateQualityInspectionPayload) => createQualityInspection(payload),
     onSuccess: (data) => {
-      AFFECTED_QUERY_KEYS.forEach((queryKey) => {
+      QUALITY_INSPECTION_AFFECTED_QUERY_KEYS.forEach((queryKey) => {
         void queryClient.invalidateQueries({ queryKey });
       });
       void invalidateStockQueries(queryClient);

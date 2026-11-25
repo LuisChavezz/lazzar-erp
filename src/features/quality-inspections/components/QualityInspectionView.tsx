@@ -21,6 +21,7 @@ import {
 } from "./QualityInspectionColumns";
 import { QualityInspectionDialog } from "./QualityInspectionDialog";
 import { QualityInspectionResultDialog } from "./QualityInspectionResultDialog";
+import { isQualityInspectionRevertible } from "../utils/qualityRevertAction";
 import {
   QUALITY_DONE_EXPORT_COLUMNS,
   QUALITY_PENDING_EXPORT_COLUMNS,
@@ -62,6 +63,9 @@ export function QualityInspectionView() {
   // nucleo-erp#1353 (403 sin él).
   const { data: session } = useSession();
   const canSubmit = hasPermission("C-WMS-RECEPCIONES", session?.user);
+  // Revertir calidad (EC-947): solo admin de empresa o superusuario, que es
+  // exactamente lo que `role === "admin"` resume (`getSessionRole`).
+  const isAdmin = session?.user?.role === "admin";
 
   // Diálogos aquí, no en la celda: la fila sale de "Pendientes" al registrar.
   const [selected, setSelected] = useState<QualityPendingReception | null>(null);
@@ -224,7 +228,16 @@ export function QualityInspectionView() {
         canSubmit={canSubmit}
         onClose={() => setSelected(null)}
       />
-      <QualityInspectionResultDialog inspection={viewing} onClose={() => setViewing(null)} />
+      <QualityInspectionResultDialog
+        inspection={viewing}
+        isAdmin={isAdmin}
+        canRevert={
+          isAdmin &&
+          viewing !== null &&
+          isQualityInspectionRevertible(viewing, receiptById.get(viewing.recepcion)?.estatus)
+        }
+        onClose={() => setViewing(null)}
+      />
     </div>
   );
 }
