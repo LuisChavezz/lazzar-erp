@@ -1,4 +1,5 @@
 import type { StatusBadgeConfigEntry } from "@/src/components/StatusBadge";
+import { PRODUCTION_ORDER_STATUS_CODE } from "@/src/features/production-orders/constants/productionOrderStatus";
 import type { PreOrderStatus } from "../interfaces/pre-order.interface";
 
 /** Badge por estatus. */
@@ -62,7 +63,25 @@ export const canConfirmPreOrder = (s: PreOrderStatus) =>
 export const canCreateOpFromPreOrder = (s: PreOrderStatus) => s === "lista";
 export const isClosedPreOrderStatus = (s: PreOrderStatus) =>
   s === "convertida" || s === "cancelada" || s === "rechazada";
-export const canCancelPreOrder = (s: PreOrderStatus) => !isClosedPreOrderStatus(s);
+/**
+ * ¿Su OP ligada está cancelada? (`op_estatus`, EC-968). Una pre-orden Convertida
+ * con su OP cancelada se puede cancelar para que el pedido genere otra.
+ */
+export const isPreOrderOpCancelled = (s: PreOrderStatus, opEstatus?: number | null) =>
+  s === "convertida" && opEstatus === PRODUCTION_ORDER_STATUS_CODE.CANCELLED;
+
+/**
+ * ¿Se ofrece "Cancelar pre-orden"? Abierta, o Convertida con su OP cancelada:
+ * la misma regla que `pre-ordenes/{id}/cancelar/` (nucleo-erp#1355, EC-968).
+ */
+export const canCancelPreOrder = (s: PreOrderStatus, opEstatus?: number | null) =>
+  !isClosedPreOrderStatus(s) || isPreOrderOpCancelled(s, opEstatus);
+
+/** Qué sigue, con el caso de la Convertida cuya OP se canceló. */
+export const preOrderNextStep = (s: PreOrderStatus, opEstatus?: number | null) =>
+  isPreOrderOpCancelled(s, opEstatus)
+    ? "La OP se canceló: cancela la pre-orden para que el pedido genere otra."
+    : PRE_ORDER_NEXT_STEP[s];
 export const canAcceptPreOrder = (s: PreOrderStatus) => s === "pendiente_aceptar";
 
 /** Avance de un renglón de resurtido. */

@@ -25,7 +25,8 @@ import { usePreOrderDetail } from "../hooks/usePreOrders";
 import { usePreOrderActions } from "../hooks/usePreOrderActions";
 import { isDraftOc, usePreOrderDraftOcQty } from "../hooks/usePreOrderDraftOcQty";
 import {
-  PRE_ORDER_NEXT_STEP,
+  preOrderNextStep,
+  isPreOrderOpCancelled,
   PRE_ORDER_STATUS_CFG,
   LINE_AVANCE_CFG,
   canAcceptPreOrder,
@@ -166,7 +167,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-5 py-4 mb-6">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-800 dark:text-white">
-            {PRE_ORDER_NEXT_STEP[data.estatus]}
+            {preOrderNextStep(data.estatus, data.op_estatus)}
           </p>
           <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <div className="flex gap-1">
@@ -203,6 +204,8 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               >
                 {data.op_folio || `#${data.op}`}
               </AccessibleLink>
+              {/* Estatus de la OP ligada (EC-968): sobre todo, si se canceló. */}
+              {data.op_estatus_display && <> · {data.op_estatus_display}</>}
             </p>
           )}
         </div>
@@ -247,7 +250,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
               Crear OP
             </button>
           )}
-          {canCancelPreOrder(data.estatus) && (
+          {canCancelPreOrder(data.estatus, data.op_estatus) && (
             <button
               type="button"
               className={BTN_GHOST}
@@ -531,7 +534,11 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancelar pre-orden"
-        description={`La pre-orden ${folio} dejará de avanzar. Esta acción no se puede deshacer.`}
+        description={
+          isPreOrderOpCancelled(data.estatus, data.op_estatus)
+            ? `Su OP ${data.op_folio || `#${data.op}`} ya está cancelada. Al cancelar la pre-orden ${folio}, el pedido puede generar una nueva. Esta acción no se puede deshacer.`
+            : `La pre-orden ${folio} dejará de avanzar. Esta acción no se puede deshacer.`
+        }
         confirmText="Cancelar pre-orden"
         cancelText="Volver"
         confirmColor="red"

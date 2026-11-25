@@ -20,6 +20,10 @@ export interface PreOrderRef {
   id: number;
   estatus: PreOrderStatus;
   estatus_display: string;
+  /** `estatus_op` de la OP ligada (`7` Cancelado); `null` sin OP (EC-968). */
+  op_estatus?: number | null;
+  /** Su etiqueta ("Cancelado"); `null` sin OP. */
+  op_estatus_display?: string | null;
   semaforo?: PreOrderSemaforo | null;
   fecha_estimada_material?: string | null;
 }
@@ -67,6 +71,12 @@ export interface PreOrderListItem {
   estatus_display: string;
   op: number | null;
   op_folio: string | null;
+  /**
+   * `estatus_op` de la OP ligada (`7` Cancelado) y su etiqueta; `null` sin OP
+   * (EC-968). Con `7`, una Convertida se puede cancelar (`canCancelPreOrder`).
+   */
+  op_estatus?: number | null;
+  op_estatus_display?: string | null;
   piezas_total: number;
   tallas_total: number;
   fecha_confirmacion_existencias: string | null;

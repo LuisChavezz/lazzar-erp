@@ -10,6 +10,7 @@ import {
   crearOpDesdePreOrden,
 } from "../services/actions";
 import type { CrearOpBody } from "../interfaces/pre-order.interface";
+import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
 /**
  * Primer texto dentro de un error anidado de DRF, p. ej. el de `crear-op`:
@@ -79,6 +80,8 @@ export const usePreOrderActions = (id: number) => {
     mutationFn: () => cancelarPreOrden(id),
     onSuccess: () => {
       toast.success("Pre-orden cancelada.");
+      // El pedido 360° resume su pre-orden (`pre_orden`, `documentos/`).
+      void invalidatePedidoProgress(queryClient);
       return refresh();
     },
     onError: (error) => toast.error(errorText(error, "No se pudo cancelar la pre-orden.")),
