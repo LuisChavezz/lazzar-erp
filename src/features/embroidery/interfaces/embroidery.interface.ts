@@ -91,8 +91,18 @@ export interface EmbroideryOrderLine {
   /** FK a la orden de bordado contenedora (`OrdenesBordado.id`). */
   ob: number;
   pedido_detalle: number;
-  producto: number;
-  producto_nombre: string | null;
+  /** `null` en un renglón de MUESTRA con SKU, sin producto de catálogo. */
+  producto: number | null;
+  /**
+   * Se OMITE (no llega en `null`) en un renglón sin producto: es
+   * `CharField(source='producto.nombre')`. Rotular con `workOrderGarmentLabel`.
+   */
+  producto_nombre?: string | null;
+  /**
+   * Nombre de la MUESTRA en un renglón sin producto. Hoy el detalle NO lo manda
+   * (pedido al backend tras EC-963); opcional para usarlo en cuanto llegue.
+   */
+  producto_nombre_externo?: string | null;
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
@@ -630,8 +640,8 @@ export interface EmbroideryOnboardingDetalle {
   pedido_detalle_id: number;
   /**
    * `null` en una línea de MUESTRA (`PedidoDetalle.producto` es nullable). El
-   * backend la ofrece si ya tiene `sku_muestra`, pero el POST la rechaza con
-   * `400` (`exigir_producto_en_tallas`): la UI la muestra sin dejar elegirla.
+   * backend solo la ofrece con SKU (`sku_muestra`) y el POST la acepta (EC-964).
+   * Este onboarding no manda `producto_nombre_externo`: la identifica su `sku`.
    */
   producto_id: number | null;
   producto_nombre: string | null;

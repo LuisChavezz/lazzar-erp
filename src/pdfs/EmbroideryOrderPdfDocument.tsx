@@ -37,6 +37,7 @@ import {
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
 import { workOrderCoverageItems, workOrderGarmentTables, type WorkOrderPdfGarmentRow } from "./shared/workOrderPdf";
+import { workOrderGarmentLabel, workOrderProductGroupId } from "@/src/utils/workOrderProductLabel";
 
 type EmbroideryOrderPdfDocumentProps = {
   order: EmbroideryOrderDetail;
@@ -118,8 +119,8 @@ export const EmbroideryOrderPdfDocument = ({ order, company }: EmbroideryOrderPd
         items: order.detalles ?? [],
         toLine: (linea) => ({
           id: linea.id,
-          productoId: linea.producto,
-          producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+          productoId: workOrderProductGroupId(linea),
+          producto: workOrderGarmentLabel(linea),
           color: linea.color_nombre ?? null,
           talla: linea.talla_nombre,
           cantidad: linea.cantidad,

@@ -1,14 +1,15 @@
 /**
- * Nombre de la prenda de un renglón de orden de trabajo (reflejante, corte de
- * manga) y de su línea del pedido, para pantallas, PDF y el prellenado de la
+ * Nombre de la prenda de un renglón de orden de trabajo (bordado, reflejante,
+ * corte de manga) y de su línea del pedido, para pantallas, PDF y el prellenado de la
  * salida a maquila (EC-963). Sin React.
  *
  * Una línea de MUESTRA no tiene producto de catálogo: `producto` /
  * `producto_id` llegan `null` y `producto_nombre` llega `null` (onboarding) o
  * sin la clave (detalle: DRF la omite cuando el `source` con punto cae en un
  * producto nulo). El nombre de la muestra es `producto_nombre_externo`, que hoy
- * solo publica el onboarding de OR y OCM (EC-964); el detalle de la orden no lo
- * trae, así que ahí el renglón se rotula de forma neutra.
+ * solo publica el onboarding de OR y OCM (EC-964); ni el de OB ni el detalle de
+ * las órdenes lo traen, así que ahí el renglón se rotula de forma neutra (y el
+ * título de grupo lleva el SKU, `workOrderGarmentLabel`).
  *
  * Nunca se cae al id: «Producto #null» era justo el síntoma de EC-963.
  */

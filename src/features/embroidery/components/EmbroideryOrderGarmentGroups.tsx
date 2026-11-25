@@ -4,6 +4,7 @@ import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups"
 import type { EmbroideryOrderDetailLine } from "../interfaces/embroidery.interface";
 import { resolveEmbroideryLineUbicaciones } from "../utils/resolveEmbroideryLineUbicaciones";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
+import { workOrderGarmentLabel, workOrderProductGroupId } from "@/src/utils/workOrderProductLabel";
 
 /** Detalle del bordado de una talla: posición + popover con las imágenes. */
 const BordadoCell = ({ linea }: { linea: EmbroideryOrderDetailLine }) => {
@@ -19,7 +20,7 @@ const BordadoCell = ({ linea }: { linea: EmbroideryOrderDetailLine }) => {
     <span className="flex flex-wrap items-center gap-1.5">
       <EmbroideryLineLocationPopover
         ubicaciones={ubicaciones}
-        productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+        productoNombre={workOrderGarmentLabel(linea)}
         tallaNombre={linea.talla_nombre}
         colorNombre={linea.color_nombre ?? null}
         posicionLabel={linea.posicion_bordado}
@@ -40,8 +41,8 @@ export function EmbroideryOrderGarmentGroups({ items }: { items: EmbroideryOrder
       items={items}
       toLine={(linea) => ({
         id: linea.id,
-        productoId: linea.producto,
-        producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+        productoId: workOrderProductGroupId(linea),
+        producto: workOrderGarmentLabel(linea),
         color: linea.color_nombre ?? null,
         talla: linea.talla_nombre,
         cantidad: linea.cantidad,
