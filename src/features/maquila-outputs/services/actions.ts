@@ -25,8 +25,9 @@ export const createSalidaMaquila = async (body: CreateSalidaMaquilaBody): Promis
   return response.data;
 };
 
-export const cancelarSalidaMaquila = async (id: number): Promise<SalidaMaquila> => {
-  const response = await v1_api.post<SalidaMaquila>(`${BASE}${id}/cancelar/`);
+/** Solo desde ENVIADA y sin recepciones. El motivo es obligatorio (nucleo-erp#1355). */
+export const cancelarSalidaMaquila = async (id: number, motivo: string): Promise<SalidaMaquila> => {
+  const response = await v1_api.post<SalidaMaquila>(`${BASE}${id}/cancelar/`, { motivo });
   return response.data;
 };
 

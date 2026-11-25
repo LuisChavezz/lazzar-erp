@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * SM — salida de prendas a maquila (`/produccion/salidas-maquila/`, nucleo-erp
  * #1076). Documento con folio SM ligado a UNA orden (OP, OB u OR; #1193 y #1216)
@@ -30,8 +32,11 @@ export interface SalidaMaquilaDetalle {
   importe?: string;
 }
 
-/** Renglón del listado: lo mismo que el detalle sin `detalles`. */
-export interface SalidaMaquilaListItem {
+/**
+ * Renglón del listado: lo mismo que el detalle sin `detalles`. Trae los datos de
+ * cancelación (nucleo-erp#1355, EC-966) en el listado y en el detalle.
+ */
+export interface SalidaMaquilaListItem extends DocumentCancellationFields {
   id: number;
   /** Folio SM; no cambia. Para pantalla va `folio_display`. */
   folio: string;
