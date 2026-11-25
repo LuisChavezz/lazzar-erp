@@ -3,27 +3,9 @@ import { datedFileName } from "@/src/utils/datedFileName";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { useServerExport } from "@/src/hooks/useServerExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
-import { generateListPdfBlob, standardListPdfProps } from "@/src/utils/listPdfBlob";
+import { generateListPdfBlob } from "@/src/utils/listPdfBlob";
+import { customersPdfProps } from "../utils/customerListPdf";
 import type { CustomerListItem } from "../interfaces/customer.interface";
-import { getCustomerColumnText } from "../utils/customerExport";
-
-const formatValue = (value: string): string => (value === "" ? "—" : value);
-
-/** Props del PDF del listado: variante `standard` de `ListPdfDocument` (EC-959). */
-const customersPdfProps = (
-  customers: CustomerListItem[],
-  columns: DataTableVisibleColumn<CustomerListItem>[],
-  now: Date,
-) => {
-  // Todas las columnas del mismo ancho.
-  const widths = columns.map(() => `${(100 / columns.length).toFixed(1)}%`);
-  return standardListPdfProps({
-    title: "Reporte de Clientes",
-    columns: columns.map((column, i) => ({ header: column.header, width: widths[i] })),
-    rows: customers.map((customer) => columns.map((column) => formatValue(getCustomerColumnText(customer, column)))),
-    now,
-  });
-};
 
 /**
  * Exporta el listado de clientes a PDF con las columnas visibles.
