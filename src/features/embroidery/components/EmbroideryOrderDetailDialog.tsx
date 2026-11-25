@@ -5,6 +5,8 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { ErrorState } from "@/src/components/ErrorState";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { EMBROIDERY_STATUS_CANCELLED } from "../constants/embroideryStatus";
 import {
   EmptyLines,
   InfoField,
@@ -285,6 +287,15 @@ export function EmbroideryOrderDetailDialog({
 
       {order && (
         <div className="space-y-5">
+          {/* Quién, cuándo y por qué se canceló (nucleo-erp#1355, EC-948). */}
+          {order.estatus_bordado === EMBROIDERY_STATUS_CANCELLED && (
+            <CancellationInfo
+              title="Orden cancelada"
+              motivo={order.motivo_cancelacion}
+              fecha={order.fecha_cancelacion}
+              canceladoPor={order.cancelado_por_nombre}
+            />
+          )}
           {/* Resumen */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             <InfoField label="Estatus">

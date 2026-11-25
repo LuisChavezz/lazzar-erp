@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { CancellationInfo } from "@/src/components/CancellationInfo";
+import { CorteMangaOrderDetailContent } from "@/src/features/corte-manga/components/CorteMangaOrderDetailDialog";
+import type { CorteMangaOrder } from "@/src/features/corte-manga/interfaces/corte-manga-order.interface";
+import { SalidaMaquilaActions } from "@/src/features/maquila-outputs/components/SalidaMaquilaActions";
 import {
   cancelDialogClosesOnError,
   cancelErrorTarget,
@@ -471,5 +474,56 @@ test.describe("cachedRows con idField", () => {
     expect(queryClient.getQueryData(["op", 1])).toEqual({ op_id: 1, estatus_op: 2 });
     await mergeCachedRecord(queryClient, ["op", 1], 1, { estatus_op: 7 }, { idField: "op_id" });
     expect(queryClient.getQueryData(["op", 1])).toEqual({ op_id: 1, estatus_op: 7 });
+  });
+});
+
+test.describe("renderizado", () => {
+  const ocm = (overrides: Partial<CorteMangaOrder>): CorteMangaOrder =>
+    ({
+      id: 23,
+      folio_ocm: "2026-OCM-00023",
+      estatus_corte: 7,
+      estatus_corte_display: "Cancelado",
+      pedido_folio: "P-00184-2026",
+      usuario_nombre: null,
+      empresa_nombre: "LAZZAR",
+      sucursal_nombre: "Toneles",
+      fecha_inicio: "2026-11-25T18:00:00Z",
+      fecha_fin: null,
+      observaciones: null,
+      detalles: [],
+      motivo_cancelacion: "Cliente quitó el corte",
+      fecha_cancelacion: "2026-11-25T18:30:00Z",
+      cancelado_por: 4,
+      cancelado_por_nombre: "Ana López",
+      ...overrides,
+    }) as unknown as CorteMangaOrder;
+
+  test("el diálogo rápido de una OCM cancelada muestra quién, cuándo y por qué; abierta, no", () => {
+    const cancelled = renderToString(toReactElement(createElement(CorteMangaOrderDetailContent, { order: ocm({}) })));
+    expect(cancelled).toContain("Orden cancelada");
+    expect(cancelled).toContain("Cliente quitó el corte");
+    expect(cancelled).toContain("Ana López");
+    const open = renderToString(
+      toReactElement(createElement(CorteMangaOrderDetailContent, { order: ocm({ estatus_corte: 2, motivo_cancelacion: "" }) })),
+    );
+    expect(open).not.toContain("Orden cancelada");
+  });
+
+  test("el botón de la SM depende de available, pero el componente (y su diálogo) se queda montado", () => {
+    const render = (available: boolean) =>
+      renderToString(
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          toReactElement(createElement(SalidaMaquilaActions, { salida: smEnviada(), available })),
+        ),
+      );
+    expect(render(true)).toContain("Cancelar salida");
+    const unavailable = render(false);
+    expect(unavailable).not.toContain("Cancelar salida");
+    // El contenedor sigue montado: el diálogo no se desmonta cuando la SM deja
+    // de admitir cancelarse tras un 400 de negocio o tras cancelar.
+    expect(unavailable).toContain("flex flex-wrap justify-end gap-2");
   });
 });
