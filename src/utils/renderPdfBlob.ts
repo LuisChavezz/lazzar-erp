@@ -17,11 +17,15 @@
  * Si falla la DESCARGA de un chunk (`isChunkLoadError`), se lanza un error con
  * un mensaje legible propio del PDF en vez del "Failed to load chunk …" del
  * bundler; el original queda en `cause`. Lo mismo si falla la descarga de la
- * fuente del PDF (`isPdfFontLoadError`): la Arimo de `/fonts/pdf`, que se
- * descarga a la vez que los chunks y se registra justo antes de renderizar
- * (`documentPdfFontLoader`, EC-942); si falla, se vuelve a pedir en el
- * siguiente intento, sin recargar la página. Cualquier
+ * fuente del PDF (`isPdfFontLoadError`): Arimo y su respaldo de símbolos
+ * (EC-958), de `/fonts/pdf`, que se descargan a la vez que los chunks y se
+ * registran juntas justo antes de renderizar (`documentPdfFontLoader`,
+ * EC-942); si falla, se vuelven a pedir en el siguiente intento, sin recargar
+ * la página. Cualquier
  * otro error —al evaluar el módulo o al renderizar el PDF— se propaga tal cual.
+ *
+ * Antes de renderizar, los emoji de las props se quitan (`stripPdfEmojiDeep`,
+ * EC-958): ninguna fuente del PDF los tiene.
  *
  * La lógica vive en `renderPdfBlobWith`, que además recibe de dónde cargar el
  * renderer: lo usan las pruebas unitarias con uno falso. Los generadores usan
@@ -37,6 +41,7 @@ import {
   type DocumentPdfFontLoader,
   type PdfFontRegistry,
 } from "@/src/pdfs/shared/documentPdfFontLoader";
+import { stripPdfEmojiDeep } from "@/src/pdfs/shared/stripPdfEmoji";
 import { isChunkLoadError } from "./isChunkLoadError";
 
 export const PDF_GENERATOR_LOAD_ERROR_MESSAGE =
@@ -88,8 +93,8 @@ export async function renderPdfBlobWith<P extends object>(
   props: P,
   fonts: DocumentPdfFontLoader = documentPdfFontLoader,
 ): Promise<Blob> {
-  // Todos los documentos de `src/pdfs/` usan Arimo (la base y la cotización),
-  // así que se descarga para cualquiera. Si alguno dejara de usarla, que su
+  // Todos los documentos de `src/pdfs/` usan Arimo y su respaldo de símbolos
+  // (la base y la cotización), así que se descargan para cualquiera. Si alguno dejara de usarla, que su
   // generador lo diga (una opción aquí) en vez de pagar la descarga y fallar
   // con el mensaje de la fuente sin necesitarla.
   //
@@ -114,11 +119,14 @@ export async function renderPdfBlobWith<P extends object>(
   });
   fonts.register(renderer.Font, urls);
 
+  // Los emoji se quitan aquí, en las props, para que ningún documento los
+  // reciba: ninguna fuente del PDF los tiene (EC-958, `stripPdfEmoji`).
+  //
   // Cada documento de `src/pdfs/` es un componente cuya raíz es `<Document>`,
   // pero su elemento lleva SUS props, no las de `Document`; el tipo no puede
   // expresar esa relación (con JSX se perdía igual, como `JSX.Element`).
   return renderer
-    .pdf(createElement(PdfDocument, props) as ReactElement<DocumentProps>)
+    .pdf(createElement(PdfDocument, stripPdfEmojiDeep(props)) as ReactElement<DocumentProps>)
     .toBlob()
     .catch((error: unknown) => {
       throw toPdfFontLoadError(error);

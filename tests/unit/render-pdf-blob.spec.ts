@@ -74,6 +74,16 @@ test("renderiza el documento cargado con sus props y devuelve el Blob del render
   expect(rendered[0].props).toEqual({ label: "Hola" });
 });
 
+test("quita los emoji de las props antes de renderizar y conserva los símbolos (EC-958)", async () => {
+  const { rendered, loadRenderer } = fakeRenderer(async () => new Blob());
+  const props = { label: "Listo ✓ 🚚 ⇒ ★ 👍🏽 fin" };
+
+  await renderWith(loadRenderer, async () => SampleDocument, props);
+
+  expect(rendered[0].props).toEqual({ label: "Listo ✓  ⇒ ★  fin" });
+  expect(props.label).toBe("Listo ✓ 🚚 ⇒ ★ 👍🏽 fin");
+});
+
 test("un error al renderizar el PDF se propaga sin traducir", async () => {
   const original = chunkLoadError();
   const { loadRenderer } = fakeRenderer(() => Promise.reject(original));
