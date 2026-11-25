@@ -33,6 +33,22 @@ export const workOrderProductLabel = (line: WorkOrderProductNames): string =>
   SIN_PRODUCTO_CATALOGO;
 
 /**
+ * Título de un grupo de prendas (pantalla y PDF de la orden): como
+ * `workOrderProductLabel`, pero sin nombre se le añade el SKU del renglón
+ * (`groupWorkOrderGarments` toma el del primero), para que dos muestras
+ * distintas del mismo color no salgan con el mismo título. Mismo formato que
+ * el Paso 2 de bordado: «Sin producto de catálogo · SKU».
+ */
+export const workOrderGarmentLabel = (
+  line: WorkOrderProductNames & { sku?: string | null },
+): string => {
+  const label = workOrderProductLabel(line);
+  if (label !== SIN_PRODUCTO_CATALOGO) return label;
+  const sku = cleanText(line.sku);
+  return sku ? `${SIN_PRODUCTO_CATALOGO} · ${sku}` : SIN_PRODUCTO_CATALOGO;
+};
+
+/**
  * Llave para agrupar renglones por prenda (`groupWorkOrderGarments`): el
  * producto de catálogo o, en una muestra, su línea del pedido. Sin ella todas
  * las muestras de una orden caerían en un mismo grupo «Sin producto de
