@@ -122,8 +122,8 @@ export const createReflectiveOrder = async (
 
 /**
  * Edición parcial de una orden de reflejante
- * (`PATCH /produccion/orden-reflejante/{id}/`, nucleo-erp #755): estatus,
- * prioridad y observaciones (ver `UpdateReflectiveOrderPayload`). Solo se
+ * (`PATCH /produccion/orden-reflejante/{id}/`, nucleo-erp #755): estatus y
+ * observaciones (ver `UpdateReflectiveOrderPayload`). Solo se
  * envían los campos que cambian.
  *
  * NO devuelve nada, a propósito: la respuesta es la de

@@ -26,14 +26,6 @@ import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
  *    nucleo-erp #755 el estatus se edita en la ficha de detalle, así que esa
  *    razón ya no aplica; añadirlo queda pendiente.
  *
- *  - DESGLOSE POR PRIORIDAD: técnicamente calculable, pero aquí el sesgo es
- *    aún más fuerte que en bordado —donde ya se excluyó por este motivo—: la
- *    generación automática desde ventas escribe `prioridad=1` LITERAL (no un
- *    default que alguien pueda cambiar), y el alta de producción toma el mismo
- *    `IntegerField(default=1)`. Un desglose leería "Alta" para prácticamente
- *    todo el listado por inercia del origen, no por urgencia real — y un número
- *    sesgado se lee como señal verdadera, lo que engaña más que uno constante.
- *
  *  - METROS DE REFLEJANTE: sería EL indicador de consumo de material del
  *    módulo, pero `detalles[].metros` llega `0` en todas las órdenes por las
  *    dos rutas de alta (ver `ReflectiveOrderLine`). Una tarjeta clavada en

@@ -36,7 +36,6 @@ export function buildReflectiveOrderPayload(
 ): CreateReflectiveOrderPayload {
   const payload: CreateReflectiveOrderPayload = {
     pedido: values.pedido,
-    prioridad: values.prioridad,
   };
 
   const observaciones = values.observaciones.trim();

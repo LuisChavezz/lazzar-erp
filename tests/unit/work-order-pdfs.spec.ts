@@ -234,7 +234,6 @@ const or = (overrides: Partial<ReflectiveOrderDetail> = {}): ReflectiveOrderDeta
     fecha_vence: null,
     estatus_reflejante: 1,
     estatus_reflejante_display: "Pendiente",
-    prioridad: 1,
     fecha_inicio: "2026-08-04T15:47:59.998058-06:00",
     fecha_fin: null,
     observaciones: null,

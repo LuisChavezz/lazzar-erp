@@ -11,13 +11,10 @@ import { PEDIDO_LINK_VISIBLE_CLASS, PedidoFolioLink } from "@/src/features/order
 import { getWorkOrderProgressColumns, sumDetalles } from "@/src/features/work-order-avances/components/workOrderListColumns";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
-  REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  reflectiveOrderPriorityFallback,
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import type { ReflectiveOrder } from "../interfaces/reflective-order.interface";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 const columnHelper = createColumnHelper<ReflectiveOrder>();
 
@@ -66,7 +63,7 @@ const FolioCell = ({
  * de `detalles` se resume en una sola columna — su desglose vive en el diálogo
  * de detalle.
  *
- * Sin edición en la tabla: estatus, prioridad y observaciones se editan en la
+ * Sin edición en la tabla: estatus y observaciones se editan en la
  * página de detalle (`ReflectiveOrderDetailContent`, `PATCH` de nucleo-erp
  * #755).
  *
@@ -130,16 +127,6 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
     piezas: (row) => sumDetalles(row.detalles),
     resumen: (row) => row.resumen_avance,
     verbo: "reflejadas",
-  }),
-  columnHelper.accessor("prioridad", {
-    header: "Prioridad",
-    cell: (info) => (
-      <StatusBadge
-        status={String(info.getValue())}
-        config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-        defaultConfig={reflectiveOrderPriorityFallback(info.getValue())}
-      />
-    ),
   }),
   // Resumen de `detalles`: cuántos renglones y cuántas piezas suman. `cantidad`
   // es un float del backend (número, no el string decimal de inventario).
@@ -262,12 +249,6 @@ export const getReflectiveOrderColumns = (onViewDetails: (id: number) => void) =
  * valores de las filas que el catálogo no cubre.
  */
 export const REFLECTIVEORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<ReflectiveOrder>>> = {
-  prioridad: {
-    type: "options",
-    get: (r) => r.prioridad,
-    options: optionsFromConfig(REFLECTIVE_ORDER_PRIORITY_CONFIG),
-    label: (r) => reflectiveOrderPriorityFallback(r.prioridad).label,
-  },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   cobertura: { type: "boolean", get: (r) => r.cobertura_completa, yes: "Cobertura completa", no: "Cobertura parcial" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
