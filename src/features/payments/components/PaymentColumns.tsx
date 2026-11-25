@@ -3,7 +3,6 @@ import { createSucursalColumn, sucursalHeaderFilter } from "@/src/features/branc
 import { type ActionMenuItem } from "@/src/components/ActionMenu";
 import { FolioActionMenu } from "@/src/components/FolioActionMenu";
 import { StatusBadge } from "@/src/components/StatusBadge";
-import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
 import { financeWriteBlock } from "@/src/utils/financeWrite";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
 import { BanIcon, ViewIcon } from "@/src/components/Icons";
@@ -35,7 +34,7 @@ const getCuentaLabel = (pago: Pago): string =>
  * llegan por contexto (`PaymentRowActionsProvider`).
  */
 function PaymentIdCell({ pago }: { pago: Pago }) {
-  const { onViewDetail, onCancel, busyIds, write } = usePaymentRowActionsContext();
+  const { onViewDetail, onCancel, busyIds, cancel } = usePaymentRowActionsContext();
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(pago) },
   ];
@@ -44,13 +43,13 @@ function PaymentIdCell({ pago }: { pago: Pago }) {
   // no habría nada que revertir. Sin permiso de escritura se muestra
   // deshabilitado con su motivo (convención de los flujos de Finanzas).
   if (pago.estatus === "Aplicado") {
-    const writeBlock = financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON);
+    const cancelBlock = financeWriteBlock(cancel, cancel.reason);
     items.push({
       label: "Cancelar pago",
       icon: BanIcon,
       onSelect: () => onCancel(pago),
-      disabled: writeBlock.disabled || busyIds.includes(pago.id),
-      description: writeBlock.description,
+      disabled: cancelBlock.disabled || busyIds.includes(pago.id),
+      description: cancelBlock.description,
     });
   }
   return (

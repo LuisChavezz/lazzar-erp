@@ -6,13 +6,14 @@ import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { ReceiptIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
-import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceCancelState, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_CANCEL_PERMISSION } from "@/src/constants/financePermissions";
+import { CancelReasonDialogFor } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import { pagoCancelDialogContent } from "../utils/pagoCancelAction";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -21,7 +22,6 @@ import { getColumns, PAYMENT_HEADER_FILTERS } from "./PaymentColumns";
 import { PaymentDetailDialog } from "./PaymentDetailDialog";
 import PaymentForm from "./PaymentForm";
 import { usePagos } from "../hooks/usePagos";
-import { useCancelPago } from "../hooks/useCancelPago";
 import type { Pago } from "../interfaces/payment.interface";
 import {
   PaymentRowActionsProvider,
@@ -45,10 +45,11 @@ export default function PaymentList() {
   const { data: session, status: sessionStatus } = useSession();
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
+  // Cancelar pide además `CANCELAR-FIN-PAGOS` (nucleo-erp#1356, EC-950).
+  const cancel = getFinanceCancelState(session?.user, sessionStatus, FINANCE_CANCEL_PERMISSION.pagos);
   const { pagos, hasLoaded, isLoading, isError, error, refetch, isFetching } = usePagos();
   // `mutateAsync` y no `mutate`: el candado se suelta sobre la PROMESA de cada
   // llamada; los callbacks por llamada de `mutate` solo corren para la última.
-  const { mutateAsync: cancelPagoAsync } = useCancelPago();
   // Cancelaciones en vuelo POR PAGO, leídas de la MutationCache: `isPending` del
   // hook solo recuerda su última llamada y no dice QUÉ pago se está cancelando.
   const busyIds = usePendingPaymentIds();
@@ -115,13 +116,11 @@ export default function PaymentList() {
     setStaleNotice(staleCancel);
   }
 
-  const cancelTargetLabel = cancelTargetId !== null ? `#${cancelTargetId}` : "";
-  const isCancelTargetBusy = isBusy(cancelTargetId);
 
   // El menú ya lo muestra deshabilitado sin el permiso; se repite aquí por si la
   // sesión cambió entre pintarlo y seleccionar.
   const handleCancel = (pago: Pago) => {
-    if (!guardFinanceWrite(write, FINANCE_WRITE_PERMISSION_REASON)) return;
+    if (!guardFinanceWrite(cancel, cancel.reason)) return;
     setCancelTargetId(pago.id);
   };
 
@@ -134,7 +133,7 @@ export default function PaymentList() {
         onViewDetail: (pago) => setOpenDetailId(pago.id),
         onCancel: handleCancel,
         busyIds,
-        write,
+        cancel,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -202,39 +201,16 @@ export default function PaymentList() {
           />
         )}
 
-        {cancelTargetId !== null && (
-          <ConfirmDialog
-            open={true}
-            // En vuelo queda abierta y bloqueada (ver `guardClose`).
-            {...rowLock.guardClose(cancelTargetId, () => setCancelTargetId(null), isBusy(cancelTargetId))}
-            title="Cancelar Pago"
-            description={`¿Deseas cancelar el pago ${cancelTargetLabel}? Se revertirán los saldos de las cuentas por pagar aplicadas y su movimiento bancario quedará cancelado. El pago se conserva en el listado con estatus Cancelado.`}
-            confirmText={isCancelTargetBusy ? "Cancelando..." : "Cancelar pago"}
-            cancelText="Volver"
-            // `closeOnConfirm={false}`: por defecto el diálogo se cierra al instante
-            // y la etiqueta de "Cancelando..." nunca alcanzaría a pintarse (está
-            // documentado en el prop). El cierre lo hace `onSettled`, cuando el
-            // refetch ya terminó.
-            closeOnConfirm={false}
-            onConfirm={() => {
-              // Un pago ya en vuelo no se vuelve a mandar (doble clic, o reabrir
-              // tras "Volver" mientras su cancelación sigue pendiente).
-              const id = cancelTargetId;
-              if (isBusy(id) || !rowLock.acquire(id)) return;
-              cancelPagoAsync(id)
-                // El hook ya avisó del error con su toast; aquí solo se evita el
-                // rechazo no manejado de la promesa.
-                .catch(() => {})
-                .finally(() => {
-                  rowLock.release(id);
-                  // Solo cierra SU confirmación: si ya no es la abierta, la que
-                  // esté abierta no se toca.
-                  setCancelTargetId((current) => (current === id ? null : current));
-                });
-            }}
-            confirmColor="amber"
-          />
-        )}
+        {/* Cancelar con el motivo obligatorio (EC-950); el candado por pago es la
+            mutación del diálogo. */}
+        <CancelReasonDialogFor
+          target={cancelTargetId}
+          content={pagoCancelDialogContent}
+          open={cancelTargetId !== null}
+          onOpenChange={(open) => {
+            if (!open) setCancelTargetId(null);
+          }}
+        />
       </div>
     </PaymentRowActionsProvider>
   );
