@@ -110,8 +110,8 @@ export const routePermissions: Array<{
   { prefix: "/wms/orders", permission: "R-WMS-PEDIDOS" },
   { prefix: "/wms/stock", permission: "R-WMS-EXISTENCIAS" },
   { prefix: "/wms/receipts", permission: "R-WMS-RECEPCIONES" },
-  // Registrar la inspección exige además `C-WMS-CALIDAD` (en la vista). El
-  // backend no valida ningún permiso de Calidad: ambos controles son de UI.
+  // Ver la bandeja es solo control de UI. Registrar la inspección exige además
+  // `C-WMS-RECEPCIONES` (en la vista), que el backend sí valida (EC-947).
   { prefix: "/wms/quality-inspections", permission: "R-WMS-CALIDAD" },
   { prefix: "/wms/picking", permission: "R-WMS-PICKING" },
   // Avance de surtido por pedido (EC-913): vista de Surtido, mismo código.

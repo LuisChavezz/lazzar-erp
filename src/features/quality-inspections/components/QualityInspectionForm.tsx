@@ -31,7 +31,7 @@ interface QualityInspectionFormProps {
   lineVariants: Map<number, ReceptionLineVariant>;
   /** SKU, código y talla por renglón (`recepcion_detalle`), del detalle de la recepción. */
   lineInfo: Map<number, QualityLineInfo>;
-  /** `C-WMS-CALIDAD`: sin él se puede revisar el formulario, pero no enviarlo. */
+  /** `C-WMS-RECEPCIONES` (EC-947): sin él se puede revisar el formulario, pero no enviarlo. */
   canSubmit: boolean;
   onSuccess: () => void;
   onStale: () => void;
