@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { WorkOrderCancelResponse } from "@/src/features/work-order-cancellation/interfaces/work-order-cancellation.interface";
 import type {
   CreatedReflectiveOrder,
   CreateReflectiveOrderPayload,
@@ -141,4 +142,13 @@ export const updateReflectiveOrder = async (
   data: UpdateReflectiveOrderPayload,
 ): Promise<void> => {
   await v1_api.patch(`/produccion/orden-reflejante/${id}/`, data);
+};
+
+/**
+ * Cancela la orden de reflejante con motivo (`POST /produccion/orden-reflejante/{id}/cancelar/`,
+ * nucleo-erp#1355). El `PATCH` de estatus ya no cancela (responde `400`).
+ */
+export const cancelReflectiveOrder = async (id: number, motivo: string): Promise<WorkOrderCancelResponse> => {
+  const response = await v1_api.post<WorkOrderCancelResponse>(`/produccion/orden-reflejante/${id}/cancelar/`, { motivo });
+  return response.data;
 };

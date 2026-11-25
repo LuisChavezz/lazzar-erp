@@ -11,7 +11,13 @@ import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOr
 import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
-import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
+import {
+  isWorkOrderCancellable,
+  isWorkOrderTerminal,
+  WORK_ORDER_CANCELLED_STATUS,
+} from "@/src/utils/workOrderStatusEdit";
+import { WorkOrderCancelButton } from "@/src/features/work-order-cancellation/components/WorkOrderCancelButton";
+import { cancelCorteMangaOrder } from "../services/actions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
@@ -138,6 +144,9 @@ export function CorteMangaOrderPageContent({
   const canEdit = hasProductionPermission(session?.user, "CM", "E");
   // Borrar un avance es destructivo: exige `D-PRODUCCION-CM` (EC-895).
   const canDeleteAvance = hasProductionPermission(session?.user, "CM", "D");
+  // Cancelar la orden (con motivo, EC-948) exige el mismo código que
+  // `cancelar/`.
+  const canCancel = canDeleteAvance;
 
   const BackLink = (
     <Link
@@ -204,7 +213,26 @@ export function CorteMangaOrderPageContent({
       <WorkOrderTopBar
         backLink={BackLink}
         readOnlyLabel={isTerminal ? "Orden cancelada · solo lectura" : null}
-        actions={<CorteMangaOrderPdfButton order={data} />}
+        actions={
+          <>
+            <WorkOrderCancelButton
+              canCancel={canCancel}
+              available={isWorkOrderCancellable(data.estatus_corte, data.activo)}
+              config={{
+                orderId: data.id,
+                folio: data.folio_ocm,
+                orderLabel: "orden de corte de manga",
+                statusField: "estatus_corte",
+                cancelledLabel: corteMangaStatusEntry(WORK_ORDER_CANCELLED_STATUS).label,
+                cancel: cancelCorteMangaOrder,
+                detailQueryKey: corteMangaOrderDetailQueryKey(data.id),
+                listQueryKey: ["corte-manga-orders"],
+                hasSalidasMaquila: false,
+              }}
+            />
+            <CorteMangaOrderPdfButton order={data} />
+          </>
+        }
       />
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}

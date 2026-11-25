@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { WorkOrderCancelResponse } from "@/src/features/work-order-cancellation/interfaces/work-order-cancellation.interface";
 import type {
   CorteMangaOnboardingData,
   CorteMangaOrder,
@@ -133,4 +134,13 @@ export const updateCorteMangaOrder = async (
   data: UpdateCorteMangaOrderPayload,
 ): Promise<void> => {
   await v1_api.patch(`/produccion/orden-corte-manga/${id}/`, data);
+};
+
+/**
+ * Cancela la orden de corte de manga con motivo (`POST /produccion/orden-corte-manga/{id}/cancelar/`,
+ * nucleo-erp#1355). El `PATCH` de estatus ya no cancela (responde `400`).
+ */
+export const cancelCorteMangaOrder = async (id: number, motivo: string): Promise<WorkOrderCancelResponse> => {
+  const response = await v1_api.post<WorkOrderCancelResponse>(`/produccion/orden-corte-manga/${id}/cancelar/`, { motivo });
+  return response.data;
 };

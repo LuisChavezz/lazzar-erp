@@ -17,17 +17,23 @@ import { drfActionErrorMessage } from "./drfWriteErrors";
  *
  * Fuera de eso no impone reglas de transición: acepta cualquier estatus. El
  * frontend tampoco las impone —mismo criterio que bordado—, con una sola
- * excepción: el `7` no se ofrece como DESTINO. Cancelar es irreversible y,
- * desde #786, libera su cupo del pedido (sus piezas dejan de contar como
- * programadas), pero ofrecerlo es una decisión de negocio aparte.
+ * excepción: el `7` no se ofrece como DESTINO. Desde nucleo-erp#1355 el `PATCH`
+ * ya no cancela (responde `400`): se cancela con motivo por `cancelar/`
+ * ("Cancelar orden", EC-948, `isWorkOrderCancellable`). Cancelar es
+ * irreversible y libera su cupo del pedido (#786).
  */
 
 export type WorkOrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 const WORK_ORDER_STATUS_CODES: readonly WorkOrderStatus[] = [1, 2, 3, 4, 5, 6, 7];
 
+/** Completado: el backend ya no lo cancela. */
+const COMPLETED_STATUS: WorkOrderStatus = 5;
+
 /** Cancelado: sin salida, y nunca ofrecido como destino. */
-const CANCELLED_STATUS: WorkOrderStatus = 7;
+export const WORK_ORDER_CANCELLED_STATUS: WorkOrderStatus = 7;
+
+const CANCELLED_STATUS = WORK_ORDER_CANCELLED_STATUS;
 
 /**
  * ¿La orden está en un estatus terminal? Es la fuente ÚNICA de esa pregunta:
@@ -50,6 +56,15 @@ export const getWorkOrderTransitions = (
     (estatus) => estatus !== currentStatus && estatus !== CANCELLED_STATUS,
   );
 };
+
+/**
+ * ¿Se ofrece "Cancelar orden"? (`POST {id}/cancelar/`, EC-948). Las mismas
+ * reglas que el backend (`cancelar_orden_servicio`): ni cancelada, ni
+ * Completada, ni dada de baja. El candado de una SM Enviada (OR) lo aplica el
+ * backend y su `400` se muestra tal cual.
+ */
+export const isWorkOrderCancellable = (estatus: WorkOrderStatus, activo?: boolean): boolean =>
+  activo !== false && estatus !== COMPLETED_STATUS && estatus !== CANCELLED_STATUS;
 
 /**
  * Mensaje del toast cuando falla el `PATCH` de una orden de trabajo.

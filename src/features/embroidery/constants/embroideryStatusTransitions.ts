@@ -1,4 +1,8 @@
-import { EMBROIDERY_STATUS_CODES } from "./embroideryStatus";
+import {
+  EMBROIDERY_STATUS_CANCELLED,
+  EMBROIDERY_STATUS_CODES,
+  EMBROIDERY_STATUS_FINISHED,
+} from "./embroideryStatus";
 import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
 
 /**
@@ -14,24 +18,27 @@ import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
  *
  * Lo único que queda restringido son los dos extremos:
  *
- *  - TERMINALES (7 Finalizado, 8 Cancelado legacy): sin salida. La ficha entera
+ *  - TERMINALES (7 Finalizado, 8 Cancelado): sin salida. La ficha entera
  *    pasa a solo lectura —ni estatus, ni máquina, ni observaciones, ni
  *    operador, ni avances— porque una orden cerrada no se retoca.
- *  - OCULTOS COMO DESTINO (8 Cancelado legacy): el 8 es el desagüe del enum
- *    ANTERIOR —recoge lo que la migración `0030` remapeó desde el viejo 7
- *    "Cancelado"—, no un estatus al que se mande una orden hoy. Se rotula y se
- *    pinta (una OB que ya lo tiene se lee bien), pero no se ofrece.
+ *  - OCULTOS COMO DESTINO (8 Cancelado): desde nucleo-erp#1355 el `PATCH` ya no
+ *    cancela (responde `400`); se cancela con motivo por `cancelar/` ("Cancelar
+ *    orden", EC-948, `isEmbroideryOrderCancellable`). Se rotula y se pinta,
+ *    pero el selector no lo ofrece.
  */
 
 /** Estatus sin salida: la orden queda cerrada y la ficha, en solo lectura. */
-const TERMINAL_STATUSES: ReadonlySet<EmbroideryOrderStatus> = new Set([7, 8]);
+const TERMINAL_STATUSES: ReadonlySet<EmbroideryOrderStatus> = new Set([
+  EMBROIDERY_STATUS_FINISHED,
+  EMBROIDERY_STATUS_CANCELLED,
+]);
 
 /**
  * Estatus que existen y se pintan, pero que el selector nunca ofrece como
  * DESTINO. Distinto de terminal: esto acota la lista de opciones, no la
  * editabilidad de la orden que ya está en ese estatus.
  */
-const HIDDEN_DESTINATIONS: ReadonlySet<EmbroideryOrderStatus> = new Set([8]);
+const HIDDEN_DESTINATIONS: ReadonlySet<EmbroideryOrderStatus> = new Set([EMBROIDERY_STATUS_CANCELLED]);
 
 /**
  * ¿La orden está en un estatus terminal?
@@ -56,3 +63,13 @@ export const getAvailableTransitions = (
     (estatus) => estatus !== currentStatus && !HIDDEN_DESTINATIONS.has(estatus),
   );
 };
+
+/**
+ * ¿Se ofrece "Cancelar orden"? (`POST orden-bordado/{id}/cancelar/`, EC-948).
+ * Las mismas reglas que el backend (`cancelar_orden_servicio`): ni cancelada,
+ * ni Finalizada, ni dada de baja. El candado de una SM Enviada lo aplica el
+ * backend y su `400` se muestra tal cual.
+ */
+export const isEmbroideryOrderCancellable = (
+  order: { estatus_bordado: EmbroideryOrderStatus; activo?: boolean },
+): boolean => order.activo !== false && !isTerminalStatus(order.estatus_bordado);
