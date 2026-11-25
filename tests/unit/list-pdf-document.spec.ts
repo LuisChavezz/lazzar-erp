@@ -4,7 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { ListPdfDocument, type ListPdfDocumentProps } from "@/src/pdfs/ListPdfDocument";
 import type { DocumentPdfFontLoader } from "@/src/pdfs/shared/documentPdfFontLoader";
 import type { ListExportColumn } from "@/src/utils/listExport";
-import { compactListPdfProps, listPdfWidths, standardListPdfProps } from "@/src/utils/listPdfBlob";
+import { compactListPdfProps, listPdfWidths, standardListPdfProps, stripListPdfEmoji } from "@/src/utils/listPdfBlob";
 import { renderPdfBlobWith, type PdfRenderer } from "@/src/utils/renderPdfBlob";
 import { toReactElement } from "./support/pwJsx";
 import { pdfPageTexts } from "./support/pdfLayout";
@@ -61,6 +61,19 @@ test.describe("PDF de un listado exportado", () => {
       expect(pagina).toContain(fragmento);
     }
     for (const emoji of ["🚚", "👍", "📦"]) expect(pagina).not.toContain(emoji);
+  });
+
+  test("una celda que es solo una URL también pierde sus emoji (stripListPdfEmoji)", async () => {
+    test.setTimeout(60_000);
+    const rows = [{ folio: "https://tienda.mx/🛒", nota: "https://tienda.mx/ok" }];
+    const props = stripListPdfEmoji(compactListPdfProps({ columns: COLUMNS, title: "Clientes" }, rows, NOW));
+    expect(props.rows).toEqual([["https://tienda.mx/", "https://tienda.mx/ok"]]);
+
+    const pdf = await renderLikeTheApp(props);
+    expect(pdf.toString("latin1")).not.toMatch(/\/BaseFont\s*\/Helvetica/);
+    const [pagina] = pdfPageTexts(pdf);
+    expect(pagina).toContain("https://tienda.mx/");
+    expect(pagina).not.toContain("🛒");
   });
 
   for (const variant of ["compact", "standard"] as const) {

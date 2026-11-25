@@ -10,11 +10,29 @@
  */
 // Solo el tipo: no mete el documento ni react-pdf en el chunk de quien exporta.
 import type { ListPdfDocumentProps, ListPdfMetaItem } from "@/src/pdfs/ListPdfDocument";
+import { stripPdfEmoji } from "@/src/pdfs/shared/stripPdfEmoji";
 import type { ListExportColumn } from "./listExport";
 import { renderPdfBlob } from "./renderPdfBlob";
 
+/**
+ * Quita los emoji de cada texto que imprime el listado, celda por celda.
+ * `stripPdfEmojiDeep` (dentro de `renderPdfBlob`) deja intacto un string que
+ * es solo una URL, porque en los documentos puede ser el `src` de una imagen;
+ * en un listado nunca lo es, y una celda "https://tienda.mx/🛒" perdería el
+ * emoji sin aviso (caería a Helvetica).
+ */
+export const stripListPdfEmoji = (props: ListPdfDocumentProps): ListPdfDocumentProps => ({
+  ...props,
+  rows: props.rows.map((cells) => cells.map(stripPdfEmoji)),
+  meta: props.meta.map((item) => ({ ...item, value: stripPdfEmoji(item.value) })),
+  totalRow: props.totalRow && { ...props.totalRow, cells: props.totalRow.cells.map(stripPdfEmoji) },
+});
+
 export const generateListPdfBlob = (props: ListPdfDocumentProps): Promise<Blob> =>
-  renderPdfBlob(() => import("@/src/pdfs/ListPdfDocument").then((m) => m.ListPdfDocument), props);
+  renderPdfBlob(
+    () => import("@/src/pdfs/ListPdfDocument").then((m) => m.ListPdfDocument),
+    stripListPdfEmoji(props),
+  );
 
 /**
  * Ancho de cada columna como porcentaje de su peso relativo, con `digits`
