@@ -3,7 +3,10 @@
  * librería Y el documento con `import()` dinámico.
  *
  * Única implementación del patrón de EC-695 que comparten los generadores
- * `*PdfBlob` (cotización, factura, orden de compra y reportes de inventario).
+ * `*PdfBlob` de los documentos de `src/pdfs/` (cotización, pedido, factura,
+ * orden de compra, recepción, órdenes de trabajo, WMS y finanzas) y
+ * `generateListPdfBlob`, que genera con `ListPdfDocument` las 15
+ * exportaciones de listados a PDF (EC-959).
  * Cada documento importa los primitivos de react-pdf de forma estática (y sus
  * estilos, `StyleSheet`), así que importarlo arriba en el generador metía la
  * librería entera (~1.5 MB) en el chunk inicial de cada pantalla que ofrece
