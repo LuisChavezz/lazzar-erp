@@ -1,4 +1,5 @@
 import type { MetodoPago } from "@/src/features/payments/interfaces/payment.interface";
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 
 /**
  * Contrato de `/finanzas/cobros/` (`CobroSerializer`, `fields = "__all__"`).
@@ -52,7 +53,7 @@ export interface CobroDetalle {
   factura_folio?: string | null;
 }
 
-export interface Cobro {
+export interface Cobro extends DocumentCancellationFields {
   id: number;
   /** FK a la empresa; la resuelve el backend. */
   empresa: number;

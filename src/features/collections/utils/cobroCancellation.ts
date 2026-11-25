@@ -1,11 +1,8 @@
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
 import type { CuentaPorCobrar } from "@/src/features/accounts-receivable/interfaces/accounts-receivable.interface";
 import { hasPermission } from "@/src/utils/permissions";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import { FINANCE_CANCEL_PERMISSION, FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import type { Cobro, CobroEstatus } from "../interfaces/collection.interface";
-import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
 import { isCobroRepCancellable } from "./cobroRepCancellation";
 
 /** Estatus desde los que se ofrece "Cancelar cobro". */
@@ -33,14 +30,18 @@ export const COBRO_CANCEL_BLOCKED_BY_CANCELLED_INVOICE_MESSAGE =
   "Una de las facturas del cobro está cancelada: el cobro no se puede cancelar.";
 
 /**
- * ¿Se ofrece "Cancelar cobro" a ESTE usuario para ESTE cobro? Permiso del
- * backend y un estatus cancelable. Que esté BLOQUEADO (REP, factura cancelada)
- * lo dice `getCobroCancelBlockReason`: el botón se muestra deshabilitado.
+ * ¿Se ofrece "Cancelar cobro" a ESTE usuario para ESTE cobro? Los permisos del
+ * backend (escritura de Finanzas y `CANCELAR-FIN-COBROS`, EC-950) y un estatus
+ * cancelable. Que esté BLOQUEADO (REP, factura cancelada) lo dice
+ * `getCobroCancelBlockReason`: el botón se muestra deshabilitado.
  */
 export const canOfferCobroCancel = (
   cobro: Pick<Cobro, "estatus">,
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && CANCELLABLE_STATUSES.includes(cobro.estatus);
+): boolean =>
+  hasPermission(FINANCE_WRITE_PERMISSION, user) &&
+  hasPermission(FINANCE_CANCEL_PERMISSION.cobros, user) &&
+  CANCELLABLE_STATUSES.includes(cobro.estatus);
 
 /**
  * Motivo por el que NO se puede cancelar el cobro, o `null` si se puede. En este
@@ -79,19 +80,8 @@ export const getCobroCancelBlockReason = (
 /**
  * Aviso cuando la petición de cancelar se cortó sin respuesta del backend
  * (`isActionOutcomeUnknown`): pudo aplicarse. Reintentar es seguro: `cancelar/`
- * sobre un cobro ya `Cancelado` responde 200 sin hacer nada.
+ * sobre un cobro ya `Cancelado` responde `400 estatus` sin hacer nada.
  */
 export const COBRO_CANCEL_UNCONFIRMED_MESSAGE =
   "No se recibió respuesta del servidor: la cancelación pudo haberse aplicado. Actualiza los datos y, si el cobro sigue activo, vuelve a intentarlo.";
 
-/**
- * Mensaje de un fallo de `cancelar/`. El rechazo por REP llega bajo `rep` y se
- * muestra tal cual; un corte sin respuesta avisa que pudo cancelarse; un 403
- * trae `detail` (lo cubre `firstDrfFieldMessage`). El resto (404, 500) cae en el
- * extractor genérico.
- */
-export const cancelCobroErrorMessage = (error: unknown): string =>
-  drfFieldMessage(error, "rep") ??
-  (isActionOutcomeUnknown(error) ? COBRO_CANCEL_UNCONFIRMED_MESSAGE : undefined) ??
-  firstDrfFieldMessage(error) ??
-  extractErrorMessage(error, "No se pudo cancelar el cobro.");

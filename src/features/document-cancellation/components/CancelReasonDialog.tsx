@@ -85,6 +85,32 @@ export function CancelReasonDialog<TResult>({ content, open, onOpenChange }: Can
   );
 }
 
+interface CancelReasonDialogForProps<TTarget, TResult> {
+  /** El documento a cancelar, o `null` mientras no hay uno elegido. */
+  target: TTarget | null;
+  content: (target: TTarget) => CancelDialogContent<TResult>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/**
+ * `CancelReasonDialog` para un documento que puede faltar: la fila elegida en
+ * un listado (Finanzas, EC-950), que el dueño pone en `null` al cerrar. Toma la
+ * copia del documento al ABRIR (`useDialogSession`), así que el texto no se
+ * vacía durante la animación de salida, y no monta nada antes de la primera
+ * apertura.
+ */
+export function CancelReasonDialogFor<TTarget, TResult>({
+  target,
+  content,
+  open,
+  onOpenChange,
+}: CancelReasonDialogForProps<TTarget, TResult>) {
+  const session = useDialogSession(open, target);
+  if (session.snapshot === null) return null;
+  return <CancelReasonDialog content={content(session.snapshot)} open={open} onOpenChange={onOpenChange} />;
+}
+
 function CancelReasonForm<TResult>({
   content,
   onOpenChange,

@@ -87,17 +87,20 @@ export const cancelCobroRep = async ({
 };
 
 /**
- * Cancela el cobro (`POST /finanzas/cobros/{id}/cancelar/`, sin cuerpo).
- * Responde el cobro completo (`CobroSerializer`). Un `Aplicado` revierte saldos
- * de CxC, banco y póliza; un `Borrador` solo cambia de estatus; uno ya
- * `Cancelado` responde 200 sin hacer nada. Con REP (`rep_uuid` o
- * `rep_pendiente`) responde 400 `{ rep: [...] }`. Tope lento
- * (`SLOW_REQUEST_TIMEOUT_MS`): revierte CxC, banco y póliza en una sola petición.
+ * Cancela el cobro (`POST /finanzas/cobros/{id}/cancelar/`) con el motivo
+ * obligatorio (nucleo-erp#1356, EC-950; exige `CANCELAR-FIN-COBROS`). Responde
+ * el cobro completo (`CobroSerializer`) con los datos de la cancelación. Un
+ * `Aplicado` revierte saldos de CxC, banco y póliza; un `Borrador` solo cambia
+ * de estatus; uno ya `Cancelado` responde `400 estatus`. Con REP (`rep_uuid` o
+ * `rep_pendiente`) responde `400 rep`. Tope lento (`SLOW_REQUEST_TIMEOUT_MS`):
+ * revierte CxC, banco y póliza en una sola petición.
  */
-export const cancelCobro = async (id: number): Promise<Cobro> => {
-  const { data } = await v1_api.post<Cobro>(`/finanzas/cobros/${id}/cancelar/`, undefined, {
-    timeout: SLOW_REQUEST_TIMEOUT_MS,
-  });
+export const cancelCobro = async (id: number, motivo: string): Promise<Cobro> => {
+  const { data } = await v1_api.post<Cobro>(
+    `/finanzas/cobros/${id}/cancelar/`,
+    { motivo },
+    { timeout: SLOW_REQUEST_TIMEOUT_MS },
+  );
   return data;
 };
 
