@@ -1,6 +1,13 @@
 "use client";
 
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { Button } from "@/src/components/Button";
+import { CancelReasonDialogFor } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import { FINANCE_CANCEL_PERMISSION } from "@/src/constants/financePermissions";
+import { getFinanceCancelState } from "@/src/utils/financeWrite";
+import { canCancelMovimiento, movimientoCancelDialogContent } from "../utils/movimientoCancelAction";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { ACTIVO_INACTIVO_CFG, StatusBadge } from "@/src/components/StatusBadge";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -31,9 +38,15 @@ import { formatSaldo } from "../utils/bankAccountMoney";
 const MovimientosTable = ({
   items,
   monedaCodigo,
+  onCancel,
 }: {
   items: MovimientoCuentaBancaria[];
   monedaCodigo: string | null;
+  /**
+   * "Cancelar" un movimiento manual (EC-950). Sin él (falta el permiso) no hay
+   * columna de acciones: bancos es un catálogo y ahí las acciones se ocultan.
+   */
+  onCancel?: (movimiento: MovimientoCuentaBancaria) => void;
 }) => {
   if (items.length === 0) {
     return <EmptyLines>Esta cuenta no tiene movimientos registrados.</EmptyLines>;
@@ -50,6 +63,7 @@ const MovimientosTable = ({
           <th className="px-3 py-2 font-medium text-right">Importe</th>
           <th className="px-3 py-2 font-medium text-right">Saldo</th>
           <th className="px-3 py-2 font-medium">Estatus</th>
+          {onCancel && <th className="px-3 py-2 font-medium text-center">Acciones</th>}
         </>
       }
     >
@@ -89,6 +103,21 @@ const MovimientosTable = ({
           <td className="px-3 py-2">
             <StatusBadge status={movimiento.estatus} config={MOVIMIENTO_ESTATUS_CONFIG} />
           </td>
+          {onCancel && (
+            <td className="px-3 py-2 text-center">
+              {/* Solo un movimiento manual (sin cobro ni pago) y no cancelado: el de
+                  un cobro o un pago se cancela desde su documento. */}
+              {canCancelMovimiento(movimiento) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => onCancel(movimiento)}
+                  className="px-2! py-1! text-xs! text-rose-600! dark:text-rose-400!"
+                >
+                  Cancelar
+                </Button>
+              )}
+            </td>
+          )}
         </tr>
       ))}
     </LineItemsTable>
@@ -115,6 +144,15 @@ export function BankAccountSummaryDialog({
 }: BankAccountSummaryDialogProps) {
   // La consulta va por id y solo corre mientras el diálogo está montado.
   const { summary, isLoading, isError, error } = useBankAccountSummary(account.id);
+  // Cancelar un movimiento manual pide escritura de Finanzas y
+  // `CANCELAR-FIN-BANCOS` (nucleo-erp#1356, EC-950).
+  const { data: session, status: sessionStatus } = useSession();
+  const { canWrite: canCancel } = getFinanceCancelState(
+    session?.user,
+    sessionStatus,
+    FINANCE_CANCEL_PERMISSION.bancos,
+  );
+  const [cancelTarget, setCancelTarget] = useState<MovimientoCuentaBancaria | null>(null);
 
   return (
     <MainDialog
@@ -220,6 +258,7 @@ export function BankAccountSummaryDialog({
             <div>
               <SectionTitle>Últimos movimientos</SectionTitle>
               <MovimientosTable
+                onCancel={canCancel ? setCancelTarget : undefined}
                 items={summary.ultimos_movimientos}
                 monedaCodigo={account.moneda_codigo}
               />
@@ -227,6 +266,14 @@ export function BankAccountSummaryDialog({
           </>
         )}
       </div>
+      <CancelReasonDialogFor
+        target={cancelTarget}
+        content={movimientoCancelDialogContent}
+        open={cancelTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setCancelTarget(null);
+        }}
+      />
     </MainDialog>
   );
 }
