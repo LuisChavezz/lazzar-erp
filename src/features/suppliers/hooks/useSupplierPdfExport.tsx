@@ -5,6 +5,7 @@ import { useServerExport } from "@/src/hooks/useServerExport";
 import type { Supplier } from "../interfaces/supplier.interface";
 import { getSupplierColumnText } from "../utils/supplierExport";
 import { downloadBlob } from "@/src/utils/downloadBlob";
+import { generateListPdfBlob, listPdfWidths, standardListPdfProps } from "@/src/utils/listPdfBlob";
 
 /** Ancho relativo de cada columna en el PDF — Proveedor/Razón social llevan texto más largo. */
 const getColumnWeight = (column: DataTableVisibleColumn<Supplier>): number => {
@@ -14,193 +15,19 @@ const getColumnWeight = (column: DataTableVisibleColumn<Supplier>): number => {
   return 1;
 };
 
-const createSuppliersPdfDocument = (
-  renderer: Pick<
-    typeof import("@react-pdf/renderer"),
-    "Document" | "Page" | "Text" | "View" | "StyleSheet"
-  >,
+/** Props del PDF del listado: variante `standard` de `ListPdfDocument` (EC-959). */
+const suppliersPdfProps = (
   suppliers: Supplier[],
   columns: DataTableVisibleColumn<Supplier>[],
   now: Date,
 ) => {
-  const { Document, Page, Text, View, StyleSheet } = renderer;
-
-  const totalWeight = columns.reduce((sum, col) => sum + getColumnWeight(col), 0);
-  const columnWidths = columns.map(
-    (col) => `${((getColumnWeight(col) / totalWeight) * 100).toFixed(1)}%`,
-  );
-
-  const styles = StyleSheet.create({
-    page: {
-      paddingTop: 28,
-      paddingBottom: 44,
-      paddingHorizontal: 28,
-      fontSize: 9,
-      color: "#0f172a",
-      backgroundColor: "#ffffff",
-    },
-    headerSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 18,
-      paddingBottom: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: "#cbd5e1",
-    },
-    brand: {
-      fontSize: 7,
-      color: "#0ea5e9",
-      marginBottom: 4,
-    },
-    title: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: "#0f172a",
-    },
-    metaGroup: {
-      alignItems: "flex-end",
-    },
-    metaRow: {
-      flexDirection: "row",
-      marginTop: 3,
-    },
-    metaLabel: {
-      fontSize: 7.5,
-      color: "#94a3b8",
-      marginRight: 4,
-    },
-    metaValue: {
-      fontSize: 7.5,
-      fontWeight: "bold",
-      color: "#475569",
-    },
-    table: {
-      marginTop: 4,
-    },
-    row: {
-      flexDirection: "row",
-      borderBottomWidth: 1,
-      borderBottomColor: "#e2e8f0",
-      paddingVertical: 6,
-      paddingHorizontal: 4,
-      minHeight: 22,
-    },
-    headerRow: {
-      backgroundColor: "#1e293b",
-      borderBottomWidth: 0,
-      paddingVertical: 8,
-      borderRadius: 4,
-    },
-    rowOdd: {
-      backgroundColor: "#f8fafc",
-    },
-    rowLast: {
-      borderBottomWidth: 0,
-    },
-    headerCell: {
-      fontSize: 7,
-      fontWeight: "bold",
-      color: "#94a3b8",
-      paddingHorizontal: 5,
-    },
-    cell: {
-      fontSize: 8,
-      color: "#334155",
-      paddingHorizontal: 5,
-    },
-    footer: {
-      position: "absolute",
-      bottom: 18,
-      left: 28,
-      right: 28,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingTop: 6,
-      borderTopWidth: 1,
-      borderTopColor: "#e2e8f0",
-    },
-    footerText: {
-      fontSize: 7,
-      color: "#94a3b8",
-    },
+  const widths = listPdfWidths(columns.map(getColumnWeight), 1);
+  return standardListPdfProps({
+    title: "Catálogo de Proveedores",
+    columns: columns.map((column, i) => ({ header: column.header, width: widths[i] })),
+    rows: suppliers.map((supplier) => columns.map((column) => getSupplierColumnText(supplier, column))),
+    now,
   });
-
-  const today = now.toLocaleDateString("es-MX", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        {/* Encabezado */}
-        <View style={styles.headerSection}>
-          <View>
-            <Text style={styles.brand}>ERP LAZZAR</Text>
-            <Text style={styles.title}>Catálogo de Proveedores</Text>
-          </View>
-          <View style={styles.metaGroup}>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Exportado:</Text>
-              <Text style={styles.metaValue}>{today}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Registros:</Text>
-              <Text style={styles.metaValue}>{suppliers.length}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Tabla */}
-        <View style={styles.table}>
-          {/* Fila de cabeceras */}
-          <View style={[styles.row, styles.headerRow]}>
-            {columns.map((col, i) => (
-              <Text key={col.id} style={[styles.headerCell, { width: columnWidths[i] }]}>
-                {col.header}
-              </Text>
-            ))}
-          </View>
-
-          {/* Filas de datos */}
-          {suppliers.map((supplier, rowIndex) => (
-            <View
-              key={`${supplier.id}-${rowIndex}`}
-              style={[
-                styles.row,
-                rowIndex % 2 !== 0 ? styles.rowOdd : {},
-                rowIndex === suppliers.length - 1 ? styles.rowLast : {},
-              ]}
-            >
-              {columns.map((column, colIndex) => (
-                <Text
-                  key={`${supplier.id}-${column.id}`}
-                  style={[styles.cell, { width: columnWidths[colIndex] }]}
-                >
-                  {getSupplierColumnText(supplier, column)}
-                </Text>
-              ))}
-            </View>
-          ))}
-        </View>
-
-        {/* Pie de página fijo en todas las páginas */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
-            {suppliers.length} registro{suppliers.length !== 1 ? "s" : ""} — Generado con ERP Lazzar
-          </Text>
-          <Text
-            style={styles.footerText}
-            render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-              `Página ${pageNumber} de ${totalPages}`
-            }
-          />
-        </View>
-      </Page>
-    </Document>
-  );
 };
 
 /**
@@ -230,21 +57,8 @@ export const useSupplierPdfExport = (
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
     await runExport(async (rows) => {
-      const renderer = await import("@react-pdf/renderer");
       const now = new Date();
-      const pdfDocument = createSuppliersPdfDocument(
-        {
-          Document: renderer.Document,
-          Page: renderer.Page,
-          Text: renderer.Text,
-          View: renderer.View,
-          StyleSheet: renderer.StyleSheet,
-        },
-        rows,
-        exportColumns,
-        now,
-      );
-      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const blob = await generateListPdfBlob(suppliersPdfProps(rows, exportColumns, now));
       downloadBlob(blob, datedFileName("proveedores", "pdf", now));
     });
   }, [runExport]);
