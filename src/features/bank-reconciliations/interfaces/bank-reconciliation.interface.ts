@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Contrato de `/finanzas/conciliaciones-bancarias/`
  * (`ConciliacionBancariaSerializer`, con `fields = "__all__"` más dos campos de
@@ -23,7 +25,7 @@ import type { ConciliacionEstatus } from "../constants/conciliacionEstatus";
 
 export type { ConciliacionEstatus };
 
-export interface ConciliacionBancaria {
+export interface ConciliacionBancaria extends DocumentCancellationFields {
   id: number;
   /** FK a `finanzas.CuentaBancaria`. En el LISTADO es un id, no un objeto. */
   cuenta_bancaria: number;

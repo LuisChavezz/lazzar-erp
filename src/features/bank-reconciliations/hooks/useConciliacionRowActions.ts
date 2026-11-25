@@ -1,11 +1,11 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
-import type { FinanceWriteState } from "@/src/utils/financeWrite";
+import type { FinanceCancelState, FinanceWriteState } from "@/src/utils/financeWrite";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { ConciliacionBancaria } from "../interfaces/bank-reconciliation.interface";
 import { cerrarConciliacionMutationKey } from "./useCerrarConciliacion";
-import { cancelarConciliacionMutationKey } from "./useCancelarConciliacion";
+import { cancelarConciliacionMutationKey } from "../utils/conciliacionCancelAction";
 
 export interface ConciliacionRowActionsContextValue {
   onViewDetail: (conciliacion: ConciliacionBancaria) => void;
@@ -17,6 +17,12 @@ export interface ConciliacionRowActionsContextValue {
    * deshabilitados con su motivo.
    */
   write: FinanceWriteState;
+  /**
+   * Estado de la cancelación (`getFinanceCancelState`: escritura más
+   * `CANCELAR-FIN-BANCOS`, EC-950). Sin él, "Cancelar conciliación" se muestra
+   * deshabilitada con su motivo.
+   */
+  cancel: FinanceCancelState;
   /** Ids con un cierre o una cancelación en vuelo (`usePendingConciliacionIds`). */
   busyIds: number[];
 }

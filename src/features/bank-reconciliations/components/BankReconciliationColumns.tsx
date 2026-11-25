@@ -31,13 +31,15 @@ export const getCuentaLabel = (conciliacion: ConciliacionBancaria): string =>
  * llegan por contexto (`ConciliacionRowActionsProvider`).
  */
 function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBancaria }) {
-  const { onViewDetail, onCerrar, onCancelar, busyIds, write } =
+  const { onViewDetail, onCerrar, onCancelar, busyIds, write, cancel } =
     useConciliacionRowActionsContext();
   // Una fila con un cierre o una cancelación en vuelo no ofrece otra acción.
   const busy = busyIds.includes(conciliacion.id);
   // Sin permiso de escritura las acciones se muestran deshabilitadas con su
   // motivo (convención de los flujos de Finanzas); manda sobre el del cuadre.
   const writeBlock = financeWriteBlock(write, CONCILIACION_WRITE_PERMISSION_REASON);
+  // Cancelar pide además `CANCELAR-FIN-BANCOS` (EC-950).
+  const cancelBlock = financeWriteBlock(cancel, cancel.reason);
   const items: ActionMenuItem[] = [];
 
   // Solo un `Borrador` se cierra.
@@ -64,8 +66,8 @@ function ConciliacionCuentaCell({ conciliacion }: { conciliacion: ConciliacionBa
       label: "Cancelar conciliación",
       icon: BanIcon,
       onSelect: () => onCancelar(conciliacion),
-      disabled: busy || writeBlock.disabled,
-      description: writeBlock.description,
+      disabled: busy || cancelBlock.disabled,
+      description: cancelBlock.description,
     });
   }
 

@@ -20,8 +20,10 @@ import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
-import { CONCILIACION_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceCancelState, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { CONCILIACION_WRITE_PERMISSION_REASON, FINANCE_CANCEL_PERMISSION } from "@/src/constants/financePermissions";
+import { CancelReasonDialog } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import { conciliacionCancelDialogContent } from "../utils/conciliacionCancelAction";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -44,7 +46,6 @@ import {
 } from "../utils/conciliacionEnDetalle";
 import { useConciliaciones } from "../hooks/useConciliaciones";
 import { useCerrarConciliacion } from "../hooks/useCerrarConciliacion";
-import { useCancelarConciliacion } from "../hooks/useCancelarConciliacion";
 import { fetchFreshConciliacion } from "../hooks/fetchFreshConciliacion";
 import {
   ConciliacionRowActionsProvider,
@@ -99,23 +100,6 @@ const CONCILIACION_CANCEL_STALE_MESSAGES = {
       : `La conciliación ya está ${estatus.toLowerCase()}; ya no se puede cancelar. Se actualizó el listado.`,
 };
 
-/**
- * Texto de la confirmación de cancelar, según el estatus VERIFICADO. `cambio`:
- * el servidor dijo otro estatus que el listado, y se avisa antes de la pregunta.
- */
-const cancelarConciliacionDescription = (
-  cuenta: string,
-  estatus: ConciliacionEstatus,
-  cambio: boolean,
-): string => {
-  const aviso = cambio
-    ? `El estatus cambió desde que se cargó el listado: ahora está ${estatus}. `
-    : "";
-  return estatus === "Cerrada"
-    ? `${aviso}¿Deseas cancelar la conciliación cerrada de ${cuenta}? Los movimientos que conciliaba regresarán a Pendiente (salvo los que ampare otra conciliación cerrada) y el periodo quedará libre para volver a prepararse. Se conserva en el listado con estatus Cancelada.`
-    : `${aviso}¿Deseas cancelar la conciliación de ${cuenta}? Se conserva en el listado con estatus Cancelada y el periodo queda libre para volver a prepararse.`;
-};
-
 export function BankReconciliationView() {
   // Preparar, cerrar y cancelar exigen `FINANCE_WRITE_PERMISSION` (EC-733). Sin
   // él, "+ Preparar conciliación" se oculta y las acciones del menú se muestran
@@ -123,6 +107,13 @@ export function BankReconciliationView() {
   const { data: session, status: sessionStatus } = useSession();
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
+  // Cancelar pide además `CANCELAR-FIN-BANCOS` (nucleo-erp#1356, EC-950).
+  const cancel = getFinanceCancelState(
+    session?.user,
+    sessionStatus,
+    FINANCE_CANCEL_PERMISSION.bancos,
+    CONCILIACION_WRITE_PERMISSION_REASON,
+  );
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -218,7 +209,8 @@ export function BankReconciliationView() {
   const [cerrarTargetId, setCerrarTargetId] = useState<number | null>(null);
   const [cancelarTargetId, setCancelarTargetId] = useState<number | null>(null);
   // Estatus REAL de la conciliación a cancelar, leído del servidor al abrir la
-  // confirmación y otra vez al confirmar (`verificarCancelar`): el listado puede
+  // confirmación (`verificarCancelar`; al confirmar lo relee la acción,
+  // `conciliacionCancelDialogContent`): el listado puede
   // tener hasta 15 minutos. `cambio` = difiere del que mostraba el listado, y el
   // texto lo dice para que se confirme con conocimiento de causa.
   const [cancelarVerificado, setCancelarVerificado] = useState<{
@@ -233,7 +225,6 @@ export function BankReconciliationView() {
   // última del observer, así que con dos filas en vuelo el cierre de la
   // primera se perdería.
   const { mutateAsync: cerrarAsync } = useCerrarConciliacion();
-  const { mutateAsync: cancelarAsync } = useCancelarConciliacion();
   // Cierres y cancelaciones en vuelo POR CONCILIACIÓN, leídos de la
   // MutationCache: `isPending` de cada hook solo recuerda su última llamada.
   const busyIds = usePendingConciliacionIds();
@@ -430,7 +421,7 @@ export function BankReconciliationView() {
   };
 
   const handleCancelar = (conciliacion: ConciliacionBancaria) => {
-    if (!guardWrite()) return;
+    if (!guardFinanceWrite(cancel, cancel.reason)) return;
     setCancelarVerificado(null);
     setCancelarTargetId(conciliacion.id);
     void verificarCancelar(conciliacion.id, conciliacion.estatus);
@@ -444,6 +435,7 @@ export function BankReconciliationView() {
         onCancelar: handleCancelar,
         busyIds,
         write,
+        cancel,
       }}
     >
     <div className="h-full flex flex-col min-h-0 space-y-4">
@@ -637,51 +629,23 @@ export function BankReconciliationView() {
         />
       )}
 
+      {/* Cancelar con el motivo obligatorio (EC-950). El texto sale del estatus
+          VERIFICADO al abrir (`verificarCancelar`); si el servidor dijo otro que el
+          listado, el diálogo se vuelve a montar con el aviso. Justo antes del POST
+          la acción relee el estatus y no cancela si ya no es el descrito. */}
       {cancelarSnapshot && (
-        <ConfirmDialog
-          key={cancelarSession.id}
+        <CancelReasonDialog
+          key={`${cancelarSession.id}:${cancelarEstatus ?? cancelarSnapshot.estatus}`}
+          content={conciliacionCancelDialogContent(queryClient, {
+            id: cancelarSnapshot.id,
+            cuenta: getCuentaLabel(cancelarSnapshot),
+            estatus: cancelarEstatus ?? cancelarSnapshot.estatus,
+            cambio: cancelarVerificadoVigente?.cambio ?? false,
+          })}
           open={cancelarTargetId !== null}
-          // En vuelo queda abierta y bloqueada (ver `guardClose`).
-          // Bloqueada mientras verifica el estatus y mientras cancela (`guardClose`).
-          {...rowLock.guardClose(
-            cancelarSnapshot.id,
-            () => setCancelarTargetId(null),
-            isBusy(cancelarSnapshot.id) || cancelarVerificando,
-          )}
-          title="Cancelar Conciliación"
-          description={cancelarConciliacionDescription(
-            getCuentaLabel(cancelarSnapshot),
-            cancelarEstatus ?? cancelarSnapshot.estatus,
-            cancelarVerificadoVigente?.cambio ?? false,
-          )}
-          confirmText={
-            cancelarVerificando
-              ? "Verificando..."
-              : isBusy(cancelarSnapshot.id)
-                ? "Cancelando..."
-                : "Cancelar conciliación"
-          }
-          cancelText="Volver"
-          closeOnConfirm={false}
-          onConfirm={() => {
-            const { id } = cancelarSnapshot;
-            const esperado = cancelarEstatus ?? cancelarSnapshot.estatus;
-            if (isBusy(id) || cancelarVerificando || !rowLock.acquire(id)) return;
-            // Se vuelve a leer el estatus justo antes de cancelar. Si cambió, el
-            // texto se actualiza (o el aviso cierra la confirmación) y hay que
-            // confirmar de nuevo: nunca se cancela con un efecto que no se avisó.
-            void (async () => {
-              const real = await verificarCancelar(id, esperado);
-              if (real !== esperado) {
-                rowLock.release(id);
-                return;
-              }
-              await cancelarAsync({ id, estatus: real }).catch(() => {});
-              rowLock.release(id);
-              setCancelarTargetId((current) => (current === id ? null : current));
-            })();
+          onOpenChange={(open) => {
+            if (!open) setCancelarTargetId(null);
           }}
-          confirmColor="amber"
         />
       )}
 
