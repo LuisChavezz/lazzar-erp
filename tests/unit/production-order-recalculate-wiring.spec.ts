@@ -43,7 +43,6 @@ const op = (consumosResumen: ProductionOrderConsumoResumen[]): ProductionOrderOn
   folio_op: "2026-OP-00022",
   estatus_op: 2,
   estatus_op_display: "Preparacion",
-  prioridad: 2,
   fecha_inicio: "2026-10-15T08:46:15-06:00",
   fecha_fin: null,
   observaciones: null,

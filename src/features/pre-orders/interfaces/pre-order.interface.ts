@@ -199,7 +199,6 @@ export interface ConfirmarExistenciasResponse {
 
 export interface CrearOpBody {
   centro_confeccion?: number;
-  prioridad: number;
 }
 
 export interface CrearOpResponse {

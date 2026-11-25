@@ -38,8 +38,6 @@ export interface ProductionOrderMetrics {
   stopped: ProductionOrderListItem[];
   /** Conteo por `estatus_op`, ascendente; suma `all`. */
   byStatus: Array<{ estatus: number; display: string; count: number }>;
-  /** Conteo por `prioridad` (1 Alta, 2 Media, 3 Baja) sobre `all`. */
-  byPriority: { high: number; medium: number; low: number };
   /** Las 5 más recientes por `fecha_inicio` y luego `op_id`, descendente. */
   recent: ProductionOrderListItem[];
 }
@@ -73,11 +71,6 @@ export const getProductionOrderMetrics = (
     byStatus: [...statusCounts.entries()]
       .sort(([a], [b]) => a - b)
       .map(([estatus, { display, count }]) => ({ estatus, display, count })),
-    byPriority: {
-      high: orders.filter((o) => o.prioridad === 1).length,
-      medium: orders.filter((o) => o.prioridad === 2).length,
-      low: orders.filter((o) => o.prioridad === 3).length,
-    },
     recent,
   };
 };

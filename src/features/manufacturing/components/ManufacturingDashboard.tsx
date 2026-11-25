@@ -277,50 +277,6 @@ function DistBar({
   );
 }
 
-/** Fila de la distribución por prioridad. */
-function PriorityRow({
-  label,
-  count,
-  total,
-  dotCls,
-  valueCls,
-  isUnavailable,
-}: {
-  label: string;
-  count: number;
-  total: number;
-  dotCls: string;
-  valueCls: string;
-  isUnavailable: boolean;
-}) {
-  const pct = total > 0 ? (count / total) * 100 : 0;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}`} aria-hidden="true" />
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-sm font-bold tabular-nums font-mono ${valueCls}`}>
-            {isUnavailable ? "—" : count}
-          </span>
-          <span className="text-[10px] font-bold text-slate-400">
-            {isUnavailable ? "" : `${Math.round(pct)}%`}
-          </span>
-        </div>
-      </div>
-      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${dotCls}`}
-          style={{ width: `${isUnavailable ? 0 : pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ── Datos ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -599,7 +555,7 @@ function DashboardContent({
             {canViewCorteManga && <CorteMangaModuleCard />}
             {canViewReflective && <ReflectiveModuleCard />}
           </div>
-          {/* Estatus y prioridad bajo los módulos (antes en una fila aparte):
+          {/* Estatus y totales bajo los módulos (antes en una fila aparte):
               así la columna ancha no deja un hueco junto al panel derecho. */}
           {opMetrics && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -630,44 +586,14 @@ function DashboardContent({
               </div>
             </div>
   
-            {/* Distribución por prioridad + totales consolidados */}
+            {/* Totales consolidados, junto a la distribución por estatus */}
             <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-sm font-bold text-slate-800 dark:text-white">Prioridad de órdenes</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Clasificación de Órdenes de Producción por urgencia</p>
-              </div>
-              <div className="space-y-4">
-                <PriorityRow
-                  label="Alta prioridad"
-                  count={opMetrics.byPriority.high}
-                  total={opMetrics.all}
-                  dotCls="bg-red-500"
-                  valueCls="text-red-600 dark:text-red-400"
-                  isUnavailable={opUnavailable}
-                />
-                <PriorityRow
-                  label="Media prioridad"
-                  count={opMetrics.byPriority.medium}
-                  total={opMetrics.all}
-                  dotCls="bg-amber-500"
-                  valueCls="text-amber-600 dark:text-amber-400"
-                  isUnavailable={opUnavailable}
-                />
-                <PriorityRow
-                  label="Baja prioridad"
-                  count={opMetrics.byPriority.low}
-                  total={opMetrics.all}
-                  dotCls="bg-slate-400"
-                  valueCls="text-slate-500 dark:text-slate-400"
-                  isUnavailable={opUnavailable}
-                />
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5">{totals}</div>
+              {totals}
             </div>
               </div>
           )}
-          {/* Sin OP no existe la tarjeta de prioridad que los aloja: los
-              totales van aquí, bajo las tarjetas de módulo. */}
+          {/* Sin OP no hay fila de distribución que los aloje: los totales
+              van aquí, bajo las tarjetas de módulo. */}
           {!opMetrics && (
             <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
               {totals}

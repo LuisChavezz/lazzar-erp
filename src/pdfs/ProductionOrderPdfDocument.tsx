@@ -8,7 +8,7 @@
  * Lo que muestra la página de detalle (`ProductionOrderPageContent`), leído de
  * `onboarding/?op_id=`:
  *
- * - Datos de la orden (estatus, prioridad, alta, fin, cierre solicitado,
+ * - Datos de la orden (estatus, alta, fin, cierre solicitado,
  *   activa) y su seguimiento (operador, empresa, sucursal), más las fechas del
  *   pedido y la entrega estimada (EC-880), que la página no muestra.
  * - Los pedidos que cubre, CADA UNO con su cliente: una OP puede cubrir pedidos
@@ -30,11 +30,7 @@ import {
   formatSignedBackendQuantity,
 } from "@/src/features/production-order-consumption/utils/formatConsumptionQuantity";
 import { consumptionProductName } from "@/src/features/production-order-consumption/utils/consumptionRecords";
-import {
-  PRODUCTION_ORDER_PRIORITY_CONFIG,
-  productionOrderPriorityFallback,
-  productionOrderStatusEntry,
-} from "@/src/features/production-orders/constants/productionOrderStatus";
+import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import type {
   ProductionOrderConsumoResumen,
   ProductionOrderOnboarding,
@@ -159,9 +155,6 @@ export const ProductionOrderPdfDocument = ({ op, company }: ProductionOrderPdfDo
   const productos = op.productos ?? [];
   // La misma suma que el chip "N piezas" de la página.
   const totalPiezas = productos.reduce((sum, producto) => sum + (Number(producto.cantidades.total) || 0), 0);
-  const prioridad =
-    PRODUCTION_ORDER_PRIORITY_CONFIG[String(op.prioridad)]?.label ??
-    productionOrderPriorityFallback(op.prioridad).label;
 
   return (
     <DocumentPdfLayout
@@ -177,7 +170,6 @@ export const ProductionOrderPdfDocument = ({ op, company }: ProductionOrderPdfDo
           title="DATOS DE LA ORDEN"
           items={[
             { label: "Estatus", value: productionOrderStatusEntry(op.estatus_op, op.estatus_op_display).label },
-            { label: "Prioridad", value: textOrDash(prioridad) },
             { label: "Alta", value: formatShortDate(op.fecha_inicio) },
             { label: "Fin", value: formatShortDate(op.fecha_fin) },
             { label: "Cierre solicitado", value: yesNo(op.cerrar_orden) },

@@ -7,16 +7,9 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { useMaquileros } from "@/src/features/suppliers/hooks/useMaquileros";
 import type { CrearOpBody } from "../interfaces/pre-order.interface";
 
-/** 1 = Alta, 2 = Media, 3 = Baja (mismo mapeo que el asistente de OP). */
-const PRIORIDAD_OPTIONS = [
-  { value: 1, label: "Alta" },
-  { value: 2, label: "Media" },
-  { value: 3, label: "Baja" },
-] as const;
-
 /**
  * "Crear OP" desde una pre-orden lista: los SKU y cantidades ya vienen de la
- * pre-orden, así que solo se piden prioridad y centro de confección.
+ * pre-orden, así que solo se pide el centro de confección.
  */
 export function PreOrderCreateOpDialog({
   open,
@@ -31,16 +24,12 @@ export function PreOrderCreateOpDialog({
   isPending: boolean;
   onSubmit: (body: CrearOpBody) => void;
 }) {
-  const [prioridad, setPrioridad] = useState(2);
   const [centro, setCentro] = useState("");
   const { maquileros, isLoading } = useMaquileros();
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSubmit({
-      prioridad,
-      ...(centro ? { centro_confeccion: Number(centro) } : {}),
-    });
+    onSubmit(centro ? { centro_confeccion: Number(centro) } : {});
   };
 
   return (
@@ -53,19 +42,6 @@ export function PreOrderCreateOpDialog({
       showCloseButton={false}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormSelect
-          label="Prioridad"
-          name="prioridad"
-          value={prioridad}
-          disabled={isPending}
-          onChange={(event) => setPrioridad(Number(event.target.value))}
-        >
-          {PRIORIDAD_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </FormSelect>
         <FormSelect
           label="Centro de confección (opcional)"
           name="centro_confeccion"

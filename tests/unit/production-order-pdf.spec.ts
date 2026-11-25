@@ -44,7 +44,6 @@ const op = (overrides: Partial<ProductionOrderOnboarding> = {}): ProductionOrder
   folio_op: "2026-OP-00045",
   estatus_op: 1,
   estatus_op_display: "Pendiente",
-  prioridad: 1,
   fecha_inicio: "2026-11-10T11:40:51.870164-06:00",
   fecha_fin: null,
   observaciones: "Urgente",
