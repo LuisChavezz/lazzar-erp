@@ -56,8 +56,12 @@ const isPlainObject = (value: object): value is Record<string, unknown> => {
  * `stripPdfEmoji` sobre cada string de las props de un documento: entra en
  * arrays y objetos planos (el JSON del API, `company`, el modelo de la
  * cotización) y devuelve copias; cualquier otro valor (números, fechas, `Blob`,
- * elementos de React, instancias de clases) y los strings con forma de URL
+ * elementos de React, instancias de clases) y los strings que son solo una URL
  * pasan tal cual.
+ *
+ * Por eso las props de un documento tienen que ser datos planos: arrays y
+ * objetos planos. Un `Map`, un `Set` o una instancia de clase NO se recorren, y
+ * los emoji que lleven dentro llegan al PDF (y desaparecen sin aviso).
  */
 export function stripPdfEmojiDeep<T>(value: T): T {
   if (typeof value === "string") return (URL_ONLY.test(value) ? value : stripPdfEmoji(value)) as T;
