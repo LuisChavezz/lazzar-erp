@@ -303,6 +303,26 @@ test.describe("PDF de la orden de reflejante", () => {
     expect(doc.tables[1].cells[0]).toMatchObject({ Talla: "M", Metros: "—", "En esta orden": "1" });
   });
 
+  test("renglones de muestra (sin producto ni la clave producto_nombre): uno por línea del pedido, sin «Producto #null» (EC-963)", () => {
+    // Como llegan del backend tras EC-964: `producto` null y sin la clave.
+    const muestra = (id: number, pedidoDetalle: number) => {
+      const linea = orLinea({ id, producto: null, pedido_detalle: pedidoDetalle });
+      delete linea.producto_nombre;
+      return linea;
+    };
+    const doc = read(
+      ReflectiveOrderPdfDocument({
+        order: or({ detalles: [orLinea(), muestra(2, 2177), muestra(3, 2177), muestra(4, 2180)] }),
+        company: COMPANY,
+      }),
+    );
+    expect(doc.tables.map((table) => table.title)).toEqual([
+      "CHAMARRA ALASKA · NEGRO · 1 pieza",
+      "Sin producto de catálogo · NEGRO · 2 piezas",
+      "Sin producto de catálogo · NEGRO · 1 pieza",
+    ]);
+  });
+
   test("cliente del pedido en la tarjeta y en el subtítulo", () => {
     const doc = read(ReflectiveOrderPdfDocument({ order: or(), company: COMPANY }));
     expect(doc.card("CLIENTE")).toEqual({ Cliente: "Luis Ceja", "Razón social": "Luigi's", RFC: "—" });
@@ -370,6 +390,14 @@ test.describe("PDF de la orden de corte de manga", () => {
     expect(doc.card("ORIGEN Y SEGUIMIENTO")["Total piezas"]).toBe("2");
     expect(doc.card("CLIENTE").RFC).toBe("IAMJ951203BC6");
     expect(doc.tables.map((table) => table.title)).toEqual(["PANTALON CARGO · MARINO · 2 piezas"]);
+  });
+
+  test("un renglón de muestra se rotula «Sin producto de catálogo» (EC-963)", () => {
+    const [linea] = ocm().detalles;
+    const muestra = { ...linea, producto: null };
+    delete muestra.producto_nombre;
+    const doc = read(CorteMangaOrderPdfDocument({ order: ocm({ detalles: [muestra] }), company: COMPANY }));
+    expect(doc.tables.map((table) => table.title)).toEqual(["Sin producto de catálogo · MARINO · 2 piezas"]);
   });
 
   test("sin las claves de fecha ni de cobertura (respuesta anterior) se omiten", () => {

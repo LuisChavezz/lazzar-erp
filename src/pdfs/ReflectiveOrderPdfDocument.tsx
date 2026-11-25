@@ -43,6 +43,7 @@ import {
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
 import { workOrderCoverageItems, workOrderGarmentTables, type WorkOrderPdfGarmentRow } from "./shared/workOrderPdf";
+import { workOrderProductGroupId, workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 
 type ReflectiveOrderPdfDocumentProps = {
   order: ReflectiveOrderDetail;
@@ -126,8 +127,8 @@ export const ReflectiveOrderPdfDocument = ({ order, company }: ReflectiveOrderPd
         items: order.detalles ?? [],
         toLine: (linea) => ({
           id: linea.id,
-          productoId: linea.producto,
-          producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+          productoId: workOrderProductGroupId(linea),
+          producto: workOrderProductLabel(linea),
           color: linea.color_nombre ?? null,
           talla: linea.talla_nombre,
           cantidad: linea.cantidad,
