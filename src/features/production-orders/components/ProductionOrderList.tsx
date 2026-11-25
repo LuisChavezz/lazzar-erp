@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -8,15 +9,13 @@ import { DataTable } from "@/src/components/DataTable";
 import { ListTabs } from "@/src/components/ListTabs";
 import { isClosedProductionOrderStatus } from "../constants/productionOrderStatus";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { hasProductionPermission } from "@/src/utils/productionPermissions";
+import { canAccessRoute } from "@/src/utils/routeAccess";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { Button } from "@/src/components/Button";
 import {
   getProductionOrderColumns,
   PRODUCTION_ORDER_HEADER_FILTERS,
 } from "./ProductionOrderColumns";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
-import { CreateProductionOrderDialog } from "./CreateProductionOrderDialog";
 import { useProductionOrders } from "../hooks/useProductionOrders";
 import { productionOrderKpisQueryKey } from "../hooks/useProductionOrderKpis";
 import { ProductionOrderKpisSection } from "./ProductionOrderKpisSection";
@@ -24,25 +23,27 @@ import { ProductionOrderCriticalPathDialog } from "@/src/features/production-ord
 import type { CriticalPathTarget } from "@/src/features/production-order-critical-path/interfaces/production-order-critical-path.interface";
 import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 
+/** Pre-órdenes: de ahí nace toda OP ("Crear OP"). */
+const PRE_ORDERS_PATH = "/manufacturing/pre-orders";
+
 /**
  * Lista principal de órdenes de producción.
  *
  * "Ver detalle" NAVEGA a `/manufacturing/production-orders/[id]`
  * (`ProductionOrderPageContent`) en vez de abrir un diálogo montado por fila —
- * mismo cambio ya hecho en bordado/reflejante/corte de manga. Sin diálogo de
- * detalle montado aquí: a diferencia de esos tres módulos, el alta de esta
- * orden (`CreateProductionOrderDialog`/`ProductionOrderStepManager`) no tiene
- * un flujo de 409 de duplicado que necesite reabrir una orden existente por id,
- * así que no hay razón para mantenerlo vivo en el padre.
+ * mismo cambio ya hecho en bordado/reflejante/corte de manga.
+ *
+ * Sin alta manual: el backend la deshabilitó (`create` responde 405 y
+ * `onboarding/` solo admite GET). Toda OP nace de una pre-orden lista con
+ * "Crear OP", así que la barra solo lo indica.
  */
 export function ProductionOrderList() {
   const router = useRouter();
 
-  // Ver el listado exige `R-PRODUCCION-OP` (ver `routePermissions`); dar de alta
-  // exige además `C-PRODUCCION-OP`. `hasPermission` ya cortocircuita para el rol
-  // "admin".
+  // El enlace a Pre-órdenes solo se ofrece si el usuario puede abrirla (misma
+  // regla que el proxy); si no, queda el texto.
   const { data: session } = useSession();
-  const canCreate = hasProductionPermission(session?.user, "OP", "C");
+  const canOpenPreOrders = canAccessRoute(PRE_ORDERS_PATH, session?.user);
   // OP cuya ruta crítica está abierta. Se guarda la FOTO (id, folio y estatus) de la
   // apertura y no se resuelve contra el listado: la ruta crítica no depende de
   // la fila, así que un refetch del listado no debe cerrar el diálogo.
@@ -55,7 +56,6 @@ export function ProductionOrderList() {
       ),
     [router],
   );
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data, hasLoaded, isLoading, isError, error, refetch, isRefetching } =
     useProductionOrders();
 
@@ -72,9 +72,8 @@ export function ProductionOrderList() {
   const rows = vista === "terminadas" ? terminadas : enCurso;
 
   // Los indicadores tienen consulta propia que ninguna mutación de OP
-  // invalida: el refresco de la tabla y el alta los refrescan también, para
-  // que tarjetas y tabla no muestren cifras de momentos distintos. Aquí y no
-  // en `useCreateProductionOrder`, que no sabe de esta pantalla.
+  // invalida: el refresco de la tabla los refresca también, para que tarjetas
+  // y tabla no muestren cifras de momentos distintos.
   const queryClient = useQueryClient();
   const invalidateKpis = () =>
     queryClient.invalidateQueries({ queryKey: productionOrderKpisQueryKey });
@@ -113,28 +112,23 @@ export function ProductionOrderList() {
         errorMessage={extractErrorMessage(error, "No se pudo cargar la información.")}
         loadingAriaLabel="Cargando órdenes de producción"
         actionButton={
-          canCreate ? (
-            <Button
-              variant="primary"
-              rounded="full"
-              onClick={() => setIsCreateOpen(true)}
-              className="hover:scale-105 active:scale-95"
-            >
-              + Nueva Orden
-            </Button>
-          ) : undefined
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Las OP se crean desde{" "}
+            {canOpenPreOrders ? (
+              <Link
+                href={PRE_ORDERS_PATH}
+                className="font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+              >
+                Pre-órdenes
+              </Link>
+            ) : (
+              "Pre-órdenes"
+            )}{" "}
+            → «Crear OP».
+          </p>
         }
       />
       </div>
-
-      <CreateProductionOrderDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        onSuccess={() => {
-          void invalidateKpis();
-          setIsCreateOpen(false);
-        }}
-      />
 
       {/* Montado solo mientras está abierto: cada apertura pide una lectura
           fresca de la ruta crítica. */}

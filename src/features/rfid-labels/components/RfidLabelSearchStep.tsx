@@ -31,9 +31,8 @@ function sameResult(
  * Paso 1 — Búsqueda: input buscable (`SearchInput`) que llama
  * `GET /onboarding/?q=...` debounced y lista los resultados como opciones de
  * SELECCIÓN (no avanzan al hacer clic). Se resalta la fila elegida y un botón
- * "Continuar" —deshabilitado hasta que hay selección— avanza al Paso 2. Mismo
- * patrón que `ProductionOrderStep1` (lista buscable con selección + barra de
- * acción con "Continuar"); la lista tiene su propio scroll interno.
+ * "Continuar" —deshabilitado hasta que hay selección— avanza al Paso 2.
+ * La lista tiene su propio scroll interno.
  *
  * No se reutiliza `SearchableSelectList` porque ese componente incrusta su
  * propio buscador y FILTRA EN CLIENTE sobre un arreglo precargado, mientras que

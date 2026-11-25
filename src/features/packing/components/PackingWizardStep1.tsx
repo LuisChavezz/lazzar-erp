@@ -28,8 +28,7 @@ const PACKING_CATALOG_LIMIT = 50;
  * con un buscador en memoria (`SearchableSelectList`) en vez de un
  * `FormSelect` plano — mismo patrón de selección única embebida directamente
  * en el paso (sin el diálogo apilado de `SingleSelectPickerDialogContent`,
- * pensado para un selector de UN campo dentro de un formulario más grande)
- * que usa `ProductionOrderStep1` para su selección de variantes.
+ * pensado para un selector de UN campo dentro de un formulario más grande).
  */
 export function PackingWizardStep1({ initialValues, onNext }: PackingWizardStep1Props) {
   const { data, isLoading, isError } = usePackingOnboarding();

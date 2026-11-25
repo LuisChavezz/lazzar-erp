@@ -250,7 +250,7 @@ export default function BomList({
 
   // En modo edición también se espera al catálogo de unidades: el <select> de
   // unidad se queda sin opciones (y muestra la unidad en blanco) si renderiza
-  // antes de que carguen las unidades. Mismo criterio que ProductionOrderStep2.
+  // antes de que carguen las unidades.
   if (isLoading || (isEditing && isLoadingUnits)) {
     return (
       <div className="flex items-center justify-center py-16">

@@ -55,9 +55,9 @@ interface SearchableSelectListProps<T> {
 
 /**
  * Lista buscable de selección con un renglón por ítem (radio o casilla según
- * `renderIndicator`). Extraída de `InvoiceOrderSelector` y
- * `ProductionOrderStep1`, que compartían esta estructura pero difieren en el
- * modo de selección (única vs múltiple) y en los campos mostrados por fila —
+ * `renderIndicator`). Extraída de `InvoiceOrderSelector` y del antiguo alta
+ * manual de OP, que compartían esta estructura pero diferían en el modo de
+ * selección (única vs múltiple) y en los campos mostrados por fila —
  * de ahí que ambos aspectos queden parametrizados en vez de fijos aquí.
  */
 export function SearchableSelectList<T>({
