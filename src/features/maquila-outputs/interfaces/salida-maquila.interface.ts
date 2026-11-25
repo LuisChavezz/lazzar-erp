@@ -177,6 +177,13 @@ export interface OpParaSalidaMaquilaRenglon {
 export interface SalidaMaquilaRenglonOrigen {
   detalleId: number;
   descripcion: string;
+  /**
+   * El backend describe este renglón mejor que el cliente: un renglón de
+   * MUESTRA de OB u OR, sin producto ni SKU, cuyo nombre externo el detalle de
+   * la orden no trae (EC-964). El alta omite su `descripcion` para que el backend ponga
+   * la suya; `descripcion` queda solo para la pantalla.
+   */
+  descripcionDelServidor?: boolean;
   cantidad: number;
 }
 

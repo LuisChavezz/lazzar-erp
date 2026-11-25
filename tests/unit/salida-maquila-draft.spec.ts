@@ -188,3 +188,46 @@ test.describe("salida a maquila: OB y OR (EC-911)", () => {
     ]);
   });
 });
+
+test.describe("salida a maquila: renglón de muestra de OB u OR (EC-963)", () => {
+  // Detalle de una OR con un renglón de muestra: sin producto y sin la clave
+  // `producto_nombre` (DRF la omite), como lo manda el backend tras EC-964.
+  const detalles = [
+    { id: 41, cantidad: 2, producto: 8562, producto_nombre: "PLAYERA", talla_nombre: "M", color_nombre: "AZUL" },
+    { id: 42, cantidad: 1, producto: null, talla_nombre: "28", color_nombre: "AMARILLO NEON" },
+  ];
+
+  test("una muestra con SKU se describe como cualquier renglón y manda su descripción", () => {
+    const conSku = [{ id: 43, cantidad: 1, producto: null, sku: "MP2177-302-30", talla_nombre: "30", color_nombre: "AMARILLO NEON" }];
+    const [renglon] = servicioSeed("OR", 20, conSku).renglones;
+    expect(renglon).toEqual({ detalleId: 43, descripcion: "MP2177-302-30 · 30 · AMARILLO NEON", cantidad: 1 });
+    const d = initialDraft([renglon], null).map((l) => ({ ...l, cantidad: "1", precio: "2" }));
+    expect(toDetalles(d, "OR")).toEqual([
+      { or_detalle: 43, descripcion: "MP2177-302-30 · 30 · AMARILLO NEON", cantidad: "1", precio_unitario: "2" },
+    ]);
+  });
+
+  test("la muestra se rotula «Sin producto de catálogo», nunca vacía ni con un id", () => {
+    expect(servicioSeed("OR", 20, detalles).renglones).toEqual([
+      { detalleId: 41, descripcion: "PLAYERA · M · AZUL", cantidad: 2 },
+      {
+        detalleId: 42,
+        descripcion: "Sin producto de catálogo · 28 · AMARILLO NEON",
+        descripcionDelServidor: true,
+        cantidad: 1,
+      },
+    ]);
+  });
+
+  test("el alta omite la descripción de la muestra para que la ponga el backend", () => {
+    const d = initialDraft(servicioSeed("OR", 20, detalles).renglones, null).map((l) => ({
+      ...l,
+      cantidad: "1",
+      precio: "2",
+    }));
+    expect(toDetalles(d, "OR")).toEqual([
+      { or_detalle: 41, descripcion: "PLAYERA · M · AZUL", cantidad: "1", precio_unitario: "2" },
+      { or_detalle: 42, cantidad: "1", precio_unitario: "2" },
+    ]);
+  });
+});
