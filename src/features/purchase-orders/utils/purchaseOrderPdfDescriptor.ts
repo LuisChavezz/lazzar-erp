@@ -36,6 +36,7 @@ export const purchaseOrderPdfStatusBanner = (
   if (!isPurchaseOrderBalanceClosed(order)) return null;
   return {
     title: "SALDO CERRADO",
-    detail: order.fecha_cierre ? `Cerrado el ${formatShortDateTime(order.fecha_cierre)}.` : null,
+    // Sin punto final: la hora ya termina en "a.m."/"p.m.".
+    detail: order.fecha_cierre ? `Cerrado el ${formatShortDateTime(order.fecha_cierre)}` : null,
   };
 };
