@@ -1,4 +1,4 @@
-import type { KpiCompactItem } from "@/src/components/KpiGrid";
+import { KPI_MUTED_ICON, type KpiCompactItem } from "@/src/components/KpiGrid";
 import {
   BoxIcon,
   CheckCircleIcon,
@@ -22,6 +22,9 @@ const valorPorMoneda = (kpis: PedidoKpisMesa): CurrencyTotal[] =>
     ...(fila.moneda ? {} : { etiqueta: `Moneda ${fila.moneda_id}` }),
   }));
 
+/** Motivo de una tarjeta cuyo conteo no llegó en `kpis-mesa/` (backend anterior a #1352). */
+export const MESA_KPI_NOT_REPORTED_REASON = "El servidor no reporta este indicador.";
+
 /**
  * Tarjetas de Mesa de Control a partir de `kpis-mesa/`, el MISMO conjunto que
  * la tabla con los mismos filtros y búsqueda. `total` excluye los cancelados
@@ -34,6 +37,9 @@ export const buildMesaPedidoKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
   const pct = (n: number) => (kpis.total ? Math.round((n / kpis.total) * 100) : 0);
   const count = (n: number) => n.toLocaleString("es-MX");
   const valorBase = { label: "Valor total", icon: ListaPreciosIcon };
+  // Retenidos y sin surtir pueden no venir (backend anterior a #1352): "No disponible".
+  const retenidosBase = { label: "Retenidos", icon: LockIcon };
+  const sinSurtirBase = { label: "Sin surtir", icon: BoxIcon };
   return [
     {
       label: "Total pedidos",
@@ -59,24 +65,26 @@ export const buildMesaPedidoKpis = (kpis: PedidoKpisMesa): KpiCompactItem[] => {
       progress: pct(kpis.confirmados),
       detail: `${pct(kpis.confirmados)}% del total · con fecha`,
     },
-    {
-      label: "Retenidos",
-      value: count(kpis.retenidos),
-      icon: LockIcon,
-      iconClass: "text-orange-500",
-      progress: pct(kpis.retenidos),
-      detail: `${pct(kpis.retenidos)}% del total · congelados`,
-      info: "Pedidos vigentes que Mesa de Control retuvo: no se surten, empacan, despachan ni generan órdenes hasta liberarlos.",
-    },
-    {
-      label: "Sin surtir",
-      value: count(kpis.sin_surtir),
-      icon: BoxIcon,
-      iconClass: "text-amber-500",
-      progress: pct(kpis.sin_surtir),
-      detail: `${pct(kpis.sin_surtir)}% del total · sin picking`,
-      info: "Pedidos programados, no cancelados y sin un solo picking vivo: trabajo que Mesa ya liberó y almacén aún no toma. Incluye los retenidos.",
-    },
+    typeof kpis.retenidos !== "number"
+      ? { ...retenidosBase, ...KPI_MUTED_ICON, value: null, unavailableReason: MESA_KPI_NOT_REPORTED_REASON }
+      : {
+          ...retenidosBase,
+          value: count(kpis.retenidos),
+          iconClass: "text-orange-500",
+          progress: pct(kpis.retenidos),
+          detail: `${pct(kpis.retenidos)}% del total · congelados`,
+          info: "Pedidos vigentes que Mesa de Control retuvo: no se surten, empacan, despachan ni generan órdenes hasta liberarlos.",
+        },
+    typeof kpis.sin_surtir !== "number"
+      ? { ...sinSurtirBase, ...KPI_MUTED_ICON, value: null, unavailableReason: MESA_KPI_NOT_REPORTED_REASON }
+      : {
+          ...sinSurtirBase,
+          value: count(kpis.sin_surtir),
+          iconClass: "text-amber-500",
+          progress: pct(kpis.sin_surtir),
+          detail: `${pct(kpis.sin_surtir)}% del total · sin picking`,
+          info: "Pedidos programados, no cancelados y sin un solo picking vivo: trabajo que Mesa ya liberó y almacén aún no toma. Incluye los retenidos.",
+        },
     !kpis.puede_ver_importes
       ? hiddenAmountCard(valorBase, HIDDEN_PEDIDO_AMOUNTS_REASON)
       : {

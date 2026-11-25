@@ -20,7 +20,10 @@ import {
 import { patchDocumentosDespacho } from "@/src/features/orders/utils/pedidoDocumentos";
 import type { PedidoDocumentos } from "@/src/features/orders/interfaces/pedido-documentos.interface";
 import type { PedidoKpisMesa } from "@/src/features/orders/interfaces/pedido-list.interface";
-import { buildMesaPedidoKpis } from "@/src/features/operations/utils/mesaPedidoKpis";
+import {
+  MESA_KPI_NOT_REPORTED_REASON,
+  buildMesaPedidoKpis,
+} from "@/src/features/operations/utils/mesaPedidoKpis";
 import { canCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
 import { PEDIDO_ESTATUS } from "@/src/features/orders/constants/pedidoStatus";
 
@@ -156,6 +159,21 @@ test.describe("KPIs de Mesa de Control", () => {
     const sinSurtir = cards.find((card) => card.label === "Sin surtir");
     expect(retenidos).toMatchObject({ value: "4", progress: 10 });
     expect(sinSurtir).toMatchObject({ value: "12", progress: 30 });
+  });
+
+  test("un kpis-mesa sin retenidos ni sin_surtir (backend anterior a #1352) los marca No disponible", () => {
+    const anterior: PedidoKpisMesa = { ...kpis };
+    delete anterior.retenidos;
+    delete anterior.sin_surtir;
+    const cards = buildMesaPedidoKpis(anterior);
+    expect(cards).toHaveLength(6);
+    for (const label of ["Retenidos", "Sin surtir"]) {
+      expect(cards.find((card) => card.label === label)).toMatchObject({
+        value: null,
+        unavailableReason: MESA_KPI_NOT_REPORTED_REASON,
+      });
+    }
+    expect(cards.find((card) => card.label === "Confirmados")?.value).toBe("30");
   });
 
   test("con total en cero los porcentajes quedan en 0", () => {
