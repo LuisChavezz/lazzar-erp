@@ -23,6 +23,7 @@ import { documentPdfStyles as s } from "./DocumentPdfStyles";
 import { BREAK_BETWEEN_WORDS } from "./pdfLineBreaking";
 import {
   documentPdfCancelledMark,
+  documentPdfCancellationDetail,
   documentPdfCancellationReason,
   documentPdfFolioLabel,
   visiblePdfColumns,
@@ -68,11 +69,12 @@ export function DocumentPdfLayout({
   const folioLabel = documentPdfFolioLabel(descriptor.folio, descriptor.id);
   const cancelled = descriptor.cancelled;
   const cancellationReason = documentPdfCancellationReason(descriptor);
+  const cancellationDetail = documentPdfCancellationDetail(descriptor);
   const cancelledMark = documentPdfCancelledMark(descriptor);
   const banner = cancelled
-    ? { title: cancelledMark, detail: cancellationReason, detailLabel: "Motivo: " }
+    ? { title: cancelledMark, detail: cancellationReason, detailLabel: "Motivo: ", meta: cancellationDetail }
     : statusBanner
-      ? { title: statusBanner.title, detail: statusBanner.detail?.trim() || null, detailLabel: null }
+      ? { title: statusBanner.title, detail: statusBanner.detail?.trim() || null, detailLabel: null, meta: null }
       : null;
 
   return (
@@ -128,6 +130,7 @@ export function DocumentPdfLayout({
                 {banner.detail}
               </Text>
             ) : null}
+            {banner.meta ? <Text style={s.statusBannerDetail}>{banner.meta}</Text> : null}
           </View>
         ) : null}
 

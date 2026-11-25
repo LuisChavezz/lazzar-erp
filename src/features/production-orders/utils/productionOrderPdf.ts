@@ -5,6 +5,7 @@
  */
 import type { PedidoVinculadoCliente } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
+import { cancellationPdfFields } from "@/src/features/document-cancellation/utils/cancellationPdf";
 import { PRODUCTION_ORDER_STATUS_CODE } from "../constants/productionOrderStatus";
 import type {
   ProductionOrderOnboarding,
@@ -14,16 +15,21 @@ import { opPedidoRefs } from "./opPedidos";
 
 /**
  * Identidad de una OP para su PDF. Se descarga en todos los estatus; la
- * CANCELADA (7) lleva la marca de la base, sin motivo (la OP no lo guarda).
+ * CANCELADA (7) lleva la marca de la base con su motivo, quién y cuándo
+ * (nucleo-erp#1355, EC-948), si los trae.
  */
 export const productionOrderPdfDescriptor = (
-  op: Pick<ProductionOrderOnboarding, "op_id" | "folio_op" | "estatus_op">,
-): DocumentPdfDescriptor => ({
-  type: "OP",
-  id: op.op_id,
-  folio: op.folio_op,
-  cancelled: op.estatus_op === PRODUCTION_ORDER_STATUS_CODE.CANCELLED,
-});
+  op: Pick<ProductionOrderOnboarding, "op_id" | "folio_op" | "estatus_op" | "motivo_cancelacion" | "fecha_cancelacion" | "cancelado_por_nombre">,
+): DocumentPdfDescriptor => {
+  const cancelled = op.estatus_op === PRODUCTION_ORDER_STATUS_CODE.CANCELLED;
+  return {
+    type: "OP",
+    id: op.op_id,
+    folio: op.folio_op,
+    cancelled,
+    ...cancellationPdfFields(cancelled, op),
+  };
+};
 
 /** Un pedido de la OP en el PDF. `cliente` solo existe si la respuesta lo trajo. */
 export interface ProductionOrderPdfPedido {

@@ -52,6 +52,11 @@ export interface DocumentPdfDescriptor {
   /** Motivo de la cancelación, si el documento lo tiene. */
   cancellationReason?: string | null;
   /**
+   * Quién y cuándo canceló, ya como texto ("Canceló: Ana López · 25 nov 2026 ·
+   * 14:05"), si el documento lo trae (Producción, EC-948). Va bajo el motivo.
+   */
+  cancellationDetail?: string | null;
+  /**
    * Leyenda de la marca (banner, pie y marca de agua) cuando no es la de
    * siempre: p. ej. "FALLIDA" en un traspaso (EC-858). Sin ella, o vacía, la
    * marca dice `DOCUMENT_PDF_CANCELLED_MARK`.
@@ -74,6 +79,11 @@ export const documentPdfFolioLabel = (folio: string | null | undefined, id: numb
 export const documentPdfCancellationReason = (
   descriptor: Pick<DocumentPdfDescriptor, "cancelled" | "cancellationReason">,
 ): string | null => (descriptor.cancelled ? descriptor.cancellationReason?.trim() || null : null);
+
+/** Quién y cuándo canceló, a imprimir: solo si el documento está cancelado y lo trae. */
+export const documentPdfCancellationDetail = (
+  descriptor: Pick<DocumentPdfDescriptor, "cancelled" | "cancellationDetail">,
+): string | null => (descriptor.cancelled ? descriptor.cancellationDetail?.trim() || null : null);
 
 // ── Columnas de la tabla de renglones ─────────────────────────────────────────
 

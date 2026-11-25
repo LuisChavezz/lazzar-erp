@@ -4,6 +4,8 @@
  * imágenes). Sin React ni `@react-pdf/renderer`, para probarlas en `tests/unit/`.
  */
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
+import { cancellationPdfFields } from "@/src/features/document-cancellation/utils/cancellationPdf";
+import { EMBROIDERY_STATUS_CANCELLED } from "../constants/embroideryStatus";
 import { cleanText } from "@/src/utils/cleanText";
 import type {
   EmbroideryOnboardingUbicacion,
@@ -13,22 +15,23 @@ import type {
 import { embroideryMedidas, embroideryTechniques } from "./embroideryUbicacion";
 import { resolveEmbroideryLineUbicaciones } from "./resolveEmbroideryLineUbicaciones";
 
-/** `OrdenesBordado.EstatusBordado.CANCELADO_LEGACY` (nucleo-erp, produccion/models.py). */
-const EMBROIDERY_ESTATUS_CANCELADO_LEGACY = 8;
-
 /**
- * Identidad de una OB para su PDF. La OB no tiene cancelación propia (la baja
- * es lógica y el detalle responde 404); solo el estatus 8 "Cancelado (legacy)"
- * lleva la marca de la base, sin motivo.
+ * Identidad de una OB para su PDF. Solo el estatus 8 "Cancelado" lleva la marca
+ * de la base, con su motivo, quién y cuándo (`cancelar/`, nucleo-erp#1355,
+ * EC-948) si los trae. Una OB dada de baja responde 404 y no llega aquí.
  */
 export const embroideryOrderPdfDescriptor = (
-  order: Pick<EmbroideryOrderDetail, "id" | "folio_bordado" | "estatus_bordado">,
-): DocumentPdfDescriptor => ({
-  type: "OB",
-  id: order.id,
-  folio: order.folio_bordado,
-  cancelled: order.estatus_bordado === EMBROIDERY_ESTATUS_CANCELADO_LEGACY,
-});
+  order: Pick<EmbroideryOrderDetail, "id" | "folio_bordado" | "estatus_bordado" | "motivo_cancelacion" | "fecha_cancelacion" | "cancelado_por_nombre">,
+): DocumentPdfDescriptor => {
+  const cancelled = order.estatus_bordado === EMBROIDERY_STATUS_CANCELLED;
+  return {
+    type: "OB",
+    id: order.id,
+    folio: order.folio_bordado,
+    cancelled,
+    ...cancellationPdfFields(cancelled, order),
+  };
+};
 
 /**
  * Una ubicación del bordado como texto, con los mismos datos y criterios que el
