@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { pdfStyles } from "@/src/pdfs/QuotePdfStyles";
 import { documentPdfStyles } from "@/src/pdfs/shared/DocumentPdfStyles";
+import { listPdfStyles } from "@/src/pdfs/ListPdfDocument";
 import { DOCUMENT_PDF_FONT_STACK } from "@/src/pdfs/shared/documentPdfFontLoader";
 
 /**
@@ -12,7 +13,13 @@ import { DOCUMENT_PDF_FONT_STACK } from "@/src/pdfs/shared/documentPdfFontLoader
  * congelada).
  */
 
-const SHEETS = { cotización: pdfStyles, base: documentPdfStyles } as const;
+// Los listados exportados (EC-959) ponen la pila en la página y la heredan.
+const SHEETS = {
+  cotización: pdfStyles,
+  base: documentPdfStyles,
+  "listado compact": listPdfStyles.compact,
+  "listado standard": listPdfStyles.standard,
+} as const;
 
 for (const [nombre, sheet] of Object.entries(SHEETS)) {
   test(`cada fontFamily de la hoja ${nombre} es la pila de fuentes`, () => {
@@ -26,6 +33,12 @@ for (const [nombre, sheet] of Object.entries(SHEETS)) {
     }
   });
 }
+
+test("las hojas de alineación del listado no nombran otra familia", () => {
+  for (const [name, style] of Object.entries(listPdfStyles.columnStyles as Record<string, { fontFamily?: unknown }>)) {
+    if (style.fontFamily !== undefined) expect(style.fontFamily, name).toEqual([...DOCUMENT_PDF_FONT_STACK]);
+  }
+});
 
 test("la pila compartida está congelada", () => {
   expect(Object.isFrozen(DOCUMENT_PDF_FONT_STACK)).toBe(true);
