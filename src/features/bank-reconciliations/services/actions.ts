@@ -105,14 +105,16 @@ export const cerrarConciliacion = async (
  *
  * Sobre un `Borrador` solo cambia su estatus. Sobre una `Cerrada` regresa
  * además a `Pendiente` los movimientos que conciliaba, salvo los que ampare
- * otra conciliación cerrada (nucleo-erp #827). Idempotente.
+ * otra conciliación cerrada (nucleo-erp #827). Exige el motivo (nucleo-erp#1356,
+ * EC-950) y `CANCELAR-FIN-BANCOS`; una ya cancelada responde `400 estatus`.
  */
 export const cancelarConciliacion = async (
   id: number,
+  motivo: string,
 ): Promise<ConciliacionBancaria> => {
   const { data } = await v1_api.post<ConciliacionBancaria>(
     `/finanzas/conciliaciones-bancarias/${id}/cancelar/`,
-    undefined,
+    { motivo },
     { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
