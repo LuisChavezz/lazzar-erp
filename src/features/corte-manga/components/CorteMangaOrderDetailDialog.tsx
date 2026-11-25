@@ -158,7 +158,7 @@ export function CorteMangaOrderDetailContent({
   return (
         <div className="space-y-5">
           {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             {/* SOLO LECTURA a propósito: el diálogo es una composición aparte
                 de la página de detalle, que es donde se edita el estatus
                 (`CorteMangaOrderPageContent`). Reutiliza la misma config de 7
@@ -195,7 +195,7 @@ export function CorteMangaOrderDetailContent({
                 {formatShortDate(order.fecha_fin)} · {formatShortTime(order.fecha_fin)}
               </span>
             </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
+            <InfoField label="Observaciones" className="col-span-2 sm:col-span-4">
               {textOrDash(order.observaciones)}
             </InfoField>
           </div>
