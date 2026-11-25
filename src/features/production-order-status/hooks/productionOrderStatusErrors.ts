@@ -122,3 +122,11 @@ export const staleDataAfterStatusError = (
   if (status !== 409) return null;
   return Array.isArray(responseBody(error)?.bloqueos) ? "status" : "status-and-detail";
 };
+
+/**
+ * ¿El error dice que una SM Enviada bloquea la cancelación? (`400
+ * salidas_maquila`). Entonces también quedó vieja la sección de SM de la OP: la
+ * SM que bloquea pudo crearse o enviarse en otro lado.
+ */
+export const staleSalidasAfterStatusError = (error: unknown): boolean =>
+  statusOf(error) === 400 && drfFieldMessage(error, "salidas_maquila") !== undefined;

@@ -24,6 +24,7 @@ import type { SalidaMaquilaListItem } from "@/src/features/maquila-outputs/inter
 import {
   classifyChangeStatusError,
   staleDataAfterStatusError,
+  staleSalidasAfterStatusError,
 } from "@/src/features/production-order-status/hooks/productionOrderStatusErrors";
 import {
   productionOrderStatusValues,
@@ -349,6 +350,9 @@ test.describe("cancelar una OP", () => {
     const sm = httpError(400, { salidas_maquila: "La OP tiene la salida a maquila SM-00007 enviada: cancélala primero." });
     expect(classifyChangeStatusError(sm).message).toContain("SM-00007");
     expect(staleDataAfterStatusError(sm)).toBe("status-and-detail");
+    // La SM que bloquea: además se relee la sección de SM de la OP; una recepción no.
+    expect(staleSalidasAfterStatusError(sm)).toBe(true);
+    expect(staleSalidasAfterStatusError(recepcion)).toBe(false);
     // El motivo sigue bajo su campo, y un 400 cualquiera no relee nada.
     expect(classifyChangeStatusError(httpError(400, { motivo: "El motivo es obligatorio para pasar a Cancelado." })).kind).toBe(
       "motivo",
