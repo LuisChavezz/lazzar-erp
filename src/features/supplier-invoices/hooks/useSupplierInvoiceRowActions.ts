@@ -2,7 +2,7 @@
 
 import { useMutationState } from "@tanstack/react-query";
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
-import type { FinanceWriteState } from "@/src/utils/financeWrite";
+import type { FinanceCancelState, FinanceWriteState } from "@/src/utils/financeWrite";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import {
   uploadSupplierInvoicePdfMutationKey,
@@ -21,7 +21,10 @@ export interface SupplierInvoiceRowActionsContextValue {
   onViewDetail: (id: number) => void;
   onEdit: (id: number) => void;
   onRegistrar: (id: number) => void;
+  /** "Cancelar factura" con motivo: solo una `Registrada` (EC-950). */
   onCancel: (id: number) => void;
+  /** "Eliminar borrador" (`DELETE`): solo un `Borrador` (EC-950). */
+  onDelete: (id: number) => void;
   /** Adjuntar o reemplazar el PDF del proveedor (la vista decide si confirma antes). */
   onAttachPdf: (id: number) => void;
   onDownloadMergedPdf: (id: number) => void;
@@ -31,10 +34,15 @@ export interface SupplierInvoiceRowActionsContextValue {
   downloadingIds: number[];
   /**
    * Estado de escritura de Finanzas (`getFinanceWriteState`). Sin el
-   * permiso, adjuntar/reemplazar el PDF, "Editar", "Registrar" y "Cancelar
-   * factura" se muestran deshabilitados con su motivo.
+   * permiso, adjuntar/reemplazar el PDF, "Editar", "Registrar" y "Eliminar
+   * borrador" se muestran deshabilitados con su motivo.
    */
   write: FinanceWriteState;
+  /**
+   * Estado de la cancelación (`getFinanceCancelState`: escritura más
+   * `CANCELAR-FIN-PAGOS`, EC-950) para "Cancelar factura".
+   */
+  cancel: FinanceCancelState;
 }
 
 const { Provider, useRowActionsContext } =

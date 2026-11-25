@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Contrato de `/finanzas/facturas-proveedor/` (`FacturaProveedorSerializer`,
  * `exclude = ["pdf_adjunto"]` más `proveedor_nombre`, `moneda_codigo`,
@@ -74,7 +76,7 @@ export interface FacturaProveedorDetalle {
   producto_codigo?: string | null;
 }
 
-export interface FacturaProveedor {
+export interface FacturaProveedor extends DocumentCancellationFields {
   id: number;
   /** FK a `nucleo.Empresa`. La resuelve el backend; solo lectura. */
   empresa: number;
@@ -267,16 +269,14 @@ export interface CreateFacturaProveedorPayload {
  * los renglones y los renglones ya no cambian.
  *
  * Sirve a la edición de cabecera de un borrador y a las dos acciones de fila:
- * "Registrar" (`{ estatus: "Registrada" }`) y "Cancelar"
- * (`{ estatus: "Cancelada" }`). No hay acción `/cancelar/` en este ViewSet:
- * cancelar ES este PATCH. `CuentaPorPagarService.ensure_invoice_edit_keeps_account`
- * lo rechaza solo si la factura tiene una CxP viva, que un `Borrador` no puede
- * tener (volver de `Registrada` a `Borrador` está bloqueado por la misma regla);
- * por eso la UI ofrece cancelar únicamente sobre borradores.
+ * "Registrar" (`{ estatus: "Registrada" }`). Cancelar NO va por aquí
+ * (EC-950): el `PATCH` a `Cancelada` no pide motivo ni deja rastro; la UI
+ * elimina un `Borrador` (`DELETE`) y cancela una `Registrada` con
+ * `POST cancelar/` y motivo. Por eso `estatus` solo admite `Registrada`.
  */
 export interface UpdateFacturaProveedorPayload {
   folio?: string | null;
   fecha_vencimiento?: string | null;
   observaciones?: string | null;
-  estatus?: FacturaProveedorEstatus;
+  estatus?: "Registrada";
 }
