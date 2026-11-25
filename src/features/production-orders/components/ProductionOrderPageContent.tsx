@@ -11,6 +11,7 @@ import { Button } from "@/src/components/Button";
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { SI_NO_CFG, StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { EmptyLines, InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
   OrderChip,
@@ -25,6 +26,7 @@ import {
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import {
   isClosedProductionOrderStatus,
+  PRODUCTION_ORDER_STATUS_CODE,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
@@ -463,6 +465,16 @@ export function ProductionOrderPageContent({
         </div>
       </div>
 
+      {/* Quién, cuándo y por qué se canceló (nucleo-erp#1355, EC-948). */}
+      {data.estatus_op === PRODUCTION_ORDER_STATUS_CODE.CANCELLED && (
+        <CancellationInfo
+          title="Orden cancelada"
+          motivo={data.motivo_cancelacion}
+          fecha={data.fecha_cancelacion}
+          canceladoPor={data.cancelado_por_nombre}
+        />
+      )}
+
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
       <SheetSection
         icon={<ProduccionIcon className="w-5 h-5" />}
@@ -559,7 +571,10 @@ export function ProductionOrderPageContent({
       </SheetSection>
 
       {/* ── Salidas a maquila (SM, EC-868) ─────────────────────────────── */}
-      <OpSalidasMaquilaSection opId={data.op_id} opCancelada={data.estatus_op === 7} />
+      <OpSalidasMaquilaSection
+        opId={data.op_id}
+        opCancelada={data.estatus_op === PRODUCTION_ORDER_STATUS_CODE.CANCELLED}
+      />
 
       {/* ── 5. Consumos ──────────────────────────────────────────────────── */}
       <ProductionOrderConsumptionSection

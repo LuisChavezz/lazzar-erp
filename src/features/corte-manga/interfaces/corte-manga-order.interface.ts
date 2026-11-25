@@ -1,3 +1,4 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
 import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
@@ -165,7 +166,7 @@ export interface CorteMangaOrderSibling {
   fecha_inicio: string;
 }
 
-export interface CorteMangaOrder extends WorkOrderAvanceFields {
+export interface CorteMangaOrder extends WorkOrderAvanceFields, DocumentCancellationFields {
   /** Fecha de alta del pedido ligado (`YYYY-MM-DD`). En el listado y, desde EC-880, en el detalle. */
   fecha_pedido?: string | null;
   /**

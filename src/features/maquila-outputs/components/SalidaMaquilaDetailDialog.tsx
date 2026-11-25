@@ -4,6 +4,7 @@ import { SalidaMaquilaPiezas } from "./SalidaMaquilaPiezas";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Loader } from "@/src/components/Loader";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import {
   EmptyLines,
   InfoField,
@@ -79,6 +80,15 @@ export function SalidaMaquilaDetailDialog({
               )}
             </span>
           </div>
+
+          {data.estatus === "CANCELADA" && (
+            <CancellationInfo
+              title="Salida cancelada"
+              motivo={data.motivo_cancelacion}
+              fecha={data.fecha_cancelacion}
+              canceladoPor={data.cancelado_por_nombre}
+            />
+          )}
 
           <InfoGrid>
             <InfoField label="Origen">

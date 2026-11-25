@@ -39,6 +39,7 @@ import type {
   CorteMangaOrderSibling,
 } from "../interfaces/corte-manga-order.interface";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { corteMangaPiezasOrden, corteMangaTotalPiezas } from "../utils/corteMangaPiezas";
 import { CorteMangaOrderPdfButton } from "./CorteMangaOrderPdfButton";
 import { corteMangaOrderDetailPath } from "@/src/constants/workOrderRoutes";
@@ -234,6 +235,16 @@ export function CorteMangaOrderPageContent({
           </>
         }
       />
+
+      {/* Quién, cuándo y por qué se canceló (nucleo-erp#1355, EC-948). */}
+      {isTerminal && (
+        <CancellationInfo
+          title="Orden cancelada"
+          motivo={data.motivo_cancelacion}
+          fecha={data.fecha_cancelacion}
+          canceladoPor={data.cancelado_por_nombre}
+        />
+      )}
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
       <SheetSection

@@ -1,3 +1,4 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 import type { WorkOrderResumenAvance } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderAvanceFields } from "@/src/features/work-order-avances/interfaces/work-order-avance.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
@@ -136,7 +137,7 @@ export interface ReflectiveOrderLine {
  * El folio se muestra tal cual llega, sin normalizar ni validar — misma
  * definición de negocio pendiente que en bordado.
  */
-export interface ReflectiveOrder {
+export interface ReflectiveOrder extends DocumentCancellationFields {
   id: number;
   folio_reflejante: string;
   /**
