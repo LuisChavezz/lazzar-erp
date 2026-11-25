@@ -21,7 +21,8 @@
  * El PDF se descarga en todos los estatus, y SOLO la cancelada se marca (banner
  * con su `motivo_cancelacion`, marca de agua y leyenda en el pie de cada
  * página, todo de la plantilla). Una Recibida con el saldo cerrado (EC-947)
- * lleva el banner de estatus "SALDO CERRADO" con su motivo y fecha, sin marca
+ * lleva el banner de estatus "SALDO CERRADO" con la fecha del cierre, sin su
+ * motivo (nota interna; este PDF también es el adjunto del correo) y sin marca
  * de agua: no es una anulación. El correo al proveedor solo sale en 3/4/5
  * (`usePreparePurchaseOrderEmail`), así que su adjunto nunca lleva la marca.
  *

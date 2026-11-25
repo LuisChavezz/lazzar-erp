@@ -28,28 +28,30 @@ test.describe("saldo cerrado de una OC", () => {
     expect(isPurchaseOrderBalanceClosed({ estatus: 5 })).toBe(false);
   });
 
-  test("el PDF lleva el banner SALDO CERRADO con el motivo y la fecha", () => {
-    const banner = purchaseOrderPdfStatusBanner({
+  test("el PDF lleva el banner SALDO CERRADO con la fecha y sin el motivo interno", () => {
+    const order = {
       estatus: 5,
       saldo_cerrado: true,
-      motivo_cierre: "Proveedor ya no surte",
+      motivo_cierre: "Proveedor incumplido, no volver a comprarle",
       fecha_cierre: "2026-11-24T18:30:00Z",
-    });
+    };
+    const banner = purchaseOrderPdfStatusBanner(order);
     expect(banner?.title).toBe("SALDO CERRADO");
-    expect(banner?.detail).toContain("Proveedor ya no surte");
-    expect(banner?.detail).toContain("cerrado el");
+    expect(banner?.detail).toContain("Cerrado el");
+    expect(JSON.stringify(banner)).not.toContain("Proveedor incumplido");
   });
 
   test("sin saldo cerrado el PDF no lleva banner", () => {
     expect(
-      purchaseOrderPdfStatusBanner({ estatus: 5, saldo_cerrado: false, motivo_cierre: "", fecha_cierre: null }),
+      purchaseOrderPdfStatusBanner({ estatus: 5, saldo_cerrado: false, fecha_cierre: null }),
     ).toBeNull();
-    expect(purchaseOrderPdfStatusBanner({ estatus: 5, motivo_cierre: undefined, fecha_cierre: undefined })).toBeNull();
+    expect(purchaseOrderPdfStatusBanner({ estatus: 5, fecha_cierre: undefined })).toBeNull();
   });
 
-  test("un saldo cerrado sin motivo ni fecha dice 'Sin motivo registrado.'", () => {
-    expect(
-      purchaseOrderPdfStatusBanner({ estatus: 5, saldo_cerrado: true, motivo_cierre: " ", fecha_cierre: null })?.detail,
-    ).toBe("Sin motivo registrado.");
+  test("un saldo cerrado sin fecha lleva solo el título", () => {
+    expect(purchaseOrderPdfStatusBanner({ estatus: 5, saldo_cerrado: true, fecha_cierre: null })).toEqual({
+      title: "SALDO CERRADO",
+      detail: null,
+    });
   });
 });

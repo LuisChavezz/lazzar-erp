@@ -24,17 +24,18 @@ export const purchaseOrderPdfDescriptor = (
 
 /**
  * Banner de estatus del PDF de la OC (EC-947): solo una Recibida con el saldo
- * cerrado lo lleva, con su motivo y la fecha del cierre. La cancelada usa la
- * marca de cancelación del descriptor, que gana al banner en la plantilla.
+ * cerrado lo lleva, con la fecha del cierre. NUNCA el `motivo_cierre`: es una
+ * nota interna y este mismo PDF es el adjunto de "Enviar correo" al proveedor
+ * (`generatePurchaseOrderPdfBlob`); el motivo solo se ve en el detalle en
+ * pantalla. La cancelada usa la marca de cancelación del descriptor, que gana
+ * al banner en la plantilla.
  */
 export const purchaseOrderPdfStatusBanner = (
-  order: Pick<PurchaseOrder, "estatus" | "saldo_cerrado" | "motivo_cierre" | "fecha_cierre">,
-): { title: string; detail: string } | null => {
+  order: Pick<PurchaseOrder, "estatus" | "saldo_cerrado" | "fecha_cierre">,
+): { title: string; detail: string | null } | null => {
   if (!isPurchaseOrderBalanceClosed(order)) return null;
-  const motivo = order.motivo_cierre?.trim() || "Sin motivo registrado.";
-  const fecha = order.fecha_cierre ? formatShortDateTime(order.fecha_cierre) : null;
   return {
     title: "SALDO CERRADO",
-    detail: fecha ? `${motivo} (cerrado el ${fecha})` : motivo,
+    detail: order.fecha_cierre ? `Cerrado el ${formatShortDateTime(order.fecha_cierre)}.` : null,
   };
 };
