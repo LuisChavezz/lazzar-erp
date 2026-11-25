@@ -23,10 +23,10 @@ import {
   staleDataAfterStatusError,
 } from "@/src/features/production-order-status/hooks/productionOrderStatusErrors";
 import {
-  patchProductionOrderData,
   productionOrderStatusValues,
   writeProductionOrderStatus,
 } from "@/src/features/production-order-status/utils/productionOrderStatusCache";
+import { mergeCachedRecord, patchRowById } from "@/src/utils/cachedRows";
 import { productionOrderPdfDescriptor } from "@/src/features/production-orders/utils/productionOrderPdf";
 import {
   canCancelPreOrder,
@@ -368,8 +368,6 @@ test.describe("cancelar una OP", () => {
     expect(productionOrderStatusValues(38, response)).toMatchObject({ estatus_op: 7, cancelado_por_nombre: "Ana López" });
     expect(productionOrderStatusValues(39, response)).toEqual({});
     const rows = [{ op_id: 38, estatus_op: 2 }, { op_id: 40, estatus_op: 2 }];
-    expect(patchProductionOrderData(rows, 38, { estatus_op: 7 })).toEqual([{ op_id: 38, estatus_op: 7 }, { op_id: 40, estatus_op: 2 }]);
-    expect(patchProductionOrderData(rows, 99, { estatus_op: 7 })).toBe(rows);
 
     const queryClient = new QueryClient();
     queryClient.setQueryData(["production-orders"], rows);
@@ -449,5 +447,29 @@ test.describe("pre-orden de una OP cancelada", () => {
     expect(preOrderEventUserName({ usuario: 4 })).toBeNull();
     expect(preOrderEventUserName({ usuario: "ana@acme.test" })).toBe("ana@acme.test");
     expect(preOrderEventUserName({ usuario: { id: 4, nombre: "Ana" }, usuario_nombre: "Ana López" })).toBe("Ana López");
+  });
+});
+
+test.describe("cachedRows con idField", () => {
+  const patch = (row: Record<string, unknown>) => ({ ...row, estatus: 7 });
+
+  test("por omisión sigue buscando por id; con idField, por ese campo", () => {
+    const byId = [{ id: 1, estatus: 2 }, { id: 2, estatus: 2 }];
+    expect(patchRowById(byId, 1, patch)).toEqual([{ id: 1, estatus: 7 }, { id: 2, estatus: 2 }]);
+    const byOpId = [{ op_id: 1, estatus: 2 }];
+    // Sin idField, una fila sin `id` no se toca (misma referencia).
+    expect(patchRowById(byOpId, 1, patch)).toBe(byOpId);
+    expect(patchRowById(byOpId, 1, patch, { idField: "op_id" })).toEqual([{ op_id: 1, estatus: 7 }]);
+    const page = { count: 1, results: [{ op_id: 1, estatus: 2 }] };
+    expect(patchRowById(page, 1, patch, { idField: "op_id" })).toEqual({ count: 1, results: [{ op_id: 1, estatus: 7 }] });
+  });
+
+  test("mergeCachedRecord compara el registro por idField", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["op", 1], { op_id: 1, estatus_op: 2 });
+    await mergeCachedRecord(queryClient, ["op", 1], 1, { estatus_op: 7 });
+    expect(queryClient.getQueryData(["op", 1])).toEqual({ op_id: 1, estatus_op: 2 });
+    await mergeCachedRecord(queryClient, ["op", 1], 1, { estatus_op: 7 }, { idField: "op_id" });
+    expect(queryClient.getQueryData(["op", 1])).toEqual({ op_id: 1, estatus_op: 7 });
   });
 });
