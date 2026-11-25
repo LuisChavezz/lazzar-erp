@@ -11,6 +11,11 @@ import {
   reflectiveLineSampleSku,
 } from "@/src/features/reflective-orders/hooks/useReflectiveStep2Form";
 import type { ReflectiveOnboardingDetalle } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
+import {
+  embroideryLineDescripcion,
+  embroideryLineProductoNombre,
+} from "@/src/features/embroidery/hooks/useEmbroideryStep2Form";
+import type { EmbroideryOnboardingDetalle } from "@/src/features/embroidery/interfaces/embroidery.interface";
 
 /** EC-963: rótulo de la prenda de un renglón de OR / OCM. */
 
@@ -81,5 +86,35 @@ test.describe("Paso 2 de la OR", () => {
     const catalogo = { ...base, producto_id: 8562, producto_nombre: "PLAYERA", producto_nombre_externo: null, sku: "PL-M" };
     expect(reflectiveLineProductoNombre(catalogo)).toBe("PLAYERA");
     expect(reflectiveLineSampleSku(catalogo)).toBeNull();
+  });
+});
+
+test.describe("Paso 2 de la OB", () => {
+  // Como llega del onboarding de OB: sin `producto_nombre_externo` (EC-964 no lo añadió aquí).
+  const muestra = {
+    pedido_detalle_talla_id: 3231,
+    pedido_detalle_id: 2177,
+    producto_id: null,
+    producto_nombre: null,
+    talla_id: 17,
+    talla_nombre: "28",
+    color_id: 43,
+    color_nombre: "AMARILLO NEON",
+    cantidad_pedido: 1,
+    cantidad_asignada: 0,
+    cantidad_pendiente: 1,
+    sku: "MP2177-302-28",
+    sku_proscai: null,
+  } as EmbroideryOnboardingDetalle;
+
+  test("una muestra se rotula sin id y el aviso la distingue por SKU y talla", () => {
+    expect(embroideryLineProductoNombre(muestra)).toBe("Sin producto de catálogo");
+    expect(embroideryLineDescripcion(muestra)).toBe("Sin producto de catálogo · MP2177-302-28 · Talla 28");
+  });
+
+  test("una línea de catálogo conserva su nombre", () => {
+    const catalogo = { ...muestra, producto_id: 8523, producto_nombre: "ROMPEVIENTOS", sku: "RV-CH" };
+    expect(embroideryLineProductoNombre(catalogo)).toBe("ROMPEVIENTOS");
+    expect(embroideryLineDescripcion(catalogo)).toBe("ROMPEVIENTOS · Talla 28");
   });
 });

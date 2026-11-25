@@ -6,9 +6,8 @@ import { LayersIcon } from "@/src/components/Icons";
 import { cleanText } from "@/src/utils/cleanText";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import {
+  embroideryLineDescripcion,
   embroideryLineProductoNombre,
-  hasNoCatalogProduct,
-  isEmbroideryRowEligible,
 } from "../hooks/useEmbroideryStep2Form";
 import type { EmbroideryOnboardingDetalle } from "../interfaces/embroidery.interface";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
@@ -96,16 +95,12 @@ export function EmbroideryOrderLinesTable({
             const id = row.pedido_detalle_talla_id;
             const inputId = `embroidery-line-${id}`;
             const ceiling = ceilings.get(id) ?? 0;
-            // Dos motivos INDEPENDIENTES para apagar la fila: `agotada` (sin
-            // pendiente: "Ya programada") y `!eligible` (el backend no la
-            // acepta en una orden, ver `isEmbroideryRowEligible`).
+            // Sin pendiente ("Ya programada"), la fila se apaga.
             const agotada = ceiling <= 0;
-            const eligible = isEmbroideryRowEligible(row);
-            const blocked = agotada || !eligible;
             const checked = checkedIds.has(id);
-            // Una línea sin producto de catálogo ya lleva su SKU en el nombre
-            // (`embroideryLineProductoNombre`); repetirlo aquí sería ruido.
-            const sku = hasNoCatalogProduct(row) ? null : cleanText(row.sku);
+            // También en una muestra: sin nombre de catálogo, su SKU es lo que la
+            // identifica (EC-963).
+            const sku = cleanText(row.sku);
             const skuProscai = cleanText(row.sku_proscai);
             // Clave AUSENTE (backend anterior al campo) → no se pinta; `null`
             // (talla sin variante) → "—". El backend suma todos los almacenes
@@ -140,7 +135,7 @@ export function EmbroideryOrderLinesTable({
               <div
                 key={id}
                 className={`py-3 px-2 rounded-lg transition-colors ${
-                  blocked ? "opacity-60" : "hover:bg-slate-50 dark:hover:bg-white/5"
+                  agotada ? "opacity-60" : "hover:bg-slate-50 dark:hover:bg-white/5"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -152,14 +147,14 @@ export function EmbroideryOrderLinesTable({
                 <label
                   htmlFor={inputId}
                   className={`flex min-w-0 flex-1 items-start gap-3 ${
-                    blocked ? "cursor-not-allowed" : "cursor-pointer"
+                    agotada ? "cursor-not-allowed" : "cursor-pointer"
                   }`}
                 >
                   <input
                     id={inputId}
                     type="checkbox"
                     checked={checked}
-                    disabled={blocked}
+                    disabled={agotada}
                     onChange={() => onToggleLine(id)}
                     className="mt-0.5 w-4 h-4 rounded border-slate-300 accent-sky-600 shrink-0 disabled:cursor-not-allowed"
                   />
@@ -239,13 +234,6 @@ export function EmbroideryOrderLinesTable({
                         </span>
                       </p>
                     )}
-                    {/* Motivo VISIBLE, no solo un tooltip: sin él la casilla
-                        apagada de una línea con pendiente parece un error. */}
-                    {!eligible && (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-                        Sin producto de catálogo: no se puede incluir en una orden de bordado.
-                      </p>
-                    )}
                   </div>
                 </label>
 
@@ -271,9 +259,9 @@ export function EmbroideryOrderLinesTable({
                   value={quantities.get(id) ?? ""}
                   max={ceiling}
                   decimalPlaces={0}
-                  disabled={blocked || !checked}
+                  disabled={agotada || !checked}
                   onChange={(next) => onQuantityChange(id, next)}
-                  label={`Piezas a bordar de ${embroideryLineProductoNombre(row)}`}
+                  label={`Piezas a bordar de ${embroideryLineDescripcion(row)}`}
                 />
                 </div>
 
