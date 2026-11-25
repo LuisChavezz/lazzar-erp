@@ -23,8 +23,7 @@ const PACKING_CATALOG_LIMIT = 50;
  * Selector del packing a despachar. El catálogo puede traer hasta 50 packings
  * sin paginar ni filtrar por texto (mismo tope que el onboarding de packing),
  * así que se navega con un buscador en memoria (`SearchableSelectList`) en vez
- * de un `FormSelect` plano — mismo patrón que `PackingWizardStep1`, heredado a
- * su vez de `ProductionOrderStep1`.
+ * de un `FormSelect` plano — mismo patrón que `PackingWizardStep1`.
  *
  * Usa el onboarding SIN alcance (solo el catálogo), que sí se cachea con el
  * `staleTime` global del proyecto; la llamada con alcance al packing elegido

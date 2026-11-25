@@ -175,65 +175,6 @@ export interface ProductionOrderOnboarding {
   consumos_resumen: ProductionOrderConsumoResumen[];
 }
 
-// ── Create onboarding ────────────────────────────────────────────────────────
-
-/**
- * Renglón del detalle de una orden de producción. Lleva UNA de las dos
- * variantes: de catálogo (`producto_variante_id`) o de producción
- * (`variante_produccion_id`, muestra sin alta en catálogo; el BOM sale de ella).
- */
-export interface CreateProductionOrderDetalle {
-  producto_variante_id?: number;
-  variante_produccion_id?: number;
-  cantidad: number;
-  unidad: number;
-  observaciones: string;
-}
-
-/**
- * Cuerpo del POST de creación. El backend resuelve la lista de materiales (BOM)
- * automáticamente a partir de cada `producto_variante_id`, por lo que ya no se
- * envían `ruta_produccion` ni `producto_variante_ids`.
- *
- * `pedido` es OPCIONAL: el id de un pedido especial
- * (`GET /produccion/pedidos-especiales/`). Sin pedido la clave se OMITE —no se
- * manda `null` ni `""`—. Un pedido inválido regresa `400 { pedido: "..." }`.
- */
-export interface CreateProductionOrderBody {
-  empresa: number;
-  sucursal: number;
-  observaciones: string;
-  pedido?: number;
-  /** Proveedor maquilero. Se omite cuando la orden es interna. */
-  centro_confeccion?: number;
-  orden_produccion_detalle: CreateProductionOrderDetalle[];
-}
-
-/** Respuesta del POST de creación (`201`). No repite el pedido vinculado. */
-export interface CreateProductionOrderResponse {
-  msg: string;
-  op_id: number;
-  folio_op: string;
-  consumo_produccion_id: number;
-  movimiento_inventario_id: number;
-  movimiento_id: number;
-}
-
-/** Variante de producción (`GET /produccion/variantes-produccion/`). */
-export interface ProductionVariantOption {
-  id: number;
-  sku: string;
-  nombre: string;
-  talla_nombre: string | null;
-  color_nombre: string | null;
-  pedido_detalle: number | null;
-  pedido_id: number | null;
-  pedido_folio: string | null;
-  /** Ya tiene variante de catálogo: entonces se elige desde el catálogo. */
-  aplica_catalogo: boolean;
-  tiene_bom: boolean;
-}
-
 // ── GET /produccion/orden-produccion/ ────────────────────────────────────────
 
 /** Variante de producto embebida en el detalle de una OP (incluye nombres resueltos por el backend). */

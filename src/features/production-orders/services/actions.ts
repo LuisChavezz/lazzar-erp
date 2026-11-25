@@ -1,10 +1,7 @@
 import { v1_api } from "@/src/api/v1.api";
 import {
   ProductionOrderOnboarding,
-  CreateProductionOrderBody,
-  CreateProductionOrderResponse,
   ProductionOrderListItem,
-  ProductionVariantOption,
 } from "@/src/features/production-orders/interfaces/production-order.interface";
 import type { ProductionOrderKpis } from "@/src/features/production-orders/interfaces/production-order-kpis.interface";
 
@@ -16,22 +13,6 @@ export const getProductionOrderOnboarding = async (
     "/produccion/orden-produccion/onboarding/",
     { params: { op_id } }
   );
-  return response.data;
-};
-
-export const createProductionOrderOnboarding = async (
-  body: CreateProductionOrderBody
-): Promise<CreateProductionOrderResponse> => {
-  const response = await v1_api.post<CreateProductionOrderResponse>(
-    "/produccion/orden-produccion/onboarding/",
-    body
-  );
-  return response.data;
-};
-
-/** Variantes de producción (muestras). Sin `page` responde arreglo plano. */
-export const getProductionVariants = async (): Promise<ProductionVariantOption[]> => {
-  const response = await v1_api.get<ProductionVariantOption[]>("/produccion/variantes-produccion/");
   return response.data;
 };
 
