@@ -20,6 +20,13 @@ export interface WmsCancelAction<TResult> {
    * acción otra vez. Best-effort: los helpers de `cachedRows` no lanzan.
    */
   applyResult: (queryClient: QueryClient, result: TResult) => Promise<unknown> | void;
+  /**
+   * Opcional: lo que esta acción invalida ADEMÁS de
+   * `invalidateAfterWmsCancellation` (p. ej. la reversa de calidad, EC-947:
+   * bandeja de calidad, recepciones y OC/OP). Se dispara sin esperarse, igual
+   * que esa, para que el diálogo cierre en cuanto termina la escritura en caché.
+   */
+  refresh?: (queryClient: QueryClient) => void;
   successMessage: (result: TResult) => string;
   /** Toast de un fallo sin mensaje del backend (red, 5xx). */
   fallbackErrorMessage: string;
@@ -54,6 +61,7 @@ export const useWmsCancelMutation = <TResult>(
         console.error("No se pudo escribir el resultado de la cancelación en la caché", error);
       }
       void invalidateAfterWmsCancellation(queryClient);
+      action.refresh?.(queryClient);
       toast.success(action.successMessage(result));
     },
     onError: (error) => {
