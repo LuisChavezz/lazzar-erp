@@ -18,9 +18,7 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
-  REFLECTIVE_ORDER_PRIORITY_CONFIG,
   REFLECTIVE_ORDER_STATUS_CONFIG,
-  reflectiveOrderPriorityFallback,
 } from "../constants/reflectiveOrderStatus";
 import { useReflectiveOrderDetail } from "../hooks/useReflectiveOrderDetail";
 import { resolveReflectiveLineConfigs } from "../utils/resolveReflectiveLineConfigs";
@@ -260,13 +258,6 @@ export function ReflectiveOrderDetailDialog({
               <StatusBadge
                 status={String(order.estatus_reflejante)}
                 config={REFLECTIVE_ORDER_STATUS_CONFIG}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(order.prioridad)}
-                config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-                defaultConfig={reflectiveOrderPriorityFallback(order.prioridad)}
               />
             </InfoField>
             <InfoField label="Pedido">{textOrDash(order.pedido_folio)}</InfoField>

@@ -11,6 +11,6 @@ export const REFLECTIVE_WIZARD_STEPS: readonly ReflectiveWizardStep[] = [
 ];
 
 export const REFLECTIVE_WIZARD_STEP_LABELS: Record<ReflectiveWizardStep, string> = {
-  "step-1": "Pedido y prioridad",
+  "step-1": "Pedido",
   "step-2": "Prendas a reflejar",
 };

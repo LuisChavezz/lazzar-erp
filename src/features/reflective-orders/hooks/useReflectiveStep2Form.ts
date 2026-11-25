@@ -39,7 +39,6 @@ export const reflectiveLineProductoNombre = (
  */
 const STEP1_FIELD_LABELS: Record<string, string> = {
   pedido: "Pedido",
-  prioridad: "Prioridad",
   observaciones: "Observaciones",
 };
 
@@ -332,7 +331,7 @@ export function useReflectiveStep2Form({
     setDuplicate(null);
 
     /**
-     * Errores de campo del Paso 1 (`pedido`/`prioridad`/`observaciones`). Sus
+     * Errores de campo del Paso 1 (`pedido`/`observaciones`). Sus
      * inputs no están en esta pantalla, así que se nombran explícitamente en el
      * desglose: un banner suelto diciendo "Este campo es requerido" sobre una
      * tabla de prendas no le dice al usuario qué corregir ni dónde. Con el

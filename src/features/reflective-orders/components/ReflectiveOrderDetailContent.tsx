@@ -12,7 +12,6 @@ import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOr
 import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
-import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
@@ -20,8 +19,6 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   REFLECTIVE_ORDER_COVERAGE_CONFIG,
-  REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  reflectiveOrderPriorityFallback,
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import {
@@ -153,7 +150,7 @@ export function ReflectiveOrderDetailContent({
 }: ReflectiveOrderDetailContentProps) {
   const numericId = Number(orderId);
   const { data, isLoading, isError, error } = useReflectiveOrderDetail(numericId);
-  // Edición de la ficha (estatus, prioridad, observaciones). El hook re-consulta
+  // Edición de la ficha (estatus y observaciones). El hook re-consulta
   // el detalle al terminar; solo la disparan los controles de abajo, que no se
   // pintan en los estados de carga/error.
   const updateOrder = useUpdateReflectiveOrder(numericId);
@@ -262,16 +259,6 @@ export function ReflectiveOrderDetailContent({
                   onStatusChange={(next) => updateOrder.mutate({ estatus_reflejante: next })}
                   isPending={updateOrder.isPending}
                   readOnly={!canEdit}
-                />
-              </InfoField>
-              <InfoField label="Prioridad">
-                <WorkOrderPrioritySelect
-                  value={data.prioridad}
-                  config={REFLECTIVE_ORDER_PRIORITY_CONFIG}
-                  fallback={reflectiveOrderPriorityFallback}
-                  onChange={(prioridad) => updateOrder.mutate({ prioridad })}
-                  isPending={updateOrder.isPending}
-                  readOnly={isReadOnly}
                 />
               </InfoField>
               <div className="grid grid-cols-2 gap-4">

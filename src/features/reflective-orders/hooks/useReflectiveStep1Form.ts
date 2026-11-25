@@ -25,7 +25,7 @@ interface UseReflectiveStep1FormParams {
 }
 
 /**
- * Paso 1 del alta de orden de reflejante: encabezado (pedido, prioridad,
+ * Paso 1 del alta de orden de reflejante: encabezado (pedido y
  * observaciones). NO envía nada al backend — solo valida y entrega el
  * encabezado al orquestador, igual que `useEmbroideryStep1Form`.
  *
@@ -34,15 +34,6 @@ interface UseReflectiveStep1FormParams {
  * solo paso, retirado): el único punto de envío es el Paso 2, y con él se fueron
  * el reparto de errores del backend y la guarda de doble envío (ver
  * `useReflectiveStep2Form`).
- *
- * `prioridad` arranca en `1`, que es el default del propio backend
- * (`IntegerField(default=1)`): omitir el campo produciría exactamente el mismo
- * valor almacenado, así que preseleccionarlo muestra la verdad en vez de fingir
- * que "sin elegir" es un estado posible. Ojo con la consecuencia: bajo la
- * convención de etiquetas del proyecto ese `1` se lee "Alta", de modo que el
- * default efectivo de TODA orden de reflejante es prioridad Alta — es una
- * herencia del backend (la generación automática desde ventas también escribe
- * `prioridad=1`), no una decisión de esta pantalla.
  */
 export function useReflectiveStep1Form({
   initialValues,

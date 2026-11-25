@@ -6,7 +6,7 @@
  * Lo que muestra la página de detalle (`ReflectiveOrderDetailContent`), leído
  * del retrieve `GET /produccion/orden-reflejante/{id}/`:
  *
- * - Datos de la orden (estatus, prioridad, alta, fin) y su seguimiento (pedido,
+ * - Datos de la orden (estatus, alta, fin) y su seguimiento (pedido,
  *   operador, total de piezas, empresa, sucursal), más la fecha del pedido y
  *   el vencimiento; un `fecha_vence` en `null` sale "—".
  * - El cliente del pedido (`pedido_vinculado.cliente`, EC-880). La tarjeta se
@@ -19,11 +19,7 @@
  * - Observaciones.
  */
 import { View } from "@react-pdf/renderer";
-import {
-  REFLECTIVE_ORDER_PRIORITY_CONFIG,
-  reflectiveOrderPriorityFallback,
-  reflectiveStatusEntry,
-} from "@/src/features/reflective-orders/constants/reflectiveOrderStatus";
+import { reflectiveStatusEntry } from "@/src/features/reflective-orders/constants/reflectiveOrderStatus";
 import type {
   ReflectiveOrderDetail,
   ReflectiveOrderDetailLine,
@@ -76,9 +72,6 @@ const reflejanteCell = ({ item }: Row) => {
 export const ReflectiveOrderPdfDocument = ({ order, company }: ReflectiveOrderPdfDocumentProps) => {
   const cliente = order.pedido_vinculado?.cliente;
   const clienteText = pedidoClienteLabel(cliente);
-  const prioridad =
-    REFLECTIVE_ORDER_PRIORITY_CONFIG[String(order.prioridad)]?.label ??
-    reflectiveOrderPriorityFallback(order.prioridad).label;
 
   return (
     <DocumentPdfLayout
@@ -97,7 +90,6 @@ export const ReflectiveOrderPdfDocument = ({ order, company }: ReflectiveOrderPd
               label: "Estatus",
               value: textOrDash(reflectiveStatusEntry(order.estatus_reflejante, order.estatus_reflejante_display).label),
             },
-            { label: "Prioridad", value: textOrDash(prioridad) },
             { label: "Alta", value: formatShortDate(order.fecha_inicio) },
             { label: "Fin", value: formatShortDate(order.fecha_fin) },
             { label: "Fecha del pedido", value: formatShortCalendarDate(order.fecha_pedido) },

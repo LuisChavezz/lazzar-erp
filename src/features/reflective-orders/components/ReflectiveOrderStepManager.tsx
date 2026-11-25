@@ -19,8 +19,7 @@ interface ReflectiveOrderStepManagerProps {
 }
 
 /**
- * Encabezado inicial. `prioridad` arranca en `1` porque es el default del propio
- * backend (`IntegerField(default=1)`) — ver `useReflectiveStep1Form`.
+ * Encabezado inicial.
  *
  * Es una FÁBRICA, no una constante de módulo: un objeto único compartido por
  * todas las aperturas del asistente convierte cualquier mutación in situ —hoy no
@@ -30,7 +29,6 @@ interface ReflectiveOrderStepManagerProps {
  */
 const createEmptyReflectiveHeader = (): CreateReflectiveOrderFormValues => ({
   pedido: 0,
-  prioridad: 1,
   observaciones: "",
 });
 
@@ -38,15 +36,15 @@ const createEmptyReflectiveHeader = (): CreateReflectiveOrderFormValues => ({
  * Orquestador del alta de orden de reflejante (2 pasos), mismo patrón que
  * `EmbroideryOrderStepManager`:
  *
- *  - Paso 1 (`ReflectiveOrderStep1`): pedido, prioridad y observaciones. El
+ *  - Paso 1 (`ReflectiveOrderStep1`): pedido y observaciones. El
  *    encabezado vive AQUÍ como fuente de la verdad, así que "Regresar" desde el
  *    Paso 2 lo conserva tal cual se capturó.
  *  - Paso 2 (`ReflectiveOrderStep2`): elige qué prendas del pedido entran y con
  *    cuántas piezas; al crear, cierra el diálogo.
  *
  * Sustituye al alta de UN SOLO PASO (`ReflectiveOrderCreateForm`, retirado), que
- * era correcta mientras el POST admitía solo `{ pedido, prioridad,
- * observaciones }` y el backend derivaba el 100% de las líneas. Desde que acepta
+ * era correcta mientras el POST admitía solo el encabezado
+ * y el backend derivaba el 100% de las líneas. Desde que acepta
  * `detalles_override` hay una decisión real que capturar —qué líneas y con
  * cuántas piezas—, y el pedido puede cubrirse en varias OR parciales.
  *

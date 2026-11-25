@@ -10,7 +10,7 @@ import type { ReflectiveOnboardingData } from "../interfaces/reflective-order.in
  * montaje de CADA paso —incluido el salto Paso 1 → Paso 2, con datos de menos de
  * un segundo—, y la respuesta trae todos los pedidos candidatos con sus líneas.
  * Con esta ventana el salto entre pasos reusa la respuesta recién traída, y
- * cualquier estancia normal en el Paso 1 (elegir pedido, prioridad y
+ * cualquier estancia normal en el Paso 1 (elegir pedido y
  * observaciones lleva más que esto) sí recarga saldos frescos al entrar al Paso
  * 2. Los cinco segundos no relajan la garantía real: el backend revalida el cupo
  * en el POST y el 400 de exceso recarga. Mismo número y mismo criterio que

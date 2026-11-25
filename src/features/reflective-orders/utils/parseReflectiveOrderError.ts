@@ -3,11 +3,10 @@ import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteEr
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 
 /** Campos del formulario a los que el backend puede atribuir un `400`. */
-export type ReflectiveOrderErrorField = "pedido" | "prioridad" | "observaciones";
+export type ReflectiveOrderErrorField = "pedido" | "observaciones";
 
 const FORM_FIELDS: ReflectiveOrderErrorField[] = [
   "pedido",
-  "prioridad",
   "observaciones",
 ];
 

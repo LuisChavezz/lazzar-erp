@@ -15,7 +15,7 @@ import { ReflectiveOrderDetailContent } from "@/src/features/reflective-orders/c
  * Convive con `ReflectiveOrderDetailDialog`, que sigue montado en
  * `ReflectiveOrdersView` como la vía del 409 de duplicado del alta —abre por un
  * id que puede no estar en la lista cargada—. Esta página es la vista extendida
- * y la ÚNICA donde se editan estatus, prioridad y observaciones (`PATCH` de
+ * y la ÚNICA donde se editan estatus y observaciones (`PATCH` de
  * nucleo-erp #755); el diálogo sigue siendo de solo lectura.
  */
 export default async function ReflectiveOrderDetailPage({
