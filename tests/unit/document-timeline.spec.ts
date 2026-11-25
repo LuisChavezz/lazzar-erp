@@ -172,6 +172,17 @@ test.describe("derivados nuevos de linea-tiempo", () => {
     expect(getTipoDocumentoLabel("cobro")).toBe("Cobro");
   });
 
+  test("calidad, encuadre RFID y los demás tipos de EC-947 tienen etiqueta", () => {
+    expect(getTipoDocumentoLabel("calidad_inspeccion")).toBe("Inspección de calidad");
+    expect(getTipoDocumentoLabel("encuadre_rfid")).toBe("Encuadre RFID");
+    expect(getTipoDocumentoLabel("devolucion_proveedor")).toBe("Devolución a proveedor");
+    expect(getTipoDocumentoLabel("salida_maquila")).toBe("Salida a maquila");
+    expect(getTipoDocumentoLabel("despacho")).toBe("Envío (despacho)");
+    expect(getTipoDocumentoLabel("nota_credito")).toBe("Nota de crédito");
+    expect(getTipoDocumentoLabel("movimiento_bancario")).toBe("Movimiento bancario");
+    expect(getTipoDocumentoLabel("conciliacion_bancaria")).toBe("Conciliación bancaria");
+  });
+
   test("factura de proveedor y cobro quedan como texto, sin enlace", () => {
     const admin = { role: "admin", permissions: [] } as never;
     for (const tipo of ["factura_proveedor", "cobro"]) {

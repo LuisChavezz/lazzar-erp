@@ -12,7 +12,12 @@ export const DOCUMENT_AUDIT_PERMISSION: PermissionRequirement = ["R-CORE", "R-CO
 /** Ruta de la pantalla "Bitácora de documentos". */
 export const DOCUMENT_AUDIT_PATH = "/system/document-audit";
 
-/** Los 17 `tipo_documento` que registra el backend (`DOCUMENTOS` en `auditoria/bitacora.py`). */
+/**
+ * Los 25 `tipo_documento` que registra el backend, en su orden (`DOCUMENTOS` en
+ * `auditoria/bitacora.py`; EC-947 sumó los ocho que faltaban, entre ellos
+ * `calidad_inspeccion` y `encuadre_rfid` de nucleo-erp#1353). Los que no tienen
+ * opener (`documentAuditOpeners`) se muestran como texto.
+ */
 export const TIPOS_DOCUMENTO = [
   "pedido",
   "orden_compra",
@@ -21,16 +26,24 @@ export const TIPOS_DOCUMENTO = [
   "orden_bordado",
   "orden_reflejante",
   "orden_corte_manga",
+  "salida_maquila",
   "picking",
   "packing",
   "transferencia",
+  "despacho",
   "factura",
   "factura_proveedor",
   "cobro",
   "pago",
   "poliza",
+  "nota_credito",
+  "movimiento_bancario",
+  "conciliacion_bancaria",
   "movimiento_inventario",
   "ajuste_inventario",
+  "calidad_inspeccion",
+  "devolucion_proveedor",
+  "encuadre_rfid",
 ] as const;
 
 /** Las 5 acciones (`BitacoraDocumento.Accion`). */
@@ -44,16 +57,24 @@ export const TIPO_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
   orden_bordado: "Orden de bordado",
   orden_reflejante: "Orden de reflejante",
   orden_corte_manga: "Orden de corte de manga",
+  salida_maquila: "Salida a maquila",
   picking: "Surtido (picking)",
   packing: "Embarque (packing)",
   transferencia: "Transferencia",
+  despacho: "Envío (despacho)",
   factura: "Factura",
   factura_proveedor: "Factura de proveedor",
   cobro: "Cobro",
   pago: "Pago",
   poliza: "Póliza",
+  nota_credito: "Nota de crédito",
+  movimiento_bancario: "Movimiento bancario",
+  conciliacion_bancaria: "Conciliación bancaria",
   movimiento_inventario: "Movimiento de inventario",
   ajuste_inventario: "Ajuste de inventario",
+  calidad_inspeccion: "Inspección de calidad",
+  devolucion_proveedor: "Devolución a proveedor",
+  encuadre_rfid: "Encuadre RFID",
 };
 
 /**
