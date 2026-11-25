@@ -9,7 +9,7 @@ import { productionOrderKpisQueryKey } from "@/src/features/production-orders/ho
 import { productionOrderCriticalPathKey } from "@/src/features/production-order-critical-path/hooks/useProductionOrderCriticalPath";
 import { changeProductionOrderStatus } from "../services/actions";
 import type { ChangeProductionOrderStatusBody } from "../interfaces/production-order-status.interface";
-import { staleDataAfterStatusError } from "./productionOrderStatusErrors";
+import { staleDataAfterStatusError, staleSalidasAfterStatusError } from "./productionOrderStatusErrors";
 import { productionOrderStatusKey } from "./useProductionOrderStatus";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 import { DOCUMENT_AUDIT_QUERY_KEY } from "@/src/features/document-audit/hooks/useDocumentAuditList";
@@ -80,6 +80,10 @@ export const useChangeProductionOrderStatus = (opId: number) => {
         void queryClient.invalidateQueries({ queryKey: productionOrderStatusKey(opId) });
       } else if (stale === "status-and-detail") {
         refreshStatusAndDetail();
+      }
+      // Una SM Enviada bloquea la cancelación: se relee la sección de SM de la OP.
+      if (staleSalidasAfterStatusError(error)) {
+        void queryClient.invalidateQueries({ queryKey: ["salidas-maquila", { op: opId }] });
       }
     },
   });
