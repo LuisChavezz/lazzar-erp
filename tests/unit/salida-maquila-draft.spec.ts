@@ -197,14 +197,20 @@ test.describe("salida a maquila: renglón de muestra de OB u OR (EC-963)", () =>
     { id: 42, cantidad: 1, producto: null, talla_nombre: "28", color_nombre: "AMARILLO NEON" },
   ];
 
-  test("una muestra con SKU se describe como cualquier renglón y manda su descripción", () => {
+  test("una muestra con SKU lo muestra como vista previa, pero el alta deja la descripción al backend", () => {
     const conSku = [{ id: 43, cantidad: 1, producto: null, sku: "MP2177-302-30", talla_nombre: "30", color_nombre: "AMARILLO NEON" }];
-    const [renglon] = servicioSeed("OR", 20, conSku).renglones;
-    expect(renglon).toEqual({ detalleId: 43, descripcion: "MP2177-302-30 · 30 · AMARILLO NEON", cantidad: 1 });
-    const d = initialDraft([renglon], null).map((l) => ({ ...l, cantidad: "1", precio: "2" }));
-    expect(toDetalles(d, "OR")).toEqual([
-      { or_detalle: 43, descripcion: "MP2177-302-30 · 30 · AMARILLO NEON", cantidad: "1", precio_unitario: "2" },
-    ]);
+    for (const origen of ["OB", "OR"] as const) {
+      const [renglon] = servicioSeed(origen, 20, conSku).renglones;
+      expect(renglon).toEqual({
+        detalleId: 43,
+        descripcion: "MP2177-302-30 · 30 · AMARILLO NEON",
+        descripcionDelServidor: true,
+        cantidad: 1,
+      });
+      const d = initialDraft([renglon], null).map((l) => ({ ...l, cantidad: "1", precio: "2" }));
+      const campo = origen === "OB" ? "ob_detalle" : "or_detalle";
+      expect(toDetalles(d, origen)).toEqual([{ [campo]: 43, cantidad: "1", precio_unitario: "2" }]);
+    }
   });
 
   test("la muestra se rotula «Sin producto de catálogo», nunca vacía ni con un id", () => {

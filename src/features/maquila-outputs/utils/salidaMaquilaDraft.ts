@@ -7,7 +7,6 @@ import type {
   SalidaMaquilaOrigen,
   SalidaMaquilaRenglonOrigen,
 } from "../interfaces/salida-maquila.interface";
-import { cleanText } from "@/src/utils/cleanText";
 import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 
 /** Renglón editable del alta: piezas y precio como texto, tal cual se teclean. */
@@ -92,9 +91,9 @@ export const servicioSeed = (
   renglones: detalles.map((d) => ({
     detalleId: d.id,
     descripcion: describeRenglonServicio(d),
-    // Muestra sin SKU que mostrar: el backend la describe con su nombre externo
-    // (EC-964). Con SKU, «SKU · talla · color» como cualquier otro renglón.
-    ...(d.producto === null && !cleanText(d.sku) ? { descripcionDelServidor: true } : {}),
+    // Muestra (OB u OR): el alta no manda `descripcion` y el backend escribe el
+    // nombre externo de la muestra (EC-964). `descripcion` queda como vista previa.
+    ...(d.producto === null ? { descripcionDelServidor: true } : {}),
     cantidad: Number(d.cantidad) || 0,
   })),
 });
