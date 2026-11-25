@@ -555,11 +555,9 @@ function DashboardContent({
             {canViewCorteManga && <CorteMangaModuleCard />}
             {canViewReflective && <ReflectiveModuleCard />}
           </div>
-          {/* Estatus y totales bajo los módulos (antes en una fila aparte):
+          {/* Distribución por estatus bajo los módulos (antes en una fila aparte):
               así la columna ancha no deja un hueco junto al panel derecho. */}
           {opMetrics && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            {/* Distribución por estatus */}
             <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
               <div className="mb-4">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-white">Distribución por estatus</h2>
@@ -585,20 +583,11 @@ function DashboardContent({
                   })}
               </div>
             </div>
-  
-            {/* Totales consolidados, junto a la distribución por estatus */}
-            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-              {totals}
-            </div>
-              </div>
           )}
-          {/* Sin OP no hay fila de distribución que los aloje: los totales
-              van aquí, bajo las tarjetas de módulo. */}
-          {!opMetrics && (
-            <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-              {totals}
-            </div>
-          )}
+          {/* Totales consolidados, en su propia tarjeta con o sin OP. */}
+          <div className="rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            {totals}
+          </div>
         </div>
 
         {/* Panel derecho (1/3): alertas + recientes (OP) */}
