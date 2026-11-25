@@ -18,7 +18,7 @@ import type {
   CorteMangaOrder,
   CorteMangaOrderLine,
 } from "../interfaces/corte-manga-order.interface";
-import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
+import { workOrderGarmentLabel } from "@/src/utils/workOrderProductLabel";
 
 const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
   if (items.length === 0) {
@@ -44,9 +44,9 @@ const LineasTable = ({ items }: { items: CorteMangaOrderLine[] }) => {
           >
             <td
               className="px-3 py-2 text-slate-700 dark:text-slate-200 max-w-40 truncate"
-              title={workOrderProductLabel(linea)}
+              title={workOrderGarmentLabel(linea)}
             >
-              {workOrderProductLabel(linea)}
+              {workOrderGarmentLabel(linea)}
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-300">
               {textOrDash(linea.talla_nombre)}

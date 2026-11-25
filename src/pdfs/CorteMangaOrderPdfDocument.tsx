@@ -27,7 +27,7 @@ import { DocumentPdfLayout, PdfCardRow, PdfInfoCard, PdfNotes } from "./shared/D
 import type { PdfCompany } from "./shared/documentPdfModel";
 import { pedidoClienteItems, pedidoClienteLabel } from "./shared/pedidoClientePdf";
 import { workOrderCoverageItems, workOrderGarmentTables } from "./shared/workOrderPdf";
-import { workOrderProductGroupId, workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
+import { workOrderGarmentLabel, workOrderProductGroupId } from "@/src/utils/workOrderProductLabel";
 
 type CorteMangaOrderPdfDocumentProps = {
   order: CorteMangaOrder;
@@ -101,7 +101,7 @@ export const CorteMangaOrderPdfDocument = ({ order, company }: CorteMangaOrderPd
         toLine: (linea) => ({
           id: linea.id,
           productoId: workOrderProductGroupId(linea),
-          producto: workOrderProductLabel(linea),
+          producto: workOrderGarmentLabel(linea),
           color: linea.color_nombre ?? null,
           talla: linea.talla_nombre,
           cantidad: linea.cantidad,

@@ -36,7 +36,7 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { corteMangaPiezasOrden, corteMangaTotalPiezas } from "../utils/corteMangaPiezas";
 import { CorteMangaOrderPdfButton } from "./CorteMangaOrderPdfButton";
 import { corteMangaOrderDetailPath } from "@/src/constants/workOrderRoutes";
-import { workOrderProductGroupId, workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
+import { workOrderGarmentLabel, workOrderProductGroupId } from "@/src/utils/workOrderProductLabel";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -68,7 +68,7 @@ const CorteMangaGarments = ({ items }: { items: CorteMangaOrderLine[] }) => (
     toLine={(linea) => ({
       id: linea.id,
       productoId: workOrderProductGroupId(linea),
-      producto: workOrderProductLabel(linea),
+      producto: workOrderGarmentLabel(linea),
       color: linea.color_nombre ?? null,
       talla: linea.talla_nombre,
       cantidad: linea.cantidad,

@@ -31,7 +31,7 @@ import type {
   ReflectiveOrderSibling,
 } from "../interfaces/reflective-order.interface";
 import { reflectiveMetrosText } from "../utils/reflectiveMetros";
-import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
+import { workOrderGarmentLabel } from "@/src/utils/workOrderProductLabel";
 
 /** Cantidad que puede llegar `null` del backend. `null` → guion largo. */
 const quantityOrDash = (value: number | null) =>
@@ -100,15 +100,15 @@ const LineasTable = ({ items }: { items: ReflectiveOrderDetailLine[] }) => {
             <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
               <span
                 className="block max-w-40 truncate"
-                title={workOrderProductLabel(linea)}
+                title={workOrderGarmentLabel(linea)}
               >
-                {workOrderProductLabel(linea)}
+                {workOrderGarmentLabel(linea)}
               </span>
               {configs.length > 0 && (
                 <span className="mt-1 flex flex-wrap items-center gap-1.5">
                   <ReflectiveLineConfigPopover
                     configs={configs}
-                    productoNombre={workOrderProductLabel(linea)}
+                    productoNombre={workOrderGarmentLabel(linea)}
                     tallaNombre={linea.talla_nombre}
                     colorNombre={linea.color_nombre ?? null}
                   />

@@ -306,7 +306,7 @@ test.describe("PDF de la orden de reflejante", () => {
   test("renglones de muestra (sin producto ni la clave producto_nombre): uno por línea del pedido, sin «Producto #null» (EC-963)", () => {
     // Como llegan del backend tras EC-964: `producto` null y sin la clave.
     const muestra = (id: number, pedidoDetalle: number) => {
-      const linea = orLinea({ id, producto: null, pedido_detalle: pedidoDetalle });
+      const linea = orLinea({ id, producto: null, pedido_detalle: pedidoDetalle, sku: `MP${pedidoDetalle}-${id}` });
       delete linea.producto_nombre;
       return linea;
     };
@@ -318,9 +318,17 @@ test.describe("PDF de la orden de reflejante", () => {
     );
     expect(doc.tables.map((table) => table.title)).toEqual([
       "CHAMARRA ALASKA · NEGRO · 1 pieza",
-      "Sin producto de catálogo · NEGRO · 2 piezas",
-      "Sin producto de catálogo · NEGRO · 1 pieza",
+      "Sin producto de catálogo · MP2177-2 · NEGRO · 2 piezas",
+      "Sin producto de catálogo · MP2180-4 · NEGRO · 1 pieza",
     ]);
+  });
+
+  test("si el detalle trae el nombre de la muestra, el grupo lo usa (EC-963)", () => {
+    const linea = orLinea({ id: 2, producto: null, pedido_detalle: 2177, sku: "MP2177-302-28" });
+    delete linea.producto_nombre;
+    linea.producto_nombre_externo = "PANTALON CHAIN YSL | YELLOW N GOLD";
+    const doc = read(ReflectiveOrderPdfDocument({ order: or({ detalles: [linea] }), company: COMPANY }));
+    expect(doc.tables.map((table) => table.title)).toEqual(["PANTALON CHAIN YSL | YELLOW N GOLD · NEGRO · 1 pieza"]);
   });
 
   test("cliente del pedido en la tarjeta y en el subtítulo", () => {
@@ -392,12 +400,12 @@ test.describe("PDF de la orden de corte de manga", () => {
     expect(doc.tables.map((table) => table.title)).toEqual(["PANTALON CARGO · MARINO · 2 piezas"]);
   });
 
-  test("un renglón de muestra se rotula «Sin producto de catálogo» (EC-963)", () => {
+  test("un renglón de muestra se rotula «Sin producto de catálogo» con su SKU (EC-963)", () => {
     const [linea] = ocm().detalles;
     const muestra = { ...linea, producto: null };
     delete muestra.producto_nombre;
     const doc = read(CorteMangaOrderPdfDocument({ order: ocm({ detalles: [muestra] }), company: COMPANY }));
-    expect(doc.tables.map((table) => table.title)).toEqual(["Sin producto de catálogo · MARINO · 2 piezas"]);
+    expect(doc.tables.map((table) => table.title)).toEqual(["Sin producto de catálogo · 201970332 · MARINO · 2 piezas"]);
   });
 
   test("sin las claves de fecha ni de cobertura (respuesta anterior) se omiten", () => {

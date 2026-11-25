@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   SIN_PRODUCTO_CATALOGO,
+  workOrderGarmentLabel,
   workOrderProductGroupId,
   workOrderProductLabel,
 } from "@/src/utils/workOrderProductLabel";
@@ -30,6 +31,13 @@ test.describe("workOrderProductLabel", () => {
       SIN_PRODUCTO_CATALOGO,
     );
     expect(SIN_PRODUCTO_CATALOGO).toBe("Sin producto de catálogo");
+  });
+
+  test("el título de grupo de una muestra sin nombre lleva su SKU", () => {
+    expect(workOrderGarmentLabel({ sku: "MP2177-302-28" })).toBe("Sin producto de catálogo · MP2177-302-28");
+    expect(workOrderGarmentLabel({ sku: null })).toBe(SIN_PRODUCTO_CATALOGO);
+    expect(workOrderGarmentLabel({ producto_nombre: "PLAYERA", sku: "PL-M" })).toBe("PLAYERA");
+    expect(workOrderGarmentLabel({ producto_nombre_externo: "PANTALON", sku: "MP1" })).toBe("PANTALON");
   });
 
   test("agrupa por producto y, en una muestra, por su línea del pedido", () => {

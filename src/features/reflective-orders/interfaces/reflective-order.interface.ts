@@ -90,6 +90,11 @@ export interface ReflectiveOrderLine {
    * con `workOrderProductLabel`.
    */
   producto_nombre?: string | null;
+  /**
+   * Nombre de la MUESTRA en un renglón sin producto. Hoy el detalle NO lo manda
+   * (pedido al backend tras EC-963); opcional para usarlo en cuanto llegue.
+   */
+  producto_nombre_externo?: string | null;
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
