@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import { useCancelMutation, type CancelAction } from "@/src/features/document-cancellation/hooks/useCancelMutation";
 import { invalidateAfterWmsCancellation } from "../utils/invalidateAfterWmsCancellation";
 import { classifyWmsCancelError } from "../utils/wmsCancelErrors";
 
@@ -38,50 +38,39 @@ export interface WmsCancelAction<TResult> {
   fallbackErrorMessage: string;
 }
 
+/**
+ * La `WmsCancelAction` como la acción genérica de `document-cancellation`
+ * (EC-948): relee `invalidateAfterWmsCancellation` y luego su `refresh`, y
+ * clasifica con las llaves y los textos de WMS. Es lo único que WMS añade a la
+ * cancelación genérica; el comportamiento es el de siempre.
+ */
+export const toCancelAction = <TResult>(action: WmsCancelAction<TResult>): CancelAction<TResult> => ({
+  mutationKey: action.mutationKey,
+  run: action.run,
+  applyResult: action.applyResult,
+  refresh: (queryClient) => {
+    void invalidateAfterWmsCancellation(queryClient);
+    action.refresh?.(queryClient);
+  },
+  classifyError: (error) => classifyWmsCancelError(error, action.fallbackErrorMessage, action.blockingKeys),
+  successMessage: action.successMessage,
+});
+
 interface UseWmsCancelMutationOptions {
   /** Error de `motivo`: se pinta bajo el campo en vez de en un toast. */
   onMotivoError?: (message: string) => void;
 }
 
 /**
- * Mutación de una `WmsCancelAction`. Al tener éxito escribe el resultado en
- * caché, invalida todo lo que toca una cancelación
- * (`invalidateAfterWmsCancellation`) y avisa. Errores (`classifyWmsCancelError`):
- * `motivo` bajo el campo; el resto, toast con el mensaje del backend tal cual.
- * Si el documento ya no se puede cancelar (`blocked`, `not-found`) se relee todo
- * para que la acción deje de ofrecerse; el diálogo decide cerrarse.
+ * Mutación de una `WmsCancelAction` (`useCancelMutation` sobre
+ * `toCancelAction`). Al tener éxito escribe el resultado en caché, invalida
+ * todo lo que toca una cancelación (`invalidateAfterWmsCancellation`) y avisa.
+ * Errores (`classifyWmsCancelError`): `motivo` bajo el campo; el resto, toast
+ * con el mensaje del backend tal cual. Si el documento ya no se puede cancelar
+ * (`blocked`, `not-found`) se relee todo para que la acción deje de ofrecerse;
+ * el diálogo decide cerrarse.
  */
 export const useWmsCancelMutation = <TResult>(
   action: WmsCancelAction<TResult>,
   { onMotivoError }: UseWmsCancelMutationOptions = {},
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationKey: action.mutationKey,
-    mutationFn: action.run,
-    onSuccess: async (result) => {
-      try {
-        await action.applyResult(queryClient, result);
-      } catch (error) {
-        console.error("No se pudo escribir el resultado de la cancelación en la caché", error);
-      }
-      void invalidateAfterWmsCancellation(queryClient);
-      action.refresh?.(queryClient);
-      toast.success(action.successMessage(result));
-    },
-    onError: (error) => {
-      const classified = classifyWmsCancelError(error, action.fallbackErrorMessage, action.blockingKeys);
-      if (classified.kind === "motivo" && onMotivoError) {
-        onMotivoError(classified.message);
-        return;
-      }
-      toast.error(classified.message);
-      // Ya no se puede (o cambió en otro lado): la caché está vieja, se relee.
-      if (classified.kind === "blocked" || classified.kind === "not-found" || classified.kind === "retryable") {
-        void invalidateAfterWmsCancellation(queryClient);
-        action.refresh?.(queryClient);
-      }
-    },
-  });
-};
+) => useCancelMutation(toCancelAction(action), { onMotivoError });
