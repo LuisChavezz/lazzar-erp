@@ -3,7 +3,10 @@
 import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { reflectiveLineProductoNombre } from "../hooks/useReflectiveStep2Form";
+import {
+  reflectiveLineProductoNombre,
+  reflectiveLineSampleSku,
+} from "../hooks/useReflectiveStep2Form";
 import type { ReflectiveOnboardingDetalle } from "../interfaces/reflective-order.interface";
 import {
   ReflectiveConfigCountBadge,
@@ -109,6 +112,7 @@ export function ReflectiveOrderLinesTable({
             // pedido; en el alta todavía no hay orden que congelar). Puede venir
             // `null`/vacío: la fila cae a mostrar solo cantidades, sin popover.
             const configs = row.reflejante_config ?? [];
+            const sampleSku = reflectiveLineSampleSku(row);
 
             return (
               <div
@@ -166,6 +170,16 @@ export function ReflectiveOrderLinesTable({
                           </span>
                         )}
                       </div>
+                      {/* SKU de la MUESTRA, con la misma línea que el Paso 2 de
+                          bordado. Las líneas de catálogo no lo pintan. */}
+                      {sampleSku && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 break-words">
+                          SKU:{" "}
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                            {sampleSku}
+                          </span>
+                        </p>
+                      )}
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                         Pedida: {formatExactQuantityValue(row.cantidad_pedido)} ·
                         Programada: {formatExactQuantityValue(row.cantidad_asignada)} ·{" "}
