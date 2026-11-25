@@ -16,9 +16,11 @@
  *
  * Qué se conserva: un pictograma suelto del BMP (✓, ⚠, ❤, ★, ⭐, ©, ™), con su
  * selector de variación quitado: el respaldo los imprime en blanco y negro
- * (323 de los 342 del BMP; los que no tiene, como ✅ o ❌, desaparecen como
- * cualquier carácter sin glifo). Una ZWJ fuera de un emoji y cualquier otro
- * texto no se tocan. Tampoco se ajustan los espacios: "Entrega 🚚 hoy" queda
+ * (323 de los 342 del BMP). De los 19 que ninguna fuente de la pila tiene, los
+ * que tienen un equivalente que sí se imprime se cambian por él
+ * (`BMP_SUBSTITUTES`: ✅ → ✔, ❌ → ✗, ➕ → +…; la única excepción a "solo se
+ * quitan emoji") y el resto se quita (`BMP_UNPRINTABLE`: ✨, ⏰…). Una ZWJ
+ * fuera de un emoji y cualquier otro texto no se tocan. Tampoco se ajustan los espacios: "Entrega 🚚 hoy" queda
  * "Entrega  hoy".
  */
 
@@ -28,12 +30,35 @@ const EMOJI_SEQUENCE =
 const COMPOUND = /[\u200D\u{E0020}-\u{E007F}]|\p{Emoji_Modifier}/u;
 const FIRST_NON_BMP = 0x10000;
 
+/**
+ * Pictogramas del BMP que ni Arimo ni el respaldo tienen, con un equivalente
+ * que la pila sí imprime (comprobado con fontkit sobre los archivos servidos).
+ */
+const BMP_SUBSTITUTES: Readonly<Record<string, string>> = {
+  "✅": "✔", // U+2705 → U+2714
+  "❌": "✗", // U+274C → U+2717
+  "❎": "☒", // U+274E → U+2612
+  "➕": "+", // U+2795
+  "➖": "−", // U+2796 → U+2212
+  "➗": "÷", // U+2797 → U+00F7
+  "❔": "?", // U+2754
+  "❕": "!", // U+2755
+  "⏫": "⇈", // U+23EB → U+21C8
+  "⏬": "⇊", // U+23EC → U+21CA
+};
+
+/** Los demás pictogramas del BMP sin glifo en la pila y sin equivalente razonable: se quitan. */
+const BMP_UNPRINTABLE: ReadonlySet<string> = new Set(["⏰", "✊", "✨", "➰", "➿", "〰", "〽", "㊗", "㊙"]);
+
+const replaceBmpPictograph = (base: string): string =>
+  BMP_SUBSTITUTES[base] ?? (BMP_UNPRINTABLE.has(base) ? "" : base);
+
 const replaceSequence = (sequence: string): string => {
   const [base] = Array.from(sequence);
   if (/^[0-9#*]/.test(sequence)) return base;
   if (/^(?:\p{Regional_Indicator}|\p{Emoji_Modifier})/u.test(sequence)) return "";
   if (COMPOUND.test(sequence)) return "";
-  return (base.codePointAt(0) ?? 0) >= FIRST_NON_BMP ? "" : base;
+  return (base.codePointAt(0) ?? 0) >= FIRST_NON_BMP ? "" : replaceBmpPictograph(base);
 };
 
 /** Quita los emoji de un texto según las reglas de arriba. */

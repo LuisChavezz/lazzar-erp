@@ -93,6 +93,14 @@ test.describe("respaldo de símbolos en la plantilla base", () => {
     }
   });
 
+  test("los equivalentes de los emoji del BMP sin glifo (✅ → ✔…) sí se imprimen", async () => {
+    test.setTimeout(60_000);
+    const props = stripPdfEmojiDeep({ notas: "Fin ✅ ❌ ❎ ➕ ➖ ➗ ❔ ❕ ⏫ ⏬ fin", rows: [] as Row[] });
+    expect(props.notas).toBe("Fin ✔ ✗ ☒ + − ÷ ? ! ⇈ ⇊ fin");
+    const [pagina] = pdfPageTexts(await render(baseDocument(props)));
+    expect(pagina).toContain("Fin ✔ ✗ ☒ + − ÷ ? ! ⇈ ⇊ fin");
+  });
+
   test("un renglón con símbolos mide lo mismo que uno sin ellos, en normal y en negritas", async () => {
     test.setTimeout(60_000);
     const heights = await lineHeights(
