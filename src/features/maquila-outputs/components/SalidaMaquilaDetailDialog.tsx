@@ -189,7 +189,7 @@ export function SalidaMaquilaDetailDialog({
 
           {/* Con una recepción viva, lo que falta se cierra desde WMS ("Cerrar la
               SM con faltante"), no cancelando la SM (EC-919). */}
-          {canWrite && puedeCancelarSalidaMaquila(data) && <SalidaMaquilaActions salida={data} />}
+          {canWrite && <SalidaMaquilaActions salida={data} available={puedeCancelarSalidaMaquila(data)} />}
         </div>
       )}
     </MainDialog>
