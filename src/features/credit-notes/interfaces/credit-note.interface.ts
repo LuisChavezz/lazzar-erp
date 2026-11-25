@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Contrato de `/finanzas/notas-credito/` (`NotaCreditoSerializer`,
  * `fields = "__all__"` más `cliente_nombre` y `factura_folio` de solo lectura, y
@@ -65,7 +67,7 @@ export interface NotaCreditoDetalle {
   talla_nombre?: string | null;
 }
 
-export interface NotaCredito {
+export interface NotaCredito extends DocumentCancellationFields {
   id: number;
   /** FK a `finanzas.Factura`. Requerido, no nullable. */
   factura: number;

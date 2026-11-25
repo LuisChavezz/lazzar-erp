@@ -90,19 +90,22 @@ export const emitirNotaCredito = async (id: number): Promise<NotaCredito> => {
 };
 
 /**
- * Cancela una nota de crédito: `POST /finanzas/notas-credito/{id}/cancelar/`.
+ * Cancela una nota de crédito: `POST /finanzas/notas-credito/{id}/cancelar/`,
+ * con el motivo obligatorio EN EL BODY (nucleo-erp#1356, EC-950): `?motivo=`
+ * choca con el filtro del listado por el campo `motivo` de la nota y responde
+ * `404`.
  *
- * Devuelve 200 con el documento. Es idempotente: cancelar una nota ya cancelada
- * retorna sin hacer nada. Si la nota estaba `Emitida`, el backend DEVUELVE el
+ * Devuelve 200 con el documento y los datos de la cancelación. Cancelar una
+ * nota ya cancelada responde `400 estatus`. Si la nota estaba `Emitida`, el backend DEVUELVE el
  * importe acreditado al saldo de la cuenta por cobrar y reajusta su estatus
  * (`Pendiente` o `Parcial`); si estaba en `Borrador` solo la marca `Cancelada`,
  * porque nunca tocó la CxC. Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): puede
  * cancelar su CFDI ante Facturama.
  */
-export const cancelarNotaCredito = async (id: number): Promise<NotaCredito> => {
+export const cancelarNotaCredito = async (id: number, motivo: string): Promise<NotaCredito> => {
   const { data } = await v1_api.post<NotaCredito>(
     `/finanzas/notas-credito/${id}/cancelar/`,
-    undefined,
+    { motivo },
     { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
