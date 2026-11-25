@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useMutationLock } from "@/src/hooks/useMutationLock";
-import { mergeCachedRecord, patchCachedRowById, pickPresentFields } from "@/src/utils/cachedRows";
 import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { DOCUMENT_AUDIT_QUERY_KEY } from "@/src/features/document-audit/hooks/useDocumentAuditList";
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
@@ -13,14 +12,12 @@ import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/u
 import { liberarPedido, retenerPedido } from "../services/actions";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
-import type { PedidoListItem, PedidoRetencion } from "../interfaces/order.interface";
 import type { PedidoRetencionResponse } from "../interfaces/pedido-retencion.interface";
 import {
-  PEDIDO_RETENCION_DETAIL_FIELDS,
-  PEDIDO_RETENCION_LIST_FIELDS,
   isStalePedidoRetencionError,
   pedidoRetencionErrorMessage,
 } from "../utils/pedidoRetencion";
+import { applyPedidoRetencionResult } from "../utils/pedidoRetencionCache";
 
 /**
  * Candado de la retención, ÚNICO por pedido y compartido por `retener/` y
@@ -48,32 +45,6 @@ const RETENCION_RELATED_QUERY_KEYS: readonly QueryKey[] = [
   corteMangaOnboardingQueryKey,
   ["special-orders"],
 ];
-
-/**
- * Escribe el estado de retención que respondió el backend en la caché ANTES
- * de invalidar (EC-927): en cada variante del listado bajo `["orders"]` que
- * tenga la fila y en el detalle del pedido si está en caché. Así, si el
- * refetch que sigue falla, la fila no se queda ofreciendo la acción contraria.
- * Best-effort (`cachedRows`): una respuesta de otra forma no escribe nada.
- */
-const applyPedidoRetencionResult = async (
-  queryClient: QueryClient,
-  pedidoId: number,
-  response: PedidoRetencionResponse,
-) => {
-  if (response?.id !== pedidoId) return;
-  const listFields = pickPresentFields<PedidoListItem>(response, PEDIDO_RETENCION_LIST_FIELDS);
-  await patchCachedRowById<PedidoListItem>(queryClient, ORDERS_QUERY_KEY, pedidoId, (row) => ({
-    ...row,
-    ...listFields,
-  }));
-  await mergeCachedRecord(
-    queryClient,
-    pedidoDetailQueryKey(pedidoId),
-    pedidoId,
-    pickPresentFields<PedidoRetencion>(response, PEDIDO_RETENCION_DETAIL_FIELDS),
-  );
-};
 
 /** Relee lo que muestra o depende de la retención del pedido. Sin esperar. */
 const invalidateAfterRetencion = (queryClient: QueryClient, pedidoId: number) => {
