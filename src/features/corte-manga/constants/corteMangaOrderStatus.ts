@@ -89,41 +89,6 @@ export const corteMangaStatusEntry = (
   return { ...base, label: base.label || display?.trim() || String(estatus) };
 };
 
-/**
- * Etiquetas de `prioridad`. El modelo la declara `IntegerField(default=1)` SIN
- * `choices` y el alta acepta cualquier entero (el `PATCH` solo 1-3, nucleo-erp
- * #786). El mapeo 1 = Alta, 2 = Media, 3 = Baja es el mismo que ya usan el
- * alta de órdenes de producción (`ProductionOrderStep1`) y los listados de
- * bordado y reflejante, para no inventar una escala distinta dentro del mismo
- * dominio. Cualquier otro entero cae en `corteMangaOrderPriorityFallback`.
- */
-export const CORTE_MANGA_ORDER_PRIORITY_CONFIG: Record<string, StatusBadgeConfigEntry> = {
-  1: {
-    label: "Alta",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
-    dot: "bg-rose-500",
-  },
-  2: {
-    label: "Media",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-500",
-  },
-  3: {
-    label: "Baja",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-    dot: "bg-slate-400",
-  },
-};
-
-/** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
-export const corteMangaOrderPriorityFallback = (
-  prioridad: number,
-): StatusBadgeConfigEntry => ({
-  label: `Prioridad ${prioridad}`,
-  cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-  dot: "bg-slate-400",
-});
-
 /** Badge de cobertura del pedido (mismo criterio que reflejante y bordado). */
 export const CORTE_MANGA_ORDER_COVERAGE_CONFIG: Record<string, StatusBadgeConfigEntry> = {
   true: {

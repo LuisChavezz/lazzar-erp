@@ -33,13 +33,6 @@ import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface"
  *    nucleo-erp #755 el estatus se edita en la ficha de detalle, así que esa
  *    razón ya no aplica; añadirlo queda pendiente.
  *
- *  - DESGLOSE POR PRIORIDAD: técnicamente calculable, pero sesgado hasta ser
- *    inútil: la única ruta de alta viva toma `data.get("prioridad", 1)` y el
- *    modelo declara `IntegerField(default=1)`, así que un desglose leería
- *    "Alta" para prácticamente todo el listado por inercia del default, no por
- *    urgencia real — y un número sesgado se lee como señal verdadera, lo que
- *    engaña más que uno constante. Mismo criterio que bordado y reflejante.
- *
  *  - CONFIGURACIÓN DE CORTE (`detalles[].configuracion`): sería EL indicador
  *    propio del módulo —qué tipo de corte lleva cada prenda—, pero llega `null`
  *    en todas las órdenes: la única ruta de alta viva no lo escribe, y las dos

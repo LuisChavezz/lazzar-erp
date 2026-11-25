@@ -9,14 +9,9 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
 import { PEDIDO_LINK_VISIBLE_CLASS, PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import { getWorkOrderProgressColumns, sumDetalles } from "@/src/features/work-order-avances/components/workOrderListColumns";
-import {
-  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  corteMangaOrderPriorityFallback,
-  corteMangaStatusEntry,
-} from "../constants/corteMangaOrderStatus";
+import { corteMangaStatusEntry } from "../constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 
 const columnHelper = createColumnHelper<CorteMangaOrder>();
 
@@ -65,7 +60,7 @@ const FolioCell = ({
  * detalle.
  *
  * Sin edición en la tabla: el badge de estatus es de solo lectura y pinta el
- * valor tal cual llega. Estatus, prioridad y observaciones se editan en la
+ * valor tal cual llega. Estatus y observaciones se editan en la
  * página de detalle (`CorteMangaOrderPageContent`, `PATCH` de nucleo-erp
  * #755).
  *
@@ -129,16 +124,6 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
     piezas: (row) => sumDetalles(row.detalles),
     resumen: (row) => row.resumen_avance,
     verbo: "cortadas",
-  }),
-  columnHelper.accessor("prioridad", {
-    header: "Prioridad",
-    cell: (info) => (
-      <StatusBadge
-        status={String(info.getValue())}
-        config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-        defaultConfig={corteMangaOrderPriorityFallback(info.getValue())}
-      />
-    ),
   }),
   // Resumen de `detalles`: cuántos renglones y cuántas piezas suman. `cantidad`
   // es un float del backend (número, no el string decimal de inventario).
@@ -253,12 +238,6 @@ export const getCorteMangaOrderColumns = (onViewDetails: (id: number) => void) =
  * valores de las filas que el catálogo no cubre.
  */
 export const CORTEMANGAORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilterSpec<CorteMangaOrder>>> = {
-  prioridad: {
-    type: "options",
-    get: (r) => r.prioridad,
-    options: optionsFromConfig(CORTE_MANGA_ORDER_PRIORITY_CONFIG),
-    label: (r) => corteMangaOrderPriorityFallback(r.prioridad).label,
-  },
   pedido_folio: { type: "presence", get: (r) => r.pedido_folio, con: "Con pedido", sin: "Sin pedido" },
   usuario_nombre: { type: "distinct", get: (r) => r.usuario_nombre },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },

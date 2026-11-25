@@ -180,16 +180,6 @@ export interface CorteMangaOrder extends WorkOrderAvanceFields {
    * de este frontend gana para los códigos conocidos.
    */
   estatus_corte_display: string;
-  /**
-   * El modelo lo declara `IntegerField(default=1)` SIN `choices`: el alta
-   * acepta cualquier entero (el esquema OpenAPI lo confirma: `integer` con los
-   * límites de un `int32`, sin enum), pero el `PATCH` de la ficha solo 1-3
-   * (nucleo-erp #786). La UI rotula 1-3
-   * (Alta/Media/Baja, el mismo mapeo del alta de órdenes de producción y de los
-   * listados de bordado/reflejante) y cae a un badge neutro para cualquier otro
-   * valor.
-   */
-  prioridad: number;
   /** `auto_now_add`: es la fecha de ALTA, nunca nula. */
   fecha_inicio: string;
   /**
@@ -359,7 +349,7 @@ export interface CorteMangaOnboardingData {
 /**
  * Cuerpo de `POST /produccion/orden-corte-manga/onboarding/`.
  *
- * SOLO estos tres campos. El backend deriva `empresa`/`sucursal` del pedido,
+ * SOLO estos dos campos. El backend deriva `empresa`/`sucursal` del pedido,
  * `usuario_asignado` del usuario autenticado y `folio_ocm` de la serie de
  * folios; `estatus_corte`/`activo`/`fecha_inicio` toman su default.
  *
@@ -382,7 +372,6 @@ export interface CorteMangaOnboardingData {
  */
 export interface CreateCorteMangaOrderPayload {
   pedido: number;
-  prioridad?: number;
   observaciones?: string;
 }
 
@@ -392,13 +381,12 @@ export interface CreateCorteMangaOrderPayload {
  * cambia.
  *
  * A diferencia del alta (donde `estatus_corte` es `read_only`), este serializer
- * SÍ lo persiste. Son los cuatro campos que escribe; cualquier otro se descarta
- * en silencio con `200`. `fecha_fin` no está en este tipo: la UI no la captura
- * y el backend la sella al entrar a `5` (Completado) y la limpia al reabrir,
- * solo si la clave falta del cuerpo (nucleo-erp #786).
+ * SÍ lo persiste. Solo lleva los campos que edita la UI; uno que el serializer
+ * no persiste se descarta en silencio con `200`. `fecha_fin` no está en este
+ * tipo: la UI no la captura y el backend la sella al entrar a `5` (Completado)
+ * y la limpia al reabrir, solo si la clave falta del cuerpo (nucleo-erp #786).
  */
 export interface UpdateCorteMangaOrderPayload {
   estatus_corte?: CorteMangaOrderStatus;
-  prioridad?: number;
   observaciones?: string | null;
 }

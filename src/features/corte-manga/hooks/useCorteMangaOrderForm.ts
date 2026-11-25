@@ -25,15 +25,6 @@ type CorteMangaDuplicateState = NonNullable<ParsedCorteMangaOrderError["duplicat
 
 /**
  * Estado del formulario de alta de orden de corte de manga.
- *
- * `prioridad` arranca en `1`, que es el default del propio backend
- * (`IntegerField(default=1)`, y el service hace `data.get("prioridad", 1)`):
- * omitir el campo produciría exactamente el mismo valor almacenado, así que
- * preseleccionarlo muestra la verdad en vez de fingir que "sin elegir" es un
- * estado posible. Ojo con la consecuencia: bajo la convención de etiquetas del
- * proyecto ese `1` se lee "Alta", de modo que el default efectivo de TODA orden
- * de corte de manga es prioridad Alta — es una herencia del backend, no una
- * decisión de esta pantalla.
  */
 export function useCorteMangaOrderForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const { data: session } = useSession();
@@ -130,7 +121,7 @@ export function useCorteMangaOrderForm({ onSuccess }: { onSuccess?: () => void }
 
   // ─── Formulario ───────────────────────────────────────────────────────────
   const defaultValues = useMemo<CreateCorteMangaOrderFormValues>(
-    () => ({ pedido: 0, prioridad: 1, observaciones: "" }),
+    () => ({ pedido: 0, observaciones: "" }),
     [],
   );
 

@@ -11,7 +11,6 @@ import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOr
 import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
 import { InlineObservationsField } from "@/src/components/InlineObservationsField";
 import { WorkOrderStatusSelect } from "@/src/components/WorkOrderStatusSelect";
-import { WorkOrderPrioritySelect } from "@/src/components/WorkOrderPrioritySelect";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { hasProductionPermission } from "@/src/utils/productionPermissions";
@@ -19,8 +18,6 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import {
   CORTE_MANGA_ORDER_COVERAGE_CONFIG,
-  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  corteMangaOrderPriorityFallback,
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import {
@@ -127,7 +124,7 @@ export function CorteMangaOrderPageContent({
 }: CorteMangaOrderPageContentProps) {
   const numericId = Number(orderId);
   const { data, isLoading, isError, error } = useCorteMangaOrderDetail(numericId);
-  // Edición de la ficha (estatus, prioridad, observaciones). El hook re-consulta
+  // Edición de la ficha (estatus y observaciones). El hook re-consulta
   // el detalle al terminar; solo la disparan los controles de abajo, que no se
   // pintan en los estados de carga/error.
   const updateOrder = useUpdateCorteMangaOrder(numericId);
@@ -238,16 +235,6 @@ export function CorteMangaOrderPageContent({
                   onStatusChange={(next) => updateOrder.mutate({ estatus_corte: next })}
                   isPending={updateOrder.isPending}
                   readOnly={!canEdit}
-                />
-              </InfoField>
-              <InfoField label="Prioridad">
-                <WorkOrderPrioritySelect
-                  value={data.prioridad}
-                  config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-                  fallback={corteMangaOrderPriorityFallback}
-                  onChange={(prioridad) => updateOrder.mutate({ prioridad })}
-                  isPending={updateOrder.isPending}
-                  readOnly={isReadOnly}
                 />
               </InfoField>
               <div className="grid grid-cols-2 gap-4">

@@ -17,7 +17,7 @@ import { CorteMangaOrderPageContent } from "@/src/features/corte-manga/component
  * `CorteMangaOrderDetailDialog` (recibe la fila del listado) y
  * `CorteMangaOrderDetailByIdDialog` (self-fetching, para "Documentos
  * relacionados" del detalle de pedido). Esta página es la vista extendida y la
- * ÚNICA donde se editan estatus, prioridad y observaciones (`PATCH` de
+ * ÚNICA donde se editan estatus y observaciones (`PATCH` de
  * nucleo-erp #755); los diálogos siguen siendo de solo lectura.
  */
 export default async function CorteMangaOrderDetailPage({
