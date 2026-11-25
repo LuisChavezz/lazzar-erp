@@ -11,6 +11,6 @@ export const EMBROIDERY_WIZARD_STEPS: readonly EmbroideryWizardStep[] = [
 ];
 
 export const EMBROIDERY_WIZARD_STEP_LABELS: Record<EmbroideryWizardStep, string> = {
-  "step-1": "Pedido y prioridad",
+  "step-1": "Pedido",
   "step-2": "Prendas a bordar",
 };

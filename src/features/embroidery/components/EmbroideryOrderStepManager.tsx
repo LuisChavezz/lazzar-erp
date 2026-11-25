@@ -19,8 +19,7 @@ interface EmbroideryOrderStepManagerProps {
 }
 
 /**
- * Encabezado inicial. `prioridad` arranca en `1` porque es el default del
- * propio backend (`IntegerField(default=1)`) — ver `useEmbroideryStep1Form`.
+ * Encabezado inicial.
  *
  * Es una FÁBRICA, no una constante de módulo: un objeto único compartido por
  * todas las aperturas del asistente convierte cualquier mutación in situ
@@ -30,7 +29,6 @@ interface EmbroideryOrderStepManagerProps {
  */
 const createEmptyEmbroideryHeader = (): CreateEmbroideryOrderFormValues => ({
   pedido: 0,
-  prioridad: 1,
   observaciones: "",
 });
 
@@ -38,7 +36,7 @@ const createEmptyEmbroideryHeader = (): CreateEmbroideryOrderFormValues => ({
  * Orquestador del alta de orden de bordado (2 pasos), mismo patrón que
  * `PickingStepManager`:
  *
- *  - Paso 1 (`EmbroideryOrderStep1`): pedido, prioridad y observaciones. El
+ *  - Paso 1 (`EmbroideryOrderStep1`): pedido y observaciones. El
  *    encabezado vive AQUÍ como fuente de la verdad, así que "Regresar" desde el
  *    Paso 2 lo conserva tal cual se capturó.
  *  - Paso 2 (`EmbroideryOrderStep2`): elige qué prendas del pedido entran y con

@@ -28,13 +28,6 @@ import type { EmbroideryOrder } from "../interfaces/embroidery.interface";
  *    construye su KPI de vencidos sobre ella), `OrdenesBordado` NO tiene NINGÚN
  *    campo de fecha compromiso — solo `fecha_inicio`/`fecha_fin`. El concepto
  *    no está vacío, está ausente del modelo.
- *
- *  - DESGLOSE POR PRIORIDAD: técnicamente calculable, pero `prioridad` toma su
- *    valor por defecto del backend (`IntegerField(default=1)`, que bajo la
- *    convención de etiquetas del proyecto se lee "Alta") y el formulario de
- *    alta lo preselecciona. Un desglose leería mayoritariamente "Alta" por
- *    inercia del default, no por urgencia real — un número sesgado se lee como
- *    señal verdadera, y eso engaña más que uno constante.
  */
 export function EmbroideryStats({ items }: { items: EmbroideryOrder[] }) {
   const kpis = computeEmbroideryKpis(items);

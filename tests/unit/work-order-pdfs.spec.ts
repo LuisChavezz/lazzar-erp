@@ -113,7 +113,6 @@ const ob = (overrides: Partial<EmbroideryOrderDetail> = {}): EmbroideryOrderDeta
     folio_bordado: "2026-OB-00032",
     estatus_bordado: 1,
     estatus_bordado_display: "Sin trabajar",
-    prioridad: 1,
     fecha_inicio: "2026-10-29T10:49:20.457900-06:00",
     fecha_fin: null,
     observaciones: null,

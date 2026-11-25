@@ -19,9 +19,7 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
 import {
   EMBROIDERY_COVERAGE_CONFIG,
-  EMBROIDERY_PRIORITY_CONFIG,
   EMBROIDERY_STATUS_CONFIG,
-  embroideryPriorityFallback,
 } from "../constants/embroideryStatus";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import type {
@@ -292,13 +290,6 @@ export function EmbroideryOrderDetailDialog({
               <StatusBadge
                 status={String(order.estatus_bordado)}
                 config={EMBROIDERY_STATUS_CONFIG}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(order.prioridad)}
-                config={EMBROIDERY_PRIORITY_CONFIG}
-                defaultConfig={embroideryPriorityFallback(order.prioridad)}
               />
             </InfoField>
             <InfoField label="Pedido">{textOrDash(order.pedido_folio)}</InfoField>

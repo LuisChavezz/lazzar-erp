@@ -35,7 +35,6 @@ export function buildEmbroideryOrderPayload(
 ): CreateEmbroideryOrderPayload {
   const payload: CreateEmbroideryOrderPayload = {
     pedido: values.pedido,
-    prioridad: values.prioridad,
   };
 
   const observaciones = values.observaciones.trim();
