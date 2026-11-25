@@ -2,10 +2,11 @@
 
 import { ActivityTimeline, ActivityTimelineItem } from "@/src/components/ActivityTimeline";
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
-import { OrdenesIcon } from "@/src/components/Icons";
+import { BanIcon, OrdenesIcon } from "@/src/components/Icons";
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
 import { usePreOrderHistory } from "../hooks/usePreOrders";
+import { isPreOrderCancellationEvent, preOrderEventUserName } from "../utils/preOrderHistory";
 import type {
   PreOrderRegreso,
   PreOrderSemaforo,
@@ -88,7 +89,11 @@ export const NEED_STATUS_CFG: Record<PurchaseNeedStatus, { cls: string; dot: str
   },
 };
 
-/** Línea de tiempo de la pre-orden (`/historial/`), lo más reciente arriba. */
+/**
+ * Línea de tiempo de la pre-orden (`/historial/`), lo más reciente arriba. "OP
+ * cancelada" (EC-948) y "Cancelada" llevan el ícono de cancelación; la
+ * descripción trae el folio y el motivo.
+ */
 export function PreOrderHistory({ preOrderId }: { preOrderId: number }) {
   const { events, hasLoaded, isInitialError } = usePreOrderHistory(preOrderId);
   if (!hasLoaded) {
@@ -100,26 +105,33 @@ export function PreOrderHistory({ preOrderId }: { preOrderId: number }) {
   const ordered = [...events].sort((a, b) => b.fecha.localeCompare(a.fecha));
   return (
     <ActivityTimeline ariaLabel="Historial de la pre-orden">
-      {ordered.map((event, index) => (
-        <ActivityTimelineItem
-          key={`${event.id}-${event.evento}-${event.fecha}`}
-          icon={<OrdenesIcon className="w-4 h-4" />}
-          title={event.evento_display || event.evento}
-          muted={index > 0}
-          meta={
-            <>
-              <span>{formatShortDateTime(event.fecha)}</span>
-              {(event.usuario_nombre || typeof event.usuario === "string") && (
-                <span>{event.usuario_nombre ?? event.usuario}</span>
-              )}
-            </>
-          }
-        >
-          {event.descripcion && (
-            <p className="text-xs text-slate-600 dark:text-slate-300">{event.descripcion}</p>
-          )}
-        </ActivityTimelineItem>
-      ))}
+      {ordered.map((event, index) => {
+        const userName = preOrderEventUserName(event);
+        return (
+          <ActivityTimelineItem
+            key={`${event.id}-${event.evento}-${event.fecha}`}
+            icon={
+              isPreOrderCancellationEvent(event.evento) ? (
+                <BanIcon className="w-4 h-4" />
+              ) : (
+                <OrdenesIcon className="w-4 h-4" />
+              )
+            }
+            title={event.evento_display || event.evento}
+            muted={index > 0}
+            meta={
+              <>
+                <span>{formatShortDateTime(event.fecha)}</span>
+                {userName && <span>{userName}</span>}
+              </>
+            }
+          >
+            {event.descripcion && (
+              <p className="text-xs text-slate-600 dark:text-slate-300">{event.descripcion}</p>
+            )}
+          </ActivityTimelineItem>
+        );
+      })}
     </ActivityTimeline>
   );
 }
