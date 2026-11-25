@@ -4,10 +4,10 @@
  * Sin React ni react-pdf, para probarlo en `tests/unit/`; lo usa
  * `useQuotePdfExport`.
  */
-import { format, parseISO, isValid } from "date-fns";
-import { es } from "date-fns/locale";
+import { parseISO, isValid } from "date-fns";
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { listPdfWidths, standardListPdfProps } from "@/src/utils/listPdfBlob";
+import { getMexicoTimeHHMM, getMexicoTodayDate, isCalendarDateKey } from "@/src/utils/mexicoTime";
 import type { Quote } from "../interfaces/quote.interface";
 import { formatQuoteAmountOrDash } from "./quoteDetailsFormatters";
 import {
@@ -66,6 +66,25 @@ const isRightAlignedColumn = (column: DataTableVisibleColumn<Quote>): boolean =>
   return key === "piezas" || isCurrencyColumn(column);
 };
 
+/**
+ * Fecha y hora "dd/MM/yyyy HH:mm" de un datetime en la zona de México
+ * (`MEXICO_TIME_ZONE`, la del backend), no en la del navegador: con el equipo
+ * en Los Ángeles, las 00:30 del 26 en México siguen saliendo "26/11/2026
+ * 00:30". Usa el día y la hora de pared de `mexicoTime` (`Intl`). Una
+ * fecha-calendario "AAAA-MM-DD" no es un instante: sale tal cual, a las 00:00.
+ * `null` si no parsea (la celda muestra el texto crudo).
+ */
+const formatQuoteDateTime = (value: unknown): string | null => {
+  if (typeof value === "string" && isCalendarDateKey(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}/${month}/${year} 00:00`;
+  }
+  const date = typeof value === "string" ? parseISO(value) : new Date(String(value));
+  if (!isValid(date)) return null;
+  const [year, month, day] = getMexicoTodayDate(date).split("-");
+  return `${day}/${month}/${year} ${getMexicoTimeHHMM(date.toISOString())}`;
+};
+
 // Un importe va en la moneda de SU cotización (`moneda_codigo`), como en la
 // tabla; sin moneda, sin símbolo (EC-618).
 const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quote: Quote): string => {
@@ -77,12 +96,8 @@ const formatValue = (value: unknown, column: DataTableVisibleColumn<Quote>, quot
     );
   }
   if (isDateColumn(column)) {
-    try {
-      const date = typeof value === "string" ? parseISO(value) : new Date(String(value));
-      if (isValid(date)) return format(date, "dd/MM/yyyy HH:mm", { locale: es });
-    } catch {
-      // fallback a string crudo
-    }
+    const text = formatQuoteDateTime(value);
+    if (text) return text;
   }
   return String(value);
 };

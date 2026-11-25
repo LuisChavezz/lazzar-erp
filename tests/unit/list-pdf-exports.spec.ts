@@ -14,6 +14,7 @@ import { formatQuoteExportTotal } from "@/src/features/quotes/utils/quoteExportT
 import { quotesPdfProps } from "@/src/features/quotes/utils/quoteListPdf";
 import type { Supplier } from "@/src/features/suppliers/interfaces/supplier.interface";
 import { suppliersPdfProps } from "@/src/features/suppliers/utils/supplierListPdf";
+import { listPdfExportDate } from "@/src/utils/listPdfBlob";
 
 /**
  * Props del PDF de los listados de Ventas y Compras (EC-959): título, anchos
@@ -97,5 +98,51 @@ test.describe("PDF de los listados de Ventas y Compras", () => {
   test("cotizaciones sin la columna de importe: sin fila de totales", () => {
     const props = quotesPdfProps([], [col<Quote>("id", "Cotización")], NOW);
     expect(props.totalRow).toBeNull();
+  });
+});
+
+// 06:30 UTC del 26 = 00:30 del 26 en México = 22:30 del 25 en UTC−8.
+const CERCA_DE_MEDIANOCHE = "2026-11-26T06:30:00Z";
+
+/** Corre `fn` con el proceso en otra zona horaria (Node relee `TZ` al asignarla). */
+const withTimeZone = <T,>(tz: string, fn: () => T): T => {
+  const previous = process.env.TZ;
+  process.env.TZ = tz;
+  try {
+    return fn();
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+};
+
+test.describe("fechas de los PDF de listados en la zona de México", () => {
+  const quoteDate = () =>
+    quotesPdfProps(
+      [{ id: 1, created_at: CERCA_DE_MEDIANOCHE } as unknown as Quote],
+      [col<Quote>("created_at", "Fecha", "created_at")],
+      NOW,
+    ).rows[0][0];
+
+  for (const tz of ["America/Los_Angeles", "UTC", "Asia/Tokyo", "America/Mexico_City"]) {
+    test(`con el equipo en ${tz}`, () => {
+      withTimeZone(tz, () => {
+        expect(listPdfExportDate(new Date(CERCA_DE_MEDIANOCHE))).toBe("26 de noviembre de 2026");
+        expect(quoteDate()).toBe("26/11/2026 00:30");
+      });
+    });
+  }
+
+  test("una fecha-calendario de cotización sale tal cual, a las 00:00, en cualquier zona", () => {
+    for (const tz of ["America/Los_Angeles", "Asia/Tokyo"]) {
+      const text = withTimeZone(tz, () =>
+        quotesPdfProps(
+          [{ id: 1, vigencia_fecha: "2026-11-26" } as unknown as Quote],
+          [col<Quote>("vigencia_fecha", "Vigencia", "vigencia_fecha")],
+          NOW,
+        ).rows[0][0],
+      );
+      expect(text, tz).toBe("26/11/2026 00:00");
+    }
   });
 });
