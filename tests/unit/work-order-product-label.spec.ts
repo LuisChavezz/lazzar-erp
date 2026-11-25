@@ -1,0 +1,71 @@
+import { expect, test } from "@playwright/test";
+import {
+  SIN_PRODUCTO_CATALOGO,
+  workOrderProductGroupId,
+  workOrderProductLabel,
+} from "@/src/utils/workOrderProductLabel";
+import {
+  reflectiveLineProductoNombre,
+  reflectiveLineSampleSku,
+} from "@/src/features/reflective-orders/hooks/useReflectiveStep2Form";
+import type { ReflectiveOnboardingDetalle } from "@/src/features/reflective-orders/interfaces/reflective-order.interface";
+
+/** EC-963: rótulo de la prenda de un renglón de OR / OCM. */
+
+test.describe("workOrderProductLabel", () => {
+  test("una línea de catálogo conserva su nombre", () => {
+    expect(workOrderProductLabel({ producto_nombre: "PLAYERA", producto_nombre_externo: null })).toBe("PLAYERA");
+  });
+
+  test("una muestra usa su nombre externo", () => {
+    expect(
+      workOrderProductLabel({ producto_nombre: null, producto_nombre_externo: "PANTALON CHAIN YSL | YELLOW N GOLD" }),
+    ).toBe("PANTALON CHAIN YSL | YELLOW N GOLD");
+  });
+
+  test("sin nombre (detalle de la orden: la clave no llega) cae a «Sin producto de catálogo»", () => {
+    expect(workOrderProductLabel({})).toBe(SIN_PRODUCTO_CATALOGO);
+    expect(workOrderProductLabel({ producto_nombre: null, producto_nombre_externo: "   " })).toBe(
+      SIN_PRODUCTO_CATALOGO,
+    );
+    expect(SIN_PRODUCTO_CATALOGO).toBe("Sin producto de catálogo");
+  });
+
+  test("agrupa por producto y, en una muestra, por su línea del pedido", () => {
+    expect(workOrderProductGroupId({ producto: 8562, pedido_detalle: 2178 })).toBe(8562);
+    expect(workOrderProductGroupId({ producto: null, pedido_detalle: 2177 })).not.toBe(
+      workOrderProductGroupId({ producto: null, pedido_detalle: 2180 }),
+    );
+  });
+});
+
+test.describe("Paso 2 de la OR", () => {
+  const base: ReflectiveOnboardingDetalle = {
+    pedido_detalle_talla_id: 3231,
+    pedido_detalle_id: 2177,
+    producto_id: null,
+    producto_nombre: null,
+    talla_id: 17,
+    talla_nombre: "28",
+    color_id: 43,
+    color_nombre: "AMARILLO NEON",
+    cantidad_pedido: 1,
+    cantidad_asignada: 0,
+    cantidad_pendiente: 1,
+    reflejante_config: null,
+    sku: "MP2177-302-28",
+    sku_proscai: null,
+    producto_nombre_externo: "PANTALON CHAIN YSL | YELLOW N GOLD",
+  };
+
+  test("la muestra muestra su nombre externo y su SKU", () => {
+    expect(reflectiveLineProductoNombre(base)).toBe("PANTALON CHAIN YSL | YELLOW N GOLD");
+    expect(reflectiveLineSampleSku(base)).toBe("MP2177-302-28");
+  });
+
+  test("una línea de catálogo se ve como antes: su nombre y sin SKU", () => {
+    const catalogo = { ...base, producto_id: 8562, producto_nombre: "PLAYERA", producto_nombre_externo: null, sku: "PL-M" };
+    expect(reflectiveLineProductoNombre(catalogo)).toBe("PLAYERA");
+    expect(reflectiveLineSampleSku(catalogo)).toBeNull();
+  });
+});

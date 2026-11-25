@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cleanText } from "@/src/utils/cleanText";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { plural } from "@/src/utils/plural";
 import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
+import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 import {
   ReflectiveOrderDetallesOverrideSchema,
   type CreateReflectiveOrderFormValues,
@@ -27,10 +29,22 @@ interface UseReflectiveStep2FormParams {
   onSuccess: () => void;
 }
 
-/** Nombre legible de la línea. `producto_nombre` es nullable en el contrato. */
+/**
+ * Nombre legible de la línea: el de catálogo o, en una MUESTRA (sin producto,
+ * EC-964), su `producto_nombre_externo`. Regla única en `workOrderProductLabel`.
+ */
 export const reflectiveLineProductoNombre = (
   row: ReflectiveOnboardingDetalle,
-): string => row.producto_nombre ?? `Producto #${row.producto_id}`;
+): string => workOrderProductLabel(row);
+
+/**
+ * SKU que se pinta bajo el nombre: solo en una MUESTRA, donde es lo que la
+ * identifica (`sku_muestra` de la talla). Las líneas de catálogo se ven igual
+ * que antes de EC-964, sin SKU.
+ */
+export const reflectiveLineSampleSku = (
+  row: ReflectiveOnboardingDetalle,
+): string | null => (row.producto_id === null ? cleanText(row.sku) : null);
 
 /**
  * Etiquetas de los campos del Paso 1 a los que el backend puede atribuir un
