@@ -1,6 +1,6 @@
 import { routePermissions } from "../constants/routePermissions";
 import type { PermissionContext } from "../interfaces/permission-context.interface";
-import { hasAnyPermission, type PermissionRequirement } from "./permissions";
+import { meetsPermissionRequirement, type PermissionRequirement } from "./permissions";
 import { matchesRoutePrefix } from "./matchesRoutePrefix";
 
 /**
@@ -51,8 +51,6 @@ export function getRouteAccessRedirect(
  * garantizados dentro de la app). `pathname` va sin query.
  */
 export function canAccessRoute(pathname: string, user?: PermissionContext | null): boolean {
-  const rule = findRoutePermissionRule(pathname);
-  if (!rule) return true;
-  const required = Array.isArray(rule.permission) ? rule.permission : [rule.permission];
-  return hasAnyPermission(required, user);
+  const required = getRouteRequirement(pathname);
+  return required === undefined ? true : meetsPermissionRequirement(required, user);
 }
