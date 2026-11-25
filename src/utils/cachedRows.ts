@@ -23,6 +23,17 @@ interface RowWithId {
   id: number;
 }
 
+/**
+ * Opción de los helpers: el campo que identifica el registro. Por omisión `id`;
+ * la OP se identifica por `op_id` (su llave primaria; no trae `id`).
+ */
+export interface CachedRowOptions {
+  idField?: string;
+}
+
+const recordId = (value: unknown, idField: string): unknown =>
+  typeof value === "object" && value !== null ? (value as Record<string, unknown>)[idField] : undefined;
+
 /** Las dos formas de listado en caché: arreglo plano o página `{ results }` de DRF. */
 type RowsContainer<TRow> = TRow[] | { results: TRow[] };
 
@@ -58,19 +69,21 @@ const isPage = <TRow>(value: unknown): value is { results: TRow[] } =>
   asObject(value) !== null && Array.isArray((value as { results?: unknown }).results);
 
 /**
- * Aplica `patch` a la fila con ese `id`, en un arreglo plano o en la página
- * `{ results }` de un listado paginado (el resto de las claves de la página se
- * conserva). Devuelve la MISMA referencia si no hay fila con ese id o si la
- * forma no es ninguna de las dos: quien llama sabe así que no hubo cambio.
+ * Aplica `patch` a la fila con ese `id` (o con ese valor en `idField`), en un
+ * arreglo plano o en la página `{ results }` de un listado paginado (el resto
+ * de las claves de la página se conserva). Devuelve la MISMA referencia si no
+ * hay fila con ese id o si la forma no es ninguna de las dos: quien llama sabe
+ * así que no hubo cambio.
  */
-export const patchRowById = <TRow extends RowWithId>(
+export const patchRowById = <TRow extends object = RowWithId>(
   data: unknown,
   id: number,
   patch: (row: TRow) => TRow,
+  { idField = "id" }: CachedRowOptions = {},
 ): unknown => {
   const rows = Array.isArray(data) ? (data as TRow[]) : isPage<TRow>(data) ? data.results : null;
-  if (rows === null || !rows.some((row) => row?.id === id)) return data;
-  const patched = rows.map((row) => (row?.id === id ? patch(row) : row));
+  if (rows === null || !rows.some((row) => recordId(row, idField) === id)) return data;
+  const patched = rows.map((row) => (recordId(row, idField) === id ? patch(row) : row));
   return Array.isArray(data) ? patched : { ...(data as object), results: patched };
 };
 
@@ -83,17 +96,18 @@ export const patchRowById = <TRow extends RowWithId>(
  * Un `id` que no es un entero positivo no escribe nada. Nunca lanza (ver el
  * encabezado). No invalida: cada hook conserva sus invalidaciones de siempre.
  */
-export const patchCachedRowById = async <TRow extends RowWithId>(
+export const patchCachedRowById = async <TRow extends object = RowWithId>(
   queryClient: QueryClient,
   queryKey: QueryKey,
   id: unknown,
   patch: (row: TRow) => TRow,
+  options: CachedRowOptions = {},
 ) => {
   if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) return;
   try {
     await queryClient.cancelQueries({ queryKey });
     for (const [key, data] of queryClient.getQueriesData<RowsContainer<TRow>>({ queryKey })) {
-      const next = patchRowById(data, id, patch);
+      const next = patchRowById(data, id, patch, options);
       if (next !== data) queryClient.setQueryData(key, next);
     }
   } catch (error) {
@@ -124,19 +138,20 @@ export const replaceCachedRow = <TRow extends RowWithId>(
 /**
  * Fusiona en el DETALLE en caché del registro `id` (la entrada exacta
  * `queryKey`, un objeto, no una lista) los `values` ya elegidos. Solo si esa
- * entrada existe y es el mismo registro; nunca lanza.
+ * entrada existe y es el mismo registro (por `id`, o por `idField`); nunca lanza.
  */
 export const mergeCachedRecord = async (
   queryClient: QueryClient,
   queryKey: QueryKey,
   id: number,
   values: Record<string, unknown>,
+  { idField = "id" }: CachedRowOptions = {},
 ) => {
   if (Object.keys(values).length === 0) return;
   try {
     await queryClient.cancelQueries({ queryKey, exact: true });
     const current = asObject(queryClient.getQueryData(queryKey));
-    if (current?.id !== id) return;
+    if (current?.[idField] !== id) return;
     queryClient.setQueryData(queryKey, { ...current, ...values });
   } catch (error) {
     console.error("No se pudo escribir el resultado de la acción en la caché", error);
