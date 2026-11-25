@@ -22,6 +22,7 @@ import { motivoBloqueoRegistro } from "../schemas/supplier-invoice.schema";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { canDownloadMergedPdf, mergedPdfLabel, ocFolioLabel } from "../utils/supplierInvoiceLabels";
 import { useSupplierInvoiceRowActionsContext } from "../hooks/useSupplierInvoiceRowActions";
+import { supplierInvoiceRemoval } from "../utils/supplierInvoiceCancelAction";
 
 const columnHelper = createColumnHelper<FacturaProveedor>();
 
@@ -105,7 +106,7 @@ function SupplierInvoiceFolioCell({ factura, folio }: { factura: FacturaProveedo
     });
   }
 
-  if (factura.estatus === "Registrada") {
+  if (supplierInvoiceRemoval(factura.estatus) === "cancel") {
     const cancelBlock = financeWriteBlock(callbacks.cancel, callbacks.cancel.reason);
     menuItems.push({
       label: "Cancelar factura",

@@ -29,6 +29,7 @@ import { CancelReasonDialogFor } from "@/src/features/document-cancellation/comp
 import {
   cancelSupplierInvoiceMutationKey,
   supplierInvoiceCancelDialogContent,
+  supplierInvoiceRemoval,
 } from "../utils/supplierInvoiceCancelAction";
 import { deleteSupplierInvoiceMutationKey, useDeleteSupplierInvoice } from "../hooks/useDeleteSupplierInvoice";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
@@ -256,16 +257,16 @@ export default function SupplierInvoiceList({
   const handleCancel = (id: number) => {
     if (!guardFinanceWrite(cancel, cancel.reason)) return;
     const factura = facturas.find((item) => item.id === id);
-    // Solo una `Registrada` (ver `SupplierInvoiceColumns`).
-    if (factura?.estatus !== "Registrada" || accionEnCurso(id)) return;
+    // Solo una `Registrada` (`supplierInvoiceRemoval`).
+    if (!factura || supplierInvoiceRemoval(factura.estatus) !== "cancel" || accionEnCurso(id)) return;
     setCancelTargetId(id);
   };
 
   const handleDelete = (id: number) => {
     if (!guardWrite()) return;
     const factura = facturas.find((item) => item.id === id);
-    // Solo borradores: el backend responde `400` en otro estatus.
-    if (factura?.estatus !== "Borrador" || accionEnCurso(id)) return;
+    // Solo borradores (`supplierInvoiceRemoval`): el backend responde `400` en otro estatus.
+    if (!factura || supplierInvoiceRemoval(factura.estatus) !== "delete" || accionEnCurso(id)) return;
     setDeleteTargetId(id);
   };
 
