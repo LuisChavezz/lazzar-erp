@@ -11,6 +11,15 @@ import { invalidateSupplierInvoiceQueries } from "../hooks/invalidateSupplierInv
  */
 export const cancelSupplierInvoiceMutationKey = ["cancel-supplier-invoice"] as const;
 
+/**
+ * Cómo se retira una factura de proveedor según su estatus (nucleo-erp#1356,
+ * EC-950): un `Borrador` se ELIMINA (`DELETE`, lo único que acepta) y una
+ * `Registrada` se CANCELA con motivo (`POST cancelar/`); una `Cancelada` ya no
+ * admite nada. Lo leen el menú de fila y sus handlers.
+ */
+export const supplierInvoiceRemoval = (estatus: FacturaProveedor["estatus"]): "delete" | "cancel" | null =>
+  estatus === "Borrador" ? "delete" : estatus === "Registrada" ? "cancel" : null;
+
 /** Lo mínimo para cancelar y nombrar la factura. */
 export type SupplierInvoiceCancelTarget = Pick<FacturaProveedor, "id" | "folio" | "oc">;
 
