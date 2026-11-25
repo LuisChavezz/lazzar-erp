@@ -181,12 +181,21 @@ export interface PurchaseNeed {
   created_at?: string;
 }
 
+/** Quién hizo un evento del historial, como lo manda el backend (`PreOrdenEventoSerializer`). */
+export interface PreOrderHistoryUser {
+  id: number;
+  /** Nombre completo o, si no tiene, su correo. */
+  nombre: string;
+}
+
 export interface PreOrderHistoryEvent {
   id: number;
   fecha: string;
+  /** `op_creada`, `op_cancelada` (EC-948), `cancelada`… */
   evento: string;
   evento_display: string;
-  usuario: number | string | null;
+  /** `{id, nombre}`; `number`/`string` se aceptan de respuestas anteriores. */
+  usuario: PreOrderHistoryUser | number | string | null;
   usuario_nombre?: string | null;
   descripcion: string | null;
 }
