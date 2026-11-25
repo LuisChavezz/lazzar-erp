@@ -225,6 +225,8 @@ const obConfig = (overrides: Partial<WorkOrderCancelConfig> = {}): WorkOrderCanc
   cancelledLabel: "Cancelado",
   cancel: async () => ({ id: 3, folio: "OB-00003", estatus: 8 }),
   detailQueryKey: ["embroidery-order-detail", 3],
+  detailPrefixQueryKey: ["embroidery-order-detail"],
+  onboardingQueryKey: ["embroidery-onboarding"],
   listQueryKey: ["embroidery-orders"],
   hasSalidasMaquila: true,
   ...overrides,
@@ -314,7 +316,7 @@ test.describe("cancelar OB, OR y OCM", () => {
     expect(ocm.classifyError(httpError(400, { salidas_maquila: "x" })).kind).toBe("other");
   });
 
-  test("al cancelar se releen la orden, su listado, la bitácora, el pedido y (OB/OR) las SM", () => {
+  test("al cancelar se releen los detalles de la sección (hermanas), su onboarding, el listado, la bitácora, el pedido y (OB/OR) las SM", () => {
     const queryClient = new QueryClient();
     const invalidated: unknown[] = [];
     queryClient.invalidateQueries = ((filters?: { queryKey?: unknown }) => {
@@ -323,7 +325,7 @@ test.describe("cancelar OB, OR y OCM", () => {
     }) as typeof queryClient.invalidateQueries;
     workOrderCancelAction(obConfig()).refresh(queryClient);
     expect(invalidated).toEqual(
-      expect.arrayContaining([["embroidery-order-detail", 3], ["embroidery-orders"], ["salidas-maquila"]]),
+      expect.arrayContaining([["embroidery-order-detail"], ["embroidery-onboarding"], ["embroidery-orders"], ["salidas-maquila"]]),
     );
     invalidated.length = 0;
     workOrderCancelAction(obConfig({ hasSalidasMaquila: false })).refresh(queryClient);

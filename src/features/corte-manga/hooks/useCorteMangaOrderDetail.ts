@@ -2,9 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getCorteMangaOrderDetail } from "../services/actions";
 import type { CorteMangaOrder } from "../interfaces/corte-manga-order.interface";
 
+/** Prefijo de los detalles de OCM: invalidarlo refresca el de TODAS las órdenes. */
+export const CORTE_MANGA_ORDER_DETAIL_KEY = ["corte-manga-order-detail"] as const;
+
 /** Llave del detalle; la comparte la mutación de edición para invalidarlo. */
 export const corteMangaOrderDetailQueryKey = (id: number | null) =>
-  ["corte-manga-order-detail", id] as const;
+  [...CORTE_MANGA_ORDER_DETAIL_KEY, id] as const;
 
 /**
  * Detalle de una orden de corte de manga

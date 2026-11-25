@@ -22,7 +22,8 @@ import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
 import { EMBROIDERY_COVERAGE_CONFIG, EMBROIDERY_STATUS_CANCELLED, embroideryStatusEntry } from "../constants/embroideryStatus";
 import { isEmbroideryOrderCancellable, isTerminalStatus } from "../constants/embroideryStatusTransitions";
-import { embroideryOrderDetailQueryKey } from "../hooks/useEmbroideryOrderDetail";
+import { EMBROIDERY_ORDER_DETAIL_KEY, embroideryOrderDetailQueryKey } from "../hooks/useEmbroideryOrderDetail";
+import { embroideryOnboardingQueryKey } from "../hooks/useEmbroideryOnboarding";
 import { cancelEmbroideryOrder } from "../services/actions";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
@@ -218,6 +219,8 @@ export function EmbroideryOrderDetailContent({
               cancelledLabel: embroideryStatusEntry(EMBROIDERY_STATUS_CANCELLED).label,
               cancel: cancelEmbroideryOrder,
               detailQueryKey: embroideryOrderDetailQueryKey(data.id),
+              detailPrefixQueryKey: EMBROIDERY_ORDER_DETAIL_KEY,
+              onboardingQueryKey: embroideryOnboardingQueryKey,
               listQueryKey: ["embroidery-orders"],
               hasSalidasMaquila: true,
             }}

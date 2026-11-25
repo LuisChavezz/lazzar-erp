@@ -27,7 +27,16 @@ export interface WorkOrderCancelConfig {
    */
   cancelledLabel?: string;
   cancel: (id: number, motivo: string) => Promise<WorkOrderCancelResponse>;
+  /** El detalle de ESTA orden: ahí se escribe la respuesta. */
   detailQueryKey: QueryKey;
+  /**
+   * Prefijo de los detalles de la sección: se relee completo, porque cancelar
+   * libera las piezas en el pedido y cambia la cobertura y "Otras órdenes del
+   * pedido" de las hermanas (lo mismo que relee el alta).
+   */
+  detailPrefixQueryKey: QueryKey;
+  /** El onboarding del alta de la sección: el pedido vuelve a ofrecer lo liberado. */
+  onboardingQueryKey: QueryKey;
   listQueryKey: QueryKey;
   /**
    * ¿Puede tener salidas a maquila? (OB y OR). Su `400 salidas_maquila` bloquea
@@ -73,11 +82,13 @@ export const workOrderCancelledValues = (
 
 /**
  * Lo que se relee tras cancelar (o cuando un `400` dice que la orden cambió):
- * la orden y su listado, el pedido 360° (las piezas dejan de contar como
- * programadas), la bitácora (`→ Cancelado`) y, en OB y OR, las SM.
+ * los detalles de la sección (la orden y sus hermanas), su listado y el
+ * onboarding del alta (las piezas dejan de contar como programadas), el pedido
+ * 360°, la bitácora (`→ Cancelado`) y, en OB y OR, las SM.
  */
 const refreshAfterWorkOrderCancel = (queryClient: QueryClient, config: WorkOrderCancelConfig) => {
-  void queryClient.invalidateQueries({ queryKey: config.detailQueryKey });
+  void queryClient.invalidateQueries({ queryKey: config.detailPrefixQueryKey });
+  void queryClient.invalidateQueries({ queryKey: config.onboardingQueryKey });
   void queryClient.invalidateQueries({ queryKey: config.listQueryKey });
   void queryClient.invalidateQueries({ queryKey: DOCUMENT_AUDIT_QUERY_KEY });
   if (config.hasSalidasMaquila) void queryClient.invalidateQueries({ queryKey: SALIDAS_MAQUILA_KEY });
