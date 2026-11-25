@@ -91,3 +91,25 @@ export const cancelErrorClosesDialog = (error: CancelError): boolean =>
 /** ¿El error dice que lo que hay en caché está viejo? (se relee). */
 export const cancelErrorMeansStaleCache = (error: CancelError): boolean =>
   error.kind === "blocked" || error.kind === "not-found" || error.kind === "retryable";
+
+/**
+ * Dónde se muestra un error de la mutación (`useCancelMutation`): `motivo` bajo
+ * el campo si hay quién lo pinte; un `400` de negocio en el diálogo si se pidió
+ * (`keepOpenOnBlocked`); todo lo demás, en un toast.
+ */
+export const cancelErrorTarget = (
+  error: CancelError,
+  { hasMotivoHandler, hasBlockedHandler }: { hasMotivoHandler: boolean; hasBlockedHandler: boolean },
+): "motivo" | "dialog" | "toast" => {
+  if (error.kind === "motivo" && hasMotivoHandler) return "motivo";
+  if ((error.kind === "blocked" || error.kind === "retryable") && hasBlockedHandler) return "dialog";
+  return "toast";
+};
+
+/**
+ * ¿El diálogo se cierra tras el error? Por defecto (WMS) cierran `blocked` y
+ * `not-found`; con `keepOpenOnBlocked` solo `not-found`: el `400` de negocio
+ * se queda en el aviso con el motivo escrito.
+ */
+export const cancelDialogClosesOnError = (error: CancelError, keepOpenOnBlocked: boolean): boolean =>
+  keepOpenOnBlocked ? error.kind === "not-found" : cancelErrorClosesDialog(error);

@@ -12,7 +12,7 @@ import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { CANCEL_REASON_MAX } from "../constants/documentCancellation";
 import { useCancelMutation, type CancelAction } from "../hooks/useCancelMutation";
 import { CancelReasonFormSchema, type CancelReasonFormValues } from "../schemas/cancel-reason.schema";
-import { cancelErrorClosesDialog } from "../utils/cancelErrors";
+import { cancelDialogClosesOnError } from "../utils/cancelErrors";
 
 type CancelReasonFormField = keyof CancelReasonFormValues;
 
@@ -138,9 +138,9 @@ function CancelReasonForm<TResult>({
           onOpenChange(false);
         },
         onError: (error) => {
-          const classified = content.action.classifyError(error);
-          const closes = keepOpenOnBlocked ? classified.kind === "not-found" : cancelErrorClosesDialog(classified);
-          if (closes) onOpenChange(false);
+          if (cancelDialogClosesOnError(content.action.classifyError(error), keepOpenOnBlocked)) {
+            onOpenChange(false);
+          }
         },
       });
     },
