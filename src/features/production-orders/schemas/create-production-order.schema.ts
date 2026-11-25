@@ -54,7 +54,6 @@ export const CreateProductionOrderDetalleSchema = z
 export const CreateProductionOrderFormSchema = z.object({
   empresa: z.number().int().positive("La empresa es requerida"),
   sucursal: z.number().int().positive("La sucursal es requerida"),
-  prioridad: z.number().int().positive("La prioridad es requerida"),
   observaciones: z.string(),
   pedido: z.number().int().positive().optional(),
   /** Proveedor maquilero; ausente = interno. */

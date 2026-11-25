@@ -25,8 +25,6 @@ import {
 import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import {
   isClosedProductionOrderStatus,
-  PRODUCTION_ORDER_PRIORITY_CONFIG,
-  productionOrderPriorityFallback,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "../hooks/useProductionOrderOnboarding";
@@ -475,11 +473,6 @@ export function ProductionOrderPageContent({
             <StatusBadge
               status={String(data.estatus_op)}
               config={{ [data.estatus_op]: productionOrderStatusEntry(data.estatus_op, data.estatus_op_display) }}
-            />
-            <StatusBadge
-              status={String(data.prioridad)}
-              config={PRODUCTION_ORDER_PRIORITY_CONFIG}
-              defaultConfig={productionOrderPriorityFallback(data.prioridad)}
             />
             {/* `activo` es la baja lógica: sin él, una orden dada de baja se
                 leería idéntica a una vigente. */}

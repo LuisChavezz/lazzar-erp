@@ -17,8 +17,6 @@ import { getSinSucursalMessage, WORKSPACE_BRANCH_LOADING_MESSAGE, type Workspace
 import { getSessionCompanyBlockMessage } from "@/src/features/workspace/utils/sessionCompanyMessages";
 
 interface UseCreateProductionOrderFormParams {
-  /** Prioridad seleccionada en el Paso 1. */
-  prioridad: number;
   /** Observaciones generales capturadas en el Paso 1. */
   observaciones: string;
   /** SKU seleccionados en el Paso 1 — siembran el detalle por defecto. */
@@ -75,7 +73,7 @@ function buildDetalle(
  *
  * `empresa` / `sucursal` provienen del workspace activo. El estatus no se
  * manda: el backend lo ignora en el alta y la OP nace Pendiente. La cabecera
- * (prioridad, observaciones) y el detalle por variante los inyecta el step
+ * (observaciones) y el detalle por variante los inyecta el step
  * manager al avanzar desde el Paso 1 (`setFieldValue` / {@link seedDetalle}).
  */
 /** Textos del aviso de "sin sucursal" para la orden de producción. */
@@ -85,7 +83,6 @@ const OP_SUCURSAL_DOCUMENT: WorkspaceBranchDocument = {
 };
 
 export function useCreateProductionOrderForm({
-  prioridad,
   observaciones,
   selectedSkus,
   onSuccess,
@@ -112,7 +109,6 @@ export function useCreateProductionOrderForm({
 
   const form = useForm({
     defaultValues: {
-      prioridad,
       observaciones,
       orden_produccion_detalle: selectedSkus.map((option) =>
         buildDetalle(option, unidadPiezaId),

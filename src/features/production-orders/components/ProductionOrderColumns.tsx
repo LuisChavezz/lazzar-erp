@@ -18,9 +18,7 @@ import {
   VenceCell,
 } from "./ProductionOrderListCells";
 import {
-  PRODUCTION_ORDER_PRIORITY_CONFIG,
   PRODUCTION_ORDER_STATUS_CONFIG,
-  productionOrderPriorityFallback,
   productionOrderStatusEntry,
 } from "../constants/productionOrderStatus";
 import { opListPedidoRefs, pedidoRefLabel } from "../utils/opPedidos";
@@ -191,26 +189,6 @@ export function getProductionOrderColumns(
       },
     ),
 
-    // Prioridad
-    //
-    // Badge y no el entero crudo: el mismo dato se leía "1" aquí y "Alta" en la
-    // página de detalle. Mismo par config+fallback que ya usan las columnas de
-    // bordado/reflejante/corte de manga.
-    columnHelper.accessor('prioridad', {
-      header: 'Prioridad',
-      size: 90,
-      cell: ({ getValue }) => {
-        const prioridad = getValue();
-        return (
-          <StatusBadge
-            status={String(prioridad)}
-            config={PRODUCTION_ORDER_PRIORITY_CONFIG}
-            defaultConfig={productionOrderPriorityFallback(prioridad)}
-          />
-        );
-      },
-    }),
-
     // Fecha inicio
     columnHelper.accessor('fecha_inicio', {
       header: 'Fecha inicio',
@@ -274,12 +252,6 @@ export const PRODUCTION_ORDER_HEADER_FILTERS: Partial<Record<string, HeaderFilte
     get: (r) => r.estatus_op,
     options: optionsFromConfig(PRODUCTION_ORDER_STATUS_CONFIG),
     label: (r) => productionOrderStatusEntry(r.estatus_op, r.estatus_op_display).label,
-  },
-  prioridad: {
-    type: "options",
-    get: (r) => r.prioridad,
-    options: optionsFromConfig(PRODUCTION_ORDER_PRIORITY_CONFIG),
-    label: (r) => productionOrderPriorityFallback(r.prioridad).label,
   },
   fecha_inicio: { type: "month", get: (r) => r.fecha_inicio },
   fecha_fin: { type: "month", get: (r) => r.fecha_fin, emptyLabel: "Sin fecha fin" },

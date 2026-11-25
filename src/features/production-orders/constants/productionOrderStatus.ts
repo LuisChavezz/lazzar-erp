@@ -113,37 +113,3 @@ export const productionOrderStatusEntry = (
   const base = PRODUCTION_ORDER_STATUS_CONFIG[String(estatus)] ?? NEUTRAL_STATUS_CFG;
   return { ...base, label: base.label || display?.trim() || String(estatus) };
 };
-
-/**
- * Etiquetas de `prioridad`. Mismo mapeo 1 = Alta, 2 = Media, 3 = Baja que ya
- * usan bordado/reflejante/corte de manga, para no inventar una escala distinta
- * dentro del mismo dominio — de hecho es el mapeo que ellos copiaron de aquí
- * (`ProductionOrderStep1`, el alta de esta orden). Cualquier otro entero cae en
- * `productionOrderPriorityFallback`.
- */
-export const PRODUCTION_ORDER_PRIORITY_CONFIG: Record<string, StatusBadgeConfigEntry> = {
-  1: {
-    label: "Alta",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
-    dot: "bg-rose-500",
-  },
-  2: {
-    label: "Media",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
-    dot: "bg-amber-500",
-  },
-  3: {
-    label: "Baja",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-    dot: "bg-slate-400",
-  },
-};
-
-/** Badge neutro para prioridades fuera de 1-3, rotulado con el entero crudo. */
-export const productionOrderPriorityFallback = (
-  prioridad: number,
-): StatusBadgeConfigEntry => ({
-  label: `Prioridad ${prioridad}`,
-  cls: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
-  dot: "bg-slate-400",
-});

@@ -27,7 +27,6 @@ import {
 
 /** Datos de cabecera + variantes capturados en el Paso 1. */
 export interface ProductionOrderStep1Data {
-  prioridad: number;
   observaciones: string;
   /** Pedido especial vinculado (opcional); `null` = sin pedido. */
   pedido: SelectedProductionOrderPedido | null;
@@ -36,16 +35,6 @@ export interface ProductionOrderStep1Data {
   /** Proveedor maquilero; `null` = se confecciona en casa. */
   centroConfeccion: number | null;
 }
-
-/**
- * Opciones de prioridad. El backend espera un número; el mapeo
- * 1 = Alta, 2 = Media, 3 = Baja sigue el orden del catálogo de prioridades.
- */
-const PRIORIDAD_OPTIONS = [
-  { value: 1, label: "Alta" },
-  { value: 2, label: "Media" },
-  { value: 3, label: "Baja" },
-] as const;
 
 interface ProductionOrderStep1Props {
   /** Valores iniciales para restaurar al regresar desde el Paso 2. */
@@ -56,23 +45,15 @@ interface ProductionOrderStep1Props {
   onBack: () => void;
 }
 
-/** Convierte el value de un input a número, con 0 como respaldo. */
-function toNumber(raw: string): number {
-  if (raw === "") return 0;
-  const parsed = Number(raw);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 /**
  * ProductionOrderStep1
  *
  * Paso 1 del asistente de orden de producción. Captura los campos de cabecera
- * (prioridad, observaciones y un pedido especial opcional, elegido en un
- * diálogo apilado) y una lista buscable de
+ * (observaciones, centro de confección y un pedido especial opcional, elegido
+ * en un diálogo apilado) y una lista buscable de
  * selección múltiple de variantes de producto. La configuración por renglón
  * (BOM, cantidad, unidad y observaciones) ocurre en el Paso 2. "Continuar" se
- * habilita cuando hay al menos una variante seleccionada y una prioridad
- * elegida.
+ * habilita cuando hay al menos una variante seleccionada.
  */
 export function ProductionOrderStep1({
   initialData,
@@ -101,9 +82,6 @@ export function ProductionOrderStep1({
     .filter((option) => matchesProductionOption(option, catalogSearch.term));
   const catalogResults: OpSkuOption[] = catalogSearch.variants.map(catalogOption);
 
-  const [prioridad, setPrioridad] = useState<number>(
-    initialData?.prioridad ?? 0,
-  );
   const [observaciones, setObservaciones] = useState<string>(
     initialData?.observaciones ?? "",
   );
@@ -181,40 +159,17 @@ export function ProductionOrderStep1({
   }
 
   const selectedCount = selected.length;
-  const canAdvance = selectedCount > 0 && prioridad > 0;
+  const canAdvance = selectedCount > 0;
 
   const handleNext = () => {
     if (!canAdvance) return;
-    onNext({ prioridad, observaciones, pedido, skus: selected, centroConfeccion });
+    onNext({ observaciones, pedido, skus: selected, centroConfeccion });
   };
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Prioridad y pedido en una fila: son los dos datos de la orden. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-      <FormSelect
-        label="Prioridad"
-        name="prioridad"
-        className="py-2!"
-        value={prioridad}
-        onChange={(event) => setPrioridad(toNumber(event.target.value))}
-      >
-        <option value="0" disabled>
-          Seleccionar prioridad...
-        </option>
-        {PRIORIDAD_OPTIONS.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-white"
-          >
-            {option.label}
-          </option>
-        ))}
-      </FormSelect>
-
       {/* Pedido relacionado — selección opcional vía diálogo apilado */}
-      <div className="sm:col-span-2">
+      <div>
         <label
           id={pedidoLabelId}
           className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block"
@@ -263,8 +218,6 @@ export function ProductionOrderStep1({
             + Relacionar a un pedido
           </button>
         )}
-      </div>
-
       </div>
 
       {/* Quién confecciona: en casa o un maquilero (proveedor). */}

@@ -2,7 +2,7 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Asistente de 2 pasos para crear una orden de producción.
-//   Paso 1 — Cabecera (prioridad, observaciones y pedido opcional) + selección múltiple
+//   Paso 1 — Cabecera (observaciones y pedido opcional) + selección múltiple
 //            de variantes de producto.
 //   Paso 2 — Configuración por variante (cantidad y observaciones) de cada
 //            renglón del detalle, previa a confirmar la creación. La unidad de
@@ -71,7 +71,6 @@ export function ProductionOrderStepManager({
     isLoadingUnits,
     isUnidadPiezaMissing,
   } = useCreateProductionOrderForm({
-      prioridad: step1Data?.prioridad ?? 0,
       observaciones: step1Data?.observaciones ?? "",
       selectedSkus: step1Data?.skus ?? [],
       onSuccess,
@@ -81,7 +80,6 @@ export function ProductionOrderStepManager({
   const handleProductsSelected = useCallback(
     (data: ProductionOrderStep1Data) => {
       setStep1Data(data);
-      form.setFieldValue("prioridad", data.prioridad);
       form.setFieldValue("observaciones", data.observaciones);
       // `undefined` (no `null`) sin pedido: el schema lo trata como ausente y la
       // clave no llega al body.

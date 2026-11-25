@@ -129,7 +129,6 @@ export interface ProductionOrderOnboarding {
   estatus_op: number;
   /** Etiqueta ya resuelta de `estatus_op`, la misma que expone el listado. */
   estatus_op_display: string;
-  prioridad: number;
   fecha_inicio: string;
   fecha_fin: string | null;
   /** `TextField(blank=True, null=True)` en el modelo: puede llegar `null`. */
@@ -203,7 +202,6 @@ export interface CreateProductionOrderDetalle {
 export interface CreateProductionOrderBody {
   empresa: number;
   sucursal: number;
-  prioridad: number;
   observaciones: string;
   pedido?: number;
   /** Proveedor maquilero. Se omite cuando la orden es interna. */
@@ -287,7 +285,6 @@ export interface ProductionOrderListItem {
   folio_op: string;
   estatus_op: number;
   estatus_op_display: string;
-  prioridad: number;
   fecha_inicio: string;
   fecha_fin: string | null;
   activo: boolean;
@@ -327,7 +324,6 @@ export interface OrdenProduccion {
   orden_produccion_detalle: OrdenProduccionDetalle[];
   folio_op: string;
   estatus_op: number;
-  prioridad: number;
   fecha_inicio: string;
   fecha_fin: string | null;
   observaciones: string;

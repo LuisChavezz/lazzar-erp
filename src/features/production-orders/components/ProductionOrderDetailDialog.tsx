@@ -5,11 +5,7 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatLocalDate } from "@/src/utils/formatDate";
-import {
-  PRODUCTION_ORDER_PRIORITY_CONFIG,
-  productionOrderPriorityFallback,
-  productionOrderStatusEntry,
-} from "@/src/features/production-orders/constants/productionOrderStatus";
+import { productionOrderStatusEntry } from "@/src/features/production-orders/constants/productionOrderStatus";
 import { useProductionOrderOnboarding } from "@/src/features/production-orders/hooks/useProductionOrderOnboarding";
 import type {
   ProductionOrderOnboardingHabilitacion,
@@ -224,16 +220,6 @@ export function ProductionOrderDetailDialog({
                     data.estatus_op_display,
                   ),
                 }}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              {/* Misma escala que la página de detalle. `prioridad` es un entero
-                  libre en el backend (sin `choices`): 1-3 son la convención del
-                  alta y cualquier otro valor cae en el fallback rotulado. */}
-              <StatusBadge
-                status={String(data.prioridad)}
-                config={PRODUCTION_ORDER_PRIORITY_CONFIG}
-                defaultConfig={productionOrderPriorityFallback(data.prioridad)}
               />
             </InfoField>
             {/* Pedido opcional: "—" cuando la orden no tiene. Todos los pedidos
