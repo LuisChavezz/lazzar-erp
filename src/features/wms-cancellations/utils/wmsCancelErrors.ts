@@ -1,8 +1,9 @@
-import type { AxiosError } from "axios";
-import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
-import { firstNonBlankDrfMessage } from "@/src/utils/firstDrfMessage";
-import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { forbiddenDetailMessage, isForbiddenError, isNotFoundError } from "@/src/utils/drfWriteErrors";
+import {
+  cancelErrorClosesDialog,
+  classifyCancelError,
+  isRetryableCancelMessage,
+  type CancelError,
+} from "@/src/features/document-cancellation/utils/cancelErrors";
 
 /**
  * Llaves con que las cancelaciones de WMS rechazan la acción por una regla de
@@ -16,50 +17,29 @@ const BLOCKING_KEYS = ["despacho", "packing", "picking", "transferencia"] as con
 /**
  * Un `400` de negocio que SÍ puede salir al reintentar: el backend lo dice en el
  * texto ("Intenta de nuevo", EC-949, cuando otro proceso cambió la TR mientras
- * se revertía). Se reconoce por la invitación a reintentar, sin acentos ni
- * mayúsculas, no por el mensaje completo.
+ * se revertía). La regla es la de toda cancelación con motivo
+ * (`isRetryableCancelMessage`).
  */
-const RETRY_HINT = /(intenta(lo)? (de nuevo|otra vez|nuevamente)|vuelve a intentar|reintenta)/;
-
-const normalize = (message: string) =>
-  message
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-export const isRetryableWmsCancelMessage = (message: string): boolean => RETRY_HINT.test(normalize(message));
+export const isRetryableWmsCancelMessage = isRetryableCancelMessage;
 
 export const WMS_CANCEL_NOT_FOUND_MESSAGE = "El documento ya no está disponible o no tienes acceso a él.";
 export const WMS_CANCEL_FORBIDDEN_MESSAGE = "No tienes permiso para cancelar documentos de almacén.";
 
 /**
- * Qué hacer con un error de `cancelar/` o `revertir/` (EC-945):
+ * Qué hacer con un error de `cancelar/` o `revertir/` (EC-945): la forma
+ * genérica (`CancelError`, ver `classifyCancelError`) con las llaves y los
+ * textos de WMS.
  * - `motivo`: bajo el campo; el diálogo sigue abierto.
  * - `blocked`: un `400` con la llave del documento, o con la LISTA plana de
  *   `revertir/` sin stock en el destino (`["Inventario insuficiente …"]`).
  *   Toast con el mensaje tal cual, se cierra el diálogo y se relee todo.
- * - `retryable`: un `400` con la llave del documento que pide reintentar (cambio
- *   concurrente, `isRetryableWmsCancelMessage`). Toast tal cual, se relee todo y
- *   el diálogo sigue abierto con el motivo escrito.
+ * - `retryable`: un `400` con la llave del documento que pide reintentar.
+ *   Toast tal cual, se relee todo y el diálogo sigue abierto con el motivo.
  * - `not-found` (`404`: otra empresa o sucursal): igual que `blocked`.
  * - `forbidden` (`403`): toast con su `detail` tal cual; sigue abierto.
  * - `other` (red, 5xx, otro `400`): toast; sigue abierto con el motivo escrito.
- *
- * Los `400` de diccionario llegan con el valor como string plano; `drfFieldMessage`
- * acepta también la forma de lista.
  */
-export type WmsCancelError =
-  | { kind: "motivo"; message: string }
-  | { kind: "blocked"; message: string }
-  | { kind: "retryable"; message: string }
-  | { kind: "not-found"; message: string }
-  | { kind: "forbidden"; message: string }
-  | { kind: "other"; message: string };
-
-const badRequestBody = (error: unknown): unknown => {
-  const response = (error as AxiosError)?.response;
-  return response?.status === 400 ? response.data : undefined;
-};
+export type WmsCancelError = CancelError;
 
 /**
  * `extraBlockingKeys` (opcional, EC-947): llaves de `400` de negocio propias de
@@ -70,28 +50,15 @@ export const classifyWmsCancelError = (
   error: unknown,
   fallback: string,
   extraBlockingKeys: readonly string[] = [],
-): WmsCancelError => {
-  if (isNotFoundError(error)) return { kind: "not-found", message: WMS_CANCEL_NOT_FOUND_MESSAGE };
-  if (isForbiddenError(error)) {
-    return { kind: "forbidden", message: forbiddenDetailMessage(error) ?? WMS_CANCEL_FORBIDDEN_MESSAGE };
-  }
-  const motivo = drfFieldMessage(error, "motivo");
-  if (motivo) return { kind: "motivo", message: motivo };
-  for (const key of [...BLOCKING_KEYS, ...extraBlockingKeys]) {
-    const message = drfFieldMessage(error, key);
-    if (message) return { kind: isRetryableWmsCancelMessage(message) ? "retryable" : "blocked", message };
-  }
-  const body = badRequestBody(error);
-  if (Array.isArray(body)) {
-    const message = firstNonBlankDrfMessage(body);
-    if (message) return { kind: "blocked", message };
-  }
-  return {
-    kind: "other",
-    message: firstDrfFieldMessage(error) ?? extractErrorMessage(error, fallback),
-  };
-};
+): WmsCancelError =>
+  classifyCancelError(error, {
+    blockingKeys: [...BLOCKING_KEYS, ...extraBlockingKeys],
+    messages: {
+      fallback,
+      notFound: WMS_CANCEL_NOT_FOUND_MESSAGE,
+      forbidden: WMS_CANCEL_FORBIDDEN_MESSAGE,
+    },
+  });
 
 /** ¿El error cierra el diálogo? (el documento ya no se puede cancelar desde ahí). */
-export const wmsCancelErrorClosesDialog = (error: WmsCancelError): boolean =>
-  error.kind === "blocked" || error.kind === "not-found";
+export const wmsCancelErrorClosesDialog = cancelErrorClosesDialog;

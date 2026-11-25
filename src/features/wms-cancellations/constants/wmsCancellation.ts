@@ -1,3 +1,5 @@
+import { CANCEL_REASON_MAX } from "@/src/features/document-cancellation/constants/documentCancellation";
+
 /**
  * Permiso con el que se ofrecen las cancelaciones de WMS y la reversa de una TR
  * (EC-945). `hasPermission` ya deja pasar al rol "admin" (`is_admin_empresa` o
@@ -8,4 +10,4 @@
 export const WMS_CANCEL_PERMISSION = "WMS-CANCELAR";
 
 /** Tope del motivo en nucleo-erp (`cancelacion_service.motivo_de`, `[:500]`). */
-export const WMS_CANCEL_MOTIVO_MAX = 500;
+export const WMS_CANCEL_MOTIVO_MAX = CANCEL_REASON_MAX;
