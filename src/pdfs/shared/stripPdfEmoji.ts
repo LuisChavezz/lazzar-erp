@@ -20,8 +20,10 @@
  * que tienen un equivalente que sí se imprime se cambian por él
  * (`BMP_SUBSTITUTES`: ✅ → ✔, ❌ → ✗, ➕ → +…; la única excepción a "solo se
  * quitan emoji") y el resto se quita (`BMP_UNPRINTABLE`: ✨, ⏰…). Una ZWJ
- * fuera de un emoji y cualquier otro texto no se tocan. Tampoco se ajustan los espacios: "Entrega 🚚 hoy" queda
- * "Entrega  hoy".
+ * fuera de un emoji y cualquier otro texto no se tocan.
+ *
+ * Espacios: quitar un emoji no deja uno doble ("Entrega 🚚 hoy" queda
+ * "Entrega hoy", "🚚 Entrega" queda "Entrega"); ver `stripPdfEmoji`.
  */
 
 const EMOJI_SEQUENCE =
@@ -61,8 +63,44 @@ const replaceSequence = (sequence: string): string => {
   return (base.codePointAt(0) ?? 0) >= FIRST_NON_BMP ? "" : replaceBmpPictograph(base);
 };
 
-/** Quita los emoji de un texto según las reglas de arriba. */
-export const stripPdfEmoji = (text: string): string => text.replace(EMOJI_SEQUENCE, replaceSequence);
+const TRAILING_SPACE = /\s+$/;
+const LEADING_SPACE = /^\s+/;
+
+/**
+ * Quita los emoji de un texto según las reglas de arriba.
+ *
+ * Al quitar uno no deja un espacio doble: si la eliminación junta espacios de
+ * los dos lados, se queda uno de los dos (el que lleva un salto de línea, si
+ * alguno lo lleva), y al principio o al final del texto se quitan los dos. Los
+ * demás espacios del texto no se tocan.
+ */
+export const stripPdfEmoji = (text: string): string => {
+  let out = "";
+  let last = 0;
+  for (const match of text.matchAll(EMOJI_SEQUENCE)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    out += text.slice(last, start);
+    last = end;
+    const replacement = replaceSequence(match[0]);
+    if (replacement !== "") {
+      out += replacement;
+      continue;
+    }
+    const before = TRAILING_SPACE.exec(out)?.[0] ?? "";
+    const after = LEADING_SPACE.exec(text.slice(end))?.[0] ?? "";
+    const atStart = out.length === before.length;
+    const atEnd = end + after.length === text.length;
+    if (atStart || atEnd) {
+      out = out.slice(0, out.length - before.length);
+      last += after.length;
+    } else if (before && after) {
+      if (before.includes("\n") && !after.includes("\n")) last += after.length;
+      else out = out.slice(0, out.length - before.length);
+    }
+  }
+  return out + text.slice(last);
+};
 
 /**
  * Un string que es SOLO una URL (imágenes, data URLs): nunca se toca. Un texto

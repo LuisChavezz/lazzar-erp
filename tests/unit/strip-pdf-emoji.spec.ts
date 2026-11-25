@@ -11,25 +11,38 @@ import { stripPdfEmoji, stripPdfEmojiDeep } from "@/src/pdfs/shared/stripPdfEmoj
 
 test.describe("stripPdfEmoji", () => {
   test("quita emoji sueltos sin tocar el texto que los rodea", () => {
-    expect(stripPdfEmoji("Entrega 🚚 hoy")).toBe("Entrega  hoy");
+    expect(stripPdfEmoji("Entrega 🚚 hoy")).toBe("Entrega hoy");
     expect(stripPdfEmoji("Listo😀")).toBe("Listo");
-    expect(stripPdfEmoji("📦 Caja 3 🔥")).toBe(" Caja 3 ");
+    expect(stripPdfEmoji("📦 Caja 3 🔥")).toBe("Caja 3");
   });
 
   test("quita secuencias completas: ZWJ, tono de piel, banderas, etiquetas y VS16", () => {
-    expect(stripPdfEmoji("Equipo 👨‍👩‍👧 ok")).toBe("Equipo  ok");
+    expect(stripPdfEmoji("Equipo 👨‍👩‍👧 ok")).toBe("Equipo ok");
     expect(stripPdfEmoji("Bien 👍🏽.")).toBe("Bien .");
     expect(stripPdfEmoji("Hecho en 🇲🇽!")).toBe("Hecho en !");
-    expect(stripPdfEmoji("Escocia 🏴󠁧󠁢󠁳󠁣󠁴󠁿 fin")).toBe("Escocia  fin");
-    expect(stripPdfEmoji("Atleta ⛹️‍♂️ fin")).toBe("Atleta  fin");
-    expect(stripPdfEmoji("❤️‍🔥 pasión")).toBe(" pasión");
-    expect(stripPdfEmoji("tono suelto 🏽 y RI suelto 🇲")).toBe("tono suelto  y RI suelto ");
+    expect(stripPdfEmoji("Escocia 🏴󠁧󠁢󠁳󠁣󠁴󠁿 fin")).toBe("Escocia fin");
+    expect(stripPdfEmoji("Atleta ⛹️‍♂️ fin")).toBe("Atleta fin");
+    expect(stripPdfEmoji("❤️‍🔥 pasión")).toBe("pasión");
+    expect(stripPdfEmoji("tono suelto 🏽 y RI suelto 🇲")).toBe("tono suelto y RI suelto");
   });
 
   test("conserva los símbolos que el PDF imprime, sin su selector de variación", () => {
     expect(stripPdfEmoji("✓ ✔ ✗ ⇒ ★ ① ⚠ ❤ ⭐ © ™")).toBe("✓ ✔ ✗ ⇒ ★ ① ⚠ ❤ ⭐ © ™");
     expect(stripPdfEmoji("Cuidado ⚠️ frágil ❤️")).toBe("Cuidado ⚠ frágil ❤");
     expect(stripPdfEmoji("Texto ☺︎")).toBe("Texto ☺");
+  });
+
+  test("no deja un espacio doble donde quitó un emoji, y no toca los demás espacios", () => {
+    expect(stripPdfEmoji("Entrega 🚚 hoy")).toBe("Entrega hoy");
+    expect(stripPdfEmoji("🚚 Entrega")).toBe("Entrega");
+    expect(stripPdfEmoji("Entrega 🚚")).toBe("Entrega");
+    expect(stripPdfEmoji("a 🚚 🔥 b")).toBe("a b");
+    expect(stripPdfEmoji("Pedido  12 🚚 listo   ya")).toBe("Pedido  12 listo   ya");
+    expect(stripPdfEmoji("Línea 🚚\nsiguiente")).toBe("Línea\nsiguiente");
+    expect(stripPdfEmoji("Línea\n🚚 siguiente")).toBe("Línea\nsiguiente");
+    expect(stripPdfEmoji("Listo👍 ya")).toBe("Listo ya");
+    expect(stripPdfEmoji("Hecho ✅ ya")).toBe("Hecho ✔ ya");
+    expect(stripPdfEmoji("🚚")).toBe("");
   });
 
   test("cambia los pictogramas del BMP sin glifo por su equivalente imprimible, o los quita", () => {
@@ -84,8 +97,8 @@ test.describe("stripPdfEmojiDeep", () => {
 
     const limpio = stripPdfEmojiDeep(props);
 
-    expect(limpio.pedido.observaciones).toBe("Urgente  ✓");
-    expect(limpio.pedido.detalles).toEqual([{ producto_nombre: "Camisa ⭐ " }, "suelto ", 7]);
+    expect(limpio.pedido.observaciones).toBe("Urgente ✓");
+    expect(limpio.pedido.detalles).toEqual([{ producto_nombre: "Camisa ⭐" }, "suelto", 7]);
     expect(limpio.pedido.cantidad).toBe(3);
     expect(limpio.pedido.precio).toBe(12.5);
     expect(limpio.pedido.activo).toBe(true);
@@ -103,7 +116,7 @@ test.describe("stripPdfEmojiDeep", () => {
 
   test("un texto que empieza con un enlace se limpia como cualquier otro; una URL sola no", () => {
     expect(stripPdfEmojiDeep({ notas: "https://drive.example/x revisar 🚚 urgente" }).notas).toBe(
-      "https://drive.example/x revisar  urgente",
+      "https://drive.example/x revisar urgente",
     );
     expect(stripPdfEmojiDeep({ url: "https://example.com/😀.png" }).url).toBe("https://example.com/😀.png");
   });

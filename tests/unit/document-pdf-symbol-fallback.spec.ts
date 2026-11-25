@@ -83,7 +83,7 @@ test.describe("respaldo de símbolos en la plantilla base", () => {
     expect(raw).toMatch(/\/BaseFont\s*\/[A-Z]{6}\+Arimo-Bold/);
     const [pagina] = pdfPageTexts(pdf);
     for (const fragmento of [
-      `Revisado ${SIMBOLOS} entregar  hoy .`,
+      `Revisado ${SIMBOLOS} entregar hoy .`,
       "Camisa ⇒ azul ★",
       "Renglón ① ok",
       "B ✓ ★",
@@ -152,7 +152,7 @@ test.describe("respaldo de símbolos en la cotización", () => {
 
     expect(pdf.toString("latin1")).toMatch(/\/BaseFont\s*\/[A-Z]{6}\+PdfSymbolsFallback-Regular/);
     const texto = pdfPageTexts(pdf).join("\n");
-    for (const fragmento of [`Revisado ${SIMBOLOS} entregar  hoy .`, "Camisa ★ manga larga", "EMPRESA ✓ Norte", "OC-1 ⇒ 2"]) {
+    for (const fragmento of [`Revisado ${SIMBOLOS} entregar hoy .`, "Camisa ★ manga larga", "EMPRESA ✓ Norte", "OC-1 ⇒ 2"]) {
       expect(texto).toContain(fragmento);
     }
   });

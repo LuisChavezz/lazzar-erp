@@ -80,7 +80,7 @@ test("quita los emoji de las props antes de renderizar y conserva los símbolos 
 
   await renderWith(loadRenderer, async () => SampleDocument, props);
 
-  expect(rendered[0].props).toEqual({ label: "Listo ✓  ⇒ ★  fin" });
+  expect(rendered[0].props).toEqual({ label: "Listo ✓ ⇒ ★ fin" });
   expect(props.label).toBe("Listo ✓ 🚚 ⇒ ★ 👍🏽 fin");
 });
 
