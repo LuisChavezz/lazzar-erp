@@ -22,10 +22,14 @@ import {
   COBRO_REP_UNCONFIRMED_MESSAGE,
   stampCobroRepErrorMessage,
 } from "@/src/features/collections/utils/cobroRepStamping";
-import {
-  COBRO_CANCEL_UNCONFIRMED_MESSAGE,
-  cancelCobroErrorMessage,
-} from "@/src/features/collections/utils/cobroCancellation";
+import { COBRO_CANCEL_UNCONFIRMED_MESSAGE } from "@/src/features/collections/utils/cobroCancellation";
+import { cobroCancelDialogContent } from "@/src/features/collections/utils/cobroCancelAction";
+import { QueryClient } from "@tanstack/react-query";
+
+/** EC-950: el cobro se cancela en `CancelReasonDialog`; su clasificador da el mensaje. */
+const cancelCobroErrorMessage = (error: unknown) =>
+  cobroCancelDialogContent(new QueryClient(), { id: 1, folio: "COB-1", estatus: "Aplicado" }).action.classifyError(error)
+    .message;
 
 /**
  * EC-939: las escrituras fiscales lentas (timbrar y cancelar facturas, notas de
