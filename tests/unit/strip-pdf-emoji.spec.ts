@@ -32,6 +32,12 @@ test.describe("stripPdfEmoji", () => {
     expect(stripPdfEmoji("Texto ☺︎")).toBe("Texto ☺");
   });
 
+  test("cambia los pictogramas del BMP sin glifo por su equivalente imprimible, o los quita", () => {
+    expect(stripPdfEmoji("✅ listo ❌ no ❎ ➕1 ➖1 ➗2 ❔ ❕ ⏫ ⏬")).toBe("✔ listo ✗ no ☒ +1 −1 ÷2 ? ! ⇈ ⇊");
+    expect(stripPdfEmoji("Hecho ✅️")).toBe("Hecho ✔");
+    expect(stripPdfEmoji("a⏰b✨c✊d➰e➿f〰g〽h㊗i㊙j")).toBe("abcdefghij");
+  });
+
   test("de una tecla deja solo el carácter, y no toca dígitos ni # normales", () => {
     expect(stripPdfEmoji("Paso 1️⃣ y #️⃣")).toBe("Paso 1 y #");
     expect(stripPdfEmoji("Pedido #12 de 3*4 = 12")).toBe("Pedido #12 de 3*4 = 12");
