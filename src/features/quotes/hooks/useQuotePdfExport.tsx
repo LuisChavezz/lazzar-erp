@@ -12,6 +12,7 @@ import {
 import type { DataTableVisibleColumn } from "@/src/components/DataTable";
 import { downloadBlob } from "@/src/utils/downloadBlob";
 import { useServerExport } from "@/src/hooks/useServerExport";
+import { generateListPdfBlob, listPdfWidths, standardListPdfProps } from "@/src/utils/listPdfBlob";
 
 const getValueByPath = (value: unknown, path: string) => {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -93,263 +94,43 @@ const getColumnWeight = (column: DataTableVisibleColumn<Quote>): number => {
   return 1.2;
 };
 
-const createQuotesPdfDocument = (
-  renderer: Pick<
-    typeof import("@react-pdf/renderer"),
-    "Document" | "Page" | "Text" | "View" | "StyleSheet"
-  >,
-  quotes: Quote[],
-  columns: DataTableVisibleColumn<Quote>[],
-  now: Date,
-) => {
-  const { Document, Page, Text, View, StyleSheet } = renderer;
-
-  const totalWeight = columns.reduce((sum, col) => sum + getColumnWeight(col), 0);
-  const columnWidths = columns.map(
-    (col) => `${((getColumnWeight(col) / totalWeight) * 100).toFixed(1)}%`
-  );
+/**
+ * Props del PDF del listado: variante `standard` de `ListPdfDocument` (EC-959)
+ * con importes y piezas a la derecha, importes en negritas, el "Total general"
+ * en el encabezado y la fila de totales bajo la columna de importe.
+ */
+const quotesPdfProps = (quotes: Quote[], columns: DataTableVisibleColumn<Quote>[], now: Date) => {
+  const widths = listPdfWidths(columns.map(getColumnWeight), 1);
 
   // Total por moneda de la columna visible de importe (EC-618).
   const grandTotal = formatQuoteExportTotal(quotes);
-
-  const styles = StyleSheet.create({
-    page: {
-      paddingTop: 28,
-      paddingBottom: 44,
-      paddingHorizontal: 28,
-      fontSize: 9,
-      color: "#0f172a",
-      backgroundColor: "#ffffff",
-    },
-    headerSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 18,
-      paddingBottom: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: "#cbd5e1",
-    },
-    brand: {
-      fontSize: 7,
-      color: "#0ea5e9",
-      marginBottom: 4,
-    },
-    title: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: "#0f172a",
-    },
-    metaGroup: {
-      alignItems: "flex-end",
-    },
-    metaRow: {
-      flexDirection: "row",
-      marginTop: 3,
-    },
-    metaLabel: {
-      fontSize: 7.5,
-      color: "#94a3b8",
-      marginRight: 4,
-    },
-    metaValue: {
-      fontSize: 7.5,
-      fontWeight: "bold",
-      color: "#475569",
-    },
-    table: {
-      marginTop: 4,
-    },
-    row: {
-      flexDirection: "row",
-      borderBottomWidth: 1,
-      borderBottomColor: "#e2e8f0",
-      paddingVertical: 6,
-      paddingHorizontal: 4,
-      minHeight: 22,
-    },
-    headerRow: {
-      backgroundColor: "#1e293b",
-      borderBottomWidth: 0,
-      paddingVertical: 8,
-      borderRadius: 4,
-    },
-    rowOdd: {
-      backgroundColor: "#f8fafc",
-    },
-    rowLast: {
-      borderBottomWidth: 0,
-    },
-    headerCell: {
-      fontSize: 7,
-      fontWeight: "bold",
-      color: "#94a3b8",
-      paddingHorizontal: 5,
-    },
-    cell: {
-      fontSize: 8,
-      color: "#334155",
-      paddingHorizontal: 5,
-    },
-    cellRight: {
-      textAlign: "right",
-    },
-    cellCurrency: {
-      fontWeight: "bold",
-      color: "#0f172a",
-    },
-    totalRow: {
-      flexDirection: "row",
-      borderTopWidth: 2,
-      borderTopColor: "#1e293b",
-      paddingVertical: 7,
-      paddingHorizontal: 4,
-      marginTop: 2,
-    },
-    totalLabel: {
-      fontSize: 8,
-      fontWeight: "bold",
-      color: "#0f172a",
-      paddingHorizontal: 5,
-    },
-    totalValue: {
-      fontSize: 9,
-      fontWeight: "bold",
-      color: "#0f172a",
-      paddingHorizontal: 5,
-      textAlign: "right",
-    },
-    footer: {
-      position: "absolute",
-      bottom: 18,
-      left: 28,
-      right: 28,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingTop: 6,
-      borderTopWidth: 1,
-      borderTopColor: "#e2e8f0",
-    },
-    footerText: {
-      fontSize: 7,
-      color: "#94a3b8",
-    },
-  });
-
-  const today = now.toLocaleDateString("es-MX", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   const grandTotalColIndex = columns.findIndex(
     (col) => (col.accessorKey ?? col.id) === QUOTE_EXPORT_TOTAL_FIELD
   );
-  const totalRowCells = buildQuoteTotalRowCells(columns.length, grandTotalColIndex, grandTotal);
 
-  return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        {/* Encabezado */}
-        <View style={styles.headerSection}>
-          <View>
-            <Text style={styles.brand}>ERP LAZZAR</Text>
-            <Text style={styles.title}>Reporte de Cotizaciones</Text>
-          </View>
-          <View style={styles.metaGroup}>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Exportado:</Text>
-              <Text style={styles.metaValue}>{today}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Registros:</Text>
-              <Text style={styles.metaValue}>{quotes.length}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Total general:</Text>
-              <Text style={styles.metaValue}>{grandTotal}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Tabla */}
-        <View style={styles.table}>
-          {/* Fila de cabeceras */}
-          <View style={[styles.row, styles.headerRow]}>
-            {columns.map((col, i) => (
-              <Text
-                key={col.id}
-                style={[
-                  styles.headerCell,
-                  { width: columnWidths[i] },
-                  isRightAlignedColumn(col) ? styles.cellRight : {},
-                ]}
-              >
-                {col.header}
-              </Text>
-            ))}
-          </View>
-
-          {/* Filas de datos */}
-          {quotes.map((quote, rowIndex) => (
-            <View
-              key={`${quote.id}-${rowIndex}`}
-              style={[
-                styles.row,
-                rowIndex % 2 !== 0 ? styles.rowOdd : {},
-                rowIndex === quotes.length - 1 ? styles.rowLast : {},
-              ]}
-            >
-              {columns.map((column, colIndex) => (
-                <Text
-                  key={`${quote.id}-${column.id}`}
-                  style={[
-                    styles.cell,
-                    { width: columnWidths[colIndex] },
-                    isRightAlignedColumn(column) ? styles.cellRight : {},
-                    isCurrencyColumn(column) ? styles.cellCurrency : {},
-                  ]}
-                >
-                  {formatValue(getColumnValue(quote, column, rowIndex), column, quote)}
-                </Text>
-              ))}
-            </View>
-          ))}
-
-          {/* Fila de totales: una celda por columna, el total bajo la de importe
-              y siempre con su etiqueta (`buildQuoteTotalRowCells`) */}
-          {grandTotalColIndex >= 0 && (
-            <View style={styles.totalRow}>
-              {columns.map((col, i) => (
-                <Text
-                  key={`total-${col.id}`}
-                  style={[
-                    i === grandTotalColIndex ? styles.totalValue : styles.totalLabel,
-                    { width: columnWidths[i] },
-                  ]}
-                >
-                  {totalRowCells[i]}
-                </Text>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Pie de página fijo en todas las páginas */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
-            {quotes.length} registro{quotes.length !== 1 ? "s" : ""} — Generado con ERP Lazzar
-          </Text>
-          <Text
-            style={styles.footerText}
-            render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-              `Página ${pageNumber} de ${totalPages}`
-            }
-          />
-        </View>
-      </Page>
-    </Document>
-  );
+  return standardListPdfProps({
+    title: "Reporte de Cotizaciones",
+    columns: columns.map((column, i) => ({
+      header: column.header,
+      width: widths[i],
+      align: isRightAlignedColumn(column) ? "right" : undefined,
+      bold: isCurrencyColumn(column),
+    })),
+    rows: quotes.map((quote, rowIndex) =>
+      columns.map((column) => formatValue(getColumnValue(quote, column, rowIndex), column, quote))
+    ),
+    // Una celda por columna, el total bajo la de importe y siempre con su
+    // etiqueta (`buildQuoteTotalRowCells`).
+    totalRow:
+      grandTotalColIndex >= 0
+        ? {
+            cells: buildQuoteTotalRowCells(columns.length, grandTotalColIndex, grandTotal),
+            valueIndex: grandTotalColIndex,
+          }
+        : null,
+    extraMeta: [{ label: "Total general:", value: grandTotal }],
+    now,
+  });
 };
 
 /**
@@ -358,7 +139,7 @@ const createQuotesPdfDocument = (
  * backend (`fetchAllRows` de `useServerTable`): la tabla solo tiene la página
  * visible. `useServerExport` muestra el progreso, ignora un doble disparo y
  * avisa si falla el pedido de filas o el render del PDF (p. ej. al descargar
- * el chunk de react-pdf).
+ * el chunk de react-pdf o la fuente, EC-942).
  */
 export const useQuotePdfExport = (
   getRows: () => Promise<Quote[]>,
@@ -376,21 +157,8 @@ export const useQuotePdfExport = (
     const exportColumns = columnsRef.current.filter((column) => column.id !== "actions");
     if (exportColumns.length === 0) return;
     await runExport(async (rows) => {
-      const renderer = await import("@react-pdf/renderer");
       const now = new Date();
-      const pdfDocument = createQuotesPdfDocument(
-        {
-          Document: renderer.Document,
-          Page: renderer.Page,
-          Text: renderer.Text,
-          View: renderer.View,
-          StyleSheet: renderer.StyleSheet,
-        },
-        rows,
-        exportColumns,
-        now,
-      );
-      const blob = await renderer.pdf(pdfDocument).toBlob();
+      const blob = await generateListPdfBlob(quotesPdfProps(rows, exportColumns, now));
       downloadBlob(blob, datedFileName("quotes", "pdf", now));
     });
   }, [runExport]);
