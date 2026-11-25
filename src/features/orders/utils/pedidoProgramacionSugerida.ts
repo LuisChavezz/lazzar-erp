@@ -7,6 +7,25 @@ import type { PedidoProgramacionDestino } from "../constants/pedidoProgramacion"
  */
 const SERVICIO_DESTINOS: readonly PedidoProgramacionDestino[] = ["BORDADO", "REFLEJANTE", "CORTE_MANGA"];
 
+interface RenglonSugerible {
+  cantidad: number;
+  servicios: readonly string[];
+  /** La talla aún no tiene SKU (nucleo-erp#1393); el PATCH la rechaza en procesos y Embarque. */
+  pendiente_sku?: boolean;
+  /** `null` = sin variante. El backend llegó a mandar `pendiente_sku: false` en tallas así (P-00170-2026). */
+  variante_id?: number | null;
+}
+
+const esPendienteDeSku = (renglon: RenglonSugerible) =>
+  renglon.pendiente_sku === true || renglon.variante_id === null;
+
+/** Piezas que la sugerencia deja fuera por estar pendientes de SKU. */
+export function piezasPendientesDeSku(renglones: readonly RenglonSugerible[]): number {
+  return renglones
+    .filter(esPendienteDeSku)
+    .reduce((acc, r) => acc + Math.max(0, Math.floor(Number(r.cantidad) || 0)), 0);
+}
+
 export interface ProgramacionSugerida {
   destino: PedidoProgramacionDestino;
   cantidad: number;
@@ -21,13 +40,18 @@ export interface ProgramacionSugerida {
  * - talla sin servicio → Embarque.
  * Solo propone destinos de `destinosAplicables`. Es una SUGERENCIA: la decisión
  * final es de Mesa de Control, que puede editarla antes de guardar.
+ *
+ * Una talla pendiente de SKU (`pendiente_sku`, típico de una muestra)
+ * NO se sugiere: todavía no se puede surtir ni mandar a proceso. Ver
+ * `piezasPendientesDeSku`.
  */
 export function sugerirProgramacion(
-  renglones: readonly { cantidad: number; servicios: readonly string[] }[],
+  renglones: readonly RenglonSugerible[],
   destinosAplicables: readonly PedidoProgramacionDestino[],
 ): ProgramacionSugerida[] {
   const totales = new Map<PedidoProgramacionDestino, ProgramacionSugerida>();
   for (const renglon of renglones) {
+    if (esPendienteDeSku(renglon)) continue;
     const cantidad = Math.floor(Number(renglon.cantidad) || 0);
     if (cantidad <= 0) continue;
     const servicios = SERVICIO_DESTINOS.filter(

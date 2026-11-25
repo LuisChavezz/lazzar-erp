@@ -3,6 +3,7 @@
 import {
   esProgramacionSugerida,
   faltantesDeSugerencia,
+  piezasPendientesDeSku,
   sugerirProgramacion,
   type ProgramacionSugerida,
 } from "../utils/pedidoProgramacionSugerida";
@@ -137,6 +138,7 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
 
         <ProgramacionSugeridaCard
           sugerida={sugerirProgramacion(contexto.renglones, destinosAplicables)}
+          pendientesSku={piezasPendientesDeSku(contexto.renglones)}
           programaciones={programaciones}
           onAgregar={appendRows}
         />
@@ -334,14 +336,29 @@ function PedidoProgramacionForm({ contexto, onClose }: PedidoProgramacionFormPro
  */
 function ProgramacionSugeridaCard({
   sugerida,
+  pendientesSku,
   programaciones,
   onAgregar,
 }: {
   sugerida: ProgramacionSugerida[];
+  pendientesSku: number;
   programaciones: readonly { destino: string; cantidad: string }[];
   onAgregar: (rows: { destino: string; cantidad: number }[]) => void;
 }) {
-  if (sugerida.length === 0) return null;
+  const avisoSku =
+    pendientesSku > 0 ? (
+      <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+        {pendientesSku} {pendientesSku === 1 ? "pieza pendiente" : "piezas pendientes"} de SKU no se
+        sugieren: asígnales SKU antes de programarlas.
+      </p>
+    ) : null;
+  if (sugerida.length === 0) {
+    return avisoSku ? (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 dark:border-amber-500/20 dark:bg-amber-500/5">
+        {avisoSku}
+      </div>
+    ) : null;
+  }
   const aplicada = esProgramacionSugerida(programaciones, sugerida);
   const faltantes = faltantesDeSugerencia(programaciones, sugerida);
   const porAgregar = faltantes.filter((f) => f.faltan > 0);
@@ -407,6 +424,7 @@ function ProgramacionSugeridaCard({
         {conVarios > 0 &&
           ` ${conVarios} pzas llevan más de un servicio: se proponen en el primero (Bordado → Reflejante → Corte de manga).`}
       </p>
+      {avisoSku}
     </div>
   );
 }
