@@ -92,8 +92,14 @@ export interface CorteMangaOrderLine {
   /** FK a la orden de corte de manga contenedora (`OrdenesCorteManga.id`). */
   ocm: number;
   pedido_detalle: number;
-  producto: number;
-  producto_nombre: string | null;
+  /** `null` en un renglón de MUESTRA con SKU, sin producto de catálogo (EC-964). */
+  producto: number | null;
+  /**
+   * Se OMITE (no llega en `null`) en un renglón sin producto: es
+   * `CharField(source='producto.nombre')`, mismo caso que `color_nombre`. Rotular
+   * con `workOrderProductLabel`.
+   */
+  producto_nombre?: string | null;
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
@@ -262,8 +268,8 @@ export interface CorteMangaOrder extends WorkOrderAvanceFields {
  * `lleva_corte_manga`. Solo se tipan los campos vistos en una respuesta real, con
  * la nulabilidad observada:
  *  - `producto_id`/`producto_nombre` llegan `null` en las tallas de MUESTRA
- *    (líneas con `producto_nombre_externo`); `color_id`/`color_nombre` también
- *    se vieron `null` en esas líneas.
+ *    (su nombre viaja en `producto_nombre_externo` desde EC-964);
+ *    `color_id`/`color_nombre` también se vieron `null` en esas líneas.
  *
  * La respuesta trae además `posicion_sugerida`, `ubicaciones`, `foto`, `notas`,
  * `tipos_servicio` y `tipos_servicio_display`, que no se tipan: solo se han visto
@@ -281,6 +287,17 @@ export interface CorteMangaOnboardingDetalle {
   cantidad_pedido: number;
   cantidad_asignada: number;
   cantidad_pendiente: number;
+  // ── Muestras con SKU (EC-964) ────────────────────────────────────────────
+  // OPCIONALES: un backend anterior a EC-964 no manda las claves. El backend ya
+  // oculta las muestras SIN SKU. A diferencia de bordado, este onboarding NO
+  // manda `existencias`. El alta de un solo paso no pinta renglones, así que hoy
+  // nada los lee; se tipan para no descartar en silencio lo que llega.
+  /** `variante.sku`, o `sku_muestra` de la talla en una muestra. */
+  sku?: string | null;
+  /** `cod_proscai` del producto; `null` en una muestra. */
+  sku_proscai?: string | null;
+  /** Nombre de la MUESTRA; `null` en una línea de catálogo. */
+  producto_nombre_externo?: string | null;
 }
 
 export interface CorteMangaOnboardingPedido {

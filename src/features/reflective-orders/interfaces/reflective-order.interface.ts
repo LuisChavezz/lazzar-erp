@@ -82,8 +82,14 @@ export interface ReflectiveOrderLine {
   /** FK a la orden de reflejante contenedora (`OrdenesReflejante.id`). */
   orden_r: number;
   pedido_detalle: number;
-  producto: number;
-  producto_nombre: string | null;
+  /** `null` en un renglón de MUESTRA con SKU, sin producto de catálogo (EC-964). */
+  producto: number | null;
+  /**
+   * Se OMITE (no llega en `null`) en un renglón sin producto: es
+   * `CharField(source='producto.nombre')`, mismo caso que `color_nombre`. Rotular
+   * con `workOrderProductLabel`.
+   */
+  producto_nombre?: string | null;
   talla: number | null;
   talla_nombre: string | null;
   color: number | null;
@@ -410,7 +416,8 @@ export interface ReflectiveOnboardingDetalle {
   /** Id de `PedidoDetalleTalla` — el que viaja en `detalles_override`. */
   pedido_detalle_talla_id: number;
   pedido_detalle_id: number;
-  producto_id: number;
+  /** `null` en una línea de MUESTRA (sin producto de catálogo), EC-964. */
+  producto_id: number | null;
   producto_nombre: string | null;
   talla_id: number | null;
   talla_nombre: string | null;
@@ -427,6 +434,16 @@ export interface ReflectiveOnboardingDetalle {
    * `ReflectiveLineConfigEntry`).
    */
   reflejante_config: ReflectiveLineConfigEntry[] | null;
+  // ── Muestras con SKU (EC-964) ────────────────────────────────────────────
+  // OPCIONALES: un backend anterior a EC-964 no manda las claves. El backend ya
+  // oculta las muestras SIN SKU, así que la UI no filtra nada por su cuenta. A
+  // diferencia de bordado, este onboarding NO manda `existencias`.
+  /** `variante.sku`, o `sku_muestra` de la talla en una muestra. */
+  sku?: string | null;
+  /** `cod_proscai` del producto; `null` en una muestra. */
+  sku_proscai?: string | null;
+  /** Nombre de la MUESTRA; `null` en una línea de catálogo. */
+  producto_nombre_externo?: string | null;
 }
 
 /**
