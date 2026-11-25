@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Un destino posible del estatus de una OP, tal como lo calcula el backend
  * (`GET /produccion/orden-produccion/{op_id}/estatus/`). La lista solo trae
@@ -38,8 +40,12 @@ export interface ChangeProductionOrderStatusBody {
   forzar?: true;
 }
 
-/** Respuesta 200 del POST. No trae `opciones`: hay que volver a pedir el GET. */
-export interface ChangeProductionOrderStatusResponse {
+/**
+ * Respuesta 200 del POST. No trae `opciones`: hay que volver a pedir el GET.
+ * Trae los datos de cancelación de la OP (nucleo-erp#1355, EC-966): vacíos o
+ * `null` mientras no esté cancelada.
+ */
+export interface ChangeProductionOrderStatusResponse extends DocumentCancellationFields {
   msg: string;
   op_id: number;
   estatus_op: number;

@@ -15,6 +15,22 @@ const INVALID_TRANSITION_FALLBACK =
 const BLOCKED_FALLBACK = "Faltan requisitos de la ruta crítica.";
 
 /**
+ * Llaves del `400` con que cancelar una OP dice que algo cuelga de ella
+ * (nucleo-erp#1355, `exigir_op_cancelable`): una recepción de producto
+ * terminado viva o una salida a maquila Enviada, con el folio que bloquea, como
+ * texto plano. Se muestran tal cual y se releen el estatus y el detalle.
+ */
+export const PRODUCTION_ORDER_CANCEL_BLOCKING_KEYS = ["recepciones", "salidas_maquila"] as const;
+
+const cancelBlockingMessage = (error: unknown): string | undefined => {
+  for (const key of PRODUCTION_ORDER_CANCEL_BLOCKING_KEYS) {
+    const message = drfFieldMessage(error, key);
+    if (message) return message;
+  }
+  return undefined;
+};
+
+/**
  * Qué hacer con un error del POST `estatus/`:
  *
  * - `blocked`: 409 con `bloqueos` (faltan requisitos de la ruta crítica, p. ej.
@@ -24,6 +40,9 @@ const BLOCKED_FALLBACK = "Faltan requisitos de la ruta crítica.";
  *   el POST). Se avisa con el `msg`, se cierra el diálogo y se releen el
  *   estatus y el detalle.
  * - `motivo`: 400 `{ motivo }`. Va bajo el campo del motivo.
+ * - `message` con el texto del backend tal cual para el 400 que bloquea la
+ *   cancelación (`recepciones`, `salidas_maquila`, EC-948): en el banner del
+ *   diálogo, con el motivo escrito; el estatus y el detalle se releen.
  * - `message`: todo lo demás, con el texto a mostrar: el `msg` del 404, el
  *   `permiso` del 400 tal cual, un mensaje general para el 400 `estatus_op`,
  *   o el respaldo genérico (red, 5xx, otra forma).
@@ -72,6 +91,8 @@ export const classifyChangeStatusError = (error: unknown): ChangeStatusErrorOutc
   if (status === 400) {
     const motivo = drfFieldMessage(error, "motivo");
     if (motivo) return { kind: "motivo", message: motivo };
+    const blocking = cancelBlockingMessage(error);
+    if (blocking) return { kind: "message", message: blocking };
     // El texto del backend para `estatus_op` ("Estatus no válido.", "Requerido:
     // entero…") describe un error del cliente, no algo que la persona pueda
     // corregir: se cambia por uno general.
@@ -88,14 +109,16 @@ export const classifyChangeStatusError = (error: unknown): ChangeStatusErrorOutc
  * Qué relee quien recibe el error, o `null` si nada quedó viejo:
  * - `"status"`: 409 con `bloqueos` (faltan requisitos que las opciones decían
  *   cumplidos). El estatus no cambió, así que el detalle sigue vigente.
- * - `"status-and-detail"`: 409 sin `bloqueos` (el estatus cambió) o 404 (la OP
- *   dejó de ser visible).
+ * - `"status-and-detail"`: 409 sin `bloqueos` (el estatus cambió), 404 (la OP
+ *   dejó de ser visible) o el 400 que bloquea la cancelación (una recepción o
+ *   una SM viva: lo que muestra la página pudo quedar viejo).
  */
 export const staleDataAfterStatusError = (
   error: unknown,
 ): "status" | "status-and-detail" | null => {
   const status = statusOf(error);
   if (status === 404) return "status-and-detail";
+  if (status === 400 && cancelBlockingMessage(error)) return "status-and-detail";
   if (status !== 409) return null;
   return Array.isArray(responseBody(error)?.bloqueos) ? "status" : "status-and-detail";
 };
