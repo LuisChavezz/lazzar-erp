@@ -1,29 +1,71 @@
 "use client";
 
+import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
+import { Button } from "@/src/components/Button";
+import { ReopenIcon } from "@/src/components/Icons";
+import { WmsCancelDialog } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { InfoField, InfoGrid, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
-import { formatLocalDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { formatQuantity } from "../utils/qualityQuantities";
 import { QUALITY_RESULTADO_OPTIONS } from "../constants/qualityResultado";
 import { QUALITY_ESTADO_CFG } from "./QualityInspectionColumns";
 import type { QualityInspection } from "../interfaces/quality-inspection.interface";
+import { qualityRevertDialogContent } from "../utils/qualityRevertAction";
 
 /**
  * Resultado de una inspección ya registrada. Sin fetch propio: el listado
  * `GET /compras/calidad-inspecciones/` ya trae los renglones.
+ *
+ * "Revertir calidad" (EC-947) vive en el encabezado de este diálogo y no en la
+ * fila: "Inspeccionadas" no tiene menú de acciones (el folio abre este
+ * detalle), y es donde WMS ya pone cancelar/revertir un documento (EC-945).
+ * `canRevert` lo decide la vista (admin y la inspección revertible); el
+ * diálogo de motivo se monta con `isAdmin`, aparte del botón, para que se
+ * anime al cerrar. Al revertir se cierra también este detalle: muestra la foto
+ * de cuando se abrió y ya no correspondería.
  */
 export function QualityInspectionResultDialog({
   inspection,
+  isAdmin,
+  canRevert,
   onClose,
 }: {
   inspection: QualityInspection | null;
+  /** `role === "admin"`: `is_admin_empresa || is_superuser`, la regla del backend. */
+  isAdmin: boolean;
+  /** Admin y la inspección revertible (`isQualityInspectionRevertible`). */
+  canRevert: boolean;
   onClose: () => void;
 }) {
   const open = inspection !== null;
   const { snapshot: data } = useDialogSession(open, inspection);
+  const [isRevertOpen, setIsRevertOpen] = useState(false);
   const resultadoLabel = (v: string) => QUALITY_RESULTADO_OPTIONS.find((o) => o.value === v)?.label ?? v;
+  const anulada = data?.estado === "anulada";
+
+  const headerAction =
+    isAdmin && data ? (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {canRevert && (
+          <Button
+            variant="secondary"
+            onClick={() => setIsRevertOpen(true)}
+            className="px-3! py-1.5! text-xs! text-rose-600! dark:text-rose-400!"
+          >
+            <ReopenIcon className="w-4 h-4" aria-hidden="true" />
+            Revertir calidad
+          </Button>
+        )}
+        <WmsCancelDialog
+          content={qualityRevertDialogContent(data, onClose)}
+          open={isRevertOpen}
+          onOpenChange={setIsRevertOpen}
+        />
+      </div>
+    ) : undefined;
 
   return (
     <MainDialog
@@ -31,6 +73,7 @@ export function QualityInspectionResultDialog({
       onOpenChange={(o) => !o && onClose()}
       title={data ? `Inspección de ${data.recepcion_folio}` : "Inspección"}
       maxWidth="760px"
+      headerAction={headerAction}
     >
       {data && (
         <div className="space-y-4">
@@ -41,6 +84,15 @@ export function QualityInspectionResultDialog({
             <InfoField label="Inspector">{textOrDash(data.inspector_nombre)}</InfoField>
             <InfoField label="Fecha">{formatLocalDate(data.fecha)}</InfoField>
             <InfoField label="Observaciones">{textOrDash(data.observaciones)}</InfoField>
+            {/* EC-947: quién la anuló no, el backend solo manda su id. */}
+            {anulada && (
+              <>
+                <InfoField label="Motivo de la reversa">
+                  {data.motivo_anulacion?.trim() || "Sin motivo registrado."}
+                </InfoField>
+                <InfoField label="Anulada el">{formatShortDateTime(data.fecha_anulacion)}</InfoField>
+              </>
+            )}
           </InfoGrid>
           <LineItemsTable
             head={
