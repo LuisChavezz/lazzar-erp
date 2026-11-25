@@ -207,7 +207,7 @@ export function ProductionOrderDetailDialog({
       {!isLoading && !isError && data && (
         <div className="space-y-5">
           {/* Información general de la orden */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             <InfoField label="Estatus">
               {/* Mismo patrón que `ProductionOrderColumns`: el color sale del
                   entero `estatus_op` y la etiqueta del `estatus_op_display`
@@ -236,7 +236,7 @@ export function ProductionOrderDetailDialog({
             </InfoField>
             <InfoField label="Fecha inicio">{formatLocalDate(data.fecha_inicio)}</InfoField>
             <InfoField label="Fecha fin">{formatLocalDate(data.fecha_fin)}</InfoField>
-            <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
+            <InfoField label="Observaciones" className="col-span-2 sm:col-span-4">
               <span className="leading-snug text-slate-600 dark:text-slate-300">
                 {data.observaciones?.trim() || "—"}
               </span>

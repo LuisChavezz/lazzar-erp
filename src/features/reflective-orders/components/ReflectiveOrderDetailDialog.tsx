@@ -253,7 +253,7 @@ export function ReflectiveOrderDetailDialog({
       {!isLoading && !isError && order && (
         <div className="space-y-5">
           {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
             <InfoField label="Estatus">
               <StatusBadge
                 status={String(order.estatus_reflejante)}
@@ -282,7 +282,7 @@ export function ReflectiveOrderDetailDialog({
                 {formatShortDate(order.fecha_fin)} · {formatShortTime(order.fecha_fin)}
               </span>
             </InfoField>
-            <InfoField label="Observaciones" className="col-span-2 sm:col-span-3">
+            <InfoField label="Observaciones" className="col-span-2 sm:col-span-4">
               {textOrDash(order.observaciones)}
             </InfoField>
           </div>
