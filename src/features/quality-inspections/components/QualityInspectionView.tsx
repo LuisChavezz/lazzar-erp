@@ -56,10 +56,12 @@ export function QualityInspectionView() {
   const recepciones = data?.recepciones_pendientes ?? [];
   const inspectores = data?.inspectores ?? [];
 
-  // Ver la bandeja exige `R-WMS-CALIDAD`; registrar exige además `C-WMS-CALIDAD`
-  // (solo control de interfaz: el backend no valida permisos de Calidad).
+  // Ver la bandeja exige `R-WMS-CALIDAD` (regla de ruta, solo de interfaz).
+  // Registrar la inspección (liberar calidad) exige `C-WMS-RECEPCIONES`: es lo
+  // que mete la mercancía al inventario y el backend lo valida desde
+  // nucleo-erp#1353 (403 sin él).
   const { data: session } = useSession();
-  const canSubmit = hasPermission("C-WMS-CALIDAD", session?.user);
+  const canSubmit = hasPermission("C-WMS-RECEPCIONES", session?.user);
 
   // Diálogos aquí, no en la celda: la fila sale de "Pendientes" al registrar.
   const [selected, setSelected] = useState<QualityPendingReception | null>(null);

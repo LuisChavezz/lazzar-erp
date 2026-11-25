@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ChevronDownIcon } from "@/src/components/Icons";
 import { EmptyLines } from "@/src/components/DetailDialogPrimitives";
 import { ErrorState } from "@/src/components/ErrorState";
@@ -12,6 +13,7 @@ import { useClientNow } from "@/src/hooks/useClientNow";
 import { formatCurrency, formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
+import { hasPermission } from "@/src/utils/permissions";
 import { useSuppliers } from "@/src/features/suppliers/hooks/useSuppliers";
 import { NEED_STATUS_CFG } from "@/src/features/pre-orders/components/PreOrderTracking";
 import { useCreateOcFromNeeds, usePurchaseNeedGroups } from "../hooks/usePurchaseNeeds";
@@ -44,6 +46,10 @@ export function PurchaseNeedsView() {
   const { groups, hasLoaded, isInitialError, refetch, isFetching } = usePurchaseNeedGroups();
   const { suppliers, isLoading: loadingSuppliers } = useSuppliers();
   const create = useCreateOcFromNeeds();
+  // Crear la OC (`desde-necesidades/`) exige `C-COMPRAS-OC`, igual que "Nueva
+  // Orden"; el backend lo valida desde nucleo-erp#1353 (EC-947).
+  const { data: session } = useSession();
+  const canCreate = hasPermission("C-COMPRAS-OC", session?.user);
 
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -301,14 +307,20 @@ export function PurchaseNeedsView() {
             >
               Limpiar
             </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!proveedorId || create.isPending}
-              className="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {create.isPending ? "Creando…" : "Crear orden de compra"}
-            </button>
+            {canCreate ? (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!proveedorId || create.isPending}
+                className="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {create.isPending ? "Creando…" : "Crear orden de compra"}
+              </button>
+            ) : (
+              <p className="self-center text-xs text-slate-500 dark:text-slate-400">
+                No tienes permiso para crear órdenes de compra.
+              </p>
+            )}
           </div>
         </div>
       )}
