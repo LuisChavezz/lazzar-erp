@@ -98,12 +98,13 @@ export const createInvoiceFromOnboarding = async (
 /**
  * Cancela una factura `Borrador` o `Emitida`
  * (`POST /finanzas/facturas/{id}/cancelar/`, responde `200` con la factura
- * completa y `contrapoliza_id`). `motivo` es opcional y solo se manda si trae
- * texto: el backend lo agrega a `observaciones`. `motivo_sat` ("02" | "03")
+ * completa y `contrapoliza_id`). `motivo` es OBLIGATORIO (nucleo-erp#1356,
+ * EC-950; sin él `400 {"motivo": ...}`): queda como `motivo_cancelacion` y una
+ * nota en `observaciones`; en una ya `Cancelada` solo va a la nota, no
+ * reemplaza el motivo registrado. `motivo_sat` ("02" | "03")
  * es el motivo que va al SAT (EC-806): obligatorio cuando la llamada cancela
  * un CFDI vigente, sin valor por defecto. En una ya `Cancelada` con el CFDI
- * vigente solo cancela el CFDI ante el SAT (`useCancelCancelledInvoiceCfdi`;
- * ahí `motivo` también se guardaría, pero ese diálogo no pide nota); en
+ * vigente solo cancela el CFDI ante el SAT (`useCancelCancelledInvoiceCfdi`); en
  * cualquier otra ya cancelada responde `200` sin efecto. El error se deja
  * propagar (p. ej. el `400` bajo `estatus` si tiene notas de crédito emitidas,
  * o bajo `motivo_sat`). Tope lento (`SLOW_REQUEST_TIMEOUT_MS`): puede esperar a
@@ -115,7 +116,7 @@ export const cancelInvoice = async ({
   motivoSat,
 }: {
   id: number;
-  motivo?: string;
+  motivo: string;
   /**
    * Motivo SAT (`motivo_sat`), obligatorio cuando la llamada cancela un CFDI
    * vigente; `null` cuando no va al SAT (sin timbrar o CFDI ya cancelado) y
@@ -125,10 +126,7 @@ export const cancelInvoice = async ({
 }): Promise<InvoiceCancelResponse> => {
   const { data } = await v1_api.post<InvoiceCancelResponse>(
     `/finanzas/facturas/${id}/cancelar/`,
-    {
-      ...(motivo ? { motivo } : {}),
-      ...(motivoSat ? { motivo_sat: motivoSat } : {}),
-    },
+    { motivo, ...(motivoSat ? { motivo_sat: motivoSat } : {}) },
     { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;
