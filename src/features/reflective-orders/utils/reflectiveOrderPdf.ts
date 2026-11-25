@@ -4,6 +4,7 @@
  * React ni `@react-pdf/renderer`, para probarlas en `tests/unit/`.
  */
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
+import { cancellationPdfFields } from "@/src/features/document-cancellation/utils/cancellationPdf";
 import { cleanText } from "@/src/utils/cleanText";
 import { isWorkOrderTerminal } from "@/src/utils/workOrderStatusEdit";
 import type {
@@ -15,17 +16,22 @@ import { resolveReflectiveLineConfigs } from "./resolveReflectiveLineConfigs";
 
 /**
  * Identidad de una OR para su PDF. La CANCELADA (7) se sigue pudiendo
- * consultar y lleva la marca de la base, sin motivo (la OR no lo guarda). Una
- * OR dada de baja responde 404 y no llega aquí.
+ * consultar y lleva la marca de la base, con su motivo, quién y cuándo
+ * (`cancelar/`, nucleo-erp#1355, EC-948) si los trae. Una OR dada de baja
+ * responde 404 y no llega aquí.
  */
 export const reflectiveOrderPdfDescriptor = (
-  order: Pick<ReflectiveOrderDetail, "id" | "folio_reflejante" | "estatus_reflejante">,
-): DocumentPdfDescriptor => ({
-  type: "OR",
-  id: order.id,
-  folio: order.folio_reflejante,
-  cancelled: isWorkOrderTerminal(order.estatus_reflejante),
-});
+  order: Pick<ReflectiveOrderDetail, "id" | "folio_reflejante" | "estatus_reflejante" | "motivo_cancelacion" | "fecha_cancelacion" | "cancelado_por_nombre">,
+): DocumentPdfDescriptor => {
+  const cancelled = isWorkOrderTerminal(order.estatus_reflejante);
+  return {
+    type: "OR",
+    id: order.id,
+    folio: order.folio_reflejante,
+    cancelled,
+    ...cancellationPdfFields(cancelled, order),
+  };
+};
 
 /**
  * Una entrada de reflejante como texto, con los datos del popover de la
