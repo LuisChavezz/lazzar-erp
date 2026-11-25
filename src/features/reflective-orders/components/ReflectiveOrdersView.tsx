@@ -56,10 +56,10 @@ import { reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
  * pero no se expone aquí, igual que en bordado. Tampoco hay paginación (el
  * endpoint devuelve el arreglo completo, sin envoltorio `count`/`results`).
  *
- * SIN `filterConfig`: el eje que sería candidato natural —estatus— vale lo mismo
- * en TODAS las filas hoy (`1`/Pendiente, ver `ReflectiveOrderStats`), así que
- * un filtro por él ofrecería una sola
- * opción que no descarta nada. La búsqueda global del toolbar ya cubre folio,
+ * SIN `filterConfig`: los filtros por columna viven en los encabezados
+ * (`withHeaderFilters`, ver `REFLECTIVEORDER_HEADER_FILTERS`) y el estatus se
+ * separa con las pestañas "En curso" / "Terminadas".
+ * La búsqueda global del toolbar ya cubre folio,
  * pedido, operador y observaciones. Mismo criterio que `EmbroideryView`.
  *
  * `DataTable` se monta SIEMPRE (no se sustituye por un skeleton/ErrorState en
