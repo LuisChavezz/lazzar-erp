@@ -22,6 +22,18 @@ export const getBankAccounts = async (): Promise<CuentaBancaria[]> => {
  * No sustituye al renglón del listado ni al revés: el listado no trae
  * movimientos y este resumen no trae los datos de captura de la cuenta.
  */
+/**
+ * Cancela un movimiento bancario MANUAL con el motivo obligatorio:
+ * `POST /finanzas/movimientos-bancarios/{id}/cancelar/` (nucleo-erp#1356,
+ * EC-950; exige `CANCELAR-FIN-BANCOS`). Revierte su efecto en el saldo y lo deja
+ * `Cancelado` (no lo borra). Uno que nace de un cobro o un pago responde
+ * `400 movimiento_bancario`; uno ya cancelado, `400 estatus`.
+ */
+export const cancelMovimientoBancario = async (id: number, motivo: string): Promise<unknown> => {
+  const { data } = await v1_api.post(`/finanzas/movimientos-bancarios/${id}/cancelar/`, { motivo });
+  return data;
+};
+
 export const getBankAccountSummary = async (
   id: number,
 ): Promise<ResumenCuentaBancaria> => {
