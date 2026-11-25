@@ -8,6 +8,8 @@ import type {
 import {
   CancelPurchaseOrderParams,
   CancelPurchaseOrderResponse,
+  ClosePurchaseOrderBalanceParams,
+  ClosePurchaseOrderBalanceResponse,
   ConfirmPurchaseOrderResponse,
   PurchaseOrder,
   PurchaseOrderDetail,
@@ -135,6 +137,22 @@ export const cancelPurchaseOrder = async ({
   const response = await v1_api.post<CancelPurchaseOrderResponse>(
     `/compras/ordenes/${id}/cancelar/`,
     payload,
+  );
+  return response.data;
+}
+
+/**
+ * Cierra el saldo de una OC parcialmente recibida (EC-947): queda Recibida (5)
+ * con `saldo_cerrado`, y lo que faltaba de sus necesidades de pre-orden vuelve
+ * a Pendiente. Requiere `A-COMPRAS-OC` y motivo. No se reabre.
+ */
+export const closePurchaseOrderBalance = async ({
+  id,
+  motivo,
+}: ClosePurchaseOrderBalanceParams): Promise<ClosePurchaseOrderBalanceResponse> => {
+  const response = await v1_api.post<ClosePurchaseOrderBalanceResponse>(
+    `/compras/ordenes/${id}/cerrar-saldo/`,
+    { motivo },
   );
   return response.data;
 }

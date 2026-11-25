@@ -14,6 +14,7 @@ import {
   ChevronRightIcon,
   EditIcon,
   EmailIcon,
+  LockIcon,
   RouteIcon,
   ViewIcon,
 } from "@/src/components/Icons";
@@ -30,6 +31,7 @@ import { usePurchaseOrderEmailStatus } from "../hooks/useSendPurchaseOrderEmail"
 import { usePurchaseOrderRowActionsContext } from "../hooks/purchaseOrderRowActionsContext";
 import {
   isPurchaseOrderAuthorizedOrComplete,
+  isPurchaseOrderBalanceClosable,
   isPurchaseOrderCancellable,
   isPurchaseOrderEditable,
   isPurchaseOrderUnconfirmed,
@@ -69,11 +71,13 @@ const FolioCell = ({
   order,
   onEdit,
   onCancel,
+  onCloseBalance,
   onCriticalPath,
 }: {
   order: PurchaseOrder;
   onEdit: (order: PurchaseOrder) => void;
   onCancel: (order: PurchaseOrder) => void;
+  onCloseBalance: (order: PurchaseOrder) => void;
   onCriticalPath: (order: PurchaseOrder) => void;
 }) => {
   const { onSendEmail, emailPendingCompany, confirmPendingIds } =
@@ -94,7 +98,7 @@ const FolioCell = ({
   // —precisamente en las EDITABLES, que son las que ven estos diálogos—, así
   // que sin el respaldo salía literalmente "la orden de compra null".
   const orderLabel = order.folio ?? `#${order.id}`;
-  const statusCfg = purchaseOrderStatusEntry(order.estatus, order.estatus_label);
+  const statusCfg = purchaseOrderStatusEntry(order.estatus, order.estatus_label, order.saldo_cerrado);
 
   // Borrador o pendiente: la orden aún no se confirma, así que puede
   // confirmarse o eliminarse. Autorizada en adelante, ninguna de las dos.
@@ -199,6 +203,18 @@ const FolioCell = ({
       onSelect: () => onCancel(order),
       permission: "A-COMPRAS-OC",
       disabled: isPending || isDeletePending,
+    });
+  }
+
+  if (isPurchaseOrderBalanceClosable(order.estatus)) {
+    // Cerrar saldo (EC-947): una parcialmente recibida se da por terminada con
+    // lo que llegó. Mismo código que Confirmar y Cancelar (`A-COMPRAS-OC`, el
+    // que valida el backend); el diálogo vive en la vista (cambia el estatus).
+    menuItems.push({
+      label: "Cerrar saldo",
+      icon: LockIcon,
+      onSelect: () => onCloseBalance(order),
+      permission: "A-COMPRAS-OC",
     });
   }
 
@@ -335,8 +351,8 @@ const FolioCell = ({
  * - Tipo de compra, cantidad y vencimiento ordenan pero no filtran: el
  *   endpoint no acepta esos filtros.
  *
- * Fábrica —no un arreglo estático— porque "Editar"/"Cancelar"/"Ruta crítica"
- * abren diálogos que viven en `PurchaseOrderView`. Mismo patrón
+ * Fábrica —no un arreglo estático— porque "Editar"/"Cancelar"/"Ruta crítica"/
+ * "Cerrar saldo" abren diálogos que viven en `PurchaseOrderView`. Mismo patrón
  * `getXColumns(callbacks)` que `CorteMangaOrderColumns`.
  *
  * Contenido pedido por negocio: O.C. (folio + estatus + referencia, y el menú
@@ -349,6 +365,7 @@ export const getColumns = (
   onEdit: (order: PurchaseOrder) => void,
   onCancel: (order: PurchaseOrder) => void,
   onCriticalPath: (order: PurchaseOrder) => void,
+  onCloseBalance: (order: PurchaseOrder) => void,
 ) => {
   const columns = [
     // ── O.C. ───────────────────────────────────────────────────────────────
@@ -387,6 +404,7 @@ export const getColumns = (
             order={row.original}
             onEdit={onEdit}
             onCancel={onCancel}
+            onCloseBalance={onCloseBalance}
             onCriticalPath={onCriticalPath}
           />
         ),

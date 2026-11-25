@@ -129,6 +129,18 @@ export interface PurchaseOrder {
    * contra el backend); `null` cuando la orden no está cancelada.
    */
   motivo_cancelacion: string | null;
+  /**
+   * Saldo cerrado (`POST ordenes/{id}/cerrar-saldo/`, nucleo-erp#1353, EC-947):
+   * una OC parcialmente recibida que se dio por terminada queda en estatus 5
+   * (Recibida) con `saldo_cerrado: true`. Solo lectura, en listado y detalle.
+   * Opcionales: una respuesta sin ellos (otra acción, caché anterior) se lee
+   * como saldo abierto. `cerrada_por` es solo el id del usuario (sin nombre):
+   * no se muestra.
+   */
+  saldo_cerrado?: boolean;
+  motivo_cierre?: string;
+  fecha_cierre?: string | null;
+  cerrada_por?: number | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -378,6 +390,30 @@ export interface CancelPurchaseOrderParams {
 export type CancelPurchaseOrderResponse = Pick<
   PurchaseOrder,
   "id" | "estatus" | "estatus_label" | "motivo_cancelacion"
+>;
+
+//
+// ─── Cierre de saldo de la orden de compra (EC-947) ─────────────────────────
+//
+
+/**
+ * Cuerpo de `POST /compras/ordenes/{id}/cerrar-saldo/`. Sin motivo el backend
+ * responde 400 `{ "motivo": "Indica por qué se cierra el saldo." }`.
+ */
+export interface ClosePurchaseOrderBalanceParams {
+  id: number;
+  motivo: string;
+}
+
+/**
+ * Lo que se LEE de la respuesta de `cerrar-saldo/`: la OC con la forma del
+ * retrieve (importes filtrados por rol) y, como en `cancelar/`, sin la
+ * anotación de progreso. Solo se exponen los campos del cierre, los únicos que
+ * se escriben en la fila del listado (EC-927).
+ */
+export type ClosePurchaseOrderBalanceResponse = Pick<
+  PurchaseOrder,
+  "id" | "estatus" | "estatus_label" | "saldo_cerrado" | "motivo_cierre" | "fecha_cierre"
 >;
 
 /**
