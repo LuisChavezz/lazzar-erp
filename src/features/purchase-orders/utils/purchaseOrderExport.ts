@@ -3,6 +3,7 @@ import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
+import { purchaseOrderStatusEntry } from "../constants/purchaseOrderStatus";
 
 /**
  * Texto plano por columna para los reportes CSV y PDF del listado (los
@@ -20,8 +21,15 @@ export const getPurchaseOrderColumnText = (
   switch (column.id) {
     case "folio":
       // Mismo identificador que el disparador del listado: el folio, o `#id`
-      // mientras la orden no tiene folio (antes de confirmarse).
-      return [order.folio ?? `#${order.id}`, order.estatus_label, order.referencia || null]
+      // mientras la orden no tiene folio (antes de confirmarse). El estatus,
+      // con la misma etiqueta que el badge de la tabla: una Recibida con el
+      // saldo cerrado sale "Saldo cerrado", no "Recibida" (EC-947).
+      return [
+        order.folio ?? `#${order.id}`,
+        purchaseOrderStatusEntry(order.estatus, order.estatus_label, order.saldo_cerrado).label ??
+          order.estatus_label,
+        order.referencia || null,
+      ]
         .filter(Boolean)
         .join(" · ");
     case "tipo_compra":

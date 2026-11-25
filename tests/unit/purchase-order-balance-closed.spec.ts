@@ -5,6 +5,8 @@ import {
   purchaseOrderStatusEntry,
 } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
 import { purchaseOrderPdfStatusBanner } from "@/src/features/purchase-orders/utils/purchaseOrderPdfDescriptor";
+import { getPurchaseOrderColumnText } from "@/src/features/purchase-orders/utils/purchaseOrderExport";
+import type { PurchaseOrder } from "@/src/features/purchase-orders/interfaces/purchase-order.interface";
 
 // EC-947: `cerrar-saldo/` deja la OC en estatus 5 con `saldo_cerrado`.
 test.describe("saldo cerrado de una OC", () => {
@@ -53,5 +55,26 @@ test.describe("saldo cerrado de una OC", () => {
       title: "SALDO CERRADO",
       detail: null,
     });
+  });
+});
+
+// El folio del listado exportado (PDF y Excel comparten `getPurchaseOrderColumnText`)
+// lleva el estatus con la etiqueta del badge de la tabla, no `estatus_label`.
+test.describe("estatus de la OC en la exportación del listado", () => {
+  const folioColumn = { id: "folio", header: "O.C." };
+  const order = (overrides: Partial<PurchaseOrder>): PurchaseOrder =>
+    ({ id: 7, folio: "OC-7", estatus: 5, estatus_label: "Recibida", referencia: "", ...overrides }) as PurchaseOrder;
+
+  test("una Recibida con el saldo cerrado se exporta como 'Saldo cerrado'", () => {
+    expect(getPurchaseOrderColumnText(order({ saldo_cerrado: true }), folioColumn)).toBe("OC-7 · Saldo cerrado");
+  });
+
+  test("una Recibida sin saldo cerrado sigue como 'Recibida'", () => {
+    expect(getPurchaseOrderColumnText(order({ saldo_cerrado: false }), folioColumn)).toBe("OC-7 · Recibida");
+    expect(getPurchaseOrderColumnText(order({ referencia: "REF-1" }), folioColumn)).toBe("OC-7 · Recibida · REF-1");
+  });
+
+  test("un estatus fuera del mapa local usa el estatus_label del backend", () => {
+    expect(getPurchaseOrderColumnText(order({ estatus: 9, estatus_label: "Rara" }), folioColumn)).toBe("OC-7 · Rara");
   });
 });
