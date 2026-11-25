@@ -141,6 +141,15 @@ const ob = (overrides: Partial<EmbroideryOrderDetail> = {}): EmbroideryOrderDeta
   }) as EmbroideryOrderDetail;
 
 test.describe("PDF de la orden de bordado", () => {
+  test("un renglón de muestra (sin producto ni la clave producto_nombre) lleva su SKU, nunca «Producto #null» (EC-963)", () => {
+    const muestra = obLinea({ id: 600, producto: null, pedido_detalle: 2177, sku: "MP2177-302-28" });
+    delete muestra.producto_nombre;
+    const doc = read(EmbroideryOrderPdfDocument({ order: ob({ detalles: [obLinea(), muestra] }), company: COMPANY }));
+    const titles = doc.tables.map((table) => table.title);
+    expect(titles[1]).toMatch(/^Sin producto de catálogo · MP2177-302-28 · /);
+    expect(titles.join(" ")).not.toContain("#null");
+  });
+
   test("código OB; solo el 8 (Cancelado legacy) lleva la marca", () => {
     expect(fileName(embroideryOrderPdfDescriptor(ob()))).toBe("2026-OB-00032.pdf");
     expect(fileName(embroideryOrderPdfDescriptor(ob({ folio_bordado: "" })))).toBe("OB-ID177.pdf");

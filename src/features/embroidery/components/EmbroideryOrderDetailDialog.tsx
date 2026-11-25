@@ -27,6 +27,7 @@ import type {
   EmbroideryOrderSibling,
 } from "../interfaces/embroidery.interface";
 import { EmbroideryLineLocationPopover } from "./EmbroideryLineLocationPopover";
+import { workOrderGarmentLabel } from "@/src/utils/workOrderProductLabel";
 
 /** Cantidad que puede llegar `null` del backend. `null` → guion largo. */
 const quantityOrDash = (value: number | null) =>
@@ -104,12 +105,12 @@ const LineasTable = ({ items }: { items: EmbroideryOrderDetailLine[] }) => {
             className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
           >
             <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
-              <span className="block">{linea.producto_nombre ?? "—"}</span>
+              <span className="block">{workOrderGarmentLabel(linea)}</span>
               {ubicaciones.length > 0 ? (
                 <span className="mt-1 flex flex-wrap items-center gap-1.5">
                   <EmbroideryLineLocationPopover
                     ubicaciones={ubicaciones}
-                    productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+                    productoNombre={workOrderGarmentLabel(linea)}
                     tallaNombre={linea.talla_nombre}
                     colorNombre={linea.color_nombre ?? null}
                     posicionLabel={linea.posicion_bordado}
