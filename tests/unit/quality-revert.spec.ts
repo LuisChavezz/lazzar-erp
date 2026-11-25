@@ -48,6 +48,22 @@ test.describe("revertir calidad", () => {
     expect((queryClient.getQueryData(["receipts"]) as { estatus: number }[])[0].estatus).toBe(4);
   });
 
+  test("applyResult no invalida: las invalidaciones van en refresh, sin esperarse", async () => {
+    const queryClient = new QueryClient();
+    const invalidated: unknown[] = [];
+    queryClient.invalidateQueries = ((filters: { queryKey: unknown }) => {
+      invalidated.push(filters.queryKey);
+      return new Promise(() => {}); // un refetch que nunca termina
+    }) as never;
+    const action = qualityRevertAction({ id: 7, recepcion: 40, recepcion_folio: "RC-1" });
+    await action.applyResult(queryClient, { calidad_inspeccion: { id: 7, estado: "anulada" } as never, recepcion_estatus: 4, orden_compra_estatus: null, movimiento_id: null, movimiento_inventario_id: null });
+    expect(invalidated).toEqual([]);
+    action.refresh?.(queryClient);
+    expect(invalidated).toContainEqual(["quality-inspections"]);
+    expect(invalidated).toContainEqual(["receipts"]);
+    expect(invalidated).toContainEqual(["purchase-orders"]);
+  });
+
   test("una respuesta con otra forma no escribe nada ni lanza", async () => {
     const queryClient = new QueryClient();
     const list = [{ id: 7, recepcion: 40, estado: "aprobada" }];

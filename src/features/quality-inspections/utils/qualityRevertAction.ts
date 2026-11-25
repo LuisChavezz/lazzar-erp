@@ -41,10 +41,9 @@ const REVERT_FIELDS = [
 
 /**
  * Escribe en caché la inspección anulada y el estatus al que volvió la
- * recepción ANTES de invalidar (EC-927), y después invalida lo mismo que al
- * inspeccionar (`QUALITY_INSPECTION_AFFECTED_QUERY_KEYS`: bandeja, recepciones,
- * OC/OP y onboarding de surtido). La mutación compartida invalida además
- * existencias y la bitácora. Best-effort: los helpers de `cachedRows` no lanzan.
+ * recepción ANTES de invalidar (EC-927). Best-effort: los helpers de
+ * `cachedRows` no lanzan. Las invalidaciones van aparte, en
+ * `refreshAfterQualityRevert`, sin esperarse.
  */
 const applyRevertResult = async (
   queryClient: QueryClient,
@@ -65,9 +64,19 @@ const applyRevertResult = async (
       estatus: result.recepcion_estatus,
     }));
   }
-  await Promise.all(
-    QUALITY_INSPECTION_AFFECTED_QUERY_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-  );
+};
+
+/**
+ * Lo mismo que cambia al inspeccionar (`QUALITY_INSPECTION_AFFECTED_QUERY_KEYS`:
+ * bandeja, recepciones, OC/OP y onboarding de surtido); la mutación compartida
+ * invalida además existencias y la bitácora. Sin esperar los refetch, como
+ * `invalidateAfterWmsCancellation`: el diálogo cierra en cuanto responde el
+ * backend y se escribe la caché.
+ */
+const refreshAfterQualityRevert = (queryClient: QueryClient) => {
+  for (const queryKey of QUALITY_INSPECTION_AFFECTED_QUERY_KEYS) {
+    void queryClient.invalidateQueries({ queryKey });
+  }
 };
 
 /** Revertir una inspección de calidad (EC-947), sobre el diálogo de WMS. */
@@ -77,6 +86,7 @@ export const qualityRevertAction = (
   mutationKey: revertQualityInspectionMutationKey(inspection.id),
   run: (motivo) => revertQualityInspection({ id: inspection.id, motivo }),
   applyResult: (queryClient, result) => applyRevertResult(queryClient, inspection.id, inspection.recepcion, result),
+  refresh: refreshAfterQualityRevert,
   successMessage: () => `Calidad revertida: ${inspection.recepcion_folio} volvió a En calidad`,
   fallbackErrorMessage: "Error al revertir la inspección de calidad",
 });
