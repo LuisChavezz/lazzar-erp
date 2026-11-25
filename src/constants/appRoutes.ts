@@ -60,6 +60,13 @@ import {
   TrendingUpIcon,
 } from "../components/Icons";
 
+/**
+ * Marca de tipo (no existe en runtime) que solo pone `withDerivedPermissions`.
+ * Sin ella ningún literal es un `AppRouteItem`, así que no hay forma de
+ * escribir a mano el `permission` de una hoja (EC-960).
+ */
+declare const derivedLeaf: unique symbol;
+
 export interface AppRouteItem {
   key: string;
   label: string;
@@ -84,6 +91,7 @@ export interface AppRouteItem {
    * (`R-<MODULO>-<SECCION>`): esto solo agrupa visualmente, no gatea nada.
    */
   section?: string;
+  readonly [derivedLeaf]: true;
 }
 
 /** Sub-grupo de navegación intermedio entre el módulo y sus hojas. */
@@ -92,6 +100,11 @@ export interface AppRouteSection {
   label: string;
 }
 
+/**
+ * Grupo de navegación. Solo es válido el que produce `withDerivedPermissions`
+ * (es decir, los de `appRouteGroups`): sus hojas llevan la marca de derivación,
+ * y un grupo escrito como literal no compila.
+ */
 export interface AppRouteGroup {
   key: string;
   label: string;
@@ -145,7 +158,7 @@ export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
  * Hoja tal como se DECLARA en el catálogo: sin `permission`, que se deriva de
  * su `path` (ver `AppRouteItem.permission`). Escribirlo a mano no compila.
  */
-type AppRouteItemDefinition = Omit<AppRouteItem, "permission">;
+type AppRouteItemDefinition = Omit<AppRouteItem, "permission" | typeof derivedLeaf>;
 
 /** Grupo tal como se declara: sus hojas sin `permission`. */
 type AppRouteGroupDefinition = Omit<AppRouteGroup, "items"> & {
@@ -178,7 +191,9 @@ const defineSectionedGroup = <const SectionKey extends string>(
  */
 const withDerivedPermissions = (group: AppRouteGroupDefinition): AppRouteGroup => ({
   ...group,
-  items: group.items.map((item) => ({ ...item, permission: getRouteRequirement(item.path) })),
+  items: group.items.map(
+    (item) => ({ ...item, permission: getRouteRequirement(item.path) }) as AppRouteItem,
+  ),
 });
 
 const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
