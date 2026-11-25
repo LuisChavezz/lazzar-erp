@@ -27,6 +27,12 @@ export interface WmsCancelAction<TResult> {
    * que esa, para que el diálogo cierre en cuanto termina la escritura en caché.
    */
   refresh?: (queryClient: QueryClient) => void;
+  /**
+   * Opcional: llaves de `400` de negocio de esta acción que, como las de WMS,
+   * dicen que ya no procede (`classifyWmsCancelError`, `extraBlockingKeys`):
+   * toast con el mensaje tal cual, se cierra el diálogo y se relee todo.
+   */
+  blockingKeys?: readonly string[];
   successMessage: (result: TResult) => string;
   /** Toast de un fallo sin mensaje del backend (red, 5xx). */
   fallbackErrorMessage: string;
@@ -65,7 +71,7 @@ export const useWmsCancelMutation = <TResult>(
       toast.success(action.successMessage(result));
     },
     onError: (error) => {
-      const classified = classifyWmsCancelError(error, action.fallbackErrorMessage);
+      const classified = classifyWmsCancelError(error, action.fallbackErrorMessage, action.blockingKeys);
       if (classified.kind === "motivo" && onMotivoError) {
         onMotivoError(classified.message);
         return;
@@ -74,6 +80,7 @@ export const useWmsCancelMutation = <TResult>(
       // Ya no se puede (o cambió en otro lado): la caché está vieja, se relee.
       if (classified.kind === "blocked" || classified.kind === "not-found" || classified.kind === "retryable") {
         void invalidateAfterWmsCancellation(queryClient);
+        action.refresh?.(queryClient);
       }
     },
   });

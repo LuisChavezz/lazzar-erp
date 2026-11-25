@@ -26,6 +26,21 @@ export const isQualityInspectionRevertible = (
   receptionEstatus: number | null | undefined,
 ): boolean => inspection.estado !== "anulada" && receptionEstatus === RECEPCION_CERRADA;
 
+/**
+ * Llaves del `400` con que `revertir/` dice que ya no procede: inspección ya
+ * anulada, recepción no cerrada, OC con el saldo cerrado, OP completada,
+ * factura de proveedor viva o existencia insuficiente. Cierran el diálogo con el
+ * mensaje del backend tal cual y releen la bandeja (`blockingKeys`).
+ */
+export const QUALITY_REVERT_BLOCKING_KEYS = [
+  "estado",
+  "recepcion",
+  "orden_compra",
+  "op",
+  "facturas_proveedores",
+  "existencia",
+] as const;
+
 /** Candado por inspección. */
 export const revertQualityInspectionMutationKey = (inspectionId: number) =>
   ["revertir-calidad", inspectionId] as const;
@@ -87,6 +102,7 @@ export const qualityRevertAction = (
   run: (motivo) => revertQualityInspection({ id: inspection.id, motivo }),
   applyResult: (queryClient, result) => applyRevertResult(queryClient, inspection.id, inspection.recepcion, result),
   refresh: refreshAfterQualityRevert,
+  blockingKeys: QUALITY_REVERT_BLOCKING_KEYS,
   successMessage: () => `Calidad revertida: ${inspection.recepcion_folio} volvió a En calidad`,
   fallbackErrorMessage: "Error al revertir la inspección de calidad",
 });
