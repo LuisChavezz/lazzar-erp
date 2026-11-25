@@ -12,6 +12,7 @@
 import type { ListPdfDocumentProps, ListPdfMetaItem } from "@/src/pdfs/ListPdfDocument";
 import { stripPdfEmoji } from "@/src/pdfs/shared/stripPdfEmoji";
 import type { ListExportColumn } from "./listExport";
+import { MEXICO_TIME_ZONE } from "./mexicoTime";
 import { renderPdfBlob } from "./renderPdfBlob";
 
 /**
@@ -43,9 +44,12 @@ export const listPdfWidths = (weights: readonly number[], digits: number): strin
   return weights.map((weight) => `${((weight / total) * 100).toFixed(digits)}%`);
 };
 
-/** Fecha del encabezado: "25 de noviembre de 2026". */
+/**
+ * Fecha del encabezado: "25 de noviembre de 2026", el día de México
+ * (`MEXICO_TIME_ZONE`), no el del navegador.
+ */
 export const listPdfExportDate = (now: Date): string =>
-  now.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+  now.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric", timeZone: MEXICO_TIME_ZONE });
 
 const registros = (count: number) => `${count} registro${count === 1 ? "" : "s"}`;
 
