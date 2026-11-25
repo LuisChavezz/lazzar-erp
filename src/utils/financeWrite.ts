@@ -1,6 +1,12 @@
 import toast from "react-hot-toast";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import {
+  FINANCE_WRITE_PERMISSION,
+  FINANCE_WRITE_PERMISSION_REASON,
+  financeCancelPermissionReason,
+  type FinanceCancelPermission,
+} from "@/src/constants/financePermissions";
 import type { PermissionContext } from "@/src/interfaces/permission-context.interface";
+import { hasPermission } from "./permissions";
 import { financeReadBlockReason, getFinanceReadState, type SessionStatus } from "./financeRead";
 
 export type { SessionStatus } from "./financeRead";
@@ -28,6 +34,31 @@ export const getFinanceWriteState = (
 ): FinanceWriteState => {
   const { canRead, isSessionLoading } = getFinanceReadState(user, status, FINANCE_WRITE_PERMISSION);
   return { canWrite: canRead, isSessionLoading };
+};
+
+/**
+ * Estado de una CANCELACIÓN de Finanzas (EC-950): la escritura
+ * (`FINANCE_WRITE_PERMISSION`) más el `CANCELAR-FIN-*` del documento, que el
+ * backend exige en ese orden. `reason` es el `detail` del `403` que faltaría:
+ * el de escritura (`writeReason`, el de cada viewset) si falta
+ * `E-FIN-FACTURAS`, o el de cancelación si solo falta el del documento.
+ */
+export interface FinanceCancelState extends FinanceWriteState {
+  reason: string;
+}
+
+export const getFinanceCancelState = (
+  user: PermissionContext | null | undefined,
+  status: SessionStatus,
+  permission: FinanceCancelPermission,
+  writeReason: string = FINANCE_WRITE_PERMISSION_REASON,
+): FinanceCancelState => {
+  const write = getFinanceWriteState(user, status);
+  return {
+    canWrite: write.canWrite && hasPermission(permission, user),
+    isSessionLoading: write.isSessionLoading,
+    reason: write.canWrite ? financeCancelPermissionReason(permission) : writeReason,
+  };
 };
 
 /**

@@ -47,8 +47,9 @@ export type CancelCobroRepResult =
  *   ya no tiene un REP cancelable, NO hace el POST; si el motivo SAT quedó fijo
  *   en otro distinto del elegido, tampoco: `needs-confirmation`, como en
  *   facturas.
- * - Manda el motivo SAT del diálogo (`motivo_sat`, EC-808): obligatorio en el
- *   disparador (`cancelRep({ variables: { motivoSat }, ... })`).
+ * - Manda el motivo SAT del diálogo (`motivo_sat`, EC-808) y el `motivo` que
+ *   exige toda cancelación (EC-950): los dos obligatorios en el disparador
+ *   (`cancelRep({ variables: { motivoSat, motivo }, ... })`).
  * - Al TERMINAR, con cualquier resultado, relee `["cobros"]`: es la única caché
  *   que pinta el REP (detalle y columna del listado de cobros, y la sección
  *   "Cobros" del detalle de CxC, que lee el mismo listado). Cancelar el REP no
@@ -59,15 +60,15 @@ export const useCancelCobroRep = (cobroId: number) => {
 
   const { trigger: cancelRep, isRunning: isCancellingRep, isIdle } = useCobroAction<
     CancelCobroRepResult,
-    { motivoSat: SatCancelMotive }
+    { motivoSat: SatCancelMotive; motivo: string }
   >({
     mutationKey: cancelCobroRepMutationKey(cobroId),
     cobroId,
-    run: async (current, { motivoSat }) => {
+    run: async (current, { motivoSat, motivo }) => {
       const stop = getCobroRepCancelPrecheck(current, motivoSat);
       if (stop) return { outcome: stop, cobro: current };
       try {
-        return { outcome: "cancelled", cobro: await cancelCobroRep({ id: cobroId, motivoSat }) };
+        return { outcome: "cancelled", cobro: await cancelCobroRep({ id: cobroId, motivoSat, motivo }) };
       } catch (error) {
         const message = cancelacionPendienteMessage(error);
         if (!message) throw error;

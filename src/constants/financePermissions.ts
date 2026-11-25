@@ -50,6 +50,29 @@ export const FINANCE_WRITE_PERMISSION = "E-FIN-FACTURAS";
  */
 export const FINANCE_WRITE_PERMISSION_REASON = "No tienes permiso para modificar datos de finanzas.";
 
+/**
+ * Permisos de CANCELACIÓN por tipo de documento (nucleo-erp#1356, EC-950). Se
+ * piden ADEMÁS de `FINANCE_WRITE_PERMISSION`: el backend revisa primero
+ * `E-FIN-FACTURAS` (`PermisoFinanzas`) y luego el del documento. Facturas y
+ * notas de crédito no tienen uno propio. Superusuario y admin de empresa pasan
+ * siempre.
+ */
+export const FINANCE_CANCEL_PERMISSION = {
+  polizas: "CANCELAR-FIN-POLIZAS",
+  /** Cobros y su REP. */
+  cobros: "CANCELAR-FIN-COBROS",
+  /** Pagos, facturas de proveedor y CxP con pagos ligados. */
+  pagos: "CANCELAR-FIN-PAGOS",
+  /** Movimientos bancarios y conciliaciones. */
+  bancos: "CANCELAR-FIN-BANCOS",
+} as const;
+
+export type FinanceCancelPermission = (typeof FINANCE_CANCEL_PERMISSION)[keyof typeof FINANCE_CANCEL_PERMISSION];
+
+/** El `detail` del `403` de una cancelación sin su `CANCELAR-FIN-*` (`exigir_permiso`). */
+export const financeCancelPermissionReason = (permission: FinanceCancelPermission): string =>
+  `No tienes permiso para cancelar este documento (${permission}).`;
+
 /** Motivo en pólizas: el `detail` del `403` de `PolizaViewSet`. */
 export const POLIZA_WRITE_PERMISSION_REASON = "No tienes permiso para registrar o cancelar pólizas.";
 

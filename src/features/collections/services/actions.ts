@@ -68,13 +68,19 @@ export const stampCobroRep = async (id: number): Promise<Cobro> => {
 export const cancelCobroRep = async ({
   id,
   motivoSat,
+  motivo,
 }: {
   id: number;
   motivoSat: SatCancelMotive;
+  /**
+   * Motivo obligatorio de toda cancelación (nucleo-erp#1356, EC-950). El
+   * backend solo lo deja en la auditoría: no se guarda en el cobro.
+   */
+  motivo: string;
 }): Promise<Cobro> => {
   const { data } = await v1_api.post<Cobro>(
     `/finanzas/cobros/${id}/cancelar-rep/`,
-    { motivo_sat: motivoSat },
+    { motivo, motivo_sat: motivoSat },
     { timeout: SLOW_REQUEST_TIMEOUT_MS },
   );
   return data;

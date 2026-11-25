@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
+import { FormTextarea } from "@/src/components/FormTextarea";
+import { CANCEL_REASON_MAX } from "@/src/features/document-cancellation/constants/documentCancellation";
+import { CancelReasonFormSchema } from "@/src/features/document-cancellation/schemas/cancel-reason.schema";
 import { SatCancelMotiveSelect } from "@/src/components/SatCancelMotiveSelect";
 import {
   SAT_CANCEL_MOTIVE_LOCKED_SINCE_OPENED_MESSAGE,
@@ -43,9 +46,13 @@ interface CobroRepCancelDialogProps {
  * Si el motivo quedó fijo en otro después de abrirlo, el hook no hace el POST
  * (`needs-confirmation`): el diálogo sigue abierto con el cobro fresco, su
  * motivo fijo y un aviso, y pide confirmar de nuevo.
- * El motivo elegido y el cobro fresco son estado de ESTA apertura (llevan el
- * `session.id`): una apertura nueva arranca sin motivo sin remontar el
- * `Dialog.Root`.
+ * Pide también el `motivo` que exige toda cancelación (nucleo-erp#1356,
+ * EC-950; el backend solo lo deja en la auditoría), con el schema y el tope de
+ * `CancelReasonDialog`: sin él no se dispara la petición y el error se pinta
+ * bajo el campo.
+ * El motivo SAT elegido, el motivo escrito y el cobro fresco son estado de ESTA
+ * apertura (llevan el `session.id`): una apertura nueva arranca en blanco sin
+ * remontar el `Dialog.Root`.
  *
  * El ciclo de cierre es el de `CobroActionConfirmDialog`.
  */
@@ -65,6 +72,12 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
   const lockedMotive = target ? getCobroRepLockedSatCancelMotive(target) : null;
   const chosenMotive = choice !== null && choice.sessionId === session.id ? choice.motive : null;
   const motivoSat = lockedMotive ?? chosenMotive;
+  // Motivo escrito y su error en ESTA apertura.
+  const [reason, setReason] = useState<{ sessionId: number; text: string; error: string | null } | null>(
+    null,
+  );
+  const motivo = reason !== null && reason.sessionId === session.id ? reason.text : "";
+  const motivoError = reason !== null && reason.sessionId === session.id ? reason.error : null;
 
   const { cancelRep, isCancellingRep, isIdle } = useCancelCobroRep(target?.id ?? 0);
 
@@ -81,8 +94,13 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
         target && motivoSat !== null
           ? (options) => {
               const sessionId = session.id;
+              const parsed = CancelReasonFormSchema.safeParse({ motivo });
+              if (!parsed.success) {
+                setReason({ sessionId, text: motivo, error: parsed.error.issues[0]?.message ?? "Motivo inválido" });
+                return;
+              }
               cancelRep({
-                variables: { motivoSat },
+                variables: { motivoSat, motivo: parsed.data.motivo },
                 // Sin POST el diálogo sigue abierto con el motivo fijo; con
                 // cualquier otro resultado se cierra como siempre.
                 onSettled: (result) =>
@@ -98,13 +116,36 @@ export function CobroRepCancelDialog({ cobro, open, onOpenChange }: CobroRepCanc
       confirmDisabled={motivoSat === null}
     >
       {target && (
-        <SatCancelMotiveSelect
-          id={`cobro-rep-cancel-motivo-sat-${target.id}`}
-          value={chosenMotive}
-          lockedMotive={lockedMotive}
-          disabled={isCancellingRep}
-          onChange={(motive) => setChoice({ sessionId: session.id, motive })}
-        />
+        <div className="space-y-4">
+          <SatCancelMotiveSelect
+            id={`cobro-rep-cancel-motivo-sat-${target.id}`}
+            value={chosenMotive}
+            lockedMotive={lockedMotive}
+            disabled={isCancellingRep}
+            onChange={(motive) => setChoice({ sessionId: session.id, motive })}
+          />
+          <div>
+            <FormTextarea
+              id={`cobro-rep-cancel-motivo-${target.id}`}
+              label="Motivo"
+              aria-describedby={`cobro-rep-cancel-motivo-${target.id}-help`}
+              name="motivo"
+              rows={3}
+              placeholder="Explica por qué se cancela el REP"
+              value={motivo}
+              maxLength={CANCEL_REASON_MAX}
+              disabled={isCancellingRep}
+              error={motivoError ? { message: motivoError } : undefined}
+              onChange={(event) => setReason({ sessionId: session.id, text: event.target.value, error: null })}
+            />
+            <p
+              id={`cobro-rep-cancel-motivo-${target.id}-help`}
+              className="mt-1 ml-1 text-xs text-slate-500 dark:text-slate-400"
+            >
+              No se envía al SAT. Máximo {CANCEL_REASON_MAX} caracteres.
+            </p>
+          </div>
+        </div>
       )}
     </CobroActionConfirmDialog>
   );
