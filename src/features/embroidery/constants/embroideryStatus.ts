@@ -12,8 +12,9 @@ import type { EmbroideryOrderStatus } from "../interfaces/embroidery.interface";
  * casualidad ni redundancia: los enteros se RESIGNIFICARON (el 5 pasó de
  * "Completado" a "Bordando", el 7 de "Cancelado" a "Finalizado"), así que un
  * rótulo "propio" que se apartara del backend volvería a abrir la brecha que
- * este catálogo acaba de cerrar. El 8 recoge los cancelados del enum anterior
- * y por eso se rotula "(legacy)".
+ * este catálogo acaba de cerrar. El 8 es "Cancelado": recoge los cancelados del
+ * enum anterior y, desde nucleo-erp#1355, los que pone `cancelar/` con motivo
+ * (EC-948); el backend ya no lo rotula "(legacy)".
  *
  * El objeto intermedio con llaves numéricas obliga a TypeScript a exigir las 8
  * entradas (`satisfies`); lo exportado se tipa `Record<string, …>` porque
@@ -56,7 +57,7 @@ const STATUS_BY_CODE = {
     dot: "bg-emerald-500",
   },
   8: {
-    label: "Cancelado (legacy)",
+    label: "Cancelado",
     cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
     dot: "bg-rose-500",
   },
@@ -64,6 +65,15 @@ const STATUS_BY_CODE = {
 
 export const EMBROIDERY_STATUS_CONFIG: Record<string, StatusBadgeConfigEntry> =
   STATUS_BY_CODE;
+
+/** `OrdenesBordado.EstatusBordado.FINALIZADO`: la orden terminó. */
+export const EMBROIDERY_STATUS_FINISHED: EmbroideryOrderStatus = 7;
+
+/**
+ * `OrdenesBordado.EstatusBordado.CANCELADO_LEGACY` (nucleo-erp, etiqueta
+ * "Cancelado"): el que pone `cancelar/` con motivo (EC-948).
+ */
+export const EMBROIDERY_STATUS_CANCELLED: EmbroideryOrderStatus = 8;
 
 /**
  * Los 8 códigos del enum, en orden ascendente.

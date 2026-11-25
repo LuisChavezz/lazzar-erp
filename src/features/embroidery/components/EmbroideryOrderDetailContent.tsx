@@ -19,8 +19,10 @@ import { parsePositiveId } from "@/src/utils/parsePositiveId";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { pluralForQuantity } from "@/src/utils/plural";
-import { EMBROIDERY_COVERAGE_CONFIG } from "../constants/embroideryStatus";
-import { isTerminalStatus } from "../constants/embroideryStatusTransitions";
+import { EMBROIDERY_COVERAGE_CONFIG, EMBROIDERY_STATUS_CANCELLED, embroideryStatusEntry } from "../constants/embroideryStatus";
+import { isEmbroideryOrderCancellable, isTerminalStatus } from "../constants/embroideryStatusTransitions";
+import { embroideryOrderDetailQueryKey } from "../hooks/useEmbroideryOrderDetail";
+import { cancelEmbroideryOrder } from "../services/actions";
 import { useEmbroideryOrderDetail } from "../hooks/useEmbroideryOrderDetail";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { useUpdateEmbroideryOrder } from "../hooks/useUpdateEmbroideryOrder";
@@ -36,9 +38,7 @@ import { EmbroideryOrderGarmentGroups } from "./EmbroideryOrderGarmentGroups";
 import type { EmbroideryOrderSibling } from "../interfaces/embroidery.interface";
 import { embroideryOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { ServicioSalidasMaquilaSection } from "@/src/features/maquila-outputs/components/ServicioSalidasMaquilaSection";
-
-/** Cancelado (legacy): el único estatus de OB sobre el que el backend rechaza una SM. */
-const OB_CANCELADA = 8;
+import { WorkOrderCancelButton } from "@/src/features/work-order-cancellation/components/WorkOrderCancelButton";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -105,6 +105,9 @@ export function EmbroideryOrderDetailContent({
   // `hasPermission` ya cortocircuita para el rol "admin".
   const { data: session } = useSession();
   const canEditOb = hasProductionPermission(session?.user, "OB", "E");
+  // Cancelar (con motivo, EC-948) es destructivo: `D-PRODUCCION-OB`, el mismo
+  // código que exige `cancelar/`.
+  const canCancelOb = hasProductionPermission(session?.user, "OB", "D");
 
   const BackLink = (
     <Link
@@ -180,7 +183,7 @@ export function EmbroideryOrderDetailContent({
       ? Math.round((data.cantidad_cubierta / data.cantidad_contratada) * 100)
       : null;
 
-  // Estatus terminal (7 Finalizado / 8 Cancelado legacy): la ficha entera pasa
+  // Estatus terminal (7 Finalizado / 8 Cancelado): la ficha entera pasa
   // a solo lectura y no se registran avances. Se pregunta a `isTerminalStatus`
   // en vez de codificar los códigos a mano: es la MISMA función de la que
   // `getAvailableTransitions` deriva su lista vacía, así que el selector y el
@@ -203,6 +206,21 @@ export function EmbroideryOrderDetailContent({
         {BackLink}
         <div className="flex flex-wrap items-center gap-2">
           {isTerminal && <OrderChip>Orden cerrada · solo lectura</OrderChip>}
+          <WorkOrderCancelButton
+            canCancel={canCancelOb}
+            available={isEmbroideryOrderCancellable(data)}
+            config={{
+              orderId: data.id,
+              folio: data.folio_bordado,
+              orderLabel: "orden de bordado",
+              statusField: "estatus_bordado",
+              cancelledLabel: embroideryStatusEntry(EMBROIDERY_STATUS_CANCELLED).label,
+              cancel: cancelEmbroideryOrder,
+              detailQueryKey: embroideryOrderDetailQueryKey(data.id),
+              listQueryKey: ["embroidery-orders"],
+              hasSalidasMaquila: true,
+            }}
+          />
           <EmbroideryOrderPdfButton order={data} />
         </div>
       </div>
@@ -401,7 +419,7 @@ export function EmbroideryOrderDetailContent({
       <ServicioSalidasMaquilaSection
         origen="OB"
         ordenId={data.id}
-        cancelada={data.estatus_bordado === OB_CANCELADA}
+        cancelada={data.estatus_bordado === EMBROIDERY_STATUS_CANCELLED}
         detalles={data.detalles}
         proveedor={data.proveedor}
       />

@@ -18,7 +18,7 @@ import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vi
  * frontend (mismo criterio que `PackingEstado`).
  *
  *  1 Sin trabajar (default) · 2 Programado · 3 Ponchado · 4 Arreglo ·
- *  5 Bordando · 6 Detenido · 7 Finalizado · 8 Cancelado (legacy)
+ *  5 Bordando · 6 Detenido · 7 Finalizado · 8 Cancelado
  *
  * OJO — los enteros se RESIGNIFICARON: el enum anterior era
  * `1 Pendiente · 2 Preparación · 3 Bordando · 4 Revisión · 5 Completado ·

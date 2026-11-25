@@ -18,7 +18,7 @@ import type { BordadoAvance } from "../interfaces/embroidery.interface";
 interface EmbroideryAvancesHistoryProps {
   avances: BordadoAvance[];
   obId: number;
-  /** Estatus terminal (Finalizado / Cancelado legacy): no se registran avances. */
+  /** Estatus terminal (Finalizado / Cancelado): no se registran avances. */
   isTerminal: boolean;
   /** Piezas programadas en toda la OB — techo del diálogo de alta. */
   programado: number;

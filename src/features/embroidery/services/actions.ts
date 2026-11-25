@@ -1,4 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
+import type { WorkOrderCancelResponse } from "@/src/features/work-order-cancellation/interfaces/work-order-cancellation.interface";
 import type {
   BordadoAvance,
   CreateAvancePayload,
@@ -163,4 +164,13 @@ export const createAvance = async (
  */
 export const deleteAvance = async (id: number): Promise<void> => {
   await v1_api.delete(`/produccion/bordado-avances/${id}/`);
+};
+
+/**
+ * Cancela la orden de bordado con motivo (`POST /produccion/orden-bordado/{id}/cancelar/`,
+ * nucleo-erp#1355). El `PATCH` de estatus ya no cancela (responde `400`).
+ */
+export const cancelEmbroideryOrder = async (id: number, motivo: string): Promise<WorkOrderCancelResponse> => {
+  const response = await v1_api.post<WorkOrderCancelResponse>(`/produccion/orden-bordado/${id}/cancelar/`, { motivo });
+  return response.data;
 };

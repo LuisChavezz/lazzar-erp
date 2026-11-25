@@ -27,9 +27,10 @@ interface EmbroideryStatusSelectProps {
  * Selector de transición de estatus de una orden de bordado.
  *
  * Ofrece los estatus a los que la orden puede moverse según
- * `getAvailableTransitions` —hoy, todos menos el suyo y el 8 (Cancelado
- * legacy)—. En un estatus terminal (sin transiciones: Finalizado o Cancelado
- * legacy) degrada a un badge de solo lectura, sin disparador.
+ * `getAvailableTransitions` —hoy, todos menos el suyo y el 8 (Cancelado, que
+ * se pone con "Cancelar orden", EC-948)—. En un estatus terminal (sin
+ * transiciones: Finalizado o Cancelado) degrada a un badge de solo lectura,
+ * sin disparador.
  *
  * El color y la etiqueta de cada estatus salen de `embroideryStatusEntry` —la
  * misma fuente que el resto del módulo—, no se duplican aquí. Construido sobre

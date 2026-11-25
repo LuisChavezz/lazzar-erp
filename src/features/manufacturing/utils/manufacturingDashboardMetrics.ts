@@ -1,3 +1,4 @@
+import { EMBROIDERY_STATUS_CANCELLED } from "@/src/features/embroidery/constants/embroideryStatus";
 import type { ProductionOrderListItem } from "@/src/features/production-orders/interfaces/production-order.interface";
 import type {
   EmbroideryOrder,
@@ -11,7 +12,7 @@ import type {
  *    `estatus_op` 1-7: 1 Pendiente, 2 Preparación, 3 En producción,
  *    4 Revisión, 5 Completado, 6 Detenido, 7 Cancelado).
  *  - OB: `GET /produccion/orden-bordado/` (`estatus_bordado` 1-8: 1-6 en
- *    curso o detenidas, 7 Finalizado, 8 Cancelado legacy).
+ *    curso o detenidas, 7 Finalizado, 8 Cancelado).
  *
  * Ningún listado está paginado (el backend no define paginación), así que los
  * conteos por `.length` son totales reales.
@@ -79,11 +80,11 @@ export const getProductionOrderMetrics = (
 
 const OB_STOPPED: EmbroideryOrderStatus = 6;
 const OB_FINISHED: EmbroideryOrderStatus = 7;
-/** Cancelado del enum anterior: fuera de TODOS los conteos de bordado. */
-const OB_CANCELLED_LEGACY: EmbroideryOrderStatus = 8;
+/** Cancelado: fuera de TODOS los conteos de bordado. */
+const OB_CANCELLED: EmbroideryOrderStatus = EMBROIDERY_STATUS_CANCELLED;
 
 export interface EmbroideryOrderMetrics {
-  /** Sin el 8 (Cancelado legacy). */
+  /** Sin el 8 (Cancelado). */
   counted: number;
   /** 1-6: en curso o detenidas. */
   active: number;
@@ -96,7 +97,7 @@ export interface EmbroideryOrderMetrics {
 export const getEmbroideryOrderMetrics = (
   orders: EmbroideryOrder[],
 ): EmbroideryOrderMetrics => {
-  const counted = orders.filter((o) => o.estatus_bordado !== OB_CANCELLED_LEGACY);
+  const counted = orders.filter((o) => o.estatus_bordado !== OB_CANCELLED);
   return {
     counted: counted.length,
     active: counted.filter((o) => o.estatus_bordado !== OB_FINISHED).length,
