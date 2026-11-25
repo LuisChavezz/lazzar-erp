@@ -4,8 +4,9 @@ import { BACK_ARROW_CLASS, BACK_BUTTON_CLASS } from "@/src/components/backButton
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
-import { ArrowLeftIcon, ChevronDownIcon, RouteIcon } from "@/src/components/Icons";
+import { ArrowLeftIcon, ChevronDownIcon, LockIcon, RouteIcon } from "@/src/components/Icons";
 import { DocChevron, DocEstatusBadge } from "@/src/components/DocEstatusBadge";
 import { SkuCode } from "@/src/components/SkuCode";
 import { hasLineCode } from "@/src/utils/sku";
@@ -27,12 +28,15 @@ import {
   formatMoneyValueOrDash,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatLocalDate, formatShortCalendarDate, formatShortDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortCalendarDate, formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
+import { hasPermission } from "@/src/utils/permissions";
 import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import { RECEIPT_STATUS_CONFIG } from "@/src/features/receipts/constants/receiptStatus";
 import { ReceiptDetailByIdDialog } from "@/src/features/purchase-order-receipts/components/ReceiptDetailByIdDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import {
+  isPurchaseOrderBalanceClosable,
+  isPurchaseOrderBalanceClosed,
   isPurchaseOrderCancelled,
   isPurchaseOrderUnconfirmed,
   purchaseOrderStatusEntry,
@@ -44,6 +48,7 @@ import { usePurchaseOrder } from "../hooks/usePurchaseOrder";
 import type { PurchaseOrderCriticalPathTarget } from "../interfaces/purchase-order-critical-path.interface";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
 import { PurchaseOrderPdfButton } from "./PurchaseOrderPdfButton";
+import { PurchaseOrderCloseBalanceDialog } from "./PurchaseOrderCloseBalanceDialog";
 import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import type {
   DocumentoLigado,
@@ -664,6 +669,11 @@ export function PurchaseOrderPageContent({
   // modo de solo lectura a media captura. Antes de los returns tempranos.
   const [criticalPathTarget, setCriticalPathTarget] =
     useState<PurchaseOrderCriticalPathTarget | null>(null);
+  // Cerrar saldo (EC-947): `open` aparte para que el diálogo se anime al
+  // cerrar aunque la orden, ya Recibida, deje de ofrecer el botón.
+  const [isCloseBalanceOpen, setIsCloseBalanceOpen] = useState(false);
+  const { data: session } = useSession();
+  const canCloseBalance = hasPermission("A-COMPRAS-OC", session?.user);
 
   // `Object.hasOwn` (no indexado directo) por el mismo motivo que `DocRow`:
   // `openDoc.tipo` viene de la URL de datos del backend.
@@ -754,6 +764,7 @@ export function PurchaseOrderPageContent({
                   [data.estatus]: purchaseOrderStatusEntry(
                     data.estatus,
                     data.estatus_label,
+                    data.saldo_cerrado,
                   ),
                 }}
               />
@@ -843,6 +854,14 @@ export function PurchaseOrderPageContent({
               >
                 <RouteIcon className="w-4 h-4" aria-hidden="true" />
                 Ruta crítica
+              </Button>
+            )}
+            {/* Mismo criterio que el menú del listado (EC-947): parcialmente
+                recibida y `A-COMPRAS-OC`. */}
+            {canCloseBalance && isPurchaseOrderBalanceClosable(data.estatus) && (
+              <Button variant="secondary" onClick={() => setIsCloseBalanceOpen(true)}>
+                <LockIcon className="w-4 h-4" aria-hidden="true" />
+                Cerrar saldo
               </Button>
             )}
             {/* En los seis estatus (EC-855). */}
@@ -966,6 +985,18 @@ export function PurchaseOrderPageContent({
               </span>
             </InfoField>
           )}
+          {/* Saldo cerrado (EC-947): motivo y fecha del cierre. Quién lo cerró
+              no: el backend solo manda su id (`cerrada_por`). */}
+          {isPurchaseOrderBalanceClosed(data) && (
+            <>
+              <InfoField label="Motivo del cierre de saldo" className="col-span-2">
+                <span className="whitespace-pre-line wrap-break-word">
+                  {data.motivo_cierre?.trim() || "Sin motivo registrado."}
+                </span>
+              </InfoField>
+              <InfoField label="Saldo cerrado el">{formatShortDateTime(data.fecha_cierre)}</InfoField>
+            </>
+          )}
         </InfoGrid>
       </Section>
 
@@ -1013,6 +1044,14 @@ export function PurchaseOrderPageContent({
           if (!open) setCriticalPathTarget(null);
         }}
       />
+
+      {canCloseBalance && (
+        <PurchaseOrderCloseBalanceDialog
+          order={data}
+          open={isCloseBalanceOpen}
+          onOpenChange={setIsCloseBalanceOpen}
+        />
+      )}
     </div>
   );
 }

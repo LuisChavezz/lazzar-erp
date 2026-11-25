@@ -1,5 +1,9 @@
 import type { DocumentPdfDescriptor } from "@/src/pdfs/shared/documentPdfModel";
-import { isPurchaseOrderCancelled } from "../constants/purchaseOrderStatus";
+import { formatShortDateTime } from "@/src/utils/formatDate";
+import {
+  isPurchaseOrderBalanceClosed,
+  isPurchaseOrderCancelled,
+} from "../constants/purchaseOrderStatus";
 import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 
 /**
@@ -17,3 +21,20 @@ export const purchaseOrderPdfDescriptor = (
   cancelled: isPurchaseOrderCancelled(order.estatus),
   cancellationReason: order.motivo_cancelacion,
 });
+
+/**
+ * Banner de estatus del PDF de la OC (EC-947): solo una Recibida con el saldo
+ * cerrado lo lleva, con su motivo y la fecha del cierre. La cancelada usa la
+ * marca de cancelación del descriptor, que gana al banner en la plantilla.
+ */
+export const purchaseOrderPdfStatusBanner = (
+  order: Pick<PurchaseOrder, "estatus" | "saldo_cerrado" | "motivo_cierre" | "fecha_cierre">,
+): { title: string; detail: string } | null => {
+  if (!isPurchaseOrderBalanceClosed(order)) return null;
+  const motivo = order.motivo_cierre?.trim() || "Sin motivo registrado.";
+  const fecha = order.fecha_cierre ? formatShortDateTime(order.fecha_cierre) : null;
+  return {
+    title: "SALDO CERRADO",
+    detail: fecha ? `${motivo} (cerrado el ${fecha})` : motivo,
+  };
+};

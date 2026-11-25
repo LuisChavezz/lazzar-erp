@@ -20,7 +20,9 @@
  * ─── ORDEN CANCELADA ─────────────────────────────────────────────────────────
  * El PDF se descarga en todos los estatus, y SOLO la cancelada se marca (banner
  * con su `motivo_cancelacion`, marca de agua y leyenda en el pie de cada
- * página, todo de la plantilla). El correo al proveedor solo sale en 3/4/5
+ * página, todo de la plantilla). Una Recibida con el saldo cerrado (EC-947)
+ * lleva el banner de estatus "SALDO CERRADO" con su motivo y fecha, sin marca
+ * de agua: no es una anulación. El correo al proveedor solo sale en 3/4/5
  * (`usePreparePurchaseOrderEmail`), así que su adjunto nunca lleva la marca.
  *
  * ─── IMPORTES OCULTOS ────────────────────────────────────────────────────────
@@ -38,7 +40,10 @@ import {
 } from "@/src/features/purchase-orders/utils/purchaseOrderLines";
 import { purchaseOrderDeliveryRows } from "@/src/features/purchase-orders/utils/purchaseOrderDelivery";
 import { formatIvaPercent } from "@/src/features/purchase-orders/utils/purchaseOrderFinance";
-import { purchaseOrderPdfDescriptor } from "@/src/features/purchase-orders/utils/purchaseOrderPdfDescriptor";
+import {
+  purchaseOrderPdfDescriptor,
+  purchaseOrderPdfStatusBanner,
+} from "@/src/features/purchase-orders/utils/purchaseOrderPdfDescriptor";
 import { formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatLocalDate } from "@/src/utils/formatDate";
 import {
@@ -143,6 +148,7 @@ export const PurchaseOrderPdfDocument = ({ order, company }: PurchaseOrderPdfDoc
       title="Orden de compra"
       subtitle={order.proveedor_nombre || "-"}
       date={{ label: "Fecha OC", value: formatLocalDate(order.fecha_oc) }}
+      statusBanner={purchaseOrderPdfStatusBanner(order)}
       footerDetail={order.proveedor_nombre || "-"}
     >
       <PdfCardRow>

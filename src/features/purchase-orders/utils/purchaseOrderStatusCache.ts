@@ -14,7 +14,7 @@ const PURCHASE_ORDERS_KEY = ["purchase-orders"] as const;
 
 /**
  * Escribe el resultado de una acción de estatus de una OC (confirmar,
- * cancelar) en las páginas del listado en caché y en su detalle
+ * cancelar, cerrar saldo) en las páginas del listado en caché y en su detalle
  * (`["purchase-orders", id]`), ANTES de invalidar (EC-927).
  *
  * Solo los `fields` que la respuesta trae, NUNCA importes: la de `aceptar/` no
@@ -32,7 +32,7 @@ export const writePurchaseOrderStatus = async (
   const values = pickPresentFields<PurchaseOrder>(record, fields);
   if (id === null || typeof values.estatus !== "number") return;
   if (values.estatus_label === undefined) {
-    values.estatus_label = purchaseOrderStatusEntry(values.estatus).label;
+    values.estatus_label = purchaseOrderStatusEntry(values.estatus, null, values.saldo_cerrado).label;
   }
   await patchCachedRowById<PurchaseOrder>(
     queryClient,

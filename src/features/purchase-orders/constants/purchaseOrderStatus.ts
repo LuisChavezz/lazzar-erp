@@ -77,6 +77,28 @@ export const isPurchaseOrderCancellable = (estatus: number) =>
   isPurchaseOrderUnconfirmed(estatus) || estatus === PURCHASE_ORDER_STATUS.AUTORIZADA;
 
 /**
+ * Parcialmente recibida (4): la única en la que se puede CERRAR EL SALDO
+ * (EC-947, `cerrar-saldo/`): el proveedor surtió parcial y ya no mandará el
+ * resto. El backend además lo rechaza si hay recepciones esperando calidad,
+ * cosa que el listado no expone; ese 400 llega con su mensaje al diálogo.
+ */
+export const isPurchaseOrderBalanceClosable = (estatus: number) =>
+  estatus === PURCHASE_ORDER_STATUS.PARCIALMENTE_RECIBIDA;
+
+/**
+ * Recibida (5) con `saldo_cerrado`: se dio por terminada sin recibir todo. Es
+ * terminal como cualquier Recibida (no se reabre ni se cancela), pero se rotula
+ * "Saldo cerrado" para no confundirla con una recibida completa.
+ */
+export const isPurchaseOrderBalanceClosed = (order: {
+  estatus: number;
+  saldo_cerrado?: boolean | null;
+}) => order.estatus === PURCHASE_ORDER_STATUS.RECIBIDA && order.saldo_cerrado === true;
+
+/** Etiqueta de una Recibida con el saldo cerrado ({@link isPurchaseOrderBalanceClosed}). */
+export const PURCHASE_ORDER_BALANCE_CLOSED_LABEL = "Saldo cerrado";
+
+/**
  * Colores y etiquetas por estatus, en la forma `StatusBadgeConfigEntry` que
  * consume el `<StatusBadge>` compartido — antes era un `{ cls, dot }` suelto
  * sin `label`, lo que obligaba a `PurchaseOrderColumns` y
@@ -139,11 +161,19 @@ const NEUTRAL_STATUS_CFG: StatusBadgeConfigEntry = {
  * está en 1-6. El `estatus_label` del backend entra solo como RESPALDO —para
  * códigos fuera de 1-6 que este mapa no cubre—; el entero crudo es el último
  * recurso. Mismo patrón que `corteMangaStatusEntry` y `productionOrderStatusEntry`.
+ *
+ * `saldoCerrado` (EC-947): una Recibida con el saldo cerrado se rotula "Saldo
+ * cerrado" con el color de la Recibida. Quien no lo pasa (un endpoint que no
+ * trae el campo) sigue viendo "Recibida".
  */
 export const purchaseOrderStatusEntry = (
   estatus: number,
   display?: string | null,
+  saldoCerrado?: boolean | null,
 ): StatusBadgeConfigEntry => {
   const base = PURCHASE_ORDER_ESTATUS_CFG[String(estatus)] ?? NEUTRAL_STATUS_CFG;
+  if (isPurchaseOrderBalanceClosed({ estatus, saldo_cerrado: saldoCerrado })) {
+    return { ...base, label: PURCHASE_ORDER_BALANCE_CLOSED_LABEL };
+  }
   return { ...base, label: base.label || display?.trim() || String(estatus) };
 };

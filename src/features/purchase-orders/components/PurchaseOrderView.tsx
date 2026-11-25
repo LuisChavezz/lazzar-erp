@@ -17,6 +17,7 @@ import type { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import { PurchaseOrderOnboardingStepManager } from "./PurchaseOrderOnboardingStepManager";
 import { PurchaseOrderEditDialog } from "./PurchaseOrderEditDialog";
 import { PurchaseOrderCancelDialog } from "./PurchaseOrderCancelDialog";
+import { PurchaseOrderCloseBalanceDialog } from "./PurchaseOrderCloseBalanceDialog";
 import { PurchaseOrderCriticalPathDialog } from "./PurchaseOrderCriticalPathDialog";
 import { PurchaseOrderSendEmailConfirmDialog } from "./PurchaseOrderSendEmailConfirmDialog";
 import { usePurchaseOrderEmailConfirmation } from "../hooks/useSendPurchaseOrderEmail";
@@ -81,6 +82,11 @@ export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewPr
   const [cancellingOrder, setCancellingOrder] = useState<PurchaseOrder | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
+  // ── Cerrar saldo (EC-947) ─────────────────────────────────────────────────
+  // Mismo motivo que la cancelación: cambia el estatus (4 → 5).
+  const [closingBalanceOrder, setClosingBalanceOrder] = useState<PurchaseOrder | null>(null);
+  const [isCloseBalanceOpen, setIsCloseBalanceOpen] = useState(false);
+
   // ── Ruta crítica ──────────────────────────────────────────────────────────
   // Mismo motivo: vive aquí y no en la celda. Guarda la FOTO de la fila
   // (folio y estatus) al abrir: un refetch del listado con el diálogo abierto
@@ -107,6 +113,10 @@ export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewPr
     },
     (order) =>
       setCriticalPathTarget({ ocId: order.id, folio: order.folio, estatus: order.estatus }),
+    (order) => {
+      setClosingBalanceOrder(order);
+      setIsCloseBalanceOpen(true);
+    },
   );
 
   // ── Exportar (Excel/PDF) ──────────────────────────────────────────────────
@@ -228,6 +238,13 @@ export function PurchaseOrderView({ extraRefetchQueryKeys }: PurchaseOrderViewPr
         order={cancellingOrder}
         open={isCancelOpen}
         onOpenChange={setIsCancelOpen}
+      />
+
+      {/* ── Cerrar saldo ──────────────────────────────────────────────────── */}
+      <PurchaseOrderCloseBalanceDialog
+        order={closingBalanceOrder}
+        open={isCloseBalanceOpen}
+        onOpenChange={setIsCloseBalanceOpen}
       />
 
       {/* ── Ruta crítica ──────────────────────────────────────────────────── */}

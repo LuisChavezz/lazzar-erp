@@ -19,8 +19,9 @@ import {
   formatMoneyValueOrDash,
   formatQuantityValue,
 } from "@/src/utils/formatCurrency";
-import { formatLocalDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortDateTime } from "@/src/utils/formatDate";
 import {
+  isPurchaseOrderBalanceClosed,
   isPurchaseOrderCancelled,
   purchaseOrderStatusEntry,
 } from "../constants/purchaseOrderStatus";
@@ -59,10 +60,18 @@ const hasLineAmounts = (detalles: PurchaseOrderDetalle[]): boolean =>
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 /** Badge de estatus de la orden, con el `<StatusBadge>` compartido. */
-const EstatusBadge = ({ estatus, label }: { estatus: number; label: string }) => (
+const EstatusBadge = ({
+  estatus,
+  label,
+  saldoCerrado,
+}: {
+  estatus: number;
+  label: string;
+  saldoCerrado?: boolean;
+}) => (
   <StatusBadge
     status={String(estatus)}
-    config={{ [estatus]: purchaseOrderStatusEntry(estatus, label) }}
+    config={{ [estatus]: purchaseOrderStatusEntry(estatus, label, saldoCerrado) }}
   />
 );
 
@@ -411,6 +420,7 @@ export function PurchaseOrderDetailDialog({
                 <EstatusBadge
                   estatus={purchaseOrder.estatus}
                   label={purchaseOrder.estatus_label}
+                  saldoCerrado={purchaseOrder.saldo_cerrado}
                 />
               </InfoField>
               {/* `tipo` ("ODC") y `tipo_compra` son campos DISTINTOS del
@@ -491,6 +501,20 @@ export function PurchaseOrderDetailDialog({
                     </span>
                   </InfoField>
                 )}
+              {/* Saldo cerrado (EC-947): motivo y fecha del cierre. Quién lo
+                  cerró no: el backend solo manda su id (`cerrada_por`). */}
+              {isPurchaseOrderBalanceClosed(purchaseOrder) && (
+                <>
+                  <InfoField label="Motivo del cierre de saldo" className="col-span-2">
+                    <span className="leading-snug whitespace-pre-line wrap-break-word">
+                      {purchaseOrder.motivo_cierre?.trim() || "Sin motivo registrado."}
+                    </span>
+                  </InfoField>
+                  <InfoField label="Saldo cerrado el">
+                    {formatShortDateTime(purchaseOrder.fecha_cierre)}
+                  </InfoField>
+                </>
+              )}
             </div>
 
             {/* Origen — nombres ya resueltos por el backend (`*_nombre`); los
