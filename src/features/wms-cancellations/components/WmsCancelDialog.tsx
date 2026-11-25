@@ -125,7 +125,11 @@ function WmsCancelForm<TResult>({
           onOpenChange(false);
         },
         onError: (error) => {
-          const classified = classifyWmsCancelError(error, content.action.fallbackErrorMessage);
+          const classified = classifyWmsCancelError(
+            error,
+            content.action.fallbackErrorMessage,
+            content.action.blockingKeys,
+          );
           if (wmsCancelErrorClosesDialog(classified)) onOpenChange(false);
         },
       });

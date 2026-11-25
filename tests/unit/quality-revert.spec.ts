@@ -3,7 +3,14 @@ import { QueryClient } from "@tanstack/react-query";
 import {
   isQualityInspectionRevertible,
   qualityRevertAction,
+  QUALITY_REVERT_BLOCKING_KEYS,
 } from "@/src/features/quality-inspections/utils/qualityRevertAction";
+import {
+  classifyWmsCancelError,
+  wmsCancelErrorClosesDialog,
+} from "@/src/features/wms-cancellations/utils/wmsCancelErrors";
+
+const badRequest = (data: unknown) => ({ isAxiosError: true, response: { status: 400, data } });
 
 // EC-947: `POST calidad-inspecciones/{id}/revertir/` (solo admin).
 test.describe("revertir calidad", () => {
@@ -62,6 +69,20 @@ test.describe("revertir calidad", () => {
     expect(invalidated).toContainEqual(["quality-inspections"]);
     expect(invalidated).toContainEqual(["receipts"]);
     expect(invalidated).toContainEqual(["purchase-orders"]);
+  });
+
+  test("los 400 de negocio de revertir/ cierran el diálogo con el mensaje tal cual", () => {
+    for (const key of QUALITY_REVERT_BLOCKING_KEYS) {
+      const message = `mensaje de ${key}`;
+      const classified = classifyWmsCancelError(badRequest({ [key]: message }), "x", QUALITY_REVERT_BLOCKING_KEYS);
+      expect(classified, key).toEqual({ kind: "blocked", message });
+      expect(wmsCancelErrorClosesDialog(classified)).toBe(true);
+    }
+  });
+
+  test("sin las llaves extra, las cancelaciones de WMS siguen igual", () => {
+    expect(classifyWmsCancelError(badRequest({ existencia: "sin stock" }), "x").kind).toBe("other");
+    expect(classifyWmsCancelError(badRequest({ packing: "cancela el packing" }), "x").kind).toBe("blocked");
   });
 
   test("una respuesta con otra forma no escribe nada ni lanza", async () => {

@@ -61,14 +61,23 @@ const badRequestBody = (error: unknown): unknown => {
   return response?.status === 400 ? response.data : undefined;
 };
 
-export const classifyWmsCancelError = (error: unknown, fallback: string): WmsCancelError => {
+/**
+ * `extraBlockingKeys` (opcional, EC-947): llaves de `400` de negocio propias de
+ * una acción, además de las de WMS (p. ej. la reversa de calidad: `existencia`,
+ * `orden_compra`…). Sin ellas, el comportamiento es el de siempre.
+ */
+export const classifyWmsCancelError = (
+  error: unknown,
+  fallback: string,
+  extraBlockingKeys: readonly string[] = [],
+): WmsCancelError => {
   if (isNotFoundError(error)) return { kind: "not-found", message: WMS_CANCEL_NOT_FOUND_MESSAGE };
   if (isForbiddenError(error)) {
     return { kind: "forbidden", message: forbiddenDetailMessage(error) ?? WMS_CANCEL_FORBIDDEN_MESSAGE };
   }
   const motivo = drfFieldMessage(error, "motivo");
   if (motivo) return { kind: "motivo", message: motivo };
-  for (const key of BLOCKING_KEYS) {
+  for (const key of [...BLOCKING_KEYS, ...extraBlockingKeys]) {
     const message = drfFieldMessage(error, key);
     if (message) return { kind: isRetryableWmsCancelMessage(message) ? "retryable" : "blocked", message };
   }
