@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import { permissionRequirementCodes, type PermissionRequirement } from "../utils/permissions";
-import { FINANCE_READ_PERMISSION, financeSectionReadPermissions } from "./financePermissions";
+import { getRouteRequirement } from "../utils/routeAccess";
+import { FINANCE_READ_PERMISSION } from "./financePermissions";
 import {
   CapitalHumanoIcon,
   ClientesIcon,
@@ -67,11 +68,13 @@ export interface AppRouteItem {
   description?: string;
   /**
    * Código que abre la hoja, o un ARREGLO que se cumple con CUALQUIERA de sus
-   * códigos (misma forma que `routePermissions`). El arreglo lo usan las
-   * secciones de Finanzas: su subcódigo o `R-CONTABILIDAD` (lectura jerárquica,
-   * ver `financeSectionReadPermissions`). Debe coincidir con la regla de su ruta.
+   * códigos (misma forma que `routePermissions`). NO se declara: se DERIVA de
+   * `path` con la misma regla que el proxy (`getRouteRequirement`, EC-960), así
+   * que el sidebar nunca ofrece un enlace que el proxy rebote. Para cambiar el
+   * permiso de una hoja se cambia su regla en `routePermissions`. `undefined`
+   * solo si la ruta no tiene regla, y un test unitario lo impide.
    */
-  permission?: PermissionRequirement;
+  readonly permission?: PermissionRequirement;
   parentPath?: string;
   showInSidebar?: boolean;
   /**
@@ -138,27 +141,47 @@ export const getGroupAccessPermissions = (group: AppRouteGroup): string[] => [
   ),
 ];
 
+/**
+ * Hoja tal como se DECLARA en el catálogo: sin `permission`, que se deriva de
+ * su `path` (ver `AppRouteItem.permission`). Escribirlo a mano no compila.
+ */
+type AppRouteItemDefinition = Omit<AppRouteItem, "permission">;
+
+/** Grupo tal como se declara: sus hojas sin `permission`. */
+type AppRouteGroupDefinition = Omit<AppRouteGroup, "items"> & {
+  items: AppRouteItemDefinition[];
+};
+
 /** Hoja de un grupo con sub-grupos: `section` obligatorio y tipado a sus claves. */
 type SectionedRouteItem<SectionKey extends string> =
-  | (Omit<AppRouteItem, "section"> & { section: SectionKey })
+  | (Omit<AppRouteItemDefinition, "section"> & { section: SectionKey })
   // Las rutas ocultas (detalle, alta) no se listan, así que pueden omitirlo.
-  | (Omit<AppRouteItem, "section"> & { section?: SectionKey; showInSidebar: false });
+  | (Omit<AppRouteItemDefinition, "section"> & { section?: SectionKey; showInSidebar: false });
 
 /**
  * Declara un grupo con `sections` de forma que una `section` mal escrita, no
  * declarada u olvidada en una hoja navegable falle en COMPILACIÓN. Las claves
  * se infieren de `sections` (`const`); `NoInfer` impide que una hoja amplíe esa
- * unión con su propio valor. Devuelve un `AppRouteGroup` normal: el resto del
- * catálogo y sus consumidores no cambian.
+ * unión con su propio valor. Devuelve una declaración de grupo normal: el resto
+ * del catálogo y sus consumidores no cambian.
  */
 const defineSectionedGroup = <const SectionKey extends string>(
-  group: Omit<AppRouteGroup, "sections" | "items"> & {
+  group: Omit<AppRouteGroupDefinition, "sections" | "items"> & {
     sections: readonly { key: SectionKey; label: string }[];
     items: SectionedRouteItem<NoInfer<SectionKey>>[];
   }
-): AppRouteGroup => ({ ...group, sections: [...group.sections] });
+): AppRouteGroupDefinition => ({ ...group, sections: [...group.sections] });
 
-export const appRouteGroups: AppRouteGroup[] = [
+/**
+ * Completa cada hoja con el permiso que el proxy exige para su `path`
+ * (`getRouteRequirement`, EC-960): la única fuente es `routePermissions`.
+ */
+const withDerivedPermissions = (group: AppRouteGroupDefinition): AppRouteGroup => ({
+  ...group,
+  items: group.items.map((item) => ({ ...item, permission: getRouteRequirement(item.path) })),
+});
+
+const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
   defineSectionedGroup({
     key: "system",
     label: "Panel de Control",
@@ -183,7 +206,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/system/reports/existencias",
         icon: ExistenciasIcon,
         description: "Entradas, salidas y existencias por almacén y periodo.",
-        permission: "R-CORE-REPORTES",
         section: "reports",
       },
       {
@@ -192,7 +214,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/system/reports/movimientos",
         icon: HistoryIcon,
         description: "Entradas, salidas, ajustes y transferencias registrados por periodo.",
-        permission: "R-CORE-REPORTES",
         section: "reports",
       },
       {
@@ -201,7 +222,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/system/reports/auxiliar",
         icon: LayersIcon,
         description: "Kardex de un SKU: cada movimiento con su saldo corrido.",
-        permission: "R-CORE-REPORTES",
         section: "reports",
       },
       // Fuera de `/system/reports` a propósito: esa regla exige solo
@@ -213,7 +233,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/system/document-audit",
         icon: HistoryIcon,
         description: "Altas, cambios de estatus, bajas y borrados de los documentos del ERP.",
-        permission: ["R-CORE", "R-CORE-REPORTES"],
         section: "audit",
       },
     ],
@@ -234,14 +253,12 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/sales/customers",
         icon: ClientesIcon,
-        permission: "R-CRM-CLIENTES",
       },
       {
         key: "sales-customer",
         label: "Cliente",
         path: "/sales/customers/[id]",
         icon: ClientesIcon,
-        permission: "R-CRM-CLIENTES",
         parentPath: "/sales/customers",
         showInSidebar: false,
       },
@@ -253,24 +270,21 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Prospectos y negocios en curso, de la primera llamada a la cotización.",
         // Sin código propio en el catálogo de permisos: el backend solo exige
         // sesión y acota por vendedor. La cubre la regla "/sales" → R-CRM.
-        permission: "R-CRM",
       },
       {
         key: "sales-quotes",
         label: "Cotizaciones",
         path: "/sales/quotes",
         icon: PedidosIcon,
-        permission: "R-CRM-COTIZACIONES",
       },
       {
         key: "sales-quotes-new",
         label: "Nuevo Cotización",
         path: "/sales/quotes/new",
         icon: PedidosIcon,
-        // Debe coincidir con la regla de esta MISMA ruta en `routePermissions`
+        // Su permiso sale de la regla de esta MISMA ruta en `routePermissions`
         // ("/sales/quotes/new" → C-CRM-COTIZACIONES): el alta exige el código de
         // creación, no el de lectura de la sección.
-        permission: "C-CRM-COTIZACIONES",
         parentPath: "/sales/quotes",
         showInSidebar: false,
       },
@@ -279,7 +293,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Editar Cotización",
         path: "/sales/quotes/[id]/edit",
         icon: PedidosIcon,
-        permission: "R-CRM-COTIZACIONES",
         parentPath: "/sales/quotes",
         showInSidebar: false,
       },
@@ -289,21 +302,18 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/sales/orders",
         icon: PedidosIcon,
         description: "Pedidos originados en las cotizaciones que creaste.",
-        permission: "R-CRM-PEDIDOS",
       },
       {
         key: "sales-emails",
         label: "Correos",
         path: "/sales/emails",
         icon: EmailIcon,
-        permission: "R-CRM-CORREOS",
       },
       {
         key: "sales-calendar",
         label: "Calendario",
         path: "/sales/calendar",
         icon: TasksIcon,
-        permission: "R-CRM-CALENDAR",
       },
     ],
   },
@@ -330,7 +340,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/orders",
         icon: PedidosIcon,
         description: "Pedidos programados por Mesa de Control, listos para planear el surtido en almacén.",
-        permission: "R-WMS-PEDIDOS",
         section: "operation",
       },
       {
@@ -338,7 +347,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Recepciones",
         path: "/wms/receipts",
         icon: RecepcionesIcon,
-        permission: "R-WMS-RECEPCIONES",
         section: "operation",
       },
       {
@@ -347,7 +355,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/quality-inspections",
         icon: ShieldCheckIcon,
         description: "Inspección de calidad de las recepciones: lo aprobado entra a existencias.",
-        permission: "R-WMS-CALIDAD",
         section: "operation",
       },
       {
@@ -356,7 +363,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/picking",
         icon: RouteIcon,
         description: "Surtido de pedidos: recolección de productos en almacén.",
-        permission: "R-WMS-PICKING",
         section: "operation",
       },
       {
@@ -366,7 +372,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: TrendingUpIcon,
         description: "Cuánto lleva surtido cada pedido y cuánto tiene todavía comprometido.",
         // Sin código de sección propio en el catálogo: es una vista de Surtido.
-        permission: "R-WMS-PICKING",
         section: "operation",
       },
       {
@@ -375,7 +380,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/packing",
         icon: PackingIcon,
         description: "Empaque de la mercancía proveniente de un surtido.",
-        permission: "R-WMS-PACKING",
         section: "operation",
       },
       {
@@ -384,7 +388,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/shipping",
         icon: EmbarquesIcon,
         description: "Entrega de cajas empacadas al transportista.",
-        permission: "R-WMS-ENVIO",
         section: "operation",
       },
       // ── Inventario ──────────────────────────────────────────────────────────
@@ -393,7 +396,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Existencias",
         path: "/wms/stock",
         icon: ExistenciasIcon,
-        permission: "R-WMS-EXISTENCIAS",
         section: "inventory",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/locations/mocks/locations-dashboard.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
@@ -404,7 +406,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   label: "Ubicaciones",
       //   path: "/wms/locations",
       //   icon: MapPinIcon,
-      //   permission: "R-WMS",
       //   section: "inventory",
       // },
       // ── RFID ────────────────────────────────────────────────────────────────
@@ -414,7 +415,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/rfid-labels",
         icon: LabelsIcon,
         description: "Consulta de etiquetas de producto: vista previa, ZPL generado y estatus de impresión.",
-        permission: "R-WMS-ETIQUETAS",
         section: "rfid",
       },
       {
@@ -423,7 +423,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/wms/rfid-scanner",
         icon: ScanLineIcon,
         description: "Monitor en vivo del lector RFID: lecturas recibidas y su match contra las etiquetas impresas.",
-        permission: "R-WMS-SCANNER",
         section: "rfid",
       },
     ],
@@ -452,7 +451,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/orders",
         icon: PedidosIcon,
         description: "Consulta de pedidos y su detalle para planear el abastecimiento.",
-        permission: "R-COMPRAS-PEDIDOS",
         section: "operation",
       },
       {
@@ -462,7 +460,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: OrdenesIcon,
         description: "Faltantes de material de las pre-órdenes de producción, agrupados por material para crear una sola orden de compra.",
         // Cae en la regla de módulo `/procurement` (R-COMPRAS).
-        permission: "R-COMPRAS",
         section: "operation",
       },
       {
@@ -470,7 +467,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Órdenes de Compra",
         path: "/procurement/purchase-orders",
         icon: OrdenesIcon,
-        permission: "R-COMPRAS-OC",
         section: "operation",
       },
       {
@@ -479,7 +475,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/purchase-order-receipts",
         icon: RecepcionesIcon,
         description: "Recepciones generadas a partir de órdenes de compra.",
-        permission: "R-COMPRAS-RECEP",
         section: "operation",
       },
       // ── Inventario ──────────────────────────────────────────────────────────
@@ -490,9 +485,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ExistenciasIcon,
         description: "Consulta de existencias por almacén para planear el abastecimiento.",
         // Sin código de sección propio en el catálogo: la ruta cae en la regla
-        // de módulo `/procurement` de `routePermissions` (R-COMPRAS), así que la
-        // hoja exige el mismo código para no ofrecer un enlace que rebote.
-        permission: "R-COMPRAS",
+        // de módulo `/procurement` de `routePermissions` (R-COMPRAS).
         section: "inventory",
       },
       // ── Maestros ────────────────────────────────────────────────────────────
@@ -502,7 +495,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/suppliers",
         icon: ComprasIcon,
         description: "Catálogo de proveedores registrados en el sistema.",
-        permission: "R-COMPRAS-PROV",
         section: "master-data",
       },
       {
@@ -510,7 +502,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Proveedor",
         path: "/procurement/suppliers/[id]",
         icon: ComprasIcon,
-        permission: "R-COMPRAS-PROV",
         parentPath: "/procurement/suppliers",
         showInSidebar: false,
       },
@@ -524,7 +515,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/procurement/dashboard",
         icon: DashboardIcon,
         description: "Resumen de órdenes de compra activas, en curso y de mayor valor.",
-        permission: "R-COMPRAS",
         section: "analytics",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/purchase-order-reviews/mocks/purchase-order-review.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
@@ -534,7 +524,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/procurement/order-reviews",
       //   icon: ComprasIcon,
       //   description: "Seguimiento del flujo completo de revisión de pedidos: desde la solicitud hasta el cierre con CxP.",
-      //   permission: "R-COMPRAS",
       // },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/expense-purchase-requests/mocks/expense-purchase-request.mock.ts:14). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -543,7 +532,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/procurement/expense-requests",
       //   icon: CxpIcon,
       //   description: "Gestión de solicitudes de compras de gastos: desde el requerimiento hasta el cierre con Cobranza.",
-      //   permission: "R-COMPRAS",
       // },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/pq-orders/mocks/pq-order.mock.ts:14). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -552,7 +540,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/procurement/pq-orders",
       //   icon: PedidosIcon,
       //   description: "Seguimiento de pedidos de quincena vinculados a órdenes de compra: desde la generación hasta el surtido.",
-      //   permission: "R-COMPRAS",
       // },
     ],
   }),
@@ -583,7 +570,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Sin código de sección propio en el catálogo de permisos: igual que
         // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
         // `/manufacturing` de `routePermissions`.
-        permission: "R-PRODUCCION",
         section: "operation",
       },
       {
@@ -593,7 +579,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: OrdenesIcon,
         description: "Materiales que necesita cada pedido especial antes de su OP: almacén valida, compras surte y producción crea la orden.",
         // Cae en la regla de módulo `/manufacturing` (R-PRODUCCION).
-        permission: "R-PRODUCCION",
         section: "operation",
       },
       {
@@ -602,7 +587,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/production-orders",
         icon: ProduccionIcon,
         description: "Gestión del flujo de órdenes de producción: verificación de materiales, fabricación, avances y cierre.",
-        permission: "R-PRODUCCION-OP",
         section: "operation",
       },
       {
@@ -610,7 +594,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Órdenes de Bordado",
         path: "/manufacturing/embroidery",
         icon: ScissorsIcon,
-        permission: "R-PRODUCCION-OB",
         section: "operation",
       },
       {
@@ -619,7 +602,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/reflective-orders",
         icon: RulerIcon,
         description: "Órdenes de trabajo para la aplicación de cinta reflejante sobre las prendas del pedido.",
-        permission: "R-PRODUCCION-OR",
         section: "operation",
       },
       {
@@ -628,7 +610,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/corte-manga",
         icon: SliceIcon,
         description: "Órdenes de trabajo para el corte de manga de las prendas del pedido.",
-        permission: "R-PRODUCCION-CM",
         section: "operation",
       },
       {
@@ -638,7 +619,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: EmbarquesIcon,
         description: "Prendas que salen a confeccionarse con un maquilero (SM) y su recepción.",
         // Mismo permiso que las OP: la SM se genera desde la OP.
-        permission: "R-PRODUCCION-OP",
         section: "operation",
       },
       // ── Inventario ──────────────────────────────────────────────────────────
@@ -649,9 +629,7 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ExistenciasIcon,
         description: "Consulta de existencias por almacén para planear la producción.",
         // Sin código de sección propio en el catálogo: la ruta cae en la regla
-        // de módulo `/manufacturing` de `routePermissions` (R-PRODUCCION), así
-        // que la hoja exige el mismo código para no ofrecer un enlace que rebote.
-        permission: "R-PRODUCCION",
+        // de módulo `/manufacturing` de `routePermissions` (R-PRODUCCION).
         section: "inventory",
       },
       // ── Catálogo ────────────────────────────────────────────────────────────
@@ -663,7 +641,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         description: "Catálogo de productos y alta rápida con código generado automáticamente.",
         // Sin código de sección propio en el catálogo de permisos: la ruta cae
         // en la regla de módulo `/manufacturing` de `routePermissions`.
-        permission: "R-PRODUCCION",
         section: "catalog",
       },
       {
@@ -673,7 +650,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ProductVariantsIcon,
         description: "Variantes de producto y alta rápida con SKU generado automáticamente.",
         // Igual que Productos: cae en la regla de módulo `/manufacturing`.
-        permission: "R-PRODUCCION",
         section: "catalog",
       },
       // ── Indicadores ─────────────────────────────────────────────────────────
@@ -685,7 +661,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/manufacturing/dashboard",
         icon: DashboardIcon,
         description: "Resumen operativo de los procesos de producción y bordado.",
-        permission: "R-PRODUCCION",
         section: "analytics",
       },
       {
@@ -698,7 +673,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         // Sin código de sección propio en el catálogo de permisos (tampoco lo
         // exige el backend todavía, EC-875): la ruta cae en la regla de módulo
         // `/manufacturing` de `routePermissions` (R-PRODUCCION).
-        permission: "R-PRODUCCION",
         section: "analytics",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-new-development.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
@@ -708,7 +682,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/manufacturing/cedicor-product-development-orders",
       //   icon: FactoryIcon,
       //   description: "Seguimiento del flujo de producción para nuevos desarrollos de producto.",
-      //   permission: "R-PRODUCCION",
       // },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/cedicor/mocks/cedicor-production-order.mock.ts:11). Restaurar cuando el backend exponga el endpoint real.
       // {
@@ -717,7 +690,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   path: "/manufacturing/cedicor-production-orders",
       //   icon: FactoryIcon,
       //   description: "Gestión de órdenes de producción para artículos de resurtido y stock.",
-      //   permission: "R-PRODUCCION",
       // },
     ],
   }),
@@ -747,7 +719,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Facturación",
         path: "/finance/invoicing",
         icon: FacturacionIcon,
-        permission: financeSectionReadPermissions("invoicing"),
         section: "receivables",
       },
       {
@@ -755,7 +726,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "CxC (Cobrar)",
         path: "/finance/accounts-receivable",
         icon: CxcIcon,
-        permission: financeSectionReadPermissions("receivables"),
         section: "receivables",
       },
       {
@@ -766,7 +736,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/collections",
         icon: ReceiptIcon,
         description: "Cobros de clientes aplicados contra cuentas por cobrar.",
-        permission: financeSectionReadPermissions("receivables"),
         section: "receivables",
       },
       {
@@ -775,7 +744,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/credit-notes",
         icon: NotaCreditoIcon,
         description: "Créditos sobre facturas de cliente, aplicados a cuentas por cobrar.",
-        permission: FINANCE_READ_PERMISSION,
         section: "receivables",
       },
       // ── Cuentas por Pagar ───────────────────────────────────────────────────
@@ -788,7 +756,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/supplier-invoices",
         icon: FacturaProveedorIcon,
         description: "Facturas de mercancía recibida; al registrarse generan su cuenta por pagar.",
-        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       {
@@ -800,7 +767,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/accounts-payable",
         icon: CxpIcon,
         description: "Cuentas por pagar a proveedores, con saldo y vencimiento.",
-        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       {
@@ -809,7 +775,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/payments",
         icon: ReceiptIcon,
         description: "Pagos a proveedor aplicados contra cuentas por pagar.",
-        permission: FINANCE_READ_PERMISSION,
         section: "payables",
       },
       // ── Tesorería ───────────────────────────────────────────────────────────
@@ -819,7 +784,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/finance/banks",
         icon: BancosIcon,
         description: "Catálogo de instituciones bancarias de la empresa.",
-        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       {
@@ -833,7 +797,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         // el banco que la emite.
         icon: WalletIcon,
         description: "Cuentas bancarias por banco y moneda, con saldo y estatus.",
-        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       {
@@ -846,7 +809,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ConciliacionIcon,
         description:
           "Cuadre del estado de cuenta contra los libros, por cuenta y periodo.",
-        permission: FINANCE_READ_PERMISSION,
         section: "treasury",
       },
       // ── Contabilidad ────────────────────────────────────────────────────────
@@ -872,7 +834,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: ContabilidadIcon,
         description:
           "Asientos contables de partida doble, con cuadre de cargos y abonos.",
-        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       {
@@ -890,7 +851,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: PlanCuentasIcon,
         description:
           "Catálogo de cuentas contables por tipo y nivel, con su estatus.",
-        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       {
@@ -904,7 +864,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         icon: CentrosCostoIcon,
         description:
           "Catálogo de centros de costo para imputar los movimientos de una póliza.",
-        permission: FINANCE_READ_PERMISSION,
         section: "accounting",
       },
       // ── Maestros ────────────────────────────────────────────────────────────
@@ -913,7 +872,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/finance/accounting-customers",
         icon: ClientesIcon,
-        permission: financeSectionReadPermissions("accountingCustomers"),
         section: "master-data",
       },
       // OCULTO EN NAVEGACION: usa datos mock (src/features/price-lists/components/PriceListList.tsx:5, arreglo literal). Restaurar cuando el backend exponga el endpoint real.
@@ -922,7 +880,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   label: "Lista de Precios",
       //   path: "/finance/price-lists",
       //   icon: ListaPreciosIcon,
-      //   permission: "R-CONTABILIDAD",
       // },
     ],
   }),
@@ -950,7 +907,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/employees",
         icon: UserIcon,
         description: "Plantilla de la organización.",
-        permission: "R-RH",
         section: "organization",
       },
       {
@@ -959,7 +915,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/areas",
         icon: LayersIcon,
         description: "Áreas operativas de cada departamento.",
-        permission: "R-RH",
         section: "organization",
       },
       {
@@ -968,7 +923,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/positions",
         icon: ClipboardListIcon,
         description: "Catálogo de puestos y su área asignada.",
-        permission: "R-RH",
         section: "organization",
       },
       {
@@ -977,7 +931,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/shifts",
         icon: ClockIcon,
         description: "Horarios, días laborales y tolerancia de retardo.",
-        permission: "R-RH",
         section: "organization",
       },
       // ── Administración Laboral ────────────────────────────────────────────────
@@ -987,7 +940,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/contracts",
         icon: ContractIcon,
         description: "Contratos laborales, vigencia y salario de cada empleado.",
-        permission: "R-RH",
         section: "labor-administration",
       },
       {
@@ -996,7 +948,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/calendars",
         icon: CalendarDaysIcon,
         description: "Días laborables, descansos y festivos por turno.",
-        permission: "R-RH",
         section: "labor-administration",
       },
       {
@@ -1005,7 +956,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/vacations",
         icon: VacationIcon,
         description: "Solicitudes de vacaciones, su aprobación y trazabilidad.",
-        permission: "R-RH",
         section: "labor-administration",
       },
       {
@@ -1014,7 +964,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/absences",
         icon: AbsenceIcon,
         description: "Permisos, incapacidades y faltas injustificadas.",
-        permission: "R-RH",
         section: "labor-administration",
       },
       {
@@ -1023,7 +972,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/payroll",
         icon: PayrollIcon,
         description: "Nóminas quincenales: percepciones, deducciones y pago.",
-        permission: "R-RH",
         section: "labor-administration",
       },
       // ── Asistencia e Incidencias ──────────────────────────────────────────────
@@ -1033,7 +981,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/attendance",
         icon: AttendanceIcon,
         description: "Pase de lista diario: entradas, salidas e historial.",
-        permission: "R-RH",
         section: "attendance-incidents",
       },
       {
@@ -1042,7 +989,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/incidents",
         icon: IncidentIcon,
         description: "Retardos, faltas y otras incidencias de cada empleado.",
-        permission: "R-RH",
         section: "attendance-incidents",
       },
       // ── Desarrollo ────────────────────────────────────────────────────────────
@@ -1052,7 +998,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/trainings",
         icon: TrainingIcon,
         description: "Cursos de cada empleado: estado, horas y calificación.",
-        permission: "R-RH",
         section: "development",
       },
       {
@@ -1061,7 +1006,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/evaluations",
         icon: EvaluationIcon,
         description: "Evaluaciones de desempeño, competencias y objetivos.",
-        permission: "R-RH",
         section: "development",
       },
       {
@@ -1070,7 +1014,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/hr/productivity",
         icon: ProductivityIcon,
         description: "Metas y resultados de cada empleado, con su cumplimiento.",
-        permission: "R-RH",
         section: "development",
       },
     ],
@@ -1099,7 +1042,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Cotizaciones",
         path: "/operations/quotes",
         icon: PedidosIcon,
-        permission: "R-MESACONTROL-COTI",
         section: "commercial-operations",
       },
       {
@@ -1107,7 +1049,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Pedidos",
         path: "/operations/orders",
         icon: PedidosIcon,
-        permission: "R-MESACONTROL-PEDIDOS",
         section: "commercial-operations",
       },
       {
@@ -1119,7 +1060,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Pedidos Programados",
         path: "/operations/scheduled-orders",
         icon: CalendarDaysIcon,
-        permission: "R-MESACONTROL-PEDIDOS",
         section: "commercial-operations",
       },
       // ── Existencias ─────────────────────────────────────────────────────────
@@ -1128,7 +1068,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Existencias, Producción y Compras",
         path: "/operations/inventory-pipeline",
         icon: InventariosIcon,
-        permission: "R-MESACONTROL",
         section: "tracking",
       },
       // OCULTO EN NAVEGACION: pagina placeholder sin datos. Restaurar cuando tenga implementacion real.
@@ -1137,7 +1076,6 @@ export const appRouteGroups: AppRouteGroup[] = [
       //   label: "Muestras",
       //   path: "/operations/samples",
       //   icon: SamplesIcon,
-      //   permission: "R-MESACONTROL",
       // },
       // ── Maestros ────────────────────────────────────────────────────────────
       {
@@ -1145,7 +1083,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Clientes",
         path: "/operations/customers",
         icon: ClientesIcon,
-        permission: "R-MESACONTROL-CLIENTES",
         section: "master-data",
       },
       // ── Comunicación ────────────────────────────────────────────────────────
@@ -1154,7 +1091,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Correos",
         path: "/operations/emails",
         icon: EmailIcon,
-        permission: "R-MESACONTROL",
         section: "communication",
       },
       {
@@ -1162,7 +1098,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         label: "Calendario",
         path: "/operations/calendar",
         icon: TasksIcon,
-        permission: "R-MESACONTROL",
         section: "communication",
       },
       // ── Indicadores ─────────────────────────────────────────────────────────
@@ -1176,7 +1111,6 @@ export const appRouteGroups: AppRouteGroup[] = [
         path: "/operations/dashboard",
         icon: DashboardIcon,
         description: "Cotizaciones por autorizar, actividad reciente y montos por estatus.",
-        permission: "R-MESACONTROL-COTI",
         section: "analytics",
       },
     ],
@@ -1194,3 +1128,5 @@ export const appRouteGroups: AppRouteGroup[] = [
     items: [],
   },
 ];
+
+export const appRouteGroups: AppRouteGroup[] = appRouteGroupDefinitions.map(withDerivedPermissions);
