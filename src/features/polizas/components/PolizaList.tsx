@@ -12,8 +12,9 @@ import { ContabilidadIcon } from "@/src/components/Icons";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { DIALOG_WIDTH_SECTIONED_FORM } from "@/src/constants/dialogWidths";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
-import { POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceCancelState, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_CANCEL_PERMISSION, POLIZA_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { CancelReasonDialog } from "@/src/features/document-cancellation/components/CancelReasonDialog";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
 import { useStaleNoticeToast } from "@/src/hooks/useStaleNoticeToast";
@@ -33,13 +34,12 @@ import { PolizaDetailDialog } from "./PolizaDetailDialog";
 import PolizaForm from "./PolizaForm";
 import { usePolizas } from "../hooks/usePolizas";
 import { useContabilizarPoliza } from "../hooks/useContabilizarPoliza";
-import { useCancelarPoliza } from "../hooks/useCancelarPoliza";
 import { useDeletePoliza } from "../hooks/useDeletePoliza";
 import {
   PolizaRowActionsProvider,
   usePendingPolizaIds,
 } from "../hooks/usePolizaRowActions";
-import { cancelarPolizaDescription } from "../utils/cancelarPolizaCopy";
+import { polizaCancelDialogContent } from "../utils/polizaCancelAction";
 import type { Poliza, PolizaEstatus } from "../interfaces/poliza.interface";
 
 /** Etiqueta legible de una póliza: su folio si lo tiene, si no el `#id`. */
@@ -80,6 +80,13 @@ export default function PolizaList() {
   const { data: session, status: sessionStatus } = useSession();
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
+  // Cancelar pide además `CANCELAR-FIN-POLIZAS` (nucleo-erp#1356, EC-950).
+  const cancel = getFinanceCancelState(
+    session?.user,
+    sessionStatus,
+    FINANCE_CANCEL_PERMISSION.polizas,
+    POLIZA_WRITE_PERMISSION_REASON,
+  );
   const { polizas, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     usePolizas();
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
@@ -87,7 +94,6 @@ export default function PolizaList() {
   // del observer, así que con dos filas en vuelo el cierre de la primera se
   // perdería.
   const { mutateAsync: contabilizarPolizaAsync } = useContabilizarPoliza();
-  const { mutateAsync: cancelarPolizaAsync } = useCancelarPoliza();
   const { mutateAsync: deletePolizaAsync } = useDeletePoliza();
   // Acciones en vuelo POR PÓLIZA (contabilizar, cancelar, eliminar), leídas de
   // la MutationCache: `isPending` de cada hook solo recuerda su última llamada y
@@ -261,13 +267,14 @@ export default function PolizaList() {
         onViewDetail: (poliza) => setOpenDetailId(poliza.id),
         onContabilizar: handleContabilizar,
         onCancel: (poliza) => {
-          if (guardWrite()) setCancelTargetId(poliza.id);
+          if (guardFinanceWrite(cancel, cancel.reason)) setCancelTargetId(poliza.id);
         },
         onDelete: (poliza) => {
           if (guardWrite()) setDeleteTargetId(poliza.id);
         },
         busyIds,
         write,
+        cancel,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -372,31 +379,15 @@ export default function PolizaList() {
           />
         )}
 
+        {/* Cancelar con el motivo obligatorio (EC-950). El texto sale del estatus
+            con que se ABRIÓ; el candado por póliza es la mutación del diálogo. */}
         {cancelSnapshot && (
-          <ConfirmDialog
-            key={cancelSession.id}
+          <CancelReasonDialog
+            content={polizaCancelDialogContent(cancelSnapshot, etiquetaDe(cancelSnapshot))}
             open={cancelTargetId !== null}
-            // En vuelo queda abierta y bloqueada (ver `guardClose`).
-            {...rowLock.guardClose(cancelSnapshot.id, () => setCancelTargetId(null), isBusy(cancelSnapshot.id))}
-            title="Cancelar Póliza"
-            description={cancelarPolizaDescription(
-              etiquetaDe(cancelSnapshot),
-              cancelSnapshot.estatus,
-            )}
-            confirmText={isBusy(cancelSnapshot.id) ? "Cancelando..." : "Cancelar póliza"}
-            cancelText="Volver"
-            closeOnConfirm={false}
-            onConfirm={() => {
-              const id = cancelSnapshot.id;
-              if (isBusy(id) || !rowLock.acquire(id)) return;
-              cancelarPolizaAsync(id)
-                .catch(() => {})
-                .finally(() => {
-                  rowLock.release(id);
-                  setCancelTargetId((current) => (current === id ? null : current));
-                });
+            onOpenChange={(open) => {
+              if (!open) setCancelTargetId(null);
             }}
-            confirmColor="amber"
           />
         )}
 

@@ -38,7 +38,7 @@ const importe = (value: string): string => formatMoneyValue(value, null);
  * remonta las celdas.
  */
 function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
-  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, write } =
+  const { onViewDetail, onContabilizar, onCancel, onDelete, busyIds, write, cancel } =
     usePolizaRowActionsContext();
   const { id, estatus, cuadre_correcto, total_cargos, total_abonos } = poliza;
   // Una fila con una acción en vuelo no ofrece otra: el estatus que decide las
@@ -48,6 +48,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
   // motivo (convención de los flujos de Finanzas); el motivo del permiso manda
   // sobre los del cuadre.
   const writeBlock = financeWriteBlock(write, POLIZA_WRITE_PERMISSION_REASON);
+  // Cancelar pide además `CANCELAR-FIN-POLIZAS` (EC-950).
+  const cancelBlock = financeWriteBlock(cancel, cancel.reason);
 
   const items: ActionMenuItem[] = [
     { label: "Ver detalle", icon: ViewIcon, onSelect: () => onViewDetail(poliza) },
@@ -84,8 +86,8 @@ function PolizaFolioCell({ poliza }: { poliza: Poliza }) {
     items.push({
       label: "Cancelar póliza",
       icon: BanIcon,
-      disabled: busy || writeBlock.disabled,
-      description: writeBlock.description,
+      disabled: busy || cancelBlock.disabled,
+      description: cancelBlock.description,
       onSelect: () => onCancel(poliza),
     });
   }
