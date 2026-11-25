@@ -4,6 +4,7 @@ import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import {
+  reflectiveLineDescripcion,
   reflectiveLineProductoNombre,
   reflectiveLineSampleSku,
 } from "../hooks/useReflectiveStep2Form";
@@ -205,7 +206,7 @@ export function ReflectiveOrderLinesTable({
                     decimalPlaces={0}
                     disabled={agotada || !checked}
                     onChange={(next) => onQuantityChange(id, next)}
-                    label={`Piezas a reflejar de ${reflectiveLineProductoNombre(row)}`}
+                    label={`Piezas a reflejar de ${reflectiveLineDescripcion(row)}`}
                   />
                 </div>
 
