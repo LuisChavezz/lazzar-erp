@@ -1,3 +1,4 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 import type { WorkOrderProgramado } from "@/src/interfaces/work-order-programado.interface";
 import type { PedidoVinculado } from "@/src/features/orders/interfaces/pedido-vinculado.interface";
 
@@ -135,7 +136,7 @@ export interface EmbroideryOrderLine {
  * desde este módulo). Es una definición de negocio pendiente, no un error: se
  * muestra tal cual llega, sin normalizar ni validar.
  */
-export interface EmbroideryOrder {
+export interface EmbroideryOrder extends DocumentCancellationFields {
   id: number;
   folio_bordado: string;
   /**

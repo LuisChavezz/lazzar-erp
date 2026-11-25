@@ -7,6 +7,7 @@ import { ArrowLeftIcon, LayersIcon, ScissorsIcon, TrendingUpIcon } from "@/src/c
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import {
   OrderChip,
@@ -224,6 +225,16 @@ export function EmbroideryOrderDetailContent({
           <EmbroideryOrderPdfButton order={data} />
         </div>
       </div>
+
+      {/* Quién, cuándo y por qué se canceló (nucleo-erp#1355, EC-948). */}
+      {data.estatus_bordado === EMBROIDERY_STATUS_CANCELLED && (
+        <CancellationInfo
+          title="Orden cancelada"
+          motivo={data.motivo_cancelacion}
+          fecha={data.fecha_cancelacion}
+          canceladoPor={data.cancelado_por_nombre}
+        />
+      )}
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
       <SheetSection

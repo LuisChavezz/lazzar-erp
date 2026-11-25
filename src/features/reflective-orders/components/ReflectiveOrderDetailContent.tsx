@@ -7,6 +7,7 @@ import { ArrowLeftIcon, InfoIcon, LayersIcon, RulerIcon } from "@/src/components
 import { Loader } from "@/src/components/Loader";
 import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { InfoField, InfoGrid, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { WorkOrderCoverageSheet, WorkOrderTopBar } from "@/src/components/WorkOrderSheets";
 import { SheetPanel, SheetSection } from "@/src/features/orders/components/OrderSheetPrimitives";
@@ -260,6 +261,16 @@ export function ReflectiveOrderDetailContent({
           </>
         }
       />
+
+      {/* Quién, cuándo y por qué se canceló (nucleo-erp#1355, EC-948). */}
+      {isTerminal && (
+        <CancellationInfo
+          title="Orden cancelada"
+          motivo={data.motivo_cancelacion}
+          fecha={data.fecha_cancelacion}
+          canceladoPor={data.cancelado_por_nombre}
+        />
+      )}
 
       {/* ── 1. La orden ─────────────────────────────────────────────────── */}
       <SheetSection

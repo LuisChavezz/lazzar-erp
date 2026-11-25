@@ -1,3 +1,4 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 import type { BomBulkDetalle } from "@/src/features/bom/interfaces/bom.interface";
 import type {
   PedidoVinculado,
@@ -123,7 +124,7 @@ export interface ProductionOrderPreOrdenRef {
   referencia: string;
 }
 
-export interface ProductionOrderOnboarding {
+export interface ProductionOrderOnboarding extends DocumentCancellationFields {
   op_id: number;
   folio_op: string;
   estatus_op: number;
