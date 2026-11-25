@@ -23,9 +23,9 @@
  */
 
 const EMOJI_SEQUENCE =
-  /\p{Regional_Indicator}{1,2}|\p{Emoji_Modifier}|[0-9#*]️?⃣|\p{Extended_Pictographic}[︎️]?\p{Emoji_Modifier}?[\u{E0020}-\u{E007F}]*(?:‍\p{Extended_Pictographic}[︎️]?\p{Emoji_Modifier}?)*/gu;
+  /\p{Regional_Indicator}{1,2}|\p{Emoji_Modifier}|[0-9#*]\uFE0F?\u20E3|\p{Extended_Pictographic}[\uFE0E\uFE0F]?\p{Emoji_Modifier}?[\u{E0020}-\u{E007F}]*(?:\u200D\p{Extended_Pictographic}[\uFE0E\uFE0F]?\p{Emoji_Modifier}?)*/gu;
 
-const COMPOUND = /[‍\u{E0020}-\u{E007F}]|\p{Emoji_Modifier}/u;
+const COMPOUND = /[\u200D\u{E0020}-\u{E007F}]|\p{Emoji_Modifier}/u;
 const FIRST_NON_BMP = 0x10000;
 
 const replaceSequence = (sequence: string): string => {
