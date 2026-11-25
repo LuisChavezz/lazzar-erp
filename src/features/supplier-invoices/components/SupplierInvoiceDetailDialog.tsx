@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -199,6 +200,14 @@ export function SupplierInvoiceDetailDialog({
       headerAction={<SupplierInvoicePdfButton factura={factura} />}
     >
       <div className="space-y-5">
+        {factura.estatus === "Cancelada" && (
+          <CancellationInfo
+            title="Factura cancelada"
+            motivo={factura.motivo_cancelacion}
+            fecha={factura.fecha_cancelacion}
+            canceladoPor={factura.cancelado_por_nombre}
+          />
+        )}
         {/* Encabezado: lo que se busca primero al abrir el registro. */}
         <InfoTileGrid>
           <InfoTile label="Estatus">

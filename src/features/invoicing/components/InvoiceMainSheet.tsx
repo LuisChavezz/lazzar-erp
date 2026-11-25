@@ -11,6 +11,7 @@ import {
   SyncIcon,
 } from "@/src/components/Icons";
 import { Button } from "@/src/components/Button";
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
   HeaderStat,
@@ -408,6 +409,15 @@ export function InvoiceMainSheet({ data, invoice, canOpen, user, onSendEmail }: 
               </InfoTile>
             </InfoTileGrid>
             {invoice && <InvoiceCfdiStamp invoice={invoice} />}
+            {/* Quién, cuándo y por qué (EC-950): solo el retrieve lo trae. */}
+            {invoice?.estatus === "Cancelada" && (
+              <CancellationInfo
+                title="Factura cancelada"
+                motivo={invoice.motivo_cancelacion}
+                fecha={invoice.fecha_cancelacion}
+                canceladoPor={invoice.cancelado_por_nombre}
+              />
+            )}
           </div>
           {invoice && (
             <InvoiceDocumentActions invoice={invoice} user={user} onSendEmail={onSendEmail} />

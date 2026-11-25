@@ -1,5 +1,6 @@
 "use client";
 
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { DialogHeader } from "@/src/components/DialogHeader";
@@ -118,6 +119,14 @@ export function PolizaDetailDialog({
       headerAction={<PolizaPdfButton poliza={poliza} />}
     >
       <div className="space-y-5">
+        {poliza.estatus === "Cancelada" && (
+          <CancellationInfo
+            title="Póliza cancelada"
+            motivo={poliza.motivo_cancelacion}
+            fecha={poliza.fecha_cancelacion}
+            canceladoPor={poliza.cancelado_por_nombre}
+          />
+        )}
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
         <InfoTileGrid>
           <InfoTile label="Estatus">

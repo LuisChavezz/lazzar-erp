@@ -1,5 +1,6 @@
 "use client";
 
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -99,6 +100,14 @@ export function BankReconciliationDetailDialog({
       }
     >
       <div className="space-y-5">
+        {conciliacion.estatus === "Cancelada" && (
+          <CancellationInfo
+            title="Conciliación cancelada"
+            motivo={conciliacion.motivo_cancelacion}
+            fecha={conciliacion.fecha_cancelacion}
+            canceladoPor={conciliacion.cancelado_por_nombre}
+          />
+        )}
         <InfoTileGrid>
           <InfoTile label="Cuenta bancaria">{cuenta}</InfoTile>
           <InfoTile label="Estatus">
