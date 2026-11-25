@@ -7,12 +7,16 @@ import type {
   SalidaMaquilaOrigen,
   SalidaMaquilaRenglonOrigen,
 } from "../interfaces/salida-maquila.interface";
+import { cleanText } from "@/src/utils/cleanText";
+import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 
 /** Renglón editable del alta: piezas y precio como texto, tal cual se teclean. */
 export interface SalidaMaquilaDraftLine {
   /** Renglón de la orden de origen (`op_detalle` / `ob_detalle` / `or_detalle`). */
   detalleId: number;
   descripcion: string;
+  /** Ver `SalidaMaquilaRenglonOrigen.descripcionDelServidor`. */
+  descripcionDelServidor?: boolean;
   /** Piezas de ese renglón en la orden. */
   enOrden: number;
   cantidad: string;
@@ -39,15 +43,21 @@ export interface OrdenServicioRenglon {
   id: number;
   cantidad: number;
   sku?: string | null;
-  producto_nombre: string | null;
+  /** `null` en un renglón de MUESTRA con SKU (EC-964). */
+  producto?: number | null;
+  /** Se omite en un renglón sin producto (EC-964). */
+  producto_nombre?: string | null;
   talla_nombre: string | null;
   color_nombre?: string | null;
 }
 
-/** Prenda legible de una OB u OR: SKU (o producto) · talla · color. */
+/**
+ * Prenda legible de una OB u OR: SKU (o producto) · talla · color. Un renglón
+ * de muestra no trae nombre en el detalle de la orden y se rotula con
+ * `workOrderProductLabel` («Sin producto de catálogo»), nunca vacío.
+ */
 export const describeRenglonServicio = (r: OrdenServicioRenglon): string =>
-  [r.sku || r.producto_nombre, r.talla_nombre, r.color_nombre].filter(Boolean).join(" · ") ||
-  `Renglón ${r.id}`;
+  [r.sku || workOrderProductLabel(r), r.talla_nombre, r.color_nombre].filter(Boolean).join(" · ");
 
 /** Los renglones ACTIVOS de la OP, con su descripción. */
 export const opRenglones = (renglones: OpParaSalidaMaquilaRenglon[]): SalidaMaquilaRenglonOrigen[] =>
@@ -82,6 +92,9 @@ export const servicioSeed = (
   renglones: detalles.map((d) => ({
     detalleId: d.id,
     descripcion: describeRenglonServicio(d),
+    // Muestra sin SKU que mostrar: el backend la describe con su nombre externo
+    // (EC-964). Con SKU, «SKU · talla · color» como cualquier otro renglón.
+    ...(d.producto === null && !cleanText(d.sku) ? { descripcionDelServidor: true } : {}),
     cantidad: Number(d.cantidad) || 0,
   })),
 });
@@ -100,6 +113,7 @@ export const initialDraft = (
   renglones.map((r) => ({
     detalleId: r.detalleId,
     descripcion: r.descripcion,
+    ...(r.descripcionDelServidor ? { descripcionDelServidor: true } : {}),
     enOrden: r.cantidad,
     cantidad: "",
     precio: precioSugerido && Number(precioSugerido) > 0 ? String(Number(precioSugerido)) : "",
@@ -186,7 +200,13 @@ export const toDetalles = (
   origen: SalidaMaquilaOrigen,
 ): CreateSalidaMaquilaDetalle[] =>
   linesToSend(lines).map((l) => {
-    const base = { descripcion: l.descripcion, cantidad: String(lineQty(l)), precio_unitario: l.precio.trim() };
+    // Sin `descripcion` cuando la nombra mejor el backend (muestra, EC-964): la
+    // que manda el cliente gana sobre la suya.
+    const base = {
+      ...(l.descripcionDelServidor ? {} : { descripcion: l.descripcion }),
+      cantidad: String(lineQty(l)),
+      precio_unitario: l.precio.trim(),
+    };
     switch (origen) {
       case "OP":
         return { op_detalle: l.detalleId, ...base };
