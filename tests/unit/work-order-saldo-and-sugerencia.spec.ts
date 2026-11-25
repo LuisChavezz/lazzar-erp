@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { buildWorkOrderPedidoOptions, getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
-import { esProgramacionSugerida, faltantesDeSugerencia, sugerirProgramacion } from "@/src/features/orders/utils/pedidoProgramacionSugerida";
+import { esProgramacionSugerida, faltantesDeSugerencia, piezasPendientesDeSku, sugerirProgramacion } from "@/src/features/orders/utils/pedidoProgramacionSugerida";
 
 const prog = (cantidad: number) => ({ cantidad, fecha: "2026-11-20T13:53:09Z", usuario_nombre: "X" });
 
@@ -66,4 +66,16 @@ test("saldo: con nucleo-erp#1274 manda el backend (asignado/disponible), aunque 
   // Solo `disponible_programado` en el pedido: el disponible viene de ahí.
   const q = { id: 2, folio: "P-2", cliente_nombre: "C", programado: prog(20), disponible_programado: 3, detalles: [{ cantidad_asignada: 10 }] };
   expect(getWorkOrderSaldo(q)).toEqual({ programado: 20, enOrdenes: 10, disponible: 3 });
+});
+
+test("la sugerencia no incluye tallas pendientes de SKU", () => {
+  const renglones = [
+    { cantidad: 10, servicios: ["REFLEJANTE"], pendiente_sku: false },
+    { cantidad: 4, servicios: ["REFLEJANTE"], pendiente_sku: true },
+    { cantidad: 3, servicios: ["REFLEJANTE"], pendiente_sku: false, variante_id: null },
+  ];
+  expect(sugerirProgramacion(renglones, ["REFLEJANTE", "EMBARQUE"])).toEqual([
+    { destino: "REFLEJANTE", cantidad: 10, conVariosServicios: 0 },
+  ]);
+  expect(piezasPendientesDeSku(renglones)).toBe(7);
 });

@@ -102,6 +102,8 @@ export interface PedidoProgramarRenglon {
   sku: string | null;
   variante_id: number | null;
   es_muestra: boolean;
+  /** Sin SKU todavía: no se puede programar a procesos ni Embarque, solo Apartado (nucleo-erp#1393). */
+  pendiente_sku?: boolean;
   cantidad: number;
   servicios: string[];
   stock_disponible: number | null;
