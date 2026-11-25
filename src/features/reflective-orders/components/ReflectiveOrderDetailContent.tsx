@@ -42,6 +42,7 @@ import type {
   ReflectiveOrderSibling,
 } from "../interfaces/reflective-order.interface";
 import { reflectiveOrderDetailPath } from "@/src/constants/workOrderRoutes";
+import { workOrderProductGroupId, workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 
 // Destino del "Volver". Fijo —sin el mapa `?from=` de `PedidoDetailContent`—
 // porque esta ruta NO es neutra: cuelga de `/manufacturing` y exige su código
@@ -74,8 +75,8 @@ const ReflectiveGarments = ({ items }: { items: ReflectiveOrderDetailLine[] }) =
     items={items}
     toLine={(linea) => ({
       id: linea.id,
-      productoId: linea.producto,
-      producto: linea.producto_nombre ?? `Producto #${linea.producto}`,
+      productoId: workOrderProductGroupId(linea),
+      producto: workOrderProductLabel(linea),
       color: linea.color_nombre ?? null,
       talla: linea.talla_nombre,
       cantidad: linea.cantidad,
@@ -95,7 +96,7 @@ const ReflectiveGarments = ({ items }: { items: ReflectiveOrderDetailLine[] }) =
             <span className="flex flex-wrap items-center gap-1.5">
               <ReflectiveLineConfigPopover
                 configs={configs}
-                productoNombre={linea.producto_nombre ?? `Producto #${linea.producto}`}
+                productoNombre={workOrderProductLabel(linea)}
                 tallaNombre={linea.talla_nombre}
                 colorNombre={linea.color_nombre ?? null}
               />
