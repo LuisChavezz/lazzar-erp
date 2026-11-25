@@ -100,7 +100,10 @@ export function QualityInspectionView() {
       inspector: i.inspector_nombre ?? "",
       fecha: i.fecha,
       estado: i.estado,
-      aprobadas: i.detalles.reduce((acc, d) => acc + (Number(d.cantidad_aprobada) || 0), 0),
+      // Anulada (EC-947): lo aprobado ya salió del almacén con la reversa. La
+      // columna y su exportación (que lee esta fila) muestran 0.
+      aprobadas:
+        i.estado === "anulada" ? 0 : i.detalles.reduce((acc, d) => acc + (Number(d.cantidad_aprobada) || 0), 0),
       rechazadas: i.detalles.reduce((acc, d) => acc + (Number(d.cantidad_rechazada) || 0), 0),
     };
   });
