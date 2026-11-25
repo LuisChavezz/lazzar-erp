@@ -29,9 +29,11 @@ import {
   reflectiveStatusEntry,
 } from "../constants/reflectiveOrderStatus";
 import {
+  REFLECTIVE_ORDER_DETAIL_KEY,
   reflectiveOrderDetailQueryKey,
   useReflectiveOrderDetail,
 } from "../hooks/useReflectiveOrderDetail";
+import { reflectiveOnboardingQueryKey } from "../hooks/useReflectiveOnboarding";
 import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups";
 import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/components/WorkOrderAvancesSection";
 import { useUpdateReflectiveOrder } from "../hooks/useUpdateReflectiveOrder";
@@ -253,6 +255,8 @@ export function ReflectiveOrderDetailContent({
                 cancelledLabel: reflectiveStatusEntry(WORK_ORDER_CANCELLED_STATUS).label,
                 cancel: cancelReflectiveOrder,
                 detailQueryKey: reflectiveOrderDetailQueryKey(data.id),
+                detailPrefixQueryKey: REFLECTIVE_ORDER_DETAIL_KEY,
+                onboardingQueryKey: reflectiveOnboardingQueryKey,
                 listQueryKey: ["reflective-orders"],
                 hasSalidasMaquila: true,
               }}

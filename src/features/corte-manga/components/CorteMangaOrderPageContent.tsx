@@ -27,9 +27,11 @@ import {
   corteMangaStatusEntry,
 } from "../constants/corteMangaOrderStatus";
 import {
+  CORTE_MANGA_ORDER_DETAIL_KEY,
   corteMangaOrderDetailQueryKey,
   useCorteMangaOrderDetail,
 } from "../hooks/useCorteMangaOrderDetail";
+import { corteMangaOnboardingQueryKey } from "../hooks/useCorteMangaOnboarding";
 import { WorkOrderGarmentGroups } from "@/src/components/WorkOrderGarmentGroups";
 import { WorkOrderAvancesSection } from "@/src/features/work-order-avances/components/WorkOrderAvancesSection";
 import { useUpdateCorteMangaOrder } from "../hooks/useUpdateCorteMangaOrder";
@@ -227,6 +229,8 @@ export function CorteMangaOrderPageContent({
                 cancelledLabel: corteMangaStatusEntry(WORK_ORDER_CANCELLED_STATUS).label,
                 cancel: cancelCorteMangaOrder,
                 detailQueryKey: corteMangaOrderDetailQueryKey(data.id),
+                detailPrefixQueryKey: CORTE_MANGA_ORDER_DETAIL_KEY,
+                onboardingQueryKey: corteMangaOnboardingQueryKey,
                 listQueryKey: ["corte-manga-orders"],
                 hasSalidasMaquila: false,
               }}
