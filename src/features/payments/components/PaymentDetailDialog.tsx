@@ -1,5 +1,6 @@
 "use client";
 
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -70,6 +71,14 @@ export function PaymentDetailDialog({
       headerAction={<PagoPdfButton pago={pago} />}
     >
       <div className="space-y-5">
+        {pago.estatus === "Cancelado" && (
+          <CancellationInfo
+            title="Pago cancelado"
+            motivo={pago.motivo_cancelacion}
+            fecha={pago.fecha_cancelacion}
+            canceladoPor={pago.cancelado_por_nombre}
+          />
+        )}
         {/* Cabecera: sale del renglón que el listado ya cargó. */}
         <InfoTileGrid>
           <InfoTile label="Estatus">

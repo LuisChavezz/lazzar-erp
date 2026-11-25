@@ -88,9 +88,11 @@ export type ConciliacionEnDetalle = Pick<
   | "saldo_estado_cuenta"
   | "saldo_libros"
   | "estatus"
-> & {
-  observaciones?: string | null;
-};
+> &
+  // Los datos de la cancelación (EC-950) son opcionales: `preparar` no los trae.
+  DocumentCancellationFields & {
+    observaciones?: string | null;
+  };
 
 /**
  * Cuerpo de `POST /finanzas/conciliaciones-bancarias/preparar/`.

@@ -1,4 +1,5 @@
 import type { InvoiceDesgloseReceptor } from "./invoice-desglose.interface";
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
 
 /**
  * Estatus de una factura (`Factura.FacturaStatus` del backend). Enum COMPLETO:
@@ -38,7 +39,12 @@ export interface InvoiceDetail {
   talla_nombre: string | null;
 }
 
-export interface Invoice {
+/**
+ * `motivo_cancelacion`, `fecha_cancelacion`, `cancelado_por` y
+ * `cancelado_por_nombre` (EC-950/971): solo en el retrieve; el listado no los
+ * trae.
+ */
+export interface Invoice extends DocumentCancellationFields {
   id: number;
   activo: boolean;
   factura_detalles: InvoiceDetail[];

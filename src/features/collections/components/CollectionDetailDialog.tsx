@@ -1,5 +1,6 @@
 "use client";
 
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -175,6 +176,14 @@ export function CollectionDetailDialog({
       headerAction={<CobroPdfButton cobro={cobro} />}
     >
       <div className="space-y-5">
+        {cobro.estatus === "Cancelado" && (
+          <CancellationInfo
+            title="Cobro cancelado"
+            motivo={cobro.motivo_cancelacion}
+            fecha={cobro.fecha_cancelacion}
+            canceladoPor={cobro.cancelado_por_nombre}
+          />
+        )}
         {/* Encabezado: lo que se busca primero al abrir el cobro. */}
         <InfoTileGrid>
           <InfoTile label="Estatus">

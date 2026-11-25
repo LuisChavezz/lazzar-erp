@@ -1,5 +1,6 @@
 "use client";
 
+import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { StatusBadge } from "@/src/components/StatusBadge";
@@ -331,6 +332,14 @@ export function CreditNoteDetailBody({ nota }: { nota: NotaCredito }) {
 
   return (
       <div className="space-y-5">
+        {nota.estatus === "Cancelada" && (
+          <CancellationInfo
+            title="Nota de crédito cancelada"
+            motivo={nota.motivo_cancelacion}
+            fecha={nota.fecha_cancelacion}
+            canceladoPor={nota.cancelado_por_nombre}
+          />
+        )}
         {/* Cabecera en mosaicos: sale del renglón que el listado ya cargó. */}
         <InfoTileGrid>
           <InfoTile label="Estatus">
