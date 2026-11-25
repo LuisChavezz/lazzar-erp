@@ -44,6 +44,9 @@ export interface PedidoDocumentoPreOrden {
   op_id: number | null;
   created_at: string;
   op_folio: string | null;
+  /** `estatus_op` de la OP ligada (`7` Cancelado) y su etiqueta; `null` sin OP (EC-968). */
+  op_estatus?: number | null;
+  op_estatus_display?: string | null;
 }
 
 export interface PedidoDocumentoSalidaMaquila {
