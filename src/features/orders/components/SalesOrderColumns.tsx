@@ -10,6 +10,7 @@ import { formatOrderAmountOrDash } from '../utils/orderAmountFormat';
 import type { PedidoListItem } from '../interfaces/order.interface';
 import { isOrderConfirmed } from '../utils/pedidoConfirmacion';
 import { hasMeaningfulOc } from '../utils/pedidoFormat';
+import { PedidoRetenidoBadge } from './PedidoRetenidoBadge';
 import { pedidoDetailHref, type PedidoDetailOrigin } from '../constants/pedidoDetailOrigins';
 import { toMexicoDayLocalDate } from "@/src/utils/mexicoTime";
 import {
@@ -99,6 +100,8 @@ function PedidoFolioCell({ order, from }: { order: PedidoListItem; from: PedidoD
       status={
         <div className="flex items-center gap-2 flex-wrap">
           <PedidoEstatusBadge estatus={order.estatus} />
+          {/* Retenido por Mesa de Control (EC-946): solo se avisa, sin acciones. */}
+          <PedidoRetenidoBadge pedido={order} />
           {hasMeaningfulOc(order.oc) && (
             <span
               className="text-[11px] text-slate-400 dark:text-slate-500 font-mono"
