@@ -94,6 +94,16 @@ const compact = StyleSheet.create({
   odd: { backgroundColor: "#f8fafc" },
   headCell: { fontSize: 6.2, fontWeight: "bold", color: "#cbd5e1", paddingHorizontal: 3 },
   cell: { fontSize: 6.8, color: "#334155", paddingHorizontal: 3 },
+  // Totales a la escala de las celdas compactas (hoy ningún listado de WMS los usa).
+  totalRow: {
+    flexDirection: "row",
+    borderTopWidth: 1.5,
+    borderTopColor: "#1e293b",
+    paddingVertical: 5,
+    marginTop: 2,
+  },
+  totalLabel: { fontSize: 6.8, fontWeight: "bold", color: "#0f172a", paddingHorizontal: 3 },
+  totalValue: { fontSize: 7.5, fontWeight: "bold", color: "#0f172a", paddingHorizontal: 3, textAlign: "right" },
   footer: {
     position: "absolute",
     bottom: 16,
@@ -231,11 +241,11 @@ export function ListPdfDocument({ variant, brand, title, meta, columns, rows, to
         </View>
       ))}
       {totalRow && (
-        <View style={standard.totalRow}>
+        <View style={s.totalRow}>
           {columns.map((column, i) => (
             <Text
               key={i}
-              style={[i === totalRow.valueIndex ? standard.totalValue : standard.totalLabel, { width: column.width }]}
+              style={[i === totalRow.valueIndex ? s.totalValue : s.totalLabel, { width: column.width }]}
             >
               {totalRow.cells[i] ?? ""}
             </Text>
