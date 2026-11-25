@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Contrato de `/finanzas/pagos/` (`PagoSerializer`, `fields = "__all__"` más
  * `proveedor_nombre` y `cuenta_bancaria_alias` de solo lectura, y las líneas
@@ -41,7 +43,7 @@ export interface PagoDetalle {
   factura_proveedor_folio?: string | null;
 }
 
-export interface Pago {
+export interface Pago extends DocumentCancellationFields {
   id: number;
   /** FK a `nucleo.Empresa`. La resuelve el backend; el cliente la LEE, nunca la envía. */
   empresa: number;

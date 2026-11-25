@@ -55,11 +55,12 @@ export const createPago = async (payload: CreatePagoPayload): Promise<Pago> => {
  *
  * El backend revierte los saldos de las CxP aplicadas, marca el movimiento
  * bancario como `Cancelado` y deja el pago en `estatus: "Cancelado"`. Devuelve
- * 200 con el documento. Es idempotente: cancelar un pago ya cancelado no falla —
- * aun así la UI solo ofrece la acción sobre pagos `Aplicado`.
+ * 200 con el documento y los datos de la cancelación. Exige el motivo
+ * (nucleo-erp#1356, EC-950) y `CANCELAR-FIN-PAGOS`; un pago ya cancelado
+ * responde `400 estatus`. La UI solo ofrece la acción sobre pagos `Aplicado`.
  */
-export const cancelarPago = async (id: number): Promise<Pago> => {
-  const { data } = await v1_api.post<Pago>(`/finanzas/pagos/${id}/cancelar/`);
+export const cancelarPago = async (id: number, motivo: string): Promise<Pago> => {
+  const { data } = await v1_api.post<Pago>(`/finanzas/pagos/${id}/cancelar/`, { motivo });
   return data;
 };
 
