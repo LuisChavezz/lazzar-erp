@@ -59,9 +59,12 @@ export const getSupplierPurchaseOrderHistoryColumns = (
         <StatusBadge
           status={String(row.original.estatus)}
           config={{
+            // `historial-ordenes-compra/` serializa con `OrdenCompraSerializer`:
+            // trae `saldo_cerrado` y se rotula "Saldo cerrado" (EC-947).
             [row.original.estatus]: purchaseOrderStatusEntry(
               row.original.estatus,
               row.original.estatus_label,
+              row.original.saldo_cerrado,
             ),
           }}
         />
