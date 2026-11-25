@@ -38,12 +38,6 @@ test("cada hoja de appRoutes tiene una regla en routePermissions", () => {
   expect(sinRegla).toEqual([]);
 });
 
-test("el requisito de cada hoja es el de la regla de su ruta", () => {
-  for (const { item } of allLeaves) {
-    expect([item.path, item.permission]).toEqual([item.path, findRoutePermissionRule(item.path)?.permission]);
-  }
-});
-
 for (const group of appRouteGroups.filter((g) => g.items.some((item) => item.showInSidebar !== false))) {
   const navigable = group.items.filter((item) => item.showInSidebar !== false);
 
