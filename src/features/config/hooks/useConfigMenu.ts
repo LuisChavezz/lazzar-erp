@@ -13,6 +13,9 @@ import {
 /** Lo que tarda la animación de salida del menú antes de ocultarlo. */
 const GRID_HIDE_DELAY_MS = 500;
 
+/** Todas las claves de vista que existen, sin mirar permisos. */
+const CONFIG_VIEWS = configCards.map((card) => card.view);
+
 export function useConfigMenu(user?: PermissionContext | null) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -34,14 +37,16 @@ export function useConfigMenu(user?: PermissionContext | null) {
   );
 
   // ¿La entrada actual es una vista abierta justo después del menú en esta
-  // sesión montada? (ver `nextOpenedFromMenu`). Se sigue sobre el parámetro
-  // CRUDO y no sobre `selectedView`, que vale `null` mientras cargan los
-  // permisos y haría pasar una recarga por "abierta desde el menú".
-  const [trackedViewParam, setTrackedViewParam] = useState(viewParam);
+  // sesión montada? (ver `nextOpenedFromMenu`). Se sigue sobre la vista
+  // validada contra TODAS las tarjetas y no sobre `selectedView`, que vale
+  // `null` mientras cargan los permisos y haría pasar una recarga por "abierta
+  // desde el menú". Un valor desconocido (`?view=garbage`) cuenta como menú.
+  const knownView = resolveConfigView(viewParam, CONFIG_VIEWS);
+  const [trackedView, setTrackedView] = useState(knownView);
   const [openedFromMenu, setOpenedFromMenu] = useState(false);
-  if (trackedViewParam !== viewParam) {
-    setTrackedViewParam(viewParam);
-    setOpenedFromMenu(nextOpenedFromMenu(trackedViewParam, viewParam, openedFromMenu));
+  if (trackedView !== knownView) {
+    setTrackedView(knownView);
+    setOpenedFromMenu(nextOpenedFromMenu(trackedView, knownView, openedFromMenu));
   }
 
   // Query del menú pendiente de aplicar tras un "Volver" con `history.back()`.
@@ -51,12 +56,18 @@ export function useConfigMenu(user?: PermissionContext | null) {
     // tabla que se acaba de cerrar. El orden frente al `popstate` de Next no
     // importa: los dos despachan un "restore" y Next descarta el pendiente en
     // favor del último, y ambos leen la URL ya reescrita (`location.href`).
+    // Depende de dos detalles internos de Next (verificados en la versión
+    // actual): que intercepte `history.replaceState` para sincronizar
+    // `useSearchParams`, y que en su cola de acciones gane el último "restore".
+    // Al actualizar Next, volver a probar este flujo.
     const onPopState = () => {
       const query = pendingMenuQuery.current;
       if (query === null) return;
       pendingMenuQuery.current = null;
-      // Si "atrás" no cayó en el menú (no debería), no se toca esa entrada.
-      if (new URLSearchParams(window.location.search).has(CONFIG_VIEW_PARAM)) return;
+      // Si "atrás" no cayó en el menú (no debería), no se toca esa entrada. Un
+      // `?view=` desconocido es menú: se reescribe y se va con la reescritura.
+      const landedView = new URLSearchParams(window.location.search).get(CONFIG_VIEW_PARAM);
+      if (resolveConfigView(landedView, CONFIG_VIEWS) !== null) return;
       window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
     };
     window.addEventListener("popstate", onPopState);
@@ -91,13 +102,10 @@ export function useConfigMenu(user?: PermissionContext | null) {
    * Parte de la query ACTUAL del navegador y solo toca `view`: los parámetros
    * de cada tabla se conservan.
    */
-  const handleCardClick = useCallback(
-    (view: string) => {
-      const qs = configViewQuery(window.location.search, view);
-      window.history.pushState(null, "", qs ? `${pathname}?${qs}` : pathname);
-    },
-    [pathname],
-  );
+  const handleCardClick = (view: string) => {
+    const qs = configViewQuery(window.location.search, view);
+    window.history.pushState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  };
 
   // Entrar al grupo seleccionado y reiniciar búsqueda
   const handleGroupClick = useCallback((group: string) => {
@@ -120,6 +128,9 @@ export function useConfigMenu(user?: PermissionContext | null) {
    */
   const handleBack = () => {
     if (pendingMenuQuery.current !== null) return;
+    // Una búsqueda aún sin confirmar (dentro del debounce de la tabla) no
+    // viaja al menú: al desmontarse, `useServerTable` cancela su temporizador,
+    // igual que al salir de la vista antes de EC-956. Enter la confirma.
     const menuQuery = configViewQuery(window.location.search, null);
     if (openedFromMenu) {
       pendingMenuQuery.current = menuQuery;

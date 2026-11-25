@@ -53,6 +53,12 @@ test.describe("nextOpenedFromMenu", () => {
     expect(nextOpenedFromMenu(null, "suppliers", true)).toBe(true);
   });
 
+  test("un `?view=` desconocido, normalizado a menú, marca la tarjeta abierta después", () => {
+    const garbage = resolveConfigView("garbage", VIEWS);
+    expect(garbage).toBeNull();
+    expect(nextOpenedFromMenu(garbage, resolveConfigView("products", VIEWS), false)).toBe(true);
+  });
+
   test("cualquier otro cambio de vista la quita", () => {
     expect(nextOpenedFromMenu("products", null, true)).toBe(false);
     expect(nextOpenedFromMenu("products", "suppliers", true)).toBe(false);
