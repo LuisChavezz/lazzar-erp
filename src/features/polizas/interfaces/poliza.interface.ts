@@ -1,3 +1,5 @@
+import type { DocumentCancellationFields } from "@/src/features/document-cancellation/interfaces/document-cancellation.interface";
+
 /**
  * Contrato de `/finanzas/polizas/` (`PolizaSerializer`, `fields = "__all__"` más
  * tres campos calculados —`total_cargos`, `total_abonos`, `cuadre_correcto`— y
@@ -95,7 +97,7 @@ export interface PolizaDetalle {
   cuenta_contable_nombre?: string | null;
 }
 
-export interface Poliza {
+export interface Poliza extends DocumentCancellationFields {
   id: number;
   /**
    * FK a `nucleo.Empresa`. La resuelve el SERVIDOR

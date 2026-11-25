@@ -4,13 +4,18 @@ import type { Mutation, QueryClient } from "@tanstack/react-query";
  * Id del registro de una mutación de FILA, para `useMutationState({ select })`:
  * las variables son el id mismo (eliminar) o un objeto con `id` (aprobar,
  * rechazar). Lo comparten los "en vuelo" por fila de vacaciones y de permisos
- * y ausencias.
+ * y ausencias. Una cancelación con motivo (`CancelReasonDialog`, EC-950) tiene
+ * como variables el motivo y lleva el id en su llave (`["cancelar-poliza", id]`):
+ * entonces se lee de ahí.
  */
 export const selectMutationRecordId = (
   mutation: Mutation<unknown, Error, unknown, unknown>
 ): number => {
   const variables = mutation.state.variables;
-  return typeof variables === "number" ? variables : (variables as { id: number }).id;
+  if (typeof variables === "number") return variables;
+  const keyId = mutation.options.mutationKey?.[1];
+  if ((variables === undefined || typeof variables === "string") && typeof keyId === "number") return keyId;
+  return (variables as { id: number }).id;
 };
 
 /**

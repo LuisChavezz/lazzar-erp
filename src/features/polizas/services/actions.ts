@@ -80,11 +80,15 @@ export type CancelarPolizaResponse = Poliza & { contrapoliza_id: number | null }
  *  - `Contabilizada`: genera una CONTRAPÓLIZA —una póliza nueva `Contabilizada`,
  *    con su propio folio, fechada hoy y con cargos y abonos invertidos— y deja
  *    la original `Cancelada`. La respuesta trae su id en `contrapoliza_id`.
- *  - `Cancelada`: no hace nada y devuelve la contrapóliza que ya tuviera.
+ *  - `Cancelada`: responde `400 estatus` (no reescribe el rastro).
+ *
+ * Exige el motivo (nucleo-erp#1356, EC-950) y `CANCELAR-FIN-POLIZAS`; la
+ * respuesta trae `motivo_cancelacion`, `fecha_cancelacion` y quién canceló.
  */
-export const cancelarPoliza = async (id: number): Promise<CancelarPolizaResponse> => {
+export const cancelarPoliza = async (id: number, motivo: string): Promise<CancelarPolizaResponse> => {
   const { data } = await v1_api.post<CancelarPolizaResponse>(
     `/finanzas/polizas/${id}/cancelar/`,
+    { motivo },
   );
   return data;
 };

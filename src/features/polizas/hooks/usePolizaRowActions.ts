@@ -1,11 +1,11 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
-import type { FinanceWriteState } from "@/src/utils/financeWrite";
+import type { FinanceCancelState, FinanceWriteState } from "@/src/utils/financeWrite";
 import { usePendingRecordIds } from "@/src/hooks/usePendingRecordIds";
 import type { Poliza } from "../interfaces/poliza.interface";
 import { contabilizarPolizaMutationKey } from "./useContabilizarPoliza";
-import { cancelarPolizaMutationKey } from "./useCancelarPoliza";
+import { cancelarPolizaMutationKey } from "../utils/polizaCancelAction";
 import { deletePolizaMutationKey } from "./useDeletePoliza";
 
 export interface PolizaRowActionsContextValue {
@@ -21,6 +21,12 @@ export interface PolizaRowActionsContextValue {
    * deshabilitados con su motivo.
    */
   write: FinanceWriteState;
+  /**
+   * Estado de la cancelación (`getFinanceCancelState`): escritura más
+   * `CANCELAR-FIN-POLIZAS` (EC-950). Sin él, "Cancelar póliza" se muestra
+   * deshabilitada con su motivo.
+   */
+  cancel: FinanceCancelState;
 }
 
 const { Provider, useRowActionsContext } = createRowActionsContext<PolizaRowActionsContextValue>(
