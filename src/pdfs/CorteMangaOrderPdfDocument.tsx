@@ -6,7 +6,7 @@
  * Lo que muestra la página de detalle (`CorteMangaOrderPageContent`), leído
  * del retrieve `GET /produccion/orden-corte-manga/{id}/`:
  *
- * - Datos de la orden (estatus, prioridad, alta, fin), la fecha del pedido y
+ * - Datos de la orden (estatus, alta, fin), la fecha del pedido y
  *   "Vence" (`fecha_vence`, que el detalle trae desde EC-880), y su
  *   seguimiento (pedido, operador, total de piezas, empresa, sucursal).
  * - El cliente del pedido (`pedido_vinculado.cliente`, EC-880). La tarjeta se
@@ -16,11 +16,7 @@
  * - Prendas agrupadas por prenda + color como en la pantalla.
  * - Observaciones.
  */
-import {
-  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  corteMangaOrderPriorityFallback,
-  corteMangaStatusEntry,
-} from "@/src/features/corte-manga/constants/corteMangaOrderStatus";
+import { corteMangaStatusEntry } from "@/src/features/corte-manga/constants/corteMangaOrderStatus";
 import type { CorteMangaOrder } from "@/src/features/corte-manga/interfaces/corte-manga-order.interface";
 import { corteMangaOrderPdfDescriptor } from "@/src/features/corte-manga/utils/corteMangaOrderPdf";
 import { corteMangaTotalPiezas } from "@/src/features/corte-manga/utils/corteMangaPiezas";
@@ -40,9 +36,6 @@ type CorteMangaOrderPdfDocumentProps = {
 export const CorteMangaOrderPdfDocument = ({ order, company }: CorteMangaOrderPdfDocumentProps) => {
   const cliente = order.pedido_vinculado?.cliente;
   const clienteText = pedidoClienteLabel(cliente);
-  const prioridad =
-    CORTE_MANGA_ORDER_PRIORITY_CONFIG[String(order.prioridad)]?.label ??
-    corteMangaOrderPriorityFallback(order.prioridad).label;
   const detalles = order.detalles ?? [];
   const hasCoverage = order.cantidad_contratada !== undefined && order.cantidad_cubierta !== undefined;
 
@@ -63,7 +56,6 @@ export const CorteMangaOrderPdfDocument = ({ order, company }: CorteMangaOrderPd
               label: "Estatus",
               value: textOrDash(corteMangaStatusEntry(order.estatus_corte, order.estatus_corte_display).label),
             },
-            { label: "Prioridad", value: textOrDash(prioridad) },
             { label: "Alta", value: formatShortDate(order.fecha_inicio) },
             { label: "Fin", value: formatShortDate(order.fecha_fin) },
             ...(order.fecha_pedido === undefined

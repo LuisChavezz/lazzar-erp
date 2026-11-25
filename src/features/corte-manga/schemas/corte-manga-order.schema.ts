@@ -6,17 +6,8 @@ import { z } from "zod";
  *
  * `pedido` es lo ÚNICO que el backend exige de verdad —el esquema OpenAPI
  * desplegado lo declara como el único `required` de `OrdenesCorteMangaRequest`—:
- * el service deriva los detalles del pedido elegido, y `prioridad`/
- * `observaciones` tienen default o admiten `null` en el modelo.
- *
- * `prioridad` se valida como entero positivo —no como un enum de tres
- * literales— a propósito, replicando `CreateReflectiveOrderFormSchema`: el
- * conjunto cerrado 1/2/3 es una convención de PRESENTACIÓN del frontend (vive
- * en las opciones del `<select>`), no una restricción del backend, que declara
- * `prioridad = IntegerField(default=1)` SIN `choices` y acepta cualquier entero
- * (el esquema lo confirma: `integer` con los límites de un `int32`, sin enum).
- * Encerrarla aquí en `z.union([literal(1)…])` inventaría una regla de negocio
- * que nadie ha confirmado.
+ * el service deriva los detalles del pedido elegido, y `observaciones` admite
+ * `null` en el modelo.
  *
  * No hay campo de estatus ni de operador que validar: `estatus_corte` y
  * `usuario_asignado` son `read_only` en el serializer y el formulario no los
@@ -24,7 +15,6 @@ import { z } from "zod";
  */
 export const CreateCorteMangaOrderFormSchema = z.object({
   pedido: z.number().int().positive("Selecciona un pedido"),
-  prioridad: z.number().int().positive("Selecciona una prioridad"),
   observaciones: z.string(),
 });
 

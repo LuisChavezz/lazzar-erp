@@ -13,11 +13,7 @@ import {
 } from "@/src/components/DetailDialogPrimitives";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
-import {
-  CORTE_MANGA_ORDER_PRIORITY_CONFIG,
-  CORTE_MANGA_ORDER_STATUS_CONFIG,
-  corteMangaOrderPriorityFallback,
-} from "../constants/corteMangaOrderStatus";
+import { CORTE_MANGA_ORDER_STATUS_CONFIG } from "../constants/corteMangaOrderStatus";
 import type {
   CorteMangaOrder,
   CorteMangaOrderLine,
@@ -171,13 +167,6 @@ export function CorteMangaOrderDetailContent({
               <StatusBadge
                 status={String(order.estatus_corte)}
                 config={CORTE_MANGA_ORDER_STATUS_CONFIG}
-              />
-            </InfoField>
-            <InfoField label="Prioridad">
-              <StatusBadge
-                status={String(order.prioridad)}
-                config={CORTE_MANGA_ORDER_PRIORITY_CONFIG}
-                defaultConfig={corteMangaOrderPriorityFallback(order.prioridad)}
               />
             </InfoField>
             <InfoField label="Pedido">{textOrDash(order.pedido_folio)}</InfoField>

@@ -37,22 +37,6 @@ const getCatalogErrorMessage = (error: unknown): string =>
       ? firstDrfFieldMessage(error)
       : undefined) ?? CATALOG_ERROR_FALLBACK;
 
-/**
- * Opciones de prioridad. El mapeo 1 = Alta, 2 = Media, 3 = Baja es EL MISMO que
- * ya usan `ReflectiveOrderStep1`, `EmbroideryOrderStep1` y
- * `ProductionOrderStep1`, y el mismo que pinta
- * `CORTE_MANGA_ORDER_PRIORITY_CONFIG` en el badge del listado — de nada
- * serviría capturar "Urgente" aquí y que la tabla lo rotulara "Alta". El
- * backend declara `prioridad` como entero libre (`IntegerField(default=1)`, sin
- * `choices`), así que este conjunto cerrado es una convención del frontend, no
- * una regla del API. Ver la nota del schema.
- */
-const PRIORIDAD_OPTIONS = [
-  { value: 1, label: "Alta" },
-  { value: 2, label: "Media" },
-  { value: 3, label: "Baja" },
-];
-
 interface CorteMangaOrderCreateFormProps {
   /** Se invoca tras crear la orden correctamente (cierra el diálogo). */
   onSuccess: () => void;
@@ -73,7 +57,7 @@ interface CorteMangaOrderCreateFormProps {
  *
  * Deliberadamente NO es un asistente por pasos (a diferencia de
  * picking/packing): el cuerpo del POST es
- * `{ pedido, prioridad?, observaciones? }` y nada más — el backend deriva los
+ * `{ pedido, observaciones? }` y nada más — el backend deriva los
  * renglones solo, uno por cada talla del pedido con `lleva_corte_manga=True`.
  * No hay selección por línea ni cantidades que capturar (la orden es SIEMPRE
  * completa), así que un "Paso 1 / Paso 2" solo agregaría pantallas.
@@ -321,27 +305,6 @@ export function CorteMangaOrderCreateForm({
           }}
         </form.Field>
 
-        {/* Prioridad y operador lado a lado: son datos cortos. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-        {/* ── Prioridad ──────────────────────────────────────────────────── */}
-        <form.Field name="prioridad">
-          {(field) => (
-            <FormSelect
-              label="Prioridad"
-              className="py-2!"
-              name={field.name}
-              options={PRIORIDAD_OPTIONS}
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(Number(event.target.value));
-                clearError("prioridad");
-              }}
-              onBlur={field.handleBlur}
-              error={getError("prioridad")}
-            />
-          )}
-        </form.Field>
-
         {/* ── Operador asignado (solo lectura) ───────────────────────────── */}
         <div className="w-full">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
@@ -356,8 +319,6 @@ export function CorteMangaOrderCreateForm({
           <p className="text-[11px] text-slate-500 mt-1 ml-1">
             Se asigna a quien crea la orden.
           </p>
-        </div>
-
         </div>
 
         {/* ── Observaciones ──────────────────────────────────────────────────

@@ -55,16 +55,16 @@ import { corteMangaOrderDetailPath } from "@/src/constants/workOrderRoutes";
  * agrega al final del `body` y gana el apilado. Mismo orden de montaje —y mismo
  * resultado— que en `ReflectiveOrdersView`/`EmbroideryView`.
  *
- * Sin edición en el listado ni en su diálogo: estatus, prioridad y
+ * Sin edición en el listado ni en su diálogo: estatus y
  * observaciones se editan en la página de detalle (`PATCH` de nucleo-erp
  * #755). El `DELETE`
  * (soft delete) SÍ existe en el API pero no se expone aquí, igual que en
  * reflejante y bordado. Tampoco hay paginación (el endpoint devuelve el arreglo
  * completo, sin envoltorio `count`/`results`).
  *
- * SIN `filterConfig`: los dos ejes que serían candidatos naturales —estatus y
- * prioridad— valen lo mismo en TODAS las filas hoy (`1`/Pendiente y `1`/Alta,
- * ver `CorteMangaOrderStats`), así que un filtro por ellos ofrecería una sola
+ * SIN `filterConfig`: el eje que sería candidato natural —estatus— vale lo mismo
+ * en TODAS las filas hoy (`1`/Pendiente, ver `CorteMangaOrderStats`), así que
+ * un filtro por él ofrecería una sola
  * opción que no descarta nada. La búsqueda global del toolbar ya cubre folio,
  * pedido, sucursal, operador y observaciones. Mismo criterio que
  * `ReflectiveOrdersView`/`EmbroideryView`.

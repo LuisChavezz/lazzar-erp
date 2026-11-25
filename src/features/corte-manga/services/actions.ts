@@ -114,8 +114,8 @@ export const createCorteMangaOrder = async (
 
 /**
  * Edición parcial de una orden de corte de manga
- * (`PATCH /produccion/orden-corte-manga/{id}/`, nucleo-erp #755): estatus,
- * prioridad y observaciones (ver `UpdateCorteMangaOrderPayload`). Solo se
+ * (`PATCH /produccion/orden-corte-manga/{id}/`, nucleo-erp #755): estatus y
+ * observaciones (ver `UpdateCorteMangaOrderPayload`). Solo se
  * envían los campos que cambian.
  *
  * NO devuelve nada, a propósito: la respuesta es la de

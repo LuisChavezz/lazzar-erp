@@ -319,7 +319,6 @@ const ocm = (overrides: Partial<CorteMangaOrder> = {}): CorteMangaOrder => ({
   fecha_vence: "2026-11-24",
   estatus_corte: 1,
   estatus_corte_display: "Pendiente",
-  prioridad: 1,
   fecha_inicio: "2026-10-21T14:49:18.426135-06:00",
   fecha_fin: null,
   observaciones: "QA",
@@ -386,7 +385,7 @@ test.describe("PDF de la orden de corte de manga", () => {
         company: COMPANY,
       }),
     );
-    expect(Object.keys(doc.card("DATOS DE LA ORDEN"))).toEqual(["Estatus", "Prioridad", "Alta", "Fin"]);
+    expect(Object.keys(doc.card("DATOS DE LA ORDEN"))).toEqual(["Estatus", "Alta", "Fin"]);
     expect(doc.cardTitles).not.toContain("COBERTURA DEL PEDIDO");
     // Sin cantidad_cubierta, el total es la suma de los renglones, como en la página.
     expect(doc.card("ORIGEN Y SEGUIMIENTO")["Total piezas"]).toBe("2");
