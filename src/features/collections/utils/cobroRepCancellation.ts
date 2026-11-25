@@ -3,7 +3,7 @@ import { hasPermission } from "@/src/utils/permissions";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { cancelacionPendienteMessage } from "@/src/utils/cancelacionPendienteMessage";
-import { FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
+import { FINANCE_CANCEL_PERMISSION, FINANCE_WRITE_PERMISSION } from "@/src/constants/financePermissions";
 import {
   getLockedSatCancelMotive,
   isSatCancelMotiveLockedElsewhere,
@@ -79,11 +79,18 @@ export const getCobroRepCancelPrecheck = (
   return null;
 };
 
-/** ¿Se ofrece "Cancelar REP" a ESTE usuario para ESTE cobro? */
+/**
+ * ¿Se ofrece "Cancelar REP" a ESTE usuario para ESTE cobro? Escritura de
+ * Finanzas más `CANCELAR-FIN-COBROS`, que `cancelar-rep/` exige desde
+ * nucleo-erp#1356 (EC-950).
+ */
 export const canCancelCobroRep = (
   cobro: CobroRepCancelState,
   user: PermissionContext | null | undefined,
-): boolean => hasPermission(FINANCE_WRITE_PERMISSION, user) && isCobroRepCancellable(cobro);
+): boolean =>
+  hasPermission(FINANCE_WRITE_PERMISSION, user) &&
+  hasPermission(FINANCE_CANCEL_PERMISSION.cobros, user) &&
+  isCobroRepCancellable(cobro);
 
 /**
  * Aviso cuando la petición se cortó sin respuesta del backend
