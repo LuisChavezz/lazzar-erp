@@ -536,7 +536,7 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
         title="Cancelar pre-orden"
         description={
           isPreOrderOpCancelled(data.estatus, data.op_estatus)
-            ? `Su OP ${data.op_folio || `#${data.op}`} ya está cancelada. Al cancelar la pre-orden ${folio}, el pedido puede generar una nueva. Esta acción no se puede deshacer.`
+            ? `Su OP ${data.op_folio || `#${data.op}`} ya está cancelada. Al cancelar la pre-orden ${folio} se puede generar otra. Esta acción no se puede deshacer.`
             : `La pre-orden ${folio} dejará de avanzar. Esta acción no se puede deshacer.`
         }
         confirmText="Cancelar pre-orden"
