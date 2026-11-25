@@ -38,6 +38,17 @@ export const reflectiveLineProductoNombre = (
 ): string => workOrderProductLabel(row);
 
 /**
+ * La línea con su talla, para los avisos y el `aria-label` de la cantidad: las
+ * tallas de una misma prenda comparten nombre, y sin la talla el mensaje no
+ * dice cuál corregir.
+ */
+export const reflectiveLineDescripcion = (row: ReflectiveOnboardingDetalle): string => {
+  const talla = cleanText(row.talla_nombre);
+  const nombre = reflectiveLineProductoNombre(row);
+  return talla ? `${nombre} · Talla ${talla}` : nombre;
+};
+
+/**
  * SKU que se pinta bajo el nombre: solo en una MUESTRA, donde es lo que la
  * identifica (`sku_muestra` de la talla). Las líneas de catálogo se ven igual
  * que antes de EC-964, sin SKU.
@@ -421,7 +432,7 @@ export function useReflectiveStep2Form({
 
       const raw = quantities.get(id) ?? "";
       const cantidad = Number.parseInt(raw, 10);
-      const nombre = reflectiveLineProductoNombre(row);
+      const nombre = reflectiveLineDescripcion(row);
       if (!Number.isInteger(cantidad) || cantidad <= 0) {
         // Se distingue el input VACÍO del `0` explícito: decirle "sin cantidad
         // capturada" a quien está viendo un 0 en pantalla lo manda a buscar un

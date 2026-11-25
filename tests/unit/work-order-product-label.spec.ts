@@ -5,6 +5,7 @@ import {
   workOrderProductLabel,
 } from "@/src/utils/workOrderProductLabel";
 import {
+  reflectiveLineDescripcion,
   reflectiveLineProductoNombre,
   reflectiveLineSampleSku,
 } from "@/src/features/reflective-orders/hooks/useReflectiveStep2Form";
@@ -61,6 +62,11 @@ test.describe("Paso 2 de la OR", () => {
   test("la muestra muestra su nombre externo y su SKU", () => {
     expect(reflectiveLineProductoNombre(base)).toBe("PANTALON CHAIN YSL | YELLOW N GOLD");
     expect(reflectiveLineSampleSku(base)).toBe("MP2177-302-28");
+  });
+
+  test("los avisos y el aria-label nombran la talla", () => {
+    expect(reflectiveLineDescripcion(base)).toBe("PANTALON CHAIN YSL | YELLOW N GOLD · Talla 28");
+    expect(reflectiveLineDescripcion({ ...base, talla_nombre: null })).toBe("PANTALON CHAIN YSL | YELLOW N GOLD");
   });
 
   test("una línea de catálogo se ve como antes: su nombre y sin SKU", () => {
