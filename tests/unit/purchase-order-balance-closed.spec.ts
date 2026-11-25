@@ -37,7 +37,7 @@ test.describe("saldo cerrado de una OC", () => {
     };
     const banner = purchaseOrderPdfStatusBanner(order);
     expect(banner?.title).toBe("SALDO CERRADO");
-    expect(banner?.detail).toContain("Cerrado el");
+    expect(banner?.detail).toMatch(/^Cerrado el .*[ap]\.m\.$/);
     expect(JSON.stringify(banner)).not.toContain("Proveedor incumplido");
   });
 
