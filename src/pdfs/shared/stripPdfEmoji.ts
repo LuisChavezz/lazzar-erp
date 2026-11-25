@@ -39,8 +39,12 @@ const replaceSequence = (sequence: string): string => {
 /** Quita los emoji de un texto según las reglas de arriba. */
 export const stripPdfEmoji = (text: string): string => text.replace(EMOJI_SEQUENCE, replaceSequence);
 
-/** URLs que pueden llegar en las props (imágenes, data URLs): nunca se tocan. */
-const URL_LIKE = /^(?:https?:|data:|blob:)/i;
+/**
+ * Un string que es SOLO una URL (imágenes, data URLs): nunca se toca. Un texto
+ * libre que empieza con un enlace ("https://… revisar 🚚") lleva espacios y se
+ * limpia como cualquier otro.
+ */
+const URL_ONLY = /^(?:https?:|data:|blob:)\S*$/i;
 
 const isPlainObject = (value: object): value is Record<string, unknown> => {
   if ("$$typeof" in value) return false; // un elemento de React
@@ -56,7 +60,7 @@ const isPlainObject = (value: object): value is Record<string, unknown> => {
  * pasan tal cual.
  */
 export function stripPdfEmojiDeep<T>(value: T): T {
-  if (typeof value === "string") return (URL_LIKE.test(value) ? value : stripPdfEmoji(value)) as T;
+  if (typeof value === "string") return (URL_ONLY.test(value) ? value : stripPdfEmoji(value)) as T;
   if (Array.isArray(value)) return value.map((item) => stripPdfEmojiDeep(item)) as T;
   if (value !== null && typeof value === "object" && isPlainObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, stripPdfEmojiDeep(item)])) as T;

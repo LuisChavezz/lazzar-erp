@@ -94,4 +94,11 @@ test.describe("stripPdfEmojiDeep", () => {
     // No muta lo que recibe.
     expect(props.pedido.observaciones).toBe("Urgente 🚚 ✓");
   });
+
+  test("un texto que empieza con un enlace se limpia como cualquier otro; una URL sola no", () => {
+    expect(stripPdfEmojiDeep({ notas: "https://drive.example/x revisar 🚚 urgente" }).notas).toBe(
+      "https://drive.example/x revisar  urgente",
+    );
+    expect(stripPdfEmojiDeep({ url: "https://example.com/😀.png" }).url).toBe("https://example.com/😀.png");
+  });
 });
