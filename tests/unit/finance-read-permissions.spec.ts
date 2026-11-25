@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRoutes";
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { getSidebarItems } from "@/src/utils/getSidebarItems";
-import { meetsPermissionRequirement } from "@/src/utils/permissions";
 import { financeReadBlockReason, getFinanceReadState } from "@/src/utils/financeRead";
 import { financeWriteBlock, getFinanceWriteState } from "@/src/utils/financeWrite";
 import {
@@ -88,14 +87,8 @@ test.describe("rutas de Finanzas (misma regla que el proxy)", () => {
 test.describe("navegación de Finanzas", () => {
   const finance = appRouteGroups.find((group) => group.key === "finance")!;
 
-  test("cada hoja declara el mismo requisito que la regla de su ruta", () => {
-    for (const profile of [soloModulo, soloFacturacion, soloCxc, soloClientes, facturacionYCxc, sinFinanzas]) {
-      for (const item of finance.items) {
-        const visible = item.permission ? meetsPermissionRequirement(item.permission, profile) : true;
-        expect([item.path, visible]).toEqual([item.path, canAccessRoute(item.path, profile)]);
-      }
-    }
-  });
+  // Que cada hoja exija lo mismo que la regla de su ruta lo cubre, para todos
+  // los módulos, `sidebar-leaf-permissions.spec.ts` (EC-960).
 
   test("la entrada al módulo se ofrece con R-CONTABILIDAD o con cualquier subcódigo", () => {
     const codes = getGroupAccessPermissions(finance);
