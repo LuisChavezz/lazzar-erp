@@ -1,12 +1,19 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useForm } from "@tanstack/react-form";
 import { MainDialog } from "@/src/components/MainDialog";
 import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
 import { isDrfActionRejection } from "@/src/utils/drfWriteErrors";
+import { canAccessRoute } from "@/src/utils/routeAccess";
+import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
+import { purchaseOrderStatusEntry } from "@/src/features/purchase-orders/constants/purchaseOrderStatus";
+import type { PedidoCancelOcBloqueante } from "../interfaces/pedido-cancel.interface";
+import { purchaseOrderLabel } from "../utils/pedidoCancelBlockingOcs";
 import { useCancelPedido } from "../hooks/useCancelPedido";
 import {
   PedidoCancelFormSchema,
@@ -44,6 +51,9 @@ interface PedidoCancelDialogProps {
  * No se cierra a media petición. Al terminar:
  * - éxito o 404 (ya estaba cancelado): se cierra;
  * - 400 de `motivo`: se queda abierto con el error bajo el campo;
+ * - 400 de OC en borrador o por autorizar (`ordenes_compra_bloqueantes`,
+ *   EC-973): se queda abierto y lista esas OC, cada una ligada a su detalle
+ *   si el usuario puede abrirlo; compras las cancela o autoriza y se reintenta;
  * - otro rechazo de negocio (`isDrfActionRejection`: `permiso`, `pedido`): se
  *   cierra, el toast trae el motivo;
  * - red o 5xx: se queda abierto con el motivo escrito para reintentar.
@@ -64,7 +74,7 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
       maxWidth="480px"
       showCloseButton={false}
       title="Cancelar pedido"
-      description={`Se cancelará el pedido ${label} y dejará de aparecer en los listados. Esta acción no se puede deshacer. No se puede cancelar mientras tenga documentos ligados activos (picking, empaque, facturas, órdenes de producción, bordado, reflejante o corte de manga); cancélalos primero.`}
+      description={`Se cancelará el pedido ${label} y dejará de aparecer en los listados. Esta acción no se puede deshacer. No se puede cancelar mientras tenga documentos ligados activos (picking, empaque, facturas, órdenes de producción, bordado, reflejante o corte de manga) ni órdenes de compra en borrador o por autorizar; resuélvelos primero. Su pre-orden abierta se cancela y sus órdenes de compra autorizadas quedan marcadas para que compras decida.`}
     >
       <PedidoCancelForm
         key={session.id}
@@ -78,6 +88,7 @@ export function PedidoCancelDialog({ pedido, onClose, onCancelled }: PedidoCance
             },
             onError: handlers.onError,
             onMotivoError: handlers.onMotivoError,
+            onBlockingOcs: handlers.onBlockingOcs,
           })
         }
       />
@@ -90,7 +101,11 @@ interface PedidoCancelFormProps {
   onClose: () => void;
   onSubmit: (
     motivo: string,
-    handlers: { onError: (error: unknown) => void; onMotivoError: (message: string) => void },
+    handlers: {
+      onError: (error: unknown) => void;
+      onMotivoError: (message: string) => void;
+      onBlockingOcs: (ocs: PedidoCancelOcBloqueante[]) => void;
+    },
   ) => void;
 }
 
@@ -105,11 +120,14 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
     clearFieldErrors,
     clearServerErrors,
   } = useFormFieldErrors<PedidoCancelFormField>();
+  // OC que bloquearon el último intento (EC-973); se vacía al reintentar.
+  const [blockingOcs, setBlockingOcs] = useState<PedidoCancelOcBloqueante[]>([]);
 
   const form = useForm({
     defaultValues: { motivo: "" } satisfies PedidoCancelFormValues,
     onSubmit: ({ value }) => {
       clearServerErrors();
+      setBlockingOcs([]);
       const parsed = PedidoCancelFormSchema.safeParse(value);
       if (!parsed.success) {
         setClientFieldError("motivo", parsed.error.issues[0]?.message ?? "Motivo inválido");
@@ -118,6 +136,7 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
       clearClientFieldError("motivo");
       onSubmit(parsed.data.motivo, {
         onMotivoError: (message) => setServerFieldError("motivo", message),
+        onBlockingOcs: setBlockingOcs,
         // Un rechazo de negocio (`permiso`, `pedido`) no se arregla
         // reintentando: se cierra y el toast trae el motivo. Red o 5xx: sigue
         // abierto con lo escrito.
@@ -136,6 +155,7 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4 py-1">
+      {blockingOcs.length > 0 && <PedidoCancelBlockingOcsNotice ocs={blockingOcs} />}
       <form.Field name="motivo">
         {(field) => (
           <PedidoMotivoField
@@ -164,5 +184,56 @@ function PedidoCancelForm({ isCancelling, onClose, onSubmit }: PedidoCancelFormP
         </FormSubmitButton>
       </div>
     </form>
+  );
+}
+
+/**
+ * Las OC en borrador o por autorizar que impidieron cancelar (EC-973). Cada una
+ * liga a su detalle solo si el usuario puede abrirlo (`canAccessRoute`, la
+ * misma regla del proxy); si no, su folio queda como texto.
+ */
+function PedidoCancelBlockingOcsNotice({ ocs }: { ocs: PedidoCancelOcBloqueante[] }) {
+  const { data: session } = useSession();
+  return (
+    <div
+      role="alert"
+      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+    >
+      <p className="font-medium">
+        {ocs.length === 1
+          ? "No se puede cancelar: el pedido tiene una orden de compra en borrador o por autorizar."
+          : `No se puede cancelar: el pedido tiene ${ocs.length} órdenes de compra en borrador o por autorizar.`}
+      </p>
+      <p className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">
+        Compras debe cancelarlas o autorizarlas antes de cancelar el pedido.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {ocs.map((oc) => {
+          const href = purchaseOrderDetailHref(oc.id);
+          const label = purchaseOrderLabel(oc);
+          const status = purchaseOrderStatusEntry(oc.estatus);
+          return (
+            <li key={oc.id} className="flex items-center gap-2">
+              {canAccessRoute(href, session?.user) ? (
+                <Link
+                  href={href}
+                  title="Ver orden de compra"
+                  className="font-mono font-semibold text-sky-700 hover:text-sky-800 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
+                >
+                  {label}
+                </Link>
+              ) : (
+                <span className="font-mono font-semibold">{label}</span>
+              )}
+              <span
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${status.cls}`}
+              >
+                {status.label}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

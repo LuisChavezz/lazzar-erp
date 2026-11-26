@@ -21,9 +21,15 @@ const piezasDevueltas = (inventarioDevuelto: unknown): number => {
   return total / QTY_SCALE;
 };
 
+/** Largo de un arreglo de la respuesta; sin arreglo, 0. */
+const countOf = (value: unknown): number => (Array.isArray(value) ? value.length : 0);
+
 /**
  * Toast de éxito de "Cancelar pedido": "Pedido P-00083 cancelado · 1,510 piezas
- * devueltas, 1 reserva liberada". Cada parte se omite si es cero, y sin
+ * devueltas, 1 reserva liberada, 1 pre-orden cancelada, 2 OC marcadas con pedido
+ * cancelado". Las dos últimas salen de la cascada (nucleo-erp#1357): la
+ * pre-orden abierta se cancela y las OC autorizadas o parcialmente recibidas se
+ * marcan (no se cancelan). Cada parte se omite si es cero, y sin
  * ninguna queda solo "Pedido … cancelado". El folio sale de la respuesta; si
  * viniera vacío, del que mostró el diálogo, y sin ninguno, `#id`: siempre hay
  * con qué nombrarlo.
@@ -45,11 +51,17 @@ export const pedidoCancelSummary = (
     typeof data.reservas_liberadas === "number" && Number.isFinite(data.reservas_liberadas)
       ? data.reservas_liberadas
       : 0;
+  const preOrdenes = countOf(data.pre_ordenes_canceladas);
+  const ocsMarcadas = countOf(data.ordenes_compra_marcadas);
   const parts = [
     piezas > 0 &&
       `${formatExactQuantityValue(piezas)} ${piezas === 1 ? "pieza devuelta" : "piezas devueltas"}`,
     reservas > 0 &&
       `${reservas} ${reservas === 1 ? "reserva liberada" : "reservas liberadas"}`,
+    preOrdenes > 0 &&
+      `${preOrdenes} ${preOrdenes === 1 ? "pre-orden cancelada" : "pre-órdenes canceladas"}`,
+    ocsMarcadas > 0 &&
+      `${ocsMarcadas} ${ocsMarcadas === 1 ? "OC marcada" : "OC marcadas"} con pedido cancelado`,
   ].filter(Boolean);
   return parts.length > 0 ? `${head} · ${parts.join(", ")}` : head;
 };
