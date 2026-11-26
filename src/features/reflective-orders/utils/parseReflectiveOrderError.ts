@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { readExcessLines } from "@/src/utils/readExcessLines";
 
 /** Campos del formulario a los que el backend puede atribuir un `400`. */
 export type ReflectiveOrderErrorField = "pedido" | "observaciones";
@@ -68,26 +69,15 @@ export interface ParsedReflectiveOrderError {
    * discrimina el caso sin obligar a los consumidores existentes a bifurcar.
    */
   excessLines?: string[];
+  /**
+   * Status HTTP del rechazo (`400`, `403`, `409`); ausente en un error sin
+   * respuesta. El Paso 2 recarga los saldos en todo `400` que no sea de campo.
+   */
+  status?: number;
 }
 
 export const REFLECTIVE_ORDER_GENERIC_ERROR =
   "No se pudo crear la orden de reflejante.";
-
-/**
- * Lee `detalles_exceso`: un ARREGLO de strings ya formateados, uno por línea
- * que excede su saldo. Se recorre entrada por entrada (en vez de usar
- * `firstDrfMessage` sobre el arreglo completo, que devolvería solo la primera)
- * porque el usuario necesita ver TODAS las líneas que tiene que bajar, no una.
- * Devuelve `undefined` si no hay nada utilizable, para que la presencia del
- * campo siga siendo el discriminante del caso.
- */
-function readExcessLines(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const lines = value
-    .map((entry) => firstDrfMessage(entry)?.trim())
-    .filter((message): message is string => Boolean(message));
-  return lines.length > 0 ? lines : undefined;
-}
 
 /**
  * Normaliza el error de `POST /produccion/orden-reflejante/onboarding/`.
@@ -193,6 +183,7 @@ export function parseReflectiveOrderError(error: unknown): ParsedReflectiveOrder
   // criterio que `parseCorteMangaOrderError` y `useToggleCostCenterActivo`
   // (EC-140).
   if (!(error instanceof AxiosError)) return result;
+  result.status = error.response?.status;
   // 403: regla única del módulo (`forbiddenDetailMessage`): su `detail` o su
   // `non_field_errors`, nunca errores de campo. Sin ninguno, sin `formError`
   // para que el consumidor ponga su texto fijo.

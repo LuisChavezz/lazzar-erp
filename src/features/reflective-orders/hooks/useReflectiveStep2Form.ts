@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { cleanText } from "@/src/utils/cleanText";
+import { useMemo, useRef, useState } from "react";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
-import { plural } from "@/src/utils/plural";
 import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
 import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 import {
-  ReflectiveOrderDetallesOverrideSchema,
-  type CreateReflectiveOrderFormValues,
-} from "../schemas/reflective-order.schema";
-import type {
-  ReflectiveOnboardingDetalle,
-  ReflectiveOrderDetalleOverride,
-} from "../interfaces/reflective-order.interface";
+  shouldRefreshWorkOrderBalances,
+  validateWorkOrderLines,
+  workOrderStaleBalancesNotice,
+  workOrderLineDescripcion,
+  workOrderLineSampleSku,
+} from "@/src/utils/workOrderLineQuantities";
+import { useWorkOrderLineSelection } from "@/src/hooks/useWorkOrderLineSelection";
+import type { CreateReflectiveOrderFormValues } from "../schemas/reflective-order.schema";
+import type { ReflectiveOnboardingDetalle } from "../interfaces/reflective-order.interface";
 import { buildReflectiveOrderPayload } from "../utils/buildReflectiveOrderPayload";
 import { useReflectiveOnboarding } from "./useReflectiveOnboarding";
 import {
@@ -38,24 +38,20 @@ export const reflectiveLineProductoNombre = (
 ): string => workOrderProductLabel(row);
 
 /**
- * La línea con su talla, para los avisos y el `aria-label` de la cantidad: las
- * tallas de una misma prenda comparten nombre, y sin la talla el mensaje no
- * dice cuál corregir.
+ * La línea con su talla, para los avisos y el `aria-label` de la cantidad. La
+ * regla es la compartida con el alta de OCM (`workOrderLineDescripcion`).
  */
-export const reflectiveLineDescripcion = (row: ReflectiveOnboardingDetalle): string => {
-  const talla = cleanText(row.talla_nombre);
-  const nombre = reflectiveLineProductoNombre(row);
-  return talla ? `${nombre} · Talla ${talla}` : nombre;
-};
+export const reflectiveLineDescripcion = (row: ReflectiveOnboardingDetalle): string =>
+  workOrderLineDescripcion(row);
 
 /**
  * SKU que se pinta bajo el nombre: solo en una MUESTRA, donde es lo que la
- * identifica (`sku_muestra` de la talla). Las líneas de catálogo se ven igual
- * que antes de EC-964, sin SKU.
+ * identifica (`sku_muestra` de la talla). Regla compartida con el alta de OCM
+ * (`workOrderLineSampleSku`).
  */
 export const reflectiveLineSampleSku = (
   row: ReflectiveOnboardingDetalle,
-): string | null => (row.producto_id === null ? cleanText(row.sku) : null);
+): string | null => workOrderLineSampleSku(row);
 
 /**
  * Etiquetas de los campos del Paso 1 a los que el backend puede atribuir un
@@ -67,27 +63,6 @@ const STEP1_FIELD_LABELS: Record<string, string> = {
   pedido: "Pedido",
   observaciones: "Observaciones",
 };
-
-/**
- * El techo de una línea es SIEMPRE un entero de piezas: el backend rechaza
- * cualquier fraccionario (`PedidoDetalleTalla.cantidad` es un
- * `PositiveIntegerField`), así que un pendiente que llegara con decimales se
- * trunca hacia abajo — nunca hacia arriba, que propondría más de lo que hay.
- */
-const ceilingOf = (row: ReflectiveOnboardingDetalle): number =>
-  Math.max(0, Math.floor(row.cantidad_pendiente));
-
-/**
- * Saneado de la cantidad capturada: solo dígitos, sin ceros a la izquierda.
- *
- * Es la barrera que hace IMPOSIBLE capturar un fraccionario, en vez de
- * detectarlo al enviar: `DecimalQuantityInput` se usa con `decimalPlaces={0}`,
- * pero su saneador interno deja un punto colgante ("1." al teclear "1.5"), y ese
- * valor a medias no debe llegar ni a la pantalla ni al payload. La validación de
- * Zod al enviar (`.int()`) queda como segunda red, no como primera.
- */
-const sanitizeIntegerInput = (raw: string): string =>
-  raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
 
 /**
  * Paso 2 del alta de orden de reflejante: qué líneas del pedido entran en esta
@@ -121,8 +96,8 @@ const sanitizeIntegerInput = (raw: string): string =>
  * `cantidad_pendiente` NO se valida en el esquema de Zod: es dato del servidor
  * que puede bajar entre la carga y el envío (otra OR del mismo pedido lo
  * consume). Se aplica en tres momentos: al capturar (el input clampa), al
- * reconciliar (tras un refetch, `useEffect` de abajo) y al enviar (corte local
- * antes del POST). El backend sigue siendo la fuente de la verdad: pasar los
+ * reconciliar (tras un refetch, ver `useWorkOrderLineSelection`) y al enviar
+ * (corte local antes del POST, `validateWorkOrderLines`). El backend sigue siendo la fuente de la verdad: pasar los
  * tres no garantiza que acepte.
  */
 export function useReflectiveStep2Form({
@@ -156,38 +131,6 @@ export function useReflectiveStep2Form({
   const disponible = saldo?.disponible ?? null;
 
   /**
-   * Techo por línea, indexado por `pedido_detalle_talla_id`. Es un `Map` con
-   * llave NUMÉRICA, igual que `checkedIds` y `quantities`: las tres colecciones
-   * describen la misma entidad y tenerlas con el mismo tipo de llave elimina los
-   * `String(id)` que harían falta para cruzarlas, y con ellos la posibilidad de
-   * que una consulta use el tipo equivocado y falle en silencio.
-   *
-   * `useMemo` aquí SÍ está justificado (pese a la regla del React Compiler en
-   * CLAUDE.md): la identidad de este objeto es la dependencia del efecto de
-   * reconciliación de abajo.
-   */
-  const ceilings = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const row of rows) {
-      map.set(
-        row.pedido_detalle_talla_id,
-        Math.min(ceilingOf(row), disponible ?? Number.POSITIVE_INFINITY),
-      );
-    }
-    return map;
-  }, [rows, disponible]);
-
-  /**
-   * Líneas que aún se pueden programar (las demás salen deshabilitadas). Sin
-   * `useMemo`: solo alimenta el render, así que el React Compiler lo memoiza por
-   * su cuenta (ver CLAUDE.md, "React Compiler").
-   */
-  let availableRowsCount = 0;
-  for (const ceiling of ceilings.values()) {
-    if (ceiling > 0) availableRowsCount += 1;
-  }
-
-  /**
    * Solo es error "de pantalla completa" cuando el onboarding NUNCA cargó. Un
    * refetch fallido con datos en caché conserva la tabla y lo capturado, y avisa
    * por toast desde `useReflectiveOnboarding` — crítico aquí, porque el 400 de
@@ -197,8 +140,6 @@ export function useReflectiveStep2Form({
   const isInitialError = isInitialLoadError(isError, hasLoaded);
 
   // ─── Estado de captura ─────────────────────────────────────────────────────
-  const [checkedIds, setCheckedIds] = useState<Set<number>>(() => new Set());
-  const [quantities, setQuantities] = useState<Map<number, string>>(() => new Map());
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   /**
    * Detalle línea por línea que acompaña al banner. Dos orígenes, mismo
@@ -209,77 +150,6 @@ export function useReflectiveStep2Form({
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<ReflectiveDuplicateState | null>(null);
   const submitInFlight = useRef(false);
-
-  /**
-   * Siembra inicial: TODAS las líneas con pendiente arrancan marcadas y con la
-   * cantidad puesta al pendiente completo (el caso "programar todo lo que
-   * falta", que es el más común). El usuario reduce o desmarca desde ahí.
-   *
-   * Se hace UNA VEZ por pedido (guardado en un `ref`), no en cada llegada de
-   * datos: un refetch posterior —el que dispara el 400 de exceso— no debe volver
-   * a marcar lo que el usuario ya había desmarcado. Ajustar los valores a los
-   * saldos nuevos es trabajo del efecto de reconciliación de abajo.
-   */
-  const seededPedidoRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (seededPedidoRef.current === header.pedido) return;
-    if (rows.length === 0) return;
-    seededPedidoRef.current = header.pedido;
-
-    const nextChecked = new Set<number>();
-    const nextQuantities = new Map<number, string>();
-    // Se reparte solo lo disponible de lo programado, en el orden del pedido.
-    let restante = disponible ?? Number.POSITIVE_INFINITY;
-    for (const row of rows) {
-      const ceiling = Math.min(ceilingOf(row), restante);
-      if (ceiling <= 0) continue;
-      nextChecked.add(row.pedido_detalle_talla_id);
-      nextQuantities.set(row.pedido_detalle_talla_id, String(ceiling));
-      restante -= ceiling;
-    }
-    setCheckedIds(nextChecked);
-    setQuantities(nextQuantities);
-  }, [rows, header.pedido, disponible]);
-
-  /**
-   * Reconciliación contra los saldos recién llegados: re-clampa lo capturado al
-   * techo ACTUAL y desmarca lo que se quedó sin pendiente. Es lo que hace que,
-   * tras el 400 de exceso (que recarga el onboarding), la pantalla muestre los
-   * pendientes nuevos en vez de los que el usuario ya intentó enviar — lo
-   * MOSTRADO nunca puede divergir de lo que se enviaría.
-   */
-  useEffect(() => {
-    setQuantities((prev) => {
-      let changed = false;
-      const next = new Map(prev);
-      for (const [id, ceiling] of ceilings) {
-        const raw = next.get(id);
-        if (!raw) continue;
-        const captured = Number.parseInt(raw, 10);
-        if (!Number.isFinite(captured)) continue;
-        if (ceiling <= 0) {
-          next.delete(id);
-          changed = true;
-        } else if (captured > ceiling) {
-          next.set(id, String(ceiling));
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-
-    setCheckedIds((prev) => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const id of prev) {
-        if ((ceilings.get(id) ?? 0) <= 0) {
-          next.delete(id);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [ceilings]);
 
   /**
    * Limpia TODO lo que afirma algo sobre el último intento: el banner, su
@@ -293,66 +163,27 @@ export function useReflectiveStep2Form({
     setStaleNotice(null);
   };
 
-  const toggleLine = (pedidoDetalleTallaId: number) => {
-    const ceiling = ceilings.get(pedidoDetalleTallaId) ?? 0;
-    if (ceiling <= 0) return;
-
-    const wasChecked = checkedIds.has(pedidoDetalleTallaId);
-    const next = new Set(checkedIds);
-    if (wasChecked) next.delete(pedidoDetalleTallaId);
-    else next.add(pedidoDetalleTallaId);
-    setCheckedIds(next);
-
-    setQuantities((current) => {
-      const updated = new Map(current);
-      if (wasChecked) {
-        // Al DESMARCAR se borra la cantidad: dejarla puesta (aunque el input
-        // quede deshabilitado) pintaba un número en una fila que NO viaja en
-        // `detalles_override`, y la tabla se leía como si sumara piezas que no
-        // suma.
-        updated.delete(pedidoDetalleTallaId);
-      } else if (!updated.get(pedidoDetalleTallaId)) {
-        // Al re-marcar se repone el pendiente completo: una casilla marcada con
-        // el input en blanco solo sirve para bloquear el envío más tarde.
-        updated.set(pedidoDetalleTallaId, String(ceiling));
-      }
-      return updated;
-    });
-    clearIssues();
-  };
-
-  const toggleAll = (checked: boolean) => {
-    if (!checked) {
-      setCheckedIds(new Set());
-      // Mismo motivo que al desmarcar una sola línea: sin cantidades, ninguna
-      // fila muestra un número que no vaya a enviarse.
-      setQuantities(new Map());
-      clearIssues();
-      return;
-    }
-    const nextChecked = new Set<number>();
-    const nextQuantities = new Map(quantities);
-    for (const row of rows) {
-      const ceiling = ceilings.get(row.pedido_detalle_talla_id) ?? 0;
-      if (ceiling <= 0) continue;
-      nextChecked.add(row.pedido_detalle_talla_id);
-      if (!nextQuantities.get(row.pedido_detalle_talla_id)) {
-        nextQuantities.set(row.pedido_detalle_talla_id, String(ceiling));
-      }
-    }
-    setCheckedIds(nextChecked);
-    setQuantities(nextQuantities);
-    clearIssues();
-  };
-
-  const setQuantity = (pedidoDetalleTallaId: number, value: string) => {
-    setQuantities((prev) =>
-      new Map(prev).set(pedidoDetalleTallaId, sanitizeIntegerInput(value)),
-    );
-    clearIssues();
-  };
-
-  const selectedCount = checkedIds.size;
+  /**
+   * Selección por línea: techo `min(pendiente, disponible)`, siembra que
+   * reparte lo disponible en el orden del pedido (todas las líneas que reciben
+   * piezas arrancan marcadas) y reconciliación tras cada refetch. Compartida
+   * con el alta de OCM, ver `useWorkOrderLineSelection`.
+   */
+  const {
+    ceilings,
+    availableRowsCount,
+    selectedCount,
+    checkedIds,
+    quantities,
+    toggleLine,
+    toggleAll,
+    setQuantity,
+  } = useWorkOrderLineSelection({
+    rows,
+    disponible,
+    seedKey: header.pedido,
+    onUserChange: clearIssues,
+  });
 
   // ─── Reparto del error del backend ─────────────────────────────────────────
   const handleServerError = (parsed: ParsedReflectiveOrderError) => {
@@ -392,21 +223,13 @@ export function useReflectiveStep2Form({
     );
     setIssueLines(parsed.excessLines ?? fieldMessages);
 
-    if (parsed.excessLines) {
-      // Los saldos cambiaron entre la carga y el envío. La mutación ya invalidó
-      // `["reflective-onboarding"]`; el `refetch` explícito garantiza que la
-      // recarga ocurra aunque la invalidación no encuentre un observador activo,
-      // y el efecto de reconciliación de arriba baja las cantidades capturadas a
-      // los pendientes nuevos.
-      //
-      // El aviso está redactado en FUTURO y la pantalla marca el refetch en
-      // curso con `isFetching`: la recarga tarda un par de segundos contra el
-      // backend, y afirmar "se actualizaron las cantidades" mientras los inputs
-      // siguen mostrando lo que el servidor acaba de rechazar invitaba a
-      // reenviar exactamente el mismo payload.
-      setStaleNotice(
-        "Los pendientes de este pedido cambiaron (otra orden de reflejante los consumió). Se están actualizando las cantidades; revísalas antes de volver a intentar.",
-      );
+    // Todo 400 no de campo (exceso por línea, tope de lo programado, rechazo
+    // del pedido) dice que los saldos de la pantalla ya no son los del
+    // servidor: UNA sola recarga (la mutación no invalida el onboarding) y la
+    // reconciliación de `useWorkOrderLineSelection` reajusta topes y
+    // cantidades. La pantalla marca el refetch en curso con `isFetching`.
+    if (shouldRefreshWorkOrderBalances(parsed)) {
+      setStaleNotice(workOrderStaleBalancesNotice(Boolean(parsed.excessLines), "reflejante"));
       void refetch();
     }
   };
@@ -419,82 +242,21 @@ export function useReflectiveStep2Form({
     clearIssues();
     setDuplicate(null);
 
-    const lines: ReflectiveOrderDetalleOverride[] = [];
-    const missing: string[] = [];
-    const over: string[] = [];
-
-    for (const row of rows) {
-      const id = row.pedido_detalle_talla_id;
-      if (!checkedIds.has(id)) continue;
-
-      const ceiling = ceilings.get(id) ?? 0;
-      if (ceiling <= 0) continue;
-
-      const raw = quantities.get(id) ?? "";
-      const cantidad = Number.parseInt(raw, 10);
-      const nombre = reflectiveLineDescripcion(row);
-      if (!Number.isInteger(cantidad) || cantidad <= 0) {
-        // Se distingue el input VACÍO del `0` explícito: decirle "sin cantidad
-        // capturada" a quien está viendo un 0 en pantalla lo manda a buscar un
-        // campo en blanco que no existe.
-        missing.push(
-          raw.trim() === ""
-            ? `«${nombre}»: sin cantidad capturada.`
-            : `«${nombre}»: la cantidad debe ser mayor a 0.`,
-        );
-        continue;
-      }
-      // Corte local del techo, con los saldos que la pantalla tiene AHORA.
-      // Normalmente inalcanzable (el input ya clampa), pero sí ocurre cuando el
-      // pendiente bajó tras un refetch con la cantidad anterior aún capturada.
-      if (cantidad > ceiling) {
-        over.push(
-          `«${nombre}»: capturaste ${cantidad}, pero solo ${plural(ceiling, "queda", "quedan")} ${ceiling} ${plural(ceiling, "pendiente", "pendientes")}.`,
-        );
-        continue;
-      }
-      lines.push({ pedido_detalle_talla_id: id, cantidad });
-    }
-
-    if (missing.length > 0) {
-      setServerBanner("Captura una cantidad mayor a cero en las líneas marcadas.");
-      setIssueLines(missing);
-      return;
-    }
-
-    if (over.length > 0) {
-      setServerBanner(
-        "Hay líneas con más piezas de las que quedan pendientes. Ajústalas antes de continuar.",
-      );
-      setIssueLines(over);
-      return;
-    }
-
-    const totalOrden = lines.reduce((acc, l) => acc + l.cantidad, 0);
-    if (saldo && totalOrden > saldo.disponible) {
-      setServerBanner(
-        saldo.disponible === 0
-          ? "Lo que Mesa de Control programó a Reflejante ya está en otras órdenes. Pide que programen más piezas para crear otra."
-          : `Mesa de Control programó ${saldo.programado} pzas a Reflejante y ${saldo.enOrdenes} ya están en órdenes: esta orden puede llevar hasta ${saldo.disponible}, y lleva ${totalOrden}.`,
-      );
-      return;
-    }
-
-    if (lines.length === 0) {
-      setServerBanner(
-        "Selecciona al menos una prenda del pedido para incluirla en la orden.",
-      );
-      return;
-    }
-
-    // Segunda red, ya sobre el payload exacto que viajaría: entero positivo, sin
-    // ids repetidos y no vacío. Replica lo que el serializer rechazaría con un
-    // 400 bajo la clave `detalles_override`.
-    const parsed = ReflectiveOrderDetallesOverrideSchema.safeParse(lines);
-    if (!parsed.success) {
-      setServerBanner(
-        parsed.error.issues[0]?.message ?? "Revisa las cantidades capturadas.",
-      );
+    // Validación local, ya sobre el payload exacto que viajaría: cantidades
+    // capturadas, techo por línea, total contra lo disponible de lo programado,
+    // al menos una línea y el esquema (entero positivo, sin ids repetidos), que
+    // replica lo que el serializer rechazaría bajo `detalles_override`.
+    const validation = validateWorkOrderLines({
+      rows,
+      checkedIds,
+      quantities,
+      ceilings,
+      saldo,
+      destinoLabel: "Reflejante",
+    });
+    if (!validation.ok) {
+      setServerBanner(validation.banner);
+      setIssueLines(validation.issueLines);
       return;
     }
 
@@ -503,7 +265,7 @@ export function useReflectiveStep2Form({
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     try {
-      await createOrder(buildReflectiveOrderPayload(header, parsed.data));
+      await createOrder(buildReflectiveOrderPayload(header, validation.lines));
       onSuccess();
     } catch {
       // Ya repartido por `handleServerError` (banner / detalle / duplicado) y

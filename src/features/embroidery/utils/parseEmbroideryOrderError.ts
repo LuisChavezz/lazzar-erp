@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteErrors";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
+import { readExcessLines } from "@/src/utils/readExcessLines";
 
 /** Campos del formulario a los que el backend puede atribuir un `400`. */
 export type EmbroideryOrderErrorField = "pedido" | "observaciones";
@@ -67,22 +68,6 @@ export interface ParsedEmbroideryOrderError {
 }
 
 export const EMBROIDERY_ORDER_GENERIC_ERROR = "No se pudo crear la orden de bordado.";
-
-/**
- * Lee `detalles_exceso`: un ARREGLO de strings ya formateados, uno por línea
- * que excede su saldo. Se recorre entrada por entrada (en vez de usar
- * `firstDrfMessage` sobre el arreglo completo, que devolvería solo la primera)
- * porque el usuario necesita ver TODAS las líneas que tiene que bajar, no una.
- * Devuelve `undefined` si no hay nada utilizable, para que la presencia del
- * campo siga siendo el discriminante del caso.
- */
-function readExcessLines(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const lines = value
-    .map((entry) => firstDrfMessage(entry)?.trim())
-    .filter((message): message is string => Boolean(message));
-  return lines.length > 0 ? lines : undefined;
-}
 
 /**
  * Normaliza el error de `POST /produccion/orden-bordado/onboarding/`.

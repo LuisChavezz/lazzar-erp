@@ -17,6 +17,7 @@ export {
   type CorteMangaDuplicateExistingOrder,
 } from "../utils/parseCorteMangaOrderError";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { CORTE_MANGA_ORDER_DETAIL_KEY } from "./useCorteMangaOrderDetail";
 
 /**
  * Mutación de alta de orden de corte de manga. `onServerError` recibe el error
@@ -27,12 +28,18 @@ import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidate
  * por defecto del usuario y puede no coincidir con la serie realmente consumida
  * (la de la sucursal del pedido).
  *
- * Invalida dos llaves, porque crear una orden cambia datos de ambas respuestas:
+ * La mutación acepta `detalles_override` sin cambio de firma: es un campo
+ * opcional de `CreateCorteMangaOrderPayload` que el asistente manda siempre.
+ *
+ * Invalida TRES llaves, porque crear una orden cambia datos de las tres:
  *  - `["corte-manga-orders"]` — el listado, donde aparece la orden nueva.
  *  - `["corte-manga-onboarding"]` — el catálogo del alta: cada pedido trae su
- *    detalle por talla con `cantidad_asignada`/`cantidad_pendiente`, que la
- *    orden recién creada consume. Mismo criterio que `useCreateEmbroideryOrder`
- *    y `useCreateReflectiveOrder`.
+ *    detalle por talla con `cantidad_asignada`/`cantidad_pendiente` y el saldo
+ *    de lo programado, que la orden recién creada consume.
+ *  - `["corte-manga-order-detail"]` (prefijo) — el detalle de las OTRAS OCM del
+ *    mismo pedido: con órdenes parciales, su `otras_ordenes_del_pedido` y la
+ *    cobertura cambian en cuanto se crea una hermana. Mismo criterio que
+ *    `useCreateReflectiveOrder`.
  */
 export const useCreateCorteMangaOrder = (
   onServerError?: (parsed: ParsedCorteMangaOrderError) => void,
@@ -44,6 +51,7 @@ export const useCreateCorteMangaOrder = (
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["corte-manga-orders"] });
       queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
+      queryClient.invalidateQueries({ queryKey: CORTE_MANGA_ORDER_DETAIL_KEY });
       void invalidatePedidoProgress(queryClient);
       toast.success(`Orden de corte de manga ${order.folio_ocm} creada correctamente`);
     },
@@ -72,10 +80,16 @@ export const useCreateCorteMangaOrder = (
         void invalidatePedidoProgress(queryClient);
       }
 
+      // Un 400 del service (exceso por línea, tope programado, rechazo del
+      // pedido) NO invalida el onboarding aquí: lo recarga el Paso 2 con un solo
+      // `refetch` (`useCorteMangaStep2Form`), para no pedirlo dos veces.
+
+      // UNA sola frase, nunca `messages.join("\n")`: `messages` incluye el
+      // desglose de `detalles_exceso`, ilegible en un toast. Ese desglose ya se
+      // pinta completo en el banner del Paso 2. Mismo criterio que
+      // `useCreateReflectiveOrder`.
       const toastMessage =
-        parsed.messages.length > 0
-          ? parsed.messages.join("\n")
-          : parsed.formError ?? CORTE_MANGA_ORDER_GENERIC_ERROR;
+        parsed.formError ?? parsed.messages[0] ?? CORTE_MANGA_ORDER_GENERIC_ERROR;
       toast.error(toastMessage);
     },
   });

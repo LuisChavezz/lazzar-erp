@@ -264,7 +264,7 @@ export interface CorteMangaOrder extends WorkOrderAvanceFields, DocumentCancella
  * catálogo (al crear la OCM que lo cubría, desapareció de la respuesta
  * inmediatamente). Aun así el 409 de duplicado sigue siendo posible —p. ej.
  * otro usuario crea la orden entre la carga del catálogo y el envío—, y es el
- * caso que atiende el bloque ámbar de `CorteMangaOrderCreateForm`.
+ * caso que atiende el bloque ámbar de `CorteMangaOrderStep2`.
  *
  * `folio`, `cliente_nombre` y `sucursal_nombre` pueden ser `null`
  * (`Pedido.folio` es nullable y los nombres se leen con `getattr(..., None)`).
@@ -295,9 +295,9 @@ export interface CorteMangaOnboardingDetalle {
   cantidad_pendiente: number;
   // ── Muestras con SKU (EC-964) ────────────────────────────────────────────
   // OPCIONALES: un backend anterior a EC-964 no manda las claves. El backend ya
-  // oculta las muestras SIN SKU. A diferencia de bordado, este onboarding NO
-  // manda `existencias`. El alta de un solo paso no pinta renglones, así que hoy
-  // nada los lee; se tipan para no descartar en silencio lo que llega.
+  // oculta las muestras SIN SKU (del GET y del POST). A diferencia de bordado,
+  // este onboarding NO manda `existencias`. El Paso 2 del alta rotula la muestra
+  // con `workOrderProductLabel` y pinta su SKU (`workOrderLineSampleSku`).
   /** `variante.sku`, o `sku_muestra` de la talla en una muestra. */
   sku?: string | null;
   /** `cod_proscai` del producto; `null` en una muestra. */
@@ -314,13 +314,17 @@ export interface CorteMangaOnboardingPedido {
   sucursal: number | null;
   sucursal_nombre: string | null;
   /**
-   * Detalle POR TALLA con corte de manga y su saldo. El formulario no lo pinta
-   * (la OCM toma siempre todas las tallas), pero es la razón de la ventana de
-   * 5 s de `useCorteMangaOnboarding`: `cantidad_asignada`/`cantidad_pendiente`
-   * cambian cuando otra OCM cubre el pedido.
+   * Detalle POR TALLA con corte de manga y su saldo: las líneas del Paso 2 del
+   * alta (EC-967). Es la razón de la ventana de 5 s de
+   * `useCorteMangaOnboarding`: `cantidad_asignada`/`cantidad_pendiente` cambian
+   * cuando otra OCM cubre el pedido. Incluye líneas con `cantidad_pendiente = 0`.
    */
   detalles: CorteMangaOnboardingDetalle[];
-  /** Lo que Mesa de Control programó a corte de manga; solo informativo. */
+  /**
+   * Lo que Mesa de Control programó a corte de manga: UN total por pedido, sin
+   * desglose por línea. Con `asignado`/`disponible` topa el Paso 2
+   * (`getWorkOrderSaldo`).
+   */
   // Opcional: un backend sin a3f232f no manda la clave y el indicador se oculta.
   programado?: WorkOrderProgramado;
   /** nucleo-erp#1274: lo programado a este destino menos lo que ya está en órdenes activas. */
@@ -372,7 +376,7 @@ export interface CorteMangaOnboardingData {
 /**
  * Cuerpo de `POST /produccion/orden-corte-manga/onboarding/`.
  *
- * SOLO estos dos campos. El backend deriva `empresa`/`sucursal` del pedido,
+ * SOLO estos tres campos. El backend deriva `empresa`/`sucursal` del pedido,
  * `usuario_asignado` del usuario autenticado y `folio_ocm` de la serie de
  * folios; `estatus_corte`/`activo`/`fecha_inicio` toman su default.
  *
@@ -389,13 +393,40 @@ export interface CorteMangaOnboardingData {
  * modo que el backend ni siquiera lo admite — una razón menos para que este tipo
  * lo incluya.
  *
- * `detalles` tampoco se envía: el service los deriva solo, uno por cada
- * `PedidoDetalleTalla` con `lleva_corte_manga=True` del pedido elegido (orden
- * COMPLETA, sin selección por talla).
+ * `detalles_override` es OPCIONAL en el backend y el asistente lo manda SIEMPRE
+ * (EC-967), igual que reflejante:
+ *  - AUSENTE (o vacío) → el service deriva un renglón por cada
+ *    `PedidoDetalleTalla` elegible, al 100% de su cantidad. Sobre un pedido
+ *    programado a corte de manga solo en parte responde 400 por exceder lo
+ *    programado, y sobre uno ya cubierto, 409.
+ *  - PRESENTE → la orden incluye SOLO esas líneas, con esas cantidades; un
+ *    pedido puede acumular varias OCM parciales. Si algo excede, 400 con
+ *    `detalles_exceso` o con el mensaje del tope programado.
+ *
+ * `detalles` (los renglones ya creados) no se envía nunca: es la respuesta.
  */
 export interface CreateCorteMangaOrderPayload {
   pedido: number;
   observaciones?: string;
+  detalles_override?: CorteMangaOrderDetalleOverride[];
+}
+
+/**
+ * Renglón de `detalles_override`: la línea del pedido que entra en esta orden y
+ * con cuántas piezas. `pedido_detalle_talla_id` es el de
+ * `CorteMangaOnboardingDetalle` (`PedidoDetalleTalla.id`), NO el
+ * `pedido_detalle_id`; `cantidad` es un ENTERO > 0 que viaja como número.
+ *
+ * El serializer rechaza con 400 bajo `detalles_override`: renglón que no es
+ * objeto, id faltante o repetido, id ajeno al pedido, línea sin
+ * `lleva_corte_manga`, cantidad no numérica, <= 0, fraccionaria o mayor a la de
+ * la línea. OJO: compara el id CRUDO, así que `5` y `"5"` no cuentan como
+ * repetidos y el service los fusiona en silencio; el front manda siempre ids
+ * numéricos y sin repetir (`WorkOrderLineOverridesSchema`).
+ */
+export interface CorteMangaOrderDetalleOverride {
+  pedido_detalle_talla_id: number;
+  cantidad: number;
 }
 
 /**
