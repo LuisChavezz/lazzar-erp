@@ -23,6 +23,7 @@ import {
   draftKey,
   isValidResurtidoQty,
   mergeDraftLines,
+  pedidosAfterSucursalChange,
   sanitizeQtyInput,
   toLineaBody,
   type ResurtidoDraftLine,
@@ -298,7 +299,16 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
                 value={sucursal}
                 error={fieldError(errors.general.sucursal)}
                 disabled={isPending || loadingBranches}
-                onChange={(e) => setSucursal(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  // Lo marcado era de la sucursal anterior: el backend lo rechazaría.
+                  const kept = pedidosAfterSucursalChange(sucursal, next, pedidos);
+                  if (kept !== pedidos) {
+                    setPedidos(kept);
+                    pedidoSelection.clear();
+                  }
+                  setSucursal(next);
+                }}
               >
                 <option value="">{loadingBranches ? "Cargando…" : "Selecciona una sucursal"}</option>
                 {branches.map((b) => (
