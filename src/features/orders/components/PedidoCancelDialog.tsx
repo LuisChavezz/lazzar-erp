@@ -205,7 +205,9 @@ function PedidoCancelBlockingOcsNotice({ ocs }: { ocs: PedidoCancelOcBloqueante[
           : `No se puede cancelar: el pedido tiene ${ocs.length} órdenes de compra en borrador o por autorizar.`}
       </p>
       <p className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">
-        Compras debe cancelarlas o autorizarlas antes de cancelar el pedido.
+        {ocs.length === 1
+          ? "Compras debe cancelarla o autorizarla antes de cancelar el pedido."
+          : "Compras debe cancelarlas o autorizarlas antes de cancelar el pedido."}
       </p>
       <ul className="mt-2 space-y-1">
         {ocs.map((oc) => {
