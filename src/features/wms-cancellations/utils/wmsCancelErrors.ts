@@ -9,10 +9,11 @@ import {
  * Llaves con que las cancelaciones de WMS rechazan la acción por una regla de
  * negocio (nucleo-erp `cancelacion_service`, #1348 y EC-949): ya cancelado,
  * orden de cancelación (despacho → packing → picking), órdenes de trabajo vivas,
- * cadena de TR del surtido. Reintentar igual no sirve, salvo el cambio
- * concurrente, que pide reintentar (`isRetryableWmsCancelMessage`).
+ * cadena de TR del surtido, pedido que ya no existe (`pedido`, nucleo-erp#1370).
+ * Reintentar igual no sirve, salvo el cambio concurrente, que pide reintentar
+ * (`isRetryableWmsCancelMessage`).
  */
-const BLOCKING_KEYS = ["despacho", "packing", "picking", "transferencia"] as const;
+const BLOCKING_KEYS = ["despacho", "packing", "picking", "transferencia", "pedido"] as const;
 
 /**
  * Un `400` de negocio que SÍ puede salir al reintentar: el backend lo dice en el

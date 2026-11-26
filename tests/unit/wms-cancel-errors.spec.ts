@@ -37,6 +37,7 @@ test("los 400 de orden y de cadena llegan tal cual y cierran el diálogo", () =>
     { picking: "Tiene órdenes de trabajo vivas: OB-12. Cancélalas primero." },
     { despacho: "El despacho ya está cancelado." },
     { transferencia: "Sólo se revierte la última TR del picking PICK-1. Revierte primero TR-31." },
+    { pedido: "Pedido no encontrado o sin acceso." },
   ];
   for (const body of cases) {
     const classified = classifyWmsCancelError(httpError(400, body), FALLBACK);
