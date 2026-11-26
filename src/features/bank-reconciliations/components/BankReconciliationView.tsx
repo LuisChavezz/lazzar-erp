@@ -23,7 +23,10 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { getFinanceCancelState, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
 import { CONCILIACION_WRITE_PERMISSION_REASON, FINANCE_CANCEL_PERMISSION } from "@/src/constants/financePermissions";
 import { CancelReasonDialog } from "@/src/features/document-cancellation/components/CancelReasonDialog";
-import { conciliacionCancelDialogContent } from "../utils/conciliacionCancelAction";
+import {
+  cancelarConciliacionDescription,
+  conciliacionCancelDialogContent,
+} from "../utils/conciliacionCancelAction";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { isValidDateKey } from "@/src/utils/formatDate";
 import { useBankAccounts } from "@/src/features/bank-accounts/hooks/useBankAccounts";
@@ -219,6 +222,10 @@ export function BankReconciliationView() {
     cambio: boolean;
   } | null>(null);
   const [cancelarVerificando, setCancelarVerificando] = useState(false);
+  // El estatus que describe AHORA el diálogo de cancelar, para la acción: se
+  // escribe al abrir y al verificar (en handlers, nunca en render) y lo lee el
+  // `run` justo antes del POST, sin remontar el diálogo.
+  const cancelarEstatusRef = useRef<ConciliacionEstatus | null>(null);
 
   // `mutateAsync` y no `mutate`: cada confirmación se cierra sobre la PROMESA de
   // SU llamada. Los callbacks por llamada de `mutate` solo corren para la
@@ -413,6 +420,7 @@ export function BankReconciliationView() {
       const real = fresh.conciliacion.estatus;
       if (real === "Borrador" || real === "Cerrada") {
         setCancelarVerificado({ id, estatus: real, cambio: real !== esperado });
+        cancelarEstatusRef.current = real;
       }
       return real;
     } finally {
@@ -423,6 +431,7 @@ export function BankReconciliationView() {
   const handleCancelar = (conciliacion: ConciliacionBancaria) => {
     if (!guardFinanceWrite(cancel, cancel.reason)) return;
     setCancelarVerificado(null);
+    cancelarEstatusRef.current = conciliacion.estatus;
     setCancelarTargetId(conciliacion.id);
     void verificarCancelar(conciliacion.id, conciliacion.estatus);
   };
@@ -631,17 +640,23 @@ export function BankReconciliationView() {
 
       {/* Cancelar con el motivo obligatorio (EC-950). El texto sale del estatus
           VERIFICADO al abrir (`verificarCancelar`); si el servidor dijo otro que el
-          listado, el diálogo se vuelve a montar con el aviso. Justo antes del POST
-          la acción relee el estatus y no cancela si ya no es el descrito. */}
+          listado, solo cambia la descripción (`liveDescription`): el diálogo NO se
+          vuelve a montar y el motivo escrito se conserva. Justo antes del POST la
+          acción relee el estatus y no cancela si ya no es el descrito. */}
       {cancelarSnapshot && (
         <CancelReasonDialog
-          key={`${cancelarSession.id}:${cancelarEstatus ?? cancelarSnapshot.estatus}`}
           content={conciliacionCancelDialogContent(queryClient, {
             id: cancelarSnapshot.id,
             cuenta: getCuentaLabel(cancelarSnapshot),
             estatus: cancelarEstatus ?? cancelarSnapshot.estatus,
             cambio: cancelarVerificadoVigente?.cambio ?? false,
+            expectedEstatus: () => cancelarEstatusRef.current ?? cancelarSnapshot.estatus,
           })}
+          liveDescription={cancelarConciliacionDescription(
+            getCuentaLabel(cancelarSnapshot),
+            cancelarEstatus ?? cancelarSnapshot.estatus,
+            cancelarVerificadoVigente?.cambio ?? false,
+          )}
           open={cancelarTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setCancelarTargetId(null);

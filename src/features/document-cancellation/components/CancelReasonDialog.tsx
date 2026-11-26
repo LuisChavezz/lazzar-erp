@@ -47,6 +47,13 @@ interface CancelReasonDialogProps<TResult> {
   content: CancelDialogContent<TResult>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Texto que REEMPLAZA en vivo a `content.description` (fijo desde que se
+   * abre): para una descripción que cambia con el diálogo abierto sin volver a
+   * montarlo, así lo escrito en el motivo se conserva (la conciliación, cuyo
+   * estatus se verifica después de abrir). Sin él, todo como antes.
+   */
+  liveDescription?: string;
 }
 
 /**
@@ -63,7 +70,12 @@ interface CancelReasonDialogProps<TResult> {
  * el mensaje del backend tal cual; el `404` cierra; `403`, red o 5xx dejan el
  * diálogo abierto con el motivo escrito.
  */
-export function CancelReasonDialog<TResult>({ content, open, onOpenChange }: CancelReasonDialogProps<TResult>) {
+export function CancelReasonDialog<TResult>({
+  content,
+  open,
+  onOpenChange,
+  liveDescription,
+}: CancelReasonDialogProps<TResult>) {
   const session = useDialogSession(open, content);
   const { isRunning } = useMutationLock(session.snapshot.action.mutationKey);
   const handleOpenChange = (next: boolean) => {
@@ -78,7 +90,7 @@ export function CancelReasonDialog<TResult>({ content, open, onOpenChange }: Can
       maxWidth="480px"
       showCloseButton={false}
       title={session.snapshot.title}
-      description={session.snapshot.description}
+      description={liveDescription ?? session.snapshot.description}
     >
       <CancelReasonForm key={session.id} content={session.snapshot} onOpenChange={onOpenChange} />
     </MainDialog>
