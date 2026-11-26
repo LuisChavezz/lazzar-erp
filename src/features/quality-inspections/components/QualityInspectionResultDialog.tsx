@@ -61,8 +61,12 @@ export function QualityInspectionResultDialog({
 
   const canReturn = canCreateReturn && data?.tiene_devolucion_pendiente === true;
 
+  // Solo con una acción visible (o uno de sus diálogos abierto, para que no se
+  // desmonte a media animación): un contenedor vacío cambiaría el encabezado de
+  // `MainDialog`, que reserva la columna de acciones.
+  const hasHeaderAction = canReturn || (isAdmin && canRevert) || isReturnOpen || isRevertOpen;
   const headerAction =
-    (isAdmin || canCreateReturn) && data ? (
+    hasHeaderAction && data ? (
       <div className="flex flex-wrap items-center justify-end gap-2">
         {canReturn && (
           <Button
