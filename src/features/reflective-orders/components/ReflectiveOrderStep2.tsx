@@ -288,12 +288,10 @@ export function ReflectiveOrderStep2({
       </fieldset>
 
       {/* ── Aviso de permanencia ─────────────────────────────────────────
-          Sigue siendo cierto que la orden nace en Pendiente, consume folio y
-          no se puede editar ni cambiar de estatus (el backend no expone
-          `PUT`/`PATCH`). Lo que CAMBIÓ es que ya no cubre por fuerza el pedido
-          completo: lo que quede fuera puede programarse después en otra orden,
-          así que el aviso lo dice en vez de dejar creer que esta es la única
-          oportunidad. */}
+          La orden nace en Pendiente y consume folio; su estatus se cambia y se
+          cancela desde la ficha (`PATCH` y `cancelar/`). Ya no cubre por fuerza
+          el pedido completo: lo que quede fuera puede programarse después en
+          otra orden. Mismo texto que el aviso de corte de manga. */}
       <div
         role="note"
         className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 px-4 py-3"
@@ -301,8 +299,8 @@ export function ReflectiveOrderStep2({
         <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
         <p className="min-w-0 flex-1 text-xs text-amber-700 dark:text-amber-300">
           La orden se crea con estatus <strong>Pendiente</strong> y consume un folio de la
-          serie. No es posible editarla ni cambiar su estatus después. Lo que dejes fuera
-          seguirá pendiente y podrá programarse en otra orden.
+          serie. Podrás cambiar su estatus o cancelarla desde la ficha de la orden. Lo que
+          dejes fuera seguirá pendiente y podrá programarse en otra orden.
         </p>
       </div>
 
