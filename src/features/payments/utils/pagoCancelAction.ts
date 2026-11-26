@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { CancelDialogContent } from "@/src/features/document-cancellation/components/CancelReasonDialog";
-import { financeCancelAction } from "@/src/features/finance-cancellation/utils/financeCancelAction";
+import { financeCancelAction, writeCancelledRow } from "@/src/features/finance-cancellation/utils/financeCancelAction";
 import { cancelarPago } from "../services/actions";
 import type { Pago } from "../interfaces/payment.interface";
 
@@ -9,16 +9,6 @@ import type { Pago } from "../interfaces/payment.interface";
  * pagos en vuelo (el id va en el segundo segmento, `selectMutationRecordId`).
  */
 export const cancelPagoMutationKey = ["cancel-pago"] as const;
-
-/** Escribe el pago que respondió `cancelar/` en el listado antes de releer (EC-927). */
-const writePagoToList = (queryClient: QueryClient, pago: Pago) => {
-  if (!pago || typeof pago.id !== "number") return;
-  queryClient.setQueriesData({ queryKey: ["pagos"] }, (current: unknown) =>
-    Array.isArray(current)
-      ? (current as Pago[]).map((row) => (row.id === pago.id ? { ...row, ...pago } : row))
-      : current,
-  );
-};
 
 /**
  * Lo que mueve cancelar un pago: el listado de pagos, las CxP aplicadas (vuelven
@@ -48,7 +38,7 @@ export const pagoCancelDialogContent = (pagoId: number): CancelDialogContent<Pag
   action: financeCancelAction({
     mutationKey: [...cancelPagoMutationKey, pagoId],
     run: (motivo) => cancelarPago(pagoId, motivo),
-    applyResult: writePagoToList,
+    applyResult: (queryClient, result) => writeCancelledRow(queryClient, ["pagos"], result),
     refresh: (queryClient) => refreshAfterPagoCancel(queryClient, pagoId),
     documentLabel: "el pago",
     successMessage: () => "Pago cancelado correctamente",

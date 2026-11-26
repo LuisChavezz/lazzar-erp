@@ -1,6 +1,5 @@
-import type { QueryClient } from "@tanstack/react-query";
 import type { CancelDialogContent } from "@/src/features/document-cancellation/components/CancelReasonDialog";
-import { financeCancelAction } from "@/src/features/finance-cancellation/utils/financeCancelAction";
+import { financeCancelAction, writeCancelledRow } from "@/src/features/finance-cancellation/utils/financeCancelAction";
 import { cancelSupplierInvoice } from "../services/actions";
 import type { FacturaProveedor } from "../interfaces/supplier-invoice.interface";
 import { invalidateSupplierInvoiceQueries } from "../hooks/invalidateSupplierInvoiceQueries";
@@ -26,16 +25,6 @@ export type SupplierInvoiceCancelTarget = Pick<FacturaProveedor, "id" | "folio" 
 /** Folio para pantalla: el folio o `#id`. */
 const label = (factura: Pick<FacturaProveedor, "id" | "folio">) => factura.folio || `#${factura.id}`;
 
-/** Escribe la factura que respondió `cancelar/` en los listados en caché (EC-927). */
-const writeFacturaToLists = (queryClient: QueryClient, factura: FacturaProveedor) => {
-  if (!factura || typeof factura.id !== "number") return;
-  queryClient.setQueriesData({ queryKey: ["facturas-proveedor"] }, (current: unknown) =>
-    Array.isArray(current)
-      ? (current as FacturaProveedor[]).map((row) => (row.id === factura.id ? { ...row, ...factura } : row))
-      : current,
-  );
-};
-
 /**
  * "Cancelar factura" de proveedor con motivo
  * (`POST /finanzas/facturas-proveedor/{id}/cancelar/`, nucleo-erp#1356, EC-950;
@@ -50,7 +39,7 @@ export const supplierInvoiceCancelDialogContent = (
   action: financeCancelAction({
     mutationKey: [...cancelSupplierInvoiceMutationKey, factura.id],
     run: (motivo) => cancelSupplierInvoice(factura.id, motivo),
-    applyResult: writeFacturaToLists,
+    applyResult: (queryClient, result) => writeCancelledRow(queryClient, ["facturas-proveedor"], result),
     refresh: (queryClient) => {
       // `Registrada`: también relee las CxP (la suya queda `Cancelada`).
       void invalidateSupplierInvoiceQueries(queryClient, { estatus: "Registrada", oc: factura.oc });
