@@ -272,9 +272,13 @@ export const validateWorkOrderLines = ({
     }
     // Normalmente inalcanzable (el input ya clampa), pero sí ocurre cuando el
     // techo bajó tras un refetch con la cantidad anterior aún capturada.
+    // El techo puede venir del pendiente de la línea o, si es menor, de lo
+    // disponible de lo programado: el mensaje nombra el que topa.
     if (cantidad > ceiling) {
       over.push(
-        `«${nombre}»: capturaste ${cantidad}, pero solo ${plural(ceiling, "queda", "quedan")} ${ceiling} ${plural(ceiling, "pendiente", "pendientes")}.`,
+        ceiling < linePendingPieces(row)
+          ? `«${nombre}»: capturaste ${cantidad}, pero por lo programado por Mesa de Control puede llevar hasta ${ceiling}.`
+          : `«${nombre}»: capturaste ${cantidad}, pero solo ${plural(ceiling, "queda", "quedan")} ${ceiling} ${plural(ceiling, "pendiente", "pendientes")}.`,
       );
       continue;
     }

@@ -6,6 +6,7 @@ import { LayersIcon } from "@/src/components/Icons";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 import {
+  linePendingPieces,
   workOrderLineDescripcion,
   workOrderLineSampleSku,
   type WorkOrderLineRow,
@@ -186,6 +187,12 @@ export function WorkOrderLinesTable<Row extends WorkOrderLinesTableRow>({
                         >
                           Pendiente: {formatExactQuantityValue(row.cantidad_pendiente)}
                         </span>
+                        {/* Sin esto, una fila con más pendiente que lo
+                            disponible de lo programado tiene un input que topa
+                            antes de su "Pendiente", sin explicación. */}
+                        {!agotada && ceiling < linePendingPieces(row) && (
+                          <> · Máx. por lo programado: {formatExactQuantityValue(ceiling)}</>
+                        )}
                       </p>
                     </div>
                   </label>
