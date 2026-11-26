@@ -11,7 +11,11 @@ import { drfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
 import { cancelPedido } from "../services/actions";
-import type { PedidoCancelResponse } from "../interfaces/pedido-cancel.interface";
+import { DOCUMENT_AUDIT_QUERY_KEY } from "@/src/features/document-audit/hooks/useDocumentAuditList";
+import type {
+  PedidoCancelOcBloqueante,
+  PedidoCancelResponse,
+} from "../interfaces/pedido-cancel.interface";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { ORDERS_QUERY_KEY } from "./useOrders";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
@@ -20,6 +24,7 @@ import { pedidoProgramarQueryKey } from "./usePedidoProgramarContexto";
 import { pedidoTrazabilidadQueryKey } from "./usePedidoTrazabilidad";
 import { pedidoDocumentosQueryKey } from "./usePedidoDocumentos";
 import { pedidoCancelSummary } from "../utils/pedidoCancelSummary";
+import { pedidoCancelBlockingOcs } from "../utils/pedidoCancelBlockingOcs";
 
 interface CancelPedidoVariables {
   /** Folio que mostró quien llama, para el toast si la respuesta no lo trae. */
@@ -30,6 +35,12 @@ interface CancelPedidoVariables {
    * sale en toast. Sin él, ese error sale en toast como los demás.
    */
   onMotivoError?: (message: string) => void;
+  /**
+   * Quien llama pinta las OC que bloquean la cancelación (400
+   * `ordenes_compra_bloqueantes`, EC-973): las recibe aquí y el rechazo no sale
+   * en toast. Sin él, sale en toast el texto de `ordenes_compra`.
+   */
+  onBlockingOcs?: (ocs: PedidoCancelOcBloqueante[]) => void;
   /** Cualquier otro fallo (no 404), después de su toast. */
   onError?: (error: unknown) => void;
 }
@@ -99,9 +110,11 @@ const cancelPedidoErrorMessage = (error: unknown): string =>
  * detalle), con un aviso en vez del toast de éxito.
  *
  * Errores: el mensaje del backend tal cual (`pedido` con los documentos vivos,
- * `permiso`, `estatus`, `motivo`), en un toast. El de `motivo` no sale en
- * toast si quien llama lo pinta bajo su campo (`onMotivoError`): se decide
- * SOLO en el `onError` de la mutación. Esos 400 no cambian nada.
+ * `permiso`, `estatus`, `motivo`, `ordenes_compra`), en un toast. El de
+ * `motivo` no sale en toast si quien llama lo pinta bajo su campo
+ * (`onMotivoError`), ni el de las OC que bloquean si quien llama las lista
+ * (`onBlockingOcs`): se decide SOLO en el `onError` de la mutación. Esos 400
+ * no cambian nada.
  */
 export const useCancelPedido = (pedidoId: number) => {
   const queryClient = useQueryClient();
@@ -129,6 +142,15 @@ export const useCancelPedido = (pedidoId: number) => {
     void invalidateScheduledPedidos(queryClient);
     void queryClient.invalidateQueries({ queryKey: PEDIDO_KPIS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: ["special-orders"] });
+    // Cascada (nucleo-erp#1357): la pre-orden abierta se cancela (sus
+    // necesidades pendientes se cancelan y las ya en OC quedan huérfanas) y las
+    // OC autorizadas o parcialmente recibidas quedan con `pedido_cancelado`.
+    // Prefijos: listados, detalles, historial del proveedor y los contadores
+    // del sidebar (`[..., "summary"]`). La bitácora registra la cancelación.
+    void queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["pre-orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["purchase-needs"] });
+    void queryClient.invalidateQueries({ queryKey: DOCUMENT_AUDIT_QUERY_KEY });
   };
 
   const mutation = useMutation<PedidoCancelResponse, unknown, CancelPedidoVariables>({
@@ -144,7 +166,7 @@ export const useCancelPedido = (pedidoId: number) => {
         await forgetPedido();
       }
     },
-    onError: async (error, { onMotivoError, onError }) => {
+    onError: async (error, { onMotivoError, onBlockingOcs, onError }) => {
       if (isNotFoundError(error)) {
         toastWarning(PEDIDO_ALREADY_CANCELLED_MESSAGE);
         await forgetPedido();
@@ -153,6 +175,11 @@ export const useCancelPedido = (pedidoId: number) => {
       const motivoMessage = onMotivoError ? drfFieldMessage(error, "motivo") : undefined;
       if (onMotivoError && motivoMessage) {
         onMotivoError(motivoMessage);
+        return;
+      }
+      const blockingOcs = onBlockingOcs ? pedidoCancelBlockingOcs(error) : null;
+      if (onBlockingOcs && blockingOcs) {
+        onBlockingOcs(blockingOcs);
         return;
       }
       toast.error(cancelPedidoErrorMessage(error));
@@ -174,12 +201,13 @@ export const useCancelPedido = (pedidoId: number) => {
       onSuccess?: () => void;
       onError?: (error: unknown) => void;
       onMotivoError?: (message: string) => void;
+      onBlockingOcs?: (ocs: PedidoCancelOcBloqueante[]) => void;
     } = {},
   ) => {
     if (!isIdle()) return;
-    const { onSuccess, onError, onMotivoError } = options;
+    const { onSuccess, onError, onMotivoError, onBlockingOcs } = options;
     mutation.mutate(
-      { folio, motivo, onMotivoError, onError },
+      { folio, motivo, onMotivoError, onBlockingOcs, onError },
       {
         onSuccess,
         onError: (error) => {
