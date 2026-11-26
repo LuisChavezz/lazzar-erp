@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { createPicking } from "../services/actions";
-import { invalidateIfPedidoRejected } from "./usePickingOnboarding";
+import { invalidateIfPedidoRejected, invalidateScheduledPedidos } from "./usePickingOnboarding";
 import { parsePickingError, type ParsedPickingError } from "../utils/parsePickingError";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
 
@@ -22,6 +22,9 @@ export const useCreatePicking = (onServerError?: (parsed: ParsedPickingError) =>
     mutationFn: createPicking,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickings"] });
+      // El "faltan N" de cada pedido (Paso 1, Pedidos de Almacén) baja con
+      // cada surtido: sin esto el siguiente "Nuevo surtido" lo mostraba viejo.
+      void invalidateScheduledPedidos(queryClient);
       void invalidatePedidoProgress(queryClient);
       // Crear el picking también genera una transferencia COMPLETADA del almacén
       // origen al destino (`picking_service.py`): mueve existencias y deja un

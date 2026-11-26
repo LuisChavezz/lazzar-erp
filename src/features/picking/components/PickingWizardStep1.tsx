@@ -454,6 +454,11 @@ export function PickingWizardStep1({
                     </FormSelect>
                   )}
                 </form.Field>
+                {isFetching && pedidos.length > 0 && (
+                  <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500" aria-live="polite">
+                    Actualizando lo que falta por surtir…
+                  </p>
+                )}
                 {selectedPedido && (
                   <button
                     type="button"
