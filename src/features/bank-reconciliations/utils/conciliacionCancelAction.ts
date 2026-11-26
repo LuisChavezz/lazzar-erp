@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { CancelDialogContent } from "@/src/features/document-cancellation/components/CancelReasonDialog";
-import { financeCancelAction } from "@/src/features/finance-cancellation/utils/financeCancelAction";
+import { financeCancelAction, writeCancelledRow } from "@/src/features/finance-cancellation/utils/financeCancelAction";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { cancelarConciliacion } from "../services/actions";
 import type { ConciliacionBancaria, ConciliacionEstatus } from "../interfaces/bank-reconciliation.interface";
@@ -36,14 +36,6 @@ const changedSinceOpenedMessage = (estatus: ConciliacionEstatus) =>
     ? "La conciliación se cerró mientras confirmabas: cancelarla ahora regresaría sus movimientos a Pendiente. Se actualizó el listado."
     : `La conciliación ya está ${estatus.toLowerCase()}; ya no se puede cancelar como se describía. Se actualizó el listado.`;
 
-/** Escribe la conciliación que respondió `cancelar/` en TODAS las entradas del listado (EC-927). */
-const writeConciliacionToList = (queryClient: QueryClient, conciliacion: ConciliacionBancaria) => {
-  if (!conciliacion || typeof conciliacion.id !== "number") return;
-  queryClient.setQueriesData<ConciliacionBancaria[]>({ queryKey: CONCILIACIONES_KEY_ROOT }, (old) =>
-    Array.isArray(old) ? old.map((row) => (row.id === conciliacion.id ? { ...row, ...conciliacion } : row)) : old,
-  );
-};
-
 /**
  * "Cancelar conciliación" con motivo
  * (`POST /finanzas/conciliaciones-bancarias/{id}/cancelar/`, nucleo-erp#1356,
@@ -72,7 +64,7 @@ export const conciliacionCancelDialogContent = (
       }
       return cancelarConciliacion(id, motivo);
     },
-    applyResult: writeConciliacionToList,
+    applyResult: (client, result) => writeCancelledRow(client, CONCILIACIONES_KEY_ROOT, result),
     refresh: (client) => {
       void invalidateMovimientoQueries(client);
       void client.invalidateQueries({ queryKey: CONCILIACIONES_KEY_ROOT });

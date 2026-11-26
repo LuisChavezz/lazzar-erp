@@ -3,6 +3,34 @@ import type { CancelAction } from "@/src/features/document-cancellation/hooks/us
 import { classifyCancelError, type CancelError } from "@/src/features/document-cancellation/utils/cancelErrors";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { isActionOutcomeUnknown } from "@/src/utils/actionOutcome";
+import { patchCachedRowById, pickPresentFields, resultRecordId } from "@/src/utils/cachedRows";
+
+/**
+ * Lo único que una cancelación escribe en la fila (EC-927): el estatus y quién,
+ * cuándo y por qué. Nunca importes ni el resto de la respuesta.
+ */
+export const FINANCE_CANCELLED_FIELDS = [
+  "estatus",
+  "motivo_cancelacion",
+  "fecha_cancelacion",
+  "cancelado_por",
+  "cancelado_por_nombre",
+] as const;
+
+/** Los campos de `FINANCE_CANCELLED_FIELDS` que trae la respuesta de `cancelar/`. */
+export const financeCancelledValues = (result: unknown): Record<string, unknown> =>
+  pickPresentFields<Record<(typeof FINANCE_CANCELLED_FIELDS)[number], unknown>>(result, FINANCE_CANCELLED_FIELDS);
+
+/**
+ * Escribe esos campos en la fila del documento en CADA variante del listado en
+ * caché bajo `listQueryKey` (`patchCachedRowById`). Best-effort: una respuesta
+ * sin `id` o sin esos campos no escribe nada.
+ */
+export const writeCancelledRow = async (queryClient: QueryClient, listQueryKey: QueryKey, result: unknown) => {
+  const values = financeCancelledValues(result);
+  if (Object.keys(values).length === 0) return;
+  await patchCachedRowById<object>(queryClient, listQueryKey, resultRecordId(result), (row) => ({ ...row, ...values }));
+};
 
 /** Llave del `400` de un documento que ya está cancelado (`exigir_no_cancelado`). */
 const ALREADY_CANCELLED_KEY = "estatus";

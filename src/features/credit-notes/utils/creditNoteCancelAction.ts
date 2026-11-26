@@ -4,6 +4,7 @@ import type { CancelError } from "@/src/features/document-cancellation/utils/can
 import {
   classifyFinanceCancelError,
   financeCancelAction,
+  writeCancelledRow,
 } from "@/src/features/finance-cancellation/utils/financeCancelAction";
 import { PrecheckError } from "@/src/hooks/useMutationLock";
 import { cancelarNotaCredito } from "../services/actions";
@@ -37,19 +38,6 @@ export const classifyCreditNoteCancelError = (error: unknown): CancelError => {
 };
 
 /**
- * Escribe la nota que respondió `cancelar/` en el listado en caché (solo si es
- * un arreglo con esa nota), antes de releer (EC-927).
- */
-const writeNotaToList = (queryClient: QueryClient, nota: NotaCredito) => {
-  if (!nota || typeof nota.id !== "number") return;
-  queryClient.setQueriesData({ queryKey: ["credit-notes"] }, (current: unknown) =>
-    Array.isArray(current)
-      ? (current as NotaCredito[]).map((row) => (row.id === nota.id ? { ...row, ...nota } : row))
-      : current,
-  );
-};
-
-/**
  * "Cancelar nota" con motivo (`POST /finanzas/notas-credito/{id}/cancelar/`,
  * nucleo-erp#1356, EC-950). El motivo va en el BODY: `?motivo=` es el filtro
  * del listado por el campo `motivo` de la nota y daría `404`.
@@ -75,7 +63,7 @@ export const creditNoteCancelDialogContent = (
         if (blockReason) throw new PrecheckError(blockReason);
         return cancelarNotaCredito(nota.id, motivo);
       },
-      applyResult: writeNotaToList,
+      applyResult: (client, result) => writeCancelledRow(client, ["credit-notes"], result),
       refresh: (client) => void invalidateCreditNoteQueries(client, "balances"),
       documentLabel: "la nota de crédito",
       successMessage: () => "Nota de crédito cancelada correctamente",
