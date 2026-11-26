@@ -112,6 +112,9 @@ interface SupplierReturnCreateFormProps {
 /** Contenido del diálogo; se monta de nuevo en cada apertura (`key`). */
 function SupplierReturnCreateForm({ presetInspection, onClose, onCreated }: SupplierReturnCreateFormProps) {
   const [inspectionId, setInspectionId] = useState<number | null>(presetInspection?.id ?? null);
+  // Etiqueta de la inspección elegida: si otra sesión devuelve lo último que
+  // tenía, sale del selector al releerse y aun así debe seguir visible.
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   // Cantidades por `calidad_detalle`; `null` = aún no se siembran con lo pendiente.
   const [quantities, setQuantities] = useState<Record<number, string> | null>(null);
   const [seededFor, setSeededFor] = useState<SupplierReturnPendingLine[] | undefined>(undefined);
@@ -182,6 +185,12 @@ function SupplierReturnCreateForm({ presetInspection, onClose, onCreated }: Supp
     value: i.id,
     label: `${i.recepcion_folio} · inspeccionada ${formatLocalDate(i.fecha)}`,
   }));
+  if (inspectionId !== null && !inspectionOptions.some((o) => o.value === inspectionId)) {
+    inspectionOptions.unshift({
+      value: inspectionId,
+      label: `${selectedLabel ?? `Inspección #${inspectionId}`} (sin pendientes)`,
+    });
+  }
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4 py-1">
@@ -202,7 +211,9 @@ function SupplierReturnCreateForm({ presetInspection, onClose, onCreated }: Supp
               error={getError("calidad_inspeccion")}
               onChange={(event) => {
                 const next = Number(event.target.value);
-                setInspectionId(Number.isInteger(next) && next > 0 ? next : null);
+                const id = Number.isInteger(next) && next > 0 ? next : null;
+                setInspectionId(id);
+                setSelectedLabel(id === null ? null : (event.target.selectedOptions[0]?.textContent ?? null));
                 clearFieldErrors("calidad_inspeccion");
                 clearFieldErrors("detalles");
               }}
