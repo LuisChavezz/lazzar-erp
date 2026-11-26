@@ -2,9 +2,10 @@ import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import { parseEmbroideryOrderError } from "@/src/features/embroidery/utils/parseEmbroideryOrderError";
 import { parseReflectiveOrderError } from "@/src/features/reflective-orders/utils/parseReflectiveOrderError";
+import { parseCorteMangaOrderError } from "@/src/features/corte-manga/utils/parseCorteMangaOrderError";
 
 /**
- * EC-957: el alta de OB y OR rechaza un pedido cancelado, dado de baja,
+ * EC-957: el alta de OB, OR y OCM rechaza un pedido cancelado, dado de baja,
  * inexistente o retenido con `{"pedido": "…"}` como STRING (nucleo-erp#1370).
  * Es de negocio: va al banner, no a los errores de campo del Paso 1. El error
  * de campo del serializer (lista) sigue siendo de campo.
@@ -19,6 +20,7 @@ const httpError = (status: number, data: unknown): AxiosError => {
 const PARSERS = [
   ["bordado", parseEmbroideryOrderError],
   ["reflejante", parseReflectiveOrderError],
+  ["corte de manga", parseCorteMangaOrderError],
 ] as const;
 
 for (const [name, parse] of PARSERS) {
