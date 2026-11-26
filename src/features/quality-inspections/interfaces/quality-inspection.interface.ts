@@ -131,6 +131,12 @@ export interface QualityInspection {
   pedido_id?: number | null;
   pedido_folio?: string | null;
   pedidos?: QualityPedidoRef[];
+  /**
+   * Algo rechazado o en cuarentena aún sin devolver al proveedor (nucleo-erp#1413,
+   * la regla de `devoluciones-proveedor/pendientes/`); una anulada, `false`. En
+   * listado y detalle; opcional por si un backend anterior no lo manda.
+   */
+  tiene_devolucion_pendiente?: boolean;
 }
 
 /**
