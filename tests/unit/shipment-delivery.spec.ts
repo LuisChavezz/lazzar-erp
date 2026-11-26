@@ -1,16 +1,21 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { QueryClient } from "@tanstack/react-query";
+import { MutationObserver, QueryClient } from "@tanstack/react-query";
 import {
   canDeliverShipment,
   isShipmentDelivered,
   shipmentDisplayStatus,
 } from "@/src/features/shipping/utils/shipmentDelivery";
 import { SHIPPING_EXPORT_COLUMNS } from "@/src/features/shipping/utils/shippingExport";
-import { parseDeliverShipmentError } from "@/src/features/shipping/hooks/useDeliverShipment";
+import {
+  deliverShipmentMutationKey,
+  isDeliverDespachoRejection,
+  parseDeliverShipmentError,
+} from "@/src/features/shipping/hooks/useDeliverShipment";
 import {
   DeliverShipmentFormSchema,
   FECHA_ENTREGA_FUTURA_MESSAGE,
+  buildDeliverShipmentPayload,
   toFechaEntrega,
 } from "@/src/features/shipping/schemas/shipment-delivery.schema";
 import { patchDocumentosDespacho } from "@/src/features/orders/utils/pedidoDocumentos";
@@ -144,4 +149,63 @@ test("la entrega se escribe en los documentos del pedido en caché, solo en su f
   } as Shipment);
   const cached = qc.getQueryData<PedidoDocumentos>(pedidoDocumentosQueryKey(2129));
   expect(cached?.despachos.map((d) => d.fecha_entrega)).toEqual([null, ENTREGA]);
+});
+
+test("fecha y hora sin tocar: no viaja `fecha_entrega` y el backend usa su hora", () => {
+  const defaults = { fecha: "2026-11-26", hora: "12:00" };
+  // Aun con el reloj del equipo atrasado respecto de lo que se prellenó.
+  const before = new Date("2026-11-26T17:58:00Z"); // 11:58 en México
+  expect(buildDeliverShipmentPayload({ recibio: "", ...defaults }, defaults, before)).toEqual({ payload: {} });
+  expect(buildDeliverShipmentPayload({ recibio: "Juan", ...defaults }, defaults, before)).toEqual({
+    payload: { recibio: "Juan" },
+  });
+});
+
+test("fecha u hora editadas: viaja `fecha_entrega` y se valida que no sea futura", () => {
+  const defaults = { fecha: "2026-11-26", hora: "12:00" };
+  const now = new Date("2026-11-26T18:00:00Z"); // 12:00 en México
+  expect(buildDeliverShipmentPayload({ recibio: "", fecha: "2026-11-25", hora: "12:00" }, defaults, now)).toEqual({
+    payload: { fecha_entrega: "2026-11-25T12:00:00-06:00" },
+  });
+  expect(buildDeliverShipmentPayload({ recibio: "Ana", fecha: "2026-11-26", hora: "09:15" }, defaults, now)).toEqual({
+    payload: { recibio: "Ana", fecha_entrega: "2026-11-26T09:15:00-06:00" },
+  });
+  expect(buildDeliverShipmentPayload({ recibio: "", fecha: "2026-11-26", hora: "12:30" }, defaults, now)).toEqual({
+    field: "hora",
+    message: FECHA_ENTREGA_FUTURA_MESSAGE,
+  });
+});
+
+test("la hoja Documentos dice Entregado con el mismo helper que WMS", () => {
+  expect(shipmentDisplayStatus({ estado: "ACTIVO", fecha_entrega: ENTREGA })).toBe("ENTREGADO");
+  expect(shipmentDisplayStatus({ estado: "ACTIVO", fecha_entrega: null })).toBe("ACTIVO");
+  // Un estado que no es de despacho conocido pasa tal cual.
+  expect(shipmentDisplayStatus({ estado: "CANCELADO", fecha_entrega: ENTREGA })).toBe("CANCELADO");
+  expect(shipmentDisplayStatus({ estado: "OTRO" })).toBe("OTRO");
+});
+
+test("el 400 `despacho` cierra el diálogo; los de campo y el 403 no", () => {
+  expect(isDeliverDespachoRejection(axiosError(400, { despacho: "El despacho está cancelado." }))).toBe(true);
+  expect(isDeliverDespachoRejection(axiosError(400, { fecha_entrega: "Fecha inválida (ISO 8601)." }))).toBe(false);
+  expect(isDeliverDespachoRejection(axiosError(403, { detail: "No tienes permiso" }))).toBe(false);
+  expect(isDeliverDespachoRejection(axiosError(400, ["lista plana"]))).toBe(false);
+});
+
+test("el candado de doble envío ve la entrega en curso en cuanto se dispara", async () => {
+  const qc = new QueryClient();
+  let resolve: (value: unknown) => void = () => {};
+  const observer = new MutationObserver(qc, {
+    mutationKey: deliverShipmentMutationKey(58),
+    mutationFn: () => new Promise((r) => (resolve = r)),
+  });
+  const isIdle = () => qc.isMutating({ mutationKey: deliverShipmentMutationKey(58), exact: true }) === 0;
+  expect(isIdle()).toBe(true);
+  const running = observer.mutate(undefined);
+  // Síncrono, sin esperar un render: el segundo envío ya ve el candado.
+  expect(isIdle()).toBe(false);
+  expect(qc.isMutating({ mutationKey: deliverShipmentMutationKey(59), exact: true })).toBe(0);
+  await new Promise((r) => setTimeout(r, 0)); // la mutationFn arranca tras un microtask
+  resolve({});
+  await running;
+  expect(isIdle()).toBe(true);
 });

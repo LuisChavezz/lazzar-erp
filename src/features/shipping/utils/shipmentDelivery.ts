@@ -16,11 +16,15 @@ export const isShipmentDelivered = (shipment: { fecha_entrega?: string | null })
  */
 export type ShipmentDisplayStatus = ShipmentEstado | "ENTREGADO";
 
-export const shipmentDisplayStatus = (shipment: {
+export function shipmentDisplayStatus(shipment: {
   estado: ShipmentEstado;
   fecha_entrega?: string | null;
-}): ShipmentDisplayStatus =>
-  shipment.estado === "ACTIVO" && isShipmentDelivered(shipment) ? "ENTREGADO" : shipment.estado;
+}): ShipmentDisplayStatus;
+/** La fila de `documentos/` del pedido, cuyo `estado` llega como texto libre. */
+export function shipmentDisplayStatus(shipment: { estado: string; fecha_entrega?: string | null }): string;
+export function shipmentDisplayStatus(shipment: { estado: string; fecha_entrega?: string | null }): string {
+  return shipment.estado === "ACTIVO" && isShipmentDelivered(shipment) ? "ENTREGADO" : shipment.estado;
+}
 
 /**
  * ¿El despacho admite "Entregar"? Activo y sin entrega registrada: el backend
