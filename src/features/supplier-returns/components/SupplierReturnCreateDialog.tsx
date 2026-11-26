@@ -51,6 +51,10 @@ interface SupplierReturnCreateDialogProps {
   onCreated?: (dev: SupplierReturn) => void;
 }
 
+/** Cómo se nombra una inspección en el selector: folio de la recepción y fecha. */
+const inspectionLabel = (inspection: { recepcion_folio: string; fecha: string }) =>
+  `${inspection.recepcion_folio} · inspeccionada ${formatLocalDate(inspection.fecha)}`;
+
 const RESULTADO_LABEL: Record<string, string> = { rechazo: "Rechazo", cuarentena: "Cuarentena" };
 
 /**
@@ -186,7 +190,7 @@ function SupplierReturnCreateForm({ presetInspection, onClose, onCreated }: Supp
 
   const inspectionOptions = returnable.inspections.map((i) => ({
     value: i.id,
-    label: `${i.recepcion_folio} · inspeccionada ${formatLocalDate(i.fecha)}`,
+    label: inspectionLabel(i),
   }));
   if (inspectionId !== null && !inspectionOptions.some((o) => o.value === inspectionId)) {
     inspectionOptions.unshift({
@@ -216,7 +220,11 @@ function SupplierReturnCreateForm({ presetInspection, onClose, onCreated }: Supp
                 const next = Number(event.target.value);
                 const id = Number.isInteger(next) && next > 0 ? next : null;
                 setInspectionId(id);
-                setSelectedLabel(id === null ? null : (event.target.selectedOptions[0]?.textContent ?? null));
+                // La etiqueta BASE de la inspección (folio y fecha), no el texto
+                // de la opción: el de respaldo ya trae "(sin pendientes)".
+                const found = returnable.inspections.find((i) => i.id === id);
+                if (id === null) setSelectedLabel(null);
+                else if (found) setSelectedLabel(inspectionLabel(found));
                 clearFieldErrors("calidad_inspeccion");
                 clearFieldErrors("detalles");
               }}
