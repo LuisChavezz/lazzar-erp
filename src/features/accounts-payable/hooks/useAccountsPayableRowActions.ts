@@ -1,12 +1,14 @@
 "use client";
 
 import { createRowActionsContext } from "@/src/hooks/createRowActionsContext";
-import type { FinanceWriteState } from "@/src/utils/financeWrite";
+import type { FinanceCancelState, FinanceWriteState } from "@/src/utils/financeWrite";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 
 export interface AccountsPayableRowActionsContextValue {
   onViewDetail: (cuenta: CuentaPorPagar) => void;
   onDelete: (cuenta: CuentaPorPagar) => void;
+  /** "Cancelar cuenta" con motivo: una cuenta con `tiene_pagos` (EC-950/974). */
+  onCancel: (cuenta: CuentaPorPagar) => void;
   onGoToPayments: () => void;
   /** "Hoy" en la zona del backend, calculado UNA vez por la vista (marca de vencida). */
   today: string;
@@ -17,6 +19,8 @@ export interface AccountsPayableRowActionsContextValue {
    * permiso, "Eliminar cuenta" se muestra deshabilitado con su motivo.
    */
   write: FinanceWriteState;
+  /** Escritura más `CANCELAR-FIN-PAGOS` (`getFinanceCancelState`), para "Cancelar cuenta". */
+  cancel: FinanceCancelState;
 }
 
 const { Provider, useRowActionsContext } =
