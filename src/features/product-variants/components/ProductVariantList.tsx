@@ -1,3 +1,4 @@
+import { canCreateProducts } from "@/src/utils/productionPermissions";
 import { useState } from "react";
 import { DataTable } from "../../../components/DataTable";
 import { Button } from "../../../components/Button";
@@ -47,7 +48,7 @@ export default function ProductVariantList() {
   // `hasPermission` ya cortocircuita para el rol admin, así que sustituye al
   // chequeo manual que vivía aquí. El alta usa su propio código
   // (C-CONFIGURACION), no el de edición.
-  const canCreate = hasPermission("C-CONFIGURACION", session?.user);
+  const canCreate = canCreateProducts(session?.user);
   const canEdit = hasPermission("E-CONFIGURACION", session?.user);
   const canDelete = hasPermission("D-CONFIGURACION", session?.user);
   const [isDialogOpen, setIsDialogOpen] = useState(false);

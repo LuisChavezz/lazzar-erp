@@ -77,9 +77,9 @@ test.describe("pedido 360°: surtido, embarque, OC y cotización siguen abiertos
 });
 
 test.describe("pre-orden y OP: enlaces a pre-órdenes y a órdenes de compra (EC-895)", () => {
-  test("la pre-orden de una OP solo enlaza con R-PRODUCCION", () => {
-    expect(canAccessRoute("/manufacturing/pre-orders/41", user(["R-PRODUCCION-OP"]))).toBe(false);
-    expect(canAccessRoute("/manufacturing/pre-orders/41", user(["R-PRODUCCION", "R-PRODUCCION-OP"]))).toBe(true);
+  test("la pre-orden de una OP solo enlaza a quien puede crear OP", () => {
+    expect(canAccessRoute("/manufacturing/pre-orders/41", user(["R-PRODUCCION", "R-PRODUCCION-OP"]))).toBe(false);
+    expect(canAccessRoute("/manufacturing/pre-orders/41", user(["R-PRODUCCION", "C-PRODUCCION-OP"]))).toBe(true);
   });
 
   test("las OC de una pre-orden solo enlazan con R-COMPRAS-OC", () => {

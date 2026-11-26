@@ -1,12 +1,12 @@
 "use client";
 
+import { canCreateProducts } from "@/src/utils/productionPermissions";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
-import { hasPermission } from "@/src/utils/permissions";
 import ProductVariantOnboardingForm from "../../product-variant-onboarding/components/ProductVariantOnboardingForm";
 import { useProductVariantsTable } from "../hooks/useProductVariantsTable";
 import { getColumns } from "./ProductVariantColumns";
@@ -36,12 +36,14 @@ const COLUMNS = getColumns(null, { canEdit: false, canDelete: false }, { withHea
  * El alta rápida carga sus propios catálogos al abrir su diálogo.
  *
  * Ver la página exige `R-PRODUCCION` (regla de prefijo `/manufacturing`) y el
- * alta se gatea con ese mismo código, igual que el alta rápida de productos.
+ * alta exige `C-PRODUCCION-OP` o `C-CONFIGURACION`, como el backend, igual que
+ * el alta rápida de productos.
  * `DataTable` se monta siempre y el estado del diálogo vive aquí.
  */
 export function ProductionVariantsView() {
   const { data: session } = useSession();
-  const canCreate = hasPermission("R-PRODUCCION", session?.user);
+  // Misma regla que el backend: C-PRODUCCION-OP o C-CONFIGURACION.
+  const canCreate = canCreateProducts(session?.user);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   const table = useProductVariantsTable({ toastId: "production-variants-table-refetch-error" });

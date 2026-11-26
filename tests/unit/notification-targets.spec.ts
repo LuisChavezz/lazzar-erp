@@ -145,7 +145,10 @@ test.describe("pre_orden_oc_autorizada", () => {
       origen: "pedido",
       url: "/produccion/pre-ordenes/13",
     });
-    expect(resolveNotificationTarget(aviso, { role: "user", permissions: ["R-PRODUCCION"] })).toEqual({
+    // Pre-órdenes piden C-PRODUCCION-OP (quien crea OP).
+    expect(
+      resolveNotificationTarget(aviso, { role: "user", permissions: ["R-PRODUCCION", "C-PRODUCCION-OP"] }),
+    ).toEqual({
       kind: "route",
       href: "/manufacturing/pre-orders/13",
       pathname: "/manufacturing/pre-orders/13",

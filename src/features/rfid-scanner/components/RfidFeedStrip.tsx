@@ -6,10 +6,19 @@ import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
+import {
+  useLectorEnUso,
+  useRfidLectorSeleccionado,
+} from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
+import { RfidLectorSelect } from "./RfidLectorSelect";
 
 interface RfidFeedStripProps {
   /** Procesa un código leído igual que el lector de mano (SKU o código). */
   onCode: (code: string) => ScanResult;
+  /** Pantalla que escanea ("Recepción", "Surtido"): recuerda su lector y se muestra en "en uso". */
+  pantalla: string;
+  /** Folio del documento que se captura, para el aviso "en uso". */
+  documento?: string | null;
 }
 
 interface Detectada {
@@ -35,7 +44,7 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * Las lecturas se acotan a la empresa activa (EC-884): sin empresa no se
  * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
-export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
+export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProps) {
   const [detectadas, setDetectadas] = useState<Detectada[]>([]);
 
   const handleEpc = (scan: RfidScan) => {
@@ -56,7 +65,12 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
   };
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { isError } = useRfidEpcFeed(!hasNoCompany, handleEpc);
+  const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado(pantalla);
+  // Con varios lectores hay que elegir uno: leer de todos mezclaría cajones.
+  const faltaLector = lectores.length > 1 && lectorId === null;
+  const activo = !hasNoCompany && !faltaLector;
+  const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId);
+  useLectorEnUso(lectorId, activo, pantalla, documento);
 
   const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;
 
@@ -68,6 +82,9 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
         </span>
         <span className="font-semibold text-slate-700 dark:text-slate-200">Antena RFID</span>
+        {hasNoCompany ? null : faltaLector ? (
+          <span className="text-amber-600 dark:text-amber-400">· selecciona un lector</span>
+        ) : null}
         {hasNoCompany ? (
           <span className="text-slate-500 dark:text-slate-400">
             {isSuperuser
@@ -88,9 +105,14 @@ export function RfidFeedStrip({ onCode }: RfidFeedStripProps) {
             )}
           </span>
         )}
+        {!hasNoCompany && (
+          <div className="ml-auto">
+            <RfidLectorSelect lectores={lectores} value={lectorId} onChange={seleccionar} />
+          </div>
+        )}
       </div>
 
-      {hasNoCompany ? null : detectadas.length === 0 ? (
+      {hasNoCompany || faltaLector ? null : detectadas.length === 0 ? (
         <p className="px-4 pb-2.5 text-[11.5px] text-slate-400 dark:text-slate-500">
           Esperando etiquetas frente a la antena…
         </p>

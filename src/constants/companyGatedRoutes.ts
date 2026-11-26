@@ -66,6 +66,7 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   // empresa activa: a un superusuario sin empresa le llegan vacías, que se
   // leería como "el lector no ha leído nada".
   { prefix: "/wms/rfid-scanner", gated: true },
+  { prefix: "/wms/rfid-readers", gated: true },
 
   // ── WMS: Calidad y devoluciones a proveedor (EC-951) ──────────────────────
   // Son datos de compras: `calidad-inspecciones/` y `devoluciones-proveedor/`

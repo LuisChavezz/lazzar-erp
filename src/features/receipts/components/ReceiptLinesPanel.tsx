@@ -125,7 +125,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="receipt-scan"
         onScan={procesarLectura}
-        liveFeed={<RfidFeedStrip onCode={procesarLectura} />}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Recepción" />}
         actions={
           recibibles.length > 0 && (
             <div className="flex items-center gap-1">

@@ -134,6 +134,7 @@ export const routePermissions: Array<{
   { prefix: "/wms/shipping", permission: "R-WMS-ENVIO" },
   { prefix: "/wms/rfid-labels", permission: "R-WMS-ETIQUETAS" },
   { prefix: "/wms/rfid-scanner", permission: "R-WMS-SCANNER" },
+  { prefix: "/wms/rfid-readers", permission: "R-WMS-SCANNER" },
   { prefix: "/wms", permission: "R-WMS" },
 
   // ── Compras y SCM ─────────────────────────────────────────────────────────
@@ -151,6 +152,10 @@ export const routePermissions: Array<{
   // Salidas a maquila (SM): mismo código que su entrada en el sidebar, el de
   // las OP de las que salen (EC-868).
   { prefix: "/manufacturing/maquila-outputs", permission: "R-PRODUCCION-OP" },
+  // Pre-órdenes y Fabricación Especial alimentan la creación de OP: solo las
+  // ve quien puede crear una OP.
+  { prefix: "/manufacturing/pre-orders", permission: "C-PRODUCCION-OP" },
+  { prefix: "/manufacturing/special-orders", permission: "C-PRODUCCION-OP" },
   { prefix: "/manufacturing", permission: "R-PRODUCCION" },
 
   // ── Finanzas y Contabilidad ───────────────────────────────────────────────

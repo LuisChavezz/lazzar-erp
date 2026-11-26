@@ -1,5 +1,5 @@
 import type { PermissionContext } from "../interfaces/permission-context.interface";
-import { hasPermission } from "./permissions";
+import { hasAnyPermission, hasPermission } from "./permissions";
 
 /** Secciones de Producción con código propio. El código es `CM`, nunca `OCM`. */
 export type ProductionSection = "OP" | "OB" | "OR" | "CM";
@@ -45,3 +45,13 @@ export const hasProductionPermission = (
   section: ProductionSection,
   action: ProductionWriteAction,
 ): boolean => hasPermission(PRODUCTION_WRITE_PERMISSIONS[section][action], user);
+
+/**
+ * Alta de producto o variante (incluida la rápida): el backend exige
+ * `C-PRODUCCION-OP` o `C-CONFIGURACION` y responde 403 a los demás (p. ej.
+ * Compras o bordados, que leen pero no dan de alta).
+ */
+export const PRODUCT_CREATE_PERMISSIONS = ["C-PRODUCCION-OP", "C-CONFIGURACION"] as const;
+
+export const canCreateProducts = (user: PermissionContext | null | undefined): boolean =>
+  hasAnyPermission([...PRODUCT_CREATE_PERMISSIONS], user);
