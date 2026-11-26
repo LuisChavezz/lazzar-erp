@@ -40,14 +40,28 @@ const changedSinceOpenedMessage = (estatus: ConciliacionEstatus) =>
  * "Cancelar conciliación" con motivo
  * (`POST /finanzas/conciliaciones-bancarias/{id}/cancelar/`, nucleo-erp#1356,
  * EC-950; exige `CANCELAR-FIN-BANCOS`). Se ofrece sobre un `Borrador` y sobre
- * una `Cerrada` (nucleo-erp #827), con efectos distintos: `estatus` es el que
- * describe el texto. Justo antes del `POST` se relee la conciliación: si su
- * estatus ya no es ese, no se cancela (`PrecheckError`) — nunca con un efecto
- * que no se avisó. Al terminar se releen el listado y los movimientos.
+ * una `Cerrada` (nucleo-erp #827), con efectos distintos. `expectedEstatus`
+ * devuelve el estatus que describe el texto EN ESE MOMENTO (el verificado tras
+ * abrir puede cambiarlo sin remontar el diálogo); `estatus`/`cambio` solo arman
+ * el texto inicial. Justo antes del `POST` se relee la conciliación: si su
+ * estatus ya no es el descrito, no se cancela (`PrecheckError`) — nunca con un
+ * efecto que no se avisó. Al terminar se releen el listado y los movimientos.
  */
 export const conciliacionCancelDialogContent = (
   queryClient: QueryClient,
-  { id, cuenta, estatus, cambio }: { id: number; cuenta: string; estatus: ConciliacionEstatus; cambio: boolean },
+  {
+    id,
+    cuenta,
+    estatus,
+    cambio,
+    expectedEstatus,
+  }: {
+    id: number;
+    cuenta: string;
+    estatus: ConciliacionEstatus;
+    cambio: boolean;
+    expectedEstatus: () => ConciliacionEstatus;
+  },
 ): CancelDialogContent<ConciliacionBancaria> => ({
   action: financeCancelAction({
     mutationKey: [...cancelarConciliacionMutationKey, id],
@@ -59,7 +73,7 @@ export const conciliacionCancelDialogContent = (
         throw new Error("No se pudo verificar el estado de la conciliación. Intenta de nuevo.");
       }
       if (fresh.kind === "gone") throw new PrecheckError("La conciliación ya no está disponible. Se actualizó el listado.");
-      if (fresh.conciliacion.estatus !== estatus) {
+      if (fresh.conciliacion.estatus !== expectedEstatus()) {
         throw new PrecheckError(changedSinceOpenedMessage(fresh.conciliacion.estatus));
       }
       return cancelarConciliacion(id, motivo);
@@ -72,7 +86,7 @@ export const conciliacionCancelDialogContent = (
     blockingKeys: ["movimiento_bancario"],
     documentLabel: "la conciliación",
     successMessage: () =>
-      estatus === "Cerrada"
+      expectedEstatus() === "Cerrada"
         ? "Conciliación cancelada: sus movimientos regresaron a Pendiente"
         : "Conciliación cancelada correctamente",
   }),
