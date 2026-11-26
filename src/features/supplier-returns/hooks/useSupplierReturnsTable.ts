@@ -26,7 +26,9 @@ export const supplierReturnsTable = defineServerTable({
   },
   search: { param: "search" },
   ordering: {
-    fields: ["folio", "fecha", "estatus", "total", "proveedor__nombre", "recepcion__folio", "orden_compra__folio"],
+    // Sin `proveedor__nombre`: ordenaría por el nombre comercial una columna que
+    // muestra la razón social (ver `supplierReturnColumns`).
+    fields: ["folio", "fecha", "estatus", "total", "recepcion__folio", "orden_compra__folio"],
     default: "-fecha",
     tiebreaker: "-id",
   },
