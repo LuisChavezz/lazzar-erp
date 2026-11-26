@@ -29,6 +29,9 @@ import { cancelSupplierInvoice } from "@/src/features/supplier-invoices/services
 import { cancelarConciliacion } from "@/src/features/bank-reconciliations/services/actions";
 import { cancelMovimientoBancario } from "@/src/features/bank-accounts/services/actions";
 import { cancelCuentaPorPagar } from "@/src/features/accounts-payable/services/actions";
+import { writeCancelledRow } from "@/src/features/finance-cancellation/utils/financeCancelAction";
+import { polizaCancelDialogContent } from "@/src/features/polizas/utils/polizaCancelAction";
+import { conciliacionCancelDialogContent } from "@/src/features/bank-reconciliations/utils/conciliacionCancelAction";
 import {
   cuentaPorPagarCancelDialogContent,
   cuentaPorPagarRemoval,
@@ -246,11 +249,12 @@ test.describe("qué se ofrece", () => {
     expect(supplierInvoiceRemoval("Cancelada")).toBeNull();
   });
 
-  test("movimiento bancario: solo el manual (sin cobro ni pago) y no cancelado", () => {
+  test("movimiento bancario: solo el manual (sin cobro ni pago) y Pendiente", () => {
     const manual = { cobro_id: null, pago_id: null, estatus: "Pendiente" as const };
     expect(isManualMovimiento(manual)).toBe(true);
     expect(canCancelMovimiento(manual)).toBe(true);
-    expect(canCancelMovimiento({ ...manual, estatus: "Conciliado" })).toBe(true);
+    // Un Conciliado no: una conciliación Cerrada dejaría de cuadrar (se cancela ella primero).
+    expect(canCancelMovimiento({ ...manual, estatus: "Conciliado" })).toBe(false);
     expect(canCancelMovimiento({ ...manual, estatus: "Cancelado" })).toBe(false);
     expect(canCancelMovimiento({ ...manual, cobro_id: 12 })).toBe(false);
     expect(canCancelMovimiento({ ...manual, pago_id: 8 })).toBe(false);
@@ -320,5 +324,89 @@ test.describe("cuenta por pagar: eliminar o cancelar según tiene_pagos (EC-974)
     expect(content.action.classifyError(httpError(400, [aplicado]))).toEqual({ kind: "blocked", message: aplicado });
     expect(content.action.classifyError(httpError(400, MOTIVO_400)).kind).toBe("motivo");
     expect(content.action.classifyError(httpError(409, ["Intente de nuevo."])).kind).toBe("other");
+  });
+});
+
+test.describe("lo que se escribe en caché tras cancelar (EC-927)", () => {
+  const cancelled = {
+    id: 907,
+    estatus: "Cancelada",
+    total_cargos: "999.00",
+    concepto: "OTRO CONCEPTO",
+    motivo_cancelacion: "Capturada por error",
+    fecha_cancelacion: "2026-11-25T22:19:06Z",
+    cancelado_por: 4,
+    cancelado_por_nombre: "Ana López",
+    contrapoliza_id: 910,
+  };
+  const row = { id: 907, estatus: "Borrador", total_cargos: "1.00", concepto: "PRUEBA" };
+
+  test("solo estatus y quién/cuándo/por qué, en cada variante del listado; nunca importes", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["polizas"], [row, { id: 1, estatus: "Borrador" }]);
+    queryClient.setQueryData(["polizas", { tipo: "Diario" }], { results: [row], count: 1 });
+    await writeCancelledRow(queryClient, ["polizas"], cancelled);
+    const expected = {
+      ...row,
+      estatus: "Cancelada",
+      motivo_cancelacion: "Capturada por error",
+      fecha_cancelacion: "2026-11-25T22:19:06Z",
+      cancelado_por: 4,
+      cancelado_por_nombre: "Ana López",
+    };
+    expect(queryClient.getQueryData(["polizas"])).toEqual([expected, { id: 1, estatus: "Borrador" }]);
+    expect(queryClient.getQueryData(["polizas", { tipo: "Diario" }])).toEqual({ results: [expected], count: 1 });
+  });
+
+  test("la acción de la póliza usa esa escritura; una respuesta sin id no escribe nada", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["polizas"], [row]);
+    const { action } = polizaCancelDialogContent({ id: 907, folio: null, estatus: "Borrador" }, "#907");
+    await action.applyResult(queryClient, cancelled as never);
+    const [written] = queryClient.getQueryData<(typeof row)[]>(["polizas"]) ?? [];
+    expect(written.total_cargos).toBe("1.00");
+    expect(written.concepto).toBe("PRUEBA");
+    expect(written.estatus).toBe("Cancelada");
+    expect(written).not.toHaveProperty("contrapoliza_id");
+
+    const untouched = new QueryClient();
+    untouched.setQueryData(["polizas"], [row]);
+    await writeCancelledRow(untouched, ["polizas"], { estatus: "Cancelada" });
+    expect(untouched.getQueryData(["polizas"])).toEqual([row]);
+  });
+});
+
+test.describe("cancelar conciliación sin volver a montar el diálogo", () => {
+  test("el run compara contra el estatus verificado DESPUÉS de abrir, no contra el del texto inicial", async () => {
+    const originalGet = v1_api.get;
+    const originalPost = v1_api.post;
+    const posts: string[] = [];
+    v1_api.get = (async () => ({ data: { id: 110, estatus: "Cerrada" } })) as typeof v1_api.get;
+    v1_api.post = (async (url: string) => {
+      posts.push(url);
+      return { data: { id: 110, estatus: "Cancelada" } };
+    }) as typeof v1_api.post;
+    // El diálogo se abrió con el listado (Borrador) y la verificación dijo Cerrada:
+    // el contenido es el MISMO objeto de la apertura, solo cambia lo que devuelve el getter.
+    let verificado: "Borrador" | "Cerrada" = "Borrador";
+    const content = conciliacionCancelDialogContent(new QueryClient(), {
+      id: 110,
+      cuenta: "QA",
+      estatus: "Borrador",
+      cambio: false,
+      expectedEstatus: () => verificado,
+    });
+    try {
+      verificado = "Cerrada";
+      await content.action.run("PRUEBA");
+      expect(posts).toEqual(["/finanzas/conciliaciones-bancarias/110/cancelar/"]);
+      expect(content.action.successMessage({} as never)).toContain("regresaron a Pendiente");
+      verificado = "Borrador";
+      await expect(content.action.run("PRUEBA")).rejects.toThrow("se cerró mientras confirmabas");
+      expect(posts).toHaveLength(1);
+    } finally {
+      v1_api.get = originalGet;
+      v1_api.post = originalPost;
+    }
   });
 });
