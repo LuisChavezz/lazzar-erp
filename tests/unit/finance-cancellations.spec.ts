@@ -28,6 +28,11 @@ import { cancelarPago } from "@/src/features/payments/services/actions";
 import { cancelSupplierInvoice } from "@/src/features/supplier-invoices/services/actions";
 import { cancelarConciliacion } from "@/src/features/bank-reconciliations/services/actions";
 import { cancelMovimientoBancario } from "@/src/features/bank-accounts/services/actions";
+import { cancelCuentaPorPagar } from "@/src/features/accounts-payable/services/actions";
+import {
+  cuentaPorPagarCancelDialogContent,
+  cuentaPorPagarRemoval,
+} from "@/src/features/accounts-payable/utils/cuentaPorPagarCancelAction";
 
 /**
  * EC-950: cancelaciones con motivo en Finanzas y Contabilidad (nucleo-erp#1356,
@@ -257,5 +262,63 @@ test.describe("qué se ofrece", () => {
     expect(selectMutationRecordId(mutation("Motivo", ["cancelar-poliza", 42]))).toBe(42);
     expect(selectMutationRecordId(mutation(7, ["delete-poliza"]))).toBe(7);
     expect(selectMutationRecordId(mutation({ id: 9 }, ["update-supplier-invoice"]))).toBe(9);
+  });
+});
+
+test.describe("cuenta por pagar: eliminar o cancelar según tiene_pagos (EC-974)", () => {
+  const cxp = (overrides: Partial<Parameters<typeof cuentaPorPagarRemoval>[0]>) => ({
+    estatus: "Pendiente" as const,
+    total_pagado: "0.00",
+    tiene_pagos: false,
+    ...overrides,
+  });
+
+  test("sin pagos se elimina; con pagos ligados se cancela (aunque no haya pago aplicado); Cancelada, nada", () => {
+    expect(cuentaPorPagarRemoval(cxp({}))).toBe("delete");
+    expect(cuentaPorPagarRemoval(cxp({ tiene_pagos: true }))).toBe("cancel");
+    // Con un pago Aplicado se ofrece igual: el 400 del backend se muestra tal cual.
+    expect(cuentaPorPagarRemoval(cxp({ tiene_pagos: true, total_pagado: "10.00", estatus: "Parcial" }))).toBe("cancel");
+    expect(cuentaPorPagarRemoval(cxp({ tiene_pagos: true, estatus: "Cancelada" }))).toBeNull();
+    expect(cuentaPorPagarRemoval(cxp({ estatus: "Cancelada" }))).toBeNull();
+  });
+
+  test("un backend sin tiene_pagos conserva la regla anterior", () => {
+    expect(cuentaPorPagarRemoval(cxp({ tiene_pagos: undefined }))).toBe("delete");
+    expect(cuentaPorPagarRemoval(cxp({ tiene_pagos: undefined, total_pagado: "5.00" }))).toBe("pay-first");
+  });
+
+  test("cancelar pide E-FIN-FACTURAS y CANCELAR-FIN-PAGOS", () => {
+    expect(getFinanceCancelState(contabilidad, "authenticated", FINANCE_CANCEL_PERMISSION.pagos).canWrite).toBe(false);
+    expect(
+      getFinanceCancelState(conCancelar("CANCELAR-FIN-PAGOS"), "authenticated", FINANCE_CANCEL_PERMISSION.pagos).canWrite,
+    ).toBe(true);
+  });
+
+  test("DELETE con ?motivo= codificado en la URL y sin body", async () => {
+    const originalDelete = v1_api.delete;
+    let sent: { url: string; config: unknown } | null = null;
+    v1_api.delete = (async (url: string, config?: unknown) => {
+      sent = { url, config };
+      return { data: undefined };
+    }) as typeof v1_api.delete;
+    try {
+      await cancelCuentaPorPagar(737, "Pago duplicado & corregido / 50%");
+    } finally {
+      v1_api.delete = originalDelete;
+    }
+    expect(sent).toEqual({
+      url: "/finanzas/cuentas-por-pagar/737/?motivo=Pago%20duplicado%20%26%20corregido%20%2F%2050%25",
+      config: undefined,
+    });
+  });
+
+  test("el 400 de un pago aplicado se queda en el diálogo; el 409, tal cual y abierto", () => {
+    const content = cuentaPorPagarCancelDialogContent({ id: 737, factura_proveedor_folio: "EC950" });
+    expect(content.keepOpenOnBlocked).toBe(true);
+    expect(content.action.mutationKey).toEqual(["cancelar-cuenta-por-pagar", 737]);
+    const aplicado = "No se puede eliminar una cuenta por pagar con pagos aplicados. Cancele los pagos primero.";
+    expect(content.action.classifyError(httpError(400, [aplicado]))).toEqual({ kind: "blocked", message: aplicado });
+    expect(content.action.classifyError(httpError(400, MOTIVO_400)).kind).toBe("motivo");
+    expect(content.action.classifyError(httpError(409, ["Intente de nuevo."])).kind).toBe("other");
   });
 });
