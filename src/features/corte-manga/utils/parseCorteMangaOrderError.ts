@@ -56,6 +56,11 @@ export interface ParsedCorteMangaOrderError {
    * `ParsedReflectiveOrderError.excessLines`.
    */
   excessLines?: string[];
+  /**
+   * Status HTTP del rechazo (`400`, `403`, `409`); ausente en un error sin
+   * respuesta. El Paso 2 recarga los saldos en todo `400` que no sea de campo.
+   */
+  status?: number;
 }
 
 export const CORTE_MANGA_ORDER_GENERIC_ERROR =
@@ -163,6 +168,7 @@ export function parseCorteMangaOrderError(error: unknown): ParsedCorteMangaOrder
   // `CORTE_MANGA_ORDER_GENERIC_ERROR`; el banner, "Intenta de nuevo."). Mismo
   // criterio que `useToggleCostCenterActivo` (EC-140).
   if (!(error instanceof AxiosError)) return result;
+  result.status = error.response?.status;
   // 403: regla única del módulo (`forbiddenDetailMessage`): su `detail` o su
   // `non_field_errors`, nunca errores de campo. Sin ninguno, sin `formError`
   // para que el consumidor ponga su texto fijo.

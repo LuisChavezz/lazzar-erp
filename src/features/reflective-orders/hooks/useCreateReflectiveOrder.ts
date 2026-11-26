@@ -85,14 +85,9 @@ export const useCreateReflectiveOrder = (
         void invalidatePedidoProgress(queryClient);
       }
 
-      // El 400 de exceso significa que el saldo por línea que se le ofreció al
-      // usuario ya no es el real (otra OR del mismo pedido lo consumió entre la
-      // carga y el envío). Invalidar el onboarding es lo que hace que el
-      // reintento parta de `cantidad_pendiente` fresco en vez de repetir el
-      // mismo rechazo — mismo tratamiento que en bordado y en picking.
-      if (parsed.excessLines) {
-        queryClient.invalidateQueries({ queryKey: ["reflective-onboarding"] });
-      }
+      // Un 400 del service (exceso por línea, tope programado, rechazo del
+      // pedido) NO invalida el onboarding aquí: lo recarga el Paso 2 con un solo
+      // `refetch` (`useReflectiveStep2Form`), para no pedirlo dos veces.
 
       // UNA sola frase, nunca `messages.join("\n")`: desde que el parser
       // reconoce `detalles_exceso`, `messages` incluye el desglose línea por

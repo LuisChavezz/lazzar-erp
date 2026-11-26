@@ -190,6 +190,33 @@ export const WorkOrderLineOverridesSchema = z
     "Hay líneas del pedido repetidas",
   );
 
+/**
+ * ¿El rechazo del POST dice que los saldos de la pantalla ya no son los del
+ * servidor? Sí en TODO `400` que no sea de campo: exceso por línea
+ * (`detalles_exceso`), tope de lo programado, `detalles_override` del
+ * serializer o rechazo del pedido. No se mira el texto de `err`. Un error de
+ * campo del Paso 1, un 403, un 409 o un fallo de red no cambian los saldos.
+ */
+export const shouldRefreshWorkOrderBalances = (parsed: {
+  status?: number;
+  fieldErrors: Partial<Record<string, string>>;
+}): boolean =>
+  parsed.status === 400 && !Object.values(parsed.fieldErrors).some(Boolean);
+
+/**
+ * Aviso ámbar mientras se recargan los saldos tras ese `400`, igual en OR y
+ * OCM. En FUTURO a propósito: la recarga tarda, y afirmar que ya se
+ * actualizaron mientras los inputs siguen mostrando lo rechazado invitaba a
+ * reenviar el mismo payload.
+ */
+export const workOrderStaleBalancesNotice = (
+  excess: boolean,
+  ordenLabel: string,
+): string =>
+  excess
+    ? `Los pendientes de este pedido cambiaron (otra orden de ${ordenLabel} los consumió). Se están actualizando las cantidades; revísalas antes de volver a intentar.`
+    : "Los saldos de este pedido ya no son los que muestra esta pantalla. Se están actualizando; revisa las cantidades antes de volver a intentar.";
+
 /** Resultado de validar el Paso 2 antes del POST. */
 export type WorkOrderLineSubmission =
   | { ok: true; lines: WorkOrderLineOverride[] }

@@ -5,7 +5,9 @@ import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
 import { workOrderProductLabel } from "@/src/utils/workOrderProductLabel";
 import {
+  shouldRefreshWorkOrderBalances,
   validateWorkOrderLines,
+  workOrderStaleBalancesNotice,
   workOrderLineDescripcion,
   workOrderLineSampleSku,
 } from "@/src/utils/workOrderLineQuantities";
@@ -221,21 +223,13 @@ export function useReflectiveStep2Form({
     );
     setIssueLines(parsed.excessLines ?? fieldMessages);
 
-    if (parsed.excessLines) {
-      // Los saldos cambiaron entre la carga y el envío. La mutación ya invalidó
-      // `["reflective-onboarding"]`; el `refetch` explícito garantiza que la
-      // recarga ocurra aunque la invalidación no encuentre un observador activo,
-      // y la reconciliación de `useWorkOrderLineSelection` baja las cantidades
-      // capturadas a los pendientes nuevos.
-      //
-      // El aviso está redactado en FUTURO y la pantalla marca el refetch en
-      // curso con `isFetching`: la recarga tarda un par de segundos contra el
-      // backend, y afirmar "se actualizaron las cantidades" mientras los inputs
-      // siguen mostrando lo que el servidor acaba de rechazar invitaba a
-      // reenviar exactamente el mismo payload.
-      setStaleNotice(
-        "Los pendientes de este pedido cambiaron (otra orden de reflejante los consumió). Se están actualizando las cantidades; revísalas antes de volver a intentar.",
-      );
+    // Todo 400 no de campo (exceso por línea, tope de lo programado, rechazo
+    // del pedido) dice que los saldos de la pantalla ya no son los del
+    // servidor: UNA sola recarga (la mutación no invalida el onboarding) y la
+    // reconciliación de `useWorkOrderLineSelection` reajusta topes y
+    // cantidades. La pantalla marca el refetch en curso con `isFetching`.
+    if (shouldRefreshWorkOrderBalances(parsed)) {
+      setStaleNotice(workOrderStaleBalancesNotice(Boolean(parsed.excessLines), "reflejante"));
       void refetch();
     }
   };

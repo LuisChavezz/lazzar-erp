@@ -3,7 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
-import { validateWorkOrderLines } from "@/src/utils/workOrderLineQuantities";
+import {
+  shouldRefreshWorkOrderBalances,
+  validateWorkOrderLines,
+  workOrderStaleBalancesNotice,
+} from "@/src/utils/workOrderLineQuantities";
 import { useWorkOrderLineSelection } from "@/src/hooks/useWorkOrderLineSelection";
 import type { CreateCorteMangaOrderFormValues } from "../schemas/corte-manga-order.schema";
 import { buildCorteMangaOrderPayload } from "../utils/buildCorteMangaOrderPayload";
@@ -146,14 +150,12 @@ export function useCorteMangaStep2Form({ header, onSuccess }: UseCorteMangaStep2
     );
     setIssueLines(parsed.excessLines ?? fieldMessages);
 
-    if (parsed.excessLines) {
-      // Los saldos cambiaron entre la carga y el envío. La mutación ya invalidó
-      // el onboarding; el `refetch` explícito garantiza la recarga y la
-      // reconciliación baja lo capturado a los pendientes nuevos. El aviso va en
-      // FUTURO mientras `isFetching` sigue en vuelo.
-      setStaleNotice(
-        "Los pendientes de este pedido cambiaron (otra orden de corte de manga los consumió). Se están actualizando las cantidades; revísalas antes de volver a intentar.",
-      );
+    // Todo 400 no de campo (exceso por línea, tope de lo programado, rechazo
+    // del pedido) dice que los saldos de la pantalla ya no son los del
+    // servidor: UNA sola recarga (la mutación no invalida el onboarding) y la
+    // reconciliación reajusta topes, cantidades y total.
+    if (shouldRefreshWorkOrderBalances(parsed)) {
+      setStaleNotice(workOrderStaleBalancesNotice(Boolean(parsed.excessLines), "corte de manga"));
       void refetch();
     }
   };

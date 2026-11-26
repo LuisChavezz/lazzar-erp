@@ -80,12 +80,9 @@ export const useCreateCorteMangaOrder = (
         void invalidatePedidoProgress(queryClient);
       }
 
-      // El 400 de exceso significa que el saldo que se le ofreció al usuario ya
-      // no es el real (otra OCM del mismo pedido lo consumió entre la carga y el
-      // envío): el reintento debe partir de `cantidad_pendiente` fresco.
-      if (parsed.excessLines) {
-        queryClient.invalidateQueries({ queryKey: ["corte-manga-onboarding"] });
-      }
+      // Un 400 del service (exceso por línea, tope programado, rechazo del
+      // pedido) NO invalida el onboarding aquí: lo recarga el Paso 2 con un solo
+      // `refetch` (`useCorteMangaStep2Form`), para no pedirlo dos veces.
 
       // UNA sola frase, nunca `messages.join("\n")`: `messages` incluye el
       // desglose de `detalles_exceso`, ilegible en un toast. Ese desglose ya se
