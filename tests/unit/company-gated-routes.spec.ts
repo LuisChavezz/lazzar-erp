@@ -30,6 +30,8 @@ const GATED = [
   "/manufacturing/planning",
   "/wms/order-fulfillment",
   "/wms/rfid-scanner",
+  "/wms/quality-inspections",
+  "/wms/supplier-returns",
 ];
 
 const NOT_GATED = [

@@ -63,6 +63,13 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   // leería como "el lector no ha leído nada".
   { prefix: "/wms/rfid-scanner", gated: true },
 
+  // ── WMS: Calidad y devoluciones a proveedor (EC-951) ──────────────────────
+  // Son datos de compras: `calidad-inspecciones/` y `devoluciones-proveedor/`
+  // se acotan por `user.empresa` (sin empresa, el listado sale vacío y el
+  // onboarding de calidad responde 400 "El usuario no tiene empresa asignada").
+  { prefix: "/wms/quality-inspections", gated: true },
+  { prefix: "/wms/supplier-returns", gated: true },
+
   // ── Producción: Planeación ────────────────────────────────────────────────
   // El tablero de rotación se calcula sobre `user.empresa`: sin empresa el
   // backend responde 400 ("Tu usuario no tiene una empresa activa.").
