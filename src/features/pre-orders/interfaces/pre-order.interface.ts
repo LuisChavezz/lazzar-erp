@@ -40,10 +40,36 @@ export interface PreOrderRegreso {
   motivo: string;
 }
 
+/**
+ * Por qué `crear-op/` no liga a la OP un pedido del resurtido (nucleo-erp#1370).
+ * Se revisa en este orden: uno cancelado y dado de baja es `"cancelado"`.
+ */
+export type PedidoOmisionMotivo = "cancelado" | "dado de baja" | "de otra sucursal";
+
+/**
+ * De dónde sale `motivo_omision` de los pedidos ligados (EC-980):
+ * - `vista_previa`: resurtido abierto, con el estado de hoy de cada pedido (se omitirá);
+ * - `registrada`: lo que guardó `crear-op/` al crear la OP (se omitió); no se recalcula;
+ * - `sin_registro`: convertido antes de que se guardara; `motivo_omision` siempre `null`.
+ *
+ * `null` en `pedidos_omitidos_fuente`: no aplica (pre-orden de pedido, resurtido
+ * rechazado o cancelado sin convertirse).
+ */
+export type PedidosOmitidosFuente = "vista_previa" | "registrada" | "sin_registro";
+
+/** Un pedido que `crear-op/` dejó fuera de la OP. `folio` puede venir `null`. */
+export interface PedidoOmitido {
+  id: number;
+  folio: string | null;
+  motivo: PedidoOmisionMotivo;
+}
+
 export interface PreOrderPedidoVinculado {
   id: number;
   folio: string | null;
   cliente_nombre: string | null;
+  /** Por qué queda (o quedó) fuera de la OP; `null` si se liga o no se sabe (EC-980). */
+  motivo_omision?: PedidoOmisionMotivo | null;
 }
 
 /** `pedido`: nace de un pedido especial (muestra); `resurtido`: alta manual para stock, sin pedido. */
@@ -64,6 +90,9 @@ export interface PreOrderListItem {
   motivo_rechazo?: string | null;
   /** Pedidos que cubre una pre-orden generada por planeación (opcional, varios). */
   pedidos_vinculados?: PreOrderPedidoVinculado[];
+  /** Lo que guardó `crear-op/` (`[]` sin omitidos); solo tiene sentido con `pedidos_omitidos_fuente` no nulo. */
+  pedidos_omitidos?: PedidoOmitido[] | null;
+  pedidos_omitidos_fuente?: PedidosOmitidosFuente | null;
   pedido_folio: string | null;
   cliente_nombre: string | null;
   sucursal: number | null;
@@ -225,6 +254,8 @@ export interface CrearOpResponse {
   folio?: string | null;
   pre_orden?: number;
   estatus?: PreOrderStatus;
+  /** Pedidos del resurtido que no se ligaron a la OP; siempre viene (`[]` sin omitidos). */
+  pedidos_omitidos?: PedidoOmitido[];
 }
 
 /**

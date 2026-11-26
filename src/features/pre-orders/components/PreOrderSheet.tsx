@@ -38,6 +38,7 @@ import {
 import type { PreOrderDetail } from "../interfaces/pre-order.interface";
 import { PreOrderCreateOpDialog } from "./PreOrderCreateOpDialog";
 import { isResurtido, preOrderReference } from "../utils/preOrderOrigin";
+import { pedidoOmisionLabel } from "../utils/pedidosOmitidos";
 import { PreOrderRejectDialog } from "./PreOrderRejectDialog";
 import { PedidoVinculadoFolio } from "@/src/features/orders/components/PedidoVinculadoFolio";
 import { PreOrderTracker } from "./PreOrderTracker";
@@ -147,12 +148,19 @@ function PreOrderSheetContent({ data }: { data: PreOrderDetail }) {
           {(data.pedidos_vinculados?.length ?? 0) > 0 && (
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
               Pedidos:
-              {data.pedidos_vinculados!.map((p) => (
-                <span key={p.id} className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 px-2 py-0.5">
-                  <span className="font-semibold"><PedidoVinculadoFolio pedidoVinculado={{ id: p.id, folio: p.folio || `#${p.id}` }} pedidoFolio={p.folio} from="pre-orders" /></span>
-                  {p.cliente_nombre && <span className="text-slate-500 dark:text-slate-400">{p.cliente_nombre}</span>}
-                </span>
-              ))}
+              {data.pedidos_vinculados!.map((p) => {
+                const omision = pedidoOmisionLabel(data, p);
+                return (
+                  <span
+                    key={p.id}
+                    className={`inline-flex items-center gap-1 rounded-full bg-white dark:bg-zinc-900 border px-2 py-0.5 ${omision ? "border-amber-300 dark:border-amber-500/40" : "border-slate-200 dark:border-white/10"}`}
+                  >
+                    <span className="font-semibold"><PedidoVinculadoFolio pedidoVinculado={{ id: p.id, folio: p.folio || `#${p.id}` }} pedidoFolio={p.folio} from="pre-orders" /></span>
+                    {p.cliente_nombre && <span className="text-slate-500 dark:text-slate-400">{p.cliente_nombre}</span>}
+                    {omision && <span className="font-semibold text-amber-700 dark:text-amber-400">· {omision}</span>}
+                  </span>
+                );
+              })}
             </span>
           )}
           {data.notas && <span className="min-w-0 truncate" title={data.notas}>Notas: {data.notas}</span>}

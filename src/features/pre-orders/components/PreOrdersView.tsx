@@ -21,6 +21,7 @@ import { SemaforoBadge } from "./PreOrderTracking";
 import { isClosedPreOrderStatus } from "../constants/preOrderStatus";
 import { isUrgentPreOrder, PreOrderTrackerMini } from "./PreOrderTracker";
 import type { PreOrderListItem } from "../interfaces/pre-order.interface";
+import { linkedPedidoClientes } from "../utils/pedidosOmitidos";
 
 type Vista = "urgentes" | "curso" | "completadas";
 
@@ -76,7 +77,7 @@ const columns = [
         {row.original.cliente_nombre
           ? row.original.cliente_nombre
           : (row.original.pedidos_vinculados?.length ?? 0) > 0
-            ? [...new Set(row.original.pedidos_vinculados!.map((p) => p.cliente_nombre).filter(Boolean))].join(", ") || "—"
+            ? linkedPedidoClientes(row.original).join(", ") || "—"
             : isResurtido(row.original)
               ? "Stock interno"
               : textOrDash(row.original.cliente_nombre)}
