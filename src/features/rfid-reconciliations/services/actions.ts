@@ -1,5 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
 import type { PaginatedListResponse } from "@/src/utils/serverListAdapters";
+import { readPayload } from "../utils/rfidReadResult";
 import type { ReceiptOnboardingData } from "@/src/features/receipts/interfaces/receipt-onboarding.interface";
 import type {
   CreateRfidReconciliationPayload,
@@ -42,20 +43,19 @@ export const createRfidReconciliation = async (
 };
 
 /**
- * Una lectura: `201` con la lectura nueva. `400 {"codigo_tag"}` si el tag ya se
- * leyó en este encuadre (también con dos envíos simultáneos) y
- * `400 {"estatus"}` si el encuadre ya no está PENDIENTE.
+ * Una lectura por EPC (EC-982): `201` con la lectura nueva. `400 {"epc"}` si la
+ * pieza ya se leyó en este encuadre (cualquier forma equivalente del EPC o la
+ * misma etiqueta, también con dos envíos simultáneos) y `400 {"estatus"}` si el
+ * encuadre ya no está PENDIENTE.
  */
 export const addRfidReconciliationRead = async ({
   id,
-  codigoTag,
+  epc,
 }: {
   id: number;
-  codigoTag: string;
+  epc: string;
 }): Promise<RfidReconciliationRead> => {
-  const { data } = await v1_api.post<RfidReconciliationRead>(`${BASE}${id}/lecturas/`, {
-    codigo_tag: codigoTag,
-  });
+  const { data } = await v1_api.post<RfidReconciliationRead>(`${BASE}${id}/lecturas/`, readPayload(epc));
   return data;
 };
 

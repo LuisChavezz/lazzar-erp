@@ -6,12 +6,12 @@ import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { useRfidReadQueue, type RfidSessionRead } from "../hooks/useRfidReadQueue";
-import { antennaTagCode, type RfidReadTone } from "../utils/rfidReadResult";
+import type { RfidReadTone } from "../utils/rfidReadResult";
 
 interface RfidReconciliationScanPanelProps {
   reconciliationId: number;
-  /** Los `codigo_tag` que el encuadre ya tiene (del detalle). */
-  knownTags: ReadonlySet<string>;
+  /** EPC normalizados que el encuadre ya tiene (`knownReadEpcs` del detalle). */
+  knownEpcs: ReadonlySet<string>;
   totalLeido: string;
   totalEsperado: string;
 }
@@ -29,24 +29,26 @@ const TONE: Record<RfidReadTone, { dot: string; text: string }> = {
  * SKU, igual en todas las piezas, y el encuadre cuenta un `codigo_tag` una sola
  * vez, así que con él solo contaría una pieza por SKU.
  *
- * La antena (`useRfidEpcFeed`, una vez por EPC mientras se lee) manda cada
- * etiqueta como "EPC SKU" (`antennaTagCode`): única por pieza y asignada al
- * renglón por el SKU. Las lecturas van a la cola (`useRfidReadQueue`), que las
- * envía una a la vez y pinta el resultado de cada una en la lista de la sesión.
- * Arranque explícito, como en recepciones: la antena solo se sondea mientras
- * se lee.
+ * La antena (`useRfidEpcFeed` con `cursor`: solo lo leído DESPUÉS de iniciar,
+ * una vez por EPC) entrega cada etiqueta y su EPC va tal cual a la cola
+ * (`useRfidReadQueue`, `{epc}`, EC-982): el backend la resuelve por la etiqueta
+ * impresa y la asigna al renglón. La cola envía una a la vez y pinta el
+ * resultado de cada una en la lista de la sesión. Arranque explícito, como en
+ * recepciones: la antena solo se sondea mientras se lee.
  */
 export function RfidReconciliationScanPanel({
   reconciliationId,
-  knownTags,
+  knownEpcs,
   totalLeido,
   totalEsperado,
 }: RfidReconciliationScanPanelProps) {
-  const { reads, pending, enqueue } = useRfidReadQueue({ reconciliationId, knownTags });
+  const { reads, pending, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
   const [reading, setReading] = useState(false);
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { count, isError } = useRfidEpcFeed(reading && !hasNoCompany, (scan) => enqueue(antennaTagCode(scan)));
+  const { count, isError } = useRfidEpcFeed(reading && !hasNoCompany, (scan) => enqueue(scan.epc), null, {
+    cursor: true,
+  });
 
   return (
     <section aria-label="Lectura RFID" className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
@@ -100,6 +102,12 @@ export function RfidReconciliationScanPanel({
                   : `${count} ${count === 1 ? "etiqueta detectada" : "etiquetas detectadas"} en esta lectura.`}
         </span>
       </div>
+
+      {reading && !hasNoCompany && (
+        <p className="px-4 py-1.5 text-[11px] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
+          Las prendas que ya estaban frente a la antena al iniciar pueden tardar hasta 30 s en aparecer.
+        </p>
+      )}
 
       {reads.length === 0 ? (
         <p className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">Aún no hay lecturas en esta sesión.</p>

@@ -7,7 +7,8 @@ import { addRfidReconciliationRead } from "../services/actions";
 import { RFID_RECONCILIATIONS_KEY } from "../constants/rfidReconciliations";
 import {
   classifyReadError,
-  normalizeTag,
+  isEpcAlreadyRead,
+  normalizeEpc,
   readErrorFeedback,
   readSuccessFeedback,
   type RfidReadFeedback,
@@ -24,25 +25,26 @@ const SESSION_READS_LIMIT = 50;
 
 interface UseRfidReadQueueOptions {
   reconciliationId: number;
-  /** Los `codigo_tag` que el encuadre ya tiene: se avisan sin pedirlos otra vez. */
-  knownTags: ReadonlySet<string>;
+  /** EPC normalizados que el encuadre ya tiene (`knownReadEpcs`): se avisan sin pedirlos. */
+  knownEpcs: ReadonlySet<string>;
 }
 
 /**
- * Cola de lecturas de un encuadre: manda los códigos UNO A LA VEZ
- * (`POST .../lecturas/`), en el orden en que llegaron, para que la antena
- * nunca dispare dos envíos a la vez.
+ * Cola de lecturas de un encuadre: manda los EPC UNO A LA VEZ
+ * (`POST .../lecturas/` con `{epc}`, EC-982), en el orden en que llegaron, para
+ * que la antena nunca dispare dos envíos a la vez.
  *
- * - Una etiqueta que el encuadre ya tiene, o que ya se mandó en esta sesión, se
- *   avisa como "Ya leído" sin petición. El `400 {"codigo_tag"}` del backend
- *   dice lo mismo y tampoco es un error.
+ * - Un EPC que el encuadre ya tiene (su forma canónica o la que mandó el
+ *   lector) o que ya se mandó en esta sesión se avisa como "Ya leído" sin
+ *   petición. Otra forma de la misma pieza (con o sin relleno) sí se manda: el
+ *   `400 {"epc"}` del backend la reconoce y tampoco es un error.
  * - `400 {"estatus"}` (se aceptó o canceló en otro lado), `404` o `403`
  *   detienen la cola: lo que quedaba se descarta, se avisa con el mensaje del
  *   backend y se relee el encuadre.
  * - Al vaciarse la cola se relee el encuadre (resumen y lecturas) y su fila
  *   del listado: el resumen lo calcula el backend.
  */
-export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQueueOptions) {
+export function useRfidReadQueue({ reconciliationId, knownEpcs }: UseRfidReadQueueOptions) {
   const queryClient = useQueryClient();
   const [reads, setReads] = useState<RfidSessionRead[]>([]);
   const [pending, setPending] = useState(0);
@@ -51,10 +53,10 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
   const runningRef = useRef(false);
   const aliveRef = useRef(true);
   const seqRef = useRef(0);
-  const knownRef = useRef(knownTags);
+  const knownRef = useRef(knownEpcs);
 
   useEffect(() => {
-    knownRef.current = knownTags;
+    knownRef.current = knownEpcs;
   });
 
   useEffect(() => {
@@ -77,19 +79,22 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
         const next = queueRef.current.shift()!;
         setPending(queueRef.current.length + 1);
         try {
-          const read = await addRfidReconciliationRead({ id: reconciliationId, codigoTag: next.code });
+          const read = await addRfidReconciliationRead({ id: reconciliationId, epc: next.code });
+          // La forma canónica que guardó el backend también cuenta como enviada.
+          const canonical = normalizeEpc(read.codigo_tag);
+          if (canonical) sentRef.current.add(canonical);
           changed += 1;
           update(next.key, readSuccessFeedback(read));
         } catch (error) {
           const { kind, message } = classifyReadError(error);
           update(next.key, readErrorFeedback(kind, message));
           // Lo que no quedó guardado se puede volver a leer.
-          if (kind !== "duplicate") sentRef.current.delete(next.code);
+          if (kind !== "duplicate") sentRef.current.delete(normalizeEpc(next.code));
           // El backend ya lo tenía y el detalle no: otra sesión escaneó. Se relee.
           if (kind === "duplicate") changed += 1;
           if (kind === "not-pending" || kind === "not-found" || kind === "forbidden") {
             for (const dropped of queueRef.current) {
-              sentRef.current.delete(dropped.code);
+              sentRef.current.delete(normalizeEpc(dropped.code));
               update(dropped.key, { tone: "error", title: "No se envió", detail: message });
             }
             queueRef.current = [];
@@ -105,19 +110,19 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
     }
   };
 
-  /** Encola el `codigo_tag` de una etiqueta leída por la antena. */
-  const enqueue = (raw: string) => {
-    const code = normalizeTag(raw);
-    if (!code) return;
+  /** Encola el EPC de una etiqueta leída por la antena, tal como lo entregó. */
+  const enqueue = (rawEpc: string) => {
+    const code = rawEpc;
+    if (!normalizeEpc(code)) return;
     seqRef.current += 1;
     const key = seqRef.current;
-    const repeated = knownRef.current.has(code) || sentRef.current.has(code);
+    const repeated = isEpcAlreadyRead(code, knownRef.current, sentRef.current);
     const entry: RfidSessionRead = repeated
       ? { key, code, tone: "warn", title: "Ya leído", detail: "Esta etiqueta ya está en el encuadre" }
       : { key, code, tone: "pending", title: "Enviando…" };
     setReads((prev) => [entry, ...prev].slice(0, SESSION_READS_LIMIT));
     if (repeated) return;
-    sentRef.current.add(code);
+    sentRef.current.add(normalizeEpc(code));
     queueRef.current.push({ key, code });
     setPending(queueRef.current.length + (runningRef.current ? 1 : 0));
     void drain();

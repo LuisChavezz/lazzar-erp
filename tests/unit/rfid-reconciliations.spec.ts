@@ -6,12 +6,20 @@ import {
   rfidReconciliationOriginFolio,
 } from "@/src/features/rfid-reconciliations/constants/rfidReconciliations";
 import {
-  antennaTagCode,
   classifyReadError,
-  normalizeTag,
+  isEpcAlreadyRead,
+  knownReadEpcs,
+  normalizeEpc,
   readErrorFeedback,
+  readPayload,
   readSuccessFeedback,
+  unassignedReadReason,
 } from "@/src/features/rfid-reconciliations/utils/rfidReadResult";
+import {
+  advanceFeedCursor,
+  RFID_FEED_CURSOR_LIMIT,
+  rfidScansQueryParams,
+} from "@/src/features/rfid-scanner/utils/rfidScansParams";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
@@ -91,14 +99,35 @@ test.describe("resultado de una lectura", () => {
   });
 });
 
+test.describe("lectura sin asignar por EPC", () => {
+  const unassigned = { producto_nombre: null, producto_variante_nombre: null, orden_compra_detalle: null, orden_produccion_detalle: null };
+
+  test("muestra el motivo del backend", () => {
+    expect(unassignedReadReason({ ...unassigned, metadata: { resolved: false, motivo: "epc_no_registrado" } })).toBe(
+      "EPC no registrado",
+    );
+    expect(
+      readSuccessFeedback({ ...unassigned, metadata: { resolved: false, motivo: "etiqueta_sin_producto" } }),
+    ).toEqual({ tone: "warn", title: "Etiqueta sin producto", detail: "Queda sin asignar" });
+  });
+  test("un motivo desconocido se muestra tal cual y una asignada no tiene motivo", () => {
+    expect(unassignedReadReason({ ...unassigned, metadata: { motivo: "otro_motivo" } })).toBe("otro_motivo");
+    expect(unassignedReadReason({ ...unassigned, orden_compra_detalle: 1, metadata: {} })).toBeNull();
+  });
+});
+
 test.describe("errores de lecturas/", () => {
-  test("tag repetido (texto plano o lista) es un aviso, no un error", () => {
-    const plain = classifyReadError(axiosError(400, { codigo_tag: "Este tag ya fue leído en este encuadre." }));
-    expect(plain.kind).toBe("duplicate");
-    expect(classifyReadError(axiosError(400, { codigo_tag: ["Este tag ya fue leído en este encuadre."] })).kind).toBe(
+  test("EPC repetido (400 epc con texto) es un aviso, no un error", () => {
+    const dup = classifyReadError(axiosError(400, { epc: "Este tag ya fue leído en este encuadre." }));
+    expect(dup.kind).toBe("duplicate");
+    expect(readErrorFeedback(dup.kind, dup.message)).toMatchObject({ tone: "warn", title: "Ya leído" });
+    // El envío obsoleto por codigo_tag responde igual.
+    expect(classifyReadError(axiosError(400, { codigo_tag: "Este tag ya fue leído en este encuadre." })).kind).toBe(
       "duplicate",
     );
-    expect(readErrorFeedback(plain.kind, plain.message)).toMatchObject({ tone: "warn", title: "Ya leído" });
+  });
+  test("un 400 epc del serializer (lista) no es repetido", () => {
+    expect(classifyReadError(axiosError(400, { epc: ["EPC vacío."] }))).toEqual({ kind: "other", message: "EPC vacío." });
   });
   test("encuadre que ya no está pendiente detiene la cola con el mensaje del backend", () => {
     expect(classifyReadError(axiosError(400, { estatus: "Solo se puede escanear un encuadre pendiente." }))).toEqual({
@@ -110,35 +139,60 @@ test.describe("errores de lecturas/", () => {
     expect(classifyReadError(axiosError(404, { detail: "No encontrado." })).kind).toBe("not-found");
     expect(classifyReadError(axiosError(403, { detail: "No tienes permiso para esta acción (C-WMS-RECEPCIONES)." })))
       .toEqual({ kind: "forbidden", message: "No tienes permiso para esta acción (C-WMS-RECEPCIONES)." });
-    expect(classifyReadError(axiosError(400, { codigo_tag_x: ["Requerido."] }))).toEqual({
-      kind: "other",
-      message: "Requerido.",
-    });
-  });
-  test("el código se envía recortado y vacío no se envía", () => {
-    expect(normalizeTag("  SKU-1 \n")).toBe("SKU-1");
-    expect(normalizeTag("   ")).toBe("");
+    expect(classifyReadError(axiosError(400, { otro: ["Requerido."] }))).toEqual({ kind: "other", message: "Requerido." });
   });
 });
 
-test.describe("codigo_tag de la antena", () => {
-  test("EPC y SKU: único por pieza y asignable por el SKU", () => {
-    expect(antennaTagCode({ epc: "E2801160AA", sku: "30018002XC", barcode_value: "30018002XC" })).toBe(
-      "E2801160AA 30018002XC",
-    );
+test.describe("envío por EPC", () => {
+  test("el cuerpo es {epc} con el EPC tal como llega de la antena", () => {
+    expect(readPayload("e280-1160:00aa")).toEqual({ epc: "e280-1160:00aa" });
   });
-  test("sin SKU usa el código impreso; sin código, solo el EPC", () => {
-    expect(antennaTagCode({ epc: "E1", sku: null, barcode_value: "018Q" })).toBe("E1 018Q");
-    expect(antennaTagCode({ epc: "E1", sku: undefined, barcode_value: "" })).toBe("E1");
+  test("normaliza como el backend para comparar", () => {
+    expect(normalizeEpc(" e2:80-11 60 ")).toBe("E2801160");
+    expect(normalizeEpc(null)).toBe("");
   });
-  test("sin EPC no se manda nada y nunca pasa de 120 caracteres", () => {
-    expect(antennaTagCode({ epc: " ", sku: "X", barcode_value: "X" })).toBe("");
-    expect(antennaTagCode({ epc: "E".repeat(64), sku: "S".repeat(80), barcode_value: null })).toHaveLength(120);
+  test("conoce el EPC canónico y la forma que mandó el lector", () => {
+    const known = knownReadEpcs([
+      { codigo_tag: "E28011700000EC9610000001", metadata: { epc_leido: "E28011700000EC961000000100000000" } },
+      { codigo_tag: "30018002XC", metadata: { tokens: ["30018002XC"] } },
+    ]);
+    expect(isEpcAlreadyRead("e28011700000ec9610000001", known, new Set())).toBe(true);
+    expect(isEpcAlreadyRead("E28011700000EC961000000100000000", known, new Set())).toBe(true);
   });
-  test("dos piezas del mismo SKU dan códigos distintos", () => {
-    const a = antennaTagCode({ epc: "E1", sku: "SKU-1", barcode_value: "SKU-1" });
-    const b = antennaTagCode({ epc: "E2", sku: "SKU-1", barcode_value: "SKU-1" });
-    expect(a).not.toBe(b);
+  test("no reenvía lo ya mandado en la sesión; otra forma del EPC sí va al backend", () => {
+    const sent = new Set([normalizeEpc("E28011700000EC9610000002")]);
+    expect(isEpcAlreadyRead("E28011700000EC9610000002", new Set(), sent)).toBe(true);
+    // Con relleno: el backend decide que es la misma pieza (400 epc → "Ya leído").
+    expect(isEpcAlreadyRead("E28011700000EC961000000200000000", new Set(), sent)).toBe(false);
+    expect(isEpcAlreadyRead("   ", new Set(), sent)).toBe(false);
+  });
+});
+
+test.describe("cursor del feed de la antena", () => {
+  const scans = (...ids: number[]) => ids.map((id) => ({ id }));
+
+  test("la primera respuesta fija el cursor y no entrega nada", () => {
+    expect(advanceFeedCursor(null, scans(41, 57, 12))).toEqual({ cursor: 57, fresh: [] });
+    expect(advanceFeedCursor(null, [])).toEqual({ cursor: 0, fresh: [] });
+  });
+  test("después entrega solo lo posterior y avanza al id más alto", () => {
+    expect(advanceFeedCursor(57, scans(60, 58))).toEqual({ cursor: 60, fresh: scans(60, 58) });
+    expect(advanceFeedCursor(60, [])).toEqual({ cursor: 60, fresh: [] });
+    // Algo anterior al cursor nunca se entrega ni lo hace retroceder.
+    expect(advanceFeedCursor(60, scans(59))).toEqual({ cursor: 60, fresh: [] });
+  });
+  test("con cursor pide despues_de_id, unicos y limite 200", () => {
+    expect(rfidScansQueryParams({ soloMatch: true, despuesDeId: 57, limite: RFID_FEED_CURSOR_LIMIT })).toEqual({
+      unicos: 1,
+      solo_match: 1,
+      despues_de_id: 57,
+      limite: 200,
+    });
+    expect(rfidScansQueryParams({ soloMatch: true, despuesDeId: 0, limite: 200 }).despues_de_id).toBe(0);
+  });
+  test("sin la opción la petición es la de siempre (Nueva Recepción y monitor)", () => {
+    expect(rfidScansQueryParams({ soloMatch: true })).toEqual({ unicos: 1, solo_match: 1 });
+    expect(rfidScansQueryParams({ soloMatch: false })).toEqual({ unicos: 1 });
   });
 });
 

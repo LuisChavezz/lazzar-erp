@@ -40,6 +40,7 @@ import {
 } from "../constants/rfidReconciliations";
 import type { RfidReconciliation } from "../interfaces/rfid-reconciliation.interface";
 import { RfidReconciliationScanPanel } from "./RfidReconciliationScanPanel";
+import { knownReadEpcs, unassignedReadReason } from "../utils/rfidReadResult";
 
 const acceptDescription = (data: RfidReconciliation) =>
   `El ${rfidReconciliationInlineLabel(data)} quedará aceptado y ya no se podrán leer más etiquetas. No mueve inventario ni crea la recepción: esa se registra después en Nueva Recepción.`;
@@ -181,7 +182,7 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
         ? productionOrderDetailPath(data.op)
         : null;
   const canOpenOrigin = originHref !== null && canAccessRoute(originHref.split("?")[0], session?.user);
-  const knownTags = new Set(data.lecturas.map((read) => read.codigo_tag));
+  const knownEpcs = knownReadEpcs(data.lecturas);
   const resumen = data.resumen;
   const diferencia = safeParseAmount(resumen.total_esperado) - safeParseAmount(resumen.total_leido);
 
@@ -242,7 +243,7 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
       {canScan && (
         <RfidReconciliationScanPanel
           reconciliationId={data.id}
-          knownTags={knownTags}
+          knownEpcs={knownEpcs}
           totalLeido={resumen.total_leido}
           totalEsperado={resumen.total_esperado}
         />
@@ -300,7 +301,7 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
           <LineItemsTable
             head={
               <>
-                <th className="px-3 py-2 font-medium">Código</th>
+                <th className="px-3 py-2 font-medium">EPC / código</th>
                 <th className="px-3 py-2 font-medium">Producto</th>
                 <th className="px-3 py-2 font-medium">Renglón</th>
                 <th className="px-3 py-2 font-medium">Fecha</th>
@@ -308,7 +309,7 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
             }
           >
             {[...data.lecturas].reverse().map((read) => {
-              const assigned = read.orden_compra_detalle !== null || read.orden_produccion_detalle !== null;
+              const reason = unassignedReadReason(read);
               return (
                 <tr key={read.id}>
                   <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{read.codigo_tag}</td>
@@ -316,10 +317,10 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
                     {textOrDash(read.producto_variante_nombre || read.producto_nombre)}
                   </td>
                   <td className="px-3 py-2">
-                    {assigned ? (
+                    {reason === null ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Asignada</span>
                     ) : (
-                      <span className="text-amber-600 dark:text-amber-400">Sin asignar</span>
+                      <span className="text-amber-600 dark:text-amber-400">Sin asignar · {reason}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 tabular-nums text-slate-500 dark:text-slate-400">

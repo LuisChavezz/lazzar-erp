@@ -14,10 +14,24 @@ export type RfidReconciliationEstatus = "PENDIENTE" | "ACEPTADO" | "CANCELADO";
 /** Origen del encuadre: una OC o una OP (nunca una SM). */
 export type RfidReconciliationTipoOrigen = "OC" | "OP";
 
-/** Una etiqueta leída. Se resuelve por SKU de variante o código de producto. */
+/**
+ * Por qué una lectura por EPC quedó sin asignar (EC-982): el EPC no es de una
+ * etiqueta impresa por el ERP en la empresa, o la etiqueta no tiene producto.
+ */
+export type RfidReadMotivo = "epc_no_registrado" | "etiqueta_sin_producto";
+
+/**
+ * Una etiqueta leída. Por EPC (EC-982) se resuelve por la etiqueta que imprimió
+ * el ERP; las lecturas viejas por `codigo_tag` se resolvían por SKU o código.
+ */
 export interface RfidReconciliationRead {
   id: number;
+  /** El EPC canónico de la etiqueta (o el EPC normalizado si no está registrado). */
   codigo_tag: string;
+  /** = `codigo_tag` si la lectura llegó por `epc`; `null` si llegó por `codigo_tag`. */
+  epc?: string | null;
+  /** Etiqueta impresa que corresponde al EPC; `null` si no está registrada. */
+  etiqueta?: number | null;
   /** Renglón de la OC al que sumó; `null` si no se resolvió o es de OP. */
   orden_compra_detalle: number | null;
   /** Renglón de la OP al que sumó; `null` si no se resolvió o es de OC. */
@@ -29,8 +43,17 @@ export interface RfidReconciliationRead {
   producto_variante_nombre: string | null;
   /** Siempre "1.0000" hoy: una etiqueta es una pieza. */
   cantidad_leida: string;
-  /** `resolved` dice si el código encontró producto. */
-  metadata: { resolved?: boolean; tokens?: string[]; source?: string } & Record<string, unknown>;
+  /**
+   * `resolved`: si encontró producto. Por EPC además `epc_leido` (lo que mandó
+   * el lector, normalizado) y, sin asignar, `motivo`.
+   */
+  metadata: {
+    resolved?: boolean;
+    tokens?: string[];
+    source?: string;
+    epc_leido?: string;
+    motivo?: RfidReadMotivo | string;
+  } & Record<string, unknown>;
   created_at: string;
 }
 
