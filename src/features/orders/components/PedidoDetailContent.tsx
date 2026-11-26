@@ -117,6 +117,13 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   receipts: { href: "/wms/receipts", label: "Volver a Recepciones" },
   // Avance de surtido por pedido (EC-913): vuelve a su listado.
   "order-fulfillment": { href: "/wms/order-fulfillment", label: "Volver a Avance de surtido" },
+  // Stock digital (EC-977): la misma pantalla vive en Ventas y en Mesa de
+  // Control, y cada una vuelve a la SUYA.
+  "sales-digital-stock": { href: "/sales/digital-stock", label: "Volver a Stock digital" },
+  "operations-digital-stock": {
+    href: "/operations/digital-stock",
+    label: "Volver a Stock digital",
+  },
   packing: { href: "/wms/packing", label: "Volver a Embarque" },
   shipping: { href: "/wms/shipping", label: "Volver a Envíos" },
   procurement: { href: "/procurement/orders", label: "Volver a Compras" },
