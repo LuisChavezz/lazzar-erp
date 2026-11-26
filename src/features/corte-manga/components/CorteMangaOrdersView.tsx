@@ -42,7 +42,7 @@ import { corteMangaOrderDetailPath } from "@/src/constants/workOrderRoutes";
  *     aquí arriba y `getRowId` atando la identidad al dato, eso no puede pasar.
  * `setOpenOrderId` se reenvía por lo primero a `CorteMangaOrderForm` (el alta,
  * en el `actionButton` de abajo): el bloque ámbar de
- * `CorteMangaOrderCreateForm` abre este MISMO diálogo con ese id.
+ * `CorteMangaOrderStep2` abre este MISMO diálogo con ese id.
  * `CorteMangaOrdersView` es el único dueño de `openOrderId` — el alta solo
  * recibe el setter para invocarlo (y `onCloseExistingOrder` para limpiarlo al
  * cerrarse), no gestiona su propio estado de apertura.

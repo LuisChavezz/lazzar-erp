@@ -41,7 +41,7 @@ const PEDIDO_HELP_ID = "embroidery-order-pedido-help";
  * HTML de depuración de Django, un 502, un error de red— cae al texto fijo. NO
  * se usa `extractErrorMessage`: su `error instanceof Error` lo satisface un
  * `AxiosError`, así que mostraría "Request failed with status code 500" en vez
- * del respaldo. Mismo criterio que `CorteMangaOrderCreateForm` y que
+ * del respaldo. Mismo criterio que `CorteMangaOrderStep1` y que
  * `parseEmbroideryOrderError` para el alta.
  */
 const getCatalogErrorMessage = (error: unknown): string =>

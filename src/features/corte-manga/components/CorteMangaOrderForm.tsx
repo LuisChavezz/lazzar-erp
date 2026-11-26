@@ -5,11 +5,11 @@ import { MainDialog } from "@/src/components/MainDialog";
 import { DialogHeader } from "@/src/components/DialogHeader";
 import { Button } from "@/src/components/Button";
 import { SliceIcon } from "@/src/components/Icons";
-import { CorteMangaOrderCreateForm } from "./CorteMangaOrderCreateForm";
+import { CorteMangaOrderStepManager } from "./CorteMangaOrderStepManager";
 
 interface CorteMangaOrderFormProps {
-  /** Ver `CorteMangaOrderCreateFormProps.onViewExistingOrder` — solo se
-   *  reenvía, este componente no lo usa directamente. */
+  /** Ver `CorteMangaOrderStep2Props.onViewExistingOrder` — solo se reenvía,
+   *  este componente no lo usa directamente. */
   onViewExistingOrder: (id: number) => void;
   /**
    * Cierra el diálogo de detalle que este formulario pudo haber abierto desde
@@ -22,7 +22,7 @@ interface CorteMangaOrderFormProps {
 
 /**
  * Punto de entrada del alta de orden de corte de manga: botón del toolbar que
- * abre el formulario de un solo paso.
+ * abre el asistente de 2 pasos (`CorteMangaOrderStepManager`, EC-967).
  *
  * El contenido —y con él la llamada al onboarding— solo se monta cuando el
  * diálogo está abierto, y se re-monta limpio en cada apertura (sin pedido ni
@@ -52,7 +52,7 @@ export const CorteMangaOrderForm = ({
           statusColor="sky"
         />
       }
-      maxWidth="640px"
+      maxWidth="820px"
       showCloseButton={false}
       trigger={
         <Button variant="primary">
@@ -62,8 +62,8 @@ export const CorteMangaOrderForm = ({
       }
     >
       {isDialogOpen && (
-        <CorteMangaOrderCreateForm
-          onSuccess={() => setIsDialogOpen(false)}
+        <CorteMangaOrderStepManager
+          onClose={() => setIsDialogOpen(false)}
           onViewExistingOrder={onViewExistingOrder}
         />
       )}
