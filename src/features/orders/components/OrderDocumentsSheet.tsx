@@ -24,7 +24,7 @@ import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrd
 import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/constants/movementTypes";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { useCanCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
-import { isShipmentDelivered } from "@/src/features/shipping/utils/shipmentDelivery";
+import { isShipmentDelivered, shipmentDisplayStatus } from "@/src/features/shipping/utils/shipmentDelivery";
 import {
   formatAmountNoCurrency,
   formatQuantityValue,
@@ -445,11 +445,12 @@ export function DocumentosBlocks({
                 <td className={`${TD} font-mono`}>
                   {despacho.envio_id === null ? "—" : `#${despacho.envio_id}`}
                 </td>
-                {/* `estado` (#1348); el motivo de un cancelado, al pasar el cursor. */}
+                {/* `estado` (#1348), o "Entregado" si tiene `fecha_entrega` (#1432,
+                    como en WMS); el motivo de un cancelado, al pasar el cursor. */}
                 <td className="px-3 py-2">
                   {despacho.estado ? (
                     <span title={despacho.motivo_cancelacion?.trim() || undefined}>
-                      <DocEstatusBadge estatus={despacho.estado} />
+                      <DocEstatusBadge estatus={shipmentDisplayStatus({ ...despacho, estado: despacho.estado })} />
                     </span>
                   ) : (
                     "—"

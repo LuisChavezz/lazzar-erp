@@ -236,6 +236,9 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
           open={deliverOpen}
           onOpenChange={setDeliverOpen}
           onDelivered={setResult}
+          // 404: la copia de este detalle ya no sirve (el envío no existe o salió
+          // del alcance), así que se cierra junto con el diálogo de la entrega.
+          onNotFound={() => onOpenChange(false)}
         />
       )}
     </MainDialog>

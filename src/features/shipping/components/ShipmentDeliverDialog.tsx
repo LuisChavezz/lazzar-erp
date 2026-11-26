@@ -10,18 +10,20 @@ import { FormCancelButton, FormSubmitButton } from "@/src/components/FormButtons
 import { openPicker } from "@/src/features/attendance/utils/dateInputs";
 import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { useFormFieldErrors } from "@/src/hooks/useFormFieldErrors";
+import { useMutationLock } from "@/src/hooks/useMutationLock";
 import { isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { getMexicoTimeHHMM, getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import {
   deliverShipmentMutationKey,
+  isDeliverDespachoRejection,
   parseDeliverShipmentError,
   useDeliverShipment,
 } from "../hooks/useDeliverShipment";
-import type { DeliverShipmentPayload, Shipment } from "../interfaces/shipping.interface";
+import type { Shipment } from "../interfaces/shipping.interface";
 import {
   DeliverShipmentFormSchema,
   SHIPMENT_RECIBIO_MAX,
-  toFechaEntrega,
+  buildDeliverShipmentPayload,
   type DeliverShipmentFormField,
   type DeliverShipmentFormValues,
 } from "../schemas/shipment-delivery.schema";
@@ -33,6 +35,8 @@ interface ShipmentDeliverFormProps {
   shipment: ShipmentToDeliver;
   onDelivered: (shipment: Shipment) => void;
   onClose: () => void;
+  /** `404`: el envío ya no existe o salió del alcance del usuario. */
+  onNotFound: () => void;
 }
 
 /** Valores iniciales: nadie en "Recibió" y el momento actual en México. */
@@ -42,9 +46,12 @@ const initialValues = (now: Date = new Date()): DeliverShipmentFormValues => ({
   hora: getMexicoTimeHHMM(now.toISOString()),
 });
 
-const ShipmentDeliverForm = ({ shipment, onDelivered, onClose }: ShipmentDeliverFormProps) => {
+const ShipmentDeliverForm = ({ shipment, onDelivered, onClose, onNotFound }: ShipmentDeliverFormProps) => {
   const deliver = useDeliverShipment(shipment.id);
   const isPending = deliver.isPending;
+  // Doble envío: `isPending` llega un render tarde; `isIdle()` consulta la caché
+  // de mutaciones al instante (como `CancelReasonForm`).
+  const { isIdle } = useMutationLock(deliverShipmentMutationKey(shipment.id));
   // Fijos desde que se abre: el tope del día no cambia a media captura.
   const [defaults] = useState(initialValues);
   const [message, setMessage] = useState<string | null>(null);
@@ -54,7 +61,7 @@ const ShipmentDeliverForm = ({ shipment, onDelivered, onClose }: ShipmentDeliver
   const form = useForm({
     defaultValues: defaults,
     onSubmit: ({ value }) => {
-      if (isPending) return;
+      if (!isIdle()) return;
       clearServerErrors();
       setMessage(null);
 
@@ -65,24 +72,29 @@ const ShipmentDeliverForm = ({ shipment, onDelivered, onClose }: ShipmentDeliver
         });
         return;
       }
-      const fechaEntrega = toFechaEntrega(parsed.data.fecha, parsed.data.hora);
-      if ("field" in fechaEntrega) {
-        setClientFieldError(fechaEntrega.field, fechaEntrega.message);
+      // Sin editar el día ni la hora no viaja `fecha_entrega`: el backend usa la suya.
+      const built = buildDeliverShipmentPayload(parsed.data, defaults);
+      if ("field" in built) {
+        setClientFieldError(built.field, built.message);
         return;
       }
 
-      const payload: DeliverShipmentPayload = { fecha_entrega: fechaEntrega.iso };
-      // Vacío = no se manda: el backend lo guarda como "".
-      if (parsed.data.recibio.length > 0) payload.recibio = parsed.data.recibio;
-
-      deliver.mutate(payload, {
+      deliver.mutate(built.payload, {
         onSuccess: (result) => {
           onDelivered(result);
           onClose();
         },
         onError: (error) => {
-          // 404: el envío ya no está; el hook lo avisa con un toast.
+          // 404: el envío ya no está; el hook lo avisa con un toast y se cierra
+          // también el detalle (su copia ya no sirve). `despacho`: ya se entregó
+          // o se canceló en otro lado; el hook lo avisa con el mensaje tal cual y
+          // relee el listado, así que reintentar no tiene sentido.
           if (isNotFoundError(error)) {
+            onClose();
+            onNotFound();
+            return;
+          }
+          if (isDeliverDespachoRejection(error)) {
             onClose();
             return;
           }
@@ -190,6 +202,8 @@ interface ShipmentDeliverDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Con la respuesta del backend: el detalle la muestra sin esperar al listado. */
   onDelivered: (shipment: Shipment) => void;
+  /** `404` al entregar: quien lo monta cierra también el detalle. */
+  onNotFound: () => void;
 }
 
 /**
@@ -198,12 +212,20 @@ interface ShipmentDeliverDialogProps {
  * de la entrega, con el momento actual de México ya puesto y sin permitir un
  * día posterior a hoy. Lo ofrece `ShippingDetailDialog` con `C-WMS-ENVIO` en un
  * envío activo sin entrega. Los errores del backend se muestran tal cual: los de
- * campo bajo su input y el resto (`despacho`, `403`) en el banner.
+ * campo bajo su input; `400 {"despacho"}` (ya entregado o cancelado) y `404`
+ * cierran con un toast; el resto (`403`, red) en el banner. Si el día y la hora
+ * no se tocaron, `fecha_entrega` no viaja y el backend usa su propia hora.
  *
  * Mientras el `POST` está en vuelo el diálogo no se cierra, para que el
  * resultado se vea.
  */
-export function ShipmentDeliverDialog({ shipment, open, onOpenChange, onDelivered }: ShipmentDeliverDialogProps) {
+export function ShipmentDeliverDialog({
+  shipment,
+  open,
+  onOpenChange,
+  onDelivered,
+  onNotFound,
+}: ShipmentDeliverDialogProps) {
   const session = useDialogSession(open, shipment);
   const delivering = useIsMutating({ mutationKey: deliverShipmentMutationKey(session.snapshot.id) }) > 0;
   const folio = session.snapshot.packing_folio || `#${session.snapshot.id}`;
@@ -229,6 +251,7 @@ export function ShipmentDeliverDialog({ shipment, open, onOpenChange, onDelivere
         shipment={session.snapshot}
         onDelivered={onDelivered}
         onClose={() => onOpenChange(false)}
+        onNotFound={onNotFound}
       />
     </MainDialog>
   );

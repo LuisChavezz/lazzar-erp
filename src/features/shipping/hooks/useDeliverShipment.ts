@@ -49,8 +49,9 @@ const SERVER_FIELD_TO_FORM: Record<string, DeliverShipmentFormField> = {
  * - `403` (sin `C-WMS-ENVIO`): su `detail` o un mensaje fijo.
  * - `400` solo de campos (`fecha_entrega` inválida o futura, `recibio`): bajo el
  *   input, sin banner.
- * - `400 {"despacho"}` (cancelado o ya entregado) y cualquier otro: banner.
- * El `404` no pasa por aquí: lo avisa el hook con un toast y el diálogo cierra.
+ * - Cualquier otro (red, 5xx): banner.
+ * El `404` y el `400 {"despacho"}` no pasan por aquí: los avisa el hook con un
+ * toast y el diálogo cierra.
  */
 export function parseDeliverShipmentError(
   error: unknown,
@@ -70,12 +71,22 @@ export function parseDeliverShipmentError(
   return handleDrfWriteError(error, DELIVER_FALLBACK, [] as const);
 }
 
-/** ¿El backend dice que el despacho ya no admite la entrega? (`400 {"despacho"}`). */
-const isDespachoRejection = (error: unknown): boolean => {
-  if (!(error instanceof AxiosError) || error.response?.status !== 400) return false;
+/** Mensaje de un `400 {"despacho"}` (cancelado o ya entregado), o `undefined`. */
+const despachoRejectionMessage = (error: unknown): string | undefined => {
+  if (!(error instanceof AxiosError) || error.response?.status !== 400) return undefined;
   const data = error.response.data;
-  return Boolean(data && typeof data === "object" && "despacho" in data);
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  return firstDrfMessage((data as Record<string, unknown>).despacho);
 };
+
+/**
+ * ¿El backend dice que el despacho ya no admite la entrega? (`400 {"despacho"}`:
+ * cancelado o ya entregado en otro lado). Reintentar no sirve: el diálogo se
+ * cierra y el hook avisa con el mensaje tal cual, como las llaves de bloqueo de
+ * las cancelaciones de WMS.
+ */
+export const isDeliverDespachoRejection = (error: unknown): boolean =>
+  despachoRejectionMessage(error) !== undefined;
 
 /** El listado de envíos y la bitácora (`ENTREGAR` queda registrado). */
 const refreshShipments = (queryClient: QueryClient) => {
@@ -93,8 +104,9 @@ const refreshShipments = (queryClient: QueryClient) => {
  * falla. Entregar no mueve inventario ni toca packing, picking o pedido.
  *
  * Errores: `404` avisa con un toast y relee (el envío ya no está); `400
- * {"despacho"}` relee para que la acción deje de ofrecerse. El diálogo pinta el
- * resto (`parseDeliverShipmentError`).
+ * {"despacho"}` avisa con su mensaje tal cual y relee para que la acción deje de
+ * ofrecerse (en los dos el diálogo se cierra). El diálogo pinta el resto
+ * (`parseDeliverShipmentError`).
  */
 export const useDeliverShipment = (shipmentId: number) => {
   const queryClient = useQueryClient();
@@ -123,7 +135,11 @@ export const useDeliverShipment = (shipmentId: number) => {
       if (isNotFoundError(error)) {
         toast.error(DELIVER_NOT_FOUND_MESSAGE);
         refreshShipments(queryClient);
-      } else if (isDespachoRejection(error)) {
+        return;
+      }
+      const despachoMessage = despachoRejectionMessage(error);
+      if (despachoMessage) {
+        toast.error(despachoMessage);
         refreshShipments(queryClient);
       }
     },

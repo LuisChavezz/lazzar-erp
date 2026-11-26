@@ -2,6 +2,7 @@ import { z } from "zod";
 import { countCodePoints } from "@/src/features/orders/schemas/pedido-programacion.schema";
 import { isCalendarDateKey, isHHMM, toMexicoIsoDateTime } from "@/src/utils/mexicoTime";
 import { HORA_INEXISTENTE_MESSAGE } from "@/src/utils/timeInput";
+import type { DeliverShipmentPayload } from "../interfaces/shipping.interface";
 
 /**
  * Tope de `recibio` en el backend (`CharField(max_length=150)`). El backend
@@ -46,4 +47,26 @@ export const toFechaEntrega = (
   if (iso === null) return { field: "hora", message: HORA_INEXISTENTE_MESSAGE };
   if (Date.parse(iso) > now.getTime()) return { field: "hora", message: FECHA_ENTREGA_FUTURA_MESSAGE };
   return { iso };
+};
+
+/**
+ * Cuerpo de `entregar/` con lo ya validado, o el error de un campo. Si el día y
+ * la hora siguen como se pusieron al abrir (`defaults`), NO se manda
+ * `fecha_entrega`: el backend usa su propia hora, así que un reloj del equipo
+ * adelantado no puede hacer "futura" la entrega. Solo una fecha u hora editada
+ * viaja, y esa sí se valida aquí contra el momento actual.
+ */
+export const buildDeliverShipmentPayload = (
+  values: { recibio: string; fecha: string; hora: string },
+  defaults: Pick<DeliverShipmentFormValues, "fecha" | "hora">,
+  now: Date = new Date(),
+): { payload: DeliverShipmentPayload } | { field: DeliverShipmentFormField; message: string } => {
+  const payload: DeliverShipmentPayload = {};
+  // Vacío = no se manda: el backend lo guarda como "".
+  if (values.recibio.length > 0) payload.recibio = values.recibio;
+  if (values.fecha === defaults.fecha && values.hora === defaults.hora) return { payload };
+  const fechaEntrega = toFechaEntrega(values.fecha, values.hora, now);
+  if ("field" in fechaEntrega) return fechaEntrega;
+  payload.fecha_entrega = fechaEntrega.iso;
+  return { payload };
 };
