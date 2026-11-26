@@ -13,6 +13,8 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "wms",
   "picking",
   "order-fulfillment",
+  "sales-digital-stock",
+  "operations-digital-stock",
   "quality",
   "receipts",
   "packing",
