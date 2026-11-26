@@ -6,13 +6,18 @@ import {
   reconcileLineQuantities,
   sanitizeIntegerInput,
   seedLineSelection,
+  shouldRefreshWorkOrderBalances,
   validateWorkOrderLines,
+  workOrderStaleBalancesNotice,
   workOrderLineDescripcion,
   workOrderLineSampleSku,
   type WorkOrderLineRow,
 } from "@/src/utils/workOrderLineQuantities";
 import { getWorkOrderSaldo } from "@/src/utils/formatWorkOrderProgramado";
 import { parseCorteMangaOrderError } from "@/src/features/corte-manga/utils/parseCorteMangaOrderError";
+import { parseReflectiveOrderError } from "@/src/features/reflective-orders/utils/parseReflectiveOrderError";
+import { parseEmbroideryOrderError } from "@/src/features/embroidery/utils/parseEmbroideryOrderError";
+import { readExcessLines } from "@/src/utils/readExcessLines";
 import { buildCorteMangaOrderPayload } from "@/src/features/corte-manga/utils/buildCorteMangaOrderPayload";
 
 /**
@@ -162,6 +167,21 @@ test.describe("validateWorkOrderLines", () => {
     ]);
   });
 
+  test("si el techo viene de lo programado, el aviso lo dice en vez de hablar de pendientes", () => {
+    const capped = [row(1, 5)];
+    const result = validateWorkOrderLines({
+      rows: capped,
+      ceilings: buildLineCeilings(capped, 2),
+      saldo: saldo(2, 0),
+      destinoLabel: "Corte de manga",
+      checkedIds: new Set([1]),
+      quantities: new Map([[1, "3"]]),
+    });
+    expect(!result.ok && result.issueLines).toEqual([
+      "«PLAYERA · Talla M»: capturaste 3, pero por lo programado por Mesa de Control puede llevar hasta 2.",
+    ]);
+  });
+
   test("distingue el input vacío del 0 explícito", () => {
     const result = validateWorkOrderLines({
       ...base,
@@ -238,6 +258,16 @@ test.describe("alta de OCM: payload y errores", () => {
     expect(parsed.excessLines).toBeUndefined();
   });
 
+  test("readExcessLines: recorta, descarta vacíos y lo usan los tres parsers", () => {
+    expect(readExcessLines(["  - a", "", ["- b"]])).toEqual(["- a", "- b"]);
+    expect(readExcessLines("- a")).toBeUndefined();
+    expect(readExcessLines([])).toBeUndefined();
+    const body = { err: "x", detalles_exceso: ["  - a", "  - b"] };
+    for (const parse of [parseEmbroideryOrderError, parseReflectiveOrderError, parseCorteMangaOrderError]) {
+      expect(parse(httpError(400, body)).excessLines).toEqual(["- a", "- b"]);
+    }
+  });
+
   test("`detalles_exceso` se conserva completo y `err` encabeza el banner", () => {
     const err =
       "No se puede generar la orden de corte de manga: una o más líneas exceden la cantidad disponible del pedido.";
@@ -248,6 +278,36 @@ test.describe("alta de OCM: payload y errores", () => {
     const parsed = parseCorteMangaOrderError(httpError(400, { err, detalles_exceso: lines }));
     expect(parsed.formError).toBe(err);
     expect(parsed.excessLines).toEqual(lines.map((l) => l.trim()));
+  });
+
+  test("todo 400 no de campo recarga los saldos; los de campo, 403, 409 y red no", () => {
+    const cap = parseCorteMangaOrderError(httpError(400, { err: "…excede lo programado…" }));
+    expect(cap.status).toBe(400);
+    expect(shouldRefreshWorkOrderBalances(cap)).toBe(true);
+    const exceso = parseCorteMangaOrderError(httpError(400, { err: "x", detalles_exceso: ["- a"] }));
+    expect(shouldRefreshWorkOrderBalances(exceso)).toBe(true);
+    const pedido = parseCorteMangaOrderError(httpError(400, { pedido: "El pedido está retenido." }));
+    expect(shouldRefreshWorkOrderBalances(pedido)).toBe(true);
+    const campo = parseCorteMangaOrderError(httpError(400, { pedido: ["Este campo es requerido."] }));
+    expect(shouldRefreshWorkOrderBalances(campo)).toBe(false);
+    expect(shouldRefreshWorkOrderBalances(parseCorteMangaOrderError(httpError(403, { detail: "x" })))).toBe(false);
+    expect(
+      shouldRefreshWorkOrderBalances(
+        parseCorteMangaOrderError(httpError(409, { err: "x", orden_corte_manga_existente: { id: "1", pedido: "2" } })),
+      ),
+    ).toBe(false);
+    expect(shouldRefreshWorkOrderBalances(parseCorteMangaOrderError(new Error("red")))).toBe(false);
+    // Reflejante expone el mismo status.
+    expect(shouldRefreshWorkOrderBalances(parseReflectiveOrderError(httpError(400, { err: "x" })))).toBe(true);
+  });
+
+  test("el aviso de saldos es el mismo en OR y OCM, y distingue el exceso por línea", () => {
+    expect(workOrderStaleBalancesNotice(true, "corte de manga")).toContain(
+      "otra orden de corte de manga los consumió",
+    );
+    expect(workOrderStaleBalancesNotice(false, "reflejante")).toBe(
+      workOrderStaleBalancesNotice(false, "corte de manga"),
+    );
   });
 
   test("el `detalles_override` del serializer (lista) llega verbatim al banner", () => {
