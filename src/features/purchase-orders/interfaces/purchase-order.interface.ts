@@ -141,6 +141,15 @@ export interface PurchaseOrder {
   motivo_cierre?: string;
   fecha_cierre?: string | null;
   cerrada_por?: number | null;
+  /**
+   * El pedido de origen se canceló con la OC ya autorizada o parcialmente
+   * recibida (`POST ventas/pedidos/{id}/cancelar/`, nucleo-erp#1357): la OC no
+   * se cancela sola, queda marcada para que compras decida. Solo lectura, en
+   * listado y detalle. Opcionales: una respuesta sin ellos se lee como no
+   * marcada. `fecha_pedido_cancelado` es fecha y hora ISO.
+   */
+  pedido_cancelado?: boolean;
+  fecha_pedido_cancelado?: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;

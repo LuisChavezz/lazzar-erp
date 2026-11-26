@@ -515,6 +515,20 @@ export function PurchaseOrderDetailDialog({
                   </InfoField>
                 </>
               )}
+              {/* Pedido cancelado (EC-951): el pedido de origen se canceló con
+                  la OC ya autorizada; se muestra en cualquier estatus. */}
+              {purchaseOrder.pedido_cancelado === true && (
+                <>
+                  <InfoField label="Pedido de origen" className="col-span-2">
+                    <span className="leading-snug text-rose-700 dark:text-rose-400">
+                      Cancelado. La orden no se canceló sola: compras decide si cancelarla o conservar el material.
+                    </span>
+                  </InfoField>
+                  <InfoField label="Pedido cancelado el">
+                    {formatShortDateTime(purchaseOrder.fecha_pedido_cancelado)}
+                  </InfoField>
+                </>
+              )}
             </div>
 
             {/* Origen — nombres ya resueltos por el backend (`*_nombre`); los
