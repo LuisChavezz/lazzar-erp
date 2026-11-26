@@ -75,6 +75,8 @@ export const DOCUMENT_AUDIT_OPENERS: Partial<Record<TipoDocumento, DocumentAudit
   packing: { kind: "dialog", gatePath: "/wms/packing" },
   // Recepciones de ambos orígenes (OC y OP): las muestra la vista de WMS.
   recepcion: { kind: "dialog", gatePath: "/wms/receipts" },
+  // Devoluciones a proveedor (EC-951): su pantalla de WMS.
+  devolucion_proveedor: { kind: "dialog", gatePath: "/wms/supplier-returns" },
   // Transferencias y movimientos son subvistas de Configuración.
   transferencia: { kind: "dialog", gatePath: "/config" },
   movimiento_inventario: { kind: "dialog", gatePath: "/config" },

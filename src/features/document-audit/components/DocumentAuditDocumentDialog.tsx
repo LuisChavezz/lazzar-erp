@@ -5,6 +5,7 @@ import { PackingDetailByIdDialog } from "@/src/features/packing/components/Packi
 import { ReceiptDetailDialog } from "@/src/features/receipts/components/ReceiptDetailDialog";
 import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
+import { SupplierReturnDetailDialog } from "@/src/features/supplier-returns/components/SupplierReturnDetailDialog";
 import type { TipoDocumento } from "../interfaces/document-audit.interface";
 
 /** Documento abierto en diálogo desde la bitácora. */
@@ -46,6 +47,8 @@ export function DocumentAuditDocumentDialog({ document, onClose }: DocumentAudit
       return <StockTransferDetailDialog transferId={document.id} open onOpenChange={onOpenChange} />;
     case "movimiento_inventario":
       return <StockMovementDetailByIdDialog orderId={document.id} open onOpenChange={onOpenChange} />;
+    case "devolucion_proveedor":
+      return <SupplierReturnDetailDialog returnId={document.id} open onOpenChange={onOpenChange} />;
     default:
       return null;
   }

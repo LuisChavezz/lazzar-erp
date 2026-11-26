@@ -48,6 +48,7 @@ import {
   LabelsIcon,
   ScanLineIcon,
   ShieldCheckIcon,
+  PackageXIcon,
   BancosIcon,
   WalletIcon,
   ReceiptIcon,
@@ -370,6 +371,14 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         path: "/wms/quality-inspections",
         icon: ShieldCheckIcon,
         description: "Inspección de calidad de las recepciones: lo aprobado entra a existencias.",
+        section: "operation",
+      },
+      {
+        key: "wms-supplier-returns",
+        label: "Devoluciones a proveedor",
+        path: "/wms/supplier-returns",
+        icon: PackageXIcon,
+        description: "Devolución al proveedor de lo que calidad rechazó o puso en cuarentena.",
         section: "operation",
       },
       {

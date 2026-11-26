@@ -50,6 +50,13 @@ test.describe("destino de un evento de la bitácora", () => {
     expect(resolveDocumentAuditTarget(event("factura"), user(["R-CORE"]))).toBeNull();
   });
 
+  test("la devolución a proveedor se abre con R-WMS-RECEPCIONES", () => {
+    expect(
+      resolveDocumentAuditTarget(event("devolucion_proveedor"), user(["R-WMS-RECEPCIONES"]))?.opener,
+    ).toEqual({ kind: "dialog", gatePath: "/wms/supplier-returns" });
+    expect(resolveDocumentAuditTarget(event("devolucion_proveedor"), user(["R-WMS-CALIDAD"]))).toBeNull();
+  });
+
   test("diálogo solo con acceso a la pantalla donde vive", () => {
     expect(resolveDocumentAuditTarget(event("picking"), user(["R-WMS-PICKING"]))?.opener.kind).toBe(
       "dialog",
@@ -57,7 +64,7 @@ test.describe("destino de un evento de la bitácora", () => {
     expect(resolveDocumentAuditTarget(event("picking"), user(["R-CORE"]))).toBeNull();
   });
 
-  test("los trece tipos sin detalle por id quedan como texto", () => {
+  test("los doce tipos sin detalle por id quedan como texto", () => {
     const admin = { role: "admin", permissions: [] } as never;
     for (const tipo of [
       "factura_proveedor",
@@ -72,14 +79,13 @@ test.describe("destino de un evento de la bitácora", () => {
       "movimiento_bancario",
       "conciliacion_bancaria",
       "calidad_inspeccion",
-      "devolucion_proveedor",
       "encuadre_rfid",
     ]) {
       expect(resolveDocumentAuditTarget(event(tipo), admin)).toBeNull();
     }
   });
 
-  test("los doce abribles tienen destino para un admin", () => {
+  test("los trece abribles tienen destino para un admin", () => {
     const admin = { role: "admin", permissions: [] } as never;
     for (const tipo of [
       "pedido",
@@ -94,6 +100,8 @@ test.describe("destino de un evento de la bitácora", () => {
       "transferencia",
       "factura",
       "movimiento_inventario",
+      // EC-951: el detalle de la devolución, en su pantalla de WMS.
+      "devolucion_proveedor",
     ]) {
       expect(resolveDocumentAuditTarget(event(tipo), admin), tipo).not.toBeNull();
     }

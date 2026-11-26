@@ -53,6 +53,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/wms/stock": "Existencias",
   "/wms/receipts": "Recepciones",
   "/wms/quality-inspections": "Calidad",
+  "/wms/supplier-returns": "Devoluciones a proveedor",
   "/wms/locations": "Ubicaciones",
   "/wms/picking": "Surtido",
   "/wms/order-fulfillment": "Avance de surtido",
