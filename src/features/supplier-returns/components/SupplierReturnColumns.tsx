@@ -88,7 +88,11 @@ export const supplierReturnColumns: ColumnDef<SupplierReturn>[] = [
   },
   {
     accessorKey: "proveedor_nombre",
-    meta: { label: "Proveedor", serverSort: "proveedor__nombre", serverFilter: "proveedor" },
+    // Sin `serverSort`: la celda muestra la razón social (`proveedor_nombre`)
+    // pero el backend solo ordena por `proveedor__nombre`, el nombre comercial,
+    // y el orden no coincidiría con lo que se ve. Vuelve cuando el backend
+    // acepte `proveedor__razon_social`.
+    meta: { label: "Proveedor", serverFilter: "proveedor" },
     header: ({ column }) => <SupplierCatalogHeaderFilter column={column} title="Proveedor" />,
     cell: ({ row }) => (
       <span className="text-slate-700 dark:text-slate-200">{row.original.proveedor_nombre || "—"}</span>
