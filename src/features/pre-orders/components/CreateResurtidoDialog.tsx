@@ -358,6 +358,7 @@ function CreateResurtidoForm({ onClose }: { onClose: () => void }) {
               onChange={setPedidos}
               selection={pedidoSelection}
               error={fieldError(errors.general.pedidos)}
+              sucursal={sucursal ? Number(sucursal) : null}
             />
           </Step>
         </div>

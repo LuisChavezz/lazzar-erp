@@ -80,11 +80,12 @@ export const usePedidoSearchField = ({
   estatus,
   cliente,
   moneda,
+  sucursal,
   enabled = true,
 }: Omit<PedidoSearchFilters, "q"> & { enabled?: boolean } = {}) => {
   const [search, setSearch] = useState("");
   const { term, isDebouncing } = useServerSearchTerm(search, PEDIDO_SEARCH_DEBOUNCE_MS);
-  const query = usePedidoSearch({ q: term, estatus, cliente, moneda }, { enabled });
+  const query = usePedidoSearch({ q: term, estatus, cliente, moneda, sucursal }, { enabled });
   const isSearching = query.isPlaceholderData || isDebouncing;
   return { search, setSearch, isSearching, ...query };
 };

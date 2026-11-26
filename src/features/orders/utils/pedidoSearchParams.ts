@@ -15,10 +15,12 @@ export interface PedidoSearchFilters {
   cliente?: number;
   /** Solo los pedidos en esta moneda (`?moneda=`, id). */
   moneda?: number;
+  /** Solo los pedidos de esta sucursal (`?sucursal=`, id). */
+  sucursal?: number;
 }
 
 /**
- * Query string de una búsqueda de pedidos. `q`, `estatus`, `cliente` y `moneda`
+ * Query string de una búsqueda de pedidos. `q`, `estatus`, `cliente`, `moneda` y `sucursal`
  * solo viajan con valor (un `q=` vacío no filtra nada y ensuciaría la llave; un
  * id que no es positivo no es un filtro); `limit` va
  * SIEMPRE: sin él el endpoint responde la lista completa como arreglo, no la
@@ -29,10 +31,12 @@ export const toPedidoSearchParams = ({
   estatus,
   cliente,
   moneda,
+  sucursal,
 }: PedidoSearchFilters): PedidoSearchParams => ({
   ...(q ? { q } : {}),
   ...(estatus ? { estatus } : {}),
   ...(cliente !== undefined && cliente > 0 ? { cliente } : {}),
   ...(moneda !== undefined && moneda > 0 ? { moneda } : {}),
+  ...(sucursal !== undefined && sucursal > 0 ? { sucursal } : {}),
   limit: PEDIDO_SEARCH_LIMIT,
 });
