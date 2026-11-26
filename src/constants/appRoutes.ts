@@ -320,6 +320,15 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         description: "Pedidos originados en las cotizaciones que creaste.",
       },
       {
+        // EC-977: la misma pantalla que `operations-digital-stock`, con los
+        // códigos de CRM (su regla en `routePermissions`).
+        key: "sales-digital-stock",
+        label: "Stock digital",
+        path: "/sales/digital-stock",
+        icon: InventariosIcon,
+        description: "Existencia ALM-00, comprometido y entradas por SKU.",
+      },
+      {
         key: "sales-emails",
         label: "Correos",
         path: "/sales/emails",
@@ -1091,6 +1100,15 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         key: "operations-inventory-pipeline",
         label: "Existencias, Producción y Compras",
         path: "/operations/inventory-pipeline",
+        icon: InventariosIcon,
+        section: "tracking",
+      },
+      {
+        // EC-977: la misma pantalla que `sales-digital-stock`, con los códigos
+        // de Mesa de Control (su regla en `routePermissions`).
+        key: "operations-digital-stock",
+        label: "Stock digital",
+        path: "/operations/digital-stock",
         icon: InventariosIcon,
         section: "tracking",
       },

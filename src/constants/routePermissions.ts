@@ -87,6 +87,11 @@ export const routePermissions: Array<{
   { prefix: "/sales/orders", permission: "R-CRM-PEDIDOS" },
   { prefix: "/sales/emails", permission: "R-CRM-CORREOS" },
   { prefix: "/sales/calendar", permission: "R-CRM-CALENDAR" },
+  // Stock digital (EC-977): solo los códigos de CRM que acepta el backend
+  // (`CODIGOS_STOCK_DIGITAL`). Los de Mesa de Control van en la regla de
+  // `/operations/digital-stock`: si se mezclaran aquí, `getGroupAccessPermissions`
+  // mostraría el módulo de Ventas a quien solo tiene Mesa de Control.
+  { prefix: "/sales/digital-stock", permission: ["R-CRM", "R-CRM-COTIZACIONES", "R-CRM-PEDIDOS"] },
   { prefix: "/sales", permission: "R-CRM" },
 
   // ── Mesa de Control ───────────────────────────────────────────────────────
@@ -104,6 +109,12 @@ export const routePermissions: Array<{
   { prefix: "/operations/calendar", permission: "R-MESACONTROL" },
   // Código de MÓDULO a propósito: el reporte no tiene código de sección propio.
   { prefix: "/operations/inventory-pipeline", permission: "R-MESACONTROL" },
+  // Stock digital (EC-977): los códigos de Mesa de Control de
+  // `CODIGOS_STOCK_DIGITAL`; los de CRM van en `/sales/digital-stock`.
+  {
+    prefix: "/operations/digital-stock",
+    permission: ["R-MESACONTROL", "R-MESACONTROL-COTI", "R-MESACONTROL-PEDIDOS"],
+  },
   { prefix: "/operations", permission: "R-MESACONTROL" },
 
   // ── Operaciones de Almacén (WMS) ──────────────────────────────────────────
