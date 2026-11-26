@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { formatShortDate } from "@/src/utils/formatDate";
+import { formatShortDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { MEXICO_TIME_ZONE } from "@/src/utils/mexicoTime";
-import { ChevronRightIcon, EmbarquesIcon, PackingIcon, PedidosIcon } from "@/src/components/Icons";
+import { CheckCircleIcon, ChevronRightIcon, EmbarquesIcon, PackingIcon, PedidosIcon } from "@/src/components/Icons";
+import { Button } from "@/src/components/Button";
 import { MainDialog } from "@/src/components/MainDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import {
@@ -21,6 +22,9 @@ import { isShipmentCancelled, shipmentCancelDialogContent } from "../utils/shipm
 import { CancellationInfo } from "@/src/components/CancellationInfo";
 import { WmsCancelHeaderActions } from "@/src/features/wms-cancellations/components/WmsCancelHeaderActions";
 import { useCanCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
+import { canDeliverShipment, isShipmentDelivered, shipmentDisplayStatus } from "../utils/shipmentDelivery";
+import { useCanDeliverShipments } from "../hooks/useDeliverShipment";
+import { ShipmentDeliverDialog } from "./ShipmentDeliverDialog";
 
 /** Nombre del producto/variante despachado en una línea. Solo uno de los dos
  *  pares viaja no-nulo por línea, nunca ambos. Mismo criterio que
@@ -88,12 +92,17 @@ interface ShippingDetailDialogProps {
 }
 
 export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: ShippingDetailDialogProps) {
-  // La respuesta de "Cancelar envío" (EC-945): cancelar es terminal, y bajo
-  // `?estado=ACTIVO` la fila sale del listado, así que el detalle abierto se
-  // queda con lo que respondió el backend en vez de volver a la copia vieja.
-  const [cancelled, setCancelled] = useState<Shipment | null>(null);
-  const shipment = cancelled?.id === row.id ? cancelled : row;
+  // La respuesta de "Cancelar envío" (EC-945) o de "Entregar" (EC-955): las dos
+  // son terminales, y bajo `?estado=ACTIVO` la fila cancelada sale del listado,
+  // así que el detalle abierto se queda con lo que respondió el backend en vez
+  // de volver a la copia vieja.
+  const [result, setResult] = useState<Shipment | null>(null);
+  const shipment = result?.id === row.id ? result : row;
   const canCancel = useCanCancelWmsDocuments();
+  const canDeliver = useCanDeliverShipments();
+  const [deliverOpen, setDeliverOpen] = useState(false);
+  const delivered = isShipmentDelivered(shipment);
+  const hasActions = canCancel || canDeliver;
 
   return (
     <MainDialog
@@ -101,19 +110,32 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
       onOpenChange={onOpenChange}
       maxWidth="820px"
       showCloseButton={true}
-      // Sin PDF propio: solo "Cancelar" (EC-945), con `WMS-CANCELAR` o Mesa de Control.
+      // Sin PDF propio. "Cancelar" (EC-945) con `WMS-CANCELAR` o Mesa de Control,
+      // y nunca en uno entregado (el backend responde 400: es una devolución);
+      // "Entregar" (EC-955) con `C-WMS-ENVIO`, en uno activo sin entrega.
       headerAction={
-        canCancel ? (
+        hasActions ? (
           <WmsCancelHeaderActions
-            available={!isShipmentCancelled(shipment)}
+            available={!isShipmentCancelled(shipment) && !delivered}
             buttonLabel="Cancelar"
-            content={{ ...shipmentCancelDialogContent(shipment), onSuccess: setCancelled }}
-          />
+            content={{ ...shipmentCancelDialogContent(shipment), onSuccess: setResult }}
+          >
+            {canDeliver && canDeliverShipment(shipment) && (
+              <Button
+                variant="secondary"
+                onClick={() => setDeliverOpen(true)}
+                className="px-3! py-1.5! text-xs! text-sky-700! dark:text-sky-400!"
+              >
+                <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
+                Entregar
+              </Button>
+            )}
+          </WmsCancelHeaderActions>
         ) : null
       }
       title={
         // Con acción, el encabezado de `MainDialog` ya reserva el espacio de la X.
-        <div className={`flex items-center gap-2.5 ${canCancel ? "" : "pr-8"}`}>
+        <div className={`flex items-center gap-2.5 ${hasActions ? "" : "pr-8"}`}>
           <EmbarquesIcon className="w-5 h-5 text-sky-500 shrink-0" />
           <div>
             <p className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">
@@ -139,7 +161,11 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
         {/* Resumen */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
           <InfoField label="Estado del envío">
-            {shipment.estado ? <StatusBadge status={shipment.estado} config={SHIPMENT_STATUS_CONFIG} /> : "—"}
+            {shipment.estado ? (
+              <StatusBadge status={shipmentDisplayStatus(shipment)} config={SHIPMENT_STATUS_CONFIG} />
+            ) : (
+              "—"
+            )}
           </InfoField>
           {/* `packing_estado` es siempre "PENDIENTE" en la práctica (no hay
               endpoint de transición sobre packing, salvo cancelarlo) — se
@@ -155,6 +181,14 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
               : "—"}
           </InfoField>
           <InfoField label="Registró">{textOrDash(shipment.usuario_nombre)}</InfoField>
+          {/* Entrega (#1361): `null` mientras no se registra. */}
+          <InfoField label="Entregado">
+            {shipment.fecha_entrega
+              ? formatShortDateTime(shipment.fecha_entrega, { timeZone: MEXICO_TIME_ZONE })
+              : "—"}
+          </InfoField>
+          <InfoField label="Registró la entrega">{textOrDash(shipment.entregado_por_nombre)}</InfoField>
+          <InfoField label="Recibió">{textOrDash(shipment.recibio)}</InfoField>
           <InfoField label="Tipo de envío">{textOrDash(shipment.tipo_envio_display)}</InfoField>
           {shipment.tipo_envio === "LOCAL" ? (
             <InfoField label="Chofer">{textOrDash(shipment.chofer_nombre)}</InfoField>
@@ -194,6 +228,16 @@ export function ShippingDetailDialog({ shipment: row, open, onOpenChange }: Ship
           <LineasTable items={shipment.despacho_detalle} />
         </div>
       </div>
+      {/* Montado aparte del botón, con el permiso: al entregar, el botón
+          desaparece, pero el diálogo debe poder cerrarse con su animación. */}
+      {canDeliver && (
+        <ShipmentDeliverDialog
+          shipment={shipment}
+          open={deliverOpen}
+          onOpenChange={setDeliverOpen}
+          onDelivered={setResult}
+        />
+      )}
     </MainDialog>
   );
 }

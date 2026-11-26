@@ -102,6 +102,12 @@ export interface PedidoDocumentoDespacho {
   estado?: string;
   /** `""` si no está cancelado. */
   motivo_cancelacion?: string;
+  /**
+   * Cuándo se entregó (nucleo-erp #1432); `null` sin entrega. Un despacho
+   * entregado sigue `ACTIVO` pero ya no se cancela. Opcional: ausente en un
+   * backend anterior.
+   */
+  fecha_entrega?: string | null;
 }
 
 /** `logistica.Envio`: el modelo no guarda más que el transportista (sin nombre en la respuesta). */

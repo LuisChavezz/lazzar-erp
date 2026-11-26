@@ -46,26 +46,35 @@ export const filaBlockCancelledCount = (filas: readonly PedidoDocumentoFila[], c
 
 /**
  * Escribe en los documentos del pedido el resultado de cancelar un despacho
- * desde su fila (EC-946): `estado` y `motivo_cancelacion` del despacho con ese
- * `id`, para que la fila deje de ofrecer "Cancelar" aunque la relectura que
- * sigue falle (EC-927). Devuelve la MISMA referencia si no hay nada que
- * escribir (otra forma, sin esa fila o sin `estado` en la respuesta).
+ * desde su fila (EC-946) o de entregarlo en WMS (EC-955): `estado`,
+ * `motivo_cancelacion` y `fecha_entrega` del despacho con ese `id`, para que la
+ * fila deje de ofrecer "Cancelar" aunque la relectura que sigue falle (EC-927).
+ * Devuelve la MISMA referencia si no hay nada que escribir (otra forma, sin esa
+ * fila o sin `estado` en la respuesta).
  */
 export const patchDocumentosDespacho = (
   docs: PedidoDocumentos | undefined,
-  despacho: { id: number; estado?: string; motivo_cancelacion?: string } | null | undefined,
+  despacho:
+    | { id: number; estado?: string; motivo_cancelacion?: string; fecha_entrega?: string | null }
+    | null
+    | undefined,
 ): PedidoDocumentos | undefined => {
   if (!docs || !Array.isArray(docs.despachos) || !despacho || typeof despacho.estado !== "string") {
     return docs;
   }
   if (!docs.despachos.some((fila) => fila.id === despacho.id)) return docs;
-  const { estado, motivo_cancelacion } = despacho;
+  const { estado, motivo_cancelacion, fecha_entrega } = despacho;
   return {
     ...docs,
     despachos: docs.despachos.map(
       (fila): PedidoDocumentoDespacho =>
         fila.id === despacho.id
-          ? { ...fila, estado, ...(motivo_cancelacion !== undefined ? { motivo_cancelacion } : {}) }
+          ? {
+              ...fila,
+              estado,
+              ...(motivo_cancelacion !== undefined ? { motivo_cancelacion } : {}),
+              ...(fecha_entrega !== undefined ? { fecha_entrega } : {}),
+            }
           : fila,
     ),
   };

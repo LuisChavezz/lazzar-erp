@@ -24,6 +24,7 @@ import { PRE_ORDER_STATUS_CFG } from "@/src/features/pre-orders/constants/preOrd
 import { MOVEMENT_TYPE_CONFIG } from "@/src/features/stock-movements/constants/movementTypes";
 import { useRouteAccess } from "@/src/hooks/useRouteAccess";
 import { useCanCancelWmsDocuments } from "@/src/features/wms-cancellations/hooks/useCanCancelWmsDocuments";
+import { isShipmentDelivered } from "@/src/features/shipping/utils/shipmentDelivery";
 import {
   formatAmountNoCurrency,
   formatQuantityValue,
@@ -237,7 +238,8 @@ export function DocumentosBlocks({
   // columna no existe (no es un total en cero).
   const showSmTotal = salidasMaquila?.some((sm) => sm.total !== null) ?? false;
   // "Cancelar" en la fila de un despacho (EC-946): con `WMS-CANCELAR` o siendo
-  // Mesa de Control. Surtidos y embarques lo ofrecen en su propio diálogo.
+  // Mesa de Control, y solo si no se ha entregado (EC-955). Surtidos y
+  // embarques lo ofrecen en su propio diálogo.
   const canCancelDespachos = useCanCancelWmsDocuments();
   const [despachoToCancel, setDespachoToCancel] = useState<PedidoDocumentoDespacho | null>(null);
 
@@ -455,7 +457,8 @@ export function DocumentosBlocks({
                 </td>
                 {canCancelDespachos && (
                   <td className="px-3 py-2 text-center">
-                    {!isCancelledDocEstatus(despacho.estado) && (
+                    {/* Uno entregado (#1432) ya no se cancela: es una devolución. */}
+                    {!isCancelledDocEstatus(despacho.estado) && !isShipmentDelivered(despacho) && (
                       <Button
                         type="button"
                         variant="secondary"

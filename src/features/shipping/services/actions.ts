@@ -1,5 +1,10 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { CreateShipmentPayload, Shipment, ShipmentEstado } from "../interfaces/shipping.interface";
+import type {
+  CreateShipmentPayload,
+  DeliverShipmentPayload,
+  Shipment,
+  ShipmentEstado,
+} from "../interfaces/shipping.interface";
 import type { ShipmentOnboardingData } from "../interfaces/shipping-onboarding.interface";
 
 /**
@@ -67,5 +72,25 @@ export const createShipment = async (data: CreateShipmentPayload): Promise<Shipm
  */
 export const cancelShipment = async ({ id, motivo }: { id: number; motivo: string }): Promise<Shipment> => {
   const response = await v1_api.post<Shipment>(`/wms/despachos/${id}/cancelar/`, { motivo });
+  return response.data;
+};
+
+/**
+ * Registra la entrega de un despacho (`POST /wms/despachos/{id}/entregar/`,
+ * nucleo-erp #1361). Exige `C-WMS-ENVIO`. Llena `fecha_entrega`,
+ * `entregado_por` y `recibio`, no cambia `estado` ni mueve inventario, y es
+ * definitiva: una sola vez, sin corrección, y desde ahí ya no se cancela.
+ * Responde el `DespachoSerializer` (la forma del listado). Errores:
+ * `400 {"fecha_entrega"}` (inválida o futura), `400 {"despacho"}` (cancelado o
+ * ya entregado), `403` sin el permiso, `404` de otra empresa o sucursal.
+ */
+export const deliverShipment = async ({
+  id,
+  payload,
+}: {
+  id: number;
+  payload: DeliverShipmentPayload;
+}): Promise<Shipment> => {
+  const response = await v1_api.post<Shipment>(`/wms/despachos/${id}/entregar/`, payload);
   return response.data;
 };
