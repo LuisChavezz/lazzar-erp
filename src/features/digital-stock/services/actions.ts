@@ -21,9 +21,16 @@ export const getDigitalStockPage = async (
 
 /**
  * Detalle de un SKU: totales, existencia por ALM-00, pedidos que lo
- * comprometen y OP/OC por llegar. 404 si la variante no es de la empresa.
+ * comprometen y OP/OC por llegar. Con `sucursal`, solo los de esa sucursal
+ * (las mismas cifras que la fila del listado filtrado). 404 si la variante no
+ * es de la empresa.
  */
-export const getDigitalStockDetail = async (varianteId: number): Promise<StockDigitalDetalle> => {
-  const { data } = await v1_api.get<StockDigitalDetalle>(`/ventas/stock-digital/${varianteId}/`);
+export const getDigitalStockDetail = async (
+  varianteId: number,
+  sucursal?: number,
+): Promise<StockDigitalDetalle> => {
+  const { data } = await v1_api.get<StockDigitalDetalle>(`/ventas/stock-digital/${varianteId}/`, {
+    params: sucursal === undefined ? undefined : { sucursal },
+  });
   return data;
 };

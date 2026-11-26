@@ -15,7 +15,7 @@ export default function SalesDigitalStockPage() {
       {/* `DigitalStockList` lee filtros, búsqueda y página de la URL con
           `useSearchParams`, que en Next.js requiere un límite de Suspense. */}
       <Suspense fallback={<Loader className="py-20" title="Cargando stock digital..." />}>
-        <DigitalStockList pedidoOrigin="sales-digital-stock" />
+        <DigitalStockList module="sales" />
       </Suspense>
     </div>
   );

@@ -4,9 +4,17 @@ import {
   positiveIdParam,
   type ServerTableFilterValues,
 } from "@/src/utils/serverTableParams";
+import { STOCK_DIGITAL_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
-/** Prefijo de las consultas del stock digital (lista y detalle). */
-export const DIGITAL_STOCK_KEY = ["stock-digital"] as const;
+/**
+ * Prefijo de las consultas del stock digital (lista y detalle). Vive en
+ * `stockQueryKeys` para que `invalidateStockQueries` lo relea tras un picking,
+ * un traspaso, una cancelación de pedido…
+ */
+export const DIGITAL_STOCK_KEY = STOCK_DIGITAL_QUERY_KEY;
+
+/** Módulo que monta la pantalla: decide el origen de los folios y los textos. */
+export type DigitalStockModule = "sales" | "operations";
 
 /** Valores de `?solo=` que acepta el backend (`FILTROS_SOLO`). */
 export const DIGITAL_STOCK_SOLO_VALUES = [
@@ -67,5 +75,12 @@ export const DIGITAL_STOCK_SOLO_ALL = "todos";
 
 /** Texto de la columna de existencia: deja claro que solo es ALM-00. */
 export const EXISTENCIA_ALM00_LABEL = "Existencia ALM-00";
-export const EXISTENCIA_ALM00_HINT =
-  "Piezas en ALM-00, el almacén de surtido de los pedidos. No incluye otros almacenes de producto terminado, por eso puede diferir de \"Existencias, Producción y Compras\".";
+
+/**
+ * Explicación de la existencia ALM-00. Solo en Mesa de Control se compara con
+ * "Existencias, Producción y Compras": en Ventas esa pantalla no existe.
+ */
+export const existenciaAlm00Hint = (module: DigitalStockModule): string =>
+  module === "operations"
+    ? "Piezas en ALM-00, el almacén de surtido de los pedidos. No incluye otros almacenes de producto terminado, por eso puede diferir de \"Existencias, Producción y Compras\"."
+    : "Piezas en ALM-00, el almacén de surtido de los pedidos. No incluye otros almacenes de producto terminado.";

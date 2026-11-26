@@ -9,7 +9,11 @@ import {
 } from "@/src/features/products/components/CatalogHeaderFilters";
 import { formatShortCalendarDate } from "@/src/utils/formatDate";
 import type { StockDigitalFila } from "../interfaces/digital-stock.interface";
-import { EXISTENCIA_ALM00_HINT, EXISTENCIA_ALM00_LABEL } from "../constants/digitalStockTable";
+import {
+  EXISTENCIA_ALM00_LABEL,
+  existenciaAlm00Hint,
+  type DigitalStockModule,
+} from "../constants/digitalStockTable";
 import { useDigitalStockRowActionsContext } from "../hooks/useDigitalStockRowActions";
 import { DigitalStockQuantity } from "./DigitalStockQuantity";
 
@@ -58,12 +62,17 @@ const quantityColumn = (
 });
 
 /**
- * Columnas del stock digital. Estáticas: el detalle llega a la celda del SKU
- * por contexto. Sin orden (`meta.serverSort`): el endpoint ordena siempre por
- * SKU. Categoría, color y talla filtran en el servidor (`meta.serverFilter`)
- * con opciones de sus catálogos, nunca de las filas.
+ * Columnas del stock digital del módulo que monta la pantalla (`module` decide
+ * la explicación de la existencia ALM-00). El detalle llega a la celda del SKU
+ * por contexto, no por aquí. Sin orden (`meta.serverSort`): el endpoint ordena
+ * siempre por SKU. Categoría, color y talla filtran en el servidor
+ * (`meta.serverFilter`) con opciones de sus catálogos, nunca de las filas.
  */
-export const digitalStockColumns: ColumnDef<StockDigitalFila>[] = [
+export const getDigitalStockColumns = ({
+  module,
+}: {
+  module: DigitalStockModule;
+}): ColumnDef<StockDigitalFila>[] => [
   {
     id: "sku",
     accessorKey: "sku",
@@ -114,7 +123,7 @@ export const digitalStockColumns: ColumnDef<StockDigitalFila>[] = [
       <span className="text-slate-500 dark:text-slate-400">{textOrDash(row.original.talla)}</span>
     ),
   },
-  quantityColumn("existencia_real", EXISTENCIA_ALM00_LABEL, { title: EXISTENCIA_ALM00_HINT }),
+  quantityColumn("existencia_real", EXISTENCIA_ALM00_LABEL, { title: existenciaAlm00Hint(module) }),
   quantityColumn("comprometido", "Comprometido", {
     title: "Pedidos autorizados o en proceso: lo pedido menos lo ya surtido por picking.",
   }),

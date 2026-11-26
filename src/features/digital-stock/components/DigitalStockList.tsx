@@ -7,19 +7,25 @@ import { useCompanyBranches } from "@/src/features/branches/hooks/useCompanyBran
 import { useSessionCompanyId } from "@/src/features/workspace/hooks/useSessionCompany";
 import type { PedidoDetailOrigin } from "@/src/features/orders/constants/pedidoDetailOrigins";
 import type { StockDigitalFila } from "../interfaces/digital-stock.interface";
-import { DIGITAL_STOCK_KEY } from "../constants/digitalStockTable";
+import { DIGITAL_STOCK_KEY, type DigitalStockModule } from "../constants/digitalStockTable";
 import { useDigitalStockTable } from "../hooks/useDigitalStockTable";
 import { DigitalStockRowActionsProvider } from "../hooks/useDigitalStockRowActions";
-import { digitalStockColumns } from "./DigitalStockColumns";
+import { getDigitalStockColumns } from "./DigitalStockColumns";
 import { DigitalStockDetailDialog } from "./DigitalStockDetailDialog";
 import { DigitalStockFilters } from "./DigitalStockFilters";
 
+/**
+ * Origen con que los folios de pedido del detalle abren `/orders/[id]`: cada
+ * módulo (Ventas, Mesa de Control) vuelve a SU pantalla de stock digital.
+ */
+const PEDIDO_ORIGIN: Record<DigitalStockModule, PedidoDetailOrigin> = {
+  sales: "sales-digital-stock",
+  operations: "operations-digital-stock",
+};
+
 interface DigitalStockListProps {
-  /**
-   * Origen con que los folios de pedido del detalle abren `/orders/[id]`: cada
-   * módulo (Ventas, Mesa de Control) vuelve a SU pantalla de stock digital.
-   */
-  pedidoOrigin: Extract<PedidoDetailOrigin, "sales-digital-stock" | "operations-digital-stock">;
+  /** Módulo que monta la pantalla (Ventas o Mesa de Control). */
+  module: DigitalStockModule;
 }
 
 /**
@@ -28,7 +34,7 @@ interface DigitalStockListProps {
  * (`useDigitalStockTable`). Por eso la página lo envuelve en `<Suspense>`. La
  * misma pantalla se monta en Ventas y en Mesa de Control.
  */
-export const DigitalStockList = ({ pedidoOrigin }: DigitalStockListProps) => {
+export const DigitalStockList = ({ module }: DigitalStockListProps) => {
   const table = useDigitalStockTable();
   const queryClient = useQueryClient();
   const { branches, isLoading: isBranchesLoading } = useCompanyBranches(useSessionCompanyId());
@@ -36,14 +42,18 @@ export const DigitalStockList = ({ pedidoOrigin }: DigitalStockListProps) => {
   // El diálogo vive AQUÍ y no en la celda: la celda se desmonta al refrescar,
   // paginar o filtrar. `open` va aparte para que el contenido no se vacíe
   // durante la animación de cierre.
-  const [detailFila, setDetailFila] = useState<StockDigitalFila | null>(null);
+  // La sucursal va con la fila: el detalle se pide con la misma con que se vio.
+  const [detailTarget, setDetailTarget] = useState<{
+    fila: StockDigitalFila;
+    sucursal: number | undefined;
+  } | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   return (
     <DigitalStockRowActionsProvider
       value={{
         onViewDetail: (fila) => {
-          setDetailFila(fila);
+          setDetailTarget({ fila, sucursal: table.state.filters.sucursal });
           setIsDetailOpen(true);
         },
       }}
@@ -60,7 +70,7 @@ export const DigitalStockList = ({ pedidoOrigin }: DigitalStockListProps) => {
 
         <div className="h-[44rem] flex flex-col">
           <DataTable
-            columns={digitalStockColumns}
+            columns={getDigitalStockColumns({ module })}
             fillHeight
             {...table.tableProps}
             // Invalida el PREFIJO: refresca también el detalle abierto.
@@ -75,10 +85,11 @@ export const DigitalStockList = ({ pedidoOrigin }: DigitalStockListProps) => {
       </div>
 
       <DigitalStockDetailDialog
-        fila={detailFila}
+        target={detailTarget}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
-        pedidoOrigin={pedidoOrigin}
+        module={module}
+        pedidoOrigin={PEDIDO_ORIGIN[module]}
       />
     </DigitalStockRowActionsProvider>
   );
