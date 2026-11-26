@@ -10,8 +10,12 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * antena sumaría una pieza en cada ciclo. Apagar y volver a encender empieza
  * una sesión nueva.
  */
-export function useRfidEpcFeed(enabled: boolean, onEpc: (scan: RfidScan) => void) {
-  const { scans, isError } = useRfidScans(enabled, { soloMatch: true });
+export function useRfidEpcFeed(
+  enabled: boolean,
+  onEpc: (scan: RfidScan) => void,
+  lector: number | null = null,
+) {
+  const { scans, isError } = useRfidScans(enabled, { soloMatch: true, lector });
   const seenRef = useRef<Set<string>>(new Set());
   const onEpcRef = useRef(onEpc);
   const [count, setCount] = useState(0);

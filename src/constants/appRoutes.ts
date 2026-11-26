@@ -458,6 +458,14 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         description: "Monitor en vivo del lector RFID: lecturas recibidas y su match contra las etiquetas impresas.",
         section: "rfid",
       },
+      {
+        key: "wms-rfid-readers",
+        label: "Lectores RFID",
+        path: "/wms/rfid-readers",
+        icon: ScanLineIcon,
+        description: "Alta y baja de los lectores RFID (cajones) y la URL de cada uno para el FX.",
+        section: "rfid",
+      },
     ],
   }),
   defineSectionedGroup({
@@ -600,9 +608,8 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         path: "/manufacturing/special-orders",
         icon: SpecialOrdersIcon,
         description: "Pedidos con líneas de muestra (productos fuera de catálogo) y los servicios que llevan sus tallas.",
-        // Sin código de sección propio en el catálogo de permisos: igual que
-        // Productos, la ruta (y su detalle `[id]`) cae en la regla de módulo
-        // `/manufacturing` de `routePermissions`.
+        // Regla propia en `routePermissions` (con su detalle `[id]`):
+        // C-PRODUCCION-OP, quien puede crear OP.
         section: "operation",
       },
       {
@@ -611,7 +618,7 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         path: "/manufacturing/pre-orders",
         icon: OrdenesIcon,
         description: "Materiales que necesita cada pedido especial antes de su OP: almacén valida, compras surte y producción crea la orden.",
-        // Cae en la regla de módulo `/manufacturing` (R-PRODUCCION).
+        // Regla propia en `routePermissions`: C-PRODUCCION-OP.
         section: "operation",
       },
       {

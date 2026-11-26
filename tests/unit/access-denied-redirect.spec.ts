@@ -36,10 +36,21 @@ test.describe("getRouteAccessRedirect", () => {
       "/manufacturing/reflective-orders",
       "/manufacturing/corte-manga",
       "/manufacturing/maquila-outputs",
+      "/manufacturing/special-orders",
+      "/manufacturing/pre-orders",
     ]) {
       expect(getRouteAccessRedirect(path, profile)).toBe(ACCESS_DENIED_PATH);
     }
-    expect(getRouteAccessRedirect("/manufacturing/special-orders", profile)).toBeNull();
+  });
+
+  test("Pre-órdenes y Fabricación Especial solo con permiso de crear OP", () => {
+    // Perfil tipo bordados: OB y OR completos, sin OP.
+    const bordados = user(["R-PRODUCCION", "R-PRODUCCION-OB", "C-PRODUCCION-OB", "R-PRODUCCION-OR", "C-PRODUCCION-OR"]);
+    const conOp = user(["R-PRODUCCION", "C-PRODUCCION-OP"]);
+    for (const path of ["/manufacturing/pre-orders", "/manufacturing/special-orders/12"]) {
+      expect(getRouteAccessRedirect(path, bordados)).toBe(ACCESS_DENIED_PATH);
+      expect(getRouteAccessRedirect(path, conOp)).toBeNull();
+    }
   });
 
   test("cualquier otro módulo prohibido también va a sin acceso", () => {

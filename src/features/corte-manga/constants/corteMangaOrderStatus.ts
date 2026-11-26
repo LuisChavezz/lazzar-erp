@@ -47,7 +47,7 @@ const STATUS_BY_CODE = {
     dot: "bg-violet-500",
   },
   5: {
-    label: "Completado",
+    label: "Finalizado",
     cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
     dot: "bg-emerald-500",
   },

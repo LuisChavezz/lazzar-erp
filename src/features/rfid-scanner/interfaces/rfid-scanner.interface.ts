@@ -46,6 +46,9 @@ export interface RfidScan {
   /** Potencia de la lectura en dBm (negativo: -30 buena, -70 muy débil). */
   rssi: number | null;
   reader_ip: string | null;
+  /** Lector del catálogo que mandó la lectura (por su token). */
+  lector_id?: number | null;
+  lector_nombre?: string | null;
   /** ¿El EPC leído corresponde a una etiqueta impresa por el ERP? */
   match_impresion: boolean;
   /** Folio de la impresión que originó la etiqueta ("LAB-000022"). */
@@ -132,4 +135,33 @@ export type RfidScannerStats = Pick<
 export interface ClearRfidScansResponse {
   status: string;
   deleted: number;
+}
+
+/**
+ * Lector RFID administrable (`/wms/etiquetas-rfid/lectores/`).
+ * `url_fx` es la URL completa, con su token, que se pega en el IoT Connector
+ * del FX; el backend la arma con la base correcta (local o producción).
+ */
+export interface RfidLectorConfig {
+  id: number;
+  nombre: string;
+  ubicacion?: string | null;
+  sucursal?: number | null;
+  sucursal_nombre?: string | null;
+  url_fx?: string | null;
+  estado?: RfidLectorEstado | null;
+  ultima_conexion?: string | null;
+  ultima_lectura?: string | null;
+  /** Quién está escaneando con este lector ahora (latido `en-uso/`); `null` = libre. */
+  en_uso_por?: {
+    usuario: string;
+    pantalla?: string | null;
+    documento?: string | null;
+    desde?: string | null;
+  } | null;
+}
+
+export interface CreateRfidLectorPayload {
+  nombre: string;
+  ubicacion?: string;
 }

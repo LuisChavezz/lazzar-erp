@@ -116,7 +116,7 @@ export function PickingLinesPanel({
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="picking-scan"
         onScan={procesarLectura}
-        liveFeed={<RfidFeedStrip onCode={procesarLectura} />}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Surtido" />}
       />
 
       {/* ── Productos (desplegables) ──────────────────────────────────── */}

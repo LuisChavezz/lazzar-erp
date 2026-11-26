@@ -24,12 +24,12 @@ const formatSecondsAgo = (seconds: number): string => {
 
 const LECTOR_ESTADO: Record<RfidLectorEstado, { label: string; dot: string; text: string }> = {
   LEYENDO: {
-    label: "Detectando etiquetas",
+    label: "Conectado",
     dot: "bg-emerald-500",
     text: "text-emerald-600 dark:text-emerald-400",
   },
   CONECTADO_SIN_TAGS: {
-    label: "Encendido, sin etiquetas",
+    label: "Conectado",
     dot: "bg-sky-500",
     text: "text-sky-600 dark:text-sky-400",
   },

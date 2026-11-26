@@ -9,9 +9,10 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { useIsCompanyAdmin } from "@/src/features/users/hooks/useIsCompanyAdmin";
 import { rfidScanColumns } from "./RfidScanColumns";
-import { RfidScannerStats } from "./RfidScannerStats";
 import { useClearRfidScans } from "../hooks/useClearRfidScans";
 import { useRfidScans } from "../hooks/useRfidScans";
+import { useRfidLectorSeleccionado } from "../hooks/useRfidLectorSeleccionado";
+import { RfidLectorSelect } from "./RfidLectorSelect";
 import type { RfidScan } from "../interfaces/rfid-scanner.interface";
 import { useRfidScannerStats } from "../hooks/useRfidScannerStats";
 
@@ -60,11 +61,15 @@ export function RfidScannerView() {
   // responde 403 con su propio mensaje si rechaza la llamada.
   const isCompanyAdmin = useIsCompanyAdmin();
 
+  // Siempre un lector a la vez: mezclar cajones no tiene sentido. Sin catálogo
+  // (lista vacía) se lee como antes.
+  const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado("scanner");
+  const faltaLector = lectores.length > 0 && lectorId === null;
   const { scans, isLoading, isError, isSuccess, error, hasLoaded, refetch } =
-    useRfidScans(isMonitoring, { soloMatch });
+    useRfidScans(isMonitoring && !faltaLector, { soloMatch, lector: lectorId });
   const {
     stats,
-    isLoading: isStatsLoading,
+
     isSuccess: isStatsSuccess,
     refetch: refetchStats,
   } = useRfidScannerStats(isCompanyAdmin);
@@ -137,26 +142,24 @@ export function RfidScannerView() {
           espacio disponible. Solo para administradores: a cualquier otro
           usuario `scanner-stats` no se le pide, y la barra quedaría para
           siempre en "Estado del lector desconocido". */}
-      {isCompanyAdmin && (
-        <div className="shrink-0">
-          <RfidScannerStats stats={stats} isLoading={isStatsLoading} />
-        </div>
-      )}
-
-      {scans.length > 0 && (
-        <div className="shrink-0 flex flex-wrap items-center gap-2">
-          {filterConfig.map((config) => (
-            <label key={config.id} className="relative inline-flex items-center">
+      {/* Una sola barra: lector (con su estado), filtros y resumen. El estado
+          de cada lector viene del catálogo, visible para todos. */}
+      <div className="shrink-0 flex flex-wrap items-center gap-2">
+        <RfidLectorSelect lectores={lectores} value={lectorId} onChange={seleccionar} />
+        {/* Renglón 1: lector y conteos. Renglón 2: filtros (con `order`). */}
+        {scans.length > 0 && <span className="order-2 basis-full" aria-hidden="true" />}
+        {scans.length > 0 && filterConfig.map((config) => (
+            <label key={config.id} className="order-3 relative inline-flex items-center">
               <span className="sr-only">{config.label}</span>
               <select
                 value={filters[config.id as ScanFilterKey] ?? ""}
                 onChange={(event) =>
                   setFilters((prev) => ({ ...prev, [config.id]: event.target.value }))
                 }
-                className={`h-8 max-w-56 cursor-pointer truncate rounded-lg border px-2.5 pr-7 text-xs outline-none transition-colors focus:ring-2 focus:ring-sky-500/40 ${
+                className={`h-8 w-36 cursor-pointer truncate rounded-lg border px-2.5 text-xs outline-none transition-colors focus:ring-2 focus:ring-sky-500/40 [&>option]:bg-white [&>option]:text-slate-700 dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-200 ${
                   filters[config.id as ScanFilterKey]
                     ? "border-sky-300 bg-sky-50 font-semibold text-sky-700 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                    : "border-slate-200 bg-transparent text-slate-600 dark:border-white/10 dark:text-slate-300"
+                    : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                 }`}
               >
                 <option value="">{config.label}: todos</option>
@@ -168,16 +171,17 @@ export function RfidScannerView() {
               </select>
             </label>
           ))}
-          {activeFilters.length > 0 && (
+          {scans.length > 0 && activeFilters.length > 0 && (
             <button
               type="button"
               onClick={() => setFilters({})}
-              className="h-8 rounded-lg px-2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+              className="order-3 h-8 rounded-lg px-2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
             >
               Limpiar filtros
             </button>
           )}
-          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          {scans.length > 0 && (
+          <div className="order-1 ml-auto flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
             <SummaryPopover
               value={visibleScans.length}
               label={visibleScans.length === 1 ? "etiqueta" : "etiquetas"}
@@ -202,8 +206,8 @@ export function RfidScannerView() {
               </span>
             )}
           </div>
-        </div>
-      )}
+          )}
+      </div>
 
       {/* Altura fija: la página hace scroll si hace falta y las filas hacen
           scroll dentro de la tabla, con el encabezado siempre visible. */}
@@ -290,6 +294,8 @@ export function RfidScannerView() {
             <Button
               variant={isMonitoring ? "secondary" : "primary"}
               onClick={handleToggleMonitoring}
+              disabled={faltaLector && !isMonitoring}
+              title={faltaLector ? "Selecciona un lector para escanear" : undefined}
               className="h-9 py-0! text-xs! shadow-none!"
               leftIcon={
                 isMonitoring ? (
@@ -342,8 +348,7 @@ type ScanFilterKey =
   | "barcode_value"
   | "color"
   | "talla"
-  | "impresion_folio"
-  | "antenna";
+  | "impresion_folio";
 
 function buildScanFilters(scans: RfidScan[]): DataTableFilterConfig[] {
   const candidates: DataTableFilterConfig[] = [
@@ -352,7 +357,6 @@ function buildScanFilters(scans: RfidScan[]): DataTableFilterConfig[] {
     { id: "color", label: "Color", options: optionsOf(scans, (s) => s.color) },
     { id: "talla", label: "Talla", options: optionsOf(scans, (s) => s.talla) },
     { id: "impresion_folio", label: "Folio", options: optionsOf(scans, (s) => s.impresion_folio) },
-    { id: "antenna", label: "Antena", options: optionsOf(scans, (s) => s.antenna) },
   ];
   return candidates.filter((config) => config.options.length > 1);
 }
@@ -399,9 +403,13 @@ function SummaryPopover({
         type="button"
         aria-expanded={open}
         onClick={() => setPinned((prev) => !prev)}
-        className="rounded-md px-1.5 py-0.5 underline decoration-dotted decoration-slate-400 underline-offset-4 hover:bg-slate-100 dark:decoration-slate-600 dark:hover:bg-white/[0.06]"
+        className={`inline-flex h-9 cursor-pointer items-baseline gap-1.5 rounded-xl border px-3.5 pt-1.5 text-xs font-medium transition-colors ${
+          open
+            ? "border-sky-400 bg-sky-100 text-sky-800 dark:border-sky-400/60 dark:bg-sky-500/20 dark:text-sky-200"
+            : "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:border-sky-400/50"
+        }`}
       >
-        <strong className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">{value}</strong>{" "}
+        <strong className="text-lg leading-none font-bold tabular-nums text-sky-900 dark:text-white">{value}</strong>
         {label}
       </button>
       {open && items.length > 0 && (

@@ -3,9 +3,8 @@ import { SpecialOrderPageContent } from "@/src/features/special-orders/component
 /**
  * Detalle de un pedido especial — `GET /produccion/pedidos-especiales/{id}/`.
  *
- * Cuelga del módulo (`/manufacturing/special-orders/[id]`): sin regla propia en
- * `routePermissions.ts`, cae en la de módulo `/manufacturing` (`R-PRODUCCION`),
- * igual que su listado. El título del encabezado lo resuelve `getPageTitle` por
+ * Cuelga de `/manufacturing/special-orders`, cuya regla en `routePermissions.ts`
+ * pide `C-PRODUCCION-OP` (quien puede crear OP), igual que su listado. El título del encabezado lo resuelve `getPageTitle` por
  * prefijo. Las páginas de detalle no entran en `appRoutes.ts` (solo índices).
  */
 export default async function SpecialOrderDetailPage({

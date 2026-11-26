@@ -1,8 +1,8 @@
 "use client";
 
+import { canCreateProducts } from "@/src/utils/productionPermissions";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
-import { hasPermission } from "@/src/utils/permissions";
 import ProductOnboardingDialog from "../../product-onboarding/components/ProductOnboardingDialog";
 import { useProductsTable } from "../hooks/useProductsTable";
 import { getColumns } from "./ProductColumns";
@@ -28,9 +28,8 @@ const READ_ONLY_COLUMNS = getColumns(null, { canEdit: false, canDelete: false },
  * del catálogo de categorías, nunca de las filas.
  *
  * Ver la página exige `R-PRODUCCION` (regla de prefijo `/manufacturing` en
- * `routePermissions`). El alta se gatea con ese MISMO código: por decisión de
- * negocio no hay un permiso de creación aparte para productos. `hasPermission`
- * ya cortocircuita para el rol "admin".
+ * `routePermissions`). El alta solo la hace producción, quien crea OP
+ * (`C-PRODUCCION-OP`) o configuración (`C-CONFIGURACION`), como exige el backend.
  *
  * `DataTable` se monta SIEMPRE y alterna internamente solo su área de datos, así
  * que el toolbar —y el botón de alta— sigue visible durante la carga y el error.
@@ -38,7 +37,8 @@ const READ_ONLY_COLUMNS = getColumns(null, { canEdit: false, canDelete: false },
  */
 export function ProductionProductsView() {
   const { data: session } = useSession();
-  const canCreate = hasPermission("R-PRODUCCION", session?.user);
+  // Misma regla que el backend: C-PRODUCCION-OP o C-CONFIGURACION.
+  const canCreate = canCreateProducts(session?.user);
 
   const table = useProductsTable({ toastId: "production-products-table-refetch-error" });
 

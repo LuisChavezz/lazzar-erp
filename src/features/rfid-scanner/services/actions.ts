@@ -3,12 +3,16 @@ import type {
   ClearRfidScansResponse,
   RfidScannerStatsResponse,
   RfidScansResponse,
+  CreateRfidLectorPayload,
+  RfidLectorConfig,
 } from "../interfaces/rfid-scanner.interface";
 
 /** Filtros de `GET /wms/etiquetas-rfid/scans/` (nucleo-erp#1331). */
 export interface RfidScansParams {
   /** Solo lecturas que cruzan con una etiqueta impresa por el ERP. */
   soloMatch: boolean;
+  /** Solo las lecturas de este lector (`?lector=`). `null`/ausente = todos, como antes. */
+  lector?: number | null;
 }
 
 /**
@@ -28,9 +32,10 @@ export interface RfidScansParams {
  */
 export const fetchRfidScans = async ({
   soloMatch,
+  lector,
 }: RfidScansParams): Promise<RfidScansResponse> => {
   const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/", {
-    params: { unicos: 1, ...(soloMatch ? { solo_match: 1 } : {}) },
+    params: { unicos: 1, ...(soloMatch ? { solo_match: 1 } : {}), ...(lector ? { lector } : {}) },
   });
   return response.data;
 };
@@ -63,6 +68,48 @@ export const fetchScannerStats = async (): Promise<RfidScannerStatsResponse> => 
 export const clearRfidScans = async (): Promise<ClearRfidScansResponse> => {
   const response = await v1_api.post<ClearRfidScansResponse>(
     "/wms/etiquetas-rfid/scans/clear/",
+  );
+  return response.data;
+};
+
+/** Lectores RFID de la empresa (`GET /wms/etiquetas-rfid/lectores/`). Acepta lista o página DRF. */
+export const fetchRfidLectores = async (): Promise<RfidLectorConfig[]> => {
+  const response = await v1_api.get<RfidLectorConfig[] | { results: RfidLectorConfig[] }>(
+    "/wms/etiquetas-rfid/lectores/",
+  );
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results ?? []);
+};
+
+/** Alta de lector: el backend genera su token y responde con `url_fx`. */
+export const createRfidLector = async (
+  payload: CreateRfidLectorPayload,
+): Promise<RfidLectorConfig> => {
+  const response = await v1_api.post<RfidLectorConfig>("/wms/etiquetas-rfid/lectores/", payload);
+  return response.data;
+};
+
+/** Baja de lector: su token deja de funcionar. */
+export const deleteRfidLector = async (id: number): Promise<void> => {
+  await v1_api.delete(`/wms/etiquetas-rfid/lectores/${id}/`);
+};
+
+/**
+ * Latido de "lector en uso" (`POST /lectores/{id}/en-uso/`): mientras una
+ * pantalla escanea con un lector, avisa cada ~30 s quién lo usa y dónde, para
+ * que otros usuarios lo vean en el selector. Informativo: no aparta el lector.
+ */
+export const marcarLectorEnUso = async (
+  id: number,
+  body: { pantalla: string; documento?: string | null },
+): Promise<void> => {
+  await v1_api.post(`/wms/etiquetas-rfid/lectores/${id}/en-uso/`, body);
+};
+
+/** Nuevo token del lector (solo admin). La respuesta trae `url_fx` completa, una sola vez. */
+export const regenerarTokenRfidLector = async (id: number): Promise<RfidLectorConfig> => {
+  const response = await v1_api.post<RfidLectorConfig>(
+    `/wms/etiquetas-rfid/lectores/${id}/regenerar-token/`,
   );
   return response.data;
 };
