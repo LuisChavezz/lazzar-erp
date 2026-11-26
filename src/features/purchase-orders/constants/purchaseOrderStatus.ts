@@ -99,6 +99,36 @@ export const isPurchaseOrderBalanceClosed = (order: {
 export const PURCHASE_ORDER_BALANCE_CLOSED_LABEL = "Saldo cerrado";
 
 /**
+ * La orden sigue ABIERTA: ni cancelada ni recibida por completo, ni con el
+ * saldo cerrado (que es una Recibida, {@link isPurchaseOrderBalanceClosed}).
+ * Es decir, aún puede llegar mercancía o cancelarse.
+ */
+export const isPurchaseOrderOpen = (order: { estatus: number; saldo_cerrado?: boolean | null }) =>
+  !isPurchaseOrderCancelled(order.estatus) &&
+  order.estatus !== PURCHASE_ORDER_STATUS.RECIBIDA &&
+  !isPurchaseOrderBalanceClosed(order);
+
+/** Etiqueta del aviso de una OC cuyo pedido de origen se canceló (EC-951). */
+export const PURCHASE_ORDER_PEDIDO_CANCELLED_LABEL = "Pedido cancelado";
+
+/**
+ * ¿El listado muestra "Pedido cancelado" junto al estatus? Solo mientras la OC
+ * sigue abierta ({@link isPurchaseOrderOpen}): es lo que compras tiene que
+ * decidir (cancelarla o quedarse el material). Cancelada, recibida o con el
+ * saldo cerrado ya no hay nada que decidir, y una con el saldo cerrado conserva
+ * solo su etiqueta "Saldo cerrado". El detalle muestra el aviso siempre.
+ */
+export const showsPurchaseOrderPedidoCancelled = (order: {
+  estatus: number;
+  saldo_cerrado?: boolean | null;
+  pedido_cancelado?: boolean | null;
+}) => order.pedido_cancelado === true && isPurchaseOrderOpen(order);
+
+/** Pill del aviso "Pedido cancelado" (rosa, como lo cancelado). */
+export const PURCHASE_ORDER_PEDIDO_CANCELLED_CLS =
+  "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30";
+
+/**
  * Colores y etiquetas por estatus, en la forma `StatusBadgeConfigEntry` que
  * consume el `<StatusBadge>` compartido — antes era un `{ cls, dot }` suelto
  * sin `label`, lo que obligaba a `PurchaseOrderColumns` y

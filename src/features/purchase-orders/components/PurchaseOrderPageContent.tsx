@@ -997,6 +997,20 @@ export function PurchaseOrderPageContent({
               <InfoField label="Saldo cerrado el">{formatShortDateTime(data.fecha_cierre)}</InfoField>
             </>
           )}
+          {/* Pedido cancelado (EC-951): el pedido de origen se canceló con la OC
+              ya autorizada; se muestra en cualquier estatus. */}
+          {data.pedido_cancelado === true && (
+            <>
+              <InfoField label="Pedido de origen" className="col-span-2">
+                <span className="text-rose-700 dark:text-rose-400">
+                  Cancelado. La orden no se canceló sola: compras decide si cancelarla o conservar el material.
+                </span>
+              </InfoField>
+              <InfoField label="Pedido cancelado el">
+                {formatShortDateTime(data.fecha_pedido_cancelado)}
+              </InfoField>
+            </>
+          )}
         </InfoGrid>
       </Section>
 

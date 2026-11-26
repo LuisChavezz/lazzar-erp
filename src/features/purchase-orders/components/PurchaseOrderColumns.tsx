@@ -19,7 +19,7 @@ import {
   ViewIcon,
 } from "@/src/components/Icons";
 import { formatQuantityValue } from "@/src/utils/formatCurrency";
-import { formatLocalDate } from "@/src/utils/formatDate";
+import { formatLocalDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { PurchaseOrder } from "../interfaces/purchase-order.interface";
 import {
   confirmPurchaseOrderMutationKey,
@@ -35,7 +35,10 @@ import {
   isPurchaseOrderCancellable,
   isPurchaseOrderEditable,
   isPurchaseOrderUnconfirmed,
+  PURCHASE_ORDER_PEDIDO_CANCELLED_CLS,
+  PURCHASE_ORDER_PEDIDO_CANCELLED_LABEL,
   purchaseOrderStatusEntry,
+  showsPurchaseOrderPedidoCancelled,
 } from "../constants/purchaseOrderStatus";
 import { tipoCompraLabel } from "../constants/purchaseOrderTipoCompra";
 import { purchaseOrderDetailHref } from "../constants/purchaseOrderDetailOrigins";
@@ -288,6 +291,19 @@ const FolioCell = ({
         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${statusCfg.cls}`}>
           {statusCfg.label}
         </span>
+        {/* EC-951: el pedido de origen se canceló y la OC sigue abierta. */}
+        {showsPurchaseOrderPedidoCancelled(order) && (
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${PURCHASE_ORDER_PEDIDO_CANCELLED_CLS}`}
+            title={
+              order.fecha_pedido_cancelado
+                ? `El pedido se canceló el ${formatShortDateTime(order.fecha_pedido_cancelado)}`
+                : "El pedido de origen se canceló"
+            }
+          >
+            {PURCHASE_ORDER_PEDIDO_CANCELLED_LABEL}
+          </span>
+        )}
         {order.referencia && (
           <span
             className="inline-flex max-w-[120px] items-center truncate px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
