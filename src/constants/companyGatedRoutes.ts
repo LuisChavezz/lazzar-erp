@@ -68,6 +68,11 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   { prefix: "/wms/rfid-scanner", gated: true },
   { prefix: "/wms/rfid-readers", gated: true },
 
+  // ── WMS: Encuadres RFID de recepción (EC-961) ─────────────────────────────
+  // El listado se acota a la empresa activa (superusuario incluido): sin
+  // empresa responde `[]`, que se leería como "no hay encuadres".
+  { prefix: "/wms/rfid-reconciliations", gated: true },
+
   // ── WMS: Calidad y devoluciones a proveedor (EC-951) ──────────────────────
   // Son datos de compras: `calidad-inspecciones/` y `devoluciones-proveedor/`
   // se acotan por `user.empresa` (sin empresa, el listado sale vacío y el

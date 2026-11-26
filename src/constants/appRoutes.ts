@@ -466,6 +466,14 @@ const appRouteGroupDefinitions: AppRouteGroupDefinition[] = [
         description: "Alta y baja de los lectores RFID (cajones) y la URL de cada uno para el FX.",
         section: "rfid",
       },
+      {
+        key: "wms-rfid-reconciliations",
+        label: "Encuadres RFID",
+        path: "/wms/rfid-reconciliations",
+        icon: ClipboardListIcon,
+        description: "Conteo de etiquetas contra una OC u OP antes de la recepción: esperado, leído y diferencia.",
+        section: "rfid",
+      },
     ],
   }),
   defineSectionedGroup({
