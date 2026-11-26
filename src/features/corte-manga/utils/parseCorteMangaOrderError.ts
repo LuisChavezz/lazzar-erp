@@ -232,8 +232,20 @@ export function parseCorteMangaOrderError(error: unknown): ParsedCorteMangaOrder
     result.messages.push(nonField);
   }
 
+  // ── Forma F: rechazo de negocio sobre el pedido (nucleo-erp#1370) ────────
+  // El service bloquea el pedido y responde `{"pedido": "…"}` como STRING
+  // (no existe, cancelado o dado de baja, retenido); el serializer, en cambio,
+  // manda sus errores de campo como lista (`["Este campo es requerido."]`).
+  // No hay nada que corregir en el campo: va al banner con su texto.
+  const pedidoRejection = typeof record.pedido === "string" ? record.pedido.trim() : "";
+  if (pedidoRejection) {
+    result.formError = result.formError ?? pedidoRejection;
+    result.messages.push(pedidoRejection);
+  }
+
   // ── Forma C: errores por campo del serializer ────────────────────────────
   FORM_FIELDS.forEach((field) => {
+    if (field === "pedido" && pedidoRejection) return;
     const message = firstDrfMessage(record[field]);
     if (message) {
       result.fieldErrors[field] = message;
