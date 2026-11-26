@@ -76,7 +76,8 @@ export interface PedidoCancelOcBloqueante {
   id: number;
   /** `null` si la OC no tiene folio (se nombra `#id`). */
   folio: string | null;
-  estatus: number;
+  /** 1 o 2; `null` si no llega como número (el aviso omite el badge). */
+  estatus: number | null;
 }
 
 /**

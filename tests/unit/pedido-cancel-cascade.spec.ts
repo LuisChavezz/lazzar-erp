@@ -40,6 +40,22 @@ test("omite renglones mal formados y lee un folio vacío como null", () => {
   expect(pedidoCancelBlockingOcs(error)).toEqual([{ id: 4, folio: null, estatus: 2 }]);
 });
 
+test("un estatus que no es entero se lee como null (el aviso omite el badge, no pinta \"0\")", () => {
+  const error = httpError(400, {
+    ordenes_compra: MENSAJE,
+    ordenes_compra_bloqueantes: [
+      { id: 5, folio: "OC-5", estatus: "1" },
+      { id: 6, folio: "OC-6" },
+      { id: 7, folio: "OC-7", estatus: 1.5 },
+    ],
+  });
+  expect(pedidoCancelBlockingOcs(error)).toEqual([
+    { id: 5, folio: "OC-5", estatus: null },
+    { id: 6, folio: "OC-6", estatus: null },
+    { id: 7, folio: "OC-7", estatus: null },
+  ]);
+});
+
 test("no es el rechazo de OC: otro 400, sin lista, lista vacía u otro estatus", () => {
   expect(pedidoCancelBlockingOcs(httpError(400, { pedido: "Tiene documentos vivos: picking." }))).toBeNull();
   expect(pedidoCancelBlockingOcs(httpError(400, { ordenes_compra: MENSAJE }))).toBeNull();
