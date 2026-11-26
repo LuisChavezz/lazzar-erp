@@ -55,3 +55,11 @@ export const mergeDraftLines = (
 };
 
 export const toLineaBody = (l: ResurtidoDraftLine): ResurtidoLineaBody => ({ ...l.ref, cantidad: l.cantidad });
+
+/**
+ * Pedidos marcados tras cambiar la sucursal del resurtido: el backend solo
+ * acepta los de su sucursal (nucleo-erp#1370), así que otra sucursal (o
+ * ninguna) los descarta. La misma sucursal no toca nada.
+ */
+export const pedidosAfterSucursalChange = (prev: string, next: string, pedidos: number[]): number[] =>
+  prev === next ? pedidos : [];

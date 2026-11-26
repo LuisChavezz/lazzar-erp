@@ -24,7 +24,10 @@ export const usePedidoSelectionMemory = () => {
   const remember = (pedido: PedidoSeleccionado) =>
     setKnown((prev) => new Map(prev).set(pedido.id, pedido));
 
-  return { known, remember };
+  /** Olvida todo (el resurtido, al cambiar de sucursal: lo marcado ya no aplica). */
+  const clear = () => setKnown(new Map());
+
+  return { known, remember, clear };
 };
 
 export type PedidoSelectionMemory = ReturnType<typeof usePedidoSelectionMemory>;
