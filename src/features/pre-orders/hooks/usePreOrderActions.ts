@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
+import { toastWarning } from "@/src/utils/toastWarning";
+import { pedidosOmitidosWarning } from "../utils/pedidosOmitidos";
 import {
   aceptarPreOrden,
   rechazarPreOrden,
@@ -69,6 +71,10 @@ export const usePreOrderActions = (id: number) => {
       toast.success(
         res.folio ? `Orden de producción ${res.folio} creada.` : "Orden de producción creada.",
       );
+      // La OP se crea aunque deje pedidos del resurtido fuera (nucleo-erp#1370).
+      const omitidos = pedidosOmitidosWarning(res.pedidos_omitidos);
+      if (omitidos) toastWarning(omitidos);
+      // `["pre-orders"]` incluye el detalle: ahí la omisión pasa a `registrada`.
       return refresh("production-orders");
     },
     onError: (error) =>
