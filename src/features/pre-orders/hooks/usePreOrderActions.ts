@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { toastWarning } from "@/src/utils/toastWarning";
-import { pedidosOmitidosWarning } from "../utils/pedidosOmitidos";
+import { crearOpSuccessMessage, pedidosOmitidosWarning } from "../utils/pedidosOmitidos";
 import {
   aceptarPreOrden,
   rechazarPreOrden,
@@ -68,9 +68,7 @@ export const usePreOrderActions = (id: number) => {
     mutationKey: ["pre-order-crear-op", id],
     mutationFn: (body: CrearOpBody) => crearOpDesdePreOrden(id, body),
     onSuccess: (res) => {
-      toast.success(
-        res.folio ? `Orden de producción ${res.folio} creada.` : "Orden de producción creada.",
-      );
+      toast.success(crearOpSuccessMessage(res));
       // La OP se crea aunque deje pedidos del resurtido fuera (nucleo-erp#1370).
       const omitidos = pedidosOmitidosWarning(res.pedidos_omitidos);
       if (omitidos) toastWarning(omitidos);

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  crearOpSuccessMessage,
   linkedPedidoClientes,
   pedidoOmisionLabel,
   pedidosOmitidosWarning,
@@ -15,6 +16,19 @@ const cancelado: PreOrderPedidoVinculado = { id: 2, folio: "P-2", cliente_nombre
 const pre = (fuente: PedidosOmitidosFuente | null, pedidos = [libre, cancelado]) => ({
   pedidos_omitidos_fuente: fuente,
   pedidos_vinculados: pedidos,
+});
+
+test.describe("crearOpSuccessMessage", () => {
+  test("lee el folio de `folio_op`", () => {
+    expect(crearOpSuccessMessage({ folio_op: "2026-OP-00041" })).toBe(
+      "Orden de producción 2026-OP-00041 creada.",
+    );
+  });
+
+  test("`folio` de respaldo y sin folio", () => {
+    expect(crearOpSuccessMessage({ folio: "OP-1" })).toBe("Orden de producción OP-1 creada.");
+    expect(crearOpSuccessMessage({ folio_op: null })).toBe("Orden de producción creada.");
+  });
 });
 
 test.describe("pedidosOmitidosWarning", () => {

@@ -1,4 +1,5 @@
 import type {
+  CrearOpResponse,
   PedidoOmitido,
   PreOrderListItem,
   PreOrderPedidoVinculado,
@@ -8,6 +9,12 @@ type OmisionFields = Pick<PreOrderListItem, "pedidos_omitidos_fuente">;
 
 /** `P-…`, o `#id` si el pedido no tiene folio. */
 const pedidoLabel = (p: { id: number; folio: string | null }) => p.folio?.trim() || `#${p.id}`;
+
+/** Éxito de `crear-op/`: el folio llega en `folio_op` (`folio` de respaldo). */
+export const crearOpSuccessMessage = (res: Pick<CrearOpResponse, "folio_op" | "folio">): string => {
+  const folio = res.folio_op || res.folio;
+  return folio ? `Orden de producción ${folio} creada.` : "Orden de producción creada.";
+};
 
 /**
  * Aviso tras `crear-op/` cuando dejó pedidos fuera de la OP (nucleo-erp#1370):
