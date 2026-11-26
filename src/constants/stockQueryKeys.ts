@@ -37,3 +37,9 @@ export const INVENTORY_PIPELINE_QUERY_KEY = ["inventory-pipeline"] as const;
  * de cada talla del pedido, así que se relee con el resto de las existencias.
  */
 export const PEDIDO_PROGRAMAR_QUERY_KEY = ["pedido-programar"] as const;
+
+/**
+ * Stock digital por SKU (`useDigitalStockTable`, `useDigitalStockDetail`, EC-977):
+ * existencia ALM-00, comprometido y entradas, así que se relee con el resto.
+ */
+export const STOCK_DIGITAL_QUERY_KEY = ["stock-digital"] as const;

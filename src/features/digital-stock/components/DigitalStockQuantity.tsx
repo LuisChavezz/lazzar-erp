@@ -1,7 +1,8 @@
-import { formatQuantityValue } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 
 /**
- * Cantidad del stock digital tal como llega del backend. Con
+ * Cantidad del stock digital tal como llega del backend, con hasta 4 decimales
+ * (los de `Existencia.cantidad`) para que un residuo no se lea como 0. Con
  * `shortageWhenNegative`, un valor negativo (la disponibilidad digital) se pinta
  * en rojo como FALTANTE; el signo y la cifra no se tocan.
  */
@@ -24,7 +25,7 @@ export function DigitalStockQuantity({
       }`}
       title={isShortage ? "Faltante" : undefined}
     >
-      {formatQuantityValue(value)}
+      {formatExactQuantityValue(value)}
       {isShortage && <span className="sr-only"> (faltante)</span>}
     </span>
   );

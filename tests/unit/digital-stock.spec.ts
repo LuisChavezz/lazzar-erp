@@ -4,8 +4,12 @@ import { appRouteGroups, getGroupAccessPermissions } from "@/src/constants/appRo
 import { canAccessRoute } from "@/src/utils/routeAccess";
 import { hasAnyPermission } from "@/src/utils/permissions";
 import { readServerTableState, toServerTableCriteria } from "@/src/utils/serverTableParams";
-import { digitalStockTable } from "@/src/features/digital-stock/constants/digitalStockTable";
 import { digitalStockErrorMessage } from "@/src/features/digital-stock/utils/digitalStockErrors";
+import type { QueryClient } from "@tanstack/react-query";
+import { DIGITAL_STOCK_KEY, digitalStockTable, existenciaAlm00Hint } from "@/src/features/digital-stock/constants/digitalStockTable";
+import { digitalStockDetailKey } from "@/src/features/digital-stock/hooks/useDigitalStockDetail";
+import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
+import { pedidoDetailHref } from "@/src/features/orders/constants/pedidoDetailOrigins";
 
 /** EC-977: stock digital por SKU en Ventas y en Mesa de Control. */
 
@@ -110,5 +114,44 @@ test.describe("digitalStockErrorMessage", () => {
     expect(digitalStockErrorMessage(axiosError(500, { detail: "x" }))).toBeUndefined();
     expect(digitalStockErrorMessage(axiosError(400, "<html>"))).toBeUndefined();
     expect(digitalStockErrorMessage(new Error("x"))).toBeUndefined();
+  });
+});
+
+test.describe("revisión de EC-977", () => {
+  test("la llave del detalle incluye la sucursal con que se abrió", () => {
+    expect(digitalStockDetailKey(10, 61)).toEqual(["stock-digital", "detail", 10, 61]);
+    expect(digitalStockDetailKey(10, undefined)).toEqual(["stock-digital", "detail", 10, null]);
+    expect(digitalStockDetailKey(10, 61)).not.toEqual(digitalStockDetailKey(10, undefined));
+  });
+
+  test("invalidateStockQueries también relee el stock digital (lista y detalle)", async () => {
+    const keys: unknown[] = [];
+    const queryClient = {
+      invalidateQueries: (filters: { queryKey: unknown }) => {
+        keys.push(filters.queryKey);
+        return Promise.resolve();
+      },
+    } as unknown as QueryClient;
+    await invalidateStockQueries(queryClient);
+    expect(keys).toContainEqual(["stock-digital"]);
+    expect(DIGITAL_STOCK_KEY).toEqual(["stock-digital"]);
+  });
+
+  test("solo Mesa de Control compara la existencia con la otra pantalla", () => {
+    expect(existenciaAlm00Hint("operations")).toContain("Existencias, Producción y Compras");
+    expect(existenciaAlm00Hint("sales")).not.toContain("Existencias, Producción y Compras");
+    expect(existenciaAlm00Hint("sales")).toContain("ALM-00");
+  });
+
+  test("el folio de pedido solo enlaza a quien puede abrir /orders/{id}", () => {
+    const path = pedidoDetailHref(351, "sales-digital-stock").split(/[?#]/)[0];
+    expect(path).toBe("/orders/351");
+    for (const code of ["R-CRM", "R-CRM-COTIZACIONES", "R-MESACONTROL", "R-MESACONTROL-COTI"]) {
+      expect(canAccessRoute(path, user(code))).toBe(false);
+    }
+    for (const code of ["R-CRM-PEDIDOS", "R-MESACONTROL-PEDIDOS"]) {
+      expect(canAccessRoute(path, user(code))).toBe(true);
+    }
+    expect(canAccessRoute(path, admin)).toBe(true);
   });
 });

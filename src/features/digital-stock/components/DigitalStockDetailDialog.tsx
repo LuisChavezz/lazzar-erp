@@ -20,21 +20,31 @@ import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { formatShortCalendarDate, formatShortDateTime } from "@/src/utils/formatDate";
 import { productionOrderDetailPath } from "@/src/constants/workOrderRoutes";
 import { purchaseOrderDetailHref } from "@/src/features/purchase-orders/constants/purchaseOrderDetailOrigins";
-import { PedidoFolioLink } from "@/src/features/orders/components/PedidoFolioLink";
 import type { PedidoDetailOrigin } from "@/src/features/orders/constants/pedidoDetailOrigins";
 import type {
   StockDigitalDetalle,
   StockDigitalFila,
 } from "../interfaces/digital-stock.interface";
-import { EXISTENCIA_ALM00_HINT, EXISTENCIA_ALM00_LABEL } from "../constants/digitalStockTable";
+import {
+  EXISTENCIA_ALM00_LABEL,
+  existenciaAlm00Hint,
+  type DigitalStockModule,
+} from "../constants/digitalStockTable";
 import { useDigitalStockDetail } from "../hooks/useDigitalStockDetail";
+import { digitalStockErrorMessage } from "../utils/digitalStockErrors";
+import { DigitalStockPedidoFolio } from "./DigitalStockPedidoFolio";
 import { DigitalStockQuantity } from "./DigitalStockQuantity";
 
 interface DigitalStockDetailDialogProps {
-  /** Fila con la que se abrió: da título mientras llega el detalle. */
-  fila: StockDigitalFila | null;
+  /**
+   * Fila con la que se abrió (da título mientras llega el detalle) y la
+   * sucursal con que estaba filtrado el listado, para pedir el detalle con las
+   * MISMAS cifras que la fila.
+   */
+  target: { fila: StockDigitalFila; sucursal: number | undefined } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  module: DigitalStockModule;
   pedidoOrigin: PedidoDetailOrigin;
 }
 
@@ -58,15 +68,16 @@ const InactiveMark = () => (
  * en mayúsculas y el de la OP sin acentos).
  */
 export function DigitalStockDetailDialog({
-  fila,
+  target,
   open,
   onOpenChange,
+  module,
   pedidoOrigin,
 }: DigitalStockDetailDialogProps) {
-  // Copia de la fila tal como estaba al ABRIR; `session.id` monta un contenido
-  // nuevo en cada apertura.
-  const session = useDialogSession(open, fila);
-  const titulo = session.snapshot;
+  // Copia de la fila (y la sucursal) tal como estaban al ABRIR; `session.id`
+  // monta un contenido nuevo en cada apertura.
+  const session = useDialogSession(open, target);
+  const titulo = session.snapshot?.fila ?? null;
 
   return (
     <MainDialog
@@ -95,6 +106,8 @@ export function DigitalStockDetailDialog({
         <DigitalStockDetailContent
           key={session.id}
           varianteId={titulo.variante_id}
+          sucursal={session.snapshot?.sucursal}
+          module={module}
           pedidoOrigin={pedidoOrigin}
           showInactiveMark={titulo.activo}
         />
@@ -106,10 +119,14 @@ export function DigitalStockDetailDialog({
 /** Cuerpo del diálogo: consulta y pinta el detalle de UNA apertura. */
 function DigitalStockDetailContent({
   varianteId,
+  sucursal,
+  module,
   pedidoOrigin,
   showInactiveMark,
 }: {
   varianteId: number;
+  sucursal: number | undefined;
+  module: DigitalStockModule;
   pedidoOrigin: PedidoDetailOrigin;
   /**
    * La fila con que se abrió decía "activo": si el detalle dice lo contrario,
@@ -123,7 +140,7 @@ function DigitalStockDetailContent({
     isInitialError,
     isDefinitiveError,
     error,
-  } = useDigitalStockDetail(varianteId);
+  } = useDigitalStockDetail(varianteId, sucursal);
 
   return (
     <>
@@ -136,13 +153,18 @@ function DigitalStockDetailContent({
       {isInitialError && (
         <ErrorState
           title="Error al cargar el detalle del SKU"
-          message={extractErrorMessage(error, "No se pudo cargar el detalle del SKU.")}
+          // 403 `{detail}` y 400 `{campo: mensaje}` del backend, tal cual.
+          message={
+            digitalStockErrorMessage(error) ??
+            extractErrorMessage(error, "No se pudo cargar el detalle del SKU.")
+          }
         />
       )}
 
       {detalle && !isLoading && (
         <DetalleBody
           detalle={detalle}
+          module={module}
           pedidoOrigin={pedidoOrigin}
           showInactiveMark={showInactiveMark && !detalle.activo}
         />
@@ -162,10 +184,12 @@ function DetalleSection({ title, children }: { title: string; children: ReactNod
 
 function DetalleBody({
   detalle,
+  module,
   pedidoOrigin,
   showInactiveMark,
 }: {
   detalle: StockDigitalDetalle;
+  module: DigitalStockModule;
   pedidoOrigin: PedidoDetailOrigin;
   showInactiveMark: boolean;
 }) {
@@ -181,7 +205,7 @@ function DetalleBody({
         </div>
         <HeaderStatRow>
           <HeaderStat label={EXISTENCIA_ALM00_LABEL}>
-            <span title={EXISTENCIA_ALM00_HINT} className="cursor-help">
+            <span title={existenciaAlm00Hint(module)} className="cursor-help">
               <DigitalStockQuantity value={detalle.existencia_real} />
             </span>
           </HeaderStat>
@@ -255,12 +279,12 @@ function DetalleBody({
             {detalle.compromisos.map((compromiso) => (
               <tr key={compromiso.pedido_id}>
                 <td className={`${TD} whitespace-nowrap`}>
-                  <PedidoFolioLink
+                  <DigitalStockPedidoFolio
                     pedidoId={compromiso.pedido_id}
                     folio={compromiso.folio}
                     from={pedidoOrigin}
-                    tone="accent"
                     className={BLUE_FOLIO_LINK_CLASS}
+                    textClassName={FOLIO_TEXT_CLASS}
                   />
                 </td>
                 <td className={`${TD} max-w-48 truncate`} title={compromiso.cliente_nombre ?? undefined}>
