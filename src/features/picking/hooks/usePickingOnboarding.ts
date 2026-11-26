@@ -102,9 +102,14 @@ export const usePickingOnboarding = (
       }
     },
     retry: retryUnlessDefinitiveRejection,
+    // La lista (sin pedido) también lleva `surtido`/`pendiente` por pedido
+    // (nucleo-erp#1279), que cambian con cada surtido de cualquier usuario:
+    // se relee al abrir Nuevo surtido si tiene más de 10 s: la lista sale al
+    // instante de la caché y se actualiza sola, sin repetir la petición en
+    // aperturas seguidas. Tras surtir o cancelar se invalida igual.
     ...(isPedidoScoped
       ? { staleTime: 0, gcTime: 30_000, refetchOnMount: "always" as const }
-      : {}),
+      : { staleTime: 10_000, refetchOnMount: true }),
   });
 
   return {
