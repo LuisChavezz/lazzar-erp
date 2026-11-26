@@ -213,7 +213,7 @@ function PedidoCancelBlockingOcsNotice({ ocs }: { ocs: PedidoCancelOcBloqueante[
         {ocs.map((oc) => {
           const href = purchaseOrderDetailHref(oc.id);
           const label = purchaseOrderLabel(oc);
-          const status = purchaseOrderStatusEntry(oc.estatus);
+          const status = oc.estatus === null ? null : purchaseOrderStatusEntry(oc.estatus);
           return (
             <li key={oc.id} className="flex items-center gap-2">
               {canAccessRoute(href, session?.user) ? (
@@ -227,11 +227,13 @@ function PedidoCancelBlockingOcsNotice({ ocs }: { ocs: PedidoCancelOcBloqueante[
               ) : (
                 <span className="font-mono font-semibold">{label}</span>
               )}
-              <span
-                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${status.cls}`}
-              >
-                {status.label}
-              </span>
+              {status && (
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap ${status.cls}`}
+                >
+                  {status.label}
+                </span>
+              )}
             </li>
           );
         })}

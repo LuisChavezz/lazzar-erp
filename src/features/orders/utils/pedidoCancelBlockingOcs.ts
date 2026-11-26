@@ -11,7 +11,8 @@ const isPositiveInteger = (value: unknown): value is number =>
  *
  * Solo cuenta un `400` cuyo cuerpo trae la lista con al menos una OC bien
  * formada (`id` entero positivo). Un renglón mal formado se omite; un `folio`
- * vacío o que no sea texto se lee como `null` (la OC se nombra `#id`). Nunca
+ * vacío o que no sea texto se lee como `null` (la OC se nombra `#id`), y un
+ * `estatus` que no sea un entero, como `null` (sin badge). Nunca
  * lanza: corre en el `onError` de la mutación.
  */
 export const pedidoCancelBlockingOcs = (error: unknown): PedidoCancelOcBloqueante[] | null => {
@@ -28,7 +29,7 @@ export const pedidoCancelBlockingOcs = (error: unknown): PedidoCancelOcBloqueant
       {
         id,
         folio: typeof folio === "string" && folio.trim() ? folio : null,
-        estatus: typeof estatus === "number" ? estatus : 0,
+        estatus: typeof estatus === "number" && Number.isInteger(estatus) ? estatus : null,
       },
     ];
   });
