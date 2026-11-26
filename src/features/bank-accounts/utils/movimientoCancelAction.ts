@@ -18,10 +18,15 @@ export const cancelMovimientoBancarioMutationKey = ["cancel-movimiento-bancario"
 export const isManualMovimiento = (movimiento: Pick<MovimientoCuentaBancaria, "cobro_id" | "pago_id">): boolean =>
   movimiento.cobro_id === null && movimiento.pago_id === null;
 
-/** ¿Se ofrece "Cancelar" sobre este movimiento? Manual y no cancelado. */
+/**
+ * ¿Se ofrece "Cancelar" sobre este movimiento? Manual y `Pendiente`. Un
+ * `Conciliado` no: si lo ampara una conciliación `Cerrada`, cancelarlo revierte
+ * el saldo pero la conciliación sigue cerrada y deja de cuadrar. Primero se
+ * cancela la conciliación, que regresa sus movimientos a `Pendiente`.
+ */
 export const canCancelMovimiento = (
   movimiento: Pick<MovimientoCuentaBancaria, "cobro_id" | "pago_id" | "estatus">,
-): boolean => isManualMovimiento(movimiento) && movimiento.estatus !== "Cancelado";
+): boolean => isManualMovimiento(movimiento) && movimiento.estatus === "Pendiente";
 
 /**
  * Lo que mueve cancelar un movimiento: el resumen de la cuenta (saldo y
