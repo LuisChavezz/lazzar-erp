@@ -45,6 +45,10 @@ export const companyGatedRoutes: ReadonlyArray<{ prefix: string; gated: boolean 
   { prefix: "/operations/quotes", gated: true },
   { prefix: "/operations/dashboard", gated: true },
   { prefix: "/operations/inventory-pipeline", gated: true },
+  // Stock digital (EC-977): el backend acota a la empresa activa; sin ella la
+  // lista saldría vacía, que se leería como "no hay SKUs". En Ventas lo cubre
+  // la regla general de `/sales`.
+  { prefix: "/operations/digital-stock", gated: true },
 
   // ── Panel de Control ──────────────────────────────────────────────────────
   // La bitácora de documentos es de la empresa activa: sin empresa el backend
