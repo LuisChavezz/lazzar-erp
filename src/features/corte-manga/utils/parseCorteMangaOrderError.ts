@@ -45,20 +45,45 @@ export interface ParsedCorteMangaOrderError {
     message: string;
     existingOrder: CorteMangaDuplicateExistingOrder;
   };
+  /**
+   * Diagnóstico línea por línea del `400` de exceso (`detalles_exceso`), tal
+   * cual lo arma el backend: STRINGS ya formateados (`  - talla_id=3
+   * pedido_detalle_id=12: pedido=10.0, ya_asignado=4.0, solicitado=8.0,
+   * disponible_restante=6.0`, y la variante `(total del renglón)`). Se conservan
+   * sin parsear: son texto de diagnóstico, no un contrato estructurado. Campo
+   * ADICIONAL opcional: su sola presencia discrimina el caso. Mismo campo que
+   * `ParsedReflectiveOrderError.excessLines`.
+   */
+  excessLines?: string[];
 }
 
 export const CORTE_MANGA_ORDER_GENERIC_ERROR =
   "No se pudo crear la orden de corte de manga.";
 
 /**
+ * Lee `detalles_exceso`: un ARREGLO de strings ya formateados, uno por línea
+ * que excede su saldo. Se recorre entrada por entrada (en vez de usar
+ * `firstDrfMessage` sobre el arreglo completo, que devolvería solo la primera)
+ * porque el usuario necesita ver TODAS las líneas que tiene que bajar. Mismo
+ * helper que el de `parseReflectiveOrderError`.
+ */
+function readExcessLines(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const lines = value
+    .map((entry) => firstDrfMessage(entry)?.trim())
+    .filter((message): message is string => Boolean(message));
+  return lines.length > 0 ? lines : undefined;
+}
+
+/**
  * Normaliza el error de `POST /produccion/orden-corte-manga/onboarding/`.
  *
  * Vive aparte del hook (y no dentro de él) porque es una función PURA sin
- * dependencias de React: así puede ejercitarse directamente contra las cuatro
+ * dependencias de React: así puede ejercitarse directamente contra las cinco
  * formas del contrato sin montar la mutación. El hook la re-exporta para que el
  * punto de importación siga siendo el mismo.
  *
- * El backend rechaza en CUATRO formas distintas, todas confirmadas leyendo
+ * El backend rechaza en CINCO formas distintas, todas confirmadas leyendo
  * `OrdenCorteMangaService` y el `ViewSet` en el checkout de `nucleo-erp`:
  *
  *  A. ARREGLO PLANO a nivel raíz — `ValidationError("mensaje")` de
@@ -114,6 +139,21 @@ export const CORTE_MANGA_ORDER_GENERIC_ERROR =
  *        backend, no un código. Hoy siempre es "Pendiente", donde ambas
  *        coinciden.
  *
+ *     OJO: este 409 solo puede ocurrir en el POST SIN `detalles_override`
+ *     (`buscar_existente_full_match`). El asistente de 2 pasos manda
+ *     `detalles_override` siempre (EC-967), así que la rama es hoy inalcanzable
+ *     desde la UI; se conserva porque quien decide es el backend.
+ *
+ *  E. 400 DE EXCESO — la forma B (`err` con el motivo general) MÁS
+ *     `detalles_exceso` cuando una línea rebasa su saldo (`cantidad_pedido -
+ *     ya_asignado`), o la forma B sola cuando el TOTAL rebasa lo programado por
+ *     Mesa de Control ("…excede lo programado por mesa de control (…)").
+ *
+ *     Aparte, el serializer rechaza el propio `detalles_override` bajo esa
+ *     misma clave, como LISTA (`{"detalles_override": ["…"]}`): renglón que no
+ *     es objeto, id faltante/repetido/ajeno al pedido/sin `lleva_corte_manga`,
+ *     cantidad no numérica, <= 0, fraccionaria o mayor a la de la línea.
+ *
  * Siempre devuelve un objeto (nunca `null`). En un 400/403/409 con cuerpo JSON
  * garantiza que haya algo que mostrar (si no reconoce nada, deja un `formError`
  * genérico); fuera de eso devuelve `formError` vacío a propósito para que el
@@ -125,7 +165,8 @@ export function parseCorteMangaOrderError(error: unknown): ParsedCorteMangaOrder
     messages: [],
   };
 
-  // El cuerpo del backend solo se lee en un 400 (formas A/B/C), un 403 (el
+  // El cuerpo del backend solo se lee en un 400 (formas A/B/C/E y
+  // `detalles_override`), un 403 (el
   // `detail` en español de un `PermissionDenied`, que dice que es un problema
   // de permisos y no algo que se arregle reintentando — mismo criterio que
   // `drfActionErrorMessage`) o el 409 de duplicado (forma D): son los únicos
@@ -230,6 +271,26 @@ export function parseCorteMangaOrderError(error: unknown): ParsedCorteMangaOrder
   if (nonField) {
     result.formError = result.formError ?? nonField;
     result.messages.push(nonField);
+  }
+
+  // ── Forma E: 400 de exceso por línea ─────────────────────────────────────
+  // Sin este bloque el desglose se perdería en silencio: el fallback de "claves
+  // desconocidas" del final solo corre cuando no hubo NINGÚN mensaje, y `err`
+  // siempre viene en esta respuesta.
+  const excessLines = readExcessLines(record.detalles_exceso);
+  if (excessLines) {
+    result.excessLines = excessLines;
+    result.formError = result.formError ?? CORTE_MANGA_ORDER_GENERIC_ERROR;
+    result.messages.push(...excessLines);
+  }
+
+  // ── `detalles_override`: rechazos del serializer sobre las líneas ────────
+  // Es una clave del PAYLOAD, no un input del formulario (las líneas se
+  // capturan en una tabla), así que su mensaje va al banner, VERBATIM.
+  const overrideMessage = firstDrfMessage(record.detalles_override);
+  if (overrideMessage) {
+    result.formError = result.formError ?? overrideMessage;
+    result.messages.push(overrideMessage);
   }
 
   // ── Forma F: rechazo de negocio sobre el pedido (nucleo-erp#1370) ────────
