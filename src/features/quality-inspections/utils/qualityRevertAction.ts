@@ -32,7 +32,8 @@ export const isQualityInspectionRevertible = (
 /**
  * Llaves del `400` con que `revertir/` dice que ya no procede: inspección ya
  * anulada, recepción no cerrada, OC con el saldo cerrado, OP completada,
- * factura de proveedor viva o existencia insuficiente. Cierran el diálogo con el
+ * factura de proveedor viva, existencia insuficiente o devoluciones a proveedor
+ * aplicadas. Cierran el diálogo con el
  * mensaje del backend tal cual y releen la bandeja (`blockingKeys`).
  */
 export const QUALITY_REVERT_BLOCKING_KEYS = [
@@ -42,6 +43,8 @@ export const QUALITY_REVERT_BLOCKING_KEYS = [
   "op",
   "facturas_proveedores",
   "existencia",
+  // EC-951: tiene devoluciones a proveedor aplicadas; hay que cancelarlas primero.
+  "devoluciones_proveedor",
 ] as const;
 
 /** Candado por inspección. */

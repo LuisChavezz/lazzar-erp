@@ -194,7 +194,20 @@ export const getQualityDoneColumns = ({ onOpen }: { onOpen: (i: QualityInspectio
     doneHelper.accessor("estado", {
       header: "Resultado",
       meta: { align: "center" },
-      cell: (info) => <StatusBadge status={info.getValue()} config={QUALITY_ESTADO_CFG} />,
+      cell: ({ row, getValue }) => (
+        <span className="inline-flex flex-col items-center gap-1">
+          <StatusBadge status={getValue()} config={QUALITY_ESTADO_CFG} />
+          {/* EC-951: algo rechazado o en cuarentena aún sin devolver al proveedor. */}
+          {row.original.inspection.tiene_devolucion_pendiente === true && (
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+              title="Tiene rechazo o cuarentena pendiente de devolver al proveedor"
+            >
+              Por devolver
+            </span>
+          )}
+        </span>
+      ),
     }),
     doneHelper.accessor("aprobadas", {
       header: "Aprobadas",

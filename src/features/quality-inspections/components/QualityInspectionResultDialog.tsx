@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
-import { ReopenIcon } from "@/src/components/Icons";
+import { PackageXIcon, ReopenIcon } from "@/src/components/Icons";
+import { SupplierReturnCreateDialog } from "@/src/features/supplier-returns/components/SupplierReturnCreateDialog";
 import { WmsCancelDialog } from "@/src/features/wms-cancellations/components/WmsCancelDialog";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { InfoField, InfoGrid, LineItemsTable, textOrDash } from "@/src/components/DetailDialogPrimitives";
@@ -26,12 +27,18 @@ import { qualityRevertDialogContent } from "../utils/qualityRevertAction";
  * diálogo de motivo se monta con `isAdmin`, aparte del botón, para que se
  * anime al cerrar. Al revertir se cierra también este detalle: muestra la foto
  * de cuando se abrió y ya no correspondería.
+ *
+ * "Devolver a proveedor" (EC-951) va junto: con `canCreateReturn`
+ * (`C-WMS-RECEPCIONES`) y si la inspección tiene algo rechazado o en cuarentena
+ * por devolver (`tiene_devolucion_pendiente`). Abre el alta con esta inspección
+ * ya elegida y, al registrarla, cierra también este detalle por la misma razón.
  */
 export function QualityInspectionResultDialog({
   inspection,
   isAdmin,
   canRevert,
   ordenCompraId,
+  canCreateReturn,
   onClose,
 }: {
   inspection: QualityInspection | null;
@@ -41,18 +48,41 @@ export function QualityInspectionResultDialog({
   canRevert: boolean;
   /** OC de la recepción (`orden_compra` de su fila), para escribir su estatus al revertir. */
   ordenCompraId: number | null;
+  /** `C-WMS-RECEPCIONES`: puede registrar una devolución a proveedor. */
+  canCreateReturn: boolean;
   onClose: () => void;
 }) {
   const open = inspection !== null;
   const { snapshot: data } = useDialogSession(open, inspection);
   const [isRevertOpen, setIsRevertOpen] = useState(false);
+  const [isReturnOpen, setIsReturnOpen] = useState(false);
   const resultadoLabel = (v: string) => QUALITY_RESULTADO_OPTIONS.find((o) => o.value === v)?.label ?? v;
   const anulada = data?.estado === "anulada";
 
+  const canReturn = canCreateReturn && data?.tiene_devolucion_pendiente === true;
+
   const headerAction =
-    isAdmin && data ? (
+    (isAdmin || canCreateReturn) && data ? (
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {canRevert && (
+        {canReturn && (
+          <Button
+            variant="secondary"
+            onClick={() => setIsReturnOpen(true)}
+            className="px-3! py-1.5! text-xs!"
+          >
+            <PackageXIcon className="w-4 h-4" aria-hidden="true" />
+            Devolver a proveedor
+          </Button>
+        )}
+        {canCreateReturn && (
+          <SupplierReturnCreateDialog
+            open={isReturnOpen}
+            inspection={{ id: data.id, recepcion_folio: data.recepcion_folio }}
+            onClose={() => setIsReturnOpen(false)}
+            onCreated={onClose}
+          />
+        )}
+        {isAdmin && canRevert && (
           <Button
             variant="secondary"
             onClick={() => setIsRevertOpen(true)}
@@ -62,11 +92,13 @@ export function QualityInspectionResultDialog({
             Revertir calidad
           </Button>
         )}
-        <WmsCancelDialog
-          content={qualityRevertDialogContent(data, ordenCompraId, onClose)}
-          open={isRevertOpen}
-          onOpenChange={setIsRevertOpen}
-        />
+        {isAdmin && (
+          <WmsCancelDialog
+            content={qualityRevertDialogContent(data, ordenCompraId, onClose)}
+            open={isRevertOpen}
+            onOpenChange={setIsRevertOpen}
+          />
+        )}
       </div>
     ) : undefined;
 
@@ -87,6 +119,13 @@ export function QualityInspectionResultDialog({
             <InfoField label="Inspector">{textOrDash(data.inspector_nombre)}</InfoField>
             <InfoField label="Fecha">{formatLocalDate(data.fecha)}</InfoField>
             <InfoField label="Observaciones">{textOrDash(data.observaciones)}</InfoField>
+            {data.tiene_devolucion_pendiente === true && (
+              <InfoField label="Devolución a proveedor">
+                <span className="text-amber-700 dark:text-amber-400">
+                  Tiene rechazo o cuarentena pendiente de devolver.
+                </span>
+              </InfoField>
+            )}
             {/* EC-947: quién la anuló no, el backend solo manda su id. */}
             {anulada && (
               <>

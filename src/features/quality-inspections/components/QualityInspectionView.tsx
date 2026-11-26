@@ -29,6 +29,7 @@ import {
 } from "../utils/qualityExport";
 import type { QualityInspection, QualityPedidoRef, QualityPendingReception } from "../interfaces/quality-inspection.interface";
 import { localMonthFilterValue } from "@/src/utils/columnFilterOptions";
+import { SUPPLIER_RETURN_WRITE_PERMISSION } from "@/src/features/supplier-returns/constants/supplierReturns";
 
 /** Tope de `recepciones_pendientes` en el backend (`recepciones_qs[:50]`). */
 const BACKEND_PENDING_LIMIT = 50;
@@ -66,6 +67,8 @@ export function QualityInspectionView() {
   // Revertir calidad (EC-947): solo admin de empresa o superusuario, que es
   // exactamente lo que `role === "admin"` resume (`getSessionRole`).
   const isAdmin = session?.user?.role === "admin";
+  // Devolver a proveedor (EC-951): el backend exige `C-WMS-RECEPCIONES`.
+  const canCreateReturn = hasPermission(SUPPLIER_RETURN_WRITE_PERMISSION, session?.user);
 
   // Diálogos aquí, no en la celda: la fila sale de "Pendientes" al registrar.
   const [selected, setSelected] = useState<QualityPendingReception | null>(null);
@@ -240,6 +243,7 @@ export function QualityInspectionView() {
           isQualityInspectionRevertible(viewing, receiptById.get(viewing.recepcion)?.estatus)
         }
         ordenCompraId={viewing ? (receiptById.get(viewing.recepcion)?.orden_compra ?? null) : null}
+        canCreateReturn={canCreateReturn}
         onClose={() => setViewing(null)}
       />
     </div>
