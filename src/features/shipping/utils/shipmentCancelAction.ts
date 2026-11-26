@@ -33,15 +33,16 @@ export const shipmentCancelAction = (shipmentId: number): WmsCancelAction<Shipme
 
 /**
  * Texto del diálogo de "Cancelar envío". Dice que las piezas regresan al
- * almacén y que no sustituye una devolución: el backend no sabe si el envío ya
- * se entregó (nucleo-erp#1361), así que este aviso es la única advertencia.
+ * almacén. Solo se ofrece en un envío sin entrega registrada: uno entregado ya
+ * no se cancela (nucleo-erp #1361 responde 400, es una devolución), así que el
+ * texto advierte del caso que el sistema no ve, una entrega que no se registró.
  */
 export const shipmentCancelDialogContent = (
   shipment: Pick<Shipment, "id" | "packing_folio">,
 ): WmsCancelDialogContent<Shipment> => ({
   action: shipmentCancelAction(shipment.id),
   title: "Cancelar envío",
-  description: `El envío del embarque ${shipment.packing_folio || `#${shipment.id}`} quedará cancelado y sus piezas regresarán al almacén del que salieron; el embarque volverá a quedar por enviar. Si la mercancía ya se entregó al cliente, no lo canceles: eso es una devolución.`,
+  description: `El envío del embarque ${shipment.packing_folio || `#${shipment.id}`} quedará cancelado y sus piezas regresarán al almacén del que salieron; el embarque volverá a quedar por enviar. Si la mercancía ya llegó al cliente aunque no se haya registrado la entrega, no lo canceles: eso es una devolución.`,
   submitLabel: "Cancelar envío",
   pendingLabel: "Cancelando…",
   motivoPlaceholder: "Explica por qué se cancela el envío",

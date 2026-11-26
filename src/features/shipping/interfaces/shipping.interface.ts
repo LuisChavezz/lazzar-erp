@@ -134,7 +134,28 @@ export interface Shipment extends WmsCancellationFields {
    */
   fecha_creacion?: string | null;
   usuario_nombre?: string | null;
+  /**
+   * Entrega (nucleo-erp #1361, `POST despachos/{id}/entregar/`): `null` mientras
+   * no se registra. Entregar NO cambia `estado` (sigue `ACTIVO`); entregado es
+   * `fecha_entrega` no nula (`isShipmentDelivered`). Se registra una vez y ya no
+   * se corrige ni se cancela.
+   */
+  fecha_entrega: string | null;
+  /** Usuario que registró la entrega (id), `null` sin entrega. */
+  entregado_por: number | null;
+  /** Su nombre completo, o su correo; `null` sin entrega (#1432). */
+  entregado_por_nombre: string | null;
+  /** Quién recibió, texto libre de hasta 150 caracteres; `""` si no se capturó. */
+  recibio: string;
   despacho_detalle: ShipmentDetalleLine[];
+}
+
+/** Cuerpo de `POST /wms/despachos/{id}/entregar/`: ambos opcionales en el backend. */
+export interface DeliverShipmentPayload {
+  /** Quién recibió; se omite si va vacío. */
+  recibio?: string;
+  /** Datetime ISO con offset; sin él, el backend usa la hora actual. No futura. */
+  fecha_entrega?: string;
 }
 
 /**

@@ -11,6 +11,7 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import type { Shipment } from "../interfaces/shipping.interface";
 import { SHIPMENT_STATUS_CONFIG } from "../constants/shipmentStatus";
 import { isShipmentCancelled } from "../utils/shipmentCancelAction";
+import { shipmentDisplayStatus } from "../utils/shipmentDelivery";
 
 const columnHelper = createColumnHelper<Shipment>();
 
@@ -46,8 +47,9 @@ interface ShipmentColumnsCallbacks {
 
 /**
  * Columnas del listado de envíos. Sin columna de acciones: el detalle se abre
- * desde el folio del embarque (botón con "›"), y ahí vive "Cancelar" (EC-945).
- * El estado del envío va bajo el folio, en la primera columna. La fecha y quién
+ * desde el folio del embarque (botón con "›"), y ahí viven "Entregar" (EC-955)
+ * y "Cancelar" (EC-945). El estado del envío (con "Entregado") va bajo el folio,
+ * en la primera columna. La fecha y quién
  * lo registró solo se pintan si el backend los manda.
  */
 export const getShipmentColumns = ({ onOpenDetail }: ShipmentColumnsCallbacks, conFecha: boolean) =>
@@ -57,7 +59,10 @@ export const getShipmentColumns = ({ onOpenDetail }: ShipmentColumnsCallbacks, c
       cell: ({ row }) => (
         <span className="flex flex-col items-start gap-1">
           <FolioButton folio={row.original.packing_folio} onClick={() => onOpenDetail(row.original)} />
-          {row.original.estado && <StatusBadge status={row.original.estado} config={SHIPMENT_STATUS_CONFIG} />}
+          {/* "Entregado" sale de `fecha_entrega`: el `estado` sigue ACTIVO (#1361). */}
+          {row.original.estado && (
+            <StatusBadge status={shipmentDisplayStatus(row.original)} config={SHIPMENT_STATUS_CONFIG} />
+          )}
         </span>
       ),
     }),

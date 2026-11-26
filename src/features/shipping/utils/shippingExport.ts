@@ -2,6 +2,7 @@ import { exportDate, type ListExportColumn } from "@/src/utils/listExport";
 import { shipmentContenido, shipmentTransporteLabel } from "../components/ShippingColumns";
 import type { Shipment } from "../interfaces/shipping.interface";
 import { SHIPMENT_STATUS_CONFIG } from "../constants/shipmentStatus";
+import { shipmentDisplayStatus } from "./shipmentDelivery";
 
 /** Columnas de la exportación (Excel y PDF) del listado de envíos. */
 /**
@@ -21,7 +22,16 @@ export const shippingExportSummary = (rows: Shipment[]): string => {
 
 export const SHIPPING_EXPORT_COLUMNS: ListExportColumn<Shipment>[] = [
   { header: "Embarque", weight: 1.1, text: (r) => r.packing_folio ?? "" },
-  { header: "Estado", weight: 0.8, text: (r) => (r.estado ? (SHIPMENT_STATUS_CONFIG[r.estado]?.label ?? r.estado) : "") },
+  {
+    header: "Estado",
+    weight: 0.8,
+    // El mismo estado que la tabla: "Entregado" sale de `fecha_entrega` (#1361).
+    text: (r) => {
+      if (!r.estado) return "";
+      const status = shipmentDisplayStatus(r);
+      return SHIPMENT_STATUS_CONFIG[status]?.label ?? status;
+    },
+  },
   { header: "Salió", weight: 1, text: (r) => exportDate(r.fecha_creacion) },
   { header: "Registró", weight: 1.4, text: (r) => r.usuario_nombre ?? "" },
   { header: "Pedido", weight: 1.1, text: (r) => r.pedido_folio ?? "" },

@@ -10,8 +10,9 @@ import type {
 import { patchDocumentosDespacho } from "./pedidoDocumentos";
 
 /**
- * Escribe el resultado de cancelar un despacho en la fila de los documentos
- * del pedido en caché (`estado` y motivo, `patchDocumentosDespacho`). Cancela
+ * Escribe el resultado de cancelar o entregar un despacho en la fila de los
+ * documentos del pedido en caché (`estado`, motivo y `fecha_entrega`,
+ * `patchDocumentosDespacho`). Cancela
  * antes la lectura en vuelo de esos documentos, para que una respuesta vieja
  * no la pise. Nunca lanza: es best-effort, como `cachedRows`.
  */
@@ -27,7 +28,7 @@ export const writeDespachoToPedidoDocumentos = async (
     const next = patchDocumentosDespacho(current, shipment);
     if (next !== current) queryClient.setQueryData(queryKey, next);
   } catch (error) {
-    console.error("No se pudo escribir el despacho cancelado en los documentos del pedido", error);
+    console.error("No se pudo escribir el despacho en los documentos del pedido", error);
   }
 };
 
