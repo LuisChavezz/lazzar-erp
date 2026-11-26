@@ -31,6 +31,7 @@ import {
   type TipoCompra,
 } from "@/src/features/purchase-orders/constants/purchaseOrderTipoCompra";
 import type {
+  ReceiptOnboardingData,
   ReceiptOnboardingPurchaseOrder,
   ReceiptOrderCandidate,
   ReceiptOrderType,
@@ -55,6 +56,23 @@ interface ReceiptOrderSelectorProps {
   onSelect: (candidate: ReceiptOrderCandidate | null) => void;
 }
 
+/** Estado de la consulta de onboarding que alimenta la lista. */
+export interface ReceiptOrderSelectorSource {
+  onboardingData: ReceiptOnboardingData | undefined;
+  isLoading: boolean;
+  isInitialError: boolean;
+  error: unknown;
+}
+
+interface ReceiptOrderSelectorViewProps extends ReceiptOrderSelectorProps {
+  source: ReceiptOrderSelectorSource;
+  /**
+   * Lista también las SM por recibir en la pestaña Producción (EC-912). El
+   * encuadre RFID (EC-961) las oculta: se levanta solo sobre una OC u OP.
+   */
+  includeSalidasMaquila?: boolean;
+}
+
 /** Altura fija de la lista: llena el diálogo sin hueco y no salta al filtrar. */
 const LIST_HEIGHT = "h-72";
 
@@ -73,13 +91,25 @@ const PURCHASE_TYPE_FILTER_OPTIONS: { value: PurchaseTypeFilter; label: string }
   ...TIPO_COMPRA_OPTIONS,
 ];
 
-export function ReceiptOrderSelector({
+/** Paso 1 de "Nueva Recepción", alimentado por `recepciones/onboarding/`. */
+export function ReceiptOrderSelector(props: ReceiptOrderSelectorProps) {
+  return <ReceiptOrderSelectorView {...props} source={useReceiptOnboardingData()} />;
+}
+
+/**
+ * La lista de órdenes sin su consulta: la recibe en `source`. La reutiliza el
+ * alta del encuadre RFID (EC-961) con `recepcion-rfid-encuadres/onboarding/`,
+ * que responde la misma forma.
+ */
+export function ReceiptOrderSelectorView({
   orderType,
   onOrderTypeChange,
   selectedKey,
   onSelect,
-}: ReceiptOrderSelectorProps) {
-  const { onboardingData, isLoading, isInitialError: isError, error } = useReceiptOnboardingData();
+  source,
+  includeSalidasMaquila = true,
+}: ReceiptOrderSelectorViewProps) {
+  const { onboardingData, isLoading, isInitialError: isError, error } = source;
   const [purchaseTypeFilter, setPurchaseTypeFilter] = useState<PurchaseTypeFilter>("todos");
 
   // Stabilise references so downstream reads don't recalculate every render
@@ -93,9 +123,9 @@ export function ReceiptOrderSelector({
     () =>
       buildProductionTabRows(
         onboardingData?.busqueda.ordenes_produccion ?? [],
-        onboardingData?.busqueda.salidas_maquila ?? [],
+        includeSalidasMaquila ? (onboardingData?.busqueda.salidas_maquila ?? []) : [],
       ),
-    [onboardingData?.busqueda.ordenes_produccion, onboardingData?.busqueda.salidas_maquila],
+    [onboardingData?.busqueda.ordenes_produccion, onboardingData?.busqueda.salidas_maquila, includeSalidasMaquila],
   );
 
   const filteredPurchaseOrders =
@@ -173,7 +203,9 @@ export function ReceiptOrderSelector({
           <p className="text-sm text-slate-400 text-center py-6">
             {isCompra
               ? "No hay órdenes de compra disponibles."
-              : "No hay órdenes de producción ni salidas a maquila por recibir."}
+              : includeSalidasMaquila
+                ? "No hay órdenes de producción ni salidas a maquila por recibir."
+                : "No hay órdenes de producción por recibir."}
           </p>
         ) : isCompra ? (
           <>
