@@ -113,6 +113,7 @@ export interface PedidoSearchParams {
   estatus?: string;
   cliente?: number;
   moneda?: number;
+  sucursal?: number;
   /** Folio que CONTIENE el texto (`folio__icontains`), sin mirar OC ni cliente. */
   folio?: string;
   limit: number;

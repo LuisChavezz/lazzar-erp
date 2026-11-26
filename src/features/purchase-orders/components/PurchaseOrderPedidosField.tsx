@@ -43,6 +43,12 @@ interface PurchaseOrderPedidosFieldProps {
    */
   selection: PedidoSelectionMemory;
   error?: FormFieldError;
+  /**
+   * Solo ofrece pedidos de esta sucursal (`?sucursal=`): el resurtido solo
+   * acepta los de la suya (nucleo-erp#1370). `null`: todavía no hay sucursal,
+   * así que no busca. Sin la prop (las OC), busca en todas como siempre.
+   */
+  sucursal?: number | null;
 }
 
 const NO_LINKED_PEDIDOS: PedidoVinculadoOC[] = [];
@@ -100,11 +106,17 @@ export function PurchaseOrderPedidosField({
   linkedPedidos = NO_LINKED_PEDIDOS,
   selection,
   error,
+  sucursal,
 }: PurchaseOrderPedidosFieldProps) {
   const labelId = useId();
   const errorId = useId();
+  const waitingForSucursal = sucursal === null;
   const { search, setSearch, isSearching, pedidos, total, hasResults, isInitialError, refetch } =
-    usePedidoSearchField({ estatus: LINKABLE_PEDIDO_ESTATUS });
+    usePedidoSearchField({
+      estatus: LINKABLE_PEDIDO_ESTATUS,
+      sucursal: sucursal ?? undefined,
+      enabled: !waitingForSucursal,
+    });
   const linkedById = new Map(linkedPedidos.map((pedido) => [pedido.id, pedido]));
 
   const selectedIds = new Set(value);
@@ -150,41 +162,47 @@ export function PurchaseOrderPedidosField({
         </span>
       </div>
 
-      <ServerSearchSelectList<PedidoOption>
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar pedido por folio, OC o cliente..."
-        results={pedidos.map(toOption)}
-        pinned={pinned}
-        getKey={(option) => option.id}
-        isSelected={(option) => selectedIds.has(option.id)}
-        onSelect={toggle}
-        renderIndicator={renderCheckboxIndicator}
-        renderContent={(option) => {
-          const linked = selectedIds.has(option.id) ? linkedById.get(option.id) : undefined;
-          return (
-            <>
-              <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
-                {pedidoLabel(option)}
-              </span>
-              {linked ? (
-                <LinkedPedidoNote pedido={linked} cliente={option.cliente} />
-              ) : (
-                <ClienteNote cliente={option.cliente} />
-              )}
-            </>
-          );
-        }}
-        hasResults={hasResults}
-        isInitialError={isInitialError}
-        isSearching={isSearching}
-        onRetry={() => void refetch()}
-        total={total}
-        emptyMessage="No hay pedidos disponibles para ligar."
-        noResultsMessage="Ningún pedido coincide con la búsqueda."
-        errorMessage="No se pudieron buscar los pedidos."
-        maxHeightClassName="max-h-64"
-      />
+      {waitingForSucursal ? (
+        <p className={`rounded-xl border border-dashed border-slate-200 dark:border-white/10 py-6 text-center text-sm ${MUTED_CLS}`}>
+          Elige la sucursal para ver sus pedidos.
+        </p>
+      ) : (
+        <ServerSearchSelectList<PedidoOption>
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Buscar pedido por folio, OC o cliente..."
+          results={pedidos.map(toOption)}
+          pinned={pinned}
+          getKey={(option) => option.id}
+          isSelected={(option) => selectedIds.has(option.id)}
+          onSelect={toggle}
+          renderIndicator={renderCheckboxIndicator}
+          renderContent={(option) => {
+            const linked = selectedIds.has(option.id) ? linkedById.get(option.id) : undefined;
+            return (
+              <>
+                <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
+                  {pedidoLabel(option)}
+                </span>
+                {linked ? (
+                  <LinkedPedidoNote pedido={linked} cliente={option.cliente} />
+                ) : (
+                  <ClienteNote cliente={option.cliente} />
+                )}
+              </>
+            );
+          }}
+          hasResults={hasResults}
+          isInitialError={isInitialError}
+          isSearching={isSearching}
+          onRetry={() => void refetch()}
+          total={total}
+          emptyMessage="No hay pedidos disponibles para ligar."
+          noResultsMessage="Ningún pedido coincide con la búsqueda."
+          errorMessage="No se pudieron buscar los pedidos."
+          maxHeightClassName="max-h-64"
+        />
+      )}
 
       {error?.message && (
         <p id={errorId} role="alert" className="ml-1 text-xs text-red-600 dark:text-red-400">

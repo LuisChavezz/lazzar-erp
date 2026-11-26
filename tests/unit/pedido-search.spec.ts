@@ -55,6 +55,14 @@ test.describe("toPedidoSearchParams", () => {
       limit: PEDIDO_SEARCH_LIMIT,
     });
   });
+
+  test("manda `sucursal` solo con un id positivo (resurtido, EC-957)", () => {
+    expect(toPedidoSearchParams({ q: "", sucursal: 61 })).toEqual({
+      sucursal: 61,
+      limit: PEDIDO_SEARCH_LIMIT,
+    });
+    expect(toPedidoSearchParams({ q: "", sucursal: 0 })).toEqual({ limit: PEDIDO_SEARCH_LIMIT });
+  });
 });
 
 test.describe("filtros de estatus por exclusión", () => {
