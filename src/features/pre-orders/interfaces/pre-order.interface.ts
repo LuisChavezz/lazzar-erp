@@ -251,6 +251,8 @@ export interface CrearOpBody {
 
 export interface CrearOpResponse {
   id?: number;
+  /** Folio de la OP: la respuesta es la de la OP, así que viene aquí. */
+  folio_op?: string | null;
   folio?: string | null;
   pre_orden?: number;
   estatus?: PreOrderStatus;
