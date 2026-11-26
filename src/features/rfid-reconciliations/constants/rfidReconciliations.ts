@@ -12,7 +12,7 @@ export const RFID_RECONCILIATIONS_PATH = "/wms/rfid-reconciliations";
 export const RECEIPTS_PATH = "/wms/receipts";
 
 /**
- * Crear, escanear, aceptar y cancelar exigen `C-WMS-RECEPCIONES` en el backend
+ * Crear, leer etiquetas, aceptar y cancelar exigen `C-WMS-RECEPCIONES` en el backend
  * (`403` sin él). Los `GET` solo piden sesión (nucleo-erp#1439); la regla de la
  * ruta es `R-WMS-RECEPCIONES`, como Recepciones.
  */

@@ -13,7 +13,7 @@ import {
   type RfidReadFeedback,
 } from "../utils/rfidReadResult";
 
-/** Una lectura de la sesión de escaneo, la más reciente primero. */
+/** Una lectura de la sesión, la más reciente primero. */
 export interface RfidSessionRead extends RfidReadFeedback {
   key: number;
   code: string;
@@ -30,10 +30,10 @@ interface UseRfidReadQueueOptions {
 
 /**
  * Cola de lecturas de un encuadre: manda los códigos UNO A LA VEZ
- * (`POST .../lecturas/`), en el orden en que llegaron, para que el lector de
- * mano o la antena nunca disparen dos envíos a la vez.
+ * (`POST .../lecturas/`), en el orden en que llegaron, para que la antena
+ * nunca dispare dos envíos a la vez.
  *
- * - Un código que el encuadre ya tiene, o que ya se mandó en esta sesión, se
+ * - Una etiqueta que el encuadre ya tiene, o que ya se mandó en esta sesión, se
  *   avisa como "Ya leído" sin petición. El `400 {"codigo_tag"}` del backend
  *   dice lo mismo y tampoco es un error.
  * - `400 {"estatus"}` (se aceptó o canceló en otro lado), `404` o `403`
@@ -83,7 +83,7 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
         } catch (error) {
           const { kind, message } = classifyReadError(error);
           update(next.key, readErrorFeedback(kind, message));
-          // Lo que no quedó guardado se puede volver a escanear.
+          // Lo que no quedó guardado se puede volver a leer.
           if (kind !== "duplicate") sentRef.current.delete(next.code);
           // El backend ya lo tenía y el detalle no: otra sesión escaneó. Se relee.
           if (kind === "duplicate") changed += 1;
@@ -94,7 +94,7 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
             }
             queueRef.current = [];
             toast.error(message, { id: `rfid-read-stop-${reconciliationId}` });
-            changed += 1; // relee para dejar de ofrecer el escaneo
+            changed += 1; // relee para dejar de ofrecer la lectura
           }
         }
       }
@@ -105,7 +105,7 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
     }
   };
 
-  /** Encola un código leído (lector de mano o antena). */
+  /** Encola el `codigo_tag` de una etiqueta leída por la antena. */
   const enqueue = (raw: string) => {
     const code = normalizeTag(raw);
     if (!code) return;
@@ -113,7 +113,7 @@ export function useRfidReadQueue({ reconciliationId, knownTags }: UseRfidReadQue
     const key = seqRef.current;
     const repeated = knownRef.current.has(code) || sentRef.current.has(code);
     const entry: RfidSessionRead = repeated
-      ? { key, code, tone: "warn", title: "Ya leído", detail: "Este código ya está en el encuadre" }
+      ? { key, code, tone: "warn", title: "Ya leído", detail: "Esta etiqueta ya está en el encuadre" }
       : { key, code, tone: "pending", title: "Enviando…" };
     setReads((prev) => [entry, ...prev].slice(0, SESSION_READS_LIMIT));
     if (repeated) return;

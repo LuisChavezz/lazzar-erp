@@ -42,7 +42,7 @@ import type { RfidReconciliation } from "../interfaces/rfid-reconciliation.inter
 import { RfidReconciliationScanPanel } from "./RfidReconciliationScanPanel";
 
 const acceptDescription = (data: RfidReconciliation) =>
-  `El ${rfidReconciliationInlineLabel(data)} quedará aceptado y ya no se podrá escanear. No mueve inventario ni crea la recepción: esa se registra después en Nueva Recepción.`;
+  `El ${rfidReconciliationInlineLabel(data)} quedará aceptado y ya no se podrán leer más etiquetas. No mueve inventario ni crea la recepción: esa se registra después en Nueva Recepción.`;
 
 interface RfidReconciliationDetailDialogProps {
   /** Id del encuadre; `null` mantiene la consulta apagada. */
@@ -53,10 +53,10 @@ interface RfidReconciliationDetailDialogProps {
 
 /**
  * Detalle de un encuadre RFID (EC-961), por id: lo abren el listado, el alta
- * (recién creado, para escanear) y la bitácora (`encuadre_rfid`). Lee
+ * (recién creado, para leer etiquetas) y la bitácora (`encuadre_rfid`). Lee
  * `GET .../{id}/`, que trae lecturas y resumen (el listado no).
  *
- * Con `C-WMS-RECEPCIONES`: escanear y "Aceptar" mientras está PENDIENTE;
+ * Con `C-WMS-RECEPCIONES`: leer con la antena y "Aceptar" mientras está PENDIENTE;
  * "Cancelar" en PENDIENTE y ACEPTADO. Aceptar no crea la recepción: el aviso
  * de aceptado lleva a Nueva Recepción, donde se elige la misma orden y el
  * almacén (esa pantalla no recibe valores iniciales todavía).

@@ -6,6 +6,7 @@ import {
   rfidReconciliationOriginFolio,
 } from "@/src/features/rfid-reconciliations/constants/rfidReconciliations";
 import {
+  antennaTagCode,
   classifyReadError,
   normalizeTag,
   readErrorFeedback,
@@ -117,6 +118,27 @@ test.describe("errores de lecturas/", () => {
   test("el código se envía recortado y vacío no se envía", () => {
     expect(normalizeTag("  SKU-1 \n")).toBe("SKU-1");
     expect(normalizeTag("   ")).toBe("");
+  });
+});
+
+test.describe("codigo_tag de la antena", () => {
+  test("EPC y SKU: único por pieza y asignable por el SKU", () => {
+    expect(antennaTagCode({ epc: "E2801160AA", sku: "30018002XC", barcode_value: "30018002XC" })).toBe(
+      "E2801160AA 30018002XC",
+    );
+  });
+  test("sin SKU usa el código impreso; sin código, solo el EPC", () => {
+    expect(antennaTagCode({ epc: "E1", sku: null, barcode_value: "018Q" })).toBe("E1 018Q");
+    expect(antennaTagCode({ epc: "E1", sku: undefined, barcode_value: "" })).toBe("E1");
+  });
+  test("sin EPC no se manda nada y nunca pasa de 120 caracteres", () => {
+    expect(antennaTagCode({ epc: " ", sku: "X", barcode_value: "X" })).toBe("");
+    expect(antennaTagCode({ epc: "E".repeat(64), sku: "S".repeat(80), barcode_value: null })).toHaveLength(120);
+  });
+  test("dos piezas del mismo SKU dan códigos distintos", () => {
+    const a = antennaTagCode({ epc: "E1", sku: "SKU-1", barcode_value: "SKU-1" });
+    const b = antennaTagCode({ epc: "E2", sku: "SKU-1", barcode_value: "SKU-1" });
+    expect(a).not.toBe(b);
   });
 });
 

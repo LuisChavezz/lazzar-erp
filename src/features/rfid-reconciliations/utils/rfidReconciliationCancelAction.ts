@@ -46,7 +46,7 @@ export const rfidReconciliationCancelDialogContent = (
   description:
     target.estatus === "ACEPTADO"
       ? `El ${rfidReconciliationInlineLabel(target)} ya está aceptado; quedará cancelado y su conteo dejará de valer. No mueve inventario ni toca recepciones.`
-      : `El ${rfidReconciliationInlineLabel(target)} quedará cancelado y ya no se podrá escanear ni aceptar. No mueve inventario.`,
+      : `El ${rfidReconciliationInlineLabel(target)} quedará cancelado y ya no se podrán leer etiquetas ni aceptarlo. No mueve inventario.`,
   submitLabel: "Cancelar encuadre",
   pendingLabel: "Cancelando…",
   motivoPlaceholder: "Explica por qué se cancela el encuadre",

@@ -35,7 +35,7 @@ const STEP_LABELS: Record<Step, string> = {
 interface RfidReconciliationCreateDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Con el encuadre recién creado (PENDIENTE): la lista abre su detalle para escanear. */
+  /** Con el encuadre recién creado (PENDIENTE): la lista abre su detalle para leer etiquetas. */
   onCreated: (created: RfidReconciliation) => void;
 }
 
@@ -56,7 +56,7 @@ const subtitleOf = (candidate: RfidReconciliationCandidate | null) => {
  * 1. La OC u OP, con la misma lista que la recepción (`ReceiptOrderSelectorView`)
  *    alimentada por `recepcion-rfid-encuadres/onboarding/`, sin salidas a
  *    maquila: el encuadre solo se levanta sobre una OC u OP.
- * 2. Almacén, serie y referencias. El escaneo se hace ya en el detalle.
+ * 2. Almacén, serie y referencias. La lectura con la antena se hace ya en el detalle.
  *
  * El contenido se monta solo con el diálogo abierto: cada apertura empieza
  * sin selección y el onboarding se pide solo entonces.
@@ -291,7 +291,7 @@ function DetailsForm({
       </form.Field>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        El encuadre no mueve inventario: al crearlo podrás escanear las etiquetas y comparar lo leído contra lo
+        El encuadre no mueve inventario: al crearlo podrás leer las etiquetas con la antena RFID y comparar lo leído contra lo
         que falta recibir de la orden.
       </p>
 

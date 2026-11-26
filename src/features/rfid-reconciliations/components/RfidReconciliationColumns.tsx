@@ -28,7 +28,7 @@ import { useRfidReconciliationRowActionsContext } from "../hooks/rfidReconciliat
  * (estándar de tabla, `FolioActionMenu`) con el estatus debajo. El encuadre no
  * tiene folio propio: se nombra por su id y por el folio de su orden (columna
  * siguiente). "Cancelar" solo con `C-WMS-RECEPCIONES`, en Pendiente o Aceptado;
- * aceptar y escanear se hacen en el detalle.
+ * aceptar y leer etiquetas se hacen en el detalle.
  */
 function FolioCell({ row }: { row: RfidReconciliationRow }) {
   const { onViewDetail, onCancel, canWrite } = useRfidReconciliationRowActionsContext();

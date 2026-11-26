@@ -3,6 +3,7 @@ import { drfFieldMessage, firstDrfFieldMessage } from "@/src/utils/firstDrfField
 import { forbiddenDetailMessage, isForbiddenError, isNotFoundError } from "@/src/utils/drfWriteErrors";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import type { RfidReconciliationRead } from "../interfaces/rfid-reconciliation.interface";
+import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
 
 /** Cómo se pinta una lectura en la lista de lecturas de la sesión. */
 export type RfidReadTone = "pending" | "ok" | "warn" | "error";
@@ -51,7 +52,7 @@ export const classifyReadError = (error: unknown): { kind: RfidReadErrorKind; me
   if (isForbiddenError(error)) {
     return {
       kind: "forbidden",
-      message: forbiddenDetailMessage(error) ?? "No tienes permiso para escanear encuadres.",
+      message: forbiddenDetailMessage(error) ?? "No tienes permiso para leer etiquetas en encuadres.",
     };
   }
   const status = error instanceof AxiosError ? error.response?.status : undefined;
@@ -71,8 +72,26 @@ export const classifyReadError = (error: unknown): { kind: RfidReadErrorKind; me
 /** El aviso de un error de lectura en la lista de la sesión. */
 export const readErrorFeedback = (kind: RfidReadErrorKind, message: string): RfidReadFeedback =>
   kind === "duplicate"
-    ? { tone: "warn", title: "Ya leído", detail: "Este código ya está en el encuadre" }
+    ? { tone: "warn", title: "Ya leído", detail: "Esta etiqueta ya está en el encuadre" }
     : { tone: "error", title: "No se registró", detail: message };
+
+/** Largo de `RecepcionRFIDLectura.codigo_tag` (`CharField(max_length=120)`). */
+const CODIGO_TAG_MAX = 120;
+
+/**
+ * `codigo_tag` de una etiqueta leída por la antena: "EPC SKU". El EPC la hace
+ * única por pieza (el encuadre rechaza un `codigo_tag` repetido) y el SKU, o el
+ * código del producto si la etiqueta no tiene variante, la asigna al renglón:
+ * el backend parte `codigo_tag` por espacios y resuelve con cualquiera de las
+ * partes (aún no resuelve por EPC). Sin código, solo el EPC: se guarda sin
+ * asignar. Sin EPC no hay nada que mandar.
+ */
+export const antennaTagCode = (scan: Pick<RfidScan, "epc" | "sku" | "barcode_value">): string => {
+  const epc = scan.epc?.trim() ?? "";
+  if (!epc) return "";
+  const code = (scan.sku?.trim() || scan.barcode_value?.trim() || "").replace(/[\s,]+/g, "");
+  return (code ? `${epc} ${code}` : epc).slice(0, CODIGO_TAG_MAX);
+};
 
 /** El código como lo guarda el backend (`codigo_tag.strip()`); `""` = nada que enviar. */
 export const normalizeTag = (raw: string): string => raw.trim();
