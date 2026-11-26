@@ -24,6 +24,8 @@ const GATED = [
   "/operations/quotes",
   "/operations/dashboard",
   "/operations/inventory-pipeline",
+  "/operations/digital-stock",
+  "/sales/digital-stock",
   "/orders/2121",
   "/orders/2121/edit-mesa-control",
   "/system/document-audit",
