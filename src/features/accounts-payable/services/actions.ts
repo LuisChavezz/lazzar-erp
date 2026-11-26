@@ -54,3 +54,14 @@ export const createCuentaPorPagar = async (
 export const deleteCuentaPorPagar = async (id: number): Promise<void> => {
   await v1_api.delete(`/finanzas/cuentas-por-pagar/${id}/`);
 };
+
+/**
+ * Cancela una cuenta CON pagos ligados (`tiene_pagos`, nucleo-erp#1414):
+ * `DELETE /finanzas/cuentas-por-pagar/{id}/?motivo=` (nucleo-erp#1356, EC-950;
+ * exige `CANCELAR-FIN-PAGOS`). El motivo va codificado en la URL. Sin él
+ * responde `400 motivo`; con un pago `Aplicado` o ya cancelada, `400`; con otra
+ * operación en curso, `409`.
+ */
+export const cancelCuentaPorPagar = async (id: number, motivo: string): Promise<void> => {
+  await v1_api.delete(`/finanzas/cuentas-por-pagar/${id}/?motivo=${encodeURIComponent(motivo)}`);
+};

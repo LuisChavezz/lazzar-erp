@@ -5,7 +5,8 @@ import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissi
 import { financeWriteBlock } from "@/src/utils/financeWrite";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import type { HeaderFilterSpec } from "@/src/components/withHeaderFilters";
-import { DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
+import { BanIcon, DeleteIcon, ExternalLinkIcon, ViewIcon } from "@/src/components/Icons";
+import { cuentaPorPagarRemoval } from "../utils/cuentaPorPagarCancelAction";
 import { optionsFromConfig } from "@/src/utils/columnFilterOptions";
 import { formatMoneyValueOrDash } from "@/src/utils/formatCurrency";
 import { formatShortDate } from "@/src/utils/formatDate";
@@ -14,11 +15,7 @@ import {
   CXP_VENCIDA_BADGE_CONFIG,
   CXP_VENCIDA_BADGE_KEY,
 } from "../constants/cxpEstatus";
-import {
-  canDeleteCuentaPorPagar,
-  hasAppliedPayments,
-  isCuentaPorPagarVencida,
-} from "../utils/accounts-payable.utils";
+import { isCuentaPorPagarVencida } from "../utils/accounts-payable.utils";
 import type { CuentaPorPagar } from "../interfaces/accounts-payable.interface";
 import { useAccountsPayableRowActionsContext } from "../hooks/useAccountsPayableRowActions";
 
@@ -57,7 +54,7 @@ function VencimientoCell({ cuenta }: { cuenta: CuentaPorPagar }) {
  * "hoy" y "en vuelo" llegan por contexto (`AccountsPayableRowActionsProvider`).
  */
 function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
-  const { onViewDetail, onDelete, onGoToPayments, today, busyIds, write } =
+  const { onViewDetail, onDelete, onCancel, onGoToPayments, today, busyIds, write, cancel } =
     useAccountsPayableRowActionsContext();
 
   const items: ActionMenuItem[] = [
@@ -66,7 +63,10 @@ function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
   const writeBlock = financeWriteBlock(write, FINANCE_WRITE_PERMISSION_REASON);
   // Sin permiso de escritura, "Eliminar cuenta" se muestra deshabilitado con su
   // motivo (convención de los flujos de Finanzas).
-  if (canDeleteCuentaPorPagar(cuenta)) {
+  // Eliminar, cancelar o (backend sin `tiene_pagos`) la pista de los pagos
+  // aplicados: `cuentaPorPagarRemoval`.
+  const removal = cuentaPorPagarRemoval(cuenta);
+  if (removal === "delete") {
     items.push({
       label: "Eliminar cuenta",
       icon: DeleteIcon,
@@ -74,7 +74,18 @@ function AccountsPayableIdCell({ cuenta }: { cuenta: CuentaPorPagar }) {
       disabled: writeBlock.disabled || busyIds.includes(cuenta.id),
       description: writeBlock.description,
     });
-  } else if (hasAppliedPayments(cuenta)) {
+  } else if (removal === "cancel") {
+    // Con pagos ligados (aunque estén cancelados u ocultos) el backend la
+    // cancela con motivo; un pago `Aplicado` da su `400`, que se muestra tal cual.
+    const cancelBlock = financeWriteBlock(cancel, cancel.reason);
+    items.push({
+      label: "Cancelar cuenta",
+      icon: BanIcon,
+      onSelect: () => onCancel(cuenta),
+      disabled: cancelBlock.disabled || busyIds.includes(cuenta.id),
+      description: cancelBlock.description,
+    });
+  } else if (removal === "pay-first") {
     // Eliminar queda OCULTO con pagos aplicados (el backend respondería 400); en
     // su lugar se dice qué hacer y se lleva a Pagos. Una cuenta `Cancelada` sin
     // pagos no recibe esta pista: no es el motivo. Sin permiso de escritura la

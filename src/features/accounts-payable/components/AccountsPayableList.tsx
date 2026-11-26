@@ -8,8 +8,10 @@ import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { withHeaderFilters } from "@/src/components/withHeaderFilters";
 import { useRowActionLock } from "@/src/hooks/useRowActionLock";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
-import { getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
-import { FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { getFinanceCancelState, getFinanceWriteState, guardFinanceWrite } from "@/src/utils/financeWrite";
+import { FINANCE_CANCEL_PERMISSION, FINANCE_WRITE_PERMISSION_REASON } from "@/src/constants/financePermissions";
+import { CancelReasonDialogFor } from "@/src/features/document-cancellation/components/CancelReasonDialog";
+import { cuentaPorPagarCancelDialogContent } from "../utils/cuentaPorPagarCancelAction";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { getMexicoTodayDate } from "@/src/utils/mexicoTime";
 import { getStaleRowDialogNotice } from "@/src/utils/staleRowDialogNotice";
@@ -49,6 +51,9 @@ export default function AccountsPayableList() {
   const { data: session, status: sessionStatus } = useSession();
   const write = getFinanceWriteState(session?.user, sessionStatus);
   const { canWrite } = write;
+  // "Cancelar cuenta" pide además `CANCELAR-FIN-PAGOS` (nucleo-erp#1356, EC-950).
+  const cancel = getFinanceCancelState(session?.user, sessionStatus, FINANCE_CANCEL_PERMISSION.pagos);
+  const [cancelTarget, setCancelTarget] = useState<CuentaPorPagar | null>(null);
   const { cuentasPorPagar, hasLoaded, isLoading, isError, error, refetch, isFetching } =
     useCuentasPorPagar();
   /**
@@ -119,6 +124,11 @@ export default function AccountsPayableList() {
       etiqueta: folio ? `cuenta por pagar #${id} (factura ${folio})` : `cuenta por pagar #${id}`,
       estatus: cuenta.estatus,
     });
+  };
+
+  const handleCancel = (cuenta: CuentaPorPagar) => {
+    if (!guardFinanceWrite(cancel, cancel.reason)) return;
+    setCancelTarget(cuenta);
   };
 
   /**
@@ -195,10 +205,12 @@ export default function AccountsPayableList() {
       value={{
         onViewDetail: (cuenta) => setOpenDetailId(cuenta.id),
         onDelete: handleDelete,
+        onCancel: handleCancel,
         onGoToPayments: () => router.push("/finance/payments"),
         today,
         busyIds: deleteTarget !== null && deleteLock.isPending(deleteTarget.id) ? [deleteTarget.id] : [],
         write,
+        cancel,
       }}
     >
       <div className="h-full flex flex-col min-h-0 space-y-6">
@@ -236,6 +248,16 @@ export default function AccountsPayableList() {
             }}
           />
         )}
+
+        {/* "Cancelar cuenta" con el motivo obligatorio (EC-950/974). */}
+        <CancelReasonDialogFor
+          target={cancelTarget}
+          content={cuentaPorPagarCancelDialogContent}
+          open={cancelTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setCancelTarget(null);
+          }}
+        />
 
         {deleteTarget !== null && (
           <ConfirmDialog

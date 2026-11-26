@@ -55,6 +55,13 @@ export interface CuentaPorPagar {
   estatus: CxPEstatus;
   /** Calculado por el backend (`total − saldo`), decimal en string. */
   total_pagado: string;
+  /**
+   * ¿Tiene alguna línea de pago ligada, también de pagos ocultos con
+   * `activo=False`? (nucleo-erp#1414, EC-974). Es la regla del `DELETE`: `true`
+   * la cancela (con motivo), `false` la borra. Opcional: un backend anterior no
+   * lo manda.
+   */
+  tiene_pagos?: boolean;
   /** Fecha "YYYY-MM-DD" del último pago, o `null` si aún no hay pagos. */
   fecha_ultimo_pago: string | null;
   observaciones: string | null;
