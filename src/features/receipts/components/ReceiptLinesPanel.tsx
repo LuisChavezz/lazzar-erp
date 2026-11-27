@@ -8,7 +8,14 @@ import { splitSku } from "@/src/utils/sku";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { capturaManualRecepcion, sumarCantidades } from "../utils/receiptQuantities";
 import { RfidFeedStrip } from "@/src/features/rfid-scanner/components/RfidFeedStrip";
-import { findReceiptLineByScan, groupReceiptLines, receiptScanCodes, type ReceiptScanLine } from "../utils/receiptScan";
+import { PendingQuantities } from "@/src/utils/pendingQuantities";
+import {
+  groupReceiptLines,
+  leerEnRecepcion,
+  receiptScanCodes,
+  tallaDeRenglon,
+  type ReceiptScanLine,
+} from "../utils/receiptScan";
 
 interface ReceiptLinesPanelProps {
   lines: ReceiptScanLine[];
@@ -31,8 +38,7 @@ const fmt = formatExactQuantityValue;
 const enMaquilaTexto = (line: ReceiptScanLine) =>
   `En maquila ${fmt(line.enMaquila)}${line.enMaquilaFolios.length > 0 ? ` (${line.enMaquilaFolios.join(", ")})` : ""}`;
 
-/** Talla visible: la del renglón o, si falta, la que trae el SKU. */
-const tallaDe = (line: ReceiptScanLine) => line.talla?.trim() || splitSku(line.sku)?.talla || null;
+const tallaDe = tallaDeRenglon;
 
 /**
  * Códigos del grupo para reconocerlo sin abrirlo: SKU base modelo / color, el
@@ -68,6 +74,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
   const [modo, setModo] = useState<ScanModo>(scannable ? "scanner" : "manual");
   const [abiertos, setAbiertos] = useState<ReadonlySet<string>>(() => new Set());
   const [resaltada, setResaltada] = useState<number | null>(null);
+  const [enVuelo] = useState(() => new PendingQuantities());
 
   const qtyOf = (line: ReceiptScanLine) => Math.min(Number(cantidades[String(line.id)]) || 0, line.tope);
   const grupos = groupReceiptLines(recibibles);
@@ -85,28 +92,21 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
   const llenarTodo = (todo: boolean) => recibibles.forEach((l) => setCantidad(l.id, todo ? String(l.tope) : "0"));
 
   const procesarLectura = (leido: string): ScanResult => {
-    // Con cupo = cabe una pieza más (un renglón con 0.5 por recibir no la tiene).
-    const line = findReceiptLineByScan(lines, leido, (l) => qtyOf(l) + 1 <= l.tope);
-    if (!line) return { tone: "error", title: "No está en esta orden", detail: `Código ${leido}` };
-    const talla = tallaDe(line);
-    const nombre = `${line.nombre}${talla ? ` · ${talla}` : ""}`;
-    if (line.tope <= 0) return { tone: "warn", title: line.sinTope ?? "Sin pendiente", detail: nombre };
-    const grupo = grupos.find((g) => g.lines.includes(line));
-    if (grupo) setAbiertos((prev) => new Set(prev).add(grupo.key));
-    setResaltada(line.id);
-    const actual = qtyOf(line);
-    if (actual + 1 > line.tope) {
-      // Queda menos de una pieza (pendiente fraccionario): una etiqueta no cabe.
-      return actual < line.tope
-        ? {
-            tone: "warn",
-            title: "Falta menos de una pieza",
-            detail: `${nombre}: ${fmt(actual)} de ${fmt(line.tope)}. Usa "Todo" para recibir el resto.`,
-          }
-        : { tone: "warn", title: "Ya está completo", detail: `${nombre}: ${fmt(actual)} de ${fmt(line.tope)}` };
+    // Lo capturado hasta ESTA lectura: con las que la antena entregó antes en la
+    // misma tanda, aunque su render no haya llegado (`PendingQuantities`).
+    const capturadoAhora = (line: ReceiptScanLine) =>
+      Math.min(Number(enVuelo.read(cantidades, String(line.id))) || 0, line.tope);
+    const { result, line, cantidad } = leerEnRecepcion(lines, leido, capturadoAhora);
+    if (line) {
+      const grupo = grupos.find((g) => g.lines.includes(line));
+      if (grupo) setAbiertos((prev) => new Set(prev).add(grupo.key));
+      setResaltada(line.id);
     }
-    setCantidad(line.id, String(actual + 1));
-    return { tone: "ok", title: `+1 ${nombre}`, detail: `${fmt(actual + 1)} de ${fmt(line.tope)}` };
+    if (line && cantidad !== undefined) {
+      enVuelo.write(cantidades, String(line.id), String(cantidad));
+      setCantidad(line.id, String(cantidad));
+    }
+    return result;
   };
 
   return (
