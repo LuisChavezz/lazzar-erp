@@ -20,6 +20,8 @@ import {
   advanceFeedCursor,
   cursorFeedPageParams,
   drainFeedAfterCursor,
+  entregarNuevas,
+  RfidFeedMemory,
   nextCursorFeedMount,
   nextCursorFeedSession,
   rfidCursorScansKey,
@@ -582,6 +584,85 @@ test.describe("sesión del cursor por lector (EC-997)", () => {
     const otroEnPausa = nextCursorFeedSession(off, false, 24);
     expect(otroEnPausa.session).toBe(on.session);
     expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
+  });
+});
+
+test.describe("memoria de la captura entre Detener e Iniciar (EC-997)", () => {
+  type Scan = { id: number; epc: string };
+  /** Feed con el contrato de `scans/`: sin cursor, el más reciente; con cursor, `id` ascendente. */
+  const feed = (rows: Scan[]) => async (cursor: number | null) =>
+    cursor === null ? [...rows].sort((a, b) => b.id - a.id).slice(0, 1) : rows.filter((r) => r.id > cursor).sort((a, b) => a.id - b.id);
+  /** Un sondeo como el de `useRfidCursorScans`, y la entrega como la de `useRfidEpcFeed`. */
+  const sondear = async (memory: RfidFeedMemory<Scan>, sesion: string, lector: number, rows: Scan[]) => {
+    memory.empezar(sesion, lector);
+    const next = await drainFeedAfterCursor(memory.cursor, feed(rows));
+    memory.avanzar(sesion, next.cursor);
+    memory.outbox.push(next.fresh);
+  };
+  const entregar = (memory: RfidFeedMemory<Scan>) => {
+    const entregadas: number[] = [];
+    entregarNuevas(memory.outbox.take(), memory.vistos, (s) => entregadas.push(s.id));
+    return entregadas;
+  };
+  const viejas = Array.from({ length: 5 }, (_, i) => ({ id: 100 + i, epc: `OLD${i}` }));
+
+  test("al reanudar sigue el cursor: entra lo leído en la pausa y lo ya contado no vuelve a sumar", async () => {
+    const memory = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas];
+    await sondear(memory, "1:0", 9, rows);
+    expect(entregar(memory)).toEqual([]);
+    rows.push({ id: 105, epc: "A" }, { id: 106, epc: "B" });
+    await sondear(memory, "1:0", 9, rows);
+    expect(entregar(memory)).toEqual([105, 106]);
+    // Detener: se leen C y D sin sondear, y A se vuelve a guardar (30 s después).
+    rows.push({ id: 107, epc: "C" }, { id: 108, epc: "D" }, { id: 109, epc: "A" });
+    // Iniciar: otro montaje, misma memoria.
+    await sondear(memory, "2:0", 9, rows);
+    expect(entregar(memory)).toEqual([107, 108]);
+  });
+  test("un sondeo en vuelo al detener no se pierde, ni se cuenta dos veces si la sesión nueva lo vuelve a pedir", async () => {
+    const memory = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas];
+    await sondear(memory, "1:0", 9, rows);
+    rows.push({ id: 105, epc: "A" }, { id: 106, epc: "B" });
+    // El sondeo del montaje 1 sigue en vuelo cuando ya arrancó el montaje 2.
+    memory.empezar("1:0", 9);
+    const enVuelo = drainFeedAfterCursor(memory.cursor, feed(rows));
+    await sondear(memory, "2:0", 9, rows);
+    const tardio = await enVuelo;
+    memory.avanzar("1:0", tardio.cursor);
+    memory.outbox.push(tardio.fresh);
+    expect(entregar(memory)).toEqual([105, 106]);
+    expect(memory.cursor).toBe(106);
+  });
+  test("un formulario nuevo arranca con limite=1 y otro lector empieza de cero", async () => {
+    const usada = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas, { id: 105, epc: "A" }];
+    await sondear(usada, "1:0", 9, rows);
+    rows.push({ id: 106, epc: "B" });
+    await sondear(usada, "1:0", 9, rows);
+    expect(entregar(usada)).toEqual([106]);
+    // Otro lector en el mismo formulario: cursor y EPC vistos desde cero.
+    usada.empezar("1:1", 24);
+    expect([usada.cursor, usada.vistos.size]).toEqual([null, 0]);
+    // Otro formulario (memoria nueva): arranca, no entrega nada viejo.
+    const nueva = new RfidFeedMemory<Scan>(true);
+    await sondear(nueva, "3:0", 9, rows);
+    expect(entregar(nueva)).toEqual([]);
+    expect(nueva.cursor).toBe(106);
+  });
+  test("sin `continua` (el encuadre) cada sesión empieza de cero, como siempre", async () => {
+    const memory = new RfidFeedMemory<Scan>(false);
+    const rows = [...viejas];
+    await sondear(memory, "1:1", 9, rows);
+    rows.push({ id: 105, epc: "A" });
+    await sondear(memory, "1:1", 9, rows);
+    expect(entregar(memory)).toEqual([105]);
+    rows.push({ id: 106, epc: "B" });
+    // Pausa y reanuda: sesión nueva, arranca otra vez.
+    await sondear(memory, "1:2", 9, rows);
+    expect(entregar(memory)).toEqual([]);
+    expect(memory.vistos.size).toBe(0);
   });
 });
 

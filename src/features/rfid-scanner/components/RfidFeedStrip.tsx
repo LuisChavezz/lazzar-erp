@@ -12,6 +12,7 @@ import {
 } from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
 import { RfidLectorSelect } from "./RfidLectorSelect";
 import { rfidLectorListo } from "../utils/rfidLectorListo";
+import type { RfidFeedMemory } from "../utils/rfidScansParams";
 
 interface RfidFeedStripProps {
   /** Procesa un código leído igual que el lector de mano (SKU o código). */
@@ -20,6 +21,12 @@ interface RfidFeedStripProps {
   pantalla: string;
   /** Folio del documento que se captura, para el aviso "en uso". */
   documento?: string | null;
+  /**
+   * Memoria de la captura (`RfidFeedMemory` con `continua`), creada por el
+   * formulario: la tira se desmonta con Detener, y al volver a Iniciar sigue
+   * desde el último cursor sin volver a contar los EPC del formulario.
+   */
+  memoria: RfidFeedMemory<RfidScan>;
 }
 
 interface Detectada {
@@ -42,16 +49,17 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * (`onCode`), una sola vez, y queda en la lista con su resultado: sumó,
  * ya estaba completo, o no es de esta orden.
  *
- * Solo cuenta lo leído DESPUÉS de montarse, es decir, de pulsar Iniciar
- * (`ScanCapture` la monta al escanear): el feed va con cursor (EC-997), sin
- * las 50 lecturas más recientes de antes, que podían tener horas, y sin
- * perder piezas de una tarima de más de 50. Cambiar de lector arranca un
- * cursor nuevo para ese lector.
+ * Solo cuenta lo leído DESPUÉS de pulsar Iniciar por primera vez en el
+ * formulario: el feed va con cursor (EC-997), sin las 50 lecturas más
+ * recientes de antes, que podían tener horas, y sin perder piezas de una
+ * tarima de más de 50. Detener → Iniciar sigue desde el último cursor
+ * (`memoria`), así que entra lo leído en la pausa y nada se cuenta dos veces.
+ * Cambiar de lector arranca un cursor nuevo para ese lector.
  *
  * Las lecturas se acotan a la empresa activa (EC-884): sin empresa no se
  * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
-export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProps) {
+export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeedStripProps) {
   const [detectadas, setDetectadas] = useState<Detectada[]>([]);
 
   const handleEpc = (scan: RfidScan) => {
@@ -78,7 +86,10 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
   // Y nada se pide hasta que el catálogo responda (`rfidLectorListo`).
   const activo = !hasNoCompany && rfidLectorListo({ catalogoResuelto, lectores: lectores.length, lectorId });
   // "Sin respuesta" también si un sondeo posterior falla, hasta que otro responda.
-  const { isError: neverAnswered, isPollFailing } = useRfidEpcFeed(activo, handleEpc, lectorId, { cursor: true });
+  const { isError: neverAnswered, isPollFailing } = useRfidEpcFeed(activo, handleEpc, lectorId, {
+    cursor: true,
+    memoria,
+  });
   const isError = neverAnswered || isPollFailing;
   useLectorEnUso(lectorId, activo, pantalla, documento);
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
 import {
@@ -7,7 +7,7 @@ import {
   nextCursorFeedMount,
   nextCursorFeedSession,
   rfidCursorScansKey,
-  ScanOutbox,
+  RfidFeedMemory,
   withPollOutcome,
   type CursorFeedSession,
 } from "../utils/rfidScansParams";
@@ -26,6 +26,12 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * devuelven SOLO lo nuevo, en `id` ascendente (EC-984). Si una página viene
  * llena se pide la siguiente en el mismo sondeo (`drainFeedAfterCursor`). Así
  * nada leído antes de empezar entra a la captura y nada posterior se salta.
+ *
+ * El cursor, los EPC vistos y la bandeja viven en una `RfidFeedMemory`
+ * (`memoria`). Recepción y Surtido pasan una por formulario que `continua`:
+ * una sesión nueva con el mismo lector sigue desde el último cursor en vez de
+ * arrancar (Detener → Iniciar, EC-997). Sin `memoria`, una propia que empieza
+ * de cero en cada sesión (el encuadre).
  *
  * Una pieza que ya estaba frente a la antena al empezar puede tardar hasta
  * 30 s en salir: el backend descarta la misma etiqueta del mismo lector
@@ -47,8 +53,19 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  */
 export function useRfidCursorScans(
   enabled: boolean,
-  { soloMatch, lector = null }: { soloMatch: boolean; lector?: number | null },
+  {
+    soloMatch,
+    lector = null,
+    memoria,
+  }: {
+    soloMatch: boolean;
+    lector?: number | null;
+    /** Memoria de la captura (`RfidFeedMemory`); sin ella, una propia que empieza de cero en cada sesión. */
+    memoria?: RfidFeedMemory<RfidScan>;
+  },
 ) {
+  const [propia] = useState(() => new RfidFeedMemory<RfidScan>(false));
+  const memory = memoria ?? propia;
   // Una sesión nueva al encender y al cambiar de lector encendido
   // (`nextCursorFeedSession`; ajuste de estado en render, sin efecto).
   const [feed, setFeed] = useState<CursorFeedSession>({ enabled, lector, session: 0 });
@@ -62,19 +79,19 @@ export function useRfidCursorScans(
   const { session } = nextFeed;
   // Distinto en cada montaje: uno nuevo nunca hereda la consulta (ni el sondeo en vuelo) del anterior.
   const [mount] = useState(nextCursorFeedMount);
-  const cursorRef = useRef<{ session: number; cursor: number | null }>({ session, cursor: null });
-  const [outbox] = useState(() => new ScanOutbox<RfidScan>());
   const [version, setVersion] = useState(0);
 
   const { isInitialError, isFetching } = useGuardedQuery<{ fresh: number }>(
     {
       queryKey: rfidCursorScansKey(soloMatch, lector, mount, session),
       queryFn: async () => {
-        if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
+        // Sesión de este montaje: sigue el cursor de la captura o empieza de cero (`RfidFeedMemory.empezar`).
+        const sesion = `${mount}:${session}`;
+        memory.empezar(sesion, lector);
         // Páginas llenas seguidas hasta vaciar lo nuevo (`drainFeedAfterCursor`).
         const next = await withPollOutcome(
           () =>
-            drainFeedAfterCursor(cursorRef.current.cursor, async (current) => {
+            drainFeedAfterCursor(memory.cursor, async (current) => {
               const { scans } = await fetchRfidScans({
                 soloMatch,
                 lector,
@@ -84,14 +101,16 @@ export function useRfidCursorScans(
             }),
           // Solo el sondeo de la sesión vigente marca el estado.
           (failed) => {
-            if (cursorRef.current.session === session) setLastPollFailed(failed);
+            if (memory.sesion === sesion) setLastPollFailed(failed);
           },
         );
-        // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
-        if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
-        // A la bandeja aunque la lectura ya esté en pausa: el cursor ya pasó por ahí.
+        // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra
+        // (la sesión nueva vuelve a pedir desde el cursor que esta dejó).
+        memory.avanzar(sesion, next.cursor);
+        // A la bandeja aunque la lectura ya esté en pausa o la tira desmontada:
+        // el cursor ya pasó por ahí; se entrega al reanudar.
         if (next.fresh.length > 0) {
-          outbox.push(next.fresh);
+          memory.outbox.push(next.fresh);
           setVersion((current) => current + 1);
         }
         return { fresh: next.fresh.length };
@@ -112,5 +131,5 @@ export function useRfidCursorScans(
   // `isPollFailing`: mientras el ÚLTIMO sondeo de la lectura encendida falló
   // (se limpia con la siguiente respuesta). Solo para el aviso de la tira;
   // `isInitialError` sigue diciendo lo mismo de siempre.
-  return { outbox, version, isInitialError, isPollFailing: enabled && lastPollFailed, isFetching };
+  return { memory, version, isInitialError, isPollFailing: enabled && lastPollFailed, isFetching };
 }

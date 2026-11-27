@@ -9,6 +9,8 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { capturaManualRecepcion, sumarCantidades } from "../utils/receiptQuantities";
 import { RfidFeedStrip } from "@/src/features/rfid-scanner/components/RfidFeedStrip";
 import { PendingQuantities } from "@/src/utils/pendingQuantities";
+import { RfidFeedMemory } from "@/src/features/rfid-scanner/utils/rfidScansParams";
+import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
 import {
   groupReceiptLines,
   leerEnRecepcion,
@@ -75,6 +77,8 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
   const [abiertos, setAbiertos] = useState<ReadonlySet<string>>(() => new Set());
   const [resaltada, setResaltada] = useState<number | null>(null);
   const [enVuelo] = useState(() => new PendingQuantities());
+  // Cursor y EPC vistos de la antena en ESTE formulario, entre Detener e Iniciar (EC-997).
+  const [antena] = useState(() => new RfidFeedMemory<RfidScan>(true));
 
   const qtyOf = (line: ReceiptScanLine) => Math.min(Number(cantidades[String(line.id)]) || 0, line.tope);
   const grupos = groupReceiptLines(recibibles);
@@ -125,7 +129,7 @@ export function ReceiptLinesPanel({ lines, cantidades, setCantidad, notice, line
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="receipt-scan"
         onScan={procesarLectura}
-        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Recepción" />}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Recepción" memoria={antena} />}
         actions={
           recibibles.length > 0 && (
             <div className="flex items-center gap-1">

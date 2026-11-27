@@ -11,6 +11,8 @@ import { hasLineCode, splitSku } from "@/src/utils/sku";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 import type { PickingLineLimits } from "../hooks/usePickingStep2Form";
 import { PendingQuantities } from "@/src/utils/pendingQuantities";
+import { RfidFeedMemory } from "@/src/features/rfid-scanner/utils/rfidScansParams";
+import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
 import { anyScannable, groupByProduct, leerEnSurtido } from "../utils/pickingScan";
 
 interface PickingLinesPanelProps {
@@ -68,6 +70,8 @@ export function PickingLinesPanel({
   const [abiertos, setAbiertos] = useState<ReadonlySet<string>>(() => new Set());
   const [resaltada, setResaltada] = useState<string | null>(null);
   const [enVuelo] = useState(() => new PendingQuantities());
+  // Cursor y EPC vistos de la antena en ESTE formulario, entre Detener e Iniciar (EC-997).
+  const [antena] = useState(() => new RfidFeedMemory<RfidScan>(true));
 
   const grupos = groupByProduct(rows);
   const conCodigos = hasLineCode(rows.map(codesOf));
@@ -119,7 +123,7 @@ export function PickingLinesPanel({
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="picking-scan"
         onScan={procesarLectura}
-        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Surtido" />}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Surtido" memoria={antena} />}
       />
 
       {/* ── Productos (desplegables) ──────────────────────────────────── */}

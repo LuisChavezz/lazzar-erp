@@ -99,6 +99,71 @@ export const withPollOutcome = async <T>(poll: () => Promise<T>, report: (failed
   return result;
 };
 
+/**
+ * Lo que una captura con cursor conserva entre sondeos y, si `continua`,
+ * entre sus tramos de lectura (EC-997): el cursor, el lector al que
+ * pertenece, los EPC ya entregados y la bandeja de lo que trajo un sondeo.
+ *
+ * - `continua: true` (Recepción y Surtido: una por formulario, la crea el
+ *   panel): Detener → Iniciar desmonta la tira, pero al reanudar se sigue
+ *   desde el último cursor, así que entra todo lo leído desde el último
+ *   sondeo (también en la pausa) y un EPC ya contado en el formulario no
+ *   vuelve a sumar. Un sondeo en vuelo al detener deja sus lecturas en la
+ *   bandeja (se entregan al reanudar) y, si su sesión sigue vigente, mueve el
+ *   cursor; si no, la sesión nueva las vuelve a pedir desde el cursor de antes.
+ * - `continua: false` (el encuadre, y quien no pase una): cada sesión empieza
+ *   de cero, como siempre.
+ *
+ * Con otro lector siempre empieza de cero: el cursor de un lector no sirve
+ * para otro. Cerrar el formulario descarta la memoria con el panel.
+ */
+export class RfidFeedMemory<T extends { id: number; epc: string }> {
+  readonly outbox = new ScanOutbox<T>();
+  cursor: number | null = null;
+  lector: number | null = null;
+  /** Sesión dueña del cursor (`rfidCursorScansKey` sin prefijo); `null` sin empezar. */
+  sesion: string | null = null;
+  vistos = new Set<string>();
+
+  constructor(readonly continua: boolean) {}
+
+  /** Lo llama el primer sondeo de cada sesión: sigue o empieza de cero. */
+  empezar(sesion: string, lector: number | null): void {
+    if (this.sesion === sesion) return;
+    const sigue = this.continua && this.lector === lector && this.cursor !== null;
+    this.sesion = sesion;
+    if (sigue) return;
+    this.cursor = null;
+    this.lector = lector;
+    this.vistos = new Set();
+  }
+
+  /** Mueve el cursor solo si `sesion` sigue siendo la dueña: una respuesta tardía no mueve otra. */
+  avanzar(sesion: string, cursor: number): void {
+    if (this.sesion === sesion) this.cursor = cursor;
+  }
+}
+
+/**
+ * Entrega a `onEpc`, en orden, cada lectura cuyo EPC no está en `vistos` (y lo
+ * anota). Devuelve cuántas entregó, para que quien escucha actualice su
+ * estado UNA vez por tanda.
+ */
+export const entregarNuevas = <T extends { epc: string }>(
+  scans: readonly T[],
+  vistos: Set<string>,
+  onEpc: (scan: T) => void,
+): number => {
+  let nuevas = 0;
+  for (const scan of scans) {
+    if (vistos.has(scan.epc)) continue;
+    vistos.add(scan.epc);
+    nuevas += 1;
+    onEpc(scan);
+  }
+  return nuevas;
+};
+
 /** Sesión de una captura con cursor: qué lector se lee y en qué sesión va. */
 export interface CursorFeedSession {
   enabled: boolean;
