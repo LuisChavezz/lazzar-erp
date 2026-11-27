@@ -20,7 +20,8 @@ import { WmsOrdersCatalogHeader } from './WmsOrdersCatalogHeader';
  * del filtro. Mismas columnas que cuando la lista salía del onboarding: folio,
  * cliente, sucursal y programaciones. Sucursal no se ordena (el backend no la
  * acepta en `ordering`). Sin columna de Acciones: el único destino de la fila
- * es el detalle 360°, que ya abre el folio.
+ * es el detalle 360°, que ya abre el folio. Sin callbacks: el folio es un
+ * enlace y los filtros leen sus catálogos con su propio hook.
  */
 
 const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
@@ -31,7 +32,7 @@ const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
   })),
 ];
 
-export const wmsOrderColumns: ColumnDef<SurtidoPedidoPorSurtir, unknown>[] = [
+export const getWmsOrderColumns = (): ColumnDef<SurtidoPedidoPorSurtir, unknown>[] => [
   {
     id: 'folio',
     accessorKey: 'folio',

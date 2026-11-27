@@ -30,36 +30,39 @@ const override = (column: SurtidoColumn, patch: Pick<SurtidoColumn, 'header' | '
  * (un pedido completo no tiene nada comprometido), con orden por folio y
  * cliente y filtros de cliente y etapa en el servidor. Las cifras no se
  * ordenan: el backend no las acepta en `ordering`. Las columnas base no se
- * tocan: las comparte la pantalla de avance de surtido, que no ordena.
+ * tocan: las comparte la pantalla de avance de surtido, que no ordena. Sin
+ * callbacks: "Por talla" y el origen del folio llegan por contexto
+ * (`SurtidoPedidoRowActionsProvider`).
  */
-export const wmsSurtidoColumns: ColumnDef<SurtidoPedido>[] = surtidoPedidoColumns
-  .filter((c) => c.id !== 'comprometidas')
-  .map((c): SurtidoColumn => {
-    switch (c.id) {
-      case 'pedido':
-        return override(c, { meta: { ...c.meta, serverSort: 'folio' } });
-      case 'cliente_nombre':
-        return override(c, {
-          meta: { ...c.meta, serverSort: 'cliente_nombre', serverFilter: 'cliente' },
-          header: ({ column }) => (
-            <WmsOrdersCatalogHeader
-              column={column}
-              tab="surtidos"
-              catalogo="clientes"
-              title="Cliente"
-              label="cliente"
-              searchable
-            />
-          ),
-        });
-      case 'etapa':
-        return override(c, {
-          meta: { ...c.meta, serverFilter: 'etapa' },
-          header: ({ column }) => (
-            <FilterHeader title="Etapa" column={column} options={ETAPA_FILTER_OPTIONS} label="etapa" />
-          ),
-        });
-      default:
-        return c;
-    }
-  });
+export const getWmsSurtidoColumns = (): ColumnDef<SurtidoPedido>[] =>
+  surtidoPedidoColumns
+    .filter((c) => c.id !== 'comprometidas')
+    .map((c): SurtidoColumn => {
+      switch (c.id) {
+        case 'pedido':
+          return override(c, { meta: { ...c.meta, serverSort: 'folio' } });
+        case 'cliente_nombre':
+          return override(c, {
+            meta: { ...c.meta, serverSort: 'cliente_nombre', serverFilter: 'cliente' },
+            header: ({ column }) => (
+              <WmsOrdersCatalogHeader
+                column={column}
+                tab="surtidos"
+                catalogo="clientes"
+                title="Cliente"
+                label="cliente"
+                searchable
+              />
+            ),
+          });
+        case 'etapa':
+          return override(c, {
+            meta: { ...c.meta, serverFilter: 'etapa' },
+            header: ({ column }) => (
+              <FilterHeader title="Etapa" column={column} options={ETAPA_FILTER_OPTIONS} label="etapa" />
+            ),
+          });
+        default:
+          return c;
+      }
+    });

@@ -22,8 +22,12 @@ import {
 } from '../constants/wmsOrdersTables';
 import { usePorSurtirTable, useSurtidosTable, useWmsOrdersResumen } from '../hooks/useWmsOrdersTables';
 import { WMS_ORDER_EXPORT_COLUMNS } from '../utils/wmsOrderExport';
-import { wmsOrderColumns } from './WmsOrderColumns';
-import { wmsSurtidoColumns } from './WmsSurtidoColumns';
+import { getWmsOrderColumns } from './WmsOrderColumns';
+import { getWmsSurtidoColumns } from './WmsSurtidoColumns';
+
+// A nivel de módulo: columnas estables entre renders (sin callbacks).
+const porSurtirColumns = getWmsOrderColumns();
+const surtidoColumns = getWmsSurtidoColumns();
 
 // La exportación de Surtidos no lleva "Salidas manuales": esta vista no la muestra.
 const surtidoExportColumns = SURTIDO_PEDIDO_EXPORT_COLUMNS.filter(
@@ -116,7 +120,7 @@ function PorSurtirTab() {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <DataTable
-        columns={wmsOrderColumns}
+        columns={porSurtirColumns}
         {...table.tableProps}
         onRefetch={onRefetch}
         getRowId={(pedido) => String(pedido.id)}
@@ -164,7 +168,7 @@ function SurtidosTab() {
     >
       <div className="flex-1 min-h-0 flex flex-col">
         <DataTable
-          columns={wmsSurtidoColumns}
+          columns={surtidoColumns}
           {...table.tableProps}
           onRefetch={onRefetch}
           getRowId={(p) => String(p.id)}
