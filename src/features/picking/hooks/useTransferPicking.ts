@@ -119,6 +119,8 @@ export const useTransferPicking = (pickingId: number) => {
     void queryClient.invalidateQueries({ queryKey: pickingDetailQueryKey(pickingId) });
     // El pedido también lista sus folios de surtido.
     void invalidatePedidoProgress(queryClient);
+    // Pedidos de Almacén y el avance de surtido, como al trasladar (EC-993).
+    void queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY });
   };
 
   return useMutation({
