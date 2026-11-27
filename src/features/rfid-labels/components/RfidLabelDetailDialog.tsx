@@ -9,11 +9,14 @@ import {
   PrinterIcon,
 } from "@/src/components/Icons";
 import { MainDialog } from "@/src/components/MainDialog";
+import { Loader } from "@/src/components/Loader";
+import { ErrorState } from "@/src/components/ErrorState";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { Button } from "@/src/components/Button";
 import { FormSelect } from "@/src/components/FormSelect";
 import { InfoField, SectionTitle, textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
+import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { RFID_LABEL_STATUS_CONFIG } from "../constants/rfidLabelStatus";
 import {
   deviceKey,
@@ -25,6 +28,7 @@ import {
 } from "../hooks/useBrowserPrintDevices";
 import { RfidLabelBarcodeGraphic } from "./RfidLabelBarcodeGraphic";
 import { RfidLabelZplBlock } from "./RfidLabelZplBlock";
+import { useRfidLabelDetail } from "../hooks/useRfidLabelDetail";
 import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
 
 /** Única redacción para "este registro no trae ZPL": la comparten el estado
@@ -58,8 +62,8 @@ function BrowserPrintSection({ zpl }: { zpl: string | null }) {
   const [coreLoaded, setCoreLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // El diálogo se desmonta al cerrarse (`RfidLabelColumns` lo monta de forma
-  // condicional) y los callbacks del SDK no se pueden cancelar. Sin esto, un
+  // Esta sección se desmonta al cerrarse el diálogo (Radix desmonta su
+  // contenido) y los callbacks del SDK no se pueden cancelar. Sin esto, un
   // envío en vuelo mostraría su toast cuando el usuario ya cerró el diálogo o
   // está viendo otra etiqueta. Mismo patrón que el `aliveRef` de
   // `useBrowserPrintDevices`, que existe por esta misma razón.
@@ -296,12 +300,13 @@ function BrowserPrintSection({ zpl }: { zpl: string | null }) {
 }
 
 /** Vista previa de la etiqueta: los datos reales disponibles de ESTE evento de
- *  impresión, maquetados en HTML. `barcodeValue` viene de `etiquetas[0]`, que
- *  puede no existir (impresión registrada con `rfid_mode: false` no genera
- *  renglones en `etiquetas[]`) — ese caso lo muestra explícito
+ *  impresión (su DETALLE), maquetados en HTML. `barcodeValue` viene de
+ *  `etiquetas[0]`, que puede no existir (impresión registrada con
+ *  `rfid_mode: false` no genera renglones en `etiquetas[]`, y el campo falta si
+ *  el backend no lo manda) — ese caso lo muestra explícito
  *  `RfidLabelBarcodeGraphic`, sin inventar un valor de reemplazo. */
 const RfidLabelPreview = ({ etiqueta }: { etiqueta: EtiquetaRFID }) => {
-  const barcodeValue = etiqueta.etiquetas[0]?.barcode_value ?? null;
+  const barcodeValue = etiqueta.etiquetas?.[0]?.barcode_value ?? null;
 
   return (
     <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-white/15 bg-white dark:bg-zinc-800/40 px-5 py-4">
@@ -325,11 +330,8 @@ const RfidLabelPreview = ({ etiqueta }: { etiqueta: EtiquetaRFID }) => {
 };
 
 interface RfidLabelDetailDialogProps {
-  /** El evento de impresión ya cargado por el listado — sin fetch propio
-   *  (listado y detalle comparten `EtiquetaRFIDSerializer` en el backend,
-   *  `get_serializer_class` no distingue por `self.action`). Mismo patrón que
-   *  `ShippingDetailDialog`. */
-  etiqueta: EtiquetaRFID;
+  /** Id de la impresión; `null` mantiene la consulta apagada. */
+  etiquetaId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -338,16 +340,23 @@ interface RfidLabelDetailDialogProps {
  * Detalle de un evento de impresión de etiqueta RFID: resumen + vista previa
  * + ZPL enviado + detección de impresoras Zebra.
  *
- * La sección "Impresión Zebra" ya no es la maqueta con impresoras inventadas
- * que tenía el mock: consulta de verdad al agente local de Browser Print
- * (`BrowserPrintSection`). Sigue SIN botón de imprimir — enviar el ZPL a la
- * impresora es una tarea aparte.
+ * Lee `GET /wms/etiquetas-rfid/{id}/` (`useRfidLabelDetail`): desde EC-989 el
+ * listado ya no trae `etiquetas` ni `zpl_enviado`, así que `codigo_producto`,
+ * el código de barras y el ZPL (el que se muestra y el que se reimprime) salen
+ * SOLO del detalle, nunca de la fila.
+ *
+ * La sección "Impresión Zebra" (`BrowserPrintSection`) detecta impresoras con
+ * el agente local de Browser Print, y su botón "Imprimir etiqueta" reenvía el
+ * `zpl_enviado` del detalle a la impresora elegida.
  */
 export function RfidLabelDetailDialog({
-  etiqueta,
+  etiquetaId,
   open,
   onOpenChange,
 }: RfidLabelDetailDialogProps) {
+  const { data: etiqueta, isLoading, isInitialError, isNotFound, error } =
+    useRfidLabelDetail(etiquetaId ?? 0, open);
+
   return (
     <MainDialog
       open={open}
@@ -362,45 +371,60 @@ export function RfidLabelDetailDialog({
               Detalle de Impresión RFID
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-normal mt-0.5">
-              {etiqueta.folio}
+              {etiqueta ? etiqueta.folio : isInitialError || isNotFound ? "Error al cargar" : "Cargando…"}
             </p>
           </div>
         </div>
       }
     >
-      <div className="space-y-5">
-        {/* Resumen */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
-          <InfoField label="Producto" className="col-span-2">
-            {etiqueta.producto_nombre}
-          </InfoField>
-          <InfoField label="SKU">{textOrDash(etiqueta.sku)}</InfoField>
-          <InfoField label="Estatus">
-            <StatusBadge status={etiqueta.status} config={RFID_LABEL_STATUS_CONFIG} />
-          </InfoField>
-          <InfoField label="Variante" className="col-span-2">
-            {textOrDash(etiqueta.producto_variante_nombre)}
-          </InfoField>
-          <InfoField label="Cantidad">{etiqueta.cantidad}</InfoField>
-          <InfoField label="Fecha">
-            {formatShortDate(etiqueta.created_at)} · {formatShortTime(etiqueta.created_at)}
-          </InfoField>
+      {isLoading && <Loader title="Cargando la impresión..." className="py-16" />}
+      {isNotFound && (
+        <ErrorState
+          title="Error al cargar la impresión"
+          message="No tienes acceso a esta impresión o ya no existe."
+        />
+      )}
+      {isInitialError && (
+        <ErrorState
+          title="Error al cargar la impresión"
+          message={extractErrorMessage(error, "No se pudo cargar la información.")}
+        />
+      )}
+
+      {!isLoading && etiqueta && !isNotFound && (
+        <div className="space-y-5">
+          {/* Resumen */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/5 text-xs">
+            <InfoField label="Producto" className="col-span-2">
+              {etiqueta.producto_nombre}
+            </InfoField>
+            <InfoField label="SKU">{textOrDash(etiqueta.sku)}</InfoField>
+            <InfoField label="Estatus">
+              <StatusBadge status={etiqueta.status} config={RFID_LABEL_STATUS_CONFIG} />
+            </InfoField>
+            <InfoField label="Variante" className="col-span-2">
+              {textOrDash(etiqueta.producto_variante_nombre)}
+            </InfoField>
+            <InfoField label="Cantidad">{etiqueta.cantidad}</InfoField>
+            <InfoField label="Fecha">
+              {formatShortDate(etiqueta.created_at)} · {formatShortTime(etiqueta.created_at)}
+            </InfoField>
+          </div>
+
+          {/* Vista previa */}
+          <div>
+            <SectionTitle>Vista previa de la etiqueta</SectionTitle>
+            <RfidLabelPreview etiqueta={etiqueta} />
+          </div>
+
+          {/* ZPL */}
+          <RfidLabelZplBlock zpl={etiqueta.zpl_enviado} emptyMessage={SIN_ZPL_MESSAGE} />
+
+          {/* Impresión Zebra. Reenvía el `zpl_enviado` del DETALLE, sin
+              cambiar nada de lo que se manda. */}
+          <BrowserPrintSection zpl={etiqueta.zpl_enviado} />
         </div>
-
-        {/* Vista previa */}
-        <div>
-          <SectionTitle>Vista previa de la etiqueta</SectionTitle>
-          <RfidLabelPreview etiqueta={etiqueta} />
-        </div>
-
-        {/* ZPL */}
-        <RfidLabelZplBlock zpl={etiqueta.zpl_enviado} emptyMessage={SIN_ZPL_MESSAGE} />
-
-        {/* Impresión Zebra. El ZPL viene del registro ya cargado por el
-            listado — sin fetch adicional, misma convención que el resto del
-            diálogo. */}
-        <BrowserPrintSection zpl={etiqueta.zpl_enviado} />
-      </div>
+      )}
     </MainDialog>
   );
 }

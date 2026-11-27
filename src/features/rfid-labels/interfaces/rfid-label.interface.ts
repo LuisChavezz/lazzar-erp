@@ -1,9 +1,13 @@
 /**
  * Contrato de `GET /wms/etiquetas-rfid/` (listado) y `GET /wms/etiquetas-rfid/{id}/`
- * (detalle) — ambos comparten el mismo `EtiquetaRFIDSerializer` en el backend
- * (`EtiquetaRFIDViewSet.get_serializer_class` no distingue por `self.action`
- * entre `list`/`retrieve`), así que el detalle no trae ni un campo más que el
- * listado y no requiere una segunda forma.
+ * (detalle).
+ *
+ * Desde EC-989 (nucleo-erp) el listado es LIGERO: no trae `etiquetas` (hasta
+ * 10 000 EPC por impresión) ni `zpl_enviado`, y pagina con `?limit=&offset=`.
+ * Por eso hay dos formas: `EtiquetaRFIDRow` (una fila del listado) y
+ * `EtiquetaRFID` (el detalle, que conserva todo). El backend anterior a EC-989
+ * todavía manda ambos campos en el listado; el tipo de la fila no los declara a
+ * propósito, para que nadie los lea de una fila.
  *
  * El grano es UN EVENTO DE IMPRESIÓN, no una etiqueta/SKU vigente: el modelo
  * (`EtiquetaRFIDImpresion`) es un log append-only sin restricción de unicidad
@@ -34,8 +38,8 @@ export interface EtiquetaRFIDDetalle {
   updated_at: string;
 }
 
-/** Un evento de impresión de etiqueta(s) RFID. */
-export interface EtiquetaRFID {
+/** Un evento de impresión de etiqueta(s) RFID, como lo trae el LISTADO. */
+export interface EtiquetaRFIDRow {
   id: number;
   folio: string;
   empresa: number;
@@ -57,12 +61,20 @@ export interface EtiquetaRFID {
   printer_name: string | null;
   printer_address: string | null;
   status: EtiquetaRFIDStatus;
+  observaciones: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Un evento de impresión completo: el DETALLE (`GET .../{id}/`) y la respuesta
+ *  del registro (`POST .../onboarding/`). */
+export interface EtiquetaRFID extends EtiquetaRFIDRow {
   /** Provisto por el CLIENTE al registrar la impresión — el backend no genera
    *  ZPL en este flujo (solo en `GET /preview/`, endpoint distinto). Con
    *  frecuencia `null`. */
   zpl_enviado: string | null;
-  observaciones: string | null;
-  created_at: string;
-  updated_at: string;
-  etiquetas: EtiquetaRFIDDetalle[];
+  /** Vacío cuando la impresión se registró con `rfid_mode: false`. Opcional a
+   *  propósito: es el campo que EC-989 quitó del listado, y quien lo lea se
+   *  cuida de que falte en vez de reventar. */
+  etiquetas?: EtiquetaRFIDDetalle[];
 }
