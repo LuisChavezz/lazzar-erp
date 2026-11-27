@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createPacking } from "../services/actions";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/surtidoPedidosTable";
 
 /**
  * Mensajes de "dato desactualizado": el pendiente por empacar cambió entre que
@@ -223,6 +224,8 @@ export const useCreatePacking = (onServerError?: (parsed: ParsedPackingError) =>
       // (usa el `staleTime` global a propósito, ver el hook).
       queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
       void invalidatePedidoProgress(queryClient);
+      // Empacadas de Pedidos de Almacén (Surtidos) y del avance de surtido (EC-993).
+      void queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY });
       toast.success("Embarque registrado correctamente");
     },
     onError: (error) => {
