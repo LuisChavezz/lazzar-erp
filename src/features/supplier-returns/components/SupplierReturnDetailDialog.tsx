@@ -47,7 +47,9 @@ interface SupplierReturnDetailDialogProps {
  * está aplicada; el diálogo de motivo se monta con el permiso, aparte del
  * botón, para que cierre con su animación cuando el botón desaparece.
  * "Descargar PDF" (EC-976) lo ve cualquiera que lea el detalle. Los importes son
- * MXN: el backend valúa al costo MXN del renglón de la OC.
+ * MXN, aquí y en el PDF: el backend valúa al costo MXN del renglón de la OC.
+ * SKU, color y talla solo se muestran si algún renglón trae el dato, como en el
+ * PDF (la materia prima no tiene variante).
  */
 export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: SupplierReturnDetailDialogProps) {
   const { data, isLoading, isInitialError, isNotFound, error } = useSupplierReturnDetail(returnId ?? 0);
@@ -80,6 +82,10 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
     ) : null;
 
   const ocHref = data?.orden_compra ? purchaseOrderDetailHref(data.orden_compra) : null;
+  const lines = data?.detalles ?? [];
+  const showSku = lines.some((line) => line.producto_variante_sku?.trim());
+  const showColor = lines.some((line) => line.producto_variante_color?.trim());
+  const showTalla = lines.some((line) => line.producto_variante_talla?.trim());
 
   return (
     <MainDialog
@@ -168,10 +174,10 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
               <LineItemsTable
                 head={
                   <>
-                    <th className="px-3 py-2 font-medium">SKU</th>
+                    {showSku && <th className="px-3 py-2 font-medium">SKU</th>}
                     <th className="px-3 py-2 font-medium">Producto</th>
-                    <th className="px-3 py-2 font-medium">Color</th>
-                    <th className="px-3 py-2 font-medium">Talla</th>
+                    {showColor && <th className="px-3 py-2 font-medium">Color</th>}
+                    {showTalla && <th className="px-3 py-2 font-medium">Talla</th>}
                     <th className="px-3 py-2 font-medium text-right">Cantidad</th>
                     <th className="px-3 py-2 font-medium text-right">Costo unitario</th>
                     <th className="px-3 py-2 font-medium text-right">Importe</th>
@@ -180,16 +186,22 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
               >
                 {data.detalles.map((line) => (
                   <tr key={line.id}>
-                    <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">
-                      {textOrDash(line.producto_variante_sku)}
-                    </td>
+                    {showSku && (
+                      <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_sku)}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{textOrDash(line.producto_nombre)}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                      {textOrDash(line.producto_variante_color)}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                      {textOrDash(line.producto_variante_talla)}
-                    </td>
+                    {showColor && (
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_color)}
+                      </td>
+                    )}
+                    {showTalla && (
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_talla)}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-right tabular-nums font-semibold">
                       {formatExactQuantityValue(line.cantidad)}
                     </td>
