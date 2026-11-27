@@ -30,6 +30,21 @@ const ActionsCell = ({ row }: { row: EtiquetaRFIDRow }) => {
   );
 };
 
+/** El folio abre el mismo detalle que "Ver Detalles" del menú. */
+const FolioCell = ({ row }: { row: EtiquetaRFIDRow }) => {
+  const { onViewDetail } = useRfidLabelRowActionsContext();
+  return (
+    <button
+      type="button"
+      onClick={() => onViewDetail(row)}
+      title="Ver detalle"
+      className="font-mono font-semibold text-slate-700 dark:text-slate-200 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
+    >
+      {row.folio}
+    </button>
+  );
+};
+
 /** Los estatus con su punto de color: el menú es la leyenda. */
 const STATUS_OPTIONS = [
   ALL_FILTER_OPTION,
@@ -55,11 +70,7 @@ export const rfidLabelColumns = [
   columnHelper.accessor("folio", {
     header: "Folio",
     meta: { serverSort: "folio" },
-    cell: (info) => (
-      <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
-        {info.getValue()}
-      </span>
-    ),
+    cell: ({ row }) => <FolioCell row={row.original} />,
   }),
   // `accessorFn` que colapsa `null` a `""` — mismo bug de
   // `getColumnCanGlobalFilter`/`flatRows[0]` que ya documenta
