@@ -8,6 +8,8 @@ export interface RfidScansParams {
   despuesDeId?: number;
   /** Cuántas lecturas (1-200, default del backend 50). */
   limite?: number;
+  /** `unicos=1`: la última lectura de cada EPC. Ausente = sí, como siempre. */
+  unicos?: boolean;
 }
 
 /** Tope de `limite` en el backend: lo que pide una captura con cursor. */
@@ -15,7 +17,12 @@ export const RFID_FEED_CURSOR_LIMIT = 200;
 
 /**
  * `limite` del arranque del cursor (EC-997): esa respuesta solo da el `id`
- * más alto y no entrega nada, así que basta la más reciente. Sin cursor el
+ * más alto y no entrega nada, así que basta la más reciente. Va sin
+ * `solo_match` ni `unicos` (solo con `lector`): el cursor tiene que partir del
+ * `id` más alto de TODAS las lecturas del lector, no del más alto de las que
+ * ya cruzan con una etiqueta; si no, una lectura vieja que se liga después
+ * (`ligar_lecturas_previas`, etiqueta impresa tras leerla) quedaría por
+ * encima del cursor y entraría como pieza nueva. Sin cursor el
  * backend ordena por `-created_at, -id`; dos `scans/receive/` simultáneos
  * podrían dejar arriba una fila de `id` menor, y entonces entraría alguna
  * lectura de milisegundos antes de empezar (aceptado).
@@ -23,25 +30,28 @@ export const RFID_FEED_CURSOR_LIMIT = 200;
 export const RFID_FEED_BOOTSTRAP_LIMIT = 1;
 
 /**
- * `limite` y `despues_de_id` de cada página de una captura con cursor: sin
- * cursor todavía, el arranque con `RFID_FEED_BOOTSTRAP_LIMIT`; con cursor, el
- * tope (`RFID_FEED_CURSOR_LIMIT`) después de ese `id`.
+ * Lo que cambia en cada página de una captura con cursor, sobre sus filtros
+ * (`soloMatch`, `lector`): sin cursor todavía, el arranque con
+ * `RFID_FEED_BOOTSTRAP_LIMIT` y sin `solo_match` ni `unicos`; con cursor, los
+ * filtros de la captura y el tope (`RFID_FEED_CURSOR_LIMIT`) después de ese
+ * `id`. Se esparce DESPUÉS de los filtros, para que el arranque los anule.
  */
 export const cursorFeedPageParams = (
   cursor: number | null,
-): Pick<RfidScansParams, "limite" | "despuesDeId"> =>
+): Pick<RfidScansParams, "limite" | "despuesDeId"> & Partial<Pick<RfidScansParams, "soloMatch" | "unicos">> =>
   cursor === null
-    ? { limite: RFID_FEED_BOOTSTRAP_LIMIT }
+    ? { limite: RFID_FEED_BOOTSTRAP_LIMIT, soloMatch: false, unicos: false }
     : { limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: cursor };
 
 /**
- * Query string de `scans/`. Siempre `unicos=1`; `solo_match`, `lector`,
+ * Query string de `scans/`. `unicos=1` salvo con `unicos: false` (solo el
+ * arranque del cursor); `solo_match`, `lector`,
  * `despues_de_id` y `limite` solo si se piden. Sin los dos últimos queda
  * exactamente la petición de siempre (la del monitor); las capturas con
  * cursor (Recepción, Surtido y el encuadre) mandan `cursorFeedPageParams`.
  */
-export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite }: RfidScansParams) => ({
-  unicos: 1,
+export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite, unicos = true }: RfidScansParams) => ({
+  ...(unicos ? { unicos: 1 } : {}),
   ...(soloMatch ? { solo_match: 1 } : {}),
   ...(lector ? { lector } : {}),
   ...(despuesDeId !== undefined ? { despues_de_id: despuesDeId } : {}),

@@ -222,6 +222,37 @@ test.describe("cursor del feed de la antena", () => {
     });
     expect(rfidScansQueryParams({ soloMatch: true, lector: null })).toEqual({ unicos: 1, solo_match: 1 });
   });
+  test("el arranque del cursor va sin solo_match ni unicos, solo con lector; los sondeos los conservan (EC-997)", () => {
+    const filtros = { soloMatch: true, lector: 9 };
+    expect(rfidScansQueryParams({ ...filtros, ...cursorFeedPageParams(null) })).toEqual({ lector: 9, limite: 1 });
+    expect(rfidScansQueryParams({ ...filtros, ...cursorFeedPageParams(104090) })).toEqual({
+      unicos: 1,
+      solo_match: 1,
+      lector: 9,
+      despues_de_id: 104090,
+      limite: 200,
+    });
+  });
+  test("una lectura vieja que se liga después no entra: el arranque toma el id más alto de todas (EC-997)", async () => {
+    // La 4000 es la última ya ligada; 5000-5029 son tags aún sin etiqueta del ERP, leídos antes de Iniciar.
+    const rows = [
+      { id: 4000, ligada: true },
+      ...Array.from({ length: 30 }, (_, i) => ({ id: 5000 + i, ligada: false })),
+    ];
+    const fetchPage = async (cursor: number | null) => {
+      const { soloMatch = true, despuesDeId } = cursorFeedPageParams(cursor);
+      const visibles = rows.filter((r) => !soloMatch || r.ligada);
+      return despuesDeId === undefined
+        ? [...visibles].sort((a, b) => b.id - a.id).slice(0, 1)
+        : visibles.filter((r) => r.id > despuesDeId).sort((a, b) => a.id - b.id);
+    };
+    const start = await drainFeedAfterCursor(null, fetchPage);
+    expect(start.cursor).toBe(5029);
+    // Se imprime la etiqueta de la 5010 (`ligar_lecturas_previas`) y llega una lectura nueva ya ligada.
+    rows[11].ligada = true;
+    rows.push({ id: 5030, ligada: true });
+    expect((await drainFeedAfterCursor(start.cursor, fetchPage)).fresh.map((r) => r.id)).toEqual([5030]);
+  });
   test("sin la opción la petición es la de siempre (Nueva Recepción y monitor)", () => {
     expect(rfidScansQueryParams({ soloMatch: true })).toEqual({ unicos: 1, solo_match: 1 });
     expect(rfidScansQueryParams({ soloMatch: false })).toEqual({ unicos: 1 });
@@ -473,7 +504,7 @@ test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () 
     expect(feed.calls).toEqual([null]);
   });
   test("el arranque pide limite=1 y los sondeos siguientes el tope, después del cursor (EC-997)", async () => {
-    expect(cursorFeedPageParams(null)).toEqual({ limite: 1 });
+    expect(cursorFeedPageParams(null)).toEqual({ limite: 1, soloMatch: false, unicos: false });
     expect(cursorFeedPageParams(0)).toEqual({ limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: 0 });
     const feed = fakeFeed(ids(1, 900));
     const start = await drainFeedAfterCursor(null, feed.fetchPage);

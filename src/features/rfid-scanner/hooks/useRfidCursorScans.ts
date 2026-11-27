@@ -16,8 +16,9 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * cursor `despues_de_id` del backend. Cada vez que `enabled` pasa a `true`, y
  * cada vez que cambia `lector` mientras está encendido (EC-997,
  * `nextCursorFeedSession`), empieza una sesión: la primera petición
- * (`limite=1`, `cursorFeedPageParams`) solo fija el cursor (el `id` más alto
- * que ya existe, 0 sin lecturas) y las siguientes, cada 3 s, piden
+ * (`limite=1`, sin `solo_match` ni `unicos`: `cursorFeedPageParams`) solo
+ * fija el cursor (el `id` más alto que ya existe para ese lector, 0 sin
+ * lecturas) y las siguientes, cada 3 s, piden
  * `despues_de_id` = el `id` más alto visto, con `unicos=1&limite=200`, y
  * devuelven SOLO lo nuevo, en `id` ascendente (EC-984). Si una página viene
  * llena se pide la siguiente en el mismo sondeo (`drainFeedAfterCursor`). Así
