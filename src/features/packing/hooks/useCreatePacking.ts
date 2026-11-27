@@ -63,6 +63,36 @@ function firstPackingDetalleMessage(value: unknown): string | undefined {
   return undefined;
 }
 
+/** Primer mensaje de un error DRF anidado, a cualquier profundidad. */
+function deepFirstMessage(value: unknown): string | undefined {
+  const flat = firstDrfMessage(value);
+  if (flat) return flat;
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const m = deepFirstMessage(v);
+      if (m) return m;
+    }
+  } else if (value && typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      const m = deepFirstMessage(v);
+      if (m) return m;
+    }
+  }
+  return undefined;
+}
+
+/** Error de `cajas`: string, arreglo plano o uno por caja (se antepone "Caja N:"). */
+export function firstCajasMessage(value: unknown): string | undefined {
+  const flat = firstDrfMessage(value);
+  if (flat) return flat;
+  if (!Array.isArray(value)) return deepFirstMessage(value);
+  for (const [i, entry] of value.entries()) {
+    const m = deepFirstMessage(entry);
+    if (m) return `Caja ${i + 1}: ${m}`;
+  }
+  return undefined;
+}
+
 /**
  * Error de creación de packing, normalizado desde el contrato del backend.
  *
@@ -166,6 +196,14 @@ export function parsePackingError(error: unknown): ParsedPackingError {
   if (detalleMessage) {
     result.formError = result.formError ?? detalleMessage;
     result.messages.push(detalleMessage);
+  }
+
+  // `cajas`: arreglo por caja, cada una con su `contenido` por línea. Se
+  // busca el primer mensaje a cualquier profundidad y se antepone la caja.
+  const cajasMessage = firstCajasMessage(record.cajas);
+  if (cajasMessage) {
+    result.formError = result.formError ?? cajasMessage;
+    result.messages.push(cajasMessage);
   }
 
   // Campos del ENCABEZADO que el backend puede rechazar por separado. Se

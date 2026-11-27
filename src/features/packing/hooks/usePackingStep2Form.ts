@@ -6,15 +6,22 @@ import { usePackingOnboarding } from "./usePackingOnboarding";
 import { useCreatePacking, type ParsedPackingError } from "./useCreatePacking";
 import {
   createEmptyPackingHeaderValues,
-  PACKING_HEADER_DECIMAL_PLACES,
-  PACKING_MIN_CANTIDAD,
   PackingHeaderSchema,
-  type PackingHeaderData,
   type PackingHeaderValues,
 } from "../schemas/packing.schema";
-import { toSendableDecimal } from "@/src/utils/decimal";
-import type { CreatePackingDetalleLine, CreatePackingPayload } from "../interfaces/packing.interface";
+import type { CreatePackingCaja, CreatePackingPayload } from "../interfaces/packing.interface";
 import type { PackingOnboardingLine } from "../interfaces/packing-onboarding.interface";
+import {
+  boxesStatus,
+  buildCajasPayload,
+  boxPieces,
+  fillRemaining,
+  lineTotals,
+  newPackingBox,
+  totalPeso,
+  type PackingBox,
+  type PackingBoxLine,
+} from "../utils/packingBoxes";
 
 interface UsePackingStep2FormParams {
   pickingId: number;
@@ -40,44 +47,17 @@ interface UsePackingStep2FormParams {
 export type PackingZeroPendingCause = "fully-packed" | "never-assigned" | "mixed";
 
 /**
- * Normaliza una cantidad capturada contra el pendiente actual: la clampa al
- * techo, la redondea a 4 decimales (precisión del backend) y devuelve "" si
- * queda por debajo del mínimo aceptado (0.0001). Con esto, lo que se MUESTRA,
- * lo que se CUENTA y lo que se ENVÍA siempre coinciden. Copia local del mismo
- * helper de `usePickingStep2Form` (misma fórmula, distinto techo).
- */
-function normalizeCantidad(raw: string, pendiente: number): string {
-  const qty = Number.parseFloat(raw);
-  if (Number.isNaN(qty) || qty <= 0) return "";
-  const clamped = Number(Math.min(qty, Math.max(0, pendiente)).toFixed(4));
-  return clamped >= PACKING_MIN_CANTIDAD ? String(clamped) : "";
-}
-
-/**
- * Construye el body de creación a partir del picking elegido (Paso 1) + el
- * encabezado propio de packing (Paso 2) + las líneas. Los campos de
- * encabezado son todos opcionales en el backend — se omiten cuando quedan en
- * su valor vacío/cero para no mandar ceros/strings vacíos de más.
+ * Body de creación por cajas: el backend deriva `numero_cajas`, `peso_total`
+ * y las líneas con su caja a partir de `cajas`, así que no se mandan aparte.
  */
 function buildPackingPayload(
   pickingId: number,
-  header: PackingHeaderData,
-  lines: CreatePackingDetalleLine[],
+  observaciones: string,
+  cajas: CreatePackingCaja[],
 ): CreatePackingPayload {
-  const payload: CreatePackingPayload = {
-    picking: pickingId,
-    packing_detalle: lines,
-  };
-  // Obligatorio desde el schema (≥ 1). El volumen ya no se captura.
-  payload.numero_cajas = header.numero_cajas;
-  // `toSendableDecimal` (no un `.trim()` a secas) para que lo enviado sea un
-  // decimal canónico: descarta lo que no sostiene un número y normaliza la
-  // precisión. Un `.trim()` dejaría pasar tal cual cualquier residuo de
-  // captura que el backend rechazaría al construir su `Decimal`.
-  const peso = toSendableDecimal(header.peso_total, PACKING_HEADER_DECIMAL_PLACES);
-  if (peso !== null) payload.peso_total = peso;
-  const observaciones = header.observaciones.trim();
-  if (observaciones.length > 0) payload.observaciones = observaciones;
+  const payload: CreatePackingPayload = { picking: pickingId, cajas };
+  const obs = observaciones.trim();
+  if (obs.length > 0) payload.observaciones = obs;
   return payload;
 }
 
@@ -108,66 +88,46 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
   // ─── Encabezado propio de packing (numero_cajas/peso/volumen/observaciones) ─
   const [header, setHeaderState] = useState<PackingHeaderValues>(createEmptyPackingHeaderValues);
 
-  // ─── Estado de captura por línea ────────────────────────────────────────────
-  // Mapas indexados por `picking_detalle` (string). "" = no empacar.
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [lineObservaciones, setLineObservaciones] = useState<Record<string, string>>({});
+  // ─── Cajas del embarque: qué lleva cada una y cuánto pesa ──────────────────
+  const [boxes, setBoxesState] = useState<PackingBox[]>(() => [newPackingBox()]);
   const [serverBanner, setServerBanner] = useState<string | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const submitInFlight = useRef(false);
 
-  // Editar el encabezado quita el banner, igual que `setQuantity`: un error
-  // del encabezado (p. ej. un negativo) no debe quedarse tras corregirlo.
+  // Editar el encabezado quita el banner: un error ya corregido no se queda.
   const setHeader = (update: SetStateAction<PackingHeaderValues>) => {
     setHeaderState(update);
     if (serverBanner) setServerBanner(null);
   };
 
-  const setQuantity = (pickingDetalleId: number, value: string) => {
-    setQuantities((prev) => ({ ...prev, [String(pickingDetalleId)]: value }));
+  const setBoxes = (update: SetStateAction<PackingBox[]>) => {
+    setBoxesState(update);
     if (serverBanner) setServerBanner(null);
   };
 
-  const setLineObservacion = (pickingDetalleId: number, value: string) => {
-    setLineObservaciones((prev) => ({ ...prev, [String(pickingDetalleId)]: value }));
-  };
-
-  // Reconciliación: cuando cambian los pendientes (típicamente tras el refetch
-  // por dato desactualizado), se re-clampan las cantidades ya capturadas al
-  // nuevo pendiente — mismo patrón que `usePickingStep2Form`.
-  useEffect(() => {
-    setQuantities((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const row of rows) {
-        const key = String(row.picking_detalle);
-        const raw = next[key];
-        if (!raw) continue;
-        const pendiente = Number.parseFloat(row.cantidad_pendiente_empacar) || 0;
-        const normalized = normalizeCantidad(raw, pendiente);
-        if (normalized !== raw) {
-          next[key] = normalized;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [rows]);
-
-  // Se cuenta recorriendo `rows`, NO las llaves de `quantities`: tras un
-  // refetch (recuperación por dato desactualizado, o el `refetchOnMount` al
-  // volver a entrar al paso) una línea puede desaparecer del picking y dejar
-  // su cantidad huérfana en el mapa. Contando el mapa, el botón "Registrar"
-  // quedaría habilitado por una línea que ya no existe, y `buildLines`
-  // —que sí recorre `rows`— devolvería [], sin nada visible que corregir.
-  const selectedCount = useMemo(
+  // Líneas con pendiente, en la forma que usa el reparto por cajas.
+  const boxLines = useMemo<PackingBoxLine[]>(
     () =>
-      rows.filter(
-        (row) =>
-          Number.parseFloat(quantities[String(row.picking_detalle)] ?? "") >= PACKING_MIN_CANTIDAD,
-      ).length,
-    [rows, quantities],
+      rows
+        .map((r) => ({ key: String(r.picking_detalle), pendiente: Number.parseFloat(r.cantidad_pendiente_empacar) || 0 }))
+        .filter((l) => l.pendiente > 0),
+    [rows],
   );
+
+  // Con una sola caja y nada capturado, todo va en ella: el caso común no
+  // pide teclear nada. Se repite tras un refetch si la caja sigue vacía.
+  useEffect(() => {
+    setBoxesState((prev) =>
+      prev.length === 1 && boxPieces(prev[0]) === 0 && boxLines.length > 0
+        ? fillRemaining(prev, 0, boxLines)
+        : prev,
+    );
+  }, [boxLines]);
+
+  const status = useMemo(() => boxesStatus(boxes, boxLines), [boxes, boxLines]);
+  const totals = useMemo(() => lineTotals(boxes, boxLines), [boxes, boxLines]);
+  const pesoTotal = totalPeso(boxes);
+  const selectedCount = Object.keys(totals).length;
 
   // ─── Reparto del error del backend ──────────────────────────────────────────
   const handleServerError = (parsed: ParsedPackingError) => {
@@ -188,28 +148,6 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
   const { mutateAsync: createPacking, isPending } = useCreatePacking(handleServerError);
 
   // ─── Construcción de líneas + envío ─────────────────────────────────────────
-  const buildLines = (): CreatePackingDetalleLine[] => {
-    const lines: CreatePackingDetalleLine[] = [];
-    for (const row of rows) {
-      const key = String(row.picking_detalle);
-      // `normalizeCantidad` reclampa contra el pendiente ACTUAL, redondea a 4
-      // decimales y descarta lo que quede bajo el mínimo (defensa ante un
-      // pendiente que bajó tras un refetch con el valor capturado aún en
-      // memoria).
-      const pendiente = Number.parseFloat(row.cantidad_pendiente_empacar) || 0;
-      const cantidad = normalizeCantidad(quantities[key] ?? "", pendiente);
-      if (cantidad === "") continue;
-
-      const obs = (lineObservaciones[key] ?? "").trim();
-      lines.push({
-        picking_detalle: row.picking_detalle,
-        cantidad_empacada: cantidad,
-        ...(obs.length > 0 ? { observaciones: obs } : {}),
-      });
-    }
-    return lines;
-  };
-
   const handleSubmit = async () => {
     setServerBanner(null);
 
@@ -217,14 +155,31 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
     // resto de formularios del proyecto, sino en `useState`, así que no hay
     // validación por campo al teclear). Sin esto, el schema sería solo un
     // tipo y el rechazo llegaría del backend como un 400.
-    const parsedHeader = PackingHeaderSchema.safeParse(header);
+    if (status.excedidas.length > 0) {
+      setServerBanner("Hay prendas con más piezas en cajas de las que faltan por empacar. Corrige las marcadas en rojo.");
+      return;
+    }
+    if (status.cajasVacias.length > 0) {
+      setServerBanner(status.cajasVacias.length === 1 ? `La caja ${status.cajasVacias[0]} está vacía: acomoda prendas en ella o quítala.` : `Las cajas ${status.cajasVacias.join(", ")} están vacías: acomoda prendas en ellas o quítalas.`);
+      return;
+    }
+    if (status.cajasSinPeso.length > 0) {
+      setServerBanner(status.cajasSinPeso.length === 1 ? `Captura el peso de la caja ${status.cajasSinPeso[0]}.` : `Captura el peso de las cajas ${status.cajasSinPeso.join(", ")}.`);
+      return;
+    }
+    // Cajas y peso salen del reparto, no se teclean aparte.
+    const parsedHeader = PackingHeaderSchema.safeParse({
+      ...header,
+      numero_cajas: String(boxes.length),
+      peso_total: pesoTotal === null ? "" : String(pesoTotal),
+    });
     if (!parsedHeader.success) {
       setServerBanner(parsedHeader.error.issues[0]?.message ?? "Revisa los datos del embarque.");
       return;
     }
 
-    const lines = buildLines();
-    if (lines.length === 0) {
+    const cajas = buildCajasPayload(boxes, boxLines);
+    if (cajas.every((c) => c.contenido.length === 0)) {
       setServerBanner("Captura al menos una línea con una cantidad mayor a cero.");
       return;
     }
@@ -232,7 +187,7 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
     if (submitInFlight.current) return;
     submitInFlight.current = true;
     try {
-      await createPacking(buildPackingPayload(pickingId, parsedHeader.data, lines));
+      await createPacking(buildPackingPayload(pickingId, parsedHeader.data.observaciones, cajas));
       onSuccess();
     } catch {
       // El error ya se repartió en `handleServerError` (banner / aviso stale) y
@@ -254,10 +209,11 @@ export function usePackingStep2Form({ pickingId, onSuccess }: UsePackingStep2For
     isFetching,
     header,
     setHeader,
-    quantities,
-    lineObservaciones,
-    setQuantity,
-    setLineObservacion,
+    boxes,
+    setBoxes,
+    boxLines,
+    status,
+    pesoTotal,
     selectedCount,
     serverBanner,
     dismissBanner: () => setServerBanner(null),

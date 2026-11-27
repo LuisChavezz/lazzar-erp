@@ -86,6 +86,16 @@ export interface PackingDetalleLine {
  * como ids crudos, sin `_nombre` resuelto (a diferencia de todos los demás
  * FK de esta forma) — no se intenta mostrar su nombre en la UI.
  */
+/** Caja de un embarque, tal como la devuelve la lectura del packing. */
+export interface PackingCaja {
+  id?: number;
+  numero: number;
+  peso: string | null;
+  largo?: string | null;
+  ancho?: string | null;
+  alto?: string | null;
+}
+
 export interface Packing extends WmsCancellationFields {
   id: number;
   folio: string;
@@ -114,6 +124,8 @@ export interface Packing extends WmsCancellationFields {
   usuario: number;
   usuario_nombre: string;
   packing_detalle: PackingDetalleLine[];
+  /** Cajas del embarque. Ausente en embarques anteriores al empaque por cajas. */
+  cajas?: PackingCaja[];
 }
 
 /**
@@ -153,5 +165,17 @@ export interface CreatePackingPayload {
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
   observaciones?: string;
-  packing_detalle: CreatePackingDetalleLine[];
+  /** Formato anterior (total por línea). Sin uso desde el empaque por cajas. */
+  packing_detalle?: CreatePackingDetalleLine[];
+  /** Qué lleva cada caja; el backend deriva `numero_cajas`, peso y líneas. */
+  cajas?: CreatePackingCaja[];
+}
+
+export interface CreatePackingCaja {
+  numero: number;
+  peso?: string;
+  largo?: string;
+  ancho?: string;
+  alto?: string;
+  contenido: { picking_detalle: number; cantidad: string }[];
 }
