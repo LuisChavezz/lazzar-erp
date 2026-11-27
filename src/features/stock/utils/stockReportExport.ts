@@ -3,7 +3,7 @@ import { forbiddenDetailMessage, isForbiddenError } from "@/src/utils/drfWriteEr
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { firstDrfFieldMessage } from "@/src/utils/firstDrfFieldMessage";
 import { isRequestTimeoutError, REQUEST_TIMEOUT_MESSAGE } from "@/src/utils/requestTimeout";
-import type { StockMovementReportType } from "../interfaces/stock-movement-report.interface";
+import type { StockMovementReportTypeFilter } from "../interfaces/stock-movement-report.interface";
 
 /**
  * Exportación de los reportes de existencias y de movimientos por periodo
@@ -80,7 +80,7 @@ export const stockMovementReportFileName = ({
   fechaFinal,
   formato,
 }: {
-  tipoMovimiento: StockMovementReportType;
+  tipoMovimiento: StockMovementReportTypeFilter;
   almacenId: number | null | undefined;
   codigo: string | null | undefined;
   fechaInicio: string;

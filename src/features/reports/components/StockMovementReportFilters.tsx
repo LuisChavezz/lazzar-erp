@@ -1,26 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COMPACT_FIELD_CLS } from "@/src/constants/formStyles";
-import { DateParamInput } from "@/src/components/DateParamInput";
-import { FormSelect } from "@/src/components/FormSelect";
 // Se reutiliza el MISMO selector de almacén de existencias (StockView) en vez
 // de duplicarlo: solo depende de `useWarehouses` y ya lista únicamente
 // almacenes activos, ordenados alfabéticamente, con el estilo del proyecto.
 import { WarehouseFilter } from "@/src/features/stock/components/WarehouseFilter";
 import { STOCK_MOVEMENT_REPORT_TYPE_CONFIG } from "@/src/features/stock/constants/stockMovementReportTypes";
-import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
+import { REPORT_FIELD_LABEL_CLS, REPORT_TEXT_INPUT_CLS } from "../constants/reportFieldStyles";
+import { ReportDateRangeFields } from "./ReportDateRangeFields";
+import type {
+  StockMovementReportType,
+  StockMovementReportTypeFilter,
+} from "@/src/features/stock/interfaces/stock-movement-report.interface";
 
 interface StockMovementReportFiltersProps {
-  /** Tipo de movimiento seleccionado, o `null` si aún no se elige (obligatorio). */
-  tipoMovimiento: StockMovementReportType | null;
+  /** Tipo de movimiento, o `TODOS`. */
+  tipoMovimiento: StockMovementReportTypeFilter;
+  /** Búsqueda confirmada (SKU, producto o folio). */
+  busqueda: string;
+  onBusquedaChange: (q: string) => void;
   /** Almacén seleccionado, o `null` (OPCIONAL en este reporte). */
   almacenId: number | null;
   /** Inicio del rango (`YYYY-MM-DD`), o `null`. */
   fechaInicio: string | null;
   /** Fin del rango (`YYYY-MM-DD`), o `null`. */
   fechaFinal: string | null;
-  onTipoChange: (tipo: StockMovementReportType | null) => void;
+  onTipoChange: (tipo: StockMovementReportTypeFilter) => void;
   onAlmacenChange: (almacenId: number | null) => void;
   onDateRangeChange: (
     fechaInicio: string | null,
@@ -31,14 +37,14 @@ interface StockMovementReportFiltersProps {
 /**
  * Barra de filtros (gate) del reporte de movimientos por periodo.
  *
- * Componente controlado: el estado vive en el contenedor, que decide qué
- * mostrar DEBAJO de este gate. La consulta no se dispara hasta que están el tipo
- * de movimiento + fecha inicio + fecha final; ese gate lo hace el contenedor vía
- * `gateComplete` y el `enabled` del hook. A diferencia de existencias, el
- * ALMACÉN es OPCIONAL: no forma parte del gate (sin almacén ⇒ todos).
+ * Componente controlado: el estado vive en el contenedor. La consulta se
+ * dispara con el periodo completo; el tipo arranca en `TODOS`, y el almacén y
+ * la búsqueda son opcionales (sin ellos ⇒ todo).
  */
 export function StockMovementReportFilters({
   tipoMovimiento,
+  busqueda,
+  onBusquedaChange,
   almacenId,
   fechaInicio,
   fechaFinal,
@@ -46,58 +52,82 @@ export function StockMovementReportFilters({
   onAlmacenChange,
   onDateRangeChange,
 }: StockMovementReportFiltersProps) {
-  const [dateError, setDateError] = useState<string | null>(null);
+  // Texto que se escribe; se confirma solo tras una pausa (o Enter) para no
+  // consultar con cada tecla.
+  const [texto, setTexto] = useState(busqueda);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (texto.trim() !== busqueda) onBusquedaChange(texto.trim());
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [texto, busqueda, onBusquedaChange]);
 
-  // Valida el rango antes de propagarlo: un rango invertido NO debe disparar la
-  // consulta. Las fechas son `YYYY-MM-DD` (input `type="date"`), así que la
-  // comparación de strings es cronológica. Los `min`/`max` nativos ya evitan el
-  // caso al elegir con el calendario; esto cubre la entrada tecleada, donde son
-  // solo indicativos.
-  const emitDateRange = (inicio: string | null, final: string | null) => {
-    if (inicio && final && inicio > final) {
-      setDateError("La fecha inicial no puede ser posterior a la fecha final.");
-      return;
-    }
-    setDateError(null);
-    onDateRangeChange(inicio, final);
-  };
+  const segmento = (activo: boolean) =>
+    `inline-flex h-9 cursor-pointer items-center gap-2 px-4 text-sm font-semibold transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/60 ${
+      activo
+        ? "bg-accent text-accent-foreground"
+        : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white"
+    }`;
 
+  // Encabezado de la hoja: sin tarjeta; una línea lo separa de los totales.
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="w-52">
-          <FormSelect
-            label="Tipo de movimiento"
-            className={COMPACT_FIELD_CLS}
-            value={tipoMovimiento ?? ""}
-            onChange={(e) =>
-              onTipoChange(
-                (e.target.value || null) as StockMovementReportType | null,
-              )
-            }
+    <div className="space-y-5 border-b border-slate-200 pb-6 dark:border-white/10">
+      <div>
+        <span className={REPORT_FIELD_LABEL_CLS}>Tipo de movimiento</span>
+        <div
+          role="radiogroup"
+          aria-label="Tipo de movimiento"
+          className="inline-flex max-w-full flex-wrap divide-x divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-white/10 dark:border-white/10"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={tipoMovimiento === "TODOS"}
+            onClick={() => onTipoChange("TODOS")}
+            className={segmento(tipoMovimiento === "TODOS")}
           >
-            <option
-              value=""
-              disabled
-              className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
-            >
-              Selecciona un tipo
-            </option>
-            {Object.entries(STOCK_MOVEMENT_REPORT_TYPE_CONFIG).map(([value, cfg]) => (
-              <option
+            Todos
+          </button>
+          {Object.entries(STOCK_MOVEMENT_REPORT_TYPE_CONFIG).map(([value, cfg]) => {
+            const activo = tipoMovimiento === value;
+            return (
+              <button
                 key={value}
-                value={value}
-                className="text-slate-900 dark:text-white bg-white dark:bg-zinc-900"
+                type="button"
+                role="radio"
+                aria-checked={activo}
+                onClick={() => onTipoChange(value as StockMovementReportType)}
+                className={segmento(activo)}
               >
+                <span
+                  className={`h-2 w-2 rounded-full ${cfg.dot} ${activo ? "ring-2 ring-white/80" : ""}`}
+                  aria-hidden="true"
+                />
                 {cfg.label}
-              </option>
-            ))}
-          </FormSelect>
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        {/* Almacén: OPCIONAL. Sin selección ⇒ el reporte incluye todos.
-            `allowClear` habilita "Todos los almacenes" para volver a `null`
-            sin perder el tipo de movimiento ni el rango de fechas. */}
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="group/field block w-56">
+          <span className={REPORT_FIELD_LABEL_CLS}>
+            Buscar
+          </span>
+          <input
+            type="search"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onBusquedaChange(texto.trim());
+            }}
+            placeholder="SKU, producto o folio"
+            className={REPORT_TEXT_INPUT_CLS}
+          />
+        </label>
+
+        {/* Almacén: OPCIONAL. Sin selección ⇒ el reporte incluye todos. */}
         <WarehouseFilter
           value={almacenId}
           onChange={onAlmacenChange}
@@ -105,37 +135,12 @@ export function StockMovementReportFilters({
           className={COMPACT_FIELD_CLS}
         />
 
-        {/* Solo se propagan días completos con año plausible (ver
-            `DateParamInput`): teclear el año no consulta con cada dígito. Vaciar
-            un campo se confirma al salir de él. */}
-        <div className="w-44">
-          <DateParamInput
-            label="Desde"
-            name="fecha_inicio"
-            className={COMPACT_FIELD_CLS}
-            value={fechaInicio ?? ""}
-            max={fechaFinal ?? undefined}
-            onCommit={(value) => emitDateRange(value || null, fechaFinal)}
-          />
-        </div>
-
-        <div className="w-44">
-          <DateParamInput
-            label="Hasta"
-            name="fecha_final"
-            className={COMPACT_FIELD_CLS}
-            value={fechaFinal ?? ""}
-            min={fechaInicio ?? undefined}
-            onCommit={(value) => emitDateRange(fechaInicio, value || null)}
-          />
-        </div>
+        <ReportDateRangeFields
+          fechaInicio={fechaInicio}
+          fechaFinal={fechaFinal}
+          onChange={onDateRangeChange}
+        />
       </div>
-
-      {dateError && (
-        <p className="ml-1 text-xs font-medium text-red-600 dark:text-red-400">
-          {dateError}
-        </p>
-      )}
     </div>
   );
 }
