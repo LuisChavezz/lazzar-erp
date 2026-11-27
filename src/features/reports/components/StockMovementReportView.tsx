@@ -4,13 +4,15 @@ import { useState } from "react";
 import { DataTable } from "@/src/components/DataTable";
 import { StockMovementReportFilters } from "./StockMovementReportFilters";
 import { StockMovementReportSummary } from "./StockMovementReportSummary";
-import { stockMovementReportColumns } from "./StockMovementReportColumns";
+import { getStockMovementReportColumns } from "./StockMovementReportColumns";
+import { MOVEMENT_REPORT_VISTAS, type MovementReportVista } from "../constants/movementReportViews";
 import { StockReportExportButtons } from "./StockReportExportButtons";
 import { useStockMovementReport } from "@/src/features/stock/hooks/useStockMovementReport";
 import { useStockMovementReportExport } from "@/src/features/stock/hooks/useStockReportExports";
-import type { StockMovementReportType } from "@/src/features/stock/interfaces/stock-movement-report.interface";
+import type { StockMovementReportTypeFilter } from "@/src/features/stock/interfaces/stock-movement-report.interface";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
 import { useWarehousePreselection } from "../hooks/useWarehousePreselection";
+import { movementDatePresetRange } from "../utils/movementDatePresets";
 
 // Tamaño de página del endpoint (fijo). Alimenta el cálculo de páginas totales
 // (`count / PAGE_SIZE`) que consume el pager de `DataTable`.
@@ -23,11 +25,16 @@ const PAGE_SIZE = 100;
  * ruta (`/system/reports/movimientos`).
  */
 export function StockMovementReportView() {
+  // Arranca en "Todos": al entrar ya se ve el mes completo.
   const [tipoMovimiento, setTipoMovimiento] =
-    useState<StockMovementReportType | null>(null);
+    useState<StockMovementReportTypeFilter>("TODOS");
+  const [busqueda, setBusqueda] = useState("");
+  const [vista, setVista] = useState<MovementReportVista>("general");
   const [almacenId, setAlmacenId] = useState<number | null>(null);
-  const [fechaInicio, setFechaInicio] = useState<string | null>(null);
-  const [fechaFinal, setFechaFinal] = useState<string | null>(null);
+  // Arranca en "Este mes": basta elegir el tipo para ver el reporte.
+  const [[defaultInicio, defaultFinal]] = useState(() => movementDatePresetRange("mes"));
+  const [fechaInicio, setFechaInicio] = useState<string | null>(defaultInicio);
+  const [fechaFinal, setFechaFinal] = useState<string | null>(defaultFinal);
   // `page` se reinicia a 1 al cambiar cualquier filtro: un contexto de consulta
   // nuevo no debe reanudar en una página vieja.
   const [page, setPage] = useState(1);
@@ -39,8 +46,7 @@ export function StockMovementReportView() {
   });
 
   // El almacén es OPCIONAL: NO forma parte del gate (a diferencia de existencias).
-  const gateComplete =
-    tipoMovimiento !== null && fechaInicio !== null && fechaFinal !== null;
+  const gateComplete = fechaInicio !== null && fechaFinal !== null;
 
   const { data, isLoading, isInitialError, isFetching, isPlaceholderData, error, refetch } =
     useStockMovementReport(
@@ -50,6 +56,7 @@ export function StockMovementReportView() {
             fecha_inicio: fechaInicio,
             fecha_final: fechaFinal,
             almacen_id: almacenId ?? undefined,
+            q: busqueda || undefined,
             page,
             page_size: PAGE_SIZE,
           }
@@ -68,9 +75,15 @@ export function StockMovementReportView() {
     (data.tipo_movimiento !== tipoMovimiento ||
       data.fecha_inicio !== fechaInicio ||
       data.fecha_final !== fechaFinal ||
-      (data.filtros?.almacen_id ?? null) !== almacenId);
+      (data.filtros?.almacen_id ?? null) !== almacenId ||
+      (data.filtros?.q ?? "") !== busqueda);
 
-  const handleTipoChange = (tipo: StockMovementReportType | null) => {
+  const handleBusquedaChange = (q: string) => {
+    setBusqueda(q);
+    setPage(1);
+  };
+
+  const handleTipoChange = (tipo: StockMovementReportTypeFilter) => {
     setTipoMovimiento(tipo);
     setPage(1);
   };
@@ -95,25 +108,24 @@ export function StockMovementReportView() {
   // ("Todos los almacenes") no viaja `almacen_id`, igual que en la consulta de
   // la pantalla. Los checks de null estrechan los tipos (equivalen a `gateComplete`).
   const reportExport = useStockMovementReportExport(
-    tipoMovimiento !== null && fechaInicio !== null && fechaFinal !== null
+    fechaInicio !== null && fechaFinal !== null
       ? {
           tipo_movimiento: tipoMovimiento,
           fecha_inicio: fechaInicio,
           fecha_final: fechaFinal,
           almacen_id: almacenId ?? undefined,
+          q: busqueda || undefined,
         }
       : null,
   );
 
   return (
     <div className="w-full space-y-8">
-      <p className="text-slate-500 dark:text-slate-400">
-        Reporte de movimientos por periodo. Selecciona un tipo de movimiento y
-        un rango de fechas para generarlo (el almacén es opcional).
-      </p>
 
       <StockMovementReportFilters
         tipoMovimiento={tipoMovimiento}
+        busqueda={busqueda}
+        onBusquedaChange={handleBusquedaChange}
         almacenId={almacenId}
         fechaInicio={fechaInicio}
         fechaFinal={fechaFinal}
@@ -123,12 +135,17 @@ export function StockMovementReportView() {
       />
 
       {!gateComplete ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">
-          Selecciona un tipo de movimiento y un rango de fechas para ver el
-          reporte.
-        </p>
+        <div className="rounded-lg border border-slate-200 px-6 py-10 text-center dark:border-white/10">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Elige el periodo
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Entradas, salidas, ajustes o transferencias del periodo, con su costo.
+            El almacén es opcional.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* El resumen depende de `data` (campo NO paginado, sin un "vacío"
               natural que fabricar): solo se muestra una vez que llegó la
               primera respuesta buena, igual que antes. No se atenúa en un
@@ -143,7 +160,11 @@ export function StockMovementReportView() {
                   : "transition-[filter] duration-200"
               }
             >
-              <StockMovementReportSummary summary={data.resumen} />
+              <StockMovementReportSummary
+                summary={data.resumen}
+                tipoActivo={tipoMovimiento}
+                onTipoChange={handleTipoChange}
+              />
             </div>
           )}
 
@@ -156,15 +177,47 @@ export function StockMovementReportView() {
               toast, en lugar de reemplazarla por la pantalla de error.
               Paginación de servidor: `data.results` ya es solo la página
               actual; `DataTable` no la recorta y cablea su pager a `setPage`. */}
+          {/* Vista = qué columnas se ven al entrar. La tabla toma la
+              visibilidad al montarse: `key` la remonta al cambiar de vista. */}
           <DataTable
-            columns={stockMovementReportColumns}
+            key={vista}
+            columns={getStockMovementReportColumns(vista)}
             data={data?.results ?? []}
-            emptyMessage="No se encontraron movimientos para el tipo, almacén y periodo seleccionados."
+            emptyMessage={
+              busqueda
+                ? `Sin movimientos que coincidan con "${busqueda}" en el periodo.`
+                : "No se encontraron movimientos para el tipo, almacén y periodo seleccionados."
+            }
             actionButton={
-              <StockReportExportButtons
-                isExporting={reportExport.isExporting}
-                onExport={reportExport.exportReport}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <div
+                  role="radiogroup"
+                  aria-label="Vista de columnas"
+                  className="inline-flex divide-x divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-white/10 dark:border-white/10"
+                >
+                  {MOVEMENT_REPORT_VISTAS.map((v) => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      role="radio"
+                      aria-checked={vista === v.key}
+                      title={v.hint}
+                      onClick={() => setVista(v.key)}
+                      className={`h-9 cursor-pointer px-3 text-xs font-semibold transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/60 ${
+                        vista === v.key
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+                <StockReportExportButtons
+                  isExporting={reportExport.isExporting}
+                  onExport={reportExport.exportReport}
+                />
+              </div>
             }
             serverPagination={{
               pageCount: Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE)),

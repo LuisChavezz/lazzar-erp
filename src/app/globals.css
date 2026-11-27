@@ -48,6 +48,10 @@
   --color-brand-500: #0ea5e9;
   --color-brand-600: #0284c7;
   --color-brand-700: #0369a1;
+  /* Firma de la app (DESIGN.md): acción principal y opción seleccionada.
+     Texto blanco encima: 5.93:1 (sky-600 daba 4.10:1). */
+  --color-accent: #0369a1;
+  --color-accent-foreground: #ffffff;
   --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 0 15px rgba(14, 165, 233, 0.3);
 }

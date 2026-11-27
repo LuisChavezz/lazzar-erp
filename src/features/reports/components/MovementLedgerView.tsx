@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { isAxiosError } from "axios";
 import { Button } from "@/src/components/Button";
 import { DataTable } from "@/src/components/DataTable";
@@ -55,8 +56,14 @@ const fieldErrorOf = (error: unknown, field: MovementLedgerRejectedParam): strin
  * filtros elegidos.
  */
 export function MovementLedgerView() {
-  const [target, setTarget] = useState<MovementLedgerTarget | null>(null);
-  const [searchedText, setSearchedText] = useState("");
+  // `?q=` abre el kardex de un SKU directo (p. ej. desde el reporte de
+  // movimientos): es la misma búsqueda que teclear el SKU y dar Enter.
+  const searchParams = useSearchParams();
+  const [initialQ] = useState(() => (searchParams.get("q") ?? "").trim());
+  const [target, setTarget] = useState<MovementLedgerTarget | null>(() =>
+    initialQ ? { q: initialQ } : null,
+  );
+  const [searchedText, setSearchedText] = useState(initialQ);
   // Variante que resolvió la búsqueda por `q` vigente. Se recuerda aparte de
   // la consulta porque esta puede quedar sin datos (rango a medias) antes del
   // siguiente cambio de filtro, que debe ir ya por `producto_variante`.
@@ -64,7 +71,7 @@ export function MovementLedgerView() {
   const [almacenId, setAlmacenId] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState<string | null>(null);
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(initialQ !== "");
 
   // El backend exige las dos fechas juntas: con una sola no se consulta.
   const rangeComplete = (fechaInicio === null) === (fechaFinal === null);
