@@ -28,6 +28,7 @@ import {
   rfidScansQueryParams,
   type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
+import { rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
@@ -580,6 +581,22 @@ test.describe("sesión del cursor por lector (EC-997)", () => {
     const otroEnPausa = nextCursorFeedSession(off, false, 24);
     expect(otroEnPausa.session).toBe(on.session);
     expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
+  });
+});
+
+test.describe("antena solo con el lector resuelto (EC-997)", () => {
+  test("nada se pide mientras el catálogo de lectores no responde", () => {
+    // Primer render: catálogo en vuelo, `lectores` vacío y `lectorId` null.
+    expect(rfidLectorListo({ catalogoResuelto: false, lectores: 0, lectorId: null })).toBe(false);
+    expect(rfidLectorListo({ catalogoResuelto: false, lectores: 2, lectorId: 9 })).toBe(false);
+  });
+  test("con el catálogo: un lector o el elegido sí; varios sin elegir no", () => {
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 1, lectorId: 9 })).toBe(true);
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: 24 })).toBe(true);
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: null })).toBe(false);
+  });
+  test("un catálogo que respondió sin lista (falló o sin endpoint) lee de todos, como antes", () => {
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 0, lectorId: null })).toBe(true);
   });
 });
 

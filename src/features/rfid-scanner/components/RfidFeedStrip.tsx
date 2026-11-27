@@ -11,6 +11,7 @@ import {
   useRfidLectorSeleccionado,
 } from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
 import { RfidLectorSelect } from "./RfidLectorSelect";
+import { rfidLectorListo } from "../utils/rfidLectorListo";
 
 interface RfidFeedStripProps {
   /** Procesa un código leído igual que el lector de mano (SKU o código). */
@@ -71,10 +72,11 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
   };
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado(pantalla);
+  const { lectores, lectorId, seleccionar, catalogoResuelto } = useRfidLectorSeleccionado(pantalla);
   // Con varios lectores hay que elegir uno: leer de todos mezclaría cajones.
   const faltaLector = lectores.length > 1 && lectorId === null;
-  const activo = !hasNoCompany && !faltaLector;
+  // Y nada se pide hasta que el catálogo responda (`rfidLectorListo`).
+  const activo = !hasNoCompany && rfidLectorListo({ catalogoResuelto, lectores: lectores.length, lectorId });
   const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId, { cursor: true });
   useLectorEnUso(lectorId, activo, pantalla, documento);
 

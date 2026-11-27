@@ -25,7 +25,7 @@ const leerGuardado = (pantalla: string): number | null => {
  * endpoint) se lee de todos los lectores, como antes.
  */
 export function useRfidLectorSeleccionado(pantalla: string, { allowAll = false } = {}) {
-  const { lectores, hasLoaded } = useRfidLectores();
+  const { lectores, hasLoaded, isInitialError, noDisponible } = useRfidLectores();
   const [guardado, setGuardado] = useState<number | null>(null);
 
   useEffect(() => {
@@ -52,6 +52,9 @@ export function useRfidLectorSeleccionado(pantalla: string, { allowAll = false }
   return {
     lectores,
     hasLoaded,
+    // El catálogo ya respondió: con la lista, o sin ella (falló o el backend no
+    // tiene el endpoint, y entonces se lee de todos, como dice arriba).
+    catalogoResuelto: hasLoaded || isInitialError || noDisponible,
     lectorId,
     lector: lectores.find((l) => l.id === lectorId) ?? null,
     seleccionar,
