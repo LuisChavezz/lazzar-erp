@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import {
   rfidReconciliationActions,
   rfidReconciliationLabel,
@@ -19,7 +20,9 @@ import {
   advanceFeedCursor,
   cursorFeedPageParams,
   drainFeedAfterCursor,
+  nextCursorFeedMount,
   nextCursorFeedSession,
+  rfidCursorScansKey,
   RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   rfidScansQueryParams,
@@ -577,6 +580,67 @@ test.describe("sesión del cursor por lector (EC-997)", () => {
     const otroEnPausa = nextCursorFeedSession(off, false, 24);
     expect(otroEnPausa.session).toBe(on.session);
     expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
+  });
+});
+
+test.describe("llave del cursor por montaje (EC-997)", () => {
+  /** Lo que hace `useRfidCursorScans` con TanStack: misma forma de opciones, sin React. */
+  const mountFeed = (client: QueryClient, mount: number, queryFn: () => Promise<{ fresh: number }>) => {
+    const observer = new QueryObserver(client, {
+      queryKey: rfidCursorScansKey(true, 9, mount, 0),
+      queryFn,
+      gcTime: 0,
+      staleTime: 15 * 60 * 1000,
+      retry: false,
+    });
+    return observer.subscribe(() => {});
+  };
+
+  test("Detener → Iniciar con un sondeo en vuelo: el montaje nuevo arranca de inmediato y no lo hereda", async () => {
+    const client = new QueryClient();
+    let release: (v: { fresh: number }) => void = () => {};
+    const calls: string[] = [];
+    const first = nextCursorFeedMount();
+    const unmountFirst = mountFeed(client, first, () => {
+      calls.push("primero");
+      return new Promise((resolve) => (release = resolve));
+    });
+    unmountFirst();
+    const second = nextCursorFeedMount();
+    expect(second).not.toBe(first);
+    const unmountSecond = mountFeed(client, second, async () => {
+      calls.push("segundo");
+      return { fresh: 0 };
+    });
+    await flush();
+    expect(calls).toEqual(["primero", "segundo"]);
+
+    // La consulta del primero se va de la caché al terminar su sondeo: nada se acumula.
+    release({ fresh: 3 });
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(client.getQueryCache().find({ queryKey: rfidCursorScansKey(true, 9, first, 0) })).toBeUndefined();
+    unmountSecond();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
+  });
+  test("con la llave de antes (sin montaje) el nuevo heredaba el sondeo en vuelo", async () => {
+    const client = new QueryClient();
+    const calls: string[] = [];
+    const sameKey = () =>
+      new QueryObserver(client, {
+        queryKey: ["rfid-scans", "cursor", true, 9, 0],
+        queryFn: () => {
+          calls.push("sondeo");
+          return new Promise<{ fresh: number }>(() => {});
+        },
+        gcTime: 0,
+        staleTime: 15 * 60 * 1000,
+      }).subscribe(() => {});
+    sameKey()();
+    sameKey();
+    await flush();
+    expect(calls).toEqual(["sondeo"]);
   });
 });
 

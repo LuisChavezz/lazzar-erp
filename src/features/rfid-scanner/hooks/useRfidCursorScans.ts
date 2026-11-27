@@ -4,7 +4,9 @@ import { fetchRfidScans } from "../services/actions";
 import {
   cursorFeedPageParams,
   drainFeedAfterCursor,
+  nextCursorFeedMount,
   nextCursorFeedSession,
+  rfidCursorScansKey,
   ScanOutbox,
   type CursorFeedSession,
 } from "../utils/rfidScansParams";
@@ -52,13 +54,15 @@ export function useRfidCursorScans(
   const nextFeed = nextCursorFeedSession(feed, enabled, lector);
   if (nextFeed !== feed) setFeed(nextFeed);
   const { session } = nextFeed;
+  // Distinto en cada montaje: uno nuevo nunca hereda la consulta (ni el sondeo en vuelo) del anterior.
+  const [mount] = useState(nextCursorFeedMount);
   const cursorRef = useRef<{ session: number; cursor: number | null }>({ session, cursor: null });
   const [outbox] = useState(() => new ScanOutbox<RfidScan>());
   const [version, setVersion] = useState(0);
 
   const { isInitialError, isFetching } = useGuardedQuery<{ fresh: number }>(
     {
-      queryKey: ["rfid-scans", "cursor", soloMatch, lector, session],
+      queryKey: rfidCursorScansKey(soloMatch, lector, mount, session),
       queryFn: async () => {
         if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
         // Páginas llenas seguidas hasta vaciar lo nuevo (`drainFeedAfterCursor`).

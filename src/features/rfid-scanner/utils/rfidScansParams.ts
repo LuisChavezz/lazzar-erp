@@ -58,6 +58,29 @@ export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite, u
   ...(limite !== undefined ? { limite } : {}),
 });
 
+let cursorFeedMounts = 0;
+
+/**
+ * Identificador de un montaje de `useRfidCursorScans`, distinto en cada uno.
+ * `useId` no sirve: depende de la posición en el árbol y se repite al volver
+ * a montar en el mismo lugar (Detener → Iniciar en `ScanCapture`).
+ */
+export const nextCursorFeedMount = () => {
+  cursorFeedMounts += 1;
+  return cursorFeedMounts;
+};
+
+/**
+ * Llave de la consulta con cursor. Lleva el montaje además de la sesión: la
+ * sesión vuelve a 0 en cada montaje, y con la misma llave un montaje nuevo
+ * heredaría la consulta del anterior mientras su sondeo sigue en vuelo
+ * (`gcTime: 0` solo quita consultas inactivas) y, con datos en caché y el
+ * `staleTime` global, no arrancaría hasta el siguiente intervalo. Cada llave
+ * se quita de la caché en cuanto su consulta queda sin observadores ni sondeo.
+ */
+export const rfidCursorScansKey = (soloMatch: boolean, lector: number | null, mount: number, session: number) =>
+  ["rfid-scans", "cursor", soloMatch, lector, mount, session] as const;
+
 /** Sesión de una captura con cursor: qué lector se lee y en qué sesión va. */
 export interface CursorFeedSession {
   enabled: boolean;
