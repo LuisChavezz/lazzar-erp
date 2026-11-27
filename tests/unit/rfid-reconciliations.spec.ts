@@ -17,11 +17,13 @@ import {
 } from "@/src/features/rfid-reconciliations/utils/rfidReadResult";
 import {
   advanceFeedCursor,
+  cursorFeedPageParams,
   drainFeedAfterCursor,
   nextCursorFeedSession,
   RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   rfidScansQueryParams,
+  type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
@@ -419,17 +421,30 @@ test.describe("relecturas durante la lectura continua", () => {
 });
 
 test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () => {
-  const ids = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i }));
-  /** Feed falso con el contrato de EC-984: con cursor, `id` ascendente y las primeras `limite`. */
-  const fakeFeed = (rows: { id: number }[], { limit = 200, failOnCall }: { limit?: number; failOnCall?: number } = {}) => {
+  type Row = { id: number; created_at: number; lector?: number };
+  /** Lecturas con `created_at` en el mismo orden que el `id` (el caso normal). */
+  const ids = (from: number, to: number, lector?: number): Row[] =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i, created_at: from + i, lector }));
+  /**
+   * Feed falso con el contrato de `scans/` (EC-984): con cursor, `id`
+   * ascendente y las primeras `limite`; sin cursor, `-created_at, -id`. Cada
+   * página pide lo que manda el hook (`cursorFeedPageParams`) y se registra.
+   */
+  const fakeFeed = (rows: Row[], { failOnCall, lector }: { failOnCall?: number; lector?: number } = {}) => {
     const calls: (number | null)[] = [];
+    const limits: (number | undefined)[] = [];
     const fetchPage = async (cursor: number | null) => {
+      const { limite, despuesDeId } = cursorFeedPageParams(cursor);
       calls.push(cursor);
+      limits.push(limite);
       if (failOnCall !== undefined && calls.length === failOnCall) throw new Error("red");
-      if (cursor === null) return [...rows].sort((a, b) => b.id - a.id).slice(0, limit);
-      return rows.filter((r) => r.id > cursor).sort((a, b) => a.id - b.id).slice(0, limit);
+      const visibles = rows.filter((r) => lector === undefined || r.lector === lector);
+      if (despuesDeId === undefined) {
+        return [...visibles].sort((a, b) => b.created_at - a.created_at || b.id - a.id).slice(0, limite);
+      }
+      return visibles.filter((r) => r.id > despuesDeId).sort((a, b) => a.id - b.id).slice(0, limite);
     };
-    return { fetchPage, calls };
+    return { fetchPage, calls, limits };
   };
 
   test("entrega en id ascendente aunque la respuesta llegue desordenada", () => {
@@ -456,6 +471,44 @@ test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () 
     const result = await drainFeedAfterCursor(null, feed.fetchPage);
     expect(result).toEqual({ cursor: 900, fresh: [], pages: 1 });
     expect(feed.calls).toEqual([null]);
+  });
+  test("el arranque pide limite=1 y los sondeos siguientes el tope, después del cursor (EC-997)", async () => {
+    expect(cursorFeedPageParams(null)).toEqual({ limite: 1 });
+    expect(cursorFeedPageParams(0)).toEqual({ limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: 0 });
+    const feed = fakeFeed(ids(1, 900));
+    const start = await drainFeedAfterCursor(null, feed.fetchPage);
+    await drainFeedAfterCursor(start.cursor, feed.fetchPage);
+    expect(feed.limits).toEqual([1, 200]);
+    expect(feed.calls).toEqual([null, 900]);
+  });
+  test("sin cursor manda el más reciente por created_at, no el id más alto (caso aceptado)", async () => {
+    // Dos `scans/receive/` cruzados: la 901 se confirmó antes que la 900 pero con fecha anterior.
+    const feed = fakeFeed([...ids(1, 899), { id: 901, created_at: 899.5 }, { id: 900, created_at: 900 }]);
+    expect((await drainFeedAfterCursor(null, feed.fetchPage)).cursor).toBe(900);
+  });
+  test("cambiar de lector arranca el cursor del nuevo sin traer su rezago (EC-997)", async () => {
+    // El lector 9 lleva días sin leer; el 24 acumula 3000 lecturas desde entonces.
+    const rows = [...ids(1, 50, 9), ...ids(51, 3050, 24)];
+    // Lo que hace el hook: un cursor por sesión, y cada sesión arranca sin cursor.
+    let feed: CursorFeedSession = nextCursorFeedSession({ enabled: false, lector: null, session: 0 }, true, 9);
+    const cursors = new Map<number, number>();
+    const poll = async () => {
+      const result = await drainFeedAfterCursor(cursors.get(feed.session) ?? null, fakeFeed(rows, { lector: feed.lector ?? undefined }).fetchPage);
+      cursors.set(feed.session, result.cursor);
+      return result.fresh.map((r) => r.id);
+    };
+    expect(await poll()).toEqual([]);
+    expect(cursors.get(feed.session)).toBe(50);
+
+    feed = nextCursorFeedSession(feed, true, 24);
+    expect(await poll()).toEqual([]);
+    expect(cursors.get(feed.session)).toBe(3050);
+    rows.push({ id: 3051, created_at: 3051, lector: 24 });
+    expect(await poll()).toEqual([3051]);
+
+    // Con el cursor del 9 (el error de antes) el primer sondeo del 24 traía su rezago.
+    const reused = await drainFeedAfterCursor(50, fakeFeed(rows, { lector: 24 }).fetchPage);
+    expect(reused.fresh).toHaveLength(3001);
   });
   test("un error en una página posterior corta sin perder lo recibido", async () => {
     const feed = fakeFeed(ids(1001, 1450), { failOnCall: 2 });

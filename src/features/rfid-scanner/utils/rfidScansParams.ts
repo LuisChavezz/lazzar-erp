@@ -14,6 +14,27 @@ export interface RfidScansParams {
 export const RFID_FEED_CURSOR_LIMIT = 200;
 
 /**
+ * `limite` del arranque del cursor (EC-997): esa respuesta solo da el `id`
+ * más alto y no entrega nada, así que basta la más reciente. Sin cursor el
+ * backend ordena por `-created_at, -id`; dos `scans/receive/` simultáneos
+ * podrían dejar arriba una fila de `id` menor, y entonces entraría alguna
+ * lectura de milisegundos antes de empezar (aceptado).
+ */
+export const RFID_FEED_BOOTSTRAP_LIMIT = 1;
+
+/**
+ * `limite` y `despues_de_id` de cada página de una captura con cursor: sin
+ * cursor todavía, el arranque con `RFID_FEED_BOOTSTRAP_LIMIT`; con cursor, el
+ * tope (`RFID_FEED_CURSOR_LIMIT`) después de ese `id`.
+ */
+export const cursorFeedPageParams = (
+  cursor: number | null,
+): Pick<RfidScansParams, "limite" | "despuesDeId"> =>
+  cursor === null
+    ? { limite: RFID_FEED_BOOTSTRAP_LIMIT }
+    : { limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: cursor };
+
+/**
  * Query string de `scans/`. Siempre `unicos=1`; `solo_match`, `lector`,
  * `despues_de_id` y `limite` solo si se piden. Sin los dos últimos queda
  * exactamente la petición de siempre (la que usan el monitor, Recepción y

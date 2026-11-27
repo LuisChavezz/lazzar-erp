@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
 import {
+  cursorFeedPageParams,
   drainFeedAfterCursor,
   nextCursorFeedSession,
-  RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   type CursorFeedSession,
 } from "../utils/rfidScansParams";
@@ -15,8 +15,9 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * Lecturas de la antena POSTERIORES al inicio de la captura (EC-982), con el
  * cursor `despues_de_id` del backend. Cada vez que `enabled` pasa a `true`, y
  * cada vez que cambia `lector` mientras está encendido (EC-997,
- * `nextCursorFeedSession`), empieza una sesión: la primera petición solo fija el cursor (el `id` más
- * alto que ya existe, 0 sin lecturas) y las siguientes, cada 3 s, piden
+ * `nextCursorFeedSession`), empieza una sesión: la primera petición
+ * (`limite=1`, `cursorFeedPageParams`) solo fija el cursor (el `id` más alto
+ * que ya existe, 0 sin lecturas) y las siguientes, cada 3 s, piden
  * `despues_de_id` = el `id` más alto visto, con `unicos=1&limite=200`, y
  * devuelven SOLO lo nuevo, en `id` ascendente (EC-984). Si una página viene
  * llena se pide la siguiente en el mismo sondeo (`drainFeedAfterCursor`). Así
@@ -64,8 +65,7 @@ export function useRfidCursorScans(
           const { scans } = await fetchRfidScans({
             soloMatch,
             lector,
-            limite: RFID_FEED_CURSOR_LIMIT,
-            ...(current === null ? {} : { despuesDeId: current }),
+            ...cursorFeedPageParams(current),
           });
           return scans;
         });
