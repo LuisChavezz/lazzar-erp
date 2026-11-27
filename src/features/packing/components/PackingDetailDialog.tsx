@@ -30,11 +30,18 @@ const LineasTable = ({ items }: { items: PackingDetalleLine[] }) => {
   if (items.length === 0) {
     return <EmptyLines>Este embarque no tiene líneas registradas.</EmptyLines>;
   }
+  // Embarques anteriores al empaque por cajas no traen `caja_numero`.
+  const conCaja = items.some((l) => l.caja_numero != null);
+  // Ordenadas por caja para leer el contenido de cada una de corrido.
+  const ordenadas = conCaja
+    ? [...items].sort((a, b) => (a.caja_numero ?? Infinity) - (b.caja_numero ?? Infinity))
+    : items;
 
   return (
     <LineItemsTable
       head={
         <>
+          {conCaja && <th className="px-3 py-2 font-medium">Caja</th>}
           <th className="px-3 py-2 font-medium">Producto / Variante</th>
           <th className="px-3 py-2 font-medium">Talla</th>
           <th className="px-3 py-2 font-medium text-right">Solicitada</th>
@@ -46,8 +53,13 @@ const LineasTable = ({ items }: { items: PackingDetalleLine[] }) => {
         </>
       }
     >
-      {items.map((linea) => (
+      {ordenadas.map((linea) => (
         <tr key={linea.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+          {conCaja && (
+            <td className="px-3 py-2 font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+              {linea.caja_numero ?? "—"}
+            </td>
+          )}
           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
             {lineaProductoNombre(linea)}
           </td>
@@ -207,6 +219,35 @@ export function PackingDetailContent({ packing }: { packing: Packing }) {
             </div>
           </div>
         </div>
+
+        {/* Cajas */}
+        {(packing.cajas?.length ?? 0) > 0 && (
+          <div>
+            <SectionTitle>Cajas</SectionTitle>
+            <div className="flex flex-wrap gap-2">
+              {packing.cajas!.map((caja) => {
+                const piezas = packing.packing_detalle
+                  .filter((l) => l.caja_numero === caja.numero)
+                  .reduce((acc, l) => acc + (Number.parseFloat(l.cantidad_empacada) || 0), 0);
+                return (
+                  <div
+                    key={caja.id ?? caja.numero}
+                    className="min-w-32 rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 text-xs"
+                  >
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      Caja {caja.numero}
+                      <span className="font-normal text-slate-500 dark:text-slate-400"> de {packing.cajas!.length}</span>
+                    </p>
+                    <p className="tabular-nums text-slate-500 dark:text-slate-400">
+                      {piezas.toLocaleString("es-MX", { maximumFractionDigits: 4 })} pzas
+                      {caja.peso && Number.parseFloat(caja.peso) > 0 && <> · {formatExactQuantityValue(caja.peso)} kg</>}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Líneas */}
         <div>

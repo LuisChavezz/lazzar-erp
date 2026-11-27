@@ -6,21 +6,14 @@ import {
   FormSecondaryButton,
   FormSubmitButton,
 } from "@/src/components/FormButtons";
-import { FormInput } from "@/src/components/FormInput";
-import { SkuCode } from "@/src/components/SkuCode";
-import { hasLineCode, type LineCodes } from "@/src/utils/sku";
 import { FormTextarea } from "@/src/components/FormTextarea";
 import { Loader } from "@/src/components/Loader";
-import { DecimalQuantityInput } from "@/src/components/DecimalQuantityInput";
 import {
   ExclamationTriangleIcon,
-  CheckIcon,
   InfoIcon,
 } from "@/src/components/Icons";
-import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { sanitizeDecimalInput } from "@/src/utils/decimal";
+import { PackingBoxesBoard } from "./PackingBoxesBoard";
 import {
-  packingLineProductoNombre,
   usePackingStep2Form,
   type PackingZeroPendingCause,
 } from "../hooks/usePackingStep2Form";
@@ -31,9 +24,6 @@ interface PackingWizardStep2Props {
   onBack: () => void;
   onSuccess: () => void;
 }
-
-/** `decimal_places=3` de `peso_total`/`volumen_total` en el backend. */
-const HEADER_DECIMAL_PLACES = 3;
 
 /**
  * Copy del aviso "sin pendiente" cuando SÍ hay líneas (ver `zeroPendingCause`
@@ -68,10 +58,11 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
     isError,
     header,
     setHeader,
-    quantities,
-    lineObservaciones,
-    setQuantity,
-    setLineObservacion,
+    boxes,
+    setBoxes,
+    boxLines,
+    status,
+    pesoTotal,
     selectedCount,
     serverBanner,
     dismissBanner,
@@ -82,8 +73,6 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
   } = usePackingStep2Form({ pickingId: step1.picking, onSuccess });
   // Nota colapsada por defecto; abierta si ya trae texto.
   const [notaAbierta, setNotaAbierta] = useState(header.observaciones.trim() !== "");
-  // Líneas con su nota desplegada (además de las que ya traen texto).
-  const [notasLinea, setNotasLinea] = useState<ReadonlySet<string>>(() => new Set());
 
   if (isLoading) {
     return (
@@ -115,30 +104,21 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
 
   const noPending = rows.length === 0 || pendingRowsCount === 0;
 
-  // ── Atajos y conteos en vivo ────────────────────────────────────────────
-  const pendienteDe = (row: (typeof rows)[number]) => Number.parseFloat(row.cantidad_pendiente_empacar) || 0;
-  const totalPendiente = rows.reduce((acc, row) => acc + Math.max(0, pendienteDe(row)), 0);
-  const totalEmpacar = rows.reduce((acc, row) => acc + (Number.parseFloat(quantities[String(row.picking_detalle)] ?? "") || 0), 0);
-  const todoCapturado = totalPendiente > 0 && totalEmpacar >= totalPendiente;
-  const empacarTodo = () => {
-    for (const row of rows) {
-      const p = pendienteDe(row);
-      if (p > 0) setQuantity(row.picking_detalle, String(p));
-    }
-  };
-  const limpiar = () => {
-    for (const row of rows) setQuantity(row.picking_detalle, "");
-  };
-  const cajas = Number.parseInt(header.numero_cajas, 10);
-  const cajasValidas = Number.isInteger(cajas) && cajas >= 1;
-  const setCajas = (n: number) => setHeader((prev) => ({ ...prev, numero_cajas: String(Math.max(1, n)) }));
-  const codigosDe = (row: (typeof rows)[number]): LineCodes => ({
-    producto_variante_sku: row.producto_variante_sku ?? row.sku_muestra,
-    producto_codigo: row.producto_codigo,
-    producto_cod_proscai: row.producto_cod_proscai,
-  });
-  const conCodigos = hasLineCode(rows.map(codigosDe));
   const miles = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+  const cajasTxt = (ns: number[], uno: string, varios: string) =>
+    ns.length === 1 ? `Caja ${ns[0]} ${uno}` : `Cajas ${ns.join(", ")} ${varios}`;
+  // Primer motivo que impide registrar, dicho en el pie junto al botón.
+  const bloqueo =
+    status.excedidas.length > 0
+      ? "Hay piezas de más"
+      : status.cajasVacias.length > 0
+        ? cajasTxt(status.cajasVacias, "vacía", "vacías")
+        : status.cajasSinPeso.length > 0
+          ? status.cajasSinPeso.length === 1
+            ? `Falta el peso de la caja ${status.cajasSinPeso[0]}`
+            : `Falta el peso de las cajas ${status.cajasSinPeso.join(", ")}`
+          : null;
+  const bloqueado = bloqueo !== null;
 
   return (
     // `noValidate`: el esquema y el banner deciden, no el globo nativo.
@@ -229,211 +209,22 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
           </div>
         ) : (
           <>
-            {/* ── 1. Qué va en el embarque ─────────────────────────────── */}
-            <section className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/60 dark:bg-white/2 border-b border-slate-100 dark:border-white/5">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-[11px] font-bold text-white">1</span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Qué va en este embarque</h3>
-                    <p className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-                      <b className={todoCapturado ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"}>
-                        {miles(totalEmpacar)}
-                      </b>{" "}
-                      de {miles(totalPendiente)} pzas pendientes
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {totalEmpacar > 0 && (
-                    <button
-                      type="button"
-                      onClick={limpiar}
-                      className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={empacarTodo}
-                    disabled={todoCapturado}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/30 hover:bg-emerald-700 active:scale-95 transition cursor-pointer disabled:opacity-40 disabled:cursor-default"
-                  >
-                    <CheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    Empacar todo
-                  </button>
-                </div>
-              </div>
-              {/* Barra de avance de lo capturado contra lo pendiente. */}
-              <div className="h-1 w-full bg-slate-100 dark:bg-white/5">
-                <div
-                  className={`h-full transition-all duration-300 ${todoCapturado ? "bg-emerald-500" : "bg-sky-500"}`}
-                  style={{ width: `${totalPendiente > 0 ? Math.min(100, (totalEmpacar / totalPendiente) * 100) : 0}%` }}
-                />
-              </div>
+            <PackingBoxesBoard
+              rows={rows}
+              boxLines={boxLines}
+              boxes={boxes}
+              setBoxes={setBoxes}
+              status={status}
+              pesoTotal={pesoTotal}
+            />
 
-              <ul className="divide-y divide-slate-100 dark:divide-white/5 max-h-[38vh] overflow-y-auto">
-                {rows.map((row) => {
-                  const key = String(row.picking_detalle);
-                  const pendiente = pendienteDe(row);
-                  const sinPendiente = pendiente <= 0;
-                  const qtyValue = quantities[key] ?? "";
-                  const qty = Number.parseFloat(qtyValue) || 0;
-                  const completa = !sinPendiente && qty >= pendiente;
-                  const nombre = packingLineProductoNombre(row);
-                  return (
-                    <li
-                      key={key}
-                      className={`px-4 py-2.5 transition-colors ${
-                        sinPendiente ? "opacity-40" : completa ? "bg-emerald-50/50 dark:bg-emerald-500/5" : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className={`h-2 w-2 shrink-0 rounded-full ${
-                            completa ? "bg-emerald-500" : qty > 0 ? "bg-sky-500" : "bg-slate-300 dark:bg-slate-600"
-                          }`}
-                        />
-                        {/* SKU partido por "/" (modelo / color / talla) + Proscai debajo. */}
-                        {conCodigos && (
-                          <div className="w-28 shrink-0 text-xs">
-                            <SkuCode linea={codigosDe(row)} />
-                          </div>
-                        )}
-                        <div
-                          className="min-w-0 flex-1"
-                          title={`Asignada ${formatExactQuantityValue(row.cantidad_asignada)} · Surtida ${formatExactQuantityValue(row.cantidad_surtida)} · Ya empacada ${formatExactQuantityValue(row.cantidad_ya_empacada)}`}
-                        >
-                          <p className="flex items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{nombre}</span>
-                            {row.talla_nombre && (
-                              <span className="shrink-0 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                {row.talla_nombre}
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {row.color_nombre && <>{row.color_nombre} · </>}
-                            {sinPendiente ? (
-                              "Ya empacada"
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setQuantity(row.picking_detalle, String(pendiente))}
-                                className="font-semibold tabular-nums text-sky-700 dark:text-sky-300 hover:underline cursor-pointer"
-                                title="Empacar lo pendiente de esta línea"
-                              >
-                                Pendiente {formatExactQuantityValue(row.cantidad_pendiente_empacar)}
-                              </button>
-                            )}
-                            {qty > 0 && !notasLinea.has(key) && !(lineObservaciones[key] ?? "").trim() && (
-                              <button
-                                type="button"
-                                onClick={() => setNotasLinea((prev) => new Set(prev).add(key))}
-                                className="ml-2 text-slate-400 hover:text-sky-600 hover:underline cursor-pointer"
-                              >
-                                + nota
-                              </button>
-                            )}
-                          </p>
-                        </div>
-                        <DecimalQuantityInput
-                          value={qtyValue}
-                          max={pendiente}
-                          disabled={sinPendiente}
-                          onChange={(next) => setQuantity(row.picking_detalle, next)}
-                          label={`Cantidad a empacar de ${nombre}`}
-                        />
-                      </div>
-                      {qty > 0 && (notasLinea.has(key) || (lineObservaciones[key] ?? "").trim() !== "") && (
-                        <div className="mt-1.5 pl-5">
-                          <FormInput
-                            variant="compact"
-                            placeholder="Nota de esta línea (opcional)"
-                            forceUppercase
-                            value={lineObservaciones[key] ?? ""}
-                            onChange={(event) => setLineObservacion(row.picking_detalle, event.target.value)}
-                            aria-label={`Observaciones de ${nombre}`}
-                          />
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-
-            {/* ── 2. Cómo sale: cajas (obligatorio) y peso ─────────────── */}
-            <section className="rounded-2xl border border-slate-200 dark:border-white/10 px-4 py-3">
-              <div className="flex items-center gap-2.5 mb-3">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-[11px] font-bold text-white">2</span>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cómo sale</h3>
-              </div>
+            <section>
               <div className="flex flex-wrap items-end gap-4">
-                <div>
-                  <label htmlFor="numero_cajas" className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Cajas <span className="text-rose-500">*</span>
-                  </label>
-                  <div
-                    className={`inline-flex items-center rounded-xl border ${
-                      cajasValidas
-                        ? "border-slate-200 dark:border-white/10"
-                        : "border-amber-300 dark:border-amber-500/40"
-                    } bg-white dark:bg-zinc-900`}
-                  >
-                    <button
-                      type="button"
-                      aria-label="Una caja menos"
-                      onClick={() => setCajas((cajasValidas ? cajas : 1) - 1)}
-                      className="grid h-11 w-11 place-items-center text-lg font-bold text-slate-500 hover:text-sky-600 cursor-pointer"
-                    >
-                      −
-                    </button>
-                    <input
-                      id="numero_cajas"
-                      name="numero_cajas"
-                      inputMode="numeric"
-                      aria-required="true"
-                      placeholder="0"
-                      value={header.numero_cajas}
-                      onChange={(event) => setHeader((prev) => ({ ...prev, numero_cajas: event.target.value }))}
-                      className="h-11 w-16 bg-transparent text-center text-xl font-bold tabular-nums text-slate-900 dark:text-white focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Una caja más"
-                      onClick={() => setCajas((cajasValidas ? cajas : 0) + 1)}
-                      className="grid h-11 w-11 place-items-center text-lg font-bold text-slate-500 hover:text-sky-600 cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="w-36">
-                  <FormInput
-                    label="Peso (kg, opcional)"
-                    name="peso_total"
-                    type="text"
-                    inputMode="decimal"
-                    value={header.peso_total}
-                    placeholder="0.000"
-                    onChange={(event) =>
-                      setHeader((prev) => ({
-                        ...prev,
-                        peso_total: sanitizeDecimalInput(event.target.value, HEADER_DECIMAL_PLACES, {
-                          keepLeadingMinus: true,
-                        }),
-                      }))
-                    }
-                  />
-                </div>
                 {!notaAbierta && (
                   <button
                     type="button"
                     onClick={() => setNotaAbierta(true)}
-                    className="mb-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:underline cursor-pointer"
+                    className="text-xs font-semibold text-accent hover:underline cursor-pointer"
                   >
                     + Agregar nota
                   </button>
@@ -462,18 +253,28 @@ export function PackingWizardStep2({ step1, onBack, onSuccess }: PackingWizardSt
         <div className="flex items-center gap-3">
           {!noPending && (
             <p className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
-              <b className="text-slate-800 dark:text-slate-100">{miles(totalEmpacar)} pzas</b>
+              <b className="text-slate-800 dark:text-slate-100">{miles(status.acomodadas)} pzas</b>
               {" en "}
-              <b className={cajasValidas ? "text-slate-800 dark:text-slate-100" : "text-amber-600 dark:text-amber-400"}>
-                {cajasValidas ? `${cajas} ${cajas === 1 ? "caja" : "cajas"}` : "? cajas"}
+              <b className="text-slate-800 dark:text-slate-100">
+                {boxes.length} {boxes.length === 1 ? "caja" : "cajas"}
               </b>
+              {pesoTotal !== null && <> · {miles(pesoTotal)} kg</>}
+              {bloqueado && (
+                <span
+                  className={`ml-2 font-semibold ${
+                    status.excedidas.length > 0 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {bloqueo}
+                </span>
+              )}
             </p>
           )}
           {/* `disabled` incluye `isPending`: ver `FormSubmitButton`. */}
           <FormSubmitButton
             isPending={isPending}
             loadingLabel="Registrando..."
-            disabled={isPending || selectedCount === 0 || !cajasValidas}
+            disabled={isPending || selectedCount === 0 || bloqueado}
           >
             Registrar embarque
           </FormSubmitButton>
