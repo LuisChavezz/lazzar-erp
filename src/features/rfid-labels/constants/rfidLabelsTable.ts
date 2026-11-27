@@ -9,7 +9,7 @@ export const RFID_LABEL_STATUS_VALUES = [
 
 /**
  * Contrato del listado con `GET /wms/etiquetas-rfid/` desde EC-989
- * (nucleo-erp): `PaginacionOpcionalLimitOffset` (la tabla siempre manda
+ * (nucleo-erp#1487): `PaginacionOpcionalLimitOffset` (la tabla siempre manda
  * `limit`/`offset`), `?search=` (folio, SKU, producto y variante), `?status=` y
  * `?ordering=` con `-created_at` por defecto.
  *
@@ -17,9 +17,12 @@ export const RFID_LABEL_STATUS_VALUES = [
  * responde el arreglo completo. `rfidLabelsAdapter` lo acepta igual; hasta que
  * EC-989 se despliegue, la búsqueda, el filtro y el orden no surten efecto.
  *
- * - `folio` es una propiedad del modelo (sale del `id`), por eso se ordena por `id`.
- * - SKU, producto y variante se ordenan por su ruta en el modelo, como el resto
- *   de los listados en modo servidor (`proveedor__nombre`).
+ * - `ordering` usa los nombres de columna de la lista blanca del backend, no
+ *   rutas del ORM: el backend traduce `folio` → `id`, `sku` →
+ *   `producto_variante__sku`, etc. Un campo fuera de esa lista se descarta sin
+ *   error.
+ * - Sin `tiebreaker`: el backend añade el desempate por `id` en la dirección
+ *   del primer campo, e `id` no está en su lista blanca.
  */
 export const rfidLabelsTable = defineServerTable({
   filters: {
@@ -28,15 +31,14 @@ export const rfidLabelsTable = defineServerTable({
   search: { param: "search" },
   ordering: {
     fields: [
-      "id",
-      "producto_variante__sku",
-      "producto__nombre",
-      "producto_variante__nombre",
+      "folio",
+      "sku",
+      "producto_nombre",
+      "producto_variante_nombre",
       "cantidad",
       "status",
       "created_at",
     ],
     default: "-created_at",
-    tiebreaker: "-id",
   },
 });

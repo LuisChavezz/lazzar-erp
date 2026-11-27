@@ -54,7 +54,7 @@ const columnHelper = createColumnHelper<EtiquetaRFIDRow>();
 export const rfidLabelColumns = [
   columnHelper.accessor("folio", {
     header: "Folio",
-    meta: { serverSort: "id" },
+    meta: { serverSort: "folio" },
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
         {info.getValue()}
@@ -71,7 +71,7 @@ export const rfidLabelColumns = [
   columnHelper.accessor((row) => row.sku ?? "", {
     id: "sku",
     header: "SKU",
-    meta: { serverSort: "producto_variante__sku" },
+    meta: { serverSort: "sku" },
     // `null` cuando la impresión se registró por producto, sin variante.
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
@@ -81,7 +81,7 @@ export const rfidLabelColumns = [
   }),
   columnHelper.accessor("producto_nombre", {
     header: "Producto",
-    meta: { serverSort: "producto__nombre" },
+    meta: { serverSort: "producto_nombre" },
     cell: (info) => (
       <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
     ),
@@ -91,7 +91,7 @@ export const rfidLabelColumns = [
   columnHelper.accessor((row) => row.producto_variante_nombre ?? "", {
     id: "producto_variante_nombre",
     header: "Variante",
-    meta: { serverSort: "producto_variante__nombre" },
+    meta: { serverSort: "producto_variante_nombre" },
     // Compuesto "Producto - Color - Talla" armado por el backend — se muestra
     // tal cual, no se separa en color/talla (no hay campos sueltos que leer).
     cell: (info) => (
