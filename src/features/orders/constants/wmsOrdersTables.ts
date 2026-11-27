@@ -35,6 +35,16 @@ export const WMS_ORDERS_SET_PARAMS = {
   surtidos: { estatus: "todos", completo: "1" },
 } as const satisfies Record<WmsOrdersTab, Record<string, string>>;
 
+/**
+ * Parámetros de una petición de la pestaña: los de la tabla (filtros, búsqueda,
+ * orden, página) y DESPUÉS los fijos del conjunto, para que ninguno de la URL
+ * pueda pisar `por_surtir`, `estatus` ni `completo`.
+ */
+export const withWmsOrdersSetParams = (
+  tab: WmsOrdersTab,
+  params: Record<string, string | number>,
+): Record<string, string | number> => ({ ...params, ...WMS_ORDERS_SET_PARAMS[tab] });
+
 /** Llaves bajo `["surtido-pedidos"]`: invalidar ese prefijo refresca las dos pestañas y los contadores. */
 export const wmsOrdersListKey = (tab: WmsOrdersTab) => [...SURTIDO_PEDIDOS_KEY, tab] as const;
 export const WMS_ORDERS_RESUMEN_KEY = [...SURTIDO_PEDIDOS_KEY, "resumen"] as const;

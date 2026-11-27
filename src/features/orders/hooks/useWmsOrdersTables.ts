@@ -17,6 +17,7 @@ import {
   surtidosTable,
   WMS_ORDERS_RESUMEN_KEY,
   WMS_ORDERS_SET_PARAMS,
+  withWmsOrdersSetParams,
   wmsOrdersFiltrosKey,
   wmsOrdersListKey,
   type WmsOrdersTab,
@@ -26,12 +27,11 @@ import {
 const porSurtirAdapter = pageNumberAdapter<SurtidoPedidoPorSurtir>();
 const surtidosAdapter = pageNumberAdapter<SurtidoPedido>();
 
-// Los parámetros fijos del conjunto van DESPUÉS de los de la tabla: ningún
-// filtro de la URL puede pisarlos.
+// Los parámetros fijos del conjunto ganan a los de la tabla (`withWmsOrdersSetParams`).
 const getPorSurtirPage = (params: Record<string, string | number>) =>
-  getSurtidoPedidosPage<SurtidoPedidoPorSurtir>({ ...params, ...WMS_ORDERS_SET_PARAMS["por-surtir"] });
+  getSurtidoPedidosPage<SurtidoPedidoPorSurtir>(withWmsOrdersSetParams("por-surtir", params));
 const getSurtidosPage = (params: Record<string, string | number>) =>
-  getSurtidoPedidosPage<SurtidoPedido>({ ...params, ...WMS_ORDERS_SET_PARAMS.surtidos });
+  getSurtidoPedidosPage<SurtidoPedido>(withWmsOrdersSetParams("surtidos", params));
 
 /**
  * "Por surtir" de Pedidos de Almacén en MODO SERVIDOR: lo que ofrece el
