@@ -25,7 +25,7 @@ export function useRfidEpcFeed(
   // Las dos fuentes se llaman siempre (reglas de hooks); solo la elegida sondea.
   const latest = useRfidScans(enabled && !cursor, { soloMatch: true, lector });
   const afterCursor = useRfidCursorScans(enabled && cursor, { soloMatch: true, lector });
-  const { scans } = cursor ? afterCursor : latest;
+  const { scans } = latest;
   // Con cursor, solo si la sesión nunca respondió (los fallos posteriores avisan
   // con toast, `useGuardedQuery`); sin él, como siempre.
   const isError = cursor ? afterCursor.isInitialError : latest.isError;
@@ -37,29 +37,45 @@ export function useRfidEpcFeed(
     onEpcRef.current = onEpc;
   });
 
-  useEffect(() => {
-    if (!enabled) {
-      seenRef.current = new Set();
-      return;
-    }
+  const deliver = (ordered: readonly RfidScan[]) => {
     let nuevos = 0;
-    // Del más antiguo al más reciente, para sumar en el orden en que se leyeron:
-    // sin cursor llegan de la más reciente a la más antigua; con cursor, ya en
-    // `id` ascendente (EC-984).
-    for (const scan of cursor ? scans : [...scans].reverse()) {
+    for (const scan of ordered) {
       if (seenRef.current.has(scan.epc)) continue;
       seenRef.current.add(scan.epc);
       nuevos += 1;
       onEpcRef.current(scan);
     }
+    return nuevos;
+  };
+
+  // Sin cursor: las más recientes de cada sondeo, solo mientras está encendido.
+  useEffect(() => {
+    if (!enabled) {
+      seenRef.current = new Set();
+      return;
+    }
+    if (cursor) return;
+    // Del más antiguo al más reciente, para sumar en el orden en que se leyeron.
+    const nuevos = deliver([...scans].reverse());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- contador derivado de un stream externo
     if (nuevos > 0) setCount((prev) => prev + nuevos);
   }, [enabled, scans, cursor]);
+
+  // Con cursor: lo que dejó cada sondeo en la bandeja, ya en `id` ascendente
+  // (EC-984), AUNQUE la lectura esté en pausa: un sondeo en vuelo al pausar ya
+  // movió el cursor y sus lecturas no volverían a pedirse.
+  useEffect(() => {
+    if (!cursor) return;
+    const nuevos = deliver(afterCursor.outbox.take());
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- contador derivado de un stream externo
+    if (nuevos > 0) setCount((prev) => prev + nuevos);
+  }, [cursor, afterCursor.outbox, afterCursor.version]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia el contador de la sesión
     if (!enabled) setCount(0);
   }, [enabled]);
 
-  return { count, isError };
+  // Con cursor, un sondeo en vuelo puede traer lecturas aun en pausa.
+  return { count, isError, isPolling: cursor && afterCursor.isFetching };
 }

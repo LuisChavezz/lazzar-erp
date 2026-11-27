@@ -14,6 +14,40 @@ export interface RfidSessionRead extends RfidReadFeedback {
   code: string;
 }
 
+/**
+ * Resultado final de una lectura de la sesión:
+ * - `enviada`: el backend la guardó (`201`); `sinAsignar` si no sumó a un renglón.
+ * - `ya-leida`: el encuadre ya la tenía y no se mandó.
+ * - `rechazada`: el backend no la guardó (repetida en el backend, ya leída en
+ *   otro encuadre de la misma orden, error) o no se mandó porque la cola se detuvo.
+ */
+export type RfidReadOutcome =
+  | { kind: "enviada"; sinAsignar: boolean }
+  | { kind: "ya-leida" }
+  | { kind: "rechazada"; code: string; message: string };
+
+/** Totales de la sesión por resultado (no se recortan como la lista de 50). */
+export interface RfidReadTally {
+  enviadas: number;
+  sinAsignar: number;
+  yaLeidas: number;
+  rechazadas: number;
+}
+
+export const EMPTY_READ_TALLY: RfidReadTally = { enviadas: 0, sinAsignar: 0, yaLeidas: 0, rechazadas: 0 };
+
+/** Suma un resultado a los totales de la sesión. Puro. */
+export const tallyRead = (tally: RfidReadTally, outcome: RfidReadOutcome): RfidReadTally => {
+  switch (outcome.kind) {
+    case "enviada":
+      return { ...tally, enviadas: tally.enviadas + 1, sinAsignar: tally.sinAsignar + (outcome.sinAsignar ? 1 : 0) };
+    case "ya-leida":
+      return { ...tally, yaLeidas: tally.yaLeidas + 1 };
+    case "rechazada":
+      return { ...tally, rechazadas: tally.rechazadas + 1 };
+  }
+};
+
 export interface RfidReadQueueDeps {
   /** El `POST .../lecturas/` con `{epc}`. */
   send: (epc: string) => Promise<RfidReconciliationRead>;
@@ -27,6 +61,8 @@ export interface RfidReadQueueDeps {
   onStop: (message: string) => void;
   /** Terminó una tanda que cambió el encuadre (lecturas nuevas o repetidas en el backend). */
   onDrained: () => void;
+  /** El resultado final de cada lectura (para los totales y la lista de rechazadas). */
+  onOutcome: (outcome: RfidReadOutcome) => void;
 }
 
 /**
@@ -70,6 +106,7 @@ export class RfidReadQueueCore {
     const key = this.seq;
     if (isEpcAlreadyRead(rawEpc, this.known, this.sent)) {
       this.deps.onAdd({ key, code: rawEpc, tone: "warn", title: "Ya leído", detail: "Esta etiqueta ya está en el encuadre" });
+      this.deps.onOutcome({ kind: "ya-leida" });
       return;
     }
     this.deps.onAdd({ key, code: rawEpc, tone: "pending", title: "Enviando…" });
@@ -104,10 +141,15 @@ export class RfidReadQueueCore {
           const canonical = normalizeEpc(read.codigo_tag);
           if (canonical) this.sent.add(canonical);
           changed = true;
-          this.deps.onUpdate(next.key, readSuccessFeedback(read));
+          const feedback = readSuccessFeedback(read);
+          this.deps.onUpdate(next.key, feedback);
+          this.deps.onOutcome({ kind: "enviada", sinAsignar: feedback.tone !== "ok" });
         } catch (error) {
           const { kind, message } = classifyReadError(error);
           this.deps.onUpdate(next.key, readErrorFeedback(kind, message));
+          // El backend no la guardó: va a la lista de rechazadas con su mensaje
+          // (repetida, ya leída en otro encuadre de la misma orden, error).
+          this.deps.onOutcome({ kind: "rechazada", code: next.code, message });
           // Lo que no quedó guardado se puede volver a leer.
           if (kind !== "duplicate") this.sent.delete(normalizeEpc(next.code));
           // El backend ya lo tenía y el detalle no: otra sesión leyó. Se relee.
@@ -117,6 +159,7 @@ export class RfidReadQueueCore {
             for (const dropped of this.queue) {
               this.sent.delete(normalizeEpc(dropped.code));
               this.deps.onUpdate(dropped.key, { tone: "error", title: "No se envió", detail: message });
+              this.deps.onOutcome({ kind: "rechazada", code: dropped.code, message: `No se envió: ${message}` });
             }
             this.queue = [];
             this.deps.onStop(message);

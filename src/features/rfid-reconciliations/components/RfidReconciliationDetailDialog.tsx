@@ -43,7 +43,7 @@ import {
 import type { RfidReconciliation } from "../interfaces/rfid-reconciliation.interface";
 import { RfidReconciliationScanPanel } from "./RfidReconciliationScanPanel";
 import { knownReadEpcs, unassignedReadReason } from "../utils/rfidReadResult";
-import { acceptAvailability, reconciliationBalance } from "../utils/rfidReconciliationBalance";
+import { acceptAvailability, nextCaptureState, reconciliationBalance, type CaptureEvent } from "../utils/rfidReconciliationBalance";
 import { refreshListAfterReading } from "../utils/rfidReconciliationCache";
 
 const acceptDescription = (data: RfidReconciliation) =>
@@ -90,16 +90,22 @@ export function RfidReconciliationDetailDialog({
   const acceptSession = useDialogSession(isAcceptOpen, data);
   const cancelSession = useDialogSession(isCancelOpen, data);
 
-  const handleReadingChange = (next: boolean) => {
-    setReading(next);
-    if (!next) refreshListAfterReading(queryClient);
+  // Encender, pausar, cola detenida, abrir "Cancelar" o cerrar el detalle
+  // (`nextCaptureState`): todo menos encender apaga la lectura.
+  const applyCapture = (event: CaptureEvent) => {
+    const next = nextCaptureState(reading, event);
+    setReading(next.reading);
+    if (next.refreshList) refreshListAfterReading(queryClient);
   };
+  const handleReadingChange = (next: boolean) => applyCapture(next ? "start" : "pause");
   const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setReading(false);
-      refreshListAfterReading(queryClient);
-    }
+    if (!next) applyCapture("dialog-closed");
     onOpenChange(next);
+  };
+  const openCancel = () => {
+    // Sin lecturas contra el encuadre que se va a cancelar.
+    applyCapture("cancel-opened");
+    setIsCancelOpen(true);
   };
 
   const actions = data ? rfidReconciliationActions(data.estatus) : null;
@@ -126,7 +132,7 @@ export function RfidReconciliationDetailDialog({
         {actions.canCancel && (
           <Button
             variant="secondary"
-            onClick={() => setIsCancelOpen(true)}
+            onClick={openCancel}
             disabled={accept.isPending}
             className="px-3! py-1.5! text-xs! text-rose-600! dark:text-rose-400!"
           >
@@ -169,6 +175,7 @@ export function RfidReconciliationDetailDialog({
           reading={reading}
           onReadingChange={handleReadingChange}
           onPendingChange={setPendingReads}
+          onQueueStopped={() => applyCapture("queue-stopped")}
         />
       )}
 
@@ -231,9 +238,17 @@ interface ReconciliationBodyProps {
   reading: boolean;
   onReadingChange: (reading: boolean) => void;
   onPendingChange: (pending: number) => void;
+  onQueueStopped: () => void;
 }
 
-function ReconciliationBody({ data, canScan, reading, onReadingChange, onPendingChange }: ReconciliationBodyProps) {
+function ReconciliationBody({
+  data,
+  canScan,
+  reading,
+  onReadingChange,
+  onPendingChange,
+  onQueueStopped,
+}: ReconciliationBodyProps) {
   const { data: session } = useSession();
   const originFolio = rfidReconciliationOriginFolio(data);
   const originHref =
@@ -311,6 +326,7 @@ function ReconciliationBody({ data, canScan, reading, onReadingChange, onPending
           reading={reading}
           onReadingChange={onReadingChange}
           onPendingChange={onPendingChange}
+          onQueueStopped={onQueueStopped}
           documento={rfidReconciliationLabel(data)}
         />
       )}

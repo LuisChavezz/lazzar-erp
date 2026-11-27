@@ -66,3 +66,21 @@ export const acceptAvailability = ({
   if (pendingReads > 0) return { allowed: false, reason: "Espera a que terminen de enviarse las lecturas." };
   return { allowed: true, reason: null };
 };
+
+/** Lo que cambia la lectura con la antena en el detalle. */
+export type CaptureEvent = "start" | "pause" | "queue-stopped" | "cancel-opened" | "dialog-closed";
+
+/**
+ * Estado de la lectura tras un evento. Todo menos `start` la apaga: pausar, la
+ * cola detenida (si no, "Aceptar" pediría pausar sin botón de pausa), abrir
+ * "Cancelar" (ninguna lectura contra un encuadre que se cancela) y cerrar el
+ * detalle. El listado se relee una vez cuando la lectura se apaga, y siempre al
+ * cerrar el detalle.
+ */
+export const nextCaptureState = (
+  reading: boolean,
+  event: CaptureEvent,
+): { reading: boolean; refreshList: boolean } => {
+  if (event === "start") return { reading: true, refreshList: false };
+  return { reading: false, refreshList: reading || event === "dialog-closed" };
+};

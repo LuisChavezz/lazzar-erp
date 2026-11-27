@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
 import {
   useLectorEnUso,
@@ -10,7 +10,7 @@ import { RfidLectorSelect } from "@/src/features/rfid-scanner/components/RfidLec
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
-import { useRfidReadQueue, type RfidSessionRead } from "../hooks/useRfidReadQueue";
+import { useRfidReadQueue, type RfidReadTally, type RfidSessionRead } from "../hooks/useRfidReadQueue";
 import type { RfidReadTone } from "../utils/rfidReadResult";
 
 interface RfidReconciliationScanPanelProps {
@@ -23,8 +23,14 @@ interface RfidReconciliationScanPanelProps {
   /** Si la antena está leyendo: lo controla el detalle, que no deja aceptar mientras tanto. */
   reading: boolean;
   onReadingChange: (reading: boolean) => void;
-  /** Lecturas por enviar (incluida la que está en vuelo); 0 al desmontarse. */
+  /**
+   * Lecturas por enviar (incluida la que está en vuelo) más un sondeo de la
+   * antena aún en vuelo, que puede traer lecturas aunque ya se haya pausado;
+   * 0 al desmontarse.
+   */
   onPendingChange: (pending: number) => void;
+  /** La cola se detuvo (`400 estatus`, `404`, `403`): el detalle apaga la lectura. */
+  onQueueStopped: () => void;
   /** Cómo se nombra el encuadre en el aviso "en uso" del lector. */
   documento: string;
 }
@@ -68,21 +74,36 @@ export function RfidReconciliationScanPanel({
   reading,
   onReadingChange,
   onPendingChange,
+  onQueueStopped,
   documento,
 }: RfidReconciliationScanPanelProps) {
-  const { reads, pending, stopped, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
+  const { reads, pending, stopped, tally, rejected, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
   const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado(PANTALLA);
   const faltaLector = lectores.length > 1 && lectorId === null;
   const active = reading && !hasNoCompany && !stopped && !faltaLector;
-  const { count, isError } = useRfidEpcFeed(active, (scan) => enqueue(scan.epc), lectorId, { cursor: true });
+  const { count, isError, isPolling } = useRfidEpcFeed(active, (scan) => enqueue(scan.epc), lectorId, {
+    cursor: true,
+  });
   useLectorEnUso(lectorId, active, PANTALLA, documento);
+  // Un sondeo en vuelo cuenta como pendiente: sus lecturas llegan aunque ya se pausó.
+  const busy = pending + (isPolling ? 1 : 0);
 
   useEffect(() => {
-    onPendingChange(pending);
+    onPendingChange(busy);
     return () => onPendingChange(0);
-  }, [pending, onPendingChange]);
+  }, [busy, onPendingChange]);
+
+  // Cola detenida: el detalle apaga la lectura (si no, "Aceptar" pediría pausar
+  // sin botón de pausa). Una vez por montaje: la cola no se reanuda.
+  const onQueueStoppedRef = useRef(onQueueStopped);
+  useEffect(() => {
+    onQueueStoppedRef.current = onQueueStopped;
+  });
+  useEffect(() => {
+    if (stopped) onQueueStoppedRef.current();
+  }, [stopped]);
 
   return (
     <section aria-label="Lectura RFID" className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
@@ -146,6 +167,25 @@ export function RfidReconciliationScanPanel({
         </p>
       )}
 
+      <SessionTally tally={tally} />
+
+      {rejected.length > 0 && (
+        <div className="border-b border-slate-100 dark:border-white/5">
+          <p className="px-4 pt-2 text-[11px] font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+            No registradas ({rejected.length})
+          </p>
+          <ul aria-label="Lecturas no registradas" className="max-h-40 overflow-y-auto px-2 py-1.5">
+            {rejected.map((read) => (
+              <li key={read.key} className="flex items-center gap-2.5 rounded-lg px-2 py-1 text-[11.5px]" title={read.message}>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" aria-hidden="true" />
+                <span className="shrink-0 font-mono text-slate-700 dark:text-slate-200">{read.code}</span>
+                <span className="min-w-0 flex-1 truncate text-rose-700 dark:text-rose-300">{read.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {reads.length === 0 ? (
         <p className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">Aún no hay lecturas en esta sesión.</p>
       ) : (
@@ -156,6 +196,31 @@ export function RfidReconciliationScanPanel({
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * Totales de la sesión por resultado. No se recortan como la lista de las
+ * últimas 50: con una tarima completa siguen diciendo cuántas no entraron.
+ */
+function SessionTally({ tally }: { tally: RfidReadTally }) {
+  const total = tally.enviadas + tally.yaLeidas + tally.rechazadas;
+  if (total === 0) return null;
+  const items: { label: string; value: number; className: string }[] = [
+    { label: "Enviadas", value: tally.enviadas, className: "text-slate-800 dark:text-slate-100" },
+    { label: "Sin asignar", value: tally.sinAsignar, className: "text-amber-600 dark:text-amber-400" },
+    { label: "Ya leídas", value: tally.yaLeidas, className: "text-slate-600 dark:text-slate-300" },
+    { label: "No registradas", value: tally.rechazadas, className: "text-rose-600 dark:text-rose-400" },
+  ];
+  return (
+    <dl aria-label="Totales de esta sesión" className="flex flex-wrap gap-x-5 gap-y-1 px-4 py-2 text-[11.5px] border-b border-slate-100 dark:border-white/5">
+      {items.map((item) => (
+        <div key={item.label} className="flex gap-1.5">
+          <dt className="text-slate-500 dark:text-slate-400">{item.label}:</dt>
+          <dd className={`tabular-nums font-semibold ${item.className}`}>{item.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

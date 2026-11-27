@@ -19,6 +19,7 @@ import {
   advanceFeedCursor,
   drainFeedAfterCursor,
   RFID_FEED_CURSOR_LIMIT,
+  ScanOutbox,
   rfidScansQueryParams,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
@@ -27,10 +28,16 @@ import { readServerTableState, serverTableRequest } from "@/src/utils/serverTabl
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
 import {
   acceptAvailability,
+  nextCaptureState,
   reconciliationBalance,
   rowBalance,
 } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationBalance";
-import { RfidReadQueueCore } from "@/src/features/rfid-reconciliations/utils/rfidReadQueueCore";
+import {
+  EMPTY_READ_TALLY,
+  RfidReadQueueCore,
+  tallyRead,
+  type RfidReadOutcome,
+} from "@/src/features/rfid-reconciliations/utils/rfidReadQueueCore";
 import {
   refreshDetailAfterReads,
   refreshListAfterReading,
@@ -336,7 +343,7 @@ const savedRead = (epc: string): RfidReconciliationRead => ({
 });
 
 const makeQueue = (send: (epc: string) => Promise<RfidReconciliationRead>) => {
-  const calls = { sent: [] as string[], stops: [] as string[], drained: 0, added: 0 };
+  const calls = { sent: [] as string[], stops: [] as string[], drained: 0, added: 0, outcomes: [] as RfidReadOutcome[] };
   const core = new RfidReadQueueCore({
     send: (epc) => {
       calls.sent.push(epc);
@@ -351,6 +358,7 @@ const makeQueue = (send: (epc: string) => Promise<RfidReconciliationRead>) => {
     onDrained: () => {
       calls.drained += 1;
     },
+    onOutcome: (outcome) => calls.outcomes.push(outcome),
   });
   return { core, calls };
 };
@@ -479,5 +487,104 @@ test.describe("EPC ya leído en otro encuadre de la misma orden (#1453)", () => 
     await flush();
     expect(calls.sent).toEqual(["E1", "E2"]);
     expect(core.isStopped).toBe(false);
+  });
+});
+
+test.describe("pausar a mitad de un sondeo con cursor no pierde lecturas", () => {
+  test("lo que trae un sondeo en vuelo llega a la bandeja aunque se pause entre páginas", async () => {
+    const rows = Array.from({ length: 450 }, (_, i) => ({ id: 1001 + i, epc: `E${1001 + i}` }));
+    const outbox = new ScanOutbox<{ id: number; epc: string }>();
+    let paused = false;
+    const fetchPage = async (cursor: number | null) => {
+      // El operador pausa mientras se piden las páginas 2 y 3.
+      if (cursor !== null && cursor > 1000) paused = true;
+      return rows.filter((r) => r.id > (cursor ?? 0)).slice(0, 200);
+    };
+    const result = await drainFeedAfterCursor(1000, fetchPage);
+    outbox.push(result.fresh);
+    expect(paused).toBe(true);
+    // La entrega no depende de la pausa: todo, en orden, una sola vez.
+    const delivered = outbox.take();
+    expect(delivered.map((r) => r.id)).toEqual(rows.map((r) => r.id));
+    expect(outbox.take()).toEqual([]);
+    expect(result.cursor).toBe(1450);
+  });
+  test("la bandeja acumula varios sondeos en orden hasta que se vacía", () => {
+    const outbox = new ScanOutbox<number>();
+    outbox.push([1, 2]);
+    outbox.push([3]);
+    expect(outbox.take()).toEqual([1, 2, 3]);
+  });
+});
+
+test.describe("totales y rechazadas de la sesión", () => {
+  test("cada resultado suma en su total", () => {
+    const tally = [
+      { kind: "enviada", sinAsignar: false },
+      { kind: "enviada", sinAsignar: true },
+      { kind: "ya-leida" },
+      { kind: "rechazada", code: "E1", message: "x" },
+    ].reduce((acc, outcome) => tallyRead(acc, outcome as RfidReadOutcome), EMPTY_READ_TALLY);
+    expect(tally).toEqual({ enviadas: 2, sinAsignar: 1, yaLeidas: 1, rechazadas: 1 });
+  });
+  test("la cola reporta cada lectura con su resultado y el mensaje del backend al rechazar", async () => {
+    const cross = "Esta pieza ya se leyó en el encuadre 14 de la misma orden.";
+    const { core, calls } = makeQueue((epc) =>
+      epc === "E2"
+        ? Promise.reject(axiosError(400, { epc: cross }))
+        : Promise.resolve({ ...savedRead(epc), orden_produccion_detalle: epc === "E3" ? null : 19 }),
+    );
+    core.setKnown(new Set(["E9"]));
+    core.enqueue("E1");
+    core.enqueue("E2");
+    core.enqueue("E3");
+    core.enqueue("E9");
+    await flush();
+    expect(calls.outcomes).toEqual([
+      { kind: "ya-leida" },
+      { kind: "enviada", sinAsignar: false },
+      { kind: "rechazada", code: "E2", message: cross },
+      { kind: "enviada", sinAsignar: true },
+    ]);
+  });
+  test("los totales siguen contando más allá de las 50 filas de la lista", async () => {
+    const { core, calls } = makeQueue((epc) => Promise.resolve(savedRead(epc)));
+    for (let i = 0; i < 60; i += 1) core.enqueue(`E${i}`);
+    await flush();
+    const tally = calls.outcomes.reduce(tallyRead, EMPTY_READ_TALLY);
+    expect(tally.enviadas).toBe(60);
+  });
+  test("lo descartado al detenerse la cola también queda como no registrado", async () => {
+    const { core, calls } = makeQueue(() =>
+      Promise.reject(axiosError(400, { estatus: "Solo se puede escanear un encuadre pendiente." })),
+    );
+    core.enqueue("E1");
+    core.enqueue("E2");
+    await flush();
+    expect(calls.outcomes.map((o) => o.kind)).toEqual(["rechazada", "rechazada"]);
+    expect(calls.outcomes[1]).toMatchObject({ code: "E2", message: "No se envió: Solo se puede escanear un encuadre pendiente." });
+  });
+});
+
+test.describe("estado de la lectura en el detalle", () => {
+  test("la cola detenida apaga la lectura (Aceptar deja de pedir pausa)", () => {
+    expect(nextCaptureState(true, "queue-stopped")).toEqual({ reading: false, refreshList: true });
+    expect(acceptAvailability({ estatus: "PENDIENTE", reading: false, pendingReads: 0 }).allowed).toBe(true);
+  });
+  test("abrir Cancelar apaga la lectura", () => {
+    expect(nextCaptureState(true, "cancel-opened")).toEqual({ reading: false, refreshList: true });
+    expect(nextCaptureState(false, "cancel-opened")).toEqual({ reading: false, refreshList: false });
+  });
+  test("encender, pausar y cerrar", () => {
+    expect(nextCaptureState(false, "start")).toEqual({ reading: true, refreshList: false });
+    expect(nextCaptureState(true, "pause")).toEqual({ reading: false, refreshList: true });
+    expect(nextCaptureState(false, "dialog-closed")).toEqual({ reading: false, refreshList: true });
+  });
+  test("un sondeo en vuelo tras pausar mantiene Aceptar bloqueado", () => {
+    // El panel reporta lecturas pendientes + 1 por el sondeo en vuelo.
+    expect(acceptAvailability({ estatus: "PENDIENTE", reading: false, pendingReads: 0 + 1 })).toEqual({
+      allowed: false,
+      reason: "Espera a que terminen de enviarse las lecturas.",
+    });
   });
 });

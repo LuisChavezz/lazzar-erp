@@ -90,3 +90,25 @@ export const drainFeedAfterCursor = async <T extends { id: number }>(
   }
   return { cursor: current ?? 0, fresh, pages };
 };
+
+/**
+ * Bandeja de lecturas nuevas de una captura con cursor. El sondeo deja aquí lo
+ * que trajo (en orden) y la captura lo saca. No depende de que la lectura siga
+ * encendida ni de la sesión vigente: un sondeo en vuelo cuando el operador
+ * pausa (o pausa y reanuda) ya movió el cursor, así que lo que trae se entrega
+ * igual; si no, esas piezas no volverían a pedirse nunca.
+ */
+export class ScanOutbox<T> {
+  private items: T[] = [];
+
+  push(items: readonly T[]): void {
+    this.items.push(...items);
+  }
+
+  /** Todo lo pendiente, en el orden en que llegó; la bandeja queda vacía. */
+  take(): T[] {
+    const taken = this.items;
+    this.items = [];
+    return taken;
+  }
+}

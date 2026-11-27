@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
-import { drainFeedAfterCursor, RFID_FEED_CURSOR_LIMIT } from "../utils/rfidScansParams";
+import { drainFeedAfterCursor, RFID_FEED_CURSOR_LIMIT, ScanOutbox } from "../utils/rfidScansParams";
 import { RFID_SCANS_POLL_INTERVAL_MS } from "./useRfidScans";
 import type { RfidScan } from "../interfaces/rfid-scanner.interface";
 
@@ -26,6 +26,12 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * fallido conserva el último delta (misma referencia, así que la captura no lo
  * vuelve a entregar) y avisa con un toast una vez por racha; `isInitialError`
  * solo si la sesión nunca respondió.
+ *
+ * Lo nuevo no viaja en los datos de la consulta sino en una bandeja
+ * (`outbox`, avisada con `version`): un sondeo que sigue en vuelo cuando el
+ * operador pausa ya movió el cursor, y lo que trae tiene que entregarse aunque
+ * la lectura esté apagada o haya empezado otra sesión. `isFetching` dice si
+ * hay un sondeo en vuelo, para no dejar aceptar antes de que llegue.
  */
 export function useRfidCursorScans(
   enabled: boolean,
@@ -39,8 +45,10 @@ export function useRfidCursorScans(
     if (enabled) setSession((current) => current + 1);
   }
   const cursorRef = useRef<{ session: number; cursor: number | null }>({ session, cursor: null });
+  const [outbox] = useState(() => new ScanOutbox<RfidScan>());
+  const [version, setVersion] = useState(0);
 
-  const { data, isInitialError } = useGuardedQuery<{ scans: RfidScan[] }>(
+  const { isInitialError, isFetching } = useGuardedQuery<{ fresh: number }>(
     {
       queryKey: ["rfid-scans", "cursor", soloMatch, lector, session],
       queryFn: async () => {
@@ -57,7 +65,12 @@ export function useRfidCursorScans(
         });
         // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
         if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
-        return { scans: next.fresh };
+        // A la bandeja aunque la lectura ya esté en pausa: el cursor ya pasó por ahí.
+        if (next.fresh.length > 0) {
+          outbox.push(next.fresh);
+          setVersion((current) => current + 1);
+        }
+        return { fresh: next.fresh.length };
       },
       enabled,
       refetchInterval: RFID_SCANS_POLL_INTERVAL_MS,
@@ -72,5 +85,5 @@ export function useRfidCursorScans(
     },
   );
 
-  return { scans: data?.scans ?? [], isInitialError };
+  return { outbox, version, isInitialError, isFetching };
 }
