@@ -18,6 +18,7 @@ import {
 import {
   advanceFeedCursor,
   drainFeedAfterCursor,
+  nextCursorFeedSession,
   RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   rfidScansQueryParams,
@@ -469,6 +470,29 @@ test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () 
     const result = await drainFeedAfterCursor(1000, feed.fetchPage, { maxPages: 3 });
     expect(feed.calls).toHaveLength(3);
     expect(result.cursor).toBe(1600);
+  });
+});
+
+test.describe("sesión del cursor por lector (EC-997)", () => {
+  const start = { enabled: false, lector: null, session: 0 };
+  test("encender empieza una sesión; sin cambios es el mismo objeto", () => {
+    const on = nextCursorFeedSession(start, true, 9);
+    expect(on).toEqual({ enabled: true, lector: 9, session: 1 });
+    expect(nextCursorFeedSession(on, true, 9)).toBe(on);
+  });
+  test("cambiar de lector encendido empieza otra, también de null a un lector", () => {
+    const sinLector = nextCursorFeedSession(start, true, null);
+    const conLector = nextCursorFeedSession(sinLector, true, 24);
+    expect(conLector.session).toBe(sinLector.session + 1);
+    expect(nextCursorFeedSession(conLector, true, 9).session).toBe(conLector.session + 1);
+  });
+  test("apagar o cambiar de lector en pausa no empieza nada; volver a encender sí", () => {
+    const on = nextCursorFeedSession(start, true, 9);
+    const off = nextCursorFeedSession(on, false, 9);
+    expect(off.session).toBe(on.session);
+    const otroEnPausa = nextCursorFeedSession(off, false, 24);
+    expect(otroEnPausa.session).toBe(on.session);
+    expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
   });
 });
 

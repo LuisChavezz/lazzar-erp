@@ -1,14 +1,21 @@
 import { useRef, useState } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
-import { drainFeedAfterCursor, RFID_FEED_CURSOR_LIMIT, ScanOutbox } from "../utils/rfidScansParams";
+import {
+  drainFeedAfterCursor,
+  nextCursorFeedSession,
+  RFID_FEED_CURSOR_LIMIT,
+  ScanOutbox,
+  type CursorFeedSession,
+} from "../utils/rfidScansParams";
 import { RFID_SCANS_POLL_INTERVAL_MS } from "./useRfidScans";
 import type { RfidScan } from "../interfaces/rfid-scanner.interface";
 
 /**
  * Lecturas de la antena POSTERIORES al inicio de la captura (EC-982), con el
- * cursor `despues_de_id` del backend. Cada vez que `enabled` pasa a `true`
- * empieza una sesión: la primera petición solo fija el cursor (el `id` más
+ * cursor `despues_de_id` del backend. Cada vez que `enabled` pasa a `true`, y
+ * cada vez que cambia `lector` mientras está encendido (EC-997,
+ * `nextCursorFeedSession`), empieza una sesión: la primera petición solo fija el cursor (el `id` más
  * alto que ya existe, 0 sin lecturas) y las siguientes, cada 3 s, piden
  * `despues_de_id` = el `id` más alto visto, con `unicos=1&limite=200`, y
  * devuelven SOLO lo nuevo, en `id` ascendente (EC-984). Si una página viene
@@ -37,13 +44,12 @@ export function useRfidCursorScans(
   enabled: boolean,
   { soloMatch, lector = null }: { soloMatch: boolean; lector?: number | null },
 ) {
-  // Una sesión nueva cada vez que se enciende (ajuste de estado en render, sin efecto).
-  const [session, setSession] = useState(0);
-  const [wasEnabled, setWasEnabled] = useState(enabled);
-  if (enabled !== wasEnabled) {
-    setWasEnabled(enabled);
-    if (enabled) setSession((current) => current + 1);
-  }
+  // Una sesión nueva al encender y al cambiar de lector encendido
+  // (`nextCursorFeedSession`; ajuste de estado en render, sin efecto).
+  const [feed, setFeed] = useState<CursorFeedSession>({ enabled, lector, session: 0 });
+  const nextFeed = nextCursorFeedSession(feed, enabled, lector);
+  if (nextFeed !== feed) setFeed(nextFeed);
+  const { session } = nextFeed;
   const cursorRef = useRef<{ session: number; cursor: number | null }>({ session, cursor: null });
   const [outbox] = useState(() => new ScanOutbox<RfidScan>());
   const [version, setVersion] = useState(0);

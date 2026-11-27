@@ -29,6 +29,8 @@ export function useRfidEpcFeed(
   // Con cursor, solo si la sesión nunca respondió (los fallos posteriores avisan
   // con toast, `useGuardedQuery`); sin él, como siempre.
   const isError = cursor ? afterCursor.isInitialError : latest.isError;
+  // Por sesión de lectura (se vacía al apagar), NO por lector: un EPC es una
+  // pieza, así que la misma prenda vista después por otro lector no suma dos veces.
   const seenRef = useRef<Set<string>>(new Set());
   const onEpcRef = useRef(onEpc);
   const [count, setCount] = useState(0);

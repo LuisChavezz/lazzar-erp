@@ -27,6 +27,32 @@ export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite }:
   ...(limite !== undefined ? { limite } : {}),
 });
 
+/** Sesión de una captura con cursor: qué lector se lee y en qué sesión va. */
+export interface CursorFeedSession {
+  enabled: boolean;
+  lector: number | null;
+  session: number;
+}
+
+/**
+ * Siguiente sesión de una captura con cursor. Empieza una nueva (y con ella un
+ * cursor nuevo) al encender la lectura y al cambiar de lector mientras está
+ * encendida, `null` → lector incluido (el catálogo carga después del primer
+ * render). El cursor de un lector no sirve para otro: si el anterior llevaba
+ * días sin leer, `despues_de_id` con su `id` traería todo lo que el nuevo leyó
+ * desde entonces (EC-997). Apagar o cambiar de lector en pausa no empieza nada:
+ * la sesión empieza al encender. Sin cambios devuelve el mismo objeto.
+ */
+export const nextCursorFeedSession = (
+  prev: CursorFeedSession,
+  enabled: boolean,
+  lector: number | null,
+): CursorFeedSession => {
+  if (prev.enabled === enabled && prev.lector === lector) return prev;
+  const restart = enabled && (!prev.enabled || prev.lector !== lector);
+  return { enabled, lector, session: restart ? prev.session + 1 : prev.session };
+};
+
 /**
  * Un paso del cursor de una captura (EC-982). La primera respuesta (`cursor`
  * `null`) solo fija el punto de partida: el `id` más alto que ya existe (0 sin
