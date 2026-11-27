@@ -11,10 +11,11 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * antena sumaría una pieza en cada ciclo. Apagar y volver a encender empieza
  * una sesión nueva.
  *
- * `cursor` (opcional, EC-982; hoy solo el encuadre RFID): en vez de las 50
- * lecturas más recientes, solo las posteriores al inicio de la sesión
- * (`useRfidCursorScans`), así nada leído antes de empezar entra a la captura.
- * Sin la opción todo es exactamente como antes (Nueva Recepción).
+ * `cursor` (opcional, EC-982; lo usan el encuadre RFID y, desde EC-997,
+ * Recepción y Surtido por `RfidFeedStrip`): en vez de las 50 lecturas más
+ * recientes, solo las posteriores al inicio de la sesión (`useRfidCursorScans`),
+ * así nada leído antes de empezar entra a la captura. Sin la opción, las 50
+ * más recientes de cada sondeo, como antes; hoy ninguna pantalla la usa así.
  */
 export function useRfidEpcFeed(
   enabled: boolean,

@@ -41,6 +41,12 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * (`onCode`), una sola vez, y queda en la lista con su resultado: sumó,
  * ya estaba completo, o no es de esta orden.
  *
+ * Solo cuenta lo leído DESPUÉS de montarse, es decir, de pulsar Iniciar
+ * (`ScanCapture` la monta al escanear): el feed va con cursor (EC-997), sin
+ * las 50 lecturas más recientes de antes, que podían tener horas, y sin
+ * perder piezas de una tarima de más de 50. Cambiar de lector arranca un
+ * cursor nuevo para ese lector.
+ *
  * Las lecturas se acotan a la empresa activa (EC-884): sin empresa no se
  * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
@@ -69,7 +75,7 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
   // Con varios lectores hay que elegir uno: leer de todos mezclaría cajones.
   const faltaLector = lectores.length > 1 && lectorId === null;
   const activo = !hasNoCompany && !faltaLector;
-  const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId);
+  const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId, { cursor: true });
   useLectorEnUso(lectorId, activo, pantalla, documento);
 
   const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;

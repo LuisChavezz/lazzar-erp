@@ -37,8 +37,8 @@ export const cursorFeedPageParams = (
 /**
  * Query string de `scans/`. Siempre `unicos=1`; `solo_match`, `lector`,
  * `despues_de_id` y `limite` solo si se piden. Sin los dos últimos queda
- * exactamente la petición de siempre (la que usan el monitor, Recepción y
- * Surtido).
+ * exactamente la petición de siempre (la del monitor); las capturas con
+ * cursor (Recepción, Surtido y el encuadre) mandan `cursorFeedPageParams`.
  */
 export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite }: RfidScansParams) => ({
   unicos: 1,
