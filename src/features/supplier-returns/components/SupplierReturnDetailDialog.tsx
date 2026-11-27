@@ -29,6 +29,7 @@ import {
   SUPPLIER_RETURN_WRITE_PERMISSION,
 } from "../constants/supplierReturns";
 import { supplierReturnCancelDialogContent } from "../utils/supplierReturnActions";
+import { SupplierReturnPdfButton } from "./SupplierReturnPdfButton";
 
 interface SupplierReturnDetailDialogProps {
   /** Id de la devolución; `null` mantiene la consulta apagada. */
@@ -44,9 +45,11 @@ interface SupplierReturnDetailDialogProps {
  *
  * "Cancelar devolución" va en el encabezado, con `C-WMS-RECEPCIONES` y solo si
  * está aplicada; el diálogo de motivo se monta con el permiso, aparte del
- * botón, para que cierre con su animación cuando el botón desaparece. No hay
- * PDF de la devolución todavía (EC-976). Los importes son MXN: el backend
- * valúa al costo MXN del renglón de la OC.
+ * botón, para que cierre con su animación cuando el botón desaparece.
+ * "Descargar PDF" (EC-976) lo ve cualquiera que lea el detalle. Los importes son
+ * MXN, aquí y en el PDF: el backend valúa al costo MXN del renglón de la OC.
+ * SKU, color y talla solo se muestran si algún renglón trae el dato, como en el
+ * PDF (la materia prima no tiene variante).
  */
 export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: SupplierReturnDetailDialogProps) {
   const { data, isLoading, isInitialError, isNotFound, error } = useSupplierReturnDetail(returnId ?? 0);
@@ -55,9 +58,10 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
   const headerAction =
-    data && !isNotFound && canWrite ? (
+    data && !isNotFound ? (
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {data.estatus === "aplicada" && (
+        <SupplierReturnPdfButton supplierReturn={data} />
+        {canWrite && data.estatus === "aplicada" && (
           <Button
             variant="secondary"
             onClick={() => setIsCancelOpen(true)}
@@ -67,15 +71,21 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
             Cancelar
           </Button>
         )}
-        <WmsCancelDialog
-          content={supplierReturnCancelDialogContent(data)}
-          open={isCancelOpen}
-          onOpenChange={setIsCancelOpen}
-        />
+        {canWrite && (
+          <WmsCancelDialog
+            content={supplierReturnCancelDialogContent(data)}
+            open={isCancelOpen}
+            onOpenChange={setIsCancelOpen}
+          />
+        )}
       </div>
     ) : null;
 
   const ocHref = data?.orden_compra ? purchaseOrderDetailHref(data.orden_compra) : null;
+  const lines = data?.detalles ?? [];
+  const showSku = lines.some((line) => line.producto_variante_sku?.trim());
+  const showColor = lines.some((line) => line.producto_variante_color?.trim());
+  const showTalla = lines.some((line) => line.producto_variante_talla?.trim());
 
   return (
     <MainDialog
@@ -146,6 +156,8 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
                 <span className="font-mono">{textOrDash(data.orden_compra_folio)}</span>
               )}
             </InfoField>
+            <InfoField label="Almacén">{textOrDash(data.almacen_nombre)}</InfoField>
+            <InfoField label="Sucursal">{textOrDash(data.sucursal_nombre)}</InfoField>
             <InfoField label="Total (MXN)">
               <span className="tabular-nums font-semibold">{formatMoneyValueOrDash(data.total, "MXN")}</span>
             </InfoField>
@@ -162,7 +174,10 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
               <LineItemsTable
                 head={
                   <>
+                    {showSku && <th className="px-3 py-2 font-medium">SKU</th>}
                     <th className="px-3 py-2 font-medium">Producto</th>
+                    {showColor && <th className="px-3 py-2 font-medium">Color</th>}
+                    {showTalla && <th className="px-3 py-2 font-medium">Talla</th>}
                     <th className="px-3 py-2 font-medium text-right">Cantidad</th>
                     <th className="px-3 py-2 font-medium text-right">Costo unitario</th>
                     <th className="px-3 py-2 font-medium text-right">Importe</th>
@@ -171,7 +186,22 @@ export function SupplierReturnDetailDialog({ returnId, open, onOpenChange }: Sup
               >
                 {data.detalles.map((line) => (
                   <tr key={line.id}>
+                    {showSku && (
+                      <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_sku)}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{textOrDash(line.producto_nombre)}</td>
+                    {showColor && (
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_color)}
+                      </td>
+                    )}
+                    {showTalla && (
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {textOrDash(line.producto_variante_talla)}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-right tabular-nums font-semibold">
                       {formatExactQuantityValue(line.cantidad)}
                     </td>

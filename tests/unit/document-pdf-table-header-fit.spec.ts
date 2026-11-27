@@ -19,6 +19,8 @@ import { PickingPdfDocument } from "@/src/pdfs/PickingPdfDocument";
 import { ProductionOrderPdfDocument } from "@/src/pdfs/ProductionOrderPdfDocument";
 import { PurchaseOrderPdfDocument } from "@/src/pdfs/PurchaseOrderPdfDocument";
 import { ReceiptPdfDocument } from "@/src/pdfs/ReceiptPdfDocument";
+import { SupplierReturnPdfDocument } from "@/src/pdfs/SupplierReturnPdfDocument";
+import type { SupplierReturn } from "@/src/features/supplier-returns/interfaces/supplier-return.interface";
 import { ReflectiveOrderPdfDocument } from "@/src/pdfs/ReflectiveOrderPdfDocument";
 import { StockTransferPdfDocument } from "@/src/pdfs/StockTransferPdfDocument";
 import { PdfLineItemsTable, type PdfColumn } from "@/src/pdfs/shared/DocumentPdfLayout";
@@ -362,6 +364,33 @@ const DOCUMENTS: { name: string; tree: () => unknown; tables: Record<string, str
       }),
     tables: {
       "LÍNEAS DEL TRASPASO": ["SKU", "Producto", "Color", "Talla", "Cantidad", "Ubicación origen", "Ubicación destino"],
+    },
+  },  {
+    name: "Devolución a proveedor",
+    tree: () =>
+      SupplierReturnPdfDocument({
+        company: COMPANY,
+        supplierReturn: {
+          id: 1,
+          folio: "DVP-00001",
+          estatus: "aplicada",
+          total: "9999999.99",
+          detalles: [
+            {
+              id: 1,
+              producto_nombre: "CAMISA",
+              producto_variante_sku: "10012-100-2XCH",
+              producto_variante_color: "AZUL MARINO",
+              producto_variante_talla: "2XCH",
+              cantidad: "12500.0000",
+              costo_unitario: "99999.99000000",
+              importe: "9999999.99",
+            },
+          ],
+        } as unknown as SupplierReturn,
+      }),
+    tables: {
+      "RENGLONES DEVUELTOS": ["SKU", "Producto", "Color", "Talla", "Cantidad", "Costo unitario", "Importe"],
     },
   },
 ];
