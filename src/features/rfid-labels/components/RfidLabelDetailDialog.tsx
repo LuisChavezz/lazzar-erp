@@ -356,7 +356,7 @@ export function RfidLabelDetailDialog({
   onOpenChange,
 }: RfidLabelDetailDialogProps) {
   const { data: etiqueta, isLoading, isInitialError, isNotFound, error } =
-    useRfidLabelDetail(etiquetaId ?? 0);
+    useRfidLabelDetail(etiquetaId ?? 0, open);
 
   return (
     <MainDialog

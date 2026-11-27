@@ -9,15 +9,20 @@ import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
  * sus EPC (`etiquetas`) y su `zpl_enviado`, que el listado ligero ya no manda
  * (EC-989). `0` = sin selección.
  *
+ * `open`: el diálogo siempre está montado, así que la consulta se apaga al
+ * cerrarlo. Apagada conserva lo cargado (el contenido no se vacía durante la
+ * animación de cierre) y no se relee cuando se invalida `["etiquetas-rfid"]`
+ * (refrescar el listado, registrar una impresión).
+ *
  * El 404 (otra empresa/sucursal o inexistente) es DEFINITIVO: no se reintenta
  * ni conserva lo cargado. La llave cuelga de `["etiquetas-rfid"]`.
  */
-export const useRfidLabelDetail = (id: number) => {
+export const useRfidLabelDetail = (id: number, open: boolean) => {
   const { data, isLoading, isInitialError, isDefinitiveError, error } = useGuardedQuery<EtiquetaRFID>(
     {
       queryKey: rfidLabelDetailQueryKey(id),
       queryFn: () => getEtiquetaRFID(id),
-      enabled: id > 0,
+      enabled: open && id > 0,
     },
     {
       toastId: "etiqueta-rfid-detail-refetch-error",
