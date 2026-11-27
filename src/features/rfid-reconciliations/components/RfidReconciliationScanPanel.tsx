@@ -2,6 +2,11 @@
 
 import { useEffect } from "react";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
+import {
+  useLectorEnUso,
+  useRfidLectorSeleccionado,
+} from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
+import { RfidLectorSelect } from "@/src/features/rfid-scanner/components/RfidLectorSelect";
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
 import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
@@ -20,7 +25,12 @@ interface RfidReconciliationScanPanelProps {
   onReadingChange: (reading: boolean) => void;
   /** Lecturas por enviar (incluida la que está en vuelo); 0 al desmontarse. */
   onPendingChange: (pending: number) => void;
+  /** Cómo se nombra el encuadre en el aviso "en uso" del lector. */
+  documento: string;
 }
+
+/** Pantalla con la que se recuerda el lector elegido y se avisa "en uso" (#566). */
+const PANTALLA = "Encuadre";
 
 const TONE: Record<RfidReadTone, { dot: string; text: string }> = {
   pending: { dot: "bg-slate-300 dark:bg-slate-500 animate-pulse", text: "text-slate-500 dark:text-slate-400" },
@@ -45,6 +55,10 @@ const TONE: Record<RfidReadTone, { dot: string; text: string }> = {
  * La lectura y lo pendiente los conoce el detalle (`reading`, `onPendingChange`):
  * "Aceptar" espera a que la lectura esté en pausa y la cola vacía. Si la cola
  * se detiene (el encuadre ya no está pendiente) la antena deja de sondearse.
+ *
+ * Lector: como Recepción y Surtido (#566), se elige con qué lector se lee
+ * (`?lector=`, recordado por pantalla) y mientras se lee se avisa "en uso". Con
+ * varios lectores no se lee hasta elegir uno: leer de todos mezclaría cajones.
  */
 export function RfidReconciliationScanPanel({
   reconciliationId,
@@ -54,13 +68,16 @@ export function RfidReconciliationScanPanel({
   reading,
   onReadingChange,
   onPendingChange,
+  documento,
 }: RfidReconciliationScanPanelProps) {
   const { reads, pending, stopped, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { count, isError } = useRfidEpcFeed(reading && !hasNoCompany && !stopped, (scan) => enqueue(scan.epc), null, {
-    cursor: true,
-  });
+  const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado(PANTALLA);
+  const faltaLector = lectores.length > 1 && lectorId === null;
+  const active = reading && !hasNoCompany && !stopped && !faltaLector;
+  const { count, isError } = useRfidEpcFeed(active, (scan) => enqueue(scan.epc), lectorId, { cursor: true });
+  useLectorEnUso(lectorId, active, PANTALLA, documento);
 
   useEffect(() => {
     onPendingChange(pending);
@@ -78,6 +95,7 @@ export function RfidReconciliationScanPanel({
             {pending > 0 && <> · enviando {pending}</>}
           </p>
         </div>
+        {!hasNoCompany && <RfidLectorSelect lectores={lectores} value={lectorId} onChange={seleccionar} />}
         {reading && !stopped ? (
           <button
             type="button"
@@ -89,7 +107,7 @@ export function RfidReconciliationScanPanel({
         ) : (
           <button
             type="button"
-            disabled={hasNoCompany || stopped}
+            disabled={hasNoCompany || stopped || faltaLector}
             onClick={() => onReadingChange(true)}
             className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
@@ -99,7 +117,7 @@ export function RfidReconciliationScanPanel({
       </div>
 
       <div className="flex items-center gap-2 px-4 py-2 text-[11.5px] border-b border-slate-100 dark:border-white/5">
-        {reading && !stopped && !hasNoCompany && (
+        {active && (
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-60 motion-reduce:hidden" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
@@ -110,7 +128,9 @@ export function RfidReconciliationScanPanel({
             ? isSuperuser
               ? "Sin empresa activa: elígela desde “Sin empresa activa”, en el encabezado, para leer con la antena."
               : "Tu usuario no tiene una empresa asignada: no se puede leer con la antena."
-            : !reading || stopped
+            : faltaLector
+              ? <span className="text-amber-600 dark:text-amber-400">Selecciona con qué lector leer.</span>
+              : !reading || stopped
               ? "Coloca las prendas frente a la antena e inicia la lectura."
               : isError
                 ? <span className="text-rose-600 dark:text-rose-400">Sin respuesta del lector RFID.</span>
@@ -120,7 +140,7 @@ export function RfidReconciliationScanPanel({
         </span>
       </div>
 
-      {reading && !stopped && !hasNoCompany && (
+      {active && (
         <p className="px-4 py-1.5 text-[11px] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
           Las prendas que ya estaban frente a la antena al iniciar pueden tardar hasta 30 s en aparecer.
         </p>

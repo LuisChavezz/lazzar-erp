@@ -311,6 +311,7 @@ function ReconciliationBody({ data, canScan, reading, onReadingChange, onPending
           reading={reading}
           onReadingChange={onReadingChange}
           onPendingChange={onPendingChange}
+          documento={rfidReconciliationLabel(data)}
         />
       )}
 

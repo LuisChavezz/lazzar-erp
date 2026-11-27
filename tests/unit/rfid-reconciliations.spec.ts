@@ -201,6 +201,16 @@ test.describe("cursor del feed de la antena", () => {
     });
     expect(rfidScansQueryParams({ soloMatch: true, despuesDeId: 0, limite: 200 }).despues_de_id).toBe(0);
   });
+  test("con lector elegido lo manda junto con el cursor", () => {
+    expect(rfidScansQueryParams({ soloMatch: true, lector: 3, despuesDeId: 57, limite: 200 })).toEqual({
+      unicos: 1,
+      solo_match: 1,
+      lector: 3,
+      despues_de_id: 57,
+      limite: 200,
+    });
+    expect(rfidScansQueryParams({ soloMatch: true, lector: null })).toEqual({ unicos: 1, solo_match: 1 });
+  });
   test("sin la opción la petición es la de siempre (Nueva Recepción y monitor)", () => {
     expect(rfidScansQueryParams({ soloMatch: true })).toEqual({ unicos: 1, solo_match: 1 });
     expect(rfidScansQueryParams({ soloMatch: false })).toEqual({ unicos: 1 });
