@@ -117,7 +117,7 @@ test.describe("documentPdfFileName", () => {
   test("acepta cada código de tipo", () => {
     expect([...DOCUMENT_PDF_TYPES]).toEqual([
       "PED", "OC", "RC", "OP", "OB", "OR", "OCM", "PCK", "PAK", "TR",
-      "FAC", "FP", "NC", "COB", "PAG", "POL",
+      "FAC", "FP", "NC", "COB", "PAG", "POL", "DVP",
     ]);
     for (const type of DOCUMENT_PDF_TYPES) {
       expect(documentPdfFileName(type, "X-1", 3)).toBe(`${type}-X-1.pdf`);

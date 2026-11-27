@@ -11,8 +11,8 @@ export type SupplierReturnEstatus = "aplicada" | "cancelada";
 /**
  * Renglón devuelto. Todos los decimales viajan como string: `cantidad` con 4
  * posiciones, `costo_unitario` con 8 (costo MXN del renglón de la OC) e
- * `importe` con 2. SKU, talla y color todavía no vienen en el detalle (EC-975):
- * solo los ids de la variante.
+ * `importe` con 2. SKU, talla y color salen del renglón de la recepción
+ * (nucleo-erp#1422): `null` sin variante (materia prima).
  */
 export interface SupplierReturnLine {
   id: number;
@@ -21,6 +21,9 @@ export interface SupplierReturnLine {
   producto: number | null;
   producto_nombre: string | null;
   producto_variante: number | null;
+  producto_variante_sku: string | null;
+  producto_variante_talla: string | null;
+  producto_variante_color: string | null;
   variante_produccion: number | null;
   cantidad: string;
   costo_unitario: string;
@@ -40,8 +43,11 @@ export interface SupplierReturn {
   proveedor: number | null;
   /** Razón social del proveedor. */
   proveedor_nombre: string | null;
-  /** Solo el id: el backend no manda el nombre del almacén. */
+  /** Nombre de la sucursal de la recepción (EC-975); nunca `null`. */
+  sucursal_nombre: string;
   almacen: number;
+  /** Nombre del almacén (EC-975); nunca `null`, pero puede llegar `""`. */
+  almacen_nombre: string;
   motivo: string;
   /** Fecha y hora ISO del alta. */
   fecha: string;

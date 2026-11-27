@@ -28,6 +28,7 @@ export const DOCUMENT_PDF_TYPES = [
   "COB", // Cobro
   "PAG", // Pago a proveedor
   "POL", // Póliza
+  "DVP", // Devolución a proveedor
 ] as const;
 
 export type DocumentPdfType = (typeof DOCUMENT_PDF_TYPES)[number];
