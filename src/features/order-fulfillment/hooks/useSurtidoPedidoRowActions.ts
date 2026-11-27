@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { PedidoDetailOrigin } from "@/src/features/orders/constants/pedidoDetailOrigins";
 import type { SurtidoPedido } from "../interfaces/order-fulfillment.interface";
 
 // "Ver avance por talla" llega a la celda por contexto, NO por la factoría de
@@ -10,6 +11,11 @@ import type { SurtidoPedido } from "../interfaces/order-fulfillment.interface";
 
 export interface SurtidoPedidoRowActionsContextValue {
   onViewDetail: (pedido: SurtidoPedido) => void;
+  /**
+   * `?from=` del enlace del folio al detalle 360°, para que "Volver" regrese a
+   * la lista que lo montó. Por omisión `order-fulfillment` (Avance de surtido).
+   */
+  pedidoOrigin?: PedidoDetailOrigin;
 }
 
 const SurtidoPedidoRowActionsContext = createContext<SurtidoPedidoRowActionsContextValue | null>(

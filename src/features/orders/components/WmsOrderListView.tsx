@@ -164,6 +164,8 @@ function SurtidosTab() {
           setDetailPedido(p);
           setIsDetailOpen(true);
         },
+        // "Volver" del detalle 360° regresa a esta pestaña, no a Avance de surtido.
+        pedidoOrigin: 'wms-surtidos',
       }}
     >
       <div className="flex-1 min-h-0 flex flex-col">

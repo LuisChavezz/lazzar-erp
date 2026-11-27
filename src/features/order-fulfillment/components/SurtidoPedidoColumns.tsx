@@ -18,7 +18,7 @@ import { SurtidoEtapaChip } from "./SurtidoEtapaChip";
  * diálogo. El diálogo vive en la lista y llega aquí por contexto.
  */
 const PedidoCell = ({ pedido }: { pedido: SurtidoPedido }) => {
-  const { onViewDetail } = useSurtidoPedidoRowActionsContext();
+  const { onViewDetail, pedidoOrigin = "order-fulfillment" } = useSurtidoPedidoRowActionsContext();
   const estatus = getPedidoEstatusConfig(pedido.estatus);
   const estatusLabel = surtidoEstatusLabel(pedido.estatus, pedido.estatus_display);
 
@@ -33,7 +33,7 @@ const PedidoCell = ({ pedido }: { pedido: SurtidoPedido }) => {
         <PedidoFolioLink
           pedidoId={pedido.id}
           folio={pedido.folio}
-          from="order-fulfillment"
+          from={pedidoOrigin}
           tone="accent"
           className={BLUE_FOLIO_LINK_CLASS}
         />

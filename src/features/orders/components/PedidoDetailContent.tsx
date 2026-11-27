@@ -109,6 +109,8 @@ const BACK_TARGETS: Record<PedidoDetailOrigin, { href: string; label: string }> 
   // Sin esta entrada, un usuario solo-WMS caería en /operations/orders y el
   // proxy lo rebotaría al home por falta de R-MESACONTROL.
   wms: { href: "/wms/orders", label: "Volver a Pedidos" },
+  // Pestaña "Surtidos" de Pedidos de Almacén (EC-993): vuelve a ESA pestaña.
+  "wms-surtidos": { href: "/wms/orders?tab=surtidos", label: "Volver a Pedidos" },
   // Folio de pedido en las tablas de Surtido/Embarque/Envíos (`PedidoFolioLink`):
   // cada una vuelve a SU listado. Misma convención de llave por ORIGEN concreto
   // que `embroidery`.
@@ -251,8 +253,9 @@ function resolveBack(
   }
   // Cualquier destino fijo pasa por la misma regla que el proxy: sin acceso al
   // módulo de origen, "Volver" lleva al Home en vez de a una ruta que rebota.
+  // El permiso se evalúa sobre la ruta, sin su query (`?tab=` de `wms-surtidos`).
   const target = BACK_TARGETS[from];
-  return canOpen(target.href) ? target : DEFAULT_BACK;
+  return canOpen(target.href.split("?")[0]) ? target : DEFAULT_BACK;
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
