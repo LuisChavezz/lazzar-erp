@@ -1,9 +1,9 @@
 import { getProgramacionDestinoLabel } from "@/src/features/picking/utils/pickingDestino";
-import type { PickingOnboardingPedido } from "@/src/features/picking/interfaces/picking-onboarding.interface";
+import type { SurtidoPedidoPorSurtir } from "@/src/features/order-fulfillment/interfaces/order-fulfillment.interface";
 import type { ListExportColumn } from "@/src/utils/listExport";
 
 /** Columnas de la exportación (Excel y PDF) de los pedidos por surtir. */
-export const WMS_ORDER_EXPORT_COLUMNS: ListExportColumn<PickingOnboardingPedido>[] = [
+export const WMS_ORDER_EXPORT_COLUMNS: ListExportColumn<SurtidoPedidoPorSurtir>[] = [
   { header: "Folio", weight: 1, text: (r) => r.folio ?? "" },
   { header: "Cliente", weight: 2.2, text: (r) => r.cliente_nombre ?? "" },
   { header: "Sucursal", weight: 1.2, text: (r) => r.sucursal_nombre ?? "" },

@@ -1,101 +1,111 @@
 'use client';
 
-import type { ColumnDef, FilterFn } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { FilterHeader, type ColumnFilterOption } from '@/src/components/ColumnHeaderFilter';
 import { BLUE_FOLIO_LINK_CLASS } from '@/src/components/FolioButton';
-import type { PickingOnboardingPedido } from '@/src/features/picking/interfaces/picking-onboarding.interface';
+import type { SurtidoPedidoPorSurtir } from '@/src/features/order-fulfillment/interfaces/order-fulfillment.interface';
 import { getProgramacionDestinoLabel } from '@/src/features/picking/utils/pickingDestino';
+import { ALL_FILTER_OPTION } from '@/src/utils/columnFilterOptions';
 import {
   PEDIDO_PROGRAMACION_DESTINOS,
   PEDIDO_PROGRAMACION_DESTINO_LABELS,
 } from '../constants/pedidoProgramacion';
-import {
-  getProgramacionesSearchText,
-  matchesProgramacionDestino,
-} from '../utils/wmsOrderProgramaciones';
 import { PedidoFolioLink } from './PedidoFolioLink';
+import { WmsOrdersCatalogHeader } from './WmsOrdersCatalogHeader';
 
 /**
- * Columnas de Pedidos de Almacén (`/wms/orders`): los pedidos por surtir del
- * onboarding de picking (`useScheduledPedidos`). Ese listado solo trae folio,
- * cliente, sucursal y programaciones, así que no hay importes, fechas ni
- * estatus. Sin columna de Acciones: el único destino de la fila es el detalle
- * 360°, que ya abre el folio.
+ * Columnas de "Por surtir" en Pedidos de Almacén (`/wms/orders`), en MODO
+ * SERVIDOR (`usePorSurtirTable`, EC-993): `meta.serverSort` es el campo de
+ * `ordering` (lista blanca en `porSurtirTable`) y `meta.serverFilter` la clave
+ * del filtro. Mismas columnas que cuando la lista salía del onboarding: folio,
+ * cliente, sucursal y programaciones. Sucursal no se ordena (el backend no la
+ * acepta en `ordering`). Sin columna de Acciones: el único destino de la fila
+ * es el detalle 360°, que ya abre el folio.
  */
 
 const DESTINO_FILTER_OPTIONS: ColumnFilterOption[] = [
-  { value: undefined, label: 'Todos' },
+  ALL_FILTER_OPTION,
   ...PEDIDO_PROGRAMACION_DESTINOS.map((destino) => ({
     value: destino,
     label: PEDIDO_PROGRAMACION_DESTINO_LABELS[destino],
   })),
 ];
 
-const destinoFilterFn: FilterFn<PickingOnboardingPedido> = (row, _columnId, filterValue) =>
-  matchesProgramacionDestino(row.original, filterValue);
+export const wmsOrderColumns: ColumnDef<SurtidoPedidoPorSurtir, unknown>[] = [
+  {
+    id: 'folio',
+    accessorKey: 'folio',
+    header: 'Folio',
+    meta: { label: 'Folio', serverSort: 'folio' },
+    cell: ({ row }) => (
+      <PedidoFolioLink
+        pedidoId={row.original.id}
+        folio={row.original.folio}
+        from="wms"
+        tone="accent"
+        className={BLUE_FOLIO_LINK_CLASS}
+      />
+    ),
+  },
+  {
+    id: 'cliente',
+    accessorFn: (pedido) => pedido.cliente_nombre ?? '',
+    header: ({ column }) => (
+      <WmsOrdersCatalogHeader
+        column={column}
+        tab="por-surtir"
+        catalogo="clientes"
+        title="Cliente"
+        label="cliente"
+        searchable
+      />
+    ),
+    meta: { label: 'Cliente', serverSort: 'cliente_nombre', serverFilter: 'cliente' },
+    cell: ({ row }) => (
+      <p
+        className="text-sm font-medium text-slate-800 dark:text-white truncate max-w-64"
+        title={row.original.cliente_nombre ?? undefined}
+      >
+        {row.original.cliente_nombre || '—'}
+      </p>
+    ),
+  },
+  {
+    id: 'sucursal',
+    accessorFn: (pedido) => pedido.sucursal_nombre ?? '',
+    header: ({ column }) => (
+      <WmsOrdersCatalogHeader
+        column={column}
+        tab="por-surtir"
+        catalogo="sucursales"
+        title="Sucursal"
+        label="sucursal"
+      />
+    ),
+    meta: { label: 'Sucursal', serverFilter: 'sucursal' },
+    cell: ({ row }) => (
+      <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
+        {row.original.sucursal_nombre || '—'}
+      </span>
+    ),
+  },
+  {
+    id: 'programaciones',
+    accessorFn: (pedido) => pedido.programaciones.length,
+    header: ({ column }) => (
+      <FilterHeader
+        title="Programación"
+        column={column}
+        options={DESTINO_FILTER_OPTIONS}
+        label="destino"
+      />
+    ),
+    meta: { label: 'Programación', serverFilter: 'destino' },
+    cell: ({ row }) => <ProgramacionesCell pedido={row.original} />,
+  },
+];
 
-export function createWmsOrderColumns(): ColumnDef<PickingOnboardingPedido, unknown>[] {
-  return [
-    {
-      id: 'folio',
-      accessorKey: 'folio',
-      header: 'Folio',
-      cell: ({ row }) => (
-        <PedidoFolioLink
-          pedidoId={row.original.id}
-          folio={row.original.folio}
-          from="wms"
-          tone="accent"
-          className={BLUE_FOLIO_LINK_CLASS}
-        />
-      ),
-    },
-    // Los nullable se colapsan a `''` en el accessor (ver la nota de
-    // `getColumnCanGlobalFilter` en `DataTable`).
-    {
-      id: 'cliente',
-      accessorFn: (pedido) => pedido.cliente_nombre ?? '',
-      header: 'Cliente',
-      cell: ({ row }) => (
-        <p
-          className="text-sm font-medium text-slate-800 dark:text-white truncate max-w-64"
-          title={row.original.cliente_nombre ?? undefined}
-        >
-          {row.original.cliente_nombre || '—'}
-        </p>
-      ),
-    },
-    {
-      id: 'sucursal',
-      accessorFn: (pedido) => pedido.sucursal_nombre ?? '',
-      header: 'Sucursal',
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
-          {row.original.sucursal_nombre || '—'}
-        </span>
-      ),
-    },
-    {
-      id: 'programaciones',
-      // Destinos, almacenes y comentarios, para que la búsqueda global los encuentre.
-      accessorFn: getProgramacionesSearchText,
-      header: ({ column }) => (
-        <FilterHeader
-          title="Programación"
-          column={column}
-          options={DESTINO_FILTER_OPTIONS}
-          label="destino"
-        />
-      ),
-      meta: { label: 'Programación' },
-      enableSorting: false,
-      filterFn: destinoFilterFn,
-      cell: ({ row }) => <ProgramacionesCell pedido={row.original} />,
-    },
-  ];
-}
-
-function ProgramacionesCell({ pedido }: { pedido: PickingOnboardingPedido }) {
+function ProgramacionesCell({ pedido }: { pedido: SurtidoPedidoPorSurtir }) {
   if (pedido.programaciones.length === 0) {
     return <span className="text-sm text-slate-400 dark:text-slate-500">Sin programación</span>;
   }

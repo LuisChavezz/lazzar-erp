@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Metadata } from 'next';
 import { WmsOrderListView } from '@/src/features/orders/components/WmsOrderListView';
 
@@ -14,7 +15,11 @@ export default function WmsOrdersPage() {
       aria-label="Pedidos de almacén"
     >
       <section aria-label="Lista de pedidos" className="flex-1 min-h-0 flex flex-col">
-        <WmsOrderListView />
+        {/* `<Suspense>`: la pestaña (`?tab=`) y las tablas en modo servidor leen
+            su estado de la URL (`useSearchParams`). */}
+        <Suspense>
+          <WmsOrderListView />
+        </Suspense>
       </section>
     </main>
   );
