@@ -129,7 +129,8 @@ export function useRfidCursorScans(
   );
 
   // `isPollFailing`: mientras el ÚLTIMO sondeo de la lectura encendida falló
-  // (se limpia con la siguiente respuesta). Solo para el aviso de la tira;
-  // `isInitialError` sigue diciendo lo mismo de siempre.
+  // (se limpia con la siguiente respuesta). Excepción documentada a la regla de
+  // no exponer fallos de refetch (ver `useRfidEpcFeed`): solo para el aviso de
+  // la tira, nunca para ocultar datos; `isInitialError` sigue igual.
   return { memory, version, isInitialError, isPollFailing: enabled && lastPollFailed, isFetching };
 }

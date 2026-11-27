@@ -48,9 +48,16 @@ export function useRfidEpcFeed(
   // Con cursor, solo si la sesión nunca respondió (los fallos posteriores avisan
   // con toast, `useGuardedQuery`); sin él, como siempre.
   const isError = cursor ? afterCursor.isInitialError : latest.isError;
-  // El último sondeo falló (con cursor, aunque la sesión ya hubiera respondido):
-  // para un aviso de "sin respuesta", sin cambiar lo que significa `isError`.
-  const isPollFailing = cursor ? afterCursor.isPollFailing : latest.isError;
+  // `isPollFailing`: el ÚLTIMO sondeo con cursor falló, aunque la sesión ya
+  // hubiera respondido. EXCEPCIÓN deliberada a la regla de CLAUDE.md de no
+  // exponer el fallo de un refetch: se pidió explícitamente para el aviso
+  // "sin respuesta del lector" de la tira (EC-997), porque con la antena caída
+  // la captura no avanza y el toast solo sale una vez por racha. Aquí no hay
+  // datos que ocultar (cada respuesta es un delta ya entregado): un consumidor
+  // lo usa SOLO para ese aviso, nunca para ocultar o vaciar lo ya capturado.
+  // Sin cursor no tiene consumidores (ninguna pantalla usa ya ese modo) y es
+  // `false`: ese modo sigue exponiendo solo su `isError` de siempre.
+  const isPollFailing = cursor && afterCursor.isPollFailing;
   // EPC ya entregados. Con cursor viven en la memoria de la captura (por sesión,
   // o por formulario si `continua`; con otro lector empiezan de cero); sin
   // cursor, por sesión de lectura (se vacían al apagar).
