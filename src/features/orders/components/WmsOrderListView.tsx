@@ -57,10 +57,12 @@ export function WmsOrderListView() {
   const resumen = useWmsOrdersResumen();
 
   // Conserva el estado de las dos tablas (sus claves llevan prefijo): al volver
-  // a una pestaña se ve como se dejó.
+  // a una pestaña se ve como se dejó. Compara contra el valor CRUDO de la URL:
+  // un `?tab=` inválido se lee como "Por surtir" y elegir "Por surtir" lo quita.
   const setTab = (next: WmsOrdersTab) => {
-    if (next === tab) return;
     const query = new URLSearchParams(window.location.search);
+    const raw = query.get(WMS_ORDERS_TAB_PARAM);
+    if (next === WMS_ORDERS_DEFAULT_TAB ? raw === null : raw === next) return;
     if (next === WMS_ORDERS_DEFAULT_TAB) query.delete(WMS_ORDERS_TAB_PARAM);
     else query.set(WMS_ORDERS_TAB_PARAM, next);
     const search = query.toString();
