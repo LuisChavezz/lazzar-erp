@@ -1,77 +1,77 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { ListTabs } from '@/src/components/ListTabs';
-import { surtidoPedidoColumns } from '@/src/features/order-fulfillment/components/SurtidoPedidoColumns';
+import { DataTable } from '@/src/components/DataTable';
+import { ListExportButtons } from '@/src/components/ListExportButtons';
+import { useListExport } from '@/src/hooks/useListExport';
 import { SurtidoPedidoRowActionsProvider } from '@/src/features/order-fulfillment/hooks/useSurtidoPedidoRowActions';
 import { SurtidoPedidoDetailDialog } from '@/src/features/order-fulfillment/components/SurtidoPedidoDetailDialog';
 import type { SurtidoPedido } from '@/src/features/order-fulfillment/interfaces/order-fulfillment.interface';
-import { useSurtidosCompletos } from '../hooks/useSurtidosCompletos';
-
-import { DataTable, type DataTableHandle } from '@/src/components/DataTable';
-import { ListExportButtons } from '@/src/components/ListExportButtons';
-import { useListExport } from '@/src/hooks/useListExport';
-import type { PickingOnboardingPedido } from '@/src/features/picking/interfaces/picking-onboarding.interface';
 import { SURTIDO_PEDIDO_EXPORT_COLUMNS } from '@/src/features/order-fulfillment/utils/surtidoPedidoExport';
-import { WMS_ORDER_EXPORT_COLUMNS } from '../utils/wmsOrderExport';
-import { withHeaderFilters } from '@/src/components/withHeaderFilters';
-import { extractErrorMessage } from '@/src/utils/extractErrorMessage';
 import {
-  SCHEDULED_PEDIDOS_LIMIT,
-  useScheduledPedidos,
-} from '@/src/features/picking/hooks/useScheduledPedidos';
-import { createWmsOrderColumns } from './WmsOrderColumns';
+  parseWmsOrdersTab,
+  WMS_ORDERS_DEFAULT_TAB,
+  WMS_ORDERS_RESUMEN_KEY,
+  WMS_ORDERS_TAB_PARAM,
+  wmsOrdersFiltrosKey,
+  wmsOrdersListKey,
+  type WmsOrdersTab,
+} from '../constants/wmsOrdersTables';
+import { usePorSurtirTable, useSurtidosTable, useWmsOrdersResumen } from '../hooks/useWmsOrdersTables';
+import { WMS_ORDER_EXPORT_COLUMNS } from '../utils/wmsOrderExport';
+import { getWmsOrderColumns } from './WmsOrderColumns';
+import { getWmsSurtidoColumns } from './WmsSurtidoColumns';
 
-const columns = createWmsOrderColumns();
-// Completos: sin "Comprometidas" (`isSurtidoCompleto` exige comprometidas = 0).
-const surtidoColumns = surtidoPedidoColumns.filter((c) => c.id !== 'comprometidas');
-// La exportación tampoco lleva "Salidas manuales": esta vista no la muestra.
+// A nivel de módulo: columnas estables entre renders (sin callbacks).
+const porSurtirColumns = getWmsOrderColumns();
+const surtidoColumns = getWmsSurtidoColumns();
+
+// La exportación de Surtidos no lleva "Salidas manuales": esta vista no la muestra.
 const surtidoExportColumns = SURTIDO_PEDIDO_EXPORT_COLUMNS.filter(
   (c) => c.header !== 'Salidas manuales',
 );
 
-type Tab = 'pendientes' | 'surtidos';
+const pedidosSummary = (rows: readonly unknown[]) =>
+  `${rows.length} pedido${rows.length === 1 ? '' : 's'}`;
 
 /**
- * Pedidos de Almacén (`/wms/orders`): solo los pedidos programados por Mesa de
- * Control que se pueden surtir, del onboarding de picking. El cuerpo llena su
- * contenedor (`fillHeight`), que `wms/orders/page.tsx` acota al viewport.
+ * Pedidos de Almacén (`/wms/orders`, EC-993): pestañas "Por surtir" y
+ * "Surtidos", las dos en MODO SERVIDOR sobre `/wms/surtido-pedidos/`.
+ *
+ * - La pestaña activa va en `?tab=` ("Por surtir" cuando falta) y cada tabla
+ *   guarda su estado en la URL con su prefijo (`ps_`, `sd_`): por eso la página
+ *   envuelve la vista en `<Suspense>`.
+ * - Solo se monta la tabla de la pestaña activa, así que la lista de la otra
+ *   no se pide. Los contadores salen de `resumen/` (sin filtros), que no
+ *   depende de qué pestaña está montada.
+ * - Todo vive bajo `["surtido-pedidos"]`: invalidar ese prefijo (mutaciones de
+ *   picking, programación, retención, packing, envío…) refresca las dos
+ *   pestañas y los contadores.
+ *
+ * El cuerpo llena su contenedor (`fillHeight`), que `wms/orders/page.tsx`
+ * acota al viewport.
  */
 export function WmsOrderListView() {
-  const { pedidos, hasLoaded, isLoading, isFetching, isInitialError, error, refetch } =
-    useScheduledPedidos();
-  const [tab, setTab] = useState<Tab>('pendientes');
-  const done = useSurtidosCompletos();
-  // Detalle por talla del pedido surtido: el diálogo vive aquí, no en la celda.
-  const [detailPedido, setDetailPedido] = useState<SurtidoPedido | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const tab = parseWmsOrdersTab(searchParams.get(WMS_ORDERS_TAB_PARAM));
+  const resumen = useWmsOrdersResumen();
 
-  // Sin datos cargados nunca, una petición en vuelo (el "Reintentar" tras un
-  // error inicial) es CARGA, no un refresco: el cuerpo vuelve al skeleton en vez
-  // de dejar el error tapado por el overlay. El overlay es solo para refrescar
-  // filas ya cargadas.
-  const isRetryingInitialLoad = !hasLoaded && isFetching;
-  const isRefreshingLoaded = hasLoaded && isFetching;
-  const mayBeTruncated = pedidos.length >= SCHEDULED_PEDIDOS_LIMIT;
-
-  // Excel/PDF: EXACTAMENTE las filas que deja ver la pestaña activa (filtros
-  // de encabezado, búsqueda y orden).
-  const pendingRef = useRef<DataTableHandle<PickingOnboardingPedido>>(null);
-  const doneRef = useRef<DataTableHandle<SurtidoPedido>>(null);
-  const pendingExport = useListExport({
-    getRows: () => pendingRef.current?.getFilteredRows() ?? [],
-    columns: WMS_ORDER_EXPORT_COLUMNS,
-    title: 'Pedidos por surtir',
-    fileName: 'pedidos-por-surtir',
-    summary: (rows) => `${rows.length} pedido${rows.length === 1 ? '' : 's'}`,
-  });
-  const doneExport = useListExport({
-    getRows: () => doneRef.current?.getFilteredRows() ?? [],
-    columns: surtidoExportColumns,
-    title: 'Pedidos surtidos',
-    fileName: 'pedidos-surtidos',
-    summary: (rows) => `${rows.length} pedido${rows.length === 1 ? '' : 's'}`,
-  });
+  // Conserva el estado de las dos tablas (sus claves llevan prefijo): al volver
+  // a una pestaña se ve como se dejó. Compara contra el valor CRUDO de la URL:
+  // un `?tab=` inválido se lee como "Por surtir" y elegir "Por surtir" lo quita.
+  const setTab = (next: WmsOrdersTab) => {
+    const query = new URLSearchParams(window.location.search);
+    const raw = query.get(WMS_ORDERS_TAB_PARAM);
+    if (next === WMS_ORDERS_DEFAULT_TAB ? raw === null : raw === next) return;
+    if (next === WMS_ORDERS_DEFAULT_TAB) query.delete(WMS_ORDERS_TAB_PARAM);
+    else query.set(WMS_ORDERS_TAB_PARAM, next);
+    const search = query.toString();
+    window.history.replaceState(null, '', search ? `${pathname}?${search}` : pathname);
+  };
 
   return (
     <div className="h-full flex flex-col min-h-0 gap-3">
@@ -79,93 +79,118 @@ export function WmsOrderListView() {
         ariaLabel="Pedidos por surtido"
         value={tab}
         onChange={setTab}
-        isReady={tab === 'pendientes' ? hasLoaded : done.hasLoaded}
+        isReady={resumen.hasLoaded}
+        // `resumen/` falló sin haber cargado nunca: "—" en vez de "…" eterno.
+        // "Actualizar datos" de la tabla lo vuelve a pedir; las tablas no
+        // dependen de él.
+        isUnavailable={resumen.isInitialError}
         tabs={[
-          { key: 'pendientes', label: 'Por surtir', count: pedidos.length },
-          { key: 'surtidos', label: 'Surtidos', count: done.surtidos.length },
+          { key: 'por-surtir', label: 'Por surtir', count: resumen.data?.por_surtir ?? 0 },
+          { key: 'surtidos', label: 'Surtidos', count: resumen.data?.surtidos ?? 0 },
         ]}
       />
-      {tab === 'surtidos' ? (
-        <SurtidoPedidoRowActionsProvider
-          value={{ onViewDetail: (p) => { setDetailPedido(p); setIsDetailOpen(true); } }}
-        >
-        <div className="flex-1 min-h-0 flex flex-col">
-          <DataTable
-            key="surtidos"
-            ref={doneRef}
-            columns={withHeaderFilters(surtidoColumns, done.surtidos, {
-              cliente_nombre: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
-              etapa: { type: 'distinct', get: (p) => p.etapa },
-            })}
-            data={done.surtidos}
-            getRowId={(p) => String(p.id)}
-            searchPlaceholder="Buscar por folio o cliente..."
-            fillHeight
-            isLoading={done.isLoading}
-            isError={done.isInitialError}
-            errorTitle="Error al cargar pedidos surtidos"
-            errorMessage={extractErrorMessage(done.error, 'No se pudo cargar la información.')}
-            onErrorRetry={() => void done.refetch()}
-            loadingAriaLabel="Cargando pedidos surtidos"
-            emptyMessage="Aún no hay pedidos surtidos por completo."
-            onRefetch={done.refetch}
-            isRefetching={done.isFetching}
-            actionButton={
-              <div className="flex items-center gap-2 shrink-0">
-                <ListExportButtons
-                  subject="pedidos surtidos"
-                  onExcel={() => void doneExport.exportCsv()}
-                  onPdf={() => void doneExport.exportPdf()}
-                />
-              </div>
-            }
-          />
-        </div>
-        <SurtidoPedidoDetailDialog pedido={detailPedido} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
-        </SurtidoPedidoRowActionsProvider>
-      ) : (<>
-      {mayBeTruncated && (
-        <p
-          role="status"
-          className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-        >
-          Se muestran solo los {SCHEDULED_PEDIDOS_LIMIT} pedidos programados más recientes; puede
-          haber más pendientes por surtir que no aparecen en esta lista.
-        </p>
-      )}
+      {tab === 'surtidos' ? <SurtidosTab key="surtidos" /> : <PorSurtirTab key="por-surtir" />}
+    </div>
+  );
+}
+
+/** "Actualizar datos": la lista de la pestaña y los contadores, no la otra pestaña. */
+const useRefetchTab = (tab: WmsOrdersTab) => {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: wmsOrdersListKey(tab) }),
+      queryClient.invalidateQueries({ queryKey: WMS_ORDERS_RESUMEN_KEY }),
+      queryClient.invalidateQueries({ queryKey: wmsOrdersFiltrosKey(tab) }),
+    ]);
+};
+
+function PorSurtirTab() {
+  const table = usePorSurtirTable();
+  const onRefetch = useRefetchTab('por-surtir');
+  // Excel/PDF: TODO lo que cumple los filtros vigentes, no solo la página.
+  const { exportCsv, exportPdf } = useListExport({
+    getRows: table.fetchAllRows,
+    columns: WMS_ORDER_EXPORT_COLUMNS,
+    title: 'Pedidos por surtir',
+    fileName: 'pedidos-por-surtir',
+    summary: pedidosSummary,
+  });
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      <DataTable
+        columns={porSurtirColumns}
+        {...table.tableProps}
+        onRefetch={onRefetch}
+        getRowId={(pedido) => String(pedido.id)}
+        searchPlaceholder="Buscar por folio o cliente..."
+        fillHeight
+        errorTitle="Error al cargar pedidos"
+        loadingAriaLabel="Cargando pedidos"
+        emptyMessage="No hay pedidos programados por surtir."
+        actionButton={
+          <div className="flex items-center gap-2 shrink-0">
+            <ListExportButtons
+              subject="pedidos por surtir"
+              onExcel={() => void exportCsv()}
+              onPdf={() => void exportPdf()}
+            />
+          </div>
+        }
+      />
+    </div>
+  );
+}
+
+function SurtidosTab() {
+  const table = useSurtidosTable();
+  const onRefetch = useRefetchTab('surtidos');
+  // Detalle por talla del pedido surtido: el diálogo vive aquí, no en la celda.
+  const [detailPedido, setDetailPedido] = useState<SurtidoPedido | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { exportCsv, exportPdf } = useListExport({
+    getRows: table.fetchAllRows,
+    columns: surtidoExportColumns,
+    title: 'Pedidos surtidos',
+    fileName: 'pedidos-surtidos',
+    summary: pedidosSummary,
+  });
+
+  return (
+    <SurtidoPedidoRowActionsProvider
+      value={{
+        onViewDetail: (p) => {
+          setDetailPedido(p);
+          setIsDetailOpen(true);
+        },
+        // "Volver" del detalle 360° regresa a esta pestaña, no a Avance de surtido.
+        pedidoOrigin: 'wms-surtidos',
+      }}
+    >
       <div className="flex-1 min-h-0 flex flex-col">
         <DataTable
-          ref={pendingRef}
-          columns={withHeaderFilters(columns, pedidos, {
-            cliente: { type: 'distinct', get: (p) => p.cliente_nombre, searchable: true, emptyOption: 'Sin cliente' },
-            sucursal: { type: 'distinct', get: (p) => p.sucursal_nombre },
-          })}
-          data={pedidos}
-          getRowId={(pedido) => String(pedido.id)}
-          searchPlaceholder="Buscar por folio, cliente, destino o almacén..."
+          columns={surtidoColumns}
+          {...table.tableProps}
+          onRefetch={onRefetch}
+          getRowId={(p) => String(p.id)}
+          searchPlaceholder="Buscar por folio o cliente..."
           fillHeight
-          isLoading={isLoading || isRetryingInitialLoad}
-          isError={isInitialError && !isRetryingInitialLoad}
-          errorTitle="Error al cargar pedidos"
-          errorMessage={extractErrorMessage(error, 'No se pudo cargar la información.')}
-          onErrorRetry={() => void refetch()}
-          loadingAriaLabel="Cargando pedidos"
-          emptyMessage="No hay pedidos programados por surtir."
-          onRefetch={refetch}
-          isRefetching={isRefreshingLoaded}
-          isLoadingOverlay={isRefreshingLoaded}
+          errorTitle="Error al cargar pedidos surtidos"
+          loadingAriaLabel="Cargando pedidos surtidos"
+          emptyMessage="Aún no hay pedidos surtidos por completo."
           actionButton={
             <div className="flex items-center gap-2 shrink-0">
               <ListExportButtons
-                subject="pedidos por surtir"
-                onExcel={() => void pendingExport.exportCsv()}
-                onPdf={() => void pendingExport.exportPdf()}
+                subject="pedidos surtidos"
+                onExcel={() => void exportCsv()}
+                onPdf={() => void exportPdf()}
               />
             </div>
           }
         />
       </div>
-      </>)}
-    </div>
+      <SurtidoPedidoDetailDialog pedido={detailPedido} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
+    </SurtidoPedidoRowActionsProvider>
   );
 }

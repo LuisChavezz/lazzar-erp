@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { firstDrfMessage } from "@/src/utils/firstDrfMessage";
 import { createShipment } from "../services/actions";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/surtidoPedidosTable";
 import { invalidateStockQueries } from "@/src/features/stock/utils/invalidateStockQueries";
 import { PEDIDO_PROGRAMAR_QUERY_KEY } from "@/src/constants/stockQueryKeys";
 
@@ -214,6 +215,8 @@ export const useCreateShipping = (onServerError?: (parsed: ParsedShipmentError) 
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-onboarding"] });
       void invalidatePedidoProgress(queryClient);
+      // Etapa DESPACHADO en Pedidos de Almacén (Surtidos) y el avance de surtido (EC-993).
+      void queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY });
       // "Programar pedido" ya lo invalida `invalidatePedidoProgress`: se excluye
       // aquí para no pedirlo dos veces.
       void invalidateStockQueries(queryClient, {

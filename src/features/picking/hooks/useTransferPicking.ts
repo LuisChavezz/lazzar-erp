@@ -16,6 +16,7 @@ import { transferPicking } from "../services/actions";
 import { toPickingDetailData, type PickingDetailData } from "../utils/picking.utils";
 import type { Picking, TransferPickingPayload } from "../interfaces/picking.interface";
 import { invalidatePedidoProgress } from "@/src/features/orders/hooks/invalidatePedidoProgress";
+import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/surtidoPedidosTable";
 
 /** Único campo del formulario de traslado al que el backend atribuye errores. */
 export type TransferPickingField = "almacen";
@@ -118,6 +119,8 @@ export const useTransferPicking = (pickingId: number) => {
     void queryClient.invalidateQueries({ queryKey: pickingDetailQueryKey(pickingId) });
     // El pedido también lista sus folios de surtido.
     void invalidatePedidoProgress(queryClient);
+    // Pedidos de Almacén y el avance de surtido, como al trasladar (EC-993).
+    void queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY });
   };
 
   return useMutation({
@@ -134,6 +137,8 @@ export const useTransferPicking = (pickingId: number) => {
       void invalidatePedidoProgress(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["packing-onboarding"] });
       void queryClient.invalidateQueries({ queryKey: ["picking-onboarding"] });
+      // Pedidos de Almacén y el avance de surtido (EC-993).
+      void queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["transferencias"] });
       void invalidateStockQueries(queryClient);
       // Sin líneas que mover el backend no crea TR (`transferencia_folio` nulo).

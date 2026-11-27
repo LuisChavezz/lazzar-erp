@@ -9,6 +9,7 @@ import { DOCUMENT_AUDIT_QUERY_KEY } from "@/src/features/document-audit/hooks/us
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
 import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
+import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/surtidoPedidosTable";
 import { liberarPedido, retenerPedido } from "../services/actions";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { pedidoDetailQueryKey } from "./usePedidoDetail";
@@ -34,10 +35,13 @@ export const pedidoRetencionMutationKey = (pedidoId: number) =>
  * Picking, packing y despacho por raíz (sus llaves llevan pedido, picking o
  * packing). `special-orders` (selector de OP) no filtra retenidos en el
  * backend; se relee para que el alta no parta de una lista vieja.
+ * `surtido-pedidos`: "Por surtir" de Pedidos de Almacén excluye retenidos
+ * (EC-993), y su contador sale de `resumen/`.
  */
 const RETENCION_RELATED_QUERY_KEYS: readonly QueryKey[] = [
   DOCUMENT_AUDIT_QUERY_KEY,
   ["picking-onboarding"],
+  SURTIDO_PEDIDOS_KEY,
   ["packing-onboarding"],
   ["shipping-onboarding"],
   embroideryOnboardingQueryKey,

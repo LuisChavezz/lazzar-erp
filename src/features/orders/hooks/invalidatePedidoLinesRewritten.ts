@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/usePickingOnboarding";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { PEDIDO_KPIS_QUERY_KEY } from "../constants/pedidoKpis";
 import { invalidatePedidoProgress } from "./invalidatePedidoProgress";

@@ -4,6 +4,7 @@ import type { PickingOnboardingData } from "../interfaces/picking-onboarding.int
 import { parsePickingError } from "../utils/parsePickingError";
 import { isAxiosError } from "axios";
 import { defaultQueryRetry } from "@/src/utils/defaultQueryRetry";
+import { SURTIDO_PEDIDOS_KEY } from "@/src/features/order-fulfillment/constants/surtidoPedidosTable";
 
 /**
  * Prefijo de la llamada SIN pedido (el catálogo del Paso 1): coincide con
@@ -12,13 +13,17 @@ import { defaultQueryRetry } from "@/src/utils/defaultQueryRetry";
 export const PICKING_ONBOARDING_LIST_KEY = ["picking-onboarding", null] as const;
 
 /**
- * Releer la lista de pedidos por surtir —el catálogo del Paso 1 de Nuevo
- * Surtido y Pedidos de Almacén (`useScheduledPedidos`), que son la misma
- * consulta— tras algo que cambia qué pedidos están programados o sus
- * programaciones.
+ * Releer los pedidos por surtir tras algo que cambia qué pedidos están
+ * programados, sus programaciones o lo que les falta: el catálogo del Paso 1
+ * de Nuevo Surtido (onboarding de picking) y Pedidos de Almacén, cuyas dos
+ * pestañas, contadores y filtros viven bajo `["surtido-pedidos"]` (EC-993; el
+ * avance de surtido también). Por prefijo: solo vuelve a pedir lo montado.
  */
 export const invalidateScheduledPedidos = (queryClient: QueryClient) =>
-  queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY });
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: PICKING_ONBOARDING_LIST_KEY }),
+    queryClient.invalidateQueries({ queryKey: SURTIDO_PEDIDOS_KEY }),
+  ]);
 
 /**
  * Sin reintento solo ante un rechazo DEFINITIVO del backend (400/403/404: el

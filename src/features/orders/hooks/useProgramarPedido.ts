@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { embroideryOnboardingQueryKey } from "@/src/features/embroidery/hooks/useEmbroideryOnboarding";
 import { reflectiveOnboardingQueryKey } from "@/src/features/reflective-orders/hooks/useReflectiveOnboarding";
 import { corteMangaOnboardingQueryKey } from "@/src/features/corte-manga/hooks/useCorteMangaOnboarding";
-import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/useScheduledPedidos";
+import { invalidateScheduledPedidos } from "@/src/features/picking/hooks/usePickingOnboarding";
 import { programarPedido } from "../services/actions";
 import { ORDERS_QUERY_KEY } from "../constants/ordersQueryKeys";
 import { invalidatePedidoProgress } from "./invalidatePedidoProgress";

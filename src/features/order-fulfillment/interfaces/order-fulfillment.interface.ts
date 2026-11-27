@@ -1,3 +1,5 @@
+import type { PickingOnboardingProgramacion } from "@/src/features/picking/interfaces/picking-onboarding.interface";
+
 /**
  * Avance de surtido por pedido (`GET /wms/surtido-pedidos/`, nucleo-erp #1223).
  * Pantalla informativa de solo lectura; los nombres de campo son los del
@@ -49,6 +51,45 @@ export interface SurtidoPedido extends SurtidoTotales {
    * #1249, #1250). Dato aparte: NO suma al surtido.
    */
   salidas_manuales: number;
+}
+
+/**
+ * Fila de `?por_surtir=1` (EC-988): la misma fila más `sucursal_nombre` y las
+ * `programaciones` con la forma del onboarding de picking (misma función en el
+ * backend, `programaciones_de`). Sin id de cliente: la fila solo trae
+ * `cliente_nombre`.
+ */
+export interface SurtidoPedidoPorSurtir extends SurtidoPedido {
+  sucursal_nombre: string | null;
+  programaciones: PickingOnboardingProgramacion[];
+}
+
+/** Opción de `filtros/`: `{id, nombre}`, ordenadas por nombre en el backend. */
+export interface SurtidoPedidosFiltroOpcion {
+  id: number;
+  nombre: string | null;
+}
+
+/**
+ * `GET /wms/surtido-pedidos/filtros/`: clientes y sucursales con algún pedido
+ * en el conjunto pedido (`por_surtir`, `completo`, `estatus`), sin los filtros
+ * de columna. El cliente se nombra con el `cliente_nombre` de su pedido más
+ * reciente del conjunto (el mismo texto que muestran las filas).
+ */
+export interface SurtidoPedidosFiltros {
+  clientes: SurtidoPedidosFiltroOpcion[];
+  sucursales: SurtidoPedidosFiltroOpcion[];
+}
+
+/**
+ * `GET /wms/surtido-pedidos/resumen/`: los números de las pestañas de Pedidos
+ * WMS sobre todo lo visible, sin filtros. `por_surtir` = `count` de
+ * `?por_surtir=1`; `surtidos` = `count` de `?estatus=todos&completo=1`.
+ */
+export interface SurtidoPedidosResumen {
+  generado_en: string;
+  por_surtir: number;
+  surtidos: number;
 }
 
 /** Renglón por talla del detalle. */

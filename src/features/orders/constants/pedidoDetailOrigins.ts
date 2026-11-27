@@ -11,6 +11,7 @@ export const PEDIDO_DETAIL_ORIGINS = [
   "operations",
   "scheduled-orders",
   "wms",
+  "wms-surtidos",
   "picking",
   "order-fulfillment",
   "sales-digital-stock",
