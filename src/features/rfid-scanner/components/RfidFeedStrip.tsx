@@ -80,7 +80,7 @@ export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeed
   };
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { lectores, lectorId, seleccionar, catalogoResuelto } = useRfidLectorSeleccionado(pantalla);
+  const { lectores, lectorId, seleccionar, catalogoResuelto, catalogoFallido } = useRfidLectorSeleccionado(pantalla);
   // Con varios lectores hay que elegir uno: leer de todos mezclaría cajones.
   const faltaLector = lectores.length > 1 && lectorId === null;
   // Y nada se pide hasta que el catálogo responda (`rfidLectorListo`).
@@ -90,7 +90,8 @@ export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeed
     cursor: true,
     memoria,
   });
-  const isError = neverAnswered || isPollFailing;
+  // Un catálogo de lectores caído tampoco deja leer: el mismo aviso.
+  const isError = neverAnswered || isPollFailing || catalogoFallido;
   useLectorEnUso(lectorId, activo, pantalla, documento);
 
   const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;

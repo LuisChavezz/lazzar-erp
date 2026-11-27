@@ -31,7 +31,7 @@ import {
   withPollOutcome,
   type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
-import { rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
+import { estadoCatalogoLectores, rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
@@ -705,8 +705,21 @@ test.describe("antena solo con el lector resuelto (EC-997)", () => {
     expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: 24 })).toBe(true);
     expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: null })).toBe(false);
   });
-  test("un catálogo que respondió sin lista (falló o sin endpoint) lee de todos, como antes", () => {
+  test("un catálogo resuelto sin lista (backend sin el endpoint) lee de todos, como antes", () => {
     expect(rfidLectorListo({ catalogoResuelto: true, lectores: 0, lectorId: null })).toBe(true);
+  });
+  test("catálogo 404 lee de todos; otro fallo deja la antena apagada y avisa", () => {
+    const sinEndpoint = estadoCatalogoLectores({ hasLoaded: false, isInitialError: false, noDisponible: true });
+    expect(sinEndpoint).toEqual({ resuelto: true, fallido: false });
+    expect(rfidLectorListo({ catalogoResuelto: sinEndpoint.resuelto, lectores: 0, lectorId: null })).toBe(true);
+
+    const caido = estadoCatalogoLectores({ hasLoaded: false, isInitialError: true, noDisponible: false });
+    expect(caido).toEqual({ resuelto: false, fallido: true });
+    expect(rfidLectorListo({ catalogoResuelto: caido.resuelto, lectores: 0, lectorId: null })).toBe(false);
+
+    // En vuelo: ni resuelto ni fallido. Ya cargado: un refetch fallido no lo apaga.
+    expect(estadoCatalogoLectores({ hasLoaded: false, isInitialError: false, noDisponible: false })).toEqual({ resuelto: false, fallido: false });
+    expect(estadoCatalogoLectores({ hasLoaded: true, isInitialError: false, noDisponible: false })).toEqual({ resuelto: true, fallido: false });
   });
 });
 

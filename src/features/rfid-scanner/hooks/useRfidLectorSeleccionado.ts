@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRfidLectores } from "./useRfidLectores";
 import { marcarLectorEnUso } from "../services/actions";
+import { estadoCatalogoLectores } from "../utils/rfidLectorListo";
 
 /** Cada cuánto se renueva el aviso "en uso" mientras se escanea. */
 const EN_USO_INTERVAL_MS = 30_000;
@@ -21,11 +22,13 @@ const leerGuardado = (pantalla: string): number | null => {
  * "scanner"). Se recuerda por pantalla en este navegador; si el guardado ya no
  * existe o no hay ninguno y solo hay un lector, se usa ese.
  *
- * `lectorId === null` = sin filtro: si el catálogo no responde (backend sin el
- * endpoint) se lee de todos los lectores, como antes.
+ * `lectorId === null` = sin filtro: si el backend no tiene el catálogo (404)
+ * se lee de todos los lectores, como antes. Si falla de otra forma, las
+ * capturas no leen hasta que responda (`catalogoFallido`).
  */
 export function useRfidLectorSeleccionado(pantalla: string, { allowAll = false } = {}) {
   const { lectores, hasLoaded, isInitialError, noDisponible } = useRfidLectores();
+  const catalogo = estadoCatalogoLectores({ hasLoaded, isInitialError, noDisponible });
   const [guardado, setGuardado] = useState<number | null>(null);
 
   useEffect(() => {
@@ -52,9 +55,10 @@ export function useRfidLectorSeleccionado(pantalla: string, { allowAll = false }
   return {
     lectores,
     hasLoaded,
-    // El catálogo ya respondió: con la lista, o sin ella (falló o el backend no
-    // tiene el endpoint, y entonces se lee de todos, como dice arriba).
-    catalogoResuelto: hasLoaded || isInitialError || noDisponible,
+    // El catálogo ya respondió con la lista, o el backend no lo tiene (404: se
+    // lee de todos, como dice arriba). Un fallo de otro tipo no lo resuelve.
+    catalogoResuelto: catalogo.resuelto,
+    catalogoFallido: catalogo.fallido,
     lectorId,
     lector: lectores.find((l) => l.id === lectorId) ?? null,
     seleccionar,

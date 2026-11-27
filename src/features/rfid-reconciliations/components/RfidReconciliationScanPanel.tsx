@@ -81,7 +81,7 @@ export function RfidReconciliationScanPanel({
   const { reads, pending, stopped, tally, rejected, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { lectores, lectorId, seleccionar, catalogoResuelto } = useRfidLectorSeleccionado(PANTALLA);
+  const { lectores, lectorId, seleccionar, catalogoResuelto, catalogoFallido } = useRfidLectorSeleccionado(PANTALLA);
   const faltaLector = lectores.length > 1 && lectorId === null;
   // Nada se pide hasta que el catálogo responda (`rfidLectorListo`).
   const active =
@@ -159,7 +159,7 @@ export function RfidReconciliationScanPanel({
               ? <span className="text-amber-600 dark:text-amber-400">Selecciona con qué lector leer.</span>
               : !reading || stopped
               ? "Coloca las prendas frente a la antena e inicia la lectura."
-              : isError
+              : isError || catalogoFallido
                 ? <span className="text-rose-600 dark:text-rose-400">Sin respuesta del lector RFID.</span>
                 : count === 0
                   ? "Esperando etiquetas frente a la antena…"
