@@ -21,8 +21,7 @@ export const RFID_LABEL_STATUS_VALUES = [
  *   rutas del ORM: el backend traduce `folio` → `id`, `sku` →
  *   `producto_variante__sku`, etc. Un campo fuera de esa lista se descarta sin
  *   error.
- * - Sin `tiebreaker`: el backend añade el desempate por `id` en la dirección
- *   del primer campo, e `id` no está en su lista blanca.
+ * - `-id` de desempate fijo, como pickings y encuadres RFID.
  */
 export const rfidLabelsTable = defineServerTable({
   filters: {
@@ -40,5 +39,6 @@ export const rfidLabelsTable = defineServerTable({
       "created_at",
     ],
     default: "-created_at",
+    tiebreaker: "-id",
   },
 });
