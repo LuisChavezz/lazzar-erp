@@ -77,6 +77,8 @@ export const DOCUMENT_AUDIT_OPENERS: Partial<Record<TipoDocumento, DocumentAudit
   recepcion: { kind: "dialog", gatePath: "/wms/receipts" },
   // Devoluciones a proveedor (EC-951): su pantalla de WMS.
   devolucion_proveedor: { kind: "dialog", gatePath: "/wms/supplier-returns" },
+  // Encuadres RFID de recepción (EC-961): su pantalla de WMS.
+  encuadre_rfid: { kind: "dialog", gatePath: "/wms/rfid-reconciliations" },
   // Transferencias y movimientos son subvistas de Configuración.
   transferencia: { kind: "dialog", gatePath: "/config" },
   movimiento_inventario: { kind: "dialog", gatePath: "/config" },

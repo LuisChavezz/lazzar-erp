@@ -57,6 +57,13 @@ test.describe("destino de un evento de la bitácora", () => {
     expect(resolveDocumentAuditTarget(event("devolucion_proveedor"), user(["R-WMS-CALIDAD"]))).toBeNull();
   });
 
+  test("el encuadre RFID se abre con R-WMS-RECEPCIONES", () => {
+    expect(
+      resolveDocumentAuditTarget(event("encuadre_rfid"), user(["R-WMS-RECEPCIONES"]))?.opener,
+    ).toEqual({ kind: "dialog", gatePath: "/wms/rfid-reconciliations" });
+    expect(resolveDocumentAuditTarget(event("encuadre_rfid"), user(["R-WMS-SCANNER"]))).toBeNull();
+  });
+
   test("diálogo solo con acceso a la pantalla donde vive", () => {
     expect(resolveDocumentAuditTarget(event("picking"), user(["R-WMS-PICKING"]))?.opener.kind).toBe(
       "dialog",
@@ -64,7 +71,7 @@ test.describe("destino de un evento de la bitácora", () => {
     expect(resolveDocumentAuditTarget(event("picking"), user(["R-CORE"]))).toBeNull();
   });
 
-  test("los doce tipos sin detalle por id quedan como texto", () => {
+  test("los once tipos sin detalle por id quedan como texto", () => {
     const admin = { role: "admin", permissions: [] } as never;
     for (const tipo of [
       "factura_proveedor",
@@ -79,7 +86,6 @@ test.describe("destino de un evento de la bitácora", () => {
       "movimiento_bancario",
       "conciliacion_bancaria",
       "calidad_inspeccion",
-      "encuadre_rfid",
     ]) {
       expect(resolveDocumentAuditTarget(event(tipo), admin)).toBeNull();
     }

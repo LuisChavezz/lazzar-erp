@@ -7,13 +7,9 @@ import type {
   RfidLectorConfig,
 } from "../interfaces/rfid-scanner.interface";
 
-/** Filtros de `GET /wms/etiquetas-rfid/scans/` (nucleo-erp#1331). */
-export interface RfidScansParams {
-  /** Solo lecturas que cruzan con una etiqueta impresa por el ERP. */
-  soloMatch: boolean;
-  /** Solo las lecturas de este lector (`?lector=`). `null`/ausente = todos, como antes. */
-  lector?: number | null;
-}
+import { rfidScansQueryParams, type RfidScansParams } from "../utils/rfidScansParams";
+
+export type { RfidScansParams };
 
 /**
  * Últimas lecturas del lector RFID, ya cruzadas contra las etiquetas
@@ -28,14 +24,12 @@ export interface RfidScansParams {
  * El backend devuelve las 50 lecturas más recientes, coincidan o no: las que
  * no cruzan con una etiqueta impresa llegan con `match_impresion: false` (p.
  * ej. tags ajenos `3035…`) en vez de descartarse (EC-786). Los EPC llegan en
- * mayúsculas.
+ * mayúsculas. Con `despuesDeId` (EC-982) solo las posteriores a ese `id`
+ * (`useRfidCursorScans`).
  */
-export const fetchRfidScans = async ({
-  soloMatch,
-  lector,
-}: RfidScansParams): Promise<RfidScansResponse> => {
+export const fetchRfidScans = async (params: RfidScansParams): Promise<RfidScansResponse> => {
   const response = await v1_api.get<RfidScansResponse>("/wms/etiquetas-rfid/scans/", {
-    params: { unicos: 1, ...(soloMatch ? { solo_match: 1 } : {}), ...(lector ? { lector } : {}) },
+    params: rfidScansQueryParams(params),
   });
   return response.data;
 };

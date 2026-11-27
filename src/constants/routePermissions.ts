@@ -135,6 +135,10 @@ export const routePermissions: Array<{
   { prefix: "/wms/rfid-labels", permission: "R-WMS-ETIQUETAS" },
   { prefix: "/wms/rfid-scanner", permission: "R-WMS-SCANNER" },
   { prefix: "/wms/rfid-readers", permission: "R-WMS-SCANNER" },
+  // Encuadres RFID de recepción (EC-961): la regla de Recepciones. El backend
+  // exige `C-WMS-RECEPCIONES` para crear, escanear, aceptar y cancelar (en la
+  // vista); sus lecturas solo piden sesión (nucleo-erp#1439).
+  { prefix: "/wms/rfid-reconciliations", permission: "R-WMS-RECEPCIONES" },
   { prefix: "/wms", permission: "R-WMS" },
 
   // ── Compras y SCM ─────────────────────────────────────────────────────────

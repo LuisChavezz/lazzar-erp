@@ -6,6 +6,7 @@ import { ReceiptDetailDialog } from "@/src/features/receipts/components/ReceiptD
 import { StockTransferDetailDialog } from "@/src/features/stock-transfers/components/StockTransferDetailDialog";
 import { StockMovementDetailByIdDialog } from "@/src/features/stock-movements/components/StockMovementDetailByIdDialog";
 import { SupplierReturnDetailDialog } from "@/src/features/supplier-returns/components/SupplierReturnDetailDialog";
+import { RfidReconciliationDetailDialog } from "@/src/features/rfid-reconciliations/components/RfidReconciliationDetailDialog";
 import type { TipoDocumento } from "../interfaces/document-audit.interface";
 
 /** Documento abierto en diálogo desde la bitácora. */
@@ -49,6 +50,8 @@ export function DocumentAuditDocumentDialog({ document, onClose }: DocumentAudit
       return <StockMovementDetailByIdDialog orderId={document.id} open onOpenChange={onOpenChange} />;
     case "devolucion_proveedor":
       return <SupplierReturnDetailDialog returnId={document.id} open onOpenChange={onOpenChange} />;
+    case "encuadre_rfid":
+      return <RfidReconciliationDetailDialog reconciliationId={document.id} open onOpenChange={onOpenChange} />;
     default:
       return null;
   }
