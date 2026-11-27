@@ -3,10 +3,13 @@
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
+import { FilterHeader } from "@/src/components/ColumnHeaderFilter";
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
+import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { RFID_LABEL_STATUS_CONFIG } from "../constants/rfidLabelStatus";
+import { RFID_LABEL_STATUS_VALUES } from "../constants/rfidLabelsTable";
 import { useRfidLabelRowActionsContext } from "../hooks/rfidLabelRowActionsContext";
 import type { EtiquetaRFIDRow } from "../interfaces/rfid-label.interface";
 
@@ -27,6 +30,16 @@ const ActionsCell = ({ row }: { row: EtiquetaRFIDRow }) => {
   );
 };
 
+/** Los estatus con su punto de color: el menú es la leyenda. */
+const STATUS_OPTIONS = [
+  ALL_FILTER_OPTION,
+  ...RFID_LABEL_STATUS_VALUES.map((status) => ({
+    value: status,
+    label: RFID_LABEL_STATUS_CONFIG[status].label ?? status,
+    dotClassName: RFID_LABEL_STATUS_CONFIG[status].dot,
+  })),
+];
+
 const columnHelper = createColumnHelper<EtiquetaRFIDRow>();
 
 /**
@@ -34,10 +47,14 @@ const columnHelper = createColumnHelper<EtiquetaRFIDRow>();
  * EVENTO DE IMPRESIÓN (`EtiquetaRFIDImpresion`), no una etiqueta/SKU vigente:
  * el mismo SKU puede repetirse en varios renglones (reimpresiones), y eso es
  * intencional — es un log, no un catálogo. Ver `rfid-label.interface.ts`.
+ *
+ * MODO SERVIDOR (`useRfidLabelsTable`): `meta.serverSort` y `meta.serverFilter`
+ * mandan el orden y el estatus al backend; nada se filtra ni ordena en memoria.
  */
 export const rfidLabelColumns = [
   columnHelper.accessor("folio", {
     header: "Folio",
+    meta: { serverSort: "id" },
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
         {info.getValue()}
@@ -54,6 +71,7 @@ export const rfidLabelColumns = [
   columnHelper.accessor((row) => row.sku ?? "", {
     id: "sku",
     header: "SKU",
+    meta: { serverSort: "producto_variante__sku" },
     // `null` cuando la impresión se registró por producto, sin variante.
     cell: (info) => (
       <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
@@ -63,6 +81,7 @@ export const rfidLabelColumns = [
   }),
   columnHelper.accessor("producto_nombre", {
     header: "Producto",
+    meta: { serverSort: "producto__nombre" },
     cell: (info) => (
       <span className="text-sm text-slate-700 dark:text-slate-200">{info.getValue()}</span>
     ),
@@ -72,6 +91,7 @@ export const rfidLabelColumns = [
   columnHelper.accessor((row) => row.producto_variante_nombre ?? "", {
     id: "producto_variante_nombre",
     header: "Variante",
+    meta: { serverSort: "producto_variante__nombre" },
     // Compuesto "Producto - Color - Talla" armado por el backend — se muestra
     // tal cual, no se separa en color/talla (no hay campos sueltos que leer).
     cell: (info) => (
@@ -82,7 +102,7 @@ export const rfidLabelColumns = [
   }),
   columnHelper.accessor("cantidad", {
     header: "Cantidad",
-    meta: { align: "right" },
+    meta: { align: "right", serverSort: "cantidad" },
     cell: (info) => (
       <span className="text-sm tabular-nums text-slate-700 dark:text-slate-200">
         {info.getValue()}
@@ -90,13 +110,16 @@ export const rfidLabelColumns = [
     ),
   }),
   columnHelper.accessor("status", {
-    header: "Estatus",
+    meta: { label: "Estatus", serverSort: "status", serverFilter: "status" },
+    header: ({ column }) => (
+      <FilterHeader title="Estatus" column={column} options={STATUS_OPTIONS} label="estatus" />
+    ),
     size: 130,
     cell: (info) => <StatusBadge status={info.getValue()} config={RFID_LABEL_STATUS_CONFIG} />,
   }),
   columnHelper.accessor("created_at", {
     header: "Fecha",
-    sortingFn: "datetime",
+    meta: { serverSort: "created_at" },
     cell: (info) => {
       const raw = info.getValue();
       return (

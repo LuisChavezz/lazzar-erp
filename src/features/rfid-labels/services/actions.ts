@@ -1,5 +1,6 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { EtiquetaRFID, EtiquetaRFIDRow } from "../interfaces/rfid-label.interface";
+import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
+import type { RfidLabelsListResponse } from "../utils/rfidLabelsAdapter";
 import type {
   RfidOnboardingParams,
   RfidOnboardingResponse,
@@ -7,13 +8,18 @@ import type {
 } from "../interfaces/rfid-onboarding.interface";
 
 /**
- * Lista los eventos de impresión de etiquetas RFID (`GET /wms/etiquetas-rfid/`).
+ * Historial de impresiones (`GET /wms/etiquetas-rfid/`), con los parámetros
+ * que arma `useServerTable` (`limit`/`offset`, `search`, `status`, `ordering`).
  *
- * Sin paginar y sin params de filtro documentados — el backend ya acota el
- * resultado a empresa/sucursal del usuario (`EtiquetaRFIDViewSet.get_queryset`).
+ * Responde dos formas según el backend: el arreglo completo (antes de EC-989,
+ * que ignora los parámetros) o la página `{count, next, previous, results}`
+ * (desde EC-989). `rfidLabelsAdapter` entiende las dos. El backend acota el
+ * resultado a la empresa/sucursales del usuario.
  */
-export const getEtiquetasRFID = async (): Promise<EtiquetaRFIDRow[]> => {
-  const response = await v1_api.get<EtiquetaRFIDRow[]>("/wms/etiquetas-rfid/");
+export const getEtiquetasRFIDPage = async (
+  params: Record<string, string | number>,
+): Promise<RfidLabelsListResponse> => {
+  const response = await v1_api.get<RfidLabelsListResponse>("/wms/etiquetas-rfid/", { params });
   return response.data;
 };
 
