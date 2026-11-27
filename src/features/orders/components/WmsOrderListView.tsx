@@ -74,6 +74,10 @@ export function WmsOrderListView() {
         value={tab}
         onChange={setTab}
         isReady={resumen.hasLoaded}
+        // `resumen/` falló sin haber cargado nunca: "—" en vez de "…" eterno.
+        // "Actualizar datos" de la tabla lo vuelve a pedir; las tablas no
+        // dependen de él.
+        isUnavailable={resumen.isInitialError}
         tabs={[
           { key: 'por-surtir', label: 'Por surtir', count: resumen.data?.por_surtir ?? 0 },
           { key: 'surtidos', label: 'Surtidos', count: resumen.data?.surtidos ?? 0 },

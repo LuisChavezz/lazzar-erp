@@ -9,7 +9,8 @@ export interface ListTab<K extends string> {
 /**
  * Pestañas de un listado (p. ej. "En curso" / "Completadas"): separan lo
  * terminado sin salir de la página. Píldora segmentada con el conteo de cada
- * pestaña; `isReady` en `false` muestra "…" mientras la lista carga.
+ * pestaña; `isReady` en `false` muestra "…" mientras la lista carga y
+ * `isUnavailable` muestra "—" cuando los conteos no se pudieron cargar.
  */
 export function ListTabs<K extends string>({
   tabs,
@@ -17,12 +18,14 @@ export function ListTabs<K extends string>({
   onChange,
   ariaLabel,
   isReady = true,
+  isUnavailable = false,
 }: {
   tabs: readonly ListTab<K>[];
   value: K;
   onChange: (key: K) => void;
   ariaLabel: string;
   isReady?: boolean;
+  isUnavailable?: boolean;
 }) {
   return (
     <div
@@ -53,7 +56,7 @@ export function ListTabs<K extends string>({
                   : "bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-400"
               }`}
             >
-              {isReady ? tab.count : "…"}
+              {isUnavailable ? "—" : isReady ? tab.count : "…"}
             </span>
           </button>
         );
