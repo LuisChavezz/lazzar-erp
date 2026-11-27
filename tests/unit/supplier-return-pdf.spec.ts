@@ -16,8 +16,8 @@ import { elementsOf, pdfCardItems, pdfTable } from "./support/pdfElementTree";
 
 /**
  * PDF de la devolución a proveedor (EC-976): identidad y nombre del archivo,
- * marca de cancelada, almacén vacío, renglones sin variante, importes sin
- * moneda y que la descarga no toque la consulta del diálogo. Corren con
+ * marca de cancelada, almacén vacío, renglones sin variante, importes en MXN
+ * (costo unitario con hasta 4 decimales) y que la descarga no toque la consulta del diálogo. Corren con
  * `npm run test:unit`, sin red.
  */
 
@@ -133,6 +133,7 @@ test.describe("SupplierReturnPdfDocument", () => {
       Recepción: "RC-000123",
       "Orden de compra": "OC-00010-2026",
       Registró: "Ana López",
+      Moneda: "MXN",
     });
     expect(doc.almacen).toEqual({ Proveedor: "Proveedor SA", Almacén: "PRODUCTO TERMINADO", Sucursal: "Toneles" });
   });
@@ -174,22 +175,34 @@ test.describe("SupplierReturnPdfDocument", () => {
     expect(materiaPrima.headers).toEqual(["Producto", "Cantidad", "Costo unitario", "Importe"]);
   });
 
-  test("importes sin moneda: ni símbolo ni código, y el total es el de la respuesta", () => {
+  test("importes en MXN y el total es el de la respuesta", () => {
     const doc = documentOf(
       supplierReturn({ detalles: [linea(), linea({ id: 2, cantidad: "1.5000", importe: "1000.00" })] }),
     );
-    expect(doc.cellText("Costo unitario", 0)).toBe("125.50");
-    expect(doc.cellText("Importe", 0)).toBe("376.50");
+    expect(doc.cellText("Costo unitario", 0)).toBe("$125.50");
+    expect(doc.cellText("Importe", 0)).toBe("$376.50");
     expect(doc.cellText("Cantidad", 1)).toBe("1.5");
-    // Total de la respuesta, no Σ importes recalculada.
-    expect(doc.totals).toEqual({ Renglones: "2", "Piezas devueltas": "4.5", Total: "1,376.50" });
-    for (const value of [doc.cellText("Importe", 0), doc.totals.Total]) {
-      expect(String(value)).not.toMatch(/\$|MXN|USD/);
-    }
+    // Total de la respuesta, no Σ importes recalculada; etiqueta neutra (materia prima fraccionaria).
+    expect(doc.totals).toEqual({ Renglones: "2", "Cantidad devuelta": "4.5", Total: "$1,376.50" });
   });
 
-  test("Σ cantidades sin residuos de punto flotante", () => {
-    expect(totalCantidadDevuelta([{ cantidad: "0.1000" }, { cantidad: "0.2000" }, { cantidad: "abc" }])).toBe(0.3);
+  test("costo unitario con hasta 4 decimales: 0.0040 no sale como 0.00", () => {
+    const doc = documentOf(
+      supplierReturn({
+        detalles: [
+          linea({ cantidad: "1000.0000", costo_unitario: "0.00400000", importe: "4.00" }),
+          linea({ id: 2, costo_unitario: "294.83456789" }),
+        ],
+      }),
+    );
+    expect(doc.cellText("Costo unitario", 0)).toBe("$0.004");
+    expect(doc.cellText("Costo unitario", 1)).toBe("$294.8346");
+    expect(doc.cellText("Importe", 0)).toBe("$4.00");
+  });
+
+  test("Σ cantidades sin residuos de punto flotante ni notación exponencial", () => {
+    expect(totalCantidadDevuelta([{ cantidad: "0.1000" }, { cantidad: "0.2000" }, { cantidad: "abc" }])).toBe("0.3000");
+    expect(totalCantidadDevuelta([{ cantidad: "1e21" }])).not.toMatch(/e/);
   });
 });
 

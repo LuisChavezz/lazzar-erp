@@ -11,9 +11,12 @@
  * - Renglones con SKU, color y talla (nucleo-erp#1422, `null` sin variante →
  *   "—"); las columnas de SKU, color y talla solo aparecen si algún renglón
  *   trae el dato, como la talla de la recepción.
- * - Importes SIN moneda (EC-600): la respuesta no trae `moneda`, así que no se
- *   afirma ninguna. El backend no los quita por rol; se imprimen tal cual, sin
- *   recalcular (el total es el `total` de la respuesta).
+ * - Importes en MXN, como en el detalle: la respuesta no trae `moneda`, pero el
+ *   backend valúa SIEMPRE en pesos (`_costo_oc` convierte la OC en otra moneda
+ *   con su `tipo_cambio`). No los quita por rol; se imprimen tal cual, sin
+ *   recalcular (el total es el `total` de la respuesta). El costo unitario llega
+ *   con 8 decimales y se imprime con hasta 4, para que cantidad × costo cuadre
+ *   con el importe (0.0040 no sale como 0.00).
  */
 import type {
   SupplierReturn,
@@ -21,7 +24,7 @@ import type {
 } from "@/src/features/supplier-returns/interfaces/supplier-return.interface";
 import { supplierReturnStatusEntry } from "@/src/features/supplier-returns/constants/supplierReturns";
 import { supplierReturnPdfDescriptor } from "@/src/features/supplier-returns/utils/supplierReturnPdf";
-import { formatAmountNoCurrency, formatExactQuantityValue, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue, formatMoneyValue, safeParseAmount } from "@/src/utils/formatCurrency";
 import { formatShortDateTime } from "@/src/utils/formatDate";
 import { textOrDash } from "@/src/utils/textOrDash";
 import {
@@ -35,15 +38,31 @@ import {
 } from "./shared/DocumentPdfLayout";
 import { conditionalColumn } from "./shared/documentPdfColumns";
 import type { PdfCompany } from "./shared/documentPdfModel";
+import { pdfCurrencyItems, pdfMoney } from "./shared/financeDocumentPdf";
 
 type SupplierReturnPdfDocumentProps = {
   supplierReturn: SupplierReturn;
   company: PdfCompany | null;
 };
 
-/** Σ cantidades a 4 decimales (la escala del backend), sin residuos de punto flotante. */
-export const totalCantidadDevuelta = (detalles: readonly Pick<SupplierReturnLine, "cantidad">[]): number =>
-  Math.round(detalles.reduce((sum, linea) => sum + safeParseAmount(linea.cantidad) * 10_000, 0)) / 10_000;
+/** Moneda de los importes: el backend valúa la devolución en pesos (`_costo_oc`). */
+const SUPPLIER_RETURN_MONEDA = "MXN";
+const money = pdfMoney(SUPPLIER_RETURN_MONEDA);
+/** Costo unitario con hasta 4 decimales (llega con 8). */
+const unitCost = (value: string): string =>
+  formatMoneyValue(value, SUPPLIER_RETURN_MONEDA, { maximumFractionDigits: 4 });
+
+/**
+ * Σ cantidades a 4 decimales (la escala del backend), como texto decimal: cada
+ * término se lleva a diezmilésimos ENTEROS antes de sumar (sin residuos de
+ * punto flotante) y el texto se arma desde ese entero, así que nunca sale en
+ * notación exponencial.
+ */
+export const totalCantidadDevuelta = (detalles: readonly Pick<SupplierReturnLine, "cantidad">[]): string => {
+  const units = detalles.reduce((sum, linea) => sum + Math.round(safeParseAmount(linea.cantidad) * 10_000), 0);
+  const digits = (units < 0 ? -BigInt(units) : BigInt(units)).toString().padStart(5, "0");
+  return `${units < 0 ? "-" : ""}${digits.slice(0, -4)}.${digits.slice(-4)}`;
+};
 
 export const SupplierReturnPdfDocument = ({ supplierReturn, company }: SupplierReturnPdfDocumentProps) => {
   const detalles = supplierReturn.detalles ?? [];
@@ -88,14 +107,14 @@ export const SupplierReturnPdfDocument = ({ supplierReturn, company }: SupplierR
       header: "Costo unitario",
       flex: 5.6,
       align: "right",
-      cell: (linea) => formatAmountNoCurrency(linea.costo_unitario),
+      cell: (linea) => unitCost(linea.costo_unitario),
     },
     {
       id: "importe",
       header: "Importe",
       flex: 6,
       align: "right",
-      cell: (linea) => formatAmountNoCurrency(linea.importe),
+      cell: (linea) => money(linea.importe),
     },
   ];
 
@@ -116,6 +135,7 @@ export const SupplierReturnPdfDocument = ({ supplierReturn, company }: SupplierR
             { label: "Recepción", value: textOrDash(supplierReturn.recepcion_folio) },
             { label: "Orden de compra", value: textOrDash(supplierReturn.orden_compra_folio) },
             { label: "Registró", value: textOrDash(supplierReturn.usuario_nombre) },
+            ...pdfCurrencyItems(SUPPLIER_RETURN_MONEDA, null),
           ]}
         />
         <PdfInfoCard
@@ -138,8 +158,8 @@ export const SupplierReturnPdfDocument = ({ supplierReturn, company }: SupplierR
       <PdfTotals
         rows={[
           { label: "Renglones", value: detalles.length.toLocaleString("es-MX") },
-          { label: "Piezas devueltas", value: formatExactQuantityValue(String(totalCantidadDevuelta(detalles))) },
-          { label: "Total", value: formatAmountNoCurrency(supplierReturn.total), emphasis: true },
+          { label: "Cantidad devuelta", value: formatExactQuantityValue(totalCantidadDevuelta(detalles)) },
+          { label: "Total", value: money(supplierReturn.total), emphasis: true },
         ]}
       />
 
