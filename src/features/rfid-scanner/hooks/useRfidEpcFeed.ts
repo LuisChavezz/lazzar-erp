@@ -30,6 +30,9 @@ export function useRfidEpcFeed(
   // Con cursor, solo si la sesión nunca respondió (los fallos posteriores avisan
   // con toast, `useGuardedQuery`); sin él, como siempre.
   const isError = cursor ? afterCursor.isInitialError : latest.isError;
+  // El último sondeo falló (con cursor, aunque la sesión ya hubiera respondido):
+  // para un aviso de "sin respuesta", sin cambiar lo que significa `isError`.
+  const isPollFailing = cursor ? afterCursor.isPollFailing : latest.isError;
   // Por sesión de lectura (se vacía al apagar), NO por lector: un EPC es una
   // pieza, así que la misma prenda vista después por otro lector no suma dos veces.
   const seenRef = useRef<Set<string>>(new Set());
@@ -80,5 +83,5 @@ export function useRfidEpcFeed(
   }, [enabled]);
 
   // Con cursor, un sondeo en vuelo puede traer lecturas aun en pausa.
-  return { count, isError, isPolling: cursor && afterCursor.isFetching };
+  return { count, isError, isPollFailing, isPolling: cursor && afterCursor.isFetching };
 }

@@ -77,7 +77,9 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
   const faltaLector = lectores.length > 1 && lectorId === null;
   // Y nada se pide hasta que el catálogo responda (`rfidLectorListo`).
   const activo = !hasNoCompany && rfidLectorListo({ catalogoResuelto, lectores: lectores.length, lectorId });
-  const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId, { cursor: true });
+  // "Sin respuesta" también si un sondeo posterior falla, hasta que otro responda.
+  const { isError: neverAnswered, isPollFailing } = useRfidEpcFeed(activo, handleEpc, lectorId, { cursor: true });
+  const isError = neverAnswered || isPollFailing;
   useLectorEnUso(lectorId, activo, pantalla, documento);
 
   const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;

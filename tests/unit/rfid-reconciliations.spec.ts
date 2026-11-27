@@ -26,6 +26,7 @@ import {
   RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   rfidScansQueryParams,
+  withPollOutcome,
   type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
 import { rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
@@ -581,6 +582,34 @@ test.describe("sesión del cursor por lector (EC-997)", () => {
     const otroEnPausa = nextCursorFeedSession(off, false, 24);
     expect(otroEnPausa.session).toBe(on.session);
     expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
+  });
+});
+
+test.describe("aviso de sondeo fallido en la tira (EC-997)", () => {
+  test("se enciende cuando falla un sondeo posterior y se apaga con la siguiente respuesta", async () => {
+    let failed = false;
+    const report = (value: boolean) => (failed = value);
+    // La tira: "sin respuesta" si la sesión nunca respondió O el último sondeo falló.
+    const indicador = (isInitialError: boolean) => isInitialError || failed;
+
+    await withPollOutcome(async () => ({ fresh: 0 }), report);
+    expect(indicador(false)).toBe(false);
+    await expect(withPollOutcome(() => Promise.reject(new Error("red")), report)).rejects.toThrow("red");
+    // Ya había respondido: `isInitialError` sigue en false, pero el aviso sí se enciende.
+    expect(indicador(false)).toBe(true);
+    await expect(withPollOutcome(async () => ({ fresh: 2 }), report)).resolves.toEqual({ fresh: 2 });
+    expect(indicador(false)).toBe(false);
+  });
+  test("un corte en una página posterior no cuenta como fallo: el sondeo entregó lo recibido", async () => {
+    let failed: boolean | null = null;
+    let call = 0;
+    const fetchPage = async (cursor: number | null) => {
+      call += 1;
+      if (call === 2) throw new Error("red");
+      return Array.from({ length: 200 }, (_, i) => ({ id: (cursor ?? 0) + i + 1 }));
+    };
+    await withPollOutcome(() => drainFeedAfterCursor(0, fetchPage), (value) => (failed = value));
+    expect(failed).toBe(false);
   });
 });
 

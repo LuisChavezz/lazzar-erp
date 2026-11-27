@@ -81,6 +81,24 @@ export const nextCursorFeedMount = () => {
 export const rfidCursorScansKey = (soloMatch: boolean, lector: number | null, mount: number, session: number) =>
   ["rfid-scans", "cursor", soloMatch, lector, mount, session] as const;
 
+/**
+ * Corre un sondeo y avisa cómo terminó (`report(true)` si falló, `false` si
+ * respondió), sin cambiar su resultado: el error se vuelve a lanzar. Alimenta
+ * el "sin respuesta del lector" de la tira mientras el ÚLTIMO sondeo falla;
+ * `isInitialError` solo cubre una sesión que nunca respondió (EC-997).
+ */
+export const withPollOutcome = async <T>(poll: () => Promise<T>, report: (failed: boolean) => void): Promise<T> => {
+  let result: T;
+  try {
+    result = await poll();
+  } catch (error) {
+    report(true);
+    throw error;
+  }
+  report(false);
+  return result;
+};
+
 /** Sesión de una captura con cursor: qué lector se lee y en qué sesión va. */
 export interface CursorFeedSession {
   enabled: boolean;

@@ -8,6 +8,7 @@ import {
   nextCursorFeedSession,
   rfidCursorScansKey,
   ScanOutbox,
+  withPollOutcome,
   type CursorFeedSession,
 } from "../utils/rfidScansParams";
 import { RFID_SCANS_POLL_INTERVAL_MS } from "./useRfidScans";
@@ -52,7 +53,12 @@ export function useRfidCursorScans(
   // (`nextCursorFeedSession`; ajuste de estado en render, sin efecto).
   const [feed, setFeed] = useState<CursorFeedSession>({ enabled, lector, session: 0 });
   const nextFeed = nextCursorFeedSession(feed, enabled, lector);
-  if (nextFeed !== feed) setFeed(nextFeed);
+  // ¿Falló el último sondeo de la sesión? Una sesión nueva empieza sin fallo.
+  const [lastPollFailed, setLastPollFailed] = useState(false);
+  if (nextFeed !== feed) {
+    setFeed(nextFeed);
+    if (nextFeed.session !== feed.session) setLastPollFailed(false);
+  }
   const { session } = nextFeed;
   // Distinto en cada montaje: uno nuevo nunca hereda la consulta (ni el sondeo en vuelo) del anterior.
   const [mount] = useState(nextCursorFeedMount);
@@ -66,14 +72,21 @@ export function useRfidCursorScans(
       queryFn: async () => {
         if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
         // Páginas llenas seguidas hasta vaciar lo nuevo (`drainFeedAfterCursor`).
-        const next = await drainFeedAfterCursor(cursorRef.current.cursor, async (current) => {
-          const { scans } = await fetchRfidScans({
-            soloMatch,
-            lector,
-            ...cursorFeedPageParams(current),
-          });
-          return scans;
-        });
+        const next = await withPollOutcome(
+          () =>
+            drainFeedAfterCursor(cursorRef.current.cursor, async (current) => {
+              const { scans } = await fetchRfidScans({
+                soloMatch,
+                lector,
+                ...cursorFeedPageParams(current),
+              });
+              return scans;
+            }),
+          // Solo el sondeo de la sesión vigente marca el estado.
+          (failed) => {
+            if (cursorRef.current.session === session) setLastPollFailed(failed);
+          },
+        );
         // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
         if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
         // A la bandeja aunque la lectura ya esté en pausa: el cursor ya pasó por ahí.
@@ -96,5 +109,8 @@ export function useRfidCursorScans(
     },
   );
 
-  return { outbox, version, isInitialError, isFetching };
+  // `isPollFailing`: mientras el ÚLTIMO sondeo de la lectura encendida falló
+  // (se limpia con la siguiente respuesta). Solo para el aviso de la tira;
+  // `isInitialError` sigue diciendo lo mismo de siempre.
+  return { outbox, version, isInitialError, isPollFailing: enabled && lastPollFailed, isFetching };
 }
