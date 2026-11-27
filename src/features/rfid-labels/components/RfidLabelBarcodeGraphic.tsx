@@ -22,7 +22,7 @@ interface RfidLabelBarcodeGraphicProps {
  * `RfidLabelPreview`) para reutilizarse tal cual en la vista previa del
  * asistente de "Nueva impresión" (`RfidLabelPrintStep`) — es la misma pieza
  * visual en ambos casos, solo cambia de dónde viene `barcodeValue` (de
- * `etiqueta.etiquetas[0]?.barcode_value` en el historial, de
+ * `etiqueta.etiquetas?.[0]?.barcode_value` en el detalle del historial, de
  * `preview.preview_data.barcode_value` en el asistente).
  */
 export function RfidLabelBarcodeGraphic({ barcodeValue }: RfidLabelBarcodeGraphicProps) {

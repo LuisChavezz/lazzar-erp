@@ -345,10 +345,9 @@ interface RfidLabelDetailDialogProps {
  * el código de barras y el ZPL (el que se muestra y el que se reimprime) salen
  * SOLO del detalle, nunca de la fila.
  *
- * La sección "Impresión Zebra" ya no es la maqueta con impresoras inventadas
- * que tenía el mock: consulta de verdad al agente local de Browser Print
- * (`BrowserPrintSection`). Sigue SIN botón de imprimir — enviar el ZPL a la
- * impresora es una tarea aparte.
+ * La sección "Impresión Zebra" (`BrowserPrintSection`) detecta impresoras con
+ * el agente local de Browser Print, y su botón "Imprimir etiqueta" reenvía el
+ * `zpl_enviado` del detalle a la impresora elegida.
  */
 export function RfidLabelDetailDialog({
   etiquetaId,
