@@ -41,7 +41,10 @@ export const SURTIDO_ESTATUS_DEFAULT_LABEL = "Autorizados y en proceso";
  * - `pendientes`: el backend acepta `1` o `true`; la URL usa `true`
  *   (`booleanFlagParam`) y su ausencia significa "todos".
  * - `sucursal`: id entero.
- * - Sin `ordering`: el orden es fijo (`-id`) y el endpoint ignora `?ordering`.
+ * - Sin `ordering` en ESTA tabla: su orden es el por defecto del backend
+ *   (`-id`). El endpoint sí acepta `?ordering=` desde nucleo-erp#1481 (EC-988)
+ *   por `id`, `folio`, `cliente_nombre`, `created_at` y `fecha_confirmacion`;
+ *   lo usan las pestañas de Pedidos de Almacén (`orders/constants/wmsOrdersTables.ts`).
  * - Paginación `page`/`page_size` (máx. 200 en el backend).
  */
 export const surtidoPedidosTable = defineServerTable({
