@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDialogSession } from "@/src/hooks/useDialogSession";
 import { MainDialog } from "@/src/components/MainDialog";
 import { Button } from "@/src/components/Button";
 import { ConfirmDialog } from "@/src/components/ConfirmDialog";
@@ -41,6 +43,8 @@ import {
 import type { RfidReconciliation } from "../interfaces/rfid-reconciliation.interface";
 import { RfidReconciliationScanPanel } from "./RfidReconciliationScanPanel";
 import { knownReadEpcs, unassignedReadReason } from "../utils/rfidReadResult";
+import { acceptAvailability, reconciliationBalance } from "../utils/rfidReconciliationBalance";
+import { refreshListAfterReading } from "../utils/rfidReconciliationCache";
 
 const acceptDescription = (data: RfidReconciliation) =>
   `El ${rfidReconciliationInlineLabel(data)} quedará aceptado y ya no se podrán leer más etiquetas. No mueve inventario ni crea la recepción: esa se registra después en Nueva Recepción.`;
@@ -61,6 +65,11 @@ interface RfidReconciliationDetailDialogProps {
  * "Cancelar" en PENDIENTE y ACEPTADO. Aceptar no crea la recepción: el aviso
  * de aceptado lleva a Nueva Recepción, donde se elige la misma orden y el
  * almacén (esa pantalla no recibe valores iniciales todavía).
+ *
+ * "Aceptar" espera a que la lectura con la antena esté en pausa y no quede nada
+ * por enviar (`acceptAvailability`): la confirmación muestra los totales finales
+ * y ninguna lectura llega después de aceptar. Pausar la lectura o cerrar el
+ * detalle relee el listado una vez.
  */
 export function RfidReconciliationDetailDialog({
   reconciliationId,
@@ -73,17 +82,41 @@ export function RfidReconciliationDetailDialog({
   const canWrite = hasPermission(RFID_RECONCILIATION_WRITE_PERMISSION, session?.user);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isAcceptOpen, setIsAcceptOpen] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [pendingReads, setPendingReads] = useState(0);
   const accept = useAcceptRfidReconciliation(id);
+  const queryClient = useQueryClient();
+  // Lo que nombran los diálogos, tal como estaba al abrirlos.
+  const acceptSession = useDialogSession(isAcceptOpen, data);
+  const cancelSession = useDialogSession(isCancelOpen, data);
+
+  const handleReadingChange = (next: boolean) => {
+    setReading(next);
+    if (!next) refreshListAfterReading(queryClient);
+  };
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setReading(false);
+      refreshListAfterReading(queryClient);
+    }
+    onOpenChange(next);
+  };
 
   const actions = data ? rfidReconciliationActions(data.estatus) : null;
+  const acceptState = data ? acceptAvailability({ estatus: data.estatus, reading, pendingReads }) : null;
   const headerAction =
     data && actions && !isNotFound && canWrite && (actions.canAccept || actions.canCancel) ? (
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {actions.canAccept && acceptState?.reason && (
+          <span role="status" className="text-[11px] text-slate-500 dark:text-slate-400">
+            {acceptState.reason}
+          </span>
+        )}
         {actions.canAccept && (
           <Button
             variant="primary"
             onClick={() => setIsAcceptOpen(true)}
-            disabled={accept.isPending}
+            disabled={accept.isPending || !acceptState?.allowed}
             className="px-3! py-1.5! text-xs!"
           >
             <CheckCircleIcon className="w-4 h-4" aria-hidden="true" />
@@ -107,7 +140,7 @@ export function RfidReconciliationDetailDialog({
   return (
     <MainDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       maxWidth="920px"
       showCloseButton={true}
       headerAction={headerAction}
@@ -130,49 +163,77 @@ export function RfidReconciliationDetailDialog({
       {isInitialError && <ErrorState title="Error al cargar el encuadre" message={(error as Error)?.message} />}
 
       {!isLoading && data && !isNotFound && (
-        <ReconciliationBody data={data} canScan={canWrite && (actions?.canScan ?? false)} />
+        <ReconciliationBody
+          data={data}
+          canScan={canWrite && (actions?.canScan ?? false)}
+          reading={reading}
+          onReadingChange={handleReadingChange}
+          onPendingChange={setPendingReads}
+        />
       )}
 
       {/* Los diálogos se montan con el permiso, aparte de sus botones, para que
           cierren con su animación cuando el botón desaparece. */}
-      {canWrite && data && (
-        <>
-          <ConfirmDialog
+      {canWrite && acceptSession.snapshot && (
+        <ConfirmDialog
+            key={acceptSession.id}
             open={isAcceptOpen}
             onOpenChange={setIsAcceptOpen}
             title="Aceptar encuadre"
-            description={acceptDescription(data)}
+            description={acceptDescription(acceptSession.snapshot)}
             confirmText={accept.isPending ? "Aceptando…" : "Aceptar encuadre"}
             confirmColor="blue"
             closeOnConfirm={false}
             busy={accept.isPending}
             onConfirm={() => accept.mutate(undefined, { onSettled: () => setIsAcceptOpen(false) })}
           >
-            {!data.resumen.completo && (
-              <p
-                role="note"
-                className="rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
-              >
-                Lo leído no coincide con lo esperado: {formatExactQuantityValue(data.resumen.total_leido)} leídas de{" "}
-                {formatExactQuantityValue(data.resumen.total_esperado)} esperadas
-                {safeParseAmount(data.resumen.total_sin_asignar) > 0 &&
-                  `, ${formatExactQuantityValue(data.resumen.total_sin_asignar)} sin asignar`}
-                . Puedes aceptarlo de todos modos.
-              </p>
-            )}
+            <AcceptMismatchNote data={acceptSession.snapshot} />
           </ConfirmDialog>
-          <CancelReasonDialog
-            content={rfidReconciliationCancelDialogContent(data)}
-            open={isCancelOpen}
-            onOpenChange={setIsCancelOpen}
-          />
-        </>
+      )}
+      {canWrite && cancelSession.snapshot && (
+        <CancelReasonDialog
+          key={cancelSession.id}
+          content={rfidReconciliationCancelDialogContent(cancelSession.snapshot)}
+          open={isCancelOpen}
+          onOpenChange={setIsCancelOpen}
+        />
       )}
     </MainDialog>
   );
 }
 
-function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canScan: boolean }) {
+/**
+ * Aviso de la confirmación cuando el encuadre no cuadra: algún renglón con
+ * diferencia o lecturas sin asignar (no `completo`, que cuenta también las
+ * lecturas sin asignar).
+ */
+function AcceptMismatchNote({ data }: { data: RfidReconciliation }) {
+  const balance = reconciliationBalance(data.resumen);
+  if (balance.cuadra) return null;
+  const renglones = balance.renglonesConDiferencia;
+  return (
+    <p
+      role="note"
+      className="rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+    >
+      Lo leído no coincide con lo esperado: {formatExactQuantityValue(balance.leido)} asignadas de{" "}
+      {formatExactQuantityValue(balance.esperado)} esperadas
+      {renglones > 0 && `, ${renglones} ${renglones === 1 ? "renglón" : "renglones"} con diferencia`}
+      {balance.sinAsignar > 0 && `, ${formatExactQuantityValue(balance.sinAsignar)} sin asignar`}. Puedes aceptarlo
+      de todos modos.
+    </p>
+  );
+}
+
+interface ReconciliationBodyProps {
+  data: RfidReconciliation;
+  canScan: boolean;
+  reading: boolean;
+  onReadingChange: (reading: boolean) => void;
+  onPendingChange: (pending: number) => void;
+}
+
+function ReconciliationBody({ data, canScan, reading, onReadingChange, onPendingChange }: ReconciliationBodyProps) {
   const { data: session } = useSession();
   const originFolio = rfidReconciliationOriginFolio(data);
   const originHref =
@@ -184,7 +245,8 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
   const canOpenOrigin = originHref !== null && canAccessRoute(originHref.split("?")[0], session?.user);
   const knownEpcs = knownReadEpcs(data.lecturas);
   const resumen = data.resumen;
-  const diferencia = safeParseAmount(resumen.total_esperado) - safeParseAmount(resumen.total_leido);
+  // Desde los renglones: lo sin asignar no cuenta como leído (va aparte).
+  const balance = reconciliationBalance(resumen);
 
   return (
     <div className="space-y-5">
@@ -234,18 +296,21 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <TotalTile label="Esperado" value={resumen.total_esperado} />
-        <TotalTile label="Leído" value={resumen.total_leido} tone={resumen.completo ? "ok" : undefined} />
-        <TotalTile label="Sin asignar" value={resumen.total_sin_asignar} tone={safeParseAmount(resumen.total_sin_asignar) > 0 ? "warn" : undefined} />
-        <TotalTile label="Diferencia" value={String(diferencia)} tone={diferencia === 0 ? "ok" : "warn"} />
+        <TotalTile label="Esperado" value={balance.esperado} />
+        <TotalTile label="Leído asignado" value={balance.leido} tone={balance.cuadra ? "ok" : undefined} />
+        <TotalTile label="Sin asignar" value={balance.sinAsignar} tone={balance.sinAsignar > 0 ? "warn" : undefined} />
+        <TotalTile label="Diferencia" value={balance.diferencia} tone={balance.cuadra ? "ok" : "warn"} />
       </div>
 
       {canScan && (
         <RfidReconciliationScanPanel
           reconciliationId={data.id}
           knownEpcs={knownEpcs}
-          totalLeido={resumen.total_leido}
-          totalEsperado={resumen.total_esperado}
+          leidoAsignado={balance.leido}
+          esperado={balance.esperado}
+          reading={reading}
+          onReadingChange={onReadingChange}
+          onPendingChange={onPendingChange}
         />
       )}
 
@@ -336,7 +401,7 @@ function ReconciliationBody({ data, canScan }: { data: RfidReconciliation; canSc
   );
 }
 
-function TotalTile({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" }) {
+function TotalTile({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" }) {
   const color =
     tone === "ok"
       ? "text-emerald-600 dark:text-emerald-400"

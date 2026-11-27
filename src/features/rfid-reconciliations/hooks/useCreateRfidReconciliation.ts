@@ -12,6 +12,8 @@ import { rfidReconciliationLabel } from "../constants/rfidReconciliations";
 import { refreshAfterRfidReconciliationChange } from "../utils/rfidReconciliationCache";
 import type { RfidReconciliationFormField } from "../schemas/rfidReconciliation.schema";
 
+const CREATE_FALLBACK_MESSAGE = "No se pudo crear el encuadre.";
+
 /** Candado del alta: uno a la vez. */
 export const createRfidReconciliationMutationKey = ["crear-encuadre-rfid"] as const;
 
@@ -33,7 +35,8 @@ interface UseCreateRfidReconciliationOptions {
  * Alta de un encuadre (`POST /compras/recepcion-rfid-encuadres/`). Los errores
  * de un campo del formulario van bajo él; los de la orden (`tipo_origen`,
  * `orden_compra`, `op`), de la empresa o un `403` van en un toast con el
- * mensaje del backend, y releen el onboarding por si la orden ya no está.
+ * mensaje del backend (también si llegan junto con errores de campo), y releen
+ * el onboarding por si la orden ya no está.
  */
 export const useCreateRfidReconciliation = ({ onFieldError, onSuccess }: UseCreateRfidReconciliationOptions) => {
   const queryClient = useQueryClient();
@@ -47,11 +50,13 @@ export const useCreateRfidReconciliation = ({ onFieldError, onSuccess }: UseCrea
     },
     onError: (error) => {
       let fieldErrors = 0;
-      const message = handleDrfWriteError(error, "No se pudo crear el encuadre.", FORM_FIELDS, (field, text) => {
+      const message = handleDrfWriteError(error, CREATE_FALLBACK_MESSAGE, FORM_FIELDS, (field, text) => {
         fieldErrors += 1;
         onFieldError(field, text);
       });
-      if (fieldErrors === 0) {
+      // Sin errores de campo, o con uno que no cabe en un campo del formulario
+      // (`tipo_origen`, `orden_compra`, `op`, `empresa`): ese va en un toast.
+      if (fieldErrors === 0 || message !== CREATE_FALLBACK_MESSAGE) {
         toast.error(message);
         refreshAfterRfidReconciliationChange(queryClient);
       }

@@ -8,7 +8,8 @@ import { ColumnHeaderDateRangeFilter } from "@/src/components/ColumnHeaderDateRa
 import { StatusBadge } from "@/src/components/StatusBadge";
 import { BanIcon, ViewIcon } from "@/src/components/Icons";
 import { ALL_FILTER_OPTION } from "@/src/utils/columnFilterOptions";
-import { formatExactQuantityValue, safeParseAmount } from "@/src/utils/formatCurrency";
+import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
+import { rowBalance } from "../utils/rfidReconciliationBalance";
 import { formatShortDateTime } from "@/src/utils/formatDate";
 import { SupplierCatalogHeaderFilter } from "@/src/features/suppliers/components/SupplierCatalogHeaderFilter";
 import { WarehouseCatalogHeaderFilter } from "@/src/features/warehouses/components/WarehouseCatalogHeaderFilter";
@@ -69,20 +70,25 @@ const TIPO_ORIGEN_OPTIONS = [
   })),
 ];
 
+/**
+ * Leído ASIGNADO / esperado (`rowBalance`): `total_leido` y `completo` del
+ * backend cuentan también las lecturas sin asignar, que van aparte. Verde solo
+ * si cuadra sin nada sin asignar.
+ */
 function ProgressCell({ row }: { row: RfidReconciliationRow }) {
-  const sinAsignar = safeParseAmount(row.total_sin_asignar);
+  const balance = rowBalance(row);
   return (
     <div className="flex flex-col items-end leading-tight">
       <span
         className={`tabular-nums font-semibold ${
-          row.completo ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-white"
+          balance.cuadra ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-white"
         }`}
       >
-        {formatExactQuantityValue(row.total_leido)} / {formatExactQuantityValue(row.total_esperado)}
+        {formatExactQuantityValue(balance.leido)} / {formatExactQuantityValue(balance.esperado)}
       </span>
-      {sinAsignar > 0 && (
+      {balance.sinAsignar > 0 && (
         <span className="text-[11px] tabular-nums text-amber-600 dark:text-amber-400">
-          {formatExactQuantityValue(row.total_sin_asignar)} sin asignar
+          {formatExactQuantityValue(balance.sinAsignar)} sin asignar
         </span>
       )}
     </div>
@@ -141,8 +147,8 @@ export const rfidReconciliationColumns: ColumnDef<RfidReconciliationRow>[] = [
   {
     id: "lectura",
     accessorFn: (row) => row.total_leido,
-    header: "Leído / esperado",
-    meta: { label: "Leído / esperado", align: "right" },
+    header: "Asignado / esperado",
+    meta: { label: "Asignado / esperado", align: "right" },
     cell: ({ row }) => <ProgressCell row={row.original} />,
   },
   {

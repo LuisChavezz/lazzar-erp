@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
 import { useSessionCompany } from "@/src/features/workspace/hooks/useSessionCompany";
@@ -12,8 +12,14 @@ interface RfidReconciliationScanPanelProps {
   reconciliationId: number;
   /** EPC normalizados que el encuadre ya tiene (`knownReadEpcs` del detalle). */
   knownEpcs: ReadonlySet<string>;
-  totalLeido: string;
-  totalEsperado: string;
+  /** Lo leído que sumó a un renglón (sin las lecturas sin asignar) y lo esperado. */
+  leidoAsignado: number;
+  esperado: number;
+  /** Si la antena está leyendo: lo controla el detalle, que no deja aceptar mientras tanto. */
+  reading: boolean;
+  onReadingChange: (reading: boolean) => void;
+  /** Lecturas por enviar (incluida la que está en vuelo); 0 al desmontarse. */
+  onPendingChange: (pending: number) => void;
 }
 
 const TONE: Record<RfidReadTone, { dot: string; text: string }> = {
@@ -35,20 +41,31 @@ const TONE: Record<RfidReadTone, { dot: string; text: string }> = {
  * impresa y la asigna al renglón. La cola envía una a la vez y pinta el
  * resultado de cada una en la lista de la sesión. Arranque explícito, como en
  * recepciones: la antena solo se sondea mientras se lee.
+ *
+ * La lectura y lo pendiente los conoce el detalle (`reading`, `onPendingChange`):
+ * "Aceptar" espera a que la lectura esté en pausa y la cola vacía. Si la cola
+ * se detiene (el encuadre ya no está pendiente) la antena deja de sondearse.
  */
 export function RfidReconciliationScanPanel({
   reconciliationId,
   knownEpcs,
-  totalLeido,
-  totalEsperado,
+  leidoAsignado,
+  esperado,
+  reading,
+  onReadingChange,
+  onPendingChange,
 }: RfidReconciliationScanPanelProps) {
-  const { reads, pending, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
-  const [reading, setReading] = useState(false);
+  const { reads, pending, stopped, enqueue } = useRfidReadQueue({ reconciliationId, knownEpcs });
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { count, isError } = useRfidEpcFeed(reading && !hasNoCompany, (scan) => enqueue(scan.epc), null, {
+  const { count, isError } = useRfidEpcFeed(reading && !hasNoCompany && !stopped, (scan) => enqueue(scan.epc), null, {
     cursor: true,
   });
+
+  useEffect(() => {
+    onPendingChange(pending);
+    return () => onPendingChange(0);
+  }, [pending, onPendingChange]);
 
   return (
     <section aria-label="Lectura RFID" className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
@@ -56,15 +73,15 @@ export function RfidReconciliationScanPanel({
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Leer etiquetas con la antena RFID</h3>
           <p className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
-            <b className="text-slate-800 dark:text-slate-100">{formatExactQuantityValue(totalLeido)}</b> leídas de{" "}
-            {formatExactQuantityValue(totalEsperado)} esperadas
+            <b className="text-slate-800 dark:text-slate-100">{formatExactQuantityValue(leidoAsignado)}</b> asignadas de{" "}
+            {formatExactQuantityValue(esperado)} esperadas
             {pending > 0 && <> · enviando {pending}</>}
           </p>
         </div>
-        {reading ? (
+        {reading && !stopped ? (
           <button
             type="button"
-            onClick={() => setReading(false)}
+            onClick={() => onReadingChange(false)}
             className="rounded-full px-3 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
           >
             Pausar
@@ -72,8 +89,8 @@ export function RfidReconciliationScanPanel({
         ) : (
           <button
             type="button"
-            disabled={hasNoCompany}
-            onClick={() => setReading(true)}
+            disabled={hasNoCompany || stopped}
+            onClick={() => onReadingChange(true)}
             className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
             Iniciar lectura
@@ -82,7 +99,7 @@ export function RfidReconciliationScanPanel({
       </div>
 
       <div className="flex items-center gap-2 px-4 py-2 text-[11.5px] border-b border-slate-100 dark:border-white/5">
-        {reading && !hasNoCompany && (
+        {reading && !stopped && !hasNoCompany && (
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-60 motion-reduce:hidden" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
@@ -93,7 +110,7 @@ export function RfidReconciliationScanPanel({
             ? isSuperuser
               ? "Sin empresa activa: elígela desde “Sin empresa activa”, en el encabezado, para leer con la antena."
               : "Tu usuario no tiene una empresa asignada: no se puede leer con la antena."
-            : !reading
+            : !reading || stopped
               ? "Coloca las prendas frente a la antena e inicia la lectura."
               : isError
                 ? <span className="text-rose-600 dark:text-rose-400">Sin respuesta del lector RFID.</span>
@@ -103,7 +120,7 @@ export function RfidReconciliationScanPanel({
         </span>
       </div>
 
-      {reading && !hasNoCompany && (
+      {reading && !stopped && !hasNoCompany && (
         <p className="px-4 py-1.5 text-[11px] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
           Las prendas que ya estaban frente a la antena al iniciar pueden tardar hasta 30 s en aparecer.
         </p>

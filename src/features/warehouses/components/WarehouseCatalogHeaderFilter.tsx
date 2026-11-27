@@ -7,6 +7,17 @@ import { useWarehouses } from "../hooks/useWarehouses";
 import type { Warehouse } from "../interfaces/warehouse.interface";
 
 /**
+ * "CODIGO — NOMBRE", como el selector de almacén de la OC
+ * (`almacenSelectState`): dos sucursales pueden tener almacenes con el mismo
+ * nombre ("PRODUCTO TERMINADO") y solo el código los distingue.
+ */
+export const warehouseOptionLabel = (warehouse: Pick<Warehouse, "id_almacen" | "codigo" | "nombre">): string => {
+  const nombre = warehouse.nombre?.trim() || `Almacén #${warehouse.id_almacen}`;
+  const codigo = warehouse.codigo?.trim();
+  return codigo ? `${codigo} — ${nombre}` : nombre;
+};
+
+/**
  * Opciones de un filtro por almacén salidas del CATÁLOGO (`useWarehouses`),
  * ordenadas por nombre. El valor es el id en texto, como viaja en `?almacen=`.
  */
@@ -15,7 +26,7 @@ export const warehouseCatalogOptions = (warehouses: readonly Warehouse[]): Colum
   ...warehouses
     .map((warehouse) => ({
       value: String(warehouse.id_almacen),
-      label: warehouse.nombre?.trim() || `Almacén #${warehouse.id_almacen}`,
+      label: warehouseOptionLabel(warehouse),
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "es")),
 ];

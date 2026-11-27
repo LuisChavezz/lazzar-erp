@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
 import { advanceFeedCursor, RFID_FEED_CURSOR_LIMIT } from "../utils/rfidScansParams";
 import { RFID_SCANS_POLL_INTERVAL_MS } from "./useRfidScans";
@@ -19,6 +19,11 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  *
  * Llave propia por sesión (no comparte caché con `useRfidScans`) y sin caché al
  * soltarla: cada respuesta es un delta, no una foto.
+ *
+ * Va sobre `useGuardedQuery` como el resto de los hooks de datos: un sondeo
+ * fallido conserva el último delta (misma referencia, así que la captura no lo
+ * vuelve a entregar) y avisa con un toast una vez por racha; `isInitialError`
+ * solo si la sesión nunca respondió.
  */
 export function useRfidCursorScans(
   enabled: boolean,
@@ -33,29 +38,35 @@ export function useRfidCursorScans(
   }
   const cursorRef = useRef<{ session: number; cursor: number | null }>({ session, cursor: null });
 
-  const query = useQuery<{ scans: RfidScan[] }>({
-    queryKey: ["rfid-scans", "cursor", soloMatch, lector, session],
-    queryFn: async () => {
-      if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
-      const current = cursorRef.current.cursor;
-      const { scans } = await fetchRfidScans({
-        soloMatch,
-        lector,
-        limite: RFID_FEED_CURSOR_LIMIT,
-        ...(current === null ? {} : { despuesDeId: current }),
-      });
-      const next = advanceFeedCursor(current, scans);
-      // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
-      if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
-      return { scans: next.fresh };
+  const { data, isInitialError } = useGuardedQuery<{ scans: RfidScan[] }>(
+    {
+      queryKey: ["rfid-scans", "cursor", soloMatch, lector, session],
+      queryFn: async () => {
+        if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
+        const current = cursorRef.current.cursor;
+        const { scans } = await fetchRfidScans({
+          soloMatch,
+          lector,
+          limite: RFID_FEED_CURSOR_LIMIT,
+          ...(current === null ? {} : { despuesDeId: current }),
+        });
+        const next = advanceFeedCursor(current, scans);
+        // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
+        if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
+        return { scans: next.fresh };
+      },
+      enabled,
+      refetchInterval: RFID_SCANS_POLL_INTERVAL_MS,
+      refetchIntervalInBackground: false,
+      gcTime: 0,
+      // Un fallo no mueve el cursor: el siguiente sondeo vuelve a pedir desde el mismo punto.
+      retry: false,
     },
-    enabled,
-    refetchInterval: RFID_SCANS_POLL_INTERVAL_MS,
-    refetchIntervalInBackground: false,
-    gcTime: 0,
-    // Un fallo no mueve el cursor: el siguiente sondeo vuelve a pedir desde el mismo punto.
-    retry: false,
-  });
+    {
+      toastId: "rfid-cursor-scans-refetch-error",
+      errorMessage: "No se pudo consultar la antena RFID. Se vuelve a intentar en unos segundos.",
+    },
+  );
 
-  return { scans: query.data?.scans ?? [], isError: query.isError };
+  return { scans: data?.scans ?? [], isInitialError };
 }

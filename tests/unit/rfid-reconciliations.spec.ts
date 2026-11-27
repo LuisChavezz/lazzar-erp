@@ -24,6 +24,17 @@ import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconc
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
 import { limitOffsetAdapter } from "@/src/utils/serverListAdapters";
+import {
+  acceptAvailability,
+  reconciliationBalance,
+  rowBalance,
+} from "@/src/features/rfid-reconciliations/utils/rfidReconciliationBalance";
+import { RfidReadQueueCore } from "@/src/features/rfid-reconciliations/utils/rfidReadQueueCore";
+import {
+  refreshDetailAfterReads,
+  refreshListAfterReading,
+} from "@/src/features/rfid-reconciliations/utils/rfidReconciliationCache";
+import type { RfidReconciliationRead } from "@/src/features/rfid-reconciliations/interfaces/rfid-reconciliation.interface";
 
 /**
  * EC-961: encuadres RFID de recepción. Reglas puras de la pantalla: qué
@@ -228,5 +239,161 @@ test.describe("parámetros del listado", () => {
     expect(params).toMatchObject({ tipo_origen: "OP", almacen: "3", search: "OC-1", ordering: "-created_at,-id" });
     expect(typeof params.limit).toBe("number");
     expect(params.offset).toBe(params.limit);
+  });
+});
+
+test.describe("aceptar solo con la lectura en pausa y la cola vacía", () => {
+  test("bloqueado mientras se lee o quedan lecturas por enviar, con su motivo", () => {
+    expect(acceptAvailability({ estatus: "PENDIENTE", reading: true, pendingReads: 0 })).toEqual({
+      allowed: false,
+      reason: "Pausa la lectura para aceptar.",
+    });
+    expect(acceptAvailability({ estatus: "PENDIENTE", reading: false, pendingReads: 3 })).toEqual({
+      allowed: false,
+      reason: "Espera a que terminen de enviarse las lecturas.",
+    });
+  });
+  test("permitido en pausa y con la cola vacía; nunca fuera de PENDIENTE", () => {
+    expect(acceptAvailability({ estatus: "PENDIENTE", reading: false, pendingReads: 0 })).toEqual({
+      allowed: true,
+      reason: null,
+    });
+    expect(acceptAvailability({ estatus: "ACEPTADO", reading: false, pendingReads: 0 }).allowed).toBe(false);
+  });
+});
+
+test.describe("cuadre por renglón", () => {
+  const line = (esperado: string, leido: string) => ({
+    detalle_id: 1,
+    producto_id: 1,
+    producto_nombre: "Gorra",
+    producto_variante_id: 1,
+    producto_variante_sku: "G-1",
+    producto_variante_talla: "UNI",
+    ordenado: esperado,
+    ya_recibido: "0",
+    esperado,
+    leido,
+    diferencia: String(Number(esperado) - Number(leido)),
+  });
+
+  test("lecturas de otro producto: diferencia distinta de 0 y no cuadra", () => {
+    // El backend: total_leido 2 y completo true, aunque nada sumó a un renglón.
+    const balance = reconciliationBalance({ detalle: [line("2.0000", "0.0000")], total_sin_asignar: "2.0000" });
+    expect(balance).toMatchObject({ esperado: 2, leido: 0, sinAsignar: 2, diferencia: 2, cuadra: false });
+  });
+  test("dos renglones que se compensan no cuadran", () => {
+    const balance = reconciliationBalance({
+      detalle: [line("2", "3"), line("2", "1")],
+      total_sin_asignar: "0",
+    });
+    expect(balance.diferencia).toBe(0);
+    expect(balance.renglonesConDiferencia).toBe(2);
+    expect(balance.cuadra).toBe(false);
+  });
+  test("cuadra solo sin diferencias ni lecturas sin asignar", () => {
+    expect(reconciliationBalance({ detalle: [line("2", "2")], total_sin_asignar: "0" }).cuadra).toBe(true);
+    expect(reconciliationBalance({ detalle: [line("2", "2")], total_sin_asignar: "1" }).cuadra).toBe(false);
+  });
+  test("la fila del listado cuenta como leído solo lo asignado", () => {
+    expect(rowBalance({ total_esperado: "2", total_leido: "2", total_sin_asignar: "2" })).toEqual({
+      esperado: 2,
+      leido: 0,
+      sinAsignar: 2,
+      cuadra: false,
+    });
+    expect(rowBalance({ total_esperado: "2", total_leido: "2", total_sin_asignar: "0" }).cuadra).toBe(true);
+  });
+});
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const savedRead = (epc: string): RfidReconciliationRead => ({
+  id: 1,
+  codigo_tag: epc,
+  epc,
+  etiqueta: 1,
+  orden_compra_detalle: null,
+  orden_produccion_detalle: 19,
+  producto: 1,
+  producto_nombre: "Gorra",
+  producto_variante: 1,
+  producto_variante_nombre: "Gorra - Caqui - UNI",
+  cantidad_leida: "1.0000",
+  metadata: { resolved: true, source: "EPC", epc_leido: epc },
+  created_at: "2026-11-27T10:00:00-06:00",
+});
+
+const makeQueue = (send: (epc: string) => Promise<RfidReconciliationRead>) => {
+  const calls = { sent: [] as string[], stops: [] as string[], drained: 0, added: 0 };
+  const core = new RfidReadQueueCore({
+    send: (epc) => {
+      calls.sent.push(epc);
+      return send(epc);
+    },
+    onAdd: () => {
+      calls.added += 1;
+    },
+    onUpdate: () => {},
+    onPending: () => {},
+    onStop: (message) => calls.stops.push(message),
+    onDrained: () => {
+      calls.drained += 1;
+    },
+  });
+  return { core, calls };
+};
+
+test.describe("la cola se detiene y no vuelve a mandar", () => {
+  for (const [name, error] of [
+    ["400 estatus", axiosError(400, { estatus: "Solo se puede escanear un encuadre pendiente." })],
+    ["404", axiosError(404, { detail: "No encontrado." })],
+    ["403", axiosError(403, { detail: "No tienes permiso para esta acción (C-WMS-RECEPCIONES)." })],
+  ] as const) {
+    test(`tras un ${name}, lo pendiente se descarta y enqueue se ignora`, async () => {
+      const { core, calls } = makeQueue(() => Promise.reject(error));
+      core.enqueue("E1");
+      core.enqueue("E2");
+      await flush();
+      expect(calls.sent).toEqual(["E1"]);
+      expect(calls.stops).toHaveLength(1);
+      expect(core.isStopped).toBe(true);
+      core.enqueue("E3");
+      await flush();
+      expect(calls.sent).toEqual(["E1"]);
+      expect(calls.added).toBe(2);
+    });
+  }
+  test("un repetido no detiene la cola", async () => {
+    const { core, calls } = makeQueue((epc) =>
+      epc === "E1"
+        ? Promise.reject(axiosError(400, { epc: "Este tag ya fue leído en este encuadre." }))
+        : Promise.resolve(savedRead(epc)),
+    );
+    core.enqueue("E1");
+    core.enqueue("E2");
+    await flush();
+    expect(calls.sent).toEqual(["E1", "E2"]);
+    expect(core.isStopped).toBe(false);
+  });
+});
+
+test.describe("relecturas durante la lectura continua", () => {
+  test("una tanda avisa una vez al vaciarse", async () => {
+    const { core, calls } = makeQueue((epc) => Promise.resolve(savedRead(epc)));
+    core.enqueue("E1");
+    core.enqueue("E2");
+    core.enqueue("E3");
+    await flush();
+    expect(calls.sent).toEqual(["E1", "E2", "E3"]);
+    expect(calls.drained).toBe(1);
+  });
+  test("tras una tanda se relee solo el detalle; el listado, al pausar o cerrar", () => {
+    const invalidated: unknown[] = [];
+    const queryClient = { invalidateQueries: (filters: unknown) => invalidated.push(filters) } as never;
+    refreshDetailAfterReads(queryClient, 8);
+    expect(invalidated).toEqual([{ queryKey: ["rfid-reconciliations", "detail", 8], exact: true }]);
+    refreshListAfterReading(queryClient);
+    expect(invalidated[1]).toEqual({ queryKey: ["rfid-reconciliations", "list"] });
   });
 });

@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { DOCUMENT_AUDIT_QUERY_KEY } from "@/src/features/document-audit/hooks/useDocumentAuditList";
 import { mergeCachedRecord, patchCachedRowById, pickPresentFields } from "@/src/utils/cachedRows";
+import { serverTableListPrefix } from "@/src/utils/serverTableParams";
 import type { RfidReconciliationRow } from "../interfaces/rfid-reconciliation.interface";
 import { RFID_RECONCILIATIONS_KEY, rfidReconciliationDetailQueryKey } from "../constants/rfidReconciliations";
 
@@ -46,4 +47,17 @@ export const applyRfidReconciliationStatus = async (
 export const refreshAfterRfidReconciliationChange = (queryClient: QueryClient) => {
   void queryClient.invalidateQueries({ queryKey: RFID_RECONCILIATIONS_KEY });
   void queryClient.invalidateQueries({ queryKey: DOCUMENT_AUDIT_QUERY_KEY });
+};
+
+/** Tras una tanda de lecturas: solo el detalle (resumen y lecturas), no el listado. */
+export const refreshDetailAfterReads = (queryClient: Pick<QueryClient, "invalidateQueries">, id: number) => {
+  void queryClient.invalidateQueries({ queryKey: rfidReconciliationDetailQueryKey(id), exact: true });
+};
+
+/**
+ * Al pausar la lectura o cerrar el detalle: el listado (sus totales cambiaron),
+ * una sola vez, en vez de releerlo con cada tanda.
+ */
+export const refreshListAfterReading = (queryClient: Pick<QueryClient, "invalidateQueries">) => {
+  void queryClient.invalidateQueries({ queryKey: serverTableListPrefix(RFID_RECONCILIATIONS_KEY) });
 };

@@ -25,7 +25,10 @@ export function useRfidEpcFeed(
   // Las dos fuentes se llaman siempre (reglas de hooks); solo la elegida sondea.
   const latest = useRfidScans(enabled && !cursor, { soloMatch: true, lector });
   const afterCursor = useRfidCursorScans(enabled && cursor, { soloMatch: true, lector });
-  const { scans, isError } = cursor ? afterCursor : latest;
+  const { scans } = cursor ? afterCursor : latest;
+  // Con cursor, solo si la sesión nunca respondió (los fallos posteriores avisan
+  // con toast, `useGuardedQuery`); sin él, como siempre.
+  const isError = cursor ? afterCursor.isInitialError : latest.isError;
   const seenRef = useRef<Set<string>>(new Set());
   const onEpcRef = useRef(onEpc);
   const [count, setCount] = useState(0);
