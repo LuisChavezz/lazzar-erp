@@ -56,8 +56,9 @@ export const readSuccessFeedback = (read: ReadForReason): RfidReadFeedback => {
  * Qué hacer con un error de `lecturas/`:
  * - `duplicate`: `400 {"epc"}` (o `{"codigo_tag"}` en el envío obsoleto) con
  *   un TEXTO: la pieza ya está en el encuadre, en cualquier forma equivalente
- *   del EPC o por la misma etiqueta (también con dos envíos simultáneos). Es un
- *   aviso, no un error: la cola sigue. El mismo campo con una LISTA es un error
+ *   del EPC o por la misma etiqueta (también con dos envíos simultáneos), o ya
+ *   está en OTRO encuadre pendiente o aceptado de la misma OC/OP (#1453). La
+ *   lectura no cuenta y el aviso lleva el mensaje del backend; la cola sigue. El mismo campo con una LISTA es un error
  *   del serializer (EPC vacío, demasiado largo): `other`.
  * - `not-pending`: `400 {"estatus"}`, el encuadre se aceptó o canceló en otro
  *   lado. Se detiene la cola y se relee el detalle.
@@ -95,10 +96,15 @@ export const classifyReadError = (error: unknown): { kind: RfidReadErrorKind; me
   };
 };
 
-/** El aviso de un error de lectura en la lista de la sesión. */
+/**
+ * El aviso de un error de lectura en la lista de la sesión. Un repetido lleva
+ * el mensaje del backend tal cual: dice si la pieza ya está en ESTE encuadre o
+ * en OTRO vigente de la misma orden (#1453, "Esta pieza ya se leyó en el
+ * encuadre N de la misma orden."), y en ambos casos no cuenta aquí.
+ */
 export const readErrorFeedback = (kind: RfidReadErrorKind, message: string): RfidReadFeedback =>
   kind === "duplicate"
-    ? { tone: "warn", title: "Ya leído", detail: "Esta etiqueta ya está en el encuadre" }
+    ? { tone: "warn", title: "Ya leído", detail: message }
     : { tone: "error", title: "No se registró", detail: message };
 
 /**

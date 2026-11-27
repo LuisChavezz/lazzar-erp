@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useGuardedQuery } from "@/src/hooks/useGuardedQuery";
 import { fetchRfidScans } from "../services/actions";
-import { advanceFeedCursor, RFID_FEED_CURSOR_LIMIT } from "../utils/rfidScansParams";
+import { drainFeedAfterCursor, RFID_FEED_CURSOR_LIMIT } from "../utils/rfidScansParams";
 import { RFID_SCANS_POLL_INTERVAL_MS } from "./useRfidScans";
 import type { RfidScan } from "../interfaces/rfid-scanner.interface";
 
@@ -11,7 +11,9 @@ import type { RfidScan } from "../interfaces/rfid-scanner.interface";
  * empieza una sesión: la primera petición solo fija el cursor (el `id` más
  * alto que ya existe, 0 sin lecturas) y las siguientes, cada 3 s, piden
  * `despues_de_id` = el `id` más alto visto, con `unicos=1&limite=200`, y
- * devuelven SOLO lo nuevo. Así nada leído antes de empezar entra a la captura.
+ * devuelven SOLO lo nuevo, en `id` ascendente (EC-984). Si una página viene
+ * llena se pide la siguiente en el mismo sondeo (`drainFeedAfterCursor`). Así
+ * nada leído antes de empezar entra a la captura y nada posterior se salta.
  *
  * Una pieza que ya estaba frente a la antena al empezar puede tardar hasta
  * 30 s en salir: el backend descarta la misma etiqueta del mismo lector
@@ -43,14 +45,16 @@ export function useRfidCursorScans(
       queryKey: ["rfid-scans", "cursor", soloMatch, lector, session],
       queryFn: async () => {
         if (cursorRef.current.session !== session) cursorRef.current = { session, cursor: null };
-        const current = cursorRef.current.cursor;
-        const { scans } = await fetchRfidScans({
-          soloMatch,
-          lector,
-          limite: RFID_FEED_CURSOR_LIMIT,
-          ...(current === null ? {} : { despuesDeId: current }),
+        // Páginas llenas seguidas hasta vaciar lo nuevo (`drainFeedAfterCursor`).
+        const next = await drainFeedAfterCursor(cursorRef.current.cursor, async (current) => {
+          const { scans } = await fetchRfidScans({
+            soloMatch,
+            lector,
+            limite: RFID_FEED_CURSOR_LIMIT,
+            ...(current === null ? {} : { despuesDeId: current }),
+          });
+          return scans;
         });
-        const next = advanceFeedCursor(current, scans);
         // Solo si la sesión sigue siendo esta: una respuesta tardía no mueve otra.
         if (cursorRef.current.session === session) cursorRef.current = { session, cursor: next.cursor };
         return { scans: next.fresh };

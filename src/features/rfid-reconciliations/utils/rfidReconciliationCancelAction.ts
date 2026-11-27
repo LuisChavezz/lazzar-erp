@@ -19,7 +19,7 @@ type CancelTarget = Pick<RfidReconciliationBase, "id" | "tipo_origen" | "orden_c
  * invalidar escribe el estatus que respondió (EC-927).
  *
  * Errores (`classifyCancelError`): `motivo` bajo el campo; `400 {"estatus"}`
- * (ya cancelado) y `400 {"recepcion"}` (hoy inalcanzable, nucleo-erp#1441)
+ * (ya cancelado) y `400 {"recepcion"}` (ya ligado a una recepción, nucleo-erp#1462)
  * cierran con el mensaje del backend y releen; `403`, red o 5xx dejan el
  * diálogo abierto con el motivo escrito.
  */

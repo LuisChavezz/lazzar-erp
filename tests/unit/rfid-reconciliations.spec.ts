@@ -17,6 +17,7 @@ import {
 } from "@/src/features/rfid-reconciliations/utils/rfidReadResult";
 import {
   advanceFeedCursor,
+  drainFeedAfterCursor,
   RFID_FEED_CURSOR_LIMIT,
   rfidScansQueryParams,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
@@ -187,7 +188,7 @@ test.describe("cursor del feed de la antena", () => {
     expect(advanceFeedCursor(null, [])).toEqual({ cursor: 0, fresh: [] });
   });
   test("después entrega solo lo posterior y avanza al id más alto", () => {
-    expect(advanceFeedCursor(57, scans(60, 58))).toEqual({ cursor: 60, fresh: scans(60, 58) });
+    expect(advanceFeedCursor(57, scans(60, 58))).toEqual({ cursor: 60, fresh: scans(58, 60) });
     expect(advanceFeedCursor(60, [])).toEqual({ cursor: 60, fresh: [] });
     // Algo anterior al cursor nunca se entrega ni lo hace retroceder.
     expect(advanceFeedCursor(60, scans(59))).toEqual({ cursor: 60, fresh: [] });
@@ -405,5 +406,78 @@ test.describe("relecturas durante la lectura continua", () => {
     expect(invalidated).toEqual([{ queryKey: ["rfid-reconciliations", "detail", 8], exact: true }]);
     refreshListAfterReading(queryClient);
     expect(invalidated[1]).toEqual({ queryKey: ["rfid-reconciliations", "list"] });
+  });
+});
+
+test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () => {
+  const ids = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i }));
+  /** Feed falso con el contrato de EC-984: con cursor, `id` ascendente y las primeras `limite`. */
+  const fakeFeed = (rows: { id: number }[], { limit = 200, failOnCall }: { limit?: number; failOnCall?: number } = {}) => {
+    const calls: (number | null)[] = [];
+    const fetchPage = async (cursor: number | null) => {
+      calls.push(cursor);
+      if (failOnCall !== undefined && calls.length === failOnCall) throw new Error("red");
+      if (cursor === null) return [...rows].sort((a, b) => b.id - a.id).slice(0, limit);
+      return rows.filter((r) => r.id > cursor).sort((a, b) => a.id - b.id).slice(0, limit);
+    };
+    return { fetchPage, calls };
+  };
+
+  test("entrega en id ascendente aunque la respuesta llegue desordenada", () => {
+    expect(advanceFeedCursor(10, [{ id: 13 }, { id: 11 }, { id: 12 }]).fresh.map((s) => s.id)).toEqual([11, 12, 13]);
+  });
+  test("más de 200 lecturas nuevas se piden seguidas, en orden y sin saltar ninguna", async () => {
+    const feed = fakeFeed(ids(1001, 1450));
+    const result = await drainFeedAfterCursor(1000, feed.fetchPage);
+    expect(result.fresh.map((s) => s.id)).toEqual(ids(1001, 1450).map((s) => s.id));
+    expect(result.cursor).toBe(1450);
+    // 200 + 200 + 50: tres páginas en el mismo sondeo.
+    expect(feed.calls).toEqual([1000, 1200, 1400]);
+  });
+  test("una página incompleta termina el sondeo; exactamente 200 pide una más", async () => {
+    const corto = fakeFeed(ids(1001, 1150));
+    expect((await drainFeedAfterCursor(1000, corto.fetchPage)).pages).toBe(1);
+    const justo = fakeFeed(ids(1001, 1200));
+    const result = await drainFeedAfterCursor(1000, justo.fetchPage);
+    expect(justo.calls).toEqual([1000, 1200]);
+    expect(result.fresh).toHaveLength(200);
+  });
+  test("al iniciar solo fija el cursor, sin paginar ni entregar", async () => {
+    const feed = fakeFeed(ids(1, 900));
+    const result = await drainFeedAfterCursor(null, feed.fetchPage);
+    expect(result).toEqual({ cursor: 900, fresh: [], pages: 1 });
+    expect(feed.calls).toEqual([null]);
+  });
+  test("un error en una página posterior corta sin perder lo recibido", async () => {
+    const feed = fakeFeed(ids(1001, 1450), { failOnCall: 2 });
+    const result = await drainFeedAfterCursor(1000, feed.fetchPage);
+    expect(result.fresh.map((s) => s.id)).toEqual(ids(1001, 1200).map((s) => s.id));
+    expect(result.cursor).toBe(1200);
+    expect(feed.calls).toHaveLength(2);
+  });
+  test("un error en la primera página se propaga y el tope evita un ciclo sin fin", async () => {
+    await expect(drainFeedAfterCursor(1000, async () => Promise.reject(new Error("red")))).rejects.toThrow("red");
+    const feed = fakeFeed(ids(1001, 6000));
+    const result = await drainFeedAfterCursor(1000, feed.fetchPage, { maxPages: 3 });
+    expect(feed.calls).toHaveLength(3);
+    expect(result.cursor).toBe(1600);
+  });
+});
+
+test.describe("EPC ya leído en otro encuadre de la misma orden (#1453)", () => {
+  test("es un rechazo con el mensaje del backend, sin detener la cola", async () => {
+    const message = "Esta pieza ya se leyó en el encuadre 8 de la misma orden.";
+    const classified = classifyReadError(axiosError(400, { epc: message }));
+    expect(classified).toEqual({ kind: "duplicate", message });
+    expect(readErrorFeedback(classified.kind, classified.message)).toEqual({ tone: "warn", title: "Ya leído", detail: message });
+
+    const { core, calls } = makeQueue((epc) =>
+      epc === "E1" ? Promise.reject(axiosError(400, { epc: message })) : Promise.resolve(savedRead(epc)),
+    );
+    core.enqueue("E1");
+    core.enqueue("E2");
+    await flush();
+    expect(calls.sent).toEqual(["E1", "E2"]);
+    expect(core.isStopped).toBe(false);
   });
 });

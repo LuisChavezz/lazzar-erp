@@ -97,7 +97,11 @@ export interface RfidReconciliationBase {
   orden_compra_folio: string | null;
   op: number | null;
   op_folio: string | null;
-  /** Siempre `null` hoy: nada lo escribe (nucleo-erp#1441). */
+  /**
+   * Recepción ligada al encuadre aceptado (`recepciones/onboarding/` con
+   * `encuadre_rfid`, nucleo-erp#1462); `null` sin ligar. Nueva Recepción aún no
+   * la manda.
+   */
   recepcion: number | null;
   empresa: number;
   sucursal: number;

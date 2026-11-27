@@ -43,8 +43,10 @@ export function useRfidEpcFeed(
       return;
     }
     let nuevos = 0;
-    // Del más antiguo al más reciente, para sumar en el orden en que se leyeron.
-    for (const scan of [...scans].reverse()) {
+    // Del más antiguo al más reciente, para sumar en el orden en que se leyeron:
+    // sin cursor llegan de la más reciente a la más antigua; con cursor, ya en
+    // `id` ascendente (EC-984).
+    for (const scan of cursor ? scans : [...scans].reverse()) {
       if (seenRef.current.has(scan.epc)) continue;
       seenRef.current.add(scan.epc);
       nuevos += 1;
@@ -52,7 +54,7 @@ export function useRfidEpcFeed(
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- contador derivado de un stream externo
     if (nuevos > 0) setCount((prev) => prev + nuevos);
-  }, [enabled, scans]);
+  }, [enabled, scans, cursor]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia el contador de la sesión
