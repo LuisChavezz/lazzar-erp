@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ScanResult } from "@/src/components/ScanCapture";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
@@ -11,6 +11,9 @@ import {
   useRfidLectorSeleccionado,
 } from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
 import { RfidLectorSelect } from "./RfidLectorSelect";
+import { rfidLectorListo } from "../utils/rfidLectorListo";
+import { agregarDetectadas, registroVacio } from "../utils/rfidDetectadas";
+import type { RfidFeedMemory } from "../utils/rfidScansParams";
 
 interface RfidFeedStripProps {
   /** Procesa un código leído igual que el lector de mano (SKU o código). */
@@ -19,9 +22,17 @@ interface RfidFeedStripProps {
   pantalla: string;
   /** Folio del documento que se captura, para el aviso "en uso". */
   documento?: string | null;
+  /**
+   * Memoria de la captura (`RfidFeedMemory` con `continua`), creada por el
+   * formulario: la tira se desmonta con Detener, y al volver a Iniciar sigue
+   * desde el último cursor sin volver a contar los EPC del formulario.
+   */
+  memoria: RfidFeedMemory<RfidScan>;
 }
 
 interface Detectada {
+  /** `RfidScan.id`: el mismo EPC puede volver a entrar con otro lector. */
+  id: number;
   epc: string;
   producto: string;
   codigo: string;
@@ -41,38 +52,59 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * (`onCode`), una sola vez, y queda en la lista con su resultado: sumó,
  * ya estaba completo, o no es de esta orden.
  *
+ * Solo cuenta lo leído DESPUÉS de pulsar Iniciar por primera vez en el
+ * formulario: el feed va con cursor (EC-997), sin las 50 lecturas más
+ * recientes de antes, que podían tener horas, y sin perder piezas de una
+ * tarima de más de 50. Detener → Iniciar sigue desde el último cursor
+ * (`memoria`), así que entra lo leído en la pausa y nada se cuenta dos veces.
+ * Cambiar de lector arranca un cursor nuevo para ese lector.
+ *
  * Las lecturas se acotan a la empresa activa (EC-884): sin empresa no se
  * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
-export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProps) {
-  const [detectadas, setDetectadas] = useState<Detectada[]>([]);
+export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeedStripProps) {
+  const [registro, setRegistro] = useState(registroVacio<Detectada>);
+  // Lo que va llegando en la tanda en curso; se agrega de una vez al terminarla (`onBatchEnd`).
+  const tandaRef = useRef<Detectada[]>([]);
 
   const handleEpc = (scan: RfidScan) => {
     const codigo = scan.barcode_value || scan.sku || "";
     const result: ScanResult = codigo
       ? onCode(codigo)
       : { tone: "error", title: "Etiqueta sin código", detail: scan.epc };
-    setDetectadas((prev) => [
-      {
-        epc: scan.epc,
-        producto: scan.producto_nombre || "Sin nombre",
-        codigo,
-        talla: scan.talla ?? null,
-        result,
-      },
-      ...prev,
-    ]);
+    tandaRef.current.push({
+      id: scan.id,
+      epc: scan.epc,
+      producto: scan.producto_nombre || "Sin nombre",
+      codigo,
+      talla: scan.talla ?? null,
+      result,
+    });
+  };
+  // Una sola actualización por tanda, con la lista recortada y los totales exactos.
+  const handleBatchEnd = () => {
+    const tanda = tandaRef.current;
+    tandaRef.current = [];
+    setRegistro((prev) => agregarDetectadas(prev, tanda, (d) => d.result.tone === "ok"));
   };
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
-  const { lectores, lectorId, seleccionar } = useRfidLectorSeleccionado(pantalla);
+  const { lectores, lectorId, seleccionar, catalogoResuelto, catalogoFallido } = useRfidLectorSeleccionado(pantalla);
   // Con varios lectores hay que elegir uno: leer de todos mezclaría cajones.
   const faltaLector = lectores.length > 1 && lectorId === null;
-  const activo = !hasNoCompany && !faltaLector;
-  const { isError } = useRfidEpcFeed(activo, handleEpc, lectorId);
+  // Y nada se pide hasta que el catálogo responda (`rfidLectorListo`).
+  const activo = !hasNoCompany && rfidLectorListo({ catalogoResuelto, lectores: lectores.length, lectorId });
+  // "Sin respuesta" también si un sondeo posterior falla, hasta que otro responda.
+  const { isError: neverAnswered, isPollFailing } = useRfidEpcFeed(activo, handleEpc, lectorId, {
+    cursor: true,
+    memoria,
+    onBatchEnd: handleBatchEnd,
+  });
+  // Un catálogo de lectores caído tampoco deja leer: el mismo aviso.
+  const isError = neverAnswered || isPollFailing || catalogoFallido;
   useLectorEnUso(lectorId, activo, pantalla, documento);
 
-  const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;
+  const { recientes: detectadas, total, sumadas } = registro;
 
   return (
     <div className="border-b border-slate-100 dark:border-white/5">
@@ -95,9 +127,9 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
           <span className="text-rose-600 dark:text-rose-400">· sin respuesta del lector</span>
         ) : (
           <span className="text-slate-500 dark:text-slate-400">
-            · <strong className="tabular-nums text-slate-800 dark:text-slate-100">{detectadas.length}</strong>{" "}
+            · <strong className="tabular-nums text-slate-800 dark:text-slate-100">{total}</strong>{" "}
             detectadas
-            {detectadas.length > 0 && (
+            {total > 0 && (
               <>
                 {" "}· <strong className="tabular-nums text-emerald-600 dark:text-emerald-400">{sumadas}</strong>{" "}
                 sumadas
@@ -122,7 +154,7 @@ export function RfidFeedStrip({ onCode, pantalla, documento }: RfidFeedStripProp
             const tone = TONE[d.result.tone];
             return (
               <li
-                key={d.epc}
+                key={d.id}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1 text-[11.5px] hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                 title={`EPC ${d.epc}${d.result.detail ? ` · ${d.result.detail}` : ""}`}
               >

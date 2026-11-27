@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxiosError, AxiosHeaders } from "axios";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import {
   rfidReconciliationActions,
   rfidReconciliationLabel,
@@ -17,11 +18,21 @@ import {
 } from "@/src/features/rfid-reconciliations/utils/rfidReadResult";
 import {
   advanceFeedCursor,
+  cursorFeedPageParams,
   drainFeedAfterCursor,
+  entregarNuevas,
+  RfidFeedMemory,
+  nextCursorFeedMount,
+  nextCursorFeedSession,
+  rfidCursorScansKey,
   RFID_FEED_CURSOR_LIMIT,
   ScanOutbox,
   rfidScansQueryParams,
+  withPollOutcome,
+  type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
+import { estadoCatalogoLectores, rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
+import { agregarDetectadas, RFID_DETECTADAS_VISIBLES, registroVacio } from "@/src/features/rfid-scanner/utils/rfidDetectadas";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
@@ -218,6 +229,37 @@ test.describe("cursor del feed de la antena", () => {
       limite: 200,
     });
     expect(rfidScansQueryParams({ soloMatch: true, lector: null })).toEqual({ unicos: 1, solo_match: 1 });
+  });
+  test("el arranque del cursor va sin solo_match ni unicos, solo con lector; los sondeos los conservan (EC-997)", () => {
+    const filtros = { soloMatch: true, lector: 9 };
+    expect(rfidScansQueryParams({ ...filtros, ...cursorFeedPageParams(null) })).toEqual({ lector: 9, limite: 1 });
+    expect(rfidScansQueryParams({ ...filtros, ...cursorFeedPageParams(104090) })).toEqual({
+      unicos: 1,
+      solo_match: 1,
+      lector: 9,
+      despues_de_id: 104090,
+      limite: 200,
+    });
+  });
+  test("una lectura vieja que se liga después no entra: el arranque toma el id más alto de todas (EC-997)", async () => {
+    // La 4000 es la última ya ligada; 5000-5029 son tags aún sin etiqueta del ERP, leídos antes de Iniciar.
+    const rows = [
+      { id: 4000, ligada: true },
+      ...Array.from({ length: 30 }, (_, i) => ({ id: 5000 + i, ligada: false })),
+    ];
+    const fetchPage = async (cursor: number | null) => {
+      const { soloMatch = true, despuesDeId } = cursorFeedPageParams(cursor);
+      const visibles = rows.filter((r) => !soloMatch || r.ligada);
+      return despuesDeId === undefined
+        ? [...visibles].sort((a, b) => b.id - a.id).slice(0, 1)
+        : visibles.filter((r) => r.id > despuesDeId).sort((a, b) => a.id - b.id);
+    };
+    const start = await drainFeedAfterCursor(null, fetchPage);
+    expect(start.cursor).toBe(5029);
+    // Se imprime la etiqueta de la 5010 (`ligar_lecturas_previas`) y llega una lectura nueva ya ligada.
+    rows[11].ligada = true;
+    rows.push({ id: 5030, ligada: true });
+    expect((await drainFeedAfterCursor(start.cursor, fetchPage)).fresh.map((r) => r.id)).toEqual([5030]);
   });
   test("sin la opción la petición es la de siempre (Nueva Recepción y monitor)", () => {
     expect(rfidScansQueryParams({ soloMatch: true })).toEqual({ unicos: 1, solo_match: 1 });
@@ -418,17 +460,30 @@ test.describe("relecturas durante la lectura continua", () => {
 });
 
 test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () => {
-  const ids = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i }));
-  /** Feed falso con el contrato de EC-984: con cursor, `id` ascendente y las primeras `limite`. */
-  const fakeFeed = (rows: { id: number }[], { limit = 200, failOnCall }: { limit?: number; failOnCall?: number } = {}) => {
+  type Row = { id: number; created_at: number; lector?: number };
+  /** Lecturas con `created_at` en el mismo orden que el `id` (el caso normal). */
+  const ids = (from: number, to: number, lector?: number): Row[] =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i, created_at: from + i, lector }));
+  /**
+   * Feed falso con el contrato de `scans/` (EC-984): con cursor, `id`
+   * ascendente y las primeras `limite`; sin cursor, `-created_at, -id`. Cada
+   * página pide lo que manda el hook (`cursorFeedPageParams`) y se registra.
+   */
+  const fakeFeed = (rows: Row[], { failOnCall, lector }: { failOnCall?: number; lector?: number } = {}) => {
     const calls: (number | null)[] = [];
+    const limits: (number | undefined)[] = [];
     const fetchPage = async (cursor: number | null) => {
+      const { limite, despuesDeId } = cursorFeedPageParams(cursor);
       calls.push(cursor);
+      limits.push(limite);
       if (failOnCall !== undefined && calls.length === failOnCall) throw new Error("red");
-      if (cursor === null) return [...rows].sort((a, b) => b.id - a.id).slice(0, limit);
-      return rows.filter((r) => r.id > cursor).sort((a, b) => a.id - b.id).slice(0, limit);
+      const visibles = rows.filter((r) => lector === undefined || r.lector === lector);
+      if (despuesDeId === undefined) {
+        return [...visibles].sort((a, b) => b.created_at - a.created_at || b.id - a.id).slice(0, limite);
+      }
+      return visibles.filter((r) => r.id > despuesDeId).sort((a, b) => a.id - b.id).slice(0, limite);
     };
-    return { fetchPage, calls };
+    return { fetchPage, calls, limits };
   };
 
   test("entrega en id ascendente aunque la respuesta llegue desordenada", () => {
@@ -456,6 +511,44 @@ test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () 
     expect(result).toEqual({ cursor: 900, fresh: [], pages: 1 });
     expect(feed.calls).toEqual([null]);
   });
+  test("el arranque pide limite=1 y los sondeos siguientes el tope, después del cursor (EC-997)", async () => {
+    expect(cursorFeedPageParams(null)).toEqual({ limite: 1, soloMatch: false, unicos: false });
+    expect(cursorFeedPageParams(0)).toEqual({ limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: 0 });
+    const feed = fakeFeed(ids(1, 900));
+    const start = await drainFeedAfterCursor(null, feed.fetchPage);
+    await drainFeedAfterCursor(start.cursor, feed.fetchPage);
+    expect(feed.limits).toEqual([1, 200]);
+    expect(feed.calls).toEqual([null, 900]);
+  });
+  test("sin cursor manda el más reciente por created_at, no el id más alto (caso aceptado)", async () => {
+    // Dos `scans/receive/` cruzados: la 901 se confirmó antes que la 900 pero con fecha anterior.
+    const feed = fakeFeed([...ids(1, 899), { id: 901, created_at: 899.5 }, { id: 900, created_at: 900 }]);
+    expect((await drainFeedAfterCursor(null, feed.fetchPage)).cursor).toBe(900);
+  });
+  test("cambiar de lector arranca el cursor del nuevo sin traer su rezago (EC-997)", async () => {
+    // El lector 9 lleva días sin leer; el 24 acumula 3000 lecturas desde entonces.
+    const rows = [...ids(1, 50, 9), ...ids(51, 3050, 24)];
+    // Lo que hace el hook: un cursor por sesión, y cada sesión arranca sin cursor.
+    let feed: CursorFeedSession = nextCursorFeedSession({ enabled: false, lector: null, session: 0 }, true, 9);
+    const cursors = new Map<number, number>();
+    const poll = async () => {
+      const result = await drainFeedAfterCursor(cursors.get(feed.session) ?? null, fakeFeed(rows, { lector: feed.lector ?? undefined }).fetchPage);
+      cursors.set(feed.session, result.cursor);
+      return result.fresh.map((r) => r.id);
+    };
+    expect(await poll()).toEqual([]);
+    expect(cursors.get(feed.session)).toBe(50);
+
+    feed = nextCursorFeedSession(feed, true, 24);
+    expect(await poll()).toEqual([]);
+    expect(cursors.get(feed.session)).toBe(3050);
+    rows.push({ id: 3051, created_at: 3051, lector: 24 });
+    expect(await poll()).toEqual([3051]);
+
+    // Con el cursor del 9 (el error de antes) el primer sondeo del 24 traía su rezago.
+    const reused = await drainFeedAfterCursor(50, fakeFeed(rows, { lector: 24 }).fetchPage);
+    expect(reused.fresh).toHaveLength(3001);
+  });
   test("un error en una página posterior corta sin perder lo recibido", async () => {
     const feed = fakeFeed(ids(1001, 1450), { failOnCall: 2 });
     const result = await drainFeedAfterCursor(1000, feed.fetchPage);
@@ -469,6 +562,226 @@ test.describe("cursor en orden ascendente con re-sondeo inmediato (EC-984)", () 
     const result = await drainFeedAfterCursor(1000, feed.fetchPage, { maxPages: 3 });
     expect(feed.calls).toHaveLength(3);
     expect(result.cursor).toBe(1600);
+  });
+});
+
+test.describe("sesión del cursor por lector (EC-997)", () => {
+  const start = { enabled: false, lector: null, session: 0 };
+  test("encender empieza una sesión; sin cambios es el mismo objeto", () => {
+    const on = nextCursorFeedSession(start, true, 9);
+    expect(on).toEqual({ enabled: true, lector: 9, session: 1 });
+    expect(nextCursorFeedSession(on, true, 9)).toBe(on);
+  });
+  test("cambiar de lector encendido empieza otra, también de null a un lector", () => {
+    const sinLector = nextCursorFeedSession(start, true, null);
+    const conLector = nextCursorFeedSession(sinLector, true, 24);
+    expect(conLector.session).toBe(sinLector.session + 1);
+    expect(nextCursorFeedSession(conLector, true, 9).session).toBe(conLector.session + 1);
+  });
+  test("apagar o cambiar de lector en pausa no empieza nada; volver a encender sí", () => {
+    const on = nextCursorFeedSession(start, true, 9);
+    const off = nextCursorFeedSession(on, false, 9);
+    expect(off.session).toBe(on.session);
+    const otroEnPausa = nextCursorFeedSession(off, false, 24);
+    expect(otroEnPausa.session).toBe(on.session);
+    expect(nextCursorFeedSession(otroEnPausa, true, 24).session).toBe(on.session + 1);
+  });
+});
+
+test.describe("memoria de la captura entre Detener e Iniciar (EC-997)", () => {
+  type Scan = { id: number; epc: string };
+  /** Feed con el contrato de `scans/`: sin cursor, el más reciente; con cursor, `id` ascendente. */
+  const feed = (rows: Scan[]) => async (cursor: number | null) =>
+    cursor === null ? [...rows].sort((a, b) => b.id - a.id).slice(0, 1) : rows.filter((r) => r.id > cursor).sort((a, b) => a.id - b.id);
+  /** Un sondeo como el de `useRfidCursorScans`, y la entrega como la de `useRfidEpcFeed`. */
+  const sondear = async (memory: RfidFeedMemory<Scan>, sesion: string, lector: number, rows: Scan[]) => {
+    memory.empezar(sesion, lector);
+    const next = await drainFeedAfterCursor(memory.cursor, feed(rows));
+    memory.avanzar(sesion, next.cursor);
+    memory.outbox.push(next.fresh);
+  };
+  const entregar = (memory: RfidFeedMemory<Scan>) => {
+    const entregadas: number[] = [];
+    entregarNuevas(memory.outbox.take(), memory.vistos, (s) => entregadas.push(s.id));
+    return entregadas;
+  };
+  const viejas = Array.from({ length: 5 }, (_, i) => ({ id: 100 + i, epc: `OLD${i}` }));
+
+  test("al reanudar sigue el cursor: entra lo leído en la pausa y lo ya contado no vuelve a sumar", async () => {
+    const memory = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas];
+    await sondear(memory, "1:0", 9, rows);
+    expect(entregar(memory)).toEqual([]);
+    rows.push({ id: 105, epc: "A" }, { id: 106, epc: "B" });
+    await sondear(memory, "1:0", 9, rows);
+    expect(entregar(memory)).toEqual([105, 106]);
+    // Detener: se leen C y D sin sondear, y A se vuelve a guardar (30 s después).
+    rows.push({ id: 107, epc: "C" }, { id: 108, epc: "D" }, { id: 109, epc: "A" });
+    // Iniciar: otro montaje, misma memoria.
+    await sondear(memory, "2:0", 9, rows);
+    expect(entregar(memory)).toEqual([107, 108]);
+  });
+  test("un sondeo en vuelo al detener no se pierde, ni se cuenta dos veces si la sesión nueva lo vuelve a pedir", async () => {
+    const memory = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas];
+    await sondear(memory, "1:0", 9, rows);
+    rows.push({ id: 105, epc: "A" }, { id: 106, epc: "B" });
+    // El sondeo del montaje 1 sigue en vuelo cuando ya arrancó el montaje 2.
+    memory.empezar("1:0", 9);
+    const enVuelo = drainFeedAfterCursor(memory.cursor, feed(rows));
+    await sondear(memory, "2:0", 9, rows);
+    const tardio = await enVuelo;
+    memory.avanzar("1:0", tardio.cursor);
+    memory.outbox.push(tardio.fresh);
+    expect(entregar(memory)).toEqual([105, 106]);
+    expect(memory.cursor).toBe(106);
+  });
+  test("un formulario nuevo arranca con limite=1 y otro lector empieza de cero", async () => {
+    const usada = new RfidFeedMemory<Scan>(true);
+    const rows = [...viejas, { id: 105, epc: "A" }];
+    await sondear(usada, "1:0", 9, rows);
+    rows.push({ id: 106, epc: "B" });
+    await sondear(usada, "1:0", 9, rows);
+    expect(entregar(usada)).toEqual([106]);
+    // Otro lector en el mismo formulario: cursor y EPC vistos desde cero.
+    usada.empezar("1:1", 24);
+    expect([usada.cursor, usada.vistos.size]).toEqual([null, 0]);
+    // Otro formulario (memoria nueva): arranca, no entrega nada viejo.
+    const nueva = new RfidFeedMemory<Scan>(true);
+    await sondear(nueva, "3:0", 9, rows);
+    expect(entregar(nueva)).toEqual([]);
+    expect(nueva.cursor).toBe(106);
+  });
+  test("sin `continua` (el encuadre) cada sesión empieza de cero, como siempre", async () => {
+    const memory = new RfidFeedMemory<Scan>(false);
+    const rows = [...viejas];
+    await sondear(memory, "1:1", 9, rows);
+    rows.push({ id: 105, epc: "A" });
+    await sondear(memory, "1:1", 9, rows);
+    expect(entregar(memory)).toEqual([105]);
+    rows.push({ id: 106, epc: "B" });
+    // Pausa y reanuda: sesión nueva, arranca otra vez.
+    await sondear(memory, "1:2", 9, rows);
+    expect(entregar(memory)).toEqual([]);
+    expect(memory.vistos.size).toBe(0);
+  });
+});
+
+test.describe("aviso de sondeo fallido en la tira (EC-997)", () => {
+  test("se enciende cuando falla un sondeo posterior y se apaga con la siguiente respuesta", async () => {
+    let failed = false;
+    const report = (value: boolean) => (failed = value);
+    // La tira: "sin respuesta" si la sesión nunca respondió O el último sondeo falló.
+    const indicador = (isInitialError: boolean) => isInitialError || failed;
+
+    await withPollOutcome(async () => ({ fresh: 0 }), report);
+    expect(indicador(false)).toBe(false);
+    await expect(withPollOutcome(() => Promise.reject(new Error("red")), report)).rejects.toThrow("red");
+    // Ya había respondido: `isInitialError` sigue en false, pero el aviso sí se enciende.
+    expect(indicador(false)).toBe(true);
+    await expect(withPollOutcome(async () => ({ fresh: 2 }), report)).resolves.toEqual({ fresh: 2 });
+    expect(indicador(false)).toBe(false);
+  });
+  test("un corte en una página posterior no cuenta como fallo: el sondeo entregó lo recibido", async () => {
+    let failed: boolean | null = null;
+    let call = 0;
+    const fetchPage = async (cursor: number | null) => {
+      call += 1;
+      if (call === 2) throw new Error("red");
+      return Array.from({ length: 200 }, (_, i) => ({ id: (cursor ?? 0) + i + 1 }));
+    };
+    await withPollOutcome(() => drainFeedAfterCursor(0, fetchPage), (value) => (failed = value));
+    expect(failed).toBe(false);
+  });
+});
+
+test.describe("antena solo con el lector resuelto (EC-997)", () => {
+  test("nada se pide mientras el catálogo de lectores no responde", () => {
+    // Primer render: catálogo en vuelo, `lectores` vacío y `lectorId` null.
+    expect(rfidLectorListo({ catalogoResuelto: false, lectores: 0, lectorId: null })).toBe(false);
+    expect(rfidLectorListo({ catalogoResuelto: false, lectores: 2, lectorId: 9 })).toBe(false);
+  });
+  test("con el catálogo: un lector o el elegido sí; varios sin elegir no", () => {
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 1, lectorId: 9 })).toBe(true);
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: 24 })).toBe(true);
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 2, lectorId: null })).toBe(false);
+  });
+  test("un catálogo resuelto sin lista (backend sin el endpoint) lee de todos, como antes", () => {
+    expect(rfidLectorListo({ catalogoResuelto: true, lectores: 0, lectorId: null })).toBe(true);
+  });
+  test("catálogo 404 lee de todos; otro fallo deja la antena apagada y avisa", () => {
+    const sinEndpoint = estadoCatalogoLectores({ hasLoaded: false, isInitialError: false, noDisponible: true });
+    expect(sinEndpoint).toEqual({ resuelto: true, fallido: false });
+    expect(rfidLectorListo({ catalogoResuelto: sinEndpoint.resuelto, lectores: 0, lectorId: null })).toBe(true);
+
+    const caido = estadoCatalogoLectores({ hasLoaded: false, isInitialError: true, noDisponible: false });
+    expect(caido).toEqual({ resuelto: false, fallido: true });
+    expect(rfidLectorListo({ catalogoResuelto: caido.resuelto, lectores: 0, lectorId: null })).toBe(false);
+
+    // En vuelo: ni resuelto ni fallido. Ya cargado: un refetch fallido no lo apaga.
+    expect(estadoCatalogoLectores({ hasLoaded: false, isInitialError: false, noDisponible: false })).toEqual({ resuelto: false, fallido: false });
+    expect(estadoCatalogoLectores({ hasLoaded: true, isInitialError: false, noDisponible: false })).toEqual({ resuelto: true, fallido: false });
+  });
+});
+
+test.describe("llave del cursor por montaje (EC-997)", () => {
+  /** Lo que hace `useRfidCursorScans` con TanStack: misma forma de opciones, sin React. */
+  const mountFeed = (client: QueryClient, mount: number, queryFn: () => Promise<{ fresh: number }>) => {
+    const observer = new QueryObserver(client, {
+      queryKey: rfidCursorScansKey(true, 9, mount, 0),
+      queryFn,
+      gcTime: 0,
+      staleTime: 15 * 60 * 1000,
+      retry: false,
+    });
+    return observer.subscribe(() => {});
+  };
+
+  test("Detener → Iniciar con un sondeo en vuelo: el montaje nuevo arranca de inmediato y no lo hereda", async () => {
+    const client = new QueryClient();
+    let release: (v: { fresh: number }) => void = () => {};
+    const calls: string[] = [];
+    const first = nextCursorFeedMount();
+    const unmountFirst = mountFeed(client, first, () => {
+      calls.push("primero");
+      return new Promise((resolve) => (release = resolve));
+    });
+    unmountFirst();
+    const second = nextCursorFeedMount();
+    expect(second).not.toBe(first);
+    const unmountSecond = mountFeed(client, second, async () => {
+      calls.push("segundo");
+      return { fresh: 0 };
+    });
+    await flush();
+    expect(calls).toEqual(["primero", "segundo"]);
+
+    // La consulta del primero se va de la caché al terminar su sondeo: nada se acumula.
+    release({ fresh: 3 });
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(client.getQueryCache().find({ queryKey: rfidCursorScansKey(true, 9, first, 0) })).toBeUndefined();
+    unmountSecond();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
+  });
+  test("con la llave de antes (sin montaje) el nuevo heredaba el sondeo en vuelo", async () => {
+    const client = new QueryClient();
+    const calls: string[] = [];
+    const sameKey = () =>
+      new QueryObserver(client, {
+        queryKey: ["rfid-scans", "cursor", true, 9, 0],
+        queryFn: () => {
+          calls.push("sondeo");
+          return new Promise<{ fresh: number }>(() => {});
+        },
+        gcTime: 0,
+        staleTime: 15 * 60 * 1000,
+      }).subscribe(() => {});
+    sameKey()();
+    sameKey();
+    await flush();
+    expect(calls).toEqual(["sondeo"]);
   });
 });
 
@@ -586,5 +899,40 @@ test.describe("estado de la lectura en el detalle", () => {
       allowed: false,
       reason: "Espera a que terminen de enviarse las lecturas.",
     });
+  });
+});
+
+test.describe("tira de la antena con tandas grandes (EC-997)", () => {
+  type Entrada = { id: number; ok: boolean };
+  test("una tanda de 2000 lecturas: un solo aviso al terminar, lista recortada y totales exactos", () => {
+    const scans = Array.from({ length: 2000 }, (_, i) => ({ id: i + 1, epc: `E${i + 1}` }));
+    const tanda: Entrada[] = [];
+    let actualizaciones = 0;
+    let registro = registroVacio<Entrada>();
+    const vistos = new Set<string>();
+    // Lo que hace la tira: acumula cada lectura y agrega la tanda en `onFin`.
+    entregarNuevas(
+      scans,
+      vistos,
+      (s) => tanda.push({ id: s.id, ok: s.id % 4 !== 0 }),
+      () => {
+        actualizaciones += 1;
+        registro = agregarDetectadas(registro, tanda.splice(0), (e) => e.ok);
+      },
+    );
+    expect(actualizaciones).toBe(1);
+    expect(registro.total).toBe(2000);
+    expect(registro.sumadas).toBe(1500);
+    expect(registro.recientes).toHaveLength(RFID_DETECTADAS_VISIBLES);
+    expect(registro.recientes[0].id).toBe(2000);
+    expect(registro.recientes.at(-1)?.id).toBe(2000 - RFID_DETECTADAS_VISIBLES + 1);
+  });
+  test("las tandas se acumulan; sin lecturas nuevas no hay aviso", () => {
+    let registro = agregarDetectadas(registroVacio<Entrada>(), [{ id: 1, ok: true }, { id: 2, ok: false }], (e) => e.ok);
+    registro = agregarDetectadas(registro, [{ id: 3, ok: true }], (e) => e.ok);
+    expect(registro).toEqual({ recientes: [{ id: 3, ok: true }, { id: 2, ok: false }, { id: 1, ok: true }], total: 3, sumadas: 2 });
+    let avisos = 0;
+    entregarNuevas([{ epc: "A" }], new Set(["A"]), () => {}, () => (avisos += 1));
+    expect(avisos).toBe(0);
   });
 });

@@ -1,3 +1,4 @@
+import type { ScanResult } from "@/src/components/ScanCapture";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 
 /**
@@ -27,6 +28,40 @@ export function findRowByScan<T extends PickingOnboardingTalla>(
   if (!target) return null;
   const matches = rows.filter((row) => scanCodesOf(row).includes(target));
   return matches.find(hasRoom) ?? matches[0] ?? null;
+}
+
+const fmtCantidad = (value: number) => value.toLocaleString("es-MX", { maximumFractionDigits: 4 });
+
+/**
+ * Lo que hace una lectura (pistola o antena) en el surtido, sin tocar estado:
+ * el resultado que se muestra, la talla que se abre y resalta (`null` si no
+ * coincide ninguna) y, si suma, la `cantidad` nueva. `qtyOf` es lo capturado
+ * HASTA esta lectura: en una tanda de la antena incluye lo que sumaron las
+ * anteriores (`PendingQuantities`), así que el techo de la línea se respeta
+ * exacto y lo que no cabe sale como "Talla completa" (EC-997).
+ */
+export function leerEnSurtido<T extends PickingOnboardingTalla>(
+  rows: readonly T[],
+  leido: string,
+  qtyOf: (row: T) => number,
+  maxOf: (row: T) => number,
+): { result: ScanResult; row: T | null; cantidad?: number } {
+  const row = findRowByScan(rows, leido, (r) => qtyOf(r) < maxOf(r));
+  if (!row) return { result: { tone: "error", title: "No está en este pedido", detail: `Código ${leido}` }, row: null };
+  const nombre = `${row.producto_nombre ?? row.producto_variante_nombre ?? "—"} · ${row.talla_nombre ?? ""}`;
+  const actual = qtyOf(row);
+  const techo = maxOf(row);
+  if (actual + 1 > techo) {
+    return {
+      result: { tone: "warn", title: "Talla completa", detail: `${nombre}: ya tienes ${fmtCantidad(actual)} de ${fmtCantidad(techo)}` },
+      row,
+    };
+  }
+  return {
+    result: { tone: "ok", title: `+1 ${nombre}`, detail: `${fmtCantidad(actual + 1)} de ${fmtCantidad(techo)}` },
+    row,
+    cantidad: actual + 1,
+  };
 }
 
 /** ¿Alguna línea trae con qué escanearse? Sin códigos, el modo scanner no sirve. */

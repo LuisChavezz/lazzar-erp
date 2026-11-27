@@ -10,7 +10,10 @@ import { formatExactQuantityValue } from "@/src/utils/formatCurrency";
 import { hasLineCode, splitSku } from "@/src/utils/sku";
 import type { PickingOnboardingTalla } from "../interfaces/picking-onboarding.interface";
 import type { PickingLineLimits } from "../hooks/usePickingStep2Form";
-import { anyScannable, findRowByScan, groupByProduct } from "../utils/pickingScan";
+import { PendingQuantities } from "@/src/utils/pendingQuantities";
+import { RfidFeedMemory } from "@/src/features/rfid-scanner/utils/rfidScansParams";
+import type { RfidScan } from "@/src/features/rfid-scanner/interfaces/rfid-scanner.interface";
+import { anyScannable, groupByProduct, leerEnSurtido } from "../utils/pickingScan";
 
 interface PickingLinesPanelProps {
   rows: PickingOnboardingTalla[];
@@ -66,6 +69,9 @@ export function PickingLinesPanel({
   const [modo, setModo] = useState<ScanModo>(scannable ? "scanner" : "manual");
   const [abiertos, setAbiertos] = useState<ReadonlySet<string>>(() => new Set());
   const [resaltada, setResaltada] = useState<string | null>(null);
+  const [enVuelo] = useState(() => new PendingQuantities());
+  // Cursor y EPC vistos de la antena en ESTE formulario, entre Detener e Iniciar (EC-997).
+  const [antena] = useState(() => new RfidFeedMemory<RfidScan>(true));
 
   const grupos = groupByProduct(rows);
   const conCodigos = hasLineCode(rows.map(codesOf));
@@ -84,20 +90,21 @@ export function PickingLinesPanel({
     });
 
   const procesarLectura = (leido: string): ScanResult => {
-    const row = findRowByScan(rows, leido, (r) => qtyOf(r) < maxOf(r));
-    if (!row) return { tone: "error", title: "No está en este pedido", detail: `Código ${leido}` };
-    const key = String(row.pedido_detalle_talla);
-    const nombre = `${row.producto_nombre ?? row.producto_variante_nombre ?? "—"} · ${row.talla_nombre ?? ""}`;
-    const actual = qtyOf(row);
-    const techo = maxOf(row);
-    const grupo = grupos.find((g) => g.rows.includes(row));
-    if (grupo) setAbiertos((prev) => new Set(prev).add(grupo.key));
-    setResaltada(key);
-    if (actual + 1 > techo) {
-      return { tone: "warn", title: "Talla completa", detail: `${nombre}: ya tienes ${fmt(actual)} de ${fmt(techo)}` };
+    // Lo capturado hasta ESTA lectura: con las que la antena entregó antes en la
+    // misma tanda, aunque su render no haya llegado (`PendingQuantities`).
+    const capturadoAhora = (row: PickingOnboardingTalla) =>
+      n(enVuelo.read(quantities, String(row.pedido_detalle_talla)));
+    const { result, row, cantidad } = leerEnSurtido(rows, leido, capturadoAhora, maxOf);
+    if (row) {
+      const grupo = grupos.find((g) => g.rows.includes(row));
+      if (grupo) setAbiertos((prev) => new Set(prev).add(grupo.key));
+      setResaltada(String(row.pedido_detalle_talla));
     }
-    setQuantity(row.pedido_detalle_talla, String(actual + 1));
-    return { tone: "ok", title: `+1 ${nombre}`, detail: `${fmt(actual + 1)} de ${fmt(techo)}` };
+    if (row && cantidad !== undefined) {
+      enVuelo.write(quantities, String(row.pedido_detalle_talla), String(cantidad));
+      setQuantity(row.pedido_detalle_talla, String(cantidad));
+    }
+    return result;
   };
 
   return (
@@ -116,7 +123,7 @@ export function PickingLinesPanel({
         placeholder="Escanea la etiqueta de la prenda…"
         inputId="picking-scan"
         onScan={procesarLectura}
-        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Surtido" />}
+        liveFeed={<RfidFeedStrip onCode={procesarLectura} pantalla="Surtido" memoria={antena} />}
       />
 
       {/* ── Productos (desplegables) ──────────────────────────────────── */}

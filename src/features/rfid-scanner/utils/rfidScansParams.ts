@@ -8,24 +8,190 @@ export interface RfidScansParams {
   despuesDeId?: number;
   /** Cuántas lecturas (1-200, default del backend 50). */
   limite?: number;
+  /** `unicos=1`: la última lectura de cada EPC. Ausente = sí, como siempre. */
+  unicos?: boolean;
 }
 
 /** Tope de `limite` en el backend: lo que pide una captura con cursor. */
 export const RFID_FEED_CURSOR_LIMIT = 200;
 
 /**
- * Query string de `scans/`. Siempre `unicos=1`; `solo_match`, `lector`,
- * `despues_de_id` y `limite` solo si se piden. Sin los dos últimos queda
- * exactamente la petición de siempre (la que usan el monitor, Recepción y
- * Surtido).
+ * `limite` del arranque del cursor (EC-997): esa respuesta solo da el `id`
+ * más alto y no entrega nada, así que basta la más reciente. Va sin
+ * `solo_match` ni `unicos` (solo con `lector`): el cursor tiene que partir del
+ * `id` más alto de TODAS las lecturas del lector, no del más alto de las que
+ * ya cruzan con una etiqueta; si no, una lectura vieja que se liga después
+ * (`ligar_lecturas_previas`, etiqueta impresa tras leerla) quedaría por
+ * encima del cursor y entraría como pieza nueva. Sin cursor el
+ * backend ordena por `-created_at, -id`; dos `scans/receive/` simultáneos
+ * podrían dejar arriba una fila de `id` menor, y entonces entraría alguna
+ * lectura de milisegundos antes de empezar (aceptado).
  */
-export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite }: RfidScansParams) => ({
-  unicos: 1,
+export const RFID_FEED_BOOTSTRAP_LIMIT = 1;
+
+/**
+ * Lo que cambia en cada página de una captura con cursor, sobre sus filtros
+ * (`soloMatch`, `lector`): sin cursor todavía, el arranque con
+ * `RFID_FEED_BOOTSTRAP_LIMIT` y sin `solo_match` ni `unicos`; con cursor, los
+ * filtros de la captura y el tope (`RFID_FEED_CURSOR_LIMIT`) después de ese
+ * `id`. Se esparce DESPUÉS de los filtros, para que el arranque los anule.
+ */
+export const cursorFeedPageParams = (
+  cursor: number | null,
+): Pick<RfidScansParams, "limite" | "despuesDeId"> & Partial<Pick<RfidScansParams, "soloMatch" | "unicos">> =>
+  cursor === null
+    ? { limite: RFID_FEED_BOOTSTRAP_LIMIT, soloMatch: false, unicos: false }
+    : { limite: RFID_FEED_CURSOR_LIMIT, despuesDeId: cursor };
+
+/**
+ * Query string de `scans/`. `unicos=1` salvo con `unicos: false` (solo el
+ * arranque del cursor); `solo_match`, `lector`,
+ * `despues_de_id` y `limite` solo si se piden. Sin los dos últimos queda
+ * exactamente la petición de siempre (la del monitor); las capturas con
+ * cursor (Recepción, Surtido y el encuadre) mandan `cursorFeedPageParams`.
+ */
+export const rfidScansQueryParams = ({ soloMatch, lector, despuesDeId, limite, unicos = true }: RfidScansParams) => ({
+  ...(unicos ? { unicos: 1 } : {}),
   ...(soloMatch ? { solo_match: 1 } : {}),
   ...(lector ? { lector } : {}),
   ...(despuesDeId !== undefined ? { despues_de_id: despuesDeId } : {}),
   ...(limite !== undefined ? { limite } : {}),
 });
+
+let cursorFeedMounts = 0;
+
+/**
+ * Identificador de un montaje de `useRfidCursorScans`, distinto en cada uno.
+ * `useId` no sirve: depende de la posición en el árbol y se repite al volver
+ * a montar en el mismo lugar (Detener → Iniciar en `ScanCapture`).
+ */
+export const nextCursorFeedMount = () => {
+  cursorFeedMounts += 1;
+  return cursorFeedMounts;
+};
+
+/**
+ * Llave de la consulta con cursor. Lleva el montaje además de la sesión: la
+ * sesión vuelve a 0 en cada montaje, y con la misma llave un montaje nuevo
+ * heredaría la consulta del anterior mientras su sondeo sigue en vuelo
+ * (`gcTime: 0` solo quita consultas inactivas) y, con datos en caché y el
+ * `staleTime` global, no arrancaría hasta el siguiente intervalo. Cada llave
+ * se quita de la caché en cuanto su consulta queda sin observadores ni sondeo.
+ */
+export const rfidCursorScansKey = (soloMatch: boolean, lector: number | null, mount: number, session: number) =>
+  ["rfid-scans", "cursor", soloMatch, lector, mount, session] as const;
+
+/**
+ * Corre un sondeo y avisa cómo terminó (`report(true)` si falló, `false` si
+ * respondió), sin cambiar su resultado: el error se vuelve a lanzar. Alimenta
+ * el "sin respuesta del lector" de la tira mientras el ÚLTIMO sondeo falla;
+ * `isInitialError` solo cubre una sesión que nunca respondió (EC-997).
+ */
+export const withPollOutcome = async <T>(poll: () => Promise<T>, report: (failed: boolean) => void): Promise<T> => {
+  let result: T;
+  try {
+    result = await poll();
+  } catch (error) {
+    report(true);
+    throw error;
+  }
+  report(false);
+  return result;
+};
+
+/**
+ * Lo que una captura con cursor conserva entre sondeos y, si `continua`,
+ * entre sus tramos de lectura (EC-997): el cursor, el lector al que
+ * pertenece, los EPC ya entregados y la bandeja de lo que trajo un sondeo.
+ *
+ * - `continua: true` (Recepción y Surtido: una por formulario, la crea el
+ *   panel): Detener → Iniciar desmonta la tira, pero al reanudar se sigue
+ *   desde el último cursor, así que entra todo lo leído desde el último
+ *   sondeo (también en la pausa) y un EPC ya contado en el formulario no
+ *   vuelve a sumar. Un sondeo en vuelo al detener deja sus lecturas en la
+ *   bandeja (se entregan al reanudar) y, si su sesión sigue vigente, mueve el
+ *   cursor; si no, la sesión nueva las vuelve a pedir desde el cursor de antes.
+ * - `continua: false` (el encuadre, y quien no pase una): cada sesión empieza
+ *   de cero, como siempre.
+ *
+ * Con otro lector siempre empieza de cero: el cursor de un lector no sirve
+ * para otro. Cerrar el formulario descarta la memoria con el panel.
+ */
+export class RfidFeedMemory<T extends { id: number; epc: string }> {
+  readonly outbox = new ScanOutbox<T>();
+  cursor: number | null = null;
+  lector: number | null = null;
+  /** Sesión dueña del cursor (`rfidCursorScansKey` sin prefijo); `null` sin empezar. */
+  sesion: string | null = null;
+  vistos = new Set<string>();
+
+  constructor(readonly continua: boolean) {}
+
+  /** Lo llama el primer sondeo de cada sesión: sigue o empieza de cero. */
+  empezar(sesion: string, lector: number | null): void {
+    if (this.sesion === sesion) return;
+    const sigue = this.continua && this.lector === lector && this.cursor !== null;
+    this.sesion = sesion;
+    if (sigue) return;
+    this.cursor = null;
+    this.lector = lector;
+    this.vistos = new Set();
+  }
+
+  /** Mueve el cursor solo si `sesion` sigue siendo la dueña: una respuesta tardía no mueve otra. */
+  avanzar(sesion: string, cursor: number): void {
+    if (this.sesion === sesion) this.cursor = cursor;
+  }
+}
+
+/**
+ * Entrega a `onEpc`, en orden, cada lectura cuyo EPC no está en `vistos` (y lo
+ * anota). Devuelve cuántas entregó y, si entregó alguna, llama `onFin` UNA
+ * vez al terminar la tanda, para que quien escucha actualice su estado de una
+ * sola vez (la tira de la antena, EC-997).
+ */
+export const entregarNuevas = <T extends { epc: string }>(
+  scans: readonly T[],
+  vistos: Set<string>,
+  onEpc: (scan: T) => void,
+  onFin?: () => void,
+): number => {
+  let nuevas = 0;
+  for (const scan of scans) {
+    if (vistos.has(scan.epc)) continue;
+    vistos.add(scan.epc);
+    nuevas += 1;
+    onEpc(scan);
+  }
+  if (nuevas > 0) onFin?.();
+  return nuevas;
+};
+
+/** Sesión de una captura con cursor: qué lector se lee y en qué sesión va. */
+export interface CursorFeedSession {
+  enabled: boolean;
+  lector: number | null;
+  session: number;
+}
+
+/**
+ * Siguiente sesión de una captura con cursor. Empieza una nueva (y con ella un
+ * cursor nuevo) al encender la lectura y al cambiar de lector mientras está
+ * encendida, `null` → lector incluido (el catálogo carga después del primer
+ * render). El cursor de un lector no sirve para otro: si el anterior llevaba
+ * días sin leer, `despues_de_id` con su `id` traería todo lo que el nuevo leyó
+ * desde entonces (EC-997). Apagar o cambiar de lector en pausa no empieza nada:
+ * la sesión empieza al encender. Sin cambios devuelve el mismo objeto.
+ */
+export const nextCursorFeedSession = (
+  prev: CursorFeedSession,
+  enabled: boolean,
+  lector: number | null,
+): CursorFeedSession => {
+  if (prev.enabled === enabled && prev.lector === lector) return prev;
+  const restart = enabled && (!prev.enabled || prev.lector !== lector);
+  return { enabled, lector, session: restart ? prev.session + 1 : prev.session };
+};
 
 /**
  * Un paso del cursor de una captura (EC-982). La primera respuesta (`cursor`
