@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/src/components/DataTable";
 import { extractErrorMessage } from "@/src/utils/extractErrorMessage";
@@ -7,6 +8,8 @@ import { hasPermission } from "@/src/utils/permissions";
 import { isInitialLoadError } from "@/src/utils/isInitialLoadError";
 import { rfidLabelColumns } from "./RfidLabelColumns";
 import { RfidLabelCreateDialog } from "./RfidLabelCreateDialog";
+import { RfidLabelDetailDialog } from "./RfidLabelDetailDialog";
+import { RfidLabelRowActionsProvider } from "../hooks/rfidLabelRowActionsContext";
 import { useRfidLabels } from "../hooks/useRfidLabels";
 
 const ESTADO_FILTER = [
@@ -17,7 +20,9 @@ const ESTADO_FILTER = [
 
 /**
  * Vista de Etiquetas RFID: historial de impresión (`GET /wms/etiquetas-rfid/`),
- * con "Ver Detalles" por renglón (vista previa + ZPL, ver `RfidLabelDetailDialog`)
+ * con "Ver Detalles" por renglón (vista previa + ZPL, ver `RfidLabelDetailDialog`,
+ * que pide el detalle por id: el diálogo vive AQUÍ y no en la celda, que se
+ * desmonta al paginar, ordenar o refrescar)
  * y "Nueva impresión" en el toolbar (`actionButton`), que abre el flujo de alta
  * (buscar → imprimir lote → registrar, ver `RfidLabelCreateDialog`). El registro
  * invalida `["etiquetas-rfid"]`, así que el nuevo evento aparece aquí solo.
@@ -38,7 +43,18 @@ export function RfidLabelsView() {
   const { data: session } = useSession();
   const canCreate = hasPermission("C-WMS-ETIQUETAS", session?.user);
 
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
   return (
+    <RfidLabelRowActionsProvider
+      value={{
+        onViewDetail: (row) => {
+          setDetailId(row.id);
+          setIsDetailOpen(true);
+        },
+      }}
+    >
     <div className="h-full flex flex-col min-h-0">
       <DataTable
         columns={rfidLabelColumns}
@@ -60,5 +76,8 @@ export function RfidLabelsView() {
         loadingAriaLabel="Cargando impresiones"
       />
     </div>
+
+      <RfidLabelDetailDialog etiquetaId={detailId} open={isDetailOpen} onOpenChange={setIsDetailOpen} />
+    </RfidLabelRowActionsProvider>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ViewIcon } from "@/src/components/Icons";
 import { ActionMenu, type ActionMenuItem } from "@/src/components/ActionMenu";
@@ -8,33 +7,27 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { textOrDash } from "@/src/components/DetailDialogPrimitives";
 import { formatShortDate, formatShortTime } from "@/src/utils/formatDate";
 import { RFID_LABEL_STATUS_CONFIG } from "../constants/rfidLabelStatus";
-import { RfidLabelDetailDialog } from "./RfidLabelDetailDialog";
-import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
+import { useRfidLabelRowActionsContext } from "../hooks/rfidLabelRowActionsContext";
+import type { EtiquetaRFIDRow } from "../interfaces/rfid-label.interface";
 
 // ── Celda de acciones ────────────────────────────────────────────────────────
 
-const ActionsCell = ({ row }: { row: EtiquetaRFID }) => {
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-
+/** Solo abre el detalle: el diálogo vive en `RfidLabelsView`, no aquí (la
+ *  celda se desmonta al paginar, ordenar o refrescar). */
+const ActionsCell = ({ row }: { row: EtiquetaRFIDRow }) => {
+  const { onViewDetail } = useRfidLabelRowActionsContext();
   const menuItems: ActionMenuItem[] = [
-    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => setIsDetailOpen(true) },
+    { label: "Ver Detalles", icon: ViewIcon, onSelect: () => onViewDetail(row) },
   ];
 
   return (
     <div className="flex items-center justify-center">
       <ActionMenu items={menuItems} ariaLabel={`Acciones de la impresión ${row.folio}`} />
-      {/* Montaje condicional: el diálogo no existe hasta abrirlo. Sin fetch
-          propio — `row` YA es el objeto completo (listado y detalle comparten
-          `EtiquetaRFIDSerializer` en el backend, `get_serializer_class` no
-          distingue por `self.action`). Mismo patrón que `ShippingColumns`. */}
-      {isDetailOpen && (
-        <RfidLabelDetailDialog etiqueta={row} open={true} onOpenChange={setIsDetailOpen} />
-      )}
     </div>
   );
 };
 
-const columnHelper = createColumnHelper<EtiquetaRFID>();
+const columnHelper = createColumnHelper<EtiquetaRFIDRow>();
 
 /**
  * Columnas del historial de impresiones de etiquetas RFID. El grano es UN
@@ -124,4 +117,4 @@ export const rfidLabelColumns = [
     meta: { align: "center" },
     cell: ({ row }) => <ActionsCell row={row.original} />,
   }),
-] as ColumnDef<EtiquetaRFID>[];
+] as ColumnDef<EtiquetaRFIDRow>[];

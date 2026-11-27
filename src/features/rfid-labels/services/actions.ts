@@ -1,5 +1,5 @@
 import { v1_api } from "@/src/api/v1.api";
-import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
+import type { EtiquetaRFID, EtiquetaRFIDRow } from "../interfaces/rfid-label.interface";
 import type {
   RfidOnboardingParams,
   RfidOnboardingResponse,
@@ -12,8 +12,14 @@ import type {
  * Sin paginar y sin params de filtro documentados — el backend ya acota el
  * resultado a empresa/sucursal del usuario (`EtiquetaRFIDViewSet.get_queryset`).
  */
-export const getEtiquetasRFID = async (): Promise<EtiquetaRFID[]> => {
-  const response = await v1_api.get<EtiquetaRFID[]>("/wms/etiquetas-rfid/");
+export const getEtiquetasRFID = async (): Promise<EtiquetaRFIDRow[]> => {
+  const response = await v1_api.get<EtiquetaRFIDRow[]>("/wms/etiquetas-rfid/");
+  return response.data;
+};
+
+/** Detalle de UNA impresión (`GET /wms/etiquetas-rfid/{id}/`), con sus EPC y su ZPL. */
+export const getEtiquetaRFID = async (id: number): Promise<EtiquetaRFID> => {
+  const response = await v1_api.get<EtiquetaRFID>(`/wms/etiquetas-rfid/${id}/`);
   return response.data;
 };
 

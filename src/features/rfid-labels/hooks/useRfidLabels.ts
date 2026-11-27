@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHasLoadedQuery } from "@/src/hooks/useHasLoadedQuery";
 import { getEtiquetasRFID } from "../services/actions";
-import type { EtiquetaRFID } from "../interfaces/rfid-label.interface";
+import { RFID_LABELS_KEY } from "../constants/rfidLabelQueryKeys";
+import type { EtiquetaRFIDRow } from "../interfaces/rfid-label.interface";
 
 /**
  * Lista los eventos de impresión de etiquetas RFID (`GET /wms/etiquetas-rfid/`).
  * Llave `["etiquetas-rfid"]`.
  */
 export const useRfidLabels = () => {
-  const query = useQuery<EtiquetaRFID[]>({
-    queryKey: ["etiquetas-rfid"],
+  const query = useQuery<EtiquetaRFIDRow[]>({
+    queryKey: RFID_LABELS_KEY,
     queryFn: getEtiquetasRFID,
   });
 
