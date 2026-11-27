@@ -146,13 +146,15 @@ export class RfidFeedMemory<T extends { id: number; epc: string }> {
 
 /**
  * Entrega a `onEpc`, en orden, cada lectura cuyo EPC no está en `vistos` (y lo
- * anota). Devuelve cuántas entregó, para que quien escucha actualice su
- * estado UNA vez por tanda.
+ * anota). Devuelve cuántas entregó y, si entregó alguna, llama `onFin` UNA
+ * vez al terminar la tanda, para que quien escucha actualice su estado de una
+ * sola vez (la tira de la antena, EC-997).
  */
 export const entregarNuevas = <T extends { epc: string }>(
   scans: readonly T[],
   vistos: Set<string>,
   onEpc: (scan: T) => void,
+  onFin?: () => void,
 ): number => {
   let nuevas = 0;
   for (const scan of scans) {
@@ -161,6 +163,7 @@ export const entregarNuevas = <T extends { epc: string }>(
     nuevas += 1;
     onEpc(scan);
   }
+  if (nuevas > 0) onFin?.();
   return nuevas;
 };
 

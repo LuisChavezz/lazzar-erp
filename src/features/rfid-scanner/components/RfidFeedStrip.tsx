@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ScanResult } from "@/src/components/ScanCapture";
 import { useRfidEpcFeed } from "@/src/features/rfid-scanner/hooks/useRfidEpcFeed";
 import { useIsSuperuser } from "@/src/features/users/hooks/useIsSuperuser";
@@ -12,6 +12,7 @@ import {
 } from "@/src/features/rfid-scanner/hooks/useRfidLectorSeleccionado";
 import { RfidLectorSelect } from "./RfidLectorSelect";
 import { rfidLectorListo } from "../utils/rfidLectorListo";
+import { agregarDetectadas, registroVacio } from "../utils/rfidDetectadas";
 import type { RfidFeedMemory } from "../utils/rfidScansParams";
 
 interface RfidFeedStripProps {
@@ -30,6 +31,8 @@ interface RfidFeedStripProps {
 }
 
 interface Detectada {
+  /** `RfidScan.id`: el mismo EPC puede volver a entrar con otro lector. */
+  id: number;
   epc: string;
   producto: string;
   codigo: string;
@@ -60,23 +63,29 @@ const TONE: Record<ScanResult["tone"], { dot: string; text: string }> = {
  * sondea y la tira explica por qué en vez de quedarse esperando (#506).
  */
 export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeedStripProps) {
-  const [detectadas, setDetectadas] = useState<Detectada[]>([]);
+  const [registro, setRegistro] = useState(registroVacio<Detectada>);
+  // Lo que va llegando en la tanda en curso; se agrega de una vez al terminarla (`onBatchEnd`).
+  const tandaRef = useRef<Detectada[]>([]);
 
   const handleEpc = (scan: RfidScan) => {
     const codigo = scan.barcode_value || scan.sku || "";
     const result: ScanResult = codigo
       ? onCode(codigo)
       : { tone: "error", title: "Etiqueta sin código", detail: scan.epc };
-    setDetectadas((prev) => [
-      {
-        epc: scan.epc,
-        producto: scan.producto_nombre || "Sin nombre",
-        codigo,
-        talla: scan.talla ?? null,
-        result,
-      },
-      ...prev,
-    ]);
+    tandaRef.current.push({
+      id: scan.id,
+      epc: scan.epc,
+      producto: scan.producto_nombre || "Sin nombre",
+      codigo,
+      talla: scan.talla ?? null,
+      result,
+    });
+  };
+  // Una sola actualización por tanda, con la lista recortada y los totales exactos.
+  const handleBatchEnd = () => {
+    const tanda = tandaRef.current;
+    tandaRef.current = [];
+    setRegistro((prev) => agregarDetectadas(prev, tanda, (d) => d.result.tone === "ok"));
   };
   const hasNoCompany = useSessionCompany().status === "none";
   const isSuperuser = useIsSuperuser();
@@ -89,12 +98,13 @@ export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeed
   const { isError: neverAnswered, isPollFailing } = useRfidEpcFeed(activo, handleEpc, lectorId, {
     cursor: true,
     memoria,
+    onBatchEnd: handleBatchEnd,
   });
   // Un catálogo de lectores caído tampoco deja leer: el mismo aviso.
   const isError = neverAnswered || isPollFailing || catalogoFallido;
   useLectorEnUso(lectorId, activo, pantalla, documento);
 
-  const sumadas = detectadas.filter((d) => d.result.tone === "ok").length;
+  const { recientes: detectadas, total, sumadas } = registro;
 
   return (
     <div className="border-b border-slate-100 dark:border-white/5">
@@ -117,9 +127,9 @@ export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeed
           <span className="text-rose-600 dark:text-rose-400">· sin respuesta del lector</span>
         ) : (
           <span className="text-slate-500 dark:text-slate-400">
-            · <strong className="tabular-nums text-slate-800 dark:text-slate-100">{detectadas.length}</strong>{" "}
+            · <strong className="tabular-nums text-slate-800 dark:text-slate-100">{total}</strong>{" "}
             detectadas
-            {detectadas.length > 0 && (
+            {total > 0 && (
               <>
                 {" "}· <strong className="tabular-nums text-emerald-600 dark:text-emerald-400">{sumadas}</strong>{" "}
                 sumadas
@@ -144,7 +154,7 @@ export function RfidFeedStrip({ onCode, pantalla, documento, memoria }: RfidFeed
             const tone = TONE[d.result.tone];
             return (
               <li
-                key={d.epc}
+                key={d.id}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1 text-[11.5px] hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                 title={`EPC ${d.epc}${d.result.detail ? ` · ${d.result.detail}` : ""}`}
               >

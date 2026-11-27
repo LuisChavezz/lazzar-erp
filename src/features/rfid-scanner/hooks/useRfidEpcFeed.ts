@@ -25,6 +25,7 @@ export function useRfidEpcFeed(
   {
     cursor = false,
     memoria,
+    onBatchEnd,
   }: {
     cursor?: boolean;
     /**
@@ -33,6 +34,11 @@ export function useRfidEpcFeed(
      * ella, cada sesión empieza de cero, como en el encuadre.
      */
     memoria?: RfidFeedMemory<RfidScan>;
+    /**
+     * Después de entregar una tanda con al menos una lectura nueva: quien
+     * acumula lo de cada `onEpc` actualiza su estado UNA vez (la tira, EC-997).
+     */
+    onBatchEnd?: () => void;
   } = {},
 ) {
   // Las dos fuentes se llaman siempre (reglas de hooks); solo la elegida sondea.
@@ -50,14 +56,21 @@ export function useRfidEpcFeed(
   // cursor, por sesión de lectura (se vacían al apagar).
   const seenRef = useRef<Set<string>>(new Set());
   const onEpcRef = useRef(onEpc);
+  const onBatchEndRef = useRef(onBatchEnd);
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     onEpcRef.current = onEpc;
+    onBatchEndRef.current = onBatchEnd;
   });
 
   const deliver = (ordered: readonly RfidScan[], vistos: Set<string>) =>
-    entregarNuevas(ordered, vistos, (scan) => onEpcRef.current(scan));
+    entregarNuevas(
+      ordered,
+      vistos,
+      (scan) => onEpcRef.current(scan),
+      () => onBatchEndRef.current?.(),
+    );
 
   // Sin cursor: las más recientes de cada sondeo, solo mientras está encendido.
   useEffect(() => {

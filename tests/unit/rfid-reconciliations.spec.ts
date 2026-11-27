@@ -32,6 +32,7 @@ import {
   type CursorFeedSession,
 } from "@/src/features/rfid-scanner/utils/rfidScansParams";
 import { estadoCatalogoLectores, rfidLectorListo } from "@/src/features/rfid-scanner/utils/rfidLectorListo";
+import { agregarDetectadas, RFID_DETECTADAS_VISIBLES, registroVacio } from "@/src/features/rfid-scanner/utils/rfidDetectadas";
 import { buildCreateRfidReconciliationPayload } from "@/src/features/rfid-reconciliations/utils/rfidReconciliationPayload";
 import { rfidReconciliationsTable } from "@/src/features/rfid-reconciliations/constants/rfidReconciliationsTable";
 import { readServerTableState, serverTableRequest } from "@/src/utils/serverTableParams";
@@ -898,5 +899,40 @@ test.describe("estado de la lectura en el detalle", () => {
       allowed: false,
       reason: "Espera a que terminen de enviarse las lecturas.",
     });
+  });
+});
+
+test.describe("tira de la antena con tandas grandes (EC-997)", () => {
+  type Entrada = { id: number; ok: boolean };
+  test("una tanda de 2000 lecturas: un solo aviso al terminar, lista recortada y totales exactos", () => {
+    const scans = Array.from({ length: 2000 }, (_, i) => ({ id: i + 1, epc: `E${i + 1}` }));
+    const tanda: Entrada[] = [];
+    let actualizaciones = 0;
+    let registro = registroVacio<Entrada>();
+    const vistos = new Set<string>();
+    // Lo que hace la tira: acumula cada lectura y agrega la tanda en `onFin`.
+    entregarNuevas(
+      scans,
+      vistos,
+      (s) => tanda.push({ id: s.id, ok: s.id % 4 !== 0 }),
+      () => {
+        actualizaciones += 1;
+        registro = agregarDetectadas(registro, tanda.splice(0), (e) => e.ok);
+      },
+    );
+    expect(actualizaciones).toBe(1);
+    expect(registro.total).toBe(2000);
+    expect(registro.sumadas).toBe(1500);
+    expect(registro.recientes).toHaveLength(RFID_DETECTADAS_VISIBLES);
+    expect(registro.recientes[0].id).toBe(2000);
+    expect(registro.recientes.at(-1)?.id).toBe(2000 - RFID_DETECTADAS_VISIBLES + 1);
+  });
+  test("las tandas se acumulan; sin lecturas nuevas no hay aviso", () => {
+    let registro = agregarDetectadas(registroVacio<Entrada>(), [{ id: 1, ok: true }, { id: 2, ok: false }], (e) => e.ok);
+    registro = agregarDetectadas(registro, [{ id: 3, ok: true }], (e) => e.ok);
+    expect(registro).toEqual({ recientes: [{ id: 3, ok: true }, { id: 2, ok: false }, { id: 1, ok: true }], total: 3, sumadas: 2 });
+    let avisos = 0;
+    entregarNuevas([{ epc: "A" }], new Set(["A"]), () => {}, () => (avisos += 1));
+    expect(avisos).toBe(0);
   });
 });
